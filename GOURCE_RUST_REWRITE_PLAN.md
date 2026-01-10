@@ -20,9 +20,9 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 | Phase 4: Physics & Animation | ✅ Complete | 86 | Force-directed layout, tweening, splines, camera |
 | Phase 5: Rendering | ✅ Complete | 75 | Software rasterizer, fonts, bloom effect, drop shadows |
 | Phase 6: Platform Integration | ✅ Complete | 36 | Native CLI, WASM, mouse input, video export, avatars |
-| Phase 7: Polish & Optimization | 🔄 In Progress | 182 | Config files, legend, timeline scrubbing, touch support |
+| Phase 7: Polish & Optimization | 🔄 In Progress | 210 | Config files, legend, timeline scrubbing, touch support, env vars |
 
-**Total Tests**: 608 passing
+**Total Tests**: 631 passing
 
 ### What's Working Now
 
@@ -83,12 +83,9 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 ### What's Not Yet Implemented
 
 - WebGL2 backend (optional GPU acceleration for WASM)
-- Environment variable configuration support
 - Pure Rust Git parsing (gitoxide) - optional enhancement
 - CVS/Apache log parsers
-- Performance profiling and optimization
 - Memory optimization for very large repositories
-- Streaming commit loading
 - User manual and API documentation
 
 ### Crate Structure
@@ -98,9 +95,9 @@ rource/
 ├── crates/
 │   ├── rource-math/      # Math types [141 tests]
 │   ├── rource-vcs/       # VCS parsing (Git, SVN, Hg, Bzr) [117 tests]
-│   ├── rource-core/      # Scene, physics, animation, camera, config [182 tests]
+│   ├── rource-core/      # Scene, physics, animation, camera, config [210 tests]
 │   └── rource-render/    # Rendering system [75 tests]
-├── rource-cli/           # Native CLI application [36 tests]
+├── rource-cli/           # Native CLI application [38 tests]
 └── rource-wasm/          # WebAssembly application ✅ [2 tests]
 ```
 
@@ -111,6 +108,14 @@ rource/
 - Added `--sample-config` to generate example configuration
 - New `config_file` module with `load_config_file` and `merge_config_file` functions
 - CLI arguments override config file values
+
+#### Environment Variable Configuration
+- All settings can be configured via `ROURCE_` prefixed environment variables
+- Examples: `ROURCE_WIDTH`, `ROURCE_SECONDS_PER_DAY`, `ROURCE_BLOOM_ENABLED`
+- Boolean values accept: `1/true/yes/on` and `0/false/no/off`
+- Configuration priority: CLI args > Environment vars > Config file > Defaults
+- New `config_env` module with `load_env()` and `merge_env()` functions
+- 40+ environment variables documented in module
 
 #### User Avatars
 - Added `--user-image-dir` to load PNG avatars from a directory
@@ -1461,7 +1466,7 @@ impl ZoomCamera {
 - [x] Settings struct with all options
 - [x] CLI argument parsing (clap) - 25+ options implemented
 - [x] Config file parsing (TOML)
-- [ ] Environment variable support
+- [x] Environment variable support (ROURCE_ prefix)
 - [x] Validation and defaults
 
 #### 1.3 Core Data Structures

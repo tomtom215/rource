@@ -56,10 +56,10 @@ This script will:
 rource/
 ├── crates/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [141 tests]
-│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format) [86 tests]
-│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [171 tests]
+│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format) [117 tests]
+│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [210 tests]
 │   └── rource-render/    # Rendering (software rasterizer, bloom, shadows, fonts, text) [75 tests]
-├── rource-cli/           # Native CLI application (winit + softbuffer) [29 tests]
+├── rource-cli/           # Native CLI application (winit + softbuffer) [38 tests]
 └── rource-wasm/          # WebAssembly application [2 tests]
 ```
 
@@ -311,8 +311,33 @@ eprintln!("Frame {}: {} non-black pixels", frame, non_black);
 
 1. Add field to `Settings` struct in `rource-core/src/config/settings.rs`
 2. Add CLI argument in `rource-cli/src/args.rs`
-3. Add WASM binding in `rource-wasm/src/lib.rs`
-4. Update documentation
+3. Add environment variable handling in `rource-core/src/config/config_env.rs`
+4. Add WASM binding in `rource-wasm/src/lib.rs`
+5. Update documentation
+
+### Environment Variable Configuration
+
+Settings can be configured via environment variables with the `ROURCE_` prefix:
+
+```bash
+# Examples
+export ROURCE_WIDTH=1920
+export ROURCE_HEIGHT=1080
+export ROURCE_BLOOM_ENABLED=false
+export ROURCE_SECONDS_PER_DAY=5.0
+export ROURCE_TITLE="My Project"
+export ROURCE_HIDE_USERS="bot.*"
+```
+
+Configuration priority (highest to lowest):
+1. CLI arguments
+2. Environment variables
+3. Config file (--config)
+4. Defaults
+
+Boolean values accept: `1/true/yes/on` for true, `0/false/no/off` for false.
+
+See `rource-core/src/config/config_env.rs` for the full list of 40+ supported variables.
 
 ### Running Against This Repository
 
@@ -435,4 +460,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10 (Phase 6 complete with WASM - 556 tests)*
+*Last updated: 2026-01-10 (Phase 7 in progress - 631 tests)*
