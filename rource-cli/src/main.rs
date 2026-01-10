@@ -8,6 +8,7 @@
 #![allow(clippy::multiple_crate_versions)]
 
 mod args;
+mod avatar;
 mod export;
 
 use std::num::NonZeroU32;
@@ -95,6 +96,12 @@ struct App {
 
     /// Pending screenshot path (saved after next render).
     screenshot_pending: Option<std::path::PathBuf>,
+
+    /// User avatar manager (used before registration, None after).
+    avatar_manager: Option<avatar::AvatarManager>,
+
+    /// Registered avatar texture IDs (available after renderer creation).
+    avatar_registry: avatar::AvatarRegistry,
 }
 
 /// Playback state for the visualization.
@@ -154,6 +161,18 @@ impl App {
             }
         });
 
+        // Load user avatars if specified
+        let mut avatars = args
+            .user_image_dir
+            .as_ref()
+            .map(avatar::AvatarManager::load_from_directory)
+            .unwrap_or_default();
+
+        // Load default avatar if specified
+        if let Some(ref default_path) = args.default_user_image {
+            avatars.set_default_avatar(default_path);
+        }
+
         Self {
             args,
             window: None,
@@ -180,6 +199,12 @@ impl App {
             last_mouse_position: Vec2::ZERO,
             frame_exporter,
             screenshot_pending: None,
+            avatar_manager: if avatars.has_avatars() {
+                Some(avatars)
+            } else {
+                None
+            },
+            avatar_registry: avatar::AvatarRegistry::default(),
         }
     }
 
@@ -547,28 +572,40 @@ impl App {
             let border_color = Color::new(color.r * 0.4, color.g * 0.4, color.b * 0.4, color.a);
             renderer.draw_disc(screen_pos, effective_radius + 2.0, border_color);
 
-            // Draw user as a larger filled disc
-            renderer.draw_disc(screen_pos, effective_radius, color);
+            // Check for avatar texture
+            if let Some(avatar_id) = self.avatar_registry.get_avatar_id(user.name()) {
+                // Draw avatar as a square quad with alpha
+                let half_size = effective_radius * 0.9; // Slightly smaller than border
+                let bounds = rource_math::Bounds::from_center_half_extents(
+                    screen_pos,
+                    Vec2::splat(half_size),
+                );
+                let tint = Color::new(1.0, 1.0, 1.0, user.alpha());
+                renderer.draw_quad(bounds, Some(avatar_id), tint);
+            } else {
+                // Draw user as a filled disc (no avatar)
+                renderer.draw_disc(screen_pos, effective_radius, color);
 
-            // Draw initials if the disc is large enough (radius > 12 pixels)
-            if effective_radius > 12.0 {
-                if let Some(font_id) = name_font {
-                    let initials = get_initials(user.name());
-                    let initial_font_size = (effective_radius * 0.8).clamp(8.0, 20.0);
-                    // Center the initials on the disc
-                    let text_width = initials.len() as f32 * initial_font_size * 0.5;
-                    let initial_pos = Vec2::new(
-                        screen_pos.x - text_width * 0.5,
-                        screen_pos.y - initial_font_size * 0.35,
-                    );
-                    let initial_color = Color::new(1.0, 1.0, 1.0, 0.9 * user.alpha());
-                    renderer.draw_text(
-                        &initials,
-                        initial_pos,
-                        font_id,
-                        initial_font_size,
-                        initial_color,
-                    );
+                // Draw initials if the disc is large enough (radius > 12 pixels)
+                if effective_radius > 12.0 {
+                    if let Some(font_id) = name_font {
+                        let initials = get_initials(user.name());
+                        let initial_font_size = (effective_radius * 0.8).clamp(8.0, 20.0);
+                        // Center the initials on the disc
+                        let text_width = initials.len() as f32 * initial_font_size * 0.5;
+                        let initial_pos = Vec2::new(
+                            screen_pos.x - text_width * 0.5,
+                            screen_pos.y - initial_font_size * 0.35,
+                        );
+                        let initial_color = Color::new(1.0, 1.0, 1.0, 0.9 * user.alpha());
+                        renderer.draw_text(
+                            &initials,
+                            initial_pos,
+                            font_id,
+                            initial_font_size,
+                            initial_color,
+                        );
+                    }
                 }
             }
 
@@ -785,6 +822,81 @@ impl App {
                 font_size * 0.8,
                 text_color.with_alpha(0.5),
             );
+
+            // File extension legend (lower-right corner)
+            if !self.args.hide_legend {
+                let legend_font_size = font_size * 0.8;
+                let legend_padding = 10.0;
+                let legend_entry_height = legend_font_size + 4.0;
+                let legend_color_size = legend_font_size * 0.7;
+
+                // Get file extension stats (limited to top 10)
+                let stats = self.scene.file_extension_stats();
+                let max_legend_entries = 10;
+                let legend_entries: Vec<_> = stats.into_iter().take(max_legend_entries).collect();
+
+                if !legend_entries.is_empty() {
+                    let legend_height =
+                        legend_entries.len() as f32 * legend_entry_height + legend_padding * 2.0;
+                    let legend_width = 120.0;
+                    let legend_x = width - legend_width - legend_padding;
+                    let legend_y = height - legend_height - 20.0; // Above progress bar
+
+                    // Background
+                    renderer.draw_quad(
+                        rource_math::Bounds::new(
+                            Vec2::new(legend_x, legend_y),
+                            Vec2::new(legend_x + legend_width, legend_y + legend_height),
+                        ),
+                        None,
+                        Color::new(0.0, 0.0, 0.0, 0.5),
+                    );
+
+                    // Title
+                    renderer.draw_text(
+                        "File Types",
+                        Vec2::new(legend_x + legend_padding, legend_y + legend_padding),
+                        font_id,
+                        legend_font_size,
+                        text_color.with_alpha(0.8),
+                    );
+
+                    // Entries
+                    for (i, (ext, count)) in legend_entries.iter().enumerate() {
+                        let entry_y =
+                            legend_y + legend_padding + legend_entry_height * (i as f32 + 1.0);
+
+                        // Color swatch
+                        let ext_color = rource_core::scene::FileNode::color_from_extension(ext);
+                        renderer.draw_quad(
+                            rource_math::Bounds::new(
+                                Vec2::new(legend_x + legend_padding, entry_y + 2.0),
+                                Vec2::new(
+                                    legend_x + legend_padding + legend_color_size,
+                                    entry_y + 2.0 + legend_color_size,
+                                ),
+                            ),
+                            None,
+                            ext_color,
+                        );
+
+                        // Extension name and count
+                        let ext_display = if ext.len() > 8 {
+                            format!("{}..", &ext[..6])
+                        } else {
+                            ext.clone()
+                        };
+                        let entry_text = format!("{ext_display} ({count})");
+                        renderer.draw_text(
+                            &entry_text,
+                            Vec2::new(legend_x + legend_padding + legend_color_size + 4.0, entry_y),
+                            font_id,
+                            legend_font_size * 0.9,
+                            text_color.with_alpha(0.7),
+                        );
+                    }
+                }
+            }
         }
 
         renderer.end_frame();
@@ -813,6 +925,23 @@ impl App {
         match button {
             MouseButton::Left => match state {
                 ElementState::Pressed => {
+                    // Check if clicking on progress bar (timeline scrubbing)
+                    if let Some(renderer) = &self.renderer {
+                        let height = renderer.height() as f32;
+                        let width = renderer.width() as f32;
+                        let bar_height = 12.0; // Clickable area is larger than visual bar
+
+                        if self.mouse_position.y >= height - bar_height && !self.commits.is_empty()
+                        {
+                            // Seek to clicked position
+                            let progress = (self.mouse_position.x / width).clamp(0.0, 1.0);
+                            let target_commit =
+                                (progress * self.commits.len() as f32).round() as usize;
+                            self.seek_to_commit(target_commit);
+                            return;
+                        }
+                    }
+
                     self.mouse_dragging = true;
                     self.last_mouse_position = self.mouse_position;
                 }
@@ -827,6 +956,64 @@ impl App {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Seek to a specific commit index.
+    ///
+    /// This resets the scene and re-applies commits if seeking backwards.
+    fn seek_to_commit(&mut self, target: usize) {
+        let target = target.min(self.commits.len());
+
+        // If seeking backwards, reset scene and re-apply
+        if target < self.current_commit {
+            self.scene = Scene::new();
+            self.last_applied_commit = 0;
+            self.accumulated_time = 0.0;
+
+            // Apply commits up to target
+            for (i, commit) in self.commits.iter().take(target).enumerate() {
+                let files: Vec<(std::path::PathBuf, ActionType)> = commit
+                    .files
+                    .iter()
+                    .map(|f| {
+                        (
+                            f.path.clone(),
+                            match f.action {
+                                FileAction::Create => ActionType::Create,
+                                FileAction::Modify => ActionType::Modify,
+                                FileAction::Delete => ActionType::Delete,
+                            },
+                        )
+                    })
+                    .collect();
+
+                self.scene.apply_commit(&commit.author, &files);
+                self.last_applied_commit = i + 1;
+            }
+
+            // Update scene a bit to let things settle
+            for _ in 0..5 {
+                self.scene.update(0.1);
+            }
+        }
+
+        self.current_commit = target;
+
+        // If we have a target commit, calculate appropriate accumulated time
+        if !self.commits.is_empty() && target > 0 && target <= self.commits.len() {
+            // Calculate time based on commit timestamps
+            let first_timestamp = self.commits[0].timestamp;
+            let target_timestamp = self.commits[target.saturating_sub(1)].timestamp;
+            let days = (target_timestamp - first_timestamp) as f64 / 86400.0;
+            self.accumulated_time = days * f64::from(self.playback.seconds_per_day);
+        }
+
+        // Fit camera to content
+        if let Some(bounds) = self.scene.compute_entity_bounds() {
+            if bounds.is_valid() && bounds.width() > 0.0 && bounds.height() > 0.0 {
+                self.camera.fit_to_bounds(&bounds, 100.0);
+            }
         }
     }
 
@@ -954,6 +1141,11 @@ impl ApplicationHandler for App {
         let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
         if font_id.is_none() {
             eprintln!("Warning: Failed to load default font");
+        }
+
+        // Register avatars with renderer
+        if let Some(manager) = self.avatar_manager.take() {
+            self.avatar_registry = manager.register_with_renderer(&mut renderer);
         }
 
         self.window = Some(window);

@@ -16,7 +16,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
-rource-core = { path = "../crates/rource-core" }
+rource-core = { path = "../crates/rource-core", features = ["config-file"] }
 rource-render = { path = "../crates/rource-render" }
 rource-vcs = { path = "../crates/rource-vcs" }
 rource-math = { path = "../crates/rource-math" }

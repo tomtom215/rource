@@ -673,6 +673,31 @@ impl Scene {
     pub fn action_count(&self) -> usize {
         self.actions.len()
     }
+
+    /// Returns file extension statistics (extension -> count).
+    ///
+    /// Only includes extensions for files that are currently visible (alpha > 0.1).
+    #[must_use]
+    pub fn file_extension_stats(&self) -> Vec<(String, usize)> {
+        use std::collections::HashMap;
+
+        let mut stats: HashMap<String, usize> = HashMap::new();
+
+        for file in self.files.values() {
+            if file.alpha() < 0.1 {
+                continue;
+            }
+            let ext = file
+                .extension()
+                .map_or_else(|| "other".to_string(), str::to_lowercase);
+            *stats.entry(ext).or_insert(0) += 1;
+        }
+
+        // Sort by count descending, then by extension name
+        let mut result: Vec<_> = stats.into_iter().collect();
+        result.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        result
+    }
 }
 
 impl Default for Scene {

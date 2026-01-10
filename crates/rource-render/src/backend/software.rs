@@ -119,6 +119,26 @@ impl SoftwareRenderer {
         &mut self.font_cache
     }
 
+    /// Registers a texture and returns its ID.
+    ///
+    /// Use this to add custom textures (like user avatars) to the renderer.
+    pub fn register_texture(&mut self, texture: Texture) -> TextureId {
+        let id = TextureId::new(self.next_texture_id);
+        self.next_texture_id += 1;
+        self.textures.insert(id, texture);
+        id
+    }
+
+    /// Unregisters a texture by its ID.
+    pub fn unregister_texture(&mut self, id: TextureId) {
+        self.textures.remove(&id);
+    }
+
+    /// Returns a reference to a registered texture.
+    pub fn get_texture(&self, id: TextureId) -> Option<&Texture> {
+        self.textures.get(&id)
+    }
+
     /// Transforms a point from world to screen coordinates.
     #[inline]
     fn transform_point(&self, point: Vec2) -> Vec2 {

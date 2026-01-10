@@ -11,7 +11,15 @@ authors.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = []
+config-file = ["dep:serde", "dep:toml"]
+
 [dependencies]
 rource-math = { path = "../rource-math" }
+
+# Optional dependencies for config file support
+serde = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
 
 [dev-dependencies]

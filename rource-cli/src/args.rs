@@ -79,6 +79,10 @@ pub struct Args {
     #[arg(long)]
     pub hide_date: bool,
 
+    /// Hide the file extension legend.
+    #[arg(long)]
+    pub hide_legend: bool,
+
     /// Maximum number of files to display (0 = unlimited).
     #[arg(long, default_value_t = 0)]
     pub max_files: usize,
@@ -143,6 +147,19 @@ pub struct Args {
     /// Print a sample configuration file and exit.
     #[arg(long)]
     pub sample_config: bool,
+
+    /// Directory containing user avatar images.
+    ///
+    /// Images should be named after usernames (e.g., "John Doe.png").
+    /// Names are matched case-insensitively.
+    #[arg(long)]
+    pub user_image_dir: Option<PathBuf>,
+
+    /// Default user avatar image.
+    ///
+    /// Used when a user doesn't have a specific avatar.
+    #[arg(long)]
+    pub default_user_image: Option<PathBuf>,
 }
 
 impl Args {
@@ -362,6 +379,7 @@ mod tests {
             hide_filenames: false,
             hide_usernames: false,
             hide_date: false,
+            hide_legend: false,
             max_files: 0,
             max_users: 0,
             camera_mode: "overview".to_string(),
@@ -376,6 +394,8 @@ mod tests {
             screenshot_at: None,
             config: None,
             sample_config: false,
+            user_image_dir: None,
+            default_user_image: None,
         };
 
         assert_eq!(args.width, 1280);

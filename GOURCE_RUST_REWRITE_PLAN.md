@@ -82,7 +82,7 @@ rource/
 │   ├── rource-core/      # Scene, physics, animation, camera, config [171 tests]
 │   └── rource-render/    # Rendering system [68 tests]
 ├── rource-cli/           # Native CLI application [29 tests]
-└── rource-wasm/          # WebAssembly application (TODO)
+└── rource-wasm/          # WebAssembly application ✅
 ```
 
 ### Recent Changes (2026-01-10)
@@ -1417,9 +1417,9 @@ impl ZoomCamera {
 - [x] Unit tests for all types
 
 #### 1.2 Configuration System
-- [ ] Settings struct with all options
+- [x] Settings struct with all options
 - [x] CLI argument parsing (clap) - 25+ options implemented
-- [ ] Config file parsing (TOML)
+- [x] Config file parsing (TOML)
 - [ ] Environment variable support
 - [x] Validation and defaults
 
@@ -1437,8 +1437,9 @@ impl ZoomCamera {
 - [ ] Pure Rust option (gitoxide)
 
 #### 2.2 Other VCS Parsers
-- [ ] SVN XML parser
-- [ ] Mercurial parser
+- [x] SVN XML parser
+- [x] Mercurial parser
+- [x] Bazaar parser
 - [x] Custom format parser
 - [x] VCS auto-detection
 
@@ -1458,7 +1459,7 @@ impl ZoomCamera {
 #### 3.3 Spatial Systems
 - [x] Quadtree implementation
 - [x] Spatial queries
-- [ ] Frustum culling
+- [x] Frustum culling
 
 ### Phase 4: Physics & Animation (Weeks 13-16) ✅
 
@@ -1500,10 +1501,10 @@ impl ZoomCamera {
 
 #### 5.4 Effects
 - [x] Bloom (CPU approximation)
-- [ ] Drop shadows
+- [x] Drop shadows
 - [x] Color blending
 
-### Phase 6: Platform Integration (Weeks 23-28) 🔄
+### Phase 6: Platform Integration (Weeks 23-28) ✅
 
 #### 6.1 Native CLI
 - [x] winit window creation
@@ -1513,16 +1514,20 @@ impl ZoomCamera {
 - [x] Full scene graph integration
 - [x] Camera system integration
 - [x] Bloom effect integration
-- [ ] Mouse input handling
-- [ ] Video export (PPM frames)
+- [x] Mouse input handling (pan with drag, zoom with scroll)
+- [x] Video export (PPM frames)
+- [x] Headless rendering mode
+- [x] PNG screenshot export
+- [x] User avatars (custom image loading)
 
 #### 6.2 WebAssembly
-- [ ] wasm-bindgen setup
-- [ ] Canvas2D backend
+- [x] wasm-bindgen setup
+- [x] Canvas2D backend (software renderer + ImageData)
 - [ ] WebGL2 backend (optional)
-- [ ] File upload interface
+- [x] File upload interface
+- [x] Touch support
 
-### Phase 7: Polish & Optimization (Weeks 29-32)
+### Phase 7: Polish & Optimization (Weeks 29-32) 🔄
 
 #### 7.1 Performance
 - [ ] Profiling and bottleneck analysis
@@ -1531,12 +1536,13 @@ impl ZoomCamera {
 - [ ] Streaming commit loading
 
 #### 7.2 User Experience
-- [ ] Interactive file legend
-- [ ] Timeline scrubbing
-- [ ] Keyboard shortcuts
-- [ ] Touch support
+- [x] Interactive file legend (color-coded by extension)
+- [x] Timeline scrubbing (click progress bar to seek)
+- [x] Keyboard shortcuts (Space=play/pause, +/-=zoom, R=reset, arrows=pan)
+- [x] Touch support (WASM - pinch zoom, pan gesture)
 
 #### 7.3 Documentation
+- [x] CLAUDE.md project guide
 - [ ] User manual
 - [ ] API documentation
 - [ ] Examples
