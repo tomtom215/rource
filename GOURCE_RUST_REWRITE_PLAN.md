@@ -1315,12 +1315,12 @@ impl ZoomCamera {
 ### Phase 1: Foundation (Weeks 1-4)
 
 #### 1.1 Math Library (`rource-math`)
-- [ ] Vec2, Vec3, Vec4 types
-- [ ] Mat3, Mat4 types
-- [ ] Color types (RGB, HSL, RGBA)
-- [ ] Bounds/Rect types
-- [ ] Basic operations (dot, cross, normalize, lerp)
-- [ ] Unit tests for all types
+- [x] Vec2, Vec3, Vec4 types
+- [x] Mat3, Mat4 types
+- [x] Color types (RGB, HSL, RGBA)
+- [x] Bounds/Rect types
+- [x] Basic operations (dot, cross, normalize, lerp)
+- [x] Unit tests for all types
 
 #### 1.2 Configuration System
 - [ ] Settings struct with all options
@@ -1330,61 +1330,61 @@ impl ZoomCamera {
 - [ ] Validation and defaults
 
 #### 1.3 Core Data Structures
-- [ ] Entity ID types
-- [ ] Commit and FileChange structs
-- [ ] Basic scene graph skeleton
+- [x] Entity ID types
+- [x] Commit and FileChange structs
+- [x] Basic scene graph skeleton
 
 ### Phase 2: VCS Parsing (Weeks 5-8)
 
 #### 2.1 Git Parser
-- [ ] Git log command generation
-- [ ] Log output parsing
-- [ ] Commit stream interface
+- [x] Git log command generation
+- [x] Log output parsing
+- [x] Commit stream interface
 - [ ] Pure Rust option (gitoxide)
 
 #### 2.2 Other VCS Parsers
 - [ ] SVN XML parser
 - [ ] Mercurial parser
-- [ ] Custom format parser
-- [ ] VCS auto-detection
+- [x] Custom format parser
+- [x] VCS auto-detection
 
 ### Phase 3: Scene Graph (Weeks 9-12)
 
 #### 3.1 Directory Tree
-- [ ] DirNode structure
-- [ ] Tree construction from commits
-- [ ] Path normalization
-- [ ] Dynamic tree updates
+- [x] DirNode structure
+- [x] Tree construction from commits
+- [x] Path normalization
+- [x] Dynamic tree updates
 
 #### 3.2 Entities
-- [ ] User entity with avatar
-- [ ] File entity with extension color
-- [ ] Action entity with animation
+- [x] User entity with avatar
+- [x] File entity with extension color
+- [x] Action entity with animation
 
 #### 3.3 Spatial Systems
-- [ ] Quadtree implementation
-- [ ] Spatial queries
+- [x] Quadtree implementation
+- [x] Spatial queries
 - [ ] Frustum culling
 
 ### Phase 4: Physics & Animation (Weeks 13-16)
 
 #### 4.1 Force-Directed Layout
-- [ ] Repulsion forces
-- [ ] Attraction forces
-- [ ] Damping and stability
-- [ ] Performance optimization
+- [x] Repulsion forces
+- [x] Attraction forces
+- [x] Damping and stability
+- [x] Performance optimization
 
 #### 4.2 Animation System
-- [ ] Tweening functions (ease-in/out)
-- [ ] Spline interpolation
-- [ ] Action beam animation
-- [ ] Fade in/out effects
+- [x] Tweening functions (ease-in/out)
+- [x] Spline interpolation
+- [x] Action beam animation
+- [x] Fade in/out effects
 
 #### 4.3 Camera System
-- [ ] ZoomCamera implementation
-- [ ] Auto-tracking algorithm
-- [ ] Manual controls
-- [ ] Smooth interpolation
+- [x] ZoomCamera implementation
+- [x] Auto-tracking algorithm
+- [x] Manual controls
+- [x] Smooth interpolation
 
 ### Phase 5: Rendering - Software (Weeks 17-22)
 
