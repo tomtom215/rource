@@ -187,11 +187,58 @@ impl Scene {
         self.time
     }
 
-    /// Returns the scene bounds.
+    /// Returns the scene bounds (initial allocation bounds, not entity bounds).
+    ///
+    /// Note: This returns the quadtree/scene allocation bounds, not the
+    /// actual bounding box of entities. For entity bounds, use
+    /// [`compute_entity_bounds()`](Self::compute_entity_bounds).
     #[inline]
     #[must_use]
     pub fn bounds(&self) -> &Bounds {
         &self.bounds
+    }
+
+    /// Computes the actual bounding box of all entities in the scene.
+    ///
+    /// Returns `None` if there are no entities with positions.
+    /// This is useful for camera fitting to actual content.
+    #[must_use]
+    pub fn compute_entity_bounds(&self) -> Option<Bounds> {
+        let mut bounds = Bounds::INVERTED;
+
+        // Include file positions
+        for file in self.files.values() {
+            let pos = file.position();
+            let radius = file.radius();
+            bounds = bounds
+                .include_point(pos - Vec2::splat(radius))
+                .include_point(pos + Vec2::splat(radius));
+        }
+
+        // Include user positions
+        for user in self.users.values() {
+            let pos = user.position();
+            let radius = user.radius();
+            bounds = bounds
+                .include_point(pos - Vec2::splat(radius))
+                .include_point(pos + Vec2::splat(radius));
+        }
+
+        // Include directory positions
+        for dir in self.directories.iter() {
+            let pos = dir.position();
+            let radius = dir.radius();
+            bounds = bounds
+                .include_point(pos - Vec2::splat(radius))
+                .include_point(pos + Vec2::splat(radius));
+        }
+
+        // Return None if bounds are still inverted (no entities)
+        if bounds.min.x > bounds.max.x || bounds.min.y > bounds.max.y {
+            None
+        } else {
+            Some(bounds)
+        }
     }
 
     /// Gets or creates a user with the given name.

@@ -381,9 +381,8 @@ impl App {
 
         // Auto-fit camera to scene content periodically
         // (simple overview mode - more sophisticated tracking would use CameraTracker)
-        if self.scene.file_count() > 0 {
-            let bounds = self.scene.bounds();
-            self.camera.fit_to_bounds(bounds, 100.0);
+        if let Some(entity_bounds) = self.scene.compute_entity_bounds() {
+            self.camera.fit_to_bounds(&entity_bounds, 100.0);
         }
 
         // Loop if enabled
@@ -978,7 +977,11 @@ impl ApplicationHandler for App {
                     }
 
                     // Check if visualization is complete (all commits processed)
-                    if self.current_commit >= self.commits.len() && !self.commits.is_empty() {
+                    // Note: current_commit maxes at len-1, so we use saturating_sub
+                    if !self.commits.is_empty()
+                        && self.current_commit >= self.commits.len().saturating_sub(1)
+                        && self.last_applied_commit >= self.current_commit
+                    {
                         eprintln!("Export complete: {} frames written", exporter.frame_count());
                         event_loop.exit();
                         return;
@@ -1150,6 +1153,40 @@ fn run_headless(args: &Args) -> Result<()> {
 
     eprintln!("Rendering frames...");
 
+    // Pre-warm: Apply the first commit and let entities fade in
+    // This ensures files have visible alpha on the first frame
+    if !commits.is_empty() {
+        // Apply first commit immediately
+        let commit = &commits[0];
+        let files: Vec<(std::path::PathBuf, rource_core::scene::ActionType)> = commit
+            .files
+            .iter()
+            .map(|f| (f.path.clone(), App::file_action_to_action_type(f.action)))
+            .collect();
+        scene.apply_commit(&commit.author, &files);
+        last_applied_commit = 1;
+        current_commit = 1;
+
+        // Run scene updates to let entities fade in (simulates ~0.5 seconds)
+        for _ in 0..30 {
+            scene.update(dt as f32);
+        }
+
+        // Fit camera immediately to show entities
+        if let Some(entity_bounds) = scene.compute_entity_bounds() {
+            let center = entity_bounds.center();
+            let size = entity_bounds.size();
+            let padding = 100.0;
+            let (vw, vh) = camera.viewport_size();
+            let zoom_x = vw / (size.x + padding * 2.0);
+            let zoom_y = vh / (size.y + padding * 2.0);
+            let new_zoom = zoom_x.min(zoom_y).clamp(0.01, 10.0);
+            camera.jump_to(center);
+            camera.set_zoom(new_zoom);
+
+        }
+    }
+
     // Main rendering loop
     loop {
         // Update simulation
@@ -1187,10 +1224,9 @@ fn run_headless(args: &Args) -> Result<()> {
         scene.update(dt as f32);
         camera.update(dt as f32);
 
-        // Auto-fit camera to scene content
-        if scene.file_count() > 0 {
-            let bounds = scene.bounds();
-            camera.fit_to_bounds(bounds, 100.0);
+        // Auto-fit camera to scene content using actual entity bounds
+        if let Some(entity_bounds) = scene.compute_entity_bounds() {
+            camera.fit_to_bounds(&entity_bounds, 100.0);
         }
 
         // Render frame
@@ -1236,8 +1272,12 @@ fn run_headless(args: &Args) -> Result<()> {
             );
         }
 
-        // Check for completion
-        if current_commit >= commits.len() {
+        // Check for completion (all commits processed and applied)
+        // Note: current_commit maxes at len-1 due to the incrementing loop condition
+        if !commits.is_empty()
+            && current_commit >= commits.len().saturating_sub(1)
+            && last_applied_commit >= current_commit
+        {
             break;
         }
     }
