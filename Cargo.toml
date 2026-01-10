@@ -6,6 +6,7 @@ members = [
     "crates/rource-vcs",
     "crates/rource-render",
     "rource-cli",
+    "rource-wasm",
 ]
 
 [workspace.package]

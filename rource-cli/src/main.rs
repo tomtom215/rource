@@ -1183,7 +1183,6 @@ fn run_headless(args: &Args) -> Result<()> {
             let new_zoom = zoom_x.min(zoom_y).clamp(0.01, 10.0);
             camera.jump_to(center);
             camera.set_zoom(new_zoom);
-
         }
     }
 
@@ -1282,7 +1281,10 @@ fn run_headless(args: &Args) -> Result<()> {
         }
     }
 
-    eprintln!("\nExport complete: {} frames written", exporter.frame_count());
+    eprintln!(
+        "\nExport complete: {} frames written",
+        exporter.frame_count()
+    );
     Ok(())
 }
 

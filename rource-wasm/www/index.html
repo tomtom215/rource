@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rource - Software Version Control Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #16213e;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #e94560;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #ff6b6b;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #533483;
+        }
+
+        .btn-secondary:hover {
+            background: #6c4298;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        #canvas-container {
+            flex: 1;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .info-panel {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .input-section {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .input-section h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            color: #e94560;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            background: #0f0f23;
+            border: 1px solid #333;
+            color: #eee;
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        .help {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.5rem;
+        }
+
+        .help code {
+            background: #0f0f23;
+            padding: 0.1rem 0.3rem;
+            border-radius: 2px;
+        }
+
+        .keyboard-shortcuts {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .keyboard-shortcuts kbd {
+            background: #333;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            margin-right: 0.25rem;
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading WASM module...</div>
+
+    <header>
+        <h1>Rource</h1>
+        <div class="controls">
+            <button id="btn-play" disabled>Play</button>
+            <button id="btn-reset" class="btn-secondary" disabled>Reset Camera</button>
+            <span class="keyboard-shortcuts">
+                <kbd>Space</kbd> Play/Pause
+                <kbd>+/-</kbd> Zoom
+                <kbd>R</kbd> Reset
+                <kbd>Arrows</kbd> Pan
+            </span>
+        </div>
+    </header>
+
+    <main>
+        <div id="canvas-container">
+            <canvas id="canvas" width="1280" height="720"></canvas>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <span class="info-value" id="status">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Commits</span>
+                <span class="info-value" id="commit-count">0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Current</span>
+                <span class="info-value" id="current-commit">0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Speed</span>
+                <span class="info-value" id="speed">10.0</span>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <h3>Load Custom Log Data</h3>
+            <textarea id="log-input" placeholder="Paste your log data here...">1704067200|Alice|A|src/main.rs
+1704067300|Alice|A|src/lib.rs
+1704067400|Bob|M|src/main.rs
+1704067500|Alice|A|src/utils/mod.rs
+1704067600|Bob|A|tests/test_main.rs
+1704067700|Charlie|M|src/lib.rs
+1704067800|Alice|A|docs/README.md
+1704067900|Bob|D|src/utils/mod.rs
+1704068000|Charlie|A|src/utils/helpers.rs
+1704068100|Alice|M|src/main.rs</textarea>
+            <button id="btn-load" disabled>Load Log</button>
+            <p class="help">
+                Format: <code>timestamp|author|action|path</code> (one per line)<br>
+                Actions: A=Add, M=Modify, D=Delete
+            </p>
+        </div>
+    </main>
+
+    <script type="module">
+        import init, { Rource } from './pkg/rource_wasm.js';
+
+        let rource = null;
+        let animationId = null;
+
+        // UI elements
+        const canvas = document.getElementById('canvas');
+        const btnPlay = document.getElementById('btn-play');
+        const btnReset = document.getElementById('btn-reset');
+        const btnLoad = document.getElementById('btn-load');
+        const logInput = document.getElementById('log-input');
+        const statusEl = document.getElementById('status');
+        const commitCountEl = document.getElementById('commit-count');
+        const currentCommitEl = document.getElementById('current-commit');
+        const speedEl = document.getElementById('speed');
+        const loadingEl = document.getElementById('loading');
+
+        // Resize canvas to fit container
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            const rect = container.getBoundingClientRect();
+            const width = Math.floor(rect.width);
+            const height = Math.floor(rect.height);
+
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width;
+                canvas.height = height;
+                if (rource) {
+                    rource.resize(width, height);
+                    rource.forceRender();
+                }
+            }
+        }
+
+        // Animation loop
+        function animate(timestamp) {
+            if (rource) {
+                rource.frame(timestamp);
+                updateUI();
+            }
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Update UI elements
+        function updateUI() {
+            if (!rource) return;
+
+            const playing = rource.isPlaying();
+            btnPlay.textContent = playing ? 'Pause' : 'Play';
+            currentCommitEl.textContent = rource.currentCommit();
+            speedEl.textContent = rource.getSpeed().toFixed(1);
+            statusEl.textContent = playing ? 'Playing' : 'Paused';
+        }
+
+        // Initialize
+        async function main() {
+            try {
+                await init();
+
+                resizeCanvas();
+                rource = new Rource(canvas);
+
+                // Load default data
+                const defaultLog = logInput.value;
+                if (defaultLog.trim()) {
+                    const count = rource.loadCustomLog(defaultLog);
+                    commitCountEl.textContent = count;
+                }
+
+                // Enable buttons
+                btnPlay.disabled = false;
+                btnReset.disabled = false;
+                btnLoad.disabled = false;
+
+                // Start animation loop
+                animationId = requestAnimationFrame(animate);
+
+                // Hide loading
+                loadingEl.classList.add('hidden');
+                statusEl.textContent = 'Ready';
+
+            } catch (e) {
+                console.error('Failed to initialize:', e);
+                statusEl.textContent = 'Error: ' + e.message;
+                loadingEl.textContent = 'Failed to load: ' + e.message;
+            }
+        }
+
+        // Event handlers
+        btnPlay.addEventListener('click', () => {
+            if (rource) {
+                rource.togglePlay();
+                updateUI();
+            }
+        });
+
+        btnReset.addEventListener('click', () => {
+            if (rource) {
+                rource.resetCamera();
+            }
+        });
+
+        btnLoad.addEventListener('click', () => {
+            if (rource && logInput.value.trim()) {
+                try {
+                    const count = rource.loadCustomLog(logInput.value);
+                    commitCountEl.textContent = count;
+                    statusEl.textContent = `Loaded ${count} commits`;
+                } catch (e) {
+                    statusEl.textContent = 'Parse error: ' + e;
+                }
+            }
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.target === logInput) return; // Don't capture when typing
+
+            if (rource) {
+                rource.onKeyDown(e.key);
+                updateUI();
+            }
+        });
+
+        // Mouse controls
+        canvas.addEventListener('mousedown', (e) => {
+            if (rource) {
+                const rect = canvas.getBoundingClientRect();
+                rource.onMouseDown(e.clientX - rect.left, e.clientY - rect.top);
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (rource) rource.onMouseUp();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (rource) {
+                const rect = canvas.getBoundingClientRect();
+                rource.onMouseMove(e.clientX - rect.left, e.clientY - rect.top);
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            if (rource) {
+                e.preventDefault();
+                rource.onWheel(e.deltaY);
+            }
+        }, { passive: false });
+
+        // Handle resize
+        window.addEventListener('resize', resizeCanvas);
+
+        // Start
+        main();
+    </script>
+</body>
+</html>
