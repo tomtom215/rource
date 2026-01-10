@@ -363,12 +363,26 @@ impl Scene {
     }
 
     /// Spawns an action from a user to a file.
+    ///
+    /// Returns `Some(ActionId)` if the action was created, or `None` if
+    /// the action cap was reached (see `MAX_ACTIONS`).
     pub fn spawn_action(
         &mut self,
         user_id: UserId,
         file_id: FileId,
         action_type: ActionType,
-    ) -> ActionId {
+    ) -> Option<ActionId> {
+        // Skip spawning if at capacity (prevents accumulation at fast playback)
+        if self.actions.len() >= Self::MAX_ACTIONS {
+            // Still update user target even if we skip the action
+            if let Some(file) = self.files.get(&file_id) {
+                if let Some(user) = self.users.get_mut(&user_id) {
+                    user.set_target(file.position());
+                }
+            }
+            return None;
+        }
+
         let raw_id = self.action_id_allocator.allocate();
         let id = ActionId::new(raw_id.index(), raw_id.generation());
 
@@ -387,7 +401,7 @@ impl Scene {
             }
         }
 
-        id
+        Some(id)
     }
 
     /// Applies a VCS commit to the scene.
@@ -442,6 +456,12 @@ impl Scene {
 
     /// How often to rebuild the spatial index (every N updates).
     const SPATIAL_REBUILD_INTERVAL: u32 = 5;
+
+    /// Maximum number of concurrent actions (prevents accumulation at fast playback).
+    /// At 60fps with ACTION_SPEED=2.0, each action takes ~30 frames to complete.
+    /// With thousands of commits per second at fast playback, actions accumulate
+    /// faster than they expire. This cap ensures smooth rendering performance.
+    const MAX_ACTIONS: usize = 5000;
 
     /// Updates the scene by the given time delta.
     ///
@@ -771,7 +791,7 @@ mod tests {
         let user_id = scene.get_or_create_user("Alice");
         let file_id = scene.create_file(Path::new("test.rs")).unwrap();
 
-        let action_id = scene.spawn_action(user_id, file_id, ActionType::Modify);
+        let action_id = scene.spawn_action(user_id, file_id, ActionType::Modify).unwrap();
 
         assert_eq!(scene.action_count(), 1);
 
@@ -836,7 +856,7 @@ mod tests {
         // Create a file and action
         let file_id = scene.create_file(Path::new("test.rs")).unwrap();
         let user_id = scene.get_or_create_user("Test");
-        scene.spawn_action(user_id, file_id, ActionType::Create);
+        let _ = scene.spawn_action(user_id, file_id, ActionType::Create);
 
         assert_eq!(scene.action_count(), 1);
 

@@ -1391,7 +1391,11 @@ fn run_headless(args: &Args) -> Result<()> {
     eprintln!("Running in headless mode");
     eprintln!("Output: {}", output.display());
 
+    // Performance timing
+    let total_start = Instant::now();
+
     // Load commits
+    let git_start = Instant::now();
     let commits: Vec<Commit> = if args.custom_log {
         let content =
             std::fs::read_to_string(&args.path).context("Failed to read custom log file")?;
@@ -1416,10 +1420,19 @@ fn run_headless(args: &Args) -> Result<()> {
         }
 
         let log_content = String::from_utf8_lossy(&git_output.stdout);
+        let git_elapsed = git_start.elapsed();
+        eprintln!("[PERF] Git log execution: {:.2}s ({:.1} MB output)",
+            git_elapsed.as_secs_f64(),
+            git_output.stdout.len() as f64 / 1_000_000.0);
+
+        let parse_start = Instant::now();
         let parser = GitParser::new();
-        parser
+        let result = parser
             .parse_str(&log_content)
-            .context("Failed to parse git log")?
+            .context("Failed to parse git log")?;
+        let parse_elapsed = parse_start.elapsed();
+        eprintln!("[PERF] Parsing: {:.2}s", parse_elapsed.as_secs_f64());
+        result
     };
 
     if commits.is_empty() {
@@ -1427,8 +1440,14 @@ fn run_headless(args: &Args) -> Result<()> {
     }
 
     let mut commits = commits;
+    let sort_start = Instant::now();
     commits.sort_by_key(|c| c.timestamp);
-    eprintln!("Loaded {} commits", commits.len());
+    let sort_elapsed = sort_start.elapsed();
+
+    // Count total file changes
+    let total_files: usize = commits.iter().map(|c| c.files.len()).sum();
+    eprintln!("[PERF] Sorting: {:.3}s", sort_elapsed.as_secs_f64());
+    eprintln!("Loaded {} commits ({} file changes)", commits.len(), total_files);
 
     // Create renderer
     let mut renderer = SoftwareRenderer::new(args.width, args.height);
@@ -1533,6 +1552,15 @@ fn run_headless(args: &Args) -> Result<()> {
         }
     }
 
+    // Performance tracking accumulators
+    let mut total_commit_apply_time = Duration::ZERO;
+    let mut total_scene_update_time = Duration::ZERO;
+    let mut total_render_time = Duration::ZERO;
+    let mut total_effects_time = Duration::ZERO;
+    let mut total_export_time = Duration::ZERO;
+    let mut commits_applied = 0_usize;
+    let loop_start = Instant::now();
+
     // Main rendering loop
     loop {
         // Update simulation
@@ -1555,6 +1583,7 @@ fn run_headless(args: &Args) -> Result<()> {
         }
 
         // Apply pending commits (with filtering)
+        let commit_apply_start = Instant::now();
         while last_applied_commit < current_commit {
             let commit = &commits[last_applied_commit];
 
@@ -1570,13 +1599,16 @@ fn run_headless(args: &Args) -> Result<()> {
                 // Only apply commit if there are files left after filtering
                 if !files.is_empty() {
                     scene.apply_commit(&commit.author, &files);
+                    commits_applied += 1;
                 }
             }
 
             last_applied_commit += 1;
         }
+        total_commit_apply_time += commit_apply_start.elapsed();
 
         // Update scene and camera
+        let scene_update_start = Instant::now();
         scene.update(dt as f32);
         camera.update(dt as f32);
 
@@ -1584,8 +1616,10 @@ fn run_headless(args: &Args) -> Result<()> {
         if let Some(entity_bounds) = scene.compute_entity_bounds() {
             camera.fit_to_bounds(&entity_bounds, 100.0);
         }
+        total_scene_update_time += scene_update_start.elapsed();
 
         // Render frame
+        let render_start = Instant::now();
         render_frame_headless(
             &mut renderer,
             &scene,
@@ -1595,8 +1629,10 @@ fn run_headless(args: &Args) -> Result<()> {
             &commits,
             current_commit,
         );
+        total_render_time += render_start.elapsed();
 
         // Apply effects
+        let effects_start = Instant::now();
         if let Some(ref shadow_effect) = shadow {
             let w = renderer.width() as usize;
             let h = renderer.height() as usize;
@@ -1607,14 +1643,17 @@ fn run_headless(args: &Args) -> Result<()> {
             let h = renderer.height() as usize;
             bloom_effect.apply(renderer.pixels_mut(), w, h);
         }
+        total_effects_time += effects_start.elapsed();
 
         // Export frame
+        let export_start = Instant::now();
         let pixels = renderer.pixels();
         let width = renderer.width();
         let height = renderer.height();
         exporter
             .export_frame(pixels, width, height, dt)
             .context("Failed to export frame")?;
+        total_export_time += export_start.elapsed();
 
         // Progress reporting
         if exporter.frame_count() % 100 == 0 {
@@ -1638,10 +1677,42 @@ fn run_headless(args: &Args) -> Result<()> {
         }
     }
 
+    let loop_elapsed = loop_start.elapsed();
+    let total_elapsed = total_start.elapsed();
+    let frame_count = exporter.frame_count();
+
     eprintln!(
         "\nExport complete: {} frames written",
-        exporter.frame_count()
+        frame_count
     );
+
+    // Print performance summary
+    eprintln!("\n=== PERFORMANCE SUMMARY ===");
+    eprintln!("Total time:        {:.2}s", total_elapsed.as_secs_f64());
+    eprintln!("  Render loop:     {:.2}s ({} frames, {:.1}ms avg)",
+        loop_elapsed.as_secs_f64(),
+        frame_count,
+        loop_elapsed.as_secs_f64() * 1000.0 / frame_count as f64);
+    eprintln!("\nBreakdown per frame (avg):");
+    eprintln!("  Commit apply:    {:.2}ms ({} commits, {:.3}ms/commit)",
+        total_commit_apply_time.as_secs_f64() * 1000.0 / frame_count as f64,
+        commits_applied,
+        if commits_applied > 0 { total_commit_apply_time.as_secs_f64() * 1000.0 / commits_applied as f64 } else { 0.0 });
+    eprintln!("  Scene update:    {:.2}ms",
+        total_scene_update_time.as_secs_f64() * 1000.0 / frame_count as f64);
+    eprintln!("  Render:          {:.2}ms",
+        total_render_time.as_secs_f64() * 1000.0 / frame_count as f64);
+    eprintln!("  Effects:         {:.2}ms",
+        total_effects_time.as_secs_f64() * 1000.0 / frame_count as f64);
+    eprintln!("  Export:          {:.2}ms",
+        total_export_time.as_secs_f64() * 1000.0 / frame_count as f64);
+
+    // Scene stats
+    eprintln!("\nScene stats:");
+    eprintln!("  Files:           {}", scene.file_count());
+    eprintln!("  Users:           {}", scene.user_count());
+    eprintln!("  Directories:     {}", scene.directories().len());
+
     Ok(())
 }
 
@@ -1650,6 +1721,9 @@ const MIN_RENDER_RADIUS: f32 = 1.5;
 
 /// Zoom level below which we skip file-to-directory connection lines.
 const SKIP_FILE_LINES_ZOOM: f32 = 0.1;
+
+/// Static counters for render profiling (only used in debug/profiling)
+static RENDER_PROFILE_COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// Render a single frame in headless mode.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
@@ -1669,17 +1743,25 @@ fn render_frame_headless(
     renderer.clear(bg_color);
 
     // Get visible bounds for frustum culling
+    let cull_start = Instant::now();
     let visible_bounds = camera.visible_bounds();
     let culling_bounds = Scene::expand_bounds_for_visibility(&visible_bounds, 100.0);
     let (visible_dir_ids, visible_file_ids, visible_user_ids) =
         scene.visible_entities(&culling_bounds);
+    let cull_time = cull_start.elapsed();
 
     let camera_zoom = camera.zoom();
+
+    // Profile every 100th frame
+    let frame_num = RENDER_PROFILE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let profile = frame_num % 100 == 0;
 
     // LOD: Skip file-to-directory lines when very zoomed out
     let draw_file_lines = camera_zoom > SKIP_FILE_LINES_ZOOM;
 
     // Render directories (skip very small ones for LOD)
+    let dirs_start = Instant::now();
+    let mut dirs_rendered = 0_u32;
     for &dir_id in &visible_dir_ids {
         let Some(dir) = scene.directories().get(dir_id) else {
             continue;
@@ -1698,6 +1780,7 @@ fn render_frame_headless(
         let depth_color = 0.15 + 0.05 * (dir.depth() as f32).min(5.0);
         let dir_color = Color::new(depth_color, depth_color, depth_color + 0.1, 0.5);
         renderer.draw_circle(screen_pos, radius, 1.0, dir_color);
+        dirs_rendered += 1;
 
         // Only draw parent connection lines if directories are large enough
         if radius >= 3.0 {
@@ -1707,8 +1790,11 @@ fn render_frame_headless(
             }
         }
     }
+    let dirs_time = dirs_start.elapsed();
 
     // Render files
+    let files_start = Instant::now();
+    let mut files_rendered = 0_u32;
     let show_filenames = !args.hide_filenames;
     let file_font_size = args.font_size * 0.8;
 
@@ -1730,6 +1816,7 @@ fn render_frame_headless(
 
         let color = file.current_color().with_alpha(file.alpha());
         renderer.draw_disc(screen_pos, draw_radius, color);
+        files_rendered += 1;
 
         // LOD: Only draw file-to-directory lines when zoomed in enough
         if draw_file_lines {
@@ -1757,8 +1844,11 @@ fn render_frame_headless(
             }
         }
     }
+    let files_time = files_start.elapsed();
 
     // Render actions (beams) - always render these as they show activity
+    let actions_start = Instant::now();
+    let mut actions_rendered = 0_u32;
     for action in scene.actions() {
         let user_opt = scene.get_user(action.user());
         let file_opt = scene.get_file(action.file());
@@ -1770,10 +1860,14 @@ fn render_frame_headless(
             renderer.draw_line(user_screen, beam_end, 2.0, beam_color);
             let head_radius = 3.0 * camera_zoom;
             renderer.draw_disc(beam_end, head_radius.max(2.0), beam_color);
+            actions_rendered += 1;
         }
     }
+    let actions_time = actions_start.elapsed();
 
     // Render users
+    let users_start = Instant::now();
+    let mut users_rendered = 0_u32;
     let show_usernames = !args.hide_usernames;
     let name_font_size = args.font_size;
 
@@ -1796,6 +1890,7 @@ fn render_frame_headless(
                 color.with_alpha(0.5 * user.alpha()),
             );
         }
+        users_rendered += 1;
         if show_usernames {
             if let Some(fid) = font_id {
                 let name = user.name();
@@ -1807,6 +1902,25 @@ fn render_frame_headless(
                 renderer.draw_text(name, label_pos, fid, name_font_size, label_color);
             }
         }
+    }
+    let users_time = users_start.elapsed();
+
+    // Print profiling info every 100 frames
+    if profile {
+        eprintln!("\n[RENDER PROFILE] Frame {}:", frame_num);
+        eprintln!("  Culling:     {:.2}ms (vis: {} dirs, {} files, {} users)",
+            cull_time.as_secs_f64() * 1000.0,
+            visible_dir_ids.len(), visible_file_ids.len(), visible_user_ids.len());
+        eprintln!("  Directories: {:.2}ms ({} rendered)",
+            dirs_time.as_secs_f64() * 1000.0, dirs_rendered);
+        eprintln!("  Files:       {:.2}ms ({} rendered, {:.3}ms/file)",
+            files_time.as_secs_f64() * 1000.0, files_rendered,
+            if files_rendered > 0 { files_time.as_secs_f64() * 1000.0 / files_rendered as f64 } else { 0.0 });
+        eprintln!("  Actions:     {:.2}ms ({} rendered)",
+            actions_time.as_secs_f64() * 1000.0, actions_rendered);
+        eprintln!("  Users:       {:.2}ms ({} rendered)",
+            users_time.as_secs_f64() * 1000.0, users_rendered);
+        eprintln!("  Zoom:        {:.4}", camera_zoom);
     }
 
     // Render UI overlays
