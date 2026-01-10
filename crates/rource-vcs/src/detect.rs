@@ -5,7 +5,7 @@
 
 use crate::commit::Commit;
 use crate::error::{ParseError, ParseResult};
-use crate::parser::{CustomParser, GitParser, Parser};
+use crate::parser::{CustomParser, GitParser, Parser, SvnParser};
 use std::io::Read;
 use std::path::Path;
 
@@ -16,6 +16,8 @@ pub enum LogFormat {
     Custom,
     /// Git log output format.
     Git,
+    /// SVN XML log output format (`svn log --xml`).
+    Svn,
 }
 
 impl LogFormat {
@@ -25,6 +27,7 @@ impl LogFormat {
         match self {
             Self::Custom => "custom",
             Self::Git => "git",
+            Self::Svn => "svn",
         }
     }
 
@@ -34,6 +37,7 @@ impl LogFormat {
         match self {
             Self::Custom => Box::new(CustomParser::new()),
             Self::Git => Box::new(GitParser::new()),
+            Self::Svn => Box::new(SvnParser::new()),
         }
     }
 }
@@ -74,6 +78,7 @@ impl std::fmt::Display for LogFormat {
 pub fn detect_format(input: &str) -> Option<LogFormat> {
     // Order matters: more specific formats first
     let parsers: &[(LogFormat, Box<dyn Parser>)] = &[
+        (LogFormat::Svn, Box::new(SvnParser::new())),
         (LogFormat::Git, Box::new(GitParser::new())),
         (LogFormat::Custom, Box::new(CustomParser::new())),
     ];
@@ -242,6 +247,7 @@ A\tfile.txt
     fn test_log_format_name() {
         assert_eq!(LogFormat::Custom.name(), "custom");
         assert_eq!(LogFormat::Git.name(), "git");
+        assert_eq!(LogFormat::Svn.name(), "svn");
     }
 
     #[test]
@@ -251,12 +257,45 @@ A\tfile.txt
 
         let parser = LogFormat::Git.parser();
         assert_eq!(parser.name(), "git");
+
+        let parser = LogFormat::Svn.parser();
+        assert_eq!(parser.name(), "svn");
     }
 
     #[test]
     fn test_log_format_display() {
         assert_eq!(format!("{}", LogFormat::Custom), "custom");
         assert_eq!(format!("{}", LogFormat::Git), "git");
+        assert_eq!(format!("{}", LogFormat::Svn), "svn");
+    }
+
+    #[test]
+    fn test_detect_svn_format() {
+        let input = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="123">
+<author>test</author>
+<date>2023-01-01T00:00:00Z</date>
+<paths><path action="A">/trunk/file.txt</path></paths>
+</logentry>
+</log>"#;
+        let format = detect_format(input).unwrap();
+        assert_eq!(format, LogFormat::Svn);
+    }
+
+    #[test]
+    fn test_parse_auto_svn() {
+        let input = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="123">
+<author>test</author>
+<date>2023-01-01T00:00:00Z</date>
+<paths><path action="A">/trunk/file.txt</path></paths>
+</logentry>
+</log>"#;
+        let (format, commits) = parse_auto(input).unwrap();
+        assert_eq!(format, LogFormat::Svn);
+        assert_eq!(commits.len(), 1);
     }
 
     #[test]
