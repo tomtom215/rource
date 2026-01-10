@@ -15,14 +15,14 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 | Phase | Status | Tests | Description |
 |-------|--------|-------|-------------|
 | Phase 1: Foundation | ✅ Complete | 156 | Math library, entity IDs, Settings struct, CLI args |
-| Phase 2: VCS Parsing | ✅ Complete | 86 | Git parser, SVN XML parser, custom format, auto-detection |
+| Phase 2: VCS Parsing | ✅ Complete | 117 | Git, SVN, Mercurial, Bazaar parsers, auto-detection |
 | Phase 3: Scene Graph | ✅ Complete | 70 | Directory tree, file/user/action entities, quadtree, frustum culling |
 | Phase 4: Physics & Animation | ✅ Complete | 86 | Force-directed layout, tweening, splines, camera |
-| Phase 5: Rendering | ✅ Complete | 68 | Software rasterizer, fonts, bloom effect, drop shadows |
-| Phase 6: Platform Integration | ✅ Complete | 29 | Native CLI, mouse input, video export, headless mode |
-| Phase 7: Polish & Optimization | ⏳ Pending | - | Not started |
+| Phase 5: Rendering | ✅ Complete | 75 | Software rasterizer, fonts, bloom effect, drop shadows |
+| Phase 6: Platform Integration | ✅ Complete | 36 | Native CLI, WASM, mouse input, video export, avatars |
+| Phase 7: Polish & Optimization | 🔄 In Progress | 182 | Config files, legend, timeline scrubbing, touch support |
 
-**Total Tests**: 554 passing
+**Total Tests**: 608 passing
 
 ### What's Working Now
 
@@ -34,18 +34,36 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
    - Frustum culling for performance optimization
    - Keyboard controls (Space, +/-, arrows, R, Q/Escape)
    - Mouse controls (left-drag to pan, scroll to zoom, middle-click to reset)
-   - 25+ CLI arguments for customization
+   - Timeline scrubbing (click progress bar to seek)
+   - 30+ CLI arguments for customization
    - Progress bar and stats indicators
    - Text overlays (title, date, commit info, usernames, filenames)
+   - File extension legend (color-coded, --hide-legend to disable)
+   - User avatars (--user-image-dir, --default-user-image)
 
-2. **Video Export**
+2. **WebAssembly Support** (`rource-wasm`)
+   - Canvas2D backend using software renderer + ImageData
+   - Touch support (pinch zoom, pan gestures)
+   - File upload for custom log files
+   - Keyboard and mouse controls
+   - ~76KB gzipped bundle size
+
+3. **Video Export**
    - PPM frame export for ffmpeg piping (`--output /path/to/frames`)
    - Headless rendering mode (`--headless`) for batch processing
+   - PNG screenshot export (`--screenshot output.png`)
    - Configurable framerate (`--framerate 60`)
    - Pre-warm system for consistent first-frame rendering
    - Deterministic output with fixed time step
 
-3. **Rendering**
+4. **Configuration**
+   - TOML configuration file support (`--config rource.toml`)
+   - Sample config generation (`--sample-config`)
+   - Comprehensive Settings struct for all options
+   - Builder pattern for programmatic configuration
+   - CLI arguments override config file values
+
+5. **Rendering**
    - Anti-aliased line drawing (Xiaolin Wu's algorithm)
    - Anti-aliased circles and discs
    - Textured quads with bilinear filtering
@@ -53,24 +71,25 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
    - CPU bloom/glow effect
    - Drop shadow post-processing
 
-4. **VCS Support**
+6. **VCS Support**
    - Git log parsing
    - SVN XML log parsing (`svn log --xml`)
+   - Mercurial log parsing
+   - Bazaar log parsing
    - Custom pipe-delimited format
    - Auto-detection of repository type
-
-5. **Configuration**
-   - Comprehensive Settings struct for all options
-   - Builder pattern for programmatic configuration
    - Validation methods
 
 ### What's Not Yet Implemented
 
-- WebAssembly/browser support (Canvas2D, WebGL2)
-- Mercurial/Bazaar parsers
-- Configuration file support (TOML)
-- User avatars (custom images or Gravatar-style)
-- Screenshot capture (PNG)
+- WebGL2 backend (optional GPU acceleration for WASM)
+- Environment variable configuration support
+- Pure Rust Git parsing (gitoxide) - optional enhancement
+- CVS/Apache log parsers
+- Performance profiling and optimization
+- Memory optimization for very large repositories
+- Streaming commit loading
+- User manual and API documentation
 
 ### Crate Structure
 
@@ -78,14 +97,36 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 rource/
 ├── crates/
 │   ├── rource-math/      # Math types [141 tests]
-│   ├── rource-vcs/       # VCS parsing [86 tests]
-│   ├── rource-core/      # Scene, physics, animation, camera, config [171 tests]
-│   └── rource-render/    # Rendering system [68 tests]
-├── rource-cli/           # Native CLI application [29 tests]
-└── rource-wasm/          # WebAssembly application (TODO)
+│   ├── rource-vcs/       # VCS parsing (Git, SVN, Hg, Bzr) [117 tests]
+│   ├── rource-core/      # Scene, physics, animation, camera, config [182 tests]
+│   └── rource-render/    # Rendering system [75 tests]
+├── rource-cli/           # Native CLI application [36 tests]
+└── rource-wasm/          # WebAssembly application ✅ [2 tests]
 ```
 
 ### Recent Changes (2026-01-10)
+
+#### TOML Configuration File Support
+- Added `--config` flag to load settings from TOML files
+- Added `--sample-config` to generate example configuration
+- New `config_file` module with `load_config_file` and `merge_config_file` functions
+- CLI arguments override config file values
+
+#### User Avatars
+- Added `--user-image-dir` to load PNG avatars from a directory
+- Added `--default-user-image` for fallback avatar
+- Minimal PNG decoder with DEFLATE decompression (no external deps)
+- Avatars rendered as textured quads with alpha blending
+
+#### Interactive File Legend
+- Shows top 10 file types by count in lower-right corner
+- Color-coded swatches matching file extension colors
+- Can be hidden with `--hide-legend` flag
+
+#### Timeline Scrubbing
+- Click anywhere on progress bar to seek to that position
+- Supports both forward and backward seeking
+- Scene reset and re-apply for backward seeks
 
 #### Headless Rendering Mode
 - Added `--headless` flag for batch video export without window
@@ -1417,9 +1458,9 @@ impl ZoomCamera {
 - [x] Unit tests for all types
 
 #### 1.2 Configuration System
-- [ ] Settings struct with all options
+- [x] Settings struct with all options
 - [x] CLI argument parsing (clap) - 25+ options implemented
-- [ ] Config file parsing (TOML)
+- [x] Config file parsing (TOML)
 - [ ] Environment variable support
 - [x] Validation and defaults
 
@@ -1437,8 +1478,9 @@ impl ZoomCamera {
 - [ ] Pure Rust option (gitoxide)
 
 #### 2.2 Other VCS Parsers
-- [ ] SVN XML parser
-- [ ] Mercurial parser
+- [x] SVN XML parser
+- [x] Mercurial parser
+- [x] Bazaar parser
 - [x] Custom format parser
 - [x] VCS auto-detection
 
@@ -1458,7 +1500,7 @@ impl ZoomCamera {
 #### 3.3 Spatial Systems
 - [x] Quadtree implementation
 - [x] Spatial queries
-- [ ] Frustum culling
+- [x] Frustum culling
 
 ### Phase 4: Physics & Animation (Weeks 13-16) ✅
 
@@ -1500,10 +1542,10 @@ impl ZoomCamera {
 
 #### 5.4 Effects
 - [x] Bloom (CPU approximation)
-- [ ] Drop shadows
+- [x] Drop shadows
 - [x] Color blending
 
-### Phase 6: Platform Integration (Weeks 23-28) 🔄
+### Phase 6: Platform Integration (Weeks 23-28) ✅
 
 #### 6.1 Native CLI
 - [x] winit window creation
@@ -1513,16 +1555,20 @@ impl ZoomCamera {
 - [x] Full scene graph integration
 - [x] Camera system integration
 - [x] Bloom effect integration
-- [ ] Mouse input handling
-- [ ] Video export (PPM frames)
+- [x] Mouse input handling (pan with drag, zoom with scroll)
+- [x] Video export (PPM frames)
+- [x] Headless rendering mode
+- [x] PNG screenshot export
+- [x] User avatars (custom image loading)
 
 #### 6.2 WebAssembly
-- [ ] wasm-bindgen setup
-- [ ] Canvas2D backend
+- [x] wasm-bindgen setup
+- [x] Canvas2D backend (software renderer + ImageData)
 - [ ] WebGL2 backend (optional)
-- [ ] File upload interface
+- [x] File upload interface
+- [x] Touch support
 
-### Phase 7: Polish & Optimization (Weeks 29-32)
+### Phase 7: Polish & Optimization (Weeks 29-32) 🔄
 
 #### 7.1 Performance
 - [ ] Profiling and bottleneck analysis
@@ -1531,12 +1577,13 @@ impl ZoomCamera {
 - [ ] Streaming commit loading
 
 #### 7.2 User Experience
-- [ ] Interactive file legend
-- [ ] Timeline scrubbing
-- [ ] Keyboard shortcuts
-- [ ] Touch support
+- [x] Interactive file legend (color-coded by extension)
+- [x] Timeline scrubbing (click progress bar to seek)
+- [x] Keyboard shortcuts (Space=play/pause, +/-=zoom, R=reset, arrows=pan)
+- [x] Touch support (WASM - pinch zoom, pan gesture)
 
 #### 7.3 Documentation
+- [x] CLAUDE.md project guide
 - [ ] User manual
 - [ ] API documentation
 - [ ] Examples
