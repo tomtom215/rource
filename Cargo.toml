@@ -4,6 +4,7 @@ members = [
     "crates/rource-math",
     "crates/rource-core",
     "crates/rource-vcs",
+    "crates/rource-render",
 ]
 
 [workspace.package]
@@ -45,6 +46,8 @@ float_cmp = "allow"
 suboptimal_flops = "allow"
 # Allow items without const fn where it could be
 missing_const_for_fn = "allow"
+# Cargo metadata (readme, keywords, categories) not required for workspace crates
+cargo_common_metadata = "allow"
 
 [profile.release]
 lto = true

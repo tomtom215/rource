@@ -48,19 +48,17 @@ This script will:
 
 ## Architecture
 
-### Crate Structure (Planned)
+### Crate Structure
 
 ```
 rource/
 ├── crates/
-│   ├── rource-core/      # Core visualization engine
-│   ├── rource-render/    # Rendering abstraction (software + WebGL)
-│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Hg, etc.)
-│   ├── rource-font/      # Font rendering (fontdue)
-│   ├── rource-math/      # Custom math types (Vec2, Mat4, etc.)
-│   └── rource-image/     # Image loading (PNG, JPEG)
-├── rource-cli/           # Native CLI application
-└── rource-wasm/          # WebAssembly application
+│   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [156 tests]
+│   ├── rource-vcs/       # VCS log parsing (Git, Custom format) [70 tests]
+│   ├── rource-core/      # Core engine (scene, physics, animation, camera) [156 tests]
+│   └── rource-render/    # Rendering (software rasterizer, bloom, fonts) [57 tests]
+├── rource-cli/           # Native CLI application (planned)
+└── rource-wasm/          # WebAssembly application (planned)
 ```
 
 ### Rendering Backends
@@ -138,10 +136,12 @@ wasm-pack build --target nodejs --release
 - [x] Camera system
 
 ### Phase 5: Rendering
-- [ ] Software rasterizer
-- [ ] Anti-aliased lines and circles
-- [ ] Font rendering
-- [ ] Bloom effect (CPU)
+- [x] Software rasterizer (SoftwareRenderer with pixel buffer)
+- [x] Anti-aliased lines (Xiaolin Wu's algorithm)
+- [x] Anti-aliased circles and discs
+- [x] Textured quad drawing
+- [x] Font rendering (fontdue integration)
+- [x] Bloom effect (CPU)
 - [ ] Shadow rendering
 
 ### Phase 6: Platform Integration
@@ -269,4 +269,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10 (Phase 4 complete)*
+*Last updated: 2026-01-10 (Phase 5 rendering complete - 476 tests)*
