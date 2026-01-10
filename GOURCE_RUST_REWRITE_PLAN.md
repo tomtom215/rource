@@ -14,15 +14,15 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 
 | Phase | Status | Tests | Description |
 |-------|--------|-------|-------------|
-| Phase 1: Foundation | ✅ Complete | 156 | Math library, entity IDs, CLI args |
-| Phase 2: VCS Parsing | ✅ Complete | 70 | Git parser, custom format, auto-detection |
-| Phase 3: Scene Graph | ✅ Complete | 70 | Directory tree, file/user/action entities, quadtree |
+| Phase 1: Foundation | ✅ Complete | 156 | Math library, entity IDs, Settings struct, CLI args |
+| Phase 2: VCS Parsing | ✅ Complete | 86 | Git parser, SVN XML parser, custom format, auto-detection |
+| Phase 3: Scene Graph | ✅ Complete | 70 | Directory tree, file/user/action entities, quadtree, frustum culling |
 | Phase 4: Physics & Animation | ✅ Complete | 86 | Force-directed layout, tweening, splines, camera |
-| Phase 5: Rendering | ✅ Complete | 57 | Software rasterizer, fonts, bloom effect |
+| Phase 5: Rendering | ✅ Complete | 68 | Software rasterizer, fonts, bloom effect, drop shadows |
 | Phase 6: Platform Integration | 🔄 In Progress | 8 | Native CLI with full scene graph integration |
 | Phase 7: Polish & Optimization | ⏳ Pending | - | Not started |
 
-**Total Tests**: 484 passing
+**Total Tests**: 529 passing
 
 ### What's Working Now
 
@@ -30,6 +30,8 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
    - Full scene graph visualization (directories, files, users, action beams)
    - Camera system with auto-fit to content
    - Bloom effect (can be disabled with `--no-bloom`)
+   - Drop shadows (enable with `--shadows`)
+   - Frustum culling for performance optimization
    - Keyboard controls (Space, +/-, arrows, R, Q/Escape)
    - 25+ CLI arguments for customization
    - Progress bar and stats indicators
@@ -40,31 +42,37 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
    - Textured quads with bilinear filtering
    - Font rendering via fontdue
    - CPU bloom/glow effect
+   - Drop shadow post-processing
 
 3. **VCS Support**
    - Git log parsing
+   - SVN XML log parsing (`svn log --xml`)
    - Custom pipe-delimited format
    - Auto-detection of repository type
+
+4. **Configuration**
+   - Comprehensive Settings struct for all options
+   - Builder pattern for programmatic configuration
+   - Validation methods
 
 ### What's Not Yet Implemented
 
 - Mouse input (pan/zoom)
 - Video export (PPM frames)
 - WebAssembly/browser support
-- SVN/Mercurial/Bazaar parsers
+- Mercurial/Bazaar parsers
 - Configuration file support (TOML)
 - Text rendering in CLI (title, commit info, date)
-- Drop shadows
 
 ### Crate Structure
 
 ```
 rource/
 ├── crates/
-│   ├── rource-math/      # Math types [156 tests]
-│   ├── rource-vcs/       # VCS parsing [70 tests]
-│   ├── rource-core/      # Scene, physics, animation, camera [156 tests]
-│   └── rource-render/    # Rendering system [57 tests]
+│   ├── rource-math/      # Math types [141 tests]
+│   ├── rource-vcs/       # VCS parsing [86 tests]
+│   ├── rource-core/      # Scene, physics, animation, camera, config [171 tests]
+│   └── rource-render/    # Rendering system [68 tests]
 ├── rource-cli/           # Native CLI application [8 tests]
 └── rource-wasm/          # WebAssembly application (TODO)
 ```
