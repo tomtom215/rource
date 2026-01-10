@@ -19,24 +19,33 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 | Phase 3: Scene Graph | ✅ Complete | 70 | Directory tree, file/user/action entities, quadtree, frustum culling |
 | Phase 4: Physics & Animation | ✅ Complete | 86 | Force-directed layout, tweening, splines, camera |
 | Phase 5: Rendering | ✅ Complete | 68 | Software rasterizer, fonts, bloom effect, drop shadows |
-| Phase 6: Platform Integration | 🔄 In Progress | 8 | Native CLI with full scene graph integration |
+| Phase 6: Platform Integration | ✅ Complete | 29 | Native CLI, mouse input, video export, headless mode |
 | Phase 7: Polish & Optimization | ⏳ Pending | - | Not started |
 
-**Total Tests**: 529 passing
+**Total Tests**: 554 passing
 
 ### What's Working Now
 
 1. **Native CLI Application** (`cargo run --release --package rource -- /path/to/repo`)
    - Full scene graph visualization (directories, files, users, action beams)
-   - Camera system with auto-fit to content
+   - Camera system with auto-fit to content using entity bounds
    - Bloom effect (can be disabled with `--no-bloom`)
    - Drop shadows (enable with `--shadows`)
    - Frustum culling for performance optimization
    - Keyboard controls (Space, +/-, arrows, R, Q/Escape)
+   - Mouse controls (left-drag to pan, scroll to zoom, middle-click to reset)
    - 25+ CLI arguments for customization
    - Progress bar and stats indicators
+   - Text overlays (title, date, commit info, usernames, filenames)
 
-2. **Rendering**
+2. **Video Export**
+   - PPM frame export for ffmpeg piping (`--output /path/to/frames`)
+   - Headless rendering mode (`--headless`) for batch processing
+   - Configurable framerate (`--framerate 60`)
+   - Pre-warm system for consistent first-frame rendering
+   - Deterministic output with fixed time step
+
+3. **Rendering**
    - Anti-aliased line drawing (Xiaolin Wu's algorithm)
    - Anti-aliased circles and discs
    - Textured quads with bilinear filtering
@@ -44,25 +53,24 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
    - CPU bloom/glow effect
    - Drop shadow post-processing
 
-3. **VCS Support**
+4. **VCS Support**
    - Git log parsing
    - SVN XML log parsing (`svn log --xml`)
    - Custom pipe-delimited format
    - Auto-detection of repository type
 
-4. **Configuration**
+5. **Configuration**
    - Comprehensive Settings struct for all options
    - Builder pattern for programmatic configuration
    - Validation methods
 
 ### What's Not Yet Implemented
 
-- Mouse input (pan/zoom)
-- Video export (PPM frames)
-- WebAssembly/browser support
+- WebAssembly/browser support (Canvas2D, WebGL2)
 - Mercurial/Bazaar parsers
 - Configuration file support (TOML)
-- Text rendering in CLI (title, commit info, date)
+- User avatars (custom images or Gravatar-style)
+- Screenshot capture (PNG)
 
 ### Crate Structure
 
@@ -73,9 +81,22 @@ rource/
 │   ├── rource-vcs/       # VCS parsing [86 tests]
 │   ├── rource-core/      # Scene, physics, animation, camera, config [171 tests]
 │   └── rource-render/    # Rendering system [68 tests]
-├── rource-cli/           # Native CLI application [8 tests]
+├── rource-cli/           # Native CLI application [29 tests]
 └── rource-wasm/          # WebAssembly application (TODO)
 ```
+
+### Recent Changes (2026-01-10)
+
+#### Headless Rendering Mode
+- Added `--headless` flag for batch video export without window
+- Implemented scene pre-warming to ensure visible content on first frame
+- Added `compute_entity_bounds()` to Scene for accurate camera positioning
+- Fixed termination condition for proper loop exit
+
+#### Key Implementation Details
+- **Pre-warm Phase**: Applies first commit and runs 30 update cycles (~0.5s) before rendering to let files fade in
+- **Entity Bounds**: New `compute_entity_bounds()` method calculates actual bounding box from files/users/directories instead of using fixed quadtree bounds
+- **Deterministic Output**: Fixed time step (1/framerate) ensures reproducible frame generation
 
 ---
 

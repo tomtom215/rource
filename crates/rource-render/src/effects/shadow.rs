@@ -189,11 +189,7 @@ impl ShadowEffect {
                 let src_x = x as i32 - self.offset_x;
                 let src_y = y as i32 - self.offset_y;
 
-                if src_x >= 0
-                    && src_x < width as i32
-                    && src_y >= 0
-                    && src_y < height as i32
-                {
+                if src_x >= 0 && src_x < width as i32 && src_y >= 0 && src_y < height as i32 {
                     let src_idx = src_y as usize * width + src_x as usize;
                     let dst_idx = y * width + x;
                     result[dst_idx] = silhouette[src_idx];

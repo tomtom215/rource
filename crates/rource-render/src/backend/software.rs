@@ -851,4 +851,61 @@ mod tests {
         assert!(g > 100 && g < 150, "G should be around 128, got {g}");
         assert!(b > 100 && b < 150, "B should be around 128, got {b}");
     }
+
+    #[test]
+    fn test_load_default_font() {
+        let mut renderer = SoftwareRenderer::new(100, 100);
+
+        // Load the embedded default font
+        let font_data = crate::default_font::ROBOTO_MONO;
+        let font_id = renderer.load_font(font_data);
+
+        assert!(font_id.is_some(), "Should successfully load default font");
+    }
+
+    #[test]
+    fn test_draw_text_with_font() {
+        let mut renderer = SoftwareRenderer::new(200, 100);
+        renderer.clear(Color::BLACK);
+
+        // Load font
+        let font_data = crate::default_font::ROBOTO_MONO;
+        let font_id = renderer.load_font(font_data).expect("Failed to load font");
+
+        // Draw text
+        renderer.draw_text("Hello", Vec2::new(10.0, 50.0), font_id, 16.0, Color::WHITE);
+
+        // Verify some pixels were drawn (text should have affected the buffer)
+        let has_white = renderer.pixels().iter().any(|&p| {
+            let r = (p >> 16) & 0xFF;
+            r > 100 // Some white-ish pixel
+        });
+        assert!(has_white, "Text rendering should draw something");
+    }
+
+    #[test]
+    fn test_draw_text_empty_string() {
+        let mut renderer = SoftwareRenderer::new(100, 100);
+        renderer.clear(Color::BLACK);
+
+        let font_data = crate::default_font::ROBOTO_MONO;
+        let font_id = renderer.load_font(font_data).expect("Failed to load font");
+
+        // Should not panic with empty string
+        renderer.draw_text("", Vec2::new(10.0, 50.0), font_id, 16.0, Color::WHITE);
+    }
+
+    #[test]
+    fn test_draw_text_various_sizes() {
+        let mut renderer = SoftwareRenderer::new(200, 200);
+        renderer.clear(Color::BLACK);
+
+        let font_data = crate::default_font::ROBOTO_MONO;
+        let font_id = renderer.load_font(font_data).expect("Failed to load font");
+
+        // Test various font sizes - should not panic
+        renderer.draw_text("Small", Vec2::new(10.0, 20.0), font_id, 8.0, Color::WHITE);
+        renderer.draw_text("Medium", Vec2::new(10.0, 60.0), font_id, 16.0, Color::WHITE);
+        renderer.draw_text("Large", Vec2::new(10.0, 120.0), font_id, 32.0, Color::WHITE);
+    }
 }
