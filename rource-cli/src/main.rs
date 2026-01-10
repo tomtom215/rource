@@ -24,7 +24,7 @@ use winit::window::{Window, WindowId};
 use rource_core::camera::Camera;
 use rource_core::scene::{ActionType, Scene};
 use rource_math::{Color, Vec2};
-use rource_render::effects::BloomEffect;
+use rource_render::effects::{BloomEffect, ShadowEffect};
 use rource_render::{Renderer, SoftwareRenderer};
 use rource_vcs::{Commit, FileAction};
 
@@ -52,6 +52,9 @@ struct App {
 
     /// Bloom effect (optional).
     bloom: Option<BloomEffect>,
+
+    /// Shadow effect (optional).
+    shadow: Option<ShadowEffect>,
 
     /// Current playback state.
     playback: PlaybackState,
@@ -114,6 +117,13 @@ impl App {
             Some(BloomEffect::new())
         };
 
+        // Initialize shadow effect if enabled
+        let shadow = if args.shadows {
+            Some(ShadowEffect::subtle()) // Use subtle preset for less visual clutter
+        } else {
+            None
+        };
+
         Self {
             args,
             window: None,
@@ -122,6 +132,7 @@ impl App {
             scene: Scene::new(),
             camera,
             bloom,
+            shadow,
             playback: PlaybackState {
                 paused,
                 seconds_per_day,
@@ -571,7 +582,14 @@ impl App {
 
         renderer.end_frame();
 
-        // Apply bloom effect if enabled
+        // Apply shadow effect if enabled (applied first - underneath)
+        if let Some(ref shadow) = self.shadow {
+            let w = renderer.width() as usize;
+            let h = renderer.height() as usize;
+            shadow.apply(renderer.pixels_mut(), w, h);
+        }
+
+        // Apply bloom effect if enabled (applied on top)
         if let Some(ref bloom) = self.bloom {
             let w = renderer.width() as usize;
             let h = renderer.height() as usize;
