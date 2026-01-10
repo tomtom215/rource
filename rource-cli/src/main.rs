@@ -1386,6 +1386,12 @@ fn run_headless(args: &Args) -> Result<()> {
     Ok(())
 }
 
+/// Minimum screen-space radius to render an entity (LOD threshold).
+const MIN_RENDER_RADIUS: f32 = 1.5;
+
+/// Zoom level below which we skip file-to-directory connection lines.
+const SKIP_FILE_LINES_ZOOM: f32 = 0.1;
+
 /// Render a single frame in headless mode.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 fn render_frame_headless(
@@ -1411,7 +1417,10 @@ fn render_frame_headless(
 
     let camera_zoom = camera.zoom();
 
-    // Render directories
+    // LOD: Skip file-to-directory lines when very zoomed out
+    let draw_file_lines = camera_zoom > SKIP_FILE_LINES_ZOOM;
+
+    // Render directories (skip very small ones for LOD)
     for &dir_id in &visible_dir_ids {
         let Some(dir) = scene.directories().get(dir_id) else {
             continue;
@@ -1421,12 +1430,22 @@ fn render_frame_headless(
         }
         let screen_pos = camera.world_to_screen(dir.position());
         let radius = dir.radius() * camera_zoom;
+
+        // LOD: Skip directories that are too small to see
+        if radius < MIN_RENDER_RADIUS {
+            continue;
+        }
+
         let depth_color = 0.15 + 0.05 * (dir.depth() as f32).min(5.0);
         let dir_color = Color::new(depth_color, depth_color, depth_color + 0.1, 0.5);
         renderer.draw_circle(screen_pos, radius, 1.0, dir_color);
-        if let Some(parent_pos) = dir.parent_position() {
-            let parent_screen = camera.world_to_screen(parent_pos);
-            renderer.draw_line(parent_screen, screen_pos, 1.0, dir_color.with_alpha(0.3));
+
+        // Only draw parent connection lines if directories are large enough
+        if radius >= 3.0 {
+            if let Some(parent_pos) = dir.parent_position() {
+                let parent_screen = camera.world_to_screen(parent_pos);
+                renderer.draw_line(parent_screen, screen_pos, 1.0, dir_color.with_alpha(0.3));
+            }
         }
     }
 
@@ -1443,17 +1462,30 @@ fn render_frame_headless(
         }
         let screen_pos = camera.world_to_screen(file.position());
         let radius = file.radius() * camera_zoom;
-        let color = file.current_color().with_alpha(file.alpha());
-        renderer.draw_disc(screen_pos, radius.max(2.0), color);
-        if let Some(dir) = scene.directories().get(file.directory()) {
-            let dir_screen = camera.world_to_screen(dir.position());
-            renderer.draw_line(
-                dir_screen,
-                screen_pos,
-                0.5,
-                color.with_alpha(0.2 * file.alpha()),
-            );
+
+        // LOD: Skip files that are too small to see (but ensure minimum 2px for visibility)
+        let draw_radius = radius.max(2.0);
+        if draw_radius < MIN_RENDER_RADIUS {
+            continue;
         }
+
+        let color = file.current_color().with_alpha(file.alpha());
+        renderer.draw_disc(screen_pos, draw_radius, color);
+
+        // LOD: Only draw file-to-directory lines when zoomed in enough
+        if draw_file_lines {
+            if let Some(dir) = scene.directories().get(file.directory()) {
+                let dir_screen = camera.world_to_screen(dir.position());
+                renderer.draw_line(
+                    dir_screen,
+                    screen_pos,
+                    0.5,
+                    color.with_alpha(0.2 * file.alpha()),
+                );
+            }
+        }
+
+        // LOD: Only show filenames when zoomed in and file is prominent
         if show_filenames && file.alpha() > 0.5 && camera_zoom > 0.3 {
             if let Some(fid) = font_id {
                 let name = file.name();
@@ -1467,7 +1499,7 @@ fn render_frame_headless(
         }
     }
 
-    // Render actions (beams)
+    // Render actions (beams) - always render these as they show activity
     for action in scene.actions() {
         let user_opt = scene.get_user(action.user());
         let file_opt = scene.get_file(action.file());

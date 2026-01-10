@@ -80,6 +80,15 @@ pub struct Scene {
 
     /// Scene bounds.
     bounds: Bounds,
+
+    /// Update counter for throttling spatial index rebuilds.
+    update_count: u32,
+
+    /// Cached entity bounds (incrementally updated).
+    cached_entity_bounds: Option<Bounds>,
+
+    /// Whether entity bounds need recalculation.
+    bounds_dirty: bool,
 }
 
 impl Scene {
@@ -105,6 +114,9 @@ impl Scene {
             spatial: QuadTree::new(bounds, 16, 8),
             time: 0.0,
             bounds,
+            update_count: 0,
+            cached_entity_bounds: None,
+            bounds_dirty: true,
         }
     }
 
@@ -202,8 +214,31 @@ impl Scene {
     ///
     /// Returns `None` if there are no entities with positions.
     /// This is useful for camera fitting to actual content.
+    ///
+    /// Uses caching to avoid recomputing bounds every frame. The cache is
+    /// invalidated when entities are added or removed, or when
+    /// [`invalidate_bounds_cache`] is called.
     #[must_use]
-    pub fn compute_entity_bounds(&self) -> Option<Bounds> {
+    pub fn compute_entity_bounds(&mut self) -> Option<Bounds> {
+        // Return cached bounds if still valid
+        if !self.bounds_dirty {
+            if let Some(cached) = self.cached_entity_bounds {
+                return Some(cached);
+            }
+        }
+
+        // Recompute bounds
+        let bounds = self.compute_entity_bounds_uncached();
+        self.cached_entity_bounds = bounds;
+        self.bounds_dirty = false;
+        bounds
+    }
+
+    /// Computes entity bounds without using cache.
+    ///
+    /// This is useful when you need fresh bounds and don't want to update the cache.
+    #[must_use]
+    pub fn compute_entity_bounds_uncached(&self) -> Option<Bounds> {
         let mut bounds = Bounds::INVERTED;
 
         // Include file positions
@@ -241,6 +276,12 @@ impl Scene {
         }
     }
 
+    /// Invalidates the cached entity bounds, forcing a recomputation on next access.
+    #[inline]
+    pub fn invalidate_bounds_cache(&mut self) {
+        self.bounds_dirty = true;
+    }
+
     /// Gets or creates a user with the given name.
     ///
     /// If a user with this name already exists, returns their ID.
@@ -256,6 +297,9 @@ impl Scene {
 
         self.users.insert(id, user);
         self.user_by_name.insert(name.to_string(), id);
+
+        // Invalidate bounds cache since we added a new entity
+        self.bounds_dirty = true;
 
         id
     }
@@ -301,6 +345,9 @@ impl Scene {
 
         self.file_by_path.insert(path.to_path_buf(), id);
         self.files.insert(id, file);
+
+        // Invalidate bounds cache since we added a new entity
+        self.bounds_dirty = true;
 
         Some(id)
     }
@@ -393,6 +440,9 @@ impl Scene {
         }
     }
 
+    /// How often to rebuild the spatial index (every N updates).
+    const SPATIAL_REBUILD_INTERVAL: u32 = 5;
+
     /// Updates the scene by the given time delta.
     ///
     /// This updates:
@@ -400,9 +450,10 @@ impl Scene {
     /// - Users (movement, fade)
     /// - Files (fade, touch effects)
     /// - Directory physics
-    /// - Spatial index
+    /// - Spatial index (throttled for performance)
     pub fn update(&mut self, dt: f32) {
         self.time += dt;
+        self.update_count = self.update_count.wrapping_add(1);
 
         // Update actions and remove completed ones
         let mut completed_actions = Vec::new();
@@ -435,6 +486,7 @@ impl Scene {
         }
 
         // Remove deleted files
+        let files_removed = !files_to_remove.is_empty();
         for id in files_to_remove {
             if let Some(file) = self.files.remove(&id) {
                 self.file_by_path.remove(file.path());
@@ -457,9 +509,17 @@ impl Scene {
             dir.update_physics(dt, 0.95);
         }
 
-        // Rebuild spatial index periodically (every 10 updates or so)
-        // For now, we'll just clear and rebuild
-        self.rebuild_spatial_index();
+        // Invalidate bounds cache since entities may have moved
+        // (only every N frames to avoid constant recomputation)
+        if self.update_count % Self::SPATIAL_REBUILD_INTERVAL == 0 || files_removed {
+            self.bounds_dirty = true;
+        }
+
+        // Rebuild spatial index periodically (throttled for performance)
+        // This is O(n) so we don't want to do it every frame
+        if self.update_count % Self::SPATIAL_REBUILD_INTERVAL == 0 || files_removed {
+            self.rebuild_spatial_index();
+        }
     }
 
     /// Rebuilds the spatial index with current entity positions.
