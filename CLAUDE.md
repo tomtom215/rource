@@ -56,7 +56,7 @@ rource/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [141 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format) [86 tests]
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [171 tests]
-│   └── rource-render/    # Rendering (software rasterizer, bloom, shadows, fonts) [68 tests]
+│   └── rource-render/    # Rendering (software rasterizer, bloom, shadows, fonts, text) [75 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [8 tests]
 └── rource-wasm/          # WebAssembly application (planned)
 ```
@@ -147,6 +147,7 @@ wasm-pack build --target nodejs --release
 
 ### Phase 6: Platform Integration
 - [x] Native CLI (winit + softbuffer)
+- [x] Text overlays (title, date, commit info, usernames, filenames)
 - [ ] WASM/Canvas2D
 - [ ] WASM/WebGL2
 - [ ] Video export
@@ -270,4 +271,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10 (Phase 6 CLI in progress - 529 tests)*
+*Last updated: 2026-01-10 (Phase 6 CLI in progress - 536 tests)*

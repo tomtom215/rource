@@ -451,10 +451,7 @@ mod tests {
             CameraModeSetting::parse("overview"),
             CameraModeSetting::Overview
         );
-        assert_eq!(
-            CameraModeSetting::parse("TRACK"),
-            CameraModeSetting::Track
-        );
+        assert_eq!(CameraModeSetting::parse("TRACK"), CameraModeSetting::Track);
         assert_eq!(
             CameraModeSetting::parse("follow"),
             CameraModeSetting::Follow

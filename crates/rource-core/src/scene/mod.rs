@@ -515,11 +515,7 @@ impl Scene {
     pub fn visible_entities(
         &self,
         bounds: &Bounds,
-    ) -> (
-        Vec<crate::entity::DirId>,
-        Vec<FileId>,
-        Vec<UserId>,
-    ) {
+    ) -> (Vec<crate::entity::DirId>, Vec<FileId>, Vec<UserId>) {
         let mut dirs = Vec::new();
         let mut files = Vec::new();
         let mut users = Vec::new();

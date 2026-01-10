@@ -25,7 +25,7 @@ use rource_core::camera::Camera;
 use rource_core::scene::{ActionType, Scene};
 use rource_math::{Color, Vec2};
 use rource_render::effects::{BloomEffect, ShadowEffect};
-use rource_render::{Renderer, SoftwareRenderer};
+use rource_render::{FontId, Renderer, SoftwareRenderer};
 use rource_vcs::{Commit, FileAction};
 
 use args::Args;
@@ -43,6 +43,9 @@ struct App {
 
     /// The software renderer.
     renderer: Option<SoftwareRenderer>,
+
+    /// Default font for text rendering.
+    default_font: Option<FontId>,
 
     /// The scene graph containing all entities.
     scene: Scene,
@@ -129,6 +132,7 @@ impl App {
             window: None,
             surface: None,
             renderer: None,
+            default_font: None,
             scene: Scene::new(),
             camera,
             bloom,
@@ -411,6 +415,12 @@ impl App {
         }
 
         // Render files (only visible ones from frustum culling)
+        // Store settings for filename labels
+        let show_filenames = !self.args.hide_filenames;
+        let file_font = self.default_font;
+        let file_font_size = self.args.font_size * 0.8; // Slightly smaller for files
+        let camera_zoom = self.camera.zoom();
+
         for &file_id in &visible_file_ids {
             let Some(file) = self.scene.get_file(file_id) else {
                 continue;
@@ -421,7 +431,7 @@ impl App {
             }
 
             let screen_pos = self.camera.world_to_screen(file.position());
-            let radius = file.radius() * self.camera.zoom();
+            let radius = file.radius() * camera_zoom;
             let color = file.current_color().with_alpha(file.alpha());
 
             // Draw file as a filled disc
@@ -436,6 +446,20 @@ impl App {
                     0.5,
                     color.with_alpha(0.2 * file.alpha()),
                 );
+            }
+
+            // Draw filename label (only for prominent files when zoomed in)
+            // Show labels for files with high alpha (recently touched) when zoomed in enough
+            if show_filenames && file.alpha() > 0.5 && camera_zoom > 0.3 {
+                if let Some(font_id) = file_font {
+                    let name = file.name();
+                    let label_pos = Vec2::new(
+                        screen_pos.x + radius + 3.0,
+                        screen_pos.y - file_font_size * 0.3,
+                    );
+                    let label_color = Color::new(0.9, 0.9, 0.9, 0.7 * file.alpha());
+                    renderer.draw_text(name, label_pos, font_id, file_font_size, label_color);
+                }
             }
         }
 
@@ -460,6 +484,11 @@ impl App {
         }
 
         // Render users (only visible ones from frustum culling)
+        // Store font info for name labels (avoid borrow issues)
+        let show_usernames = !self.args.hide_usernames;
+        let name_font = self.default_font;
+        let name_font_size = self.args.font_size;
+
         for &user_id in &visible_user_ids {
             let Some(user) = self.scene.get_user(user_id) else {
                 continue;
@@ -484,6 +513,19 @@ impl App {
                     2.0,
                     color.with_alpha(0.5 * user.alpha()),
                 );
+            }
+
+            // Draw username label
+            if show_usernames {
+                if let Some(font_id) = name_font {
+                    let name = user.name();
+                    let label_pos = Vec2::new(
+                        screen_pos.x + radius + 5.0,
+                        screen_pos.y - name_font_size * 0.3,
+                    );
+                    let label_color = Color::new(1.0, 1.0, 1.0, 0.8 * user.alpha());
+                    renderer.draw_text(name, label_pos, font_id, name_font_size, label_color);
+                }
             }
         }
 
@@ -577,6 +619,104 @@ impl App {
                 ),
                 None,
                 Color::new(1.0, 0.6, 0.3, 0.6),
+            );
+        }
+
+        // Text overlays
+        if let Some(font_id) = self.default_font {
+            let font_size = self.args.font_size;
+            let text_color = Color::new(1.0, 1.0, 1.0, 0.9);
+            let height = renderer.height() as f32;
+            let width = renderer.width() as f32;
+
+            // Title (top-center)
+            if let Some(ref title) = self.args.title {
+                let title_size = font_size * 1.5;
+                // Approximate text centering (rough estimate)
+                let title_x = (width / 2.0) - (title.len() as f32 * title_size * 0.3);
+                renderer.draw_text(
+                    title,
+                    Vec2::new(title_x.max(10.0), 20.0),
+                    font_id,
+                    title_size,
+                    text_color,
+                );
+            }
+
+            // Date display (bottom-left, above progress bar)
+            if !self.args.hide_date && !self.commits.is_empty() {
+                if let Some(commit) = self
+                    .commits
+                    .get(self.current_commit.saturating_sub(1).max(0))
+                {
+                    let date_str = format_timestamp(commit.timestamp);
+                    renderer.draw_text(
+                        &date_str,
+                        Vec2::new(10.0, height - 30.0),
+                        font_id,
+                        font_size,
+                        text_color.with_alpha(0.7),
+                    );
+                }
+            }
+
+            // Current commit info (bottom-left, above date)
+            if self.current_commit > 0 {
+                if let Some(commit) = self.commits.get(self.current_commit - 1) {
+                    // Author name
+                    renderer.draw_text(
+                        &commit.author,
+                        Vec2::new(10.0, height - 50.0),
+                        font_id,
+                        font_size,
+                        text_color.with_alpha(0.8),
+                    );
+
+                    // File count in commit
+                    let files_text = format!("{} files", commit.files.len());
+                    renderer.draw_text(
+                        &files_text,
+                        Vec2::new(10.0, height - 70.0),
+                        font_id,
+                        font_size * 0.9,
+                        text_color.with_alpha(0.6),
+                    );
+                }
+            }
+
+            // Speed indicator (top-right, only if not 1.0x)
+            if (self.playback.speed - 1.0).abs() > 0.01 {
+                let speed_text = format!("{:.1}x", self.playback.speed);
+                renderer.draw_text(
+                    &speed_text,
+                    Vec2::new(width - 60.0, 20.0),
+                    font_id,
+                    font_size,
+                    text_color.with_alpha(0.7),
+                );
+            }
+
+            // Pause indicator text
+            if self.playback.paused {
+                renderer.draw_text(
+                    "PAUSED",
+                    Vec2::new(50.0, 24.0),
+                    font_id,
+                    font_size,
+                    text_color.with_alpha(0.7),
+                );
+            }
+
+            // Stats text (next to indicators)
+            let stats_text = format!(
+                "{commit_idx}/{total_commits} commits | {file_count} files | {user_count} users"
+            );
+            renderer.draw_text(
+                &stats_text,
+                Vec2::new(120.0, 54.0),
+                font_id,
+                font_size * 0.8,
+                text_color.with_alpha(0.5),
             );
         }
 
@@ -680,11 +820,18 @@ impl ApplicationHandler for App {
         }
 
         // Create renderer
-        let renderer = SoftwareRenderer::new(size.width.max(1), size.height.max(1));
+        let mut renderer = SoftwareRenderer::new(size.width.max(1), size.height.max(1));
+
+        // Load default font for text rendering
+        let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
+        if font_id.is_none() {
+            eprintln!("Warning: Failed to load default font");
+        }
 
         self.window = Some(window);
         self.surface = Some(surface);
         self.renderer = Some(renderer);
+        self.default_font = font_id;
         self.last_frame = Instant::now();
 
         // Load commits

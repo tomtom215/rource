@@ -88,20 +88,26 @@ impl SvnParser {
             });
         }
 
-        let year: i64 = date_parts[0].parse().map_err(|_| ParseError::InvalidTimestamp {
-            line_number,
-            value: date_str.to_string(),
-        })?;
+        let year: i64 = date_parts[0]
+            .parse()
+            .map_err(|_| ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            })?;
 
-        let month: i64 = date_parts[1].parse().map_err(|_| ParseError::InvalidTimestamp {
-            line_number,
-            value: date_str.to_string(),
-        })?;
+        let month: i64 = date_parts[1]
+            .parse()
+            .map_err(|_| ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            })?;
 
-        let day: i64 = date_parts[2].parse().map_err(|_| ParseError::InvalidTimestamp {
-            line_number,
-            value: date_str.to_string(),
-        })?;
+        let day: i64 = date_parts[2]
+            .parse()
+            .map_err(|_| ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            })?;
 
         // Parse time (ignore fractional seconds and timezone for simplicity)
         let time_str = parts[1].split('.').next().unwrap_or(parts[1]);
@@ -163,8 +169,7 @@ impl SvnParser {
             .to_string();
 
         // Extract date
-        let date_str = Self::extract_tag_content(content, "date")
-            .map_or("", str::trim);
+        let date_str = Self::extract_tag_content(content, "date").map_or("", str::trim);
 
         if date_str.is_empty() {
             return Ok(None);
@@ -406,7 +411,10 @@ mod tests {
 
     #[test]
     fn test_strip_svn_prefix() {
-        assert_eq!(SvnParser::strip_svn_prefix("/trunk/src/main.rs"), "src/main.rs");
+        assert_eq!(
+            SvnParser::strip_svn_prefix("/trunk/src/main.rs"),
+            "src/main.rs"
+        );
         assert_eq!(
             SvnParser::strip_svn_prefix("/branches/feature/src/main.rs"),
             "src/main.rs"
@@ -439,7 +447,8 @@ mod tests {
         let parser = SvnParser::new();
 
         assert!(parser.can_parse(SAMPLE_SVN_LOG));
-        assert!(parser.can_parse(r#"<?xml version="1.0"?><log><logentry revision="1"></logentry></log>"#));
+        assert!(parser
+            .can_parse(r#"<?xml version="1.0"?><log><logentry revision="1"></logentry></log>"#));
         assert!(parser.can_parse(r#"<log><logentry revision="1"></logentry></log>"#));
 
         assert!(!parser.can_parse("commit abc123\nAuthor: Test\n"));
@@ -537,10 +546,16 @@ mod tests {
     #[test]
     fn test_extract_tag_content() {
         let xml = "<author>johndoe</author>";
-        assert_eq!(SvnParser::extract_tag_content(xml, "author"), Some("johndoe"));
+        assert_eq!(
+            SvnParser::extract_tag_content(xml, "author"),
+            Some("johndoe")
+        );
 
         let xml = "<msg>Hello world</msg>";
-        assert_eq!(SvnParser::extract_tag_content(xml, "msg"), Some("Hello world"));
+        assert_eq!(
+            SvnParser::extract_tag_content(xml, "msg"),
+            Some("Hello world")
+        );
 
         let xml = "<author></author>";
         assert_eq!(SvnParser::extract_tag_content(xml, "author"), Some(""));
