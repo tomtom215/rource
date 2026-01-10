@@ -365,22 +365,26 @@ impl App {
         let bg_color = self.args.parse_background_color();
         renderer.clear(bg_color);
 
-        // Get camera's viewport size for visibility checks
-        let viewport = self.camera.viewport_size();
+        // Get camera's visible bounds in world space for frustum culling
+        let visible_bounds = self.camera.visible_bounds();
+        // Expand bounds to include entities with radii at the edge
+        let culling_bounds = Scene::expand_bounds_for_visibility(&visible_bounds, 100.0);
+
+        // Query visible entities using spatial index (frustum culling)
+        let (visible_dir_ids, visible_file_ids, visible_user_ids) =
+            self.scene.visible_entities(&culling_bounds);
 
         // Render directories (as circles showing structure)
-        for dir in self.scene.directories().iter() {
+        for &dir_id in &visible_dir_ids {
+            let Some(dir) = self.scene.directories().get(dir_id) else {
+                continue;
+            };
+
             if !dir.is_visible() {
                 continue;
             }
 
             let screen_pos = self.camera.world_to_screen(dir.position());
-
-            // Only render if visible on screen
-            if !is_screen_visible(screen_pos, viewport) {
-                continue;
-            }
-
             let radius = dir.radius() * self.camera.zoom();
 
             // Draw directory as a hollow circle
@@ -395,19 +399,17 @@ impl App {
             }
         }
 
-        // Render files
-        for file in self.scene.files().values() {
+        // Render files (only visible ones from frustum culling)
+        for &file_id in &visible_file_ids {
+            let Some(file) = self.scene.get_file(file_id) else {
+                continue;
+            };
+
             if file.alpha() < 0.01 {
                 continue;
             }
 
             let screen_pos = self.camera.world_to_screen(file.position());
-
-            // Only render if visible on screen
-            if !is_screen_visible(screen_pos, viewport) {
-                continue;
-            }
-
             let radius = file.radius() * self.camera.zoom();
             let color = file.current_color().with_alpha(file.alpha());
 
@@ -427,6 +429,7 @@ impl App {
         }
 
         // Render actions (beams from users to files)
+        // Actions are typically few in number, so no frustum culling needed
         for action in self.scene.actions() {
             let user_opt = self.scene.get_user(action.user());
             let file_opt = self.scene.get_file(action.file());
@@ -445,19 +448,17 @@ impl App {
             }
         }
 
-        // Render users
-        for user in self.scene.users().values() {
+        // Render users (only visible ones from frustum culling)
+        for &user_id in &visible_user_ids {
+            let Some(user) = self.scene.get_user(user_id) else {
+                continue;
+            };
+
             if user.alpha() < 0.01 {
                 continue;
             }
 
             let screen_pos = self.camera.world_to_screen(user.position());
-
-            // Only render if visible on screen
-            if !is_screen_visible(screen_pos, viewport) {
-                continue;
-            }
-
             let radius = user.radius() * self.camera.zoom();
             let color = user.display_color();
 
@@ -723,6 +724,10 @@ impl ApplicationHandler for App {
 }
 
 /// Check if a screen position is within the visible viewport.
+///
+/// Note: This function is kept for reference but is no longer used in rendering,
+/// as frustum culling is now performed via spatial queries in world space.
+#[allow(dead_code)]
 #[inline]
 fn is_screen_visible(screen_pos: Vec2, viewport: (f32, f32)) -> bool {
     let margin = 50.0;
