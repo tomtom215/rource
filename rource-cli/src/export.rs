@@ -493,7 +493,10 @@ mod tests {
         write_png(&pixels, 2, 2, &mut output).unwrap();
 
         // Check PNG signature
-        assert_eq!(&output[0..8], &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        assert_eq!(
+            &output[0..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
 
         // Verify the output is valid PNG format
         // IHDR chunk starts at byte 8

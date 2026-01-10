@@ -541,15 +541,42 @@ impl App {
             let screen_pos = self.camera.world_to_screen(user.position());
             let radius = user.radius() * self.camera.zoom();
             let color = user.display_color();
+            let effective_radius = radius.max(5.0);
+
+            // Draw border/outline (darker version of user color)
+            let border_color = Color::new(color.r * 0.4, color.g * 0.4, color.b * 0.4, color.a);
+            renderer.draw_disc(screen_pos, effective_radius + 2.0, border_color);
 
             // Draw user as a larger filled disc
-            renderer.draw_disc(screen_pos, radius.max(5.0), color);
+            renderer.draw_disc(screen_pos, effective_radius, color);
+
+            // Draw initials if the disc is large enough (radius > 12 pixels)
+            if effective_radius > 12.0 {
+                if let Some(font_id) = name_font {
+                    let initials = get_initials(user.name());
+                    let initial_font_size = (effective_radius * 0.8).clamp(8.0, 20.0);
+                    // Center the initials on the disc
+                    let text_width = initials.len() as f32 * initial_font_size * 0.5;
+                    let initial_pos = Vec2::new(
+                        screen_pos.x - text_width * 0.5,
+                        screen_pos.y - initial_font_size * 0.35,
+                    );
+                    let initial_color = Color::new(1.0, 1.0, 1.0, 0.9 * user.alpha());
+                    renderer.draw_text(
+                        &initials,
+                        initial_pos,
+                        font_id,
+                        initial_font_size,
+                        initial_color,
+                    );
+                }
+            }
 
             // Draw a highlight ring if active
             if user.is_active() {
                 renderer.draw_circle(
                     screen_pos,
-                    radius * 1.3,
+                    effective_radius * 1.3,
                     2.0,
                     color.with_alpha(0.5 * user.alpha()),
                 );
@@ -560,7 +587,7 @@ impl App {
                 if let Some(font_id) = name_font {
                     let name = user.name();
                     let label_pos = Vec2::new(
-                        screen_pos.x + radius + 5.0,
+                        screen_pos.x + effective_radius + 5.0,
                         screen_pos.y - name_font_size * 0.3,
                     );
                     let label_color = Color::new(1.0, 1.0, 1.0, 0.8 * user.alpha());
@@ -1078,6 +1105,46 @@ fn format_timestamp(timestamp: i64) -> String {
     let month = (remaining_days / 30) + 1;
     let day = (remaining_days % 30) + 1;
     format!("{years:04}-{month:02}-{day:02}")
+}
+
+/// Extract initials from a name for avatar display.
+///
+/// Takes up to 2 characters: the first character of the name and
+/// the first character after a space (if present).
+///
+/// Examples:
+/// - "John Doe" -> "JD"
+/// - "Alice" -> "A"
+/// - "bob" -> "B"
+/// - "<email@example.com>" -> "E"
+fn get_initials(name: &str) -> String {
+    let name = name.trim();
+
+    // Handle email-only format: <email@example.com>
+    let name = if name.starts_with('<') && name.ends_with('>') {
+        name.trim_start_matches('<').trim_end_matches('>')
+    } else if let Some(pos) = name.find('<') {
+        // Handle "Name <email>" format - use only the name part
+        name[..pos].trim()
+    } else {
+        name
+    };
+
+    let mut initials = String::with_capacity(2);
+
+    // Get first character
+    if let Some(first_char) = name.chars().next() {
+        initials.push(first_char.to_ascii_uppercase());
+    }
+
+    // Get first character after last space (for last name)
+    if let Some(space_pos) = name.rfind(' ') {
+        if let Some(second_char) = name[space_pos + 1..].chars().next() {
+            initials.push(second_char.to_ascii_uppercase());
+        }
+    }
+
+    initials
 }
 
 /// Run in headless mode (no window, batch video export).
@@ -1757,6 +1824,29 @@ mod tests {
         let formatted = format_timestamp(ts);
         // Approximate check (our simple algorithm isn't precise)
         assert!(formatted.starts_with("20"));
+    }
+
+    #[test]
+    fn test_get_initials() {
+        // Basic two-word name
+        assert_eq!(get_initials("John Doe"), "JD");
+        assert_eq!(get_initials("Alice Smith"), "AS");
+
+        // Single name
+        assert_eq!(get_initials("Alice"), "A");
+        assert_eq!(get_initials("bob"), "B");
+
+        // Three or more words (uses first and last)
+        assert_eq!(get_initials("John Q Public"), "JP");
+        assert_eq!(get_initials("Mary Jane Watson"), "MW");
+
+        // Email format
+        assert_eq!(get_initials("<john@example.com>"), "J");
+        assert_eq!(get_initials("John Doe <john@example.com>"), "JD");
+
+        // Trimmed input
+        assert_eq!(get_initials("  Alice  "), "A");
+        assert_eq!(get_initials("  Bob Smith  "), "BS");
     }
 
     #[test]

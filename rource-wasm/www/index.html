@@ -89,6 +89,10 @@
             width: 100%;
             height: 100%;
             display: block;
+            touch-action: none; /* Prevent default touch behaviors */
+            -webkit-touch-callout: none; /* Disable callout on iOS */
+            -webkit-user-select: none; /* Disable text selection */
+            user-select: none;
         }
 
         .info-panel {
@@ -98,6 +102,73 @@
             display: flex;
             gap: 2rem;
             flex-wrap: wrap;
+        }
+
+        .legend-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(22, 33, 62, 0.9);
+            border-radius: 8px;
+            padding: 0.75rem;
+            max-width: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .legend-panel.collapsed {
+            max-height: 36px;
+            overflow: hidden;
+        }
+
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-header h4 {
+            font-size: 0.8rem;
+            color: #e94560;
+            margin: 0;
+        }
+
+        .legend-toggle {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-ext {
+            color: #ccc;
+        }
+
+        .legend-count {
+            color: #666;
+            font-size: 0.65rem;
+            margin-left: auto;
         }
 
         .info-item {
@@ -341,6 +412,15 @@
     <main>
         <div id="canvas-container">
             <canvas id="canvas" width="1280" height="720"></canvas>
+            <div id="legend-panel" class="legend-panel collapsed">
+                <div class="legend-header" id="legend-toggle">
+                    <h4>File Types</h4>
+                    <span class="legend-toggle">▼</span>
+                </div>
+                <div class="legend-items" id="legend-items">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
         </div>
 
         <div class="timeline-container">
@@ -528,11 +608,110 @@
                 commitCountEl.textContent = count;
                 statusEl.textContent = `Loaded ${count} commits`;
                 updateUI();
+                updateLegend(content);
             } catch (e) {
                 statusEl.textContent = 'Parse error: ' + e;
                 console.error('Failed to parse log:', e);
             }
         }
+
+        // File extension color mapping (matches rource-core/src/scene/file.rs)
+        const extensionColors = {
+            'rs': '#dea584', 'go': '#00add8', 'py': '#3572a5', 'pyi': '#3572a5',
+            'js': '#f7df1e', 'mjs': '#f7df1e', 'cjs': '#f7df1e',
+            'ts': '#3178c6', 'mts': '#3178c6', 'cts': '#3178c6',
+            'jsx': '#61dafb', 'tsx': '#61dafb',
+            'java': '#b07219', 'kt': '#a78bfa', 'kts': '#a78bfa',
+            'c': '#5555ff', 'h': '#5555ff',
+            'cpp': '#00599c', 'cc': '#00599c', 'cxx': '#00599c', 'hpp': '#00599c',
+            'cs': '#9b4f96', 'fs': '#b845fc', 'fsx': '#b845fc',
+            'rb': '#cc342d', 'php': '#4f5d95', 'swift': '#f05138',
+            'html': '#e34c26', 'htm': '#e34c26', 'css': '#563d7c',
+            'scss': '#cd6799', 'sass': '#cd6799', 'less': '#cd6799',
+            'json': '#808080', 'yaml': '#cb171e', 'yml': '#cb171e',
+            'toml': '#9c4221', 'xml': '#0060ac', 'md': '#083fa1',
+            'sh': '#008000', 'bash': '#008000', 'zsh': '#008000',
+            'dockerfile': '#2496ed', 'sql': '#e38c00', 'graphql': '#e535ab'
+        };
+
+        // Compute HSL color for unknown extensions (same algorithm as Rust code)
+        function hashExtension(ext) {
+            let hash = 0;
+            for (let i = 0; i < ext.length; i++) {
+                hash = (hash * 31 + ext.charCodeAt(i)) >>> 0;
+            }
+            const hue = hash % 360;
+            return `hsl(${hue}, 50%, 50%)`;
+        }
+
+        function getExtensionColor(ext) {
+            const lower = ext.toLowerCase();
+            return extensionColors[lower] || hashExtension(lower);
+        }
+
+        // Update file type legend
+        function updateLegend(content) {
+            const legendItems = document.getElementById('legend-items');
+            const extensionCounts = {};
+
+            // Parse file paths from content to count extensions
+            const lines = content.split('\n');
+            for (const line of lines) {
+                // Extract file paths from various formats
+                // Custom format: timestamp|author|action|path
+                // Git format: action\tpath
+                let path = '';
+                if (line.includes('|')) {
+                    const parts = line.split('|');
+                    if (parts.length >= 4) {
+                        path = parts[3].trim();
+                    }
+                } else if (line.includes('\t')) {
+                    const parts = line.split('\t');
+                    if (parts.length >= 2) {
+                        path = parts[parts.length - 1].trim();
+                    }
+                }
+
+                if (path) {
+                    const dotIdx = path.lastIndexOf('.');
+                    if (dotIdx > 0 && dotIdx < path.length - 1) {
+                        const ext = path.substring(dotIdx + 1).toLowerCase();
+                        if (ext.length <= 10) { // Reasonable extension length
+                            extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
+                        }
+                    }
+                }
+            }
+
+            // Sort by count descending, take top 15
+            const sorted = Object.entries(extensionCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 15);
+
+            // Build legend HTML
+            legendItems.innerHTML = sorted.map(([ext, count]) => {
+                const color = getExtensionColor(ext);
+                return `<div class="legend-item">
+                    <span class="legend-color" style="background: ${color}"></span>
+                    <span class="legend-ext">.${ext}</span>
+                    <span class="legend-count">${count}</span>
+                </div>`;
+            }).join('');
+
+            // Expand legend if it has items
+            if (sorted.length > 0) {
+                document.getElementById('legend-panel').classList.remove('collapsed');
+            }
+        }
+
+        // Legend toggle
+        document.getElementById('legend-toggle').addEventListener('click', () => {
+            const panel = document.getElementById('legend-panel');
+            panel.classList.toggle('collapsed');
+            const toggle = panel.querySelector('.legend-toggle');
+            toggle.textContent = panel.classList.contains('collapsed') ? '▼' : '▲';
+        });
 
         // Initialize
         async function main() {
@@ -547,6 +726,7 @@
                 if (defaultLog.trim()) {
                     const count = rource.loadCustomLog(defaultLog);
                     commitCountEl.textContent = count;
+                    updateLegend(defaultLog);
                 }
 
                 // Enable buttons
@@ -752,6 +932,102 @@
                 e.preventDefault();
                 rource.onWheel(e.deltaY);
             }
+        }, { passive: false });
+
+        // Touch controls for mobile devices
+        let touchState = {
+            startX: 0,
+            startY: 0,
+            lastX: 0,
+            lastY: 0,
+            initialDistance: 0,
+            isPanning: false,
+            isPinching: false
+        };
+
+        function getTouchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function getTouchCenter(touches, rect) {
+            return {
+                x: ((touches[0].clientX + touches[1].clientX) / 2) - rect.left,
+                y: ((touches[0].clientY + touches[1].clientY) / 2) - rect.top
+            };
+        }
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+
+            if (e.touches.length === 1) {
+                // Single finger: pan
+                touchState.isPanning = true;
+                touchState.isPinching = false;
+                touchState.startX = e.touches[0].clientX - rect.left;
+                touchState.startY = e.touches[0].clientY - rect.top;
+                touchState.lastX = touchState.startX;
+                touchState.lastY = touchState.startY;
+                if (rource) {
+                    rource.onMouseDown(touchState.startX, touchState.startY);
+                }
+            } else if (e.touches.length === 2) {
+                // Two fingers: pinch to zoom
+                touchState.isPanning = false;
+                touchState.isPinching = true;
+                touchState.initialDistance = getTouchDistance(e.touches);
+                if (rource) {
+                    rource.onMouseUp(); // Cancel any ongoing pan
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+
+            if (touchState.isPanning && e.touches.length === 1) {
+                const x = e.touches[0].clientX - rect.left;
+                const y = e.touches[0].clientY - rect.top;
+                if (rource) {
+                    rource.onMouseMove(x, y);
+                }
+                touchState.lastX = x;
+                touchState.lastY = y;
+            } else if (touchState.isPinching && e.touches.length === 2) {
+                const currentDistance = getTouchDistance(e.touches);
+                const scaleFactor = currentDistance / touchState.initialDistance;
+
+                // Convert pinch to zoom (simulate wheel events)
+                if (rource && Math.abs(scaleFactor - 1.0) > 0.01) {
+                    if (scaleFactor > 1.0) {
+                        rource.zoom(1.05); // Zoom in
+                    } else {
+                        rource.zoom(0.95); // Zoom out
+                    }
+                    touchState.initialDistance = currentDistance;
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (rource && touchState.isPanning) {
+                rource.onMouseUp();
+            }
+            touchState.isPanning = false;
+            touchState.isPinching = false;
+        }, { passive: false });
+
+        canvas.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            if (rource) {
+                rource.onMouseUp();
+            }
+            touchState.isPanning = false;
+            touchState.isPinching = false;
         }, { passive: false });
 
         // Handle resize
