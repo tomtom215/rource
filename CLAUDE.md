@@ -132,10 +132,10 @@ wasm-pack build --target nodejs --release
 - [x] Scene struct with apply_commit()
 
 ### Phase 4: Physics & Animation
-- [ ] Force-directed layout
-- [ ] Tweening system
-- [ ] Spline interpolation (Catmull-Rom)
-- [ ] Camera system
+- [x] Force-directed layout
+- [x] Tweening system
+- [x] Spline interpolation (Catmull-Rom)
+- [x] Camera system
 
 ### Phase 5: Rendering
 - [ ] Software rasterizer
@@ -269,4 +269,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10 (Phase 3 complete)*
+*Last updated: 2026-01-10 (Phase 4 complete)*
