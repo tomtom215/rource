@@ -118,10 +118,10 @@ wasm-pack build --target nodejs --release
 - [x] Core data structures (Entity IDs, Commit, FileChange)
 
 ### Phase 2: VCS Parsing
-- [ ] Git log parser
-- [ ] Custom format parser
+- [x] Git log parser
+- [x] Custom format parser
 - [ ] SVN XML parser
-- [ ] VCS auto-detection
+- [x] VCS auto-detection
 
 ### Phase 3: Scene Graph
 - [ ] Directory tree (DirNode)
@@ -154,7 +154,7 @@ wasm-pack build --target nodejs --release
 ### Adding a New VCS Parser
 
 1. Create `crates/rource-vcs/src/parser/newvcs.rs`
-2. Implement the `CommitParser` trait
+2. Implement the `Parser` trait (see `parser/mod.rs`)
 3. Register in `crates/rource-vcs/src/detect.rs`
 4. Add tests in `crates/rource-vcs/src/parser/newvcs.rs`
 
@@ -268,4 +268,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2025-01-10*
+*Last updated: 2026-01-10*
