@@ -120,6 +120,29 @@ pub struct Args {
     /// Requires --output to be specified. Runs at maximum speed without display.
     #[arg(long)]
     pub headless: bool,
+
+    /// Save a screenshot to this file and exit.
+    ///
+    /// Supports PNG format. Renders the visualization at the specified position
+    /// and saves a single frame.
+    #[arg(long)]
+    pub screenshot: Option<PathBuf>,
+
+    /// For screenshot mode: which commit index to render (0-based).
+    ///
+    /// If not specified, renders the final state (all commits applied).
+    #[arg(long)]
+    pub screenshot_at: Option<usize>,
+
+    /// Path to a TOML configuration file.
+    ///
+    /// Command-line arguments override config file settings.
+    #[arg(short = 'c', long)]
+    pub config: Option<PathBuf>,
+
+    /// Print a sample configuration file and exit.
+    #[arg(long)]
+    pub sample_config: bool,
 }
 
 impl Args {
@@ -131,6 +154,145 @@ impl Args {
     /// Parse the background color from hex string.
     pub fn parse_background_color(&self) -> rource_math::Color {
         parse_hex_color(&self.background_color).unwrap_or(rource_math::Color::BLACK)
+    }
+
+    /// Apply settings from a TOML config file.
+    ///
+    /// CLI arguments take precedence over config file settings.
+    pub fn apply_config_file(&mut self) -> Result<(), String> {
+        let Some(config_path) = &self.config else {
+            return Ok(());
+        };
+
+        let content = std::fs::read_to_string(config_path)
+            .map_err(|e| format!("Failed to read config file: {e}"))?;
+
+        let config: toml::Table = content
+            .parse()
+            .map_err(|e| format!("Failed to parse config file: {e}"))?;
+
+        // Apply settings from config (CLI args override these)
+        if let Some(toml::Value::Integer(v)) = config.get("width") {
+            if self.width == 1280 {
+                // Only apply if default
+                self.width = *v as u32;
+            }
+        }
+        if let Some(toml::Value::Integer(v)) = config.get("height") {
+            if self.height == 720 {
+                self.height = *v as u32;
+            }
+        }
+        if let Some(toml::Value::Float(v)) = config.get("seconds_per_day") {
+            if (self.seconds_per_day - 10.0).abs() < 0.01 {
+                self.seconds_per_day = *v as f32;
+            }
+        }
+        if let Some(toml::Value::String(v)) = config.get("background_color") {
+            if self.background_color == "000000" {
+                self.background_color.clone_from(v);
+            }
+        }
+        if let Some(toml::Value::String(v)) = config.get("title") {
+            if self.title.is_none() {
+                self.title = Some(v.clone());
+            }
+        }
+        if let Some(toml::Value::Boolean(v)) = config.get("no_bloom") {
+            if !self.no_bloom {
+                self.no_bloom = *v;
+            }
+        }
+        if let Some(toml::Value::Boolean(v)) = config.get("shadows") {
+            if !self.shadows {
+                self.shadows = *v;
+            }
+        }
+        if let Some(toml::Value::Boolean(v)) = config.get("fullscreen") {
+            if !self.fullscreen {
+                self.fullscreen = *v;
+            }
+        }
+        if let Some(toml::Value::Boolean(v)) = config.get("hide_filenames") {
+            if !self.hide_filenames {
+                self.hide_filenames = *v;
+            }
+        }
+        if let Some(toml::Value::Boolean(v)) = config.get("hide_usernames") {
+            if !self.hide_usernames {
+                self.hide_usernames = *v;
+            }
+        }
+        if let Some(toml::Value::Boolean(v)) = config.get("hide_date") {
+            if !self.hide_date {
+                self.hide_date = *v;
+            }
+        }
+        if let Some(toml::Value::Boolean(v)) = config.get("loop") {
+            if !self.loop_playback {
+                self.loop_playback = *v;
+            }
+        }
+        if let Some(toml::Value::Boolean(v)) = config.get("paused") {
+            if !self.paused {
+                self.paused = *v;
+            }
+        }
+        if let Some(toml::Value::Float(v)) = config.get("font_size") {
+            if (self.font_size - 12.0).abs() < 0.01 {
+                self.font_size = *v as f32;
+            }
+        }
+        if let Some(toml::Value::String(v)) = config.get("camera_mode") {
+            if self.camera_mode == "overview" {
+                self.camera_mode.clone_from(v);
+            }
+        }
+        if let Some(toml::Value::Integer(v)) = config.get("framerate") {
+            if self.framerate == 60 {
+                self.framerate = *v as u32;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Generate a sample config file content.
+    #[must_use]
+    pub fn sample_config() -> &'static str {
+        r#"# Rource Configuration File
+# https://github.com/tomtom215/rource
+
+# Display settings
+width = 1280
+height = 720
+fullscreen = false
+background_color = "000000"
+font_size = 12.0
+
+# Playback settings
+seconds_per_day = 10.0
+paused = false
+loop = false
+
+# Visual effects
+no_bloom = false
+shadows = false
+
+# UI visibility
+hide_filenames = false
+hide_usernames = false
+hide_date = false
+
+# Camera
+camera_mode = "overview"  # overview, track, or follow
+
+# Title (uncomment to use)
+# title = "My Project"
+
+# Video export settings
+framerate = 60
+"#
     }
 }
 
@@ -210,9 +372,95 @@ mod tests {
             output: None,
             framerate: 60,
             headless: false,
+            screenshot: None,
+            screenshot_at: None,
+            config: None,
+            sample_config: false,
         };
 
         assert_eq!(args.width, 1280);
         assert_eq!(args.height, 720);
+    }
+
+    #[test]
+    fn test_config_file_parsing() {
+        // Create a temp config file
+        let config_content = r#"
+width = 1920
+height = 1080
+seconds_per_day = 5.0
+title = "Test Project"
+no_bloom = true
+"#;
+
+        let temp_dir = std::env::temp_dir();
+        let config_path = temp_dir.join("test_rource_config.toml");
+        std::fs::write(&config_path, config_content).unwrap();
+
+        // Use explicit default values that match CLI defaults
+        let mut args = Args {
+            path: PathBuf::from("."),
+            width: 1280,
+            height: 720,
+            seconds_per_day: 10.0,
+            background_color: "000000".to_string(),
+            font_size: 12.0,
+            camera_mode: "overview".to_string(),
+            framerate: 60,
+            config: Some(config_path.clone()),
+            ..Args::default()
+        };
+
+        args.apply_config_file().unwrap();
+
+        assert_eq!(args.width, 1920);
+        assert_eq!(args.height, 1080);
+        assert!((args.seconds_per_day - 5.0).abs() < 0.01);
+        assert_eq!(args.title, Some("Test Project".to_string()));
+        assert!(args.no_bloom);
+
+        // Clean up
+        let _ = std::fs::remove_file(&config_path);
+    }
+
+    #[test]
+    fn test_config_file_cli_override() {
+        // CLI args should override config - non-default value should be preserved
+        let config_content = r#"
+width = 1920
+"#;
+
+        let temp_dir = std::env::temp_dir();
+        let config_path = temp_dir.join("test_rource_config2.toml");
+        std::fs::write(&config_path, config_content).unwrap();
+
+        let mut args = Args {
+            path: PathBuf::from("."),
+            width: 800, // Explicitly set via CLI (non-default)
+            height: 720,
+            seconds_per_day: 10.0,
+            background_color: "000000".to_string(),
+            font_size: 12.0,
+            camera_mode: "overview".to_string(),
+            framerate: 60,
+            config: Some(config_path.clone()),
+            ..Args::default()
+        };
+
+        args.apply_config_file().unwrap();
+
+        // CLI value should be preserved since it's not the default
+        assert_eq!(args.width, 800);
+
+        // Clean up
+        let _ = std::fs::remove_file(&config_path);
+    }
+
+    #[test]
+    fn test_sample_config() {
+        let sample = Args::sample_config();
+        assert!(sample.contains("width"));
+        assert!(sample.contains("seconds_per_day"));
+        assert!(sample.contains("background_color"));
     }
 }
