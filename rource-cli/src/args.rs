@@ -6,7 +6,7 @@ use std::path::PathBuf;
 /// Rource - Software version control visualization tool.
 ///
 /// A complete rewrite of Gource in Rust with WebAssembly support.
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Default)]
 #[command(name = "rource")]
 #[command(author, version, about, long_about = None)]
 #[allow(clippy::struct_excessive_bools)]

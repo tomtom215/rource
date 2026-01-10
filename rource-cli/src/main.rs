@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, Result};
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::{ElementState, KeyEvent, WindowEvent};
+use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
@@ -79,6 +79,15 @@ struct App {
 
     /// Whether to exit the application.
     should_exit: bool,
+
+    /// Current mouse position in screen coordinates.
+    mouse_position: Vec2,
+
+    /// Whether the mouse is currently being dragged (left button held).
+    mouse_dragging: bool,
+
+    /// Last mouse position when drag started or during drag.
+    last_mouse_position: Vec2,
 }
 
 /// Playback state for the visualization.
@@ -148,6 +157,9 @@ impl App {
             last_frame: Instant::now(),
             accumulated_time: 0.0,
             should_exit: false,
+            mouse_position: Vec2::ZERO,
+            mouse_dragging: false,
+            last_mouse_position: Vec2::ZERO,
         }
     }
 
@@ -737,6 +749,67 @@ impl App {
         }
     }
 
+    /// Handle mouse button press/release.
+    fn handle_mouse_button(&mut self, button: MouseButton, state: ElementState) {
+        if self.args.disable_input {
+            return;
+        }
+
+        match button {
+            MouseButton::Left => match state {
+                ElementState::Pressed => {
+                    self.mouse_dragging = true;
+                    self.last_mouse_position = self.mouse_position;
+                }
+                ElementState::Released => {
+                    self.mouse_dragging = false;
+                }
+            },
+            MouseButton::Middle => {
+                // Middle click could reset camera
+                if state == ElementState::Pressed {
+                    self.camera.reset();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Handle mouse movement.
+    fn handle_mouse_move(&mut self, x: f64, y: f64) {
+        let new_position = Vec2::new(x as f32, y as f32);
+        self.mouse_position = new_position;
+
+        if self.args.disable_input {
+            return;
+        }
+
+        // Pan when dragging
+        if self.mouse_dragging {
+            let delta = new_position - self.last_mouse_position;
+            self.camera.pan(delta);
+            self.last_mouse_position = new_position;
+        }
+    }
+
+    /// Handle mouse scroll wheel.
+    fn handle_mouse_scroll(&mut self, delta: MouseScrollDelta) {
+        if self.args.disable_input {
+            return;
+        }
+
+        // Calculate zoom factor from scroll delta
+        let zoom_amount = match delta {
+            MouseScrollDelta::LineDelta(_x, y) => y * 0.5, // Lines scrolled
+            MouseScrollDelta::PixelDelta(pos) => (pos.y as f32) * 0.01, // Precise scrolling
+        };
+
+        // Zoom toward mouse position
+        if zoom_amount.abs() > 0.001 {
+            self.camera.zoom_toward(self.mouse_position, zoom_amount);
+        }
+    }
+
     /// Present the rendered frame to the window.
     fn present(&mut self) {
         let Some(renderer) = &self.renderer else {
@@ -854,6 +927,15 @@ impl ApplicationHandler for App {
                 if self.should_exit {
                     event_loop.exit();
                 }
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                self.handle_mouse_button(button, state);
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.handle_mouse_move(position.x, position.y);
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                self.handle_mouse_scroll(delta);
             }
             WindowEvent::RedrawRequested => {
                 // Calculate delta time
@@ -1008,5 +1090,111 @@ mod tests {
         // Far outside should not be visible
         assert!(!is_screen_visible(Vec2::new(-100.0, -100.0), viewport));
         assert!(!is_screen_visible(Vec2::new(1000.0, 1000.0), viewport));
+    }
+
+    #[test]
+    fn test_mouse_state_initial() {
+        let args = Args::default();
+        let app = App::new(args);
+
+        assert_eq!(app.mouse_position, Vec2::ZERO);
+        assert!(!app.mouse_dragging);
+        assert_eq!(app.last_mouse_position, Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_mouse_move_updates_position() {
+        let args = Args::default();
+        let mut app = App::new(args);
+
+        app.handle_mouse_move(100.0, 200.0);
+
+        assert_eq!(app.mouse_position.x, 100.0);
+        assert_eq!(app.mouse_position.y, 200.0);
+    }
+
+    #[test]
+    fn test_mouse_drag_pans_camera() {
+        let args = Args::default();
+        let mut app = App::new(args);
+
+        // Start at origin
+        app.camera.jump_to(Vec2::ZERO);
+        let initial_pos = app.camera.target_position();
+
+        // Start drag
+        app.handle_mouse_move(100.0, 100.0);
+        app.handle_mouse_button(MouseButton::Left, ElementState::Pressed);
+        assert!(app.mouse_dragging);
+
+        // Move mouse (should pan)
+        app.handle_mouse_move(150.0, 150.0);
+
+        // Camera should have moved (pan inverts direction)
+        assert_ne!(app.camera.target_position(), initial_pos);
+
+        // End drag
+        app.handle_mouse_button(MouseButton::Left, ElementState::Released);
+        assert!(!app.mouse_dragging);
+    }
+
+    #[test]
+    fn test_mouse_scroll_zooms() {
+        let args = Args::default();
+        let mut app = App::new(args);
+
+        app.camera.set_zoom(1.0);
+        let initial_zoom = app.camera.target_zoom();
+
+        // Scroll up (zoom in)
+        app.handle_mouse_scroll(MouseScrollDelta::LineDelta(0.0, 1.0));
+
+        // Zoom should have increased
+        assert!(app.camera.target_zoom() > initial_zoom);
+    }
+
+    #[test]
+    fn test_mouse_input_disabled() {
+        let args = Args {
+            disable_input: true,
+            ..Args::default()
+        };
+        let mut app = App::new(args);
+
+        // Set initial state
+        app.camera.jump_to(Vec2::ZERO);
+        app.camera.set_zoom(1.0);
+        let initial_pos = app.camera.target_position();
+        let initial_zoom = app.camera.target_zoom();
+
+        // Try to drag
+        app.handle_mouse_move(100.0, 100.0);
+        app.handle_mouse_button(MouseButton::Left, ElementState::Pressed);
+        app.handle_mouse_move(200.0, 200.0);
+
+        // Camera should not have moved (input disabled)
+        assert_eq!(app.camera.target_position(), initial_pos);
+        assert!(!app.mouse_dragging);
+
+        // Try to scroll
+        app.handle_mouse_scroll(MouseScrollDelta::LineDelta(0.0, 5.0));
+        assert_eq!(app.camera.target_zoom(), initial_zoom);
+    }
+
+    #[test]
+    fn test_middle_click_resets_camera() {
+        let args = Args::default();
+        let mut app = App::new(args);
+
+        // Move camera
+        app.camera.jump_to(Vec2::new(500.0, 500.0));
+        app.camera.set_zoom(3.0);
+
+        // Middle click
+        app.handle_mouse_button(MouseButton::Middle, ElementState::Pressed);
+
+        // Camera should reset
+        assert_eq!(app.camera.position(), Vec2::ZERO);
+        assert!((app.camera.zoom() - 1.0).abs() < 0.01);
     }
 }
