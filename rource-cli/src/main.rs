@@ -92,6 +92,9 @@ struct App {
 
     /// Frame exporter for video output.
     frame_exporter: Option<export::FrameExporter>,
+
+    /// Pending screenshot path (saved after next render).
+    screenshot_pending: Option<std::path::PathBuf>,
 }
 
 /// Playback state for the visualization.
@@ -176,6 +179,7 @@ impl App {
             mouse_dragging: false,
             last_mouse_position: Vec2::ZERO,
             frame_exporter,
+            screenshot_pending: None,
         }
     }
 
@@ -299,6 +303,15 @@ impl App {
                     self.scene = Scene::new();
                     self.camera.reset();
                     eprintln!("Reset to beginning");
+                }
+                "s" | "S" => {
+                    // Take screenshot
+                    let filename = format!(
+                        "rource_screenshot_{}.png",
+                        chrono::Utc::now().format("%Y%m%d_%H%M%S")
+                    );
+                    self.screenshot_pending = Some(std::path::PathBuf::from(&filename));
+                    eprintln!("Screenshot will be saved to: {filename}");
                 }
                 _ => {}
             },
@@ -962,6 +975,24 @@ impl ApplicationHandler for App {
                 self.update(dt);
                 self.render();
 
+                // Save screenshot if pending
+                if let Some(path) = self.screenshot_pending.take() {
+                    if let Some(renderer) = &self.renderer {
+                        let pixels = renderer.pixels();
+                        let width = renderer.width();
+                        let height = renderer.height();
+
+                        match export::write_png_to_file(pixels, width, height, &path) {
+                            Ok(()) => {
+                                eprintln!("Screenshot saved: {}", path.display());
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to save screenshot: {e}");
+                            }
+                        }
+                    }
+                }
+
                 // Export frame if in export mode
                 if let Some(ref mut exporter) = self.frame_exporter {
                     if let Some(renderer) = &self.renderer {
@@ -1519,7 +1550,18 @@ fn render_frame_headless(
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse_args();
+    let mut args = Args::parse_args();
+
+    // Handle --sample-config
+    if args.sample_config {
+        println!("{}", Args::sample_config());
+        return Ok(());
+    }
+
+    // Apply config file if specified
+    if let Err(e) = args.apply_config_file() {
+        eprintln!("Warning: {e}");
+    }
 
     eprintln!("Rource - Software version control visualization");
     eprintln!("Repository: {}", args.path.display());
@@ -1528,6 +1570,11 @@ fn main() -> Result<()> {
     // Check for headless mode
     if args.headless {
         return run_headless(&args);
+    }
+
+    // Check for screenshot mode
+    if let Some(ref screenshot_path) = args.screenshot {
+        return run_screenshot(&args, screenshot_path);
     }
 
     // Create event loop
@@ -1539,6 +1586,152 @@ fn main() -> Result<()> {
     // Run the event loop
     event_loop.run_app(&mut app)?;
 
+    Ok(())
+}
+
+/// Run in screenshot mode (render single frame to PNG).
+///
+/// Similar to headless mode but only outputs a single frame.
+#[allow(clippy::too_many_lines)]
+fn run_screenshot(args: &Args, screenshot_path: &std::path::Path) -> Result<()> {
+    use rource_vcs::{CustomParser, GitParser, Parser};
+    use std::process::Command;
+
+    eprintln!("Taking screenshot...");
+
+    // Load commits
+    let commits: Vec<Commit> = if args.custom_log {
+        let content =
+            std::fs::read_to_string(&args.path).context("Failed to read custom log file")?;
+        let parser = CustomParser::new();
+        parser
+            .parse_str(&content)
+            .context("Failed to parse custom log")?
+    } else {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(&args.path)
+            .arg("log")
+            .arg("--pretty=format:commit %H%nAuthor: %an <%ae>%nDate: %at")
+            .arg("--name-status")
+            .arg("--reverse")
+            .output()
+            .context("Failed to run git log")?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("git log failed: {stderr}");
+        }
+
+        let log_content = String::from_utf8_lossy(&output.stdout);
+        let parser = GitParser::new();
+        parser
+            .parse_str(&log_content)
+            .context("Failed to parse git log")?
+    };
+
+    if commits.is_empty() {
+        anyhow::bail!("No commits found in repository");
+    }
+
+    // Determine which commit to render
+    let target_commit = args
+        .screenshot_at
+        .unwrap_or_else(|| commits.len().saturating_sub(1));
+    let target_commit = target_commit.min(commits.len().saturating_sub(1));
+
+    eprintln!(
+        "Rendering commit {}/{} ({})",
+        target_commit + 1,
+        commits.len(),
+        commits[target_commit].author
+    );
+
+    // Create renderer and scene
+    let mut renderer = SoftwareRenderer::new(args.width, args.height);
+    let mut scene = Scene::new();
+    let mut camera = Camera::new(args.width as f32, args.height as f32);
+
+    // Load font
+    let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
+
+    // Apply commits up to and including the target
+    for commit in commits.iter().take(target_commit + 1) {
+        let files: Vec<(std::path::PathBuf, ActionType)> = commit
+            .files
+            .iter()
+            .map(|f| {
+                (
+                    f.path.clone(),
+                    match f.action {
+                        FileAction::Create => ActionType::Create,
+                        FileAction::Modify => ActionType::Modify,
+                        FileAction::Delete => ActionType::Delete,
+                    },
+                )
+            })
+            .collect();
+
+        scene.apply_commit(&commit.author, &files);
+    }
+
+    // Pre-warm scene to let files fade in
+    for _ in 0..30 {
+        scene.update(1.0 / 60.0);
+    }
+
+    // Position camera
+    if let Some(bounds) = scene.compute_entity_bounds() {
+        if bounds.width() > 0.0 && bounds.height() > 0.0 {
+            let padded = rource_math::Bounds::from_center_size(
+                bounds.center(),
+                rource_math::Vec2::new(bounds.width() * 1.2, bounds.height() * 1.2),
+            );
+            let zoom_x = args.width as f32 / padded.width();
+            let zoom_y = args.height as f32 / padded.height();
+            let zoom = zoom_x.min(zoom_y).clamp(0.1, 5.0);
+
+            camera.jump_to(padded.center());
+            camera.set_zoom(zoom);
+        }
+    }
+
+    // Render the frame
+    render_frame_headless(
+        &mut renderer,
+        &scene,
+        &camera,
+        args,
+        font_id,
+        &commits,
+        target_commit,
+    );
+
+    // Apply effects if enabled
+    if !args.no_bloom {
+        let bloom = BloomEffect::new();
+        bloom.apply(
+            renderer.pixels_mut(),
+            args.width as usize,
+            args.height as usize,
+        );
+    }
+
+    if args.shadows {
+        let shadow = ShadowEffect::subtle();
+        shadow.apply(
+            renderer.pixels_mut(),
+            args.width as usize,
+            args.height as usize,
+        );
+    }
+
+    // Save the screenshot
+    let pixels = renderer.pixels();
+    export::write_png_to_file(pixels, args.width, args.height, screenshot_path)
+        .context("Failed to save screenshot")?;
+
+    eprintln!("Screenshot saved: {}", screenshot_path.display());
     Ok(())
 }
 

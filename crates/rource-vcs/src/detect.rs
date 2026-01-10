@@ -5,7 +5,7 @@
 
 use crate::commit::Commit;
 use crate::error::{ParseError, ParseResult};
-use crate::parser::{CustomParser, GitParser, Parser, SvnParser};
+use crate::parser::{CustomParser, GitParser, MercurialParser, Parser, SvnParser};
 use std::io::Read;
 use std::path::Path;
 
@@ -18,6 +18,8 @@ pub enum LogFormat {
     Git,
     /// SVN XML log output format (`svn log --xml`).
     Svn,
+    /// Mercurial (hg) log output format.
+    Mercurial,
 }
 
 impl LogFormat {
@@ -28,6 +30,7 @@ impl LogFormat {
             Self::Custom => "custom",
             Self::Git => "git",
             Self::Svn => "svn",
+            Self::Mercurial => "mercurial",
         }
     }
 
@@ -38,6 +41,7 @@ impl LogFormat {
             Self::Custom => Box::new(CustomParser::new()),
             Self::Git => Box::new(GitParser::new()),
             Self::Svn => Box::new(SvnParser::new()),
+            Self::Mercurial => Box::new(MercurialParser::new()),
         }
     }
 }
@@ -80,6 +84,7 @@ pub fn detect_format(input: &str) -> Option<LogFormat> {
     let parsers: &[(LogFormat, Box<dyn Parser>)] = &[
         (LogFormat::Svn, Box::new(SvnParser::new())),
         (LogFormat::Git, Box::new(GitParser::new())),
+        (LogFormat::Mercurial, Box::new(MercurialParser::new())),
         (LogFormat::Custom, Box::new(CustomParser::new())),
     ];
 

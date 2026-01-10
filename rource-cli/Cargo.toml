@@ -25,3 +25,5 @@ clap = { version = "4", features = ["derive"] }
 winit = "0.30"
 softbuffer = "0.4"
 anyhow = "1.0"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+toml = { version = "0.8", default-features = false, features = ["parse"] }

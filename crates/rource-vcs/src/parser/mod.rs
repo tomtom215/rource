@@ -5,6 +5,7 @@
 //! - [`CustomParser`] - Pipe-delimited custom format (Gource-compatible)
 //! - [`GitParser`] - Git log output format
 //! - [`SvnParser`] - SVN XML log output format (`svn log --xml`)
+//! - [`MercurialParser`] - Mercurial (hg) log output format
 //!
 //! # Usage
 //!
@@ -19,10 +20,12 @@
 
 mod custom;
 mod git;
+mod mercurial;
 mod svn;
 
 pub use custom::CustomParser;
 pub use git::GitParser;
+pub use mercurial::MercurialParser;
 pub use svn::SvnParser;
 
 use crate::commit::Commit;
