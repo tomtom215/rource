@@ -91,6 +91,39 @@ pub struct Args {
     #[arg(long, default_value_t = 0)]
     pub max_users: usize,
 
+    /// Regex pattern to show only matching users.
+    ///
+    /// Only users whose names match this pattern will be displayed.
+    #[arg(long, value_name = "REGEX")]
+    pub show_users: Option<String>,
+
+    /// Regex pattern to hide matching users.
+    ///
+    /// Users whose names match this pattern will be hidden.
+    /// Takes precedence over --show-users.
+    #[arg(long, value_name = "REGEX")]
+    pub hide_users: Option<String>,
+
+    /// Regex pattern to show only matching files.
+    ///
+    /// Only files whose paths match this pattern will be displayed.
+    #[arg(long, value_name = "REGEX")]
+    pub show_files: Option<String>,
+
+    /// Regex pattern to hide matching files.
+    ///
+    /// Files whose paths match this pattern will be hidden.
+    /// Takes precedence over --show-files.
+    #[arg(long, value_name = "REGEX")]
+    pub hide_files: Option<String>,
+
+    /// Regex pattern to hide matching directories.
+    ///
+    /// Entire directory trees matching this pattern will be excluded.
+    /// Useful for filtering out build directories, node_modules, etc.
+    #[arg(long, value_name = "REGEX")]
+    pub hide_dirs: Option<String>,
+
     /// Camera mode: overview, track, or follow.
     #[arg(long, default_value = "overview")]
     pub camera_mode: String,
@@ -271,6 +304,33 @@ impl Args {
             }
         }
 
+        // Filter settings
+        if let Some(toml::Value::String(v)) = config.get("show_users") {
+            if self.show_users.is_none() {
+                self.show_users = Some(v.clone());
+            }
+        }
+        if let Some(toml::Value::String(v)) = config.get("hide_users") {
+            if self.hide_users.is_none() {
+                self.hide_users = Some(v.clone());
+            }
+        }
+        if let Some(toml::Value::String(v)) = config.get("show_files") {
+            if self.show_files.is_none() {
+                self.show_files = Some(v.clone());
+            }
+        }
+        if let Some(toml::Value::String(v)) = config.get("hide_files") {
+            if self.hide_files.is_none() {
+                self.hide_files = Some(v.clone());
+            }
+        }
+        if let Some(toml::Value::String(v)) = config.get("hide_dirs") {
+            if self.hide_dirs.is_none() {
+                self.hide_dirs = Some(v.clone());
+            }
+        }
+
         Ok(())
     }
 
@@ -309,6 +369,13 @@ camera_mode = "overview"  # overview, track, or follow
 
 # Video export settings
 framerate = 60
+
+# Filtering (regex patterns, uncomment to use)
+# show_users = "^(alice|bob)$"     # Only show these users
+# hide_users = "bot.*|ci-.*"       # Hide bot and CI users
+# show_files = "\\.rs$"            # Only show Rust files
+# hide_files = "\\.log$|\\.tmp$"   # Hide log and temp files
+# hide_dirs = "node_modules|target|build"  # Hide build directories
 "#
     }
 }
@@ -382,6 +449,11 @@ mod tests {
             hide_legend: false,
             max_files: 0,
             max_users: 0,
+            show_users: None,
+            hide_users: None,
+            show_files: None,
+            hide_files: None,
+            hide_dirs: None,
             camera_mode: "overview".to_string(),
             loop_playback: false,
             paused: false,
@@ -400,6 +472,8 @@ mod tests {
 
         assert_eq!(args.width, 1280);
         assert_eq!(args.height, 720);
+        assert!(args.show_users.is_none());
+        assert!(args.hide_users.is_none());
     }
 
     #[test]

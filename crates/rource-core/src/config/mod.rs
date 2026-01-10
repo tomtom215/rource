@@ -39,8 +39,8 @@ mod settings;
 mod config_file;
 
 pub use settings::{
-    CameraModeSetting, CameraSettings, DisplaySettings, ExportSettings, InputSettings,
-    LimitSettings, PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
+    CameraModeSetting, CameraSettings, DisplaySettings, ExportSettings, FilterSettings,
+    InputSettings, LimitSettings, PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
 };
 
 #[cfg(feature = "config-file")]

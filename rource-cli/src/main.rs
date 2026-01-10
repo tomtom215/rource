@@ -24,6 +24,7 @@ use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
 use rource_core::camera::Camera;
+use rource_core::config::FilterSettings;
 use rource_core::scene::{ActionType, Scene};
 use rource_math::{Color, Vec2};
 use rource_render::effects::{BloomEffect, ShadowEffect};
@@ -102,6 +103,9 @@ struct App {
 
     /// Registered avatar texture IDs (available after renderer creation).
     avatar_registry: avatar::AvatarRegistry,
+
+    /// Filter settings for users and files.
+    filter: FilterSettings,
 }
 
 /// Playback state for the visualization.
@@ -173,6 +177,24 @@ impl App {
             avatars.set_default_avatar(default_path);
         }
 
+        // Initialize filter settings from CLI args
+        let mut filter = FilterSettings::new();
+        if let Some(ref pattern) = args.show_users {
+            filter.set_show_users(Some(pattern.clone()));
+        }
+        if let Some(ref pattern) = args.hide_users {
+            filter.set_hide_users(Some(pattern.clone()));
+        }
+        if let Some(ref pattern) = args.show_files {
+            filter.set_show_files(Some(pattern.clone()));
+        }
+        if let Some(ref pattern) = args.hide_files {
+            filter.set_hide_files(Some(pattern.clone()));
+        }
+        if let Some(ref pattern) = args.hide_dirs {
+            filter.set_hide_dirs(Some(pattern.clone()));
+        }
+
         Self {
             args,
             window: None,
@@ -205,6 +227,7 @@ impl App {
                 None
             },
             avatar_registry: avatar::AvatarRegistry::default(),
+            filter,
         }
     }
 
@@ -370,14 +393,25 @@ impl App {
         while self.last_applied_commit < self.current_commit {
             let commit = &self.commits[self.last_applied_commit];
 
-            // Convert commit files to scene format
+            // Skip commits from filtered-out users
+            if !self.filter.should_include_user(&commit.author) {
+                self.last_applied_commit += 1;
+                continue;
+            }
+
+            // Convert commit files to scene format, filtering out hidden files
             let files: Vec<(std::path::PathBuf, ActionType)> = commit
                 .files
                 .iter()
+                .filter(|f| self.filter.should_include_file(&f.path))
                 .map(|f| (f.path.clone(), Self::file_action_to_action_type(f.action)))
                 .collect();
 
-            self.scene.apply_commit(&commit.author, &files);
+            // Only apply commit if there are files left after filtering
+            if !files.is_empty() {
+                self.scene.apply_commit(&commit.author, &files);
+            }
+
             self.last_applied_commit += 1;
         }
     }
@@ -1423,6 +1457,24 @@ fn run_headless(args: &Args) -> Result<()> {
         export::FrameExporter::to_directory(output, args.framerate)
     };
 
+    // Initialize filter settings
+    let mut filter = FilterSettings::new();
+    if let Some(ref pattern) = args.show_users {
+        filter.set_show_users(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_users {
+        filter.set_hide_users(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.show_files {
+        filter.set_show_files(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_files {
+        filter.set_hide_files(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_dirs {
+        filter.set_hide_dirs(Some(pattern.clone()));
+    }
+
     // Playback state
     let seconds_per_day = args.seconds_per_day;
     let speed = 1.0_f32;
@@ -1446,14 +1498,19 @@ fn run_headless(args: &Args) -> Result<()> {
     // Pre-warm: Apply the first commit and let entities fade in
     // This ensures files have visible alpha on the first frame
     if !commits.is_empty() {
-        // Apply first commit immediately
+        // Apply first commit immediately (with filtering)
         let commit = &commits[0];
-        let files: Vec<(std::path::PathBuf, rource_core::scene::ActionType)> = commit
-            .files
-            .iter()
-            .map(|f| (f.path.clone(), App::file_action_to_action_type(f.action)))
-            .collect();
-        scene.apply_commit(&commit.author, &files);
+        if filter.should_include_user(&commit.author) {
+            let files: Vec<(std::path::PathBuf, rource_core::scene::ActionType)> = commit
+                .files
+                .iter()
+                .filter(|f| filter.should_include_file(&f.path))
+                .map(|f| (f.path.clone(), App::file_action_to_action_type(f.action)))
+                .collect();
+            if !files.is_empty() {
+                scene.apply_commit(&commit.author, &files);
+            }
+        }
         last_applied_commit = 1;
         current_commit = 1;
 
@@ -1497,15 +1554,25 @@ fn run_headless(args: &Args) -> Result<()> {
             }
         }
 
-        // Apply pending commits
+        // Apply pending commits (with filtering)
         while last_applied_commit < current_commit {
             let commit = &commits[last_applied_commit];
-            let files: Vec<(std::path::PathBuf, rource_core::scene::ActionType)> = commit
-                .files
-                .iter()
-                .map(|f| (f.path.clone(), App::file_action_to_action_type(f.action)))
-                .collect();
-            scene.apply_commit(&commit.author, &files);
+
+            // Skip commits from filtered-out users
+            if filter.should_include_user(&commit.author) {
+                let files: Vec<(std::path::PathBuf, rource_core::scene::ActionType)> = commit
+                    .files
+                    .iter()
+                    .filter(|f| filter.should_include_file(&f.path))
+                    .map(|f| (f.path.clone(), App::file_action_to_action_type(f.action)))
+                    .collect();
+
+                // Only apply commit if there are files left after filtering
+                if !files.is_empty() {
+                    scene.apply_commit(&commit.author, &files);
+                }
+            }
+
             last_applied_commit += 1;
         }
 
@@ -1946,11 +2013,35 @@ fn run_screenshot(args: &Args, screenshot_path: &std::path::Path) -> Result<()> 
     // Load font
     let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
 
-    // Apply commits up to and including the target
+    // Initialize filter settings
+    let mut filter = FilterSettings::new();
+    if let Some(ref pattern) = args.show_users {
+        filter.set_show_users(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_users {
+        filter.set_hide_users(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.show_files {
+        filter.set_show_files(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_files {
+        filter.set_hide_files(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_dirs {
+        filter.set_hide_dirs(Some(pattern.clone()));
+    }
+
+    // Apply commits up to and including the target (with filtering)
     for commit in commits.iter().take(target_commit + 1) {
+        // Skip commits from filtered-out users
+        if !filter.should_include_user(&commit.author) {
+            continue;
+        }
+
         let files: Vec<(std::path::PathBuf, ActionType)> = commit
             .files
             .iter()
+            .filter(|f| filter.should_include_file(&f.path))
             .map(|f| {
                 (
                     f.path.clone(),
@@ -1963,7 +2054,10 @@ fn run_screenshot(args: &Args, screenshot_path: &std::path::Path) -> Result<()> 
             })
             .collect();
 
-        scene.apply_commit(&commit.author, &files);
+        // Only apply commit if there are files left after filtering
+        if !files.is_empty() {
+            scene.apply_commit(&commit.author, &files);
+        }
     }
 
     // Pre-warm scene to let files fade in
