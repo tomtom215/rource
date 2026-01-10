@@ -8,7 +8,7 @@ This document provides context and guidance for Claude (AI assistant) when worki
 
 ### Goals
 - **Portable**: Run on any CPU architecture without requiring a dedicated GPU
-- **Lightweight**: Minimal dependencies, small binary size (~2.5MB native, ~400KB WASM gzip)
+- **Lightweight**: Minimal dependencies, small binary size (~2.5MB native, ~76KB WASM gzip)
 - **Fast**: Leverage Rust's performance and modern rendering techniques
 - **User-friendly**: Better UI/UX than original Gource
 - **Feature-complete**: Maintain at minimum feature parity with Gource
@@ -60,13 +60,13 @@ rource/
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [171 tests]
 │   └── rource-render/    # Rendering (software rasterizer, bloom, shadows, fonts, text) [75 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [29 tests]
-└── rource-wasm/          # WebAssembly application (planned)
+└── rource-wasm/          # WebAssembly application [2 tests]
 ```
 
 ### Rendering Backends
 1. **Software Rasterizer** - Pure CPU rendering, works everywhere
-2. **WebGL2** - GPU-accelerated browser rendering (planned)
-3. **Canvas2D** - Simple browser fallback (planned)
+2. **Canvas2D (WASM)** - Software renderer + canvas ImageData (implemented)
+3. **WebGL2** - GPU-accelerated browser rendering (planned)
 
 ## Development Guidelines
 
@@ -157,10 +157,37 @@ wasm-pack build --target nodejs --release
 - [x] Mouse input (pan with drag, zoom with scroll wheel)
 - [x] Video export (PPM frames for ffmpeg piping)
 - [x] Headless rendering mode (batch export without window)
-- [ ] WASM/Canvas2D
-- [ ] WASM/WebGL2
+- [x] WASM/Canvas2D (software renderer + ImageData)
+- [ ] WASM/WebGL2 (optional, for GPU acceleration)
 
 ## Recent Progress & Insights
+
+### WebAssembly Implementation (2026-01-10)
+
+Successfully implemented WebAssembly support for running Rource in web browsers:
+
+#### Implementation Details
+
+1. **Architecture**: Uses software renderer with ImageData transfer to canvas
+   - Reuses existing SoftwareRenderer for all drawing operations
+   - Converts ARGB pixel buffer to RGBA for web canvas
+   - ~76KB gzipped WASM bundle
+
+2. **JavaScript API**: Exposes Rource class with methods:
+   - `loadCustomLog(log)`: Load pipe-delimited commit data
+   - `loadGitLog(log)`: Load git log format
+   - `play()`, `pause()`, `togglePlay()`: Playback control
+   - `zoom(factor)`, `pan(dx, dy)`: Camera control
+   - `frame(timestamp)`: Animation frame handler
+
+3. **Controls**:
+   - Mouse drag for panning
+   - Mouse wheel for zooming
+   - Keyboard: Space=play, +/-=zoom, R=reset, arrows=pan
+
+4. **Build**: `scripts/build-wasm.sh` uses wasm-pack
+   - Output in `rource-wasm/www/pkg/`
+   - Demo page in `rource-wasm/www/index.html`
 
 ### Headless Rendering Implementation (2026-01-10)
 
@@ -408,4 +435,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10 (Phase 6 complete - 554 tests)*
+*Last updated: 2026-01-10 (Phase 6 complete with WASM - 556 tests)*
