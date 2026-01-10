@@ -295,7 +295,8 @@ impl BloomEffect {
                     count += 1;
                 }
 
-                temp[y * width + x] = 0xFF00_0000 | ((r / count) << 16) | ((g / count) << 8) | (b / count);
+                temp[y * width + x] =
+                    0xFF00_0000 | ((r / count) << 16) | ((g / count) << 8) | (b / count);
             }
         }
 
@@ -317,7 +318,8 @@ impl BloomEffect {
                     count += 1;
                 }
 
-                dst[y * width + x] = 0xFF00_0000 | ((r / count) << 16) | ((g / count) << 8) | (b / count);
+                dst[y * width + x] =
+                    0xFF00_0000 | ((r / count) << 16) | ((g / count) << 8) | (b / count);
             }
         }
 
@@ -455,7 +457,10 @@ mod tests {
         // Black pixel (brightness 0.0 < 0.5)
         let pixels = vec![0xFF00_0000];
         let bright = bloom.extract_bright(&pixels, 1, 1);
-        assert_eq!(bright[0], 0xFF00_0000, "Black pixel should not be extracted");
+        assert_eq!(
+            bright[0], 0xFF00_0000,
+            "Black pixel should not be extracted"
+        );
     }
 
     #[test]

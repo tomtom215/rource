@@ -49,7 +49,11 @@ impl Texture {
             data.len()
         );
 
-        Self { width, height, data }
+        Self {
+            width,
+            height,
+            data,
+        }
     }
 
     /// Creates an empty texture filled with a solid color.
@@ -64,7 +68,11 @@ impl Texture {
             data.push(a);
         }
 
-        Self { width, height, data }
+        Self {
+            width,
+            height,
+            data,
+        }
     }
 
     /// Creates an empty transparent texture.

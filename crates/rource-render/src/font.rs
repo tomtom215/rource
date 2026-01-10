@@ -37,12 +37,7 @@ impl GlyphCache {
     }
 
     /// Gets a cached glyph or rasterizes it if not cached.
-    fn get_or_insert(
-        &mut self,
-        font: &Font,
-        ch: char,
-        size: f32,
-    ) -> &CachedGlyph {
+    fn get_or_insert(&mut self, font: &Font, ch: char, size: f32) -> &CachedGlyph {
         // Use size in tenths of pixels as key to allow some variation
         let size_key = (size * 10.0) as u32;
         let key = (ch, size_key);

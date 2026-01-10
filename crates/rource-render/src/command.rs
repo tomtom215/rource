@@ -26,7 +26,11 @@ pub enum DrawCommand {
     },
 
     /// Draw a filled circle
-    Disc { center: Vec2, radius: f32, color: Color },
+    Disc {
+        center: Vec2,
+        radius: f32,
+        color: Color,
+    },
 
     /// Draw a line segment
     Line {
