@@ -63,6 +63,10 @@ pub struct Args {
     #[arg(long)]
     pub no_bloom: bool,
 
+    /// Enable drop shadows.
+    #[arg(long)]
+    pub shadows: bool,
+
     /// Hide filenames.
     #[arg(long)]
     pub hide_filenames: bool,
@@ -186,6 +190,7 @@ mod tests {
             background_color: "000000".to_string(),
             font_size: 12.0,
             no_bloom: false,
+            shadows: false,
             hide_filenames: false,
             hide_usernames: false,
             hide_date: false,

@@ -39,12 +39,14 @@
 
 pub mod animation;
 pub mod camera;
+pub mod config;
 pub mod entity;
 pub mod physics;
 pub mod scene;
 
 pub use animation::{ease, interpolate, lerp, CatmullRomSpline, Easing, Tween};
 pub use camera::{Camera, CameraMode, CameraTracker};
+pub use config::{CameraModeSetting, Settings};
 pub use entity::{ActionId, DirId, EntityId, FileId, Generation, IdAllocator, RawEntityId, UserId};
 pub use physics::{ForceConfig, ForceSimulation, QuadTree, SimulationStats};
 pub use scene::Scene;

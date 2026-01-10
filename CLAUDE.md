@@ -53,11 +53,11 @@ This script will:
 ```
 rource/
 ├── crates/
-│   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [156 tests]
-│   ├── rource-vcs/       # VCS log parsing (Git, Custom format) [70 tests]
-│   ├── rource-core/      # Core engine (scene, physics, animation, camera) [156 tests]
-│   └── rource-render/    # Rendering (software rasterizer, bloom, fonts) [57 tests]
-├── rource-cli/           # Native CLI application (winit + softbuffer) [6 tests]
+│   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [141 tests]
+│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format) [86 tests]
+│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [171 tests]
+│   └── rource-render/    # Rendering (software rasterizer, bloom, shadows, fonts) [68 tests]
+├── rource-cli/           # Native CLI application (winit + softbuffer) [8 tests]
 └── rource-wasm/          # WebAssembly application (planned)
 ```
 
@@ -112,13 +112,13 @@ wasm-pack build --target nodejs --release
 
 ### Phase 1: Foundation
 - [x] Math library (Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds)
-- [ ] Configuration system
+- [x] Configuration system (Settings struct with all options)
 - [x] Core data structures (Entity IDs, Commit, FileChange)
 
 ### Phase 2: VCS Parsing
 - [x] Git log parser
 - [x] Custom format parser
-- [ ] SVN XML parser
+- [x] SVN XML parser
 - [x] VCS auto-detection
 
 ### Phase 3: Scene Graph
@@ -128,6 +128,7 @@ wasm-pack build --target nodejs --release
 - [x] Action entities (Action, beams)
 - [x] Quadtree spatial index
 - [x] Scene struct with apply_commit()
+- [x] Frustum culling for performance
 
 ### Phase 4: Physics & Animation
 - [x] Force-directed layout
@@ -142,7 +143,7 @@ wasm-pack build --target nodejs --release
 - [x] Textured quad drawing
 - [x] Font rendering (fontdue integration)
 - [x] Bloom effect (CPU)
-- [ ] Shadow rendering
+- [x] Shadow rendering (drop shadows)
 
 ### Phase 6: Platform Integration
 - [x] Native CLI (winit + softbuffer)
@@ -269,4 +270,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10 (Phase 6 CLI in progress - 482 tests)*
+*Last updated: 2026-01-10 (Phase 6 CLI in progress - 529 tests)*

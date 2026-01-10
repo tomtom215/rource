@@ -4,6 +4,7 @@
 //!
 //! - [`CustomParser`] - Pipe-delimited custom format (Gource-compatible)
 //! - [`GitParser`] - Git log output format
+//! - [`SvnParser`] - SVN XML log output format (`svn log --xml`)
 //!
 //! # Usage
 //!
@@ -18,9 +19,11 @@
 
 mod custom;
 mod git;
+mod svn;
 
 pub use custom::CustomParser;
 pub use git::GitParser;
+pub use svn::SvnParser;
 
 use crate::commit::Commit;
 use crate::error::ParseResult;

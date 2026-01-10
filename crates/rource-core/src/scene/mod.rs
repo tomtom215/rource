@@ -458,6 +458,95 @@ impl Scene {
         self.spatial.nearest(position).map(|(_, &entity)| entity)
     }
 
+    /// Returns IDs of files visible within the given bounds.
+    ///
+    /// This is useful for frustum culling - only render files that are
+    /// within the camera's visible bounds. The bounds should typically
+    /// include some margin for entity radii.
+    #[must_use]
+    pub fn visible_file_ids(&self, bounds: &Bounds) -> Vec<FileId> {
+        self.spatial
+            .query(bounds)
+            .into_iter()
+            .filter_map(|entity| match entity {
+                EntityType::File(id) => Some(*id),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Returns IDs of users visible within the given bounds.
+    ///
+    /// This is useful for frustum culling - only render users that are
+    /// within the camera's visible bounds.
+    #[must_use]
+    pub fn visible_user_ids(&self, bounds: &Bounds) -> Vec<UserId> {
+        self.spatial
+            .query(bounds)
+            .into_iter()
+            .filter_map(|entity| match entity {
+                EntityType::User(id) => Some(*id),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Returns IDs of directories visible within the given bounds.
+    ///
+    /// This is useful for frustum culling - only render directories that are
+    /// within the camera's visible bounds.
+    #[must_use]
+    pub fn visible_directory_ids(&self, bounds: &Bounds) -> Vec<crate::entity::DirId> {
+        self.spatial
+            .query(bounds)
+            .into_iter()
+            .filter_map(|entity| match entity {
+                EntityType::Directory(id) => Some(*id),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Returns all entity types visible within the given bounds, grouped by type.
+    ///
+    /// This provides efficient frustum culling by using the spatial index
+    /// to query only entities within the visible area.
+    #[must_use]
+    pub fn visible_entities(
+        &self,
+        bounds: &Bounds,
+    ) -> (
+        Vec<crate::entity::DirId>,
+        Vec<FileId>,
+        Vec<UserId>,
+    ) {
+        let mut dirs = Vec::new();
+        let mut files = Vec::new();
+        let mut users = Vec::new();
+
+        for entity in self.spatial.query(bounds) {
+            match entity {
+                EntityType::Directory(id) => dirs.push(*id),
+                EntityType::File(id) => files.push(*id),
+                EntityType::User(id) => users.push(*id),
+            }
+        }
+
+        (dirs, files, users)
+    }
+
+    /// Returns the expanded bounds for visibility queries.
+    ///
+    /// This adds a margin to account for entity radii and ensures
+    /// entities at the edge of the screen are included.
+    #[must_use]
+    pub fn expand_bounds_for_visibility(bounds: &Bounds, margin: f32) -> Bounds {
+        Bounds::new(
+            bounds.min - Vec2::splat(margin),
+            bounds.max + Vec2::splat(margin),
+        )
+    }
+
     /// Returns the number of files in the scene.
     #[must_use]
     pub fn file_count(&self) -> usize {
@@ -681,5 +770,90 @@ mod tests {
 
         let not_found = scene.get_user_by_name("Unknown");
         assert!(not_found.is_none());
+    }
+
+    #[test]
+    fn test_scene_visible_file_ids() {
+        let mut scene = Scene::new();
+
+        // Create files at known positions
+        let file_id = scene.create_file(Path::new("visible.rs")).unwrap();
+        if let Some(file) = scene.get_file_mut(file_id) {
+            file.set_position(Vec2::new(100.0, 100.0));
+        }
+
+        scene.rebuild_spatial_index();
+
+        // Query bounds that include the file
+        let bounds = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(200.0, 200.0));
+        let visible = scene.visible_file_ids(&bounds);
+        assert!(visible.contains(&file_id));
+
+        // Query bounds that don't include the file
+        let far_bounds = Bounds::new(Vec2::new(1000.0, 1000.0), Vec2::new(2000.0, 2000.0));
+        let not_visible = scene.visible_file_ids(&far_bounds);
+        assert!(!not_visible.contains(&file_id));
+    }
+
+    #[test]
+    fn test_scene_visible_user_ids() {
+        let mut scene = Scene::new();
+
+        // Create user at a position
+        let user_id = scene.get_or_create_user("Alice");
+        if let Some(user) = scene.get_user_mut(user_id) {
+            user.set_position(Vec2::new(50.0, 50.0));
+        }
+
+        scene.rebuild_spatial_index();
+
+        // Query bounds that include the user
+        let bounds = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(100.0, 100.0));
+        let visible = scene.visible_user_ids(&bounds);
+        assert!(visible.contains(&user_id));
+    }
+
+    #[test]
+    fn test_scene_visible_directory_ids() {
+        let mut scene = Scene::new();
+
+        // Create a file which will create directory structure
+        scene.create_file(Path::new("src/lib.rs"));
+
+        scene.rebuild_spatial_index();
+
+        // Query with full scene bounds should find directories
+        let bounds = *scene.bounds();
+        let visible = scene.visible_directory_ids(&bounds);
+        assert!(!visible.is_empty());
+    }
+
+    #[test]
+    fn test_scene_visible_entities() {
+        let mut scene = Scene::new();
+
+        // Create various entities
+        scene.create_file(Path::new("test.rs"));
+        scene.get_or_create_user("Bob");
+
+        scene.rebuild_spatial_index();
+
+        // Query all visible entities
+        let bounds = *scene.bounds();
+        let (dirs, files, users) = scene.visible_entities(&bounds);
+
+        // Should find at least the root directory, one file, and one user
+        assert!(!dirs.is_empty());
+        assert!(!files.is_empty());
+        assert!(!users.is_empty());
+    }
+
+    #[test]
+    fn test_scene_expand_bounds_for_visibility() {
+        let bounds = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(100.0, 100.0));
+        let expanded = Scene::expand_bounds_for_visibility(&bounds, 10.0);
+
+        assert_eq!(expanded.min, Vec2::new(-10.0, -10.0));
+        assert_eq!(expanded.max, Vec2::new(110.0, 110.0));
     }
 }
