@@ -6,6 +6,7 @@
 //! - [`GitParser`] - Git log output format
 //! - [`SvnParser`] - SVN XML log output format (`svn log --xml`)
 //! - [`MercurialParser`] - Mercurial (hg) log output format
+//! - [`BazaarParser`] - Bazaar (bzr) log output format
 //!
 //! # Usage
 //!
@@ -18,11 +19,13 @@
 //! assert_eq!(commits.len(), 1);
 //! ```
 
+mod bazaar;
 mod custom;
 mod git;
 mod mercurial;
 mod svn;
 
+pub use bazaar::BazaarParser;
 pub use custom::CustomParser;
 pub use git::GitParser;
 pub use mercurial::MercurialParser;

@@ -5,7 +5,7 @@
 
 use crate::commit::Commit;
 use crate::error::{ParseError, ParseResult};
-use crate::parser::{CustomParser, GitParser, MercurialParser, Parser, SvnParser};
+use crate::parser::{BazaarParser, CustomParser, GitParser, MercurialParser, Parser, SvnParser};
 use std::io::Read;
 use std::path::Path;
 
@@ -20,6 +20,8 @@ pub enum LogFormat {
     Svn,
     /// Mercurial (hg) log output format.
     Mercurial,
+    /// Bazaar (bzr) log output format.
+    Bazaar,
 }
 
 impl LogFormat {
@@ -31,6 +33,7 @@ impl LogFormat {
             Self::Git => "git",
             Self::Svn => "svn",
             Self::Mercurial => "mercurial",
+            Self::Bazaar => "bazaar",
         }
     }
 
@@ -42,6 +45,7 @@ impl LogFormat {
             Self::Git => Box::new(GitParser::new()),
             Self::Svn => Box::new(SvnParser::new()),
             Self::Mercurial => Box::new(MercurialParser::new()),
+            Self::Bazaar => Box::new(BazaarParser::new()),
         }
     }
 }
@@ -84,6 +88,7 @@ pub fn detect_format(input: &str) -> Option<LogFormat> {
     let parsers: &[(LogFormat, Box<dyn Parser>)] = &[
         (LogFormat::Svn, Box::new(SvnParser::new())),
         (LogFormat::Git, Box::new(GitParser::new())),
+        (LogFormat::Bazaar, Box::new(BazaarParser::new())),
         (LogFormat::Mercurial, Box::new(MercurialParser::new())),
         (LogFormat::Custom, Box::new(CustomParser::new())),
     ];
@@ -301,6 +306,46 @@ A\tfile.txt
         let (format, commits) = parse_auto(input).unwrap();
         assert_eq!(format, LogFormat::Svn);
         assert_eq!(commits.len(), 1);
+    }
+
+    #[test]
+    fn test_detect_bazaar_format() {
+        let input = r#"------------------------------------------------------------
+revno: 1
+committer: test
+timestamp: Mon 2024-01-01 12:00:00 +0000
+message:
+  Initial commit
+added:
+  file.txt
+"#;
+        let format = detect_format(input).unwrap();
+        assert_eq!(format, LogFormat::Bazaar);
+    }
+
+    #[test]
+    fn test_parse_auto_bazaar() {
+        let input = r#"------------------------------------------------------------
+revno: 1
+committer: test
+timestamp: Mon 2024-01-01 12:00:00 +0000
+message:
+  Initial commit
+added:
+  file.txt
+"#;
+        let (format, commits) = parse_auto(input).unwrap();
+        assert_eq!(format, LogFormat::Bazaar);
+        assert_eq!(commits.len(), 1);
+    }
+
+    #[test]
+    fn test_log_format_bazaar() {
+        assert_eq!(LogFormat::Bazaar.name(), "bazaar");
+        assert_eq!(format!("{}", LogFormat::Bazaar), "bazaar");
+
+        let parser = LogFormat::Bazaar.parser();
+        assert_eq!(parser.name(), "bazaar");
     }
 
     #[test]

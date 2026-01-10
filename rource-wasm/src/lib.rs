@@ -761,8 +761,23 @@ impl Rource {
                 let radius = (user.radius() * camera_zoom).max(5.0);
                 let color = user.display_color();
 
+                // Draw border/outline (darker version of user color)
+                let border_color = Color::new(color.r * 0.4, color.g * 0.4, color.b * 0.4, color.a);
+                self.renderer
+                    .draw_disc(screen_pos, radius + 2.0, border_color);
+
                 // Draw user circle
                 self.renderer.draw_disc(screen_pos, radius, color);
+
+                // Draw a highlight ring if active
+                if user.is_active() {
+                    self.renderer.draw_circle(
+                        screen_pos,
+                        radius * 1.3,
+                        2.0,
+                        color.with_alpha(0.5 * user.alpha()),
+                    );
+                }
             }
         }
 

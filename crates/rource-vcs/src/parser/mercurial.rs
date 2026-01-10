@@ -73,9 +73,8 @@ impl MercurialParser {
                     if !current_files.is_empty() && self.options.timestamp_in_range(timestamp) {
                         let hash = current_changeset.take().unwrap_or_default();
                         let files = std::mem::take(&mut current_files);
-                        commits.push(
-                            Commit::new(hash, timestamp, author.clone()).with_files(files),
-                        );
+                        commits
+                            .push(Commit::new(hash, timestamp, author.clone()).with_files(files));
 
                         if self.options.limit_reached(commits.len()) {
                             break;
@@ -117,9 +116,8 @@ impl MercurialParser {
         if let (Some(author), Some(timestamp)) = (&current_author, current_date) {
             if !current_files.is_empty() && self.options.timestamp_in_range(timestamp) {
                 let hash = current_changeset.unwrap_or_default();
-                commits.push(
-                    Commit::new(hash, timestamp, author.clone()).with_files(current_files),
-                );
+                commits
+                    .push(Commit::new(hash, timestamp, author.clone()).with_files(current_files));
             }
         }
 
@@ -259,10 +257,7 @@ fn extract_author_name(author: &str) -> &str {
             let name = author[..pos].trim();
             if name.is_empty() {
                 // Extract email as name if no name before <
-                author
-                    .trim_start_matches('<')
-                    .trim_end_matches('>')
-                    .trim()
+                author.trim_start_matches('<').trim_end_matches('>').trim()
             } else {
                 name
             }
@@ -370,7 +365,18 @@ fn skip_day_name(s: &str) -> &str {
 fn is_month(s: &str) -> bool {
     matches!(
         s.to_lowercase().as_str(),
-        "jan" | "feb" | "mar" | "apr" | "may" | "jun" | "jul" | "aug" | "sep" | "oct" | "nov" | "dec"
+        "jan"
+            | "feb"
+            | "mar"
+            | "apr"
+            | "may"
+            | "jun"
+            | "jul"
+            | "aug"
+            | "sep"
+            | "oct"
+            | "nov"
+            | "dec"
     )
 }
 
