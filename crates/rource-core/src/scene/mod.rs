@@ -1,0 +1,685 @@
+//! Scene graph for the visualization.
+//!
+//! The scene contains all visual entities (directories, files, users, actions)
+//! and manages their relationships and updates.
+
+pub mod action;
+pub mod file;
+pub mod tree;
+pub mod user;
+
+use std::collections::HashMap;
+use std::path::Path;
+
+use rource_math::{Bounds, Vec2};
+
+pub use action::{Action, ActionType};
+pub use file::FileNode;
+pub use tree::{DirNode, DirTree};
+pub use user::User;
+
+use crate::entity::{ActionId, FileId, IdAllocator, UserId};
+use crate::physics::QuadTree;
+
+/// Default bounds for the scene.
+pub const DEFAULT_SCENE_SIZE: f32 = 10000.0;
+
+/// Entity type for spatial indexing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntityType {
+    /// A directory node.
+    Directory(crate::entity::DirId),
+    /// A file node.
+    File(FileId),
+    /// A user.
+    User(UserId),
+}
+
+/// The main scene graph containing all entities.
+///
+/// The scene is the central data structure that manages:
+/// - Directory tree structure
+/// - File entities
+/// - User entities
+/// - Action animations
+/// - Spatial indexing for efficient queries
+#[derive(Debug)]
+pub struct Scene {
+    /// The directory tree.
+    directories: DirTree,
+
+    /// All files by ID.
+    files: HashMap<FileId, FileNode>,
+
+    /// File ID lookup by path.
+    file_by_path: HashMap<std::path::PathBuf, FileId>,
+
+    /// All users by ID.
+    users: HashMap<UserId, User>,
+
+    /// User ID lookup by name.
+    user_by_name: HashMap<String, UserId>,
+
+    /// Active actions.
+    actions: Vec<Action>,
+
+    /// ID allocator for files.
+    file_id_allocator: IdAllocator,
+
+    /// ID allocator for users.
+    user_id_allocator: IdAllocator,
+
+    /// ID allocator for actions.
+    action_id_allocator: IdAllocator,
+
+    /// Spatial index for entities.
+    spatial: QuadTree<EntityType>,
+
+    /// Current simulation time.
+    time: f32,
+
+    /// Scene bounds.
+    bounds: Bounds,
+}
+
+impl Scene {
+    /// Creates a new empty scene.
+    #[must_use]
+    pub fn new() -> Self {
+        let half_size = DEFAULT_SCENE_SIZE / 2.0;
+        let bounds = Bounds::new(
+            Vec2::new(-half_size, -half_size),
+            Vec2::new(half_size, half_size),
+        );
+
+        Self {
+            directories: DirTree::new(),
+            files: HashMap::new(),
+            file_by_path: HashMap::new(),
+            users: HashMap::new(),
+            user_by_name: HashMap::new(),
+            actions: Vec::new(),
+            file_id_allocator: IdAllocator::new(),
+            user_id_allocator: IdAllocator::new(),
+            action_id_allocator: IdAllocator::new(),
+            spatial: QuadTree::new(bounds, 16, 8),
+            time: 0.0,
+            bounds,
+        }
+    }
+
+    /// Returns the directory tree.
+    #[inline]
+    #[must_use]
+    pub fn directories(&self) -> &DirTree {
+        &self.directories
+    }
+
+    /// Returns a mutable reference to the directory tree.
+    #[inline]
+    pub fn directories_mut(&mut self) -> &mut DirTree {
+        &mut self.directories
+    }
+
+    /// Returns all files.
+    #[inline]
+    #[must_use]
+    pub fn files(&self) -> &HashMap<FileId, FileNode> {
+        &self.files
+    }
+
+    /// Returns a file by ID.
+    #[must_use]
+    pub fn get_file(&self, id: FileId) -> Option<&FileNode> {
+        self.files.get(&id)
+    }
+
+    /// Returns a mutable file by ID.
+    pub fn get_file_mut(&mut self, id: FileId) -> Option<&mut FileNode> {
+        self.files.get_mut(&id)
+    }
+
+    /// Returns a file by path.
+    #[must_use]
+    pub fn get_file_by_path(&self, path: &Path) -> Option<&FileNode> {
+        self.file_by_path
+            .get(path)
+            .and_then(|id| self.files.get(id))
+    }
+
+    /// Returns all users.
+    #[inline]
+    #[must_use]
+    pub fn users(&self) -> &HashMap<UserId, User> {
+        &self.users
+    }
+
+    /// Returns a user by ID.
+    #[must_use]
+    pub fn get_user(&self, id: UserId) -> Option<&User> {
+        self.users.get(&id)
+    }
+
+    /// Returns a mutable user by ID.
+    pub fn get_user_mut(&mut self, id: UserId) -> Option<&mut User> {
+        self.users.get_mut(&id)
+    }
+
+    /// Returns a user by name.
+    #[must_use]
+    pub fn get_user_by_name(&self, name: &str) -> Option<&User> {
+        self.user_by_name
+            .get(name)
+            .and_then(|id| self.users.get(id))
+    }
+
+    /// Returns active actions.
+    #[inline]
+    #[must_use]
+    pub fn actions(&self) -> &[Action] {
+        &self.actions
+    }
+
+    /// Returns the current simulation time.
+    #[inline]
+    #[must_use]
+    pub const fn time(&self) -> f32 {
+        self.time
+    }
+
+    /// Returns the scene bounds.
+    #[inline]
+    #[must_use]
+    pub fn bounds(&self) -> &Bounds {
+        &self.bounds
+    }
+
+    /// Gets or creates a user with the given name.
+    ///
+    /// If a user with this name already exists, returns their ID.
+    /// Otherwise, creates a new user.
+    pub fn get_or_create_user(&mut self, name: &str) -> UserId {
+        if let Some(&id) = self.user_by_name.get(name) {
+            return id;
+        }
+
+        let raw_id = self.user_id_allocator.allocate();
+        let id = UserId::new(raw_id.index(), raw_id.generation());
+        let user = User::new(id, name);
+
+        self.users.insert(id, user);
+        self.user_by_name.insert(name.to_string(), id);
+
+        id
+    }
+
+    /// Creates a file at the given path.
+    ///
+    /// Also creates any necessary parent directories.
+    /// Returns the file ID, or None if a file already exists at this path.
+    pub fn create_file(&mut self, path: &Path) -> Option<FileId> {
+        // Check if file already exists
+        if self.file_by_path.contains_key(path) {
+            return None;
+        }
+
+        // Get or create parent directory
+        let parent_path = path.parent().unwrap_or_else(|| Path::new(""));
+        let dir_id = self.directories.get_or_create_path(parent_path);
+
+        // Create file
+        let raw_id = self.file_id_allocator.allocate();
+        let id = FileId::new(raw_id.index(), raw_id.generation());
+        let mut file = FileNode::new(id, path, dir_id);
+
+        // Position file near its parent directory
+        if let Some(dir) = self.directories.get(dir_id) {
+            let dir_pos = dir.position();
+            // Offset based on file name hash for deterministic placement
+            let name = file.name();
+            let hash = name.bytes().fold(0u32, |acc, b| {
+                acc.wrapping_mul(31).wrapping_add(u32::from(b))
+            });
+            let angle = (hash % 360) as f32 * std::f32::consts::PI / 180.0;
+            let offset = Vec2::new(angle.cos(), angle.sin()) * 30.0;
+
+            file.set_position(dir_pos + offset);
+            file.set_target(dir_pos + offset);
+        }
+
+        // Add to directory
+        if let Some(dir) = self.directories.get_mut(dir_id) {
+            dir.add_file(id);
+        }
+
+        self.file_by_path.insert(path.to_path_buf(), id);
+        self.files.insert(id, file);
+
+        Some(id)
+    }
+
+    /// Gets an existing file or creates a new one.
+    pub fn get_or_create_file(&mut self, path: &Path) -> FileId {
+        if let Some(&id) = self.file_by_path.get(path) {
+            return id;
+        }
+
+        self.create_file(path)
+            .expect("File creation should succeed for new path")
+    }
+
+    /// Spawns an action from a user to a file.
+    pub fn spawn_action(
+        &mut self,
+        user_id: UserId,
+        file_id: FileId,
+        action_type: ActionType,
+    ) -> ActionId {
+        let raw_id = self.action_id_allocator.allocate();
+        let id = ActionId::new(raw_id.index(), raw_id.generation());
+
+        let action = Action::new(id, user_id, file_id, action_type);
+        self.actions.push(action);
+
+        // Add action to user's active actions
+        if let Some(user) = self.users.get_mut(&user_id) {
+            user.add_action(id);
+        }
+
+        // Set user's target to file position
+        if let Some(file) = self.files.get(&file_id) {
+            if let Some(user) = self.users.get_mut(&user_id) {
+                user.set_target(file.position());
+            }
+        }
+
+        id
+    }
+
+    /// Applies a VCS commit to the scene.
+    ///
+    /// This creates/modifies/deletes files and spawns appropriate actions.
+    pub fn apply_commit(&mut self, author: &str, files: &[(std::path::PathBuf, ActionType)]) {
+        let user_id = self.get_or_create_user(author);
+
+        for (path, action_type) in files {
+            match action_type {
+                ActionType::Create => {
+                    let file_id = self.get_or_create_file(path);
+                    self.spawn_action(user_id, file_id, ActionType::Create);
+
+                    // Touch the file with create color
+                    if let Some(file) = self.files.get_mut(&file_id) {
+                        file.touch(ActionType::Create.color());
+                    }
+                }
+                ActionType::Modify => {
+                    if let Some(&file_id) = self.file_by_path.get(path) {
+                        self.spawn_action(user_id, file_id, ActionType::Modify);
+
+                        // Touch the file with modify color
+                        if let Some(file) = self.files.get_mut(&file_id) {
+                            file.touch(ActionType::Modify.color());
+                        }
+                    } else {
+                        // File doesn't exist yet, treat as create
+                        let file_id = self.get_or_create_file(path);
+                        self.spawn_action(user_id, file_id, ActionType::Create);
+
+                        if let Some(file) = self.files.get_mut(&file_id) {
+                            file.touch(ActionType::Create.color());
+                        }
+                    }
+                }
+                ActionType::Delete => {
+                    if let Some(&file_id) = self.file_by_path.get(path) {
+                        self.spawn_action(user_id, file_id, ActionType::Delete);
+
+                        // Mark file for removal
+                        if let Some(file) = self.files.get_mut(&file_id) {
+                            file.touch(ActionType::Delete.color());
+                            file.mark_for_removal();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Updates the scene by the given time delta.
+    ///
+    /// This updates:
+    /// - Actions (progress animation)
+    /// - Users (movement, fade)
+    /// - Files (fade, touch effects)
+    /// - Directory physics
+    /// - Spatial index
+    pub fn update(&mut self, dt: f32) {
+        self.time += dt;
+
+        // Update actions and remove completed ones
+        let mut completed_actions = Vec::new();
+        for action in &mut self.actions {
+            if !action.update(dt) {
+                completed_actions.push((action.id(), action.user()));
+            }
+        }
+
+        // Remove completed actions and update users
+        for (action_id, user_id) in completed_actions {
+            if let Some(user) = self.users.get_mut(&user_id) {
+                user.remove_action(action_id);
+            }
+        }
+        self.actions.retain(|a| !a.is_complete());
+
+        // Update users
+        for user in self.users.values_mut() {
+            user.update(dt);
+        }
+
+        // Update files and collect ones to remove
+        let mut files_to_remove = Vec::new();
+        for (id, file) in &mut self.files {
+            file.update(dt);
+            if file.should_remove() {
+                files_to_remove.push(*id);
+            }
+        }
+
+        // Remove deleted files
+        for id in files_to_remove {
+            if let Some(file) = self.files.remove(&id) {
+                self.file_by_path.remove(file.path());
+
+                // Remove from parent directory
+                let dir_id = file.directory();
+                if let Some(dir) = self.directories.get_mut(dir_id) {
+                    dir.remove_file(id);
+                }
+
+                // Free the ID
+                self.file_id_allocator
+                    .free(crate::entity::RawEntityId::new(id.index(), id.generation()));
+            }
+        }
+
+        // Update directory physics
+        self.directories.update_parent_positions();
+        for dir in self.directories.iter_mut() {
+            dir.update_physics(dt, 0.95);
+        }
+
+        // Rebuild spatial index periodically (every 10 updates or so)
+        // For now, we'll just clear and rebuild
+        self.rebuild_spatial_index();
+    }
+
+    /// Rebuilds the spatial index with current entity positions.
+    pub fn rebuild_spatial_index(&mut self) {
+        self.spatial.clear();
+
+        // Add directories
+        for dir in self.directories.iter() {
+            self.spatial
+                .insert(dir.position(), EntityType::Directory(dir.id()));
+        }
+
+        // Add files
+        for (id, file) in &self.files {
+            self.spatial.insert(file.position(), EntityType::File(*id));
+        }
+
+        // Add users
+        for (id, user) in &self.users {
+            self.spatial.insert(user.position(), EntityType::User(*id));
+        }
+    }
+
+    /// Queries entities within the given bounds.
+    #[must_use]
+    pub fn query_entities(&self, bounds: &Bounds) -> Vec<EntityType> {
+        self.spatial.query(bounds).into_iter().copied().collect()
+    }
+
+    /// Queries entities within a circular region.
+    #[must_use]
+    pub fn query_entities_circle(&self, center: Vec2, radius: f32) -> Vec<EntityType> {
+        self.spatial
+            .query_circle_with_pos(center, radius)
+            .into_iter()
+            .map(|(_, &entity)| entity)
+            .collect()
+    }
+
+    /// Finds the nearest entity to the given position.
+    #[must_use]
+    pub fn nearest_entity(&self, position: Vec2) -> Option<EntityType> {
+        self.spatial.nearest(position).map(|(_, &entity)| entity)
+    }
+
+    /// Returns the number of files in the scene.
+    #[must_use]
+    pub fn file_count(&self) -> usize {
+        self.files.len()
+    }
+
+    /// Returns the number of users in the scene.
+    #[must_use]
+    pub fn user_count(&self) -> usize {
+        self.users.len()
+    }
+
+    /// Returns the number of directories in the scene.
+    #[must_use]
+    pub fn directory_count(&self) -> usize {
+        self.directories.len()
+    }
+
+    /// Returns the number of active actions.
+    #[must_use]
+    pub fn action_count(&self) -> usize {
+        self.actions.len()
+    }
+}
+
+impl Default for Scene {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scene_new() {
+        let scene = Scene::new();
+
+        assert_eq!(scene.file_count(), 0);
+        assert_eq!(scene.user_count(), 0);
+        assert_eq!(scene.directory_count(), 1); // Root
+        assert_eq!(scene.action_count(), 0);
+        assert_eq!(scene.time(), 0.0);
+    }
+
+    #[test]
+    fn test_scene_get_or_create_user() {
+        let mut scene = Scene::new();
+
+        let id1 = scene.get_or_create_user("Alice");
+        let id2 = scene.get_or_create_user("Bob");
+        let id3 = scene.get_or_create_user("Alice"); // Existing
+
+        assert_eq!(id1, id3);
+        assert_ne!(id1, id2);
+        assert_eq!(scene.user_count(), 2);
+    }
+
+    #[test]
+    fn test_scene_create_file() {
+        let mut scene = Scene::new();
+
+        let id1 = scene.create_file(Path::new("src/main.rs"));
+        let id2 = scene.create_file(Path::new("src/lib.rs"));
+        let id3 = scene.create_file(Path::new("src/main.rs")); // Duplicate
+
+        assert!(id1.is_some());
+        assert!(id2.is_some());
+        assert!(id3.is_none()); // Already exists
+
+        assert_eq!(scene.file_count(), 2);
+        assert!(scene.directory_count() >= 2); // Root + src
+    }
+
+    #[test]
+    fn test_scene_get_file_by_path() {
+        let mut scene = Scene::new();
+
+        scene.create_file(Path::new("src/main.rs"));
+
+        let file = scene.get_file_by_path(Path::new("src/main.rs"));
+        assert!(file.is_some());
+        assert_eq!(file.unwrap().name(), "main.rs");
+
+        let not_found = scene.get_file_by_path(Path::new("nonexistent.rs"));
+        assert!(not_found.is_none());
+    }
+
+    #[test]
+    fn test_scene_spawn_action() {
+        let mut scene = Scene::new();
+
+        let user_id = scene.get_or_create_user("Alice");
+        let file_id = scene.create_file(Path::new("test.rs")).unwrap();
+
+        let action_id = scene.spawn_action(user_id, file_id, ActionType::Modify);
+
+        assert_eq!(scene.action_count(), 1);
+
+        let user = scene.get_user(user_id).unwrap();
+        assert!(user.active_actions().contains(&action_id));
+    }
+
+    #[test]
+    fn test_scene_apply_commit() {
+        let mut scene = Scene::new();
+
+        let files = vec![
+            (std::path::PathBuf::from("src/new.rs"), ActionType::Create),
+            (std::path::PathBuf::from("src/mod.rs"), ActionType::Create),
+        ];
+
+        scene.apply_commit("Alice", &files);
+
+        assert_eq!(scene.file_count(), 2);
+        assert_eq!(scene.user_count(), 1);
+        assert_eq!(scene.action_count(), 2);
+    }
+
+    #[test]
+    fn test_scene_apply_commit_modify() {
+        let mut scene = Scene::new();
+
+        // First create a file
+        scene.create_file(Path::new("src/lib.rs"));
+
+        let files = vec![(std::path::PathBuf::from("src/lib.rs"), ActionType::Modify)];
+
+        scene.apply_commit("Bob", &files);
+
+        assert_eq!(scene.file_count(), 1);
+        assert_eq!(scene.action_count(), 1);
+
+        // Check the action type
+        assert_eq!(scene.actions()[0].action_type(), ActionType::Modify);
+    }
+
+    #[test]
+    fn test_scene_apply_commit_delete() {
+        let mut scene = Scene::new();
+
+        // First create a file
+        scene.create_file(Path::new("old.rs"));
+
+        let files = vec![(std::path::PathBuf::from("old.rs"), ActionType::Delete)];
+
+        scene.apply_commit("Charlie", &files);
+
+        // File still exists but is marked for removal
+        let file = scene.get_file_by_path(Path::new("old.rs")).unwrap();
+        assert!(file.is_removing());
+    }
+
+    #[test]
+    fn test_scene_update() {
+        let mut scene = Scene::new();
+
+        // Create a file and action
+        let file_id = scene.create_file(Path::new("test.rs")).unwrap();
+        let user_id = scene.get_or_create_user("Test");
+        scene.spawn_action(user_id, file_id, ActionType::Create);
+
+        assert_eq!(scene.action_count(), 1);
+
+        // Update until action completes
+        for _ in 0..10 {
+            scene.update(0.5);
+        }
+
+        // Action should be complete and removed
+        assert_eq!(scene.action_count(), 0);
+
+        // User should no longer have active actions
+        let user = scene.get_user(user_id).unwrap();
+        assert!(user.active_actions().is_empty());
+    }
+
+    #[test]
+    fn test_scene_update_removes_deleted_files() {
+        let mut scene = Scene::new();
+
+        // Create and immediately delete a file
+        let file_id = scene.create_file(Path::new("temp.rs")).unwrap();
+        scene.get_file_mut(file_id).unwrap().mark_for_removal();
+
+        assert_eq!(scene.file_count(), 1);
+
+        // Update until file fades out
+        for _ in 0..20 {
+            scene.update(0.5);
+        }
+
+        // File should be removed
+        assert_eq!(scene.file_count(), 0);
+        assert!(scene.get_file_by_path(Path::new("temp.rs")).is_none());
+    }
+
+    #[test]
+    fn test_scene_query_entities() {
+        let mut scene = Scene::new();
+
+        scene.create_file(Path::new("a.rs"));
+        scene.create_file(Path::new("b.rs"));
+
+        scene.rebuild_spatial_index();
+
+        let entities = scene.query_entities(&scene.bounds().clone());
+        assert!(!entities.is_empty());
+    }
+
+    #[test]
+    fn test_scene_get_user_by_name() {
+        let mut scene = Scene::new();
+
+        scene.get_or_create_user("Alice");
+
+        let user = scene.get_user_by_name("Alice");
+        assert!(user.is_some());
+        assert_eq!(user.unwrap().name(), "Alice");
+
+        let not_found = scene.get_user_by_name("Unknown");
+        assert!(not_found.is_none());
+    }
+}

@@ -120,6 +120,14 @@ impl Color {
         a: 1.0,
     };
 
+    /// Opaque gray (50% brightness).
+    pub const GRAY: Self = Self {
+        r: 0.5,
+        g: 0.5,
+        b: 0.5,
+        a: 1.0,
+    };
+
     /// Creates a new color with the given RGBA components.
     ///
     /// Components should be in the range [0.0, 1.0].
@@ -201,6 +209,20 @@ impl Color {
     #[must_use]
     pub fn from_rgb8(r: u8, g: u8, b: u8) -> Self {
         Self::from_rgba8(r, g, b, 255)
+    }
+
+    /// Creates a color from 8-bit RGB values in a const context.
+    ///
+    /// This is useful for defining color constants.
+    #[inline]
+    #[must_use]
+    pub const fn from_rgb8_const(r: u8, g: u8, b: u8) -> Self {
+        Self {
+            r: r as f32 / 255.0,
+            g: g as f32 / 255.0,
+            b: b as f32 / 255.0,
+            a: 1.0,
+        }
     }
 
     /// Converts to a packed 32-bit RGBA value (0xRRGGBBAA).
@@ -336,7 +358,7 @@ impl Color {
 
     /// Blends this color over another using standard alpha blending.
     ///
-    /// Uses the formula: result = src * src_alpha + dst * (1 - src_alpha)
+    /// Uses the formula: result = src * `src_alpha` + dst * (1 - `src_alpha`)
     #[inline]
     #[must_use]
     pub fn blend_over(self, background: Self) -> Self {
@@ -663,6 +685,11 @@ impl fmt::Display for Hsl {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unreadable_literal,
+    clippy::cast_possible_wrap,
+    clippy::uninlined_format_args
+)]
 mod tests {
     use super::*;
 

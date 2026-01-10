@@ -56,7 +56,7 @@ impl CustomParser {
 
     /// Parses a single line into its components.
     ///
-    /// Returns (timestamp, username, action, filepath, optional_color)
+    /// Returns (timestamp, username, action, filepath, `optional_color`)
     fn parse_line(
         line: &str,
         line_number: usize,
@@ -72,12 +72,14 @@ impl CustomParser {
         }
 
         // Parse timestamp
-        let timestamp = parts[0].trim().parse::<i64>().map_err(|_| {
-            ParseError::InvalidTimestamp {
-                line_number,
-                value: parts[0].to_string(),
-            }
-        })?;
+        let timestamp =
+            parts[0]
+                .trim()
+                .parse::<i64>()
+                .map_err(|_| ParseError::InvalidTimestamp {
+                    line_number,
+                    value: parts[0].to_string(),
+                })?;
 
         // Parse username
         let username = parts[1].trim();
@@ -90,12 +92,13 @@ impl CustomParser {
 
         // Parse action
         let action_str = parts[2].trim();
-        let action = FileAction::from_char(action_str.chars().next().unwrap_or('?')).ok_or(
-            ParseError::InvalidAction {
-                line_number,
-                value: action_str.to_string(),
-            },
-        )?;
+        let action =
+            FileAction::from_char(action_str.chars().next().unwrap_or('?')).ok_or_else(|| {
+                ParseError::InvalidAction {
+                    line_number,
+                    value: action_str.to_string(),
+                }
+            })?;
 
         // Parse filepath
         let filepath = parts[3].trim();
@@ -238,7 +241,9 @@ impl Parser for CustomParser {
                 if parts[0].trim().parse::<i64>().is_ok() {
                     // Check action is valid
                     let action = parts[2].trim();
-                    if action.len() == 1 && FileAction::from_char(action.chars().next().unwrap()).is_some() {
+                    if action.len() == 1
+                        && FileAction::from_char(action.chars().next().unwrap()).is_some()
+                    {
                         return true;
                     }
                 }
@@ -262,6 +267,7 @@ fn hash_str(s: &str) -> u32 {
 }
 
 #[cfg(test)]
+#[allow(clippy::unreadable_literal, clippy::items_after_statements)]
 mod tests {
     use super::*;
 
@@ -288,23 +294,19 @@ mod tests {
     #[test]
     fn test_parse_line_all_actions() {
         // Add/Create
-        let (_, _, action, _, _) =
-            CustomParser::parse_line("0|u|A|f", 1).unwrap();
+        let (_, _, action, _, _) = CustomParser::parse_line("0|u|A|f", 1).unwrap();
         assert_eq!(action, FileAction::Create);
 
         // Modify
-        let (_, _, action, _, _) =
-            CustomParser::parse_line("0|u|M|f", 1).unwrap();
+        let (_, _, action, _, _) = CustomParser::parse_line("0|u|M|f", 1).unwrap();
         assert_eq!(action, FileAction::Modify);
 
         // Delete
-        let (_, _, action, _, _) =
-            CustomParser::parse_line("0|u|D|f", 1).unwrap();
+        let (_, _, action, _, _) = CustomParser::parse_line("0|u|D|f", 1).unwrap();
         assert_eq!(action, FileAction::Delete);
 
         // Lowercase
-        let (_, _, action, _, _) =
-            CustomParser::parse_line("0|u|a|f", 1).unwrap();
+        let (_, _, action, _, _) = CustomParser::parse_line("0|u|a|f", 1).unwrap();
         assert_eq!(action, FileAction::Create);
     }
 
@@ -338,13 +340,25 @@ mod tests {
     #[test]
     fn test_parse_line_empty_username() {
         let result = CustomParser::parse_line("1234567890||A|file.txt", 1);
-        assert!(matches!(result, Err(ParseError::MissingField { field: "username", .. })));
+        assert!(matches!(
+            result,
+            Err(ParseError::MissingField {
+                field: "username",
+                ..
+            })
+        ));
     }
 
     #[test]
     fn test_parse_line_empty_filepath() {
         let result = CustomParser::parse_line("1234567890|John|A|", 1);
-        assert!(matches!(result, Err(ParseError::MissingField { field: "filepath", .. })));
+        assert!(matches!(
+            result,
+            Err(ParseError::MissingField {
+                field: "filepath",
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -539,10 +553,10 @@ mod tests {
         assert!(CustomParser::is_valid_hex_color("00ff00"));
         assert!(CustomParser::is_valid_hex_color("123abc"));
 
-        assert!(!CustomParser::is_valid_hex_color("FF00"));     // Too short
-        assert!(!CustomParser::is_valid_hex_color("FF00000"));  // Too long
-        assert!(!CustomParser::is_valid_hex_color("GGGGGG"));   // Invalid hex
-        assert!(!CustomParser::is_valid_hex_color(""));         // Empty
+        assert!(!CustomParser::is_valid_hex_color("FF00")); // Too short
+        assert!(!CustomParser::is_valid_hex_color("FF00000")); // Too long
+        assert!(!CustomParser::is_valid_hex_color("GGGGGG")); // Invalid hex
+        assert!(!CustomParser::is_valid_hex_color("")); // Empty
     }
 
     #[test]

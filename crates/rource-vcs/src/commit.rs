@@ -54,11 +54,12 @@ impl FileAction {
     #[must_use]
     pub const fn from_char(c: char) -> Option<Self> {
         match c {
-            'A' | 'a' => Some(Self::Create),
-            'M' | 'm' => Some(Self::Modify),
+            // Create: Add or Copy (copy creates new destination)
+            'A' | 'a' | 'C' | 'c' => Some(Self::Create),
+            // Modify: Modify or Rename (rename keeps file with new path)
+            'M' | 'm' | 'R' | 'r' => Some(Self::Modify),
+            // Delete
             'D' | 'd' => Some(Self::Delete),
-            'C' | 'c' => Some(Self::Create), // Copy is treated as create
-            'R' | 'r' => Some(Self::Modify), // Rename is treated as modify
             _ => None,
         }
     }
@@ -140,7 +141,7 @@ impl fmt::Display for FileChange {
 ///
 /// This is the VCS-agnostic representation of a commit that
 /// can be produced by any parser.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Commit {
     /// The commit hash or revision identifier.
     ///
@@ -235,10 +236,10 @@ impl Commit {
     /// Returns the author's display name (name with optional email).
     #[must_use]
     pub fn author_display(&self) -> String {
-        match &self.email {
-            Some(email) => format!("{} <{}>", self.author, email),
-            None => self.author.clone(),
-        }
+        self.email.as_ref().map_or_else(
+            || self.author.clone(),
+            |email| format!("{} <{}>", self.author, email),
+        )
     }
 }
 
@@ -255,6 +256,7 @@ impl fmt::Display for Commit {
 }
 
 #[cfg(test)]
+#[allow(clippy::unreadable_literal)]
 mod tests {
     use super::*;
 

@@ -261,8 +261,8 @@ A\tfile.txt
 
     #[test]
     fn test_detect_vcs_from_directory() {
-        use std::fs;
         use std::env::temp_dir;
+        use std::fs;
 
         let temp = temp_dir().join("rource_test_vcs_detect");
         let _ = fs::remove_dir_all(&temp);
