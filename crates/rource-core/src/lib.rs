@@ -5,9 +5,9 @@
 //! This crate contains:
 //! - Entity management (users, files, directories)
 //! - Scene graph
-//! - Physics simulation
-//! - Animation system
-//! - Camera system
+//! - Physics simulation (force-directed layout)
+//! - Animation system (tweening, splines)
+//! - Camera system (pan, zoom, tracking)
 //!
 //! ## Architecture
 //!
@@ -37,10 +37,14 @@
 
 // Lints are configured in workspace Cargo.toml
 
+pub mod animation;
+pub mod camera;
 pub mod entity;
 pub mod physics;
 pub mod scene;
 
+pub use animation::{ease, interpolate, lerp, CatmullRomSpline, Easing, Tween};
+pub use camera::{Camera, CameraMode, CameraTracker};
 pub use entity::{ActionId, DirId, EntityId, FileId, Generation, IdAllocator, RawEntityId, UserId};
-pub use physics::QuadTree;
+pub use physics::{ForceConfig, ForceSimulation, QuadTree, SimulationStats};
 pub use scene::Scene;
