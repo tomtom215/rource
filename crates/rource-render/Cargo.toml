@@ -1,0 +1,20 @@
+[package]
+name = "rource-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Rendering abstraction and software rasterizer for Rource"
+
+[lints]
+workspace = true
+
+[dependencies]
+rource-math = { path = "../rource-math" }
+
+# Font rendering (pure Rust, no system dependencies)
+fontdue = "0.9"
+
+[dev-dependencies]

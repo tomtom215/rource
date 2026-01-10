@@ -448,13 +448,12 @@ mod tests {
     use crate::entity::{DirId, Generation};
 
     fn create_test_node(index: u32, name: &str, parent: Option<DirId>) -> DirNode {
+        use std::path::Path;
         let id = DirId::new(index, Generation::first());
-        if parent.is_none() {
-            DirNode::new_root(id)
-        } else {
-            use std::path::Path;
-            DirNode::new(id, name, parent.unwrap(), Path::new(""))
-        }
+        parent.map_or_else(
+            || DirNode::new_root(id),
+            |parent_id| DirNode::new(id, name, parent_id, Path::new("")),
+        )
     }
 
     #[test]
@@ -616,7 +615,7 @@ mod tests {
 
         let root_id = DirId::new(0, Generation::first());
 
-        let mut root = create_test_node(0, "", None);
+        let root = create_test_node(0, "", None);
         let mut child1 = create_test_node(1, "a", Some(root_id));
         let mut child2 = create_test_node(2, "b", Some(root_id));
 
@@ -726,8 +725,7 @@ mod tests {
         // Force magnitude depends on distance - closer nodes have stronger repulsion
         assert!(
             force.length() > 0.0,
-            "Expected non-zero force, got {:?}",
-            force
+            "Expected non-zero force, got {force:?}"
         );
     }
 }
