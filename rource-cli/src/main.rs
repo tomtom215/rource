@@ -8,6 +8,7 @@
 #![allow(clippy::multiple_crate_versions)]
 
 mod args;
+mod export;
 
 use std::num::NonZeroU32;
 use std::rc::Rc;
@@ -88,6 +89,9 @@ struct App {
 
     /// Last mouse position when drag started or during drag.
     last_mouse_position: Vec2,
+
+    /// Frame exporter for video output.
+    frame_exporter: Option<export::FrameExporter>,
 }
 
 /// Playback state for the visualization.
@@ -136,6 +140,17 @@ impl App {
             None
         };
 
+        // Initialize frame exporter if output is specified
+        let frame_exporter = args.output.as_ref().map(|output| {
+            if output.as_os_str() == "-" {
+                // Output to stdout for piping to ffmpeg
+                export::FrameExporter::to_stdout(args.framerate)
+            } else {
+                // Output to directory with numbered files
+                export::FrameExporter::to_directory(output, args.framerate)
+            }
+        });
+
         Self {
             args,
             window: None,
@@ -160,6 +175,7 @@ impl App {
             mouse_position: Vec2::ZERO,
             mouse_dragging: false,
             last_mouse_position: Vec2::ZERO,
+            frame_exporter,
         }
     }
 
@@ -946,6 +962,29 @@ impl ApplicationHandler for App {
                 // Update and render
                 self.update(dt);
                 self.render();
+
+                // Export frame if in export mode
+                if let Some(ref mut exporter) = self.frame_exporter {
+                    if let Some(renderer) = &self.renderer {
+                        let pixels = renderer.pixels();
+                        let width = renderer.width();
+                        let height = renderer.height();
+
+                        if let Err(e) = exporter.export_frame(pixels, width, height, dt) {
+                            eprintln!("Frame export error: {e}");
+                            event_loop.exit();
+                            return;
+                        }
+                    }
+
+                    // Check if visualization is complete (all commits processed)
+                    if self.current_commit >= self.commits.len() && !self.commits.is_empty() {
+                        eprintln!("Export complete: {} frames written", exporter.frame_count());
+                        event_loop.exit();
+                        return;
+                    }
+                }
+
                 self.present();
 
                 // Request next frame
@@ -1007,12 +1046,447 @@ fn format_timestamp(timestamp: i64) -> String {
     format!("{years:04}-{month:02}-{day:02}")
 }
 
+/// Run in headless mode (no window, batch video export).
+///
+/// This creates a renderer without a window and runs at maximum speed,
+/// exporting frames directly without display overhead.
+#[allow(clippy::too_many_lines)]
+fn run_headless(args: &Args) -> Result<()> {
+    use rource_vcs::{CustomParser, GitParser, Parser};
+    use std::process::Command;
+
+    // Validate that output is specified
+    let output = args
+        .output
+        .as_ref()
+        .context("--headless requires --output to be specified")?;
+
+    eprintln!("Running in headless mode");
+    eprintln!("Output: {}", output.display());
+
+    // Load commits
+    let commits: Vec<Commit> = if args.custom_log {
+        let content =
+            std::fs::read_to_string(&args.path).context("Failed to read custom log file")?;
+        let parser = CustomParser::new();
+        parser
+            .parse_str(&content)
+            .context("Failed to parse custom log")?
+    } else {
+        let git_output = Command::new("git")
+            .arg("-C")
+            .arg(&args.path)
+            .arg("log")
+            .arg("--pretty=format:commit %H%nAuthor: %an <%ae>%nDate: %at")
+            .arg("--name-status")
+            .arg("--reverse")
+            .output()
+            .context("Failed to run git log")?;
+
+        if !git_output.status.success() {
+            let stderr = String::from_utf8_lossy(&git_output.stderr);
+            anyhow::bail!("git log failed: {stderr}");
+        }
+
+        let log_content = String::from_utf8_lossy(&git_output.stdout);
+        let parser = GitParser::new();
+        parser
+            .parse_str(&log_content)
+            .context("Failed to parse git log")?
+    };
+
+    if commits.is_empty() {
+        anyhow::bail!("No commits found in repository");
+    }
+
+    let mut commits = commits;
+    commits.sort_by_key(|c| c.timestamp);
+    eprintln!("Loaded {} commits", commits.len());
+
+    // Create renderer
+    let mut renderer = SoftwareRenderer::new(args.width, args.height);
+    let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
+
+    // Initialize scene and camera
+    let mut scene = Scene::new();
+    let mut camera = Camera::new(args.width as f32, args.height as f32);
+
+    // Initialize effects
+    let bloom = if args.no_bloom {
+        None
+    } else {
+        Some(BloomEffect::new())
+    };
+    let shadow = if args.shadows {
+        Some(ShadowEffect::subtle())
+    } else {
+        None
+    };
+
+    // Initialize frame exporter
+    let mut exporter = if output.as_os_str() == "-" {
+        export::FrameExporter::to_stdout(args.framerate)
+    } else {
+        export::FrameExporter::to_directory(output, args.framerate)
+    };
+
+    // Playback state
+    let seconds_per_day = args.seconds_per_day;
+    let speed = 1.0_f32;
+    let mut accumulated_time = 0.0_f64;
+    let mut current_commit = 0_usize;
+    let mut last_applied_commit = 0_usize;
+
+    // Fixed time step for consistent output
+    let dt = 1.0 / f64::from(args.framerate);
+
+    // Calculate total duration estimate
+    if let (Some(first), Some(last)) = (commits.first(), commits.last()) {
+        let days = (last.timestamp - first.timestamp) as f64 / 86400.0;
+        let estimated_seconds = days * f64::from(seconds_per_day);
+        let estimated_frames = (estimated_seconds * f64::from(args.framerate)) as u64;
+        eprintln!("Estimated duration: {estimated_seconds:.1} seconds ({estimated_frames} frames)");
+    }
+
+    eprintln!("Rendering frames...");
+
+    // Main rendering loop
+    loop {
+        // Update simulation
+        accumulated_time += dt * f64::from(speed);
+        let days_per_second = 1.0 / f64::from(seconds_per_day);
+        let days_elapsed = accumulated_time * days_per_second;
+
+        // Find commits at current time
+        if let Some(first) = commits.first() {
+            let first_time = first.timestamp;
+            let target_time = first_time + (days_elapsed * 86400.0) as i64;
+
+            while current_commit + 1 < commits.len() {
+                if commits[current_commit + 1].timestamp <= target_time {
+                    current_commit += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // Apply pending commits
+        while last_applied_commit < current_commit {
+            let commit = &commits[last_applied_commit];
+            let files: Vec<(std::path::PathBuf, rource_core::scene::ActionType)> = commit
+                .files
+                .iter()
+                .map(|f| (f.path.clone(), App::file_action_to_action_type(f.action)))
+                .collect();
+            scene.apply_commit(&commit.author, &files);
+            last_applied_commit += 1;
+        }
+
+        // Update scene and camera
+        scene.update(dt as f32);
+        camera.update(dt as f32);
+
+        // Auto-fit camera to scene content
+        if scene.file_count() > 0 {
+            let bounds = scene.bounds();
+            camera.fit_to_bounds(bounds, 100.0);
+        }
+
+        // Render frame
+        render_frame_headless(
+            &mut renderer,
+            &scene,
+            &camera,
+            args,
+            font_id,
+            &commits,
+            current_commit,
+        );
+
+        // Apply effects
+        if let Some(ref shadow_effect) = shadow {
+            let w = renderer.width() as usize;
+            let h = renderer.height() as usize;
+            shadow_effect.apply(renderer.pixels_mut(), w, h);
+        }
+        if let Some(ref bloom_effect) = bloom {
+            let w = renderer.width() as usize;
+            let h = renderer.height() as usize;
+            bloom_effect.apply(renderer.pixels_mut(), w, h);
+        }
+
+        // Export frame
+        let pixels = renderer.pixels();
+        let width = renderer.width();
+        let height = renderer.height();
+        exporter
+            .export_frame(pixels, width, height, dt)
+            .context("Failed to export frame")?;
+
+        // Progress reporting
+        if exporter.frame_count() % 100 == 0 {
+            let progress = current_commit as f32 / commits.len().max(1) as f32;
+            eprint!(
+                "\rFrame {}: {:.1}% ({}/{})",
+                exporter.frame_count(),
+                progress * 100.0,
+                current_commit,
+                commits.len()
+            );
+        }
+
+        // Check for completion
+        if current_commit >= commits.len() {
+            break;
+        }
+    }
+
+    eprintln!("\nExport complete: {} frames written", exporter.frame_count());
+    Ok(())
+}
+
+/// Render a single frame in headless mode.
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+fn render_frame_headless(
+    renderer: &mut SoftwareRenderer,
+    scene: &Scene,
+    camera: &Camera,
+    args: &Args,
+    font_id: Option<FontId>,
+    commits: &[Commit],
+    current_commit: usize,
+) {
+    renderer.begin_frame();
+
+    // Clear to background color
+    let bg_color = args.parse_background_color();
+    renderer.clear(bg_color);
+
+    // Get visible bounds for frustum culling
+    let visible_bounds = camera.visible_bounds();
+    let culling_bounds = Scene::expand_bounds_for_visibility(&visible_bounds, 100.0);
+    let (visible_dir_ids, visible_file_ids, visible_user_ids) =
+        scene.visible_entities(&culling_bounds);
+
+    let camera_zoom = camera.zoom();
+
+    // Render directories
+    for &dir_id in &visible_dir_ids {
+        let Some(dir) = scene.directories().get(dir_id) else {
+            continue;
+        };
+        if !dir.is_visible() {
+            continue;
+        }
+        let screen_pos = camera.world_to_screen(dir.position());
+        let radius = dir.radius() * camera_zoom;
+        let depth_color = 0.15 + 0.05 * (dir.depth() as f32).min(5.0);
+        let dir_color = Color::new(depth_color, depth_color, depth_color + 0.1, 0.5);
+        renderer.draw_circle(screen_pos, radius, 1.0, dir_color);
+        if let Some(parent_pos) = dir.parent_position() {
+            let parent_screen = camera.world_to_screen(parent_pos);
+            renderer.draw_line(parent_screen, screen_pos, 1.0, dir_color.with_alpha(0.3));
+        }
+    }
+
+    // Render files
+    let show_filenames = !args.hide_filenames;
+    let file_font_size = args.font_size * 0.8;
+
+    for &file_id in &visible_file_ids {
+        let Some(file) = scene.get_file(file_id) else {
+            continue;
+        };
+        if file.alpha() < 0.01 {
+            continue;
+        }
+        let screen_pos = camera.world_to_screen(file.position());
+        let radius = file.radius() * camera_zoom;
+        let color = file.current_color().with_alpha(file.alpha());
+        renderer.draw_disc(screen_pos, radius.max(2.0), color);
+        if let Some(dir) = scene.directories().get(file.directory()) {
+            let dir_screen = camera.world_to_screen(dir.position());
+            renderer.draw_line(
+                dir_screen,
+                screen_pos,
+                0.5,
+                color.with_alpha(0.2 * file.alpha()),
+            );
+        }
+        if show_filenames && file.alpha() > 0.5 && camera_zoom > 0.3 {
+            if let Some(fid) = font_id {
+                let name = file.name();
+                let label_pos = Vec2::new(
+                    screen_pos.x + radius + 3.0,
+                    screen_pos.y - file_font_size * 0.3,
+                );
+                let label_color = Color::new(0.9, 0.9, 0.9, 0.7 * file.alpha());
+                renderer.draw_text(name, label_pos, fid, file_font_size, label_color);
+            }
+        }
+    }
+
+    // Render actions (beams)
+    for action in scene.actions() {
+        let user_opt = scene.get_user(action.user());
+        let file_opt = scene.get_file(action.file());
+        if let (Some(user), Some(file)) = (user_opt, file_opt) {
+            let user_screen = camera.world_to_screen(user.position());
+            let file_screen = camera.world_to_screen(file.position());
+            let beam_end = user_screen.lerp(file_screen, action.progress());
+            let beam_color = action.beam_color();
+            renderer.draw_line(user_screen, beam_end, 2.0, beam_color);
+            let head_radius = 3.0 * camera_zoom;
+            renderer.draw_disc(beam_end, head_radius.max(2.0), beam_color);
+        }
+    }
+
+    // Render users
+    let show_usernames = !args.hide_usernames;
+    let name_font_size = args.font_size;
+
+    for &user_id in &visible_user_ids {
+        let Some(user) = scene.get_user(user_id) else {
+            continue;
+        };
+        if user.alpha() < 0.01 {
+            continue;
+        }
+        let screen_pos = camera.world_to_screen(user.position());
+        let radius = user.radius() * camera_zoom;
+        let color = user.display_color();
+        renderer.draw_disc(screen_pos, radius.max(5.0), color);
+        if user.is_active() {
+            renderer.draw_circle(
+                screen_pos,
+                radius * 1.3,
+                2.0,
+                color.with_alpha(0.5 * user.alpha()),
+            );
+        }
+        if show_usernames {
+            if let Some(fid) = font_id {
+                let name = user.name();
+                let label_pos = Vec2::new(
+                    screen_pos.x + radius + 5.0,
+                    screen_pos.y - name_font_size * 0.3,
+                );
+                let label_color = Color::new(1.0, 1.0, 1.0, 0.8 * user.alpha());
+                renderer.draw_text(name, label_pos, fid, name_font_size, label_color);
+            }
+        }
+    }
+
+    // Render UI overlays
+    let width = renderer.width() as f32;
+    let height = renderer.height() as f32;
+
+    // Progress bar
+    if !commits.is_empty() {
+        let bar_height = 4.0;
+        let progress = current_commit as f32 / commits.len().max(1) as f32;
+        renderer.draw_quad(
+            rource_math::Bounds::new(
+                Vec2::new(0.0, height - bar_height),
+                Vec2::new(width, height),
+            ),
+            None,
+            Color::new(0.2, 0.2, 0.2, 0.5),
+        );
+        renderer.draw_quad(
+            rource_math::Bounds::new(
+                Vec2::new(0.0, height - bar_height),
+                Vec2::new(width * progress, height),
+            ),
+            None,
+            Color::new(0.3, 0.6, 1.0, 0.8),
+        );
+    }
+
+    // Text overlays
+    if let Some(fid) = font_id {
+        let font_size = args.font_size;
+        let text_color = Color::new(1.0, 1.0, 1.0, 0.9);
+
+        // Title
+        if let Some(ref title) = args.title {
+            let title_size = font_size * 1.5;
+            let title_x = (width / 2.0) - (title.len() as f32 * title_size * 0.3);
+            renderer.draw_text(
+                title,
+                Vec2::new(title_x.max(10.0), 20.0),
+                fid,
+                title_size,
+                text_color,
+            );
+        }
+
+        // Date display
+        if !args.hide_date && !commits.is_empty() {
+            if let Some(commit) = commits.get(current_commit.saturating_sub(1).max(0)) {
+                let date_str = format_timestamp(commit.timestamp);
+                renderer.draw_text(
+                    &date_str,
+                    Vec2::new(10.0, height - 30.0),
+                    fid,
+                    font_size,
+                    text_color.with_alpha(0.7),
+                );
+            }
+        }
+
+        // Current commit info
+        if current_commit > 0 {
+            if let Some(commit) = commits.get(current_commit - 1) {
+                renderer.draw_text(
+                    &commit.author,
+                    Vec2::new(10.0, height - 50.0),
+                    fid,
+                    font_size,
+                    text_color.with_alpha(0.8),
+                );
+                let files_text = format!("{} files", commit.files.len());
+                renderer.draw_text(
+                    &files_text,
+                    Vec2::new(10.0, height - 70.0),
+                    fid,
+                    font_size * 0.9,
+                    text_color.with_alpha(0.6),
+                );
+            }
+        }
+
+        // Stats text
+        let file_count = scene.file_count();
+        let user_count = scene.user_count();
+        let total_commits = commits.len();
+        let stats_text = format!(
+            "{current_commit}/{total_commits} commits | {file_count} files | {user_count} users"
+        );
+        renderer.draw_text(
+            &stats_text,
+            Vec2::new(10.0, 20.0),
+            fid,
+            font_size * 0.8,
+            text_color.with_alpha(0.5),
+        );
+    }
+
+    renderer.end_frame();
+}
+
 fn main() -> Result<()> {
     let args = Args::parse_args();
 
     eprintln!("Rource - Software version control visualization");
     eprintln!("Repository: {}", args.path.display());
-    eprintln!("Window: {}x{}", args.width, args.height);
+    eprintln!("Resolution: {}x{}", args.width, args.height);
+
+    // Check for headless mode
+    if args.headless {
+        return run_headless(&args);
+    }
 
     // Create event loop
     let event_loop = EventLoop::new().context("Failed to create event loop")?;
@@ -1196,5 +1670,72 @@ mod tests {
         // Camera should reset
         assert_eq!(app.camera.position(), Vec2::ZERO);
         assert!((app.camera.zoom() - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_headless_requires_output() {
+        // Headless mode without output should fail
+        let args = Args {
+            headless: true,
+            output: None,
+            ..Args::default()
+        };
+
+        let result = run_headless(&args);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("--headless requires --output"));
+    }
+
+    #[test]
+    fn test_headless_args_stdout_detection() {
+        // Test that stdout output is correctly detected
+        let args = Args {
+            headless: true,
+            output: Some(std::path::PathBuf::from("-")),
+            ..Args::default()
+        };
+
+        // Verify args are set correctly
+        assert!(args.headless);
+        assert_eq!(args.output.as_ref().unwrap().as_os_str(), "-");
+    }
+
+    #[test]
+    fn test_headless_args_directory_detection() {
+        // Test that directory output is correctly detected
+        let args = Args {
+            headless: true,
+            output: Some(std::path::PathBuf::from("/tmp/frames")),
+            ..Args::default()
+        };
+
+        // Verify args are set correctly
+        assert!(args.headless);
+        assert_eq!(
+            args.output.as_ref().unwrap().to_str().unwrap(),
+            "/tmp/frames"
+        );
+    }
+
+    #[test]
+    fn test_frame_exporter_initialized_for_headless() {
+        // When output is specified, frame_exporter should be initialized
+        let args = Args {
+            output: Some(std::path::PathBuf::from("-")),
+            ..Args::default()
+        };
+        let app = App::new(args);
+        assert!(app.frame_exporter.is_some());
+    }
+
+    #[test]
+    fn test_frame_exporter_not_initialized_without_output() {
+        // When output is not specified, frame_exporter should be None
+        let args = Args::default();
+        let app = App::new(args);
+        assert!(app.frame_exporter.is_none());
     }
 }

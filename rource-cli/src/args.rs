@@ -114,6 +114,12 @@ pub struct Args {
     /// Frame rate for video export.
     #[arg(long, default_value_t = 60)]
     pub framerate: u32,
+
+    /// Run in headless mode (no window, for batch video export).
+    ///
+    /// Requires --output to be specified. Runs at maximum speed without display.
+    #[arg(long)]
+    pub headless: bool,
 }
 
 impl Args {
@@ -203,6 +209,7 @@ mod tests {
             custom_log: false,
             output: None,
             framerate: 60,
+            headless: false,
         };
 
         assert_eq!(args.width, 1280);
