@@ -21,7 +21,10 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
-use rource_math::{Color, Hsl, Vec2};
+use rource_core::camera::Camera;
+use rource_core::scene::{ActionType, Scene};
+use rource_math::{Color, Vec2};
+use rource_render::effects::BloomEffect;
 use rource_render::{Renderer, SoftwareRenderer};
 use rource_vcs::{Commit, FileAction};
 
@@ -41,6 +44,15 @@ struct App {
     /// The software renderer.
     renderer: Option<SoftwareRenderer>,
 
+    /// The scene graph containing all entities.
+    scene: Scene,
+
+    /// Camera for view transforms.
+    camera: Camera,
+
+    /// Bloom effect (optional).
+    bloom: Option<BloomEffect>,
+
     /// Current playback state.
     playback: PlaybackState,
 
@@ -49,6 +61,9 @@ struct App {
 
     /// Current commit index.
     current_commit: usize,
+
+    /// Index of last applied commit (for incremental apply).
+    last_applied_commit: usize,
 
     /// Last frame time.
     last_frame: Instant,
@@ -89,11 +104,24 @@ impl App {
         let paused = args.paused;
         let seconds_per_day = args.seconds_per_day;
 
+        // Initialize camera with default viewport (will be resized when window opens)
+        let camera = Camera::new(f32::from(args.width as u16), f32::from(args.height as u16));
+
+        // Initialize bloom effect unless disabled
+        let bloom = if args.no_bloom {
+            None
+        } else {
+            Some(BloomEffect::new())
+        };
+
         Self {
             args,
             window: None,
             surface: None,
             renderer: None,
+            scene: Scene::new(),
+            camera,
+            bloom,
             playback: PlaybackState {
                 paused,
                 seconds_per_day,
@@ -101,6 +129,7 @@ impl App {
             },
             commits: Vec::new(),
             current_commit: 0,
+            last_applied_commit: 0,
             last_frame: Instant::now(),
             accumulated_time: 0.0,
             should_exit: false,
@@ -180,6 +209,10 @@ impl App {
         if let Some(renderer) = &mut self.renderer {
             renderer.resize(size.width, size.height);
         }
+
+        // Resize camera viewport
+        self.camera
+            .set_viewport_size(size.width as f32, size.height as f32);
     }
 
     /// Handle keyboard input.
@@ -218,7 +251,10 @@ impl App {
                 "r" | "R" => {
                     // Reset to beginning
                     self.current_commit = 0;
+                    self.last_applied_commit = 0;
                     self.accumulated_time = 0.0;
+                    self.scene = Scene::new();
+                    self.camera.reset();
                     eprintln!("Reset to beginning");
                 }
                 _ => {}
@@ -239,8 +275,39 @@ impl App {
         }
     }
 
+    /// Convert VCS `FileAction` to scene `ActionType`.
+    const fn file_action_to_action_type(action: FileAction) -> ActionType {
+        match action {
+            FileAction::Create => ActionType::Create,
+            FileAction::Modify => ActionType::Modify,
+            FileAction::Delete => ActionType::Delete,
+        }
+    }
+
+    /// Apply commits from `last_applied_commit` to `current_commit` to the scene.
+    fn apply_pending_commits(&mut self) {
+        while self.last_applied_commit < self.current_commit {
+            let commit = &self.commits[self.last_applied_commit];
+
+            // Convert commit files to scene format
+            let files: Vec<(std::path::PathBuf, ActionType)> = commit
+                .files
+                .iter()
+                .map(|f| (f.path.clone(), Self::file_action_to_action_type(f.action)))
+                .collect();
+
+            self.scene.apply_commit(&commit.author, &files);
+            self.last_applied_commit += 1;
+        }
+    }
+
     /// Update the visualization state.
     fn update(&mut self, dt: f64) {
+        // Always update scene and camera (for physics and animations)
+        let dt_f32 = dt as f32;
+        self.scene.update(dt_f32);
+        self.camera.update(dt_f32);
+
         if self.playback.paused || self.commits.is_empty() {
             return;
         }
@@ -266,14 +333,27 @@ impl App {
             }
         }
 
+        // Apply any commits we've reached but haven't applied yet
+        self.apply_pending_commits();
+
+        // Auto-fit camera to scene content periodically
+        // (simple overview mode - more sophisticated tracking would use CameraTracker)
+        if self.scene.file_count() > 0 {
+            let bounds = self.scene.bounds();
+            self.camera.fit_to_bounds(bounds, 100.0);
+        }
+
         // Loop if enabled
         if self.args.loop_playback && self.current_commit >= self.commits.len().saturating_sub(1) {
             self.current_commit = 0;
+            self.last_applied_commit = 0;
             self.accumulated_time = 0.0;
+            self.scene = Scene::new();
         }
     }
 
     /// Render the current frame.
+    #[allow(clippy::too_many_lines)]
     fn render(&mut self) {
         let Some(renderer) = &mut self.renderer else {
             return;
@@ -285,63 +365,117 @@ impl App {
         let bg_color = self.args.parse_background_color();
         renderer.clear(bg_color);
 
-        let width = renderer.width();
-        let height = renderer.height();
-        let center_x = width as f32 / 2.0;
-        let center_y = height as f32 / 2.0;
+        // Get camera's viewport size for visibility checks
+        let viewport = self.camera.viewport_size();
 
-        // Draw a simple visualization placeholder
-        // (Full scene rendering will be integrated later)
-
-        // Draw some activity based on current commit
-        if !self.commits.is_empty() && self.current_commit < self.commits.len() {
-            let commit = &self.commits[self.current_commit];
-            let num_files = commit.files.len();
-
-            // Draw a central disc representing the repository
-            renderer.draw_disc(
-                Vec2::new(center_x, center_y),
-                50.0,
-                Color::new(0.2, 0.2, 0.3, 1.0),
-            );
-
-            // Draw file changes as colored dots around the center
-            for (i, file) in commit.files.iter().enumerate() {
-                let angle = (i as f32 / num_files.max(1) as f32) * std::f32::consts::TAU;
-                let radius = 100.0 + (i as f32 * 10.0) % 150.0;
-
-                let fx = center_x + angle.cos() * radius;
-                let fy = center_y + angle.sin() * radius;
-
-                // Color based on action type
-                let color = match file.action {
-                    FileAction::Create => Color::new(0.2, 1.0, 0.2, 0.8),
-                    FileAction::Modify => Color::new(1.0, 1.0, 0.2, 0.8),
-                    FileAction::Delete => Color::new(1.0, 0.2, 0.2, 0.8),
-                };
-
-                // Draw the file dot
-                renderer.draw_disc(Vec2::new(fx, fy), 5.0, color);
-
-                // Draw a line from center to file
-                renderer.draw_line(
-                    Vec2::new(center_x, center_y),
-                    Vec2::new(fx, fy),
-                    1.0,
-                    color.with_alpha(0.3),
-                );
+        // Render directories (as circles showing structure)
+        for dir in self.scene.directories().iter() {
+            if !dir.is_visible() {
+                continue;
             }
 
-            // Draw author indicator
-            let author_hash = hash_string(&commit.author);
-            let author_hue = (author_hash % 360) as f32;
-            let author_color = Color::from_hsl(Hsl::new(author_hue, 0.7, 0.6));
+            let screen_pos = self.camera.world_to_screen(dir.position());
 
-            let author_x = center_x + 80.0;
-            let author_y = center_y - 80.0;
-            renderer.draw_disc(Vec2::new(author_x, author_y), 20.0, author_color);
+            // Only render if visible on screen
+            if !is_screen_visible(screen_pos, viewport) {
+                continue;
+            }
+
+            let radius = dir.radius() * self.camera.zoom();
+
+            // Draw directory as a hollow circle
+            let depth_color = 0.15 + 0.05 * (dir.depth() as f32).min(5.0);
+            let dir_color = Color::new(depth_color, depth_color, depth_color + 0.1, 0.5);
+            renderer.draw_circle(screen_pos, radius, 1.0, dir_color);
+
+            // Draw connection to parent
+            if let Some(parent_pos) = dir.parent_position() {
+                let parent_screen = self.camera.world_to_screen(parent_pos);
+                renderer.draw_line(parent_screen, screen_pos, 1.0, dir_color.with_alpha(0.3));
+            }
         }
 
+        // Render files
+        for file in self.scene.files().values() {
+            if file.alpha() < 0.01 {
+                continue;
+            }
+
+            let screen_pos = self.camera.world_to_screen(file.position());
+
+            // Only render if visible on screen
+            if !is_screen_visible(screen_pos, viewport) {
+                continue;
+            }
+
+            let radius = file.radius() * self.camera.zoom();
+            let color = file.current_color().with_alpha(file.alpha());
+
+            // Draw file as a filled disc
+            renderer.draw_disc(screen_pos, radius.max(2.0), color);
+
+            // Draw connection to parent directory
+            if let Some(dir) = self.scene.directories().get(file.directory()) {
+                let dir_screen = self.camera.world_to_screen(dir.position());
+                renderer.draw_line(
+                    dir_screen,
+                    screen_pos,
+                    0.5,
+                    color.with_alpha(0.2 * file.alpha()),
+                );
+            }
+        }
+
+        // Render actions (beams from users to files)
+        for action in self.scene.actions() {
+            let user_opt = self.scene.get_user(action.user());
+            let file_opt = self.scene.get_file(action.file());
+
+            if let (Some(user), Some(file)) = (user_opt, file_opt) {
+                let user_screen = self.camera.world_to_screen(user.position());
+                let file_screen = self.camera.world_to_screen(file.position());
+                let beam_end = user_screen.lerp(file_screen, action.progress());
+
+                let beam_color = action.beam_color();
+                renderer.draw_line(user_screen, beam_end, 2.0, beam_color);
+
+                // Draw beam head
+                let head_radius = 3.0 * self.camera.zoom();
+                renderer.draw_disc(beam_end, head_radius.max(2.0), beam_color);
+            }
+        }
+
+        // Render users
+        for user in self.scene.users().values() {
+            if user.alpha() < 0.01 {
+                continue;
+            }
+
+            let screen_pos = self.camera.world_to_screen(user.position());
+
+            // Only render if visible on screen
+            if !is_screen_visible(screen_pos, viewport) {
+                continue;
+            }
+
+            let radius = user.radius() * self.camera.zoom();
+            let color = user.display_color();
+
+            // Draw user as a larger filled disc
+            renderer.draw_disc(screen_pos, radius.max(5.0), color);
+
+            // Draw a highlight ring if active
+            if user.is_active() {
+                renderer.draw_circle(
+                    screen_pos,
+                    radius * 1.3,
+                    2.0,
+                    color.with_alpha(0.5 * user.alpha()),
+                );
+            }
+        }
+
+        // Render UI overlays
         // Draw playback state (pause indicator)
         if self.playback.paused {
             let pause_color = Color::new(1.0, 1.0, 1.0, 0.7);
@@ -357,7 +491,91 @@ impl App {
             );
         }
 
+        // Draw progress bar at bottom of screen
+        if !self.commits.is_empty() {
+            let width = renderer.width() as f32;
+            let height = renderer.height() as f32;
+            let bar_height = 4.0;
+            let progress = self.current_commit as f32 / self.commits.len().max(1) as f32;
+
+            // Background bar
+            renderer.draw_quad(
+                rource_math::Bounds::new(
+                    Vec2::new(0.0, height - bar_height),
+                    Vec2::new(width, height),
+                ),
+                None,
+                Color::new(0.2, 0.2, 0.2, 0.5),
+            );
+
+            // Progress bar
+            renderer.draw_quad(
+                rource_math::Bounds::new(
+                    Vec2::new(0.0, height - bar_height),
+                    Vec2::new(width * progress, height),
+                ),
+                None,
+                Color::new(0.3, 0.6, 1.0, 0.8),
+            );
+        }
+
+        // Draw stats indicators in corner
+        let stats_color = Color::new(1.0, 1.0, 1.0, 0.6);
+        let file_count = self.scene.file_count();
+        let user_count = self.scene.user_count();
+        let commit_idx = self.current_commit;
+        let total_commits = self.commits.len();
+
+        let indicator_height = 8.0;
+        let max_width = 100.0;
+
+        // Commit progress indicator
+        if total_commits > 0 {
+            let progress = commit_idx as f32 / total_commits as f32;
+            renderer.draw_quad(
+                rource_math::Bounds::new(
+                    Vec2::new(10.0, 50.0),
+                    Vec2::new(10.0 + max_width * progress, 50.0 + indicator_height),
+                ),
+                None,
+                stats_color,
+            );
+        }
+
+        // File count indicator (logarithmic scale)
+        if file_count > 0 {
+            let file_bar = ((file_count as f32).ln() / 10.0).min(1.0);
+            renderer.draw_quad(
+                rource_math::Bounds::new(
+                    Vec2::new(10.0, 62.0),
+                    Vec2::new(10.0 + max_width * file_bar, 62.0 + indicator_height),
+                ),
+                None,
+                Color::new(0.3, 1.0, 0.3, 0.6),
+            );
+        }
+
+        // User count indicator
+        if user_count > 0 {
+            let user_bar = ((user_count as f32).ln() / 5.0).min(1.0);
+            renderer.draw_quad(
+                rource_math::Bounds::new(
+                    Vec2::new(10.0, 74.0),
+                    Vec2::new(10.0 + max_width * user_bar, 74.0 + indicator_height),
+                ),
+                None,
+                Color::new(1.0, 0.6, 0.3, 0.6),
+            );
+        }
+
         renderer.end_frame();
+
+        // Apply bloom effect if enabled
+        if let Some(ref bloom) = self.bloom {
+            let w = renderer.width() as usize;
+            let h = renderer.height() as usize;
+            bloom.apply(renderer.pixels_mut(), w, h);
+        }
     }
 
     /// Present the rendered frame to the window.
@@ -504,7 +722,19 @@ impl ApplicationHandler for App {
     }
 }
 
+/// Check if a screen position is within the visible viewport.
+#[inline]
+fn is_screen_visible(screen_pos: Vec2, viewport: (f32, f32)) -> bool {
+    let margin = 50.0;
+    let (w, h) = viewport;
+    screen_pos.x >= -margin
+        && screen_pos.x <= w + margin
+        && screen_pos.y >= -margin
+        && screen_pos.y <= h + margin
+}
+
 /// Simple string hash for deterministic colors.
+#[allow(dead_code)]
 fn hash_string(s: &str) -> u32 {
     let mut hash: u32 = 0;
     for byte in s.bytes() {
@@ -574,5 +804,39 @@ mod tests {
         assert!(!state.paused);
         assert!((state.speed - 1.0).abs() < 0.001);
         assert!((state.seconds_per_day - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_file_action_to_action_type() {
+        assert!(matches!(
+            App::file_action_to_action_type(FileAction::Create),
+            ActionType::Create
+        ));
+        assert!(matches!(
+            App::file_action_to_action_type(FileAction::Modify),
+            ActionType::Modify
+        ));
+        assert!(matches!(
+            App::file_action_to_action_type(FileAction::Delete),
+            ActionType::Delete
+        ));
+    }
+
+    #[test]
+    fn test_is_screen_visible() {
+        let viewport = (800.0, 600.0);
+
+        // Center should be visible
+        assert!(is_screen_visible(Vec2::new(400.0, 300.0), viewport));
+
+        // Corner should be visible
+        assert!(is_screen_visible(Vec2::new(0.0, 0.0), viewport));
+
+        // Just outside should still be visible (within margin)
+        assert!(is_screen_visible(Vec2::new(-30.0, -30.0), viewport));
+
+        // Far outside should not be visible
+        assert!(!is_screen_visible(Vec2::new(-100.0, -100.0), viewport));
+        assert!(!is_screen_visible(Vec2::new(1000.0, 1000.0), viewport));
     }
 }
