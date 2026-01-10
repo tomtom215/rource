@@ -113,9 +113,9 @@ wasm-pack build --target nodejs --release
 ## Feature Implementation Checklist
 
 ### Phase 1: Foundation
-- [ ] Math library (Vec2, Vec3, Mat4, Color)
+- [x] Math library (Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds)
 - [ ] Configuration system
-- [ ] Core data structures (Entity IDs, Commit, FileChange)
+- [x] Core data structures (Entity IDs, Commit, FileChange)
 
 ### Phase 2: VCS Parsing
 - [ ] Git log parser
