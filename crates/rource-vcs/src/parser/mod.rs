@@ -70,7 +70,10 @@ pub trait Parser: Send + Sync {
 /// # Returns
 ///
 /// A vector of parsed commits, or an error if parsing failed.
-pub fn parse_file<P: Parser + ?Sized>(parser: &P, path: impl AsRef<Path>) -> ParseResult<Vec<Commit>> {
+pub fn parse_file<P: Parser + ?Sized>(
+    parser: &P,
+    path: impl AsRef<Path>,
+) -> ParseResult<Vec<Commit>> {
     let content = std::fs::read_to_string(path)?;
     parser.parse_str(&content)
 }
@@ -124,12 +127,14 @@ impl ParseOptions {
     }
 
     /// Sets the maximum number of commits to parse.
+    #[must_use]
     pub fn with_max_commits(mut self, max: usize) -> Self {
         self.max_commits = max;
         self
     }
 
     /// Sets the time range filter.
+    #[must_use]
     pub fn with_time_range(mut self, start: i64, end: i64) -> Self {
         self.start_time = start;
         self.end_time = end;
@@ -149,6 +154,7 @@ impl ParseOptions {
 }
 
 #[cfg(test)]
+#[allow(clippy::unreadable_literal)]
 mod tests {
     use super::*;
 

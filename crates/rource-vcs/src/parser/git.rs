@@ -35,7 +35,10 @@ pub struct GitParser {
 
 /// Checks if a character is a valid git file status action character.
 fn is_git_action_char(c: char) -> bool {
-    matches!(c, 'A' | 'a' | 'M' | 'm' | 'D' | 'd' | 'R' | 'r' | 'C' | 'c' | 'T' | 't' | 'U' | 'u')
+    matches!(
+        c,
+        'A' | 'a' | 'M' | 'm' | 'D' | 'd' | 'R' | 'r' | 'C' | 'c' | 'T' | 't' | 'U' | 'u'
+    )
 }
 
 impl GitParser {
@@ -130,7 +133,8 @@ impl GitParser {
         };
 
         // For rename/copy, the path format is "old -> new" or "old\tnew"
-        // We take the new path
+        // We take the new path. Using if-let chain for readability (not map_or_else).
+        #[allow(clippy::option_if_let_else)]
         let path = if let Some(arrow_idx) = path.find(" -> ") {
             path[arrow_idx + 4..].trim()
         } else if let Some(tab_idx) = path.find('\t') {
@@ -156,8 +160,7 @@ impl GitParser {
         let line = line
             .strip_prefix("Author:")
             .or_else(|| line.strip_prefix("author:"))
-            .map(str::trim)
-            .unwrap_or(line);
+            .map_or(line, str::trim);
 
         if let Some(email_start) = line.rfind('<') {
             if let Some(email_end) = line.rfind('>') {
@@ -176,14 +179,14 @@ impl GitParser {
         let line = line
             .strip_prefix("Date:")
             .or_else(|| line.strip_prefix("date:"))
-            .map(str::trim)
-            .unwrap_or(line)
+            .map_or(line, str::trim)
             .trim();
 
-        line.parse::<i64>().map_err(|_| ParseError::InvalidTimestamp {
-            line_number,
-            value: line.to_string(),
-        })
+        line.parse::<i64>()
+            .map_err(|_| ParseError::InvalidTimestamp {
+                line_number,
+                value: line.to_string(),
+            })
     }
 }
 
@@ -251,9 +254,9 @@ impl Parser for GitParser {
                         current_author = author;
                         current_email = email;
                         state = ParserState::ExpectingDate;
-                    } else if line.starts_with("commit ") {
+                    } else if let Some(hash) = line.strip_prefix("commit ") {
                         // New commit without author? Reset
-                        current_hash = line[7..].trim().to_string();
+                        current_hash = hash.trim().to_string();
                     }
                     // Skip other lines (like Merge: lines)
                 }
@@ -262,9 +265,9 @@ impl Parser for GitParser {
                     if line.starts_with("Date:") || line.starts_with("date:") {
                         current_timestamp = Self::parse_date_line(line, line_number)?;
                         state = ParserState::ReadingFiles;
-                    } else if line.starts_with("commit ") {
+                    } else if let Some(hash) = line.strip_prefix("commit ") {
                         // New commit without date? Reset
-                        current_hash = line[7..].trim().to_string();
+                        current_hash = hash.trim().to_string();
                         state = ParserState::ExpectingAuthor;
                     }
                     // Skip other lines
@@ -283,7 +286,10 @@ impl Parser for GitParser {
                                 if let Some(ref email) = current_email {
                                     commit = commit.with_email(email.clone());
                                 }
-                                commit = commit.with_files(current_files.drain(..));
+                                // Use drain to reuse Vec capacity for next commit
+                                #[allow(clippy::iter_with_drain)]
+                                let files = current_files.drain(..);
+                                commit = commit.with_files(files);
                                 commits.push(commit);
 
                                 if self.options.limit_reached(commits.len()) {
@@ -309,16 +315,14 @@ impl Parser for GitParser {
         // Don't forget the last commit
         if state == ParserState::ReadingFiles
             && (!current_files.is_empty() || !self.options.skip_empty_commits)
+            && self.options.timestamp_in_range(current_timestamp)
         {
-            if self.options.timestamp_in_range(current_timestamp) {
-                let mut commit =
-                    Commit::new(current_hash, current_timestamp, current_author);
-                if let Some(email) = current_email {
-                    commit = commit.with_email(email);
-                }
-                commit = commit.with_files(current_files);
-                commits.push(commit);
+            let mut commit = Commit::new(current_hash, current_timestamp, current_author);
+            if let Some(email) = current_email {
+                commit = commit.with_email(email);
             }
+            commit = commit.with_files(current_files);
+            commits.push(commit);
         }
 
         if commits.is_empty() {
@@ -348,6 +352,7 @@ impl Parser for GitParser {
 }
 
 #[cfg(test)]
+#[allow(clippy::unreadable_literal)]
 mod tests {
     use super::*;
 
@@ -575,8 +580,7 @@ Date: 3000
 A\tc.txt
 ";
 
-        let parser =
-            GitParser::with_options(ParseOptions::default().with_time_range(1500, 2500));
+        let parser = GitParser::with_options(ParseOptions::default().with_time_range(1500, 2500));
         let commits = parser.parse_str(log).unwrap();
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].timestamp, 2000);
@@ -632,10 +636,7 @@ M\tmerged.txt
     #[test]
     fn test_empty_log() {
         let parser = GitParser::new();
-        assert!(matches!(
-            parser.parse_str(""),
-            Err(ParseError::EmptyLog)
-        ));
+        assert!(matches!(parser.parse_str(""), Err(ParseError::EmptyLog)));
         assert!(matches!(
             parser.parse_str("some random text"),
             Err(ParseError::EmptyLog)

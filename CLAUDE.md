@@ -124,11 +124,12 @@ wasm-pack build --target nodejs --release
 - [x] VCS auto-detection
 
 ### Phase 3: Scene Graph
-- [ ] Directory tree (DirNode)
-- [ ] File entities
-- [ ] User entities
-- [ ] Action entities (beams)
-- [ ] Quadtree spatial index
+- [x] Directory tree (DirNode, DirTree)
+- [x] File entities (FileNode)
+- [x] User entities (User)
+- [x] Action entities (Action, beams)
+- [x] Quadtree spatial index
+- [x] Scene struct with apply_commit()
 
 ### Phase 4: Physics & Animation
 - [ ] Force-directed layout
@@ -268,4 +269,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10*
+*Last updated: 2026-01-10 (Phase 3 complete)*

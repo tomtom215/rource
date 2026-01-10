@@ -290,7 +290,7 @@ impl Mat4 {
     ///
     /// * `eye` - Camera position
     /// * `target` - Point the camera is looking at
-    /// * `up` - Up direction (usually Vec3::Y)
+    /// * `up` - Up direction (usually `Vec3::Y`)
     #[must_use]
     pub fn look_at(eye: Vec3, target: Vec3, up: Vec3) -> Self {
         let f = (target - eye).normalized();
@@ -412,7 +412,7 @@ impl Mat4 {
     #[must_use]
     pub fn transform_point(self, p: Vec3) -> Vec3 {
         let w = self.m[3] * p.x + self.m[7] * p.y + self.m[11] * p.z + self.m[15];
-        let inv_w = if w != 0.0 { 1.0 / w } else { 1.0 };
+        let inv_w = if w == 0.0 { 1.0 } else { 1.0 / w };
 
         Vec3 {
             x: (self.m[0] * p.x + self.m[4] * p.y + self.m[8] * p.z + self.m[12]) * inv_w,
