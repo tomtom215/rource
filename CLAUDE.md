@@ -57,7 +57,7 @@ rource/
 │   ├── rource-vcs/       # VCS log parsing (Git, Custom format) [70 tests]
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera) [156 tests]
 │   └── rource-render/    # Rendering (software rasterizer, bloom, fonts) [57 tests]
-├── rource-cli/           # Native CLI application (planned)
+├── rource-cli/           # Native CLI application (winit + softbuffer) [6 tests]
 └── rource-wasm/          # WebAssembly application (planned)
 ```
 
@@ -145,7 +145,7 @@ wasm-pack build --target nodejs --release
 - [ ] Shadow rendering
 
 ### Phase 6: Platform Integration
-- [ ] Native CLI (winit + softbuffer)
+- [x] Native CLI (winit + softbuffer)
 - [ ] WASM/Canvas2D
 - [ ] WASM/WebGL2
 - [ ] Video export
@@ -269,4 +269,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10 (Phase 5 rendering complete - 476 tests)*
+*Last updated: 2026-01-10 (Phase 6 CLI in progress - 482 tests)*

@@ -1,0 +1,27 @@
+[package]
+name = "rource"
+description = "Rource - Software version control visualization tool"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "rource"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+rource-core = { path = "../crates/rource-core" }
+rource-render = { path = "../crates/rource-render" }
+rource-vcs = { path = "../crates/rource-vcs" }
+rource-math = { path = "../crates/rource-math" }
+
+clap = { version = "4", features = ["derive"] }
+winit = "0.30"
+softbuffer = "0.4"
+anyhow = "1.0"

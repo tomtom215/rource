@@ -100,8 +100,8 @@ impl SoftwareRenderer {
         let mut bytes = Vec::with_capacity(self.pixels.len() * 4);
         for &pixel in &self.pixels {
             bytes.push(((pixel >> 16) & 0xFF) as u8); // R
-            bytes.push(((pixel >> 8) & 0xFF) as u8);  // G
-            bytes.push((pixel & 0xFF) as u8);         // B
+            bytes.push(((pixel >> 8) & 0xFF) as u8); // G
+            bytes.push((pixel & 0xFF) as u8); // B
             bytes.push(((pixel >> 24) & 0xFF) as u8); // A
         }
         bytes
@@ -327,13 +327,7 @@ impl SoftwareRenderer {
 
             if coverage > 0.0 {
                 let c = color.with_alpha(color.a * coverage);
-                self.draw_line_aa(
-                    start.x + p.x,
-                    start.y + p.y,
-                    end.x + p.x,
-                    end.y + p.y,
-                    c,
-                );
+                self.draw_line_aa(start.x + p.x, start.y + p.y, end.x + p.x, end.y + p.y, c);
             }
         }
     }
@@ -558,8 +552,7 @@ impl Renderer for SoftwareRenderer {
         for ch in text.chars() {
             if let Some(glyph) = self.font_cache.rasterize(font, ch, size) {
                 let gx = x + glyph.metrics.xmin;
-                let gy = y - glyph.metrics.ymin - glyph.metrics.height as i32
-                    + (size * 0.8) as i32; // Baseline adjustment
+                let gy = y - glyph.metrics.ymin - glyph.metrics.height as i32 + (size * 0.8) as i32; // Baseline adjustment
 
                 glyph_data.push((gx, gy, glyph.clone()));
                 x += glyph.metrics.advance_width as i32;
@@ -785,7 +778,7 @@ mod tests {
         // Note: 0.5 * 255 = 127.5 truncates to 127, 0.25 * 255 = 63.75 truncates to 63
         assert_eq!(bytes[0], 255); // R
         assert_eq!(bytes[1], 127); // G (0.5 * 255 = 127.5 -> 127 when cast to u32)
-        assert_eq!(bytes[2], 63);  // B (0.25 * 255 = 63.75 -> 63 when cast to u32)
+        assert_eq!(bytes[2], 63); // B (0.25 * 255 = 63.75 -> 63 when cast to u32)
         assert_eq!(bytes[3], 255); // A
     }
 
