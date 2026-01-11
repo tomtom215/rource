@@ -310,7 +310,7 @@ A\tfile.txt
 
     #[test]
     fn test_detect_bazaar_format() {
-        let input = r#"------------------------------------------------------------
+        let input = r"------------------------------------------------------------
 revno: 1
 committer: test
 timestamp: Mon 2024-01-01 12:00:00 +0000
@@ -318,14 +318,14 @@ message:
   Initial commit
 added:
   file.txt
-"#;
+";
         let format = detect_format(input).unwrap();
         assert_eq!(format, LogFormat::Bazaar);
     }
 
     #[test]
     fn test_parse_auto_bazaar() {
-        let input = r#"------------------------------------------------------------
+        let input = r"------------------------------------------------------------
 revno: 1
 committer: test
 timestamp: Mon 2024-01-01 12:00:00 +0000
@@ -333,7 +333,7 @@ message:
   Initial commit
 added:
   file.txt
-"#;
+";
         let (format, commits) = parse_auto(input).unwrap();
         assert_eq!(format, LogFormat::Bazaar);
         assert_eq!(commits.len(), 1);

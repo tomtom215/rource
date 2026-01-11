@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_parse_verbose_format() {
-        let log = r#"------------------------------------------------------------
+        let log = r"------------------------------------------------------------
 revno: 1
 committer: Alice <alice@example.com>
 branch nick: trunk
@@ -535,7 +535,7 @@ added:
   src/feature.rs
 removed:
   old_file.txt
-"#;
+";
         let parser = BazaarParser::new();
         let commits = parser.parse_str(log).unwrap();
 
@@ -553,7 +553,7 @@ removed:
 
     #[test]
     fn test_parse_verbose_with_merge() {
-        let log = r#"------------------------------------------------------------
+        let log = r"------------------------------------------------------------
 revno: 5 [merge]
 tags: v1.0
 committer: Alice
@@ -562,7 +562,7 @@ message:
   Merge feature branch
 modified:
   src/main.rs
-"#;
+";
         let parser = BazaarParser::new();
         let commits = parser.parse_str(log).unwrap();
 
@@ -572,7 +572,7 @@ modified:
 
     #[test]
     fn test_parse_verbose_with_rename() {
-        let log = r#"------------------------------------------------------------
+        let log = r"------------------------------------------------------------
 revno: 3
 committer: Charlie
 timestamp: Thu 2024-01-04 09:00:00 +0000
@@ -581,7 +581,7 @@ message:
 renamed:
   old_name.rs => new_name.rs
   src/old.rs => src/new.rs
-"#;
+";
         let parser = BazaarParser::new();
         let commits = parser.parse_str(log).unwrap();
 
@@ -594,7 +594,7 @@ renamed:
     #[test]
     fn test_parse_author_field() {
         // bzr can use "author:" instead of "committer:"
-        let log = r#"------------------------------------------------------------
+        let log = r"------------------------------------------------------------
 revno: 1
 author: David <david@example.com>
 timestamp: Fri 2024-01-05 08:00:00 +0000
@@ -602,7 +602,7 @@ message:
   Test
 modified:
   test.rs
-"#;
+";
         let parser = BazaarParser::new();
         let commits = parser.parse_str(log).unwrap();
 
@@ -712,13 +712,13 @@ modified:
     #[test]
     fn test_empty_commits_skipped() {
         // Commit with no files should be skipped by default
-        let log = r#"------------------------------------------------------------
+        let log = r"------------------------------------------------------------
 revno: 1
 committer: Test
 timestamp: Mon 2024-01-01 12:00:00 +0000
 message:
   Empty commit
-"#;
+";
         let parser = BazaarParser::new();
         let commits = parser.parse_str(log).unwrap();
 
@@ -728,7 +728,7 @@ message:
 
     #[test]
     fn test_time_range_filter() {
-        let log = r#"------------------------------------------------------------
+        let log = r"------------------------------------------------------------
 revno: 1
 committer: Alice
 timestamp: Mon 2024-01-01 12:00:00 +0000
@@ -745,9 +745,9 @@ message:
   New commit
 modified:
   new.rs
-"#;
+";
         // Only get commits from 2025 onwards
-        let start = days_since_unix_epoch(2025, 1, 1).unwrap() as i64 * 86400;
+        let start = i64::from(days_since_unix_epoch(2025, 1, 1).unwrap()) * 86400;
         let options = ParseOptions::default().with_time_range(start, 0);
         let parser = BazaarParser::with_options(options);
         let commits = parser.parse_str(log).unwrap();
@@ -758,7 +758,7 @@ modified:
 
     #[test]
     fn test_max_commits_limit() {
-        let log = r#"------------------------------------------------------------
+        let log = r"------------------------------------------------------------
 revno: 1
 committer: A
 timestamp: Mon 2024-01-01 00:00:00 +0000
@@ -778,7 +778,7 @@ committer: C
 timestamp: Wed 2024-01-03 00:00:00 +0000
 modified:
   c.rs
-"#;
+";
         let options = ParseOptions::default().with_max_commits(2);
         let parser = BazaarParser::with_options(options);
         let commits = parser.parse_str(log).unwrap();

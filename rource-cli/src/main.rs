@@ -1682,8 +1682,7 @@ fn run_headless(args: &Args) -> Result<()> {
     let frame_count = exporter.frame_count();
 
     eprintln!(
-        "\nExport complete: {} frames written",
-        frame_count
+        "\nExport complete: {frame_count} frames written"
     );
 
     // Print performance summary
@@ -1907,7 +1906,7 @@ fn render_frame_headless(
 
     // Print profiling info every 100 frames
     if profile {
-        eprintln!("\n[RENDER PROFILE] Frame {}:", frame_num);
+        eprintln!("\n[RENDER PROFILE] Frame {frame_num}:");
         eprintln!("  Culling:     {:.2}ms (vis: {} dirs, {} files, {} users)",
             cull_time.as_secs_f64() * 1000.0,
             visible_dir_ids.len(), visible_file_ids.len(), visible_user_ids.len());
@@ -1915,12 +1914,12 @@ fn render_frame_headless(
             dirs_time.as_secs_f64() * 1000.0, dirs_rendered);
         eprintln!("  Files:       {:.2}ms ({} rendered, {:.3}ms/file)",
             files_time.as_secs_f64() * 1000.0, files_rendered,
-            if files_rendered > 0 { files_time.as_secs_f64() * 1000.0 / files_rendered as f64 } else { 0.0 });
+            if files_rendered > 0 { files_time.as_secs_f64() * 1000.0 / f64::from(files_rendered) } else { 0.0 });
         eprintln!("  Actions:     {:.2}ms ({} rendered)",
             actions_time.as_secs_f64() * 1000.0, actions_rendered);
         eprintln!("  Users:       {:.2}ms ({} rendered)",
             users_time.as_secs_f64() * 1000.0, users_rendered);
-        eprintln!("  Zoom:        {:.4}", camera_zoom);
+        eprintln!("  Zoom:        {camera_zoom:.4}");
     }
 
     // Render UI overlays

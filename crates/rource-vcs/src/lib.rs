@@ -49,19 +49,25 @@
 //!
 //! ## Error Handling
 //!
-//! All parsing functions return [`ParseResult`](error::ParseResult), which
-//! wraps either the parsed data or a [`ParseError`](error::ParseError) with
+//! All parsing functions return [`ParseResult`], which
+//! wraps either the parsed data or a [`ParseError`] with
 //! detailed information about what went wrong.
 
 // Lints are configured in workspace Cargo.toml
 
 pub mod commit;
+pub mod compact;
 pub mod detect;
 pub mod error;
+pub mod intern;
 pub mod parser;
+pub mod stream;
 
 // Re-exports for convenience
 pub use commit::{Commit, FileAction, FileChange};
+pub use compact::{CommitId, CommitStore, CommitStoreStats, CompactCommit, CompactFileChange};
 pub use detect::{detect_format, parse_auto, LogFormat};
 pub use error::{ParseError, ParseResult};
+pub use intern::{InternedPath, InternedString, PathInterner, StringInterner};
 pub use parser::{CustomParser, GitParser, ParseOptions, Parser};
+pub use stream::{CustomLogGrouper, CustomLogStream, GitLogStream, StreamingCommitLoader};

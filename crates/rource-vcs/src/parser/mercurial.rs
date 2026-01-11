@@ -469,7 +469,7 @@ mod tests {
 
     #[test]
     fn test_parse_verbose_format() {
-        let log = r#"changeset:   0:abc123
+        let log = r"changeset:   0:abc123
 user:        Alice <alice@example.com>
 date:        Mon Jan 01 12:00:00 2024 +0000
 files:       src/main.rs
@@ -478,7 +478,7 @@ changeset:   1:def456
 user:        Bob
 date:        Tue Jan 02 12:00:00 2024 +0000
 files:       src/lib.rs src/utils.rs
-"#;
+";
         let parser = MercurialParser::new();
         let commits = parser.parse_str(log).unwrap();
 
@@ -558,10 +558,10 @@ files:       src/lib.rs src/utils.rs
     #[test]
     fn test_grouped_commits() {
         // Multiple files with same timestamp should be grouped
-        let log = r#"1704067200|Alice|A|src/main.rs
+        let log = r"1704067200|Alice|A|src/main.rs
 1704067200|Alice|A|src/lib.rs
 1704067200|Alice|M|Cargo.toml
-"#;
+";
         let parser = MercurialParser::new();
         let commits = parser.parse_str(log).unwrap();
 

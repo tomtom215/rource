@@ -268,23 +268,23 @@ pub struct FilterSettings {
     /// Entire directory trees matching this pattern are excluded.
     hide_dirs: Option<String>,
 
-    /// Compiled regex for show_users (lazily compiled).
+    /// Compiled regex for `show_users` (lazily compiled).
     #[allow(clippy::type_complexity)]
     show_users_regex: Option<Result<Regex, String>>,
 
-    /// Compiled regex for hide_users (lazily compiled).
+    /// Compiled regex for `hide_users` (lazily compiled).
     #[allow(clippy::type_complexity)]
     hide_users_regex: Option<Result<Regex, String>>,
 
-    /// Compiled regex for show_files (lazily compiled).
+    /// Compiled regex for `show_files` (lazily compiled).
     #[allow(clippy::type_complexity)]
     show_files_regex: Option<Result<Regex, String>>,
 
-    /// Compiled regex for hide_files (lazily compiled).
+    /// Compiled regex for `hide_files` (lazily compiled).
     #[allow(clippy::type_complexity)]
     hide_files_regex: Option<Result<Regex, String>>,
 
-    /// Compiled regex for hide_dirs (lazily compiled).
+    /// Compiled regex for `hide_dirs` (lazily compiled).
     #[allow(clippy::type_complexity)]
     hide_dirs_regex: Option<Result<Regex, String>>,
 }
@@ -381,37 +381,38 @@ impl FilterSettings {
         self.hide_dirs_regex = None;
     }
 
-    /// Returns the show_users pattern.
+    /// Returns the `show_users` pattern.
     #[must_use]
     pub fn show_users_pattern(&self) -> Option<&str> {
         self.show_users.as_deref()
     }
 
-    /// Returns the hide_users pattern.
+    /// Returns the `hide_users` pattern.
     #[must_use]
     pub fn hide_users_pattern(&self) -> Option<&str> {
         self.hide_users.as_deref()
     }
 
-    /// Returns the show_files pattern.
+    /// Returns the `show_files` pattern.
     #[must_use]
     pub fn show_files_pattern(&self) -> Option<&str> {
         self.show_files.as_deref()
     }
 
-    /// Returns the hide_files pattern.
+    /// Returns the `hide_files` pattern.
     #[must_use]
     pub fn hide_files_pattern(&self) -> Option<&str> {
         self.hide_files.as_deref()
     }
 
-    /// Returns the hide_dirs pattern.
+    /// Returns the `hide_dirs` pattern.
     #[must_use]
     pub fn hide_dirs_pattern(&self) -> Option<&str> {
         self.hide_dirs.as_deref()
     }
 
     /// Compiles a regex pattern, caching the result.
+    #[allow(clippy::ref_option)] // Using &Option here for ergonomic self.field references
     fn compile_regex<'a>(
         pattern: &Option<String>,
         cached: &'a mut Option<Result<Regex, String>>,
@@ -436,20 +437,15 @@ impl FilterSettings {
     /// Returns `true` if the user should be shown, `false` if filtered out.
     pub fn should_include_user(&mut self, name: &str) -> bool {
         // Check hide filter first (takes precedence)
-        if let Some(result) = Self::compile_regex(&self.hide_users, &mut self.hide_users_regex) {
-            match result {
-                Ok(regex) if regex.is_match(name) => return false,
-                Err(_) => {} // Invalid regex, don't filter
-                _ => {}
+        if let Some(Ok(regex)) = Self::compile_regex(&self.hide_users, &mut self.hide_users_regex) {
+            if regex.is_match(name) {
+                return false;
             }
         }
 
         // Check show filter
-        if let Some(result) = Self::compile_regex(&self.show_users, &mut self.show_users_regex) {
-            match result {
-                Ok(regex) => return regex.is_match(name),
-                Err(_) => {} // Invalid regex, don't filter
-            }
+        if let Some(Ok(regex)) = Self::compile_regex(&self.show_users, &mut self.show_users_regex) {
+            return regex.is_match(name);
         }
 
         true // No filters or invalid regex = show all
@@ -462,39 +458,29 @@ impl FilterSettings {
         let path_str = path.to_string_lossy();
 
         // Check directory hide filter first
-        if let Some(result) = Self::compile_regex(&self.hide_dirs, &mut self.hide_dirs_regex) {
-            match result {
-                Ok(regex) => {
-                    // Check if any component of the path matches the directory filter
-                    for ancestor in path.ancestors() {
-                        if ancestor.as_os_str().is_empty() {
-                            continue;
-                        }
-                        let ancestor_str = ancestor.to_string_lossy();
-                        if regex.is_match(&ancestor_str) {
-                            return false;
-                        }
-                    }
+        if let Some(Ok(regex)) = Self::compile_regex(&self.hide_dirs, &mut self.hide_dirs_regex) {
+            // Check if any component of the path matches the directory filter
+            for ancestor in path.ancestors() {
+                if ancestor.as_os_str().is_empty() {
+                    continue;
                 }
-                Err(_) => {} // Invalid regex, don't filter
+                let ancestor_str = ancestor.to_string_lossy();
+                if regex.is_match(&ancestor_str) {
+                    return false;
+                }
             }
         }
 
         // Check file hide filter
-        if let Some(result) = Self::compile_regex(&self.hide_files, &mut self.hide_files_regex) {
-            match result {
-                Ok(regex) if regex.is_match(&path_str) => return false,
-                Err(_) => {} // Invalid regex, don't filter
-                _ => {}
+        if let Some(Ok(regex)) = Self::compile_regex(&self.hide_files, &mut self.hide_files_regex) {
+            if regex.is_match(&path_str) {
+                return false;
             }
         }
 
         // Check file show filter
-        if let Some(result) = Self::compile_regex(&self.show_files, &mut self.show_files_regex) {
-            match result {
-                Ok(regex) => return regex.is_match(&path_str),
-                Err(_) => {} // Invalid regex, don't filter
-            }
+        if let Some(Ok(regex)) = Self::compile_regex(&self.show_files, &mut self.show_files_regex) {
+            return regex.is_match(&path_str);
         }
 
         true // No filters or invalid regex = show all
