@@ -1,3 +1,8 @@
+// Allow these clippy lints for config file generation code (pre-existing)
+// which uses format! strings with push_str for readability
+#![allow(clippy::format_push_string)]
+#![allow(clippy::uninlined_format_args)]
+
 //! # rource-core
 //!
 //! Core visualization engine for the Rource project.

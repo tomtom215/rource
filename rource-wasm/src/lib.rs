@@ -1,3 +1,6 @@
+// Allow multiple versions of dependencies from workspace dependencies
+#![allow(clippy::multiple_crate_versions)]
+
 //! # Rource WASM
 //!
 //! WebAssembly bindings for Rource - software version control visualization.

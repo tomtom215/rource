@@ -2,12 +2,13 @@
 //!
 //! This module provides camera control including:
 //!
-//! - Pan and zoom
+//! - Pan and zoom (2D orthographic)
+//! - Orbit controls (3D perspective)
 //! - Auto-tracking of entities
 //! - Smooth camera transitions
 //! - View frustum calculations
 //!
-//! # Example
+//! # Example (2D Camera)
 //!
 //! ```
 //! use rource_core::camera::{Camera, CameraMode};
@@ -22,6 +23,25 @@
 //! // Update each frame
 //! camera.update(0.016);
 //! ```
+//!
+//! # Example (3D Camera)
+//!
+//! ```
+//! use rource_core::camera::Camera3D;
+//! use rource_math::Vec3;
+//!
+//! let mut camera = Camera3D::new(1920.0, 1080.0);
+//!
+//! // Orbit around the target
+//! camera.orbit(0.1, 0.05); // yaw, pitch
+//!
+//! // Update each frame
+//! camera.update(0.016);
+//! ```
+
+mod camera3d;
+
+pub use camera3d::Camera3D;
 
 use rource_math::{Bounds, Vec2};
 

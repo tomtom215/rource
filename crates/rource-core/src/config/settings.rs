@@ -136,7 +136,7 @@ pub struct VisibilitySettings {
     pub hide_root: bool,
     /// Hide the tree structure (connecting lines).
     pub hide_tree: bool,
-    /// Hide the bloom/glow effect (runtime visibility, not same as bloom_enabled).
+    /// Hide the bloom/glow effect (runtime visibility, not same as `bloom_enabled`).
     pub hide_bloom: bool,
     /// Hide the mouse cursor during visualization.
     pub hide_mouse: bool,
@@ -185,8 +185,16 @@ pub struct CameraSettings {
     pub follow_user: Option<String>,
     /// Username(s) to highlight (comma-separated).
     pub highlight_users: Option<String>,
-    /// Highlight all users (overrides highlight_users).
+    /// Highlight all users (overrides `highlight_users`).
     pub highlight_all_users: bool,
+    /// Enable 3D perspective camera mode.
+    pub enable_3d: bool,
+    /// Initial pitch angle in degrees (3D mode only).
+    pub pitch: f32,
+    /// Auto-rotation speed in radians per second (3D mode only).
+    pub rotation_speed: f32,
+    /// Disable automatic camera rotation (3D mode only).
+    pub disable_auto_rotate: bool,
 }
 
 impl Default for CameraSettings {
@@ -200,6 +208,10 @@ impl Default for CameraSettings {
             follow_user: None,
             highlight_users: None,
             highlight_all_users: false,
+            enable_3d: false,
+            pitch: -17.0,
+            rotation_speed: 0.05,
+            disable_auto_rotate: false,
         }
     }
 }
@@ -774,6 +786,7 @@ impl Settings {
     ///
     /// This can be used to save the current configuration to a file.
     #[must_use]
+    #[allow(clippy::too_many_lines)]
     pub fn to_config_string(&self) -> String {
         let mut config = String::new();
 
@@ -859,6 +872,16 @@ impl Settings {
         config.push_str(&format!(
             "highlight_all_users = {}\n",
             self.camera.highlight_all_users
+        ));
+        config.push_str(&format!("camera_3d = {}\n", self.camera.enable_3d));
+        config.push_str(&format!("camera_pitch = {:.1}\n", self.camera.pitch));
+        config.push_str(&format!(
+            "camera_rotation_speed = {:.2}\n",
+            self.camera.rotation_speed
+        ));
+        config.push_str(&format!(
+            "camera_disable_auto_rotate = {}\n",
+            self.camera.disable_auto_rotate
         ));
         config.push('\n');
 

@@ -171,6 +171,10 @@ struct TomlCameraSettings {
     follow_user: Option<String>,
     highlight_users: Option<String>,
     highlight_all_users: Option<bool>,
+    enable_3d: Option<bool>,
+    pitch: Option<f32>,
+    rotation_speed: Option<f32>,
+    disable_auto_rotate: Option<bool>,
 }
 
 /// TOML representation of input settings.
@@ -398,6 +402,19 @@ impl TomlConfig {
                 .camera
                 .highlight_all_users
                 .unwrap_or(defaults.camera.highlight_all_users),
+            enable_3d: self
+                .camera
+                .enable_3d
+                .unwrap_or(defaults.camera.enable_3d),
+            pitch: self.camera.pitch.unwrap_or(defaults.camera.pitch),
+            rotation_speed: self
+                .camera
+                .rotation_speed
+                .unwrap_or(defaults.camera.rotation_speed),
+            disable_auto_rotate: self
+                .camera
+                .disable_auto_rotate
+                .unwrap_or(defaults.camera.disable_auto_rotate),
         };
 
         // Input settings
@@ -444,10 +461,10 @@ impl TomlConfig {
         };
 
         // Directory settings (using defaults for now - can be extended in config format)
-        let directory = defaults.directory.clone();
+        let directory = defaults.directory;
 
         // Overlay settings (using defaults for now - can be extended in config format)
-        let overlay = defaults.overlay.clone();
+        let overlay = defaults.overlay;
 
         Ok(Settings {
             display,
@@ -678,6 +695,19 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
             .camera
             .highlight_all_users
             .unwrap_or(base.camera.highlight_all_users),
+        enable_3d: config
+            .camera
+            .enable_3d
+            .unwrap_or(base.camera.enable_3d),
+        pitch: config.camera.pitch.unwrap_or(base.camera.pitch),
+        rotation_speed: config
+            .camera
+            .rotation_speed
+            .unwrap_or(base.camera.rotation_speed),
+        disable_auto_rotate: config
+            .camera
+            .disable_auto_rotate
+            .unwrap_or(base.camera.disable_auto_rotate),
     };
 
     let input = InputSettings {
@@ -721,8 +751,8 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
     };
 
     // Directory and overlay settings from base (not yet supported in config file format)
-    let directory = base.directory.clone();
-    let overlay = base.overlay.clone();
+    let directory = base.directory;
+    let overlay = base.overlay;
 
     let settings = Settings {
         display,

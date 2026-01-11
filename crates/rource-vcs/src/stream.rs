@@ -61,9 +61,8 @@ impl<R: Read> GitLogStream<R> {
     fn read_line(&mut self) -> Option<&str> {
         self.line_buffer.clear();
         match self.reader.read_line(&mut self.line_buffer) {
-            Ok(0) => None, // EOF
+            Ok(0) | Err(_) => None, // EOF or error
             Ok(_) => Some(self.line_buffer.trim_end()),
-            Err(_) => None,
         }
     }
 
@@ -87,10 +86,9 @@ impl<R: Read> GitLogStream<R> {
             let path = parts[2];
             // Determine action based on added/removed counts
             let action = match (parts[0], parts[1]) {
-                ("-", "-") => FileAction::Modify, // Binary file
                 ("0", _) if parts[1] != "0" => FileAction::Delete,
                 (_, "0") if parts[0] != "0" => FileAction::Create,
-                _ => FileAction::Modify,
+                _ => FileAction::Modify, // Binary files ("-", "-") and others
             };
             Some(FileChange::new(path, action))
         } else {
@@ -119,13 +117,11 @@ impl<R: Read> Iterator for GitLogStream<R> {
 
         loop {
             // Try to read the next line
-            let line = match self.read_line() {
-                Some(l) => l.to_string(),
-                None => {
-                    self.finished = true;
-                    return self.finalize_current();
-                }
+            let Some(l) = self.read_line() else {
+                self.finished = true;
+                return self.finalize_current();
             };
+            let line = l.to_string();
 
             // Skip empty lines
             if line.is_empty() {
@@ -256,9 +252,8 @@ impl<R: Read> CustomLogStream<R> {
     fn read_line(&mut self) -> Option<&str> {
         self.line_buffer.clear();
         match self.reader.read_line(&mut self.line_buffer) {
-            Ok(0) => None,
+            Ok(0) | Err(_) => None,
             Ok(_) => Some(self.line_buffer.trim_end()),
-            Err(_) => None,
         }
     }
 }
@@ -288,13 +283,11 @@ impl<R: Read> Iterator for CustomLogStream<R> {
         }
 
         loop {
-            let line = match self.read_line() {
-                Some(l) => l.to_string(),
-                None => {
-                    self.finished = true;
-                    return None;
-                }
+            let Some(l) = self.read_line() else {
+                self.finished = true;
+                return None;
             };
+            let line = l.to_string();
 
             if line.is_empty() || line.starts_with('#') {
                 continue;

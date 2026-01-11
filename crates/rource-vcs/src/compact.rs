@@ -148,7 +148,7 @@ impl CommitStore {
     ///
     /// # Panics
     ///
-    /// Panics if the commit_id is invalid or if too many files are added
+    /// Panics if the `commit_id` is invalid or if too many files are added
     /// to a single commit (max 65535).
     pub fn add_file_change(&mut self, commit_id: CommitId, path: &str, action: FileAction) {
         let path_id = self.paths.intern(path);
@@ -361,6 +361,9 @@ pub fn estimate_standard_memory(commits: &[Commit]) -> StandardMemoryEstimate {
     let commit_struct_size = std::mem::size_of::<Commit>();
     let file_struct_size = std::mem::size_of::<FileChange>();
 
+    // We intentionally calculate struct memory as count * size_of::<T>() for estimation
+    // purposes, not size_of_val() which would give different semantics
+    #[allow(clippy::manual_slice_size_calculation)]
     StandardMemoryEstimate {
         commit_count: commits.len(),
         file_count: total_file_count,
