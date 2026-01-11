@@ -1,0 +1,31 @@
+# Video Export Configuration
+# Optimized for creating high-quality videos
+
+# HD resolution
+width = 1920
+height = 1080
+
+# Faster playback for shorter videos
+seconds_per_day = 2.0
+
+# Enable visual effects for quality
+no_bloom = false
+shadows = true
+
+# Video settings
+framerate = 60
+
+# Show everything for complete history
+hide_filenames = false
+hide_usernames = false
+hide_date = false
+
+# Loop disabled for export
+loop = false
+
+# Uncomment and set your title
+# title = "Project History"
+
+# Usage:
+# rource --config examples/video-export.toml --headless --output /tmp/frames .
+# ffmpeg -framerate 60 -i /tmp/frames/frame_%08d.ppm -c:v libx264 -pix_fmt yuv420p output.mp4

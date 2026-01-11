@@ -4,6 +4,7 @@
 //! - [`Settings`] - Complete visualization settings
 //! - [`CameraModeSetting`] - Camera behavior modes
 //! - Config file parsing (with the `config-file` feature)
+//! - Environment variable configuration
 //!
 //! # Example
 //!
@@ -32,12 +33,40 @@
 //! let base = Settings::default();
 //! let settings = merge_config_file(base, "rource.toml")?;
 //! ```
+//!
+//! # Environment Variables
+//!
+//! Settings can be configured via environment variables with the `ROURCE_` prefix:
+//!
+//! ```ignore
+//! use rource_core::config::{load_env, merge_env, Settings};
+//!
+//! // Load settings from environment only
+//! let settings = load_env();
+//!
+//! // Or merge environment with existing settings
+//! let base = Settings::default();
+//! let settings = merge_env(base);
+//! ```
+//!
+//! # Configuration Priority
+//!
+//! The recommended priority (highest to lowest):
+//! 1. CLI arguments
+//! 2. Environment variables
+//! 3. Config file
+//! 4. Defaults
+//!
+//! This allows users to set defaults in config files, override them with
+//! environment variables in CI/CD, and further override with CLI args.
 
+mod config_env;
 mod settings;
 
 #[cfg(feature = "config-file")]
 mod config_file;
 
+pub use config_env::{env_var_names, load_env, merge_env};
 pub use settings::{
     CameraModeSetting, CameraSettings, DisplaySettings, ExportSettings, FilterSettings,
     InputSettings, LimitSettings, PlaybackSettings, Settings, TitleSettings, VisibilitySettings,

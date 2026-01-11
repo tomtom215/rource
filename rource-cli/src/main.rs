@@ -2030,6 +2030,15 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Handle --env-help
+    if args.env_help {
+        println!("{}", Args::env_help());
+        return Ok(());
+    }
+
+    // Apply environment variables (priority: CLI > Env > Config)
+    args.apply_env();
+
     // Apply config file if specified
     if let Err(e) = args.apply_config_file() {
         eprintln!("Warning: {e}");

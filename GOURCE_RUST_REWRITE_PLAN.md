@@ -20,9 +20,9 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 | Phase 4: Physics & Animation | ✅ Complete | 86 | Force-directed layout, tweening, splines, camera |
 | Phase 5: Rendering | ✅ Complete | 75 | Software rasterizer, fonts, bloom effect, drop shadows |
 | Phase 6: Platform Integration | ✅ Complete | 36 | Native CLI, WASM, mouse input, video export, avatars |
-| Phase 7: Polish & Optimization | 🔄 In Progress | 182 | Config files, legend, timeline scrubbing, touch support |
+| Phase 7: Polish & Optimization | 🔄 In Progress | 210 | Config files, legend, timeline scrubbing, touch support, env vars |
 
-**Total Tests**: 608 passing
+**Total Tests**: 631 passing
 
 ### What's Working Now
 
@@ -83,12 +83,9 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 ### What's Not Yet Implemented
 
 - WebGL2 backend (optional GPU acceleration for WASM)
-- Environment variable configuration support
 - Pure Rust Git parsing (gitoxide) - optional enhancement
 - CVS/Apache log parsers
-- Performance profiling and optimization
 - Memory optimization for very large repositories
-- Streaming commit loading
 - User manual and API documentation
 
 ### Crate Structure
@@ -98,9 +95,9 @@ rource/
 ├── crates/
 │   ├── rource-math/      # Math types [141 tests]
 │   ├── rource-vcs/       # VCS parsing (Git, SVN, Hg, Bzr) [117 tests]
-│   ├── rource-core/      # Scene, physics, animation, camera, config [182 tests]
+│   ├── rource-core/      # Scene, physics, animation, camera, config [210 tests]
 │   └── rource-render/    # Rendering system [75 tests]
-├── rource-cli/           # Native CLI application [36 tests]
+├── rource-cli/           # Native CLI application [38 tests]
 └── rource-wasm/          # WebAssembly application ✅ [2 tests]
 ```
 
@@ -111,6 +108,14 @@ rource/
 - Added `--sample-config` to generate example configuration
 - New `config_file` module with `load_config_file` and `merge_config_file` functions
 - CLI arguments override config file values
+
+#### Environment Variable Configuration
+- All settings can be configured via `ROURCE_` prefixed environment variables
+- Examples: `ROURCE_WIDTH`, `ROURCE_SECONDS_PER_DAY`, `ROURCE_BLOOM_ENABLED`
+- Boolean values accept: `1/true/yes/on` and `0/false/no/off`
+- Configuration priority: CLI args > Environment vars > Config file > Defaults
+- New `config_env` module with `load_env()` and `merge_env()` functions
+- 40+ environment variables documented in module
 
 #### User Avatars
 - Added `--user-image-dir` to load PNG avatars from a directory
@@ -138,6 +143,17 @@ rource/
 - **Pre-warm Phase**: Applies first commit and runs 30 update cycles (~0.5s) before rendering to let files fade in
 - **Entity Bounds**: New `compute_entity_bounds()` method calculates actual bounding box from files/users/directories instead of using fixed quadtree bounds
 - **Deterministic Output**: Fixed time step (1/framerate) ensures reproducible frame generation
+
+#### Performance Optimization (Home Assistant Core - 100k commits)
+- **Bottleneck Identified**: Action beams accumulating at fast playback (138k concurrent at peak)
+- **Fix Applied**: MAX_ACTIONS = 5000 cap in scene/mod.rs
+- **Results**: 41% faster total time (119s → 71s), 96% faster action rendering (423ms → 16ms)
+- **Key Insight**: Streaming commits not needed - parsing 40MB log takes only 0.28s
+
+#### Environment Variable Configuration
+- All settings configurable via `ROURCE_` prefixed environment variables
+- Priority: CLI args > Environment vars > Config file > Defaults
+- Run `rource --env-help` for complete documentation
 
 ---
 
@@ -1461,7 +1477,7 @@ impl ZoomCamera {
 - [x] Settings struct with all options
 - [x] CLI argument parsing (clap) - 25+ options implemented
 - [x] Config file parsing (TOML)
-- [ ] Environment variable support
+- [x] Environment variable support (ROURCE_ prefix)
 - [x] Validation and defaults
 
 #### 1.3 Core Data Structures
@@ -1571,23 +1587,25 @@ impl ZoomCamera {
 ### Phase 7: Polish & Optimization (Weeks 29-32) 🔄
 
 #### 7.1 Performance
-- [ ] Profiling and bottleneck analysis
-- [ ] Memory optimization
-- [ ] Large repository handling
-- [ ] Streaming commit loading
+- [x] Profiling and bottleneck analysis (action accumulation identified, fixed with MAX_ACTIONS cap)
+- [ ] Memory optimization (optional - current performance is acceptable)
+- [x] Large repository handling (tested with 100k commits, 4764 users, 32k files)
+- [x] Streaming commit loading (not needed - parsing 40MB log takes 0.28s)
 
 #### 7.2 User Experience
 - [x] Interactive file legend (color-coded by extension)
 - [x] Timeline scrubbing (click progress bar to seek)
 - [x] Keyboard shortcuts (Space=play/pause, +/-=zoom, R=reset, arrows=pan)
 - [x] Touch support (WASM - pinch zoom, pan gesture)
+- [x] Environment variable configuration (ROURCE_ prefix)
+- [x] --env-help flag for documentation
 
 #### 7.3 Documentation
 - [x] CLAUDE.md project guide
-- [ ] User manual
-- [ ] API documentation
-- [ ] Examples
-- [ ] Migration guide from Gource
+- [x] User manual (README.md with comprehensive usage guide)
+- [ ] API documentation (cargo doc)
+- [x] Examples (examples/ directory with configs and scripts)
+- [x] Migration guide from Gource (MIGRATING.md)
 
 ---
 

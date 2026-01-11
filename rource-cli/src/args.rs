@@ -181,6 +181,10 @@ pub struct Args {
     #[arg(long)]
     pub sample_config: bool,
 
+    /// Print environment variable help and exit.
+    #[arg(long)]
+    pub env_help: bool,
+
     /// Directory containing user avatar images.
     ///
     /// Images should be named after usernames (e.g., "John Doe.png").
@@ -334,6 +338,145 @@ impl Args {
         Ok(())
     }
 
+    /// Apply settings from environment variables.
+    ///
+    /// Environment variables use the ROURCE_ prefix (e.g., ROURCE_WIDTH, ROURCE_SECONDS_PER_DAY).
+    /// CLI arguments take precedence over environment variables.
+    pub fn apply_env(&mut self) {
+        use rource_core::config::load_env;
+
+        let env_settings = load_env();
+
+        // Display settings - only apply if CLI is at default
+        if self.width == 1280 && env_settings.display.width != 1280 {
+            self.width = env_settings.display.width;
+        }
+        if self.height == 720 && env_settings.display.height != 720 {
+            self.height = env_settings.display.height;
+        }
+        if !self.fullscreen && env_settings.display.fullscreen {
+            self.fullscreen = true;
+        }
+        if self.background_color == "000000" {
+            // Convert color back to hex string
+            let c = &env_settings.display.background_color;
+            if c.r > 0.0 || c.g > 0.0 || c.b > 0.0 {
+                self.background_color = format!(
+                    "{:02X}{:02X}{:02X}",
+                    (c.r * 255.0) as u8,
+                    (c.g * 255.0) as u8,
+                    (c.b * 255.0) as u8
+                );
+            }
+        }
+        if (self.font_size - 12.0).abs() < 0.01 && (env_settings.display.font_size - 12.0).abs() > 0.01 {
+            self.font_size = env_settings.display.font_size;
+        }
+        if !self.no_bloom && !env_settings.display.bloom_enabled {
+            self.no_bloom = true;
+        }
+        if !self.shadows && env_settings.display.shadows_enabled {
+            self.shadows = true;
+        }
+
+        // Playback settings
+        if (self.seconds_per_day - 10.0).abs() < 0.01
+            && (env_settings.playback.seconds_per_day - 10.0).abs() > 0.01
+        {
+            self.seconds_per_day = env_settings.playback.seconds_per_day;
+        }
+        if (self.auto_skip_seconds - 3.0).abs() < 0.01
+            && (env_settings.playback.auto_skip_seconds - 3.0).abs() > 0.01
+        {
+            self.auto_skip_seconds = env_settings.playback.auto_skip_seconds;
+        }
+        if !self.loop_playback && env_settings.playback.loop_playback {
+            self.loop_playback = true;
+        }
+        if !self.paused && env_settings.playback.start_paused {
+            self.paused = true;
+        }
+
+        // Visibility settings
+        if !self.hide_filenames && env_settings.visibility.hide_filenames {
+            self.hide_filenames = true;
+        }
+        if !self.hide_usernames && env_settings.visibility.hide_usernames {
+            self.hide_usernames = true;
+        }
+        if !self.hide_date && env_settings.visibility.hide_date {
+            self.hide_date = true;
+        }
+        if !self.hide_legend && env_settings.visibility.hide_legend {
+            self.hide_legend = true;
+        }
+
+        // Limit settings
+        if self.max_files == 0 && env_settings.limits.max_files > 0 {
+            self.max_files = env_settings.limits.max_files;
+        }
+        if self.max_users == 0 && env_settings.limits.max_users > 0 {
+            self.max_users = env_settings.limits.max_users;
+        }
+
+        // Camera settings
+        if self.camera_mode == "overview" && env_settings.camera.mode != rource_core::config::CameraModeSetting::Overview {
+            self.camera_mode = env_settings.camera.mode.as_str().to_string();
+        }
+
+        // Input settings
+        if !self.disable_input && env_settings.input.disable_input {
+            self.disable_input = true;
+        }
+
+        // Export settings
+        if self.output.is_none() {
+            if let Some(path) = &env_settings.export.output_path {
+                self.output = Some(PathBuf::from(path));
+            }
+        }
+        if self.framerate == 60 && env_settings.export.framerate != 60 {
+            self.framerate = env_settings.export.framerate;
+        }
+        if self.screenshot.is_none() {
+            if let Some(path) = &env_settings.export.screenshot_path {
+                self.screenshot = Some(PathBuf::from(path));
+            }
+        }
+
+        // Title settings
+        if self.title.is_none() {
+            self.title.clone_from(&env_settings.title.title);
+        }
+
+        // Filter settings
+        if self.show_users.is_none() {
+            if let Some(pattern) = env_settings.filter.show_users_pattern() {
+                self.show_users = Some(pattern.to_string());
+            }
+        }
+        if self.hide_users.is_none() {
+            if let Some(pattern) = env_settings.filter.hide_users_pattern() {
+                self.hide_users = Some(pattern.to_string());
+            }
+        }
+        if self.show_files.is_none() {
+            if let Some(pattern) = env_settings.filter.show_files_pattern() {
+                self.show_files = Some(pattern.to_string());
+            }
+        }
+        if self.hide_files.is_none() {
+            if let Some(pattern) = env_settings.filter.hide_files_pattern() {
+                self.hide_files = Some(pattern.to_string());
+            }
+        }
+        if self.hide_dirs.is_none() {
+            if let Some(pattern) = env_settings.filter.hide_dirs_pattern() {
+                self.hide_dirs = Some(pattern.to_string());
+            }
+        }
+    }
+
     /// Generate a sample config file content.
     #[must_use]
     pub fn sample_config() -> &'static str {
@@ -376,6 +519,93 @@ framerate = 60
 # show_files = "\\.rs$"            # Only show Rust files
 # hide_files = "\\.log$|\\.tmp$"   # Hide log and temp files
 # hide_dirs = "node_modules|target|build"  # Hide build directories
+"#
+    }
+
+    /// Generate environment variable help text.
+    #[must_use]
+    pub fn env_help() -> &'static str {
+        r#"Rource Environment Variables
+
+All settings can be configured via environment variables with the ROURCE_ prefix.
+Environment variables are overridden by CLI arguments but override config files.
+
+Configuration Priority (highest to lowest):
+  1. CLI arguments
+  2. Environment variables
+  3. Config file (--config)
+  4. Defaults
+
+Boolean values accept: 1, true, yes, on (for true) or 0, false, no, off (for false)
+Color values use hex format: #FFFFFF or FFFFFF
+
+DISPLAY SETTINGS
+  ROURCE_WIDTH              Window width in pixels (default: 1280)
+  ROURCE_HEIGHT             Window height in pixels (default: 720)
+  ROURCE_FULLSCREEN         Run in fullscreen mode (default: false)
+  ROURCE_BACKGROUND_COLOR   Background color as hex (default: #000000)
+  ROURCE_FONT_SIZE          Font size for labels (default: 12.0)
+  ROURCE_BLOOM_ENABLED      Enable bloom/glow effect (default: true)
+  ROURCE_BLOOM_INTENSITY    Bloom intensity 0.0-2.0 (default: 1.0)
+  ROURCE_SHADOWS_ENABLED    Enable drop shadows (default: false)
+
+PLAYBACK SETTINGS
+  ROURCE_SECONDS_PER_DAY    Real seconds per day of history (default: 10.0)
+  ROURCE_AUTO_SKIP_SECONDS  Seconds before auto-skipping idle (default: 3.0)
+  ROURCE_START_TIMESTAMP    Unix timestamp to start from
+  ROURCE_STOP_TIMESTAMP     Unix timestamp to stop at
+  ROURCE_LOOP_PLAYBACK      Loop when reaching end (default: false)
+  ROURCE_START_PAUSED       Start in paused state (default: false)
+
+VISIBILITY SETTINGS
+  ROURCE_HIDE_FILENAMES     Hide file names (default: false)
+  ROURCE_HIDE_USERNAMES     Hide user names (default: false)
+  ROURCE_HIDE_DATE          Hide date display (default: false)
+  ROURCE_HIDE_PROGRESS      Hide progress bar (default: false)
+  ROURCE_HIDE_LEGEND        Hide file extension legend (default: false)
+  ROURCE_SHOW_FPS           Show FPS counter (default: false)
+
+LIMIT SETTINGS
+  ROURCE_MAX_FILES          Maximum files to display, 0=unlimited (default: 0)
+  ROURCE_MAX_USERS          Maximum users to display, 0=unlimited (default: 0)
+  ROURCE_FILE_IDLE_TIME     Seconds before files fade out (default: 60.0)
+  ROURCE_USER_IDLE_TIME     Seconds before users fade out (default: 10.0)
+
+CAMERA SETTINGS
+  ROURCE_CAMERA_MODE        Camera mode: overview, track, follow (default: overview)
+  ROURCE_MIN_ZOOM           Minimum zoom level (default: 0.01)
+  ROURCE_MAX_ZOOM           Maximum zoom level (default: 10.0)
+  ROURCE_CAMERA_SMOOTHNESS  Camera smoothness 0.0-1.0 (default: 0.85)
+  ROURCE_CAMERA_PADDING     Padding when auto-fitting (default: 100.0)
+
+INPUT SETTINGS
+  ROURCE_DISABLE_INPUT      Disable all user input (default: false)
+  ROURCE_MOUSE_SENSITIVITY  Mouse sensitivity (default: 1.0)
+
+EXPORT SETTINGS
+  ROURCE_OUTPUT_PATH        Output path for video frames
+  ROURCE_FRAMERATE          Video export framerate (default: 60)
+  ROURCE_SCREENSHOT_PATH    Screenshot output path
+
+TITLE SETTINGS
+  ROURCE_TITLE              Title to display
+  ROURCE_TITLE_FONT_SIZE    Title font size (default: 24.0)
+  ROURCE_TITLE_COLOR        Title color as hex (default: #FFFFFF)
+
+FILTER SETTINGS
+  ROURCE_SHOW_USERS         Regex pattern for users to show
+  ROURCE_HIDE_USERS         Regex pattern for users to hide
+  ROURCE_SHOW_FILES         Regex pattern for files to show
+  ROURCE_HIDE_FILES         Regex pattern for files to hide
+  ROURCE_HIDE_DIRS          Regex pattern for directories to hide
+
+EXAMPLE USAGE
+  export ROURCE_WIDTH=1920
+  export ROURCE_HEIGHT=1080
+  export ROURCE_BLOOM_ENABLED=false
+  export ROURCE_SECONDS_PER_DAY=5.0
+  export ROURCE_TITLE="My Project"
+  rource /path/to/repo
 "#
     }
 }
@@ -466,6 +696,7 @@ mod tests {
             screenshot_at: None,
             config: None,
             sample_config: false,
+            env_help: false,
             user_image_dir: None,
             default_user_image: None,
         };
@@ -556,5 +787,74 @@ width = 1920
         assert!(sample.contains("width"));
         assert!(sample.contains("seconds_per_day"));
         assert!(sample.contains("background_color"));
+    }
+
+    #[test]
+    fn test_env_help() {
+        let help = Args::env_help();
+        assert!(help.contains("ROURCE_WIDTH"));
+        assert!(help.contains("ROURCE_SECONDS_PER_DAY"));
+        assert!(help.contains("ROURCE_BLOOM_ENABLED"));
+        assert!(help.contains("DISPLAY SETTINGS"));
+        assert!(help.contains("PLAYBACK SETTINGS"));
+        assert!(help.contains("FILTER SETTINGS"));
+    }
+
+    #[test]
+    fn test_env_vars_applied() {
+        // Set environment variables
+        std::env::set_var("ROURCE_WIDTH", "1920");
+        std::env::set_var("ROURCE_HEIGHT", "1080");
+        std::env::set_var("ROURCE_BLOOM_ENABLED", "false");
+
+        let mut args = Args {
+            path: PathBuf::from("."),
+            width: 1280,
+            height: 720,
+            seconds_per_day: 10.0,
+            background_color: "000000".to_string(),
+            font_size: 12.0,
+            camera_mode: "overview".to_string(),
+            framerate: 60,
+            ..Args::default()
+        };
+
+        args.apply_env();
+
+        // Env should override defaults
+        assert_eq!(args.width, 1920);
+        assert_eq!(args.height, 1080);
+        assert!(args.no_bloom);
+
+        // Clean up
+        std::env::remove_var("ROURCE_WIDTH");
+        std::env::remove_var("ROURCE_HEIGHT");
+        std::env::remove_var("ROURCE_BLOOM_ENABLED");
+    }
+
+    #[test]
+    fn test_env_vars_cli_override() {
+        // CLI args should override env
+        std::env::set_var("ROURCE_WIDTH", "1920");
+
+        let mut args = Args {
+            path: PathBuf::from("."),
+            width: 800, // Explicitly set via CLI (non-default)
+            height: 720,
+            seconds_per_day: 10.0,
+            background_color: "000000".to_string(),
+            font_size: 12.0,
+            camera_mode: "overview".to_string(),
+            framerate: 60,
+            ..Args::default()
+        };
+
+        args.apply_env();
+
+        // CLI value (800) should be preserved since it's not the default (1280)
+        assert_eq!(args.width, 800);
+
+        // Clean up
+        std::env::remove_var("ROURCE_WIDTH");
     }
 }
