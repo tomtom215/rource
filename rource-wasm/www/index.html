@@ -508,6 +508,8 @@
         .perf-fps.good { color: var(--success); }
         .perf-fps.ok { color: var(--warning); }
         .perf-fps.bad { color: var(--error); }
+        .perf-fps.paused { color: var(--text-secondary); }
+        .perf-fps.complete { color: var(--accent-blue); }
 
         .perf-toggle {
             color: var(--text-muted);
@@ -1031,8 +1033,7 @@
 
         /* Documentation Panel */
         .docs-panel {
-            max-height: 400px;
-            overflow-y: auto;
+            /* Removed max-height to show all content */
         }
 
         .docs-section {
@@ -1634,12 +1635,12 @@
                 <div class="speed-control">
                     <label for="speed-select">Speed:</label>
                     <select id="speed-select" disabled>
-                        <option value="1">0.1x (Slow)</option>
-                        <option value="5">0.5x</option>
+                        <option value="100">0.1x (Slow)</option>
+                        <option value="20">0.5x</option>
                         <option value="10" selected>1x (Normal)</option>
-                        <option value="20">2x</option>
-                        <option value="50">5x (Fast)</option>
-                        <option value="100">10x (Very Fast)</option>
+                        <option value="5">2x</option>
+                        <option value="2">5x (Fast)</option>
+                        <option value="1">10x (Very Fast)</option>
                     </select>
                 </div>
             </div>
@@ -1740,18 +1741,31 @@
             <!-- Manual Load Panel -->
             <div class="panel">
                 <div class="tab-nav" role="tablist">
-                    <button class="tab-btn active" data-tab="paste" role="tab" aria-selected="true">Paste Log</button>
+                    <button class="tab-btn active" data-tab="command" role="tab" aria-selected="true">Git Command</button>
                     <button class="tab-btn" data-tab="upload" role="tab" aria-selected="false">Upload File</button>
-                    <button class="tab-btn" data-tab="command" role="tab" aria-selected="false">Git Command</button>
+                    <button class="tab-btn" data-tab="paste" role="tab" aria-selected="false">Paste Log</button>
                 </div>
 
-                <div id="tab-paste" class="tab-content active" role="tabpanel">
-                    <textarea id="log-input" placeholder="Paste your log data here...&#10;Format: timestamp|author|action|path"></textarea>
-                    <button id="btn-load" class="btn btn-sm" disabled>Load Log Data</button>
-                    <p class="help-text">
-                        Format: <code>timestamp|author|action|path</code><br>
-                        Actions: <code>A</code>=Add, <code>M</code>=Modify, <code>D</code>=Delete
-                    </p>
+                <div id="tab-command" class="tab-content active" role="tabpanel">
+                    <p class="help-text" style="margin-bottom: 0.75rem;">Generate a log file from your local repository:</p>
+                    <div class="command-box">
+                        <code id="git-command">git log --reverse --format="%at|%an" --name-status | awk '/^[0-9]+\|/{info=$0;next}/^[AMD]\t/{print info"|"substr($0,1,1)"|"substr($0,3)}' > rource.log</code>
+                    </div>
+                    <button id="btn-copy-command" class="btn btn-sm btn-secondary">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        Copy Command
+                    </button>
+                    <div class="help-text" style="margin-top: 0.75rem;">
+                        <strong>How to use:</strong>
+                        <ol style="margin: 0.5rem 0 0 1.2rem; padding: 0;">
+                            <li>Open a terminal in your Git repository</li>
+                            <li>Run the command above (creates <code>rource.log</code>)</li>
+                            <li>Upload the generated file using the "Upload File" tab</li>
+                        </ol>
+                        <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
+                            <strong>Note:</strong> Works on Linux/macOS. For Windows, use Git Bash or WSL.
+                        </p>
+                    </div>
                 </div>
 
                 <div id="tab-upload" class="tab-content" role="tabpanel" hidden>
@@ -1773,30 +1787,48 @@
                     </div>
                 </div>
 
-                <div id="tab-command" class="tab-content" role="tabpanel" hidden>
-                    <p class="help-text" style="margin-bottom: 0.75rem;">Generate a log file from your local repository:</p>
-                    <div class="command-box">
-                        <code id="git-command">git log --reverse --format="%at|%an" --name-status | awk '/^[0-9]+\|/{info=$0;next}/^[AMD]\t/{print info"|"substr($0,1,1)"|"substr($0,3)}' > rource.log</code>
-                    </div>
-                    <button id="btn-copy-command" class="btn btn-sm btn-secondary">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                        Copy Command
-                    </button>
-                    <div class="help-text" style="margin-top: 0.75rem;">
-                        <strong>How to use:</strong>
-                        <ol style="margin: 0.5rem 0 0 1.2rem; padding: 0;">
-                            <li>Open a terminal in your Git repository</li>
-                            <li>Run the command above (creates <code>rource.log</code>)</li>
-                            <li>Upload the generated file using the "Upload File" tab</li>
-                        </ol>
-                        <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
-                            <strong>Note:</strong> Works on Linux/macOS. For Windows, use Git Bash or WSL.
-                        </p>
-                    </div>
+                <div id="tab-paste" class="tab-content" role="tabpanel" hidden>
+                    <textarea id="log-input" placeholder="Paste your log data here...&#10;Format: timestamp|author|action|path"></textarea>
+                    <button id="btn-load" class="btn btn-sm" disabled>Load Log Data</button>
+                    <p class="help-text">
+                        Format: <code>timestamp|author|action|path</code><br>
+                        Actions: <code>A</code>=Add, <code>M</code>=Modify, <code>D</code>=Delete
+                    </p>
                 </div>
             </div>
 
-            <!-- Documentation Panel -->
+            <!-- Controls Panel - Keyboard and Mouse -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
+                        </svg>
+                        Keyboard Shortcuts
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <div class="shortcut-grid">
+                        <div class="shortcut-item"><span>Play/Pause</span><kbd>Space</kbd></div>
+                        <div class="shortcut-item"><span>Zoom In</span><kbd>+</kbd></div>
+                        <div class="shortcut-item"><span>Zoom Out</span><kbd>-</kbd></div>
+                        <div class="shortcut-item"><span>Reset View</span><kbd>R</kbd></div>
+                        <div class="shortcut-item"><span>Pan</span><kbd>Arrows</kbd></div>
+                        <div class="shortcut-item"><span>Labels</span><kbd>L</kbd></div>
+                        <div class="shortcut-item"><span>Step Fwd</span><kbd>&gt;</kbd></div>
+                        <div class="shortcut-item"><span>Step Back</span><kbd>&lt;</kbd></div>
+                        <div class="shortcut-item"><span>Speed Down</span><kbd>[</kbd></div>
+                        <div class="shortcut-item"><span>Speed Up</span><kbd>]</kbd></div>
+                        <div class="shortcut-item"><span>Perf Stats</span><kbd>P</kbd></div>
+                        <div class="shortcut-item"><span>Authors</span><kbd>A</kbd></div>
+                    </div>
+                    <p class="help-text" style="margin-top: 0.75rem;">
+                        <strong>Mouse:</strong> Drag to pan, scroll to zoom
+                    </p>
+                </div>
+            </div>
+
+            <!-- Quick Guide Panel -->
             <div class="panel">
                 <div class="panel-header">
                     <h3>
@@ -1810,30 +1842,6 @@
                     <div class="docs-section">
                         <h4>What is Rource?</h4>
                         <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> visualizes software version control history as an animated tree. Each file is a colored node, each developer has a unique color, and commits create "beams" connecting developers to files they modify.</p>
-                    </div>
-                    <div class="docs-section">
-                        <h4>Keyboard Shortcuts</h4>
-                        <div class="shortcut-grid">
-                            <div class="shortcut-item"><span>Play/Pause</span><kbd>Space</kbd></div>
-                            <div class="shortcut-item"><span>Zoom In</span><kbd>+</kbd></div>
-                            <div class="shortcut-item"><span>Zoom Out</span><kbd>-</kbd></div>
-                            <div class="shortcut-item"><span>Reset View</span><kbd>R</kbd></div>
-                            <div class="shortcut-item"><span>Pan</span><kbd>Arrows</kbd></div>
-                            <div class="shortcut-item"><span>Labels</span><kbd>L</kbd></div>
-                            <div class="shortcut-item"><span>Step Fwd</span><kbd>&gt;</kbd></div>
-                            <div class="shortcut-item"><span>Step Back</span><kbd>&lt;</kbd></div>
-                            <div class="shortcut-item"><span>Speed Down</span><kbd>[</kbd></div>
-                            <div class="shortcut-item"><span>Speed Up</span><kbd>]</kbd></div>
-                            <div class="shortcut-item"><span>Perf Stats</span><kbd>P</kbd></div>
-                            <div class="shortcut-item"><span>Authors</span><kbd>A</kbd></div>
-                        </div>
-                    </div>
-                    <div class="docs-section">
-                        <h4>Mouse/Touch Controls</h4>
-                        <ul class="feature-list">
-                            <li>Drag to pan the view</li>
-                            <li>Scroll wheel or pinch to zoom</li>
-                        </ul>
                     </div>
                     <div class="docs-section">
                         <h4>Features</h4>
@@ -2396,10 +2404,23 @@
                 const width = rource.getCanvasWidth();
                 const height = rource.getCanvasHeight();
 
-                // Update FPS display with color coding
+                // Update FPS display with color coding and playback status
                 const fpsRounded = Math.round(fps);
-                perfFps.textContent = `${fpsRounded} FPS`;
-                perfFps.className = 'perf-fps ' + (fpsRounded >= 55 ? 'good' : fpsRounded >= 30 ? 'ok' : 'bad');
+                const isPlaying = rource.isPlaying();
+                const total = rource.commitCount();
+                const current = rource.currentCommit();
+                const isComplete = current >= total - 1 && !isPlaying;
+
+                if (isComplete) {
+                    perfFps.textContent = `Complete`;
+                    perfFps.className = 'perf-fps complete';
+                } else if (!isPlaying) {
+                    perfFps.textContent = `Paused`;
+                    perfFps.className = 'perf-fps paused';
+                } else {
+                    perfFps.textContent = `${fpsRounded} FPS`;
+                    perfFps.className = 'perf-fps ' + (fpsRounded >= 55 ? 'good' : fpsRounded >= 30 ? 'ok' : 'bad');
+                }
 
                 // Update other metrics
                 perfFrameTime.textContent = `${frameTimeMs.toFixed(1)}ms`;
