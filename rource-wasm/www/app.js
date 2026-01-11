@@ -2292,6 +2292,51 @@ window.addEventListener('resize', checkMobileSidebar);
 checkMobileSidebar();
 
 // =====================================================================
+// SIDEBAR SCROLL INDICATOR
+// =====================================================================
+const scrollIndicator = document.getElementById('sidebar-scroll-indicator');
+
+function updateScrollIndicator() {
+    if (!sidebarPanel || !scrollIndicator) return;
+
+    // Check if sidebar has scrollable content
+    const scrollTop = sidebarPanel.scrollTop;
+    const scrollHeight = sidebarPanel.scrollHeight;
+    const clientHeight = sidebarPanel.clientHeight;
+
+    // If content fits without scrolling, hide indicator
+    if (scrollHeight <= clientHeight + 5) {
+        scrollIndicator.classList.add('hidden');
+        return;
+    }
+
+    // Show indicator if not near the bottom (within 50px)
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    if (distanceFromBottom > 50) {
+        scrollIndicator.classList.remove('hidden');
+    } else {
+        scrollIndicator.classList.add('hidden');
+    }
+}
+
+// Update on scroll
+sidebarPanel.addEventListener('scroll', updateScrollIndicator, { passive: true });
+
+// Update on resize (content height may change)
+window.addEventListener('resize', updateScrollIndicator);
+
+// Initial check after a short delay to ensure content is rendered
+setTimeout(updateScrollIndicator, 100);
+
+// Also update when collapsible panels are toggled
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.panel-header') || e.target.closest('.collapsible')) {
+        // Delay to allow animation/content change to complete
+        setTimeout(updateScrollIndicator, 350);
+    }
+});
+
+// =====================================================================
 // COMMIT TOOLTIP ON HOVER
 // =====================================================================
 let tooltipData = []; // Stores parsed commit data for tooltip lookup

@@ -941,6 +941,14 @@ header h1 {
     font-size: 0.75rem;
 }
 
+/* Sidebar Wrapper - Container for sidebar panel and scroll indicator */
+.sidebar-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Critical for overflow in flex/grid children */
+    position: relative;
+}
+
 /* Sidebar Panel - Scrollable independent of main content */
 .sidebar-panel {
     display: flex;
@@ -951,8 +959,46 @@ header h1 {
     min-height: 0; /* Critical for overflow in flex/grid children */
     min-width: 0; /* Prevent content from expanding container */
     width: 100%;
+    flex: 1; /* Fill available space in wrapper */
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+}
+
+/* Scroll Indicator - Shows when more content is below */
+.sidebar-scroll-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(to bottom, transparent 0%, var(--bg-primary) 40%);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    z-index: 10;
+}
+
+.sidebar-scroll-indicator.hidden {
+    opacity: 0;
+}
+
+.sidebar-scroll-indicator svg {
+    animation: bounce 1.5s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(4px);
+    }
 }
 
 .sidebar-panel::-webkit-scrollbar {
@@ -2280,6 +2326,26 @@ footer a {
         visibility: visible;
     }
 
+    /* Sidebar scroll indicator - position inside fixed sidebar on mobile */
+    .sidebar-scroll-indicator {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        width: min(100%, 400px);
+        z-index: 151;
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    .sidebar-panel.open + .sidebar-scroll-indicator {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .sidebar-panel.open + .sidebar-scroll-indicator.hidden {
+        opacity: 0;
+    }
+
     /* Main content should take full width when sidebar is closed */
     .app-container {
         grid-template-columns: 1fr;
@@ -2300,6 +2366,10 @@ footer a {
         right: 8px;
         width: 32px;
         height: 32px;
+    }
+
+    .sidebar-scroll-indicator {
+        width: 100%;
     }
 }
 
