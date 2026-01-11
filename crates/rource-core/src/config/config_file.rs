@@ -127,6 +127,9 @@ struct TomlPlaybackSettings {
     stop_timestamp: Option<i64>,
     loop_playback: Option<bool>,
     start_paused: Option<bool>,
+    time_scale: Option<f32>,
+    stop_at_time: Option<f32>,
+    realtime: Option<bool>,
 }
 
 /// TOML representation of visibility settings.
@@ -138,6 +141,11 @@ struct TomlVisibilitySettings {
     hide_date: Option<bool>,
     hide_progress: Option<bool>,
     hide_legend: Option<bool>,
+    hide_dirnames: Option<bool>,
+    hide_root: Option<bool>,
+    hide_tree: Option<bool>,
+    hide_bloom: Option<bool>,
+    hide_mouse: Option<bool>,
     show_fps: Option<bool>,
 }
 
@@ -160,6 +168,9 @@ struct TomlCameraSettings {
     max_zoom: Option<f32>,
     smoothness: Option<f32>,
     padding: Option<f32>,
+    follow_user: Option<String>,
+    highlight_users: Option<String>,
+    highlight_all_users: Option<bool>,
 }
 
 /// TOML representation of input settings.
@@ -286,6 +297,18 @@ impl TomlConfig {
                 .playback
                 .start_paused
                 .unwrap_or(defaults.playback.start_paused),
+            time_scale: self
+                .playback
+                .time_scale
+                .unwrap_or(defaults.playback.time_scale),
+            stop_at_time: self
+                .playback
+                .stop_at_time
+                .or(defaults.playback.stop_at_time),
+            realtime: self
+                .playback
+                .realtime
+                .unwrap_or(defaults.playback.realtime),
         };
 
         // Visibility settings
@@ -310,6 +333,26 @@ impl TomlConfig {
                 .visibility
                 .hide_legend
                 .unwrap_or(defaults.visibility.hide_legend),
+            hide_dirnames: self
+                .visibility
+                .hide_dirnames
+                .unwrap_or(defaults.visibility.hide_dirnames),
+            hide_root: self
+                .visibility
+                .hide_root
+                .unwrap_or(defaults.visibility.hide_root),
+            hide_tree: self
+                .visibility
+                .hide_tree
+                .unwrap_or(defaults.visibility.hide_tree),
+            hide_bloom: self
+                .visibility
+                .hide_bloom
+                .unwrap_or(defaults.visibility.hide_bloom),
+            hide_mouse: self
+                .visibility
+                .hide_mouse
+                .unwrap_or(defaults.visibility.hide_mouse),
             show_fps: self
                 .visibility
                 .show_fps
@@ -341,6 +384,20 @@ impl TomlConfig {
             max_zoom: self.camera.max_zoom.unwrap_or(defaults.camera.max_zoom),
             smoothness: self.camera.smoothness.unwrap_or(defaults.camera.smoothness),
             padding: self.camera.padding.unwrap_or(defaults.camera.padding),
+            follow_user: self
+                .camera
+                .follow_user
+                .clone()
+                .or(defaults.camera.follow_user),
+            highlight_users: self
+                .camera
+                .highlight_users
+                .clone()
+                .or(defaults.camera.highlight_users),
+            highlight_all_users: self
+                .camera
+                .highlight_all_users
+                .unwrap_or(defaults.camera.highlight_all_users),
         };
 
         // Input settings
@@ -386,6 +443,12 @@ impl TomlConfig {
                 .unwrap_or(defaults.title.title_color),
         };
 
+        // Directory settings (using defaults for now - can be extended in config format)
+        let directory = defaults.directory.clone();
+
+        // Overlay settings (using defaults for now - can be extended in config format)
+        let overlay = defaults.overlay.clone();
+
         Ok(Settings {
             display,
             playback,
@@ -395,6 +458,8 @@ impl TomlConfig {
             input,
             export,
             title,
+            directory,
+            overlay,
             filter: FilterSettings::default(),
         })
     }
@@ -515,6 +580,18 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
             .playback
             .start_paused
             .unwrap_or(base.playback.start_paused),
+        time_scale: config
+            .playback
+            .time_scale
+            .unwrap_or(base.playback.time_scale),
+        stop_at_time: config
+            .playback
+            .stop_at_time
+            .or(base.playback.stop_at_time),
+        realtime: config
+            .playback
+            .realtime
+            .unwrap_or(base.playback.realtime),
     };
 
     let visibility = VisibilitySettings {
@@ -538,6 +615,26 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
             .visibility
             .hide_legend
             .unwrap_or(base.visibility.hide_legend),
+        hide_dirnames: config
+            .visibility
+            .hide_dirnames
+            .unwrap_or(base.visibility.hide_dirnames),
+        hide_root: config
+            .visibility
+            .hide_root
+            .unwrap_or(base.visibility.hide_root),
+        hide_tree: config
+            .visibility
+            .hide_tree
+            .unwrap_or(base.visibility.hide_tree),
+        hide_bloom: config
+            .visibility
+            .hide_bloom
+            .unwrap_or(base.visibility.hide_bloom),
+        hide_mouse: config
+            .visibility
+            .hide_mouse
+            .unwrap_or(base.visibility.hide_mouse),
         show_fps: config
             .visibility
             .show_fps
@@ -567,6 +664,20 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
         max_zoom: config.camera.max_zoom.unwrap_or(base.camera.max_zoom),
         smoothness: config.camera.smoothness.unwrap_or(base.camera.smoothness),
         padding: config.camera.padding.unwrap_or(base.camera.padding),
+        follow_user: config
+            .camera
+            .follow_user
+            .clone()
+            .or(base.camera.follow_user),
+        highlight_users: config
+            .camera
+            .highlight_users
+            .clone()
+            .or(base.camera.highlight_users),
+        highlight_all_users: config
+            .camera
+            .highlight_all_users
+            .unwrap_or(base.camera.highlight_all_users),
     };
 
     let input = InputSettings {
@@ -609,6 +720,10 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
             .unwrap_or(base.title.title_color),
     };
 
+    // Directory and overlay settings from base (not yet supported in config file format)
+    let directory = base.directory.clone();
+    let overlay = base.overlay.clone();
+
     let settings = Settings {
         display,
         playback,
@@ -618,6 +733,8 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
         input,
         export,
         title,
+        directory,
+        overlay,
         filter: FilterSettings::default(),
     };
 

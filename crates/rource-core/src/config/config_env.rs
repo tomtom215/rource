@@ -95,8 +95,9 @@
 //! ```
 
 use crate::config::{
-    CameraModeSetting, CameraSettings, DisplaySettings, ExportSettings, InputSettings,
-    LimitSettings, PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
+    CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
+    InputSettings, LimitSettings, OverlaySettings, PlaybackSettings, Settings, TitleSettings,
+    VisibilitySettings,
 };
 use rource_math::Color;
 use std::env;
@@ -133,6 +134,30 @@ fn parse_hex_color(s: &str) -> Option<Color> {
     let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
 
     Some(Color::from_rgb8(r, g, b))
+}
+
+/// Parse an offset string in "XxY" or "X,Y" format.
+fn parse_offset(s: &str) -> Option<(i32, i32)> {
+    let s = s.trim();
+    if s.is_empty() || s == "0x0" || s == "0,0" {
+        return Some((0, 0));
+    }
+
+    // Try "XxY" format (avoid confusion with hex by checking for lowercase 'x')
+    if let Some((x_str, y_str)) = s.split_once('x') {
+        let x = x_str.trim().parse().ok()?;
+        let y = y_str.trim().parse().ok()?;
+        return Some((x, y));
+    }
+
+    // Try "X,Y" format
+    if let Some((x_str, y_str)) = s.split_once(',') {
+        let x = x_str.trim().parse().ok()?;
+        let y = y_str.trim().parse().ok()?;
+        return Some((x, y));
+    }
+
+    None
 }
 
 /// Load settings from environment variables.
@@ -231,6 +256,15 @@ pub fn merge_env(base: Settings) -> Settings {
         start_paused: read_env("START_PAUSED")
             .and_then(|v| parse_bool(&v))
             .unwrap_or(base.playback.start_paused),
+        time_scale: read_env("TIME_SCALE")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.playback.time_scale),
+        stop_at_time: read_env("STOP_AT_TIME")
+            .and_then(|v| v.parse().ok())
+            .or(base.playback.stop_at_time),
+        realtime: read_env("REALTIME")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.playback.realtime),
     };
 
     // Visibility settings
@@ -250,6 +284,21 @@ pub fn merge_env(base: Settings) -> Settings {
         hide_legend: read_env("HIDE_LEGEND")
             .and_then(|v| parse_bool(&v))
             .unwrap_or(base.visibility.hide_legend),
+        hide_dirnames: read_env("HIDE_DIRNAMES")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.visibility.hide_dirnames),
+        hide_root: read_env("HIDE_ROOT")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.visibility.hide_root),
+        hide_tree: read_env("HIDE_TREE")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.visibility.hide_tree),
+        hide_bloom: read_env("HIDE_BLOOM")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.visibility.hide_bloom),
+        hide_mouse: read_env("HIDE_MOUSE")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.visibility.hide_mouse),
         show_fps: read_env("SHOW_FPS")
             .and_then(|v| parse_bool(&v))
             .unwrap_or(base.visibility.show_fps),
@@ -287,6 +336,11 @@ pub fn merge_env(base: Settings) -> Settings {
         padding: read_env("CAMERA_PADDING")
             .and_then(|v| v.parse().ok())
             .unwrap_or(base.camera.padding),
+        follow_user: read_env("FOLLOW_USER").or(base.camera.follow_user),
+        highlight_users: read_env("HIGHLIGHT_USERS").or(base.camera.highlight_users),
+        highlight_all_users: read_env("HIGHLIGHT_ALL_USERS")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.camera.highlight_all_users),
     };
 
     // Input settings
@@ -319,6 +373,25 @@ pub fn merge_env(base: Settings) -> Settings {
             .unwrap_or(base.title.title_color),
     };
 
+    // Directory settings
+    let directory = DirectorySettings {
+        name_depth: read_env("DIR_NAME_DEPTH")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.directory.name_depth),
+        name_position: read_env("DIR_NAME_POSITION")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.directory.name_position),
+    };
+
+    // Overlay settings
+    let overlay = OverlaySettings {
+        logo_path: read_env("LOGO").or(base.overlay.logo_path),
+        logo_offset: read_env("LOGO_OFFSET")
+            .and_then(|v| parse_offset(&v))
+            .unwrap_or(base.overlay.logo_offset),
+        background_image: read_env("BACKGROUND_IMAGE").or(base.overlay.background_image),
+    };
+
     // Filter settings
     let mut filter = base.filter;
     if let Some(pattern) = read_env("SHOW_USERS") {
@@ -346,6 +419,8 @@ pub fn merge_env(base: Settings) -> Settings {
         input,
         export,
         title,
+        directory,
+        overlay,
         filter,
     }
 }
@@ -356,6 +431,7 @@ pub fn merge_env(base: Settings) -> Settings {
 #[must_use]
 pub fn env_var_names() -> Vec<&'static str> {
     vec![
+        // Display settings
         "ROURCE_WIDTH",
         "ROURCE_HEIGHT",
         "ROURCE_FULLSCREEN",
@@ -364,35 +440,61 @@ pub fn env_var_names() -> Vec<&'static str> {
         "ROURCE_BLOOM_ENABLED",
         "ROURCE_BLOOM_INTENSITY",
         "ROURCE_SHADOWS_ENABLED",
+        // Playback settings
         "ROURCE_SECONDS_PER_DAY",
         "ROURCE_AUTO_SKIP_SECONDS",
         "ROURCE_START_TIMESTAMP",
         "ROURCE_STOP_TIMESTAMP",
         "ROURCE_LOOP_PLAYBACK",
         "ROURCE_START_PAUSED",
+        "ROURCE_TIME_SCALE",
+        "ROURCE_STOP_AT_TIME",
+        "ROURCE_REALTIME",
+        // Visibility settings
         "ROURCE_HIDE_FILENAMES",
         "ROURCE_HIDE_USERNAMES",
         "ROURCE_HIDE_DATE",
         "ROURCE_HIDE_PROGRESS",
         "ROURCE_HIDE_LEGEND",
+        "ROURCE_HIDE_DIRNAMES",
+        "ROURCE_HIDE_ROOT",
+        "ROURCE_HIDE_TREE",
+        "ROURCE_HIDE_BLOOM",
+        "ROURCE_HIDE_MOUSE",
         "ROURCE_SHOW_FPS",
+        // Limit settings
         "ROURCE_MAX_FILES",
         "ROURCE_MAX_USERS",
         "ROURCE_FILE_IDLE_TIME",
         "ROURCE_USER_IDLE_TIME",
+        // Camera settings
         "ROURCE_CAMERA_MODE",
         "ROURCE_MIN_ZOOM",
         "ROURCE_MAX_ZOOM",
         "ROURCE_CAMERA_SMOOTHNESS",
         "ROURCE_CAMERA_PADDING",
+        "ROURCE_FOLLOW_USER",
+        "ROURCE_HIGHLIGHT_USERS",
+        "ROURCE_HIGHLIGHT_ALL_USERS",
+        // Input settings
         "ROURCE_DISABLE_INPUT",
         "ROURCE_MOUSE_SENSITIVITY",
+        // Export settings
         "ROURCE_OUTPUT_PATH",
         "ROURCE_FRAMERATE",
         "ROURCE_SCREENSHOT_PATH",
+        // Title settings
         "ROURCE_TITLE",
         "ROURCE_TITLE_FONT_SIZE",
         "ROURCE_TITLE_COLOR",
+        // Directory settings
+        "ROURCE_DIR_NAME_DEPTH",
+        "ROURCE_DIR_NAME_POSITION",
+        // Overlay settings
+        "ROURCE_LOGO",
+        "ROURCE_LOGO_OFFSET",
+        "ROURCE_BACKGROUND_IMAGE",
+        // Filter settings
         "ROURCE_SHOW_USERS",
         "ROURCE_HIDE_USERS",
         "ROURCE_SHOW_FILES",
@@ -632,5 +734,128 @@ mod tests {
                 );
             },
         );
+    }
+
+    // Tests for new feature parity environment variables
+
+    #[test]
+    fn test_new_playback_env_vars() {
+        with_env(
+            &[
+                ("TIME_SCALE", "2.0"),
+                ("STOP_AT_TIME", "120.5"),
+                ("REALTIME", "true"),
+            ],
+            || {
+                let settings = load_env();
+                assert!((settings.playback.time_scale - 2.0).abs() < 0.01);
+                assert_eq!(settings.playback.stop_at_time, Some(120.5));
+                assert!(settings.playback.realtime);
+            },
+        );
+    }
+
+    #[test]
+    fn test_new_visibility_env_vars() {
+        with_env(
+            &[
+                ("HIDE_DIRNAMES", "yes"),
+                ("HIDE_ROOT", "1"),
+                ("HIDE_TREE", "true"),
+                ("HIDE_BLOOM", "on"),
+                ("HIDE_MOUSE", "true"),
+            ],
+            || {
+                let settings = load_env();
+                assert!(settings.visibility.hide_dirnames);
+                assert!(settings.visibility.hide_root);
+                assert!(settings.visibility.hide_tree);
+                assert!(settings.visibility.hide_bloom);
+                assert!(settings.visibility.hide_mouse);
+            },
+        );
+    }
+
+    #[test]
+    fn test_new_camera_env_vars() {
+        with_env(
+            &[
+                ("FOLLOW_USER", "alice"),
+                ("HIGHLIGHT_USERS", "bob,charlie"),
+                ("HIGHLIGHT_ALL_USERS", "true"),
+            ],
+            || {
+                let settings = load_env();
+                assert_eq!(settings.camera.follow_user, Some("alice".to_string()));
+                assert_eq!(
+                    settings.camera.highlight_users,
+                    Some("bob,charlie".to_string())
+                );
+                assert!(settings.camera.highlight_all_users);
+            },
+        );
+    }
+
+    #[test]
+    fn test_directory_env_vars() {
+        with_env(
+            &[("DIR_NAME_DEPTH", "3"), ("DIR_NAME_POSITION", "0.75")],
+            || {
+                let settings = load_env();
+                assert_eq!(settings.directory.name_depth, 3);
+                assert!((settings.directory.name_position - 0.75).abs() < 0.01);
+            },
+        );
+    }
+
+    #[test]
+    fn test_overlay_env_vars() {
+        with_env(
+            &[
+                ("LOGO", "/path/to/logo.png"),
+                ("LOGO_OFFSET", "10x20"),
+                ("BACKGROUND_IMAGE", "/path/to/bg.png"),
+            ],
+            || {
+                let settings = load_env();
+                assert_eq!(settings.overlay.logo_path, Some("/path/to/logo.png".to_string()));
+                assert_eq!(settings.overlay.logo_offset, (10, 20));
+                assert_eq!(
+                    settings.overlay.background_image,
+                    Some("/path/to/bg.png".to_string())
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_parse_offset() {
+        assert_eq!(parse_offset("10x20"), Some((10, 20)));
+        assert_eq!(parse_offset("10,20"), Some((10, 20)));
+        assert_eq!(parse_offset("0x0"), Some((0, 0)));
+        assert_eq!(parse_offset(""), Some((0, 0)));
+        assert_eq!(parse_offset("-5x10"), Some((-5, 10)));
+        assert_eq!(parse_offset("invalid"), None);
+    }
+
+    #[test]
+    fn test_env_var_names_contains_new_vars() {
+        let names = env_var_names();
+        assert!(names.contains(&"ROURCE_TIME_SCALE"));
+        assert!(names.contains(&"ROURCE_STOP_AT_TIME"));
+        assert!(names.contains(&"ROURCE_REALTIME"));
+        assert!(names.contains(&"ROURCE_HIDE_DIRNAMES"));
+        assert!(names.contains(&"ROURCE_HIDE_ROOT"));
+        assert!(names.contains(&"ROURCE_HIDE_TREE"));
+        assert!(names.contains(&"ROURCE_HIDE_BLOOM"));
+        assert!(names.contains(&"ROURCE_HIDE_MOUSE"));
+        assert!(names.contains(&"ROURCE_FOLLOW_USER"));
+        assert!(names.contains(&"ROURCE_HIGHLIGHT_USERS"));
+        assert!(names.contains(&"ROURCE_HIGHLIGHT_ALL_USERS"));
+        assert!(names.contains(&"ROURCE_DIR_NAME_DEPTH"));
+        assert!(names.contains(&"ROURCE_DIR_NAME_POSITION"));
+        assert!(names.contains(&"ROURCE_LOGO"));
+        assert!(names.contains(&"ROURCE_LOGO_OFFSET"));
+        assert!(names.contains(&"ROURCE_BACKGROUND_IMAGE"));
     }
 }

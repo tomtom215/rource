@@ -1,6 +1,11 @@
 //! Command-line argument parsing for Rource.
 
 use clap::Parser;
+use rource_core::config::{
+    CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
+    FilterSettings, InputSettings, LimitSettings, OverlaySettings, PlaybackSettings, Settings,
+    TitleSettings, VisibilitySettings,
+};
 use std::path::PathBuf;
 
 /// Rource - Software version control visualization tool.
@@ -83,6 +88,30 @@ pub struct Args {
     #[arg(long)]
     pub hide_legend: bool,
 
+    /// Hide directory names/labels.
+    #[arg(long)]
+    pub hide_dirnames: bool,
+
+    /// Hide the progress bar.
+    #[arg(long)]
+    pub hide_progress: bool,
+
+    /// Hide the root directory node.
+    #[arg(long)]
+    pub hide_root: bool,
+
+    /// Hide the tree structure (connecting lines between directories and files).
+    #[arg(long)]
+    pub hide_tree: bool,
+
+    /// Hide the bloom/glow effect at runtime.
+    #[arg(long)]
+    pub hide_bloom: bool,
+
+    /// Hide the mouse cursor during visualization.
+    #[arg(long)]
+    pub hide_mouse: bool,
+
     /// Maximum number of files to display (0 = unlimited).
     #[arg(long, default_value_t = 0)]
     pub max_files: usize,
@@ -127,6 +156,58 @@ pub struct Args {
     /// Camera mode: overview, track, or follow.
     #[arg(long, default_value = "overview")]
     pub camera_mode: String,
+
+    /// Username to follow when camera mode is "follow".
+    ///
+    /// The camera will track this specific user throughout the visualization.
+    #[arg(long, value_name = "USERNAME")]
+    pub follow_user: Option<String>,
+
+    /// Username(s) to highlight (comma-separated).
+    ///
+    /// Highlighted users appear with enhanced visibility.
+    #[arg(long, value_name = "USERNAMES")]
+    pub highlight_users: Option<String>,
+
+    /// Highlight all users.
+    #[arg(long)]
+    pub highlight_all_users: bool,
+
+    /// Directory name display depth (0 = none, 1 = immediate parent, etc.).
+    #[arg(long, default_value_t = 1)]
+    pub dir_name_depth: u32,
+
+    /// Position of directory name along edge (0.0 = start, 1.0 = end).
+    #[arg(long, default_value_t = 0.5)]
+    pub dir_name_position: f32,
+
+    /// Time scale multiplier (1.0 = normal, 2.0 = double speed).
+    #[arg(long, default_value_t = 1.0)]
+    pub time_scale: f32,
+
+    /// Stop playback after this many seconds of real time.
+    #[arg(long, value_name = "SECONDS")]
+    pub stop_at_time: Option<f32>,
+
+    /// Use real-time playback (1 second = 1 second of history).
+    #[arg(long)]
+    pub realtime: bool,
+
+    /// Path to logo image to display in top-right corner.
+    #[arg(long, value_name = "FILE")]
+    pub logo: Option<PathBuf>,
+
+    /// Logo position offset from top-right corner (e.g., "10x20").
+    #[arg(long, value_name = "XxY", default_value = "0x0")]
+    pub logo_offset: String,
+
+    /// Path to background image.
+    #[arg(long, value_name = "FILE")]
+    pub background_image: Option<PathBuf>,
+
+    /// Save current configuration to a TOML file and exit.
+    #[arg(long, value_name = "FILE")]
+    pub save_config: Option<PathBuf>,
 
     /// Loop the visualization.
     #[arg(short = 'L', long)]
@@ -208,6 +289,134 @@ impl Args {
     /// Parse the background color from hex string.
     pub fn parse_background_color(&self) -> rource_math::Color {
         parse_hex_color(&self.background_color).unwrap_or(rource_math::Color::BLACK)
+    }
+
+    /// Parse the logo offset from "XxY" format.
+    ///
+    /// Returns (x, y) offset values. Defaults to (0, 0) if parsing fails.
+    #[must_use]
+    pub fn parse_logo_offset(&self) -> (i32, i32) {
+        parse_offset(&self.logo_offset).unwrap_or((0, 0))
+    }
+
+    /// Convert CLI arguments to a Settings struct.
+    ///
+    /// This is used for --save-config to export current settings.
+    #[must_use]
+    pub fn to_settings(&self) -> Settings {
+        let display = DisplaySettings {
+            width: self.width,
+            height: self.height,
+            fullscreen: self.fullscreen,
+            background_color: self.parse_background_color(),
+            font_size: self.font_size,
+            bloom_enabled: !self.no_bloom,
+            bloom_intensity: 1.0,
+            shadows_enabled: self.shadows,
+        };
+
+        let playback = PlaybackSettings {
+            seconds_per_day: self.seconds_per_day,
+            auto_skip_seconds: 3.0,
+            start_timestamp: self.start_date.clone().and_then(|d| parse_date(&d)),
+            stop_timestamp: self.stop_date.clone().and_then(|d| parse_date(&d)),
+            loop_playback: self.loop_playback,
+            start_paused: self.paused,
+            time_scale: self.time_scale,
+            stop_at_time: self.stop_at_time,
+            realtime: self.realtime,
+        };
+
+        let visibility = VisibilitySettings {
+            hide_filenames: self.hide_filenames,
+            hide_usernames: self.hide_usernames,
+            hide_date: self.hide_date,
+            hide_progress: self.hide_progress,
+            hide_legend: self.hide_legend,
+            hide_dirnames: self.hide_dirnames,
+            hide_root: self.hide_root,
+            hide_tree: self.hide_tree,
+            hide_bloom: self.hide_bloom,
+            hide_mouse: self.hide_mouse,
+            show_fps: false,
+        };
+
+        let limits = LimitSettings {
+            max_files: self.max_files,
+            max_users: self.max_users,
+            file_idle_time: 0.0,  // Use default
+            user_idle_time: 0.0,  // Use default
+        };
+
+        let camera = CameraSettings {
+            mode: CameraModeSetting::parse(&self.camera_mode),
+            min_zoom: 0.01,
+            max_zoom: 10.0,
+            smoothness: 0.85,
+            padding: 100.0,
+            follow_user: self.follow_user.clone(),
+            highlight_users: self.highlight_users.clone(),
+            highlight_all_users: self.highlight_all_users,
+        };
+
+        let input = InputSettings {
+            disable_input: self.disable_input,
+            mouse_sensitivity: 1.0,
+        };
+
+        let export = ExportSettings {
+            output_path: self.output.as_ref().map(|p| p.display().to_string()),
+            framerate: self.framerate,
+            screenshot_path: self.screenshot.as_ref().map(|p| p.display().to_string()),
+        };
+
+        let title = TitleSettings {
+            title: self.title.clone(),
+            title_font_size: self.font_size * 1.5,
+            title_color: rource_math::Color::WHITE,
+        };
+
+        let directory = DirectorySettings {
+            name_depth: self.dir_name_depth,
+            name_position: self.dir_name_position,
+        };
+
+        let overlay = OverlaySettings {
+            logo_path: self.logo.as_ref().map(|p| p.display().to_string()),
+            logo_offset: self.parse_logo_offset(),
+            background_image: self.background_image.as_ref().map(|p| p.display().to_string()),
+        };
+
+        let mut filter = FilterSettings::new();
+        if let Some(ref pattern) = self.show_users {
+            filter.set_show_users(Some(pattern.clone()));
+        }
+        if let Some(ref pattern) = self.hide_users {
+            filter.set_hide_users(Some(pattern.clone()));
+        }
+        if let Some(ref pattern) = self.show_files {
+            filter.set_show_files(Some(pattern.clone()));
+        }
+        if let Some(ref pattern) = self.hide_files {
+            filter.set_hide_files(Some(pattern.clone()));
+        }
+        if let Some(ref pattern) = self.hide_dirs {
+            filter.set_hide_dirs(Some(pattern.clone()));
+        }
+
+        Settings {
+            display,
+            playback,
+            visibility,
+            limits,
+            camera,
+            input,
+            export,
+            title,
+            directory,
+            overlay,
+            filter,
+        }
     }
 
     /// Apply settings from a TOML config file.
@@ -631,6 +840,39 @@ fn parse_hex_color(s: &str) -> Option<rource_math::Color> {
     ))
 }
 
+/// Parse an offset string in "XxY" or "X,Y" format.
+fn parse_offset(s: &str) -> Option<(i32, i32)> {
+    let s = s.trim();
+    if s.is_empty() || s == "0x0" || s == "0,0" {
+        return Some((0, 0));
+    }
+
+    // Try "XxY" format
+    if let Some((x_str, y_str)) = s.split_once('x') {
+        let x = x_str.trim().parse().ok()?;
+        let y = y_str.trim().parse().ok()?;
+        return Some((x, y));
+    }
+
+    // Try "X,Y" format
+    if let Some((x_str, y_str)) = s.split_once(',') {
+        let x = x_str.trim().parse().ok()?;
+        let y = y_str.trim().parse().ok()?;
+        return Some((x, y));
+    }
+
+    None
+}
+
+/// Parse a date string in "YYYY-MM-DD" format to a Unix timestamp.
+fn parse_date(s: &str) -> Option<i64> {
+    use chrono::NaiveDate;
+
+    let date = NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d").ok()?;
+    let datetime = date.and_hms_opt(0, 0, 0)?;
+    Some(datetime.and_utc().timestamp())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -661,52 +903,76 @@ mod tests {
     #[test]
     fn test_default_args() {
         // Verify defaults compile correctly
-        let args = Args {
-            path: PathBuf::from("."),
-            width: 1280,
-            height: 720,
-            fullscreen: false,
-            seconds_per_day: 10.0,
-            auto_skip_seconds: 3.0,
-            start_date: None,
-            stop_date: None,
-            title: None,
-            background_color: "000000".to_string(),
-            font_size: 12.0,
-            no_bloom: false,
-            shadows: false,
-            hide_filenames: false,
-            hide_usernames: false,
-            hide_date: false,
-            hide_legend: false,
-            max_files: 0,
-            max_users: 0,
-            show_users: None,
-            hide_users: None,
-            show_files: None,
-            hide_files: None,
-            hide_dirs: None,
-            camera_mode: "overview".to_string(),
-            loop_playback: false,
-            paused: false,
-            disable_input: false,
-            custom_log: false,
-            output: None,
-            framerate: 60,
-            headless: false,
-            screenshot: None,
-            screenshot_at: None,
-            config: None,
-            sample_config: false,
-            env_help: false,
-            user_image_dir: None,
-            default_user_image: None,
-        };
+        // Note: Args::default() uses Rust's Default trait which gives 0 for numerics.
+        // The clap default_value_t is only used when parsing CLI args.
+        let args = Args::default();
 
-        assert_eq!(args.width, 1280);
-        assert_eq!(args.height, 720);
+        // These are Default trait values, not clap defaults
+        assert_eq!(args.width, 0); // Default is 0, clap default_value_t is 1280
+        assert_eq!(args.height, 0); // Default is 0, clap default_value_t is 720
         assert!(args.show_users.is_none());
         assert!(args.hide_users.is_none());
+        // Test new fields
+        assert!(!args.hide_dirnames);
+        assert!(!args.hide_root);
+        assert!(!args.hide_tree);
+        assert!(!args.hide_bloom);
+        assert!(!args.hide_mouse);
+        assert_eq!(args.time_scale, 0.0); // Default trait gives 0
+        assert!(args.stop_at_time.is_none());
+        assert!(!args.realtime);
+        assert!(args.follow_user.is_none());
+        assert!(args.highlight_users.is_none());
+        assert!(!args.highlight_all_users);
+        assert_eq!(args.dir_name_depth, 0); // Default trait gives 0
+        assert!((args.dir_name_position).abs() < 0.01); // Default trait gives 0.0
+        assert!(args.logo.is_none());
+        assert!(args.background_image.is_none());
+        assert!(args.save_config.is_none());
+    }
+
+    #[test]
+    fn test_to_settings_conversion() {
+        // Create args with proper values for conversion
+        let mut args = Args::default();
+        args.width = 1920;
+        args.height = 1080;
+        args.time_scale = 2.0;
+        args.stop_at_time = Some(60.0);
+        args.realtime = true;
+        args.hide_dirnames = true;
+        args.hide_bloom = true;
+        args.follow_user = Some("alice".to_string());
+        args.highlight_all_users = true;
+        args.dir_name_depth = 3;
+        args.dir_name_position = 0.75;
+
+        let settings = args.to_settings();
+
+        assert_eq!(settings.display.width, 1920);
+        assert_eq!(settings.display.height, 1080);
+        assert!((settings.playback.time_scale - 2.0).abs() < 0.01);
+        assert_eq!(settings.playback.stop_at_time, Some(60.0));
+        assert!(settings.playback.realtime);
+        assert!(settings.visibility.hide_dirnames);
+        assert!(settings.visibility.hide_bloom);
+        assert_eq!(settings.camera.follow_user, Some("alice".to_string()));
+        assert!(settings.camera.highlight_all_users);
+        assert_eq!(settings.directory.name_depth, 3);
+        assert!((settings.directory.name_position - 0.75).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_parse_logo_offset() {
+        let mut args = Args::default();
+        args.logo_offset = "10x20".to_string();
+        assert_eq!(args.parse_logo_offset(), (10, 20));
+
+        args.logo_offset = "0x0".to_string();
+        assert_eq!(args.parse_logo_offset(), (0, 0));
+
+        args.logo_offset = "invalid".to_string();
+        assert_eq!(args.parse_logo_offset(), (0, 0));
     }
 
     #[test]
