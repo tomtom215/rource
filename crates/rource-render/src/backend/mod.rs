@@ -9,7 +9,7 @@
 //! For native builds, use the [`SoftwareRenderer`](software::SoftwareRenderer).
 //!
 //! For WASM builds, you can choose:
-//! - [`SoftwareRenderer`](software::SoftwareRenderer) + Canvas2D: Maximum compatibility
+//! - [`SoftwareRenderer`](software::SoftwareRenderer) + `Canvas2D`: Maximum compatibility
 //! - [`WebGl2Renderer`](webgl2::WebGl2Renderer): Better performance with GPU acceleration
 //!
 //! The WebGL2 backend requires the `webgl2` feature to be enabled.

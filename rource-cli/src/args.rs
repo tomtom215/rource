@@ -120,7 +120,7 @@ pub struct Args {
     /// Regex pattern to hide matching directories.
     ///
     /// Entire directory trees matching this pattern will be excluded.
-    /// Useful for filtering out build directories, node_modules, etc.
+    /// Useful for filtering out build directories, `node_modules`, etc.
     #[arg(long, value_name = "REGEX")]
     pub hide_dirs: Option<String>,
 
@@ -213,6 +213,7 @@ impl Args {
     /// Apply settings from a TOML config file.
     ///
     /// CLI arguments take precedence over config file settings.
+    #[allow(clippy::too_many_lines)] // Config merging requires handling all settings
     pub fn apply_config_file(&mut self) -> Result<(), String> {
         let Some(config_path) = &self.config else {
             return Ok(());
@@ -340,8 +341,9 @@ impl Args {
 
     /// Apply settings from environment variables.
     ///
-    /// Environment variables use the ROURCE_ prefix (e.g., ROURCE_WIDTH, ROURCE_SECONDS_PER_DAY).
+    /// Environment variables use the ROURCE_ prefix (e.g., `ROURCE_WIDTH`, `ROURCE_SECONDS_PER_DAY`).
     /// CLI arguments take precedence over environment variables.
+    #[allow(clippy::too_many_lines)] // Env merging requires handling all settings
     pub fn apply_env(&mut self) {
         use rource_core::config::load_env;
 

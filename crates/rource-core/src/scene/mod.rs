@@ -217,7 +217,7 @@ impl Scene {
     ///
     /// Uses caching to avoid recomputing bounds every frame. The cache is
     /// invalidated when entities are added or removed, or when
-    /// [`invalidate_bounds_cache`] is called.
+    /// [`Self::invalidate_bounds_cache`] is called.
     #[must_use]
     pub fn compute_entity_bounds(&mut self) -> Option<Bounds> {
         // Return cached bounds if still valid
@@ -458,7 +458,7 @@ impl Scene {
     const SPATIAL_REBUILD_INTERVAL: u32 = 5;
 
     /// Maximum number of concurrent actions (prevents accumulation at fast playback).
-    /// At 60fps with ACTION_SPEED=2.0, each action takes ~30 frames to complete.
+    /// At 60fps with `ACTION_SPEED=2.0`, each action takes ~30 frames to complete.
     /// With thousands of commits per second at fast playback, actions accumulate
     /// faster than they expire. This cap ensures smooth rendering performance.
     const MAX_ACTIONS: usize = 5000;

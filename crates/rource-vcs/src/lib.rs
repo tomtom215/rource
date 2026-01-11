@@ -49,8 +49,8 @@
 //!
 //! ## Error Handling
 //!
-//! All parsing functions return [`ParseResult`](error::ParseResult), which
-//! wraps either the parsed data or a [`ParseError`](error::ParseError) with
+//! All parsing functions return [`ParseResult`], which
+//! wraps either the parsed data or a [`ParseError`] with
 //! detailed information about what went wrong.
 
 // Lints are configured in workspace Cargo.toml

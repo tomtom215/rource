@@ -9,7 +9,7 @@
 //! Rource WASM supports two rendering backends:
 //!
 //! - **WebGL2** (default): GPU-accelerated rendering for best performance
-//! - **Software**: Pure CPU rendering via Canvas2D for maximum compatibility
+//! - **Software**: Pure CPU rendering via `Canvas2D` for maximum compatibility
 //!
 //! The constructor automatically tries WebGL2 first and falls back to software
 //! rendering if WebGL2 is unavailable.
@@ -203,12 +203,12 @@ fn deflate_compress(data: &[u8]) -> Vec<u8> {
 enum RendererType {
     /// WebGL2 GPU-accelerated renderer.
     WebGl2,
-    /// Software CPU renderer with Canvas2D output.
+    /// Software CPU renderer with `Canvas2D` output.
     Software,
 }
 
 impl RendererType {
-    fn as_str(&self) -> &'static str {
+    fn as_str(self) -> &'static str {
         match self {
             Self::WebGl2 => "webgl2",
             Self::Software => "software",
@@ -217,6 +217,7 @@ impl RendererType {
 }
 
 /// Unified renderer backend that can be either WebGL2 or Software.
+#[allow(clippy::large_enum_variant)] // WebGl2Renderer is larger, but boxing adds complexity for little gain
 enum RendererBackend {
     WebGl2(WebGl2Renderer),
     Software {
@@ -253,14 +254,6 @@ impl RendererBackend {
         Ok((Self::Software { renderer, context }, RendererType::Software))
     }
 
-    /// Returns the renderer type.
-    fn renderer_type(&self) -> RendererType {
-        match self {
-            Self::WebGl2(_) => RendererType::WebGl2,
-            Self::Software { .. } => RendererType::Software,
-        }
-    }
-
     /// Returns the width of the renderer.
     fn width(&self) -> u32 {
         match self {
@@ -293,7 +286,7 @@ impl RendererBackend {
         }
     }
 
-    /// Called after end_frame() to copy software buffer to canvas (no-op for WebGL2).
+    /// Called after `end_frame()` to copy software buffer to canvas (no-op for WebGL2).
     fn present(&self) {
         if let Self::Software { renderer, context } = self {
             let width = renderer.width();

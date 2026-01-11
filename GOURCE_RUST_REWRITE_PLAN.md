@@ -22,7 +22,7 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 | Phase 6: Platform Integration | ✅ Complete | 39 | Native CLI, WASM, mouse input, video export, avatars |
 | Phase 7: Polish & Optimization | 🔄 In Progress | 210 | Config files, legend, timeline scrubbing, touch support, env vars |
 
-**Total Tests**: 646 passing
+**Total Tests**: 655 passing (600 unit + 55 doc tests)
 
 ### What's Working Now
 
@@ -87,7 +87,6 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 - Pure Rust Git parsing (gitoxide) - optional enhancement
 - CVS/Apache log parsers
 - Memory optimization for very large repositories
-- User manual and API documentation
 
 ### Crate Structure
 
@@ -1604,7 +1603,7 @@ impl ZoomCamera {
 #### 7.3 Documentation
 - [x] CLAUDE.md project guide
 - [x] User manual (README.md with comprehensive usage guide)
-- [ ] API documentation (cargo doc)
+- [x] API documentation (cargo doc) ✅
 - [x] Examples (examples/ directory with configs and scripts)
 - [x] Migration guide from Gource (MIGRATING.md)
 

@@ -181,6 +181,7 @@ pub fn load_env() -> Settings {
 /// assert!(!settings.display.bloom_enabled);
 /// ```
 #[must_use]
+#[allow(clippy::too_many_lines)] // Config merging intentionally handles all settings in one function
 pub fn merge_env(base: Settings) -> Settings {
     // Display settings
     let display = DisplaySettings {
@@ -273,8 +274,7 @@ pub fn merge_env(base: Settings) -> Settings {
     // Camera settings
     let camera = CameraSettings {
         mode: read_env("CAMERA_MODE")
-            .map(|v| CameraModeSetting::parse(&v))
-            .unwrap_or(base.camera.mode),
+            .map_or(base.camera.mode, |v| CameraModeSetting::parse(&v)),
         min_zoom: read_env("MIN_ZOOM")
             .and_then(|v| v.parse().ok())
             .unwrap_or(base.camera.min_zoom),

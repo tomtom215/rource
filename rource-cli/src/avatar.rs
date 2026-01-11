@@ -1,5 +1,4 @@
 //! User avatar loading and management.
-#![allow(clippy::cast_lossless)]
 //!
 //! This module handles loading user avatars from image files.
 //! Avatar filenames should match usernames (e.g., "John Doe.png").
@@ -18,6 +17,23 @@
 //! }
 //! ```
 
+// PNG/DEFLATE decoder uses explicit binary literals for protocol values
+#![allow(clippy::unreadable_literal)]
+// Some helper methods reserved for future use
+#![allow(dead_code)]
+// Variables initialized to default then conditionally assigned in chunk parsing
+#![allow(unused_assignments)]
+// PNG decoder is self-contained with many small functions; larger ones are acceptable for readability
+#![allow(clippy::too_many_lines)]
+// PNG format parsing uses explicit casts for clarity
+#![allow(clippy::cast_lossless)]
+// Comparison chains are clearer than match in binary protocol parsing
+#![allow(clippy::comparison_chain)]
+// PNG decoder uses standard Result pattern even when errors are unlikely
+#![allow(clippy::unnecessary_wraps)]
+// Items defined after statements for locality in decoder implementation
+#![allow(clippy::items_after_statements)]
+
 use rource_render::{SoftwareRenderer, Texture, TextureId};
 use std::collections::HashMap;
 use std::path::Path;
@@ -32,7 +48,7 @@ pub struct AvatarManager {
     default_avatar: Option<Texture>,
 }
 
-/// Registry of avatar TextureIds after registration with a renderer.
+/// Registry of avatar `TextureIds` after registration with a renderer.
 #[derive(Debug, Default)]
 pub struct AvatarRegistry {
     /// Registered avatar texture IDs, keyed by username (lowercase).
@@ -89,7 +105,7 @@ impl AvatarManager {
             Ok(entries) => {
                 for entry in entries.flatten() {
                     let file_path = entry.path();
-                    if file_path.extension().map_or(false, |ext| ext == "png") {
+                    if file_path.extension().is_some_and(|ext| ext == "png") {
                         if let Some(stem) = file_path.file_stem() {
                             let username = stem.to_string_lossy().to_lowercase();
                             if let Some(texture) = load_png(&file_path) {
@@ -189,7 +205,7 @@ fn load_png(path: &Path) -> Option<Texture> {
 /// Decodes PNG data into an RGBA texture.
 fn decode_png(data: &[u8]) -> Result<Texture, &'static str> {
     // Check PNG signature
-    if data.len() < 8 || &data[0..8] != &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
+    if data.len() < 8 || data[0..8] != [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
         return Err("Invalid PNG signature");
     }
 
@@ -498,7 +514,7 @@ fn read_fixed_literal(reader: &mut BitReader) -> Result<u16, &'static str> {
 /// Read a fixed Huffman distance code (5 bits, then extra bits).
 fn read_fixed_distance(reader: &mut BitReader) -> Result<usize, &'static str> {
     let code = reader.read_bits_rev(5)?;
-    decode_distance(code as u16, reader)
+    decode_distance(code, reader)
 }
 
 /// Decode length from code.
@@ -635,7 +651,7 @@ fn inflate_block_dynamic(reader: &mut BitReader, output: &mut Vec<u8>) -> Result
 
 /// Simple Huffman tree representation.
 struct HuffmanTree {
-    /// (symbol, code_length) pairs sorted by code
+    /// (symbol, `code_length`) pairs sorted by code
     codes: Vec<(u16, u8)>,
 }
 

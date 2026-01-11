@@ -439,6 +439,7 @@ impl TextureManager {
     }
 
     /// Binds a texture to a texture unit.
+    #[allow(clippy::option_if_let_else)] // if-let is clearer for GL operations with side effects
     pub fn bind(&self, gl: &WebGl2RenderingContext, id: TextureId, unit: u32) -> bool {
         if let Some(tex) = self.textures.get(&id) {
             gl.active_texture(WebGl2RenderingContext::TEXTURE0 + unit);
