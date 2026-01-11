@@ -353,6 +353,57 @@
             line-height: 1.6;
         }
 
+        /* Context lost overlay */
+        .context-lost-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(13, 17, 23, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .context-lost-overlay.hidden {
+            display: none;
+        }
+
+        .context-lost-content {
+            text-align: center;
+            max-width: 400px;
+            padding: 2rem;
+        }
+
+        .context-lost-icon {
+            width: 64px;
+            height: 64px;
+            color: var(--warning);
+            margin-bottom: 1rem;
+        }
+
+        .context-lost-content h3 {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .context-lost-content p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .context-lost-content .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
         /* Legend panel */
         .legend-panel {
             position: absolute;
@@ -1394,7 +1445,7 @@
             gap: 0.75rem;
         }
 
-        /* Loading overlay */
+        /* Loading overlay with skeleton */
         #loading {
             position: fixed;
             top: 0;
@@ -1402,25 +1453,174 @@
             right: 0;
             bottom: 0;
             background: var(--bg-primary);
+            z-index: 1000;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
         }
 
         #loading.hidden {
             display: none;
         }
 
+        .loading-skeleton {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            opacity: 0.4;
+        }
+
+        .skeleton-header {
+            height: 60px;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            padding: 0 1rem;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .skeleton-bar {
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border) 50%, var(--bg-tertiary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+
+        .skeleton-title {
+            width: 80px;
+            height: 20px;
+        }
+
+        .skeleton-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-left: auto;
+        }
+
+        .skeleton-btn {
+            width: 60px;
+            height: 28px;
+        }
+
+        .skeleton-body {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .skeleton-canvas {
+            background: var(--bg-canvas);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .skeleton-viz {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+
+        .skeleton-node {
+            position: absolute;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0.3;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .skeleton-node-1 { width: 16px; height: 16px; top: 20%; left: 50%; transform: translate(-50%, -50%); animation-delay: 0s; }
+        .skeleton-node-2 { width: 12px; height: 12px; top: 60%; left: 25%; transform: translate(-50%, -50%); animation-delay: 0.3s; }
+        .skeleton-node-3 { width: 12px; height: 12px; top: 55%; left: 75%; transform: translate(-50%, -50%); animation-delay: 0.6s; }
+        .skeleton-node-4 { width: 10px; height: 10px; top: 85%; left: 50%; transform: translate(-50%, -50%); animation-delay: 0.9s; }
+
+        .skeleton-beam {
+            position: absolute;
+            height: 2px;
+            background: var(--accent-blue);
+            opacity: 0.2;
+            transform-origin: left center;
+        }
+
+        .skeleton-beam-1 {
+            width: 60px;
+            top: 40%;
+            left: 50%;
+            transform: rotate(45deg);
+            animation: beam-pulse 2s ease-in-out infinite 0.2s;
+        }
+
+        .skeleton-beam-2 {
+            width: 50px;
+            top: 40%;
+            left: 50%;
+            transform: rotate(135deg);
+            animation: beam-pulse 2s ease-in-out infinite 0.5s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        @keyframes beam-pulse {
+            0%, 100% { opacity: 0.1; }
+            50% { opacity: 0.4; }
+        }
+
+        .skeleton-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .skeleton-panel {
+            height: 200px;
+        }
+
+        .skeleton-panel-sm {
+            height: 120px;
+        }
+
+        .loading-content {
+            position: absolute;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(13, 17, 23, 0.9);
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
         .loading-spinner {
-            width: 48px;
-            height: 48px;
+            width: 40px;
+            height: 40px;
             border: 3px solid var(--bg-tertiary);
             border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         @keyframes spin {
@@ -1433,7 +1633,23 @@
 
         .loading-text {
             font-size: 1rem;
-            color: var(--text-secondary);
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .loading-subtext {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .skeleton-body {
+                grid-template-columns: 1fr;
+            }
+            .skeleton-sidebar {
+                display: none;
+            }
         }
 
         /* Toast */
@@ -1567,8 +1783,39 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <div id="loading" role="status" aria-live="polite">
-        <div class="loading-spinner" aria-hidden="true"></div>
-        <div class="loading-text">Loading Rource...</div>
+        <div class="loading-skeleton" aria-hidden="true">
+            <div class="skeleton-header">
+                <div class="skeleton-bar skeleton-logo"></div>
+                <div class="skeleton-bar skeleton-title"></div>
+                <div class="skeleton-buttons">
+                    <div class="skeleton-bar skeleton-btn"></div>
+                    <div class="skeleton-bar skeleton-btn"></div>
+                    <div class="skeleton-bar skeleton-btn"></div>
+                </div>
+            </div>
+            <div class="skeleton-body">
+                <div class="skeleton-canvas">
+                    <div class="skeleton-viz">
+                        <div class="skeleton-node skeleton-node-1"></div>
+                        <div class="skeleton-node skeleton-node-2"></div>
+                        <div class="skeleton-node skeleton-node-3"></div>
+                        <div class="skeleton-node skeleton-node-4"></div>
+                        <div class="skeleton-beam skeleton-beam-1"></div>
+                        <div class="skeleton-beam skeleton-beam-2"></div>
+                    </div>
+                </div>
+                <div class="skeleton-sidebar">
+                    <div class="skeleton-bar skeleton-panel"></div>
+                    <div class="skeleton-bar skeleton-panel-sm"></div>
+                    <div class="skeleton-bar skeleton-panel-sm"></div>
+                </div>
+            </div>
+        </div>
+        <div class="loading-content">
+            <div class="loading-spinner" aria-hidden="true"></div>
+            <div class="loading-text">Loading Rource...</div>
+            <div class="loading-subtext">Initializing WebAssembly module</div>
+        </div>
     </div>
 
     <header>
@@ -1607,6 +1854,12 @@
                 </svg>
                 <span id="labels-text">Labels</span>
             </button>
+            <button id="btn-screenshot" class="btn btn-sm btn-secondary" disabled aria-label="Download screenshot" title="Save screenshot (S)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M19 12h-2v3h-3v2h5v-5zM7 9h3V7H5v5h2V9zm14-6H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.99h18v14.02z"/>
+                </svg>
+                Screenshot
+            </button>
         </div>
         <div class="header-links">
             <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener noreferrer" class="github-link">
@@ -1623,6 +1876,22 @@
         <div class="viz-panel">
             <div id="canvas-container">
                 <canvas id="canvas" width="1280" height="720" aria-label="Rource visualization canvas"></canvas>
+                <!-- WebGL context loss recovery overlay -->
+                <div id="context-lost-overlay" class="context-lost-overlay hidden" role="alert">
+                    <div class="context-lost-content">
+                        <svg class="context-lost-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        <h3>Graphics Context Lost</h3>
+                        <p>The WebGL rendering context was lost. This can happen on mobile devices or when switching tabs.</p>
+                        <button id="btn-restore-context" class="btn btn-primary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                            </svg>
+                            Restore Visualization
+                        </button>
+                    </div>
+                </div>
                 <div id="empty-state" class="empty-state">
                     <svg class="empty-state-icon" viewBox="0 0 100 100" aria-hidden="true">
                         <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"/>
@@ -2022,6 +2291,63 @@
         let uploadedFileContent = null;
         let hasLoadedData = false;
         let commitStats = { commits: 0, files: 0, authors: new Set() };
+        let isContextLost = false;
+        let lastLoadedRepo = null;
+
+        // =====================================================================
+        // URL STATE MANAGEMENT
+        // =====================================================================
+        // Enables sharing visualization settings via URL parameters.
+        // Supported params: repo, speed, autoplay
+        // =====================================================================
+
+        /**
+         * Parses URL parameters and returns configuration object.
+         * @returns {Object} Configuration from URL params
+         */
+        function parseUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                repo: params.get('repo'),           // e.g., "owner/repo" or full URL
+                speed: params.get('speed'),         // seconds per day
+                autoplay: params.get('autoplay'),   // "true" to auto-play
+            };
+        }
+
+        /**
+         * Updates URL with current visualization state without page reload.
+         * @param {Object} state - State to persist in URL
+         */
+        function updateUrlState(state) {
+            const params = new URLSearchParams(window.location.search);
+
+            if (state.repo !== undefined) {
+                if (state.repo) params.set('repo', state.repo);
+                else params.delete('repo');
+            }
+            if (state.speed !== undefined) {
+                if (state.speed && state.speed !== '10') params.set('speed', state.speed);
+                else params.delete('speed');
+            }
+            if (state.autoplay !== undefined) {
+                if (state.autoplay) params.set('autoplay', 'true');
+                else params.delete('autoplay');
+            }
+
+            const newUrl = params.toString()
+                ? `${window.location.pathname}?${params.toString()}`
+                : window.location.pathname;
+
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        /**
+         * Generates a shareable URL for current state.
+         * @returns {string} Full shareable URL
+         */
+        function getShareableUrl() {
+            return window.location.href;
+        }
 
         // =====================================================================
         // CACHED ROURCE REPOSITORY DATA
@@ -2390,6 +2716,9 @@
         const btnReset = document.getElementById('btn-reset');
         const btnLabels = document.getElementById('btn-labels');
         const labelsText = document.getElementById('labels-text');
+        const btnScreenshot = document.getElementById('btn-screenshot');
+        const contextLostOverlay = document.getElementById('context-lost-overlay');
+        const btnRestoreContext = document.getElementById('btn-restore-context');
         const btnLoad = document.getElementById('btn-load');
         const btnLoadFile = document.getElementById('btn-load-file');
         const btnCopyCommand = document.getElementById('btn-copy-command');
@@ -2899,6 +3228,8 @@
                 fetchStatusText.textContent = `Loaded ${owner}/${repo} from cache!`;
                 fetchProgressBar.style.width = '100%';
                 loadLogData(cachedContent, 'custom');
+                lastLoadedRepo = `${owner}/${repo}`;
+                updateUrlState({ repo: `${owner}/${repo}` });
                 return;
             }
 
@@ -3022,6 +3353,8 @@
                 fetchStatusText.textContent = statusMsg;
 
                 loadLogData(logContent, 'custom');
+                lastLoadedRepo = `${owner}/${repo}`;
+                updateUrlState({ repo: `${owner}/${repo}` });
 
             } catch (error) {
                 fetchStatus.className = 'fetch-status visible error';
@@ -3049,6 +3382,7 @@
                 btnPlay.disabled = false;
                 btnReset.disabled = false;
                 btnLabels.disabled = false;
+                btnScreenshot.disabled = false;
                 btnLoad.disabled = false;
                 btnFetchGithub.disabled = false;
                 btnVisualizeRource.disabled = false;
@@ -3072,13 +3406,43 @@
                 animationId = requestAnimationFrame(animate);
                 loadingEl.classList.add('hidden');
 
-                // Auto-load Rource project data by default (cached, no API limits)
-                setTimeout(() => {
+                // Check URL parameters for shareable state
+                const urlParams = parseUrlParams();
+
+                // Apply speed from URL if specified
+                if (urlParams.speed) {
+                    const speedValue = urlParams.speed;
+                    speedSelect.value = speedValue;
+                    rource.setSpeed(parseFloat(speedValue));
+                }
+
+                // Load repo from URL or default to Rource
+                setTimeout(async () => {
                     if (!hasLoadedData) {
-                        loadLogData(ROURCE_CACHED_DATA, 'custom');
-                        showToast('Loaded Rource project history (cached)', 'success', 3000);
+                        if (urlParams.repo) {
+                            // Load repo from URL parameter
+                            githubUrlInput.value = urlParams.repo;
+                            try {
+                                await fetchGitHubRepo(urlParams.repo);
+                                if (urlParams.autoplay === 'true') {
+                                    rource.play();
+                                    updateUI();
+                                }
+                            } catch (e) {
+                                console.error('Failed to load repo from URL:', e);
+                                // Fall back to cached Rource data
+                                loadLogData(ROURCE_CACHED_DATA, 'custom');
+                                lastLoadedRepo = 'rource';
+                                showToast('Loaded Rource project history (cached)', 'success', 3000);
+                            }
+                        } else {
+                            // Default: load cached Rource project
+                            loadLogData(ROURCE_CACHED_DATA, 'custom');
+                            lastLoadedRepo = 'rource';
+                            showToast('Loaded Rource project history (cached)', 'success', 3000);
+                        }
                     }
-                }, 1000);
+                }, 500);
 
             } catch (e) {
                 console.error('Initialization failed:', e);
@@ -3140,6 +3504,108 @@
         }
 
         // =====================================================================
+        // SCREENSHOT DOWNLOAD
+        // =====================================================================
+        // Downloads the current canvas as a PNG image.
+        // Works with both WebGL2 and software renderers.
+        // =====================================================================
+        btnScreenshot.addEventListener('click', () => {
+            if (!rource || isContextLost) {
+                showToast('Cannot capture screenshot - visualization not ready', 'error');
+                return;
+            }
+
+            try {
+                // Generate filename with timestamp
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                const filename = `rource-${timestamp}.png`;
+
+                // Use canvas.toBlob for best quality (works with WebGL2 too)
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        showToast('Failed to capture screenshot', 'error');
+                        return;
+                    }
+
+                    // Create download link
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    link.click();
+
+                    // Cleanup
+                    URL.revokeObjectURL(url);
+                    showToast(`Screenshot saved: ${filename}`, 'success', 3000);
+                }, 'image/png', 1.0);
+
+            } catch (error) {
+                console.error('Screenshot error:', error);
+                showToast('Failed to capture screenshot: ' + error.message, 'error');
+            }
+        });
+
+        // =====================================================================
+        // WEBGL CONTEXT LOSS RECOVERY
+        // =====================================================================
+        // Handles WebGL context loss gracefully with user-friendly recovery.
+        // Context loss can occur on mobile devices or when switching tabs.
+        // =====================================================================
+        canvas.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            console.warn('WebGL context lost');
+            isContextLost = true;
+            contextLostOverlay.classList.remove('hidden');
+
+            // Pause animation to prevent errors
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        });
+
+        canvas.addEventListener('webglcontextrestored', () => {
+            console.log('WebGL context restored');
+            isContextLost = false;
+            contextLostOverlay.classList.add('hidden');
+
+            // Resume animation loop
+            if (rource && hasLoadedData) {
+                requestAnimationFrame(animationLoop);
+            }
+        });
+
+        btnRestoreContext.addEventListener('click', () => {
+            // Force context restoration by recreating the WASM instance
+            contextLostOverlay.classList.add('hidden');
+
+            showToast('Restoring visualization...', 'success', 2000);
+
+            // Re-initialize after a short delay
+            setTimeout(async () => {
+                try {
+                    // Re-create the Rource instance
+                    const width = canvas.width;
+                    const height = canvas.height;
+                    rource = new Rource('canvas', width, height);
+
+                    // Reload the last data if available
+                    if (lastLoadedRepo === 'rource') {
+                        loadLogData(ROURCE_CACHED_DATA + (additionalCommits ? '\n' + additionalCommits : ''), 'custom');
+                    } else if (uploadedFileContent) {
+                        loadLogData(uploadedFileContent, 'custom');
+                    }
+
+                    isContextLost = false;
+                    showToast('Visualization restored!', 'success', 2000);
+                } catch (error) {
+                    console.error('Failed to restore:', error);
+                    showToast('Failed to restore visualization. Please refresh the page.', 'error');
+                }
+            }, 500);
+        });
+
+        // =====================================================================
         // SHOWCASE: VISUALIZE ROURCE BUTTON
         // =====================================================================
         // Loads the cached Rource repository data - no API calls needed.
@@ -3164,6 +3630,9 @@
                     ? ROURCE_CACHED_DATA + '\n' + additionalCommits
                     : ROURCE_CACHED_DATA;
                 loadLogData(fullData, 'custom');
+                lastLoadedRepo = 'rource';
+                // Clear repo from URL when loading the cached Rource data
+                updateUrlState({ repo: null });
                 btnVisualizeRource.disabled = false;
                 btnVisualizeRource.innerHTML = `
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -3270,7 +3739,9 @@
         // Speed control
         speedSelect.addEventListener('change', () => {
             if (rource) {
-                rource.setSpeed(parseFloat(speedSelect.value));
+                const speed = speedSelect.value;
+                rource.setSpeed(parseFloat(speed));
+                updateUrlState({ speed });
             }
         });
 
@@ -3393,6 +3864,13 @@
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+
+            // Screenshot shortcut (S key)
+            if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                btnScreenshot.click();
+                return;
+            }
 
             if (rource) {
                 rource.onKeyDown(e.key);
