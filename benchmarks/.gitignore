@@ -1,0 +1,11 @@
+# Benchmark data - don't commit large files
+home-assistant-core/
+tools/gource-src/
+results/
+logs/
+
+# Keep the scripts and documentation
+!scripts/
+!docs/
+!*.md
+!.gitignore
