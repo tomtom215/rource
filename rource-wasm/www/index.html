@@ -234,6 +234,17 @@
             border-color: var(--border-light);
         }
 
+        .btn-secondary.active {
+            background: var(--accent-secondary);
+            border-color: var(--accent-secondary);
+            color: white;
+        }
+
+        .btn-secondary.active:hover {
+            background: #2ea043;
+            border-color: #2ea043;
+        }
+
         .btn-success {
             background: var(--accent-secondary);
         }
@@ -1163,6 +1174,12 @@
                 </svg>
                 Reset
             </button>
+            <button id="btn-labels" class="btn btn-sm btn-secondary" disabled aria-label="Toggle labels" title="Toggle labels (L)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M3 18h12v-2H3v2zM3 6v2h18V6H3zm0 7h18v-2H3v2z"/>
+                </svg>
+                <span id="labels-text">Labels</span>
+            </button>
         </div>
         <div class="header-links">
             <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener noreferrer" class="github-link">
@@ -1330,17 +1347,35 @@
                     </div>
                     <div id="file-name" class="file-name hidden"></div>
                     <button id="btn-load-file" class="btn btn-sm" disabled>Load Uploaded File</button>
+                    <div class="help-text" style="margin-top: 0.75rem;">
+                        <strong>Accepted formats:</strong><br>
+                        <code>.txt</code>, <code>.log</code>, or <code>.csv</code> files containing log data in the format:<br>
+                        <code>timestamp|author|action|path</code><br>
+                        <em>Example:</em> <code>1609459200|John Doe|A|src/main.rs</code><br>
+                        <span style="color: var(--text-muted); font-size: 0.85em;">Use the "Git Command" tab to generate this file from your local repository.</span>
+                    </div>
                 </div>
 
                 <div id="tab-command" class="tab-content" role="tabpanel" hidden>
                     <p class="help-text" style="margin-bottom: 0.75rem;">Generate a log file from your local repository:</p>
                     <div class="command-box">
-                        <code id="git-command">git log --reverse --date=raw --pretty=format:"%ad|%an" --name-status | awk -F'|' '/^[0-9]/ {ts=$1; author=$2} /^[AMD]\t/ {print ts "|" author "|" substr($0,1,1) "|" substr($0,3)}'</code>
+                        <code id="git-command">git log --reverse --format="%at|%an" --name-status | awk '/^[0-9]+\|/{info=$0;next}/^[AMD]\t/{print info"|"substr($0,1,1)"|"substr($0,3)}' > rource.log</code>
                     </div>
                     <button id="btn-copy-command" class="btn btn-sm btn-secondary">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                         Copy Command
                     </button>
+                    <div class="help-text" style="margin-top: 0.75rem;">
+                        <strong>How to use:</strong>
+                        <ol style="margin: 0.5rem 0 0 1.2rem; padding: 0;">
+                            <li>Open a terminal in your Git repository</li>
+                            <li>Run the command above (creates <code>rource.log</code>)</li>
+                            <li>Upload the generated file using the "Upload File" tab</li>
+                        </ol>
+                        <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
+                            <strong>Note:</strong> Works on Linux/macOS. For Windows, use Git Bash or WSL.
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -1367,6 +1402,7 @@
                             <div class="shortcut-item"><span>Zoom Out</span><kbd>-</kbd></div>
                             <div class="shortcut-item"><span>Reset View</span><kbd>R</kbd></div>
                             <div class="shortcut-item"><span>Pan</span><kbd>Arrows</kbd></div>
+                            <div class="shortcut-item"><span>Labels</span><kbd>L</kbd></div>
                             <div class="shortcut-item"><span>Step Fwd</span><kbd>&gt;</kbd></div>
                             <div class="shortcut-item"><span>Step Back</span><kbd>&lt;</kbd></div>
                             <div class="shortcut-item"><span>Speed Down</span><kbd>[</kbd></div>
@@ -1496,6 +1532,8 @@
         const btnPrev = document.getElementById('btn-prev');
         const btnNext = document.getElementById('btn-next');
         const btnReset = document.getElementById('btn-reset');
+        const btnLabels = document.getElementById('btn-labels');
+        const labelsText = document.getElementById('labels-text');
         const btnLoad = document.getElementById('btn-load');
         const btnLoadFile = document.getElementById('btn-load-file');
         const btnCopyCommand = document.getElementById('btn-copy-command');
@@ -1974,8 +2012,12 @@
                 // Enable buttons
                 btnPlay.disabled = false;
                 btnReset.disabled = false;
+                btnLabels.disabled = false;
                 btnLoad.disabled = false;
                 btnFetchGithub.disabled = false;
+
+                // Initialize labels button state
+                updateLabelsButton();
 
                 // Start animation
                 animationId = requestAnimationFrame(animate);
@@ -2029,6 +2071,22 @@
         btnReset.addEventListener('click', () => {
             if (rource) rource.resetCamera();
         });
+
+        btnLabels.addEventListener('click', () => {
+            if (rource) {
+                const currentState = rource.getShowLabels();
+                rource.setShowLabels(!currentState);
+                updateLabelsButton();
+            }
+        });
+
+        function updateLabelsButton() {
+            if (rource) {
+                const showLabels = rource.getShowLabels();
+                labelsText.textContent = showLabels ? 'Labels' : 'Labels Off';
+                btnLabels.classList.toggle('active', showLabels);
+            }
+        }
 
         btnLoad.addEventListener('click', () => {
             if (logInput.value.trim()) {
@@ -2168,6 +2226,10 @@
             if (rource) {
                 rource.onKeyDown(e.key);
                 updateUI();
+                // Update labels button if L was pressed
+                if (e.key === 'l' || e.key === 'L') {
+                    updateLabelsButton();
+                }
             }
         });
 
