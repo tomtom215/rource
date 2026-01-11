@@ -689,20 +689,74 @@
             color: var(--accent);
         }
 
-        /* Timeline */
+        /* Tech info panel collapsible styles */
+        .tech-info-panel.collapsible .tech-info-header {
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+            margin-bottom: 0;
+        }
+
+        .tech-info-panel.collapsible:not(.collapsed) .tech-info-header {
+            margin-bottom: 0.75rem;
+        }
+
+        .tech-info-panel.collapsible .tech-info-header:hover {
+            opacity: 0.8;
+        }
+
+        .tech-info-panel.collapsible .panel-toggle {
+            margin-left: auto;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .tech-info-panel.collapsible.collapsed .panel-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .tech-info-panel.collapsible.collapsed .tech-grid,
+        .tech-info-panel.collapsible.collapsed .tech-badges {
+            display: none;
+        }
+
+        /* Timeline / Video Player Controls */
         .timeline-container {
             background: var(--bg-secondary);
             border-radius: 8px;
-            padding: 0.75rem 1rem;
+            padding: 0.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .timeline-slider-row {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            border: 1px solid var(--border);
+            width: 100%;
+        }
+
+        .timeline-controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            width: 100%;
+        }
+
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .timeline-controls {
             display: flex;
             gap: 0.25rem;
+            align-items: center;
         }
 
         .timeline-btn {
@@ -733,6 +787,70 @@
             background: var(--accent);
             border-color: var(--accent);
             color: white;
+        }
+
+        /* Main play button - larger and more prominent */
+        .play-btn-main {
+            background: var(--accent);
+            border: none;
+            color: white;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
+        }
+
+        .play-btn-main:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+        }
+
+        .play-btn-main:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .play-btn-main svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Reset button in control bar */
+        .reset-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover:not(:disabled) {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .reset-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .reset-btn svg {
+            width: 16px;
+            height: 16px;
         }
 
         .timeline-slider {
@@ -776,17 +894,21 @@
         .timeline-info {
             font-size: 0.8rem;
             color: var(--text-secondary);
-            min-width: 80px;
-            text-align: right;
+            min-width: 70px;
+            text-align: center;
             font-variant-numeric: tabular-nums;
+        }
+
+        .timeline-right-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .speed-control {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding-left: 0.75rem;
-            border-left: 1px solid var(--border);
         }
 
         .speed-control label {
@@ -880,6 +1002,36 @@
 
         .panel-body {
             padding: 1rem;
+        }
+
+        /* Collapsible panel styles */
+        .panel.collapsible .panel-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+
+        .panel.collapsible .panel-header:hover {
+            background: var(--border);
+        }
+
+        .panel.collapsible .panel-toggle {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .panel.collapsible.collapsed .panel-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .panel.collapsible.collapsed .panel-body {
+            display: none;
+        }
+
+        .panel.collapsible.collapsed .tab-nav,
+        .panel.collapsible.collapsed .tab-content {
+            display: none;
         }
 
         /* GitHub URL Input */
@@ -1785,17 +1937,50 @@
         /* Mobile Responsive Overrides */
         @media (max-width: 768px) {
             .timeline-container {
-                flex-wrap: wrap;
                 padding: 0.5rem;
+                gap: 0.5rem;
+            }
+
+            .timeline-controls-row {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .playback-controls {
+                order: 1;
+                justify-content: center;
+                width: 100%;
+            }
+
+            .timeline-info {
+                order: 2;
+                min-width: auto;
+            }
+
+            .timeline-right-controls {
+                order: 3;
+                width: 100%;
+                justify-content: center;
             }
 
             .speed-control {
                 width: 100%;
-                border-left: none;
-                padding-left: 0;
-                padding-top: 0.5rem;
-                border-top: 1px solid var(--border);
-                margin-top: 0.5rem;
+                justify-content: center;
+            }
+
+            .play-btn-main {
+                width: 40px;
+                height: 40px;
+            }
+
+            .play-btn-main svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .reset-btn {
+                width: 32px;
+                height: 32px;
             }
 
             .stats-overlay {
@@ -1815,12 +2000,6 @@
             /* Compact header on mobile */
             header {
                 padding: 0.5rem 0.75rem;
-            }
-
-            /* Make timeline more compact */
-            .timeline-info {
-                min-width: 60px;
-                font-size: 0.7rem;
             }
         }
 
@@ -2417,18 +2596,6 @@
             <span id="renderer-badge" class="renderer-badge" title="Rendering backend"></span>
         </div>
         <div class="controls">
-            <button id="btn-play" class="btn btn-sm" disabled aria-label="Play visualization">
-                <svg id="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
-                <span id="play-text">Play</span>
-            </button>
-            <button id="btn-reset" class="btn btn-sm btn-secondary" disabled aria-label="Reset camera">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
-                </svg>
-                Reset
-            </button>
             <button id="btn-labels" class="btn btn-sm btn-secondary" disabled aria-label="Toggle labels" title="Toggle labels (L)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M3 18h12v-2H3v2zM3 6v2h18V6H3zm0 7h18v-2H3v2z"/>
@@ -2555,33 +2722,50 @@
                 </div>
             </div>
 
-            <div class="timeline-container" role="group" aria-label="Timeline controls">
-                <div class="timeline-controls">
-                    <button id="btn-prev" class="timeline-btn" disabled title="Previous commit (< or ,)">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-                    </button>
-                    <button id="btn-play-small" class="timeline-btn" disabled title="Play/Pause (Space)">
-                        <svg id="play-icon-small" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                    </button>
-                    <button id="btn-next" class="timeline-btn" disabled title="Next commit (> or .)">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
-                    </button>
+            <div class="timeline-container" role="group" aria-label="Playback controls">
+                <!-- Slider row -->
+                <div class="timeline-slider-row">
+                    <div class="timeline-slider-container" id="timeline-slider-container">
+                        <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled>
+                        <div class="timeline-markers" id="timeline-markers"></div>
+                    </div>
                 </div>
-                <div class="timeline-slider-container" id="timeline-slider-container">
-                    <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled>
-                    <div class="timeline-markers" id="timeline-markers"></div>
-                </div>
-                <span class="timeline-info" id="timeline-info">0 / 0</span>
-                <div class="speed-control">
-                    <label for="speed-select">Speed:</label>
-                    <select id="speed-select" disabled>
-                        <option value="100">0.1x (Slow)</option>
-                        <option value="20">0.5x</option>
-                        <option value="10" selected>1x (Normal)</option>
-                        <option value="5">2x</option>
-                        <option value="2">5x (Fast)</option>
-                        <option value="1">10x (Very Fast)</option>
-                    </select>
+                <!-- Controls row -->
+                <div class="timeline-controls-row">
+                    <div class="playback-controls">
+                        <!-- Reset/Restart button -->
+                        <button id="btn-reset-bar" class="reset-btn" disabled title="Reset to start (R)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                            </svg>
+                        </button>
+                        <!-- Previous -->
+                        <button id="btn-prev" class="timeline-btn" disabled title="Previous commit (< or ,)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                        </button>
+                        <!-- Main Play button -->
+                        <button id="btn-play-main" class="play-btn-main" disabled title="Play/Pause (Space)" aria-label="Play visualization">
+                            <svg id="play-icon-main" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <!-- Next -->
+                        <button id="btn-next" class="timeline-btn" disabled title="Next commit (> or .)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                        </button>
+                    </div>
+                    <span class="timeline-info" id="timeline-info">0 / 0</span>
+                    <div class="timeline-right-controls">
+                        <div class="speed-control">
+                            <label for="speed-select">Speed:</label>
+                            <select id="speed-select" disabled>
+                                <option value="100">0.1x (Slow)</option>
+                                <option value="20">0.5x</option>
+                                <option value="10" selected>1x (Normal)</option>
+                                <option value="5">2x</option>
+                                <option value="2">5x (Fast)</option>
+                                <option value="1">10x (Very Fast)</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2753,15 +2937,16 @@
                 </div>
             </div>
 
-            <!-- Controls Panel - Keyboard and Mouse -->
-            <div class="panel">
-                <div class="panel-header">
+            <!-- Controls Panel - Keyboard and Mouse (Collapsible) -->
+            <div class="panel collapsible collapsed" id="panel-shortcuts">
+                <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
                     <h3>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
                         </svg>
                         Keyboard Shortcuts
                     </h3>
+                    <span class="panel-toggle">&#9660;</span>
                 </div>
                 <div class="panel-body">
                     <div class="shortcut-grid">
@@ -2784,15 +2969,16 @@
                 </div>
             </div>
 
-            <!-- Quick Guide Panel -->
-            <div class="panel">
-                <div class="panel-header">
+            <!-- Quick Guide Panel (Collapsible) -->
+            <div class="panel collapsible collapsed" id="panel-guide">
+                <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
                     <h3>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-6h2v6zm0-8h-2V7h2v4z"/>
                         </svg>
                         Quick Guide
                     </h3>
+                    <span class="panel-toggle">&#9660;</span>
                 </div>
                 <div class="panel-body docs-panel">
                     <div class="docs-section">
@@ -2812,13 +2998,14 @@
                 </div>
             </div>
 
-            <!-- Technical Showcase Panel -->
-            <div class="tech-info-panel" id="tech-info-panel">
-                <div class="tech-info-header">
+            <!-- Technical Showcase Panel (Collapsible) -->
+            <div class="tech-info-panel collapsible collapsed" id="tech-info-panel">
+                <div class="tech-info-header" onclick="this.parentElement.classList.toggle('collapsed')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                     </svg>
                     Technical Specifications
+                    <span class="panel-toggle">&#9660;</span>
                 </div>
                 <div class="tech-grid">
                     <div class="tech-item">
@@ -3412,14 +3599,11 @@
 
         // DOM elements
         const canvas = document.getElementById('canvas');
-        const btnPlay = document.getElementById('btn-play');
-        const playIcon = document.getElementById('play-icon');
-        const playText = document.getElementById('play-text');
-        const btnPlaySmall = document.getElementById('btn-play-small');
-        const playIconSmall = document.getElementById('play-icon-small');
+        const btnPlayMain = document.getElementById('btn-play-main');
+        const playIconMain = document.getElementById('play-icon-main');
         const btnPrev = document.getElementById('btn-prev');
         const btnNext = document.getElementById('btn-next');
-        const btnReset = document.getElementById('btn-reset');
+        const btnResetBar = document.getElementById('btn-reset-bar');
         const btnLabels = document.getElementById('btn-labels');
         const labelsText = document.getElementById('labels-text');
         const btnScreenshot = document.getElementById('btn-screenshot');
@@ -3602,18 +3786,17 @@
             const total = rource.commitCount();
             const current = rource.currentCommit();
 
-            // Update play buttons
+            // Update play button icon
             const pauseIcon = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
             const playIconPath = '<path d="M8 5v14l11-7z"/>';
 
-            playText.textContent = playing ? 'Pause' : 'Play';
-            playIcon.innerHTML = playing ? pauseIcon : playIconPath;
-            playIconSmall.innerHTML = playing ? pauseIcon : playIconPath;
+            playIconMain.innerHTML = playing ? pauseIcon : playIconPath;
+            btnPlayMain.title = playing ? 'Pause (Space)' : 'Play (Space)';
 
             if (playing) {
-                btnPlaySmall.classList.add('active');
+                btnPlayMain.classList.add('active');
             } else {
-                btnPlaySmall.classList.remove('active');
+                btnPlayMain.classList.remove('active');
             }
 
             // Update timeline
@@ -4240,8 +4423,8 @@
                 techRenderer.textContent = isWebGL2 ? 'WebGL2' : 'CPU';
 
                 // Enable buttons
-                btnPlay.disabled = false;
-                btnReset.disabled = false;
+                btnPlayMain.disabled = false;
+                btnResetBar.disabled = false;
                 btnLabels.disabled = false;
                 btnScreenshot.disabled = false;
                 btnLoad.disabled = false;
@@ -4313,20 +4496,13 @@
         }
 
         // Event handlers
-        btnPlay.addEventListener('click', () => {
+        btnPlayMain.addEventListener('click', () => {
             if (rource && hasLoadedData) {
                 rource.togglePlay();
                 updateUI();
             } else if (!hasLoadedData) {
                 // Load Rource project data by default (cached)
                 loadLogData(ROURCE_CACHED_DATA, 'custom');
-            }
-        });
-
-        btnPlaySmall.addEventListener('click', () => {
-            if (rource && hasLoadedData) {
-                rource.togglePlay();
-                updateUI();
             }
         });
 
@@ -4344,8 +4520,12 @@
             }
         });
 
-        btnReset.addEventListener('click', () => {
-            if (rource) rource.resetCamera();
+        btnResetBar.addEventListener('click', () => {
+            if (rource) {
+                rource.resetCamera();
+                rource.seek(0); // Also reset to first commit
+                updateUI();
+            }
         });
 
         btnLabels.addEventListener('click', () => {
