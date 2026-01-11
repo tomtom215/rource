@@ -58,15 +58,18 @@ rource/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [141 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format) [117 tests]
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [210 tests]
-│   └── rource-render/    # Rendering (software rasterizer, bloom, shadows, fonts, text) [75 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, bloom, shadows, fonts) [90 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [38 tests]
-└── rource-wasm/          # WebAssembly application [2 tests]
+└── rource-wasm/          # WebAssembly application [3 tests]
 ```
 
 ### Rendering Backends
-1. **Software Rasterizer** - Pure CPU rendering, works everywhere
-2. **Canvas2D (WASM)** - Software renderer + canvas ImageData (implemented)
-3. **WebGL2** - GPU-accelerated browser rendering (planned)
+1. **Software Rasterizer** - Pure CPU rendering, works everywhere (native and WASM)
+2. **WebGL2 (WASM)** - GPU-accelerated browser rendering (default for WASM)
+3. **Canvas2D (WASM)** - Software renderer + canvas ImageData (fallback)
+
+The WASM build automatically tries WebGL2 first and falls back to software rendering
+if WebGL2 is unavailable. You can check which renderer is active via `rource.getRendererType()`.
 
 ## Development Guidelines
 
@@ -158,7 +161,7 @@ wasm-pack build --target nodejs --release
 - [x] Video export (PPM frames for ffmpeg piping)
 - [x] Headless rendering mode (batch export without window)
 - [x] WASM/Canvas2D (software renderer + ImageData)
-- [ ] WASM/WebGL2 (optional, for GPU acceleration)
+- [x] WASM/WebGL2 (GPU acceleration, with automatic fallback to software)
 
 ## Recent Progress & Insights
 
@@ -188,6 +191,50 @@ Successfully implemented WebAssembly support for running Rource in web browsers:
 4. **Build**: `scripts/build-wasm.sh` uses wasm-pack
    - Output in `rource-wasm/www/pkg/`
    - Demo page in `rource-wasm/www/index.html`
+
+### WebGL2 Backend Implementation (2026-01-11)
+
+Successfully implemented GPU-accelerated WebGL2 rendering backend for WASM:
+
+#### Architecture
+
+```
+crates/rource-render/src/backend/webgl2/
+├── mod.rs          # WebGl2Renderer implementing Renderer trait
+├── shaders.rs      # GLSL ES 3.0 shader sources
+├── buffers.rs      # VBO/VAO management for instanced rendering
+└── textures.rs     # Texture atlas for font glyphs
+```
+
+#### Key Features
+
+1. **Instanced Rendering**: All primitives use GPU instancing for efficient batching
+   - Circles, rings, lines, quads, and text are drawn with single draw calls
+   - Instance data uploaded per-frame via dynamic VBOs
+
+2. **Anti-Aliased Shaders**: All primitives are rendered with anti-aliasing
+   - Circles/rings use distance-field based AA
+   - Lines use perpendicular distance for smooth edges
+
+3. **Font Atlas**: Glyph caching in GPU texture
+   - Row-based packing with dynamic growth (512 -> 2048 max)
+   - Single-channel alpha texture for efficient text rendering
+
+4. **Automatic Fallback**: WASM tries WebGL2 first, falls back to software
+   - `rource.getRendererType()` returns "webgl2" or "software"
+   - `rource.isWebGL2()` for boolean check
+
+5. **Context Loss Handling**: Graceful recovery from WebGL context loss
+   - Detects loss via `gl.is_context_lost()`
+   - `recover_context()` method to reinitialize resources
+
+#### JavaScript API Additions
+
+```javascript
+// Check which renderer is active
+const renderer = rource.getRendererType(); // "webgl2" or "software"
+const isGPU = rource.isWebGL2();           // true/false
+```
 
 ### Headless Rendering Implementation (2026-01-10)
 

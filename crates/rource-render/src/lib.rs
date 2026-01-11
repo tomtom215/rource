@@ -33,6 +33,9 @@ pub mod font;
 pub mod texture;
 
 pub use backend::software::SoftwareRenderer;
+
+#[cfg(feature = "webgl2")]
+pub use backend::webgl2::WebGl2Renderer;
 pub use command::{DrawCommand, DrawQueue};
 pub use font::FontCache;
 pub use texture::{Texture, TextureId};

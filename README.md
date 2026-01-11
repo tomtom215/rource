@@ -210,19 +210,55 @@ Avatar files should be PNG format and named after the user (case-insensitive):
 
 ## WebAssembly
 
-Build for web browsers:
+Rource runs in web browsers via WebAssembly with GPU-accelerated rendering.
+
+### Rendering Backends
+
+- **WebGL2** (default): GPU-accelerated rendering for best performance
+- **Software**: Pure CPU rendering via Canvas2D (automatic fallback)
+
+The WASM build automatically tries WebGL2 and falls back to software rendering if unavailable.
+
+### Building
 
 ```bash
 cd rource-wasm
 wasm-pack build --target web --release
 ```
 
-Serve the demo:
+### Running
 
 ```bash
 cd www
 python3 -m http.server 8080
 # Open http://localhost:8080
+```
+
+### JavaScript API
+
+```javascript
+import init, { Rource } from './pkg/rource_wasm.js';
+
+await init();
+
+const canvas = document.getElementById('canvas');
+const rource = new Rource(canvas);
+
+// Check which renderer is being used
+console.log('Renderer:', rource.getRendererType()); // "webgl2" or "software"
+
+// Load data
+rource.loadCustomLog("1234567890|John|A|src/main.rs");
+
+// Start playback
+rource.play();
+
+// Animation loop
+function frame(timestamp) {
+    rource.frame(timestamp);
+    requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
 ```
 
 ## Custom Log Format
