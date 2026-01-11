@@ -1105,6 +1105,199 @@
             flex-shrink: 0;
         }
 
+        /* Showcase panel (prominent Rource visualization) */
+        .showcase-panel {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.15) 0%, rgba(88, 166, 255, 0.15) 100%);
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            padding: 1.25rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .showcase-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-blue), var(--accent));
+        }
+
+        .showcase-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.6rem;
+            padding: 0.2rem 0.5rem;
+            background: var(--accent);
+            color: white;
+            border-radius: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .showcase-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 0.75rem;
+        }
+
+        .showcase-panel h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .showcase-panel p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .showcase-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
+        }
+
+        .showcase-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+        }
+
+        .showcase-btn:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .showcase-stats {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .showcase-stat {
+            text-align: center;
+        }
+
+        .showcase-stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .showcase-stat-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Authors legend panel */
+        .authors-panel {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(22, 27, 34, 0.95);
+            border-radius: 8px;
+            padding: 0.75rem;
+            max-width: 200px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            font-size: 0.75rem;
+        }
+
+        .authors-panel.collapsed {
+            max-height: 32px;
+            overflow: hidden;
+        }
+
+        .authors-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+
+        .authors-header h4 {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0;
+        }
+
+        .authors-toggle {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .authors-panel.collapsed .authors-toggle {
+            transform: rotate(180deg);
+        }
+
+        .authors-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .author-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .author-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .author-name {
+            color: var(--text-secondary);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .author-commits {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            flex-shrink: 0;
+        }
+
         /* About section */
         .about-banner {
             background: linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(88, 166, 255, 0.1) 100%);
@@ -1162,6 +1355,10 @@
 
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
         }
 
         .loading-text {
@@ -1381,6 +1578,14 @@
                         <span class="stat-label">Authors</span>
                     </div>
                 </div>
+                <!-- Authors legend panel -->
+                <div id="authors-panel" class="authors-panel hidden collapsed" role="complementary" aria-label="Authors legend">
+                    <div class="authors-header" id="authors-toggle" role="button" tabindex="0" aria-expanded="false">
+                        <h4>Authors</h4>
+                        <span class="authors-toggle" aria-hidden="true">&#9660;</span>
+                    </div>
+                    <div class="authors-items" id="authors-items" role="list"></div>
+                </div>
                 <!-- Performance metrics overlay -->
                 <div id="perf-overlay" class="perf-overlay hidden" role="complementary" aria-label="Performance metrics">
                     <div class="perf-header" id="perf-toggle" role="button" tabindex="0" aria-expanded="true">
@@ -1442,6 +1647,43 @@
 
         <!-- Sidebar Panel -->
         <div class="sidebar-panel">
+            <!-- Showcase Panel: Visualize This Project -->
+            <div class="showcase-panel" id="showcase-panel">
+                <span class="showcase-badge">Featured</span>
+                <svg class="showcase-icon" viewBox="0 0 100 100" aria-hidden="true">
+                    <circle cx="50" cy="50" r="45" fill="#e94560"/>
+                    <circle cx="50" cy="30" r="8" fill="white"/>
+                    <circle cx="30" cy="60" r="6" fill="white"/>
+                    <circle cx="70" cy="55" r="6" fill="white"/>
+                    <circle cx="50" cy="75" r="5" fill="white"/>
+                    <line x1="50" y1="38" x2="50" y2="70" stroke="white" stroke-width="2"/>
+                    <line x1="50" y1="50" x2="32" y2="58" stroke="white" stroke-width="2"/>
+                    <line x1="50" y1="50" x2="68" y2="53" stroke="white" stroke-width="2"/>
+                </svg>
+                <h3>Visualize This Project</h3>
+                <p>Watch the complete development history of Rource itself. Cached locally - no API limits.</p>
+                <button id="btn-visualize-rource" class="showcase-btn" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Visualize Rource
+                </button>
+                <div class="showcase-stats">
+                    <div class="showcase-stat">
+                        <div class="showcase-stat-value" id="showcase-commits">--</div>
+                        <div class="showcase-stat-label">Commits</div>
+                    </div>
+                    <div class="showcase-stat">
+                        <div class="showcase-stat-value" id="showcase-files">--</div>
+                        <div class="showcase-stat-label">Files</div>
+                    </div>
+                    <div class="showcase-stat">
+                        <div class="showcase-stat-value" id="showcase-authors">--</div>
+                        <div class="showcase-stat-label">Authors</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- GitHub URL Panel -->
             <div class="panel">
                 <div class="panel-header">
@@ -1449,8 +1691,7 @@
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                         </svg>
-                        Visualize GitHub Repository
-                        <span class="badge">NEW</span>
+                        Other Repositories
                     </h3>
                 </div>
                 <div class="panel-body">
@@ -1482,10 +1723,6 @@
                                 <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
                                 linux
                             </button>
-                            <button class="repo-chip" data-repo="tomtom215/rource">
-                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
-                                rource
-                            </button>
                         </div>
                     </div>
                     <div id="fetch-status" class="fetch-status">
@@ -1495,7 +1732,7 @@
                         </div>
                     </div>
                     <p class="help-text" style="margin-top: 0.75rem;">
-                        Fetches up to 500 recent commits from any public GitHub repository using the GitHub API.
+                        Fetches up to 100 recent commits from any public GitHub repository using the GitHub API.
                     </p>
                 </div>
             </div>
@@ -1588,7 +1825,7 @@
                             <div class="shortcut-item"><span>Speed Down</span><kbd>[</kbd></div>
                             <div class="shortcut-item"><span>Speed Up</span><kbd>]</kbd></div>
                             <div class="shortcut-item"><span>Perf Stats</span><kbd>P</kbd></div>
-                            <div class="shortcut-item"><span>Home/End</span><kbd>Home/End</kbd></div>
+                            <div class="shortcut-item"><span>Authors</span><kbd>A</kbd></div>
                         </div>
                     </div>
                     <div class="docs-section">
@@ -1690,6 +1927,302 @@
         let hasLoadedData = false;
         let commitStats = { commits: 0, files: 0, authors: new Set() };
 
+        // =====================================================================
+        // CACHED ROURCE REPOSITORY DATA
+        // =====================================================================
+        // This is the complete commit history of the Rource project itself.
+        // Cached locally to ensure the demo always works without API rate limits.
+        // Generated from: git log --reverse --format="%at|%an" --name-status
+        // Last updated: 2026-01-11
+        // =====================================================================
+        const ROURCE_CACHED_DATA = `1768004902|Tom F|A|LICENSE
+1768004902|Tom F|A|README.md
+1768006231|Claude|A|GOURCE_RUST_REWRITE_PLAN.md
+1768028263|Claude|A|CLAUDE.md
+1768028263|Claude|A|scripts/session-setup.sh
+1768029507|Claude|A|.gitignore
+1768029507|Claude|A|Cargo.toml
+1768029507|Claude|A|crates/rource-core/Cargo.toml
+1768029507|Claude|A|crates/rource-core/src/entity.rs
+1768029507|Claude|A|crates/rource-core/src/lib.rs
+1768029507|Claude|A|crates/rource-math/Cargo.toml
+1768029507|Claude|A|crates/rource-math/src/color.rs
+1768029507|Claude|A|crates/rource-math/src/lib.rs
+1768029507|Claude|A|crates/rource-math/src/mat3.rs
+1768029507|Claude|A|crates/rource-math/src/mat4.rs
+1768029507|Claude|A|crates/rource-math/src/rect.rs
+1768029507|Claude|A|crates/rource-math/src/vec2.rs
+1768029507|Claude|A|crates/rource-math/src/vec3.rs
+1768029507|Claude|A|crates/rource-math/src/vec4.rs
+1768029507|Claude|A|crates/rource-vcs/Cargo.toml
+1768029507|Claude|A|crates/rource-vcs/src/commit.rs
+1768029507|Claude|A|crates/rource-vcs/src/lib.rs
+1768029545|Claude|M|CLAUDE.md
+1768039323|Claude|A|crates/rource-vcs/src/detect.rs
+1768039323|Claude|A|crates/rource-vcs/src/error.rs
+1768039323|Claude|M|crates/rource-vcs/src/lib.rs
+1768039323|Claude|A|crates/rource-vcs/src/parser/custom.rs
+1768039323|Claude|A|crates/rource-vcs/src/parser/git.rs
+1768039323|Claude|A|crates/rource-vcs/src/parser/mod.rs
+1768039351|Claude|M|CLAUDE.md
+1768041150|Claude|M|CLAUDE.md
+1768041150|Claude|M|crates/rource-core/src/lib.rs
+1768041150|Claude|A|crates/rource-core/src/physics/mod.rs
+1768041150|Claude|A|crates/rource-core/src/physics/spatial.rs
+1768041150|Claude|A|crates/rource-core/src/scene/action.rs
+1768041150|Claude|A|crates/rource-core/src/scene/file.rs
+1768041150|Claude|A|crates/rource-core/src/scene/mod.rs
+1768041150|Claude|A|crates/rource-core/src/scene/tree.rs
+1768041150|Claude|A|crates/rource-core/src/scene/user.rs
+1768041150|Claude|M|crates/rource-math/src/color.rs
+1768041150|Claude|M|crates/rource-math/src/mat4.rs
+1768041150|Claude|M|crates/rource-vcs/src/commit.rs
+1768041150|Claude|M|crates/rource-vcs/src/detect.rs
+1768041150|Claude|M|crates/rource-vcs/src/parser/custom.rs
+1768041150|Claude|M|crates/rource-vcs/src/parser/git.rs
+1768041150|Claude|M|crates/rource-vcs/src/parser/mod.rs
+1768042447|Claude|M|CLAUDE.md
+1768042447|Claude|A|crates/rource-core/src/animation/mod.rs
+1768042447|Claude|A|crates/rource-core/src/animation/spline.rs
+1768042447|Claude|A|crates/rource-core/src/animation/tween.rs
+1768042447|Claude|A|crates/rource-core/src/camera/mod.rs
+1768042447|Claude|M|crates/rource-core/src/lib.rs
+1768042447|Claude|A|crates/rource-core/src/physics/force.rs
+1768042447|Claude|M|crates/rource-core/src/physics/mod.rs
+1768042602|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768044097|Claude|M|CLAUDE.md
+1768044097|Claude|M|Cargo.toml
+1768044097|Claude|M|crates/rource-core/src/physics/force.rs
+1768044097|Claude|A|crates/rource-render/Cargo.toml
+1768044097|Claude|A|crates/rource-render/src/backend/mod.rs
+1768044097|Claude|A|crates/rource-render/src/backend/software.rs
+1768044097|Claude|A|crates/rource-render/src/command.rs
+1768044097|Claude|A|crates/rource-render/src/effects/bloom.rs
+1768044097|Claude|A|crates/rource-render/src/effects/mod.rs
+1768044097|Claude|A|crates/rource-render/src/font.rs
+1768044097|Claude|A|crates/rource-render/src/lib.rs
+1768044097|Claude|A|crates/rource-render/src/texture.rs
+1768045302|Claude|M|CLAUDE.md
+1768045302|Claude|M|Cargo.toml
+1768045302|Claude|M|crates/rource-render/src/backend/software.rs
+1768045302|Claude|M|crates/rource-render/src/command.rs
+1768045302|Claude|M|crates/rource-render/src/effects/bloom.rs
+1768045302|Claude|M|crates/rource-render/src/font.rs
+1768045302|Claude|M|crates/rource-render/src/texture.rs
+1768045302|Claude|A|rource-cli/Cargo.toml
+1768045302|Claude|A|rource-cli/src/args.rs
+1768045302|Claude|A|rource-cli/src/main.rs
+1768046181|Claude|M|rource-cli/src/main.rs
+1768046358|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768047064|Claude|A|crates/rource-core/src/config/mod.rs
+1768047064|Claude|A|crates/rource-core/src/config/settings.rs
+1768047064|Claude|M|crates/rource-core/src/lib.rs
+1768047064|Claude|M|crates/rource-core/src/scene/mod.rs
+1768047064|Claude|M|rource-cli/src/main.rs
+1768047369|Claude|M|crates/rource-render/src/effects/mod.rs
+1768047369|Claude|A|crates/rource-render/src/effects/shadow.rs
+1768047369|Claude|M|rource-cli/src/args.rs
+1768047369|Claude|M|rource-cli/src/main.rs
+1768047841|Claude|M|crates/rource-vcs/src/detect.rs
+1768047841|Claude|M|crates/rource-vcs/src/parser/mod.rs
+1768047841|Claude|A|crates/rource-vcs/src/parser/svn.rs
+1768047991|Claude|M|CLAUDE.md
+1768047991|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768049940|Claude|M|CLAUDE.md
+1768049940|Claude|M|crates/rource-core/src/config/settings.rs
+1768049940|Claude|M|crates/rource-core/src/scene/mod.rs
+1768049940|Claude|A|crates/rource-render/assets/RobotoMono-Regular.ttf
+1768049940|Claude|M|crates/rource-render/src/backend/software.rs
+1768049940|Claude|A|crates/rource-render/src/default_font.rs
+1768049940|Claude|M|crates/rource-render/src/effects/shadow.rs
+1768049940|Claude|M|crates/rource-render/src/lib.rs
+1768049940|Claude|M|crates/rource-vcs/src/parser/svn.rs
+1768049940|Claude|M|rource-cli/src/main.rs
+1768061605|Claude|M|CLAUDE.md
+1768061605|Claude|M|rource-cli/src/args.rs
+1768061605|Claude|M|rource-cli/src/main.rs
+1768062405|Claude|M|CLAUDE.md
+1768062405|Claude|M|rource-cli/src/args.rs
+1768062405|Claude|A|rource-cli/src/export.rs
+1768062405|Claude|M|rource-cli/src/main.rs
+1768064101|Claude|M|crates/rource-core/src/scene/mod.rs
+1768064101|Claude|M|rource-cli/src/main.rs
+1768064892|Claude|M|CLAUDE.md
+1768064892|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768066271|Claude|M|Cargo.toml
+1768066271|Claude|M|rource-cli/src/main.rs
+1768066271|Claude|A|rource-wasm/Cargo.toml
+1768066271|Claude|A|rource-wasm/src/lib.rs
+1768066271|Claude|A|rource-wasm/www/index.html
+1768066271|Claude|A|scripts/build-wasm.sh
+1768066342|Claude|M|CLAUDE.md
+1768068930|Claude|M|crates/rource-vcs/src/detect.rs
+1768068930|Claude|A|crates/rource-vcs/src/parser/mercurial.rs
+1768068930|Claude|M|crates/rource-vcs/src/parser/mod.rs
+1768068930|Claude|M|rource-cli/Cargo.toml
+1768068930|Claude|M|rource-cli/src/args.rs
+1768068930|Claude|M|rource-cli/src/export.rs
+1768068930|Claude|M|rource-cli/src/main.rs
+1768068930|Claude|M|rource-wasm/src/lib.rs
+1768068930|Claude|M|rource-wasm/www/index.html
+1768070585|Claude|M|crates/rource-vcs/src/detect.rs
+1768070585|Claude|A|crates/rource-vcs/src/parser/bazaar.rs
+1768070585|Claude|M|crates/rource-vcs/src/parser/mercurial.rs
+1768070585|Claude|M|crates/rource-vcs/src/parser/mod.rs
+1768070585|Claude|M|rource-cli/src/export.rs
+1768070585|Claude|M|rource-cli/src/main.rs
+1768070585|Claude|M|rource-wasm/src/lib.rs
+1768070585|Claude|M|rource-wasm/www/index.html
+1768079256|Claude|M|crates/rource-core/src/scene/mod.rs
+1768079256|Claude|M|rource-cli/src/main.rs
+1768082290|Claude|M|Cargo.toml
+1768082290|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768082290|Claude|M|crates/rource-core/Cargo.toml
+1768082290|Claude|A|crates/rource-core/src/config/config_file.rs
+1768082290|Claude|M|crates/rource-core/src/config/mod.rs
+1768082290|Claude|M|crates/rource-core/src/scene/mod.rs
+1768082290|Claude|M|crates/rource-render/src/backend/software.rs
+1768082290|Claude|M|rource-cli/Cargo.toml
+1768082290|Claude|M|rource-cli/src/args.rs
+1768082290|Claude|A|rource-cli/src/avatar.rs
+1768082290|Claude|M|rource-cli/src/main.rs
+1768082688|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768084344|Claude|M|crates/rource-core/Cargo.toml
+1768084344|Claude|M|crates/rource-core/src/config/config_file.rs
+1768084344|Claude|M|crates/rource-core/src/config/mod.rs
+1768084344|Claude|M|crates/rource-core/src/config/settings.rs
+1768084344|Claude|M|rource-cli/src/args.rs
+1768084344|Claude|M|rource-cli/src/main.rs
+1768087702|Claude|M|crates/rource-core/src/scene/mod.rs
+1768087702|Claude|M|rource-cli/src/main.rs
+1768088628|Claude|M|CLAUDE.md
+1768088628|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768088628|Claude|A|crates/rource-core/src/config/config_env.rs
+1768088628|Claude|M|crates/rource-core/src/config/mod.rs
+1768088628|Claude|M|rource-cli/src/args.rs
+1768088628|Claude|M|rource-cli/src/main.rs
+1768088835|Claude|M|rource-cli/src/args.rs
+1768088835|Claude|M|rource-cli/src/main.rs
+1768088917|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768091184|Claude|A|MIGRATING.md
+1768091184|Claude|M|README.md
+1768091184|Claude|A|examples/README.md
+1768091184|Claude|A|examples/basic.toml
+1768091184|Claude|A|examples/export-video.sh
+1768091184|Claude|A|examples/large-repo.toml
+1768091184|Claude|A|examples/minimal.toml
+1768091184|Claude|A|examples/presentation.toml
+1768091184|Claude|A|examples/quick-preview.sh
+1768091184|Claude|A|examples/rust-project.toml
+1768091184|Claude|A|examples/sample-custom.log
+1768091184|Claude|A|examples/video-export.toml
+1768091184|Claude|A|examples/web-project.toml
+1768091218|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768092822|Claude|M|CLAUDE.md
+1768092822|Claude|M|README.md
+1768092822|Claude|M|crates/rource-render/Cargo.toml
+1768092822|Claude|M|crates/rource-render/src/backend/mod.rs
+1768092822|Claude|A|crates/rource-render/src/backend/webgl2/buffers.rs
+1768092822|Claude|A|crates/rource-render/src/backend/webgl2/mod.rs
+1768092822|Claude|A|crates/rource-render/src/backend/webgl2/shaders.rs
+1768092822|Claude|A|crates/rource-render/src/backend/webgl2/textures.rs
+1768092822|Claude|M|crates/rource-render/src/lib.rs
+1768092822|Claude|M|rource-wasm/Cargo.toml
+1768092822|Claude|M|rource-wasm/src/lib.rs
+1768093056|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768094482|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768094482|Claude|M|crates/rource-core/src/config/config_env.rs
+1768094482|Claude|M|crates/rource-core/src/config/settings.rs
+1768094482|Claude|M|crates/rource-core/src/scene/mod.rs
+1768094482|Claude|M|crates/rource-render/src/backend/mod.rs
+1768094482|Claude|M|crates/rource-render/src/backend/webgl2/textures.rs
+1768094482|Claude|M|crates/rource-vcs/src/detect.rs
+1768094482|Claude|M|crates/rource-vcs/src/lib.rs
+1768094482|Claude|M|crates/rource-vcs/src/parser/bazaar.rs
+1768094482|Claude|M|crates/rource-vcs/src/parser/mercurial.rs
+1768094482|Claude|M|rource-cli/src/args.rs
+1768094482|Claude|M|rource-cli/src/avatar.rs
+1768094482|Claude|M|rource-cli/src/main.rs
+1768094482|Claude|M|rource-wasm/src/lib.rs
+1768129122|Claude|M|CLAUDE.md
+1768129122|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768129122|Claude|A|crates/rource-vcs/examples/memory_benchmark.rs
+1768129122|Claude|A|crates/rource-vcs/src/compact.rs
+1768129122|Claude|A|crates/rource-vcs/src/intern.rs
+1768129122|Claude|M|crates/rource-vcs/src/lib.rs
+1768129122|Claude|A|crates/rource-vcs/src/stream.rs
+1768135084|Claude|M|crates/rource-core/src/config/config_env.rs
+1768135084|Claude|M|crates/rource-core/src/config/config_file.rs
+1768135084|Claude|M|crates/rource-core/src/config/mod.rs
+1768135084|Claude|M|crates/rource-core/src/config/settings.rs
+1768135084|Claude|M|rource-cli/src/args.rs
+1768135084|Claude|M|rource-cli/src/main.rs
+1768137496|Claude|A|crates/rource-core/src/camera/camera3d.rs
+1768137496|Claude|M|crates/rource-core/src/camera/mod.rs
+1768137496|Claude|M|crates/rource-core/src/config/config_env.rs
+1768137496|Claude|M|crates/rource-core/src/config/config_file.rs
+1768137496|Claude|M|crates/rource-core/src/config/settings.rs
+1768137496|Claude|M|crates/rource-core/src/lib.rs
+1768137496|Claude|M|crates/rource-render/Cargo.toml
+1768137496|Claude|M|crates/rource-render/src/backend/software.rs
+1768137496|Claude|M|crates/rource-render/src/backend/webgl2/shaders.rs
+1768137496|Claude|A|crates/rource-render/src/image.rs
+1768137496|Claude|M|crates/rource-render/src/lib.rs
+1768137496|Claude|M|crates/rource-vcs/src/compact.rs
+1768137496|Claude|M|crates/rource-vcs/src/intern.rs
+1768137496|Claude|M|crates/rource-vcs/src/stream.rs
+1768137496|Claude|M|rource-cli/src/args.rs
+1768137496|Claude|M|rource-cli/src/main.rs
+1768137496|Claude|M|rource-wasm/src/lib.rs
+1768145880|Claude|A|benchmarks/.gitignore
+1768145880|Claude|A|benchmarks/BENCHMARK_REPORT.md
+1768145880|Claude|A|benchmarks/docs/BENCHMARK_METHODOLOGY.md
+1768145880|Claude|A|benchmarks/scripts/benchmark_binary.sh
+1768145880|Claude|A|benchmarks/scripts/benchmark_features.sh
+1768145880|Claude|A|benchmarks/scripts/benchmark_log_parsing.sh
+1768145880|Claude|A|benchmarks/scripts/benchmark_memory.sh
+1768145880|Claude|A|benchmarks/scripts/benchmark_rendering.sh
+1768145880|Claude|A|benchmarks/scripts/common.sh
+1768145880|Claude|A|benchmarks/scripts/run_benchmarks.sh
+1768145880|Claude|A|benchmarks/scripts/test_benchmarks.sh
+1768146249|Claude|A|.github/workflows/deploy-pages.yml
+1768146249|Claude|A|rource-wasm/www/.nojekyll
+1768147375|Claude|M|.github/workflows/deploy-pages.yml
+1768147375|Claude|M|rource-wasm/www/index.html
+1768147471|Claude|M|README.md
+1768147773|Claude|M|.github/workflows/deploy-pages.yml
+1768150459|Claude|M|rource-wasm/www/index.html
+1768151357|Claude|M|crates/rource-core/src/scene/mod.rs
+1768151357|Claude|M|crates/rource-core/src/scene/user.rs
+1768151357|Claude|M|rource-wasm/www/index.html
+1768152039|Claude|M|rource-wasm/src/lib.rs
+1768152039|Claude|M|rource-wasm/www/index.html
+1768153285|Claude|M|rource-wasm/src/lib.rs
+1768153285|Claude|M|rource-wasm/www/index.html
+1768153285|Claude|A|rource-wasm/www/pkg/package.json
+1768153285|Claude|A|rource-wasm/www/pkg/rource_wasm.d.ts
+1768153285|Claude|A|rource-wasm/www/pkg/rource_wasm.js
+1768153285|Claude|A|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768153285|Claude|A|rource-wasm/www/pkg/rource_wasm_bg.wasm.d.ts`;
+
+        // Pre-calculate stats for the cached Rource data
+        const ROURCE_STATS = (() => {
+            const lines = ROURCE_CACHED_DATA.split('\n');
+            const files = new Set();
+            const authors = new Set();
+            let commits = 0;
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                const parts = line.split('|');
+                if (parts.length >= 4) {
+                    commits++;
+                    authors.add(parts[1].trim());
+                    files.add(parts[3].trim());
+                }
+            }
+            return { commits, files: files.size, authors: authors.size };
+        })();
+
         // Demo data - more comprehensive project evolution
         const DEMO_DATA = `1704067200|Alice|A|src/main.rs
 1704067260|Alice|A|src/lib.rs
@@ -1785,6 +2318,17 @@
         const perfDraws = document.getElementById('perf-draws');
         const perfResolution = document.getElementById('perf-resolution');
         const techRenderer = document.getElementById('tech-renderer');
+
+        // Showcase panel DOM elements
+        const btnVisualizeRource = document.getElementById('btn-visualize-rource');
+        const showcaseCommits = document.getElementById('showcase-commits');
+        const showcaseFiles = document.getElementById('showcase-files');
+        const showcaseAuthors = document.getElementById('showcase-authors');
+
+        // Authors legend DOM elements
+        const authorsPanel = document.getElementById('authors-panel');
+        const authorsItems = document.getElementById('authors-items');
+        const authorsToggle = document.getElementById('authors-toggle');
 
         // Toast notification
         function showToast(message, type = 'error', duration = 5000) {
@@ -1962,6 +2506,7 @@
 
                 updateUI();
                 updateLegend(content);
+                updateAuthorsLegend(content);
                 updatePerfMetrics();
                 showToast(`Loaded ${count} commits from ${stats.authors.size} authors!`, 'success', 3000);
 
@@ -2044,6 +2589,82 @@
             panel.classList.toggle('collapsed');
             const isExpanded = !panel.classList.contains('collapsed');
             legendToggle.setAttribute('aria-expanded', isExpanded.toString());
+        });
+
+        // =====================================================================
+        // AUTHORS LEGEND
+        // =====================================================================
+        // Updates the authors legend panel with contributors and their colors.
+        // Uses the WASM getAuthors() API to get accurate color assignments.
+        // =====================================================================
+        function updateAuthorsLegend(content) {
+            if (!rource) return;
+
+            // Parse author data from log content first (before WASM is populated)
+            const authorCommits = {};
+            const lines = content.split('\n');
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                const parts = line.split('|');
+                if (parts.length >= 4) {
+                    const author = parts[1].trim();
+                    authorCommits[author] = (authorCommits[author] || 0) + 1;
+                }
+            }
+
+            // Sort by commit count descending
+            const sorted = Object.entries(authorCommits)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10); // Show top 10 authors
+
+            if (sorted.length === 0) return;
+
+            // Build the authors items HTML
+            authorsItems.innerHTML = sorted.map(([name, commits]) => {
+                // Get color from WASM (deterministic based on name hash)
+                let color;
+                try {
+                    color = rource.getAuthorColor(name);
+                } catch (e) {
+                    // Fallback color generation if WASM method isn't available
+                    let hash = 0;
+                    for (let i = 0; i < name.length; i++) {
+                        hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+                    }
+                    color = `hsl(${hash % 360}, 60%, 55%)`;
+                }
+                // Escape HTML in name
+                const escapedName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<div class="author-item" role="listitem" title="${escapedName} - ${commits} commits">
+                    <span class="author-color" style="background: ${color}"></span>
+                    <span class="author-name">${escapedName}</span>
+                    <span class="author-commits">${commits}</span>
+                </div>`;
+            }).join('');
+
+            // Show the authors panel
+            authorsPanel.classList.remove('hidden');
+            authorsPanel.classList.remove('collapsed');
+            authorsToggle.setAttribute('aria-expanded', 'true');
+        }
+
+        // Authors legend toggle
+        authorsToggle.addEventListener('click', () => {
+            authorsPanel.classList.toggle('collapsed');
+            const isExpanded = !authorsPanel.classList.contains('collapsed');
+            authorsToggle.setAttribute('aria-expanded', isExpanded.toString());
+        });
+
+        // Keyboard shortcuts for authors panel (A key)
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+            if (e.key === 'a' || e.key === 'A') {
+                if (hasLoadedData && !authorsPanel.classList.contains('hidden')) {
+                    authorsPanel.classList.toggle('collapsed');
+                    const isExpanded = !authorsPanel.classList.contains('collapsed');
+                    authorsToggle.setAttribute('aria-expanded', isExpanded.toString());
+                }
+            }
         });
 
         // Performance overlay toggle
@@ -2310,6 +2931,12 @@
                 btnLabels.disabled = false;
                 btnLoad.disabled = false;
                 btnFetchGithub.disabled = false;
+                btnVisualizeRource.disabled = false;
+
+                // Initialize showcase stats from pre-calculated data
+                showcaseCommits.textContent = ROURCE_STATS.commits.toLocaleString();
+                showcaseFiles.textContent = ROURCE_STATS.files.toLocaleString();
+                showcaseAuthors.textContent = ROURCE_STATS.authors.toLocaleString();
 
                 // Initialize labels button state
                 updateLabelsButton();
@@ -2319,15 +2946,17 @@
                 console.log(`  Renderer: ${rendererType}`);
                 console.log(`  Canvas: ${canvas.width}×${canvas.height}`);
                 console.log(`  WebGL2: ${isWebGL2}`);
+                console.log(`  Cached Rource Data: ${ROURCE_STATS.commits} commits, ${ROURCE_STATS.files} files, ${ROURCE_STATS.authors} authors`);
 
                 // Start animation
                 animationId = requestAnimationFrame(animate);
                 loadingEl.classList.add('hidden');
 
-                // Auto-load demo if no other action
+                // Auto-load Rource project data by default (cached, no API limits)
                 setTimeout(() => {
                     if (!hasLoadedData) {
-                        loadLogData(DEMO_DATA, 'custom');
+                        loadLogData(ROURCE_CACHED_DATA, 'custom');
+                        showToast('Loaded Rource project history (cached)', 'success', 3000);
                     }
                 }, 1000);
 
@@ -2344,7 +2973,8 @@
                 rource.togglePlay();
                 updateUI();
             } else if (!hasLoadedData) {
-                loadLogData(DEMO_DATA, 'custom');
+                // Load Rource project data by default (cached)
+                loadLogData(ROURCE_CACHED_DATA, 'custom');
             }
         });
 
@@ -2388,6 +3018,37 @@
                 btnLabels.classList.toggle('active', showLabels);
             }
         }
+
+        // =====================================================================
+        // SHOWCASE: VISUALIZE ROURCE BUTTON
+        // =====================================================================
+        // Loads the cached Rource repository data - no API calls needed.
+        // This ensures the demo always works regardless of GitHub rate limits.
+        // =====================================================================
+        btnVisualizeRource.addEventListener('click', () => {
+            if (!rource) return;
+
+            // Reset the visualization and load cached Rource data
+            btnVisualizeRource.disabled = true;
+            btnVisualizeRource.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="spin">
+                    <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                </svg>
+                Loading...
+            `;
+
+            // Short delay for visual feedback
+            setTimeout(() => {
+                loadLogData(ROURCE_CACHED_DATA, 'custom');
+                btnVisualizeRource.disabled = false;
+                btnVisualizeRource.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Visualize Rource
+                `;
+            }, 100);
+        });
 
         btnLoad.addEventListener('click', () => {
             if (logInput.value.trim()) {
