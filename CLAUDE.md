@@ -56,7 +56,7 @@ This script will:
 rource/
 ├── crates/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [141 tests]
-│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format) [117 tests]
+│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [130 tests]
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [210 tests]
 │   └── rource-render/    # Rendering (software rasterizer, WebGL2, bloom, shadows, fonts) [90 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [38 tests]
@@ -234,6 +234,70 @@ crates/rource-render/src/backend/webgl2/
 // Check which renderer is active
 const renderer = rource.getRendererType(); // "webgl2" or "software"
 const isGPU = rource.isWebGL2();           // true/false
+```
+
+### Memory Optimization for Large Repositories (2026-01-11)
+
+Implemented memory-efficient storage for very large repositories (tested with Home Assistant core: 103,533 commits, 533,366 file changes).
+
+#### Architecture
+
+```
+crates/rource-vcs/src/
+├── intern.rs     # String interning (StringInterner, PathInterner)
+├── compact.rs    # Compact commit storage (CommitStore, CompactCommit)
+└── stream.rs     # Streaming parsers (GitLogStream, StreamingCommitLoader)
+```
+
+#### Key Features
+
+1. **String Interning**: Deduplicates repeated strings
+   - `StringInterner` - Basic deduplication with u32 handles
+   - `PathInterner` - Stores path segments separately for deeper deduplication
+   - Author names: 4,776 unique vs 103,533 commits (22x dedup)
+   - Path segments: 10,248 unique vs 62,012 paths (6x reuse)
+
+2. **Compact Structures**: Minimized per-commit/file overhead
+   - `CompactCommit`: 24 bytes (vs ~72+ for standard Commit)
+   - `CompactFileChange`: 8 bytes (vs ~48+ for standard FileChange)
+   - Short hash stored inline as `[u8; 7]`
+
+3. **Streaming Parsing**: Process logs without full memory load
+   - `GitLogStream` - Iterator-based git log parsing
+   - `StreamingCommitLoader` - Loads directly into CommitStore
+   - Progress callbacks for large file feedback
+
+#### Benchmark Results (Home Assistant Core)
+
+```
+Standard Storage:    51.65 MB
+Compact Storage:     16.43 MB
+Memory Savings:      35.22 MB (68.2%)
+
+Deduplication:
+- Unique authors: 4,776 (vs 103,533 commits) = 22x
+- Unique paths: 62,012 (10,248 segments) = 8.6x reuse
+```
+
+#### Usage
+
+```rust
+use rource_vcs::stream::StreamingCommitLoader;
+use std::io::BufReader;
+use std::fs::File;
+
+let file = File::open("git.log")?;
+let loader = StreamingCommitLoader::new(BufReader::new(file));
+let store = loader.load_with_progress(|commits, files| {
+    eprintln!("Loaded {} commits, {} files", commits, files);
+});
+
+// Access commits via CommitStore API
+for (id, commit) in store.commits() {
+    let author = store.resolve_author(commit.author).unwrap();
+    let files = store.file_changes(commit);
+    // ...
+}
 ```
 
 ### Headless Rendering Implementation (2026-01-10)

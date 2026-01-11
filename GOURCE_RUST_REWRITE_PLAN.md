@@ -22,7 +22,7 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 | Phase 6: Platform Integration | ✅ Complete | 39 | Native CLI, WASM, mouse input, video export, avatars |
 | Phase 7: Polish & Optimization | 🔄 In Progress | 210 | Config files, legend, timeline scrubbing, touch support, env vars |
 
-**Total Tests**: 655 passing (600 unit + 55 doc tests)
+**Total Tests**: 671 passing (613 unit + 58 doc tests)
 
 ### What's Working Now
 
@@ -86,7 +86,6 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 
 - Pure Rust Git parsing (gitoxide) - optional enhancement
 - CVS/Apache log parsers
-- Memory optimization for very large repositories
 
 ### Crate Structure
 
@@ -94,12 +93,30 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 rource/
 ├── crates/
 │   ├── rource-math/      # Math types [141 tests]
-│   ├── rource-vcs/       # VCS parsing (Git, SVN, Hg, Bzr) [117 tests]
+│   ├── rource-vcs/       # VCS parsing, streaming, compact storage [130 tests]
 │   ├── rource-core/      # Scene, physics, animation, camera, config [210 tests]
 │   └── rource-render/    # Rendering system (Software + WebGL2) [90 tests]
-├── rource-cli/           # Native CLI application [38 tests]
+├── rource-cli/           # Native CLI application [39 tests]
 └── rource-wasm/          # WebAssembly application ✅ [3 tests]
 ```
+
+### Recent Changes (2026-01-11)
+
+#### Memory Optimization for Large Repositories
+
+Added memory-efficient storage for parsing large repositories:
+
+**New Modules in rource-vcs:**
+- `intern.rs` - String interning with `StringInterner` and `PathInterner`
+- `compact.rs` - Compact commit storage with `CommitStore`, 68% memory reduction
+- `stream.rs` - Streaming parsers: `GitLogStream`, `StreamingCommitLoader`
+
+**Benchmark Results (Home Assistant core - 103,533 commits):**
+- Standard storage: ~52 MB
+- Compact storage: ~16 MB
+- **Memory savings: 68.2%**
+- Path reuse factor: 8.6x (62,012 paths using only 10,248 unique segments)
+- Author deduplication: 22x (4,776 unique authors across 103k commits)
 
 ### Recent Changes (2026-01-10)
 
@@ -1588,9 +1605,9 @@ impl ZoomCamera {
 
 #### 7.1 Performance
 - [x] Profiling and bottleneck analysis (action accumulation identified, fixed with MAX_ACTIONS cap)
-- [ ] Memory optimization (optional - current performance is acceptable)
+- [x] Memory optimization ✅ (string interning, compact storage - 68% reduction for large repos)
 - [x] Large repository handling (tested with 100k commits, 4764 users, 32k files)
-- [x] Streaming commit loading (not needed - parsing 40MB log takes 0.28s)
+- [x] Streaming commit loading ✅ (StreamingCommitLoader for memory-efficient parsing)
 
 #### 7.2 User Experience
 - [x] Interactive file legend (color-coded by extension)
