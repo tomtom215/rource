@@ -464,6 +464,157 @@
             text-transform: uppercase;
         }
 
+        /* Performance overlay (FPS, metrics) */
+        .perf-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(13, 17, 23, 0.92);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-size: 0.7rem;
+            min-width: 140px;
+            z-index: 60;
+        }
+
+        .perf-overlay.collapsed {
+            min-width: auto;
+        }
+
+        .perf-overlay.collapsed .perf-details {
+            display: none;
+        }
+
+        .perf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 0.4rem;
+        }
+
+        .perf-overlay.collapsed .perf-header {
+            margin-bottom: 0;
+        }
+
+        .perf-fps {
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .perf-fps.good { color: var(--success); }
+        .perf-fps.ok { color: var(--warning); }
+        .perf-fps.bad { color: var(--error); }
+
+        .perf-toggle {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            transition: transform 0.2s;
+        }
+
+        .perf-overlay.collapsed .perf-toggle {
+            transform: rotate(180deg);
+        }
+
+        .perf-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            border-top: 1px solid var(--border);
+            padding-top: 0.4rem;
+        }
+
+        .perf-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .perf-label {
+            color: var(--text-muted);
+        }
+
+        .perf-value {
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+
+        /* Technical info panel */
+        .tech-info-panel {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(233, 69, 96, 0.08) 100%);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .tech-info-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        .tech-info-header svg {
+            color: var(--accent-blue);
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .tech-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .tech-item-value {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .tech-item-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tech-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 0.75rem;
+        }
+
+        .tech-badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.5rem;
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .tech-badge.highlight {
+            background: rgba(233, 69, 96, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
         /* Timeline */
         .timeline-container {
             background: var(--bg-secondary);
@@ -1230,6 +1381,35 @@
                         <span class="stat-label">Authors</span>
                     </div>
                 </div>
+                <!-- Performance metrics overlay -->
+                <div id="perf-overlay" class="perf-overlay hidden" role="complementary" aria-label="Performance metrics">
+                    <div class="perf-header" id="perf-toggle" role="button" tabindex="0" aria-expanded="true">
+                        <span class="perf-fps good" id="perf-fps">-- FPS</span>
+                        <span class="perf-toggle" aria-hidden="true">&#9650;</span>
+                    </div>
+                    <div class="perf-details">
+                        <div class="perf-row">
+                            <span class="perf-label">Frame</span>
+                            <span class="perf-value" id="perf-frame-time">--ms</span>
+                        </div>
+                        <div class="perf-row">
+                            <span class="perf-label">Entities</span>
+                            <span class="perf-value" id="perf-entities">--</span>
+                        </div>
+                        <div class="perf-row">
+                            <span class="perf-label">Visible</span>
+                            <span class="perf-value" id="perf-visible">--</span>
+                        </div>
+                        <div class="perf-row">
+                            <span class="perf-label">Draw Calls</span>
+                            <span class="perf-value" id="perf-draws">--</span>
+                        </div>
+                        <div class="perf-row">
+                            <span class="perf-label">Resolution</span>
+                            <span class="perf-value" id="perf-resolution">--</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="timeline-container" role="group" aria-label="Timeline controls">
@@ -1407,6 +1587,8 @@
                             <div class="shortcut-item"><span>Step Back</span><kbd>&lt;</kbd></div>
                             <div class="shortcut-item"><span>Speed Down</span><kbd>[</kbd></div>
                             <div class="shortcut-item"><span>Speed Up</span><kbd>]</kbd></div>
+                            <div class="shortcut-item"><span>Perf Stats</span><kbd>P</kbd></div>
+                            <div class="shortcut-item"><span>Home/End</span><kbd>Home/End</kbd></div>
                         </div>
                     </div>
                     <div class="docs-section">
@@ -1426,6 +1608,42 @@
                             <li>No server or installation needed</li>
                         </ul>
                     </div>
+                </div>
+            </div>
+
+            <!-- Technical Showcase Panel -->
+            <div class="tech-info-panel" id="tech-info-panel">
+                <div class="tech-info-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
+                    Technical Specifications
+                </div>
+                <div class="tech-grid">
+                    <div class="tech-item">
+                        <div class="tech-item-value" id="tech-wasm-size">~76KB</div>
+                        <div class="tech-item-label">WASM Gzipped</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-item-value" id="tech-renderer">WebGL2</div>
+                        <div class="tech-item-label">Renderer</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-item-value" id="tech-tests">671</div>
+                        <div class="tech-item-label">Unit Tests</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-item-value" id="tech-crates">4</div>
+                        <div class="tech-item-label">Rust Crates</div>
+                    </div>
+                </div>
+                <div class="tech-badges">
+                    <span class="tech-badge highlight">Rust</span>
+                    <span class="tech-badge highlight">WebAssembly</span>
+                    <span class="tech-badge">Zero Dependencies</span>
+                    <span class="tech-badge">GPU Accelerated</span>
+                    <span class="tech-badge">Instanced Rendering</span>
+                    <span class="tech-badge">60 FPS Target</span>
                 </div>
             </div>
 
@@ -1558,6 +1776,16 @@
         const statAuthors = document.getElementById('stat-authors');
         const toast = document.getElementById('toast');
 
+        // Performance metrics DOM elements
+        const perfOverlay = document.getElementById('perf-overlay');
+        const perfFps = document.getElementById('perf-fps');
+        const perfFrameTime = document.getElementById('perf-frame-time');
+        const perfEntities = document.getElementById('perf-entities');
+        const perfVisible = document.getElementById('perf-visible');
+        const perfDraws = document.getElementById('perf-draws');
+        const perfResolution = document.getElementById('perf-resolution');
+        const techRenderer = document.getElementById('tech-renderer');
+
         // Toast notification
         function showToast(message, type = 'error', duration = 5000) {
             toast.querySelector('.toast-message').textContent = message;
@@ -1586,13 +1814,58 @@
             }
         }
 
+        // Performance metrics update counter (update every N frames for performance)
+        let perfUpdateCounter = 0;
+        const PERF_UPDATE_INTERVAL = 10; // Update every 10 frames
+
         // Animation loop
         function animate(timestamp) {
             if (rource) {
                 rource.frame(timestamp);
                 updateUI();
+
+                // Update performance metrics periodically
+                perfUpdateCounter++;
+                if (perfUpdateCounter >= PERF_UPDATE_INTERVAL) {
+                    updatePerfMetrics();
+                    perfUpdateCounter = 0;
+                }
             }
             animationId = requestAnimationFrame(animate);
+        }
+
+        // Update performance metrics overlay
+        function updatePerfMetrics() {
+            if (!rource || !hasLoadedData) return;
+
+            try {
+                // Get FPS and frame time
+                const fps = rource.getFps();
+                const frameTimeMs = rource.getFrameTimeMs();
+
+                // Get render statistics
+                const totalEntities = rource.getTotalEntities();
+                const visibleFiles = rource.getVisibleFiles();
+                const visibleUsers = rource.getVisibleUsers();
+                const visibleDirs = rource.getVisibleDirectories();
+                const drawCalls = rource.getDrawCalls();
+                const width = rource.getCanvasWidth();
+                const height = rource.getCanvasHeight();
+
+                // Update FPS display with color coding
+                const fpsRounded = Math.round(fps);
+                perfFps.textContent = `${fpsRounded} FPS`;
+                perfFps.className = 'perf-fps ' + (fpsRounded >= 55 ? 'good' : fpsRounded >= 30 ? 'ok' : 'bad');
+
+                // Update other metrics
+                perfFrameTime.textContent = `${frameTimeMs.toFixed(1)}ms`;
+                perfEntities.textContent = totalEntities.toLocaleString();
+                perfVisible.textContent = `${visibleFiles + visibleUsers + visibleDirs}`;
+                perfDraws.textContent = drawCalls.toString();
+                perfResolution.textContent = `${width}×${height}`;
+            } catch (e) {
+                // Silently ignore errors if methods don't exist
+            }
         }
 
         // Update UI
@@ -1680,6 +1953,7 @@
                 hasLoadedData = true;
                 emptyState.classList.add('hidden');
                 statsOverlay.classList.remove('hidden');
+                perfOverlay.classList.remove('hidden');
 
                 // Enable controls
                 btnPrev.disabled = false;
@@ -1688,6 +1962,7 @@
 
                 updateUI();
                 updateLegend(content);
+                updatePerfMetrics();
                 showToast(`Loaded ${count} commits from ${stats.authors.size} authors!`, 'success', 3000);
 
                 // Auto-play
@@ -1769,6 +2044,24 @@
             panel.classList.toggle('collapsed');
             const isExpanded = !panel.classList.contains('collapsed');
             legendToggle.setAttribute('aria-expanded', isExpanded.toString());
+        });
+
+        // Performance overlay toggle
+        const perfToggle = document.getElementById('perf-toggle');
+        perfToggle.addEventListener('click', () => {
+            perfOverlay.classList.toggle('collapsed');
+            const isExpanded = !perfOverlay.classList.contains('collapsed');
+            perfToggle.setAttribute('aria-expanded', isExpanded.toString());
+        });
+
+        // Keyboard shortcut for performance overlay (P key)
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+            if (e.key === 'p' || e.key === 'P') {
+                if (hasLoadedData) {
+                    perfOverlay.classList.toggle('hidden');
+                }
+            }
         });
 
         // GitHub API rate limit tracking
@@ -2004,10 +2297,12 @@
                 resizeCanvas();
                 rource = new Rource(canvas);
 
-                // Update renderer badge
+                // Update renderer badge and tech panel
                 const isWebGL2 = rource.isWebGL2();
+                const rendererType = rource.getRendererType();
                 rendererBadge.textContent = isWebGL2 ? 'WebGL2' : 'Software';
                 if (isWebGL2) rendererBadge.classList.add('webgl2');
+                techRenderer.textContent = isWebGL2 ? 'WebGL2' : 'CPU';
 
                 // Enable buttons
                 btnPlay.disabled = false;
@@ -2018,6 +2313,12 @@
 
                 // Initialize labels button state
                 updateLabelsButton();
+
+                // Log technical info to console for verification
+                console.log(`%c Rource Technical Info `, 'background: #e94560; color: white; font-weight: bold;');
+                console.log(`  Renderer: ${rendererType}`);
+                console.log(`  Canvas: ${canvas.width}×${canvas.height}`);
+                console.log(`  WebGL2: ${isWebGL2}`);
 
                 // Start animation
                 animationId = requestAnimationFrame(animate);
