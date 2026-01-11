@@ -500,7 +500,33 @@ const ROURCE_CACHED_DATA = `1768004902|Tom F|A|LICENSE
 1768153285|Claude|A|rource-wasm/www/pkg/rource_wasm_bg.wasm.d.ts
 1768154755|Claude|M|rource-wasm/src/lib.rs
 1768154755|Claude|M|rource-wasm/www/index.html
-1768155097|Claude|M|rource-wasm/www/index.html`;
+1768155097|Claude|M|rource-wasm/www/index.html
+1768155648|Claude|M|rource-wasm/www/index.html
+1768155648|Claude|A|scripts/update-wasm-cache.sh
+1768156283|Claude|M|rource-wasm/www/index.html
+1768157108|Claude|M|rource-wasm/www/index.html
+1768158114|Claude|M|rource-wasm/www/index.html
+1768158153|Claude|M|rource-wasm/www/pkg/rource_wasm.d.ts
+1768158153|Claude|M|rource-wasm/www/pkg/rource_wasm.js
+1768158153|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768158153|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm.d.ts
+1768158871|Claude|A|rource-wasm/www/app.js
+1768158871|Claude|M|rource-wasm/www/index.html
+1768158871|Claude|A|rource-wasm/www/styles.css
+1768159415|Claude|M|rource-wasm/www/styles.css
+1768159911|Claude|M|rource-wasm/www/index.html
+1768160431|Claude|M|rource-wasm/www/styles.css
+1768160912|Claude|M|rource-wasm/www/app.js
+1768160912|Claude|M|rource-wasm/www/index.html
+1768160912|Claude|M|rource-wasm/www/styles.css
+1768161603|Claude|M|rource-wasm/www/app.js
+1768161603|Claude|M|rource-wasm/www/index.html
+1768161603|Claude|M|rource-wasm/www/styles.css
+1768161918|Claude|M|rource-wasm/www/app.js
+1768162045|Claude|M|CLAUDE.md
+1768162312|Claude|M|rource-wasm/www/app.js
+1768162312|Claude|M|rource-wasm/www/index.html
+1768162312|Claude|M|rource-wasm/www/styles.css`;
 
 // Pre-calculate stats for the cached Rource data
 const ROURCE_STATS = (() => {
@@ -1848,6 +1874,11 @@ btnVisualizeRource.addEventListener('click', () => {
         lastLoadedRepo = 'rource';
         // Clear repo from URL when loading the cached Rource data
         updateUrlState({ repo: null });
+
+        // Auto-play the visualization so users don't have to click play
+        rource.play();
+        updateUI();
+
         btnVisualizeRource.disabled = false;
         btnVisualizeRource.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
