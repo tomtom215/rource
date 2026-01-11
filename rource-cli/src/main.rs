@@ -106,6 +106,33 @@ struct App {
 
     /// Filter settings for users and files.
     filter: FilterSettings,
+
+    /// Username to follow when in follow mode.
+    follow_user: Option<String>,
+
+    /// Usernames to highlight (parsed from comma-separated list).
+    highlight_users: Vec<String>,
+
+    /// Whether to highlight all users.
+    highlight_all_users: bool,
+
+    /// Index of current user for Tab cycling navigation.
+    current_user_index: usize,
+
+    /// Directory name display depth.
+    dir_name_depth: u32,
+
+    /// Directory name position along edge (0.0 = start, 1.0 = end).
+    dir_name_position: f32,
+
+    /// Logo image path.
+    logo_path: Option<std::path::PathBuf>,
+
+    /// Logo offset from top-right corner.
+    logo_offset: (i32, i32),
+
+    /// Background image path.
+    background_image_path: Option<std::path::PathBuf>,
 }
 
 /// Playback state for the visualization.
@@ -119,6 +146,18 @@ struct PlaybackState {
 
     /// Seconds per day of commit history.
     seconds_per_day: f32,
+
+    /// Time scale multiplier.
+    time_scale: f32,
+
+    /// Stop playback after this many seconds of real time.
+    stop_at_time: Option<f32>,
+
+    /// Elapsed real time in seconds.
+    elapsed_time: f32,
+
+    /// Use real-time playback (1 second = 1 second of history).
+    realtime: bool,
 }
 
 impl Default for PlaybackState {
@@ -127,6 +166,10 @@ impl Default for PlaybackState {
             paused: false,
             speed: 1.0,
             seconds_per_day: 10.0,
+            time_scale: 1.0,
+            stop_at_time: None,
+            elapsed_time: 0.0,
+            realtime: false,
         }
     }
 }
@@ -195,6 +238,25 @@ impl App {
             filter.set_hide_dirs(Some(pattern.clone()));
         }
 
+        // Parse highlight users (comma-separated list)
+        let highlight_users = args
+            .highlight_users
+            .as_ref()
+            .map(|s| s.split(',').map(|u| u.trim().to_string()).collect())
+            .unwrap_or_default();
+
+        // Extract values from args before moving
+        let time_scale = args.time_scale;
+        let stop_at_time = args.stop_at_time;
+        let realtime = args.realtime;
+        let follow_user = args.follow_user.clone();
+        let highlight_all_users = args.highlight_all_users;
+        let dir_name_depth = args.dir_name_depth;
+        let dir_name_position = args.dir_name_position;
+        let logo_path = args.logo.clone();
+        let logo_offset = args.parse_logo_offset();
+        let background_image_path = args.background_image.clone();
+
         Self {
             args,
             window: None,
@@ -208,6 +270,10 @@ impl App {
             playback: PlaybackState {
                 paused,
                 seconds_per_day,
+                time_scale,
+                stop_at_time,
+                elapsed_time: 0.0,
+                realtime,
                 ..Default::default()
             },
             commits: Vec::new(),
@@ -228,6 +294,15 @@ impl App {
             },
             avatar_registry: avatar::AvatarRegistry::default(),
             filter,
+            follow_user,
+            highlight_users,
+            highlight_all_users,
+            current_user_index: 0,
+            dir_name_depth,
+            dir_name_position,
+            logo_path,
+            logo_offset,
+            background_image_path,
         }
     }
 
@@ -375,7 +450,35 @@ impl App {
                 // Skip backward
                 self.current_commit = self.current_commit.saturating_sub(10);
             }
+            Key::Named(NamedKey::Tab) => {
+                // Cycle through users
+                self.cycle_to_next_user();
+            }
             _ => {}
+        }
+    }
+
+    /// Cycle camera focus to the next visible user.
+    fn cycle_to_next_user(&mut self) {
+        let user_count = self.scene.user_count();
+        if user_count == 0 {
+            return;
+        }
+
+        // Get all user IDs
+        let user_ids: Vec<_> = self.scene.users().values().map(|u| u.id()).collect();
+        if user_ids.is_empty() {
+            return;
+        }
+
+        // Move to next user
+        self.current_user_index = (self.current_user_index + 1) % user_ids.len();
+        let user_id = user_ids[self.current_user_index];
+
+        // Focus camera on this user
+        if let Some(user) = self.scene.get_user(user_id) {
+            self.camera.jump_to(user.position());
+            eprintln!("Following user: {}", user.name());
         }
     }
 
@@ -423,14 +526,35 @@ impl App {
         self.scene.update(dt_f32);
         self.camera.update(dt_f32);
 
+        // Track elapsed real time
+        self.playback.elapsed_time += dt_f32;
+
+        // Check stop_at_time
+        if let Some(stop_time) = self.playback.stop_at_time {
+            if self.playback.elapsed_time >= stop_time {
+                self.should_exit = true;
+                return;
+            }
+        }
+
+        // Update user highlighting
+        self.update_user_highlights();
+
         if self.playback.paused || self.commits.is_empty() {
             return;
         }
 
-        self.accumulated_time += dt * f64::from(self.playback.speed);
+        // Apply time_scale multiplier to speed
+        let effective_speed = self.playback.speed * self.playback.time_scale;
+        self.accumulated_time += dt * f64::from(effective_speed);
 
         // Calculate how many days have passed based on playback speed
-        let days_per_second = 1.0 / f64::from(self.playback.seconds_per_day);
+        let days_per_second = if self.playback.realtime {
+            // In realtime mode, 1 second = 1 second of history
+            1.0 / 86400.0 // 1 day = 86400 seconds
+        } else {
+            1.0 / f64::from(self.playback.seconds_per_day)
+        };
         let days_elapsed = self.accumulated_time * days_per_second;
 
         // Find the current commit based on elapsed time
@@ -451,10 +575,24 @@ impl App {
         // Apply any commits we've reached but haven't applied yet
         self.apply_pending_commits();
 
-        // Auto-fit camera to scene content periodically
-        // (simple overview mode - more sophisticated tracking would use CameraTracker)
-        if let Some(entity_bounds) = self.scene.compute_entity_bounds() {
-            self.camera.fit_to_bounds(&entity_bounds, 100.0);
+        // Camera behavior based on follow_user setting
+        if let Some(ref follow_name) = self.follow_user {
+            // Find the user and focus on them
+            let target_pos = self
+                .scene
+                .users()
+                .values()
+                .find(|u| u.name() == follow_name)
+                .map(|u| u.position());
+            if let Some(pos) = target_pos {
+                self.camera.jump_to(pos);
+            }
+        } else {
+            // Auto-fit camera to scene content periodically
+            // (simple overview mode - more sophisticated tracking would use CameraTracker)
+            if let Some(entity_bounds) = self.scene.compute_entity_bounds() {
+                self.camera.fit_to_bounds(&entity_bounds, 100.0);
+            }
         }
 
         // Loop if enabled
@@ -463,6 +601,24 @@ impl App {
             self.last_applied_commit = 0;
             self.accumulated_time = 0.0;
             self.scene = Scene::new();
+        }
+    }
+
+    /// Update user highlight states based on settings.
+    fn update_user_highlights(&mut self) {
+        // Collect user IDs first, then update
+        let user_ids: Vec<_> = self.scene.users().values().map(|u| u.id()).collect();
+        for user_id in user_ids {
+            if let Some(user) = self.scene.get_user_mut(user_id) {
+                let should_highlight = if self.highlight_all_users {
+                    true
+                } else if !self.highlight_users.is_empty() {
+                    self.highlight_users.iter().any(|name| name == user.name())
+                } else {
+                    false
+                };
+                user.set_highlighted(should_highlight);
+            }
         }
     }
 
@@ -489,12 +645,25 @@ impl App {
             self.scene.visible_entities(&culling_bounds);
 
         // Render directories (as circles showing structure)
+        let hide_root = self.args.hide_root;
+        let hide_tree = self.args.hide_tree;
+        let hide_dirnames = self.args.hide_dirnames;
+        let dir_name_depth = self.dir_name_depth;
+        let _dir_name_position = self.dir_name_position;
+        let dir_font = self.default_font;
+        let dir_font_size = self.args.font_size * 0.75;
+
         for &dir_id in &visible_dir_ids {
             let Some(dir) = self.scene.directories().get(dir_id) else {
                 continue;
             };
 
             if !dir.is_visible() {
+                continue;
+            }
+
+            // Skip root directory if hide_root is set
+            if hide_root && dir.depth() == 0 {
                 continue;
             }
 
@@ -506,10 +675,22 @@ impl App {
             let dir_color = Color::new(depth_color, depth_color, depth_color + 0.1, 0.5);
             renderer.draw_circle(screen_pos, radius, 1.0, dir_color);
 
-            // Draw connection to parent
-            if let Some(parent_pos) = dir.parent_position() {
-                let parent_screen = self.camera.world_to_screen(parent_pos);
-                renderer.draw_line(parent_screen, screen_pos, 1.0, dir_color.with_alpha(0.3));
+            // Draw connection to parent (unless hide_tree is set)
+            if !hide_tree {
+                if let Some(parent_pos) = dir.parent_position() {
+                    let parent_screen = self.camera.world_to_screen(parent_pos);
+                    renderer.draw_line(parent_screen, screen_pos, 1.0, dir_color.with_alpha(0.3));
+                }
+            }
+
+            // Draw directory name label if enabled and within depth limit
+            if !hide_dirnames && dir.depth() <= dir_name_depth {
+                if let Some(font_id) = dir_font {
+                    let name = dir.name();
+                    let label_pos = Vec2::new(screen_pos.x + radius + 3.0, screen_pos.y - dir_font_size * 0.3);
+                    let label_color = Color::new(0.7, 0.7, 0.8, 0.6);
+                    renderer.draw_text(name, label_pos, font_id, dir_font_size, label_color);
+                }
             }
         }
 
@@ -536,15 +717,17 @@ impl App {
             // Draw file as a filled disc
             renderer.draw_disc(screen_pos, radius.max(2.0), color);
 
-            // Draw connection to parent directory
-            if let Some(dir) = self.scene.directories().get(file.directory()) {
-                let dir_screen = self.camera.world_to_screen(dir.position());
-                renderer.draw_line(
-                    dir_screen,
-                    screen_pos,
-                    0.5,
-                    color.with_alpha(0.2 * file.alpha()),
-                );
+            // Draw connection to parent directory (unless hide_tree is set)
+            if !hide_tree {
+                if let Some(dir) = self.scene.directories().get(file.directory()) {
+                    let dir_screen = self.camera.world_to_screen(dir.position());
+                    renderer.draw_line(
+                        dir_screen,
+                        screen_pos,
+                        0.5,
+                        color.with_alpha(0.2 * file.alpha()),
+                    );
+                }
             }
 
             // Draw filename label (only for prominent files when zoomed in)
@@ -683,8 +866,8 @@ impl App {
             );
         }
 
-        // Draw progress bar at bottom of screen
-        if !self.commits.is_empty() {
+        // Draw progress bar at bottom of screen (unless hide_progress is set)
+        if !self.args.hide_progress && !self.commits.is_empty() {
             let width = renderer.width() as f32;
             let height = renderer.height() as f32;
             let bar_height = 4.0;
@@ -942,11 +1125,13 @@ impl App {
             shadow.apply(renderer.pixels_mut(), w, h);
         }
 
-        // Apply bloom effect if enabled (applied on top)
-        if let Some(ref bloom) = self.bloom {
-            let w = renderer.width() as usize;
-            let h = renderer.height() as usize;
-            bloom.apply(renderer.pixels_mut(), w, h);
+        // Apply bloom effect if enabled (applied on top, unless hide_bloom is set)
+        if !self.args.hide_bloom {
+            if let Some(ref bloom) = self.bloom {
+                let w = renderer.width() as usize;
+                let h = renderer.height() as usize;
+                bloom.apply(renderer.pixels_mut(), w, h);
+            }
         }
     }
 
@@ -2041,6 +2226,16 @@ fn main() -> Result<()> {
     // Apply config file if specified
     if let Err(e) = args.apply_config_file() {
         eprintln!("Warning: {e}");
+    }
+
+    // Handle --save-config
+    if let Some(ref config_path) = args.save_config {
+        let settings = args.to_settings();
+        if let Err(e) = settings.save_to_file(config_path) {
+            anyhow::bail!("Failed to save config to {}: {}", config_path.display(), e);
+        }
+        eprintln!("Configuration saved to: {}", config_path.display());
+        return Ok(());
     }
 
     eprintln!("Rource - Software version control visualization");
