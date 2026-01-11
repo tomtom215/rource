@@ -11,10 +11,39 @@ description = "Rendering abstraction and software rasterizer for Rource"
 [lints]
 workspace = true
 
+[features]
+default = []
+# WebGL2 backend for WASM (GPU-accelerated rendering in browsers)
+webgl2 = ["wasm-bindgen", "web-sys", "js-sys"]
+
 [dependencies]
 rource-math = { path = "../rource-math" }
 
 # Font rendering (pure Rust, no system dependencies)
 fontdue = "0.9"
+
+# WebGL2 dependencies (optional, for WASM builds)
+wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }
+
+[dependencies.web-sys]
+version = "0.3"
+optional = true
+features = [
+    "console",
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "WebGl2RenderingContext",
+    "WebGlBuffer",
+    "WebGlFramebuffer",
+    "WebGlProgram",
+    "WebGlRenderbuffer",
+    "WebGlShader",
+    "WebGlTexture",
+    "WebGlUniformLocation",
+    "WebGlVertexArrayObject",
+    "Window",
+]
 
 [dev-dependencies]

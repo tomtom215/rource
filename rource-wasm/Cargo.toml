@@ -20,7 +20,7 @@ workspace = true
 
 [dependencies]
 rource-core = { path = "../crates/rource-core" }
-rource-render = { path = "../crates/rource-render" }
+rource-render = { path = "../crates/rource-render", features = ["webgl2"] }
 rource-vcs = { path = "../crates/rource-vcs" }
 rource-math = { path = "../crates/rource-math" }
 
@@ -48,4 +48,15 @@ features = [
     "WheelEvent",
     "Element",
     "DomRect",
+    # WebGL2 support
+    "WebGl2RenderingContext",
+    "WebGlBuffer",
+    "WebGlContextEvent",
+    "WebGlFramebuffer",
+    "WebGlProgram",
+    "WebGlRenderbuffer",
+    "WebGlShader",
+    "WebGlTexture",
+    "WebGlUniformLocation",
+    "WebGlVertexArrayObject",
 ]

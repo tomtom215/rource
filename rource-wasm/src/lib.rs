@@ -4,6 +4,16 @@
 //!
 //! This crate provides JavaScript/TypeScript bindings to run Rource in a web browser.
 //!
+//! ## Rendering Backends
+//!
+//! Rource WASM supports two rendering backends:
+//!
+//! - **WebGL2** (default): GPU-accelerated rendering for best performance
+//! - **Software**: Pure CPU rendering via Canvas2D for maximum compatibility
+//!
+//! The constructor automatically tries WebGL2 first and falls back to software
+//! rendering if WebGL2 is unavailable.
+//!
 //! ## Usage
 //!
 //! ```javascript
@@ -14,6 +24,9 @@
 //!
 //!     const canvas = document.getElementById('canvas');
 //!     const rource = new Rource(canvas);
+//!
+//!     // Check which backend is being used
+//!     console.log('Renderer:', rource.getRendererType());
 //!
 //!     // Load a git log
 //!     const log = `1234567890|John Doe|A|src/main.rs
@@ -34,7 +47,7 @@ use rource_core::camera::Camera;
 use rource_core::config::Settings;
 use rource_core::scene::{ActionType, Scene};
 use rource_math::{Bounds, Color, Vec2};
-use rource_render::{Renderer, SoftwareRenderer};
+use rource_render::{Renderer, SoftwareRenderer, WebGl2Renderer};
 use rource_vcs::parser::{CustomParser, GitParser, Parser};
 use rource_vcs::{Commit, FileAction};
 
@@ -181,17 +194,159 @@ fn deflate_compress(data: &[u8]) -> Vec<u8> {
     output
 }
 
+// ============================================================================
+// Renderer Backend Abstraction
+// ============================================================================
+
+/// The type of renderer being used.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RendererType {
+    /// WebGL2 GPU-accelerated renderer.
+    WebGl2,
+    /// Software CPU renderer with Canvas2D output.
+    Software,
+}
+
+impl RendererType {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::WebGl2 => "webgl2",
+            Self::Software => "software",
+        }
+    }
+}
+
+/// Unified renderer backend that can be either WebGL2 or Software.
+enum RendererBackend {
+    WebGl2(WebGl2Renderer),
+    Software {
+        renderer: SoftwareRenderer,
+        context: CanvasRenderingContext2d,
+    },
+}
+
+impl RendererBackend {
+    /// Creates a new renderer backend, trying WebGL2 first then falling back to Software.
+    fn new(canvas: &HtmlCanvasElement) -> Result<(Self, RendererType), JsValue> {
+        let width = canvas.width();
+        let height = canvas.height();
+
+        // Try WebGL2 first
+        if let Ok(webgl2) = WebGl2Renderer::new(canvas) {
+            web_sys::console::log_1(&"Rource: Using WebGL2 renderer".into());
+            return Ok((Self::WebGl2(webgl2), RendererType::WebGl2));
+        }
+
+        // Fall back to software rendering
+        web_sys::console::log_1(
+            &"Rource: WebGL2 not available, falling back to software renderer".into(),
+        );
+
+        let context = canvas
+            .get_context("2d")
+            .map_err(|e| JsValue::from_str(&format!("Failed to get 2D context: {e:?}")))?
+            .ok_or_else(|| JsValue::from_str("Canvas 2D context not available"))?
+            .dyn_into::<CanvasRenderingContext2d>()?;
+
+        let renderer = SoftwareRenderer::new(width, height);
+
+        Ok((Self::Software { renderer, context }, RendererType::Software))
+    }
+
+    /// Returns the renderer type.
+    fn renderer_type(&self) -> RendererType {
+        match self {
+            Self::WebGl2(_) => RendererType::WebGl2,
+            Self::Software { .. } => RendererType::Software,
+        }
+    }
+
+    /// Returns the width of the renderer.
+    fn width(&self) -> u32 {
+        match self {
+            Self::WebGl2(r) => r.width(),
+            Self::Software { renderer, .. } => renderer.width(),
+        }
+    }
+
+    /// Returns the height of the renderer.
+    fn height(&self) -> u32 {
+        match self {
+            Self::WebGl2(r) => r.height(),
+            Self::Software { renderer, .. } => renderer.height(),
+        }
+    }
+
+    /// Resizes the renderer.
+    fn resize(&mut self, width: u32, height: u32) {
+        match self {
+            Self::WebGl2(r) => r.resize(width, height),
+            Self::Software { renderer, .. } => renderer.resize(width, height),
+        }
+    }
+
+    /// Gets mutable reference to the underlying Renderer trait object.
+    fn as_renderer_mut(&mut self) -> &mut dyn Renderer {
+        match self {
+            Self::WebGl2(r) => r,
+            Self::Software { renderer, .. } => renderer,
+        }
+    }
+
+    /// Called after end_frame() to copy software buffer to canvas (no-op for WebGL2).
+    fn present(&self) {
+        if let Self::Software { renderer, context } = self {
+            let width = renderer.width();
+            let height = renderer.height();
+            let pixels = renderer.pixels();
+
+            // Convert ARGB to RGBA for ImageData
+            let mut rgba = vec![0u8; (width * height * 4) as usize];
+            for (i, &pixel) in pixels.iter().enumerate() {
+                let offset = i * 4;
+                rgba[offset] = ((pixel >> 16) & 0xFF) as u8; // R
+                rgba[offset + 1] = ((pixel >> 8) & 0xFF) as u8; // G
+                rgba[offset + 2] = (pixel & 0xFF) as u8; // B
+                rgba[offset + 3] = ((pixel >> 24) & 0xFF) as u8; // A
+            }
+
+            // Create ImageData and put it on the canvas
+            if let Ok(image_data) = ImageData::new_with_u8_clamped_array_and_sh(
+                wasm_bindgen::Clamped(&rgba),
+                width,
+                height,
+            ) {
+                let _ = context.put_image_data(&image_data, 0.0, 0.0);
+            }
+        }
+        // WebGL2 renders directly to canvas, no copy needed
+    }
+
+    /// Returns pixel data for screenshot (software only).
+    fn pixels(&self) -> Option<&[u32]> {
+        if let Self::Software { renderer, .. } = self {
+            Some(renderer.pixels())
+        } else {
+            None
+        }
+    }
+}
+
+// ============================================================================
+// Main Rource WASM API
+// ============================================================================
+
 /// The main Rource visualization controller for browser usage.
 #[wasm_bindgen]
 pub struct Rource {
     /// Canvas element
     canvas: HtmlCanvasElement,
 
-    /// Canvas 2D rendering context
-    context: CanvasRenderingContext2d,
+    /// Renderer backend (WebGL2 or Software)
+    backend: RendererBackend,
 
-    /// Software renderer (draws to pixel buffer)
-    renderer: SoftwareRenderer,
+    /// Type of renderer being used
+    renderer_type: RendererType,
 
     /// Scene graph containing all entities
     scene: Scene,
@@ -234,6 +389,8 @@ pub struct Rource {
 impl Rource {
     /// Creates a new Rource instance attached to a canvas element.
     ///
+    /// Automatically tries WebGL2 first, falling back to software rendering if unavailable.
+    ///
     /// # Arguments
     ///
     /// * `canvas` - The HTML canvas element to render to
@@ -242,13 +399,8 @@ impl Rource {
         let width = canvas.width();
         let height = canvas.height();
 
-        let context = canvas
-            .get_context("2d")
-            .map_err(|e| JsValue::from_str(&format!("Failed to get 2D context: {e:?}")))?
-            .ok_or_else(|| JsValue::from_str("Canvas 2D context not available"))?
-            .dyn_into::<CanvasRenderingContext2d>()?;
+        let (backend, renderer_type) = RendererBackend::new(&canvas)?;
 
-        let renderer = SoftwareRenderer::new(width, height);
         let scene = Scene::new();
 
         let mut settings = Settings::default();
@@ -260,8 +412,8 @@ impl Rource {
 
         Ok(Self {
             canvas,
-            context,
-            renderer,
+            backend,
+            renderer_type,
             scene,
             camera,
             settings,
@@ -279,6 +431,18 @@ impl Rource {
             camera_start_x: 0.0,
             camera_start_y: 0.0,
         })
+    }
+
+    /// Returns the type of renderer being used ("webgl2" or "software").
+    #[wasm_bindgen(js_name = getRendererType)]
+    pub fn get_renderer_type(&self) -> String {
+        self.renderer_type.as_str().to_string()
+    }
+
+    /// Returns true if using WebGL2 renderer.
+    #[wasm_bindgen(js_name = isWebGL2)]
+    pub fn is_webgl2(&self) -> bool {
+        self.renderer_type == RendererType::WebGl2
     }
 
     /// Loads commits from custom pipe-delimited format.
@@ -425,7 +589,7 @@ impl Rource {
     pub fn resize(&mut self, width: u32, height: u32) {
         self.canvas.set_width(width);
         self.canvas.set_height(height);
-        self.renderer.resize(width, height);
+        self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
         self.settings.display.width = width;
         self.settings.display.height = height;
@@ -598,19 +762,23 @@ impl Rource {
 
     /// Captures a screenshot and returns it as PNG data (`Uint8Array`).
     ///
-    /// The screenshot captures the current rendered frame.
+    /// Note: This only works with the software renderer. For WebGL2, returns an error.
     #[wasm_bindgen(js_name = captureScreenshot)]
     pub fn capture_screenshot(&self) -> Result<Vec<u8>, JsValue> {
-        let width = self.renderer.width();
-        let height = self.renderer.height();
-        let pixels = self.renderer.pixels();
+        if let Some(pixels) = self.backend.pixels() {
+            let width = self.backend.width();
+            let height = self.backend.height();
 
-        // Create PNG data
-        let mut png_data = Vec::new();
-        write_png(&mut png_data, pixels, width, height)
-            .map_err(|e| JsValue::from_str(&format!("Failed to create PNG: {e}")))?;
+            let mut png_data = Vec::new();
+            write_png(&mut png_data, pixels, width, height)
+                .map_err(|e| JsValue::from_str(&format!("Failed to create PNG: {e}")))?;
 
-        Ok(png_data)
+            Ok(png_data)
+        } else {
+            Err(JsValue::from_str(
+                "Screenshot not supported with WebGL2 renderer",
+            ))
+        }
     }
 }
 
@@ -660,8 +828,8 @@ impl Rource {
                 );
 
                 // Calculate zoom to fit bounds
-                let screen_width = self.renderer.width() as f32;
-                let screen_height = self.renderer.height() as f32;
+                let screen_width = self.backend.width() as f32;
+                let screen_height = self.backend.height() as f32;
 
                 let zoom_x = screen_width / padded_bounds.width();
                 let zoom_y = screen_height / padded_bounds.height();
@@ -675,11 +843,13 @@ impl Rource {
 
     /// Renders the current frame to the canvas.
     fn render(&mut self) {
+        let renderer = self.backend.as_renderer_mut();
+
         // Begin frame
-        self.renderer.begin_frame();
+        renderer.begin_frame();
 
         // Clear with background color
-        self.renderer.clear(self.settings.display.background_color);
+        renderer.clear(self.settings.display.background_color);
 
         // Compute visible bounds in world space
         let visible_bounds = self.camera.visible_bounds();
@@ -700,15 +870,14 @@ impl Rource {
                     if let Some(child) = self.scene.directories().get(*child_id) {
                         let child_screen = self.camera.world_to_screen(child.position());
                         let color = Color::new(0.3, 0.3, 0.4, 0.5);
-                        self.renderer
-                            .draw_line(screen_pos, child_screen, 1.0, color);
+                        renderer.draw_line(screen_pos, child_screen, 1.0, color);
                     }
                 }
 
                 // Draw directory node
                 let radius = (dir.radius() * camera_zoom).min(20.0);
                 let color = Color::new(0.4, 0.4, 0.5, 0.8);
-                self.renderer.draw_disc(screen_pos, radius.max(2.0), color);
+                renderer.draw_disc(screen_pos, radius.max(2.0), color);
             }
         }
 
@@ -721,7 +890,7 @@ impl Rource {
                 color.a = file.alpha();
 
                 if color.a > 0.01 {
-                    self.renderer.draw_disc(screen_pos, radius.max(1.0), color);
+                    renderer.draw_disc(screen_pos, radius.max(1.0), color);
                 }
             }
         }
@@ -741,12 +910,11 @@ impl Rource {
                 let beam_end = user_screen.lerp(file_screen, action.progress());
 
                 let beam_color = action.beam_color();
-                self.renderer
-                    .draw_line(user_screen, beam_end, 2.0, beam_color);
+                renderer.draw_line(user_screen, beam_end, 2.0, beam_color);
 
                 // Draw beam head
                 let head_radius = (3.0 * camera_zoom).max(2.0);
-                self.renderer.draw_disc(beam_end, head_radius, beam_color);
+                renderer.draw_disc(beam_end, head_radius, beam_color);
             }
         }
 
@@ -763,15 +931,14 @@ impl Rource {
 
                 // Draw border/outline (darker version of user color)
                 let border_color = Color::new(color.r * 0.4, color.g * 0.4, color.b * 0.4, color.a);
-                self.renderer
-                    .draw_disc(screen_pos, radius + 2.0, border_color);
+                renderer.draw_disc(screen_pos, radius + 2.0, border_color);
 
                 // Draw user circle
-                self.renderer.draw_disc(screen_pos, radius, color);
+                renderer.draw_disc(screen_pos, radius, color);
 
                 // Draw a highlight ring if active
                 if user.is_active() {
-                    self.renderer.draw_circle(
+                    renderer.draw_circle(
                         screen_pos,
                         radius * 1.3,
                         2.0,
@@ -782,34 +949,10 @@ impl Rource {
         }
 
         // End frame
-        self.renderer.end_frame();
+        renderer.end_frame();
 
-        // Copy pixel buffer to canvas
-        self.copy_to_canvas();
-    }
-
-    /// Copies the software renderer's pixel buffer to the canvas.
-    fn copy_to_canvas(&self) {
-        let width = self.renderer.width();
-        let height = self.renderer.height();
-        let pixels = self.renderer.pixels();
-
-        // Convert ARGB to RGBA for ImageData
-        let mut rgba = vec![0u8; (width * height * 4) as usize];
-        for (i, &pixel) in pixels.iter().enumerate() {
-            let offset = i * 4;
-            rgba[offset] = ((pixel >> 16) & 0xFF) as u8; // R
-            rgba[offset + 1] = ((pixel >> 8) & 0xFF) as u8; // G
-            rgba[offset + 2] = (pixel & 0xFF) as u8; // B
-            rgba[offset + 3] = ((pixel >> 24) & 0xFF) as u8; // A
-        }
-
-        // Create ImageData and put it on the canvas
-        if let Ok(image_data) =
-            ImageData::new_with_u8_clamped_array_and_sh(wasm_bindgen::Clamped(&rgba), width, height)
-        {
-            let _ = self.context.put_image_data(&image_data, 0.0, 0.0);
-        }
+        // Present (copy to canvas for software renderer)
+        self.backend.present();
     }
 }
 
@@ -839,5 +982,11 @@ mod tests {
         assert!((color.r - 1.0).abs() < 0.01);
         assert!(color.g < 0.01);
         assert!(color.b < 0.01);
+    }
+
+    #[test]
+    fn test_renderer_type_as_str() {
+        assert_eq!(RendererType::WebGl2.as_str(), "webgl2");
+        assert_eq!(RendererType::Software.as_str(), "software");
     }
 }
