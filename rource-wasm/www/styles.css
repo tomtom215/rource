@@ -839,6 +839,17 @@ header h1 {
     height: 20px;
 }
 
+/* Replay state - distinct color to indicate restart */
+.play-btn-main.replay {
+    background: var(--accent-blue);
+    box-shadow: 0 2px 8px rgba(88, 166, 255, 0.3);
+}
+
+.play-btn-main.replay:hover:not(:disabled) {
+    background: #4d9eff;
+    box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4);
+}
+
 /* Reset button in control bar */
 .reset-btn {
     background: var(--bg-tertiary);

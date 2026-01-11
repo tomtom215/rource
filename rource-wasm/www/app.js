@@ -757,6 +757,14 @@ function updatePerfMetrics() {
     }
 }
 
+// Check if visualization is at the end
+function isAtEnd() {
+    if (!rource) return false;
+    const total = rource.commitCount();
+    const current = rource.currentCommit();
+    return total > 0 && current >= total - 1;
+}
+
 // Update UI
 function updateUI() {
     if (!rource) return;
@@ -764,18 +772,28 @@ function updateUI() {
     const playing = rource.isPlaying();
     const total = rource.commitCount();
     const current = rource.currentCommit();
+    const atEnd = total > 0 && current >= total - 1 && !playing;
 
-    // Update play button icon
+    // Update play button icon - show replay icon when at end
     const pauseIcon = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
     const playIconPath = '<path d="M8 5v14l11-7z"/>';
-
-    playIconMain.innerHTML = playing ? pauseIcon : playIconPath;
-    btnPlayMain.title = playing ? 'Pause (Space)' : 'Play (Space)';
+    const replayIcon = '<path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>';
 
     if (playing) {
+        playIconMain.innerHTML = pauseIcon;
+        btnPlayMain.title = 'Pause (Space)';
         btnPlayMain.classList.add('active');
-    } else {
+        btnPlayMain.classList.remove('replay');
+    } else if (atEnd) {
+        playIconMain.innerHTML = replayIcon;
+        btnPlayMain.title = 'Replay from start (Space)';
         btnPlayMain.classList.remove('active');
+        btnPlayMain.classList.add('replay');
+    } else {
+        playIconMain.innerHTML = playIconPath;
+        btnPlayMain.title = 'Play (Space)';
+        btnPlayMain.classList.remove('active');
+        btnPlayMain.classList.remove('replay');
     }
 
     // Update timeline
@@ -872,8 +890,11 @@ function loadLogData(content, format = 'custom') {
             }
         }
 
-        // Auto-play
-        rource.play();
+        // Start paused by default for first-time users
+        // Only auto-play if explicitly requested via URL parameter
+        if (urlParams.autoplay === 'true') {
+            rource.play();
+        }
         updateUI();
 
     } catch (e) {
@@ -1534,7 +1555,13 @@ async function main() {
 // Event handlers
 btnPlayMain.addEventListener('click', () => {
     if (rource && hasLoadedData) {
-        rource.togglePlay();
+        // If at the end and paused, replay from start
+        if (isAtEnd() && !rource.isPlaying()) {
+            rource.seek(0);
+            rource.play();
+        } else {
+            rource.togglePlay();
+        }
         updateUI();
     } else if (!hasLoadedData) {
         // Load Rource project data by default (cached)
@@ -1558,8 +1585,12 @@ btnNext.addEventListener('click', () => {
 
 btnResetBar.addEventListener('click', () => {
     if (rource) {
+        // Pause if playing, then reset to start
+        if (rource.isPlaying()) {
+            rource.pause();
+        }
         rource.resetCamera();
-        rource.seek(0); // Also reset to first commit
+        rource.seek(0);
         updateUI();
     }
 });
