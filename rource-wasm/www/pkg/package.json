@@ -1,0 +1,24 @@
+{
+  "name": "rource-wasm",
+  "type": "module",
+  "collaborators": [
+    "Rource Contributors"
+  ],
+  "description": "WebAssembly bindings for Rource - software version control visualization",
+  "version": "0.1.0",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomtom215/rource"
+  },
+  "files": [
+    "rource_wasm_bg.wasm",
+    "rource_wasm.js",
+    "rource_wasm.d.ts"
+  ],
+  "main": "rource_wasm.js",
+  "types": "rource_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

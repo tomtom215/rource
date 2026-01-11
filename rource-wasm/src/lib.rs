@@ -340,6 +340,82 @@ impl RendererBackend {
 // Main Rource WASM API
 // ============================================================================
 
+/// Number of frame samples for FPS averaging.
+const FRAME_SAMPLE_COUNT: usize = 60;
+
+/// Performance metrics for FPS tracking and profiling.
+#[derive(Debug, Clone)]
+struct PerformanceMetrics {
+    /// Rolling average of frame times (in seconds).
+    frame_times: [f32; FRAME_SAMPLE_COUNT],
+    /// Index into `frame_times` for ring buffer.
+    frame_time_index: usize,
+    /// Number of valid frame time samples.
+    frame_time_count: usize,
+    /// Last calculated FPS value.
+    fps: f32,
+    /// Last frame duration in milliseconds.
+    frame_time_ms: f32,
+    /// Total frames rendered.
+    total_frames: u64,
+    /// Time of initialization (for uptime tracking).
+    start_time: f64,
+}
+
+impl Default for PerformanceMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PerformanceMetrics {
+    /// Creates a new performance metrics tracker.
+    fn new() -> Self {
+        Self {
+            frame_times: [0.0; FRAME_SAMPLE_COUNT],
+            frame_time_index: 0,
+            frame_time_count: 0,
+            fps: 0.0,
+            frame_time_ms: 0.0,
+            total_frames: 0,
+            start_time: 0.0,
+        }
+    }
+
+    /// Records a frame time sample and updates FPS calculation.
+    fn record_frame(&mut self, dt: f32) {
+        self.frame_times[self.frame_time_index] = dt;
+        self.frame_time_index = (self.frame_time_index + 1) % FRAME_SAMPLE_COUNT;
+        self.frame_time_count = (self.frame_time_count + 1).min(FRAME_SAMPLE_COUNT);
+        self.total_frames += 1;
+        self.frame_time_ms = dt * 1000.0;
+
+        // Calculate rolling average FPS
+        if self.frame_time_count > 0 {
+            let sum: f32 = self.frame_times[..self.frame_time_count].iter().sum();
+            let avg_dt = sum / self.frame_time_count as f32;
+            self.fps = if avg_dt > 0.0 { 1.0 / avg_dt } else { 0.0 };
+        }
+    }
+}
+
+/// Render statistics for the current frame.
+#[derive(Debug, Clone, Default)]
+struct RenderStats {
+    /// Number of visible files being rendered.
+    visible_files: usize,
+    /// Number of visible users being rendered.
+    visible_users: usize,
+    /// Number of visible directories being rendered.
+    visible_directories: usize,
+    /// Number of active action beams.
+    active_actions: usize,
+    /// Total entities in the scene.
+    total_entities: usize,
+    /// Estimated draw call count.
+    draw_calls: usize,
+}
+
 /// The main Rource visualization controller for browser usage.
 #[wasm_bindgen]
 pub struct Rource {
@@ -393,6 +469,12 @@ pub struct Rource {
 
     /// Whether to show labels (user names, file names)
     show_labels: bool,
+
+    /// Performance metrics (FPS tracking, frame timing).
+    perf_metrics: PerformanceMetrics,
+
+    /// Render statistics for the current frame.
+    render_stats: RenderStats,
 }
 
 #[wasm_bindgen]
@@ -448,6 +530,8 @@ impl Rource {
             camera_start_y: 0.0,
             font_id,
             show_labels: true, // Labels enabled by default
+            perf_metrics: PerformanceMetrics::new(),
+            render_stats: RenderStats::default(),
         })
     }
 
@@ -745,6 +829,11 @@ impl Rource {
     ///
     /// Returns true if there are more frames to render.
     pub fn frame(&mut self, timestamp: f64) -> bool {
+        // Initialize start time on first frame
+        if self.perf_metrics.start_time == 0.0 {
+            self.perf_metrics.start_time = timestamp;
+        }
+
         // Calculate delta time
         let dt = if self.last_frame_time > 0.0 {
             ((timestamp - self.last_frame_time) / 1000.0) as f32
@@ -755,6 +844,9 @@ impl Rource {
 
         // Clamp dt to avoid huge jumps
         let dt = dt.min(0.1);
+
+        // Record frame time for FPS calculation
+        self.perf_metrics.record_frame(dt);
 
         // Update simulation if playing
         if self.playing && !self.commits.is_empty() {
@@ -795,6 +887,108 @@ impl Rource {
 
         // Return true if there's more to show
         self.playing || self.current_commit < self.commits.len()
+    }
+
+    // ========================================================================
+    // Performance Metrics API
+    // ========================================================================
+
+    /// Returns the current frames per second (rolling average over 60 frames).
+    #[wasm_bindgen(js_name = getFps)]
+    pub fn get_fps(&self) -> f32 {
+        self.perf_metrics.fps
+    }
+
+    /// Returns the last frame time in milliseconds.
+    #[wasm_bindgen(js_name = getFrameTimeMs)]
+    pub fn get_frame_time_ms(&self) -> f32 {
+        self.perf_metrics.frame_time_ms
+    }
+
+    /// Returns the total number of frames rendered since initialization.
+    #[wasm_bindgen(js_name = getTotalFrames)]
+    pub fn get_total_frames(&self) -> u64 {
+        self.perf_metrics.total_frames
+    }
+
+    /// Returns the uptime in seconds since initialization.
+    #[wasm_bindgen(js_name = getUptime)]
+    pub fn get_uptime(&self) -> f64 {
+        if self.perf_metrics.start_time > 0.0 {
+            (self.last_frame_time - self.perf_metrics.start_time) / 1000.0
+        } else {
+            0.0
+        }
+    }
+
+    // ========================================================================
+    // Render Statistics API
+    // ========================================================================
+
+    /// Returns the number of visible files currently being rendered.
+    #[wasm_bindgen(js_name = getVisibleFiles)]
+    pub fn get_visible_files(&self) -> usize {
+        self.render_stats.visible_files
+    }
+
+    /// Returns the number of visible users currently being rendered.
+    #[wasm_bindgen(js_name = getVisibleUsers)]
+    pub fn get_visible_users(&self) -> usize {
+        self.render_stats.visible_users
+    }
+
+    /// Returns the number of visible directories currently being rendered.
+    #[wasm_bindgen(js_name = getVisibleDirectories)]
+    pub fn get_visible_directories(&self) -> usize {
+        self.render_stats.visible_directories
+    }
+
+    /// Returns the number of active action beams.
+    #[wasm_bindgen(js_name = getActiveActions)]
+    pub fn get_active_actions(&self) -> usize {
+        self.render_stats.active_actions
+    }
+
+    /// Returns the total number of entities in the scene.
+    #[wasm_bindgen(js_name = getTotalEntities)]
+    pub fn get_total_entities(&self) -> usize {
+        self.render_stats.total_entities
+    }
+
+    /// Returns the estimated draw call count for the last frame.
+    #[wasm_bindgen(js_name = getDrawCalls)]
+    pub fn get_draw_calls(&self) -> usize {
+        self.render_stats.draw_calls
+    }
+
+    /// Returns the canvas width in pixels.
+    #[wasm_bindgen(js_name = getCanvasWidth)]
+    pub fn get_canvas_width(&self) -> u32 {
+        self.backend.width()
+    }
+
+    /// Returns the canvas height in pixels.
+    #[wasm_bindgen(js_name = getCanvasHeight)]
+    pub fn get_canvas_height(&self) -> u32 {
+        self.backend.height()
+    }
+
+    /// Returns the current zoom level.
+    #[wasm_bindgen(js_name = getZoom)]
+    pub fn get_zoom(&self) -> f32 {
+        self.camera.zoom()
+    }
+
+    /// Returns the total number of files in the scene.
+    #[wasm_bindgen(js_name = getTotalFiles)]
+    pub fn get_total_files(&self) -> usize {
+        self.scene.file_count()
+    }
+
+    /// Returns the total number of users in the scene.
+    #[wasm_bindgen(js_name = getTotalUsers)]
+    pub fn get_total_users(&self) -> usize {
+        self.scene.user_count()
     }
 
     /// Forces a render without updating simulation (useful for static views).
@@ -902,6 +1096,27 @@ impl Rource {
         let visible_dirs = self.scene.visible_directory_ids(&visible_bounds);
         let visible_files = self.scene.visible_file_ids(&visible_bounds);
         let visible_users = self.scene.visible_user_ids(&visible_bounds);
+
+        // Collect render statistics
+        let active_actions = self.scene.actions().iter().filter(|a| !a.is_complete()).count();
+        self.render_stats = RenderStats {
+            visible_files: visible_files.len(),
+            visible_users: visible_users.len(),
+            visible_directories: visible_dirs.len(),
+            active_actions,
+            total_entities: self.scene.file_count()
+                + self.scene.user_count()
+                + self.scene.directories().len()
+                + self.scene.actions().len(),
+            // Estimate draw calls: directories (lines + circles) + files + actions (lines + circles) + users (2 circles + ring)
+            draw_calls: if self.renderer_type == RendererType::WebGl2 {
+                // WebGL2 batches by primitive type: ~6 draw calls typically
+                6
+            } else {
+                // Software renderer: one per primitive
+                visible_dirs.len() * 2 + visible_files.len() + active_actions * 2 + visible_users.len() * 3
+            },
+        };
 
         // Draw directories (lines from parent to children)
         for dir_id in &visible_dirs {
