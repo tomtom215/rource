@@ -245,6 +245,37 @@ export class Rource {
         return ret !== 0;
     }
     /**
+     * Returns author data as a JSON string array.
+     *
+     * Each entry contains: `{ "name": "Author Name", "color": "#rrggbb", "commits": count }`
+     * Sorted by commit count (most active first).
+     *
+     * # Example (JavaScript)
+     *
+     * ```javascript,ignore
+     * const authorsJson = rource.getAuthors();
+     * const authors = JSON.parse(authorsJson);
+     * authors.forEach(a => console.log(a.name, a.color, a.commits));
+     * ```
+     * @returns {string}
+     */
+    getAuthors() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getAuthors(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Handles keyboard events.
      * @param {string} key
      */
@@ -417,6 +448,32 @@ export class Rource {
      */
     setShowLabels(show) {
         wasm.rource_setShowLabels(this.__wbg_ptr, show);
+    }
+    /**
+     * Returns the color for a given author name as a hex string (e.g., "#ff5500").
+     *
+     * This uses the same deterministic color generation as the visualization,
+     * so colors will match what's displayed on screen.
+     * @param {string} name
+     * @returns {string}
+     */
+    getAuthorColor(name) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(name, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.rource_getAuthorColor(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred2_0 = r0;
+            deferred2_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred2_0, deferred2_1, 1);
+        }
     }
     /**
      * Returns the canvas width in pixels.

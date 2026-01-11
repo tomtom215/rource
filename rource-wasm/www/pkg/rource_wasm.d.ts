@@ -13,6 +13,21 @@ export class Rource {
    */
   isPlaying(): boolean;
   /**
+   * Returns author data as a JSON string array.
+   *
+   * Each entry contains: `{ "name": "Author Name", "color": "#rrggbb", "commits": count }`
+   * Sorted by commit count (most active first).
+   *
+   * # Example (JavaScript)
+   *
+   * ```javascript,ignore
+   * const authorsJson = rource.getAuthors();
+   * const authors = JSON.parse(authorsJson);
+   * authors.forEach(a => console.log(a.name, a.color, a.commits));
+   * ```
+   */
+  getAuthors(): string;
+  /**
    * Handles keyboard events.
    */
   onKeyDown(key: string): void;
@@ -98,6 +113,13 @@ export class Rource {
    * Sets whether to show labels (user names, file names).
    */
   setShowLabels(show: boolean): void;
+  /**
+   * Returns the color for a given author name as a hex string (e.g., "#ff5500").
+   *
+   * This uses the same deterministic color generation as the visualization,
+   * so colors will match what's displayed on screen.
+   */
+  getAuthorColor(name: string): string;
   /**
    * Returns the canvas width in pixels.
    */
@@ -240,6 +262,8 @@ export interface InitOutput {
   readonly rource_forceRender: (a: number) => void;
   readonly rource_frame: (a: number, b: number) => number;
   readonly rource_getActiveActions: (a: number) => number;
+  readonly rource_getAuthorColor: (a: number, b: number, c: number, d: number) => void;
+  readonly rource_getAuthors: (a: number, b: number) => void;
   readonly rource_getCanvasHeight: (a: number) => number;
   readonly rource_getCanvasWidth: (a: number) => number;
   readonly rource_getDrawCalls: (a: number) => number;
