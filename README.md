@@ -2,6 +2,8 @@
 
 **Rource** (Rust + Gource) is a software version control visualization tool - a complete rewrite of [Gource](https://github.com/acaudwell/Gource) in Rust with WebAssembly support.
 
+**[Try it live in your browser](https://tomtom215.github.io/rource/)** - no installation required!
+
 Rource visualizes your repository's commit history as an animated tree where directories branch outward, files appear as leaves, and contributors move around making changes.
 
 ## Features
@@ -211,6 +213,8 @@ Avatar files should be PNG format and named after the user (case-insensitive):
 ## WebAssembly
 
 Rource runs in web browsers via WebAssembly with GPU-accelerated rendering.
+
+**[Live Demo](https://tomtom215.github.io/rource/)** - Try Rource instantly without installing anything.
 
 ### Rendering Backends
 
