@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rource - Software Version Control Visualization</title>
     <meta name="description" content="Visualize your git repository history as an animated tree. Watch your codebase grow as developers collaborate. Runs in your browser with WebAssembly.">
-    <meta name="keywords" content="git, visualization, gource, repository, version control, wasm, webassembly">
+    <meta name="keywords" content="git, visualization, gource, repository, version control, wasm, webassembly, rust">
     <meta name="author" content="Rource Contributors">
 
     <!-- Open Graph / Social Sharing -->
@@ -34,22 +34,27 @@
         }
 
         :root {
-            --bg-primary: #1a1a2e;
-            --bg-secondary: #16213e;
-            --bg-tertiary: #0f0f23;
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-canvas: #010409;
             --accent: #e94560;
             --accent-hover: #ff6b6b;
-            --accent-secondary: #533483;
-            --text-primary: #eee;
-            --text-secondary: #888;
-            --border: #333;
-            --success: #4ade80;
-            --error: #f87171;
-            --warning: #fbbf24;
+            --accent-secondary: #238636;
+            --accent-blue: #58a6ff;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --border: #30363d;
+            --border-light: #484f58;
+            --success: #3fb950;
+            --error: #f85149;
+            --warning: #d29922;
+            --shadow: rgba(0, 0, 0, 0.4);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
@@ -58,13 +63,17 @@
 
         /* Focus styles for accessibility */
         :focus-visible {
-            outline: 2px solid var(--accent);
+            outline: 2px solid var(--accent-blue);
             outline-offset: 2px;
         }
 
-        button:focus-visible, a:focus-visible {
-            outline: 2px solid var(--accent);
-            outline-offset: 2px;
+        a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
         }
 
         /* Skip to content link */
@@ -84,113 +93,6 @@
             top: 0;
         }
 
-        /* Hero Section */
-        .hero {
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-            padding: 3rem 2rem;
-            text-align: center;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .hero h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, var(--accent) 0%, #ff9a9e 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero .tagline {
-            font-size: 1.25rem;
-            color: var(--text-secondary);
-            margin-bottom: 1.5rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .hero-features {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-            margin-bottom: 1.5rem;
-        }
-
-        .hero-feature {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        .hero-feature .icon {
-            width: 20px;
-            height: 20px;
-            fill: var(--accent);
-        }
-
-        .hero-cta {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn:disabled {
-            background: #555;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-secondary {
-            background: var(--accent-secondary);
-        }
-
-        .btn-secondary:hover {
-            background: #6c4298;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--accent);
-            color: var(--accent);
-        }
-
-        .btn-outline:hover {
-            background: var(--accent);
-            color: white;
-        }
-
-        .btn-sm {
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-        }
-
         /* Header */
         header {
             background: var(--bg-secondary);
@@ -198,9 +100,12 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border);
             flex-wrap: wrap;
             gap: 0.75rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .header-brand {
@@ -209,23 +114,48 @@
             gap: 0.75rem;
         }
 
+        .header-brand a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .header-brand a:hover {
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+        }
+
         header h1 {
             font-size: 1.25rem;
             font-weight: 600;
-            color: var(--accent);
+            background: linear-gradient(135deg, var(--accent) 0%, #ff9a9e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .renderer-badge {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             padding: 0.2rem 0.5rem;
             background: var(--bg-tertiary);
-            border-radius: 4px;
-            color: var(--text-secondary);
+            border-radius: 12px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
         .renderer-badge.webgl2 {
             color: var(--success);
-            border: 1px solid var(--success);
+            border-color: var(--success);
+            background: rgba(63, 185, 80, 0.1);
         }
 
         .controls {
@@ -237,60 +167,134 @@
 
         .header-links {
             display: flex;
-            gap: 0.75rem;
+            gap: 1rem;
             align-items: center;
         }
 
-        .header-links a {
+        .github-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             color: var(--text-secondary);
-            text-decoration: none;
             font-size: 0.875rem;
-            transition: color 0.2s;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
         }
 
-        .header-links a:hover {
+        .github-link:hover {
+            color: var(--text-primary);
+            border-color: var(--border-light);
+            background: var(--bg-tertiary);
+            text-decoration: none;
+        }
+
+        .github-link svg {
+            fill: currentColor;
+        }
+
+        /* Buttons */
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            text-decoration: none;
+        }
+
+        .btn:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
             color: var(--text-primary);
         }
 
-        .keyboard-shortcuts {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            display: none;
+        .btn-secondary:hover {
+            background: var(--border);
+            border-color: var(--border-light);
         }
 
-        @media (min-width: 900px) {
-            .keyboard-shortcuts {
-                display: block;
+        .btn-success {
+            background: var(--accent-secondary);
+        }
+
+        .btn-success:hover {
+            background: #2ea043;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-lg {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+        }
+
+        /* Main Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 1rem;
+            padding: 1rem;
+            max-width: 1800px;
+            margin: 0 auto;
+            min-height: calc(100vh - 120px);
+        }
+
+        @media (max-width: 1200px) {
+            .app-container {
+                grid-template-columns: 1fr;
             }
         }
 
-        .keyboard-shortcuts kbd {
-            background: var(--bg-tertiary);
-            padding: 0.15rem 0.4rem;
-            border-radius: 3px;
-            margin-right: 0.25rem;
-            font-family: inherit;
-        }
-
-        /* Main content */
-        main {
+        /* Visualization Panel */
+        .viz-panel {
             display: flex;
             flex-direction: column;
-            padding: 1rem;
-            gap: 1rem;
-            max-width: 1600px;
-            margin: 0 auto;
-            width: 100%;
+            gap: 0.75rem;
         }
 
-        /* Canvas container */
         #canvas-container {
             flex: 1;
-            min-height: 400px;
-            background: #000;
+            min-height: 500px;
+            background: var(--bg-canvas);
             border-radius: 8px;
             overflow: hidden;
             position: relative;
+            border: 1px solid var(--border);
         }
 
         #canvas {
@@ -312,10 +316,19 @@
             text-align: center;
             color: var(--text-secondary);
             pointer-events: none;
+            max-width: 400px;
+            padding: 2rem;
         }
 
         .empty-state.hidden {
             display: none;
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1rem;
+            opacity: 0.4;
         }
 
         .empty-state h3 {
@@ -324,23 +337,30 @@
             color: var(--text-primary);
         }
 
+        .empty-state p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
         /* Legend panel */
         .legend-panel {
             position: absolute;
             top: 10px;
             right: 10px;
-            background: rgba(22, 33, 62, 0.95);
+            background: rgba(22, 27, 34, 0.95);
             border-radius: 8px;
             padding: 0.75rem;
-            max-width: 200px;
-            max-height: 300px;
+            max-width: 180px;
+            max-height: 280px;
             overflow-y: auto;
-            z-index: 100;
-            backdrop-filter: blur(4px);
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            font-size: 0.75rem;
         }
 
         .legend-panel.collapsed {
-            max-height: 36px;
+            max-height: 32px;
             overflow: hidden;
         }
 
@@ -353,14 +373,16 @@
         }
 
         .legend-header h4 {
-            font-size: 0.8rem;
-            color: var(--accent);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             margin: 0;
         }
 
         .legend-toggle {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
+            font-size: 0.7rem;
+            color: var(--text-muted);
             transition: transform 0.2s;
         }
 
@@ -378,103 +400,133 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.75rem;
         }
 
         .legend-color {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             flex-shrink: 0;
         }
 
         .legend-ext {
-            color: #ccc;
+            color: var(--text-secondary);
+            flex: 1;
         }
 
         .legend-count {
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 0.65rem;
-            margin-left: auto;
         }
 
-        /* Info panel */
-        .info-panel {
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 1rem;
+        /* Stats overlay */
+        .stats-overlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(22, 27, 34, 0.9);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
             display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.75rem;
         }
 
-        .info-item {
+        .stat-item {
             display: flex;
             flex-direction: column;
-            gap: 0.25rem;
+            align-items: center;
         }
 
-        .info-label {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
+        .stat-value {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.65rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
-
-        .info-value {
-            font-size: 1rem;
-            font-weight: 500;
-        }
-
-        .info-value.status-playing { color: var(--success); }
-        .info-value.status-paused { color: var(--warning); }
-        .info-value.status-error { color: var(--error); }
 
         /* Timeline */
         .timeline-container {
             background: var(--bg-secondary);
             border-radius: 8px;
-            padding: 1rem;
+            padding: 0.75rem 1rem;
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.75rem;
+            border: 1px solid var(--border);
         }
 
-        .timeline-container label {
-            font-size: 0.85rem;
+        .timeline-controls {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .timeline-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
             color: var(--text-secondary);
-            white-space: nowrap;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .timeline-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .timeline-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .timeline-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
         }
 
         .timeline-slider {
             flex: 1;
             -webkit-appearance: none;
             appearance: none;
-            height: 8px;
+            height: 6px;
             background: var(--bg-tertiary);
-            border-radius: 4px;
+            border-radius: 3px;
             outline: none;
         }
 
         .timeline-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             background: var(--accent);
             border-radius: 50%;
             cursor: pointer;
-            transition: background 0.2s, transform 0.2s;
+            transition: transform 0.2s;
         }
 
         .timeline-slider::-webkit-slider-thumb:hover {
-            background: var(--accent-hover);
-            transform: scale(1.1);
+            transform: scale(1.2);
         }
 
         .timeline-slider::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             background: var(--accent);
             border-radius: 50%;
             cursor: pointer;
@@ -486,141 +538,287 @@
         }
 
         .timeline-info {
-            font-size: 0.85rem;
-            color: var(--text-primary);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
             min-width: 80px;
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
 
-        /* Input section */
-        .input-section {
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 1rem;
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding-left: 0.75rem;
+            border-left: 1px solid var(--border);
         }
 
-        .input-section h3 {
-            margin-bottom: 0.75rem;
-            font-size: 1rem;
-            color: var(--accent);
+        .speed-control label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .speed-control select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        /* Sidebar Panel */
+        .sidebar-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .panel {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-tertiary);
+        }
+
+        .panel-header h3 {
+            font-size: 0.85rem;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
-        .tab-buttons {
-            display: flex;
-            gap: 0.25rem;
-            margin-bottom: 1rem;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
+        .panel-header .badge {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            background: var(--accent);
+            color: white;
+            border-radius: 10px;
+            font-weight: 500;
         }
 
-        .tab-btn {
-            padding: 0.5rem 1rem;
+        .panel-body {
+            padding: 1rem;
+        }
+
+        /* GitHub URL Input */
+        .github-input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .github-input-group input {
+            flex: 1;
             background: var(--bg-tertiary);
             border: 1px solid var(--border);
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.2s;
-            white-space: nowrap;
+            color: var(--text-primary);
+            padding: 0.6rem 0.75rem;
+            border-radius: 6px;
             font-size: 0.875rem;
         }
 
-        .tab-btn.active {
-            background: var(--accent);
-            color: white;
-            border-color: var(--accent);
+        .github-input-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
         }
 
-        .tab-btn:hover:not(.active) {
+        .github-input-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .popular-repos {
+            margin-top: 0.75rem;
+        }
+
+        .popular-repos-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .repo-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .repo-chip {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.3rem 0.6rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .repo-chip:hover {
             border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .repo-chip svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* Loading state for fetch */
+        .fetch-status {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            display: none;
+        }
+
+        .fetch-status.visible {
+            display: block;
+        }
+
+        .fetch-status.loading {
+            color: var(--accent-blue);
+        }
+
+        .fetch-status.error {
+            color: var(--error);
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+        }
+
+        .fetch-status.success {
+            color: var(--success);
+            background: rgba(63, 185, 80, 0.1);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
+
+        .fetch-progress {
+            margin-top: 0.5rem;
+            height: 4px;
+            background: var(--bg-primary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .fetch-progress-bar {
+            height: 100%;
+            background: var(--accent-blue);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Tab navigation */
+        .tab-nav {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-tertiary);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.6rem 0.75rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .tab-btn:hover {
             color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
         }
 
         .tab-content {
             display: none;
+            padding: 1rem;
         }
 
         .tab-content.active {
             display: block;
         }
 
+        /* Textarea */
         textarea {
             width: 100%;
-            height: 120px;
+            height: 100px;
             background: var(--bg-tertiary);
             border: 1px solid var(--border);
             color: var(--text-primary);
             padding: 0.75rem;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 0.8rem;
+            border-radius: 6px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-size: 0.75rem;
             resize: vertical;
             margin-bottom: 0.75rem;
         }
 
         textarea:focus {
             outline: none;
-            border-color: var(--accent);
-        }
-
-        .help {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-top: 0.5rem;
-            line-height: 1.6;
-        }
-
-        .help code {
-            background: var(--bg-tertiary);
-            padding: 0.1rem 0.4rem;
-            border-radius: 2px;
-            font-size: 0.75rem;
+            border-color: var(--accent-blue);
         }
 
         /* File upload */
         .file-upload-area {
             border: 2px dashed var(--border);
             border-radius: 8px;
-            padding: 2rem;
+            padding: 1.5rem;
             text-align: center;
             margin-bottom: 0.75rem;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
+            transition: all 0.2s;
         }
 
-        .file-upload-area:hover,
-        .file-upload-area:focus-within {
+        .file-upload-area:hover {
             border-color: var(--accent);
-            background: rgba(233, 69, 96, 0.1);
+            background: rgba(233, 69, 96, 0.05);
         }
 
         .file-upload-area.dragover {
             border-color: var(--accent);
-            background: rgba(233, 69, 96, 0.2);
+            background: rgba(233, 69, 96, 0.1);
         }
 
         .file-upload-area input[type="file"] {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
+            display: none;
         }
 
         .file-upload-icon {
-            font-size: 2.5rem;
+            font-size: 2rem;
             margin-bottom: 0.5rem;
         }
 
         .file-upload-text {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
         }
 
@@ -629,43 +827,146 @@
         }
 
         .file-name {
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
             color: var(--text-secondary);
-            font-size: 0.85rem;
-        }
-
-        select {
-            width: 100%;
+            font-size: 0.8rem;
             padding: 0.5rem;
             background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
             border-radius: 4px;
-            margin-bottom: 0.75rem;
-            font-size: 0.875rem;
-        }
-
-        select:focus {
-            outline: none;
-            border-color: var(--accent);
         }
 
         /* Command box */
         .command-box {
             background: var(--bg-tertiary);
-            padding: 1rem;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 0.8rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-size: 0.7rem;
             overflow-x: auto;
             margin-bottom: 0.75rem;
-            position: relative;
+            border: 1px solid var(--border);
         }
 
         .command-box code {
             color: var(--text-primary);
             white-space: pre-wrap;
             word-break: break-all;
+        }
+
+        /* Help text */
+        .help-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .help-text code {
+            background: var(--bg-tertiary);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+        }
+
+        /* Documentation Panel */
+        .docs-panel {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .docs-section {
+            margin-bottom: 1.25rem;
+        }
+
+        .docs-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .docs-section h4 {
+            font-size: 0.8rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .docs-section p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+        }
+
+        .shortcut-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.4rem;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.4rem 0.5rem;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .shortcut-item kbd {
+            background: var(--bg-primary);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 0.7rem;
+            border: 1px solid var(--border);
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 0.3rem 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .feature-list li::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* About section */
+        .about-banner {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(88, 166, 255, 0.1) 100%);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .about-banner h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .about-banner p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+
+        .about-links {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
         }
 
         /* Loading overlay */
@@ -675,7 +976,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(26, 26, 46, 0.95);
+            background: var(--bg-primary);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -688,9 +989,9 @@
         }
 
         .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid var(--bg-secondary);
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--bg-tertiary);
             border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -702,18 +1003,11 @@
         }
 
         .loading-text {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--text-secondary);
         }
 
-        .loading-subtext {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin-top: 0.5rem;
-            opacity: 0.7;
-        }
-
-        /* Error toast */
+        /* Toast */
         .toast {
             position: fixed;
             bottom: 20px;
@@ -721,14 +1015,15 @@
             transform: translateX(-50%) translateY(100px);
             background: var(--bg-secondary);
             border-radius: 8px;
-            padding: 1rem 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            padding: 0.75rem 1rem;
+            box-shadow: 0 4px 20px var(--shadow);
             z-index: 1000;
             transition: transform 0.3s ease;
             max-width: 90%;
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            border: 1px solid var(--border);
         }
 
         .toast.visible {
@@ -736,127 +1031,26 @@
         }
 
         .toast.error {
-            border-left: 4px solid var(--error);
+            border-left: 3px solid var(--error);
         }
 
         .toast.success {
-            border-left: 4px solid var(--success);
+            border-left: 3px solid var(--success);
         }
 
         .toast-message {
             flex: 1;
+            font-size: 0.875rem;
         }
 
         .toast-close {
             background: none;
             border: none;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             cursor: pointer;
             padding: 0.25rem;
             font-size: 1.25rem;
             line-height: 1;
-        }
-
-        /* Help modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s, visibility 0.2s;
-        }
-
-        .modal-overlay.visible {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .modal {
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-        }
-
-        .modal-header {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .modal-header h2 {
-            font-size: 1.25rem;
-            color: var(--accent);
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 1.5rem;
-            line-height: 1;
-            padding: 0.25rem;
-        }
-
-        .modal-close:hover {
-            color: var(--text-primary);
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-        }
-
-        .modal-section {
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-section:last-child {
-            margin-bottom: 0;
-        }
-
-        .modal-section h3 {
-            font-size: 0.9rem;
-            color: var(--accent);
-            margin-bottom: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .shortcut-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 0.5rem;
-        }
-
-        .shortcut-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem;
-            background: var(--bg-tertiary);
-            border-radius: 4px;
-        }
-
-        .shortcut-item kbd {
-            background: var(--bg-primary);
-            padding: 0.2rem 0.5rem;
-            border-radius: 3px;
-            font-family: inherit;
-            font-size: 0.8rem;
         }
 
         /* Footer */
@@ -865,93 +1059,59 @@
             padding: 1rem 2rem;
             text-align: center;
             border-top: 1px solid var(--border);
-            font-size: 0.85rem;
-            color: var(--text-secondary);
+            font-size: 0.8rem;
+            color: var(--text-muted);
         }
 
         footer a {
             color: var(--accent);
-            text-decoration: none;
         }
 
-        footer a:hover {
-            text-decoration: underline;
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .hero {
-                padding: 2rem 1rem;
-            }
-
-            .hero h1 {
-                font-size: 2rem;
-            }
-
-            .hero .tagline {
-                font-size: 1rem;
-            }
-
-            .hero-features {
-                gap: 1rem;
-            }
-
-            .hero-feature {
-                font-size: 0.8rem;
-            }
-
-            header {
-                padding: 0.75rem 1rem;
-            }
-
-            .controls {
-                width: 100%;
-                justify-content: center;
-            }
-
-            main {
+            .app-container {
                 padding: 0.75rem;
             }
 
             #canvas-container {
-                min-height: 300px;
-            }
-
-            .info-panel {
-                gap: 1rem;
+                min-height: 350px;
             }
 
             .timeline-container {
                 flex-wrap: wrap;
             }
 
-            .timeline-slider {
-                order: 3;
+            .speed-control {
                 width: 100%;
+                border-left: none;
+                padding-left: 0;
+                padding-top: 0.5rem;
+                border-top: 1px solid var(--border);
+                margin-top: 0.5rem;
             }
 
-            textarea {
-                height: 100px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .hero h1 {
-                font-size: 1.75rem;
+            .stats-overlay {
+                font-size: 0.65rem;
+                gap: 0.75rem;
             }
 
-            .btn {
-                padding: 0.6rem 1rem;
-                font-size: 0.9rem;
-            }
-
-            .tab-btn {
-                padding: 0.4rem 0.75rem;
-                font-size: 0.8rem;
+            .shortcut-grid {
+                grid-template-columns: 1fr;
             }
         }
 
-        /* Utility classes */
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+
         .visually-hidden {
             position: absolute;
             width: 1px;
@@ -963,10 +1123,6 @@
             white-space: nowrap;
             border: 0;
         }
-
-        .hidden {
-            display: none !important;
-        }
     </style>
 </head>
 <body>
@@ -975,262 +1131,299 @@
     <div id="loading" role="status" aria-live="polite">
         <div class="loading-spinner" aria-hidden="true"></div>
         <div class="loading-text">Loading Rource...</div>
-        <div class="loading-subtext">Initializing WebAssembly module</div>
     </div>
 
-    <!-- Hero section (shown before visualization loaded) -->
-    <section id="hero" class="hero">
-        <h1>Rource</h1>
-        <p class="tagline">
-            Visualize your Git repository history as an animated tree.
-            Watch your codebase grow as developers collaborate over time.
-        </p>
-        <div class="hero-features">
-            <span class="hero-feature">
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                </svg>
-                Runs in your browser
-            </span>
-            <span class="hero-feature">
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.94 2.55 2 6.81 2 12c0 3.76 2.09 7.07 5.22 8.78L6 22h5v-5l-2.28 2.28C6.92 18 5 15.21 5 12c0-4.08 3.05-7.44 7-7.93V2.05z"/>
-                </svg>
-                ~76KB gzipped
-            </span>
-            <span class="hero-feature">
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                </svg>
-                No server needed
-            </span>
-        </div>
-        <div class="hero-cta">
-            <button id="btn-try-demo" class="btn" disabled>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
-                Try Demo
-            </button>
-            <a href="https://github.com/tomtom215/rource" class="btn btn-outline" target="_blank" rel="noopener noreferrer">
-                View on GitHub
-            </a>
-        </div>
-    </section>
-
-    <header id="app-header" class="hidden">
+    <header>
         <div class="header-brand">
-            <h1>Rource</h1>
+            <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener noreferrer" title="View Rource on GitHub">
+                <svg class="logo-icon" viewBox="0 0 100 100" aria-hidden="true">
+                    <circle cx="50" cy="50" r="45" fill="#e94560"/>
+                    <circle cx="50" cy="30" r="8" fill="white"/>
+                    <circle cx="30" cy="60" r="6" fill="white"/>
+                    <circle cx="70" cy="55" r="6" fill="white"/>
+                    <circle cx="50" cy="75" r="5" fill="white"/>
+                    <line x1="50" y1="38" x2="50" y2="70" stroke="white" stroke-width="2"/>
+                    <line x1="50" y1="50" x2="32" y2="58" stroke="white" stroke-width="2"/>
+                    <line x1="50" y1="50" x2="68" y2="53" stroke="white" stroke-width="2"/>
+                </svg>
+                <h1>Rource</h1>
+            </a>
             <span id="renderer-badge" class="renderer-badge" title="Rendering backend"></span>
         </div>
         <div class="controls">
-            <button id="btn-play" class="btn btn-sm" disabled aria-label="Play or pause visualization">
+            <button id="btn-play" class="btn btn-sm" disabled aria-label="Play visualization">
                 <svg id="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M8 5v14l11-7z"/>
                 </svg>
                 <span id="play-text">Play</span>
             </button>
-            <button id="btn-screenshot" class="btn btn-sm btn-secondary" disabled aria-label="Take screenshot">
+            <button id="btn-reset" class="btn btn-sm btn-secondary" disabled aria-label="Reset camera">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
                 </svg>
-                Screenshot
+                Reset
             </button>
-            <button id="btn-reset" class="btn btn-sm btn-secondary" disabled aria-label="Reset camera position">
-                Reset Camera
-            </button>
-            <button id="btn-help" class="btn btn-sm btn-secondary" aria-label="Show help">?</button>
         </div>
         <div class="header-links">
-            <span class="keyboard-shortcuts" aria-label="Keyboard shortcuts hint">
-                <kbd>Space</kbd> Play
-                <kbd>+/-</kbd> Zoom
-                <kbd>S</kbd> Screenshot
-            </span>
-            <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub">GitHub</a>
+            <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener noreferrer" class="github-link">
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                Star on GitHub
+            </a>
         </div>
     </header>
 
-    <main id="main-content">
-        <div id="canvas-container">
-            <canvas id="canvas" width="1280" height="720" aria-label="Rource visualization canvas"></canvas>
-            <div id="empty-state" class="empty-state">
-                <h3>No data loaded</h3>
-                <p>Load a log file or try the demo to get started</p>
-            </div>
-            <div id="legend-panel" class="legend-panel collapsed" role="complementary" aria-label="File type legend">
-                <div class="legend-header" id="legend-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="legend-items">
-                    <h4>File Types</h4>
-                    <span class="legend-toggle" aria-hidden="true">▼</span>
+    <main id="main-content" class="app-container">
+        <!-- Visualization Panel -->
+        <div class="viz-panel">
+            <div id="canvas-container">
+                <canvas id="canvas" width="1280" height="720" aria-label="Rource visualization canvas"></canvas>
+                <div id="empty-state" class="empty-state">
+                    <svg class="empty-state-icon" viewBox="0 0 100 100" aria-hidden="true">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                        <circle cx="50" cy="30" r="6" fill="currentColor" opacity="0.5"/>
+                        <circle cx="30" cy="60" r="5" fill="currentColor" opacity="0.5"/>
+                        <circle cx="70" cy="55" r="5" fill="currentColor" opacity="0.5"/>
+                        <line x1="50" y1="36" x2="50" y2="50" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+                        <line x1="50" y1="50" x2="34" y2="58" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+                        <line x1="50" y1="50" x2="66" y2="53" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+                    </svg>
+                    <h3>Ready to Visualize</h3>
+                    <p>Enter a GitHub repository URL or load your own git log data to watch your codebase come to life.</p>
                 </div>
-                <div class="legend-items" id="legend-items" role="list">
-                    <!-- Populated dynamically -->
+                <div id="legend-panel" class="legend-panel collapsed" role="complementary" aria-label="File type legend">
+                    <div class="legend-header" id="legend-toggle" role="button" tabindex="0" aria-expanded="false">
+                        <h4>File Types</h4>
+                        <span class="legend-toggle" aria-hidden="true">&#9660;</span>
+                    </div>
+                    <div class="legend-items" id="legend-items" role="list"></div>
                 </div>
-            </div>
-        </div>
-
-        <div class="timeline-container" role="group" aria-label="Timeline controls">
-            <label for="timeline-slider">Timeline:</label>
-            <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
-            <span class="timeline-info" id="timeline-info" aria-live="polite">0 / 0</span>
-        </div>
-
-        <div class="info-panel" role="status" aria-label="Visualization status">
-            <div class="info-item">
-                <span class="info-label">Status</span>
-                <span class="info-value" id="status">Loading...</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Commits</span>
-                <span class="info-value" id="commit-count">0</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Current</span>
-                <span class="info-value" id="current-commit">0</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Speed</span>
-                <span class="info-value" id="speed">10.0</span>
-            </div>
-        </div>
-
-        <div class="input-section" role="region" aria-label="Load data">
-            <h3>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                </svg>
-                Load Log Data
-            </h3>
-
-            <div class="tab-buttons" role="tablist" aria-label="Input methods">
-                <button class="tab-btn active" data-tab="paste" role="tab" aria-selected="true" aria-controls="tab-paste" id="tab-btn-paste">Paste Text</button>
-                <button class="tab-btn" data-tab="upload" role="tab" aria-selected="false" aria-controls="tab-upload" id="tab-btn-upload">Upload File</button>
-                <button class="tab-btn" data-tab="git-command" role="tab" aria-selected="false" aria-controls="tab-git-command" id="tab-btn-git-command">Git Command</button>
-            </div>
-
-            <div id="tab-paste" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-paste">
-                <label for="log-input" class="visually-hidden">Log data in custom format</label>
-                <textarea id="log-input" placeholder="Paste your log data here..."></textarea>
-                <button id="btn-load" class="btn btn-sm" disabled>Load Log</button>
-                <p class="help">
-                    Format: <code>timestamp|author|action|path</code> (one per line)<br>
-                    Actions: <code>A</code>=Add, <code>M</code>=Modify, <code>D</code>=Delete
-                </p>
-            </div>
-
-            <div id="tab-upload" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-upload" hidden>
-                <div class="file-upload-area" id="file-drop-zone" role="button" tabindex="0" aria-label="Click to upload or drag and drop a file">
-                    <input type="file" id="file-input" accept=".txt,.log,.csv" aria-describedby="upload-help">
-                    <div class="file-upload-icon" aria-hidden="true">&#128194;</div>
-                    <div class="file-upload-text">
-                        <strong>Click to upload</strong> or drag and drop<br>
-                        Supports .txt, .log files
+                <div id="stats-overlay" class="stats-overlay hidden">
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-commits">0</span>
+                        <span class="stat-label">Commits</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-files">0</span>
+                        <span class="stat-label">Files</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-authors">0</span>
+                        <span class="stat-label">Authors</span>
                     </div>
                 </div>
-                <div id="file-name" class="file-name" aria-live="polite"></div>
-                <label for="file-format" class="visually-hidden">Select file format</label>
-                <select id="file-format">
-                    <option value="auto">Auto-detect format</option>
-                    <option value="custom">Custom format (timestamp|author|action|path)</option>
-                    <option value="git">Git log format</option>
-                </select>
-                <button id="btn-load-file" class="btn btn-sm" disabled>Load Uploaded File</button>
-                <p class="help" id="upload-help">
-                    Upload a log file from your local machine.<br>
-                    Supports custom format and git log output.
-                </p>
             </div>
 
-            <div id="tab-git-command" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-git-command" hidden>
-                <p class="help" style="margin-bottom: 1rem;">
-                    Run this command in your repository to generate a compatible log file:
-                </p>
-                <div class="command-box">
-                    <code id="git-command">git log --reverse --date=raw --pretty=format:"%ad|%an" --name-status | awk -F'|' '/^[0-9]/ {ts=$1; author=$2} /^[AMD]\t/ {print ts "|" author "|" substr($0,1,1) "|" substr($0,3)}'</code>
+            <div class="timeline-container" role="group" aria-label="Timeline controls">
+                <div class="timeline-controls">
+                    <button id="btn-prev" class="timeline-btn" disabled title="Previous commit (< or ,)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                    </button>
+                    <button id="btn-play-small" class="timeline-btn" disabled title="Play/Pause (Space)">
+                        <svg id="play-icon-small" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                    <button id="btn-next" class="timeline-btn" disabled title="Next commit (> or .)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                    </button>
                 </div>
-                <button id="btn-copy-command" class="btn btn-sm btn-secondary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                    </svg>
-                    Copy Command
-                </button>
-                <p class="help" style="margin-top: 0.75rem;">
-                    Then upload the output file or paste its contents in the "Paste Text" tab.
-                </p>
+                <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled>
+                <span class="timeline-info" id="timeline-info">0 / 0</span>
+                <div class="speed-control">
+                    <label for="speed-select">Speed:</label>
+                    <select id="speed-select" disabled>
+                        <option value="1">0.1x (Slow)</option>
+                        <option value="5">0.5x</option>
+                        <option value="10" selected>1x (Normal)</option>
+                        <option value="20">2x</option>
+                        <option value="50">5x (Fast)</option>
+                        <option value="100">10x (Very Fast)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Panel -->
+        <div class="sidebar-panel">
+            <!-- GitHub URL Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                        </svg>
+                        Visualize GitHub Repository
+                        <span class="badge">NEW</span>
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <div class="github-input-group">
+                        <input type="text" id="github-url" placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL">
+                        <button id="btn-fetch-github" class="btn btn-success btn-sm" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                            </svg>
+                            Fetch
+                        </button>
+                    </div>
+                    <div class="popular-repos">
+                        <span class="popular-repos-label">Try a popular repository:</span>
+                        <div class="repo-chips">
+                            <button class="repo-chip" data-repo="facebook/react">
+                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+                                react
+                            </button>
+                            <button class="repo-chip" data-repo="microsoft/vscode">
+                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+                                vscode
+                            </button>
+                            <button class="repo-chip" data-repo="rust-lang/rust">
+                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+                                rust
+                            </button>
+                            <button class="repo-chip" data-repo="torvalds/linux">
+                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+                                linux
+                            </button>
+                            <button class="repo-chip" data-repo="tomtom215/rource">
+                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+                                rource
+                            </button>
+                        </div>
+                    </div>
+                    <div id="fetch-status" class="fetch-status">
+                        <span id="fetch-status-text"></span>
+                        <div class="fetch-progress">
+                            <div id="fetch-progress-bar" class="fetch-progress-bar"></div>
+                        </div>
+                    </div>
+                    <p class="help-text" style="margin-top: 0.75rem;">
+                        Fetches up to 500 recent commits from any public GitHub repository using the GitHub API.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Manual Load Panel -->
+            <div class="panel">
+                <div class="tab-nav" role="tablist">
+                    <button class="tab-btn active" data-tab="paste" role="tab" aria-selected="true">Paste Log</button>
+                    <button class="tab-btn" data-tab="upload" role="tab" aria-selected="false">Upload File</button>
+                    <button class="tab-btn" data-tab="command" role="tab" aria-selected="false">Git Command</button>
+                </div>
+
+                <div id="tab-paste" class="tab-content active" role="tabpanel">
+                    <textarea id="log-input" placeholder="Paste your log data here...&#10;Format: timestamp|author|action|path"></textarea>
+                    <button id="btn-load" class="btn btn-sm" disabled>Load Log Data</button>
+                    <p class="help-text">
+                        Format: <code>timestamp|author|action|path</code><br>
+                        Actions: <code>A</code>=Add, <code>M</code>=Modify, <code>D</code>=Delete
+                    </p>
+                </div>
+
+                <div id="tab-upload" class="tab-content" role="tabpanel" hidden>
+                    <div class="file-upload-area" id="file-drop-zone">
+                        <input type="file" id="file-input" accept=".txt,.log,.csv">
+                        <div class="file-upload-icon">&#128194;</div>
+                        <div class="file-upload-text">
+                            <strong>Click to upload</strong> or drag and drop
+                        </div>
+                    </div>
+                    <div id="file-name" class="file-name hidden"></div>
+                    <button id="btn-load-file" class="btn btn-sm" disabled>Load Uploaded File</button>
+                </div>
+
+                <div id="tab-command" class="tab-content" role="tabpanel" hidden>
+                    <p class="help-text" style="margin-bottom: 0.75rem;">Generate a log file from your local repository:</p>
+                    <div class="command-box">
+                        <code id="git-command">git log --reverse --date=raw --pretty=format:"%ad|%an" --name-status | awk -F'|' '/^[0-9]/ {ts=$1; author=$2} /^[AMD]\t/ {print ts "|" author "|" substr($0,1,1) "|" substr($0,3)}'</code>
+                    </div>
+                    <button id="btn-copy-command" class="btn btn-sm btn-secondary">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        Copy Command
+                    </button>
+                </div>
+            </div>
+
+            <!-- Documentation Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-6h2v6zm0-8h-2V7h2v4z"/>
+                        </svg>
+                        Quick Guide
+                    </h3>
+                </div>
+                <div class="panel-body docs-panel">
+                    <div class="docs-section">
+                        <h4>What is Rource?</h4>
+                        <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> visualizes software version control history as an animated tree. Each file is a colored node, each developer has a unique color, and commits create "beams" connecting developers to files they modify.</p>
+                    </div>
+                    <div class="docs-section">
+                        <h4>Keyboard Shortcuts</h4>
+                        <div class="shortcut-grid">
+                            <div class="shortcut-item"><span>Play/Pause</span><kbd>Space</kbd></div>
+                            <div class="shortcut-item"><span>Zoom In</span><kbd>+</kbd></div>
+                            <div class="shortcut-item"><span>Zoom Out</span><kbd>-</kbd></div>
+                            <div class="shortcut-item"><span>Reset View</span><kbd>R</kbd></div>
+                            <div class="shortcut-item"><span>Pan</span><kbd>Arrows</kbd></div>
+                            <div class="shortcut-item"><span>Step Fwd</span><kbd>&gt;</kbd></div>
+                            <div class="shortcut-item"><span>Step Back</span><kbd>&lt;</kbd></div>
+                            <div class="shortcut-item"><span>Speed Down</span><kbd>[</kbd></div>
+                            <div class="shortcut-item"><span>Speed Up</span><kbd>]</kbd></div>
+                        </div>
+                    </div>
+                    <div class="docs-section">
+                        <h4>Mouse/Touch Controls</h4>
+                        <ul class="feature-list">
+                            <li>Drag to pan the view</li>
+                            <li>Scroll wheel or pinch to zoom</li>
+                        </ul>
+                    </div>
+                    <div class="docs-section">
+                        <h4>Features</h4>
+                        <ul class="feature-list">
+                            <li>WebGL2 GPU-accelerated rendering</li>
+                            <li>Force-directed graph layout</li>
+                            <li>Color-coded file types</li>
+                            <li>Runs entirely in browser (~76KB)</li>
+                            <li>No server or installation needed</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About Panel -->
+            <div class="about-banner">
+                <h4>Built with Rust + WebAssembly</h4>
+                <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> is a modern rewrite of <a href="https://gource.io" target="_blank" rel="noopener">Gource</a>, the popular version control visualization tool.</p>
+                <div class="about-links">
+                    <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        View Source
+                    </a>
+                    <a href="https://github.com/tomtom215/rource/issues" target="_blank" rel="noopener" class="btn btn-sm btn-secondary">
+                        Report Issue
+                    </a>
+                </div>
             </div>
         </div>
     </main>
 
     <footer>
-        <p>
-            <strong>Rource</strong> &mdash; A Rust + WebAssembly rewrite of <a href="https://gource.io" target="_blank" rel="noopener noreferrer">Gource</a>
-            &nbsp;|&nbsp;
-            <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener noreferrer">Source Code</a>
-            &nbsp;|&nbsp;
-            GPL-3.0 License
-        </p>
+        <div class="footer-links">
+            <span><strong><a href="https://github.com/tomtom215/rource">Rource</a></strong> - Software Version Control Visualization</span>
+            <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://github.com/tomtom215/rource/issues" target="_blank" rel="noopener">Issues</a>
+            <a href="https://gource.io" target="_blank" rel="noopener">Original Gource</a>
+            <span>GPL-3.0 License</span>
+        </div>
     </footer>
 
-    <!-- Toast notification -->
+    <!-- Toast -->
     <div id="toast" class="toast" role="alert" aria-live="assertive">
         <span class="toast-message"></span>
-        <button class="toast-close" aria-label="Close notification">&times;</button>
-    </div>
-
-    <!-- Help modal -->
-    <div id="help-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 id="help-modal-title">Keyboard Shortcuts & Help</h2>
-                <button class="modal-close" aria-label="Close help">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="modal-section">
-                    <h3>Playback Controls</h3>
-                    <div class="shortcut-list">
-                        <div class="shortcut-item"><span>Play / Pause</span><kbd>Space</kbd></div>
-                        <div class="shortcut-item"><span>Step Forward</span><kbd>&gt;</kbd></div>
-                        <div class="shortcut-item"><span>Step Backward</span><kbd>&lt;</kbd></div>
-                    </div>
-                </div>
-                <div class="modal-section">
-                    <h3>Camera Controls</h3>
-                    <div class="shortcut-list">
-                        <div class="shortcut-item"><span>Zoom In</span><kbd>+</kbd> or <kbd>=</kbd></div>
-                        <div class="shortcut-item"><span>Zoom Out</span><kbd>-</kbd></div>
-                        <div class="shortcut-item"><span>Reset Camera</span><kbd>R</kbd></div>
-                        <div class="shortcut-item"><span>Pan</span><kbd>Arrow Keys</kbd></div>
-                    </div>
-                </div>
-                <div class="modal-section">
-                    <h3>Mouse / Touch</h3>
-                    <div class="shortcut-list">
-                        <div class="shortcut-item"><span>Pan View</span>Drag</div>
-                        <div class="shortcut-item"><span>Zoom</span>Scroll / Pinch</div>
-                    </div>
-                </div>
-                <div class="modal-section">
-                    <h3>Other</h3>
-                    <div class="shortcut-list">
-                        <div class="shortcut-item"><span>Screenshot</span><kbd>S</kbd></div>
-                        <div class="shortcut-item"><span>Show Help</span><kbd>?</kbd></div>
-                    </div>
-                </div>
-                <div class="modal-section">
-                    <h3>About Rource</h3>
-                    <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">
-                        Rource visualizes software version control history as an animated tree.
-                        Each file is a node, each developer has a unique color, and commits create
-                        "beams" connecting developers to the files they modify.
-                    </p>
-                    <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-top: 0.5rem;">
-                        Built with Rust and WebAssembly, Rource runs entirely in your browser with
-                        no server required. It's a modern rewrite of the original
-                        <a href="https://gource.io" target="_blank" rel="noopener" style="color: var(--accent);">Gource</a> tool.
-                    </p>
-                </div>
-            </div>
-        </div>
+        <button class="toast-close" aria-label="Close">&times;</button>
     </div>
 
     <script type="module">
@@ -1241,8 +1434,9 @@
         let animationId = null;
         let uploadedFileContent = null;
         let hasLoadedData = false;
+        let commitStats = { commits: 0, files: 0, authors: new Set() };
 
-        // Demo data - simulates a small project evolution
+        // Demo data - more comprehensive project evolution
         const DEMO_DATA = `1704067200|Alice|A|src/main.rs
 1704067260|Alice|A|src/lib.rs
 1704067320|Alice|A|Cargo.toml
@@ -1284,83 +1478,60 @@
 1704931380|Bob|M|src/utils/mod.rs
 1705017600|Charlie|M|src/auth/jwt.rs
 1705017660|Charlie|A|src/auth/middleware.rs
-1705017720|Charlie|M|src/api/routes.rs`;
+1705017720|Charlie|M|src/api/routes.rs
+1705104000|Diana|A|frontend/index.html
+1705104060|Diana|A|frontend/style.css
+1705104120|Diana|A|frontend/app.js
+1705190400|Eve|A|src/cache/mod.rs
+1705190460|Eve|A|src/cache/redis.rs
+1705190520|Eve|M|src/api/handlers.rs`;
 
-        // UI elements
+        // DOM elements
         const canvas = document.getElementById('canvas');
         const btnPlay = document.getElementById('btn-play');
         const playIcon = document.getElementById('play-icon');
         const playText = document.getElementById('play-text');
+        const btnPlaySmall = document.getElementById('btn-play-small');
+        const playIconSmall = document.getElementById('play-icon-small');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
         const btnReset = document.getElementById('btn-reset');
         const btnLoad = document.getElementById('btn-load');
         const btnLoadFile = document.getElementById('btn-load-file');
         const btnCopyCommand = document.getElementById('btn-copy-command');
-        const btnScreenshot = document.getElementById('btn-screenshot');
-        const btnHelp = document.getElementById('btn-help');
-        const btnTryDemo = document.getElementById('btn-try-demo');
+        const btnFetchGithub = document.getElementById('btn-fetch-github');
+        const githubUrlInput = document.getElementById('github-url');
+        const fetchStatus = document.getElementById('fetch-status');
+        const fetchStatusText = document.getElementById('fetch-status-text');
+        const fetchProgressBar = document.getElementById('fetch-progress-bar');
         const logInput = document.getElementById('log-input');
-        const statusEl = document.getElementById('status');
-        const commitCountEl = document.getElementById('commit-count');
-        const currentCommitEl = document.getElementById('current-commit');
-        const speedEl = document.getElementById('speed');
         const loadingEl = document.getElementById('loading');
-        const heroEl = document.getElementById('hero');
-        const appHeader = document.getElementById('app-header');
         const timelineSlider = document.getElementById('timeline-slider');
         const timelineInfo = document.getElementById('timeline-info');
+        const speedSelect = document.getElementById('speed-select');
         const fileInput = document.getElementById('file-input');
         const fileDropZone = document.getElementById('file-drop-zone');
         const fileNameEl = document.getElementById('file-name');
-        const fileFormatSelect = document.getElementById('file-format');
         const emptyState = document.getElementById('empty-state');
         const rendererBadge = document.getElementById('renderer-badge');
+        const statsOverlay = document.getElementById('stats-overlay');
+        const statCommits = document.getElementById('stat-commits');
+        const statFiles = document.getElementById('stat-files');
+        const statAuthors = document.getElementById('stat-authors');
         const toast = document.getElementById('toast');
-        const helpModal = document.getElementById('help-modal');
 
         // Toast notification
         function showToast(message, type = 'error', duration = 5000) {
             toast.querySelector('.toast-message').textContent = message;
             toast.className = `toast ${type} visible`;
-
-            setTimeout(() => {
-                toast.classList.remove('visible');
-            }, duration);
+            setTimeout(() => toast.classList.remove('visible'), duration);
         }
 
         toast.querySelector('.toast-close').addEventListener('click', () => {
             toast.classList.remove('visible');
         });
 
-        // Help modal
-        function openHelpModal() {
-            helpModal.classList.add('visible');
-            helpModal.querySelector('.modal-close').focus();
-        }
-
-        function closeHelpModal() {
-            helpModal.classList.remove('visible');
-            btnHelp.focus();
-        }
-
-        helpModal.addEventListener('click', (e) => {
-            if (e.target === helpModal) closeHelpModal();
-        });
-
-        helpModal.querySelector('.modal-close').addEventListener('click', closeHelpModal);
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && helpModal.classList.contains('visible')) {
-                closeHelpModal();
-            }
-            if (e.key === '?' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
-                e.preventDefault();
-                openHelpModal();
-            }
-        });
-
-        btnHelp.addEventListener('click', openHelpModal);
-
-        // Resize canvas to fit container
+        // Resize canvas
         function resizeCanvas() {
             const container = document.getElementById('canvas-container');
             const rect = container.getBoundingClientRect();
@@ -1386,7 +1557,7 @@
             animationId = requestAnimationFrame(animate);
         }
 
-        // Update UI elements
+        // Update UI
         function updateUI() {
             if (!rource) return;
 
@@ -1394,29 +1565,26 @@
             const total = rource.commitCount();
             const current = rource.currentCommit();
 
-            // Update play button
+            // Update play buttons
+            const pauseIcon = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+            const playIconPath = '<path d="M8 5v14l11-7z"/>';
+
             playText.textContent = playing ? 'Pause' : 'Play';
-            playIcon.innerHTML = playing
-                ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
-                : '<path d="M8 5v14l11-7z"/>';
-            btnPlay.setAttribute('aria-label', playing ? 'Pause visualization' : 'Play visualization');
+            playIcon.innerHTML = playing ? pauseIcon : playIconPath;
+            playIconSmall.innerHTML = playing ? pauseIcon : playIconPath;
 
-            currentCommitEl.textContent = current;
-            speedEl.textContent = rource.getSpeed().toFixed(1);
+            if (playing) {
+                btnPlaySmall.classList.add('active');
+            } else {
+                btnPlaySmall.classList.remove('active');
+            }
 
-            // Update status with styling
-            const statusText = playing ? 'Playing' : (current >= total ? 'Finished' : 'Paused');
-            statusEl.textContent = statusText;
-            statusEl.className = 'info-value' + (playing ? ' status-playing' : ' status-paused');
-
-            // Update timeline slider
+            // Update timeline
             if (total > 0) {
                 timelineSlider.max = total - 1;
                 timelineSlider.value = Math.min(current, total - 1);
                 timelineSlider.disabled = false;
-                timelineSlider.setAttribute('aria-valuemax', total - 1);
-                timelineSlider.setAttribute('aria-valuenow', Math.min(current, total - 1));
-                timelineInfo.textContent = `${current} / ${total}`;
+                timelineInfo.textContent = `${Math.min(current + 1, total)} / ${total}`;
             } else {
                 timelineSlider.max = 0;
                 timelineSlider.value = 0;
@@ -1425,8 +1593,28 @@
             }
         }
 
-        // Load log data and update UI
-        function loadLogData(content, format) {
+        // Analyze log data for stats
+        function analyzeLogData(content) {
+            const lines = content.split('\n');
+            const files = new Set();
+            const authors = new Set();
+            let commits = 0;
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                const parts = line.split('|');
+                if (parts.length >= 4) {
+                    commits++;
+                    authors.add(parts[1].trim());
+                    files.add(parts[3].trim());
+                }
+            }
+
+            return { commits, files: files.size, authors };
+        }
+
+        // Load log data
+        function loadLogData(content, format = 'custom') {
             if (!rource || !content.trim()) {
                 showToast('Please enter or upload log data first.', 'error');
                 return;
@@ -1437,7 +1625,6 @@
                 if (format === 'git') {
                     count = rource.loadGitLog(content);
                 } else {
-                    // custom or auto - try custom first
                     count = rource.loadCustomLog(content);
                 }
 
@@ -1446,88 +1633,68 @@
                     return;
                 }
 
-                commitCountEl.textContent = count;
-                statusEl.textContent = `Loaded ${count} commits`;
+                // Analyze data
+                const stats = analyzeLogData(content);
+                statCommits.textContent = count;
+                statFiles.textContent = stats.files;
+                statAuthors.textContent = stats.authors.size;
+
                 hasLoadedData = true;
                 emptyState.classList.add('hidden');
+                statsOverlay.classList.remove('hidden');
+
+                // Enable controls
+                btnPrev.disabled = false;
+                btnNext.disabled = false;
+                speedSelect.disabled = false;
+
                 updateUI();
                 updateLegend(content);
+                showToast(`Loaded ${count} commits from ${stats.authors.size} authors!`, 'success', 3000);
 
-                // Show success toast
-                showToast(`Loaded ${count} commits successfully!`, 'success', 3000);
-
-                // Switch to app mode (hide hero)
-                switchToAppMode();
+                // Auto-play
+                rource.play();
+                updateUI();
 
             } catch (e) {
-                const errorMsg = e.toString();
-                statusEl.textContent = 'Parse error';
-                statusEl.className = 'info-value status-error';
-                showToast(`Failed to parse log: ${errorMsg}`, 'error');
-                console.error('Failed to parse log:', e);
+                showToast(`Failed to parse log: ${e}`, 'error');
+                console.error('Parse error:', e);
             }
         }
 
-        // Switch from landing page to app mode
-        function switchToAppMode() {
-            heroEl.classList.add('hidden');
-            appHeader.classList.remove('hidden');
-        }
-
-        // File extension color mapping (matches rource-core/src/scene/file.rs)
+        // Extension colors (matches Rust code)
         const extensionColors = {
-            'rs': '#dea584', 'go': '#00add8', 'py': '#3572a5', 'pyi': '#3572a5',
-            'js': '#f7df1e', 'mjs': '#f7df1e', 'cjs': '#f7df1e',
-            'ts': '#3178c6', 'mts': '#3178c6', 'cts': '#3178c6',
-            'jsx': '#61dafb', 'tsx': '#61dafb',
-            'java': '#b07219', 'kt': '#a78bfa', 'kts': '#a78bfa',
-            'c': '#5555ff', 'h': '#5555ff',
-            'cpp': '#00599c', 'cc': '#00599c', 'cxx': '#00599c', 'hpp': '#00599c',
-            'cs': '#9b4f96', 'fs': '#b845fc', 'fsx': '#b845fc',
-            'rb': '#cc342d', 'php': '#4f5d95', 'swift': '#f05138',
-            'html': '#e34c26', 'htm': '#e34c26', 'css': '#563d7c',
-            'scss': '#cd6799', 'sass': '#cd6799', 'less': '#cd6799',
+            'rs': '#dea584', 'go': '#00add8', 'py': '#3572a5',
+            'js': '#f7df1e', 'ts': '#3178c6', 'jsx': '#61dafb', 'tsx': '#61dafb',
+            'java': '#b07219', 'kt': '#a78bfa', 'c': '#5555ff', 'cpp': '#00599c',
+            'cs': '#9b4f96', 'rb': '#cc342d', 'php': '#4f5d95', 'swift': '#f05138',
+            'html': '#e34c26', 'css': '#563d7c', 'scss': '#cd6799',
             'json': '#808080', 'yaml': '#cb171e', 'yml': '#cb171e',
             'toml': '#9c4221', 'xml': '#0060ac', 'md': '#083fa1',
-            'sh': '#008000', 'bash': '#008000', 'zsh': '#008000',
-            'dockerfile': '#2496ed', 'sql': '#e38c00', 'graphql': '#e535ab'
+            'sh': '#008000', 'sql': '#e38c00', 'dockerfile': '#2496ed'
         };
-
-        function hashExtension(ext) {
-            let hash = 0;
-            for (let i = 0; i < ext.length; i++) {
-                hash = (hash * 31 + ext.charCodeAt(i)) >>> 0;
-            }
-            const hue = hash % 360;
-            return `hsl(${hue}, 50%, 50%)`;
-        }
 
         function getExtensionColor(ext) {
             const lower = ext.toLowerCase();
-            return extensionColors[lower] || hashExtension(lower);
+            if (extensionColors[lower]) return extensionColors[lower];
+            // Hash for unknown extensions
+            let hash = 0;
+            for (let i = 0; i < lower.length; i++) {
+                hash = (hash * 31 + lower.charCodeAt(i)) >>> 0;
+            }
+            return `hsl(${hash % 360}, 50%, 50%)`;
         }
 
-        // Update file type legend
+        // Update legend
         function updateLegend(content) {
             const legendItems = document.getElementById('legend-items');
             const extensionCounts = {};
 
             const lines = content.split('\n');
             for (const line of lines) {
-                let path = '';
-                if (line.includes('|')) {
-                    const parts = line.split('|');
-                    if (parts.length >= 4) {
-                        path = parts[3].trim();
-                    }
-                } else if (line.includes('\t')) {
-                    const parts = line.split('\t');
-                    if (parts.length >= 2) {
-                        path = parts[parts.length - 1].trim();
-                    }
-                }
-
-                if (path) {
+                const parts = line.split('|');
+                if (parts.length >= 4) {
+                    const path = parts[3].trim();
                     const dotIdx = path.lastIndexOf('.');
                     if (dotIdx > 0 && dotIdx < path.length - 1) {
                         const ext = path.substring(dotIdx + 1).toLowerCase();
@@ -1540,12 +1707,12 @@
 
             const sorted = Object.entries(extensionCounts)
                 .sort((a, b) => b[1] - a[1])
-                .slice(0, 15);
+                .slice(0, 12);
 
             legendItems.innerHTML = sorted.map(([ext, count]) => {
                 const color = getExtensionColor(ext);
                 return `<div class="legend-item" role="listitem">
-                    <span class="legend-color" style="background: ${color}" aria-hidden="true"></span>
+                    <span class="legend-color" style="background: ${color}"></span>
                     <span class="legend-ext">.${ext}</span>
                     <span class="legend-count">${count}</span>
                 </div>`;
@@ -1564,131 +1731,260 @@
             panel.classList.toggle('collapsed');
             const isExpanded = !panel.classList.contains('collapsed');
             legendToggle.setAttribute('aria-expanded', isExpanded.toString());
-            const toggle = panel.querySelector('.legend-toggle');
-            toggle.textContent = isExpanded ? '▲' : '▼';
         });
 
-        legendToggle.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                legendToggle.click();
+        // GitHub API fetch
+        async function fetchGitHubRepo(repoUrl) {
+            // Parse repo URL
+            let owner, repo;
+            try {
+                const url = new URL(repoUrl.includes('://') ? repoUrl : 'https://' + repoUrl);
+                const parts = url.pathname.split('/').filter(p => p);
+                if (parts.length < 2) throw new Error('Invalid URL');
+                owner = parts[0];
+                repo = parts[1].replace('.git', '');
+            } catch (e) {
+                // Try simple format: owner/repo
+                const parts = repoUrl.split('/').filter(p => p);
+                if (parts.length >= 2) {
+                    owner = parts[parts.length - 2];
+                    repo = parts[parts.length - 1].replace('.git', '');
+                } else {
+                    throw new Error('Invalid repository URL. Use format: owner/repo or https://github.com/owner/repo');
+                }
             }
-        });
+
+            fetchStatus.className = 'fetch-status visible loading';
+            fetchStatusText.textContent = `Fetching commits from ${owner}/${repo}...`;
+            fetchProgressBar.style.width = '10%';
+
+            const commits = [];
+            const perPage = 100;
+            const maxCommits = 500;
+            let page = 1;
+
+            try {
+                while (commits.length < maxCommits) {
+                    const response = await fetch(
+                        `https://api.github.com/repos/${owner}/${repo}/commits?per_page=${perPage}&page=${page}`,
+                        { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+                    );
+
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            throw new Error('Repository not found. Make sure it exists and is public.');
+                        } else if (response.status === 403) {
+                            throw new Error('Rate limit exceeded. Please wait a minute and try again.');
+                        }
+                        throw new Error(`GitHub API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.length === 0) break;
+
+                    commits.push(...data);
+                    fetchProgressBar.style.width = `${Math.min(90, 10 + (commits.length / maxCommits) * 80)}%`;
+                    fetchStatusText.textContent = `Fetched ${commits.length} commits...`;
+
+                    if (data.length < perPage) break;
+                    page++;
+                }
+
+                if (commits.length === 0) {
+                    throw new Error('No commits found in this repository.');
+                }
+
+                // Fetch file changes for each commit (limited to first 100 for performance)
+                fetchStatusText.textContent = `Processing ${commits.length} commits...`;
+                fetchProgressBar.style.width = '95%';
+
+                const logLines = [];
+                const limitedCommits = commits.slice(0, 200); // Limit for API calls
+
+                for (let i = 0; i < limitedCommits.length; i++) {
+                    const commit = limitedCommits[i];
+                    const timestamp = Math.floor(new Date(commit.commit.author.date).getTime() / 1000);
+                    const author = commit.commit.author.name || 'Unknown';
+
+                    // Fetch commit details for file changes
+                    try {
+                        const detailResponse = await fetch(commit.url, {
+                            headers: { 'Accept': 'application/vnd.github.v3+json' }
+                        });
+
+                        if (detailResponse.ok) {
+                            const detail = await detailResponse.json();
+                            if (detail.files) {
+                                for (const file of detail.files.slice(0, 50)) { // Limit files per commit
+                                    let action = 'M';
+                                    if (file.status === 'added') action = 'A';
+                                    else if (file.status === 'removed') action = 'D';
+                                    logLines.push(`${timestamp}|${author}|${action}|${file.filename}`);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Skip failed file fetches
+                    }
+
+                    // Rate limiting - small delay between requests
+                    if (i % 10 === 9) {
+                        await new Promise(r => setTimeout(r, 100));
+                    }
+                }
+
+                // Reverse to get chronological order
+                logLines.reverse();
+
+                if (logLines.length === 0) {
+                    throw new Error('Could not fetch file changes. Try a smaller repository.');
+                }
+
+                fetchProgressBar.style.width = '100%';
+                fetchStatus.className = 'fetch-status visible success';
+                fetchStatusText.textContent = `Success! Loaded ${logLines.length} file changes from ${limitedCommits.length} commits.`;
+
+                // Load into visualization
+                const logContent = logLines.join('\n');
+                loadLogData(logContent, 'custom');
+
+            } catch (error) {
+                fetchStatus.className = 'fetch-status visible error';
+                fetchStatusText.textContent = error.message;
+                fetchProgressBar.style.width = '0%';
+                throw error;
+            }
+        }
 
         // Initialize
         async function main() {
             try {
                 await init();
-
                 resizeCanvas();
                 rource = new Rource(canvas);
 
                 // Update renderer badge
                 const isWebGL2 = rource.isWebGL2();
                 rendererBadge.textContent = isWebGL2 ? 'WebGL2' : 'Software';
-                if (isWebGL2) {
-                    rendererBadge.classList.add('webgl2');
-                }
+                if (isWebGL2) rendererBadge.classList.add('webgl2');
 
                 // Enable buttons
                 btnPlay.disabled = false;
                 btnReset.disabled = false;
-                btnScreenshot.disabled = false;
                 btnLoad.disabled = false;
-                btnTryDemo.disabled = false;
+                btnFetchGithub.disabled = false;
 
-                // Start animation loop
+                // Start animation
                 animationId = requestAnimationFrame(animate);
-
-                // Hide loading
                 loadingEl.classList.add('hidden');
-                statusEl.textContent = 'Ready';
+
+                // Auto-load demo if no other action
+                setTimeout(() => {
+                    if (!hasLoadedData) {
+                        loadLogData(DEMO_DATA, 'custom');
+                    }
+                }, 1000);
 
             } catch (e) {
-                console.error('Failed to initialize:', e);
-                statusEl.textContent = 'Error';
-                statusEl.className = 'info-value status-error';
-                loadingEl.querySelector('.loading-text').textContent = 'Failed to load';
-                loadingEl.querySelector('.loading-subtext').textContent = e.message || 'Unknown error';
+                console.error('Initialization failed:', e);
+                loadingEl.querySelector('.loading-text').textContent = 'Failed to load: ' + e.message;
                 showToast(`Initialization failed: ${e.message}`, 'error', 10000);
             }
         }
 
         // Event handlers
         btnPlay.addEventListener('click', () => {
-            if (rource) {
-                if (!hasLoadedData) {
-                    showToast('Load some data first using the options below, or click "Try Demo".', 'error');
-                    return;
-                }
+            if (rource && hasLoadedData) {
+                rource.togglePlay();
+                updateUI();
+            } else if (!hasLoadedData) {
+                loadLogData(DEMO_DATA, 'custom');
+            }
+        });
+
+        btnPlaySmall.addEventListener('click', () => {
+            if (rource && hasLoadedData) {
                 rource.togglePlay();
                 updateUI();
             }
         });
 
-        btnReset.addEventListener('click', () => {
+        btnPrev.addEventListener('click', () => {
             if (rource) {
-                rource.resetCamera();
-            }
-        });
-
-        // Try Demo button
-        btnTryDemo.addEventListener('click', () => {
-            if (rource) {
-                loadLogData(DEMO_DATA, 'custom');
-                rource.play();
+                rource.stepBackward();
                 updateUI();
             }
         });
 
-        // Screenshot
-        btnScreenshot.addEventListener('click', takeScreenshot);
-
-        function takeScreenshot() {
-            if (!rource) return;
-
-            try {
-                const pngData = rource.captureScreenshot();
-                const blob = new Blob([pngData], { type: 'image/png' });
-                const url = URL.createObjectURL(blob);
-
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `rource_screenshot_${Date.now()}.png`;
-                a.click();
-
-                URL.revokeObjectURL(url);
-                showToast('Screenshot saved!', 'success', 2000);
-            } catch (e) {
-                console.error('Screenshot failed:', e);
-                showToast(`Screenshot failed: ${e}`, 'error');
+        btnNext.addEventListener('click', () => {
+            if (rource) {
+                rource.stepForward();
+                updateUI();
             }
-        }
+        });
+
+        btnReset.addEventListener('click', () => {
+            if (rource) rource.resetCamera();
+        });
 
         btnLoad.addEventListener('click', () => {
-            if (rource && logInput.value.trim()) {
+            if (logInput.value.trim()) {
                 loadLogData(logInput.value, 'custom');
             } else {
-                showToast('Please paste some log data first.', 'error');
+                showToast('Please paste log data first.', 'error');
+            }
+        });
+
+        // Speed control
+        speedSelect.addEventListener('change', () => {
+            if (rource) {
+                rource.setSpeed(parseFloat(speedSelect.value));
             }
         });
 
         // Timeline slider
         timelineSlider.addEventListener('input', () => {
             if (rource) {
-                const index = parseInt(timelineSlider.value, 10);
                 rource.pause();
-                rource.seek(index);
+                rource.seek(parseInt(timelineSlider.value, 10));
                 updateUI();
             }
+        });
+
+        // GitHub fetch
+        btnFetchGithub.addEventListener('click', async () => {
+            const url = githubUrlInput.value.trim();
+            if (!url) {
+                showToast('Please enter a GitHub repository URL.', 'error');
+                return;
+            }
+
+            btnFetchGithub.disabled = true;
+            try {
+                await fetchGitHubRepo(url);
+            } catch (e) {
+                console.error('Fetch error:', e);
+            }
+            btnFetchGithub.disabled = false;
+        });
+
+        githubUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') btnFetchGithub.click();
+        });
+
+        // Popular repo chips
+        document.querySelectorAll('.repo-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const repo = chip.dataset.repo;
+                githubUrlInput.value = `https://github.com/${repo}`;
+                btnFetchGithub.click();
+            });
         });
 
         // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
-
-                // Update active button
                 document.querySelectorAll('.tab-btn').forEach(b => {
                     b.classList.remove('active');
                     b.setAttribute('aria-selected', 'false');
@@ -1696,30 +1992,20 @@
                 btn.classList.add('active');
                 btn.setAttribute('aria-selected', 'true');
 
-                // Update visible content
                 document.querySelectorAll('.tab-content').forEach(c => {
                     c.classList.remove('active');
                     c.setAttribute('hidden', '');
                 });
-                const tabContent = document.getElementById(`tab-${tab}`);
-                tabContent.classList.add('active');
-                tabContent.removeAttribute('hidden');
+                const content = document.getElementById(`tab-${tab}`);
+                content.classList.add('active');
+                content.removeAttribute('hidden');
             });
         });
 
         // File upload
         fileDropZone.addEventListener('click', () => fileInput.click());
-
-        fileDropZone.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                fileInput.click();
-            }
-        });
-
         fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) handleFileUpload(file);
+            if (e.target.files[0]) handleFileUpload(e.target.files[0]);
         });
 
         fileDropZone.addEventListener('dragover', (e) => {
@@ -1734,80 +2020,47 @@
         fileDropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             fileDropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFileUpload(file);
+            if (e.dataTransfer.files[0]) handleFileUpload(e.dataTransfer.files[0]);
         });
 
         function handleFileUpload(file) {
-            const maxSize = 10 * 1024 * 1024; // 10MB
-            if (file.size > maxSize) {
+            if (file.size > 10 * 1024 * 1024) {
                 showToast('File too large. Maximum size is 10MB.', 'error');
                 return;
             }
 
-            fileNameEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileNameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileNameEl.classList.remove('hidden');
 
             const reader = new FileReader();
             reader.onload = (e) => {
                 uploadedFileContent = e.target.result;
                 btnLoadFile.disabled = false;
-                showToast(`File "${file.name}" ready to load.`, 'success', 2000);
-            };
-            reader.onerror = () => {
-                showToast('Error reading file. Please try again.', 'error');
-                btnLoadFile.disabled = true;
             };
             reader.readAsText(file);
         }
 
         btnLoadFile.addEventListener('click', () => {
-            if (uploadedFileContent) {
-                const format = fileFormatSelect.value;
-                loadLogData(uploadedFileContent, format);
-            }
+            if (uploadedFileContent) loadLogData(uploadedFileContent, 'custom');
         });
 
-        // Copy git command
+        // Copy command
         btnCopyCommand.addEventListener('click', async () => {
             const command = document.getElementById('git-command').textContent;
             try {
                 await navigator.clipboard.writeText(command);
-                btnCopyCommand.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                    </svg>
-                    Copied!
-                `;
+                btnCopyCommand.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!';
                 setTimeout(() => {
-                    btnCopyCommand.innerHTML = `
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                        </svg>
-                        Copy Command
-                    `;
+                    btnCopyCommand.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy Command';
                 }, 2000);
-            } catch (err) {
-                showToast('Failed to copy command. Please copy manually.', 'error');
+            } catch (e) {
+                showToast('Failed to copy. Please select and copy manually.', 'error');
             }
         });
 
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
-            // Ignore if typing in input
             if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
-
-            // Screenshot
-            if (e.key === 's' || e.key === 'S') {
-                takeScreenshot();
-                return;
-            }
-
-            // Help
-            if (e.key === '?') {
-                e.preventDefault();
-                openHelpModal();
-                return;
-            }
 
             if (rource) {
                 rource.onKeyDown(e.key);
@@ -1842,15 +2095,7 @@
         }, { passive: false });
 
         // Touch controls
-        let touchState = {
-            startX: 0,
-            startY: 0,
-            lastX: 0,
-            lastY: 0,
-            initialDistance: 0,
-            isPanning: false,
-            isPinching: false
-        };
+        let touchState = { startX: 0, startY: 0, initialDistance: 0, isPanning: false, isPinching: false };
 
         function getTouchDistance(touches) {
             const dx = touches[0].clientX - touches[1].clientX;
@@ -1864,21 +2109,14 @@
 
             if (e.touches.length === 1) {
                 touchState.isPanning = true;
-                touchState.isPinching = false;
                 touchState.startX = e.touches[0].clientX - rect.left;
                 touchState.startY = e.touches[0].clientY - rect.top;
-                touchState.lastX = touchState.startX;
-                touchState.lastY = touchState.startY;
-                if (rource) {
-                    rource.onMouseDown(touchState.startX, touchState.startY);
-                }
+                if (rource) rource.onMouseDown(touchState.startX, touchState.startY);
             } else if (e.touches.length === 2) {
                 touchState.isPanning = false;
                 touchState.isPinching = true;
                 touchState.initialDistance = getTouchDistance(e.touches);
-                if (rource) {
-                    rource.onMouseUp();
-                }
+                if (rource) rource.onMouseUp();
             }
         }, { passive: false });
 
@@ -1889,21 +2127,13 @@
             if (touchState.isPanning && e.touches.length === 1) {
                 const x = e.touches[0].clientX - rect.left;
                 const y = e.touches[0].clientY - rect.top;
-                if (rource) {
-                    rource.onMouseMove(x, y);
-                }
-                touchState.lastX = x;
-                touchState.lastY = y;
+                if (rource) rource.onMouseMove(x, y);
             } else if (touchState.isPinching && e.touches.length === 2) {
                 const currentDistance = getTouchDistance(e.touches);
                 const scaleFactor = currentDistance / touchState.initialDistance;
 
                 if (rource && Math.abs(scaleFactor - 1.0) > 0.01) {
-                    if (scaleFactor > 1.0) {
-                        rource.zoom(1.05);
-                    } else {
-                        rource.zoom(0.95);
-                    }
+                    rource.zoom(scaleFactor > 1.0 ? 1.05 : 0.95);
                     touchState.initialDistance = currentDistance;
                 }
             }
@@ -1911,23 +2141,12 @@
 
         canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
-            if (rource && touchState.isPanning) {
-                rource.onMouseUp();
-            }
+            if (rource && touchState.isPanning) rource.onMouseUp();
             touchState.isPanning = false;
             touchState.isPinching = false;
         }, { passive: false });
 
-        canvas.addEventListener('touchcancel', (e) => {
-            e.preventDefault();
-            if (rource) {
-                rource.onMouseUp();
-            }
-            touchState.isPanning = false;
-            touchState.isPinching = false;
-        }, { passive: false });
-
-        // Handle resize
+        // Resize handler
         window.addEventListener('resize', resizeCanvas);
 
         // Start
