@@ -40,6 +40,7 @@
 //! }
 //! ```
 
+use std::fmt::Write as FmtWrite;
 use std::path::PathBuf;
 
 use wasm_bindgen::prelude::*;
@@ -991,6 +992,74 @@ impl Rource {
         self.scene.user_count()
     }
 
+    /// Returns author data as a JSON string array.
+    ///
+    /// Each entry contains: `{ "name": "Author Name", "color": "#rrggbb", "commits": count }`
+    /// Sorted by commit count (most active first).
+    ///
+    /// # Example (JavaScript)
+    ///
+    /// ```javascript,ignore
+    /// const authorsJson = rource.getAuthors();
+    /// const authors = JSON.parse(authorsJson);
+    /// authors.forEach(a => console.log(a.name, a.color, a.commits));
+    /// ```
+    #[wasm_bindgen(js_name = getAuthors)]
+    pub fn get_authors(&self) -> String {
+        let mut authors: Vec<(&str, Color, usize)> = self
+            .scene
+            .users()
+            .values()
+            .map(|user| {
+                // Count commits by this author
+                let commit_count = self
+                    .commits
+                    .iter()
+                    .filter(|c| c.author == user.name())
+                    .count();
+                (user.name(), user.color(), commit_count)
+            })
+            .collect();
+
+        // Sort by commit count descending
+        authors.sort_by(|a, b| b.2.cmp(&a.2));
+
+        // Build JSON manually to avoid serde dependency
+        let mut json = String::from("[");
+        for (i, (name, color, commits)) in authors.iter().enumerate() {
+            if i > 0 {
+                json.push(',');
+            }
+            let r = (color.r * 255.0) as u8;
+            let g = (color.g * 255.0) as u8;
+            let b = (color.b * 255.0) as u8;
+            // Escape quotes in name for JSON safety
+            let escaped_name = name.replace('\\', "\\\\").replace('"', "\\\"");
+            let _ = FmtWrite::write_fmt(
+                &mut json,
+                format_args!("{{\"name\":\"{escaped_name}\",\"color\":\"#{r:02x}{g:02x}{b:02x}\",\"commits\":{commits}}}")
+            );
+        }
+        json.push(']');
+        json
+    }
+
+    /// Returns the color for a given author name as a hex string (e.g., "#ff5500").
+    ///
+    /// This uses the same deterministic color generation as the visualization,
+    /// so colors will match what's displayed on screen.
+    #[wasm_bindgen(js_name = getAuthorColor)]
+    pub fn get_author_color(&self, name: &str) -> String {
+        use rource_core::scene::User;
+        let color = User::color_from_name(name);
+        format!(
+            "#{:02x}{:02x}{:02x}",
+            (color.r * 255.0) as u8,
+            (color.g * 255.0) as u8,
+            (color.b * 255.0) as u8
+        )
+    }
+
     /// Forces a render without updating simulation (useful for static views).
     #[wasm_bindgen(js_name = forceRender)]
     pub fn force_render(&mut self) {
@@ -1079,6 +1148,7 @@ impl Rource {
     }
 
     /// Renders the current frame to the canvas.
+    #[allow(clippy::too_many_lines)]
     fn render(&mut self) {
         let renderer = self.backend.as_renderer_mut();
 
