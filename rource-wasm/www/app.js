@@ -1040,11 +1040,18 @@ function updateLegend(content) {
 
 // Legend toggle
 const legendToggle = document.getElementById('legend-toggle');
-legendToggle.addEventListener('click', () => {
+function toggleLegend() {
     const panel = document.getElementById('legend-panel');
     panel.classList.toggle('collapsed');
     const isExpanded = !panel.classList.contains('collapsed');
     legendToggle.setAttribute('aria-expanded', isExpanded.toString());
+}
+legendToggle.addEventListener('click', toggleLegend);
+legendToggle.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleLegend();
+    }
 });
 
 // =====================================================================
@@ -1125,10 +1132,17 @@ function updateAuthorsLegend(content) {
 }
 
 // Authors legend toggle
-authorsToggle.addEventListener('click', () => {
+function toggleAuthorsPanel() {
     authorsPanel.classList.toggle('collapsed');
     const isExpanded = !authorsPanel.classList.contains('collapsed');
     authorsToggle.setAttribute('aria-expanded', isExpanded.toString());
+}
+authorsToggle.addEventListener('click', toggleAuthorsPanel);
+authorsToggle.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleAuthorsPanel();
+    }
 });
 
 // Keyboard shortcuts for authors panel (A key)
@@ -1136,19 +1150,24 @@ document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
     if (e.key === 'a' || e.key === 'A') {
         if (hasLoadedData && !authorsPanel.classList.contains('hidden')) {
-            authorsPanel.classList.toggle('collapsed');
-            const isExpanded = !authorsPanel.classList.contains('collapsed');
-            authorsToggle.setAttribute('aria-expanded', isExpanded.toString());
+            toggleAuthorsPanel();
         }
     }
 });
 
 // Performance overlay toggle
 const perfToggle = document.getElementById('perf-toggle');
-perfToggle.addEventListener('click', () => {
+function togglePerfOverlay() {
     perfOverlay.classList.toggle('collapsed');
     const isExpanded = !perfOverlay.classList.contains('collapsed');
     perfToggle.setAttribute('aria-expanded', isExpanded.toString());
+}
+perfToggle.addEventListener('click', togglePerfOverlay);
+perfToggle.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        togglePerfOverlay();
+    }
 });
 
 // Keyboard shortcut for performance overlay (P key)
@@ -1168,6 +1187,30 @@ document.addEventListener('keydown', (e) => {
         toggleFullscreen();
     }
 });
+
+// =====================================================================
+// COLLAPSIBLE SIDEBAR PANELS
+// =====================================================================
+// Event handlers for collapsible panels in the sidebar
+// (Keyboard Shortcuts, Quick Guide, Technical Specifications)
+
+// Generic function to toggle a collapsible panel
+function setupCollapsiblePanel(toggleId, panelId) {
+    const toggle = document.getElementById(toggleId);
+    const panel = document.getElementById(panelId);
+    if (!toggle || !panel) return;
+
+    toggle.addEventListener('click', () => {
+        panel.classList.toggle('collapsed');
+        const isExpanded = !panel.classList.contains('collapsed');
+        toggle.setAttribute('aria-expanded', isExpanded.toString());
+    });
+}
+
+// Setup the three collapsible panels
+setupCollapsiblePanel('panel-shortcuts-toggle', 'panel-shortcuts');
+setupCollapsiblePanel('panel-guide-toggle', 'panel-guide');
+setupCollapsiblePanel('tech-info-toggle', 'tech-info-panel');
 
 // GitHub API rate limit tracking
 let rateLimitRemaining = 60;
@@ -2149,15 +2192,26 @@ initTheme();
 // =====================================================================
 // HELP OVERLAY
 // =====================================================================
+let helpPreviousFocus = null;
+
 function showHelp() {
+    // Store the currently focused element to restore later
+    helpPreviousFocus = document.activeElement;
     helpOverlay.classList.add('visible');
     document.body.style.overflow = 'hidden';
+    // Focus the close button for keyboard accessibility
+    helpClose.focus();
 }
 
 function hideHelp() {
     helpOverlay.classList.remove('visible');
     document.body.style.overflow = '';
     localStorage.setItem(HELP_SHOWN_KEY, 'true');
+    // Restore focus to the element that triggered the overlay
+    if (helpPreviousFocus && typeof helpPreviousFocus.focus === 'function') {
+        helpPreviousFocus.focus();
+    }
+    helpPreviousFocus = null;
 }
 
 helpBtn.addEventListener('click', showHelp);
@@ -2190,11 +2244,17 @@ function maybeShowFirstTimeHelp() {
 // =====================================================================
 // MOBILE SIDEBAR TOGGLE
 // =====================================================================
+let sidebarPreviousFocus = null;
+
 function openSidebar() {
+    // Store the currently focused element to restore later
+    sidebarPreviousFocus = document.activeElement;
     sidebarPanel.classList.add('open');
     sidebarOverlay.classList.add('visible');
     sidebarClose.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    // Focus the close button for keyboard accessibility
+    sidebarClose.focus();
 }
 
 function closeSidebar() {
@@ -2202,6 +2262,11 @@ function closeSidebar() {
     sidebarOverlay.classList.remove('visible');
     sidebarClose.classList.add('hidden');
     document.body.style.overflow = '';
+    // Restore focus to the element that triggered the sidebar
+    if (sidebarPreviousFocus && typeof sidebarPreviousFocus.focus === 'function') {
+        sidebarPreviousFocus.focus();
+    }
+    sidebarPreviousFocus = null;
 }
 
 sidebarToggle.addEventListener('click', openSidebar);

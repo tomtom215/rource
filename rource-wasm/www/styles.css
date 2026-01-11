@@ -265,7 +265,7 @@ header h1 {
 /* Main Layout - Full viewport, no scrolling */
 .app-container {
     display: grid;
-    grid-template-columns: 1fr clamp(280px, 25vw, 400px);
+    grid-template-columns: 1fr minmax(320px, min(400px, 30vw));
     gap: 1rem;
     padding: 1rem;
     flex: 1;
@@ -273,9 +273,15 @@ header h1 {
     overflow: hidden;
 }
 
+@media (max-width: 1600px) {
+    .app-container {
+        grid-template-columns: 1fr minmax(300px, 340px);
+    }
+}
+
 @media (max-width: 1400px) {
     .app-container {
-        grid-template-columns: 1fr clamp(260px, 30vw, 360px);
+        grid-template-columns: 1fr minmax(280px, 320px);
         gap: 0.75rem;
         padding: 0.75rem;
     }
@@ -613,9 +619,10 @@ header h1 {
     background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(233, 69, 96, 0.08) 100%);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: clamp(0.75rem, 2vw, 1rem);
+    padding: 0.875rem;
     margin-bottom: 0.75rem;
     min-width: 0;
+    box-sizing: border-box;
 }
 
 .tech-info-header {
@@ -624,13 +631,15 @@ header h1 {
     gap: 0.5rem;
     margin-bottom: 0.75rem;
     font-weight: 600;
-    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    font-size: 0.8rem;
     color: var(--text-primary);
 }
 
 .tech-info-header svg {
     color: var(--accent-blue);
     flex-shrink: 0;
+    width: 16px;
+    height: 16px;
 }
 
 .tech-grid {
@@ -642,20 +651,20 @@ header h1 {
 .tech-item {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
-    padding: clamp(0.35rem, 1.5vw, 0.5rem);
+    padding: 0.4rem;
     text-align: center;
     min-width: 0;
 }
 
 .tech-item-value {
     font-weight: 700;
-    font-size: clamp(0.75rem, 2vw, 0.9rem);
+    font-size: 0.85rem;
     color: var(--accent-blue);
     font-variant-numeric: tabular-nums;
 }
 
 .tech-item-label {
-    font-size: clamp(0.55rem, 1.5vw, 0.65rem);
+    font-size: 0.6rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -669,7 +678,7 @@ header h1 {
 }
 
 .tech-badge {
-    font-size: clamp(0.55rem, 1.5vw, 0.65rem);
+    font-size: 0.6rem;
     padding: 0.15rem 0.4rem;
     background: var(--bg-tertiary);
     border-radius: 10px;
@@ -690,6 +699,13 @@ header h1 {
     user-select: none;
     transition: opacity 0.2s;
     margin-bottom: 0;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: inherit;
 }
 
 .tech-info-panel.collapsible:not(.collapsed) .tech-info-header {
@@ -698,6 +714,11 @@ header h1 {
 
 .tech-info-panel.collapsible .tech-info-header:hover {
     opacity: 0.8;
+}
+
+.tech-info-panel.collapsible .tech-info-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .tech-info-panel.collapsible .panel-toggle {
@@ -929,6 +950,7 @@ header h1 {
     overflow-x: hidden;
     min-height: 0; /* Critical for overflow in flex/grid children */
     min-width: 0; /* Prevent content from expanding container */
+    width: 100%;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
 }
@@ -954,6 +976,8 @@ header h1 {
 .sidebar-panel > * {
     min-width: 0;
     max-width: 100%;
+    flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 @media (max-width: 1400px) {
@@ -994,7 +1018,7 @@ header h1 {
 }
 
 .panel-header h3 {
-    font-size: clamp(0.75rem, 2vw, 0.85rem);
+    font-size: 0.8rem;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -1016,8 +1040,9 @@ header h1 {
 }
 
 .panel-body {
-    padding: 1rem;
+    padding: 0.875rem;
     min-width: 0; /* Prevent content overflow */
+    box-sizing: border-box;
 }
 
 @media (max-width: 1400px) {
@@ -1035,10 +1060,20 @@ header h1 {
     cursor: pointer;
     user-select: none;
     transition: background-color 0.2s;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    border: none;
+    border-bottom: 1px solid var(--border);
 }
 
 .panel.collapsible .panel-header:hover {
     background: var(--border);
+}
+
+.panel.collapsible .panel-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: -2px;
 }
 
 .panel.collapsible .panel-toggle {
@@ -1065,18 +1100,19 @@ header h1 {
     display: flex;
     gap: 0.5rem;
     margin-bottom: 0.75rem;
-    flex-wrap: wrap;
+    width: 100%;
 }
 
 .github-input-group input {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0; /* Allow shrinking below content size */
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-primary);
-    padding: clamp(0.4rem, 1.5vw, 0.6rem) clamp(0.5rem, 2vw, 0.75rem);
+    padding: 0.5rem 0.6rem;
     border-radius: 6px;
-    font-size: clamp(0.75rem, 2vw, 0.875rem);
+    font-size: 0.8rem;
+    width: 100%;
 }
 
 .github-input-group input:focus {
@@ -1087,10 +1123,12 @@ header h1 {
 
 .github-input-group input::placeholder {
     color: var(--text-muted);
+    font-size: 0.75rem;
 }
 
 .github-input-group .btn {
     flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .popular-repos {
@@ -1098,7 +1136,7 @@ header h1 {
 }
 
 .popular-repos-label {
-    font-size: clamp(0.6rem, 1.5vw, 0.7rem);
+    font-size: 0.65rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1116,9 +1154,9 @@ header h1 {
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-secondary);
-    padding: clamp(0.2rem, 1vw, 0.3rem) clamp(0.4rem, 1.5vw, 0.6rem);
+    padding: 0.25rem 0.5rem;
     border-radius: 16px;
-    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+    font-size: 0.7rem;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -1188,16 +1226,17 @@ header h1 {
     display: flex;
     border-bottom: 1px solid var(--border);
     background: var(--bg-tertiary);
+    width: 100%;
 }
 
 .tab-btn {
-    flex: 1;
-    padding: clamp(0.4rem, 1.5vw, 0.6rem) clamp(0.4rem, 1.5vw, 0.75rem);
+    flex: 1 1 0;
+    padding: 0.5rem 0.4rem;
     background: transparent;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    font-size: 0.75rem;
     font-weight: 500;
     transition: all 0.2s;
     border-bottom: 2px solid transparent;
@@ -1206,6 +1245,7 @@ header h1 {
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    text-align: center;
 }
 
 .tab-btn:hover {
@@ -1220,7 +1260,7 @@ header h1 {
 
 .tab-content {
     display: none;
-    padding: clamp(0.75rem, 2vw, 1rem);
+    padding: 0.875rem;
 }
 
 .tab-content.active {
@@ -1251,7 +1291,7 @@ textarea:focus {
 .file-upload-area {
     border: 2px dashed var(--border);
     border-radius: 8px;
-    padding: clamp(1rem, 3vw, 1.5rem);
+    padding: 1rem;
     text-align: center;
     margin-bottom: 0.75rem;
     cursor: pointer;
@@ -1273,12 +1313,12 @@ textarea:focus {
 }
 
 .file-upload-icon {
-    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-size: 1.75rem;
     margin-bottom: 0.5rem;
 }
 
 .file-upload-text {
-    font-size: clamp(0.75rem, 2vw, 0.85rem);
+    font-size: 0.8rem;
     color: var(--text-secondary);
 }
 
@@ -1289,7 +1329,7 @@ textarea:focus {
 .file-name {
     margin-bottom: 0.75rem;
     color: var(--text-secondary);
-    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    font-size: 0.75rem;
     padding: 0.5rem;
     background: var(--bg-tertiary);
     border-radius: 4px;
@@ -1299,27 +1339,29 @@ textarea:focus {
 /* Command box */
 .command-box {
     background: var(--bg-tertiary);
-    padding: clamp(0.5rem, 1.5vw, 0.75rem);
+    padding: 0.6rem;
     border-radius: 6px;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-size: clamp(0.6rem, 1.5vw, 0.7rem);
+    font-size: 0.65rem;
     overflow-x: auto;
+    overflow-y: hidden;
     margin-bottom: 0.75rem;
     border: 1px solid var(--border);
     min-width: 0;
     max-width: 100%;
+    box-sizing: border-box;
 }
 
 .command-box code {
     color: var(--text-primary);
-    white-space: pre-wrap;
-    word-break: break-all;
+    white-space: nowrap;
     display: block;
+    line-height: 1.4;
 }
 
 /* Help text */
 .help-text {
-    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+    font-size: 0.7rem;
     color: var(--text-muted);
     line-height: 1.6;
     word-wrap: break-word;
@@ -1330,7 +1372,7 @@ textarea:focus {
     background: var(--bg-tertiary);
     padding: 0.1rem 0.25rem;
     border-radius: 3px;
-    font-size: clamp(0.6rem, 1.5vw, 0.7rem);
+    font-size: 0.65rem;
     word-break: break-all;
 }
 
@@ -1348,7 +1390,7 @@ textarea:focus {
 }
 
 .docs-section h4 {
-    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    font-size: 0.75rem;
     color: var(--accent);
     margin-bottom: 0.5rem;
     text-transform: uppercase;
@@ -1356,7 +1398,7 @@ textarea:focus {
 }
 
 .docs-section p {
-    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    font-size: 0.75rem;
     color: var(--text-secondary);
     line-height: 1.6;
     margin-bottom: 0.5rem;
@@ -1364,7 +1406,7 @@ textarea:focus {
 
 .shortcut-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.35rem;
 }
 
@@ -1372,10 +1414,10 @@ textarea:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: clamp(0.3rem, 1vw, 0.4rem) clamp(0.35rem, 1vw, 0.5rem);
+    padding: 0.35rem 0.4rem;
     background: var(--bg-tertiary);
     border-radius: 4px;
-    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+    font-size: 0.7rem;
     gap: 0.25rem;
 }
 
@@ -1390,7 +1432,7 @@ textarea:focus {
     padding: 0.1rem 0.3rem;
     border-radius: 3px;
     font-family: inherit;
-    font-size: clamp(0.6rem, 1.5vw, 0.7rem);
+    font-size: 0.65rem;
     border: 1px solid var(--border);
     flex-shrink: 0;
 }
@@ -1401,7 +1443,7 @@ textarea:focus {
 
 .feature-list li {
     padding: 0.25rem 0;
-    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    font-size: 0.75rem;
     color: var(--text-secondary);
     display: flex;
     align-items: flex-start;
@@ -1423,11 +1465,12 @@ textarea:focus {
     background: linear-gradient(135deg, rgba(233, 69, 96, 0.15) 0%, rgba(88, 166, 255, 0.15) 100%);
     border: 2px solid var(--accent);
     border-radius: 10px;
-    padding: clamp(0.75rem, 3vw, 1.25rem);
+    padding: 1rem;
     text-align: center;
     position: relative;
     overflow: hidden;
     min-width: 0;
+    box-sizing: border-box;
 }
 
 .showcase-panel::before {
@@ -1444,7 +1487,7 @@ textarea:focus {
     position: absolute;
     top: 8px;
     right: 8px;
-    font-size: clamp(0.5rem, 1.5vw, 0.6rem);
+    font-size: 0.55rem;
     padding: 0.15rem 0.4rem;
     background: var(--accent);
     color: white;
@@ -1455,20 +1498,20 @@ textarea:focus {
 }
 
 .showcase-icon {
-    width: clamp(36px, 10vw, 48px);
-    height: clamp(36px, 10vw, 48px);
+    width: 42px;
+    height: 42px;
     margin: 0 auto 0.5rem;
 }
 
 .showcase-panel h3 {
-    font-size: clamp(0.9rem, 3vw, 1.1rem);
+    font-size: 1rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
     color: var(--text-primary);
 }
 
 .showcase-panel p {
-    font-size: clamp(0.75rem, 2vw, 0.85rem);
+    font-size: 0.8rem;
     color: var(--text-secondary);
     margin-bottom: 0.75rem;
     line-height: 1.5;
@@ -1478,9 +1521,9 @@ textarea:focus {
     background: var(--accent);
     color: white;
     border: none;
-    padding: clamp(0.5rem, 2vw, 0.75rem) clamp(0.75rem, 3vw, 1.5rem);
+    padding: 0.6rem 1rem;
     border-radius: 8px;
-    font-size: clamp(0.8rem, 2vw, 0.95rem);
+    font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -1488,9 +1531,10 @@ textarea:focus {
     align-items: center;
     gap: 0.4rem;
     box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
-    flex: 1;
+    flex: 1 1 auto;
     justify-content: center;
     min-width: 0;
+    white-space: nowrap;
 }
 
 .showcase-btn:hover {
@@ -1511,7 +1555,7 @@ textarea:focus {
     display: flex;
     gap: 0.5rem;
     margin-top: 0.75rem;
-    flex-wrap: wrap;
+    width: 100%;
 }
 
 .showcase-btn-secondary {
@@ -1519,10 +1563,10 @@ textarea:focus {
     background: transparent;
     color: var(--text-secondary);
     border: 1px solid var(--border);
-    padding: clamp(0.4rem, 1.5vw, 0.6rem) clamp(0.5rem, 2vw, 0.75rem);
+    padding: 0.5rem 0.6rem;
     border-radius: 6px;
     cursor: pointer;
-    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+    font-size: 0.7rem;
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -1580,27 +1624,27 @@ textarea:focus {
 
 .showcase-stats {
     display: flex;
-    justify-content: center;
-    gap: clamp(0.75rem, 3vw, 1.5rem);
+    justify-content: space-around;
+    gap: 0.5rem;
     margin-top: 0.75rem;
     padding-top: 0.75rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    flex-wrap: wrap;
 }
 
 .showcase-stat {
     text-align: center;
-    min-width: 50px;
+    flex: 1;
+    min-width: 0;
 }
 
 .showcase-stat-value {
-    font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+    font-size: 1rem;
     font-weight: 700;
     color: var(--accent-blue);
 }
 
 .showcase-stat-label {
-    font-size: clamp(0.55rem, 1.5vw, 0.65rem);
+    font-size: 0.6rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1693,18 +1737,19 @@ textarea:focus {
     background: linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(88, 166, 255, 0.1) 100%);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: clamp(0.75rem, 2vw, 1rem);
+    padding: 0.875rem;
     text-align: center;
     min-width: 0;
+    box-sizing: border-box;
 }
 
 .about-banner h4 {
-    font-size: clamp(0.8rem, 2vw, 0.9rem);
+    font-size: 0.85rem;
     margin-bottom: 0.5rem;
 }
 
 .about-banner p {
-    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    font-size: 0.75rem;
     color: var(--text-secondary);
     margin-bottom: 0.75rem;
 }
@@ -1717,8 +1762,8 @@ textarea:focus {
 }
 
 .about-links .btn {
-    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
-    padding: clamp(0.3rem, 1vw, 0.4rem) clamp(0.5rem, 1.5vw, 0.75rem);
+    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
 }
 
 /* Loading overlay with skeleton */

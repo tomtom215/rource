@@ -439,16 +439,16 @@
 
             <!-- Controls Panel - Keyboard and Mouse (Collapsible) -->
             <div class="panel collapsible collapsed" id="panel-shortcuts">
-                <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <button type="button" class="panel-header" id="panel-shortcuts-toggle" aria-expanded="false" aria-controls="panel-shortcuts-body">
                     <h3>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
                         </svg>
                         Keyboard Shortcuts
                     </h3>
-                    <span class="panel-toggle">&#9660;</span>
-                </div>
-                <div class="panel-body">
+                    <span class="panel-toggle" aria-hidden="true">&#9660;</span>
+                </button>
+                <div class="panel-body" id="panel-shortcuts-body">
                     <div class="shortcut-grid">
                         <div class="shortcut-item"><span>Play/Pause</span><kbd>Space</kbd></div>
                         <div class="shortcut-item"><span>Zoom In</span><kbd>+</kbd></div>
@@ -471,16 +471,16 @@
 
             <!-- Quick Guide Panel (Collapsible) -->
             <div class="panel collapsible collapsed" id="panel-guide">
-                <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <button type="button" class="panel-header" id="panel-guide-toggle" aria-expanded="false" aria-controls="panel-guide-body">
                     <h3>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-6h2v6zm0-8h-2V7h2v4z"/>
                         </svg>
                         Quick Guide
                     </h3>
-                    <span class="panel-toggle">&#9660;</span>
-                </div>
-                <div class="panel-body docs-panel">
+                    <span class="panel-toggle" aria-hidden="true">&#9660;</span>
+                </button>
+                <div class="panel-body docs-panel" id="panel-guide-body">
                     <div class="docs-section">
                         <h4>What is Rource?</h4>
                         <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> visualizes software version control history as an animated tree. Each file is a colored node, each developer has a unique color, and commits create "beams" connecting developers to files they modify.</p>
@@ -500,14 +500,14 @@
 
             <!-- Technical Showcase Panel (Collapsible) -->
             <div class="tech-info-panel collapsible collapsed" id="tech-info-panel">
-                <div class="tech-info-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <button type="button" class="tech-info-header" id="tech-info-toggle" aria-expanded="false" aria-controls="tech-info-body">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                     </svg>
                     Technical Specifications
-                    <span class="panel-toggle">&#9660;</span>
-                </div>
-                <div class="tech-grid">
+                    <span class="panel-toggle" aria-hidden="true">&#9660;</span>
+                </button>
+                <div class="tech-grid" id="tech-info-body">
                     <div class="tech-item">
                         <div class="tech-item-value" id="tech-wasm-size">~76KB</div>
                         <div class="tech-item-label">WASM Gzipped</div>
