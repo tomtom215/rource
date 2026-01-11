@@ -1602,10 +1602,10 @@ impl ZoomCamera {
 
 #### 7.3 Documentation
 - [x] CLAUDE.md project guide
-- [ ] User manual
-- [ ] API documentation
-- [ ] Examples
-- [ ] Migration guide from Gource
+- [x] User manual (README.md with comprehensive usage guide)
+- [ ] API documentation (cargo doc)
+- [x] Examples (examples/ directory with configs and scripts)
+- [x] Migration guide from Gource (MIGRATING.md)
 
 ---
 
