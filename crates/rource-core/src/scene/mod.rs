@@ -395,9 +395,19 @@ impl Scene {
         }
 
         // Set user's target to file position
+        // If user is at origin (new user), teleport them near the file first
         if let Some(file) = self.files.get(&file_id) {
             if let Some(user) = self.users.get_mut(&user_id) {
-                user.set_target(file.position());
+                let file_pos = file.position();
+
+                // If user is still at origin (default position), place them near the file
+                if user.position().length() < 1.0 {
+                    // Position user slightly offset from file
+                    let offset = Vec2::new(-50.0, -30.0);
+                    user.set_position(file_pos + offset);
+                }
+
+                user.set_target(file_pos);
             }
         }
 

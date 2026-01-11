@@ -50,7 +50,7 @@ use rource_core::camera::Camera;
 use rource_core::config::Settings;
 use rource_core::scene::{ActionType, Scene};
 use rource_math::{Bounds, Color, Vec2};
-use rource_render::{Renderer, SoftwareRenderer, WebGl2Renderer};
+use rource_render::{default_font, FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
 use rource_vcs::parser::{CustomParser, GitParser, Parser};
 use rource_vcs::{Commit, FileAction};
 
@@ -326,6 +326,14 @@ impl RendererBackend {
             None
         }
     }
+
+    /// Loads a font and returns its ID.
+    fn load_font(&mut self, data: &[u8]) -> Option<FontId> {
+        match self {
+            Self::WebGl2(r) => r.load_font(data),
+            Self::Software { renderer, .. } => renderer.load_font(data),
+        }
+    }
 }
 
 // ============================================================================
@@ -379,6 +387,12 @@ pub struct Rource {
     drag_start_y: f32,
     camera_start_x: f32,
     camera_start_y: f32,
+
+    /// Font ID for text rendering
+    font_id: Option<FontId>,
+
+    /// Whether to show labels (user names, file names)
+    show_labels: bool,
 }
 
 #[wasm_bindgen]
@@ -395,7 +409,13 @@ impl Rource {
         let width = canvas.width();
         let height = canvas.height();
 
-        let (backend, renderer_type) = RendererBackend::new(&canvas)?;
+        let (mut backend, renderer_type) = RendererBackend::new(&canvas)?;
+
+        // Load the default font for text rendering
+        let font_id = backend.load_font(default_font::ROBOTO_MONO);
+        if font_id.is_none() {
+            web_sys::console::warn_1(&"Rource: Failed to load font, labels will be disabled".into());
+        }
 
         let scene = Scene::new();
 
@@ -426,6 +446,8 @@ impl Rource {
             drag_start_y: 0.0,
             camera_start_x: 0.0,
             camera_start_y: 0.0,
+            font_id,
+            show_labels: true, // Labels enabled by default
         })
     }
 
@@ -609,6 +631,18 @@ impl Rource {
         }
     }
 
+    /// Sets whether to show labels (user names, file names).
+    #[wasm_bindgen(js_name = setShowLabels)]
+    pub fn set_show_labels(&mut self, show: bool) {
+        self.show_labels = show;
+    }
+
+    /// Gets whether labels are being shown.
+    #[wasm_bindgen(js_name = getShowLabels)]
+    pub fn get_show_labels(&self) -> bool {
+        self.show_labels
+    }
+
     /// Handles mouse down events.
     #[wasm_bindgen(js_name = onMouseDown)]
     pub fn on_mouse_down(&mut self, x: f32, y: f32) {
@@ -641,9 +675,21 @@ impl Rource {
     }
 
     /// Handles mouse wheel events for zooming.
+    ///
+    /// Uses a smooth, proportional zoom based on scroll amount.
     #[wasm_bindgen(js_name = onWheel)]
     pub fn on_wheel(&mut self, delta_y: f32) {
-        let factor = if delta_y > 0.0 { 0.9 } else { 1.1 };
+        // Normalize delta_y - different browsers/devices report different ranges
+        // Typical values: ~100 for line mode, ~3 for pixel mode (trackpad)
+        let normalized_delta = delta_y / 100.0;
+
+        // Clamp to reasonable range to prevent huge jumps
+        let clamped_delta = normalized_delta.clamp(-2.0, 2.0);
+
+        // Convert to zoom factor: negative delta = zoom in, positive = zoom out
+        // Use a gentler factor for smoother zooming
+        let factor = 1.0 - (clamped_delta * 0.08);
+
         self.zoom(factor);
     }
 
@@ -675,6 +721,7 @@ impl Rource {
             "ArrowLeft" => self.pan(-50.0, 0.0),
             "ArrowRight" => self.pan(50.0, 0.0),
             "r" | "R" => self.reset_camera(),
+            "l" | "L" => self.show_labels = !self.show_labels,
             "[" => self.set_speed(self.settings.playback.seconds_per_day * 0.5),
             "]" => self.set_speed(self.settings.playback.seconds_per_day * 2.0),
             "," | "<" => self.step_backward(),
@@ -940,6 +987,65 @@ impl Rource {
                         2.0,
                         color.with_alpha(0.5 * user.alpha()),
                     );
+                }
+            }
+        }
+
+        // Draw labels if enabled and font is loaded
+        if self.show_labels {
+            if let Some(font_id) = self.font_id {
+                let font_size = self.settings.display.font_size;
+                let label_color = Color::new(0.9, 0.9, 0.9, 0.9);
+
+                // Draw user name labels
+                for user_id in &visible_users {
+                    if let Some(user) = self.scene.get_user(*user_id) {
+                        if user.alpha() < 0.01 {
+                            continue;
+                        }
+
+                        let screen_pos = self.camera.world_to_screen(user.position());
+                        let radius = (user.radius() * camera_zoom).max(5.0);
+
+                        // Position label to the right of the user
+                        let label_pos = Vec2::new(screen_pos.x + radius + 4.0, screen_pos.y - 4.0);
+                        let alpha = user.alpha();
+                        renderer.draw_text(
+                            user.name(),
+                            label_pos,
+                            font_id,
+                            font_size,
+                            label_color.with_alpha(alpha * 0.9),
+                        );
+                    }
+                }
+
+                // Draw file name labels when zoomed in enough
+                if camera_zoom > 0.8 {
+                    for file_id in &visible_files {
+                        if let Some(file) = self.scene.get_file(*file_id) {
+                            if file.alpha() < 0.01 {
+                                continue;
+                            }
+
+                            let screen_pos = self.camera.world_to_screen(file.position());
+                            let radius = (file.radius() * camera_zoom).max(1.0);
+
+                            // Position label below the file
+                            let label_pos = Vec2::new(screen_pos.x - 20.0, screen_pos.y + radius + 10.0);
+                            let alpha = file.alpha();
+
+                            // Get just the filename, not the full path
+                            let name = file.name();
+                            renderer.draw_text(
+                                name,
+                                label_pos,
+                                font_id,
+                                font_size * 0.9,
+                                label_color.with_alpha(alpha * 0.7),
+                            );
+                        }
+                    }
                 }
             }
         }

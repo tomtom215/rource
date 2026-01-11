@@ -11,10 +11,13 @@ use crate::entity::{ActionId, UserId};
 pub const USER_SPEED: f32 = 200.0;
 
 /// Threshold for idle fade (seconds without action).
-pub const IDLE_THRESHOLD: f32 = 10.0;
+pub const IDLE_THRESHOLD: f32 = 30.0;
 
 /// How fast users fade in/out (per second).
 pub const FADE_RATE: f32 = 2.0;
+
+/// Minimum alpha for idle users (so they remain visible).
+pub const MIN_IDLE_ALPHA: f32 = 0.3;
 
 /// Default visual radius for users.
 pub const DEFAULT_USER_RADIUS: f32 = 15.0;
@@ -258,8 +261,8 @@ impl User {
 
         // Fade in/out based on activity
         if self.idle_time > IDLE_THRESHOLD && !self.is_active() {
-            // Fade out when idle
-            self.alpha = (self.alpha - FADE_RATE * dt).max(0.0);
+            // Fade out when idle, but keep a minimum visibility
+            self.alpha = (self.alpha - FADE_RATE * dt).max(MIN_IDLE_ALPHA);
         } else {
             // Fade in when active
             self.alpha = (self.alpha + FADE_RATE * dt).min(1.0);
@@ -379,13 +382,14 @@ mod tests {
         // Remove action and wait
         user.remove_action(ActionId::from_index(0));
 
-        // Wait past idle threshold
-        for _ in 0..30 {
+        // Wait past idle threshold (IDLE_THRESHOLD is 30 seconds)
+        for _ in 0..70 {
             user.update(0.5);
         }
 
-        // Should be fading out
+        // Should be fading out but not below MIN_IDLE_ALPHA
         assert!(user.alpha() < 1.0);
+        assert!(user.alpha() >= MIN_IDLE_ALPHA);
     }
 
     #[test]
