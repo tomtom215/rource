@@ -79,6 +79,7 @@ Options:
       --headless                   Run without window (for batch export)
       --framerate <FPS>            Video export framerate [default: 60]
       --screenshot <PATH>          Save screenshot and exit
+      --screenshot-at <INDEX>      Commit index for screenshot (0-based, default: final)
   -c, --config <FILE>              Load settings from TOML config file
       --sample-config              Print sample configuration file
       --env-help                   Print environment variable help
@@ -206,9 +207,19 @@ rource --user-image-dir ./avatars .
 rource --user-image-dir ./avatars --default-user-image ./default.png .
 ```
 
-Avatar files should be PNG format and named after the user (case-insensitive):
-- `./avatars/Alice.png`
-- `./avatars/Bob Smith.png`
+Avatar files should be PNG format and named after the username (case-insensitive matching):
+
+```
+./avatars/
+├── alice.png           # Matches "Alice", "alice", "ALICE"
+├── Bob Smith.png       # Matches "Bob Smith" (spaces allowed)
+└── john_doe.png        # Matches "john_doe"
+```
+
+Naming rules:
+- File extension must be `.png`
+- Filename matches the git author name (case-insensitive)
+- Spaces and special characters in usernames are preserved in filenames
 
 ## WebAssembly
 
@@ -316,6 +327,28 @@ Quick comparison:
 | `--hide-filenames` | `--hide-filenames` (same) |
 | `-o -` (pipe to ffmpeg) | `--output dir --headless` |
 | Requires OpenGL | Pure software rendering |
+
+## Screenshots
+
+The `--screenshot` option captures a single frame as a PNG image:
+
+```bash
+# Capture final state of visualization
+rource --screenshot output.png .
+
+# Capture at a specific commit (0-based index)
+rource --screenshot output.png --screenshot-at 50 .
+
+# Capture with custom resolution
+rource -W 1920 -H 1080 --screenshot output.png .
+```
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+- Setting up the development environment
+- Code style and testing requirements
+- Submitting pull requests
 
 ## License
 

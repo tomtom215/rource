@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Rource - Software Version Control Visualization</title>
     <meta name="description" content="Visualize your git repository history as an animated tree. Watch your codebase grow as developers collaborate. Runs in your browser with WebAssembly.">
     <meta name="keywords" content="git, visualization, gource, repository, version control, wasm, webassembly, rust">
@@ -226,7 +226,7 @@
                 <!-- Slider row -->
                 <div class="timeline-slider-row">
                     <div class="timeline-slider-container" id="timeline-slider-container">
-                        <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled>
+                        <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled aria-label="Timeline position" aria-valuetext="0 of 0 commits">
                         <div class="timeline-markers" id="timeline-markers"></div>
                     </div>
                 </div>

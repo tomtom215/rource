@@ -379,8 +379,8 @@ impl Args {
         let limits = LimitSettings {
             max_files: self.max_files,
             max_users: self.max_users,
-            file_idle_time: 0.0,  // Use default
-            user_idle_time: 0.0,  // Use default
+            file_idle_time: 0.0, // Use default
+            user_idle_time: 0.0, // Use default
         };
 
         let camera = CameraSettings {
@@ -423,7 +423,10 @@ impl Args {
         let overlay = OverlaySettings {
             logo_path: self.logo.as_ref().map(|p| p.display().to_string()),
             logo_offset: self.parse_logo_offset(),
-            background_image: self.background_image.as_ref().map(|p| p.display().to_string()),
+            background_image: self
+                .background_image
+                .as_ref()
+                .map(|p| p.display().to_string()),
         };
 
         let mut filter = FilterSettings::new();
@@ -619,7 +622,9 @@ impl Args {
                 );
             }
         }
-        if (self.font_size - 12.0).abs() < 0.01 && (env_settings.display.font_size - 12.0).abs() > 0.01 {
+        if (self.font_size - 12.0).abs() < 0.01
+            && (env_settings.display.font_size - 12.0).abs() > 0.01
+        {
             self.font_size = env_settings.display.font_size;
         }
         if !self.no_bloom && !env_settings.display.bloom_enabled {
@@ -670,7 +675,9 @@ impl Args {
         }
 
         // Camera settings
-        if self.camera_mode == "overview" && env_settings.camera.mode != rource_core::config::CameraModeSetting::Overview {
+        if self.camera_mode == "overview"
+            && env_settings.camera.mode != rource_core::config::CameraModeSetting::Overview
+        {
             self.camera_mode = env_settings.camera.mode.as_str().to_string();
         }
 

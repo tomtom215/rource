@@ -121,8 +121,7 @@ impl StringInterner {
     pub fn stats(&self) -> InternerStats {
         let string_bytes: usize = self.strings.iter().map(String::len).sum();
         let overhead = self.strings.capacity() * std::mem::size_of::<String>()
-            + self.lookup.capacity()
-                * (std::mem::size_of::<String>() + std::mem::size_of::<u32>());
+            + self.lookup.capacity() * (std::mem::size_of::<String>() + std::mem::size_of::<u32>());
 
         InternerStats {
             unique_strings: self.strings.len(),

@@ -385,7 +385,7 @@ mod tests {
     #[test]
     fn test_image_get_pixel() {
         let mut data = vec![0u8; 4 * 4 * 4]; // 4x4 image
-        // Set pixel at (1, 1)
+                                             // Set pixel at (1, 1)
         let idx = (1 * 4 + 1) * 4;
         data[idx] = 100;
         data[idx + 1] = 150;

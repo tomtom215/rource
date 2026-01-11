@@ -187,11 +187,9 @@ impl<R: Read> StreamingCommitLoader<R> {
     /// Returns the store containing all parsed commits.
     pub fn load_all(mut self) -> CommitStore {
         for commit in &mut self.stream {
-            let id = self.store.add_commit(
-                commit.timestamp,
-                &commit.author,
-                Some(&commit.hash),
-            );
+            let id = self
+                .store
+                .add_commit(commit.timestamp, &commit.author, Some(&commit.hash));
             for file in commit.files {
                 let path_str = file.path.to_string_lossy();
                 self.store.add_file_change(id, &path_str, file.action);
@@ -210,11 +208,9 @@ impl<R: Read> StreamingCommitLoader<R> {
 
         for commit in &mut self.stream {
             let file_changes_count = commit.files.len();
-            let id = self.store.add_commit(
-                commit.timestamp,
-                &commit.author,
-                Some(&commit.hash),
-            );
+            let id = self
+                .store
+                .add_commit(commit.timestamp, &commit.author, Some(&commit.hash));
             for file in commit.files {
                 let path_str = file.path.to_string_lossy();
                 self.store.add_file_change(id, &path_str, file.action);
@@ -345,8 +341,12 @@ impl<R: Read> Iterator for CustomLogGrouper<R> {
         // Collect all entries with same timestamp and author
         loop {
             match self.stream.next() {
-                Some(entry) if entry.timestamp == first.timestamp && entry.author == first.author => {
-                    commit.files.push(FileChange::new(&entry.path, entry.action));
+                Some(entry)
+                    if entry.timestamp == first.timestamp && entry.author == first.author =>
+                {
+                    commit
+                        .files
+                        .push(FileChange::new(&entry.path, entry.action));
                 }
                 Some(entry) => {
                     // Different commit, save for next iteration

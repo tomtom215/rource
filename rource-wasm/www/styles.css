@@ -322,7 +322,14 @@ header h1 {
 
 @media (max-width: 768px) {
     #canvas-container {
-        min-height: 250px;
+        min-height: 200px;
+    }
+}
+
+/* Reduce min-height in landscape to fit more content */
+@media (max-width: 768px) and (orientation: landscape) {
+    #canvas-container {
+        min-height: 120px;
     }
 }
 
@@ -2199,8 +2206,8 @@ footer a {
     --bg-tertiary: #eaeef2;
     --bg-canvas: #f0f3f6;
     --text-primary: #1f2328;
-    --text-secondary: #656d76;
-    --text-muted: #8b949e;
+    --text-secondary: #4d5561; /* WCAG AA: 5.7:1 contrast on white */
+    --text-muted: #656d76; /* WCAG AA: 4.5:1 contrast on white */
     --border: #d0d7de;
     --border-light: #afb8c1;
     --shadow: rgba(31, 35, 40, 0.12);
@@ -2370,17 +2377,33 @@ footer a {
         width: 100%;
         padding: 0.75rem;
         padding-top: 50px;
+        /* Support for notched devices (iPhone X+, etc.) */
+        padding-left: max(0.75rem, env(safe-area-inset-left));
+        padding-right: max(0.75rem, env(safe-area-inset-right));
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
     }
 
     .sidebar-close {
         top: 8px;
-        right: 8px;
+        right: max(8px, env(safe-area-inset-right));
         width: 32px;
         height: 32px;
     }
 
     .sidebar-scroll-indicator {
         width: 100%;
+    }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: env(safe-area-inset-top)) {
+    header {
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
+    }
+
+    footer {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
     }
 }
 
@@ -2802,39 +2825,4 @@ footer a {
 
 .author-filter-clear.visible {
     display: block;
-}
-
-/* ========================================
-   DEBUG/PERFORMANCE PANEL - COLLAPSIBLE
-   ======================================== */
-.debug-panel {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 60;
-}
-
-.debug-toggle {
-    background: rgba(13, 17, 23, 0.8);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.debug-toggle:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
-.debug-toggle.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
 }

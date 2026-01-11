@@ -741,7 +741,10 @@ impl App {
             if !hide_dirnames && dir.depth() <= dir_name_depth {
                 if let Some(font_id) = dir_font {
                     let name = dir.name();
-                    let label_pos = Vec2::new(screen_pos.x + radius + 3.0, screen_pos.y - dir_font_size * 0.3);
+                    let label_pos = Vec2::new(
+                        screen_pos.x + radius + 3.0,
+                        screen_pos.y - dir_font_size * 0.3,
+                    );
                     let label_color = Color::new(0.7, 0.7, 0.8, 0.6);
                     renderer.draw_text(name, label_pos, font_id, dir_font_size, label_color);
                 }
@@ -1473,10 +1476,19 @@ impl ApplicationHandler for App {
                     let texture_id = renderer.load_texture(width, height, image.data());
                     self.logo_texture = Some(texture_id);
                     self.logo_dimensions = Some((width, height));
-                    eprintln!("Loaded logo: {}x{} from {}", width, height, logo_path.display());
+                    eprintln!(
+                        "Loaded logo: {}x{} from {}",
+                        width,
+                        height,
+                        logo_path.display()
+                    );
                 }
                 Err(e) => {
-                    eprintln!("Warning: Failed to load logo image '{}': {}", logo_path.display(), e);
+                    eprintln!(
+                        "Warning: Failed to load logo image '{}': {}",
+                        logo_path.display(),
+                        e
+                    );
                 }
             }
         }
@@ -1489,10 +1501,19 @@ impl ApplicationHandler for App {
                     let height = image.height();
                     let texture_id = renderer.load_texture(width, height, image.data());
                     self.background_texture = Some(texture_id);
-                    eprintln!("Loaded background: {}x{} from {}", width, height, bg_path.display());
+                    eprintln!(
+                        "Loaded background: {}x{} from {}",
+                        width,
+                        height,
+                        bg_path.display()
+                    );
                 }
                 Err(e) => {
-                    eprintln!("Warning: Failed to load background image '{}': {}", bg_path.display(), e);
+                    eprintln!(
+                        "Warning: Failed to load background image '{}': {}",
+                        bg_path.display(),
+                        e
+                    );
                 }
             }
         }
@@ -1736,9 +1757,11 @@ fn run_headless(args: &Args) -> Result<()> {
 
         let log_content = String::from_utf8_lossy(&git_output.stdout);
         let git_elapsed = git_start.elapsed();
-        eprintln!("[PERF] Git log execution: {:.2}s ({:.1} MB output)",
+        eprintln!(
+            "[PERF] Git log execution: {:.2}s ({:.1} MB output)",
             git_elapsed.as_secs_f64(),
-            git_output.stdout.len() as f64 / 1_000_000.0);
+            git_output.stdout.len() as f64 / 1_000_000.0
+        );
 
         let parse_start = Instant::now();
         let parser = GitParser::new();
@@ -1762,7 +1785,11 @@ fn run_headless(args: &Args) -> Result<()> {
     // Count total file changes
     let total_files: usize = commits.iter().map(|c| c.files.len()).sum();
     eprintln!("[PERF] Sorting: {:.3}s", sort_elapsed.as_secs_f64());
-    eprintln!("Loaded {} commits ({} file changes)", commits.len(), total_files);
+    eprintln!(
+        "Loaded {} commits ({} file changes)",
+        commits.len(),
+        total_files
+    );
 
     // Create renderer
     let mut renderer = SoftwareRenderer::new(args.width, args.height);
@@ -1775,11 +1802,20 @@ fn run_headless(args: &Args) -> Result<()> {
                 let width = image.width();
                 let height = image.height();
                 let texture_id = renderer.load_texture(width, height, image.data());
-                eprintln!("Loaded logo: {}x{} from {}", width, height, logo_path.display());
+                eprintln!(
+                    "Loaded logo: {}x{} from {}",
+                    width,
+                    height,
+                    logo_path.display()
+                );
                 (Some(texture_id), Some((width, height)))
             }
             Err(e) => {
-                eprintln!("Warning: Failed to load logo image '{}': {}", logo_path.display(), e);
+                eprintln!(
+                    "Warning: Failed to load logo image '{}': {}",
+                    logo_path.display(),
+                    e
+                );
                 (None, None)
             }
         }
@@ -1794,11 +1830,20 @@ fn run_headless(args: &Args) -> Result<()> {
                 let width = image.width();
                 let height = image.height();
                 let texture_id = renderer.load_texture(width, height, image.data());
-                eprintln!("Loaded background: {}x{} from {}", width, height, bg_path.display());
+                eprintln!(
+                    "Loaded background: {}x{} from {}",
+                    width,
+                    height,
+                    bg_path.display()
+                );
                 Some(texture_id)
             }
             Err(e) => {
-                eprintln!("Warning: Failed to load background image '{}': {}", bg_path.display(), e);
+                eprintln!(
+                    "Warning: Failed to load background image '{}': {}",
+                    bg_path.display(),
+                    e
+                );
                 None
             }
         }
@@ -2037,30 +2082,44 @@ fn run_headless(args: &Args) -> Result<()> {
     let total_elapsed = total_start.elapsed();
     let frame_count = exporter.frame_count();
 
-    eprintln!(
-        "\nExport complete: {frame_count} frames written"
-    );
+    eprintln!("\nExport complete: {frame_count} frames written");
 
     // Print performance summary
     eprintln!("\n=== PERFORMANCE SUMMARY ===");
     eprintln!("Total time:        {:.2}s", total_elapsed.as_secs_f64());
-    eprintln!("  Render loop:     {:.2}s ({} frames, {:.1}ms avg)",
+    eprintln!(
+        "  Render loop:     {:.2}s ({} frames, {:.1}ms avg)",
         loop_elapsed.as_secs_f64(),
         frame_count,
-        loop_elapsed.as_secs_f64() * 1000.0 / frame_count as f64);
+        loop_elapsed.as_secs_f64() * 1000.0 / frame_count as f64
+    );
     eprintln!("\nBreakdown per frame (avg):");
-    eprintln!("  Commit apply:    {:.2}ms ({} commits, {:.3}ms/commit)",
+    eprintln!(
+        "  Commit apply:    {:.2}ms ({} commits, {:.3}ms/commit)",
         total_commit_apply_time.as_secs_f64() * 1000.0 / frame_count as f64,
         commits_applied,
-        if commits_applied > 0 { total_commit_apply_time.as_secs_f64() * 1000.0 / commits_applied as f64 } else { 0.0 });
-    eprintln!("  Scene update:    {:.2}ms",
-        total_scene_update_time.as_secs_f64() * 1000.0 / frame_count as f64);
-    eprintln!("  Render:          {:.2}ms",
-        total_render_time.as_secs_f64() * 1000.0 / frame_count as f64);
-    eprintln!("  Effects:         {:.2}ms",
-        total_effects_time.as_secs_f64() * 1000.0 / frame_count as f64);
-    eprintln!("  Export:          {:.2}ms",
-        total_export_time.as_secs_f64() * 1000.0 / frame_count as f64);
+        if commits_applied > 0 {
+            total_commit_apply_time.as_secs_f64() * 1000.0 / commits_applied as f64
+        } else {
+            0.0
+        }
+    );
+    eprintln!(
+        "  Scene update:    {:.2}ms",
+        total_scene_update_time.as_secs_f64() * 1000.0 / frame_count as f64
+    );
+    eprintln!(
+        "  Render:          {:.2}ms",
+        total_render_time.as_secs_f64() * 1000.0 / frame_count as f64
+    );
+    eprintln!(
+        "  Effects:         {:.2}ms",
+        total_effects_time.as_secs_f64() * 1000.0 / frame_count as f64
+    );
+    eprintln!(
+        "  Export:          {:.2}ms",
+        total_export_time.as_secs_f64() * 1000.0 / frame_count as f64
+    );
 
     // Scene stats
     eprintln!("\nScene stats:");
@@ -2275,18 +2334,38 @@ fn render_frame_headless(
     // Print profiling info every 100 frames
     if profile {
         eprintln!("\n[RENDER PROFILE] Frame {frame_num}:");
-        eprintln!("  Culling:     {:.2}ms (vis: {} dirs, {} files, {} users)",
+        eprintln!(
+            "  Culling:     {:.2}ms (vis: {} dirs, {} files, {} users)",
             cull_time.as_secs_f64() * 1000.0,
-            visible_dir_ids.len(), visible_file_ids.len(), visible_user_ids.len());
-        eprintln!("  Directories: {:.2}ms ({} rendered)",
-            dirs_time.as_secs_f64() * 1000.0, dirs_rendered);
-        eprintln!("  Files:       {:.2}ms ({} rendered, {:.3}ms/file)",
-            files_time.as_secs_f64() * 1000.0, files_rendered,
-            if files_rendered > 0 { files_time.as_secs_f64() * 1000.0 / f64::from(files_rendered) } else { 0.0 });
-        eprintln!("  Actions:     {:.2}ms ({} rendered)",
-            actions_time.as_secs_f64() * 1000.0, actions_rendered);
-        eprintln!("  Users:       {:.2}ms ({} rendered)",
-            users_time.as_secs_f64() * 1000.0, users_rendered);
+            visible_dir_ids.len(),
+            visible_file_ids.len(),
+            visible_user_ids.len()
+        );
+        eprintln!(
+            "  Directories: {:.2}ms ({} rendered)",
+            dirs_time.as_secs_f64() * 1000.0,
+            dirs_rendered
+        );
+        eprintln!(
+            "  Files:       {:.2}ms ({} rendered, {:.3}ms/file)",
+            files_time.as_secs_f64() * 1000.0,
+            files_rendered,
+            if files_rendered > 0 {
+                files_time.as_secs_f64() * 1000.0 / f64::from(files_rendered)
+            } else {
+                0.0
+            }
+        );
+        eprintln!(
+            "  Actions:     {:.2}ms ({} rendered)",
+            actions_time.as_secs_f64() * 1000.0,
+            actions_rendered
+        );
+        eprintln!(
+            "  Users:       {:.2}ms ({} rendered)",
+            users_time.as_secs_f64() * 1000.0,
+            users_rendered
+        );
         eprintln!("  Zoom:        {camera_zoom:.4}");
     }
 
@@ -2540,7 +2619,11 @@ fn run_screenshot(args: &Args, screenshot_path: &std::path::Path) -> Result<()> 
                 (Some(texture_id), Some((width, height)))
             }
             Err(e) => {
-                eprintln!("Warning: Failed to load logo image '{}': {}", logo_path.display(), e);
+                eprintln!(
+                    "Warning: Failed to load logo image '{}': {}",
+                    logo_path.display(),
+                    e
+                );
                 (None, None)
             }
         }
@@ -2558,7 +2641,11 @@ fn run_screenshot(args: &Args, screenshot_path: &std::path::Path) -> Result<()> 
                 Some(texture_id)
             }
             Err(e) => {
-                eprintln!("Warning: Failed to load background image '{}': {}", bg_path.display(), e);
+                eprintln!(
+                    "Warning: Failed to load background image '{}': {}",
+                    bg_path.display(),
+                    e
+                );
                 None
             }
         }

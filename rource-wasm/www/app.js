@@ -9,6 +9,55 @@
 import init, { Rource } from './pkg/rource_wasm.js';
 
 // ============================================================
+// Configuration Constants
+// ============================================================
+
+const CONFIG = {
+    // Performance
+    PERF_UPDATE_INTERVAL: 10,        // Update perf metrics every N frames
+    TOOLTIP_DELAY_MS: 500,           // Delay before showing tooltip
+    SCROLL_INDICATOR_THRESHOLD: 50,  // Pixels from bottom to hide indicator
+    DEBOUNCE_DELAY_MS: 150,          // Debounce delay for resize events
+
+    // Limits
+    MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024,  // 10MB max file upload
+
+    // UI
+    TOOLTIP_WIDTH: 320,              // Tooltip width in pixels
+    TOOLTIP_HEIGHT: 150,             // Tooltip height in pixels
+
+    // GitHub API
+    GITHUB_CACHE_EXPIRY_MS: 24 * 60 * 60 * 1000,  // 24 hours
+    GITHUB_RATE_LIMIT_BUFFER: 5,     // Stop fetching when this many requests remain
+
+    // Animation
+    TOAST_DURATION_MS: 3000,         // Default toast duration
+    INIT_DELAY_MS: 500,              // Delay before auto-loading default data
+};
+
+// ============================================================
+// Utility Functions
+// ============================================================
+
+/**
+ * Creates a debounced version of a function.
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Milliseconds to wait
+ * @returns {Function} Debounced function
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// ============================================================
 // Application State
 // ============================================================
 
@@ -716,9 +765,8 @@ function resizeCanvas() {
     }
 }
 
-// Performance metrics update counter (update every N frames for performance)
+// Performance metrics update counter
 let perfUpdateCounter = 0;
-const PERF_UPDATE_INTERVAL = 10; // Update every 10 frames
 
 // Animation loop
 function animate(timestamp) {
@@ -728,7 +776,7 @@ function animate(timestamp) {
 
         // Update performance metrics periodically
         perfUpdateCounter++;
-        if (perfUpdateCounter >= PERF_UPDATE_INTERVAL) {
+        if (perfUpdateCounter >= CONFIG.PERF_UPDATE_INTERVAL) {
             updatePerfMetrics();
             perfUpdateCounter = 0;
         }
@@ -778,8 +826,15 @@ function updatePerfMetrics() {
         perfVisible.textContent = `${visibleFiles + visibleUsers + visibleDirs}`;
         perfDraws.textContent = drawCalls.toString();
         perfResolution.textContent = `${width}×${height}`;
-    } catch (e) {
-        // Silently ignore errors if methods don't exist
+    } catch {
+        // WASM methods may not be available during initialization or context loss
+        // Show placeholder values instead of crashing
+        perfFps.textContent = '--';
+        perfFps.className = 'perf-fps';
+        perfFrameTime.textContent = '--';
+        perfEntities.textContent = '--';
+        perfVisible.textContent = '--';
+        perfDraws.textContent = '--';
     }
 }
 
@@ -827,12 +882,15 @@ function updateUI() {
         timelineSlider.max = total - 1;
         timelineSlider.value = Math.min(current, total - 1);
         timelineSlider.disabled = false;
-        timelineInfo.textContent = `${Math.min(current + 1, total)} / ${total}`;
+        const displayCurrent = Math.min(current + 1, total);
+        timelineInfo.textContent = `${displayCurrent} / ${total}`;
+        timelineSlider.setAttribute('aria-valuetext', `${displayCurrent} of ${total} commits`);
     } else {
         timelineSlider.max = 0;
         timelineSlider.value = 0;
         timelineSlider.disabled = true;
         timelineInfo.textContent = '0 / 0';
+        timelineSlider.setAttribute('aria-valuetext', '0 of 0 commits');
     }
 }
 
@@ -1158,7 +1216,7 @@ function updateAuthorsLegend(content) {
 
         // Escape HTML in name
         const escapedName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return `<div class="author-item" role="listitem" title="Click to filter by ${escapedName} (${commits} commits)">
+        return `<div class="author-item" role="button" tabindex="0" aria-label="Highlight ${escapedName}, ${commits} commits" title="Click to highlight ${escapedName} (${commits} commits)">
             <span class="author-color" style="background: ${color}"></span>
             <span class="author-name">${escapedName}</span>
             <span class="author-commits">${commits}</span>
@@ -1254,7 +1312,6 @@ let rateLimitReset = 0;
 
 // Cache for fetched repos (uses localStorage)
 const CACHE_KEY = 'rource_github_cache';
-const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
 function getCache() {
     try {
@@ -1264,7 +1321,7 @@ function getCache() {
             // Clean expired entries
             const now = Date.now();
             for (const key of Object.keys(data)) {
-                if (data[key].timestamp < now - CACHE_EXPIRY) {
+                if (data[key].timestamp < now - CONFIG.GITHUB_CACHE_EXPIRY_MS) {
                     delete data[key];
                 }
             }
@@ -1349,7 +1406,7 @@ async function fetchGitHubRepo(repoUrl) {
 
     // Check rate limit before proceeding
     const remaining = await checkRateLimit();
-    if (remaining < 5) {
+    if (remaining < CONFIG.GITHUB_RATE_LIMIT_BUFFER) {
         throw new Error(`GitHub API rate limit low (${remaining} requests left). Resets in ${formatTimeUntilReset()}. Try a cached repo or wait.`);
     }
 
@@ -1509,13 +1566,6 @@ async function main() {
         // Initialize labels button state
         updateLabelsButton();
 
-        // Log technical info to console for verification
-        console.log(`%c Rource Technical Info `, 'background: #e94560; color: white; font-weight: bold;');
-        console.log(`  Renderer: ${rendererType}`);
-        console.log(`  Canvas: ${canvas.width}×${canvas.height}`);
-        console.log(`  WebGL2: ${isWebGL2}`);
-        console.log(`  Cached Rource Data: ${ROURCE_STATS.commits} commits, ${ROURCE_STATS.files} files, ${ROURCE_STATS.authors} authors`);
-
         // Start animation
         animationId = requestAnimationFrame(animate);
         loadingEl.classList.add('hidden');
@@ -1560,16 +1610,16 @@ async function main() {
                         // Fall back to cached Rource data
                         loadLogData(ROURCE_CACHED_DATA, 'custom');
                         lastLoadedRepo = 'rource';
-                        showToast('Loaded Rource project history (cached)', 'success', 3000);
+                        showToast('Loaded Rource project history (cached)', 'success', CONFIG.TOAST_DURATION_MS);
                     }
                 } else {
                     // Default: load cached Rource project
                     loadLogData(ROURCE_CACHED_DATA, 'custom');
                     lastLoadedRepo = 'rource';
-                    showToast('Loaded Rource project history (cached)', 'success', 3000);
+                    showToast('Loaded Rource project history (cached)', 'success', CONFIG.TOAST_DURATION_MS);
                 }
             }
-        }, 500);
+        }, CONFIG.INIT_DELAY_MS);
 
     } catch (e) {
         console.error('Initialization failed:', e);
@@ -1634,8 +1684,9 @@ btnLabels.addEventListener('click', () => {
 function updateLabelsButton() {
     if (rource) {
         const showLabels = rource.getShowLabels();
-        labelsText.textContent = showLabels ? 'Labels' : 'Labels Off';
         btnLabels.classList.toggle('active', showLabels);
+        btnLabels.setAttribute('aria-pressed', showLabels.toString());
+        btnLabels.title = showLabels ? 'Hide labels (L)' : 'Show labels (L)';
     }
 }
 
@@ -1806,13 +1857,12 @@ canvas.addEventListener('webglcontextlost', (event) => {
 });
 
 canvas.addEventListener('webglcontextrestored', () => {
-    console.log('WebGL context restored');
     isContextLost = false;
     contextLostOverlay.classList.add('hidden');
 
     // Resume animation loop
     if (rource && hasLoadedData) {
-        requestAnimationFrame(animationLoop);
+        requestAnimationFrame(animate);
     }
 });
 
@@ -1905,7 +1955,7 @@ btnRefreshRource.addEventListener('click', async () => {
     try {
         // Check rate limit first
         const remaining = await checkRateLimit();
-        if (remaining < 5) {
+        if (remaining < CONFIG.GITHUB_RATE_LIMIT_BUFFER) {
             throw new Error(`Rate limit low (${remaining}). Resets ${formatTimeUntilReset()}.`);
         }
 
@@ -2081,19 +2131,31 @@ fileDropZone.addEventListener('drop', (e) => {
 });
 
 function handleFileUpload(file) {
-    if (file.size > 10 * 1024 * 1024) {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+    if (file.size > MAX_FILE_SIZE) {
         showToast('File too large. Maximum size is 10MB.', 'error');
         return;
     }
 
-    fileNameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    // Show loading state
+    fileNameEl.textContent = `Loading ${file.name}...`;
     fileNameEl.classList.remove('hidden');
+    btnLoadFile.disabled = true;
 
     const reader = new FileReader();
+
     reader.onload = (e) => {
         uploadedFileContent = e.target.result;
+        fileNameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
         btnLoadFile.disabled = false;
     };
+
+    reader.onerror = () => {
+        fileNameEl.textContent = 'Failed to read file';
+        showToast('Failed to read file. Please try again.', 'error');
+    };
+
     reader.readAsText(file);
 }
 
@@ -2380,8 +2442,8 @@ function updateScrollIndicator() {
 // Update on scroll
 sidebarPanel.addEventListener('scroll', updateScrollIndicator, { passive: true });
 
-// Update on resize (content height may change)
-window.addEventListener('resize', updateScrollIndicator);
+// Update on resize (content height may change) - debounced to avoid excessive calls
+window.addEventListener('resize', debounce(updateScrollIndicator, CONFIG.DEBOUNCE_DELAY_MS));
 
 // Initial check after a short delay to ensure content is rendered
 setTimeout(updateScrollIndicator, 100);
@@ -2426,17 +2488,19 @@ function showTooltip(x, y, data) {
     tooltipAction.textContent = actionText[data.action] || data.action;
     tooltipAction.className = `commit-tooltip-action ${actionMap[data.action] || ''}`;
 
-    // Position tooltip
-    const tooltipRect = commitTooltip.getBoundingClientRect();
+    // Position tooltip near cursor, keeping it on screen
+    const tooltipWidth = CONFIG.TOOLTIP_WIDTH;
+    const tooltipHeight = CONFIG.TOOLTIP_HEIGHT;
     let left = x + 15;
     let top = y + 15;
 
-    // Keep tooltip on screen
-    if (left + 320 > window.innerWidth) {
-        left = x - 320 - 15;
+    // Flip to left side if too close to right edge
+    if (left + tooltipWidth > window.innerWidth) {
+        left = Math.max(10, x - tooltipWidth - 15);
     }
-    if (top + 150 > window.innerHeight) {
-        top = y - 150 - 15;
+    // Flip above cursor if too close to bottom
+    if (top + tooltipHeight > window.innerHeight) {
+        top = Math.max(10, y - tooltipHeight - 15);
     }
 
     commitTooltip.style.left = `${Math.max(10, left)}px`;
@@ -2448,18 +2512,17 @@ function hideTooltip() {
     commitTooltip.classList.remove('visible');
 }
 
-// Track mouse position for tooltip
+// Show current commit info on canvas hover
+// Note: Shows timeline position info, not hit-tested hover targets
 canvas.addEventListener('mousemove', (e) => {
     if (!rource || !hasLoadedData || tooltipData.length === 0) return;
 
-    // Get current commit index to show relevant tooltip data
     const currentCommit = rource.currentCommit();
     if (currentCommit >= 0 && currentCommit < tooltipData.length) {
         clearTimeout(tooltipTimeout);
         tooltipTimeout = setTimeout(() => {
-            // Show tooltip for current commit after hover delay
             showTooltip(e.clientX, e.clientY, tooltipData[Math.min(currentCommit, tooltipData.length - 1)]);
-        }, 500);
+        }, CONFIG.TOOLTIP_DELAY_MS);
     }
 });
 
@@ -2474,25 +2537,27 @@ canvas.addEventListener('mousedown', () => {
 });
 
 // =====================================================================
-// AUTHOR FILTER
+// AUTHOR HIGHLIGHT
 // =====================================================================
+// Highlights the selected author in the legend panel.
+// Note: This is a visual highlight only - full visualization filtering
+// would require additional WASM implementation.
+let authorHighlightToastShown = false;
+
 function setAuthorFilter(author) {
     filteredAuthor = author;
     updateAuthorFilterUI();
 
-    // If we have rource instance, we could filter visualization
-    // For now, just update UI to show which author is selected
-    if (rource && typeof rource.setAuthorFilter === 'function') {
-        rource.setAuthorFilter(author);
+    // Show explanatory toast on first use
+    if (!authorHighlightToastShown) {
+        showToast(`Highlighting ${author}'s contributions`, 'success', 2000);
+        authorHighlightToastShown = true;
     }
 }
 
 function clearAuthorFilter() {
     filteredAuthor = null;
     updateAuthorFilterUI();
-    if (rource && typeof rource.clearAuthorFilter === 'function') {
-        rource.clearAuthorFilter();
-    }
 }
 
 function updateAuthorFilterUI() {
@@ -2517,17 +2582,33 @@ function updateAuthorFilterUI() {
     });
 }
 
+// Handle author item selection (click or keyboard)
+function handleAuthorItemSelect(authorItem) {
+    const authorName = authorItem.querySelector('.author-name')?.textContent;
+    if (authorName) {
+        if (filteredAuthor === authorName) {
+            clearAuthorFilter();
+        } else {
+            setAuthorFilter(authorName);
+        }
+    }
+}
+
 // Add click handler to author items (delegate to parent)
 authorsItems.addEventListener('click', (e) => {
     const authorItem = e.target.closest('.author-item');
     if (authorItem) {
-        const authorName = authorItem.querySelector('.author-name')?.textContent;
-        if (authorName) {
-            if (filteredAuthor === authorName) {
-                clearAuthorFilter();
-            } else {
-                setAuthorFilter(authorName);
-            }
+        handleAuthorItemSelect(authorItem);
+    }
+});
+
+// Add keyboard handler for accessibility (Enter/Space)
+authorsItems.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        const authorItem = e.target.closest('.author-item');
+        if (authorItem) {
+            e.preventDefault();
+            handleAuthorItemSelect(authorItem);
         }
     }
 });
@@ -2546,17 +2627,6 @@ function getTouchCenter(touches) {
         y: (touches[0].clientY + touches[1].clientY) / 2
     };
 }
-
-// Override the existing touchmove handler with enhanced version
-canvas.removeEventListener('touchmove', null); // Note: This won't actually remove it
-
-// We'll modify the touchmove behavior in-place by updating touchState usage
-// The existing handler already handles pinch-to-zoom well
-
-// =====================================================================
-// PERFORMANCE PANEL TOGGLE ENHANCEMENT
-// =====================================================================
-// The existing perf panel toggle is handled, but let's add keyboard shortcut info
 
 // Start
 main();

@@ -67,7 +67,8 @@ fn main() {
     let avg_author_len = 15;
     let avg_path_len = 45;
 
-    let estimated_std_total = compact_stats.commit_count * (commit_struct_size + avg_hash_len + avg_author_len)
+    let estimated_std_total = compact_stats.commit_count
+        * (commit_struct_size + avg_hash_len + avg_author_len)
         + compact_stats.file_change_count * (file_struct_size + avg_path_len);
 
     // Print comparison
@@ -94,7 +95,10 @@ fn main() {
 
     // Deduplication stats
     println!("=== Deduplication Stats ===");
-    println!("Unique authors: {} (vs {} commits)", compact_stats.unique_authors, compact_stats.commit_count);
+    println!(
+        "Unique authors: {} (vs {} commits)",
+        compact_stats.unique_authors, compact_stats.commit_count
+    );
     println!(
         "Unique paths: {} ({} segments) vs {} file changes",
         compact_stats.unique_paths,
@@ -118,7 +122,10 @@ fn count_commits(source: &LogSource) -> usize {
         LogSource::File(path) => {
             let file = File::open(path).expect("Failed to open log file");
             let reader = BufReader::new(file);
-            reader.lines().filter(|l| l.as_ref().map(|s| s.contains('|')).unwrap_or(false)).count()
+            reader
+                .lines()
+                .filter(|l| l.as_ref().map(|s| s.contains('|')).unwrap_or(false))
+                .count()
         }
         LogSource::Repo(path) => {
             let output = Command::new("git")
@@ -164,8 +171,7 @@ fn benchmark_standard_parsing(source: &LogSource) -> (Vec<Commit>, std::time::Du
     // Read entire log into memory
     let mut log_content = String::new();
     let mut reader = get_git_log(source);
-    std::io::Read::read_to_string(&mut reader, &mut log_content)
-        .expect("Failed to read log");
+    std::io::Read::read_to_string(&mut reader, &mut log_content).expect("Failed to read log");
 
     // Parse with standard parser
     let parser = GitParser::new();

@@ -826,7 +826,10 @@ impl Settings {
             "auto_skip_seconds = {:.1}\n",
             self.playback.auto_skip_seconds
         ));
-        config.push_str(&format!("loop_playback = {}\n", self.playback.loop_playback));
+        config.push_str(&format!(
+            "loop_playback = {}\n",
+            self.playback.loop_playback
+        ));
         config.push_str(&format!("start_paused = {}\n", self.playback.start_paused));
         config.push_str(&format!("time_scale = {:.1}\n", self.playback.time_scale));
         config.push_str(&format!("realtime = {}\n", self.playback.realtime));
@@ -846,9 +849,15 @@ impl Settings {
             self.visibility.hide_usernames
         ));
         config.push_str(&format!("hide_date = {}\n", self.visibility.hide_date));
-        config.push_str(&format!("hide_progress = {}\n", self.visibility.hide_progress));
+        config.push_str(&format!(
+            "hide_progress = {}\n",
+            self.visibility.hide_progress
+        ));
         config.push_str(&format!("hide_legend = {}\n", self.visibility.hide_legend));
-        config.push_str(&format!("hide_dirnames = {}\n", self.visibility.hide_dirnames));
+        config.push_str(&format!(
+            "hide_dirnames = {}\n",
+            self.visibility.hide_dirnames
+        ));
         config.push_str(&format!("hide_root = {}\n", self.visibility.hide_root));
         config.push_str(&format!("hide_tree = {}\n", self.visibility.hide_tree));
         config.push_str(&format!("hide_bloom = {}\n", self.visibility.hide_bloom));
@@ -858,10 +867,16 @@ impl Settings {
 
         // Camera settings
         config.push_str("# Camera settings\n");
-        config.push_str(&format!("camera_mode = \"{}\"\n", self.camera.mode.as_str()));
+        config.push_str(&format!(
+            "camera_mode = \"{}\"\n",
+            self.camera.mode.as_str()
+        ));
         config.push_str(&format!("min_zoom = {:.2}\n", self.camera.min_zoom));
         config.push_str(&format!("max_zoom = {:.2}\n", self.camera.max_zoom));
-        config.push_str(&format!("camera_smoothness = {:.2}\n", self.camera.smoothness));
+        config.push_str(&format!(
+            "camera_smoothness = {:.2}\n",
+            self.camera.smoothness
+        ));
         config.push_str(&format!("camera_padding = {:.1}\n", self.camera.padding));
         if let Some(ref user) = self.camera.follow_user {
             config.push_str(&format!("follow_user = \"{}\"\n", user));
@@ -887,10 +902,7 @@ impl Settings {
 
         // Directory settings
         config.push_str("# Directory settings\n");
-        config.push_str(&format!(
-            "dir_name_depth = {}\n",
-            self.directory.name_depth
-        ));
+        config.push_str(&format!("dir_name_depth = {}\n", self.directory.name_depth));
         config.push_str(&format!(
             "dir_name_position = {:.2}\n",
             self.directory.name_position
@@ -917,8 +929,14 @@ impl Settings {
         config.push_str("# Limit settings\n");
         config.push_str(&format!("max_files = {}\n", self.limits.max_files));
         config.push_str(&format!("max_users = {}\n", self.limits.max_users));
-        config.push_str(&format!("file_idle_time = {:.1}\n", self.limits.file_idle_time));
-        config.push_str(&format!("user_idle_time = {:.1}\n", self.limits.user_idle_time));
+        config.push_str(&format!(
+            "file_idle_time = {:.1}\n",
+            self.limits.file_idle_time
+        ));
+        config.push_str(&format!(
+            "user_idle_time = {:.1}\n",
+            self.limits.user_idle_time
+        ));
         config.push('\n');
 
         // Export settings
