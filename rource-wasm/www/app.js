@@ -134,6 +134,7 @@ function applyPanelPreferences() {
 
 /**
  * Setup panel toggle handlers with preference saving
+ * Consolidated handler for all collapsible sidebar panels
  */
 function setupPanelToggleHandlers() {
     // Make collapsible panels save their state
@@ -145,17 +146,22 @@ function setupPanelToggleHandlers() {
 
     panelMappings.forEach(({ id, pref }) => {
         const panel = document.getElementById(id);
-        if (panel) {
-            const header = panel.querySelector('.panel-header, .tech-info-header');
-            if (header) {
-                // Replace inline onclick with proper handler
-                header.onclick = () => {
-                    panel.classList.toggle('collapsed');
-                    const isCollapsed = panel.classList.contains('collapsed');
-                    updatePreference(pref, isCollapsed);
-                };
-            }
-        }
+        if (!panel) return;
+
+        const header = panel.querySelector('.panel-header, .tech-info-header');
+        if (!header) return;
+
+        // Use addEventListener for proper event handling
+        header.addEventListener('click', () => {
+            panel.classList.toggle('collapsed');
+            const isCollapsed = panel.classList.contains('collapsed');
+
+            // Update aria-expanded for accessibility
+            header.setAttribute('aria-expanded', (!isCollapsed).toString());
+
+            // Save preference
+            updatePreference(pref, isCollapsed);
+        });
     });
 }
 
@@ -1191,26 +1197,9 @@ document.addEventListener('keydown', (e) => {
 // =====================================================================
 // COLLAPSIBLE SIDEBAR PANELS
 // =====================================================================
-// Event handlers for collapsible panels in the sidebar
-// (Keyboard Shortcuts, Quick Guide, Technical Specifications)
-
-// Generic function to toggle a collapsible panel
-function setupCollapsiblePanel(toggleId, panelId) {
-    const toggle = document.getElementById(toggleId);
-    const panel = document.getElementById(panelId);
-    if (!toggle || !panel) return;
-
-    toggle.addEventListener('click', () => {
-        panel.classList.toggle('collapsed');
-        const isExpanded = !panel.classList.contains('collapsed');
-        toggle.setAttribute('aria-expanded', isExpanded.toString());
-    });
-}
-
-// Setup the three collapsible panels
-setupCollapsiblePanel('panel-shortcuts-toggle', 'panel-shortcuts');
-setupCollapsiblePanel('panel-guide-toggle', 'panel-guide');
-setupCollapsiblePanel('tech-info-toggle', 'tech-info-panel');
+// Event handlers for collapsible panels are set up in setupPanelToggleHandlers()
+// which is called after WASM initialization to ensure proper preference saving.
+// The handlers are consolidated there to avoid duplicate event listeners.
 
 // GitHub API rate limit tracking
 let rateLimitRemaining = 60;
@@ -1963,6 +1952,13 @@ btnFetchGithub.addEventListener('click', async () => {
         await fetchGitHubRepo(url);
     } catch (e) {
         console.error('Fetch error:', e);
+        // Show error to user (fetchGitHubRepo already updates fetchStatus for API errors,
+        // but URL parsing errors need explicit handling)
+        if (fetchStatus && !fetchStatus.classList.contains('error')) {
+            fetchStatus.className = 'fetch-status visible error';
+            fetchStatusText.textContent = e.message || 'An error occurred while fetching the repository.';
+        }
+        showToast(e.message || 'Failed to fetch repository.', 'error');
     }
     btnFetchGithub.disabled = false;
 });
