@@ -67,7 +67,13 @@ jobs:
       - name: Optimize WASM
         run: |
           cd rource-wasm/www/pkg
-          wasm-opt -Oz -o rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
+          # Enable modern WASM features that Rust emits by default
+          # These are well-supported in all modern browsers (Chrome 75+, Firefox 79+, Safari 14.1+)
+          wasm-opt -Oz \
+            --enable-bulk-memory \
+            --enable-sign-ext \
+            --enable-nontrapping-float-to-int \
+            -o rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
           mv rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
           echo "=== WASM sizes ==="
           ls -lh *.wasm
