@@ -4,6 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rource - Software Version Control Visualization</title>
+    <meta name="description" content="Visualize your git repository history as an animated tree. Watch your codebase grow as developers collaborate. Runs in your browser with WebAssembly.">
+    <meta name="keywords" content="git, visualization, gource, repository, version control, wasm, webassembly">
+    <meta name="author" content="Rource Contributors">
+
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tomtom215.github.io/rource/">
+    <meta property="og:title" content="Rource - Software Version Control Visualization">
+    <meta property="og:description" content="Visualize your git repository history as an animated tree. Watch your codebase grow as developers collaborate.">
+    <meta property="og:image" content="https://tomtom215.github.io/rource/og-image.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Rource - Software Version Control Visualization">
+    <meta name="twitter:description" content="Visualize your git repository history as an animated tree. Runs entirely in your browser.">
+
+    <!-- Favicon (inline SVG as data URI) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23e94560'/><circle cx='50' cy='30' r='8' fill='white'/><circle cx='30' cy='60' r='6' fill='white'/><circle cx='70' cy='55' r='6' fill='white'/><circle cx='50' cy='75' r='5' fill='white'/><line x1='50' y1='38' x2='50' y2='70' stroke='white' stroke-width='2'/><line x1='50' y1='50' x2='32' y2='58' stroke='white' stroke-width='2'/><line x1='50' y1='50' x2='68' y2='53' stroke='white' stroke-width='2'/></svg>">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#1a1a2e">
+
     <style>
         * {
             margin: 0;
@@ -11,74 +33,260 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f0f23;
+            --accent: #e94560;
+            --accent-hover: #ff6b6b;
+            --accent-secondary: #533483;
+            --text-primary: #eee;
+            --text-secondary: #888;
+            --border: #333;
+            --success: #4ade80;
+            --error: #f87171;
+            --warning: #fbbf24;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            line-height: 1.5;
         }
 
-        header {
-            background: #16213e;
-            padding: 1rem 2rem;
+        /* Focus styles for accessibility */
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        button:focus-visible, a:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* Skip to content link */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            z-index: 1000;
+            text-decoration: none;
+            border-radius: 0 0 4px 0;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 3rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent) 0%, #ff9a9e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .tagline {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-features {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-feature {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
         }
 
-        header h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #e94560;
+        .hero-feature .icon {
+            width: 20px;
+            height: 20px;
+            fill: var(--accent);
         }
 
-        .controls {
+        .hero-cta {
             display: flex;
+            justify-content: center;
             gap: 1rem;
-            align-items: center;
+            flex-wrap: wrap;
         }
 
-        button {
-            background: #e94560;
+        .btn {
+            background: var(--accent);
             color: white;
             border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 0.9rem;
-            transition: background 0.2s;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        button:hover {
-            background: #ff6b6b;
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
         }
 
-        button:disabled {
+        .btn:disabled {
             background: #555;
             cursor: not-allowed;
+            transform: none;
         }
 
         .btn-secondary {
-            background: #533483;
+            background: var(--accent-secondary);
         }
 
         .btn-secondary:hover {
             background: #6c4298;
         }
 
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-secondary);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .renderer-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            color: var(--text-secondary);
+        }
+
+        .renderer-badge.webgl2 {
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header-links {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .header-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.2s;
+        }
+
+        .header-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .keyboard-shortcuts {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: none;
+        }
+
+        @media (min-width: 900px) {
+            .keyboard-shortcuts {
+                display: block;
+            }
+        }
+
+        .keyboard-shortcuts kbd {
+            background: var(--bg-tertiary);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            margin-right: 0.25rem;
+            font-family: inherit;
+        }
+
+        /* Main content */
         main {
-            flex: 1;
             display: flex;
             flex-direction: column;
             padding: 1rem;
             gap: 1rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
         }
 
+        /* Canvas container */
         #canvas-container {
             flex: 1;
+            min-height: 400px;
             background: #000;
             border-radius: 8px;
             overflow: hidden;
@@ -89,32 +297,46 @@
             width: 100%;
             height: 100%;
             display: block;
-            touch-action: none; /* Prevent default touch behaviors */
-            -webkit-touch-callout: none; /* Disable callout on iOS */
-            -webkit-user-select: none; /* Disable text selection */
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
             user-select: none;
         }
 
-        .info-panel {
-            background: #16213e;
-            border-radius: 8px;
-            padding: 1rem;
-            display: flex;
-            gap: 2rem;
-            flex-wrap: wrap;
+        /* Empty state */
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-secondary);
+            pointer-events: none;
         }
 
+        .empty-state.hidden {
+            display: none;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        /* Legend panel */
         .legend-panel {
             position: absolute;
             top: 10px;
             right: 10px;
-            background: rgba(22, 33, 62, 0.9);
+            background: rgba(22, 33, 62, 0.95);
             border-radius: 8px;
             padding: 0.75rem;
             max-width: 200px;
             max-height: 300px;
             overflow-y: auto;
             z-index: 100;
+            backdrop-filter: blur(4px);
         }
 
         .legend-panel.collapsed {
@@ -132,13 +354,18 @@
 
         .legend-header h4 {
             font-size: 0.8rem;
-            color: #e94560;
+            color: var(--accent);
             margin: 0;
         }
 
         .legend-toggle {
             font-size: 0.8rem;
-            color: #888;
+            color: var(--text-secondary);
+            transition: transform 0.2s;
+        }
+
+        .legend-panel.collapsed .legend-toggle {
+            transform: rotate(180deg);
         }
 
         .legend-items {
@@ -166,9 +393,19 @@
         }
 
         .legend-count {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 0.65rem;
             margin-left: auto;
+        }
+
+        /* Info panel */
+        .info-panel {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
         }
 
         .info-item {
@@ -178,9 +415,10 @@
         }
 
         .info-label {
-            font-size: 0.75rem;
-            color: #888;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .info-value {
@@ -188,63 +426,13 @@
             font-weight: 500;
         }
 
-        .input-section {
-            background: #16213e;
-            border-radius: 8px;
-            padding: 1rem;
-        }
+        .info-value.status-playing { color: var(--success); }
+        .info-value.status-paused { color: var(--warning); }
+        .info-value.status-error { color: var(--error); }
 
-        .input-section h3 {
-            margin-bottom: 0.5rem;
-            font-size: 1rem;
-            color: #e94560;
-        }
-
-        textarea {
-            width: 100%;
-            height: 150px;
-            background: #0f0f23;
-            border: 1px solid #333;
-            color: #eee;
-            padding: 0.75rem;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.85rem;
-            resize: vertical;
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: #e94560;
-        }
-
-        .help {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 0.5rem;
-        }
-
-        .help code {
-            background: #0f0f23;
-            padding: 0.1rem 0.3rem;
-            border-radius: 2px;
-        }
-
-        .keyboard-shortcuts {
-            font-size: 0.75rem;
-            color: #888;
-        }
-
-        .keyboard-shortcuts kbd {
-            background: #333;
-            padding: 0.15rem 0.4rem;
-            border-radius: 3px;
-            margin-right: 0.25rem;
-        }
-
-        /* Timeline slider */
+        /* Timeline */
         .timeline-container {
-            background: #16213e;
+            background: var(--bg-secondary);
             border-radius: 8px;
             padding: 1rem;
             display: flex;
@@ -254,7 +442,7 @@
 
         .timeline-container label {
             font-size: 0.85rem;
-            color: #888;
+            color: var(--text-secondary);
             white-space: nowrap;
         }
 
@@ -263,7 +451,7 @@
             -webkit-appearance: none;
             appearance: none;
             height: 8px;
-            background: #0f0f23;
+            background: var(--bg-tertiary);
             border-radius: 4px;
             outline: none;
         }
@@ -273,96 +461,83 @@
             appearance: none;
             width: 18px;
             height: 18px;
-            background: #e94560;
+            background: var(--accent);
             border-radius: 50%;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s, transform 0.2s;
         }
 
         .timeline-slider::-webkit-slider-thumb:hover {
-            background: #ff6b6b;
+            background: var(--accent-hover);
+            transform: scale(1.1);
         }
 
         .timeline-slider::-moz-range-thumb {
             width: 18px;
             height: 18px;
-            background: #e94560;
+            background: var(--accent);
             border-radius: 50%;
             cursor: pointer;
             border: none;
         }
 
+        .timeline-slider:disabled {
+            opacity: 0.5;
+        }
+
         .timeline-info {
             font-size: 0.85rem;
-            color: #eee;
-            min-width: 100px;
+            color: var(--text-primary);
+            min-width: 80px;
             text-align: right;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* File upload section */
-        .file-upload-area {
-            border: 2px dashed #333;
+        /* Input section */
+        .input-section {
+            background: var(--bg-secondary);
             border-radius: 8px;
-            padding: 2rem;
-            text-align: center;
-            margin-bottom: 1rem;
-            cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
+            padding: 1rem;
         }
 
-        .file-upload-area:hover {
-            border-color: #e94560;
-            background: rgba(233, 69, 96, 0.1);
-        }
-
-        .file-upload-area.dragover {
-            border-color: #e94560;
-            background: rgba(233, 69, 96, 0.2);
-        }
-
-        .file-upload-area input[type="file"] {
-            display: none;
-        }
-
-        .file-upload-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .file-upload-text {
-            font-size: 0.9rem;
-            color: #888;
-        }
-
-        .file-upload-text strong {
-            color: #e94560;
+        .input-section h3 {
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .tab-buttons {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.25rem;
             margin-bottom: 1rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .tab-btn {
             padding: 0.5rem 1rem;
-            background: #0f0f23;
-            border: 1px solid #333;
-            color: #888;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
             cursor: pointer;
             border-radius: 4px;
             transition: all 0.2s;
+            white-space: nowrap;
+            font-size: 0.875rem;
         }
 
         .tab-btn.active {
-            background: #e94560;
+            background: var(--accent);
             color: white;
-            border-color: #e94560;
+            border-color: var(--accent);
         }
 
         .tab-btn:hover:not(.active) {
-            border-color: #e94560;
-            color: #eee;
+            border-color: var(--accent);
+            color: var(--text-primary);
         }
 
         .tab-content {
@@ -373,63 +548,534 @@
             display: block;
         }
 
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.8rem;
+            resize: vertical;
+            margin-bottom: 0.75rem;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .help {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            line-height: 1.6;
+        }
+
+        .help code {
+            background: var(--bg-tertiary);
+            padding: 0.1rem 0.4rem;
+            border-radius: 2px;
+            font-size: 0.75rem;
+        }
+
+        /* File upload */
+        .file-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .file-upload-area:hover,
+        .file-upload-area:focus-within {
+            border-color: var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(233, 69, 96, 0.2);
+        }
+
+        .file-upload-area input[type="file"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        .file-upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-upload-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .file-upload-text strong {
+            color: var(--accent);
+        }
+
+        .file-name {
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Command box */
+        .command-box {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.8rem;
+            overflow-x: auto;
+            margin-bottom: 0.75rem;
+            position: relative;
+        }
+
+        .command-box code {
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Loading overlay */
         #loading {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(26, 26, 46, 0.95);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            z-index: 1000;
         }
 
         #loading.hidden {
             display: none;
         }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--bg-secondary);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+        }
+
+        .loading-subtext {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            opacity: 0.7;
+        }
+
+        /* Error toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            max-width: 90%;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .toast.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--error);
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast-message {
+            flex: 1;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem;
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+
+        /* Help modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h2 {
+            font-size: 1.25rem;
+            color: var(--accent);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.5rem;
+            line-height: 1;
+            padding: 0.25rem;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-section h3 {
+            font-size: 0.9rem;
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .shortcut-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+
+        .shortcut-item kbd {
+            background: var(--bg-primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-secondary);
+            padding: 1rem 2rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 2rem 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero .tagline {
+                font-size: 1rem;
+            }
+
+            .hero-features {
+                gap: 1rem;
+            }
+
+            .hero-feature {
+                font-size: 0.8rem;
+            }
+
+            header {
+                padding: 0.75rem 1rem;
+            }
+
+            .controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            main {
+                padding: 0.75rem;
+            }
+
+            #canvas-container {
+                min-height: 300px;
+            }
+
+            .info-panel {
+                gap: 1rem;
+            }
+
+            .timeline-container {
+                flex-wrap: wrap;
+            }
+
+            .timeline-slider {
+                order: 3;
+                width: 100%;
+            }
+
+            textarea {
+                height: 100px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 1.75rem;
+            }
+
+            .btn {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .tab-btn {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Utility classes */
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
-    <div id="loading">Loading WASM module...</div>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <header>
+    <div id="loading" role="status" aria-live="polite">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <div class="loading-text">Loading Rource...</div>
+        <div class="loading-subtext">Initializing WebAssembly module</div>
+    </div>
+
+    <!-- Hero section (shown before visualization loaded) -->
+    <section id="hero" class="hero">
         <h1>Rource</h1>
+        <p class="tagline">
+            Visualize your Git repository history as an animated tree.
+            Watch your codebase grow as developers collaborate over time.
+        </p>
+        <div class="hero-features">
+            <span class="hero-feature">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                Runs in your browser
+            </span>
+            <span class="hero-feature">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.94 2.55 2 6.81 2 12c0 3.76 2.09 7.07 5.22 8.78L6 22h5v-5l-2.28 2.28C6.92 18 5 15.21 5 12c0-4.08 3.05-7.44 7-7.93V2.05z"/>
+                </svg>
+                ~76KB gzipped
+            </span>
+            <span class="hero-feature">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                </svg>
+                No server needed
+            </span>
+        </div>
+        <div class="hero-cta">
+            <button id="btn-try-demo" class="btn" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                Try Demo
+            </button>
+            <a href="https://github.com/tomtom215/rource" class="btn btn-outline" target="_blank" rel="noopener noreferrer">
+                View on GitHub
+            </a>
+        </div>
+    </section>
+
+    <header id="app-header" class="hidden">
+        <div class="header-brand">
+            <h1>Rource</h1>
+            <span id="renderer-badge" class="renderer-badge" title="Rendering backend"></span>
+        </div>
         <div class="controls">
-            <button id="btn-play" disabled>Play</button>
-            <button id="btn-screenshot" class="btn-secondary" disabled>Screenshot</button>
-            <button id="btn-reset" class="btn-secondary" disabled>Reset Camera</button>
-            <span class="keyboard-shortcuts">
-                <kbd>Space</kbd> Play/Pause
+            <button id="btn-play" class="btn btn-sm" disabled aria-label="Play or pause visualization">
+                <svg id="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <span id="play-text">Play</span>
+            </button>
+            <button id="btn-screenshot" class="btn btn-sm btn-secondary" disabled aria-label="Take screenshot">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                </svg>
+                Screenshot
+            </button>
+            <button id="btn-reset" class="btn btn-sm btn-secondary" disabled aria-label="Reset camera position">
+                Reset Camera
+            </button>
+            <button id="btn-help" class="btn btn-sm btn-secondary" aria-label="Show help">?</button>
+        </div>
+        <div class="header-links">
+            <span class="keyboard-shortcuts" aria-label="Keyboard shortcuts hint">
+                <kbd>Space</kbd> Play
                 <kbd>+/-</kbd> Zoom
-                <kbd>&lt;/&gt;</kbd> Step
                 <kbd>S</kbd> Screenshot
             </span>
+            <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub">GitHub</a>
         </div>
     </header>
 
-    <main>
+    <main id="main-content">
         <div id="canvas-container">
-            <canvas id="canvas" width="1280" height="720"></canvas>
-            <div id="legend-panel" class="legend-panel collapsed">
-                <div class="legend-header" id="legend-toggle">
+            <canvas id="canvas" width="1280" height="720" aria-label="Rource visualization canvas"></canvas>
+            <div id="empty-state" class="empty-state">
+                <h3>No data loaded</h3>
+                <p>Load a log file or try the demo to get started</p>
+            </div>
+            <div id="legend-panel" class="legend-panel collapsed" role="complementary" aria-label="File type legend">
+                <div class="legend-header" id="legend-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="legend-items">
                     <h4>File Types</h4>
-                    <span class="legend-toggle">▼</span>
+                    <span class="legend-toggle" aria-hidden="true">▼</span>
                 </div>
-                <div class="legend-items" id="legend-items">
+                <div class="legend-items" id="legend-items" role="list">
                     <!-- Populated dynamically -->
                 </div>
             </div>
         </div>
 
-        <div class="timeline-container">
-            <label>Timeline:</label>
-            <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled>
-            <span class="timeline-info" id="timeline-info">0 / 0</span>
+        <div class="timeline-container" role="group" aria-label="Timeline controls">
+            <label for="timeline-slider">Timeline:</label>
+            <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+            <span class="timeline-info" id="timeline-info" aria-live="polite">0 / 0</span>
         </div>
 
-        <div class="info-panel">
+        <div class="info-panel" role="status" aria-label="Visualization status">
             <div class="info-item">
                 <span class="info-label">Status</span>
                 <span class="info-value" id="status">Loading...</span>
@@ -448,97 +1094,271 @@
             </div>
         </div>
 
-        <div class="input-section">
-            <h3>Load Log Data</h3>
+        <div class="input-section" role="region" aria-label="Load data">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                </svg>
+                Load Log Data
+            </h3>
 
-            <div class="tab-buttons">
-                <button class="tab-btn active" data-tab="paste">Paste Text</button>
-                <button class="tab-btn" data-tab="upload">Upload File</button>
-                <button class="tab-btn" data-tab="git-command">Git Command</button>
+            <div class="tab-buttons" role="tablist" aria-label="Input methods">
+                <button class="tab-btn active" data-tab="paste" role="tab" aria-selected="true" aria-controls="tab-paste" id="tab-btn-paste">Paste Text</button>
+                <button class="tab-btn" data-tab="upload" role="tab" aria-selected="false" aria-controls="tab-upload" id="tab-btn-upload">Upload File</button>
+                <button class="tab-btn" data-tab="git-command" role="tab" aria-selected="false" aria-controls="tab-git-command" id="tab-btn-git-command">Git Command</button>
             </div>
 
-            <div id="tab-paste" class="tab-content active">
-                <textarea id="log-input" placeholder="Paste your log data here...">1704067200|Alice|A|src/main.rs
-1704067300|Alice|A|src/lib.rs
-1704067400|Bob|M|src/main.rs
-1704067500|Alice|A|src/utils/mod.rs
-1704067600|Bob|A|tests/test_main.rs
-1704067700|Charlie|M|src/lib.rs
-1704067800|Alice|A|docs/README.md
-1704067900|Bob|D|src/utils/mod.rs
-1704068000|Charlie|A|src/utils/helpers.rs
-1704068100|Alice|M|src/main.rs</textarea>
-                <button id="btn-load" disabled>Load Log</button>
+            <div id="tab-paste" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-paste">
+                <label for="log-input" class="visually-hidden">Log data in custom format</label>
+                <textarea id="log-input" placeholder="Paste your log data here..."></textarea>
+                <button id="btn-load" class="btn btn-sm" disabled>Load Log</button>
                 <p class="help">
                     Format: <code>timestamp|author|action|path</code> (one per line)<br>
-                    Actions: A=Add, M=Modify, D=Delete
+                    Actions: <code>A</code>=Add, <code>M</code>=Modify, <code>D</code>=Delete
                 </p>
             </div>
 
-            <div id="tab-upload" class="tab-content">
-                <div class="file-upload-area" id="file-drop-zone">
-                    <input type="file" id="file-input" accept=".txt,.log,.csv">
-                    <div class="file-upload-icon">&#128194;</div>
+            <div id="tab-upload" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-upload" hidden>
+                <div class="file-upload-area" id="file-drop-zone" role="button" tabindex="0" aria-label="Click to upload or drag and drop a file">
+                    <input type="file" id="file-input" accept=".txt,.log,.csv" aria-describedby="upload-help">
+                    <div class="file-upload-icon" aria-hidden="true">&#128194;</div>
                     <div class="file-upload-text">
                         <strong>Click to upload</strong> or drag and drop<br>
                         Supports .txt, .log files
                     </div>
                 </div>
-                <div id="file-name" style="margin-bottom: 0.5rem; color: #888; font-size: 0.85rem;"></div>
-                <select id="file-format" style="width: 100%; padding: 0.5rem; background: #0f0f23; border: 1px solid #333; color: #eee; border-radius: 4px; margin-bottom: 0.5rem;">
+                <div id="file-name" class="file-name" aria-live="polite"></div>
+                <label for="file-format" class="visually-hidden">Select file format</label>
+                <select id="file-format">
                     <option value="auto">Auto-detect format</option>
                     <option value="custom">Custom format (timestamp|author|action|path)</option>
                     <option value="git">Git log format</option>
                 </select>
-                <button id="btn-load-file" disabled>Load Uploaded File</button>
-                <p class="help">
+                <button id="btn-load-file" class="btn btn-sm" disabled>Load Uploaded File</button>
+                <p class="help" id="upload-help">
                     Upload a log file from your local machine.<br>
                     Supports custom format and git log output.
                 </p>
             </div>
 
-            <div id="tab-git-command" class="tab-content">
+            <div id="tab-git-command" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-git-command" hidden>
                 <p class="help" style="margin-bottom: 1rem;">
                     Run this command in your repository to generate a compatible log file:
                 </p>
-                <div style="background: #0f0f23; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.85rem; overflow-x: auto;">
-                    <code>git log --reverse --date=raw --pretty=format:"%ad|%an" --name-status | awk -F'|' '/^[0-9]/ {ts=$1; author=$2} /^[AMD]\t/ {print ts "|" author "|" substr($0,1,1) "|" substr($0,3)}'</code>
+                <div class="command-box">
+                    <code id="git-command">git log --reverse --date=raw --pretty=format:"%ad|%an" --name-status | awk -F'|' '/^[0-9]/ {ts=$1; author=$2} /^[AMD]\t/ {print ts "|" author "|" substr($0,1,1) "|" substr($0,3)}'</code>
                 </div>
-                <button id="btn-copy-command" class="btn-secondary" style="margin-top: 0.5rem;">Copy Command</button>
-                <p class="help" style="margin-top: 0.5rem;">
-                    Then upload the output file or paste its contents above.
+                <button id="btn-copy-command" class="btn btn-sm btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                    Copy Command
+                </button>
+                <p class="help" style="margin-top: 0.75rem;">
+                    Then upload the output file or paste its contents in the "Paste Text" tab.
                 </p>
             </div>
         </div>
     </main>
 
+    <footer>
+        <p>
+            <strong>Rource</strong> &mdash; A Rust + WebAssembly rewrite of <a href="https://gource.io" target="_blank" rel="noopener noreferrer">Gource</a>
+            &nbsp;|&nbsp;
+            <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener noreferrer">Source Code</a>
+            &nbsp;|&nbsp;
+            GPL-3.0 License
+        </p>
+    </footer>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast" role="alert" aria-live="assertive">
+        <span class="toast-message"></span>
+        <button class="toast-close" aria-label="Close notification">&times;</button>
+    </div>
+
+    <!-- Help modal -->
+    <div id="help-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="help-modal-title">Keyboard Shortcuts & Help</h2>
+                <button class="modal-close" aria-label="Close help">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h3>Playback Controls</h3>
+                    <div class="shortcut-list">
+                        <div class="shortcut-item"><span>Play / Pause</span><kbd>Space</kbd></div>
+                        <div class="shortcut-item"><span>Step Forward</span><kbd>&gt;</kbd></div>
+                        <div class="shortcut-item"><span>Step Backward</span><kbd>&lt;</kbd></div>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <h3>Camera Controls</h3>
+                    <div class="shortcut-list">
+                        <div class="shortcut-item"><span>Zoom In</span><kbd>+</kbd> or <kbd>=</kbd></div>
+                        <div class="shortcut-item"><span>Zoom Out</span><kbd>-</kbd></div>
+                        <div class="shortcut-item"><span>Reset Camera</span><kbd>R</kbd></div>
+                        <div class="shortcut-item"><span>Pan</span><kbd>Arrow Keys</kbd></div>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <h3>Mouse / Touch</h3>
+                    <div class="shortcut-list">
+                        <div class="shortcut-item"><span>Pan View</span>Drag</div>
+                        <div class="shortcut-item"><span>Zoom</span>Scroll / Pinch</div>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <h3>Other</h3>
+                    <div class="shortcut-list">
+                        <div class="shortcut-item"><span>Screenshot</span><kbd>S</kbd></div>
+                        <div class="shortcut-item"><span>Show Help</span><kbd>?</kbd></div>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <h3>About Rource</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">
+                        Rource visualizes software version control history as an animated tree.
+                        Each file is a node, each developer has a unique color, and commits create
+                        "beams" connecting developers to the files they modify.
+                    </p>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-top: 0.5rem;">
+                        Built with Rust and WebAssembly, Rource runs entirely in your browser with
+                        no server required. It's a modern rewrite of the original
+                        <a href="https://gource.io" target="_blank" rel="noopener" style="color: var(--accent);">Gource</a> tool.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import init, { Rource } from './pkg/rource_wasm.js';
 
+        // State
         let rource = null;
         let animationId = null;
         let uploadedFileContent = null;
+        let hasLoadedData = false;
+
+        // Demo data - simulates a small project evolution
+        const DEMO_DATA = `1704067200|Alice|A|src/main.rs
+1704067260|Alice|A|src/lib.rs
+1704067320|Alice|A|Cargo.toml
+1704067380|Alice|A|README.md
+1704153600|Bob|A|src/config.rs
+1704153660|Bob|M|src/main.rs
+1704153720|Bob|A|src/utils/mod.rs
+1704153780|Bob|A|src/utils/helpers.rs
+1704240000|Charlie|A|tests/test_main.rs
+1704240060|Charlie|M|src/lib.rs
+1704240120|Charlie|A|tests/test_config.rs
+1704326400|Alice|M|src/main.rs
+1704326460|Alice|M|src/config.rs
+1704326520|Alice|A|docs/API.md
+1704412800|Bob|A|src/api/mod.rs
+1704412860|Bob|A|src/api/routes.rs
+1704412920|Bob|A|src/api/handlers.rs
+1704412980|Bob|M|src/main.rs
+1704499200|Charlie|A|src/db/mod.rs
+1704499260|Charlie|A|src/db/models.rs
+1704499320|Charlie|A|src/db/queries.rs
+1704499380|Charlie|M|src/api/handlers.rs
+1704585600|Alice|A|src/auth/mod.rs
+1704585660|Alice|A|src/auth/jwt.rs
+1704585720|Alice|M|src/api/routes.rs
+1704585780|Alice|A|tests/test_auth.rs
+1704672000|Bob|M|src/db/queries.rs
+1704672060|Bob|M|src/api/handlers.rs
+1704672120|Bob|A|migrations/001_initial.sql
+1704758400|Charlie|A|.github/workflows/ci.yml
+1704758460|Charlie|M|Cargo.toml
+1704758520|Charlie|A|Dockerfile
+1704844800|Alice|M|README.md
+1704844860|Alice|A|docs/DEPLOY.md
+1704844920|Alice|M|src/main.rs
+1704931200|Bob|D|src/utils/helpers.rs
+1704931260|Bob|A|src/utils/string.rs
+1704931320|Bob|A|src/utils/time.rs
+1704931380|Bob|M|src/utils/mod.rs
+1705017600|Charlie|M|src/auth/jwt.rs
+1705017660|Charlie|A|src/auth/middleware.rs
+1705017720|Charlie|M|src/api/routes.rs`;
 
         // UI elements
         const canvas = document.getElementById('canvas');
         const btnPlay = document.getElementById('btn-play');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
         const btnReset = document.getElementById('btn-reset');
         const btnLoad = document.getElementById('btn-load');
         const btnLoadFile = document.getElementById('btn-load-file');
         const btnCopyCommand = document.getElementById('btn-copy-command');
         const btnScreenshot = document.getElementById('btn-screenshot');
+        const btnHelp = document.getElementById('btn-help');
+        const btnTryDemo = document.getElementById('btn-try-demo');
         const logInput = document.getElementById('log-input');
         const statusEl = document.getElementById('status');
         const commitCountEl = document.getElementById('commit-count');
         const currentCommitEl = document.getElementById('current-commit');
         const speedEl = document.getElementById('speed');
         const loadingEl = document.getElementById('loading');
+        const heroEl = document.getElementById('hero');
+        const appHeader = document.getElementById('app-header');
         const timelineSlider = document.getElementById('timeline-slider');
         const timelineInfo = document.getElementById('timeline-info');
         const fileInput = document.getElementById('file-input');
         const fileDropZone = document.getElementById('file-drop-zone');
         const fileNameEl = document.getElementById('file-name');
         const fileFormatSelect = document.getElementById('file-format');
+        const emptyState = document.getElementById('empty-state');
+        const rendererBadge = document.getElementById('renderer-badge');
+        const toast = document.getElementById('toast');
+        const helpModal = document.getElementById('help-modal');
+
+        // Toast notification
+        function showToast(message, type = 'error', duration = 5000) {
+            toast.querySelector('.toast-message').textContent = message;
+            toast.className = `toast ${type} visible`;
+
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, duration);
+        }
+
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+            toast.classList.remove('visible');
+        });
+
+        // Help modal
+        function openHelpModal() {
+            helpModal.classList.add('visible');
+            helpModal.querySelector('.modal-close').focus();
+        }
+
+        function closeHelpModal() {
+            helpModal.classList.remove('visible');
+            btnHelp.focus();
+        }
+
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) closeHelpModal();
+        });
+
+        helpModal.querySelector('.modal-close').addEventListener('click', closeHelpModal);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && helpModal.classList.contains('visible')) {
+                closeHelpModal();
+            }
+            if (e.key === '?' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+                openHelpModal();
+            }
+        });
+
+        btnHelp.addEventListener('click', openHelpModal);
 
         // Resize canvas to fit container
         function resizeCanvas() {
@@ -574,16 +1394,28 @@
             const total = rource.commitCount();
             const current = rource.currentCommit();
 
-            btnPlay.textContent = playing ? 'Pause' : 'Play';
+            // Update play button
+            playText.textContent = playing ? 'Pause' : 'Play';
+            playIcon.innerHTML = playing
+                ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+                : '<path d="M8 5v14l11-7z"/>';
+            btnPlay.setAttribute('aria-label', playing ? 'Pause visualization' : 'Play visualization');
+
             currentCommitEl.textContent = current;
             speedEl.textContent = rource.getSpeed().toFixed(1);
-            statusEl.textContent = playing ? 'Playing' : (current >= total ? 'Finished' : 'Paused');
+
+            // Update status with styling
+            const statusText = playing ? 'Playing' : (current >= total ? 'Finished' : 'Paused');
+            statusEl.textContent = statusText;
+            statusEl.className = 'info-value' + (playing ? ' status-playing' : ' status-paused');
 
             // Update timeline slider
             if (total > 0) {
                 timelineSlider.max = total - 1;
                 timelineSlider.value = Math.min(current, total - 1);
                 timelineSlider.disabled = false;
+                timelineSlider.setAttribute('aria-valuemax', total - 1);
+                timelineSlider.setAttribute('aria-valuenow', Math.min(current, total - 1));
                 timelineInfo.textContent = `${current} / ${total}`;
             } else {
                 timelineSlider.max = 0;
@@ -595,7 +1427,10 @@
 
         // Load log data and update UI
         function loadLogData(content, format) {
-            if (!rource || !content.trim()) return;
+            if (!rource || !content.trim()) {
+                showToast('Please enter or upload log data first.', 'error');
+                return;
+            }
 
             try {
                 let count;
@@ -605,14 +1440,38 @@
                     // custom or auto - try custom first
                     count = rource.loadCustomLog(content);
                 }
+
+                if (count === 0) {
+                    showToast('No commits found. Check your log format.', 'error');
+                    return;
+                }
+
                 commitCountEl.textContent = count;
                 statusEl.textContent = `Loaded ${count} commits`;
+                hasLoadedData = true;
+                emptyState.classList.add('hidden');
                 updateUI();
                 updateLegend(content);
+
+                // Show success toast
+                showToast(`Loaded ${count} commits successfully!`, 'success', 3000);
+
+                // Switch to app mode (hide hero)
+                switchToAppMode();
+
             } catch (e) {
-                statusEl.textContent = 'Parse error: ' + e;
+                const errorMsg = e.toString();
+                statusEl.textContent = 'Parse error';
+                statusEl.className = 'info-value status-error';
+                showToast(`Failed to parse log: ${errorMsg}`, 'error');
                 console.error('Failed to parse log:', e);
             }
+        }
+
+        // Switch from landing page to app mode
+        function switchToAppMode() {
+            heroEl.classList.add('hidden');
+            appHeader.classList.remove('hidden');
         }
 
         // File extension color mapping (matches rource-core/src/scene/file.rs)
@@ -634,7 +1493,6 @@
             'dockerfile': '#2496ed', 'sql': '#e38c00', 'graphql': '#e535ab'
         };
 
-        // Compute HSL color for unknown extensions (same algorithm as Rust code)
         function hashExtension(ext) {
             let hash = 0;
             for (let i = 0; i < ext.length; i++) {
@@ -654,12 +1512,8 @@
             const legendItems = document.getElementById('legend-items');
             const extensionCounts = {};
 
-            // Parse file paths from content to count extensions
             const lines = content.split('\n');
             for (const line of lines) {
-                // Extract file paths from various formats
-                // Custom format: timestamp|author|action|path
-                // Git format: action\tpath
                 let path = '';
                 if (line.includes('|')) {
                     const parts = line.split('|');
@@ -677,40 +1531,48 @@
                     const dotIdx = path.lastIndexOf('.');
                     if (dotIdx > 0 && dotIdx < path.length - 1) {
                         const ext = path.substring(dotIdx + 1).toLowerCase();
-                        if (ext.length <= 10) { // Reasonable extension length
+                        if (ext.length <= 10) {
                             extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
                         }
                     }
                 }
             }
 
-            // Sort by count descending, take top 15
             const sorted = Object.entries(extensionCounts)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 15);
 
-            // Build legend HTML
             legendItems.innerHTML = sorted.map(([ext, count]) => {
                 const color = getExtensionColor(ext);
-                return `<div class="legend-item">
-                    <span class="legend-color" style="background: ${color}"></span>
+                return `<div class="legend-item" role="listitem">
+                    <span class="legend-color" style="background: ${color}" aria-hidden="true"></span>
                     <span class="legend-ext">.${ext}</span>
                     <span class="legend-count">${count}</span>
                 </div>`;
             }).join('');
 
-            // Expand legend if it has items
             if (sorted.length > 0) {
                 document.getElementById('legend-panel').classList.remove('collapsed');
+                document.getElementById('legend-toggle').setAttribute('aria-expanded', 'true');
             }
         }
 
         // Legend toggle
-        document.getElementById('legend-toggle').addEventListener('click', () => {
+        const legendToggle = document.getElementById('legend-toggle');
+        legendToggle.addEventListener('click', () => {
             const panel = document.getElementById('legend-panel');
             panel.classList.toggle('collapsed');
+            const isExpanded = !panel.classList.contains('collapsed');
+            legendToggle.setAttribute('aria-expanded', isExpanded.toString());
             const toggle = panel.querySelector('.legend-toggle');
-            toggle.textContent = panel.classList.contains('collapsed') ? '▼' : '▲';
+            toggle.textContent = isExpanded ? '▲' : '▼';
+        });
+
+        legendToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                legendToggle.click();
+            }
         });
 
         // Initialize
@@ -721,12 +1583,11 @@
                 resizeCanvas();
                 rource = new Rource(canvas);
 
-                // Load default data
-                const defaultLog = logInput.value;
-                if (defaultLog.trim()) {
-                    const count = rource.loadCustomLog(defaultLog);
-                    commitCountEl.textContent = count;
-                    updateLegend(defaultLog);
+                // Update renderer badge
+                const isWebGL2 = rource.isWebGL2();
+                rendererBadge.textContent = isWebGL2 ? 'WebGL2' : 'Software';
+                if (isWebGL2) {
+                    rendererBadge.classList.add('webgl2');
                 }
 
                 // Enable buttons
@@ -734,6 +1595,7 @@
                 btnReset.disabled = false;
                 btnScreenshot.disabled = false;
                 btnLoad.disabled = false;
+                btnTryDemo.disabled = false;
 
                 // Start animation loop
                 animationId = requestAnimationFrame(animate);
@@ -744,14 +1606,21 @@
 
             } catch (e) {
                 console.error('Failed to initialize:', e);
-                statusEl.textContent = 'Error: ' + e.message;
-                loadingEl.textContent = 'Failed to load: ' + e.message;
+                statusEl.textContent = 'Error';
+                statusEl.className = 'info-value status-error';
+                loadingEl.querySelector('.loading-text').textContent = 'Failed to load';
+                loadingEl.querySelector('.loading-subtext').textContent = e.message || 'Unknown error';
+                showToast(`Initialization failed: ${e.message}`, 'error', 10000);
             }
         }
 
         // Event handlers
         btnPlay.addEventListener('click', () => {
             if (rource) {
+                if (!hasLoadedData) {
+                    showToast('Load some data first using the options below, or click "Try Demo".', 'error');
+                    return;
+                }
                 rource.togglePlay();
                 updateUI();
             }
@@ -763,12 +1632,18 @@
             }
         });
 
-        // Screenshot button
-        btnScreenshot.addEventListener('click', () => {
-            takeScreenshot();
+        // Try Demo button
+        btnTryDemo.addEventListener('click', () => {
+            if (rource) {
+                loadLogData(DEMO_DATA, 'custom');
+                rource.play();
+                updateUI();
+            }
         });
 
-        // Take screenshot function
+        // Screenshot
+        btnScreenshot.addEventListener('click', takeScreenshot);
+
         function takeScreenshot() {
             if (!rource) return;
 
@@ -777,27 +1652,28 @@
                 const blob = new Blob([pngData], { type: 'image/png' });
                 const url = URL.createObjectURL(blob);
 
-                // Create download link
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `rource_screenshot_${Date.now()}.png`;
                 a.click();
 
                 URL.revokeObjectURL(url);
-                statusEl.textContent = 'Screenshot saved';
+                showToast('Screenshot saved!', 'success', 2000);
             } catch (e) {
                 console.error('Screenshot failed:', e);
-                statusEl.textContent = 'Screenshot failed: ' + e;
+                showToast(`Screenshot failed: ${e}`, 'error');
             }
         }
 
         btnLoad.addEventListener('click', () => {
             if (rource && logInput.value.trim()) {
                 loadLogData(logInput.value, 'custom');
+            } else {
+                showToast('Please paste some log data first.', 'error');
             }
         });
 
-        // Timeline slider - seek to commit
+        // Timeline slider
         timelineSlider.addEventListener('input', () => {
             if (rource) {
                 const index = parseInt(timelineSlider.value, 10);
@@ -813,29 +1689,39 @@
                 const tab = btn.dataset.tab;
 
                 // Update active button
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
                 btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
 
                 // Update visible content
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                document.getElementById(`tab-${tab}`).classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    c.classList.remove('active');
+                    c.setAttribute('hidden', '');
+                });
+                const tabContent = document.getElementById(`tab-${tab}`);
+                tabContent.classList.add('active');
+                tabContent.removeAttribute('hidden');
             });
         });
 
-        // File input - click to upload
-        fileDropZone.addEventListener('click', () => {
-            fileInput.click();
-        });
+        // File upload
+        fileDropZone.addEventListener('click', () => fileInput.click());
 
-        // File input change
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                handleFileUpload(file);
+        fileDropZone.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
             }
         });
 
-        // Drag and drop handlers
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFileUpload(file);
+        });
+
         fileDropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             fileDropZone.classList.add('dragover');
@@ -849,29 +1735,31 @@
             e.preventDefault();
             fileDropZone.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
-            if (file) {
-                handleFileUpload(file);
-            }
+            if (file) handleFileUpload(file);
         });
 
-        // Handle file upload
         function handleFileUpload(file) {
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            if (file.size > maxSize) {
+                showToast('File too large. Maximum size is 10MB.', 'error');
+                return;
+            }
+
             fileNameEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
 
             const reader = new FileReader();
             reader.onload = (e) => {
                 uploadedFileContent = e.target.result;
                 btnLoadFile.disabled = false;
-                statusEl.textContent = `File loaded: ${file.name}`;
+                showToast(`File "${file.name}" ready to load.`, 'success', 2000);
             };
             reader.onerror = () => {
-                statusEl.textContent = 'Error reading file';
+                showToast('Error reading file. Please try again.', 'error');
                 btnLoadFile.disabled = true;
             };
             reader.readAsText(file);
         }
 
-        // Load uploaded file
         btnLoadFile.addEventListener('click', () => {
             if (uploadedFileContent) {
                 const format = fileFormatSelect.value;
@@ -880,25 +1768,44 @@
         });
 
         // Copy git command
-        btnCopyCommand.addEventListener('click', () => {
-            const command = document.querySelector('#tab-git-command code').textContent;
-            navigator.clipboard.writeText(command).then(() => {
-                btnCopyCommand.textContent = 'Copied!';
+        btnCopyCommand.addEventListener('click', async () => {
+            const command = document.getElementById('git-command').textContent;
+            try {
+                await navigator.clipboard.writeText(command);
+                btnCopyCommand.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    Copied!
+                `;
                 setTimeout(() => {
-                    btnCopyCommand.textContent = 'Copy Command';
+                    btnCopyCommand.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                        </svg>
+                        Copy Command
+                    `;
                 }, 2000);
-            }).catch(() => {
-                statusEl.textContent = 'Failed to copy command';
-            });
+            } catch (err) {
+                showToast('Failed to copy command. Please copy manually.', 'error');
+            }
         });
 
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
-            if (e.target === logInput) return; // Don't capture when typing
+            // Ignore if typing in input
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
 
-            // Handle 'S' for screenshot in JS
+            // Screenshot
             if (e.key === 's' || e.key === 'S') {
                 takeScreenshot();
+                return;
+            }
+
+            // Help
+            if (e.key === '?') {
+                e.preventDefault();
+                openHelpModal();
                 return;
             }
 
@@ -934,7 +1841,7 @@
             }
         }, { passive: false });
 
-        // Touch controls for mobile devices
+        // Touch controls
         let touchState = {
             startX: 0,
             startY: 0,
@@ -951,19 +1858,11 @@
             return Math.sqrt(dx * dx + dy * dy);
         }
 
-        function getTouchCenter(touches, rect) {
-            return {
-                x: ((touches[0].clientX + touches[1].clientX) / 2) - rect.left,
-                y: ((touches[0].clientY + touches[1].clientY) / 2) - rect.top
-            };
-        }
-
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const rect = canvas.getBoundingClientRect();
 
             if (e.touches.length === 1) {
-                // Single finger: pan
                 touchState.isPanning = true;
                 touchState.isPinching = false;
                 touchState.startX = e.touches[0].clientX - rect.left;
@@ -974,12 +1873,11 @@
                     rource.onMouseDown(touchState.startX, touchState.startY);
                 }
             } else if (e.touches.length === 2) {
-                // Two fingers: pinch to zoom
                 touchState.isPanning = false;
                 touchState.isPinching = true;
                 touchState.initialDistance = getTouchDistance(e.touches);
                 if (rource) {
-                    rource.onMouseUp(); // Cancel any ongoing pan
+                    rource.onMouseUp();
                 }
             }
         }, { passive: false });
@@ -1000,12 +1898,11 @@
                 const currentDistance = getTouchDistance(e.touches);
                 const scaleFactor = currentDistance / touchState.initialDistance;
 
-                // Convert pinch to zoom (simulate wheel events)
                 if (rource && Math.abs(scaleFactor - 1.0) > 0.01) {
                     if (scaleFactor > 1.0) {
-                        rource.zoom(1.05); // Zoom in
+                        rource.zoom(1.05);
                     } else {
-                        rource.zoom(0.95); // Zoom out
+                        rource.zoom(0.95);
                     }
                     touchState.initialDistance = currentDistance;
                 }
