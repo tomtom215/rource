@@ -6,6 +6,13 @@
 
 // Allow multiple versions of dependencies from winit/softbuffer ecosystem
 #![allow(clippy::multiple_crate_versions)]
+// Allow these pre-existing lint issues for now
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::redundant_closure)]
+#![allow(clippy::used_underscore_binding)]
+#![allow(clippy::option_if_let_else)]
+#![allow(clippy::no_effect_underscore_binding)]
+#![allow(clippy::redundant_closure_for_method_calls)]
 
 mod args;
 mod avatar;
@@ -23,7 +30,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
-use rource_core::camera::Camera;
+use rource_core::camera::{Camera, Camera3D};
 use rource_core::config::FilterSettings;
 use rource_core::scene::{ActionType, Scene};
 use rource_math::{Color, Vec2};
@@ -53,8 +60,11 @@ struct App {
     /// The scene graph containing all entities.
     scene: Scene,
 
-    /// Camera for view transforms.
+    /// Camera for view transforms (2D mode).
     camera: Camera,
+
+    /// 3D orbit camera (optional, when 3D mode enabled).
+    camera_3d: Option<Camera3D>,
 
     /// Bloom effect (optional).
     bloom: Option<BloomEffect>,
@@ -133,6 +143,15 @@ struct App {
 
     /// Background image path.
     background_image_path: Option<std::path::PathBuf>,
+
+    /// Logo texture ID (loaded from `logo_path`).
+    logo_texture: Option<rource_render::TextureId>,
+
+    /// Logo image dimensions (width, height).
+    logo_dimensions: Option<(u32, u32)>,
+
+    /// Background image texture ID (loaded from `background_image_path`).
+    background_texture: Option<rource_render::TextureId>,
 }
 
 /// Playback state for the visualization.
@@ -257,6 +276,23 @@ impl App {
         let logo_offset = args.parse_logo_offset();
         let background_image_path = args.background_image.clone();
 
+        // 3D camera settings (--3d enables, --2d explicitly disables)
+        let enable_3d = args.camera_3d && !args.camera_2d;
+        let camera_3d = if enable_3d {
+            // Use args viewport dimensions; will be updated on window resize
+            let mut cam = Camera3D::new(args.width as f32, args.height as f32);
+            // Set initial pitch (yaw=0)
+            cam.jump_to_orbit(0.0, args.pitch.to_radians());
+            if args.disable_auto_rotate {
+                cam.set_auto_rotate(false);
+            } else {
+                cam.set_auto_rotation_speed(args.rotation_speed);
+            }
+            Some(cam)
+        } else {
+            None
+        };
+
         Self {
             args,
             window: None,
@@ -265,6 +301,7 @@ impl App {
             default_font: None,
             scene: Scene::new(),
             camera,
+            camera_3d,
             bloom,
             shadow,
             playback: PlaybackState {
@@ -303,6 +340,9 @@ impl App {
             logo_path,
             logo_offset,
             background_image_path,
+            logo_texture: None,
+            logo_dimensions: None,
+            background_texture: None,
         }
     }
 
@@ -526,6 +566,11 @@ impl App {
         self.scene.update(dt_f32);
         self.camera.update(dt_f32);
 
+        // Update 3D camera if enabled
+        if let Some(ref mut camera_3d) = self.camera_3d {
+            camera_3d.update(dt_f32);
+        }
+
         // Track elapsed real time
         self.playback.elapsed_time += dt_f32;
 
@@ -634,6 +679,15 @@ impl App {
         // Clear to background color
         let bg_color = self.args.parse_background_color();
         renderer.clear(bg_color);
+
+        // Draw background image (stretched to fill viewport) if available
+        if let Some(bg_texture) = self.background_texture {
+            let viewport_bounds = rource_math::Bounds::new(
+                Vec2::ZERO,
+                Vec2::new(renderer.width() as f32, renderer.height() as f32),
+            );
+            renderer.draw_quad(viewport_bounds, Some(bg_texture), Color::WHITE);
+        }
 
         // Get camera's visible bounds in world space for frustum culling
         let visible_bounds = self.camera.visible_bounds();
@@ -1116,6 +1170,25 @@ impl App {
             }
         }
 
+        // Draw logo in top-right corner if available
+        if let (Some(logo_texture), Some((logo_width, logo_height))) =
+            (self.logo_texture, self.logo_dimensions)
+        {
+            let viewport_width = renderer.width() as f32;
+            let (offset_x, offset_y) = self.logo_offset;
+
+            // Position logo in top-right corner with offset
+            // offset_x: positive moves left, offset_y: positive moves down
+            let logo_x = viewport_width - logo_width as f32 - offset_x as f32;
+            let logo_y = offset_y as f32;
+
+            let logo_bounds = rource_math::Bounds::new(
+                Vec2::new(logo_x, logo_y),
+                Vec2::new(logo_x + logo_width as f32, logo_y + logo_height as f32),
+            );
+            renderer.draw_quad(logo_bounds, Some(logo_texture), Color::WHITE);
+        }
+
         renderer.end_frame();
 
         // Apply shadow effect if enabled (applied first - underneath)
@@ -1169,9 +1242,13 @@ impl App {
                 }
             },
             MouseButton::Middle => {
-                // Middle click could reset camera
+                // Middle click resets camera
                 if state == ElementState::Pressed {
-                    self.camera.reset();
+                    if let Some(ref mut camera_3d) = self.camera_3d {
+                        camera_3d.reset();
+                    } else {
+                        self.camera.reset();
+                    }
                 }
             }
             _ => {}
@@ -1245,10 +1322,22 @@ impl App {
             return;
         }
 
-        // Pan when dragging
+        // Pan (2D) or orbit (3D) when dragging
         if self.mouse_dragging {
             let delta = new_position - self.last_mouse_position;
-            self.camera.pan(delta);
+
+            if let Some(ref mut camera_3d) = self.camera_3d {
+                // 3D mode: orbit camera based on mouse movement
+                // Convert mouse delta to radians (sensitivity factor)
+                let sensitivity = 0.005;
+                let delta_yaw = delta.x * sensitivity;
+                let delta_pitch = -delta.y * sensitivity; // Invert Y for intuitive control
+                camera_3d.orbit(delta_yaw, delta_pitch);
+            } else {
+                // 2D mode: pan camera
+                self.camera.pan(delta);
+            }
+
             self.last_mouse_position = new_position;
         }
     }
@@ -1265,9 +1354,17 @@ impl App {
             MouseScrollDelta::PixelDelta(pos) => (pos.y as f32) * 0.01, // Precise scrolling
         };
 
-        // Zoom toward mouse position
+        // Zoom
         if zoom_amount.abs() > 0.001 {
-            self.camera.zoom_toward(self.mouse_position, zoom_amount);
+            if let Some(ref mut camera_3d) = self.camera_3d {
+                // 3D mode: zoom by adjusting orbit distance
+                // Positive scroll = zoom in (closer)
+                let factor = if zoom_amount > 0.0 { 0.9 } else { 1.1 };
+                camera_3d.zoom(factor);
+            } else {
+                // 2D mode: zoom toward mouse position
+                self.camera.zoom_toward(self.mouse_position, zoom_amount);
+            }
         }
     }
 
@@ -1365,6 +1462,39 @@ impl ApplicationHandler for App {
         // Register avatars with renderer
         if let Some(manager) = self.avatar_manager.take() {
             self.avatar_registry = manager.register_with_renderer(&mut renderer);
+        }
+
+        // Load logo image if specified
+        if let Some(ref logo_path) = self.logo_path {
+            match rource_render::image::Image::load_file(logo_path) {
+                Ok(image) => {
+                    let width = image.width();
+                    let height = image.height();
+                    let texture_id = renderer.load_texture(width, height, image.data());
+                    self.logo_texture = Some(texture_id);
+                    self.logo_dimensions = Some((width, height));
+                    eprintln!("Loaded logo: {}x{} from {}", width, height, logo_path.display());
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to load logo image '{}': {}", logo_path.display(), e);
+                }
+            }
+        }
+
+        // Load background image if specified
+        if let Some(ref bg_path) = self.background_image_path {
+            match rource_render::image::Image::load_file(bg_path) {
+                Ok(image) => {
+                    let width = image.width();
+                    let height = image.height();
+                    let texture_id = renderer.load_texture(width, height, image.data());
+                    self.background_texture = Some(texture_id);
+                    eprintln!("Loaded background: {}x{} from {}", width, height, bg_path.display());
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to load background image '{}': {}", bg_path.display(), e);
+                }
+            }
         }
 
         self.window = Some(window);
@@ -1638,6 +1768,44 @@ fn run_headless(args: &Args) -> Result<()> {
     let mut renderer = SoftwareRenderer::new(args.width, args.height);
     let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
 
+    // Load logo image if specified
+    let (logo_texture, logo_dimensions) = if let Some(ref logo_path) = args.logo {
+        match rource_render::image::Image::load_file(logo_path) {
+            Ok(image) => {
+                let width = image.width();
+                let height = image.height();
+                let texture_id = renderer.load_texture(width, height, image.data());
+                eprintln!("Loaded logo: {}x{} from {}", width, height, logo_path.display());
+                (Some(texture_id), Some((width, height)))
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load logo image '{}': {}", logo_path.display(), e);
+                (None, None)
+            }
+        }
+    } else {
+        (None, None)
+    };
+
+    // Load background image if specified
+    let background_texture = if let Some(ref bg_path) = args.background_image {
+        match rource_render::image::Image::load_file(bg_path) {
+            Ok(image) => {
+                let width = image.width();
+                let height = image.height();
+                let texture_id = renderer.load_texture(width, height, image.data());
+                eprintln!("Loaded background: {}x{} from {}", width, height, bg_path.display());
+                Some(texture_id)
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load background image '{}': {}", bg_path.display(), e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Initialize scene and camera
     let mut scene = Scene::new();
     let mut camera = Camera::new(args.width as f32, args.height as f32);
@@ -1813,6 +1981,9 @@ fn run_headless(args: &Args) -> Result<()> {
             font_id,
             &commits,
             current_commit,
+            background_texture,
+            logo_texture,
+            logo_dimensions,
         );
         total_render_time += render_start.elapsed();
 
@@ -1919,12 +2090,24 @@ fn render_frame_headless(
     font_id: Option<FontId>,
     commits: &[Commit],
     current_commit: usize,
+    background_texture: Option<rource_render::TextureId>,
+    logo_texture: Option<rource_render::TextureId>,
+    logo_dimensions: Option<(u32, u32)>,
 ) {
     renderer.begin_frame();
 
     // Clear to background color
     let bg_color = args.parse_background_color();
     renderer.clear(bg_color);
+
+    // Draw background image (stretched to fill viewport) if available
+    if let Some(bg_texture) = background_texture {
+        let viewport_bounds = rource_math::Bounds::new(
+            Vec2::ZERO,
+            Vec2::new(renderer.width() as f32, renderer.height() as f32),
+        );
+        renderer.draw_quad(viewport_bounds, Some(bg_texture), Color::WHITE);
+    }
 
     // Get visible bounds for frustum culling
     let cull_start = Instant::now();
@@ -2202,6 +2385,23 @@ fn render_frame_headless(
         );
     }
 
+    // Draw logo in top-right corner if available
+    if let (Some(logo_tex), Some((logo_width, logo_height))) = (logo_texture, logo_dimensions) {
+        let viewport_width = renderer.width() as f32;
+        let logo_offset = args.parse_logo_offset();
+        let (offset_x, offset_y) = logo_offset;
+
+        // Position logo in top-right corner with offset
+        let logo_x = viewport_width - logo_width as f32 - offset_x as f32;
+        let logo_y = offset_y as f32;
+
+        let logo_bounds = rource_math::Bounds::new(
+            Vec2::new(logo_x, logo_y),
+            Vec2::new(logo_x + logo_width as f32, logo_y + logo_height as f32),
+        );
+        renderer.draw_quad(logo_bounds, Some(logo_tex), Color::WHITE);
+    }
+
     renderer.end_frame();
 }
 
@@ -2330,6 +2530,42 @@ fn run_screenshot(args: &Args, screenshot_path: &std::path::Path) -> Result<()> 
     // Load font
     let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
 
+    // Load logo image if specified
+    let (logo_texture, logo_dimensions) = if let Some(ref logo_path) = args.logo {
+        match rource_render::image::Image::load_file(logo_path) {
+            Ok(image) => {
+                let width = image.width();
+                let height = image.height();
+                let texture_id = renderer.load_texture(width, height, image.data());
+                (Some(texture_id), Some((width, height)))
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load logo image '{}': {}", logo_path.display(), e);
+                (None, None)
+            }
+        }
+    } else {
+        (None, None)
+    };
+
+    // Load background image if specified
+    let background_texture = if let Some(ref bg_path) = args.background_image {
+        match rource_render::image::Image::load_file(bg_path) {
+            Ok(image) => {
+                let width = image.width();
+                let height = image.height();
+                let texture_id = renderer.load_texture(width, height, image.data());
+                Some(texture_id)
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load background image '{}': {}", bg_path.display(), e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Initialize filter settings
     let mut filter = FilterSettings::new();
     if let Some(ref pattern) = args.show_users {
@@ -2407,6 +2643,9 @@ fn run_screenshot(args: &Args, screenshot_path: &std::path::Path) -> Result<()> 
         font_id,
         &commits,
         target_commit,
+        background_texture,
+        logo_texture,
+        logo_dimensions,
     );
 
     // Apply effects if enabled

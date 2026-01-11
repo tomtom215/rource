@@ -21,6 +21,7 @@ use crate::{FontCache, FontId, Renderer, Texture, TextureId};
 /// - Anti-aliased circle/disc drawing with sub-pixel accuracy
 /// - Alpha blending for transparency
 /// - Font rendering via fontdue
+/// - Optional Z-buffer for 3D depth testing
 ///
 /// # Performance
 ///
@@ -32,6 +33,12 @@ use crate::{FontCache, FontId, Renderer, Texture, TextureId};
 pub struct SoftwareRenderer {
     /// Pixel buffer (ARGB8 format: 0xAARRGGBB)
     pixels: Vec<u32>,
+
+    /// Z-buffer for depth testing (optional, None when 3D disabled)
+    z_buffer: Option<Vec<f32>>,
+
+    /// Whether depth testing is enabled
+    depth_test_enabled: bool,
 
     /// Viewport width
     width: u32,
@@ -71,6 +78,8 @@ impl SoftwareRenderer {
         let size = (width * height) as usize;
         Self {
             pixels: vec![0xFF00_0000; size], // Opaque black
+            z_buffer: None,
+            depth_test_enabled: false,
             width,
             height,
             transform: Mat4::IDENTITY,
@@ -78,6 +87,273 @@ impl SoftwareRenderer {
             font_cache: FontCache::new(),
             textures: HashMap::new(),
             next_texture_id: 1,
+        }
+    }
+
+    /// Enables 3D depth testing with a Z-buffer.
+    ///
+    /// When enabled, pixels are only drawn if their depth value is closer
+    /// than the existing value in the Z-buffer.
+    pub fn enable_depth_test(&mut self) {
+        let size = (self.width * self.height) as usize;
+        if self.z_buffer.is_none() {
+            // Initialize Z-buffer with far plane value (1.0)
+            self.z_buffer = Some(vec![1.0; size]);
+        }
+        self.depth_test_enabled = true;
+    }
+
+    /// Disables 3D depth testing.
+    pub fn disable_depth_test(&mut self) {
+        self.depth_test_enabled = false;
+    }
+
+    /// Returns whether depth testing is enabled.
+    #[inline]
+    #[must_use]
+    pub const fn depth_test_enabled(&self) -> bool {
+        self.depth_test_enabled
+    }
+
+    /// Clears the Z-buffer to the far plane value.
+    ///
+    /// This should be called at the start of each frame when using depth testing.
+    pub fn clear_depth(&mut self) {
+        if let Some(ref mut z_buffer) = self.z_buffer {
+            z_buffer.fill(1.0);
+        }
+    }
+
+    /// Tests and writes a depth value at the given pixel position.
+    ///
+    /// Returns `true` if the depth test passes and the pixel should be drawn.
+    /// When depth testing is disabled, always returns `true`.
+    #[inline]
+    fn depth_test(&mut self, x: u32, y: u32, depth: f32) -> bool {
+        if !self.depth_test_enabled {
+            return true;
+        }
+
+        if let Some(ref mut z_buffer) = self.z_buffer {
+            let idx = (y * self.width + x) as usize;
+            if idx < z_buffer.len() && depth < z_buffer[idx] {
+                z_buffer[idx] = depth;
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Blends a source color onto an existing pixel value using alpha blending.
+    #[inline]
+    fn blend_color(existing: u32, src: Color) -> u32 {
+        let alpha = src.a;
+        if alpha < 0.001 {
+            return existing;
+        }
+
+        let inv_alpha = 1.0 - alpha;
+
+        // Extract existing RGB
+        let dst_r = ((existing >> 16) & 0xFF) as f32;
+        let dst_g = ((existing >> 8) & 0xFF) as f32;
+        let dst_b = (existing & 0xFF) as f32;
+
+        // Source RGB (0-1 in Color)
+        let src_r = src.r * 255.0;
+        let src_g = src.g * 255.0;
+        let src_b = src.b * 255.0;
+
+        // Blend
+        let new_r = ((src_r * alpha + dst_r * inv_alpha) as u32).min(255);
+        let new_g = ((src_g * alpha + dst_g * inv_alpha) as u32).min(255);
+        let new_b = ((src_b * alpha + dst_b * inv_alpha) as u32).min(255);
+
+        0xFF00_0000 | (new_r << 16) | (new_g << 8) | new_b
+    }
+
+    /// Draws a disc (filled circle) with depth testing.
+    ///
+    /// The depth value is used for Z-buffer testing when depth testing is enabled.
+    /// This is useful for 3D rendering where screen-space coordinates and depth
+    /// are computed by projecting 3D world positions.
+    ///
+    /// # Arguments
+    /// * `center` - Screen-space center position
+    /// * `radius` - Disc radius in pixels
+    /// * `depth` - Depth value (0.0 = near, 1.0 = far)
+    /// * `color` - Fill color
+    pub fn draw_disc_3d(&mut self, center: Vec2, radius: f32, depth: f32, color: Color) {
+        let cx = center.x;
+        let cy = center.y;
+
+        // Bounding box
+        let min_x = (cx - radius).floor().max(0.0) as i32;
+        let max_x = (cx + radius).ceil().min(self.width as f32 - 1.0) as i32;
+        let min_y = (cy - radius).floor().max(0.0) as i32;
+        let max_y = (cy + radius).ceil().min(self.height as f32 - 1.0) as i32;
+
+        let aa_width = 1.0; // Anti-aliasing edge width
+
+        for py in min_y..=max_y {
+            for px in min_x..=max_x {
+                let dx = px as f32 + 0.5 - cx;
+                let dy = py as f32 + 0.5 - cy;
+                let dist2 = dx * dx + dy * dy;
+
+                if dist2 <= (radius + aa_width) * (radius + aa_width) {
+                    // Perform depth test
+                    if !self.depth_test(px as u32, py as u32, depth) {
+                        continue;
+                    }
+
+                    // Calculate anti-aliased alpha
+                    let dist = dist2.sqrt();
+                    let alpha = if dist <= radius - aa_width {
+                        color.a
+                    } else if dist >= radius + aa_width {
+                        continue;
+                    } else {
+                        let t = (radius + aa_width - dist) / (2.0 * aa_width);
+                        color.a * t
+                    };
+
+                    let idx = (py as u32 * self.width + px as u32) as usize;
+                    if idx < self.pixels.len() {
+                        let src = Color::new(color.r, color.g, color.b, alpha);
+                        self.pixels[idx] = Self::blend_color(self.pixels[idx], src);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Draws a line with depth testing.
+    ///
+    /// Depth is linearly interpolated between start and end points.
+    ///
+    /// # Arguments
+    /// * `start` - Screen-space start position
+    /// * `start_depth` - Depth at start (0.0 = near, 1.0 = far)
+    /// * `end` - Screen-space end position
+    /// * `end_depth` - Depth at end (0.0 = near, 1.0 = far)
+    /// * `width` - Line width in pixels
+    /// * `color` - Line color
+    pub fn draw_line_3d(
+        &mut self,
+        start: Vec2,
+        start_depth: f32,
+        end: Vec2,
+        end_depth: f32,
+        width: f32,
+        color: Color,
+    ) {
+        // For now, use the average depth for the entire line
+        // A more accurate implementation would interpolate per-pixel
+        let avg_depth = (start_depth + end_depth) * 0.5;
+
+        // Use existing thick line drawing with depth testing
+        self.draw_thick_line_with_depth(start, end, width, avg_depth, color);
+    }
+
+    /// Draws an anti-aliased thick line with uniform depth testing.
+    fn draw_thick_line_with_depth(
+        &mut self,
+        start: Vec2,
+        end: Vec2,
+        width: f32,
+        depth: f32,
+        color: Color,
+    ) {
+        let dx = end.x - start.x;
+        let dy = end.y - start.y;
+        let length = dx.hypot(dy);
+
+        if length < 0.001 {
+            return;
+        }
+
+        let length_sq = length * length;
+
+        let half_width = width * 0.5;
+
+        // Line bounding box
+        let min_x = start
+            .x
+            .min(end.x)
+            .floor()
+            .max(0.0)
+            .min(self.width as f32 - 1.0) as i32
+            - (half_width + 1.0) as i32;
+        let max_x = start
+            .x
+            .max(end.x)
+            .ceil()
+            .max(0.0)
+            .min(self.width as f32 - 1.0) as i32
+            + (half_width + 1.0) as i32;
+        let min_y = start
+            .y
+            .min(end.y)
+            .floor()
+            .max(0.0)
+            .min(self.height as f32 - 1.0) as i32
+            - (half_width + 1.0) as i32;
+        let max_y = start
+            .y
+            .max(end.y)
+            .ceil()
+            .max(0.0)
+            .min(self.height as f32 - 1.0) as i32
+            + (half_width + 1.0) as i32;
+
+        // Clamp to viewport
+        let min_x = min_x.max(0);
+        let max_x = max_x.min(self.width as i32 - 1);
+        let min_y = min_y.max(0);
+        let max_y = max_y.min(self.height as i32 - 1);
+
+        for py_int in min_y..=max_y {
+            for px_int in min_x..=max_x {
+                let point_x = px_int as f32 + 0.5;
+                let point_y = py_int as f32 + 0.5;
+
+                // Distance from point to line segment
+                let to_start_x = point_x - start.x;
+                let to_start_y = point_y - start.y;
+
+                let t = ((to_start_x * dx + to_start_y * dy) / length_sq).clamp(0.0, 1.0);
+
+                let closest_x = start.x + t * dx;
+                let closest_y = start.y + t * dy;
+
+                let dist_x = point_x - closest_x;
+                let dist_y = point_y - closest_y;
+                let dist = dist_x.hypot(dist_y);
+
+                if dist <= half_width + 1.0 {
+                    // Perform depth test
+                    if !self.depth_test(px_int as u32, py_int as u32, depth) {
+                        continue;
+                    }
+
+                    // Anti-aliased edge
+                    let alpha = if dist <= half_width - 0.5 {
+                        color.a
+                    } else if dist >= half_width + 0.5 {
+                        continue;
+                    } else {
+                        let edge_t = (half_width + 0.5 - dist) / 1.0;
+                        color.a * edge_t
+                    };
+
+                    let idx = (py_int as u32 * self.width + px_int as u32) as usize;
+                    if idx < self.pixels.len() {
+                        let src = Color::new(color.r, color.g, color.b, alpha);
+                        self.pixels[idx] = Self::blend_color(self.pixels[idx], src);
+                    }
+                }
+            }
         }
     }
 
@@ -510,6 +786,11 @@ impl Renderer for SoftwareRenderer {
         let pixel = 0xFF00_0000 | (r << 16) | (g << 8) | b;
 
         self.pixels.fill(pixel);
+
+        // Clear Z-buffer when depth testing is enabled
+        if self.depth_test_enabled {
+            self.clear_depth();
+        }
     }
 
     fn draw_circle(&mut self, center: Vec2, radius: f32, width: f32, color: Color) {
@@ -616,6 +897,11 @@ impl Renderer for SoftwareRenderer {
         self.pixels.resize(size, 0xFF00_0000);
         self.width = width;
         self.height = height;
+
+        // Resize Z-buffer if it exists
+        if let Some(ref mut z_buffer) = self.z_buffer {
+            z_buffer.resize(size, 1.0);
+        }
     }
 
     fn load_texture(&mut self, width: u32, height: u32, data: &[u8]) -> TextureId {

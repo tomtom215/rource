@@ -136,7 +136,7 @@ fn parse_hex_color(s: &str) -> Option<Color> {
     Some(Color::from_rgb8(r, g, b))
 }
 
-/// Parse an offset string in "XxY" or "X,Y" format.
+/// Parse an offset string in `XxY` or `X,Y` format.
 fn parse_offset(s: &str) -> Option<(i32, i32)> {
     let s = s.trim();
     if s.is_empty() || s == "0x0" || s == "0,0" {
@@ -341,6 +341,18 @@ pub fn merge_env(base: Settings) -> Settings {
         highlight_all_users: read_env("HIGHLIGHT_ALL_USERS")
             .and_then(|v| parse_bool(&v))
             .unwrap_or(base.camera.highlight_all_users),
+        enable_3d: read_env("CAMERA_3D")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.camera.enable_3d),
+        pitch: read_env("CAMERA_PITCH")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.camera.pitch),
+        rotation_speed: read_env("CAMERA_ROTATION_SPEED")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.camera.rotation_speed),
+        disable_auto_rotate: read_env("CAMERA_DISABLE_AUTO_ROTATE")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.camera.disable_auto_rotate),
     };
 
     // Input settings
@@ -476,6 +488,10 @@ pub fn env_var_names() -> Vec<&'static str> {
         "ROURCE_FOLLOW_USER",
         "ROURCE_HIGHLIGHT_USERS",
         "ROURCE_HIGHLIGHT_ALL_USERS",
+        "ROURCE_CAMERA_3D",
+        "ROURCE_CAMERA_PITCH",
+        "ROURCE_CAMERA_ROTATION_SPEED",
+        "ROURCE_CAMERA_DISABLE_AUTO_ROTATE",
         // Input settings
         "ROURCE_DISABLE_INPUT",
         "ROURCE_MOUSE_SENSITIVITY",

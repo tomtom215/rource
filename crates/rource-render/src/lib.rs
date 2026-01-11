@@ -30,6 +30,7 @@ pub mod command;
 pub mod default_font;
 pub mod effects;
 pub mod font;
+pub mod image;
 pub mod texture;
 
 pub use backend::software::SoftwareRenderer;

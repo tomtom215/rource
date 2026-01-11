@@ -113,13 +113,13 @@ impl StringInterner {
     /// Returns the total bytes used by interned strings.
     #[must_use]
     pub fn total_bytes(&self) -> usize {
-        self.strings.iter().map(|s| s.len()).sum()
+        self.strings.iter().map(String::len).sum()
     }
 
     /// Returns memory statistics for the interner.
     #[must_use]
     pub fn stats(&self) -> InternerStats {
-        let string_bytes: usize = self.strings.iter().map(|s| s.len()).sum();
+        let string_bytes: usize = self.strings.iter().map(String::len).sum();
         let overhead = self.strings.capacity() * std::mem::size_of::<String>()
             + self.lookup.capacity()
                 * (std::mem::size_of::<String>() + std::mem::size_of::<u32>());

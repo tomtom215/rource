@@ -9,6 +9,10 @@
 ///
 /// Takes a circle center position, radius, and color as instance data.
 /// Uses a quad with UV coordinates to render anti-aliased circles.
+///
+/// For 3D mode: The application projects 3D world positions to 2D screen
+/// coordinates using `Camera3D` before passing to the shader. The shader
+/// works with pre-projected screen-space coordinates in both 2D and 3D modes.
 pub const CIRCLE_VERTEX_SHADER: &str = r#"#version 300 es
 precision highp float;
 

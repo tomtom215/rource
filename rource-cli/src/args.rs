@@ -1,5 +1,7 @@
 //! Command-line argument parsing for Rource.
 
+#![allow(clippy::too_many_lines)]
+
 use clap::Parser;
 use rource_core::config::{
     CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
@@ -163,6 +165,39 @@ pub struct Args {
     #[arg(long, value_name = "USERNAME")]
     pub follow_user: Option<String>,
 
+    /// Enable 3D perspective camera mode with orbit controls.
+    ///
+    /// When enabled, the visualization uses a 3D perspective camera that
+    /// orbits around the scene. Use mouse drag to rotate, scroll to zoom.
+    #[arg(long = "3d")]
+    pub camera_3d: bool,
+
+    /// Force 2D orthographic camera mode (default).
+    ///
+    /// Explicitly disable 3D mode and use the standard 2D camera.
+    #[arg(long = "2d")]
+    pub camera_2d: bool,
+
+    /// Initial camera pitch angle in degrees (3D mode only).
+    ///
+    /// Controls the vertical viewing angle. 0 = horizontal, -90 = top-down.
+    /// Default is -17 degrees for a slight downward angle.
+    #[arg(long, default_value_t = -17.0, value_name = "DEGREES")]
+    pub pitch: f32,
+
+    /// Camera auto-rotation speed in radians per second (3D mode only).
+    ///
+    /// When non-zero, the camera slowly rotates around the scene when idle.
+    /// Set to 0 to disable auto-rotation.
+    #[arg(long, default_value_t = 0.05, value_name = "SPEED")]
+    pub rotation_speed: f32,
+
+    /// Disable automatic camera rotation (3D mode only).
+    ///
+    /// Prevents the camera from rotating automatically when idle.
+    #[arg(long)]
+    pub disable_auto_rotate: bool,
+
     /// Username(s) to highlight (comma-separated).
     ///
     /// Highlighted users appear with enhanced visibility.
@@ -291,7 +326,7 @@ impl Args {
         parse_hex_color(&self.background_color).unwrap_or(rource_math::Color::BLACK)
     }
 
-    /// Parse the logo offset from "XxY" format.
+    /// Parse the logo offset from `XxY` format.
     ///
     /// Returns (x, y) offset values. Defaults to (0, 0) if parsing fails.
     #[must_use]
@@ -357,6 +392,10 @@ impl Args {
             follow_user: self.follow_user.clone(),
             highlight_users: self.highlight_users.clone(),
             highlight_all_users: self.highlight_all_users,
+            enable_3d: self.camera_3d && !self.camera_2d,
+            pitch: self.pitch,
+            rotation_speed: self.rotation_speed,
+            disable_auto_rotate: self.disable_auto_rotate,
         };
 
         let input = InputSettings {
@@ -840,7 +879,7 @@ fn parse_hex_color(s: &str) -> Option<rource_math::Color> {
     ))
 }
 
-/// Parse an offset string in "XxY" or "X,Y" format.
+/// Parse an offset string in `XxY` or `X,Y` format.
 fn parse_offset(s: &str) -> Option<(i32, i32)> {
     let s = s.trim();
     if s.is_empty() || s == "0x0" || s == "0,0" {

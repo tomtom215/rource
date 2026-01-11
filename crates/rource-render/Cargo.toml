@@ -22,6 +22,9 @@ rource-math = { path = "../rource-math" }
 # Font rendering (pure Rust, no system dependencies)
 fontdue = "0.9"
 
+# PNG image loading (minimal, pure Rust decoder)
+png = "0.17"
+
 # WebGL2 dependencies (optional, for WASM builds)
 wasm-bindgen = { version = "0.2", optional = true }
 js-sys = { version = "0.3", optional = true }
