@@ -8,7 +8,7 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 
 ## Current Implementation Status
 
-**Last Updated**: 2026-01-10
+**Last Updated**: 2026-01-11
 
 ### Progress Summary
 
@@ -18,11 +18,11 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 | Phase 2: VCS Parsing | ✅ Complete | 117 | Git, SVN, Mercurial, Bazaar parsers, auto-detection |
 | Phase 3: Scene Graph | ✅ Complete | 70 | Directory tree, file/user/action entities, quadtree, frustum culling |
 | Phase 4: Physics & Animation | ✅ Complete | 86 | Force-directed layout, tweening, splines, camera |
-| Phase 5: Rendering | ✅ Complete | 75 | Software rasterizer, fonts, bloom effect, drop shadows |
-| Phase 6: Platform Integration | ✅ Complete | 36 | Native CLI, WASM, mouse input, video export, avatars |
+| Phase 5: Rendering | ✅ Complete | 90 | Software rasterizer, WebGL2, fonts, bloom effect, drop shadows |
+| Phase 6: Platform Integration | ✅ Complete | 39 | Native CLI, WASM, mouse input, video export, avatars |
 | Phase 7: Polish & Optimization | 🔄 In Progress | 210 | Config files, legend, timeline scrubbing, touch support, env vars |
 
-**Total Tests**: 631 passing
+**Total Tests**: 646 passing
 
 ### What's Working Now
 
@@ -42,7 +42,9 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
    - User avatars (--user-image-dir, --default-user-image)
 
 2. **WebAssembly Support** (`rource-wasm`)
-   - Canvas2D backend using software renderer + ImageData
+   - WebGL2 backend for GPU-accelerated rendering (default)
+   - Canvas2D backend using software renderer + ImageData (fallback)
+   - Automatic backend selection with graceful fallback
    - Touch support (pinch zoom, pan gestures)
    - File upload for custom log files
    - Keyboard and mouse controls
@@ -82,7 +84,6 @@ This document provides a comprehensive implementation plan for **Rource** (Rust 
 
 ### What's Not Yet Implemented
 
-- WebGL2 backend (optional GPU acceleration for WASM)
 - Pure Rust Git parsing (gitoxide) - optional enhancement
 - CVS/Apache log parsers
 - Memory optimization for very large repositories
@@ -96,9 +97,9 @@ rource/
 │   ├── rource-math/      # Math types [141 tests]
 │   ├── rource-vcs/       # VCS parsing (Git, SVN, Hg, Bzr) [117 tests]
 │   ├── rource-core/      # Scene, physics, animation, camera, config [210 tests]
-│   └── rource-render/    # Rendering system [75 tests]
+│   └── rource-render/    # Rendering system (Software + WebGL2) [90 tests]
 ├── rource-cli/           # Native CLI application [38 tests]
-└── rource-wasm/          # WebAssembly application ✅ [2 tests]
+└── rource-wasm/          # WebAssembly application ✅ [3 tests]
 ```
 
 ### Recent Changes (2026-01-10)
@@ -1580,7 +1581,7 @@ impl ZoomCamera {
 #### 6.2 WebAssembly
 - [x] wasm-bindgen setup
 - [x] Canvas2D backend (software renderer + ImageData)
-- [ ] WebGL2 backend (optional)
+- [x] WebGL2 backend (GPU-accelerated, automatic fallback to software)
 - [x] File upload interface
 - [x] Touch support
 
@@ -1781,74 +1782,59 @@ impl SoftwareRenderer {
 }
 ```
 
-### 7.3 WebGL2 Backend (Browser)
+### 7.3 WebGL2 Backend (Browser) ✅ IMPLEMENTED
 
-For better browser performance when GPU is available:
+GPU-accelerated rendering for web browsers, implemented in `rource-render/src/backend/webgl2/`:
 
+**Module Structure:**
+```
+webgl2/
+├── mod.rs          # WebGl2Renderer implementing Renderer trait
+├── shaders.rs      # GLSL ES 3.0 shader sources (circle, line, quad, text)
+├── buffers.rs      # VBO/VAO management for instanced rendering
+└── textures.rs     # Texture atlas for font glyphs
+```
+
+**Key Features:**
+- Instanced rendering for circles, rings, lines, quads, and text
+- Anti-aliased primitives via distance-field shaders
+- Font atlas with dynamic row-based packing (512→2048)
+- Context loss detection and automatic recovery
+- Automatic fallback to software renderer if WebGL2 unavailable
+
+**JavaScript API:**
+```javascript
+const rource = new Rource(canvas);
+console.log(rource.getRendererType()); // "webgl2" or "software"
+console.log(rource.isWebGL2());        // true/false
+```
+
+**Example Implementation (actual code):**
 ```rust
-// rource-render/src/backend/webgl.rs
-
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlBuffer};
-
-pub struct WebGLRenderer {
+// rource-render/src/backend/webgl2/mod.rs
+pub struct WebGl2Renderer {
     gl: WebGl2RenderingContext,
-
-    // Shader programs
-    basic_program: WebGlProgram,
-    textured_program: WebGlProgram,
-    text_program: WebGlProgram,
-
-    // Vertex buffers
-    quad_vbo: WebGlBuffer,
-    circle_vbo: WebGlBuffer,
-
-    // Batching
-    batch: DrawBatch,
-
-    // Textures
-    textures: HashMap<TextureId, WebGlTexture>,
-    font_atlas: WebGlTexture,
+    circle_program: Option<ShaderProgram>,
+    ring_program: Option<ShaderProgram>,
+    line_program: Option<ShaderProgram>,
+    quad_program: Option<ShaderProgram>,
+    text_program: Option<ShaderProgram>,
+    vao_manager: VertexArrayManager,
+    circle_instances: InstanceBuffer,  // 7 floats: center(2) + radius(1) + color(4)
+    ring_instances: InstanceBuffer,    // 8 floats: center(2) + radius(1) + width(1) + color(4)
+    line_instances: InstanceBuffer,    // 9 floats: start(2) + end(2) + width(1) + color(4)
+    font_atlas: FontAtlas,
+    // ...
 }
 
-impl WebGLRenderer {
-    const VERTEX_SHADER: &'static str = r#"#version 300 es
-        precision mediump float;
-
-        in vec2 a_position;
-        in vec2 a_texcoord;
-        in vec4 a_color;
-
-        uniform mat4 u_transform;
-
-        out vec2 v_texcoord;
-        out vec4 v_color;
-
-        void main() {
-            gl_Position = u_transform * vec4(a_position, 0.0, 1.0);
-            v_texcoord = a_texcoord;
-            v_color = a_color;
-        }
-    "#;
-
-    const FRAGMENT_SHADER: &'static str = r#"#version 300 es
-        precision mediump float;
-
-        in vec2 v_texcoord;
-        in vec4 v_color;
-
-        uniform sampler2D u_texture;
-        uniform bool u_use_texture;
-
-        out vec4 fragColor;
-
-        void main() {
-            vec4 color = v_color;
-            if (u_use_texture) {
-                color *= texture(u_texture, v_texcoord);
-            }
-            fragColor = color;
-        }
-    "#;
+impl Renderer for WebGl2Renderer {
+    fn draw_disc(&mut self, center: Vec2, radius: f32, color: Color) {
+        self.circle_instances.push_raw(&[
+            center.x, center.y, radius,
+            color.r, color.g, color.b, color.a,
+        ]);
+    }
+    // All primitives are batched and rendered at end_frame()
 }
 ```
 
