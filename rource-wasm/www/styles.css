@@ -699,6 +699,13 @@ header h1 {
     user-select: none;
     transition: opacity 0.2s;
     margin-bottom: 0;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: inherit;
 }
 
 .tech-info-panel.collapsible:not(.collapsed) .tech-info-header {
@@ -707,6 +714,11 @@ header h1 {
 
 .tech-info-panel.collapsible .tech-info-header:hover {
     opacity: 0.8;
+}
+
+.tech-info-panel.collapsible .tech-info-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .tech-info-panel.collapsible .panel-toggle {
@@ -1048,10 +1060,20 @@ header h1 {
     cursor: pointer;
     user-select: none;
     transition: background-color 0.2s;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    border: none;
+    border-bottom: 1px solid var(--border);
 }
 
 .panel.collapsible .panel-header:hover {
     background: var(--border);
+}
+
+.panel.collapsible .panel-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: -2px;
 }
 
 .panel.collapsible .panel-toggle {
