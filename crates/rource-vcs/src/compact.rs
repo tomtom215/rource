@@ -116,12 +116,7 @@ impl CommitStore {
     /// Adds a new commit to the store.
     ///
     /// Returns a `CommitId` that can be used to add file changes.
-    pub fn add_commit(
-        &mut self,
-        timestamp: i64,
-        author: &str,
-        hash: Option<&str>,
-    ) -> CommitId {
+    pub fn add_commit(&mut self, timestamp: i64, author: &str, hash: Option<&str>) -> CommitId {
         let author_id = self.authors.intern(author);
 
         let mut short_hash = [0u8; 7];
@@ -441,7 +436,10 @@ mod tests {
 
         let files = store.file_changes(commit);
         assert_eq!(files.len(), 2);
-        assert_eq!(store.resolve_path(files[0].path), Some("src/main.rs".to_string()));
+        assert_eq!(
+            store.resolve_path(files[0].path),
+            Some("src/main.rs".to_string())
+        );
     }
 
     #[test]
@@ -483,8 +481,7 @@ mod tests {
             Commit::new("abc123", 100, "Alice")
                 .with_file(FileChange::create("a.txt"))
                 .with_file(FileChange::modify("b.txt")),
-            Commit::new("def456", 200, "Bob")
-                .with_file(FileChange::delete("c.txt")),
+            Commit::new("def456", 200, "Bob").with_file(FileChange::delete("c.txt")),
         ];
 
         let mut store = CommitStore::new();

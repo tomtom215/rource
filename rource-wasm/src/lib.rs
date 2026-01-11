@@ -497,7 +497,9 @@ impl Rource {
         // Load the default font for text rendering
         let font_id = backend.load_font(default_font::ROBOTO_MONO);
         if font_id.is_none() {
-            web_sys::console::warn_1(&"Rource: Failed to load font, labels will be disabled".into());
+            web_sys::console::warn_1(
+                &"Rource: Failed to load font, labels will be disabled".into(),
+            );
         }
 
         let scene = Scene::new();
@@ -1168,7 +1170,12 @@ impl Rource {
         let visible_users = self.scene.visible_user_ids(&visible_bounds);
 
         // Collect render statistics
-        let active_actions = self.scene.actions().iter().filter(|a| !a.is_complete()).count();
+        let active_actions = self
+            .scene
+            .actions()
+            .iter()
+            .filter(|a| !a.is_complete())
+            .count();
         self.render_stats = RenderStats {
             visible_files: visible_files.len(),
             visible_users: visible_users.len(),
@@ -1184,7 +1191,10 @@ impl Rource {
                 6
             } else {
                 // Software renderer: one per primitive
-                visible_dirs.len() * 2 + visible_files.len() + active_actions * 2 + visible_users.len() * 3
+                visible_dirs.len() * 2
+                    + visible_files.len()
+                    + active_actions * 2
+                    + visible_users.len() * 3
             },
         };
 
@@ -1317,7 +1327,8 @@ impl Rource {
                             let radius = (file.radius() * camera_zoom).max(1.0);
 
                             // Position label below the file
-                            let label_pos = Vec2::new(screen_pos.x - 20.0, screen_pos.y + radius + 10.0);
+                            let label_pos =
+                                Vec2::new(screen_pos.x - 20.0, screen_pos.y + radius + 10.0);
                             let alpha = file.alpha();
 
                             // Get just the filename, not the full path

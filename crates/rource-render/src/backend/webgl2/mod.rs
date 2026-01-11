@@ -177,12 +177,12 @@ impl WebGl2Renderer {
             textured_quad_program: None,
             text_program: None,
             vao_manager: VertexArrayManager::new(),
-            circle_instances: InstanceBuffer::new(7, 1000),   // center(2) + radius(1) + color(4)
-            ring_instances: InstanceBuffer::new(8, 500),     // center(2) + radius(1) + width(1) + color(4)
-            line_instances: InstanceBuffer::new(9, 1000),    // start(2) + end(2) + width(1) + color(4)
-            quad_instances: InstanceBuffer::new(8, 500),     // bounds(4) + color(4)
+            circle_instances: InstanceBuffer::new(7, 1000), // center(2) + radius(1) + color(4)
+            ring_instances: InstanceBuffer::new(8, 500), // center(2) + radius(1) + width(1) + color(4)
+            line_instances: InstanceBuffer::new(9, 1000), // start(2) + end(2) + width(1) + color(4)
+            quad_instances: InstanceBuffer::new(8, 500), // bounds(4) + color(4)
             textured_quad_instances: HashMap::new(),
-            text_instances: InstanceBuffer::new(12, 2000),   // bounds(4) + uv_bounds(4) + color(4)
+            text_instances: InstanceBuffer::new(12, 2000), // bounds(4) + uv_bounds(4) + color(4)
             context_lost: false,
         };
 
@@ -205,17 +205,12 @@ impl WebGl2Renderer {
         // Compile shader programs
         self.circle_program =
             Some(self.compile_program(CIRCLE_VERTEX_SHADER, CIRCLE_FRAGMENT_SHADER)?);
-        self.ring_program =
-            Some(self.compile_program(RING_VERTEX_SHADER, RING_FRAGMENT_SHADER)?);
-        self.line_program =
-            Some(self.compile_program(LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER)?);
-        self.quad_program =
-            Some(self.compile_program(QUAD_VERTEX_SHADER, QUAD_FRAGMENT_SHADER)?);
-        self.textured_quad_program = Some(
-            self.compile_program(TEXTURED_QUAD_VERTEX_SHADER, TEXTURED_QUAD_FRAGMENT_SHADER)?,
-        );
-        self.text_program =
-            Some(self.compile_program(TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER)?);
+        self.ring_program = Some(self.compile_program(RING_VERTEX_SHADER, RING_FRAGMENT_SHADER)?);
+        self.line_program = Some(self.compile_program(LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER)?);
+        self.quad_program = Some(self.compile_program(QUAD_VERTEX_SHADER, QUAD_FRAGMENT_SHADER)?);
+        self.textured_quad_program =
+            Some(self.compile_program(TEXTURED_QUAD_VERTEX_SHADER, TEXTURED_QUAD_FRAGMENT_SHADER)?);
+        self.text_program = Some(self.compile_program(TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER)?);
 
         // Create VAO manager vertex buffer
         self.vao_manager.create_vertex_buffer(gl);
@@ -234,7 +229,9 @@ impl WebGl2Renderer {
         // Compile vertex shader
         let vertex_shader = gl
             .create_shader(WebGl2RenderingContext::VERTEX_SHADER)
-            .ok_or_else(|| WebGl2Error::ShaderCompilation("Failed to create vertex shader".into()))?;
+            .ok_or_else(|| {
+                WebGl2Error::ShaderCompilation("Failed to create vertex shader".into())
+            })?;
 
         gl.shader_source(&vertex_shader, vertex_src);
         gl.compile_shader(&vertex_shader);
@@ -299,7 +296,8 @@ impl WebGl2Renderer {
 
         // Get uniform locations
         let resolution_loc = gl.get_uniform_location(&program, "u_resolution");
-        let texture_loc = gl.get_uniform_location(&program, "u_texture")
+        let texture_loc = gl
+            .get_uniform_location(&program, "u_texture")
             .or_else(|| gl.get_uniform_location(&program, "u_font_atlas"));
 
         Ok(ShaderProgram {
@@ -312,7 +310,9 @@ impl WebGl2Renderer {
     /// Transforms a point from world to screen coordinates.
     #[inline]
     fn transform_point(&self, point: Vec2) -> Vec2 {
-        let p = self.transform.transform_point(rource_math::Vec3::from_vec2(point, 0.0));
+        let p = self
+            .transform
+            .transform_point(rource_math::Vec3::from_vec2(point, 0.0));
         Vec2::new(p.x, p.y)
     }
 
@@ -343,7 +343,8 @@ impl WebGl2Renderer {
 
         // Setup VAO if needed
         if self.vao_manager.circle_vao.is_none() {
-            self.vao_manager.setup_circle_vao(gl, &self.circle_instances);
+            self.vao_manager
+                .setup_circle_vao(gl, &self.circle_instances);
         }
 
         // Use program and bind VAO
@@ -540,7 +541,8 @@ impl WebGl2Renderer {
         // Setup VAO if needed (reusing textured quad VAO layout)
         if self.vao_manager.text_vao.is_none() {
             // Text uses same layout as textured quads
-            self.vao_manager.setup_textured_vao(gl, &self.text_instances);
+            self.vao_manager
+                .setup_textured_vao(gl, &self.text_instances);
             self.vao_manager.text_vao = self.vao_manager.textured_quad_vao.take();
         }
 
@@ -649,14 +651,7 @@ impl Renderer for WebGl2Renderer {
 
         // Add to ring instances
         self.ring_instances.push_raw(&[
-            center.x,
-            center.y,
-            radius,
-            width,
-            color.r,
-            color.g,
-            color.b,
-            color.a,
+            center.x, center.y, radius, width, color.r, color.g, color.b, color.a,
         ]);
     }
 
@@ -669,13 +664,7 @@ impl Renderer for WebGl2Renderer {
 
         // Add to circle instances
         self.circle_instances.push_raw(&[
-            center.x,
-            center.y,
-            radius,
-            color.r,
-            color.g,
-            color.b,
-            color.a,
+            center.x, center.y, radius, color.r, color.g, color.b, color.a,
         ]);
     }
 
@@ -689,15 +678,7 @@ impl Renderer for WebGl2Renderer {
 
         // Add to line instances
         self.line_instances.push_raw(&[
-            start.x,
-            start.y,
-            end.x,
-            end.y,
-            width,
-            color.r,
-            color.g,
-            color.b,
-            color.a,
+            start.x, start.y, end.x, end.y, width, color.r, color.g, color.b, color.a,
         ]);
     }
 
@@ -752,10 +733,7 @@ impl Renderer for WebGl2Renderer {
         let size_tenths = (size * 10.0) as u32;
 
         for ch in text.chars() {
-            let key = GlyphKey {
-                ch,
-                size_tenths,
-            };
+            let key = GlyphKey { ch, size_tenths };
 
             // Get or rasterize glyph
             let region = if let Some(region) = self.font_atlas.get_glyph(key) {
@@ -772,9 +750,7 @@ impl Renderer for WebGl2Renderer {
                         {
                             // Calculate glyph position
                             let gx = x + glyph.metrics.xmin as f32;
-                            let gy = y - glyph.metrics.ymin as f32
-                                - height as f32
-                                + (size * 0.8);
+                            let gy = y - glyph.metrics.ymin as f32 - height as f32 + (size * 0.8);
 
                             let (u_min, v_min, u_max, v_max) = region.uv_bounds();
 

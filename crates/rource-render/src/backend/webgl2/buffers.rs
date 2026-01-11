@@ -285,7 +285,14 @@ impl VertexArrayManager {
             let stride = 7 * 4; // 7 floats * 4 bytes
 
             // Center (location 1)
-            gl.vertex_attrib_pointer_with_i32(1, 2, WebGl2RenderingContext::FLOAT, false, stride, 0);
+            gl.vertex_attrib_pointer_with_i32(
+                1,
+                2,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                0,
+            );
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_divisor(1, 1);
 
@@ -352,7 +359,14 @@ impl VertexArrayManager {
             let stride = 8 * 4; // 8 floats * 4 bytes
 
             // Center (location 1)
-            gl.vertex_attrib_pointer_with_i32(1, 2, WebGl2RenderingContext::FLOAT, false, stride, 0);
+            gl.vertex_attrib_pointer_with_i32(
+                1,
+                2,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                0,
+            );
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_divisor(1, 1);
 
@@ -431,7 +445,14 @@ impl VertexArrayManager {
             let stride = 9 * 4; // 9 floats * 4 bytes
 
             // Start (location 1)
-            gl.vertex_attrib_pointer_with_i32(1, 2, WebGl2RenderingContext::FLOAT, false, stride, 0);
+            gl.vertex_attrib_pointer_with_i32(
+                1,
+                2,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                0,
+            );
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_divisor(1, 1);
 
@@ -510,7 +531,14 @@ impl VertexArrayManager {
             let stride = 8 * 4; // 8 floats * 4 bytes
 
             // Bounds (location 1)
-            gl.vertex_attrib_pointer_with_i32(1, 4, WebGl2RenderingContext::FLOAT, false, stride, 0);
+            gl.vertex_attrib_pointer_with_i32(
+                1,
+                4,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                0,
+            );
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_divisor(1, 1);
 
@@ -565,7 +593,14 @@ impl VertexArrayManager {
             let stride = 12 * 4; // 12 floats * 4 bytes
 
             // Bounds (location 1)
-            gl.vertex_attrib_pointer_with_i32(1, 4, WebGl2RenderingContext::FLOAT, false, stride, 0);
+            gl.vertex_attrib_pointer_with_i32(
+                1,
+                4,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                0,
+            );
             gl.enable_vertex_attrib_array(1);
             gl.vertex_attrib_divisor(1, 1);
 

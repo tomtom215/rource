@@ -801,7 +801,9 @@ mod tests {
         let user_id = scene.get_or_create_user("Alice");
         let file_id = scene.create_file(Path::new("test.rs")).unwrap();
 
-        let action_id = scene.spawn_action(user_id, file_id, ActionType::Modify).unwrap();
+        let action_id = scene
+            .spawn_action(user_id, file_id, ActionType::Modify)
+            .unwrap();
 
         assert_eq!(scene.action_count(), 1);
 

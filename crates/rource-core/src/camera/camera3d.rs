@@ -391,10 +391,7 @@ impl Camera3D {
         let clip = self.view_projection_matrix().transform_point(world_pos);
         let clip_w = {
             let vp = self.view_projection_matrix();
-            world_pos.x * vp.m[3]
-                + world_pos.y * vp.m[7]
-                + world_pos.z * vp.m[11]
-                + vp.m[15]
+            world_pos.x * vp.m[3] + world_pos.y * vp.m[7] + world_pos.z * vp.m[11] + vp.m[15]
         };
 
         // Behind camera
@@ -472,9 +469,10 @@ impl Camera3D {
 
             self.target = transition.start_target.lerp(transition.end_target, t);
             self.yaw = transition.start_yaw + (transition.end_yaw - transition.start_yaw) * t;
-            self.pitch = transition.start_pitch + (transition.end_pitch - transition.start_pitch) * t;
-            self.distance =
-                transition.start_distance + (transition.end_distance - transition.start_distance) * t;
+            self.pitch =
+                transition.start_pitch + (transition.end_pitch - transition.start_pitch) * t;
+            self.distance = transition.start_distance
+                + (transition.end_distance - transition.start_distance) * t;
 
             if transition.tween.is_complete() {
                 self.target_target = self.target;
@@ -515,7 +513,8 @@ impl Camera3D {
 
             // Update distance
             if (self.target_distance - self.distance).abs() > 0.01 {
-                self.distance = self.distance + (self.target_distance - self.distance) * lerp_factor;
+                self.distance =
+                    self.distance + (self.target_distance - self.distance) * lerp_factor;
                 self.dirty = true;
             } else {
                 self.distance = self.target_distance;

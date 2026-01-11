@@ -309,10 +309,7 @@ impl TomlConfig {
                 .playback
                 .stop_at_time
                 .or(defaults.playback.stop_at_time),
-            realtime: self
-                .playback
-                .realtime
-                .unwrap_or(defaults.playback.realtime),
+            realtime: self.playback.realtime.unwrap_or(defaults.playback.realtime),
         };
 
         // Visibility settings
@@ -402,10 +399,7 @@ impl TomlConfig {
                 .camera
                 .highlight_all_users
                 .unwrap_or(defaults.camera.highlight_all_users),
-            enable_3d: self
-                .camera
-                .enable_3d
-                .unwrap_or(defaults.camera.enable_3d),
+            enable_3d: self.camera.enable_3d.unwrap_or(defaults.camera.enable_3d),
             pitch: self.camera.pitch.unwrap_or(defaults.camera.pitch),
             rotation_speed: self
                 .camera
@@ -601,14 +595,8 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
             .playback
             .time_scale
             .unwrap_or(base.playback.time_scale),
-        stop_at_time: config
-            .playback
-            .stop_at_time
-            .or(base.playback.stop_at_time),
-        realtime: config
-            .playback
-            .realtime
-            .unwrap_or(base.playback.realtime),
+        stop_at_time: config.playback.stop_at_time.or(base.playback.stop_at_time),
+        realtime: config.playback.realtime.unwrap_or(base.playback.realtime),
     };
 
     let visibility = VisibilitySettings {
@@ -695,10 +683,7 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
             .camera
             .highlight_all_users
             .unwrap_or(base.camera.highlight_all_users),
-        enable_3d: config
-            .camera
-            .enable_3d
-            .unwrap_or(base.camera.enable_3d),
+        enable_3d: config.camera.enable_3d.unwrap_or(base.camera.enable_3d),
         pitch: config.camera.pitch.unwrap_or(base.camera.pitch),
         rotation_speed: config
             .camera

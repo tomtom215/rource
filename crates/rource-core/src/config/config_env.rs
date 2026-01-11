@@ -322,8 +322,7 @@ pub fn merge_env(base: Settings) -> Settings {
 
     // Camera settings
     let camera = CameraSettings {
-        mode: read_env("CAMERA_MODE")
-            .map_or(base.camera.mode, |v| CameraModeSetting::parse(&v)),
+        mode: read_env("CAMERA_MODE").map_or(base.camera.mode, |v| CameraModeSetting::parse(&v)),
         min_zoom: read_env("MIN_ZOOM")
             .and_then(|v| v.parse().ok())
             .unwrap_or(base.camera.min_zoom),
@@ -661,26 +660,30 @@ mod tests {
 
     #[test]
     fn test_load_env_title() {
-        with_env(&[("TITLE", "My Project"), ("TITLE_COLOR", "#FF5500")], || {
-            let settings = load_env();
-            assert_eq!(settings.title.title, Some("My Project".to_string()));
-        });
+        with_env(
+            &[("TITLE", "My Project"), ("TITLE_COLOR", "#FF5500")],
+            || {
+                let settings = load_env();
+                assert_eq!(settings.title.title, Some("My Project".to_string()));
+            },
+        );
     }
 
     #[test]
     fn test_load_env_filters() {
-        with_env(&[("HIDE_USERS", "bot.*"), ("HIDE_FILES", "\\.lock$")], || {
-            let settings = load_env();
-            assert_eq!(settings.filter.hide_users_pattern(), Some("bot.*"));
-            assert_eq!(settings.filter.hide_files_pattern(), Some("\\.lock$"));
-        });
+        with_env(
+            &[("HIDE_USERS", "bot.*"), ("HIDE_FILES", "\\.lock$")],
+            || {
+                let settings = load_env();
+                assert_eq!(settings.filter.hide_users_pattern(), Some("bot.*"));
+                assert_eq!(settings.filter.hide_files_pattern(), Some("\\.lock$"));
+            },
+        );
     }
 
     #[test]
     fn test_merge_env() {
-        let base = Settings::new()
-            .with_dimensions(1920, 1080)
-            .with_bloom(true);
+        let base = Settings::new().with_dimensions(1920, 1080).with_bloom(true);
 
         with_env(&[("WIDTH", "2560"), ("BLOOM_ENABLED", "false")], || {
             let settings = merge_env(base);
@@ -739,10 +742,7 @@ mod tests {
             ],
             || {
                 let settings = load_env();
-                assert_eq!(
-                    settings.export.output_path,
-                    Some("/tmp/frames".to_string())
-                );
+                assert_eq!(settings.export.output_path, Some("/tmp/frames".to_string()));
                 assert_eq!(settings.export.framerate, 30);
                 assert_eq!(
                     settings.export.screenshot_path,
@@ -834,7 +834,10 @@ mod tests {
             ],
             || {
                 let settings = load_env();
-                assert_eq!(settings.overlay.logo_path, Some("/path/to/logo.png".to_string()));
+                assert_eq!(
+                    settings.overlay.logo_path,
+                    Some("/path/to/logo.png".to_string())
+                );
                 assert_eq!(settings.overlay.logo_offset, (10, 20));
                 assert_eq!(
                     settings.overlay.background_image,
