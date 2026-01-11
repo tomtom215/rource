@@ -1,0 +1,27 @@
+# Minimal Configuration
+# Clean output with minimal UI elements
+
+width = 1280
+height = 720
+
+# Pure black background
+background_color = "000000"
+
+# Hide all UI elements
+hide_filenames = true
+hide_usernames = true
+hide_date = true
+hide_legend = true
+
+# Disable effects for clean look
+no_bloom = true
+shadows = false
+
+# Moderate speed
+seconds_per_day = 5.0
+
+# No title
+# title = ""
+
+# Usage:
+# rource --config examples/minimal.toml .

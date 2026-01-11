@@ -1,0 +1,39 @@
+# Presentation Configuration
+# High-quality settings for demos and presentations
+
+# Full HD resolution
+width = 1920
+height = 1080
+fullscreen = true
+
+# Slow, dramatic playback
+seconds_per_day = 15.0
+
+# Enable all visual effects
+no_bloom = false
+shadows = true
+
+# Larger text for visibility
+font_size = 16.0
+
+# Show everything
+hide_filenames = false
+hide_usernames = false
+hide_date = false
+hide_legend = false
+
+# Dark blue background (easier on eyes than pure black)
+background_color = "0a0a1a"
+
+# Camera follows action smoothly
+camera_mode = "overview"
+
+# Start paused so you can position before presenting
+paused = true
+
+# Title prominently displayed
+title = "Project Evolution"
+
+# Usage:
+# rource --config examples/presentation.toml .
+# Press Space to start when ready

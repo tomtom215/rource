@@ -1,0 +1,28 @@
+# Web Project Configuration
+# Optimized for Node.js/TypeScript/React projects
+
+width = 1280
+height = 720
+
+seconds_per_day = 5.0
+
+no_bloom = false
+shadows = false
+
+# Filter out the massive node_modules and common build dirs
+hide_dirs = "node_modules|\.next|\.nuxt|dist|build|coverage|\.cache|\.git"
+
+# Filter out lock files and generated content
+hide_files = "package-lock\\.json$|yarn\\.lock$|pnpm-lock\\.yaml$|\\.min\\.(js|css)$"
+
+# Hide bot accounts
+hide_users = "dependabot.*|renovate.*|github-actions.*|semantic-release-bot"
+
+# Focus on source files (optional - uncomment to use)
+# show_files = "\\.(ts|tsx|js|jsx|vue|svelte|css|scss|html)$"
+
+# Title
+title = "Web Project History"
+
+# Usage:
+# rource --config examples/web-project.toml /path/to/web/project

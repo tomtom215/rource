@@ -1,0 +1,23 @@
+# Basic Rource Configuration
+# A simple starting point for customization
+
+# Display settings
+width = 1280
+height = 720
+fullscreen = false
+background_color = "000000"
+
+# Playback speed (seconds of real time per day of history)
+seconds_per_day = 10.0
+
+# Visual effects
+no_bloom = false
+shadows = false
+
+# UI visibility
+hide_filenames = false
+hide_usernames = false
+hide_date = false
+
+# Uncomment to set a title
+# title = "My Project"

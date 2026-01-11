@@ -1,0 +1,23 @@
+# Sample Custom Log Format
+# Format: timestamp|username|action|filepath
+# Action: A=add, M=modify, D=delete
+# Timestamp: Unix epoch seconds
+#
+# Usage: rource --custom-log examples/sample-custom.log
+
+1704067200|alice|A|src/main.rs
+1704067200|alice|A|Cargo.toml
+1704067260|bob|A|src/lib.rs
+1704067320|alice|M|src/main.rs
+1704067380|charlie|A|README.md
+1704067440|bob|M|src/lib.rs
+1704067500|alice|A|src/utils.rs
+1704067560|bob|A|tests/test_lib.rs
+1704067620|charlie|M|README.md
+1704067680|alice|M|src/main.rs
+1704067740|alice|M|src/utils.rs
+1704067800|bob|D|src/old_module.rs
+1704067860|charlie|A|docs/guide.md
+1704067920|alice|A|src/config.rs
+1704067980|bob|M|tests/test_lib.rs
+1704068040|charlie|M|docs/guide.md

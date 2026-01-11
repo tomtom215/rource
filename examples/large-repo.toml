@@ -1,0 +1,37 @@
+# Large Repository Configuration
+# Optimized for repositories with 50,000+ commits
+
+# Standard resolution (can increase if performance allows)
+width = 1280
+height = 720
+
+# Fast playback to get through history quickly
+seconds_per_day = 0.5
+
+# Disable effects for better performance
+no_bloom = true
+shadows = false
+
+# Limit visible entities to prevent slowdown
+max_files = 2000
+max_users = 100
+
+# Files disappear faster to reduce clutter
+file_idle_time = 30.0
+user_idle_time = 5.0
+
+# Hide labels for cleaner display
+hide_filenames = true
+hide_usernames = false
+
+# Filter out common noise directories
+hide_dirs = "node_modules|vendor|target|build|dist|\.git|__pycache__|\.cache"
+
+# Filter out generated/lock files
+hide_files = "\\.lock$|\\.sum$|\\.generated\\.|package-lock\\.json"
+
+# Filter out bots
+hide_users = "dependabot.*|renovate.*|github-actions.*|bot$"
+
+# Usage:
+# rource --config examples/large-repo.toml /path/to/large/repo

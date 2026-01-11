@@ -1,0 +1,23 @@
+# Rust Project Configuration
+# Optimized for Rust/Cargo projects
+
+width = 1280
+height = 720
+
+seconds_per_day = 5.0
+
+no_bloom = false
+shadows = false
+
+# Filter out build artifacts and dependencies
+hide_dirs = "target|\.git"
+hide_files = "Cargo\\.lock$"
+
+# Focus on Rust source files (optional - uncomment to use)
+# show_files = "\\.(rs|toml)$"
+
+# Title
+title = "Rust Project History"
+
+# Usage:
+# rource --config examples/rust-project.toml /path/to/rust/project
