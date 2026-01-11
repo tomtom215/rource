@@ -234,7 +234,7 @@
                 <div class="timeline-controls-row">
                     <div class="playback-controls">
                         <!-- Reset/Restart button -->
-                        <button type="button" id="btn-reset-bar" class="reset-btn" disabled aria-label="Reset to start" title="Reset to start (R)">
+                        <button type="button" id="btn-reset-bar" class="reset-btn" disabled aria-label="Restart from beginning" title="Restart from beginning">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
                             </svg>
@@ -271,9 +271,10 @@
         </div>
 
         <!-- Sidebar Panel -->
-        <div class="sidebar-panel" id="sidebar-panel">
-            <!-- Close button (visible on mobile) -->
-            <button type="button" id="sidebar-close" class="sidebar-close hidden" aria-label="Close sidebar">
+        <div class="sidebar-wrapper">
+            <div class="sidebar-panel" id="sidebar-panel">
+                <!-- Close button (visible on mobile) -->
+                <button type="button" id="sidebar-close" class="sidebar-close hidden" aria-label="Close sidebar">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                 </svg>
@@ -550,6 +551,14 @@
                 </div>
             </div>
         </div>
+        <!-- Scroll indicator -->
+        <div class="sidebar-scroll-indicator" id="sidebar-scroll-indicator" aria-hidden="true">
+            <span>Scroll for more</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+            </svg>
+        </div>
+    </div>
     </main>
 
     <footer>

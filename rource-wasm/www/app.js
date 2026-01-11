@@ -134,6 +134,7 @@ function applyPanelPreferences() {
 
 /**
  * Setup panel toggle handlers with preference saving
+ * Consolidated handler for all collapsible sidebar panels
  */
 function setupPanelToggleHandlers() {
     // Make collapsible panels save their state
@@ -145,17 +146,22 @@ function setupPanelToggleHandlers() {
 
     panelMappings.forEach(({ id, pref }) => {
         const panel = document.getElementById(id);
-        if (panel) {
-            const header = panel.querySelector('.panel-header, .tech-info-header');
-            if (header) {
-                // Replace inline onclick with proper handler
-                header.onclick = () => {
-                    panel.classList.toggle('collapsed');
-                    const isCollapsed = panel.classList.contains('collapsed');
-                    updatePreference(pref, isCollapsed);
-                };
-            }
-        }
+        if (!panel) return;
+
+        const header = panel.querySelector('.panel-header, .tech-info-header');
+        if (!header) return;
+
+        // Use addEventListener for proper event handling
+        header.addEventListener('click', () => {
+            panel.classList.toggle('collapsed');
+            const isCollapsed = panel.classList.contains('collapsed');
+
+            // Update aria-expanded for accessibility
+            header.setAttribute('aria-expanded', (!isCollapsed).toString());
+
+            // Save preference
+            updatePreference(pref, isCollapsed);
+        });
     });
 }
 
@@ -751,6 +757,14 @@ function updatePerfMetrics() {
     }
 }
 
+// Check if visualization is at the end
+function isAtEnd() {
+    if (!rource) return false;
+    const total = rource.commitCount();
+    const current = rource.currentCommit();
+    return total > 0 && current >= total - 1;
+}
+
 // Update UI
 function updateUI() {
     if (!rource) return;
@@ -758,18 +772,28 @@ function updateUI() {
     const playing = rource.isPlaying();
     const total = rource.commitCount();
     const current = rource.currentCommit();
+    const atEnd = total > 0 && current >= total - 1 && !playing;
 
-    // Update play button icon
+    // Update play button icon - show replay icon when at end
     const pauseIcon = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
     const playIconPath = '<path d="M8 5v14l11-7z"/>';
-
-    playIconMain.innerHTML = playing ? pauseIcon : playIconPath;
-    btnPlayMain.title = playing ? 'Pause (Space)' : 'Play (Space)';
+    const replayIcon = '<path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>';
 
     if (playing) {
+        playIconMain.innerHTML = pauseIcon;
+        btnPlayMain.title = 'Pause (Space)';
         btnPlayMain.classList.add('active');
-    } else {
+        btnPlayMain.classList.remove('replay');
+    } else if (atEnd) {
+        playIconMain.innerHTML = replayIcon;
+        btnPlayMain.title = 'Replay from start (Space)';
         btnPlayMain.classList.remove('active');
+        btnPlayMain.classList.add('replay');
+    } else {
+        playIconMain.innerHTML = playIconPath;
+        btnPlayMain.title = 'Play (Space)';
+        btnPlayMain.classList.remove('active');
+        btnPlayMain.classList.remove('replay');
     }
 
     // Update timeline
@@ -866,8 +890,11 @@ function loadLogData(content, format = 'custom') {
             }
         }
 
-        // Auto-play
-        rource.play();
+        // Start paused by default for first-time users
+        // Only auto-play if explicitly requested via URL parameter
+        if (urlParams.autoplay === 'true') {
+            rource.play();
+        }
         updateUI();
 
     } catch (e) {
@@ -1191,26 +1218,9 @@ document.addEventListener('keydown', (e) => {
 // =====================================================================
 // COLLAPSIBLE SIDEBAR PANELS
 // =====================================================================
-// Event handlers for collapsible panels in the sidebar
-// (Keyboard Shortcuts, Quick Guide, Technical Specifications)
-
-// Generic function to toggle a collapsible panel
-function setupCollapsiblePanel(toggleId, panelId) {
-    const toggle = document.getElementById(toggleId);
-    const panel = document.getElementById(panelId);
-    if (!toggle || !panel) return;
-
-    toggle.addEventListener('click', () => {
-        panel.classList.toggle('collapsed');
-        const isExpanded = !panel.classList.contains('collapsed');
-        toggle.setAttribute('aria-expanded', isExpanded.toString());
-    });
-}
-
-// Setup the three collapsible panels
-setupCollapsiblePanel('panel-shortcuts-toggle', 'panel-shortcuts');
-setupCollapsiblePanel('panel-guide-toggle', 'panel-guide');
-setupCollapsiblePanel('tech-info-toggle', 'tech-info-panel');
+// Event handlers for collapsible panels are set up in setupPanelToggleHandlers()
+// which is called after WASM initialization to ensure proper preference saving.
+// The handlers are consolidated there to avoid duplicate event listeners.
 
 // GitHub API rate limit tracking
 let rateLimitRemaining = 60;
@@ -1545,7 +1555,13 @@ async function main() {
 // Event handlers
 btnPlayMain.addEventListener('click', () => {
     if (rource && hasLoadedData) {
-        rource.togglePlay();
+        // If at the end and paused, replay from start
+        if (isAtEnd() && !rource.isPlaying()) {
+            rource.seek(0);
+            rource.play();
+        } else {
+            rource.togglePlay();
+        }
         updateUI();
     } else if (!hasLoadedData) {
         // Load Rource project data by default (cached)
@@ -1569,8 +1585,12 @@ btnNext.addEventListener('click', () => {
 
 btnResetBar.addEventListener('click', () => {
     if (rource) {
+        // Pause if playing, then reset to start
+        if (rource.isPlaying()) {
+            rource.pause();
+        }
         rource.resetCamera();
-        rource.seek(0); // Also reset to first commit
+        rource.seek(0);
         updateUI();
     }
 });
@@ -1963,6 +1983,13 @@ btnFetchGithub.addEventListener('click', async () => {
         await fetchGitHubRepo(url);
     } catch (e) {
         console.error('Fetch error:', e);
+        // Show error to user (fetchGitHubRepo already updates fetchStatus for API errors,
+        // but URL parsing errors need explicit handling)
+        if (fetchStatus && !fetchStatus.classList.contains('error')) {
+            fetchStatus.className = 'fetch-status visible error';
+            fetchStatusText.textContent = e.message || 'An error occurred while fetching the repository.';
+        }
+        showToast(e.message || 'Failed to fetch repository.', 'error');
     }
     btnFetchGithub.disabled = false;
 });
@@ -2290,6 +2317,51 @@ function checkMobileSidebar() {
 
 window.addEventListener('resize', checkMobileSidebar);
 checkMobileSidebar();
+
+// =====================================================================
+// SIDEBAR SCROLL INDICATOR
+// =====================================================================
+const scrollIndicator = document.getElementById('sidebar-scroll-indicator');
+
+function updateScrollIndicator() {
+    if (!sidebarPanel || !scrollIndicator) return;
+
+    // Check if sidebar has scrollable content
+    const scrollTop = sidebarPanel.scrollTop;
+    const scrollHeight = sidebarPanel.scrollHeight;
+    const clientHeight = sidebarPanel.clientHeight;
+
+    // If content fits without scrolling, hide indicator
+    if (scrollHeight <= clientHeight + 5) {
+        scrollIndicator.classList.add('hidden');
+        return;
+    }
+
+    // Show indicator if not near the bottom (within 50px)
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    if (distanceFromBottom > 50) {
+        scrollIndicator.classList.remove('hidden');
+    } else {
+        scrollIndicator.classList.add('hidden');
+    }
+}
+
+// Update on scroll
+sidebarPanel.addEventListener('scroll', updateScrollIndicator, { passive: true });
+
+// Update on resize (content height may change)
+window.addEventListener('resize', updateScrollIndicator);
+
+// Initial check after a short delay to ensure content is rendered
+setTimeout(updateScrollIndicator, 100);
+
+// Also update when collapsible panels are toggled
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.panel-header') || e.target.closest('.collapsible')) {
+        // Delay to allow animation/content change to complete
+        setTimeout(updateScrollIndicator, 350);
+    }
+});
 
 // =====================================================================
 // COMMIT TOOLTIP ON HOVER

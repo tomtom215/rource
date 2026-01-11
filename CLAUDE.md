@@ -57,9 +57,9 @@ rource/
 ├── crates/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [141 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [130 tests]
-│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [210 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, bloom, shadows, fonts) [90 tests]
-├── rource-cli/           # Native CLI application (winit + softbuffer) [38 tests]
+│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [236 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, bloom, shadows, fonts) [99 tests]
+├── rource-cli/           # Native CLI application (winit + softbuffer) [41 tests]
 └── rource-wasm/          # WebAssembly application [3 tests]
 ```
 
@@ -300,6 +300,65 @@ for (id, commit) in store.commits() {
 }
 ```
 
+### Web UI Development (2026-01-11)
+
+The WASM demo includes a rich web UI (`rource-wasm/www/`) with interactive controls. Key architecture decisions and lessons learned:
+
+#### File Structure
+
+```
+rource-wasm/www/
+├── index.html    # Page structure, sidebar panels, controls
+├── styles.css    # Complete styling including responsive design
+├── app.js        # Application logic, event handlers, state management
+└── pkg/          # WASM build output (auto-generated)
+```
+
+#### Sidebar Architecture
+
+The sidebar uses a scroll indicator pattern to show users when more content is available:
+
+```html
+<div class="sidebar-wrapper">
+    <div class="sidebar-panel" id="sidebar-panel">
+        <!-- All sidebar content -->
+    </div>
+    <div class="sidebar-scroll-indicator">
+        <span>Scroll for more</span>
+        <svg><!-- chevron --></svg>
+    </div>
+</div>
+```
+
+JavaScript detects scroll position and hides the indicator when near the bottom.
+
+#### Collapsible Panels
+
+Panels use a single consolidated handler in `setupPanelToggleHandlers()` that:
+1. Toggles the `collapsed` class
+2. Updates `aria-expanded` for accessibility
+3. Saves state to localStorage via `updatePreference()`
+
+**CRITICAL**: Avoid duplicate event handlers. If you add both `addEventListener` and `onclick`, the toggle will fire twice, canceling itself out.
+
+#### Common Web UI Issues
+
+| Symptom | Cause | Solution |
+|---------|-------|----------|
+| Collapsible panels don't toggle | Duplicate handlers (toggle twice = no effect) | Use single handler via `setupPanelToggleHandlers()` |
+| Fetch button errors not visible | Error caught but not displayed | Show toast AND update status element |
+| Buttons disabled after load | WASM not initialized | Buttons enable in `main()` after `init()` |
+| Panel state not persisting | Wrong preference key | Check `panelMappings` in `setupPanelToggleHandlers()` |
+
+#### Testing Web UI Changes
+
+Since JavaScript has no compile-time checks, test manually:
+1. Open browser DevTools console for errors
+2. Test all collapsible panels (click to expand/collapse)
+3. Test fetch with valid URL, invalid URL, and empty input
+4. Test on mobile viewport (sidebar becomes overlay)
+5. Verify scroll indicator appears/disappears correctly
+
 ### Headless Rendering Implementation (2026-01-10)
 
 Successfully implemented headless rendering mode for batch video export. Key learnings:
@@ -513,6 +572,8 @@ RUST_LOG=debug cargo run
 | Infinite loop | Wrong termination condition | Check `current_commit >= commits.len().saturating_sub(1)` |
 | Camera shows empty area | Using quadtree bounds | Use `compute_entity_bounds()` instead |
 | Files at wrong position | Camera not updated | Call `camera.update(dt)` each frame |
+| UI clicks do nothing | Duplicate event handlers | Consolidate to single handler, avoid both `onclick` and `addEventListener` |
+| GitHub fetch silently fails | Error swallowed in catch | Always show error via `showToast()` and update status UI |
 
 ## Git Workflow
 
@@ -571,4 +632,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-10 (Phase 7 in progress - 631 tests)*
+*Last updated: 2026-01-11 (Phase 7 in progress - 678 tests)*
