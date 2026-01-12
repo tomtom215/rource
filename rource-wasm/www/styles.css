@@ -17,6 +17,7 @@
 }
 
 :root {
+    /* Colors */
     --bg-primary: #0d1117;
     --bg-secondary: #161b22;
     --bg-tertiary: #21262d;
@@ -34,6 +35,25 @@
     --error: #f85149;
     --warning: #d29922;
     --shadow: rgba(0, 0, 0, 0.4);
+
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 0.75rem;
+    --spacing-lg: 1rem;
+    --spacing-xl: 1.5rem;
+
+    /* Border radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 9999px;
+
+    /* Transitions */
+    --transition-fast: 0.15s;
+    --transition-normal: 0.2s;
+    --transition-slow: 0.3s;
 }
 
 html, body {
@@ -129,7 +149,7 @@ header h1 {
 }
 
 .renderer-badge {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     padding: 0.2rem 0.5rem;
     background: var(--bg-tertiary);
     border-radius: 12px;
@@ -187,12 +207,12 @@ header h1 {
     background: var(--accent);
     color: white;
     border: none;
-    padding: 0.6rem 1rem;
-    border-radius: 6px;
+    padding: 0.6rem var(--spacing-lg);
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: all var(--transition-normal);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -444,6 +464,9 @@ header h1 {
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     font-size: 0.75rem;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
 .legend-panel.collapsed {
@@ -503,7 +526,7 @@ header h1 {
 
 .legend-count {
     color: var(--text-muted);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
 }
 
 /* Stats overlay */
@@ -536,7 +559,7 @@ header h1 {
 
 .stat-label {
     color: var(--text-muted);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
 }
 
@@ -589,7 +612,7 @@ header h1 {
 
 .perf-toggle {
     color: var(--text-muted);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     transition: transform 0.2s;
 }
 
@@ -788,12 +811,12 @@ header h1 {
     color: var(--text-secondary);
     width: 32px;
     height: 32px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all var(--transition-normal);
 }
 
 .timeline-btn:hover {
@@ -1065,7 +1088,7 @@ header h1 {
 
 .panel {
     background: var(--bg-secondary);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     overflow: hidden;
     min-width: 0; /* Prevent flex/grid blowout */
@@ -1094,7 +1117,7 @@ header h1 {
 }
 
 .panel-header .badge {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     padding: 0.15rem 0.4rem;
     background: var(--accent);
     color: white;
@@ -1173,8 +1196,8 @@ header h1 {
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-primary);
-    padding: 0.5rem 0.6rem;
-    border-radius: 6px;
+    padding: var(--spacing-sm) 0.6rem;
+    border-radius: var(--radius-md);
     font-size: 0.8rem;
     width: 100%;
 }
@@ -1200,7 +1223,7 @@ header h1 {
 }
 
 .popular-repos-label {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1377,8 +1400,17 @@ textarea:focus {
 }
 
 .file-upload-icon {
-    font-size: 1.75rem;
     margin-bottom: 0.5rem;
+    color: var(--text-muted);
+}
+
+.file-upload-icon svg {
+    width: 48px;
+    height: 48px;
+}
+
+.file-upload-area:hover .file-upload-icon {
+    color: var(--accent);
 }
 
 .file-upload-text {
@@ -1406,7 +1438,7 @@ textarea:focus {
     padding: 0.6rem;
     border-radius: 6px;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     overflow-x: auto;
     overflow-y: hidden;
     margin-bottom: 0.75rem;
@@ -1436,7 +1468,7 @@ textarea:focus {
     background: var(--bg-tertiary);
     padding: 0.1rem 0.25rem;
     border-radius: 3px;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     word-break: break-all;
 }
 
@@ -1496,7 +1528,7 @@ textarea:focus {
     padding: 0.1rem 0.3rem;
     border-radius: 3px;
     font-family: inherit;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     border: 1px solid var(--border);
     flex-shrink: 0;
 }
@@ -1729,6 +1761,9 @@ textarea:focus {
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     font-size: 0.75rem;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
 .authors-panel.collapsed {
@@ -1792,7 +1827,7 @@ textarea:focus {
 
 .author-commits {
     color: var(--text-muted);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     flex-shrink: 0;
 }
 
@@ -2044,15 +2079,15 @@ textarea:focus {
     left: 50%;
     transform: translateX(-50%) translateY(100px);
     background: var(--bg-secondary);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
     box-shadow: 0 4px 20px var(--shadow);
     z-index: 1000;
-    transition: transform 0.3s ease;
+    transition: transform var(--transition-slow) ease;
     max-width: 90%;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--spacing-md);
     border: 1px solid var(--border);
 }
 
@@ -2161,7 +2196,7 @@ footer a {
     }
 
     .stats-overlay {
-        font-size: 0.65rem;
+        font-size: 0.75rem;
         gap: 0.75rem;
     }
 
@@ -2244,6 +2279,11 @@ footer a {
     color: var(--text-primary);
 }
 
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
 .theme-toggle .sun-icon { display: none; }
 .theme-toggle .moon-icon { display: block; }
 
@@ -2273,6 +2313,11 @@ footer a {
 .sidebar-toggle:hover {
     transform: scale(1.1);
     background: var(--accent-hover);
+}
+
+.sidebar-toggle:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .sidebar-toggle svg {
@@ -2324,6 +2369,16 @@ footer a {
         align-items: center;
         justify-content: center;
         z-index: 10;
+    }
+
+    .sidebar-close:hover {
+        background: var(--border);
+        color: var(--text-primary);
+    }
+
+    .sidebar-close:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
     }
 
     .sidebar-overlay {
@@ -2441,6 +2496,9 @@ footer a {
     overflow-y: auto;
     border: 1px solid var(--border);
     position: relative;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
 .help-close {
@@ -2457,6 +2515,17 @@ footer a {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.2s;
+}
+
+.help-close:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.help-close:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .help-content h2 {
@@ -2538,6 +2607,11 @@ footer a {
     color: white;
 }
 
+.help-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
 /* Fullscreen button */
 .fullscreen-btn {
     background: var(--bg-tertiary);
@@ -2557,6 +2631,11 @@ footer a {
     background: var(--accent);
     border-color: var(--accent);
     color: white;
+}
+
+.fullscreen-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .fullscreen-btn svg {
@@ -2583,6 +2662,11 @@ footer a {
     background: var(--accent-blue);
     border-color: var(--accent-blue);
     color: white;
+}
+
+.share-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .share-btn svg {
@@ -2751,7 +2835,8 @@ footer a {
     width: 100%;
 }
 
-.timeline-markers {
+/* Timeline markers when used inside slider container */
+.timeline-slider-container .timeline-markers {
     position: absolute;
     top: 50%;
     left: 8px;  /* Account for slider thumb radius */
@@ -2762,7 +2847,7 @@ footer a {
     z-index: 1;
 }
 
-.timeline-marker {
+.timeline-slider-container .timeline-marker {
     position: absolute;
     width: 3px;
     height: 12px;
@@ -2813,7 +2898,7 @@ footer a {
 }
 
 .author-filter-clear {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--accent);
     cursor: pointer;
     margin-left: auto;

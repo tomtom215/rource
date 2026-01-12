@@ -1632,33 +1632,7 @@ impl ApplicationHandler for App {
     }
 }
 
-/// Check if a screen position is within the visible viewport.
-///
-/// Note: This function is kept for reference but is no longer used in rendering,
-/// as frustum culling is now performed via spatial queries in world space.
-#[allow(dead_code)]
-#[inline]
-fn is_screen_visible(screen_pos: Vec2, viewport: (f32, f32)) -> bool {
-    let margin = 50.0;
-    let (w, h) = viewport;
-    screen_pos.x >= -margin
-        && screen_pos.x <= w + margin
-        && screen_pos.y >= -margin
-        && screen_pos.y <= h + margin
-}
-
-/// Simple string hash for deterministic colors.
-#[allow(dead_code)]
-fn hash_string(s: &str) -> u32 {
-    let mut hash: u32 = 0;
-    for byte in s.bytes() {
-        hash = hash.wrapping_mul(31).wrapping_add(u32::from(byte));
-    }
-    hash
-}
-
 /// Format a Unix timestamp as a human-readable date.
-#[allow(dead_code)]
 fn format_timestamp(timestamp: i64) -> String {
     // Simple formatting without chrono dependency
     let days_since_epoch = timestamp / 86400;
@@ -2768,16 +2742,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hash_string() {
-        let h1 = hash_string("Alice");
-        let h2 = hash_string("Bob");
-        let h3 = hash_string("Alice");
-
-        assert_eq!(h1, h3);
-        assert_ne!(h1, h2);
-    }
-
-    #[test]
     fn test_format_timestamp() {
         // Jan 1, 2020 00:00:00 UTC
         #[allow(clippy::unreadable_literal)]
@@ -2832,6 +2796,17 @@ mod tests {
             App::file_action_to_action_type(FileAction::Delete),
             ActionType::Delete
         ));
+    }
+
+    /// Check if a screen position is within the visible viewport (test utility).
+    #[inline]
+    fn is_screen_visible(screen_pos: Vec2, viewport: (f32, f32)) -> bool {
+        let margin = 50.0;
+        let (w, h) = viewport;
+        screen_pos.x >= -margin
+            && screen_pos.x <= w + margin
+            && screen_pos.y >= -margin
+            && screen_pos.y <= h + margin
     }
 
     #[test]

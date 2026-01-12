@@ -754,12 +754,9 @@ impl<'a> BitReader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
 
     // Create a minimal valid PNG for testing
     fn create_test_png(width: u32, height: u32, color: (u8, u8, u8, u8)) -> Vec<u8> {
-        use std::io::Cursor;
-
         let mut data = Vec::new();
 
         // PNG signature
