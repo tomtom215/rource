@@ -162,11 +162,6 @@ pub struct App {
     /// Directory name display depth.
     pub dir_name_depth: u32,
 
-    /// Directory name position along edge (0.0 = start, 1.0 = end).
-    /// Reserved for future use with directory label positioning.
-    #[allow(dead_code)]
-    pub dir_name_position: f32,
-
     /// Logo image path.
     pub logo_path: Option<PathBuf>,
 
@@ -242,7 +237,6 @@ impl App {
         let follow_user = args.follow_user.clone();
         let highlight_all_users = args.highlight_all_users;
         let dir_name_depth = args.dir_name_depth;
-        let dir_name_position = args.dir_name_position;
         let logo_path = args.logo.clone();
         let logo_offset = args.parse_logo_offset();
         let background_image_path = args.background_image.clone();
@@ -297,7 +291,6 @@ impl App {
             highlight_all_users,
             current_user_index: 0,
             dir_name_depth,
-            dir_name_position,
             logo_path,
             logo_offset,
             background_image_path,

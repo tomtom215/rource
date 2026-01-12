@@ -21,6 +21,9 @@ use winit::window::{Window, WindowId};
 use crate::app::App;
 use crate::args::Args;
 use crate::export;
+
+/// Type alias for the softbuffer surface type.
+type WindowSurface = softbuffer::Surface<Rc<Window>, Rc<Window>>;
 use crate::input::{
     cycle_to_next_user, file_action_to_action_type, handle_key, handle_mouse_button,
     handle_mouse_move, handle_mouse_scroll,
@@ -276,52 +279,224 @@ pub fn update(app: &mut App, dt: f64) {
     }
 }
 
-impl ApplicationHandler for App {
-    #[allow(clippy::too_many_lines)]
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // Create window
-        let window_attrs = Window::default_attributes()
-            .with_title("Rource")
-            .with_inner_size(LogicalSize::new(self.args.width, self.args.height));
+/// Create window and softbuffer surface.
+///
+/// Returns `None` if window or surface creation fails.
+fn create_window_and_surface(
+    event_loop: &ActiveEventLoop,
+    width: u32,
+    height: u32,
+) -> Option<(Rc<Window>, WindowSurface)> {
+    let window_attrs = Window::default_attributes()
+        .with_title("Rource")
+        .with_inner_size(LogicalSize::new(width, height));
 
-        let window = match event_loop.create_window(window_attrs) {
-            Ok(w) => Rc::new(w),
-            Err(e) => {
-                eprintln!("Failed to create window: {e}");
-                event_loop.exit();
-                return;
-            }
-        };
+    let window = match event_loop.create_window(window_attrs) {
+        Ok(w) => Rc::new(w),
+        Err(e) => {
+            eprintln!("Failed to create window: {e}");
+            return None;
+        }
+    };
 
-        // Create softbuffer surface
-        let context = match softbuffer::Context::new(window.clone()) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Failed to create softbuffer context: {e}");
-                event_loop.exit();
-                return;
-            }
-        };
+    let context = match softbuffer::Context::new(window.clone()) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to create softbuffer context: {e}");
+            return None;
+        }
+    };
 
-        let mut surface = match softbuffer::Surface::new(&context, window.clone()) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("Failed to create softbuffer surface: {e}");
-                event_loop.exit();
-                return;
-            }
-        };
+    let mut surface = match softbuffer::Surface::new(&context, window.clone()) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to create softbuffer surface: {e}");
+            return None;
+        }
+    };
 
-        // Initialize surface size
-        let size = window.inner_size();
-        if size.width > 0 && size.height > 0 {
-            let _ = surface.resize(
-                NonZeroU32::new(size.width).unwrap(),
-                NonZeroU32::new(size.height).unwrap(),
-            );
+    let size = window.inner_size();
+    if size.width > 0 && size.height > 0 {
+        let _ = surface.resize(
+            NonZeroU32::new(size.width).unwrap(),
+            NonZeroU32::new(size.height).unwrap(),
+        );
+    }
+
+    Some((window, surface))
+}
+
+/// Load an image file and register it as a texture.
+fn load_image_texture(
+    path: &std::path::Path,
+    renderer: &mut SoftwareRenderer,
+    label: &str,
+) -> Option<(rource_render::TextureId, u32, u32)> {
+    match rource_render::image::Image::load_file(path) {
+        Ok(image) => {
+            let width = image.width();
+            let height = image.height();
+            let texture_id = renderer.load_texture(width, height, image.data());
+            eprintln!("Loaded {label}: {width}x{height} from {}", path.display());
+            Some((texture_id, width, height))
+        }
+        Err(e) => {
+            eprintln!("Warning: Failed to load {label} '{}': {e}", path.display());
+            None
+        }
+    }
+}
+
+impl App {
+    /// Handle keyboard input events.
+    fn handle_keyboard_event(
+        &mut self,
+        event: &winit::event::KeyEvent,
+        event_loop: &ActiveEventLoop,
+    ) {
+        // Handle Tab key for user cycling (before general input handling)
+        if event.state == winit::event::ElementState::Pressed
+            && matches!(&event.logical_key, Key::Named(NamedKey::Tab))
+            && !self.args.disable_input
+        {
+            self.current_user_index =
+                cycle_to_next_user(&self.scene, &mut self.camera, self.current_user_index);
+            return;
         }
 
+        let should_exit = handle_key(
+            event,
+            &mut self.playback,
+            &mut self.scene,
+            &mut self.camera,
+            self.camera_3d.as_mut(),
+            &mut self.current_commit,
+            &mut self.last_applied_commit,
+            &mut self.accumulated_time,
+            self.commits.len(),
+            &mut self.screenshot_pending,
+            self.args.disable_input,
+        );
+
+        if should_exit {
+            self.should_exit = true;
+            event_loop.exit();
+        }
+    }
+
+    /// Handle mouse button input events.
+    fn handle_mouse_input(
+        &mut self,
+        button: winit::event::MouseButton,
+        state: winit::event::ElementState,
+    ) {
+        let viewport = self.viewport_size().unwrap_or((800.0, 600.0));
+        let seek_target = handle_mouse_button(
+            button,
+            state,
+            &mut self.mouse,
+            &mut self.camera,
+            self.camera_3d.as_mut(),
+            viewport,
+            self.commits.len(),
+            self.args.disable_input,
+        );
+
+        if let Some(target) = seek_target {
+            seek_to_commit(self, target);
+        }
+    }
+
+    /// Handle redraw requests - main render loop.
+    fn handle_redraw(&mut self, event_loop: &ActiveEventLoop) {
+        // Calculate delta time
+        let now = Instant::now();
+        let dt = now.duration_since(self.last_frame).as_secs_f64();
+        self.last_frame = now;
+
+        // Update the simulation
+        update(self, dt);
+
+        // Check for exit conditions
+        if self.should_exit {
+            event_loop.exit();
+            return;
+        }
+
+        // Render frame (modifies renderer in place)
+        render_frame(self);
+
+        // Save screenshot if pending
+        self.save_pending_screenshot();
+
+        // Export frame if enabled
+        self.export_frame_if_enabled(dt);
+
+        // Present frame to window
+        present_frame(self);
+    }
+
+    /// Save pending screenshot to file.
+    fn save_pending_screenshot(&mut self) {
+        let Some(path) = self.screenshot_pending.take() else {
+            return;
+        };
+
+        let Some(ref renderer) = self.renderer else {
+            return;
+        };
+
+        let pixels = renderer.pixels();
+        let width = renderer.width();
+        let height = renderer.height();
+
+        if let Err(e) = export::write_png_to_file(pixels, width, height, &path) {
+            eprintln!("Failed to save screenshot to '{}': {e}", path.display());
+        } else {
+            eprintln!("Screenshot saved to: {}", path.display());
+        }
+    }
+
+    /// Export frame for video output if enabled.
+    fn export_frame_if_enabled(&mut self, dt: f64) {
+        // Early exit if no exporter configured
+        if self.frame_exporter.is_none() {
+            return;
+        }
+
+        // Get renderer data before mutable borrow
+        let (pixels, width, height) = match self.renderer.as_ref() {
+            Some(r) => (r.pixels().to_vec(), r.width(), r.height()),
+            None => return,
+        };
+
+        let is_complete = self.is_complete();
+
+        // Now we can safely borrow frame_exporter mutably
+        if let Some(ref mut exporter) = self.frame_exporter {
+            if let Err(e) = exporter.export_frame(&pixels, width, height, dt) {
+                eprintln!("Failed to export frame: {e}");
+            }
+
+            if is_complete {
+                self.should_exit = true;
+            }
+        }
+    }
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        // Create window and surface
+        let Some((window, surface)) =
+            create_window_and_surface(event_loop, self.args.width, self.args.height)
+        else {
+            event_loop.exit();
+            return;
+        };
+
         // Create renderer
+        let size = window.inner_size();
         let mut renderer = SoftwareRenderer::new(size.width.max(1), size.height.max(1));
 
         // Load default font for text rendering
@@ -337,52 +512,16 @@ impl ApplicationHandler for App {
 
         // Load logo image if specified
         if let Some(ref logo_path) = self.logo_path {
-            match rource_render::image::Image::load_file(logo_path) {
-                Ok(image) => {
-                    let width = image.width();
-                    let height = image.height();
-                    let texture_id = renderer.load_texture(width, height, image.data());
-                    self.logo_texture = Some(texture_id);
-                    self.logo_dimensions = Some((width, height));
-                    eprintln!(
-                        "Loaded logo: {}x{} from {}",
-                        width,
-                        height,
-                        logo_path.display()
-                    );
-                }
-                Err(e) => {
-                    eprintln!(
-                        "Warning: Failed to load logo image '{}': {}",
-                        logo_path.display(),
-                        e
-                    );
-                }
+            if let Some((tex, w, h)) = load_image_texture(logo_path, &mut renderer, "logo") {
+                self.logo_texture = Some(tex);
+                self.logo_dimensions = Some((w, h));
             }
         }
 
         // Load background image if specified
         if let Some(ref bg_path) = self.background_image_path {
-            match rource_render::image::Image::load_file(bg_path) {
-                Ok(image) => {
-                    let width = image.width();
-                    let height = image.height();
-                    let texture_id = renderer.load_texture(width, height, image.data());
-                    self.background_texture = Some(texture_id);
-                    eprintln!(
-                        "Loaded background: {}x{} from {}",
-                        width,
-                        height,
-                        bg_path.display()
-                    );
-                }
-                Err(e) => {
-                    eprintln!(
-                        "Warning: Failed to load background image '{}': {}",
-                        bg_path.display(),
-                        e
-                    );
-                }
+            if let Some((tex, _, _)) = load_image_texture(bg_path, &mut renderer, "background") {
+                self.background_texture = Some(tex);
             }
         }
 
@@ -411,7 +550,6 @@ impl ApplicationHandler for App {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
@@ -421,49 +559,10 @@ impl ApplicationHandler for App {
                 handle_resize(self, size);
             }
             WindowEvent::KeyboardInput { event, .. } => {
-                // Handle Tab key for user cycling
-                if event.state == winit::event::ElementState::Pressed
-                    && matches!(&event.logical_key, Key::Named(NamedKey::Tab))
-                    && !self.args.disable_input
-                {
-                    self.current_user_index =
-                        cycle_to_next_user(&self.scene, &mut self.camera, self.current_user_index);
-                    return;
-                }
-
-                let should_exit = handle_key(
-                    &event,
-                    &mut self.playback,
-                    &mut self.scene,
-                    &mut self.camera,
-                    self.camera_3d.as_mut(),
-                    &mut self.current_commit,
-                    &mut self.last_applied_commit,
-                    &mut self.accumulated_time,
-                    self.commits.len(),
-                    &mut self.screenshot_pending,
-                    self.args.disable_input,
-                );
-                if should_exit {
-                    self.should_exit = true;
-                    event_loop.exit();
-                }
+                self.handle_keyboard_event(&event, event_loop);
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                let viewport = self.viewport_size().unwrap_or((800.0, 600.0));
-                let seek_target = handle_mouse_button(
-                    button,
-                    state,
-                    &mut self.mouse,
-                    &mut self.camera,
-                    self.camera_3d.as_mut(),
-                    viewport,
-                    self.commits.len(),
-                    self.args.disable_input,
-                );
-                if let Some(target) = seek_target {
-                    seek_to_commit(self, target);
-                }
+                self.handle_mouse_input(button, state);
             }
             WindowEvent::CursorMoved { position, .. } => {
                 handle_mouse_move(
@@ -485,68 +584,7 @@ impl ApplicationHandler for App {
                 );
             }
             WindowEvent::RedrawRequested => {
-                // Calculate delta time
-                let now = Instant::now();
-                let dt = now.duration_since(self.last_frame).as_secs_f64();
-                self.last_frame = now;
-
-                // Update and render
-                update(self, dt);
-                render_frame(self);
-
-                // Save screenshot if pending
-                if let Some(path) = self.screenshot_pending.take() {
-                    if let Some(renderer) = &self.renderer {
-                        let pixels = renderer.pixels();
-                        let width = renderer.width();
-                        let height = renderer.height();
-
-                        match export::write_png_to_file(pixels, width, height, &path) {
-                            Ok(()) => {
-                                eprintln!("Screenshot saved: {}", path.display());
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to save screenshot: {e}");
-                            }
-                        }
-                    }
-                }
-
-                // Export frame if in export mode
-                if self.frame_exporter.is_some() {
-                    if let Some(renderer) = &self.renderer {
-                        let pixels = renderer.pixels();
-                        let width = renderer.width();
-                        let height = renderer.height();
-                        let export_result = self
-                            .frame_exporter
-                            .as_mut()
-                            .unwrap()
-                            .export_frame(pixels, width, height, dt);
-
-                        if let Err(e) = export_result {
-                            eprintln!("Frame export error: {e}");
-                            event_loop.exit();
-                            return;
-                        }
-                    }
-
-                    // Check if visualization is complete
-                    let is_complete = self.is_complete();
-                    if is_complete {
-                        let frame_count = self.frame_exporter.as_ref().unwrap().frame_count();
-                        eprintln!("Export complete: {frame_count} frames written");
-                        event_loop.exit();
-                        return;
-                    }
-                }
-
-                present_frame(self);
-
-                // Request next frame
-                if let Some(window) = &self.window {
-                    window.request_redraw();
-                }
+                self.handle_redraw(event_loop);
             }
             _ => {}
         }

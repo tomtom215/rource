@@ -3,9 +3,6 @@
 //! This module provides headless rendering functionality that runs without
 //! a window, outputting frames directly to files or stdout for video encoding.
 
-// Allow if-let-else pattern for image loading - clearer than map_or for error handling
-#![allow(clippy::option_if_let_else)]
-
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -88,67 +85,46 @@ fn load_commits(args: &Args) -> Result<Vec<Commit>> {
     }
 }
 
+/// Load an image file and register it as a texture.
+///
+/// Returns the texture ID and dimensions on success, or None with a warning on failure.
+fn load_image_as_texture(
+    path: &Path,
+    renderer: &mut SoftwareRenderer,
+    label: &str,
+) -> Option<(TextureId, u32, u32)> {
+    match rource_render::image::Image::load_file(path) {
+        Ok(image) => {
+            let width = image.width();
+            let height = image.height();
+            let texture_id = renderer.load_texture(width, height, image.data());
+            eprintln!("Loaded {label}: {width}x{height} from {}", path.display());
+            Some((texture_id, width, height))
+        }
+        Err(e) => {
+            eprintln!("Warning: Failed to load {label} '{}': {e}", path.display());
+            None
+        }
+    }
+}
+
 /// Load logo image if specified.
 fn load_logo(
     args: &Args,
     renderer: &mut SoftwareRenderer,
 ) -> (Option<TextureId>, Option<(u32, u32)>) {
-    if let Some(ref logo_path) = args.logo {
-        match rource_render::image::Image::load_file(logo_path) {
-            Ok(image) => {
-                let width = image.width();
-                let height = image.height();
-                let texture_id = renderer.load_texture(width, height, image.data());
-                eprintln!(
-                    "Loaded logo: {}x{} from {}",
-                    width,
-                    height,
-                    logo_path.display()
-                );
-                (Some(texture_id), Some((width, height)))
-            }
-            Err(e) => {
-                eprintln!(
-                    "Warning: Failed to load logo image '{}': {}",
-                    logo_path.display(),
-                    e
-                );
-                (None, None)
-            }
-        }
-    } else {
-        (None, None)
-    }
+    args.logo
+        .as_ref()
+        .and_then(|path| load_image_as_texture(path, renderer, "logo"))
+        .map_or((None, None), |(tex, w, h)| (Some(tex), Some((w, h))))
 }
 
 /// Load background image if specified.
 fn load_background(args: &Args, renderer: &mut SoftwareRenderer) -> Option<TextureId> {
-    if let Some(ref bg_path) = args.background_image {
-        match rource_render::image::Image::load_file(bg_path) {
-            Ok(image) => {
-                let width = image.width();
-                let height = image.height();
-                let texture_id = renderer.load_texture(width, height, image.data());
-                eprintln!(
-                    "Loaded background: {}x{} from {}",
-                    width,
-                    height,
-                    bg_path.display()
-                );
-                Some(texture_id)
-            }
-            Err(e) => {
-                eprintln!(
-                    "Warning: Failed to load background image '{}': {}",
-                    bg_path.display(),
-                    e
-                );
-                None
-            }
-        }
-    } else {
-        None
-    }
+    args.background_image
+        .as_ref()
+        .and_then(|path| load_image_as_texture(path, renderer, "background"))
+        .map(|(tex, _, _)| tex)
 }
 
 /// Run in headless mode (no window, batch video export).
