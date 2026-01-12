@@ -661,18 +661,23 @@ impl Rource {
 
     /// Sets playback speed (seconds per day of repository history).
     ///
-    /// The speed is clamped between 0.1 (very fast) and 1000.0 (very slow) seconds per day.
-    /// NaN and infinite values are replaced with the default of 10.0.
+    /// The speed is clamped between 1.0 (10x, fastest) and 1000.0 (very slow) seconds per day.
+    /// NaN, infinite, and non-positive values are replaced with the default of 10.0.
+    ///
+    /// The formula `seconds_per_commit = seconds_per_day / 10.0` means:
+    /// - At speed=1.0 (10x): 0.1s per commit = ~6 frames at 60fps (acceptable)
+    /// - At speed=0.1 (100x): 0.01s per commit = ~1.7 commits/frame (too fast!)
     #[wasm_bindgen(js_name = setSpeed)]
     pub fn set_speed(&mut self, seconds_per_day: f32) {
-        // Handle NaN and infinity by using default speed
-        let speed = if seconds_per_day.is_finite() {
+        // Handle NaN, infinity, and non-positive values by using default speed
+        let speed = if seconds_per_day.is_finite() && seconds_per_day > 0.0 {
             seconds_per_day
         } else {
             10.0 // Default speed
         };
-        // Clamp to reasonable range: 0.1 (10x) to 1000 (0.01x) seconds per day
-        self.settings.playback.seconds_per_day = speed.clamp(0.1, 1000.0);
+        // Clamp to reasonable range: 1.0 (10x fastest) to 1000 (0.01x slowest) seconds per day
+        // Minimum of 1.0 ensures at least ~6 frames per commit at 60fps
+        self.settings.playback.seconds_per_day = speed.clamp(1.0, 1000.0);
     }
 
     /// Gets the current playback speed.
