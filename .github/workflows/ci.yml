@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  MSRV: "1.75"
 
 jobs:
   # Format check - fast, runs first
@@ -42,10 +43,14 @@ jobs:
             ${{ runner.os }}-cargo-clippy-
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
-  # Run tests
+  # Run tests on multiple platforms
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -60,6 +65,30 @@ jobs:
             ${{ runner.os }}-cargo-test-
       - name: Run tests
         run: cargo test --all
+
+  # MSRV (Minimum Supported Rust Version) check
+  msrv:
+    name: MSRV (Rust ${{ matrix.rust }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: ["1.75"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-msrv-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-msrv-${{ matrix.rust }}-
+      - name: Check MSRV
+        run: cargo check --all
 
   # Native build check
   build:
@@ -136,3 +165,30 @@ jobs:
         run: cargo doc --no-deps --all-features
         env:
           RUSTDOCFLAGS: -D warnings
+
+  # Feature matrix - test different feature combinations
+  features:
+    name: Features
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-features-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-features-
+      - name: Check default features
+        run: cargo check --all
+      - name: Check all features
+        run: cargo check --all --all-features
+      - name: Check no default features (library crates)
+        run: |
+          cargo check -p rource-math --no-default-features
+          cargo check -p rource-vcs --no-default-features
+          cargo check -p rource-core --no-default-features
+          cargo check -p rource-render --no-default-features

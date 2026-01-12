@@ -1,0 +1,125 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bench-
+
+      - name: Run benchmarks
+        run: cargo bench --all -- --noplot 2>&1 | tee benchmark-results.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results.txt
+
+  # Size tracking - monitor binary and WASM sizes
+  size-check:
+    name: Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-size-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-size-
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: 'latest'
+
+      - name: Install binaryen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binaryen
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Build optimized WASM
+        run: |
+          cd rource-wasm
+          wasm-pack build --target web --release
+          cd pkg
+          wasm-opt -Oz \
+            --enable-bulk-memory \
+            --enable-sign-ext \
+            --enable-nontrapping-float-to-int \
+            -o rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
+          mv rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
+
+      - name: Report sizes
+        run: |
+          echo "## Binary Sizes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Size | Gzipped |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|------|---------|" >> $GITHUB_STEP_SUMMARY
+
+          # Native binary
+          native_size=$(ls -lh target/release/rource | awk '{print $5}')
+          native_gzip=$(gzip -c target/release/rource | wc -c | numfmt --to=iec-i --suffix=B)
+          echo "| Native binary | $native_size | $native_gzip |" >> $GITHUB_STEP_SUMMARY
+
+          # WASM
+          wasm_size=$(ls -lh rource-wasm/pkg/rource_wasm_bg.wasm | awk '{print $5}')
+          wasm_gzip=$(gzip -c rource-wasm/pkg/rource_wasm_bg.wasm | wc -c | numfmt --to=iec-i --suffix=B)
+          echo "| WASM bundle | $wasm_size | $wasm_gzip |" >> $GITHUB_STEP_SUMMARY
+
+          # JS bindings
+          js_size=$(ls -lh rource-wasm/pkg/rource_wasm.js | awk '{print $5}')
+          echo "| JS bindings | $js_size | - |" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Size Targets" >> $GITHUB_STEP_SUMMARY
+          echo "- Native binary: < 5MB" >> $GITHUB_STEP_SUMMARY
+          echo "- WASM (gzipped): < 100KB" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check size limits
+        run: |
+          # Check native binary size (< 5MB)
+          native_bytes=$(stat -c%s target/release/rource)
+          if [ $native_bytes -gt 5242880 ]; then
+            echo "::warning::Native binary exceeds 5MB target: $(numfmt --to=iec-i --suffix=B $native_bytes)"
+          fi
+
+          # Check WASM gzipped size (< 100KB)
+          wasm_gzip=$(gzip -c rource-wasm/pkg/rource_wasm_bg.wasm | wc -c)
+          if [ $wasm_gzip -gt 102400 ]; then
+            echo "::warning::WASM gzipped exceeds 100KB target: $(numfmt --to=iec-i --suffix=B $wasm_gzip)"
+          fi
