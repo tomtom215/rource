@@ -393,3 +393,7 @@ GPL-3.0 (same as original Gource)
 
 - Original [Gource](https://github.com/acaudwell/Gource) by Andrew Caudwell
 - Font: Roboto Mono (Apache 2.0)
+
+## Acknowledgments
+
+This project was developed with AI-assisted programming using [Claude](https://www.anthropic.com/claude) by Anthropic. The AI assisted with code implementation, architecture decisions, documentation, and adherence to Rust best practices throughout the development process.
