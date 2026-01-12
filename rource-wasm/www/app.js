@@ -1711,6 +1711,10 @@ async function main() {
     // This prevents memory leaks if main() is called multiple times
     cleanupEventListeners();
 
+    // Re-register canvas event listeners after cleanup
+    // These must be registered here (not at module level) to survive cleanup
+    registerCanvasEventListeners();
+
     // Cancel any existing animation frame
     if (animationId) {
         cancelAnimationFrame(animationId);
@@ -2401,33 +2405,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Mouse controls - using managed listeners for proper cleanup
-addManagedEventListener(canvas, 'mousedown', (e) => {
-    if (rource) {
-        const rect = canvas.getBoundingClientRect();
-        rource.onMouseDown(e.clientX - rect.left, e.clientY - rect.top);
-    }
-});
-
-addManagedEventListener(canvas, 'mouseup', () => {
-    if (rource) rource.onMouseUp();
-});
-
-addManagedEventListener(canvas, 'mousemove', (e) => {
-    if (rource) {
-        const rect = canvas.getBoundingClientRect();
-        rource.onMouseMove(e.clientX - rect.left, e.clientY - rect.top);
-    }
-});
-
-addManagedEventListener(canvas, 'wheel', (e) => {
-    if (rource) {
-        e.preventDefault();
-        rource.onWheel(e.deltaY);
-    }
-}, { passive: false });
-
-// Touch controls
+// Touch state for gesture handling
 let touchState = { startX: 0, startY: 0, initialDistance: 0, isPanning: false, isPinching: false };
 
 function getTouchDistance(touches) {
@@ -2436,51 +2414,85 @@ function getTouchDistance(touches) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-addManagedEventListener(canvas, 'touchstart', (e) => {
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-
-    if (e.touches.length === 1) {
-        touchState.isPanning = true;
-        touchState.startX = e.touches[0].clientX - rect.left;
-        touchState.startY = e.touches[0].clientY - rect.top;
-        if (rource) rource.onMouseDown(touchState.startX, touchState.startY);
-    } else if (e.touches.length === 2) {
-        touchState.isPanning = false;
-        touchState.isPinching = true;
-        touchState.initialDistance = getTouchDistance(e.touches);
-        if (rource) rource.onMouseUp();
-    }
-}, { passive: false });
-
-addManagedEventListener(canvas, 'touchmove', (e) => {
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-
-    if (touchState.isPanning && e.touches.length === 1) {
-        const x = e.touches[0].clientX - rect.left;
-        const y = e.touches[0].clientY - rect.top;
-        if (rource) rource.onMouseMove(x, y);
-    } else if (touchState.isPinching && e.touches.length === 2) {
-        const currentDistance = getTouchDistance(e.touches);
-        const scaleFactor = currentDistance / touchState.initialDistance;
-
-        if (rource && Math.abs(scaleFactor - 1.0) > 0.01) {
-            rource.zoom(scaleFactor > 1.0 ? 1.05 : 0.95);
-            touchState.initialDistance = currentDistance;
+/**
+ * Registers all canvas event listeners (mouse, touch, wheel, resize).
+ * This function is called after cleanupEventListeners() in main() to ensure
+ * the listeners survive initialization cleanup.
+ */
+function registerCanvasEventListeners() {
+    // Mouse controls
+    addManagedEventListener(canvas, 'mousedown', (e) => {
+        if (rource) {
+            const rect = canvas.getBoundingClientRect();
+            rource.onMouseDown(e.clientX - rect.left, e.clientY - rect.top);
         }
-    }
-}, { passive: false });
+    });
 
-addManagedEventListener(canvas, 'touchend', (e) => {
-    e.preventDefault();
-    if (rource && touchState.isPanning) rource.onMouseUp();
-    touchState.isPanning = false;
-    touchState.isPinching = false;
-}, { passive: false });
+    addManagedEventListener(canvas, 'mouseup', () => {
+        if (rource) rource.onMouseUp();
+    });
 
-// Resize handler - using managed listener
-addManagedEventListener(window, 'resize', resizeCanvas);
+    addManagedEventListener(canvas, 'mousemove', (e) => {
+        if (rource) {
+            const rect = canvas.getBoundingClientRect();
+            rource.onMouseMove(e.clientX - rect.left, e.clientY - rect.top);
+        }
+    });
+
+    addManagedEventListener(canvas, 'wheel', (e) => {
+        if (rource) {
+            e.preventDefault();
+            rource.onWheel(e.deltaY);
+        }
+    }, { passive: false });
+
+    // Touch controls
+    addManagedEventListener(canvas, 'touchstart', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+
+        if (e.touches.length === 1) {
+            touchState.isPanning = true;
+            touchState.startX = e.touches[0].clientX - rect.left;
+            touchState.startY = e.touches[0].clientY - rect.top;
+            if (rource) rource.onMouseDown(touchState.startX, touchState.startY);
+        } else if (e.touches.length === 2) {
+            touchState.isPanning = false;
+            touchState.isPinching = true;
+            touchState.initialDistance = getTouchDistance(e.touches);
+            if (rource) rource.onMouseUp();
+        }
+    }, { passive: false });
+
+    addManagedEventListener(canvas, 'touchmove', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+
+        if (touchState.isPanning && e.touches.length === 1) {
+            const x = e.touches[0].clientX - rect.left;
+            const y = e.touches[0].clientY - rect.top;
+            if (rource) rource.onMouseMove(x, y);
+        } else if (touchState.isPinching && e.touches.length === 2) {
+            const currentDistance = getTouchDistance(e.touches);
+            const scaleFactor = currentDistance / touchState.initialDistance;
+
+            if (rource && Math.abs(scaleFactor - 1.0) > 0.01) {
+                rource.zoom(scaleFactor > 1.0 ? 1.05 : 0.95);
+                touchState.initialDistance = currentDistance;
+            }
+        }
+    }, { passive: false });
+
+    addManagedEventListener(canvas, 'touchend', (e) => {
+        e.preventDefault();
+        if (rource && touchState.isPanning) rource.onMouseUp();
+        touchState.isPanning = false;
+        touchState.isPinching = false;
+    }, { passive: false });
+
+    // Resize handler
+    addManagedEventListener(window, 'resize', resizeCanvas);
+}
 
 // =====================================================================
 // THEME TOGGLE
