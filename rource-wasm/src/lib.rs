@@ -1358,6 +1358,10 @@ impl Rource {
 mod tests {
     use super::*;
 
+    // ========================================================================
+    // File Action Conversion Tests
+    // ========================================================================
+
     #[test]
     fn test_file_action_conversion() {
         assert!(matches!(
@@ -1374,6 +1378,10 @@ mod tests {
         ));
     }
 
+    // ========================================================================
+    // Color Tests
+    // ========================================================================
+
     #[test]
     fn test_color_from_hex() {
         let color = Color::from_hex(0xff0000);
@@ -1383,8 +1391,199 @@ mod tests {
     }
 
     #[test]
+    fn test_color_from_hex_green() {
+        let color = Color::from_hex(0x00ff00);
+        assert!(color.r < 0.01);
+        assert!((color.g - 1.0).abs() < 0.01);
+        assert!(color.b < 0.01);
+    }
+
+    #[test]
+    fn test_color_from_hex_blue() {
+        let color = Color::from_hex(0x0000ff);
+        assert!(color.r < 0.01);
+        assert!(color.g < 0.01);
+        assert!((color.b - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_color_from_hex_white() {
+        let color = Color::from_hex(0xffffff);
+        assert!((color.r - 1.0).abs() < 0.01);
+        assert!((color.g - 1.0).abs() < 0.01);
+        assert!((color.b - 1.0).abs() < 0.01);
+    }
+
+    // ========================================================================
+    // Renderer Type Tests
+    // ========================================================================
+
+    #[test]
     fn test_renderer_type_as_str() {
         assert_eq!(RendererType::WebGl2.as_str(), "webgl2");
         assert_eq!(RendererType::Software.as_str(), "software");
+    }
+
+    #[test]
+    fn test_renderer_type_equality() {
+        assert_eq!(RendererType::WebGl2, RendererType::WebGl2);
+        assert_eq!(RendererType::Software, RendererType::Software);
+        assert_ne!(RendererType::WebGl2, RendererType::Software);
+    }
+
+    // ========================================================================
+    // PNG/CRC32 Tests
+    // ========================================================================
+
+    #[test]
+    fn test_crc32_empty() {
+        let result = crc32(b"IEND", &[]);
+        // Known CRC32 for empty IEND chunk
+        assert_eq!(result, 0xAE426082);
+    }
+
+    #[test]
+    fn test_crc32_ihdr() {
+        // Test with a known IHDR chunk (1x1 RGB image)
+        let ihdr_data = [
+            0, 0, 0, 1, // width = 1
+            0, 0, 0, 1, // height = 1
+            8, // bit depth
+            2, // color type (RGB)
+            0, // compression
+            0, // filter
+            0, // interlace
+        ];
+        let crc = crc32(b"IHDR", &ihdr_data);
+        // Should be a valid non-zero CRC
+        assert_ne!(crc, 0);
+    }
+
+    #[test]
+    fn test_deflate_compress_empty() {
+        let result = deflate_compress(&[]);
+        // Compressed empty data should have zlib header + empty block + adler32
+        assert!(!result.is_empty());
+        // Check zlib header
+        assert_eq!(result[0], 0x78);
+        assert_eq!(result[1], 0x01);
+    }
+
+    #[test]
+    fn test_deflate_compress_small() {
+        let data = b"Hello, World!";
+        let result = deflate_compress(data);
+        // Compressed data should be larger than original for small data
+        // (uncompressed storage adds overhead)
+        assert!(!result.is_empty());
+        // Should contain the original data
+        assert!(result.windows(data.len()).any(|w| w == data));
+    }
+
+    #[test]
+    fn test_write_png_small_image() {
+        // Create a 2x2 red image
+        let pixels: Vec<u32> = vec![
+            0xFFFF0000, 0xFFFF0000, // Red, Red
+            0xFFFF0000, 0xFFFF0000, // Red, Red
+        ];
+        let mut output = Vec::new();
+        write_png(&mut output, &pixels, 2, 2).unwrap();
+
+        // Check PNG signature
+        assert_eq!(
+            &output[0..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
+
+        // Check IHDR chunk type
+        assert_eq!(&output[12..16], b"IHDR");
+
+        // Output should contain IEND
+        assert!(output.windows(4).any(|w| w == b"IEND"));
+    }
+
+    #[test]
+    fn test_write_png_1x1_pixel() {
+        let pixels: Vec<u32> = vec![0xFF00FF00]; // Green
+        let mut output = Vec::new();
+        write_png(&mut output, &pixels, 1, 1).unwrap();
+
+        // Should produce valid PNG with signature
+        assert!(output.len() > 8);
+        assert_eq!(
+            &output[0..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
+    }
+
+    // ========================================================================
+    // Performance Metrics Tests
+    // ========================================================================
+
+    #[test]
+    fn test_performance_metrics_new() {
+        let metrics = PerformanceMetrics::new();
+        assert_eq!(metrics.fps, 0.0);
+        assert_eq!(metrics.total_frames, 0);
+        assert_eq!(metrics.frame_time_count, 0);
+    }
+
+    #[test]
+    fn test_performance_metrics_record_frame() {
+        let mut metrics = PerformanceMetrics::new();
+
+        // Record a frame at 60fps (16.67ms)
+        metrics.record_frame(1.0 / 60.0);
+
+        assert_eq!(metrics.total_frames, 1);
+        assert_eq!(metrics.frame_time_count, 1);
+        assert!(metrics.fps > 59.0 && metrics.fps < 61.0);
+    }
+
+    #[test]
+    fn test_performance_metrics_rolling_average() {
+        let mut metrics = PerformanceMetrics::new();
+
+        // Record 60 frames at consistent 60fps
+        for _ in 0..60 {
+            metrics.record_frame(1.0 / 60.0);
+        }
+
+        assert_eq!(metrics.total_frames, 60);
+        assert_eq!(metrics.frame_time_count, FRAME_SAMPLE_COUNT);
+        // Should show approximately 60 FPS
+        assert!(metrics.fps > 59.0 && metrics.fps < 61.0);
+    }
+
+    #[test]
+    fn test_performance_metrics_varying_framerate() {
+        let mut metrics = PerformanceMetrics::new();
+
+        // Mix of fast and slow frames
+        for _ in 0..30 {
+            metrics.record_frame(1.0 / 30.0); // 30fps
+        }
+        for _ in 0..30 {
+            metrics.record_frame(1.0 / 60.0); // 60fps
+        }
+
+        // Average should be between 30 and 60
+        assert!(metrics.fps > 30.0 && metrics.fps < 60.0);
+    }
+
+    // ========================================================================
+    // Render Stats Tests
+    // ========================================================================
+
+    #[test]
+    fn test_render_stats_default() {
+        let stats = RenderStats::default();
+        assert_eq!(stats.visible_files, 0);
+        assert_eq!(stats.visible_users, 0);
+        assert_eq!(stats.visible_directories, 0);
+        assert_eq!(stats.active_actions, 0);
+        assert_eq!(stats.total_entities, 0);
+        assert_eq!(stats.draw_calls, 0);
     }
 }

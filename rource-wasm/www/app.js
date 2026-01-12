@@ -33,7 +33,26 @@ const CONFIG = {
     // Animation
     TOAST_DURATION_MS: 3000,         // Default toast duration
     INIT_DELAY_MS: 500,              // Delay before auto-loading default data
+
+    // Debug (set to true for development logging)
+    DEBUG: false,
 };
+
+/**
+ * Log a debug message (only when CONFIG.DEBUG is true).
+ * @param {string} context - The function/area where the log originated
+ * @param {string} message - The message to log
+ * @param {Error} [error] - Optional error object
+ */
+function debugLog(context, message, error = null) {
+    if (CONFIG.DEBUG) {
+        if (error) {
+            console.warn(`[Rource:${context}] ${message}`, error);
+        } else {
+            console.log(`[Rource:${context}] ${message}`);
+        }
+    }
+}
 
 // ============================================================
 // Utility Functions
@@ -57,6 +76,66 @@ function debounce(func, wait) {
     };
 }
 
+/**
+ * Escapes a string for safe use in HTML content.
+ * Prevents XSS attacks by escaping special characters.
+ * @param {string} str - The string to escape
+ * @returns {string} The escaped string safe for HTML content
+ */
+function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
+
+// ============================================================
+// Event Listener Management
+// ============================================================
+// Tracks all registered event listeners for proper cleanup on reinitialize.
+// This prevents memory leaks when the app state is reset.
+
+/**
+ * Registry of all managed event listeners.
+ * @type {Array<{element: EventTarget, type: string, handler: Function, options?: AddEventListenerOptions}>}
+ */
+const eventListenerRegistry = [];
+
+/**
+ * Adds an event listener and registers it for cleanup.
+ * @param {EventTarget} element - The element to attach the listener to
+ * @param {string} type - The event type (e.g., 'click', 'keydown')
+ * @param {Function} handler - The event handler function
+ * @param {AddEventListenerOptions} [options] - Optional event listener options
+ */
+function addManagedEventListener(element, type, handler, options) {
+    if (!element) {
+        debugLog('addManagedEventListener', `Cannot add listener to null element for event: ${type}`);
+        return;
+    }
+    element.addEventListener(type, handler, options);
+    eventListenerRegistry.push({ element, type, handler, options });
+}
+
+/**
+ * Removes all managed event listeners.
+ * Call this before reinitializing the application to prevent memory leaks.
+ */
+function cleanupEventListeners() {
+    for (const { element, type, handler, options } of eventListenerRegistry) {
+        try {
+            element.removeEventListener(type, handler, options);
+        } catch (e) {
+            debugLog('cleanupEventListeners', `Failed to remove listener for ${type}`, e);
+        }
+    }
+    eventListenerRegistry.length = 0;
+    debugLog('cleanupEventListeners', `Removed ${eventListenerRegistry.length} event listeners`);
+}
+
 // ============================================================
 // Application State
 // ============================================================
@@ -69,6 +148,10 @@ let hasLoadedData = false;
 let commitStats = { commits: 0, files: 0, authors: new Set() };
 let isContextLost = false;
 let lastLoadedRepo = null;
+
+// GitHub fetch state (prevents race conditions)
+let githubFetchInProgress = false;
+let githubFetchController = null;
 
 // ============================================================
 // User Preferences (localStorage)
@@ -1136,9 +1219,10 @@ function updateLegend(content) {
 
     legendItems.innerHTML = sorted.map(([ext, count]) => {
         const color = getExtensionColor(ext);
+        const safeExt = escapeHtml(ext);
         return `<div class="legend-item" role="listitem">
             <span class="legend-color" style="background: ${color}"></span>
-            <span class="legend-ext">.${ext}</span>
+            <span class="legend-ext">.${safeExt}</span>
             <span class="legend-count">${count}</span>
         </div>`;
     }).join('');
@@ -1214,11 +1298,11 @@ function updateAuthorsLegend(content) {
         // Store in color map for tooltip use
         authorColorMap.set(name, color);
 
-        // Escape HTML in name
-        const escapedName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return `<div class="author-item" role="button" tabindex="0" aria-label="Highlight ${escapedName}, ${commits} commits" title="Click to highlight ${escapedName} (${commits} commits)">
+        // Escape HTML in name (prevents XSS in content and attributes)
+        const safeName = escapeHtml(name);
+        return `<div class="author-item" role="button" tabindex="0" aria-label="Highlight ${safeName}, ${commits} commits" title="Click to highlight ${safeName} (${commits} commits)">
             <span class="author-color" style="background: ${color}"></span>
-            <span class="author-name">${escapedName}</span>
+            <span class="author-name">${safeName}</span>
             <span class="author-commits">${commits}</span>
         </div>`;
     }).join('');
@@ -1327,7 +1411,10 @@ function getCache() {
             }
             return data;
         }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+        // localStorage may be disabled or data corrupted - gracefully return empty cache
+        debugLog('getCache', 'Failed to read cache, using empty cache', e);
+    }
     return {};
 }
 
@@ -1336,7 +1423,10 @@ function setCache(key, logContent) {
         const cache = getCache();
         cache[key] = { logContent, timestamp: Date.now() };
         localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-    } catch (e) { /* ignore quota errors */ }
+    } catch (e) {
+        // localStorage may be full or disabled - cache is non-critical, continue without it
+        debugLog('setCache', 'Failed to write cache (quota or access error)', e);
+    }
 }
 
 function getCachedRepo(owner, repo) {
@@ -1360,7 +1450,10 @@ async function checkRateLimit() {
             rateLimitReset = data.rate.reset * 1000;
             return rateLimitRemaining;
         }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+        // Network error checking rate limit - use cached value and proceed
+        debugLog('checkRateLimit', 'Failed to check rate limit, using cached value', e);
+    }
     return rateLimitRemaining;
 }
 
@@ -1371,8 +1464,33 @@ function formatTimeUntilReset() {
     return minutes === 1 ? '1 minute' : `${minutes} minutes`;
 }
 
+/**
+ * Cancels any in-progress GitHub fetch operation.
+ * Safe to call even if no fetch is in progress.
+ */
+function cancelGitHubFetch() {
+    if (githubFetchController) {
+        githubFetchController.abort();
+        githubFetchController = null;
+    }
+    githubFetchInProgress = false;
+}
+
 // GitHub API fetch with caching and rate limit awareness
 async function fetchGitHubRepo(repoUrl) {
+    // Prevent concurrent fetches (race condition protection)
+    if (githubFetchInProgress) {
+        debugLog('fetchGitHubRepo', 'Fetch already in progress, ignoring duplicate request');
+        return;
+    }
+
+    // Cancel any previous fetch and create new abort controller
+    cancelGitHubFetch();
+    githubFetchController = new AbortController();
+    githubFetchInProgress = true;
+
+    const { signal } = githubFetchController;
+
     // Parse repo URL
     let owner, repo;
     try {
@@ -1388,6 +1506,7 @@ async function fetchGitHubRepo(repoUrl) {
             owner = parts[parts.length - 2];
             repo = parts[parts.length - 1].replace('.git', '');
         } else {
+            githubFetchInProgress = false;
             throw new Error('Invalid repository URL. Use format: owner/repo or https://github.com/owner/repo');
         }
     }
@@ -1401,12 +1520,14 @@ async function fetchGitHubRepo(repoUrl) {
         loadLogData(cachedContent, 'custom');
         lastLoadedRepo = `${owner}/${repo}`;
         updateUrlState({ repo: `${owner}/${repo}` });
+        githubFetchInProgress = false;
         return;
     }
 
     // Check rate limit before proceeding
     const remaining = await checkRateLimit();
     if (remaining < CONFIG.GITHUB_RATE_LIMIT_BUFFER) {
+        githubFetchInProgress = false;
         throw new Error(`GitHub API rate limit low (${remaining} requests left). Resets in ${formatTimeUntilReset()}. Try a cached repo or wait.`);
     }
 
@@ -1421,7 +1542,7 @@ async function fetchGitHubRepo(repoUrl) {
         // Fetch commit list (single API call for many commits)
         const response = await fetch(
             `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
-            { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+            { headers: { 'Accept': 'application/vnd.github.v3+json' }, signal }
         );
 
         // Update rate limit from response headers
@@ -1453,6 +1574,11 @@ async function fetchGitHubRepo(repoUrl) {
         let skippedDueToRateLimit = 0;
 
         for (let i = 0; i < limitedCommits.length; i++) {
+            // Check if fetch was cancelled
+            if (signal.aborted) {
+                throw new DOMException('Fetch cancelled', 'AbortError');
+            }
+
             // Check if we're running low on rate limit
             if (rateLimitRemaining < 3) {
                 skippedDueToRateLimit = limitedCommits.length - i;
@@ -1466,7 +1592,8 @@ async function fetchGitHubRepo(repoUrl) {
             // Fetch commit details for file changes
             try {
                 const detailResponse = await fetch(commit.url, {
-                    headers: { 'Accept': 'application/vnd.github.v3+json' }
+                    headers: { 'Accept': 'application/vnd.github.v3+json' },
+                    signal
                 });
 
                 // Update rate limit
@@ -1491,7 +1618,9 @@ async function fetchGitHubRepo(repoUrl) {
                     fetchedCount++;
                 }
             } catch (e) {
-                // Skip failed file fetches
+                // Re-throw abort errors, otherwise skip failed file fetches
+                if (e.name === 'AbortError') throw e;
+                debugLog('fetchGitHubRepo', `Skipped commit ${i} due to error`, e);
             }
 
             // Update progress
@@ -1528,15 +1657,37 @@ async function fetchGitHubRepo(repoUrl) {
         updateUrlState({ repo: `${owner}/${repo}` });
 
     } catch (error) {
+        // Handle cancellation gracefully
+        if (error.name === 'AbortError') {
+            fetchStatus.className = 'fetch-status visible';
+            fetchStatusText.textContent = 'Fetch cancelled.';
+            fetchProgressBar.style.width = '0%';
+            return; // Don't re-throw for cancellation
+        }
+
         fetchStatus.className = 'fetch-status visible error';
         fetchStatusText.textContent = error.message;
         fetchProgressBar.style.width = '0%';
         throw error;
+    } finally {
+        // Clean up state
+        githubFetchInProgress = false;
+        githubFetchController = null;
     }
 }
 
 // Initialize
 async function main() {
+    // Clean up any existing event listeners from previous initialization
+    // This prevents memory leaks if main() is called multiple times
+    cleanupEventListeners();
+
+    // Cancel any existing animation frame
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+
     try {
         await init();
         resizeCanvas();
@@ -2198,26 +2349,26 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Mouse controls
-canvas.addEventListener('mousedown', (e) => {
+// Mouse controls - using managed listeners for proper cleanup
+addManagedEventListener(canvas, 'mousedown', (e) => {
     if (rource) {
         const rect = canvas.getBoundingClientRect();
         rource.onMouseDown(e.clientX - rect.left, e.clientY - rect.top);
     }
 });
 
-canvas.addEventListener('mouseup', () => {
+addManagedEventListener(canvas, 'mouseup', () => {
     if (rource) rource.onMouseUp();
 });
 
-canvas.addEventListener('mousemove', (e) => {
+addManagedEventListener(canvas, 'mousemove', (e) => {
     if (rource) {
         const rect = canvas.getBoundingClientRect();
         rource.onMouseMove(e.clientX - rect.left, e.clientY - rect.top);
     }
 });
 
-canvas.addEventListener('wheel', (e) => {
+addManagedEventListener(canvas, 'wheel', (e) => {
     if (rource) {
         e.preventDefault();
         rource.onWheel(e.deltaY);
@@ -2233,7 +2384,7 @@ function getTouchDistance(touches) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-canvas.addEventListener('touchstart', (e) => {
+addManagedEventListener(canvas, 'touchstart', (e) => {
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
 
@@ -2250,7 +2401,7 @@ canvas.addEventListener('touchstart', (e) => {
     }
 }, { passive: false });
 
-canvas.addEventListener('touchmove', (e) => {
+addManagedEventListener(canvas, 'touchmove', (e) => {
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
 
@@ -2269,15 +2420,15 @@ canvas.addEventListener('touchmove', (e) => {
     }
 }, { passive: false });
 
-canvas.addEventListener('touchend', (e) => {
+addManagedEventListener(canvas, 'touchend', (e) => {
     e.preventDefault();
     if (rource && touchState.isPanning) rource.onMouseUp();
     touchState.isPanning = false;
     touchState.isPinching = false;
 }, { passive: false });
 
-// Resize handler
-window.addEventListener('resize', resizeCanvas);
+// Resize handler - using managed listener
+addManagedEventListener(window, 'resize', resizeCanvas);
 
 // =====================================================================
 // THEME TOGGLE
