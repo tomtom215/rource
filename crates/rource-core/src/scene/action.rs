@@ -24,7 +24,7 @@ pub enum ActionType {
 impl ActionType {
     /// Returns the color associated with this action type.
     #[must_use]
-    pub const fn color(self) -> Color {
+    pub fn color(self) -> Color {
         match self {
             Self::Create => Color::from_rgb8_const(0, 255, 0), // Green
             Self::Modify => Color::from_rgb8_const(255, 165, 0), // Orange
