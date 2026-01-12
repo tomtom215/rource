@@ -2065,9 +2065,7 @@ btnRestoreContext.addEventListener('click', () => {
     setTimeout(async () => {
         try {
             // Re-create the Rource instance
-            const width = canvas.width;
-            const height = canvas.height;
-            rource = new Rource('canvas', width, height);
+            rource = new Rource(canvas);
 
             // Reload the last data if available
             if (lastLoadedRepo === 'rource') {
