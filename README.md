@@ -1,5 +1,10 @@
 # Rource
 
+[![CI](https://github.com/tomtom215/rource/actions/workflows/ci.yml/badge.svg)](https://github.com/tomtom215/rource/actions/workflows/ci.yml)
+[![Security Audit](https://github.com/tomtom215/rource/actions/workflows/security.yml/badge.svg)](https://github.com/tomtom215/rource/actions/workflows/security.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Rust: 1.75+](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
+
 **Rource** (Rust + Gource) is a software version control visualization tool - a complete rewrite of [Gource](https://github.com/acaudwell/Gource) in Rust with WebAssembly support.
 
 **[Try it live in your browser](https://tomtom215.github.io/rource/)** - no installation required!
@@ -388,3 +393,7 @@ GPL-3.0 (same as original Gource)
 
 - Original [Gource](https://github.com/acaudwell/Gource) by Andrew Caudwell
 - Font: Roboto Mono (Apache 2.0)
+
+## Acknowledgments
+
+This project was developed with AI-assisted programming using [Claude](https://www.anthropic.com/claude) by Anthropic. The AI assisted with code implementation, architecture decisions, documentation, and adherence to Rust best practices throughout the development process.

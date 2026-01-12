@@ -211,16 +211,17 @@ impl Color {
         Self::from_rgba8(r, g, b, 255)
     }
 
-    /// Creates a color from 8-bit RGB values in a const context.
+    /// Creates a color from 8-bit RGB values.
     ///
-    /// This is useful for defining color constants.
+    /// Note: This function is not const due to MSRV constraints (const float
+    /// arithmetic requires Rust 1.82+). Use this for color definitions.
     #[inline]
     #[must_use]
-    pub const fn from_rgb8_const(r: u8, g: u8, b: u8) -> Self {
+    pub fn from_rgb8_const(r: u8, g: u8, b: u8) -> Self {
         Self {
-            r: r as f32 / 255.0,
-            g: g as f32 / 255.0,
-            b: b as f32 / 255.0,
+            r: f32::from(r) / 255.0,
+            g: f32::from(g) / 255.0,
+            b: f32::from(b) / 255.0,
             a: 1.0,
         }
     }

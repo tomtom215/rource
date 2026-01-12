@@ -775,13 +775,13 @@ mod tests {
 
     #[test]
     fn test_parse_display_settings() {
-        let config = r#"
+        let config = r"
             [display]
             width = 1920
             height = 1080
             fullscreen = true
             bloom_enabled = false
-        "#;
+        ";
         let settings = parse_config(config).unwrap();
         assert_eq!(settings.display.width, 1920);
         assert_eq!(settings.display.height, 1080);
@@ -810,12 +810,12 @@ mod tests {
 
     #[test]
     fn test_parse_playback_settings() {
-        let config = r#"
+        let config = r"
             [playback]
             seconds_per_day = 5.0
             loop_playback = true
             start_paused = true
-        "#;
+        ";
         let settings = parse_config(config).unwrap();
         assert!((settings.playback.seconds_per_day - 5.0).abs() < 0.01);
         assert!(settings.playback.loop_playback);
@@ -838,12 +838,12 @@ mod tests {
 
     #[test]
     fn test_parse_visibility_settings() {
-        let config = r#"
+        let config = r"
             [visibility]
             hide_filenames = true
             hide_usernames = true
             show_fps = true
-        "#;
+        ";
         let settings = parse_config(config).unwrap();
         assert!(settings.visibility.hide_filenames);
         assert!(settings.visibility.hide_usernames);
@@ -898,10 +898,10 @@ mod tests {
 
     #[test]
     fn test_validation_error() {
-        let config = r#"
+        let config = r"
             [display]
             width = 0
-        "#;
+        ";
         let result = parse_config(config);
         assert!(result.is_err());
         if let Err(ConfigError::ValidationError(msg)) = result {

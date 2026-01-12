@@ -382,7 +382,7 @@ mod tests {
         assert_eq!(commits.len(), 2);
 
         assert_eq!(commits[0].author, "Alice");
-        assert_eq!(commits[0].timestamp, 1234567890);
+        assert_eq!(commits[0].timestamp, 1_234_567_890);
         assert_eq!(commits[0].files.len(), 2);
 
         assert_eq!(commits[1].author, "Bob");

@@ -980,18 +980,20 @@ mod tests {
     #[test]
     fn test_to_settings_conversion() {
         // Create args with proper values for conversion
-        let mut args = Args::default();
-        args.width = 1920;
-        args.height = 1080;
-        args.time_scale = 2.0;
-        args.stop_at_time = Some(60.0);
-        args.realtime = true;
-        args.hide_dirnames = true;
-        args.hide_bloom = true;
-        args.follow_user = Some("alice".to_string());
-        args.highlight_all_users = true;
-        args.dir_name_depth = 3;
-        args.dir_name_position = 0.75;
+        let args = Args {
+            width: 1920,
+            height: 1080,
+            time_scale: 2.0,
+            stop_at_time: Some(60.0),
+            realtime: true,
+            hide_dirnames: true,
+            hide_bloom: true,
+            follow_user: Some("alice".to_string()),
+            highlight_all_users: true,
+            dir_name_depth: 3,
+            dir_name_position: 0.75,
+            ..Args::default()
+        };
 
         let settings = args.to_settings();
 
@@ -1010,14 +1012,22 @@ mod tests {
 
     #[test]
     fn test_parse_logo_offset() {
-        let mut args = Args::default();
-        args.logo_offset = "10x20".to_string();
+        let args = Args {
+            logo_offset: "10x20".to_string(),
+            ..Args::default()
+        };
         assert_eq!(args.parse_logo_offset(), (10, 20));
 
-        args.logo_offset = "0x0".to_string();
+        let args = Args {
+            logo_offset: "0x0".to_string(),
+            ..Args::default()
+        };
         assert_eq!(args.parse_logo_offset(), (0, 0));
 
-        args.logo_offset = "invalid".to_string();
+        let args = Args {
+            logo_offset: "invalid".to_string(),
+            ..Args::default()
+        };
         assert_eq!(args.parse_logo_offset(), (0, 0));
     }
 
@@ -1065,9 +1075,9 @@ no_bloom = true
     #[test]
     fn test_config_file_cli_override() {
         // CLI args should override config - non-default value should be preserved
-        let config_content = r#"
+        let config_content = r"
 width = 1920
-"#;
+";
 
         let temp_dir = std::env::temp_dir();
         let config_path = temp_dir.join("test_rource_config2.toml");

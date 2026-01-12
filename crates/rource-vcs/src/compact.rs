@@ -424,7 +424,7 @@ mod tests {
     fn test_commit_store_basic() {
         let mut store = CommitStore::new();
 
-        let id = store.add_commit(1234567890, "John Doe", Some("abc123def456"));
+        let id = store.add_commit(1_234_567_890, "John Doe", Some("abc123def456"));
         store.add_file_change(id, "src/main.rs", FileAction::Create);
         store.add_file_change(id, "src/lib.rs", FileAction::Modify);
 
@@ -465,12 +465,12 @@ mod tests {
     fn test_to_standard_commit() {
         let mut store = CommitStore::new();
 
-        let id = store.add_commit(1234567890, "Test User", Some("abcdef1"));
+        let id = store.add_commit(1_234_567_890, "Test User", Some("abcdef1"));
         store.add_file_change(id, "file.txt", FileAction::Create);
 
         let standard = store.to_standard_commit(id).unwrap();
         assert_eq!(standard.author, "Test User");
-        assert_eq!(standard.timestamp, 1234567890);
+        assert_eq!(standard.timestamp, 1_234_567_890);
         assert_eq!(standard.short_hash(), "abcdef1");
         assert_eq!(standard.files.len(), 1);
     }

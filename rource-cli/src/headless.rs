@@ -1,0 +1,1028 @@
+//! Headless rendering mode for batch video export.
+//!
+//! This module provides headless rendering functionality that runs without
+//! a window, outputting frames directly to files or stdout for video encoding.
+
+use std::path::Path;
+use std::time::{Duration, Instant};
+
+use anyhow::{Context, Result};
+use rource_core::camera::Camera;
+use rource_core::config::FilterSettings;
+use rource_core::scene::{ActionType, Scene};
+use rource_math::{Bounds, Color, Vec2};
+use rource_render::effects::{BloomEffect, ShadowEffect};
+use rource_render::{FontId, Renderer, SoftwareRenderer, TextureId};
+use rource_vcs::{Commit, CustomParser, GitParser, Parser};
+
+use crate::args::Args;
+use crate::export;
+use crate::helpers::format_timestamp;
+use crate::input::file_action_to_action_type;
+
+/// Minimum screen-space radius to render an entity (LOD threshold).
+const MIN_RENDER_RADIUS: f32 = 1.5;
+
+/// Zoom level below which we skip file-to-directory connection lines.
+const SKIP_FILE_LINES_ZOOM: f32 = 0.1;
+
+/// Static counter for render profiling (only used in debug/profiling).
+static RENDER_PROFILE_COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// Build filter settings from command-line arguments.
+fn build_filter(args: &Args) -> FilterSettings {
+    let mut filter = FilterSettings::new();
+    if let Some(ref pattern) = args.show_users {
+        filter.set_show_users(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_users {
+        filter.set_hide_users(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.show_files {
+        filter.set_show_files(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_files {
+        filter.set_hide_files(Some(pattern.clone()));
+    }
+    if let Some(ref pattern) = args.hide_dirs {
+        filter.set_hide_dirs(Some(pattern.clone()));
+    }
+    filter
+}
+
+/// Load commits from the repository or log file.
+fn load_commits(args: &Args) -> Result<Vec<Commit>> {
+    use std::process::Command;
+
+    if args.custom_log {
+        let content =
+            std::fs::read_to_string(&args.path).context("Failed to read custom log file")?;
+        let parser = CustomParser::new();
+        parser
+            .parse_str(&content)
+            .context("Failed to parse custom log")
+    } else {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(&args.path)
+            .arg("log")
+            .arg("--pretty=format:commit %H%nAuthor: %an <%ae>%nDate: %at")
+            .arg("--name-status")
+            .arg("--reverse")
+            .output()
+            .context("Failed to run git log")?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("git log failed: {stderr}");
+        }
+
+        let log_content = String::from_utf8_lossy(&output.stdout);
+        let parser = GitParser::new();
+        parser
+            .parse_str(&log_content)
+            .context("Failed to parse git log")
+    }
+}
+
+/// Load an image file and register it as a texture.
+///
+/// Returns the texture ID and dimensions on success, or None with a warning on failure.
+fn load_image_as_texture(
+    path: &Path,
+    renderer: &mut SoftwareRenderer,
+    label: &str,
+) -> Option<(TextureId, u32, u32)> {
+    match rource_render::image::Image::load_file(path) {
+        Ok(image) => {
+            let width = image.width();
+            let height = image.height();
+            let texture_id = renderer.load_texture(width, height, image.data());
+            eprintln!("Loaded {label}: {width}x{height} from {}", path.display());
+            Some((texture_id, width, height))
+        }
+        Err(e) => {
+            eprintln!("Warning: Failed to load {label} '{}': {e}", path.display());
+            None
+        }
+    }
+}
+
+/// Load logo image if specified.
+fn load_logo(
+    args: &Args,
+    renderer: &mut SoftwareRenderer,
+) -> (Option<TextureId>, Option<(u32, u32)>) {
+    args.logo
+        .as_ref()
+        .and_then(|path| load_image_as_texture(path, renderer, "logo"))
+        .map_or((None, None), |(tex, w, h)| (Some(tex), Some((w, h))))
+}
+
+/// Load background image if specified.
+fn load_background(args: &Args, renderer: &mut SoftwareRenderer) -> Option<TextureId> {
+    args.background_image
+        .as_ref()
+        .and_then(|path| load_image_as_texture(path, renderer, "background"))
+        .map(|(tex, _, _)| tex)
+}
+
+/// Run in headless mode (no window, batch video export).
+///
+/// This creates a renderer without a window and runs at maximum speed,
+/// exporting frames directly without display overhead.
+#[allow(clippy::too_many_lines)]
+pub fn run_headless(args: &Args) -> Result<()> {
+    use std::process::Command;
+
+    // Validate that output is specified
+    let output = args
+        .output
+        .as_ref()
+        .context("--headless requires --output to be specified")?;
+
+    eprintln!("Running in headless mode");
+    eprintln!("Output: {}", output.display());
+
+    // Performance timing
+    let total_start = Instant::now();
+
+    // Load commits
+    let git_start = Instant::now();
+    let commits: Vec<Commit> = if args.custom_log {
+        let content =
+            std::fs::read_to_string(&args.path).context("Failed to read custom log file")?;
+        let parser = CustomParser::new();
+        parser
+            .parse_str(&content)
+            .context("Failed to parse custom log")?
+    } else {
+        let git_output = Command::new("git")
+            .arg("-C")
+            .arg(&args.path)
+            .arg("log")
+            .arg("--pretty=format:commit %H%nAuthor: %an <%ae>%nDate: %at")
+            .arg("--name-status")
+            .arg("--reverse")
+            .output()
+            .context("Failed to run git log")?;
+
+        if !git_output.status.success() {
+            let stderr = String::from_utf8_lossy(&git_output.stderr);
+            anyhow::bail!("git log failed: {stderr}");
+        }
+
+        let log_content = String::from_utf8_lossy(&git_output.stdout);
+        let git_elapsed = git_start.elapsed();
+        eprintln!(
+            "[PERF] Git log execution: {:.2}s ({:.1} MB output)",
+            git_elapsed.as_secs_f64(),
+            git_output.stdout.len() as f64 / 1_000_000.0
+        );
+
+        let parse_start = Instant::now();
+        let parser = GitParser::new();
+        let result = parser
+            .parse_str(&log_content)
+            .context("Failed to parse git log")?;
+        let parse_elapsed = parse_start.elapsed();
+        eprintln!("[PERF] Parsing: {:.2}s", parse_elapsed.as_secs_f64());
+        result
+    };
+
+    if commits.is_empty() {
+        anyhow::bail!("No commits found in repository");
+    }
+
+    let mut commits = commits;
+    let sort_start = Instant::now();
+    commits.sort_by_key(|c| c.timestamp);
+    let sort_elapsed = sort_start.elapsed();
+
+    // Count total file changes
+    let total_files: usize = commits.iter().map(|c| c.files.len()).sum();
+    eprintln!("[PERF] Sorting: {:.3}s", sort_elapsed.as_secs_f64());
+    eprintln!(
+        "Loaded {} commits ({} file changes)",
+        commits.len(),
+        total_files
+    );
+
+    // Create renderer
+    let mut renderer = SoftwareRenderer::new(args.width, args.height);
+    let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
+
+    // Load images
+    let (logo_texture, logo_dimensions) = load_logo(args, &mut renderer);
+    let background_texture = load_background(args, &mut renderer);
+
+    // Initialize scene and camera
+    let mut scene = Scene::new();
+    let mut camera = Camera::new(args.width as f32, args.height as f32);
+
+    // Initialize effects
+    let bloom = if args.no_bloom {
+        None
+    } else {
+        Some(BloomEffect::new())
+    };
+    let shadow = if args.shadows {
+        Some(ShadowEffect::subtle())
+    } else {
+        None
+    };
+
+    // Initialize frame exporter
+    let mut exporter = if output.as_os_str() == "-" {
+        export::FrameExporter::to_stdout(args.framerate)
+    } else {
+        export::FrameExporter::to_directory(output, args.framerate)
+    };
+
+    // Initialize filter settings
+    let mut filter = build_filter(args);
+
+    // Playback state
+    let seconds_per_day = args.seconds_per_day;
+    let speed = 1.0_f32;
+    let mut accumulated_time = 0.0_f64;
+    let mut current_commit = 0_usize;
+    let mut last_applied_commit = 0_usize;
+
+    // Fixed time step for consistent output
+    let dt = 1.0 / f64::from(args.framerate);
+
+    // Calculate total duration estimate
+    if let (Some(first), Some(last)) = (commits.first(), commits.last()) {
+        let days = (last.timestamp - first.timestamp) as f64 / 86400.0;
+        let estimated_seconds = days * f64::from(seconds_per_day);
+        let estimated_frames = (estimated_seconds * f64::from(args.framerate)) as u64;
+        eprintln!("Estimated duration: {estimated_seconds:.1} seconds ({estimated_frames} frames)");
+    }
+
+    eprintln!("Rendering frames...");
+
+    // Pre-warm: Apply the first commit and let entities fade in
+    if !commits.is_empty() {
+        let commit = &commits[0];
+        if filter.should_include_user(&commit.author) {
+            let files: Vec<(std::path::PathBuf, ActionType)> = commit
+                .files
+                .iter()
+                .filter(|f| filter.should_include_file(&f.path))
+                .map(|f| (f.path.clone(), file_action_to_action_type(f.action)))
+                .collect();
+            if !files.is_empty() {
+                scene.apply_commit(&commit.author, &files);
+            }
+        }
+        last_applied_commit = 1;
+        current_commit = 1;
+
+        // Run scene updates to let entities fade in (simulates ~0.5 seconds)
+        for _ in 0..30 {
+            scene.update(dt as f32);
+        }
+
+        // Fit camera immediately to show entities
+        if let Some(entity_bounds) = scene.compute_entity_bounds() {
+            let center = entity_bounds.center();
+            let size = entity_bounds.size();
+            let padding = 100.0;
+            let (vw, vh) = camera.viewport_size();
+            let zoom_x = vw / (size.x + padding * 2.0);
+            let zoom_y = vh / (size.y + padding * 2.0);
+            let new_zoom = zoom_x.min(zoom_y).clamp(0.01, 10.0);
+            camera.jump_to(center);
+            camera.set_zoom(new_zoom);
+        }
+    }
+
+    // Performance tracking accumulators
+    let mut total_commit_apply_time = Duration::ZERO;
+    let mut total_scene_update_time = Duration::ZERO;
+    let mut total_render_time = Duration::ZERO;
+    let mut total_effects_time = Duration::ZERO;
+    let mut total_export_time = Duration::ZERO;
+    let mut commits_applied = 0_usize;
+    let loop_start = Instant::now();
+
+    // Main rendering loop
+    loop {
+        // Update simulation
+        accumulated_time += dt * f64::from(speed);
+        let days_per_second = 1.0 / f64::from(seconds_per_day);
+        let days_elapsed = accumulated_time * days_per_second;
+
+        // Find commits at current time
+        if let Some(first) = commits.first() {
+            let first_time = first.timestamp;
+            let target_time = first_time + (days_elapsed * 86400.0) as i64;
+
+            while current_commit + 1 < commits.len() {
+                if commits[current_commit + 1].timestamp <= target_time {
+                    current_commit += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // Apply pending commits (with filtering)
+        let commit_apply_start = Instant::now();
+        while last_applied_commit < current_commit {
+            let commit = &commits[last_applied_commit];
+
+            if filter.should_include_user(&commit.author) {
+                let files: Vec<(std::path::PathBuf, ActionType)> = commit
+                    .files
+                    .iter()
+                    .filter(|f| filter.should_include_file(&f.path))
+                    .map(|f| (f.path.clone(), file_action_to_action_type(f.action)))
+                    .collect();
+
+                if !files.is_empty() {
+                    scene.apply_commit(&commit.author, &files);
+                    commits_applied += 1;
+                }
+            }
+
+            last_applied_commit += 1;
+        }
+        total_commit_apply_time += commit_apply_start.elapsed();
+
+        // Update scene and camera
+        let scene_update_start = Instant::now();
+        scene.update(dt as f32);
+        camera.update(dt as f32);
+
+        // Auto-fit camera to scene content
+        if let Some(entity_bounds) = scene.compute_entity_bounds() {
+            camera.fit_to_bounds(&entity_bounds, 100.0);
+        }
+        total_scene_update_time += scene_update_start.elapsed();
+
+        // Render frame
+        let render_start = Instant::now();
+        render_frame_headless(
+            &mut renderer,
+            &scene,
+            &camera,
+            args,
+            font_id,
+            &commits,
+            current_commit,
+            background_texture,
+            logo_texture,
+            logo_dimensions,
+        );
+        total_render_time += render_start.elapsed();
+
+        // Apply effects
+        let effects_start = Instant::now();
+        if let Some(ref shadow_effect) = shadow {
+            let w = renderer.width() as usize;
+            let h = renderer.height() as usize;
+            shadow_effect.apply(renderer.pixels_mut(), w, h);
+        }
+        if let Some(ref bloom_effect) = bloom {
+            let w = renderer.width() as usize;
+            let h = renderer.height() as usize;
+            bloom_effect.apply(renderer.pixels_mut(), w, h);
+        }
+        total_effects_time += effects_start.elapsed();
+
+        // Export frame
+        let export_start = Instant::now();
+        let pixels = renderer.pixels();
+        let width = renderer.width();
+        let height = renderer.height();
+        exporter
+            .export_frame(pixels, width, height, dt)
+            .context("Failed to export frame")?;
+        total_export_time += export_start.elapsed();
+
+        // Progress reporting
+        if exporter.frame_count() % 100 == 0 {
+            let progress = current_commit as f32 / commits.len().max(1) as f32;
+            eprint!(
+                "\rFrame {}: {:.1}% ({}/{})",
+                exporter.frame_count(),
+                progress * 100.0,
+                current_commit,
+                commits.len()
+            );
+        }
+
+        // Check for completion
+        if !commits.is_empty()
+            && current_commit >= commits.len().saturating_sub(1)
+            && last_applied_commit >= current_commit
+        {
+            break;
+        }
+    }
+
+    let loop_elapsed = loop_start.elapsed();
+    let total_elapsed = total_start.elapsed();
+    let frame_count = exporter.frame_count();
+
+    eprintln!("\nExport complete: {frame_count} frames written");
+
+    // Print performance summary
+    print_performance_summary(
+        total_elapsed,
+        loop_elapsed,
+        frame_count,
+        total_commit_apply_time,
+        commits_applied,
+        total_scene_update_time,
+        total_render_time,
+        total_effects_time,
+        total_export_time,
+        &scene,
+    );
+
+    Ok(())
+}
+
+/// Print performance summary for headless rendering.
+#[allow(clippy::too_many_arguments)]
+fn print_performance_summary(
+    total_elapsed: Duration,
+    loop_elapsed: Duration,
+    frame_count: u64,
+    total_commit_apply_time: Duration,
+    commits_applied: usize,
+    total_scene_update_time: Duration,
+    total_render_time: Duration,
+    total_effects_time: Duration,
+    total_export_time: Duration,
+    scene: &Scene,
+) {
+    eprintln!("\n=== PERFORMANCE SUMMARY ===");
+    eprintln!("Total time:        {:.2}s", total_elapsed.as_secs_f64());
+    eprintln!(
+        "  Render loop:     {:.2}s ({} frames, {:.1}ms avg)",
+        loop_elapsed.as_secs_f64(),
+        frame_count,
+        loop_elapsed.as_secs_f64() * 1000.0 / frame_count as f64
+    );
+    eprintln!("\nBreakdown per frame (avg):");
+    eprintln!(
+        "  Commit apply:    {:.2}ms ({} commits, {:.3}ms/commit)",
+        total_commit_apply_time.as_secs_f64() * 1000.0 / frame_count as f64,
+        commits_applied,
+        if commits_applied > 0 {
+            total_commit_apply_time.as_secs_f64() * 1000.0 / commits_applied as f64
+        } else {
+            0.0
+        }
+    );
+    eprintln!(
+        "  Scene update:    {:.2}ms",
+        total_scene_update_time.as_secs_f64() * 1000.0 / frame_count as f64
+    );
+    eprintln!(
+        "  Render:          {:.2}ms",
+        total_render_time.as_secs_f64() * 1000.0 / frame_count as f64
+    );
+    eprintln!(
+        "  Effects:         {:.2}ms",
+        total_effects_time.as_secs_f64() * 1000.0 / frame_count as f64
+    );
+    eprintln!(
+        "  Export:          {:.2}ms",
+        total_export_time.as_secs_f64() * 1000.0 / frame_count as f64
+    );
+
+    eprintln!("\nScene stats:");
+    eprintln!("  Files:           {}", scene.file_count());
+    eprintln!("  Users:           {}", scene.user_count());
+    eprintln!("  Directories:     {}", scene.directories().len());
+}
+
+/// Render a single frame in headless mode.
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+pub fn render_frame_headless(
+    renderer: &mut SoftwareRenderer,
+    scene: &Scene,
+    camera: &Camera,
+    args: &Args,
+    font_id: Option<FontId>,
+    commits: &[Commit],
+    current_commit: usize,
+    background_texture: Option<TextureId>,
+    logo_texture: Option<TextureId>,
+    logo_dimensions: Option<(u32, u32)>,
+) {
+    renderer.begin_frame();
+
+    // Clear to background color
+    let bg_color = args.parse_background_color();
+    renderer.clear(bg_color);
+
+    // Draw background image if available
+    if let Some(bg_texture) = background_texture {
+        let viewport_bounds = Bounds::new(
+            Vec2::ZERO,
+            Vec2::new(renderer.width() as f32, renderer.height() as f32),
+        );
+        renderer.draw_quad(viewport_bounds, Some(bg_texture), Color::WHITE);
+    }
+
+    // Get visible bounds for frustum culling
+    let cull_start = Instant::now();
+    let visible_bounds = camera.visible_bounds();
+    let culling_bounds = Scene::expand_bounds_for_visibility(&visible_bounds, 100.0);
+    let (visible_dir_ids, visible_file_ids, visible_user_ids) =
+        scene.visible_entities(&culling_bounds);
+    let cull_time = cull_start.elapsed();
+
+    let camera_zoom = camera.zoom();
+
+    // Profile every 100th frame
+    let frame_num = RENDER_PROFILE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let profile = frame_num % 100 == 0;
+
+    // LOD: Skip file-to-directory lines when very zoomed out
+    let draw_file_lines = camera_zoom > SKIP_FILE_LINES_ZOOM;
+
+    // Render directories
+    let dirs_start = Instant::now();
+    let mut dirs_rendered = 0_u32;
+    for &dir_id in &visible_dir_ids {
+        let Some(dir) = scene.directories().get(dir_id) else {
+            continue;
+        };
+        if !dir.is_visible() {
+            continue;
+        }
+        let screen_pos = camera.world_to_screen(dir.position());
+        let radius = dir.radius() * camera_zoom;
+
+        // LOD: Skip directories that are too small
+        if radius < MIN_RENDER_RADIUS {
+            continue;
+        }
+
+        let depth_color = 0.15 + 0.05 * (dir.depth() as f32).min(5.0);
+        let dir_color = Color::new(depth_color, depth_color, depth_color + 0.1, 0.5);
+        renderer.draw_circle(screen_pos, radius, 1.0, dir_color);
+        dirs_rendered += 1;
+
+        // Only draw parent connection lines if directories are large enough
+        if radius >= 3.0 {
+            if let Some(parent_pos) = dir.parent_position() {
+                let parent_screen = camera.world_to_screen(parent_pos);
+                renderer.draw_line(parent_screen, screen_pos, 1.0, dir_color.with_alpha(0.3));
+            }
+        }
+    }
+    let dirs_time = dirs_start.elapsed();
+
+    // Render files
+    let files_start = Instant::now();
+    let mut files_rendered = 0_u32;
+    let show_filenames = !args.hide_filenames;
+    let file_font_size = args.font_size * 0.8;
+
+    for &file_id in &visible_file_ids {
+        let Some(file) = scene.get_file(file_id) else {
+            continue;
+        };
+        if file.alpha() < 0.01 {
+            continue;
+        }
+        let screen_pos = camera.world_to_screen(file.position());
+        let radius = file.radius() * camera_zoom;
+
+        // LOD: Skip files that are too small
+        let draw_radius = radius.max(2.0);
+        if draw_radius < MIN_RENDER_RADIUS {
+            continue;
+        }
+
+        let color = file.current_color().with_alpha(file.alpha());
+        renderer.draw_disc(screen_pos, draw_radius, color);
+        files_rendered += 1;
+
+        // LOD: Only draw file-to-directory lines when zoomed in enough
+        if draw_file_lines {
+            if let Some(dir) = scene.directories().get(file.directory()) {
+                let dir_screen = camera.world_to_screen(dir.position());
+                renderer.draw_line(
+                    dir_screen,
+                    screen_pos,
+                    0.5,
+                    color.with_alpha(0.2 * file.alpha()),
+                );
+            }
+        }
+
+        // LOD: Only show filenames when zoomed in and file is prominent
+        if show_filenames && file.alpha() > 0.5 && camera_zoom > 0.3 {
+            if let Some(fid) = font_id {
+                let name = file.name();
+                let label_pos = Vec2::new(
+                    screen_pos.x + radius + 3.0,
+                    screen_pos.y - file_font_size * 0.3,
+                );
+                let label_color = Color::new(0.9, 0.9, 0.9, 0.7 * file.alpha());
+                renderer.draw_text(name, label_pos, fid, file_font_size, label_color);
+            }
+        }
+    }
+    let files_time = files_start.elapsed();
+
+    // Render actions (beams)
+    let actions_start = Instant::now();
+    let mut actions_rendered = 0_u32;
+    for action in scene.actions() {
+        let user_opt = scene.get_user(action.user());
+        let file_opt = scene.get_file(action.file());
+        if let (Some(user), Some(file)) = (user_opt, file_opt) {
+            let user_screen = camera.world_to_screen(user.position());
+            let file_screen = camera.world_to_screen(file.position());
+            let beam_end = user_screen.lerp(file_screen, action.progress());
+            let beam_color = action.beam_color();
+            renderer.draw_line(user_screen, beam_end, 2.0, beam_color);
+            let head_radius = 3.0 * camera_zoom;
+            renderer.draw_disc(beam_end, head_radius.max(2.0), beam_color);
+            actions_rendered += 1;
+        }
+    }
+    let actions_time = actions_start.elapsed();
+
+    // Render users
+    let users_start = Instant::now();
+    let mut users_rendered = 0_u32;
+    let show_usernames = !args.hide_usernames;
+    let name_font_size = args.font_size;
+
+    for &user_id in &visible_user_ids {
+        let Some(user) = scene.get_user(user_id) else {
+            continue;
+        };
+        if user.alpha() < 0.01 {
+            continue;
+        }
+        let screen_pos = camera.world_to_screen(user.position());
+        let radius = user.radius() * camera_zoom;
+        let color = user.display_color();
+        renderer.draw_disc(screen_pos, radius.max(5.0), color);
+        if user.is_active() {
+            renderer.draw_circle(
+                screen_pos,
+                radius * 1.3,
+                2.0,
+                color.with_alpha(0.5 * user.alpha()),
+            );
+        }
+        users_rendered += 1;
+        if show_usernames {
+            if let Some(fid) = font_id {
+                let name = user.name();
+                let label_pos = Vec2::new(
+                    screen_pos.x + radius + 5.0,
+                    screen_pos.y - name_font_size * 0.3,
+                );
+                let label_color = Color::new(1.0, 1.0, 1.0, 0.8 * user.alpha());
+                renderer.draw_text(name, label_pos, fid, name_font_size, label_color);
+            }
+        }
+    }
+    let users_time = users_start.elapsed();
+
+    // Print profiling info every 100 frames
+    if profile {
+        eprintln!("\n[RENDER PROFILE] Frame {frame_num}:");
+        eprintln!(
+            "  Culling:     {:.2}ms (vis: {} dirs, {} files, {} users)",
+            cull_time.as_secs_f64() * 1000.0,
+            visible_dir_ids.len(),
+            visible_file_ids.len(),
+            visible_user_ids.len()
+        );
+        eprintln!(
+            "  Directories: {:.2}ms ({} rendered)",
+            dirs_time.as_secs_f64() * 1000.0,
+            dirs_rendered
+        );
+        eprintln!(
+            "  Files:       {:.2}ms ({} rendered, {:.3}ms/file)",
+            files_time.as_secs_f64() * 1000.0,
+            files_rendered,
+            if files_rendered > 0 {
+                files_time.as_secs_f64() * 1000.0 / f64::from(files_rendered)
+            } else {
+                0.0
+            }
+        );
+        eprintln!(
+            "  Actions:     {:.2}ms ({} rendered)",
+            actions_time.as_secs_f64() * 1000.0,
+            actions_rendered
+        );
+        eprintln!(
+            "  Users:       {:.2}ms ({} rendered)",
+            users_time.as_secs_f64() * 1000.0,
+            users_rendered
+        );
+        eprintln!("  Zoom:        {camera_zoom:.4}");
+    }
+
+    // Render UI overlays
+    let width = renderer.width() as f32;
+    let height = renderer.height() as f32;
+
+    // Progress bar
+    if !commits.is_empty() {
+        let bar_height = 4.0;
+        let progress = current_commit as f32 / commits.len().max(1) as f32;
+        renderer.draw_quad(
+            Bounds::new(
+                Vec2::new(0.0, height - bar_height),
+                Vec2::new(width, height),
+            ),
+            None,
+            Color::new(0.2, 0.2, 0.2, 0.5),
+        );
+        renderer.draw_quad(
+            Bounds::new(
+                Vec2::new(0.0, height - bar_height),
+                Vec2::new(width * progress, height),
+            ),
+            None,
+            Color::new(0.3, 0.6, 1.0, 0.8),
+        );
+    }
+
+    // Text overlays
+    if let Some(fid) = font_id {
+        let font_size = args.font_size;
+        let text_color = Color::new(1.0, 1.0, 1.0, 0.9);
+
+        // Title
+        if let Some(ref title) = args.title {
+            let title_size = font_size * 1.5;
+            let title_x = (width / 2.0) - (title.len() as f32 * title_size * 0.3);
+            renderer.draw_text(
+                title,
+                Vec2::new(title_x.max(10.0), 20.0),
+                fid,
+                title_size,
+                text_color,
+            );
+        }
+
+        // Date display
+        if !args.hide_date && !commits.is_empty() {
+            if let Some(commit) = commits.get(current_commit.saturating_sub(1).max(0)) {
+                let date_str = format_timestamp(commit.timestamp);
+                renderer.draw_text(
+                    &date_str,
+                    Vec2::new(10.0, height - 30.0),
+                    fid,
+                    font_size,
+                    text_color.with_alpha(0.7),
+                );
+            }
+        }
+
+        // Current commit info
+        if current_commit > 0 {
+            if let Some(commit) = commits.get(current_commit - 1) {
+                renderer.draw_text(
+                    &commit.author,
+                    Vec2::new(10.0, height - 50.0),
+                    fid,
+                    font_size,
+                    text_color.with_alpha(0.8),
+                );
+                let files_text = format!("{} files", commit.files.len());
+                renderer.draw_text(
+                    &files_text,
+                    Vec2::new(10.0, height - 70.0),
+                    fid,
+                    font_size * 0.9,
+                    text_color.with_alpha(0.6),
+                );
+            }
+        }
+
+        // Stats text
+        let file_count = scene.file_count();
+        let user_count = scene.user_count();
+        let total_commits = commits.len();
+        let stats_text = format!(
+            "{current_commit}/{total_commits} commits | {file_count} files | {user_count} users"
+        );
+        renderer.draw_text(
+            &stats_text,
+            Vec2::new(10.0, 20.0),
+            fid,
+            font_size * 0.8,
+            text_color.with_alpha(0.5),
+        );
+    }
+
+    // Draw logo in top-right corner if available
+    if let (Some(logo_tex), Some((logo_width, logo_height))) = (logo_texture, logo_dimensions) {
+        let viewport_width = renderer.width() as f32;
+        let logo_offset = args.parse_logo_offset();
+        let (offset_x, offset_y) = logo_offset;
+
+        let logo_x = viewport_width - logo_width as f32 - offset_x as f32;
+        let logo_y = offset_y as f32;
+
+        let logo_bounds = Bounds::new(
+            Vec2::new(logo_x, logo_y),
+            Vec2::new(logo_x + logo_width as f32, logo_y + logo_height as f32),
+        );
+        renderer.draw_quad(logo_bounds, Some(logo_tex), Color::WHITE);
+    }
+
+    renderer.end_frame();
+}
+
+/// Run in screenshot mode (render single frame to PNG).
+#[allow(clippy::too_many_lines)]
+pub fn run_screenshot(args: &Args, screenshot_path: &Path) -> Result<()> {
+    use rource_vcs::FileAction;
+
+    eprintln!("Taking screenshot...");
+
+    // Load commits
+    let commits = load_commits(args)?;
+
+    if commits.is_empty() {
+        anyhow::bail!("No commits found in repository");
+    }
+
+    // Determine which commit to render
+    let target_commit = args
+        .screenshot_at
+        .unwrap_or_else(|| commits.len().saturating_sub(1));
+    let target_commit = target_commit.min(commits.len().saturating_sub(1));
+
+    eprintln!(
+        "Rendering commit {}/{} ({})",
+        target_commit + 1,
+        commits.len(),
+        commits[target_commit].author
+    );
+
+    // Create renderer and scene
+    let mut renderer = SoftwareRenderer::new(args.width, args.height);
+    let mut scene = Scene::new();
+    let mut camera = Camera::new(args.width as f32, args.height as f32);
+
+    // Load font
+    let font_id = renderer.load_font(rource_render::default_font::ROBOTO_MONO);
+
+    // Load images
+    let (logo_texture, logo_dimensions) = load_logo(args, &mut renderer);
+    let background_texture = load_background(args, &mut renderer);
+
+    // Initialize filter settings
+    let mut filter = build_filter(args);
+
+    // Apply commits up to and including the target
+    for commit in commits.iter().take(target_commit + 1) {
+        if !filter.should_include_user(&commit.author) {
+            continue;
+        }
+
+        let files: Vec<(std::path::PathBuf, ActionType)> = commit
+            .files
+            .iter()
+            .filter(|f| filter.should_include_file(&f.path))
+            .map(|f| {
+                (
+                    f.path.clone(),
+                    match f.action {
+                        FileAction::Create => ActionType::Create,
+                        FileAction::Modify => ActionType::Modify,
+                        FileAction::Delete => ActionType::Delete,
+                    },
+                )
+            })
+            .collect();
+
+        if !files.is_empty() {
+            scene.apply_commit(&commit.author, &files);
+        }
+    }
+
+    // Pre-warm scene
+    for _ in 0..30 {
+        scene.update(1.0 / 60.0);
+    }
+
+    // Position camera
+    if let Some(bounds) = scene.compute_entity_bounds() {
+        if bounds.width() > 0.0 && bounds.height() > 0.0 {
+            let padded = Bounds::from_center_size(
+                bounds.center(),
+                Vec2::new(bounds.width() * 1.2, bounds.height() * 1.2),
+            );
+            let zoom_x = args.width as f32 / padded.width();
+            let zoom_y = args.height as f32 / padded.height();
+            let zoom = zoom_x.min(zoom_y).clamp(0.1, 5.0);
+
+            camera.jump_to(padded.center());
+            camera.set_zoom(zoom);
+        }
+    }
+
+    // Render the frame
+    render_frame_headless(
+        &mut renderer,
+        &scene,
+        &camera,
+        args,
+        font_id,
+        &commits,
+        target_commit,
+        background_texture,
+        logo_texture,
+        logo_dimensions,
+    );
+
+    // Apply effects if enabled
+    if !args.no_bloom {
+        let bloom = BloomEffect::new();
+        bloom.apply(
+            renderer.pixels_mut(),
+            args.width as usize,
+            args.height as usize,
+        );
+    }
+
+    if args.shadows {
+        let shadow = ShadowEffect::subtle();
+        shadow.apply(
+            renderer.pixels_mut(),
+            args.width as usize,
+            args.height as usize,
+        );
+    }
+
+    // Save the screenshot
+    let pixels = renderer.pixels();
+    export::write_png_to_file(pixels, args.width, args.height, screenshot_path)
+        .context("Failed to save screenshot")?;
+
+    eprintln!("Screenshot saved: {}", screenshot_path.display());
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_headless_requires_output() {
+        let args = Args {
+            headless: true,
+            output: None,
+            ..Args::default()
+        };
+
+        let result = run_headless(&args);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("--headless requires --output"));
+    }
+
+    #[test]
+    fn test_headless_args_stdout_detection() {
+        let args = Args {
+            headless: true,
+            output: Some(PathBuf::from("-")),
+            ..Args::default()
+        };
+
+        assert!(args.headless);
+        assert_eq!(args.output.as_ref().unwrap().as_os_str(), "-");
+    }
+
+    #[test]
+    fn test_headless_args_directory_detection() {
+        let args = Args {
+            headless: true,
+            output: Some(PathBuf::from("/tmp/frames")),
+            ..Args::default()
+        };
+
+        assert!(args.headless);
+        assert_eq!(
+            args.output.as_ref().unwrap().to_str().unwrap(),
+            "/tmp/frames"
+        );
+    }
+}

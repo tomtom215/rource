@@ -1,0 +1,60 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
+
+  # Check for unsafe code usage
+  unsafe-check:
+    name: Unsafe Code Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Check for unsafe blocks
+        run: |
+          echo "=== Scanning for unsafe code ==="
+          # Count unsafe blocks (informational, not blocking)
+          unsafe_count=$(grep -r "unsafe" --include="*.rs" . | grep -v "target/" | grep -v "#\[deny(unsafe" | wc -l || true)
+          echo "Found $unsafe_count lines containing 'unsafe'"
+
+          # List files with unsafe code
+          echo ""
+          echo "=== Files containing unsafe code ==="
+          grep -rl "unsafe {" --include="*.rs" . | grep -v "target/" || echo "No unsafe blocks found"
+
+  # Check for known unmaintained crates
+  advisories:
+    name: Advisory Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+
+      - name: Check advisories
+        run: cargo deny check advisories || true
