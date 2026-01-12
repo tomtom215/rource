@@ -922,6 +922,11 @@ fn parse_date(s: &str) -> Option<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    // Mutex to serialize tests that modify environment variables
+    // This prevents race conditions when tests run in parallel
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_parse_hex_color() {
@@ -1126,6 +1131,9 @@ width = 1920
 
     #[test]
     fn test_env_vars_applied() {
+        // Lock mutex to prevent parallel test interference with env vars
+        let _guard = ENV_MUTEX.lock().unwrap();
+
         // Set environment variables
         std::env::set_var("ROURCE_WIDTH", "1920");
         std::env::set_var("ROURCE_HEIGHT", "1080");
@@ -1158,6 +1166,9 @@ width = 1920
 
     #[test]
     fn test_env_vars_cli_override() {
+        // Lock mutex to prevent parallel test interference with env vars
+        let _guard = ENV_MUTEX.lock().unwrap();
+
         // CLI args should override env
         std::env::set_var("ROURCE_WIDTH", "1920");
 
