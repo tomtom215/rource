@@ -1,16 +1,22 @@
 //! Memory usage benchmark for commit parsing.
 //!
 //! Run with:
-//!   cargo run --release --example memory_benchmark -- /path/to/repo
+//!
+//! ```sh
+//! cargo run --release --example memory_benchmark -- /path/to/repo
+//! ```
 //!
 //! Or with a pre-generated log file:
-//!   git log --pretty=format:"%at|%an|%H" --numstat > git.log
-//!   cargo run --release --example memory_benchmark -- --log git.log
+//!
+//! ```sh
+//! git log --pretty=format:"%at|%an|%H" --numstat > git.log
+//! cargo run --release --example memory_benchmark -- --log git.log
+//! ```
 
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::time::Instant;
 
 use rource_vcs::compact::{estimate_standard_memory, CommitStore};
@@ -36,11 +42,11 @@ fn main() {
         (LogSource::Repo(args[1].clone()), args[1].clone())
     };
 
-    println!("=== Memory Benchmark for: {} ===\n", repo_name);
+    println!("=== Memory Benchmark for: {repo_name} ===\n");
 
     // First, count commits to estimate size
     let commit_count = count_commits(&log_source);
-    println!("Repository has approximately {} commits\n", commit_count);
+    println!("Repository has approximately {commit_count} commits\n");
 
     // Benchmark standard parsing
     println!("--- Standard Parsing ---");
@@ -108,7 +114,7 @@ fn main() {
 
     if compact_stats.file_change_count > 0 {
         let path_reuse = compact_stats.file_change_count as f64 / compact_stats.unique_paths as f64;
-        println!("Path reuse factor: {:.1}x", path_reuse);
+        println!("Path reuse factor: {path_reuse:.1}x");
     }
 }
 
@@ -141,14 +147,13 @@ fn count_commits(source: &LogSource) -> usize {
     }
 }
 
-fn get_git_log(source: &LogSource) -> Box<dyn BufRead> {
+fn get_git_log(source: &LogSource) -> String {
     match source {
         LogSource::File(path) => {
-            let file = File::open(path).expect("Failed to open log file");
-            Box::new(BufReader::new(file))
+            std::fs::read_to_string(path).expect("Failed to read log file")
         }
         LogSource::Repo(path) => {
-            let child = Command::new("git")
+            let output = Command::new("git")
                 .args([
                     "log",
                     "--pretty=format:%at|%an|%H",
@@ -156,11 +161,10 @@ fn get_git_log(source: &LogSource) -> Box<dyn BufRead> {
                     "--date=unix",
                 ])
                 .current_dir(path)
-                .stdout(Stdio::piped())
-                .spawn()
+                .output()
                 .expect("Failed to run git log");
 
-            Box::new(BufReader::new(child.stdout.expect("No stdout")))
+            String::from_utf8_lossy(&output.stdout).into_owned()
         }
     }
 }
@@ -169,9 +173,7 @@ fn benchmark_standard_parsing(source: &LogSource) -> (Vec<Commit>, std::time::Du
     let start = Instant::now();
 
     // Read entire log into memory
-    let mut log_content = String::new();
-    let mut reader = get_git_log(source);
-    std::io::Read::read_to_string(&mut reader, &mut log_content).expect("Failed to read log");
+    let log_content = get_git_log(source);
 
     // Parse with standard parser
     let parser = GitParser::new();
@@ -183,25 +185,16 @@ fn benchmark_standard_parsing(source: &LogSource) -> (Vec<Commit>, std::time::Du
 fn benchmark_compact_streaming(source: &LogSource) -> (CommitStore, std::time::Duration) {
     let start = Instant::now();
 
-    let reader = get_git_log(source);
-    let buf_reader = BufReader::new(StreamingReader(reader));
+    let log_content = get_git_log(source);
+    let buf_reader = BufReader::new(log_content.as_bytes());
 
     let loader = StreamingCommitLoader::new(buf_reader);
     let store = loader.load_with_progress(|commits, files| {
         if commits % 10000 == 0 {
-            eprint!("\r  Loading... {} commits, {} files", commits, files);
+            eprint!("\r  Loading... {commits} commits, {files} files");
         }
     });
     eprintln!();
 
     (store, start.elapsed())
-}
-
-// Wrapper to convert Box<dyn BufRead> to Read
-struct StreamingReader(Box<dyn BufRead>);
-
-impl std::io::Read for StreamingReader {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.0.read(buf)
-    }
 }

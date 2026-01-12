@@ -774,30 +774,36 @@ mod tests {
             d.push(0); // interlace
             d
         };
-        write_chunk(&mut data, b"IHDR", &ihdr_data);
+        write_chunk(&mut data, *b"IHDR", &ihdr_data);
 
         // Create raw image data (filter byte 0 + RGBA)
-        let mut raw = Vec::new();
+        // Build one row: filter byte + pixel data repeated width times
+        let pixel = [color.0, color.1, color.2, color.3];
+        let row_len = 1 + (width as usize) * 4; // 1 filter byte + width * 4 bytes per pixel
+        let mut row = Vec::with_capacity(row_len);
+        row.push(0); // filter type: None
+        for _ in 0..width {
+            row.extend_from_slice(&pixel);
+        }
+        // Repeat the row height times
+        let mut raw = Vec::with_capacity(row_len * (height as usize));
         for _ in 0..height {
-            raw.push(0); // filter type: None
-            for _ in 0..width {
-                raw.extend_from_slice(&[color.0, color.1, color.2, color.3]);
-            }
+            raw.extend_from_slice(&row);
         }
 
         // Compress with simple stored blocks
         let compressed = deflate_store(&raw);
-        write_chunk(&mut data, b"IDAT", &compressed);
+        write_chunk(&mut data, *b"IDAT", &compressed);
 
         // IEND chunk
-        write_chunk(&mut data, b"IEND", &[]);
+        write_chunk(&mut data, *b"IEND", &[]);
 
         data
     }
 
-    fn write_chunk(data: &mut Vec<u8>, chunk_type: &[u8; 4], chunk_data: &[u8]) {
+    fn write_chunk(data: &mut Vec<u8>, chunk_type: [u8; 4], chunk_data: &[u8]) {
         data.extend_from_slice(&(chunk_data.len() as u32).to_be_bytes());
-        data.extend_from_slice(chunk_type);
+        data.extend_from_slice(&chunk_type);
         data.extend_from_slice(chunk_data);
         let crc = crc32(&[chunk_type.as_slice(), chunk_data].concat());
         data.extend_from_slice(&crc.to_be_bytes());
@@ -828,7 +834,7 @@ mod tests {
         let chunks: Vec<_> = data.chunks(65535).collect();
         for (i, chunk) in chunks.iter().enumerate() {
             let is_last = i == chunks.len() - 1;
-            result.push(if is_last { 1 } else { 0 }); // BFINAL + BTYPE=0
+            result.push(u8::from(is_last)); // BFINAL + BTYPE=0
             let len = chunk.len() as u16;
             result.extend_from_slice(&len.to_le_bytes());
             result.extend_from_slice(&(!len).to_le_bytes());

@@ -511,15 +511,15 @@ mod tests {
     fn test_crc32() {
         // Test CRC32 with known values
         let crc = crc32(b"IEND", &[]);
-        assert_eq!(crc, 0xAE426082); // Known CRC for empty IEND chunk
+        assert_eq!(crc, 0xAE42_6082); // Known CRC for empty IEND chunk
     }
 
     #[test]
     fn test_adler32() {
         // Test Adler-32 with known values
         assert_eq!(adler32(b""), 1);
-        assert_eq!(adler32(b"a"), 0x00620062);
-        assert_eq!(adler32(b"abc"), 0x024d0127);
+        assert_eq!(adler32(b"a"), 0x0062_0062);
+        assert_eq!(adler32(b"abc"), 0x024D_0127);
     }
 
     #[test]

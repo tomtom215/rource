@@ -1384,7 +1384,7 @@ mod tests {
 
     #[test]
     fn test_color_from_hex() {
-        let color = Color::from_hex(0xff0000);
+        let color = Color::from_hex(0x00FF_0000);
         assert!((color.r - 1.0).abs() < 0.01);
         assert!(color.g < 0.01);
         assert!(color.b < 0.01);
@@ -1392,7 +1392,7 @@ mod tests {
 
     #[test]
     fn test_color_from_hex_green() {
-        let color = Color::from_hex(0x00ff00);
+        let color = Color::from_hex(0x0000_FF00);
         assert!(color.r < 0.01);
         assert!((color.g - 1.0).abs() < 0.01);
         assert!(color.b < 0.01);
@@ -1400,7 +1400,7 @@ mod tests {
 
     #[test]
     fn test_color_from_hex_blue() {
-        let color = Color::from_hex(0x0000ff);
+        let color = Color::from_hex(0x0000_00FF);
         assert!(color.r < 0.01);
         assert!(color.g < 0.01);
         assert!((color.b - 1.0).abs() < 0.01);
@@ -1408,7 +1408,7 @@ mod tests {
 
     #[test]
     fn test_color_from_hex_white() {
-        let color = Color::from_hex(0xffffff);
+        let color = Color::from_hex(0x00FF_FFFF);
         assert!((color.r - 1.0).abs() < 0.01);
         assert!((color.g - 1.0).abs() < 0.01);
         assert!((color.b - 1.0).abs() < 0.01);
@@ -1439,7 +1439,7 @@ mod tests {
     fn test_crc32_empty() {
         let result = crc32(b"IEND", &[]);
         // Known CRC32 for empty IEND chunk
-        assert_eq!(result, 0xAE426082);
+        assert_eq!(result, 0xAE42_6082);
     }
 
     #[test]
@@ -1484,8 +1484,8 @@ mod tests {
     fn test_write_png_small_image() {
         // Create a 2x2 red image
         let pixels: Vec<u32> = vec![
-            0xFFFF0000, 0xFFFF0000, // Red, Red
-            0xFFFF0000, 0xFFFF0000, // Red, Red
+            0xFFFF_0000, 0xFFFF_0000, // Red, Red
+            0xFFFF_0000, 0xFFFF_0000, // Red, Red
         ];
         let mut output = Vec::new();
         write_png(&mut output, &pixels, 2, 2).unwrap();
@@ -1505,7 +1505,7 @@ mod tests {
 
     #[test]
     fn test_write_png_1x1_pixel() {
-        let pixels: Vec<u32> = vec![0xFF00FF00]; // Green
+        let pixels: Vec<u32> = vec![0xFF00_FF00]; // Green
         let mut output = Vec::new();
         write_png(&mut output, &pixels, 1, 1).unwrap();
 
