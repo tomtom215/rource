@@ -30,13 +30,69 @@ const CONFIG = {
     GITHUB_CACHE_EXPIRY_MS: 24 * 60 * 60 * 1000,  // 24 hours
     GITHUB_RATE_LIMIT_BUFFER: 5,     // Stop fetching when this many requests remain
 
-    // Animation
+    // Animation & Timing
     TOAST_DURATION_MS: 3000,         // Default toast duration
+    TOAST_SUCCESS_DURATION_MS: 2000, // Success toast duration
+    TOAST_ERROR_DURATION_MS: 5000,   // Error toast duration (longer for user to read)
     INIT_DELAY_MS: 500,              // Delay before auto-loading default data
+    CONTEXT_RESTORE_DELAY_MS: 500,   // Delay before WebGL context restoration
+    SCROLL_INDICATOR_DELAY_MS: 100,  // Delay before checking scroll indicator
+    PANEL_ANIMATION_DELAY_MS: 350,   // Delay for panel collapse/expand animations
+    COPY_FEEDBACK_DELAY_MS: 2000,    // Duration to show "Copied!" feedback
+    STATUS_HIDE_DELAY_MS: 3000,      // Delay before hiding status messages
+    PREWARM_DELAY_MS: 50,            // Delay between prewarm iterations
 
     // Debug (set to true for development logging)
     DEBUG: false,
+
+    // Observability
+    ENABLE_TELEMETRY: false,         // Enable performance telemetry logging
+    LOG_WASM_ERRORS: true,           // Log WASM errors to console (always on for diagnostics)
 };
+
+// ============================================================
+// Observability & Telemetry
+// ============================================================
+
+/**
+ * Performance telemetry for tracking app behavior.
+ * @type {{wasmErrors: number, eventListenerCount: number, lastError: Error|null, initTime: number|null}}
+ */
+const telemetry = {
+    wasmErrors: 0,
+    eventListenerCount: 0,
+    lastError: null,
+    initTime: null,
+    frameDrops: 0,
+};
+
+/**
+ * Records a telemetry event for observability.
+ * @param {string} event - Event name
+ * @param {Object} [data] - Optional event data
+ */
+function recordTelemetry(event, data = {}) {
+    if (CONFIG.ENABLE_TELEMETRY) {
+        console.log(`[Telemetry:${event}]`, { timestamp: Date.now(), ...data });
+    }
+}
+
+/**
+ * Gets current telemetry stats (useful for debugging).
+ * @returns {Object} Current telemetry state
+ */
+function getTelemetryStats() {
+    return {
+        ...telemetry,
+        eventListenerCount: eventListenerRegistry.length,
+        uptime: telemetry.initTime ? Date.now() - telemetry.initTime : 0,
+    };
+}
+
+// Expose telemetry to window for debugging in production
+if (typeof window !== 'undefined') {
+    window.__ROURCE_TELEMETRY__ = getTelemetryStats;
+}
 
 /**
  * Log a debug message (only when CONFIG.DEBUG is true).
@@ -52,6 +108,83 @@ function debugLog(context, message, error = null) {
             console.log(`[Rource:${context}] ${message}`);
         }
     }
+}
+
+// ============================================================
+// WASM Error Boundary
+// ============================================================
+// Provides safe wrappers for all WASM calls to prevent uncaught exceptions
+// from crashing the application. All WASM errors are logged and tracked.
+
+/**
+ * Safely calls a WASM method with error handling.
+ * Logs errors, updates telemetry, and returns a default value on failure.
+ *
+ * @template T
+ * @param {string} methodName - Name of the WASM method (for logging)
+ * @param {() => T} fn - Function that calls the WASM method
+ * @param {T} defaultValue - Value to return if the call fails
+ * @returns {T} Result of the WASM call or default value on error
+ *
+ * @example
+ * // Safe zoom call
+ * safeWasmCall('zoom', () => rource.zoom(factor), undefined);
+ *
+ * // Safe getter with default
+ * const fps = safeWasmCall('getFps', () => rource.getFps(), 0);
+ */
+function safeWasmCall(methodName, fn, defaultValue) {
+    try {
+        return fn();
+    } catch (error) {
+        telemetry.wasmErrors++;
+        telemetry.lastError = error;
+
+        if (CONFIG.LOG_WASM_ERRORS) {
+            console.error(`[WASM Error:${methodName}]`, error);
+        }
+
+        recordTelemetry('wasm_error', { method: methodName, error: error.message });
+
+        return defaultValue;
+    }
+}
+
+/**
+ * Safely calls a WASM method that doesn't return a value.
+ * Use this for methods like zoom(), pan(), play(), etc.
+ *
+ * @param {string} methodName - Name of the WASM method (for logging)
+ * @param {() => void} fn - Function that calls the WASM method
+ * @returns {boolean} True if the call succeeded, false if it threw
+ *
+ * @example
+ * safeWasmVoid('onMouseDown', () => rource.onMouseDown(x, y));
+ */
+function safeWasmVoid(methodName, fn) {
+    try {
+        fn();
+        return true;
+    } catch (error) {
+        telemetry.wasmErrors++;
+        telemetry.lastError = error;
+
+        if (CONFIG.LOG_WASM_ERRORS) {
+            console.error(`[WASM Error:${methodName}]`, error);
+        }
+
+        recordTelemetry('wasm_error', { method: methodName, error: error.message });
+
+        return false;
+    }
+}
+
+/**
+ * Checks if the WASM runtime is in a healthy state.
+ * @returns {boolean} True if WASM is initialized and not in error state
+ */
+function isWasmHealthy() {
+    return rource !== null && !isContextLost && telemetry.wasmErrors < 10;
 }
 
 // ============================================================
@@ -1658,7 +1791,7 @@ async function fetchGitHubRepo(repoUrl) {
 
             // Small delay to be nice to the API
             if (i % 5 === 4) {
-                await new Promise(r => setTimeout(r, 50));
+                await new Promise(r => setTimeout(r, CONFIG.PREWARM_DELAY_MS));
             }
         }
 
@@ -2063,7 +2196,7 @@ btnRestoreContext.addEventListener('click', () => {
     // Force context restoration by recreating the WASM instance
     contextLostOverlay.classList.add('hidden');
 
-    showToast('Restoring visualization...', 'success', 2000);
+    showToast('Restoring visualization...', 'success', CONFIG.TOAST_SUCCESS_DURATION_MS);
 
     // Re-initialize after a short delay
     setTimeout(async () => {
@@ -2079,12 +2212,12 @@ btnRestoreContext.addEventListener('click', () => {
             }
 
             isContextLost = false;
-            showToast('Visualization restored!', 'success', 2000);
+            showToast('Visualization restored!', 'success', CONFIG.TOAST_SUCCESS_DURATION_MS);
         } catch (error) {
             console.error('Failed to restore:', error);
             showToast('Failed to restore visualization. Please refresh the page.', 'error');
         }
-    }, 500);
+    }, CONFIG.CONTEXT_RESTORE_DELAY_MS);
 });
 
 // =====================================================================
@@ -2175,7 +2308,7 @@ btnRefreshRource.addEventListener('click', async () => {
             // Only the last cached commit or none - no new commits
             refreshStatus.className = 'refresh-status success';
             refreshStatus.textContent = 'Already up to date!';
-            setTimeout(() => refreshStatus.classList.add('hidden'), 3000);
+            setTimeout(() => refreshStatus.classList.add('hidden'), CONFIG.STATUS_HIDE_DELAY_MS);
         } else {
             // Fetch files for each new commit (skip the first which is our cached one)
             let newEntries = [];
@@ -2210,7 +2343,7 @@ btnRefreshRource.addEventListener('click', async () => {
             } else {
                 refreshStatus.className = 'refresh-status success';
                 refreshStatus.textContent = 'Already up to date!';
-                setTimeout(() => refreshStatus.classList.add('hidden'), 3000);
+                setTimeout(() => refreshStatus.classList.add('hidden'), CONFIG.STATUS_HIDE_DELAY_MS);
             }
         }
 
@@ -2378,7 +2511,7 @@ btnCopyCommand.addEventListener('click', async () => {
         btnCopyCommand.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!';
         setTimeout(() => {
             btnCopyCommand.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy Command';
-        }, 2000);
+        }, CONFIG.COPY_FEEDBACK_DELAY_MS);
     } catch (e) {
         showToast('Failed to copy. Please select and copy manually.', 'error');
     }
@@ -2418,66 +2551,82 @@ function getTouchDistance(touches) {
  * Registers all canvas event listeners (mouse, touch, wheel, resize).
  * This function is called after cleanupEventListeners() in main() to ensure
  * the listeners survive initialization cleanup.
+ *
+ * All WASM calls are wrapped in safeWasmVoid() for error boundary protection.
+ * This prevents WASM panics from crashing the entire application.
+ *
+ * @see cleanupEventListeners
+ * @see safeWasmVoid
  */
 function registerCanvasEventListeners() {
-    // Mouse controls
+    debugLog('registerCanvasEventListeners', 'Registering canvas event listeners');
+
+    // Mouse controls with error boundaries
     addManagedEventListener(canvas, 'mousedown', (e) => {
-        if (rource) {
-            const rect = canvas.getBoundingClientRect();
-            rource.onMouseDown(e.clientX - rect.left, e.clientY - rect.top);
-        }
+        if (!isWasmHealthy()) return;
+        const rect = canvas.getBoundingClientRect();
+        safeWasmVoid('onMouseDown', () =>
+            rource.onMouseDown(e.clientX - rect.left, e.clientY - rect.top)
+        );
     });
 
     addManagedEventListener(canvas, 'mouseup', () => {
-        if (rource) rource.onMouseUp();
+        if (!isWasmHealthy()) return;
+        safeWasmVoid('onMouseUp', () => rource.onMouseUp());
     });
 
     addManagedEventListener(canvas, 'mousemove', (e) => {
-        if (rource) {
-            const rect = canvas.getBoundingClientRect();
-            rource.onMouseMove(e.clientX - rect.left, e.clientY - rect.top);
-        }
+        if (!isWasmHealthy()) return;
+        const rect = canvas.getBoundingClientRect();
+        safeWasmVoid('onMouseMove', () =>
+            rource.onMouseMove(e.clientX - rect.left, e.clientY - rect.top)
+        );
     });
 
     addManagedEventListener(canvas, 'wheel', (e) => {
-        if (rource) {
-            e.preventDefault();
-            rource.onWheel(e.deltaY);
-        }
+        if (!isWasmHealthy()) return;
+        e.preventDefault();
+        safeWasmVoid('onWheel', () => rource.onWheel(e.deltaY));
     }, { passive: false });
 
-    // Touch controls
+    // Touch controls with error boundaries
     addManagedEventListener(canvas, 'touchstart', (e) => {
         e.preventDefault();
+        if (!isWasmHealthy()) return;
         const rect = canvas.getBoundingClientRect();
 
         if (e.touches.length === 1) {
             touchState.isPanning = true;
             touchState.startX = e.touches[0].clientX - rect.left;
             touchState.startY = e.touches[0].clientY - rect.top;
-            if (rource) rource.onMouseDown(touchState.startX, touchState.startY);
+            safeWasmVoid('onMouseDown', () =>
+                rource.onMouseDown(touchState.startX, touchState.startY)
+            );
         } else if (e.touches.length === 2) {
             touchState.isPanning = false;
             touchState.isPinching = true;
             touchState.initialDistance = getTouchDistance(e.touches);
-            if (rource) rource.onMouseUp();
+            safeWasmVoid('onMouseUp', () => rource.onMouseUp());
         }
     }, { passive: false });
 
     addManagedEventListener(canvas, 'touchmove', (e) => {
         e.preventDefault();
+        if (!isWasmHealthy()) return;
         const rect = canvas.getBoundingClientRect();
 
         if (touchState.isPanning && e.touches.length === 1) {
             const x = e.touches[0].clientX - rect.left;
             const y = e.touches[0].clientY - rect.top;
-            if (rource) rource.onMouseMove(x, y);
+            safeWasmVoid('onMouseMove', () => rource.onMouseMove(x, y));
         } else if (touchState.isPinching && e.touches.length === 2) {
             const currentDistance = getTouchDistance(e.touches);
             const scaleFactor = currentDistance / touchState.initialDistance;
 
-            if (rource && Math.abs(scaleFactor - 1.0) > 0.01) {
-                rource.zoom(scaleFactor > 1.0 ? 1.05 : 0.95);
+            if (Math.abs(scaleFactor - 1.0) > 0.01) {
+                safeWasmVoid('zoom', () =>
+                    rource.zoom(scaleFactor > 1.0 ? 1.05 : 0.95)
+                );
                 touchState.initialDistance = currentDistance;
             }
         }
@@ -2485,13 +2634,21 @@ function registerCanvasEventListeners() {
 
     addManagedEventListener(canvas, 'touchend', (e) => {
         e.preventDefault();
-        if (rource && touchState.isPanning) rource.onMouseUp();
+        if (touchState.isPanning && isWasmHealthy()) {
+            safeWasmVoid('onMouseUp', () => rource.onMouseUp());
+        }
         touchState.isPanning = false;
         touchState.isPinching = false;
     }, { passive: false });
 
     // Resize handler
     addManagedEventListener(window, 'resize', resizeCanvas);
+
+    // Register tooltip listeners (separate function for clarity)
+    registerTooltipListeners();
+
+    debugLog('registerCanvasEventListeners', `Registered ${eventListenerRegistry.length} total listeners`);
+    recordTelemetry('canvas_listeners_registered', { count: eventListenerRegistry.length });
 }
 
 // =====================================================================
@@ -2600,7 +2757,7 @@ document.addEventListener('keydown', (e) => {
 // Show help on first visit (after data is loaded)
 function maybeShowFirstTimeHelp() {
     if (!localStorage.getItem(HELP_SHOWN_KEY)) {
-        setTimeout(showHelp, 500);
+        setTimeout(showHelp, CONFIG.INIT_DELAY_MS);
     }
 }
 
@@ -2689,13 +2846,13 @@ sidebarPanel.addEventListener('scroll', updateScrollIndicator, { passive: true }
 window.addEventListener('resize', debounce(updateScrollIndicator, CONFIG.DEBOUNCE_DELAY_MS));
 
 // Initial check after a short delay to ensure content is rendered
-setTimeout(updateScrollIndicator, 100);
+setTimeout(updateScrollIndicator, CONFIG.SCROLL_INDICATOR_DELAY_MS);
 
 // Also update when collapsible panels are toggled
 document.addEventListener('click', (e) => {
     if (e.target.closest('.panel-header') || e.target.closest('.collapsible')) {
         // Delay to allow animation/content change to complete
-        setTimeout(updateScrollIndicator, 350);
+        setTimeout(updateScrollIndicator, CONFIG.PANEL_ANIMATION_DELAY_MS);
     }
 });
 
@@ -2751,33 +2908,60 @@ function showTooltip(x, y, data) {
     commitTooltip.classList.add('visible');
 }
 
+/**
+ * Hides the commit tooltip and clears any pending tooltip timeout.
+ * This is safe to call even if the tooltip is already hidden.
+ */
 function hideTooltip() {
+    // Clear any pending timeout to prevent memory leaks
+    if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+        tooltipTimeout = null;
+    }
     commitTooltip.classList.remove('visible');
 }
 
-// Show current commit info on canvas hover
-// Note: Shows timeline position info, not hit-tested hover targets
-canvas.addEventListener('mousemove', (e) => {
-    if (!rource || !hasLoadedData || tooltipData.length === 0) return;
+/**
+ * Registers tooltip event listeners for the canvas.
+ * Called from registerCanvasEventListeners() to ensure proper cleanup.
+ *
+ * @description
+ * These listeners show commit info when hovering over the canvas.
+ * The tooltip displays the current commit info based on timeline position.
+ *
+ * Memory leak prevention:
+ * - All timeouts are tracked and cleared on mouseLeave/mouseDown
+ * - Listeners are managed for proper cleanup on reinitialization
+ */
+function registerTooltipListeners() {
+    // Show current commit info on canvas hover
+    // Note: Shows timeline position info, not hit-tested hover targets
+    addManagedEventListener(canvas, 'mousemove', (e) => {
+        if (!isWasmHealthy() || !hasLoadedData || tooltipData.length === 0) return;
 
-    const currentCommit = rource.currentCommit();
-    if (currentCommit >= 0 && currentCommit < tooltipData.length) {
-        clearTimeout(tooltipTimeout);
-        tooltipTimeout = setTimeout(() => {
-            showTooltip(e.clientX, e.clientY, tooltipData[Math.min(currentCommit, tooltipData.length - 1)]);
-        }, CONFIG.TOOLTIP_DELAY_MS);
-    }
-});
+        const currentCommit = safeWasmCall('currentCommit', () => rource.currentCommit(), -1);
+        if (currentCommit >= 0 && currentCommit < tooltipData.length) {
+            // Clear any existing timeout to prevent stacking
+            if (tooltipTimeout) {
+                clearTimeout(tooltipTimeout);
+            }
+            tooltipTimeout = setTimeout(() => {
+                // Verify we're still in a valid state when timeout fires
+                if (isWasmHealthy() && hasLoadedData) {
+                    showTooltip(e.clientX, e.clientY, tooltipData[Math.min(currentCommit, tooltipData.length - 1)]);
+                }
+            }, CONFIG.TOOLTIP_DELAY_MS);
+        }
+    });
 
-canvas.addEventListener('mouseleave', () => {
-    clearTimeout(tooltipTimeout);
-    hideTooltip();
-});
+    addManagedEventListener(canvas, 'mouseleave', () => {
+        hideTooltip();
+    });
 
-canvas.addEventListener('mousedown', () => {
-    clearTimeout(tooltipTimeout);
-    hideTooltip();
-});
+    addManagedEventListener(canvas, 'mousedown', () => {
+        hideTooltip();
+    });
+}
 
 // =====================================================================
 // AUTHOR HIGHLIGHT
