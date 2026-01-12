@@ -169,7 +169,7 @@ jobs:
           echo "Updated index.html with TEST_COUNT=${TEST_COUNT}, WASM_SIZE=~${WASM_SIZE_KB}KB"
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
