@@ -14,6 +14,36 @@ Rource visualizes your repository's commit history as an animated tree where dir
 - **Cross-platform**: Native (Linux, macOS, Windows) and WebAssembly
 - **Compatible**: Supports Git, SVN, Mercurial, Bazaar, and custom log formats
 
+## Why Rource?
+
+| | Rource | Gource |
+|---|:---:|:---:|
+| **GPU Required** | No | Yes (OpenGL) |
+| **Runs in Browser** | Yes (WASM) | No |
+| **Binary Size** | ~3.8 MB | ~10 MB |
+| **Memory (100k commits)** | ~16 MB | ~52 MB |
+| **Test Coverage** | 733 tests | - |
+| **Rendering** | CPU + WebGL2 | OpenGL only |
+
+### Performance Highlights
+
+- **68% memory savings** on large repositories via string interning and compact storage
+- **WebGL2 GPU acceleration** in browsers (with automatic CPU fallback)
+- **Tested with 100k+ commit repos** (Home Assistant: 103,533 commits, 533,366 file changes)
+
+### Architecture
+
+```
+rource/
+├── crates/
+│   ├── rource-math/    141 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/     130 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/    236 tests   Scene graph, physics, camera
+│   └── rource-render/   99 tests   Software + WebGL2 rendering
+├── rource-cli/          41 tests   Native application (winit + softbuffer)
+└── rource-wasm/         18 tests   WebAssembly (browser)
+```
+
 ## Installation
 
 ### From Source

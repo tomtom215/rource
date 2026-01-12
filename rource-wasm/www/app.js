@@ -1028,9 +1028,11 @@ function loadLogData(content, format = 'custom') {
         statsOverlay.classList.remove('hidden');
         perfOverlay.classList.remove('hidden');
 
-        // Enable controls
+        // Enable controls and restore tooltips
         btnPrev.disabled = false;
+        btnPrev.title = 'Previous commit (< or ,)';
         btnNext.disabled = false;
+        btnNext.title = 'Next commit (> or .)';
         speedSelect.disabled = false;
 
         updateUI();
@@ -1065,8 +1067,17 @@ function loadLogData(content, format = 'custom') {
         updateUI();
 
     } catch (e) {
-        showToast(`Failed to parse log: ${e}`, 'error');
-        console.error('Parse error:', e);
+        // Provide user-friendly error messages
+        let userMessage = 'Unable to load visualization data. ';
+        if (e.message?.includes('Invalid') || e.message?.includes('parse')) {
+            userMessage += 'Please check your log format matches: timestamp|author|action|filepath';
+        } else if (e.message?.includes('empty')) {
+            userMessage += 'The log appears to be empty.';
+        } else {
+            userMessage += 'Try a different log file or check the format.';
+        }
+        showToast(userMessage, 'error');
+        debugLog('loadLogData', 'Parse error', e);
     }
 }
 
@@ -1700,11 +1711,15 @@ async function main() {
         if (isWebGL2) rendererBadge.classList.add('webgl2');
         techRenderer.textContent = isWebGL2 ? 'WebGL2' : 'CPU';
 
-        // Enable buttons
+        // Enable buttons and restore tooltips
         btnPlayMain.disabled = false;
+        btnPlayMain.title = 'Play/Pause (Space)';
         btnResetBar.disabled = false;
+        btnResetBar.title = 'Restart from beginning';
         btnLabels.disabled = false;
+        btnLabels.title = 'Toggle labels (L)';
         btnScreenshot.disabled = false;
+        btnScreenshot.title = 'Save screenshot (S)';
         btnLoad.disabled = false;
         btnFetchGithub.disabled = false;
         btnVisualizeRource.disabled = false;
@@ -1764,18 +1779,23 @@ async function main() {
                         showToast('Loaded Rource project history (cached)', 'success', CONFIG.TOAST_DURATION_MS);
                     }
                 } else {
-                    // Default: load cached Rource project
+                    // Default: load cached Rource project and auto-play
                     loadLogData(ROURCE_CACHED_DATA, 'custom');
                     lastLoadedRepo = 'rource';
+                    rource.play();
+                    updateUI();
                     showToast('Loaded Rource project history (cached)', 'success', CONFIG.TOAST_DURATION_MS);
                 }
             }
         }, CONFIG.INIT_DELAY_MS);
 
     } catch (e) {
-        console.error('Initialization failed:', e);
-        loadingEl.querySelector('.loading-text').textContent = 'Failed to load: ' + e.message;
-        showToast(`Initialization failed: ${e.message}`, 'error', 10000);
+        debugLog('main', 'Initialization failed', e);
+        loadingEl.querySelector('.loading-text').textContent = 'Unable to start visualization';
+        const userMessage = e.message?.includes('WebAssembly')
+            ? 'Your browser may not support WebAssembly. Try Chrome, Firefox, or Edge.'
+            : 'Unable to initialize. Please refresh the page or try a different browser.';
+        showToast(userMessage, 'error', 10000);
     }
 }
 
@@ -1849,7 +1869,7 @@ function updateLabelsButton() {
 // =====================================================================
 btnScreenshot.addEventListener('click', () => {
     if (!rource || isContextLost) {
-        showToast('Cannot capture screenshot - visualization not ready', 'error');
+        showToast('Load data first to capture a screenshot', 'error');
         return;
     }
 
@@ -1861,7 +1881,7 @@ btnScreenshot.addEventListener('click', () => {
         // Use canvas.toBlob for best quality (works with WebGL2 too)
         canvas.toBlob((blob) => {
             if (!blob) {
-                showToast('Failed to capture screenshot', 'error');
+                showToast('Screenshot failed. Try pausing the visualization first.', 'error');
                 return;
             }
 
