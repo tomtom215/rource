@@ -242,6 +242,9 @@ export class Rource {
   setBloom(enabled: boolean): void;
   /**
    * Sets playback speed (seconds per day of repository history).
+   *
+   * The speed is clamped between 0.1 (very fast) and 1000.0 (very slow) seconds per day.
+   * NaN and infinite values are replaced with the default of 10.0.
    */
   setSpeed(seconds_per_day: number): void;
 }
