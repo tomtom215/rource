@@ -1435,8 +1435,26 @@ function setCache(key, logContent) {
         cache[key] = { logContent, timestamp: Date.now() };
         localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
     } catch (e) {
-        // localStorage may be full or disabled - cache is non-critical, continue without it
-        debugLog('setCache', 'Failed to write cache (quota or access error)', e);
+        // localStorage may be full or disabled
+        debugLog('setCache', 'Failed to write cache', e);
+
+        // Check if it's a quota error
+        const isQuotaError = e.name === 'QuotaExceededError' ||
+            (e.code === 22) || // Legacy Chrome
+            (e.code === 1014 && e.name === 'NS_ERROR_DOM_QUOTA_REACHED'); // Firefox
+
+        if (isQuotaError) {
+            // Try to clear old cache entries and retry
+            try {
+                localStorage.removeItem(CACHE_KEY);
+                const freshCache = {};
+                freshCache[key] = { logContent, timestamp: Date.now() };
+                localStorage.setItem(CACHE_KEY, JSON.stringify(freshCache));
+                showToast('Cache cleared to save new data', 'success', CONFIG.TOAST_DURATION_MS);
+            } catch (retryError) {
+                showToast('Storage full - caching disabled for this session', 'error', CONFIG.TOAST_DURATION_MS);
+            }
+        }
     }
 }
 
@@ -2076,6 +2094,14 @@ btnRestoreContext.addEventListener('click', () => {
 btnVisualizeRource.addEventListener('click', () => {
     if (!rource) return;
 
+    // Ask for confirmation if different data is already loaded
+    if (hasLoadedData && lastLoadedRepo && lastLoadedRepo !== 'rource') {
+        const confirmed = window.confirm(
+            'This will replace your current visualization data. Continue?'
+        );
+        if (!confirmed) return;
+    }
+
     // Reset the visualization and load cached Rource data
     btnVisualizeRource.disabled = true;
     btnVisualizeRource.innerHTML = `
@@ -2228,6 +2254,14 @@ btnFetchGithub.addEventListener('click', async () => {
     if (!url) {
         showToast('Please enter a GitHub repository URL.', 'error');
         return;
+    }
+
+    // Ask for confirmation if different data is already loaded
+    if (hasLoadedData && lastLoadedRepo) {
+        const confirmed = window.confirm(
+            'This will replace your current visualization data. Continue?'
+        );
+        if (!confirmed) return;
     }
 
     btnFetchGithub.disabled = true;
@@ -2485,6 +2519,26 @@ initTheme();
 // =====================================================================
 let helpPreviousFocus = null;
 
+// Focus trap for modal dialogs - keeps Tab cycling within the modal
+function trapFocus(container, event) {
+    const focusableSelectors = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const focusableElements = Array.from(container.querySelectorAll(focusableSelectors))
+        .filter(el => !el.disabled && el.offsetParent !== null);
+
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+    }
+}
+
 function showHelp() {
     // Store the currently focused element to restore later
     helpPreviousFocus = document.activeElement;
@@ -2513,8 +2567,16 @@ helpOverlay.addEventListener('click', (e) => {
     if (e.target === helpOverlay) hideHelp();
 });
 
-// Help keyboard shortcuts
+// Help keyboard shortcuts and focus trap
 document.addEventListener('keydown', (e) => {
+    // Focus trap when help overlay is visible
+    if (e.key === 'Tab' && helpOverlay.classList.contains('visible')) {
+        const helpContent = helpOverlay.querySelector('.help-content');
+        if (helpContent) {
+            trapFocus(helpContent, e);
+        }
+    }
+
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
     if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();

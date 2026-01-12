@@ -464,6 +464,9 @@ header h1 {
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     font-size: 0.75rem;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
 .legend-panel.collapsed {
@@ -1397,8 +1400,17 @@ textarea:focus {
 }
 
 .file-upload-icon {
-    font-size: 1.75rem;
     margin-bottom: 0.5rem;
+    color: var(--text-muted);
+}
+
+.file-upload-icon svg {
+    width: 48px;
+    height: 48px;
+}
+
+.file-upload-area:hover .file-upload-icon {
+    color: var(--accent);
 }
 
 .file-upload-text {
@@ -1749,6 +1761,9 @@ textarea:focus {
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     font-size: 0.75rem;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
 .authors-panel.collapsed {
@@ -2481,6 +2496,9 @@ footer a {
     overflow-y: auto;
     border: 1px solid var(--border);
     position: relative;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
 .help-close {
