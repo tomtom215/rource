@@ -579,4 +579,94 @@ mod tests {
         assert_eq!(commits[0].author, "John Doe");
         assert_eq!(commits[0].files[0].path.to_str().unwrap(), "src/main.rs");
     }
+
+    #[test]
+    fn test_rource_cached_data_format() {
+        // Test data formatted like ROURCE_CACHED_DATA from the web demo
+        // Each unique (timestamp, author) pair should create a separate commit
+        let input = "1768004902|Tom F|A|LICENSE
+1768004902|Tom F|A|README.md
+1768006231|Claude|A|GOURCE_RUST_REWRITE_PLAN.md
+1768028263|Claude|A|CLAUDE.md
+1768028263|Claude|A|scripts/session-setup.sh
+1768029507|Claude|A|.gitignore
+1768029507|Claude|A|Cargo.toml
+1768029545|Claude|M|CLAUDE.md
+1768039323|Claude|A|crates/rource-vcs/src/detect.rs";
+
+        let parser = CustomParser::new();
+        let commits = parser.parse_str(input).unwrap();
+
+        // Should have 6 commits:
+        // 1. Tom F @ 1768004902 (2 files)
+        // 2. Claude @ 1768006231 (1 file)
+        // 3. Claude @ 1768028263 (2 files)
+        // 4. Claude @ 1768029507 (2 files)
+        // 5. Claude @ 1768029545 (1 file)
+        // 6. Claude @ 1768039323 (1 file)
+        assert_eq!(commits.len(), 6, "Expected 6 commits from different timestamps");
+
+        // Verify first commit (Tom F @ 1768004902)
+        assert_eq!(commits[0].author, "Tom F");
+        assert_eq!(commits[0].timestamp, 1768004902);
+        assert_eq!(commits[0].files.len(), 2);
+
+        // Verify second commit (Claude @ 1768006231)
+        assert_eq!(commits[1].author, "Claude");
+        assert_eq!(commits[1].timestamp, 1768006231);
+        assert_eq!(commits[1].files.len(), 1);
+    }
+
+    #[test]
+    fn test_large_rource_style_data() {
+        // Test with a larger dataset simulating ROURCE_CACHED_DATA
+        // This ensures the parser handles many entries with varying timestamps
+        let mut input = String::new();
+
+        // Create 50 commits with varying timestamps and authors
+        let authors = ["Tom F", "Claude", "Alice", "Bob"];
+        let mut expected_commits = 0;
+
+        for i in 0..50 {
+            let timestamp = 1768000000 + i * 1000; // Incrementing timestamps
+            let author = authors[i as usize % authors.len()];
+
+            // Each commit has 2-5 files
+            let file_count = 2 + (i % 4);
+            for j in 0..file_count {
+                input.push_str(&format!(
+                    "{}|{}|{}|path/to/file_{}.rs\n",
+                    timestamp,
+                    author,
+                    if j == 0 { 'A' } else { 'M' },
+                    i * 10 + j
+                ));
+            }
+            expected_commits += 1;
+        }
+
+        let parser = CustomParser::new();
+        let commits = parser.parse_str(&input).unwrap();
+
+        assert_eq!(
+            commits.len(),
+            expected_commits,
+            "Expected {} commits from generated data, got {}",
+            expected_commits,
+            commits.len()
+        );
+
+        // Verify commits are sorted by timestamp
+        for i in 1..commits.len() {
+            assert!(
+                commits[i].timestamp >= commits[i - 1].timestamp,
+                "Commits should be sorted by timestamp"
+            );
+        }
+
+        // Verify first commit
+        assert_eq!(commits[0].timestamp, 1768000000);
+        assert_eq!(commits[0].author, "Tom F");
+        assert_eq!(commits[0].files.len(), 2);
+    }
 }

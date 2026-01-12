@@ -565,12 +565,76 @@ impl Rource {
     /// ```
     #[wasm_bindgen(js_name = loadCustomLog)]
     pub fn load_custom_log(&mut self, log: &str) -> Result<usize, JsValue> {
+        // Debug: log input stats
+        let line_count = log.lines().count();
+        let non_empty_lines = log.lines().filter(|l| !l.trim().is_empty()).count();
+        web_sys::console::log_1(
+            &format!(
+                "loadCustomLog: {} bytes, {} lines, {} non-empty",
+                log.len(),
+                line_count,
+                non_empty_lines
+            )
+            .into(),
+        );
+
+        // Debug: log first 5 lines to verify data format
+        for (i, line) in log.lines().take(5).enumerate() {
+            web_sys::console::log_1(&format!("  line {i}: '{line}'").into());
+        }
+
+        // Debug: count unique (timestamp, author) pairs to verify expected commits
+        let mut unique_pairs = std::collections::HashSet::new();
+        for line in log.lines() {
+            let parts: Vec<&str> = line.split('|').collect();
+            if parts.len() >= 2 {
+                if let Ok(ts) = parts[0].trim().parse::<i64>() {
+                    unique_pairs.insert((ts, parts[1].trim().to_string()));
+                }
+            }
+        }
+        web_sys::console::log_1(
+            &format!("Expected {} commits (unique timestamp+author pairs)", unique_pairs.len())
+                .into(),
+        );
+
         let parser = CustomParser::new();
         let commits = parser
             .parse_str(log)
             .map_err(|e| JsValue::from_str(&format!("Parse error: {e}")))?;
 
         let count = commits.len();
+
+        // Debug: log parsed commits
+        web_sys::console::log_1(&format!("loadCustomLog: parsed {count} commits").into());
+
+        // Debug: if only 1 commit, show details
+        if count == 1 && !commits.is_empty() {
+            web_sys::console::log_1(
+                &format!(
+                    "Single commit: {} files, author='{}', ts={}",
+                    commits[0].files.len(),
+                    commits[0].author,
+                    commits[0].timestamp
+                )
+                .into(),
+            );
+        }
+
+        // Debug: log first few commit timestamps
+        for (i, commit) in commits.iter().take(5).enumerate() {
+            web_sys::console::log_1(
+                &format!(
+                    "  commit {}: ts={}, author='{}', {} files",
+                    i,
+                    commit.timestamp,
+                    commit.author,
+                    commit.files.len()
+                )
+                .into(),
+            );
+        }
+
         self.commits = commits;
         self.reset_playback();
         Ok(count)

@@ -1164,6 +1164,19 @@ function loadLogData(content, format = 'custom') {
         return;
     }
 
+    // Debug: log what JS is sending to WASM
+    const lines = content.split('\n').filter(l => l.trim());
+    const uniquePairs = new Set();
+    for (const line of lines) {
+        const parts = line.split('|');
+        if (parts.length >= 2) {
+            uniquePairs.add(`${parts[0].trim()}|${parts[1].trim()}`);
+        }
+    }
+    console.log(`[JS] loadLogData: ${content.length} bytes, ${lines.length} non-empty lines`);
+    console.log(`[JS] Expected commits (unique ts|author): ${uniquePairs.size}`);
+    console.log(`[JS] First 3 lines:`, lines.slice(0, 3));
+
     try {
         let count;
         if (format === 'git') {
