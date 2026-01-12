@@ -50,7 +50,9 @@ const CONFIG = {
     LOG_WASM_ERRORS: true,           // Log WASM errors to console (always on for diagnostics)
 
     // Playback speed limits (seconds per day)
-    SPEED_MIN: 0.1,                  // Minimum speed (fastest playback)
+    // At 60fps, seconds_per_commit = seconds_per_day / 10.0
+    // Min of 1.0 gives 0.1s/commit = ~6 frames per commit (acceptable for 10x speed)
+    SPEED_MIN: 1,                    // Minimum speed (10x, fastest playback)
     SPEED_MAX: 1000,                 // Maximum speed (slowest playback)
     SPEED_DEFAULT: 10,               // Default speed (1x)
 };

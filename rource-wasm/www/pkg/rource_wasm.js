@@ -735,8 +735,12 @@ export class Rource {
     /**
      * Sets playback speed (seconds per day of repository history).
      *
-     * The speed is clamped between 0.1 (very fast) and 1000.0 (very slow) seconds per day.
-     * NaN and infinite values are replaced with the default of 10.0.
+     * The speed is clamped between 1.0 (10x, fastest) and 1000.0 (very slow) seconds per day.
+     * NaN, infinite, and non-positive values are replaced with the default of 10.0.
+     *
+     * The formula `seconds_per_commit = seconds_per_day / 10.0` means:
+     * - At speed=1.0 (10x): 0.1s per commit = ~6 frames at 60fps (acceptable)
+     * - At speed=0.1 (100x): 0.01s per commit = ~1.7 commits/frame (too fast!)
      * @param {number} seconds_per_day
      */
     setSpeed(seconds_per_day) {
