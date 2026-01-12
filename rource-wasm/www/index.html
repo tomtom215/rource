@@ -326,6 +326,35 @@
                 </div>
             </div>
 
+            <!-- Quick Guide Panel (Collapsible) -->
+            <div class="panel collapsible collapsed" id="panel-guide">
+                <button type="button" class="panel-header" id="panel-guide-toggle" aria-expanded="false" aria-controls="panel-guide-body">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-6h2v6zm0-8h-2V7h2v4z"/>
+                        </svg>
+                        Quick Guide
+                    </h3>
+                    <span class="panel-toggle" aria-hidden="true">&#9660;</span>
+                </button>
+                <div class="panel-body docs-panel" id="panel-guide-body">
+                    <div class="docs-section">
+                        <h4>What is Rource?</h4>
+                        <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> visualizes software version control history as an animated tree. Each file is a colored node, each developer has a unique color, and commits create "beams" connecting developers to files they modify.</p>
+                    </div>
+                    <div class="docs-section">
+                        <h4>Features</h4>
+                        <ul class="feature-list">
+                            <li>WebGL2 GPU-accelerated rendering</li>
+                            <li>Force-directed graph layout</li>
+                            <li>Color-coded file types</li>
+                            <li>Runs entirely in browser (~76KB)</li>
+                            <li>No server or installation needed</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- GitHub URL Panel -->
             <div class="panel">
                 <div class="panel-header">
@@ -475,35 +504,6 @@
                     <p class="help-text" style="margin-top: 0.75rem;">
                         <strong>Mouse:</strong> Drag to pan, scroll to zoom
                     </p>
-                </div>
-            </div>
-
-            <!-- Quick Guide Panel (Collapsible) -->
-            <div class="panel collapsible collapsed" id="panel-guide">
-                <button type="button" class="panel-header" id="panel-guide-toggle" aria-expanded="false" aria-controls="panel-guide-body">
-                    <h3>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-6h2v6zm0-8h-2V7h2v4z"/>
-                        </svg>
-                        Quick Guide
-                    </h3>
-                    <span class="panel-toggle" aria-hidden="true">&#9660;</span>
-                </button>
-                <div class="panel-body docs-panel" id="panel-guide-body">
-                    <div class="docs-section">
-                        <h4>What is Rource?</h4>
-                        <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> visualizes software version control history as an animated tree. Each file is a colored node, each developer has a unique color, and commits create "beams" connecting developers to files they modify.</p>
-                    </div>
-                    <div class="docs-section">
-                        <h4>Features</h4>
-                        <ul class="feature-list">
-                            <li>WebGL2 GPU-accelerated rendering</li>
-                            <li>Force-directed graph layout</li>
-                            <li>Color-coded file types</li>
-                            <li>Runs entirely in browser (~76KB)</li>
-                            <li>No server or installation needed</li>
-                        </ul>
-                    </div>
                 </div>
             </div>
 

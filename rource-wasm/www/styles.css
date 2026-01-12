@@ -1152,6 +1152,11 @@ header h1 {
     font: inherit;
     border: none;
     border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+}
+
+.panel.collapsible .panel-header h3 {
+    color: var(--text-primary);
 }
 
 .panel.collapsible .panel-header:hover {
