@@ -1484,8 +1484,10 @@ mod tests {
     fn test_write_png_small_image() {
         // Create a 2x2 red image
         let pixels: Vec<u32> = vec![
-            0xFFFF_0000, 0xFFFF_0000, // Red, Red
-            0xFFFF_0000, 0xFFFF_0000, // Red, Red
+            0xFFFF_0000,
+            0xFFFF_0000, // Red, Red
+            0xFFFF_0000,
+            0xFFFF_0000, // Red, Red
         ];
         let mut output = Vec::new();
         write_png(&mut output, &pixels, 2, 2).unwrap();

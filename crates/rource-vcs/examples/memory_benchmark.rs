@@ -149,9 +149,7 @@ fn count_commits(source: &LogSource) -> usize {
 
 fn get_git_log(source: &LogSource) -> String {
     match source {
-        LogSource::File(path) => {
-            std::fs::read_to_string(path).expect("Failed to read log file")
-        }
+        LogSource::File(path) => std::fs::read_to_string(path).expect("Failed to read log file"),
         LogSource::Repo(path) => {
             let output = Command::new("git")
                 .args([
