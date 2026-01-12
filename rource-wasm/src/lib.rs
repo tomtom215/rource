@@ -660,9 +660,19 @@ impl Rource {
     }
 
     /// Sets playback speed (seconds per day of repository history).
+    ///
+    /// The speed is clamped between 0.1 (very fast) and 1000.0 (very slow) seconds per day.
+    /// NaN and infinite values are replaced with the default of 10.0.
     #[wasm_bindgen(js_name = setSpeed)]
     pub fn set_speed(&mut self, seconds_per_day: f32) {
-        self.settings.playback.seconds_per_day = seconds_per_day.max(0.01);
+        // Handle NaN and infinity by using default speed
+        let speed = if seconds_per_day.is_finite() {
+            seconds_per_day
+        } else {
+            10.0 // Default speed
+        };
+        // Clamp to reasonable range: 0.1 (10x) to 1000 (0.01x) seconds per day
+        self.settings.playback.seconds_per_day = speed.clamp(0.1, 1000.0);
     }
 
     /// Gets the current playback speed.

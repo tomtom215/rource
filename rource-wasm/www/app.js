@@ -48,6 +48,11 @@ const CONFIG = {
     // Observability
     ENABLE_TELEMETRY: false,         // Enable performance telemetry logging
     LOG_WASM_ERRORS: true,           // Log WASM errors to console (always on for diagnostics)
+
+    // Playback speed limits (seconds per day)
+    SPEED_MIN: 0.1,                  // Minimum speed (fastest playback)
+    SPEED_MAX: 1000,                 // Maximum speed (slowest playback)
+    SPEED_DEFAULT: 10,               // Default speed (1x)
 };
 
 // ============================================================
@@ -108,6 +113,26 @@ function debugLog(context, message, error = null) {
             console.log(`[Rource:${context}] ${message}`);
         }
     }
+}
+
+/**
+ * Validates and sanitizes a playback speed value.
+ * Returns a valid speed or the default if invalid.
+ *
+ * @param {string|number} value - Speed value to validate
+ * @returns {number} Valid speed value
+ */
+function validateSpeed(value) {
+    const parsed = typeof value === 'number' ? value : parseFloat(value);
+
+    // Handle NaN, Infinity, or invalid values
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        debugLog('validateSpeed', `Invalid speed value: ${value}, using default`);
+        return CONFIG.SPEED_DEFAULT;
+    }
+
+    // Clamp to valid range
+    return Math.max(CONFIG.SPEED_MIN, Math.min(CONFIG.SPEED_MAX, parsed));
 }
 
 // ============================================================
@@ -1897,11 +1922,13 @@ async function main() {
         // Apply speed from URL (priority) or saved preference
         if (urlParams.speed) {
             const speedValue = urlParams.speed;
-            speedSelect.value = speedValue;
-            rource.setSpeed(parseFloat(speedValue));
+            const validatedSpeed = validateSpeed(speedValue);
+            speedSelect.value = String(validatedSpeed);
+            rource.setSpeed(validatedSpeed);
         } else if (userPrefs.speed && userPrefs.speed !== '10') {
-            speedSelect.value = userPrefs.speed;
-            rource.setSpeed(parseFloat(userPrefs.speed));
+            const validatedSpeed = validateSpeed(userPrefs.speed);
+            speedSelect.value = String(validatedSpeed);
+            rource.setSpeed(validatedSpeed);
         }
 
         // Apply saved label preference
@@ -2367,10 +2394,10 @@ btnLoad.addEventListener('click', () => {
 // Speed control
 speedSelect.addEventListener('change', () => {
     if (rource) {
-        const speed = speedSelect.value;
-        rource.setSpeed(parseFloat(speed));
-        updateUrlState({ speed });
-        updatePreference('speed', speed); // Save to localStorage
+        const speed = validateSpeed(speedSelect.value);
+        rource.setSpeed(speed);
+        updateUrlState({ speed: String(speed) });
+        updatePreference('speed', String(speed)); // Save to localStorage
     }
 });
 
