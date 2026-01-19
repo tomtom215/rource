@@ -63,10 +63,15 @@ export class Rource {
   stepForward(): void;
   /**
    * Handles mouse down events.
+   *
+   * Checks for entity under cursor first. If an entity is found, starts dragging it.
+   * Otherwise, starts camera panning.
    */
   onMouseDown(x: number, y: number): void;
   /**
    * Handles mouse move events.
+   *
+   * If dragging an entity, updates its position. Otherwise, pans the camera.
    */
   onMouseMove(x: number, y: number): void;
   /**
