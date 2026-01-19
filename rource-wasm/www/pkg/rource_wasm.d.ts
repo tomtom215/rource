@@ -71,7 +71,8 @@ export class Rource {
   /**
    * Handles mouse move events.
    *
-   * If dragging an entity, updates its position. Otherwise, pans the camera.
+   * If dragging an entity, updates its position and applies force-directed
+   * movement to connected entities. Otherwise, pans the camera.
    */
   onMouseMove(x: number, y: number): void;
   /**

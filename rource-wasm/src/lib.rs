@@ -49,7 +49,7 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 use rource_core::camera::Camera;
 use rource_core::config::Settings;
-use rource_core::entity::{FileId, UserId};
+use rource_core::entity::{DirId, FileId, UserId};
 use rource_core::scene::{ActionType, EntityType, Scene};
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::{default_font, FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
@@ -723,6 +723,9 @@ pub struct Rource {
     /// Offset from drag start to entity center (for smooth dragging).
     drag_offset: Vec2,
 
+    /// Last position of dragged entity (for calculating movement delta).
+    drag_last_pos: Vec2,
+
     /// Font ID for text rendering
     font_id: Option<FontId>,
 
@@ -791,6 +794,7 @@ impl Rource {
             camera_start_y: 0.0,
             drag_target: None,
             drag_offset: Vec2::ZERO,
+            drag_last_pos: Vec2::ZERO,
             font_id,
             show_labels: true, // Labels enabled by default
             perf_metrics: PerformanceMetrics::new(),
@@ -1031,6 +1035,7 @@ impl Rource {
             if let DragTarget::User(user_id) = drag_target {
                 if let Some(user) = self.scene.get_user(user_id) {
                     self.drag_offset = user.position() - world_pos;
+                    self.drag_last_pos = user.position();
                 }
             }
             return;
@@ -1043,6 +1048,7 @@ impl Rource {
             if let DragTarget::File(file_id) = drag_target {
                 if let Some(file) = self.scene.get_file(file_id) {
                     self.drag_offset = file.position() - world_pos;
+                    self.drag_last_pos = file.position();
                 }
             }
             return;
@@ -1060,11 +1066,13 @@ impl Rource {
         self.mouse_down = false;
         self.drag_target = None;
         self.drag_offset = Vec2::ZERO;
+        self.drag_last_pos = Vec2::ZERO;
     }
 
     /// Handles mouse move events.
     ///
-    /// If dragging an entity, updates its position. Otherwise, pans the camera.
+    /// If dragging an entity, updates its position and applies force-directed
+    /// movement to connected entities. Otherwise, pans the camera.
     #[wasm_bindgen(js_name = onMouseMove)]
     pub fn on_mouse_move(&mut self, x: f32, y: f32) {
         self.mouse_x = x;
@@ -1078,23 +1086,46 @@ impl Rource {
         let screen_pos = Vec2::new(x, y);
         let world_pos = self.camera.screen_to_world(screen_pos);
 
-        // If dragging an entity, move it
+        // If dragging an entity, move it and connected entities
         if let Some(drag_target) = self.drag_target {
             let new_entity_pos = world_pos + self.drag_offset;
 
+            // Calculate movement delta from last position
+            let delta = new_entity_pos - self.drag_last_pos;
+
             match drag_target {
                 DragTarget::User(user_id) => {
+                    // Move the user
                     if let Some(user) = self.scene.get_user_mut(user_id) {
                         user.set_position(new_entity_pos);
                     }
+
+                    // Move connected files (files with active actions from this user)
+                    self.move_connected_entities_for_user(user_id, delta);
                 }
                 DragTarget::File(file_id) => {
+                    // Get file info before moving
+                    let dir_id = self
+                        .scene
+                        .get_file(file_id)
+                        .map(rource_core::scene::FileNode::directory);
+
+                    // Move the file
                     if let Some(file) = self.scene.get_file_mut(file_id) {
                         file.set_position(new_entity_pos);
                     }
+
+                    // Move connected entities (siblings and parent directory)
+                    if let Some(dir_id) = dir_id {
+                        self.move_connected_entities_for_file(file_id, dir_id, delta);
+                    }
                 }
             }
-            // Mark bounds dirty since entity moved
+
+            // Update last position for next delta calculation
+            self.drag_last_pos = new_entity_pos;
+
+            // Mark bounds dirty since entities moved
             self.scene.invalidate_bounds_cache();
         } else {
             // Camera panning
@@ -1495,6 +1526,118 @@ impl Rource {
         }
 
         closest_file.map(|(id, _)| DragTarget::File(id))
+    }
+
+    /// Drag coupling strength for connected entities (0.0 = no coupling, 1.0 = full coupling).
+    /// Lower values create a more elastic, spring-like effect.
+    const DRAG_COUPLING_STRENGTH: f32 = 0.6;
+
+    /// Distance threshold beyond which coupling decreases (in world units).
+    const DRAG_COUPLING_DISTANCE_THRESHOLD: f32 = 150.0;
+
+    /// Moves entities connected to a dragged file.
+    ///
+    /// Connected entities include:
+    /// - Sibling files in the same directory
+    /// - The parent directory
+    /// - Child directories (if dragging a directory)
+    fn move_connected_entities_for_file(
+        &mut self,
+        dragged_file_id: FileId,
+        dir_id: DirId,
+        delta: Vec2,
+    ) {
+        // Skip if delta is negligible
+        if delta.length() < 0.1 {
+            return;
+        }
+
+        // Get the dragged file's position for distance-based coupling
+        let dragged_pos = self
+            .scene
+            .get_file(dragged_file_id)
+            .map_or(Vec2::ZERO, rource_core::scene::FileNode::position);
+
+        // Move sibling files in the same directory
+        let sibling_ids: Vec<FileId> = self
+            .scene
+            .directories()
+            .get(dir_id)
+            .map(|dir| dir.files().to_vec())
+            .unwrap_or_default();
+
+        for sibling_id in sibling_ids {
+            if sibling_id == dragged_file_id {
+                continue; // Skip the dragged file itself
+            }
+
+            if let Some(sibling) = self.scene.get_file_mut(sibling_id) {
+                // Calculate distance-based coupling (closer = stronger)
+                let distance = (sibling.position() - dragged_pos).length();
+                let distance_factor =
+                    (1.0 - distance / Self::DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+                let coupling = Self::DRAG_COUPLING_STRENGTH * distance_factor;
+
+                if coupling > 0.01 {
+                    let new_pos = sibling.position() + delta * coupling;
+                    sibling.set_position(new_pos);
+                }
+            }
+        }
+
+        // Move the parent directory (with reduced coupling)
+        if let Some(dir) = self.scene.directories_mut().get_mut(dir_id) {
+            let distance = (dir.position() - dragged_pos).length();
+            let distance_factor =
+                (1.0 - distance / Self::DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+            let coupling = Self::DRAG_COUPLING_STRENGTH * 0.5 * distance_factor;
+
+            if coupling > 0.01 {
+                let new_pos = dir.position() + delta * coupling;
+                dir.set_position(new_pos);
+            }
+        }
+    }
+
+    /// Moves entities connected to a dragged user.
+    ///
+    /// Connected entities include files that have active action beams from this user.
+    fn move_connected_entities_for_user(&mut self, user_id: UserId, delta: Vec2) {
+        // Skip if delta is negligible
+        if delta.length() < 0.1 {
+            return;
+        }
+
+        // Get the dragged user's position for distance-based coupling
+        let dragged_pos = self
+            .scene
+            .get_user(user_id)
+            .map_or(Vec2::ZERO, rource_core::scene::User::position);
+
+        // Collect file IDs that have active actions from this user
+        let connected_file_ids: Vec<FileId> = self
+            .scene
+            .actions()
+            .iter()
+            .filter(|action| action.user() == user_id && !action.is_complete())
+            .map(rource_core::scene::Action::file)
+            .collect();
+
+        // Move connected files
+        for file_id in connected_file_ids {
+            if let Some(file) = self.scene.get_file_mut(file_id) {
+                // Calculate distance-based coupling
+                let distance = (file.position() - dragged_pos).length();
+                let distance_factor =
+                    (1.0 - distance / Self::DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+                let coupling = Self::DRAG_COUPLING_STRENGTH * distance_factor;
+
+                if coupling > 0.01 {
+                    let new_pos = file.position() + delta * coupling;
+                    file.set_position(new_pos);
+                }
+            }
+        }
     }
 
     /// Applies a VCS commit to the scene.

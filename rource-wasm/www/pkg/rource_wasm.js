@@ -360,7 +360,8 @@ export class Rource {
     /**
      * Handles mouse move events.
      *
-     * If dragging an entity, updates its position. Otherwise, pans the camera.
+     * If dragging an entity, updates its position and applies force-directed
+     * movement to connected entities. Otherwise, pans the camera.
      * @param {number} x
      * @param {number} y
      */
@@ -900,6 +901,10 @@ function __wbg_get_imports() {
         const ret = getObject(arg0).getContext(getStringFromWasm0(arg1, arg2));
         return isLikeNone(ret) ? 0 : addHeapObject(ret);
     }, arguments) };
+    imports.wbg.__wbg_getContext_40a6fc6da6cacc21 = function() { return handleError(function (arg0, arg1, arg2, arg3) {
+        const ret = getObject(arg0).getContext(getStringFromWasm0(arg1, arg2), getObject(arg3));
+        return isLikeNone(ret) ? 0 : addHeapObject(ret);
+    }, arguments) };
     imports.wbg.__wbg_getProgramInfoLog_a0ff8b0971fcaf48 = function(arg0, arg1, arg2) {
         const ret = getObject(arg1).getProgramInfoLog(getObject(arg2));
         var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export, wasm.__wbindgen_export2);
@@ -960,6 +965,10 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_log_1d990106d99dacb7 = function(arg0) {
         console.log(getObject(arg0));
     };
+    imports.wbg.__wbg_new_1ba21ce319a06297 = function() {
+        const ret = new Object();
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_new_8a6f238a6ece86ea = function() {
         const ret = new Error();
         return addHeapObject(ret);
@@ -970,6 +979,10 @@ function __wbg_get_imports() {
     }, arguments) };
     imports.wbg.__wbg_putImageData_c280ca107c4b7828 = function() { return handleError(function (arg0, arg1, arg2, arg3) {
         getObject(arg0).putImageData(getObject(arg1), arg2, arg3);
+    }, arguments) };
+    imports.wbg.__wbg_set_781438a03c0c3c81 = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = Reflect.set(getObject(arg0), getObject(arg1), getObject(arg2));
+        return ret;
     }, arguments) };
     imports.wbg.__wbg_set_height_6f8f8ef4cb40e496 = function(arg0, arg1) {
         getObject(arg0).height = arg1 >>> 0;
