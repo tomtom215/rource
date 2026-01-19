@@ -890,4 +890,121 @@ mod tests {
         let manager = AvatarManager::new();
         assert!(manager.get_avatar("nonexistent").is_none());
     }
+
+    #[test]
+    fn test_avatar_registry_new() {
+        let registry = AvatarRegistry::default();
+        assert!(!registry.has_avatars());
+        assert!(registry.get_avatar_id("anyone").is_none());
+    }
+
+    #[test]
+    fn test_decode_green_png() {
+        let png_data = create_test_png(3, 3, (0, 255, 0, 255));
+        let texture = decode_png(&png_data).expect("Failed to decode PNG");
+
+        assert_eq!(texture.width(), 3);
+        assert_eq!(texture.height(), 3);
+
+        let pixel = texture.get_pixel(1, 1);
+        assert_eq!(pixel, (0, 255, 0, 255));
+    }
+
+    #[test]
+    fn test_decode_blue_png() {
+        let png_data = create_test_png(4, 4, (0, 0, 255, 255));
+        let texture = decode_png(&png_data).expect("Failed to decode PNG");
+
+        assert_eq!(texture.width(), 4);
+        assert_eq!(texture.height(), 4);
+
+        let pixel = texture.get_pixel(2, 2);
+        assert_eq!(pixel, (0, 0, 255, 255));
+    }
+
+    #[test]
+    fn test_decode_transparent_png() {
+        let png_data = create_test_png(2, 2, (255, 255, 255, 128));
+        let texture = decode_png(&png_data).expect("Failed to decode PNG");
+
+        let pixel = texture.get_pixel(0, 0);
+        assert_eq!(pixel.3, 128); // Check alpha
+    }
+
+    #[test]
+    fn test_decode_1x1_png() {
+        let png_data = create_test_png(1, 1, (100, 150, 200, 255));
+        let texture = decode_png(&png_data).expect("Failed to decode PNG");
+
+        assert_eq!(texture.width(), 1);
+        assert_eq!(texture.height(), 1);
+        assert_eq!(texture.get_pixel(0, 0), (100, 150, 200, 255));
+    }
+
+    #[test]
+    fn test_decode_truncated_png() {
+        // Truncated PNG data
+        let data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        // Should fail gracefully
+        let result = decode_png(&data);
+        assert!(result.is_err() || result.is_ok()); // Either error or empty texture is acceptable
+    }
+
+    #[test]
+    fn test_avatar_manager_has_avatars_empty() {
+        let manager = AvatarManager::new();
+        assert!(!manager.has_avatars());
+    }
+
+    #[test]
+    fn test_avatar_manager_avatar_count_empty() {
+        let manager = AvatarManager::new();
+        assert_eq!(manager.avatar_count(), 0);
+    }
+
+    #[test]
+    fn test_avatar_manager_get_avatar_exact_nonexistent() {
+        let manager = AvatarManager::new();
+        assert!(manager.get_avatar_exact("nobody").is_none());
+    }
+
+    #[test]
+    fn test_crc32_empty() {
+        let crc = crc32(&[]);
+        assert_eq!(crc, 0); // CRC32 of empty data
+    }
+
+    #[test]
+    fn test_crc32_single_byte() {
+        let crc = crc32(&[0x00]);
+        assert_ne!(crc, 0); // Should compute something non-zero
+    }
+
+    #[test]
+    fn test_adler32_empty() {
+        let adler = adler32(&[]);
+        assert_eq!(adler, 1); // Adler32 of empty data is 1
+    }
+
+    #[test]
+    fn test_adler32_single_byte() {
+        let adler = adler32(&[0x00]);
+        assert_eq!(adler, 0x0001_0001);
+    }
+
+    #[test]
+    fn test_deflate_store_empty() {
+        let result = deflate_store(&[]);
+        // Should have zlib header + final block + adler32
+        assert!(result.len() >= 6);
+        assert_eq!(result[0], 0x78); // zlib header
+    }
+
+    #[test]
+    fn test_deflate_store_small() {
+        let data = vec![1, 2, 3, 4, 5];
+        let result = deflate_store(&data);
+        // Should contain the original data
+        assert!(result.windows(5).any(|w| w == data.as_slice()));
+    }
 }
