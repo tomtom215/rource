@@ -1095,9 +1095,10 @@ impl Rource {
 
             match drag_target {
                 DragTarget::User(user_id) => {
-                    // Move the user
+                    // Move the user and clear its target so it doesn't snap back
                     if let Some(user) = self.scene.get_user_mut(user_id) {
                         user.set_position(new_entity_pos);
+                        user.clear_target();
                     }
 
                     // Move connected files (files with active actions from this user)
@@ -1110,9 +1111,10 @@ impl Rource {
                         .get_file(file_id)
                         .map(rource_core::scene::FileNode::directory);
 
-                    // Move the file
+                    // Move the file and update its target so it doesn't snap back
                     if let Some(file) = self.scene.get_file_mut(file_id) {
                         file.set_position(new_entity_pos);
+                        file.set_target(new_entity_pos);
                     }
 
                     // Move connected entities (siblings and parent directory)
@@ -1581,11 +1583,13 @@ impl Rource {
                 if coupling > 0.01 {
                     let new_pos = sibling.position() + delta * coupling;
                     sibling.set_position(new_pos);
+                    sibling.set_target(new_pos);
                 }
             }
         }
 
         // Move the parent directory (with reduced coupling)
+        // Also zero velocity so physics doesn't fight the drag
         if let Some(dir) = self.scene.directories_mut().get_mut(dir_id) {
             let distance = (dir.position() - dragged_pos).length();
             let distance_factor =
@@ -1595,6 +1599,7 @@ impl Rource {
             if coupling > 0.01 {
                 let new_pos = dir.position() + delta * coupling;
                 dir.set_position(new_pos);
+                dir.set_velocity(Vec2::ZERO);
             }
         }
     }
@@ -1623,7 +1628,7 @@ impl Rource {
             .map(rource_core::scene::Action::file)
             .collect();
 
-        // Move connected files
+        // Move connected files and update their targets so they don't snap back
         for file_id in connected_file_ids {
             if let Some(file) = self.scene.get_file_mut(file_id) {
                 // Calculate distance-based coupling
@@ -1635,6 +1640,7 @@ impl Rource {
                 if coupling > 0.01 {
                     let new_pos = file.position() + delta * coupling;
                     file.set_position(new_pos);
+                    file.set_target(new_pos);
                 }
             }
         }
