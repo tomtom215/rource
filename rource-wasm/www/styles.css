@@ -529,6 +529,35 @@ header h1 {
     font-size: 0.75rem;
 }
 
+/* Legend structure section (directories explanation) */
+.legend-structure {
+    margin-top: 0.5rem;
+}
+
+.legend-divider {
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+.legend-item-structure {
+    cursor: help;
+}
+
+.legend-item-structure:hover {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    margin: -0.15rem;
+    padding: 0.15rem;
+}
+
+.legend-structure-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
 /* Stats overlay */
 .stats-overlay {
     position: absolute;
