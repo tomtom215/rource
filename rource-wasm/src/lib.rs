@@ -955,7 +955,7 @@ impl Rource {
 
     /// Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
     pub fn zoom(&mut self, factor: f32) {
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 10.0);
+        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 100.0);
         self.camera.set_zoom(new_zoom);
     }
 
@@ -971,7 +971,7 @@ impl Rource {
         let world_before = self.camera.screen_to_world(screen_point);
 
         // Apply zoom
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 10.0);
+        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 100.0);
         self.camera.set_zoom(new_zoom);
 
         // Get world position after zoom
@@ -1073,9 +1073,11 @@ impl Rource {
             self.drag_target = Some(drag_target);
             // Calculate offset from click point to entity center
             if let DragTarget::File(file_id) = drag_target {
-                if let Some(file) = self.scene.get_file(file_id) {
+                if let Some(file) = self.scene.get_file_mut(file_id) {
                     self.drag_offset = file.position() - world_pos;
                     self.drag_last_pos = file.position();
+                    // Pin the file to prevent layout updates from moving it
+                    file.set_pinned(true);
                 }
             }
             return;
@@ -1090,6 +1092,13 @@ impl Rource {
     /// Handles mouse up events.
     #[wasm_bindgen(js_name = onMouseUp)]
     pub fn on_mouse_up(&mut self) {
+        // Unpin file if we were dragging one
+        if let Some(DragTarget::File(file_id)) = self.drag_target {
+            if let Some(file) = self.scene.get_file_mut(file_id) {
+                file.set_pinned(false);
+            }
+        }
+
         self.mouse_down = false;
         self.drag_target = None;
         self.drag_offset = Vec2::ZERO;
@@ -1724,7 +1733,7 @@ impl Rource {
 
                 let zoom_x = screen_width / padded_bounds.width();
                 let zoom_y = screen_height / padded_bounds.height();
-                let zoom = zoom_x.min(zoom_y).clamp(0.01, 10.0);
+                let zoom = zoom_x.min(zoom_y).clamp(0.01, 100.0);
 
                 self.camera.jump_to(padded_bounds.center());
                 self.camera.set_zoom(zoom);

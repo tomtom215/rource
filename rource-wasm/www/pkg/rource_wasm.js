@@ -666,6 +666,9 @@ function __wbg_get_imports() {
                 wasm.__wbindgen_export3(deferred0_0, deferred0_1, 1);
             }
         },
+        __wbg_finish_ee0b71d14fa50456: function(arg0) {
+            getObject(arg0).finish();
+        },
         __wbg_getContext_2a5764d48600bc43: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = getObject(arg0).getContext(getStringFromWasm0(arg1, arg2));
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
