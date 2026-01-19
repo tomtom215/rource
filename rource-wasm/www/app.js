@@ -2097,44 +2097,145 @@ btnScreenshot.addEventListener('click', () => {
 // FULLSCREEN MODE
 // =====================================================================
 // Enables fullscreen presentation mode for demos and presentations.
+// Uses native Fullscreen API where available, falls back to CSS-based
+// pseudo-fullscreen for mobile browsers (especially iOS Safari).
 // =====================================================================
 const btnFullscreen = document.getElementById('btn-fullscreen');
 const fullscreenIcon = document.getElementById('fullscreen-icon');
+const canvasContainer = document.getElementById('canvas-container');
 
 // Fullscreen icons
 const enterFullscreenPath = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
 const exitFullscreenPath = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
 
+// Track pseudo-fullscreen state for mobile fallback
+let isPseudoFullscreen = false;
+
+function isNativeFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function isInFullscreenMode() {
+    return isNativeFullscreen() || isPseudoFullscreen;
+}
+
 function updateFullscreenIcon() {
-    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    const isFullscreen = isInFullscreenMode();
     fullscreenIcon.innerHTML = `<path d="${isFullscreen ? exitFullscreenPath : enterFullscreenPath}"/>`;
     btnFullscreen.title = isFullscreen ? 'Exit fullscreen (F)' : 'Fullscreen (F)';
 }
 
-function toggleFullscreen() {
-    if (document.fullscreenElement || document.webkitFullscreenElement) {
+function enterPseudoFullscreen() {
+    isPseudoFullscreen = true;
+    document.body.classList.add('pseudo-fullscreen');
+    updateFullscreenIcon();
+    // Trigger resize to update canvas
+    if (rource) {
+        setTimeout(() => {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.floor(rect.width * window.devicePixelRatio);
+            canvas.height = Math.floor(rect.height * window.devicePixelRatio);
+            rource.resize(canvas.width, canvas.height);
+        }, 50);
+    }
+}
+
+function exitPseudoFullscreen() {
+    isPseudoFullscreen = false;
+    document.body.classList.remove('pseudo-fullscreen');
+    updateFullscreenIcon();
+    // Trigger resize to update canvas
+    if (rource) {
+        setTimeout(() => {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.floor(rect.width * window.devicePixelRatio);
+            canvas.height = Math.floor(rect.height * window.devicePixelRatio);
+            rource.resize(canvas.width, canvas.height);
+        }, 50);
+    }
+}
+
+function supportsNativeFullscreen() {
+    return !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+}
+
+async function toggleFullscreen() {
+    if (isInFullscreenMode()) {
         // Exit fullscreen
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
+        if (isNativeFullscreen()) {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        } else {
+            exitPseudoFullscreen();
         }
     } else {
-        // Enter fullscreen
-        const elem = document.documentElement;
+        // Enter fullscreen - try native first, fall back to pseudo
+        const elem = canvasContainer;
+        let nativeWorked = false;
+
         if (elem.requestFullscreen) {
-            elem.requestFullscreen();
+            try {
+                await elem.requestFullscreen();
+                nativeWorked = true;
+            } catch (e) {
+                // Native fullscreen failed, use pseudo
+            }
         } else if (elem.webkitRequestFullscreen) {
-            elem.webkitRequestFullscreen();
+            try {
+                elem.webkitRequestFullscreen();
+                nativeWorked = true;
+            } catch (e) {
+                // Native fullscreen failed, use pseudo
+            }
+        }
+
+        // Fall back to pseudo-fullscreen for iOS and other unsupported browsers
+        if (!nativeWorked) {
+            enterPseudoFullscreen();
         }
     }
 }
 
 btnFullscreen.addEventListener('click', toggleFullscreen);
 
-// Listen for fullscreen changes
-document.addEventListener('fullscreenchange', updateFullscreenIcon);
-document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+// Listen for native fullscreen changes
+document.addEventListener('fullscreenchange', () => {
+    // If exiting native fullscreen, make sure pseudo is also off
+    if (!isNativeFullscreen() && !isPseudoFullscreen) {
+        updateFullscreenIcon();
+    }
+    // Resize canvas after fullscreen change
+    if (rource) {
+        setTimeout(() => {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.floor(rect.width * window.devicePixelRatio);
+            canvas.height = Math.floor(rect.height * window.devicePixelRatio);
+            rource.resize(canvas.width, canvas.height);
+        }, 100);
+    }
+    updateFullscreenIcon();
+});
+document.addEventListener('webkitfullscreenchange', () => {
+    if (rource) {
+        setTimeout(() => {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.floor(rect.width * window.devicePixelRatio);
+            canvas.height = Math.floor(rect.height * window.devicePixelRatio);
+            rource.resize(canvas.width, canvas.height);
+        }, 100);
+    }
+    updateFullscreenIcon();
+});
+
+// Allow escape key to exit pseudo-fullscreen
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isPseudoFullscreen) {
+        exitPseudoFullscreen();
+    }
+});
 
 // =====================================================================
 // SHARE URL
