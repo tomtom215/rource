@@ -649,6 +649,10 @@ impl Renderer for WebGl2Renderer {
 
         // Flush all batched draw calls
         self.flush();
+
+        // Ensure all GPU commands complete - critical for screenshot capture
+        // Without this, canvas.toBlob() may capture a stale/incomplete frame
+        self.gl.finish();
     }
 
     fn clear(&mut self, color: Color) {

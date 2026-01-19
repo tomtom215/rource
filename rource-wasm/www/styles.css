@@ -2836,6 +2836,53 @@ footer a {
     position: fixed;
 }
 
+/* Exit fullscreen button - hidden by default, visible in pseudo-fullscreen */
+.exit-fullscreen-btn {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    cursor: pointer;
+    z-index: 10001;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.exit-fullscreen-btn:hover,
+.exit-fullscreen-btn:focus {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+    outline: none;
+}
+
+.exit-fullscreen-btn:active {
+    transform: scale(0.95);
+}
+
+.exit-fullscreen-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Show exit button only in pseudo-fullscreen mode */
+.pseudo-fullscreen .exit-fullscreen-btn {
+    display: flex;
+}
+
+/* Also show in native fullscreen for consistency */
+#canvas-container:fullscreen .exit-fullscreen-btn,
+#canvas-container:-webkit-full-screen .exit-fullscreen-btn {
+    display: flex;
+}
+
 /* ========================================
    COMMIT TOOLTIP
    ======================================== */

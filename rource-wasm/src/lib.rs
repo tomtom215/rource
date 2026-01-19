@@ -955,7 +955,7 @@ impl Rource {
 
     /// Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
     pub fn zoom(&mut self, factor: f32) {
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 10.0);
+        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 100.0);
         self.camera.set_zoom(new_zoom);
     }
 
@@ -971,7 +971,7 @@ impl Rource {
         let world_before = self.camera.screen_to_world(screen_point);
 
         // Apply zoom
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 10.0);
+        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 100.0);
         self.camera.set_zoom(new_zoom);
 
         // Get world position after zoom
@@ -1073,9 +1073,11 @@ impl Rource {
             self.drag_target = Some(drag_target);
             // Calculate offset from click point to entity center
             if let DragTarget::File(file_id) = drag_target {
-                if let Some(file) = self.scene.get_file(file_id) {
+                if let Some(file) = self.scene.get_file_mut(file_id) {
                     self.drag_offset = file.position() - world_pos;
                     self.drag_last_pos = file.position();
+                    // Pin the file to prevent layout updates from moving it
+                    file.set_pinned(true);
                 }
             }
             return;
@@ -1090,6 +1092,13 @@ impl Rource {
     /// Handles mouse up events.
     #[wasm_bindgen(js_name = onMouseUp)]
     pub fn on_mouse_up(&mut self) {
+        // Unpin file if we were dragging one
+        if let Some(DragTarget::File(file_id)) = self.drag_target {
+            if let Some(file) = self.scene.get_file_mut(file_id) {
+                file.set_pinned(false);
+            }
+        }
+
         self.mouse_down = false;
         self.drag_target = None;
         self.drag_offset = Vec2::ZERO;
@@ -1724,7 +1733,7 @@ impl Rource {
 
                 let zoom_x = screen_width / padded_bounds.width();
                 let zoom_y = screen_height / padded_bounds.height();
-                let zoom = zoom_x.min(zoom_y).clamp(0.01, 10.0);
+                let zoom = zoom_x.min(zoom_y).clamp(0.01, 100.0);
 
                 self.camera.jump_to(padded_bounds.center());
                 self.camera.set_zoom(zoom);
@@ -2309,5 +2318,338 @@ mod tests {
         assert_eq!(stats.active_actions, 0);
         assert_eq!(stats.total_entities, 0);
         assert_eq!(stats.draw_calls, 0);
+    }
+
+    // ========================================================================
+    // File Action Conversion Tests
+    // ========================================================================
+
+    #[test]
+    fn test_file_action_to_action_type_create() {
+        let action = file_action_to_action_type(FileAction::Create);
+        assert!(matches!(action, ActionType::Create));
+    }
+
+    #[test]
+    fn test_file_action_to_action_type_modify() {
+        let action = file_action_to_action_type(FileAction::Modify);
+        assert!(matches!(action, ActionType::Modify));
+    }
+
+    #[test]
+    fn test_file_action_to_action_type_delete() {
+        let action = file_action_to_action_type(FileAction::Delete);
+        assert!(matches!(action, ActionType::Delete));
+    }
+
+    // ========================================================================
+    // Catmull-Rom Spline Tests
+    // ========================================================================
+
+    #[test]
+    fn test_catmull_rom_spline_empty() {
+        let points: Vec<Vec2> = vec![];
+        let result = catmull_rom_spline(&points, 10);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_single_point() {
+        let points = vec![Vec2::new(1.0, 2.0)];
+        let result = catmull_rom_spline(&points, 10);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], Vec2::new(1.0, 2.0));
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_two_points() {
+        let points = vec![Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)];
+        let result = catmull_rom_spline(&points, 10);
+        // With only 2 points, returns the original points
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], Vec2::new(0.0, 0.0));
+        assert_eq!(result[1], Vec2::new(10.0, 10.0));
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_three_points() {
+        let points = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(5.0, 5.0),
+            Vec2::new(10.0, 0.0),
+        ];
+        let result = catmull_rom_spline(&points, 4);
+        // Should have segments + 1 points per span, plus final point
+        assert!(result.len() > 3);
+        // First and last should match original
+        assert_eq!(result[0], Vec2::new(0.0, 0.0));
+        assert_eq!(*result.last().unwrap(), Vec2::new(10.0, 0.0));
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_many_points() {
+        let points = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 4.0),
+            Vec2::new(4.0, 0.0),
+            Vec2::new(6.0, 4.0),
+            Vec2::new(8.0, 0.0),
+        ];
+        let result = catmull_rom_spline(&points, 8);
+        // Should produce smooth interpolation
+        assert!(result.len() > points.len());
+        // Endpoints preserved
+        assert_eq!(result[0], points[0]);
+        assert_eq!(*result.last().unwrap(), *points.last().unwrap());
+    }
+
+    #[test]
+    fn test_catmull_rom_interpolate_at_zero() {
+        let p0 = Vec2::new(-1.0, 0.0);
+        let p1 = Vec2::new(0.0, 0.0);
+        let p2 = Vec2::new(1.0, 0.0);
+        let p3 = Vec2::new(2.0, 0.0);
+        let result = catmull_rom_interpolate(p0, p1, p2, p3, 0.0);
+        // At t=0, should be at p1
+        assert!((result.x - p1.x).abs() < 0.001);
+        assert!((result.y - p1.y).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_catmull_rom_interpolate_at_one() {
+        let p0 = Vec2::new(-1.0, 0.0);
+        let p1 = Vec2::new(0.0, 0.0);
+        let p2 = Vec2::new(1.0, 0.0);
+        let p3 = Vec2::new(2.0, 0.0);
+        let result = catmull_rom_interpolate(p0, p1, p2, p3, 1.0);
+        // At t=1, should be at p2
+        assert!((result.x - p2.x).abs() < 0.001);
+        assert!((result.y - p2.y).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_catmull_rom_interpolate_midpoint() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(0.0, 0.0);
+        let p2 = Vec2::new(4.0, 0.0);
+        let p3 = Vec2::new(4.0, 0.0);
+        let result = catmull_rom_interpolate(p0, p1, p2, p3, 0.5);
+        // At t=0.5, should be roughly in the middle
+        assert!(result.x > 1.0 && result.x < 3.0);
+    }
+
+    // ========================================================================
+    // Branch Curve Tests
+    // ========================================================================
+
+    #[test]
+    fn test_create_branch_curve_very_short() {
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(0.1, 0.1);
+        let result = create_branch_curve(start, end, 0.5);
+        // Very short distance returns just start and end
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_create_branch_curve_horizontal() {
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 0.0);
+        let result = create_branch_curve(start, end, 0.5);
+        // Should have multiple points for a proper curve
+        assert!(result.len() >= 2);
+        // Start and end preserved
+        assert_eq!(result[0], start);
+        assert_eq!(*result.last().unwrap(), end);
+    }
+
+    #[test]
+    fn test_create_branch_curve_vertical() {
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(0.0, 100.0);
+        let result = create_branch_curve(start, end, 0.5);
+        assert!(result.len() >= 2);
+        assert_eq!(result[0], start);
+        assert_eq!(*result.last().unwrap(), end);
+    }
+
+    #[test]
+    fn test_create_branch_curve_diagonal() {
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let result = create_branch_curve(start, end, 0.4);
+        assert!(result.len() >= 2);
+        // The curve should have control points that add natural curvature
+    }
+
+    #[test]
+    fn test_create_branch_curve_zero_tension() {
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(50.0, 50.0);
+        let result = create_branch_curve(start, end, 0.0);
+        // With zero tension, should still produce a valid curve
+        assert!(result.len() >= 2);
+    }
+
+    // ========================================================================
+    // DragTarget Tests
+    // ========================================================================
+
+    #[test]
+    fn test_drag_target_user() {
+        let user_id = UserId::from_index(42);
+        let target = DragTarget::User(user_id);
+        assert!(matches!(target, DragTarget::User(_)));
+    }
+
+    #[test]
+    fn test_drag_target_file() {
+        let file_id = FileId::from_index(123);
+        let target = DragTarget::File(file_id);
+        assert!(matches!(target, DragTarget::File(_)));
+    }
+
+    #[test]
+    fn test_drag_target_copy() {
+        let file_id = FileId::from_index(5);
+        let target1 = DragTarget::File(file_id);
+        let target2 = target1;
+        assert!(matches!(target2, DragTarget::File(_)));
+    }
+
+    // ========================================================================
+    // Additional PerformanceMetrics Tests
+    // ========================================================================
+
+    #[test]
+    fn test_performance_metrics_zero_dt() {
+        let mut metrics = PerformanceMetrics::new();
+        // Recording a zero-duration frame should not crash
+        metrics.record_frame(0.0);
+        assert_eq!(metrics.total_frames, 1);
+    }
+
+    #[test]
+    fn test_performance_metrics_very_slow_frame() {
+        let mut metrics = PerformanceMetrics::new();
+        // Very slow frame (1 second = 1 FPS)
+        metrics.record_frame(1.0);
+        assert!(metrics.fps > 0.9 && metrics.fps < 1.1);
+    }
+
+    #[test]
+    fn test_performance_metrics_reset() {
+        let mut metrics = PerformanceMetrics::new();
+        for _ in 0..100 {
+            metrics.record_frame(1.0 / 60.0);
+        }
+        assert!(metrics.total_frames > 0);
+        // Create new metrics to "reset"
+        let fresh = PerformanceMetrics::new();
+        assert_eq!(fresh.total_frames, 0);
+        assert_eq!(fresh.fps, 0.0);
+    }
+
+    // ========================================================================
+    // RenderStats Tests
+    // ========================================================================
+
+    #[test]
+    fn test_render_stats_with_values() {
+        let stats = RenderStats {
+            visible_files: 100,
+            visible_users: 5,
+            visible_directories: 20,
+            active_actions: 10,
+            total_entities: 125,
+            draw_calls: 50,
+        };
+        assert_eq!(stats.visible_files, 100);
+        assert_eq!(stats.visible_users, 5);
+        assert_eq!(stats.visible_directories, 20);
+        assert_eq!(stats.active_actions, 10);
+        assert_eq!(stats.total_entities, 125);
+        assert_eq!(stats.draw_calls, 50);
+    }
+
+    // ========================================================================
+    // PNG Writing Edge Cases
+    // ========================================================================
+
+    #[test]
+    fn test_write_png_transparent_pixel() {
+        let pixels: Vec<u32> = vec![0x0000_0000]; // Fully transparent
+        let mut output = Vec::new();
+        write_png(&mut output, &pixels, 1, 1).unwrap();
+        // Should still produce valid PNG
+        assert!(output.len() > 8);
+    }
+
+    #[test]
+    fn test_write_png_various_colors() {
+        // 4 pixels: red, green, blue, white
+        let pixels: Vec<u32> = vec![
+            0xFFFF_0000, // Red
+            0xFF00_FF00, // Green
+            0xFF00_00FF, // Blue
+            0xFFFF_FFFF, // White
+        ];
+        let mut output = Vec::new();
+        write_png(&mut output, &pixels, 2, 2).unwrap();
+        // Check valid PNG signature
+        assert_eq!(
+            &output[0..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
+    }
+
+    #[test]
+    fn test_write_png_wide_image() {
+        // 10x1 image
+        let pixels: Vec<u32> = vec![0xFFFF_FFFF; 10];
+        let mut output = Vec::new();
+        write_png(&mut output, &pixels, 10, 1).unwrap();
+        assert!(output.windows(4).any(|w| w == b"IHDR"));
+        assert!(output.windows(4).any(|w| w == b"IEND"));
+    }
+
+    #[test]
+    fn test_write_png_tall_image() {
+        // 1x10 image
+        let pixels: Vec<u32> = vec![0xFF00_0000; 10];
+        let mut output = Vec::new();
+        write_png(&mut output, &pixels, 1, 10).unwrap();
+        assert!(output.windows(4).any(|w| w == b"IHDR"));
+        assert!(output.windows(4).any(|w| w == b"IEND"));
+    }
+
+    // ========================================================================
+    // Deflate Compression Tests
+    // ========================================================================
+
+    #[test]
+    fn test_deflate_compress_repeated_data() {
+        // Highly compressible data
+        let data = vec![0xAA; 1000];
+        let result = deflate_compress(&data);
+        // Should still produce valid output
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn test_deflate_compress_random_like_data() {
+        // Less compressible data
+        let data: Vec<u8> = (0..=255).collect();
+        let result = deflate_compress(&data);
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn test_deflate_compress_single_byte() {
+        let data = vec![0x42];
+        let result = deflate_compress(&data);
+        assert!(!result.is_empty());
+        // Should contain the original byte
+        assert!(result.windows(1).any(|w| w[0] == 0x42));
     }
 }

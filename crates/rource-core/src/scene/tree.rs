@@ -1132,4 +1132,224 @@ mod tests {
         let child = tree.get(child_id).unwrap();
         assert_eq!(child.parent_position(), Some(Vec2::new(100.0, 200.0)));
     }
+
+    #[test]
+    fn test_dir_node_angular_sector() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+
+        node.set_angular_sector(0.0, std::f32::consts::PI);
+        assert!((node.angular_span() - std::f32::consts::PI).abs() < 0.001);
+        assert!((node.center_angle() - std::f32::consts::PI / 2.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_dir_node_radial_distance() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+
+        node.set_radial_distance(50.0);
+        assert_eq!(node.radial_distance(), 50.0);
+    }
+
+    #[test]
+    fn test_dir_node_calculate_radial_position() {
+        let parent_id = DirId::from_index(0);
+        let id = DirId::from_index(1);
+        let mut node = DirNode::new(id, "child", parent_id, Path::new(""));
+
+        // Set center angle to 0 (pointing right)
+        node.set_angular_sector(0.0, 0.0);
+        node.set_radial_distance(100.0);
+        node.set_depth(1); // Not root
+
+        let pos = node.calculate_radial_position();
+        // At angle 0, position should be (100, 0)
+        assert!((pos.x - 100.0).abs() < 0.01);
+        assert!(pos.y.abs() < 0.01);
+    }
+
+    #[test]
+    fn test_dir_node_calculate_radial_position_root() {
+        let id = DirId::from_index(0);
+        let node = DirNode::new_root(id);
+
+        // Root node should always be at origin
+        let pos = node.calculate_radial_position();
+        assert_eq!(pos, Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_dir_node_allocate_child_sectors() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+        node.set_angular_sector(0.0, std::f32::consts::TAU);
+
+        // Equal weights
+        let sectors = node.allocate_child_sectors(&[1.0, 1.0, 1.0]);
+        assert_eq!(sectors.len(), 3);
+
+        // Each sector should span 2*PI/3
+        let expected_span = std::f32::consts::TAU / 3.0;
+        for sector in &sectors {
+            let span = sector.1 - sector.0;
+            assert!((span - expected_span).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_dir_node_get_file_positions_radial() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+        node.set_position(Vec2::new(0.0, 0.0));
+        node.set_radius(10.0);
+        node.set_angular_sector(0.0, std::f32::consts::TAU);
+
+        let positions = node.get_file_positions_radial(4);
+        assert_eq!(positions.len(), 4);
+
+        // Positions should be at roughly the same distance from center
+        for pos in &positions {
+            let dist = pos.length();
+            assert!(dist > 10.0); // Should be outside the directory radius
+        }
+    }
+
+    #[test]
+    fn test_dir_node_calculate_radius_from_count() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+
+        // Add some files
+        for i in 0..10 {
+            node.add_file(FileId::from_index(i));
+        }
+
+        let radius = node.calculate_radius_from_count();
+        assert!(radius >= MIN_DIR_RADIUS);
+    }
+
+    #[test]
+    fn test_dir_node_update_physics() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+
+        node.set_position(Vec2::new(0.0, 0.0));
+        node.set_velocity(Vec2::new(100.0, 100.0));
+
+        node.update_physics(0.1, 0.9);
+
+        // Position should have moved
+        assert!(node.position().x > 0.0);
+        assert!(node.position().y > 0.0);
+
+        // Velocity should be damped
+        assert!(node.velocity().x < 100.0);
+        assert!(node.velocity().y < 100.0);
+    }
+
+    #[test]
+    fn test_dir_node_velocity() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+
+        node.set_velocity(Vec2::new(10.0, 20.0));
+        assert_eq!(node.velocity(), Vec2::new(10.0, 20.0));
+
+        node.add_velocity(Vec2::new(5.0, -5.0));
+        assert_eq!(node.velocity(), Vec2::new(15.0, 15.0));
+    }
+
+    #[test]
+    fn test_dir_node_visibility() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+
+        assert!(node.is_visible());
+
+        node.set_visible(false);
+        assert!(!node.is_visible());
+
+        node.set_visible(true);
+        assert!(node.is_visible());
+    }
+
+    #[test]
+    fn test_dir_node_depth() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+
+        assert_eq!(node.depth(), 0);
+
+        node.set_depth(5);
+        assert_eq!(node.depth(), 5);
+    }
+
+    #[test]
+    fn test_dir_node_target_distance() {
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+
+        node.set_target_distance(150.0);
+        assert_eq!(node.target_distance(), 150.0);
+    }
+
+    #[test]
+    fn test_dir_tree_compute_radial_layout() {
+        let mut tree = DirTree::new();
+
+        // Create some directories
+        let src_id = tree.get_or_create_path(Path::new("src"));
+        let _b = tree.get_or_create_path(Path::new("src/lib"));
+        let _c = tree.get_or_create_path(Path::new("tests"));
+
+        tree.compute_radial_layout();
+
+        // Root should be at origin
+        assert_eq!(tree.root().position(), Vec2::ZERO);
+
+        // Children should have been positioned
+        let src_node = tree.get(src_id).unwrap();
+        assert!(src_node.position() != Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_dir_tree_path_lookup() {
+        let mut tree = DirTree::new();
+
+        // Create path and verify we can look it up
+        let created_id = tree.get_or_create_path(Path::new("src/lib"));
+
+        // Getting the same path again should return the same ID
+        let same_id = tree.get_or_create_path(Path::new("src/lib"));
+        assert_eq!(created_id, same_id);
+
+        // The node should have the correct path
+        let node = tree.get(created_id).unwrap();
+        assert_eq!(node.path(), Path::new("src/lib"));
+    }
+
+    #[test]
+    fn test_dir_tree_default() {
+        let tree = DirTree::default();
+        assert_eq!(tree.len(), 1);
+        assert!(tree.root().is_root());
+    }
+
+    #[test]
+    fn test_dir_tree_iter_mut() {
+        let mut tree = DirTree::new();
+        let _ = tree.get_or_create_path(Path::new("a"));
+        let _ = tree.get_or_create_path(Path::new("b"));
+
+        // Set all nodes' visibility to false
+        for node in tree.iter_mut() {
+            node.set_visible(false);
+        }
+
+        // Verify all nodes are now invisible
+        for node in tree.iter() {
+            assert!(!node.is_visible());
+        }
+    }
 }

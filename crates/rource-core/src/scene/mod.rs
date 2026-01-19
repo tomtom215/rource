@@ -621,6 +621,11 @@ impl Scene {
 
         // Update each file's position based on its directory
         for file in self.files.values_mut() {
+            // Skip pinned files (e.g., being dragged by user)
+            if file.is_pinned() {
+                continue;
+            }
+
             let dir_id = file.directory();
             if let Some(&(_dir_pos, start_angle, end_angle, radial_distance, radius)) =
                 dir_info.get(&dir_id)

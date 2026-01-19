@@ -66,6 +66,10 @@ pub struct FileNode {
 
     /// Time since last modification.
     idle_time: f32,
+
+    /// Is pinned (prevents layout updates from moving this file).
+    /// Set to true when the user is dragging this file.
+    pinned: bool,
 }
 
 impl FileNode {
@@ -98,6 +102,7 @@ impl FileNode {
             alpha: 0.0, // Start invisible, fade in
             removing: false,
             idle_time: 0.0,
+            pinned: false,
         }
     }
 
@@ -214,6 +219,24 @@ impl FileNode {
     #[must_use]
     pub const fn touch_time(&self) -> f32 {
         self.touch_time
+    }
+
+    /// Returns true if this file is pinned (e.g., being dragged).
+    ///
+    /// Pinned files are not moved by automatic layout updates.
+    #[inline]
+    #[must_use]
+    pub const fn is_pinned(&self) -> bool {
+        self.pinned
+    }
+
+    /// Sets the pinned state.
+    ///
+    /// Set to true when the user starts dragging this file,
+    /// and false when dragging ends.
+    #[inline]
+    pub fn set_pinned(&mut self, pinned: bool) {
+        self.pinned = pinned;
     }
 
     /// Gets the color for a file extension.

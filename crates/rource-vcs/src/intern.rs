@@ -341,4 +341,114 @@ mod tests {
         assert_eq!(stats.unique_strings, 2);
         assert_eq!(stats.string_bytes, 9); // "test" (4) + "hello" (5)
     }
+
+    #[test]
+    fn test_string_interner_with_capacity() {
+        let interner = StringInterner::with_capacity(100);
+        assert!(interner.is_empty());
+        assert_eq!(interner.len(), 0);
+    }
+
+    #[test]
+    fn test_string_interner_clear() {
+        let mut interner = StringInterner::new();
+        interner.intern("one");
+        interner.intern("two");
+        assert_eq!(interner.len(), 2);
+
+        interner.clear();
+        assert!(interner.is_empty());
+        assert_eq!(interner.len(), 0);
+    }
+
+    #[test]
+    fn test_string_interner_total_bytes() {
+        let mut interner = StringInterner::new();
+        interner.intern("abc"); // 3 bytes
+        interner.intern("defgh"); // 5 bytes
+        assert_eq!(interner.total_bytes(), 8);
+    }
+
+    #[test]
+    fn test_interned_string_index() {
+        let mut interner = StringInterner::new();
+        let id1 = interner.intern("first");
+        let id2 = interner.intern("second");
+
+        assert_eq!(id1.index(), 0);
+        assert_eq!(id2.index(), 1);
+    }
+
+    #[test]
+    fn test_string_interner_resolve_invalid() {
+        let interner = StringInterner::new();
+        let invalid_id = InternedString(999);
+        assert!(interner.resolve(invalid_id).is_none());
+    }
+
+    #[test]
+    fn test_path_interner_empty() {
+        let interner = PathInterner::new();
+        assert!(interner.is_empty());
+        assert_eq!(interner.len(), 0);
+        assert_eq!(interner.segment_count(), 0);
+    }
+
+    #[test]
+    fn test_path_interner_new() {
+        let interner = PathInterner::new();
+        assert!(interner.is_empty());
+        assert_eq!(interner.len(), 0);
+    }
+
+    #[test]
+    fn test_path_interner_resolve_invalid() {
+        let interner = PathInterner::new();
+        let invalid_id = InternedPath(999);
+        // Resolving an invalid ID should return None
+        assert!(interner.resolve(invalid_id).is_none());
+    }
+
+    #[test]
+    fn test_path_interner_single_segment() {
+        let mut interner = PathInterner::new();
+        let id = interner.intern("file.txt");
+
+        assert_eq!(interner.resolve(id), Some("file.txt".to_string()));
+        assert_eq!(interner.len(), 1);
+        assert_eq!(interner.segment_count(), 1);
+    }
+
+    #[test]
+    fn test_path_interner_segment_stats() {
+        let mut interner = PathInterner::new();
+        interner.intern("a/b/c"); // segments: a, b, c = 3 bytes
+
+        let stats = interner.stats();
+        assert_eq!(stats.segment_bytes, 3);
+    }
+
+    #[test]
+    fn test_interned_path_index() {
+        let mut interner = PathInterner::new();
+        let id1 = interner.intern("one/two");
+        let id2 = interner.intern("three/four");
+
+        assert_eq!(id1.index(), 0);
+        assert_eq!(id2.index(), 1);
+    }
+
+    #[test]
+    fn test_path_interner_stats_comprehensive() {
+        let mut interner = PathInterner::new();
+        interner.intern("src/main.rs");
+        interner.intern("src/lib.rs");
+        interner.intern("tests/test.rs");
+
+        let stats = interner.stats();
+        assert_eq!(stats.unique_paths, 3);
+        // Segments: src, main.rs, lib.rs, tests, test.rs = 5
+        assert!(stats.unique_segments <= 5);
+        assert!(stats.segment_bytes > 0);
+    }
 }

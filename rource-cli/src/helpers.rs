@@ -107,4 +107,62 @@ mod tests {
         assert_eq!(get_initials("  Alice  "), "A");
         assert_eq!(get_initials("  Bob Smith  "), "BS");
     }
+
+    #[test]
+    fn test_get_initials_empty() {
+        assert_eq!(get_initials(""), "");
+        assert_eq!(get_initials("   "), "");
+    }
+
+    #[test]
+    fn test_get_initials_unicode() {
+        // Unicode names
+        assert_eq!(get_initials("José García"), "JG");
+        assert_eq!(get_initials("Müller"), "M");
+    }
+
+    #[test]
+    fn test_get_initials_numbers() {
+        // Names with numbers
+        assert_eq!(get_initials("User123"), "U");
+        assert_eq!(get_initials("123User"), "1");
+    }
+
+    #[test]
+    fn test_get_initials_special_chars() {
+        // Names with special characters
+        assert_eq!(get_initials("O'Brien"), "O");
+        assert_eq!(get_initials("Jean-Pierre Dupont"), "JD");
+    }
+
+    #[test]
+    fn test_format_timestamp_epoch() {
+        // Unix epoch
+        let formatted = format_timestamp(0);
+        assert!(formatted.starts_with("1970"));
+    }
+
+    #[test]
+    fn test_format_timestamp_year_2000() {
+        // Jan 1, 2000 (approximately)
+        let ts = 946_684_800; // 2000-01-01 00:00:00 UTC
+        let formatted = format_timestamp(ts);
+        assert!(formatted.starts_with("200"));
+    }
+
+    #[test]
+    fn test_format_timestamp_negative() {
+        // Before epoch (negative timestamp)
+        let formatted = format_timestamp(-86400);
+        // Should handle gracefully (may produce 1969 or similar)
+        assert!(!formatted.is_empty());
+    }
+
+    #[test]
+    fn test_format_timestamp_far_future() {
+        // Far future date
+        let ts = 4_102_444_800; // 2100-01-01 approximately
+        let formatted = format_timestamp(ts);
+        assert!(formatted.starts_with("21"));
+    }
 }

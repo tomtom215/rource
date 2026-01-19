@@ -2201,6 +2201,16 @@ async function toggleFullscreen() {
 
 btnFullscreen.addEventListener('click', toggleFullscreen);
 
+// Exit fullscreen button (mobile-friendly, visible in fullscreen modes)
+const btnExitFullscreen = document.getElementById('btn-exit-fullscreen');
+if (btnExitFullscreen) {
+    btnExitFullscreen.addEventListener('click', () => {
+        if (isInFullscreenMode()) {
+            toggleFullscreen();
+        }
+    });
+}
+
 // Listen for native fullscreen changes
 document.addEventListener('fullscreenchange', () => {
     // If exiting native fullscreen, make sure pseudo is also off
