@@ -120,7 +120,10 @@ fn create_branch_curve(start: Vec2, end: Vec2, tension: f32) -> Vec<Vec2> {
     let ctrl3 = mid.lerp(end, 0.33) + offset * 0.5;
     let ctrl4 = mid.lerp(end, 0.66);
 
-    catmull_rom_spline(&[start, ctrl1, ctrl2, ctrl3, ctrl4, end], SPLINE_SEGMENTS / 2)
+    catmull_rom_spline(
+        &[start, ctrl1, ctrl2, ctrl3, ctrl4, end],
+        SPLINE_SEGMENTS / 2,
+    )
 }
 
 // ============================================================================
@@ -175,7 +178,12 @@ fn draw_avatar_shape(
     renderer.draw_disc(center, radius * 1.05, shadow_color);
 
     // Draw body (rounded rectangle approximated with overlapping shapes)
-    let body_color = Color::new(color.r * 0.85, color.g * 0.85, color.b * 0.85, effective_alpha);
+    let body_color = Color::new(
+        color.r * 0.85,
+        color.g * 0.85,
+        color.b * 0.85,
+        effective_alpha,
+    );
 
     // Body: stack of discs forming a pill shape
     let body_top = body_center.y - body_height * 0.4;
@@ -197,7 +205,11 @@ fn draw_avatar_shape(
     // Head highlight (subtle 3D effect)
     let highlight_offset = Vec2::new(-head_radius * 0.25, -head_radius * 0.25);
     let highlight_color = Color::new(1.0, 1.0, 1.0, effective_alpha * 0.25);
-    renderer.draw_disc(head_center + highlight_offset, head_radius * 0.35, highlight_color);
+    renderer.draw_disc(
+        head_center + highlight_offset,
+        head_radius * 0.35,
+        highlight_color,
+    );
 
     // Active indicator: pulsing ring
     if is_active {
@@ -561,12 +573,7 @@ fn render_files(
 
         // Draw file as a filled disc with slight border effect
         // Outer ring (darker)
-        let border_color = Color::new(
-            color.r * 0.6,
-            color.g * 0.6,
-            color.b * 0.6,
-            color.a,
-        );
+        let border_color = Color::new(color.r * 0.6, color.g * 0.6, color.b * 0.6, color.a);
         renderer.draw_disc(screen_pos, effective_radius + 0.5, border_color);
 
         // Main file disc
@@ -670,7 +677,8 @@ fn render_users(
             }
 
             // Draw circular background/border
-            let border_color = Color::new(color.r * 0.5, color.g * 0.5, color.b * 0.5, user.alpha());
+            let border_color =
+                Color::new(color.r * 0.5, color.g * 0.5, color.b * 0.5, user.alpha());
             renderer.draw_disc(screen_pos, effective_radius + 2.0, border_color);
 
             // Draw avatar texture
