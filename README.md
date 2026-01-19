@@ -11,6 +11,8 @@
 
 Rource visualizes your repository's commit history as an animated tree where directories branch outward, files appear as leaves, and contributors move around making changes.
 
+> **AI-Assisted Development**: This project was developed with AI-assisted programming using [Claude](https://www.anthropic.com/claude) by Anthropic. Claude assisted with code implementation, architecture decisions, documentation, and adherence to Rust best practices throughout the development process.
+
 ## Features
 
 - **Portable**: Pure Rust with software rendering - runs on any CPU without GPU requirements
@@ -393,7 +395,3 @@ GPL-3.0 (same as original Gource)
 
 - Original [Gource](https://github.com/acaudwell/Gource) by Andrew Caudwell
 - Font: Roboto Mono (Apache 2.0)
-
-## Acknowledgments
-
-This project was developed with AI-assisted programming using [Claude](https://www.anthropic.com/claude) by Anthropic. The AI assisted with code implementation, architecture decisions, documentation, and adherence to Rust best practices throughout the development process.

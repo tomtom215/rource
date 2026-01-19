@@ -477,6 +477,52 @@ eprintln!("Frame {}: {} non-black pixels", frame, non_black);
 3. Add feature flag in `Cargo.toml`
 4. Update backend selection logic
 
+### Modifying Rendering / Visual Appearance
+
+**CRITICAL**: The CLI (`rource-cli`) and WASM demo (`rource-wasm`) have separate rendering code that must be kept in sync!
+
+| Platform | Rendering Code Location |
+|----------|------------------------|
+| Native CLI | `rource-cli/src/rendering.rs` |
+| WASM Demo | `rource-wasm/src/lib.rs` (the `render()` method) |
+
+When making visual changes (avatars, effects, colors, shapes, etc.):
+
+1. **Make changes to CLI first** - `rource-cli/src/rendering.rs`
+2. **Port changes to WASM** - `rource-wasm/src/lib.rs`
+3. **Test both platforms**:
+   ```bash
+   # Test CLI
+   cargo run --release -- .
+
+   # Test WASM (build and serve)
+   cd rource-wasm && wasm-pack build --target web --release
+   cp pkg/* www/pkg/
+   cd www && python3 -m http.server 8080
+   ```
+4. **Rebuild WASM pkg** - Copy updated files to `rource-wasm/www/pkg/` for GitHub Pages
+
+**Why separate rendering code?**
+- CLI uses `SoftwareRenderer` directly with additional features (avatar textures, overlays)
+- WASM uses `dyn Renderer` trait to support both WebGL2 and Software backends
+- Some CLI features (file I/O, textures) require different approaches in WASM
+
+**Common rendering functions that must stay in sync:**
+- Avatar/user drawing (`draw_avatar_shape`)
+- Action beams (`draw_action_beam`)
+- Branch curves (`draw_curved_branch`, spline interpolation)
+- File/directory node styling (glows, borders, colors)
+- Label rendering (shadows, positioning)
+
+**Checklist for rendering changes:**
+- [ ] Updated `rource-cli/src/rendering.rs`
+- [ ] Ported to `rource-wasm/src/lib.rs`
+- [ ] Ran `cargo test`
+- [ ] Ran `cargo clippy`
+- [ ] Built WASM with `wasm-pack build --target web --release`
+- [ ] Copied pkg to www: `cp rource-wasm/pkg/* rource-wasm/www/pkg/`
+- [ ] Visually tested both CLI and WASM demo
+
 ### Adding a New Configuration Option
 
 1. Add field to `Settings` struct in `rource-core/src/config/settings.rs`
