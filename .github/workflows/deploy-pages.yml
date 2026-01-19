@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Full history needed for git log to generate commit data
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
