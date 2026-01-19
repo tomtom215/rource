@@ -71,6 +71,25 @@ rource/
 The WASM build automatically tries WebGL2 first and falls back to software rendering
 if WebGL2 is unavailable. You can check which renderer is active via `rource.getRendererType()`.
 
+### IMPORTANT: CLI and WASM Rendering Synchronization
+
+**The CLI and WASM have separate rendering code that must be kept in sync.**
+
+| Component | Rendering Code Location |
+|-----------|------------------------|
+| Native CLI | `rource-cli/src/rendering.rs` |
+| WASM | `rource-wasm/src/lib.rs` (the `render()` method and helper functions) |
+
+When making visual/rendering changes (e.g., avatar styles, branch curves, glow effects, beam rendering):
+1. Update `rource-cli/src/rendering.rs` for the native CLI
+2. **Also update** `rource-wasm/src/lib.rs` with the same changes
+3. Rebuild WASM with `./scripts/build-wasm.sh`
+4. Test both CLI and WASM to verify visual parity
+
+The rendering helper functions (spline interpolation, avatar drawing, beam effects, etc.) are duplicated
+between CLI and WASM because they have different dependencies and build targets. Future refactoring
+could extract these into a shared rendering utilities module in `rource-render`.
+
 ## Development Guidelines
 
 ### Code Style
@@ -574,6 +593,7 @@ RUST_LOG=debug cargo run
 | Files at wrong position | Camera not updated | Call `camera.update(dt)` each frame |
 | UI clicks do nothing | Duplicate event handlers | Consolidate to single handler, avoid both `onclick` and `addEventListener` |
 | GitHub fetch silently fails | Error swallowed in catch | Always show error via `showToast()` and update status UI |
+| WASM visuals don't match CLI | Rendering code not synced | Update both `rource-cli/src/rendering.rs` AND `rource-wasm/src/lib.rs` |
 
 ## Git Workflow
 
