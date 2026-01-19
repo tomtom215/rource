@@ -31,6 +31,7 @@ pub mod default_font;
 pub mod effects;
 pub mod font;
 pub mod image;
+pub mod label;
 pub mod texture;
 
 pub use backend::software::SoftwareRenderer;
@@ -39,6 +40,7 @@ pub use backend::software::SoftwareRenderer;
 pub use backend::webgl2::WebGl2Renderer;
 pub use command::{DrawCommand, DrawQueue};
 pub use font::FontCache;
+pub use label::{estimate_text_width, LabelConfig, LabelPlacer};
 pub use texture::{Texture, TextureId};
 
 use rource_math::{Bounds, Color, Mat4, Vec2};
