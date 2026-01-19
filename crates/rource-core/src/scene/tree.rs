@@ -120,7 +120,7 @@ impl DirNode {
             depth: 1, // Will be set correctly when added to tree
             target_distance: DEFAULT_DIR_RADIUS * 3.0,
             parent_position: None,
-            start_angle: 0.0,  // Will be set when positioned
+            start_angle: 0.0, // Will be set when positioned
             end_angle: 0.0,
             radial_distance: RADIAL_DISTANCE_SCALE,
         }
@@ -385,7 +385,10 @@ impl DirNode {
 
         if count == 1 {
             let angle = self.center_angle();
-            return vec![Vec2::new(angle.cos() * file_distance, angle.sin() * file_distance)];
+            return vec![Vec2::new(
+                angle.cos() * file_distance,
+                angle.sin() * file_distance,
+            )];
         }
 
         (0..count)
