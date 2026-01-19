@@ -348,6 +348,9 @@ export class Rource {
     }
     /**
      * Handles mouse down events.
+     *
+     * Checks for entity under cursor first. If an entity is found, starts dragging it.
+     * Otherwise, starts camera panning.
      * @param {number} x
      * @param {number} y
      */
@@ -356,6 +359,8 @@ export class Rource {
     }
     /**
      * Handles mouse move events.
+     *
+     * If dragging an entity, updates its position. Otherwise, pans the camera.
      * @param {number} x
      * @param {number} y
      */

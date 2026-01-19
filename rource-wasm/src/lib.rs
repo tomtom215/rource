@@ -49,7 +49,8 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 use rource_core::camera::Camera;
 use rource_core::config::Settings;
-use rource_core::scene::{ActionType, Scene};
+use rource_core::entity::{FileId, UserId};
+use rource_core::scene::{ActionType, EntityType, Scene};
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::{default_font, FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
 use rource_vcs::parser::{CustomParser, GitParser, Parser};
@@ -583,6 +584,18 @@ impl RendererBackend {
 /// Number of frame samples for FPS averaging.
 const FRAME_SAMPLE_COUNT: usize = 60;
 
+/// Hit radius for entity picking (in world units).
+const ENTITY_HIT_RADIUS: f32 = 15.0;
+
+/// Draggable entity type.
+#[derive(Debug, Clone, Copy)]
+enum DragTarget {
+    /// Dragging a file entity.
+    File(FileId),
+    /// Dragging a user entity.
+    User(UserId),
+}
+
 /// Performance metrics for FPS tracking and profiling.
 #[derive(Debug, Clone)]
 struct PerformanceMetrics {
@@ -704,6 +717,12 @@ pub struct Rource {
     camera_start_x: f32,
     camera_start_y: f32,
 
+    /// Currently dragged entity (if any).
+    drag_target: Option<DragTarget>,
+
+    /// Offset from drag start to entity center (for smooth dragging).
+    drag_offset: Vec2,
+
     /// Font ID for text rendering
     font_id: Option<FontId>,
 
@@ -770,6 +789,8 @@ impl Rource {
             drag_start_y: 0.0,
             camera_start_x: 0.0,
             camera_start_y: 0.0,
+            drag_target: None,
+            drag_offset: Vec2::ZERO,
             font_id,
             show_labels: true, // Labels enabled by default
             perf_metrics: PerformanceMetrics::new(),
@@ -985,11 +1006,50 @@ impl Rource {
     }
 
     /// Handles mouse down events.
+    ///
+    /// Checks for entity under cursor first. If an entity is found, starts dragging it.
+    /// Otherwise, starts camera panning.
     #[wasm_bindgen(js_name = onMouseDown)]
     pub fn on_mouse_down(&mut self, x: f32, y: f32) {
         self.mouse_down = true;
         self.drag_start_x = x;
         self.drag_start_y = y;
+        self.mouse_x = x;
+        self.mouse_y = y;
+
+        // Convert screen position to world position
+        let screen_pos = Vec2::new(x, y);
+        let world_pos = self.camera.screen_to_world(screen_pos);
+
+        // Try to find an entity at this position (users have priority over files)
+        let hit_radius = ENTITY_HIT_RADIUS / self.camera.zoom();
+
+        // Check users first (they're larger and more important to interact with)
+        if let Some(drag_target) = self.hit_test_user(world_pos, hit_radius) {
+            self.drag_target = Some(drag_target);
+            // Calculate offset from click point to entity center
+            if let DragTarget::User(user_id) = drag_target {
+                if let Some(user) = self.scene.get_user(user_id) {
+                    self.drag_offset = user.position() - world_pos;
+                }
+            }
+            return;
+        }
+
+        // Check files
+        if let Some(drag_target) = self.hit_test_file(world_pos, hit_radius) {
+            self.drag_target = Some(drag_target);
+            // Calculate offset from click point to entity center
+            if let DragTarget::File(file_id) = drag_target {
+                if let Some(file) = self.scene.get_file(file_id) {
+                    self.drag_offset = file.position() - world_pos;
+                }
+            }
+            return;
+        }
+
+        // No entity hit, set up for camera panning
+        self.drag_target = None;
         self.camera_start_x = self.camera.position().x;
         self.camera_start_y = self.camera.position().y;
     }
@@ -998,15 +1058,46 @@ impl Rource {
     #[wasm_bindgen(js_name = onMouseUp)]
     pub fn on_mouse_up(&mut self) {
         self.mouse_down = false;
+        self.drag_target = None;
+        self.drag_offset = Vec2::ZERO;
     }
 
     /// Handles mouse move events.
+    ///
+    /// If dragging an entity, updates its position. Otherwise, pans the camera.
     #[wasm_bindgen(js_name = onMouseMove)]
     pub fn on_mouse_move(&mut self, x: f32, y: f32) {
         self.mouse_x = x;
         self.mouse_y = y;
 
-        if self.mouse_down {
+        if !self.mouse_down {
+            return;
+        }
+
+        // Convert screen position to world position
+        let screen_pos = Vec2::new(x, y);
+        let world_pos = self.camera.screen_to_world(screen_pos);
+
+        // If dragging an entity, move it
+        if let Some(drag_target) = self.drag_target {
+            let new_entity_pos = world_pos + self.drag_offset;
+
+            match drag_target {
+                DragTarget::User(user_id) => {
+                    if let Some(user) = self.scene.get_user_mut(user_id) {
+                        user.set_position(new_entity_pos);
+                    }
+                }
+                DragTarget::File(file_id) => {
+                    if let Some(file) = self.scene.get_file_mut(file_id) {
+                        file.set_position(new_entity_pos);
+                    }
+                }
+            }
+            // Mark bounds dirty since entity moved
+            self.scene.invalidate_bounds_cache();
+        } else {
+            // Camera panning
             let dx = x - self.drag_start_x;
             let dy = y - self.drag_start_y;
             let world_delta = Vec2::new(dx, dy) / self.camera.zoom();
@@ -1346,6 +1437,66 @@ impl Rource {
 
 // Private implementation
 impl Rource {
+    /// Tests if a user is within the hit radius of the given world position.
+    ///
+    /// Returns the drag target if a user is found.
+    fn hit_test_user(&self, world_pos: Vec2, hit_radius: f32) -> Option<DragTarget> {
+        // Query entities in the hit area
+        let entities = self.scene.query_entities_circle(world_pos, hit_radius);
+
+        // Find the closest user
+        let mut closest_user: Option<(UserId, f32)> = None;
+
+        for entity in entities {
+            if let EntityType::User(user_id) = entity {
+                if let Some(user) = self.scene.get_user(user_id) {
+                    let dist = (user.position() - world_pos).length();
+                    // Check if within the user's radius (with some tolerance)
+                    let effective_radius = user.radius() + hit_radius * 0.5;
+                    if dist <= effective_radius {
+                        if closest_user.is_none() || dist < closest_user.unwrap().1 {
+                            closest_user = Some((user_id, dist));
+                        }
+                    }
+                }
+            }
+        }
+
+        closest_user.map(|(id, _)| DragTarget::User(id))
+    }
+
+    /// Tests if a file is within the hit radius of the given world position.
+    ///
+    /// Returns the drag target if a file is found.
+    fn hit_test_file(&self, world_pos: Vec2, hit_radius: f32) -> Option<DragTarget> {
+        // Query entities in the hit area
+        let entities = self.scene.query_entities_circle(world_pos, hit_radius);
+
+        // Find the closest file
+        let mut closest_file: Option<(FileId, f32)> = None;
+
+        for entity in entities {
+            if let EntityType::File(file_id) = entity {
+                if let Some(file) = self.scene.get_file(file_id) {
+                    // Skip files that are faded out
+                    if file.alpha() < 0.1 {
+                        continue;
+                    }
+                    let dist = (file.position() - world_pos).length();
+                    // Check if within the file's radius (with some tolerance)
+                    let effective_radius = file.radius() + hit_radius * 0.5;
+                    if dist <= effective_radius {
+                        if closest_file.is_none() || dist < closest_file.unwrap().1 {
+                            closest_file = Some((file_id, dist));
+                        }
+                    }
+                }
+            }
+        }
+
+        closest_file.map(|(id, _)| DragTarget::File(id))
+    }
+
     /// Applies a VCS commit to the scene.
     fn apply_vcs_commit(&mut self, commit: &Commit) {
         let files: Vec<(PathBuf, ActionType)> = commit
