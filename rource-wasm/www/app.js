@@ -2062,6 +2062,12 @@ btnScreenshot.addEventListener('click', () => {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const filename = `rource-${timestamp}.png`;
 
+        // Force a render right before capturing to ensure the buffer has content.
+        // This is critical for WebGL2 because even with preserveDrawingBuffer: true,
+        // the async toBlob() can capture a cleared/stale buffer if the animation
+        // loop's clear() runs before toBlob() reads the pixels.
+        rource.forceRender();
+
         // Use canvas.toBlob for best quality (works with WebGL2 too)
         canvas.toBlob((blob) => {
             if (!blob) {
