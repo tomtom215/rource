@@ -15,6 +15,12 @@ pub const MIN_DIR_RADIUS: f32 = 5.0;
 /// Default radius for new directory nodes.
 pub const DEFAULT_DIR_RADIUS: f32 = 20.0;
 
+/// Distance scale per depth level for radial layout.
+pub const RADIAL_DISTANCE_SCALE: f32 = 80.0;
+
+/// Minimum angular span for a directory (prevents collapsed sectors).
+pub const MIN_ANGULAR_SPAN: f32 = 0.05; // ~3 degrees
+
 /// A node in the directory tree.
 ///
 /// Each directory is represented as a node that can contain files
@@ -60,6 +66,15 @@ pub struct DirNode {
 
     /// Cached parent position for physics (updated each frame).
     parent_position: Option<Vec2>,
+
+    /// Start angle of this directory's angular sector (radians).
+    start_angle: f32,
+
+    /// End angle of this directory's angular sector (radians).
+    end_angle: f32,
+
+    /// Radial distance from root (calculated from depth).
+    radial_distance: f32,
 }
 
 impl DirNode {
@@ -80,6 +95,9 @@ impl DirNode {
             depth: 0,
             target_distance: 0.0,
             parent_position: None,
+            start_angle: 0.0,
+            end_angle: std::f32::consts::TAU, // Root owns the full circle
+            radial_distance: 0.0,
         }
     }
 
@@ -102,6 +120,9 @@ impl DirNode {
             depth: 1, // Will be set correctly when added to tree
             target_distance: DEFAULT_DIR_RADIUS * 3.0,
             parent_position: None,
+            start_angle: 0.0, // Will be set when positioned
+            end_angle: 0.0,
+            radial_distance: RADIAL_DISTANCE_SCALE,
         }
     }
 
@@ -242,6 +263,141 @@ impl DirNode {
     #[inline]
     pub fn set_parent_position(&mut self, pos: Option<Vec2>) {
         self.parent_position = pos;
+    }
+
+    /// Returns the start angle of this directory's angular sector.
+    #[inline]
+    #[must_use]
+    pub const fn start_angle(&self) -> f32 {
+        self.start_angle
+    }
+
+    /// Returns the end angle of this directory's angular sector.
+    #[inline]
+    #[must_use]
+    pub const fn end_angle(&self) -> f32 {
+        self.end_angle
+    }
+
+    /// Returns the angular span of this directory's sector.
+    #[inline]
+    #[must_use]
+    pub fn angular_span(&self) -> f32 {
+        self.end_angle - self.start_angle
+    }
+
+    /// Returns the center angle of this directory's sector.
+    #[inline]
+    #[must_use]
+    pub fn center_angle(&self) -> f32 {
+        (self.start_angle + self.end_angle) / 2.0
+    }
+
+    /// Sets the angular sector for this directory.
+    #[inline]
+    pub fn set_angular_sector(&mut self, start: f32, end: f32) {
+        self.start_angle = start;
+        self.end_angle = end;
+    }
+
+    /// Returns the radial distance from root.
+    #[inline]
+    #[must_use]
+    pub const fn radial_distance(&self) -> f32 {
+        self.radial_distance
+    }
+
+    /// Sets the radial distance.
+    #[inline]
+    pub fn set_radial_distance(&mut self, distance: f32) {
+        self.radial_distance = distance;
+    }
+
+    /// Calculates the radial position for this directory node.
+    ///
+    /// Position is calculated as polar coordinates: (angle, distance) from origin.
+    #[must_use]
+    pub fn calculate_radial_position(&self) -> Vec2 {
+        if self.depth == 0 {
+            return Vec2::ZERO; // Root at center
+        }
+
+        let angle = self.center_angle();
+        Vec2::new(
+            angle.cos() * self.radial_distance,
+            angle.sin() * self.radial_distance,
+        )
+    }
+
+    /// Allocates angular sectors for child directories.
+    ///
+    /// Each child gets a portion of this directory's angular sector based on
+    /// its "weight" (number of descendants). Heavier children get more space.
+    #[must_use]
+    pub fn allocate_child_sectors(&self, child_weights: &[f32]) -> Vec<(f32, f32)> {
+        if child_weights.is_empty() {
+            return Vec::new();
+        }
+
+        let total_weight: f32 = child_weights.iter().sum();
+        if total_weight <= 0.0 {
+            // Equal distribution if no weights
+            let span = self.angular_span() / child_weights.len() as f32;
+            return (0..child_weights.len())
+                .map(|i| {
+                    let start = self.start_angle + i as f32 * span;
+                    (start, start + span)
+                })
+                .collect();
+        }
+
+        let mut sectors = Vec::with_capacity(child_weights.len());
+        let mut current_angle = self.start_angle;
+
+        for weight in child_weights {
+            let proportion = weight / total_weight;
+            let span = (self.angular_span() * proportion).max(MIN_ANGULAR_SPAN);
+            sectors.push((current_angle, current_angle + span));
+            current_angle += span;
+        }
+
+        sectors
+    }
+
+    /// Gets positions for files arranged around this directory.
+    ///
+    /// Files are positioned in a semi-circle at the outer edge of the directory's
+    /// angular sector, creating a "leaf" pattern at branch ends.
+    #[must_use]
+    pub fn get_file_positions_radial(&self, count: usize) -> Vec<Vec2> {
+        if count == 0 {
+            return Vec::new();
+        }
+
+        // Files are positioned slightly beyond the directory
+        let file_distance = self.radial_distance + self.radius * 1.5;
+
+        // Spread files across the angular sector
+        let span = self.angular_span();
+        let padding = span * 0.1; // 10% padding on each side
+        let usable_span = span - padding * 2.0;
+        let start = self.start_angle + padding;
+
+        if count == 1 {
+            let angle = self.center_angle();
+            return vec![Vec2::new(
+                angle.cos() * file_distance,
+                angle.sin() * file_distance,
+            )];
+        }
+
+        (0..count)
+            .map(|i| {
+                let t = i as f32 / (count - 1) as f32;
+                let angle = start + t * usable_span;
+                Vec2::new(angle.cos() * file_distance, angle.sin() * file_distance)
+            })
+            .collect()
     }
 
     /// Adds a child directory.
@@ -563,6 +719,169 @@ impl DirTree {
                 self.id_allocator.free(id);
                 removed.push(id);
             }
+        }
+    }
+
+    /// Computes the radial tree layout for all directories.
+    ///
+    /// This assigns angular sectors and radial positions to create a
+    /// Gource-like radial tree visualization where:
+    /// - Root is at center
+    /// - Directories branch out radially based on depth
+    /// - Each directory owns an angular sector
+    /// - Child directories inherit portions of their parent's sector
+    pub fn compute_radial_layout(&mut self) {
+        // First pass: calculate weights (total descendants) for each node
+        let weights = self.calculate_subtree_weights();
+
+        // Second pass: assign angular sectors starting from root
+        self.assign_angular_sectors(self.root_id, 0.0, std::f32::consts::TAU, &weights);
+
+        // Third pass: calculate and apply radial positions
+        self.apply_radial_positions();
+    }
+
+    /// Calculates the total weight (descendants count) for each directory.
+    fn calculate_subtree_weights(&self) -> Vec<f32> {
+        let mut weights = vec![0.0f32; self.nodes.len()];
+
+        // Process in reverse depth order (leaves first)
+        let mut nodes_by_depth: Vec<(usize, u32)> = self
+            .nodes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, opt)| opt.as_ref().map(|n| (i, n.depth())))
+            .collect();
+
+        nodes_by_depth.sort_by(|a, b| b.1.cmp(&a.1)); // Descending depth
+
+        for (idx, _depth) in nodes_by_depth {
+            if let Some(node) = &self.nodes[idx] {
+                // Base weight: 1 for files + accumulated children weights
+                let file_weight = node.files().len() as f32;
+                let child_weight: f32 = node
+                    .children()
+                    .iter()
+                    .filter_map(|cid| weights.get(cid.index_usize()))
+                    .sum();
+
+                weights[idx] = (1.0 + file_weight + child_weight).max(1.0);
+            }
+        }
+
+        weights
+    }
+
+    /// Recursively assigns angular sectors to directories.
+    fn assign_angular_sectors(
+        &mut self,
+        dir_id: DirId,
+        start_angle: f32,
+        end_angle: f32,
+        weights: &[f32],
+    ) {
+        let idx = dir_id.index_usize();
+
+        // Get children and their weights
+        let children: Vec<DirId> = self
+            .get(dir_id)
+            .map(|n| n.children().to_vec())
+            .unwrap_or_default();
+
+        let child_weights: Vec<f32> = children
+            .iter()
+            .map(|cid| weights.get(cid.index_usize()).copied().unwrap_or(1.0))
+            .collect();
+
+        // Set this node's sector
+        if let Some(node) = self.nodes.get_mut(idx).and_then(|opt| opt.as_mut()) {
+            node.set_angular_sector(start_angle, end_angle);
+        }
+
+        if children.is_empty() {
+            return;
+        }
+
+        // Allocate sectors to children based on weight
+        let total_weight: f32 = child_weights.iter().sum();
+        let span = end_angle - start_angle;
+        let mut current_angle = start_angle;
+
+        for (child_id, weight) in children.iter().zip(child_weights.iter()) {
+            let proportion = if total_weight > 0.0 {
+                weight / total_weight
+            } else {
+                1.0 / children.len() as f32
+            };
+            let child_span = (span * proportion).max(MIN_ANGULAR_SPAN);
+            let child_end = current_angle + child_span;
+
+            self.assign_angular_sectors(*child_id, current_angle, child_end, weights);
+
+            current_angle = child_end;
+        }
+    }
+
+    /// Applies radial positions to all directories based on their sectors.
+    fn apply_radial_positions(&mut self) {
+        for node in self.nodes.iter_mut().flatten() {
+            let depth = node.depth();
+            let distance = depth as f32 * RADIAL_DISTANCE_SCALE;
+            node.set_radial_distance(distance);
+
+            let new_pos = node.calculate_radial_position();
+            node.set_position(new_pos);
+        }
+    }
+
+    /// Recalculates radial layout for a single branch when a new directory is added.
+    ///
+    /// More efficient than full `compute_radial_layout()` for incremental updates.
+    pub fn update_branch_layout(&mut self, dir_id: DirId) {
+        // Find the root of this branch (first ancestor with multiple children or root)
+        let mut branch_root = dir_id;
+        while let Some(parent_id) = self.get(branch_root).and_then(DirNode::parent) {
+            if let Some(parent) = self.get(parent_id) {
+                if parent.children().len() > 1 || parent.is_root() {
+                    branch_root = parent_id;
+                    break;
+                }
+            }
+            branch_root = parent_id;
+        }
+
+        // Recompute layout for this subtree
+        let weights = self.calculate_subtree_weights();
+
+        if let Some(root) = self.get(branch_root) {
+            let start = root.start_angle();
+            let end = root.end_angle();
+            self.assign_angular_sectors(branch_root, start, end, &weights);
+        }
+
+        // Apply positions to this subtree
+        self.apply_positions_recursive(branch_root);
+    }
+
+    /// Recursively applies radial positions to a subtree.
+    fn apply_positions_recursive(&mut self, dir_id: DirId) {
+        let children: Vec<DirId> = self
+            .get(dir_id)
+            .map(|n| n.children().to_vec())
+            .unwrap_or_default();
+
+        // Update this node's position
+        if let Some(node) = self.get_mut(dir_id) {
+            let depth = node.depth();
+            let distance = depth as f32 * RADIAL_DISTANCE_SCALE;
+            node.set_radial_distance(distance);
+            let new_pos = node.calculate_radial_position();
+            node.set_position(new_pos);
+        }
+
+        // Recurse to children
+        for child_id in children {
+            self.apply_positions_recursive(child_id);
         }
     }
 

@@ -13,7 +13,7 @@
 //! let texture_id = renderer.load_texture(img.width(), img.height(), img.data());
 //! ```
 
-use std::io::{BufReader, Read};
+use std::io::{BufRead, BufReader, Seek};
 use std::path::Path;
 
 /// Error type for image loading operations.
@@ -125,7 +125,7 @@ impl Image {
     }
 
     /// Loads a PNG image from any reader.
-    fn load_png<R: Read>(reader: R) -> Result<Self, ImageError> {
+    fn load_png<R: BufRead + Seek>(reader: R) -> Result<Self, ImageError> {
         let decoder = png::Decoder::new(reader);
         let mut png_reader = decoder.read_info()?;
 
@@ -140,7 +140,10 @@ impl Image {
         let mut output = vec![0u8; output_size];
 
         // Read the frame
-        let mut raw_buffer = vec![0u8; png_reader.output_buffer_size()];
+        let buffer_size = png_reader
+            .output_buffer_size()
+            .ok_or_else(|| ImageError::Decode("PNG output buffer size unavailable".to_string()))?;
+        let mut raw_buffer = vec![0u8; buffer_size];
         let frame_info = png_reader.next_frame(&mut raw_buffer)?;
         let raw_data = &raw_buffer[..frame_info.buffer_size()];
 

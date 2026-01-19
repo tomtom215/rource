@@ -89,6 +89,9 @@ pub struct Scene {
 
     /// Whether entity bounds need recalculation.
     bounds_dirty: bool,
+
+    /// Whether the radial layout needs recomputation.
+    layout_dirty: bool,
 }
 
 impl Scene {
@@ -117,6 +120,7 @@ impl Scene {
             update_count: 0,
             cached_entity_bounds: None,
             bounds_dirty: true,
+            layout_dirty: true,
         }
     }
 
@@ -316,26 +320,56 @@ impl Scene {
 
         // Get or create parent directory
         let parent_path = path.parent().unwrap_or_else(|| Path::new(""));
+        let dir_count_before = self.directories.len();
         let dir_id = self.directories.get_or_create_path(parent_path);
+
+        // If new directories were created, mark layout for recomputation
+        if self.directories.len() > dir_count_before {
+            self.layout_dirty = true;
+        }
 
         // Create file
         let raw_id = self.file_id_allocator.allocate();
         let id = FileId::new(raw_id.index(), raw_id.generation());
         let mut file = FileNode::new(id, path, dir_id);
 
-        // Position file near its parent directory
+        // Position file using radial layout around its parent directory
         if let Some(dir) = self.directories.get(dir_id) {
-            let dir_pos = dir.position();
-            // Offset based on file name hash for deterministic placement
+            // Calculate position within the directory's angular sector
+            let file_count = dir.files().len();
+
+            // Get the directory's angular sector
+            let start_angle = dir.start_angle();
+            let end_angle = dir.end_angle();
+            let span = end_angle - start_angle;
+
+            // Offset based on file name hash for sub-positioning within sector
             let name = file.name();
             let hash = name.bytes().fold(0u32, |acc, b| {
                 acc.wrapping_mul(31).wrapping_add(u32::from(b))
             });
-            let angle = (hash % 360) as f32 * std::f32::consts::PI / 180.0;
-            let offset = Vec2::new(angle.cos(), angle.sin()) * 30.0;
 
-            file.set_position(dir_pos + offset);
-            file.set_target(dir_pos + offset);
+            // Position file at the outer edge of the directory's sector
+            let radial_distance = dir.radial_distance() + dir.radius() * 1.5 + 20.0;
+
+            // Distribute files across the angular sector
+            let padding = span * 0.1;
+            let usable_span = (span - padding * 2.0).max(0.05);
+            let base_angle = if file_count == 0 {
+                dir.center_angle()
+            } else {
+                // Spread files based on hash to avoid clustering
+                let t = (hash % 1000) as f32 / 1000.0;
+                start_angle + padding + t * usable_span
+            };
+
+            let pos = Vec2::new(
+                base_angle.cos() * radial_distance,
+                base_angle.sin() * radial_distance,
+            );
+
+            file.set_position(pos);
+            file.set_target(pos);
         }
 
         // Add to directory
@@ -533,10 +567,20 @@ impl Scene {
             }
         }
 
-        // Update directory physics
+        // Update radial layout if tree structure changed
+        if self.layout_dirty {
+            self.directories.compute_radial_layout();
+            self.layout_dirty = false;
+
+            // Update file positions to match new directory positions
+            self.update_file_positions_for_layout();
+        }
+
+        // Update directory physics (light forces to maintain stability)
         self.directories.update_parent_positions();
         for dir in self.directories.iter_mut() {
-            dir.update_physics(dt, 0.95);
+            // Apply very light physics to allow minor adjustments
+            dir.update_physics(dt, 0.98);
         }
 
         // Invalidate bounds cache since entities may have moved
@@ -549,6 +593,61 @@ impl Scene {
         // This is O(n) so we don't want to do it every frame
         if self.update_count % Self::SPATIAL_REBUILD_INTERVAL == 0 || files_removed {
             self.rebuild_spatial_index();
+        }
+    }
+
+    /// Updates file positions to match their directory's new radial position.
+    ///
+    /// Called after recomputing the radial layout to ensure files move with
+    /// their parent directories.
+    fn update_file_positions_for_layout(&mut self) {
+        // Collect directory info: (dir_id, position, start_angle, end_angle, radial_distance, radius)
+        let dir_info: HashMap<_, _> = self
+            .directories
+            .iter()
+            .map(|d| {
+                (
+                    d.id(),
+                    (
+                        d.position(),
+                        d.start_angle(),
+                        d.end_angle(),
+                        d.radial_distance(),
+                        d.radius(),
+                    ),
+                )
+            })
+            .collect();
+
+        // Update each file's position based on its directory
+        for file in self.files.values_mut() {
+            let dir_id = file.directory();
+            if let Some(&(_dir_pos, start_angle, end_angle, radial_distance, radius)) =
+                dir_info.get(&dir_id)
+            {
+                let span = end_angle - start_angle;
+
+                // Use file name hash for deterministic positioning within sector
+                let name = file.name();
+                let hash = name.bytes().fold(0u32, |acc, b| {
+                    acc.wrapping_mul(31).wrapping_add(u32::from(b))
+                });
+
+                // Position file at outer edge of directory's sector
+                let file_distance = radial_distance + radius * 1.5 + 20.0;
+
+                // Spread files within the angular sector
+                let padding = span * 0.1;
+                let usable_span = (span - padding * 2.0).max(0.05);
+                let t = (hash % 1000) as f32 / 1000.0;
+                let angle = start_angle + padding + t * usable_span;
+
+                let new_pos = Vec2::new(angle.cos() * file_distance, angle.sin() * file_distance);
+
+                file.set_target(new_pos);
+                // Optionally, snap position immediately for layout changes
+                file.set_position(new_pos);
+            }
         }
     }
 
