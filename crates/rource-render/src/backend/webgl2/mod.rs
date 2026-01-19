@@ -31,6 +31,7 @@ pub mod textures;
 use std::collections::HashMap;
 
 use wasm_bindgen::JsCast;
+use wasm_bindgen::JsValue;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext, WebGlProgram, WebGlUniformLocation};
 
 use rource_math::{Bounds, Color, Mat4, Vec2};
@@ -151,8 +152,25 @@ pub struct WebGl2Renderer {
 impl WebGl2Renderer {
     /// Creates a new WebGL2 renderer attached to a canvas.
     pub fn new(canvas: &HtmlCanvasElement) -> Result<Self, WebGl2Error> {
+        // Create context options with preserveDrawingBuffer: true
+        // This is required for screenshots (canvas.toBlob/toDataURL) to work correctly
+        let context_options = js_sys::Object::new();
+        js_sys::Reflect::set(
+            &context_options,
+            &JsValue::from_str("preserveDrawingBuffer"),
+            &JsValue::from(true),
+        )
+        .ok();
+        // Also set alpha to true for proper transparency blending
+        js_sys::Reflect::set(
+            &context_options,
+            &JsValue::from_str("alpha"),
+            &JsValue::from(true),
+        )
+        .ok();
+
         let gl = canvas
-            .get_context("webgl2")
+            .get_context_with_context_options("webgl2", &context_options)
             .ok()
             .flatten()
             .and_then(|ctx| ctx.dyn_into::<WebGl2RenderingContext>().ok())
