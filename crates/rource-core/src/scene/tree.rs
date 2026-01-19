@@ -60,6 +60,12 @@ pub struct DirNode {
 
     /// Cached parent position for physics (updated each frame).
     parent_position: Option<Vec2>,
+
+    /// Whether this node is pinned (fixed in place, not affected by physics).
+    pinned: bool,
+
+    /// Whether this node is currently highlighted (hovered/selected).
+    highlighted: bool,
 }
 
 impl DirNode {
@@ -80,6 +86,8 @@ impl DirNode {
             depth: 0,
             target_distance: 0.0,
             parent_position: None,
+            pinned: false,
+            highlighted: false,
         }
     }
 
@@ -102,6 +110,8 @@ impl DirNode {
             depth: 1, // Will be set correctly when added to tree
             target_distance: DEFAULT_DIR_RADIUS * 3.0,
             parent_position: None,
+            pinned: false,
+            highlighted: false,
         }
     }
 
@@ -242,6 +252,36 @@ impl DirNode {
     #[inline]
     pub fn set_parent_position(&mut self, pos: Option<Vec2>) {
         self.parent_position = pos;
+    }
+
+    /// Returns whether this node is pinned (fixed in place).
+    #[inline]
+    #[must_use]
+    pub const fn is_pinned(&self) -> bool {
+        self.pinned
+    }
+
+    /// Sets whether this node is pinned.
+    #[inline]
+    pub fn set_pinned(&mut self, pinned: bool) {
+        self.pinned = pinned;
+        if pinned {
+            // Stop movement when pinning
+            self.velocity = Vec2::ZERO;
+        }
+    }
+
+    /// Returns whether this node is highlighted.
+    #[inline]
+    #[must_use]
+    pub const fn is_highlighted(&self) -> bool {
+        self.highlighted
+    }
+
+    /// Sets whether this node is highlighted.
+    #[inline]
+    pub fn set_highlighted(&mut self, highlighted: bool) {
+        self.highlighted = highlighted;
     }
 
     /// Adds a child directory.

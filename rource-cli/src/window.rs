@@ -395,6 +395,7 @@ impl App {
             button,
             state,
             &mut self.mouse,
+            &mut self.scene,
             &mut self.camera,
             self.camera_3d.as_mut(),
             viewport,
@@ -569,6 +570,7 @@ impl ApplicationHandler for App {
                     position.x,
                     position.y,
                     &mut self.mouse,
+                    &mut self.scene,
                     &mut self.camera,
                     self.camera_3d.as_mut(),
                     self.args.disable_input,
@@ -635,11 +637,20 @@ mod tests {
         let initial_pos = app.camera.target_position();
 
         // Start drag
-        handle_mouse_move(100.0, 100.0, &mut app.mouse, &mut app.camera, None, false);
+        handle_mouse_move(
+            100.0,
+            100.0,
+            &mut app.mouse,
+            &mut app.scene,
+            &mut app.camera,
+            None,
+            false,
+        );
         let _ = handle_mouse_button(
             MouseButton::Left,
             ElementState::Pressed,
             &mut app.mouse,
+            &mut app.scene,
             &mut app.camera,
             None,
             (800.0, 600.0),
@@ -649,7 +660,15 @@ mod tests {
         assert!(app.mouse.dragging);
 
         // Move mouse (should pan)
-        handle_mouse_move(150.0, 150.0, &mut app.mouse, &mut app.camera, None, false);
+        handle_mouse_move(
+            150.0,
+            150.0,
+            &mut app.mouse,
+            &mut app.scene,
+            &mut app.camera,
+            None,
+            false,
+        );
 
         // Camera should have moved
         assert_ne!(app.camera.target_position(), initial_pos);
@@ -659,6 +678,7 @@ mod tests {
             MouseButton::Left,
             ElementState::Released,
             &mut app.mouse,
+            &mut app.scene,
             &mut app.camera,
             None,
             (800.0, 600.0),
@@ -703,18 +723,35 @@ mod tests {
         let initial_zoom = app.camera.target_zoom();
 
         // Try to drag (should be ignored)
-        handle_mouse_move(100.0, 100.0, &mut app.mouse, &mut app.camera, None, true);
+        handle_mouse_move(
+            100.0,
+            100.0,
+            &mut app.mouse,
+            &mut app.scene,
+            &mut app.camera,
+            None,
+            true,
+        );
         let _ = handle_mouse_button(
             MouseButton::Left,
             ElementState::Pressed,
             &mut app.mouse,
+            &mut app.scene,
             &mut app.camera,
             None,
             (800.0, 600.0),
             100,
             true,
         );
-        handle_mouse_move(200.0, 200.0, &mut app.mouse, &mut app.camera, None, true);
+        handle_mouse_move(
+            200.0,
+            200.0,
+            &mut app.mouse,
+            &mut app.scene,
+            &mut app.camera,
+            None,
+            true,
+        );
 
         // Camera should not have moved
         assert_eq!(app.camera.target_position(), initial_pos);
@@ -745,6 +782,7 @@ mod tests {
             MouseButton::Middle,
             ElementState::Pressed,
             &mut app.mouse,
+            &mut app.scene,
             &mut app.camera,
             None,
             (800.0, 600.0),

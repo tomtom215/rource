@@ -66,6 +66,12 @@ pub struct FileNode {
 
     /// Time since last modification.
     idle_time: f32,
+
+    /// Whether this file is pinned (fixed in place).
+    pinned: bool,
+
+    /// Whether this file is highlighted (hovered/selected).
+    highlighted: bool,
 }
 
 impl FileNode {
@@ -98,6 +104,8 @@ impl FileNode {
             alpha: 0.0, // Start invisible, fade in
             removing: false,
             idle_time: 0.0,
+            pinned: false,
+            highlighted: false,
         }
     }
 
@@ -214,6 +222,32 @@ impl FileNode {
     #[must_use]
     pub const fn touch_time(&self) -> f32 {
         self.touch_time
+    }
+
+    /// Returns whether this file is pinned (fixed in place).
+    #[inline]
+    #[must_use]
+    pub const fn is_pinned(&self) -> bool {
+        self.pinned
+    }
+
+    /// Sets whether this file is pinned.
+    #[inline]
+    pub fn set_pinned(&mut self, pinned: bool) {
+        self.pinned = pinned;
+    }
+
+    /// Returns whether this file is highlighted.
+    #[inline]
+    #[must_use]
+    pub const fn is_highlighted(&self) -> bool {
+        self.highlighted
+    }
+
+    /// Sets whether this file is highlighted.
+    #[inline]
+    pub fn set_highlighted(&mut self, highlighted: bool) {
+        self.highlighted = highlighted;
     }
 
     /// Gets the color for a file extension.

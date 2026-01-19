@@ -49,7 +49,8 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 use rource_core::camera::Camera;
 use rource_core::config::Settings;
-use rource_core::scene::{ActionType, Scene};
+use rource_core::entity::{DirId, FileId, UserId};
+use rource_core::scene::{ActionType, EntityType, Scene};
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::{default_font, FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
 use rource_vcs::parser::{CustomParser, GitParser, Parser};
@@ -213,6 +214,35 @@ const BEAM_GLOW_INTENSITY: f32 = 0.4;
 
 /// Number of glow layers for beams
 const BEAM_GLOW_LAYERS: usize = 3;
+
+/// Hit test radius for clicking on entities (in screen pixels)
+const HIT_TEST_RADIUS: f32 = 20.0;
+
+// ============================================================================
+// Entity Drag State
+// ============================================================================
+
+/// Represents an entity being dragged by the user.
+#[derive(Debug, Clone, Copy)]
+enum DraggedEntity {
+    /// A directory node
+    Directory(DirId),
+    /// A file node
+    File(FileId),
+    /// A user/contributor
+    User(UserId),
+}
+
+impl DraggedEntity {
+    /// Creates a DraggedEntity from an EntityType.
+    fn from_entity_type(entity: EntityType) -> Self {
+        match entity {
+            EntityType::Directory(id) => DraggedEntity::Directory(id),
+            EntityType::File(id) => DraggedEntity::File(id),
+            EntityType::User(id) => DraggedEntity::User(id),
+        }
+    }
+}
 
 // ============================================================================
 // Spline Interpolation
@@ -746,6 +776,11 @@ pub struct Rource {
     camera_start_x: f32,
     camera_start_y: f32,
 
+    /// Currently dragged entity (if any)
+    dragged_entity: Option<DraggedEntity>,
+    /// Offset from mouse to entity center when drag started
+    drag_offset: Vec2,
+
     /// Font ID for text rendering
     font_id: Option<FontId>,
 
@@ -812,6 +847,8 @@ impl Rource {
             drag_start_y: 0.0,
             camera_start_x: 0.0,
             camera_start_y: 0.0,
+            dragged_entity: None,
+            drag_offset: Vec2::ZERO,
             font_id,
             show_labels: true, // Labels enabled by default
             perf_metrics: PerformanceMetrics::new(),
@@ -1026,12 +1063,38 @@ impl Rource {
         self.show_labels
     }
 
-    /// Handles mouse down events.
+    /// Handles mouse down events (left-click).
+    ///
+    /// This will either start dragging an entity (if one is under the cursor)
+    /// or start dragging the camera (for panning).
     #[wasm_bindgen(js_name = onMouseDown)]
     pub fn on_mouse_down(&mut self, x: f32, y: f32) {
         self.mouse_down = true;
         self.drag_start_x = x;
         self.drag_start_y = y;
+
+        // Convert screen position to world position for hit testing
+        let screen_pos = Vec2::new(x, y);
+        let world_pos = self.camera.screen_to_world(screen_pos);
+
+        // Hit test radius in world space
+        let hit_radius = HIT_TEST_RADIUS / self.camera.zoom();
+
+        // Check for entity under cursor (prioritize users > files > directories)
+        if let Some(entity) = self.find_entity_at_position(world_pos, hit_radius) {
+            // Get the entity's current world position for offset calculation
+            if let Some(entity_pos) = self.get_entity_position(&entity) {
+                self.dragged_entity = Some(DraggedEntity::from_entity_type(entity));
+                self.drag_offset = entity_pos - world_pos;
+
+                // Pin the entity so it stops being affected by physics
+                self.set_entity_pinned(&entity, true);
+                return;
+            }
+        }
+
+        // No entity hit - set up camera drag
+        self.dragged_entity = None;
         self.camera_start_x = self.camera.position().x;
         self.camera_start_y = self.camera.position().y;
     }
@@ -1040,20 +1103,50 @@ impl Rource {
     #[wasm_bindgen(js_name = onMouseUp)]
     pub fn on_mouse_up(&mut self) {
         self.mouse_down = false;
+        self.dragged_entity = None;
     }
 
     /// Handles mouse move events.
+    ///
+    /// If dragging an entity, moves it to follow the cursor.
+    /// If dragging the camera (no entity), pans the view.
     #[wasm_bindgen(js_name = onMouseMove)]
     pub fn on_mouse_move(&mut self, x: f32, y: f32) {
         self.mouse_x = x;
         self.mouse_y = y;
 
         if self.mouse_down {
-            let dx = x - self.drag_start_x;
-            let dy = y - self.drag_start_y;
-            let world_delta = Vec2::new(dx, dy) / self.camera.zoom();
-            let new_pos = Vec2::new(self.camera_start_x, self.camera_start_y) - world_delta;
-            self.camera.jump_to(new_pos);
+            let screen_pos = Vec2::new(x, y);
+
+            if let Some(dragged) = self.dragged_entity {
+                // Dragging an entity - update its position
+                let world_pos = self.camera.screen_to_world(screen_pos);
+                let new_entity_pos = world_pos + self.drag_offset;
+                self.set_entity_position(&dragged, new_entity_pos);
+            } else {
+                // Dragging camera - pan the view
+                let dx = x - self.drag_start_x;
+                let dy = y - self.drag_start_y;
+                let world_delta = Vec2::new(dx, dy) / self.camera.zoom();
+                let new_pos = Vec2::new(self.camera_start_x, self.camera_start_y) - world_delta;
+                self.camera.jump_to(new_pos);
+            }
+        }
+    }
+
+    /// Handles right-click (context menu) events.
+    ///
+    /// Right-clicking on a pinned entity will unpin it, allowing physics
+    /// simulation to affect it again.
+    #[wasm_bindgen(js_name = onContextMenu)]
+    pub fn on_context_menu(&mut self, x: f32, y: f32) {
+        let screen_pos = Vec2::new(x, y);
+        let world_pos = self.camera.screen_to_world(screen_pos);
+        let hit_radius = HIT_TEST_RADIUS / self.camera.zoom();
+
+        if let Some(entity) = self.find_entity_at_position(world_pos, hit_radius) {
+            // Unpin the entity
+            self.set_entity_pinned(&entity, false);
         }
     }
 
@@ -1445,6 +1538,118 @@ impl Rource {
         }
     }
 
+    // ========================================================================
+    // Entity Drag Helper Methods
+    // ========================================================================
+
+    /// Finds the entity at the given world position.
+    ///
+    /// Prioritizes: Users > Files > Directories
+    fn find_entity_at_position(&self, world_pos: Vec2, radius: f32) -> Option<EntityType> {
+        let entities = self.scene.query_entities_circle(world_pos, radius);
+
+        if entities.is_empty() {
+            return None;
+        }
+
+        // Prioritize by entity type: Users > Files > Directories
+        // Also prefer closer entities
+        let mut best_entity: Option<(EntityType, f32)> = None;
+
+        for entity in entities {
+            let entity_pos: Option<Vec2> = match &entity {
+                EntityType::User(id) => self.scene.users().get(id).map(|u| u.position()),
+                EntityType::File(id) => self.scene.files().get(id).map(|f| f.position()),
+                EntityType::Directory(id) => {
+                    self.scene.directories().get(*id).map(|d| d.position())
+                }
+            };
+
+            if let Some(pos) = entity_pos {
+                let distance = (pos - world_pos).length();
+                let priority = match &entity {
+                    EntityType::User(_) => 0, // Highest priority
+                    EntityType::File(_) => 1,
+                    EntityType::Directory(_) => 2, // Lowest priority
+                };
+
+                let should_replace = match &best_entity {
+                    None => true,
+                    Some((best, best_dist)) => {
+                        let best_priority = match best {
+                            EntityType::User(_) => 0,
+                            EntityType::File(_) => 1,
+                            EntityType::Directory(_) => 2,
+                        };
+                        // Replace if higher priority or same priority but closer
+                        priority < best_priority
+                            || (priority == best_priority && distance < *best_dist)
+                    }
+                };
+
+                if should_replace {
+                    best_entity = Some((entity, distance));
+                }
+            }
+        }
+
+        best_entity.map(|(e, _)| e)
+    }
+
+    /// Gets the world position of an entity.
+    fn get_entity_position(&self, entity: &EntityType) -> Option<Vec2> {
+        match entity {
+            EntityType::User(id) => self.scene.users().get(id).map(|u| u.position()),
+            EntityType::File(id) => self.scene.files().get(id).map(|f| f.position()),
+            EntityType::Directory(id) => self.scene.directories().get(*id).map(|d| d.position()),
+        }
+    }
+
+    /// Sets the world position of an entity.
+    fn set_entity_position(&mut self, entity: &DraggedEntity, position: Vec2) {
+        match entity {
+            DraggedEntity::User(id) => {
+                if let Some(user) = self.scene.get_user_mut(*id) {
+                    user.set_position(position);
+                    user.set_velocity(Vec2::ZERO);
+                }
+            }
+            DraggedEntity::File(id) => {
+                if let Some(file) = self.scene.get_file_mut(*id) {
+                    file.set_position(position);
+                    // FileNode doesn't expose velocity control - physics is handled internally
+                }
+            }
+            DraggedEntity::Directory(id) => {
+                if let Some(node) = self.scene.directories_mut().get_mut(*id) {
+                    node.set_position(position);
+                    node.set_velocity(Vec2::ZERO);
+                }
+            }
+        }
+    }
+
+    /// Sets the pinned state of an entity.
+    fn set_entity_pinned(&mut self, entity: &EntityType, pinned: bool) {
+        match entity {
+            EntityType::User(id) => {
+                if let Some(user) = self.scene.get_user_mut(*id) {
+                    user.set_pinned(pinned);
+                }
+            }
+            EntityType::File(id) => {
+                if let Some(file) = self.scene.get_file_mut(*id) {
+                    file.set_pinned(pinned);
+                }
+            }
+            EntityType::Directory(id) => {
+                if let Some(node) = self.scene.directories_mut().get_mut(*id) {
+                    node.set_pinned(pinned);
+                }
+            }
+        }
+    }
+
     /// Renders the current frame to the canvas.
     #[allow(clippy::too_many_lines)]
     fn render(&mut self) {
@@ -1526,6 +1731,12 @@ impl Rource {
                 // Small filled center dot
                 let center_color = dir_color.with_alpha(0.4);
                 renderer.draw_disc(screen_pos, radius * 0.25, center_color);
+
+                // Visual indicator for pinned directories (golden ring)
+                if dir.is_pinned() {
+                    let pin_color = Color::new(1.0, 0.9, 0.2, 0.7); // Golden/yellow
+                    renderer.draw_circle(screen_pos, radius + 2.5, 1.5, pin_color);
+                }
 
                 // Draw curved connections to children
                 for child_id in dir.children() {
@@ -1609,6 +1820,12 @@ impl Rource {
                     let highlight = Color::new(1.0, 1.0, 1.0, 0.3 * file.alpha());
                     renderer.draw_disc(screen_pos, effective_radius * 0.5, highlight);
                 }
+
+                // Visual indicator for pinned files (small "lock" ring)
+                if file.is_pinned() {
+                    let pin_color = Color::new(1.0, 0.9, 0.2, 0.8 * file.alpha()); // Golden/yellow
+                    renderer.draw_circle(screen_pos, effective_radius + 2.0, 1.5, pin_color);
+                }
             }
         }
 
@@ -1658,6 +1875,12 @@ impl Rource {
                     user.is_active(),
                     user.alpha(),
                 );
+
+                // Visual indicator for pinned users (golden ring)
+                if user.is_pinned() {
+                    let pin_color = Color::new(1.0, 0.9, 0.2, 0.8 * user.alpha()); // Golden/yellow
+                    renderer.draw_circle(screen_pos, radius + 3.0, 2.0, pin_color);
+                }
             }
         }
 

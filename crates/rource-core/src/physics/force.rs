@@ -320,6 +320,11 @@ impl ForceSimulation {
                 continue;
             }
 
+            // Skip pinned nodes (user has dragged and fixed them in place)
+            if node.is_pinned() {
+                continue;
+            }
+
             // Apply force as acceleration (assuming unit mass)
             node.add_velocity(forces[i] * dt);
 

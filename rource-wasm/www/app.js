@@ -2618,6 +2618,16 @@ function registerCanvasEventListeners() {
         safeWasmVoid('onWheel', () => rource.onWheel(e.deltaY));
     }, { passive: false });
 
+    // Right-click to unpin dragged entities
+    addManagedEventListener(canvas, 'contextmenu', (e) => {
+        e.preventDefault();
+        if (!isWasmHealthy()) return;
+        const rect = canvas.getBoundingClientRect();
+        safeWasmVoid('onContextMenu', () =>
+            rource.onContextMenu(e.clientX - rect.left, e.clientY - rect.top)
+        );
+    });
+
     // Touch controls with error boundaries
     addManagedEventListener(canvas, 'touchstart', (e) => {
         e.preventDefault();

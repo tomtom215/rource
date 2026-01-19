@@ -58,6 +58,9 @@ pub struct User {
     /// Is highlighted (mouse over or selected).
     highlighted: bool,
 
+    /// Whether this user is pinned (fixed in place).
+    pinned: bool,
+
     /// Visual radius.
     radius: f32,
 }
@@ -82,6 +85,7 @@ impl User {
             idle_time: 0.0,
             alpha: 0.0, // Fade in
             highlighted: false,
+            pinned: false,
             radius: DEFAULT_USER_RADIUS,
         }
     }
@@ -139,6 +143,12 @@ impl User {
         self.velocity
     }
 
+    /// Sets the velocity.
+    #[inline]
+    pub fn set_velocity(&mut self, velocity: Vec2) {
+        self.velocity = velocity;
+    }
+
     /// Returns the user's color.
     #[inline]
     #[must_use]
@@ -178,6 +188,24 @@ impl User {
     #[inline]
     pub fn set_highlighted(&mut self, highlighted: bool) {
         self.highlighted = highlighted;
+    }
+
+    /// Returns whether this user is pinned (fixed in place).
+    #[inline]
+    #[must_use]
+    pub const fn is_pinned(&self) -> bool {
+        self.pinned
+    }
+
+    /// Sets whether this user is pinned.
+    #[inline]
+    pub fn set_pinned(&mut self, pinned: bool) {
+        self.pinned = pinned;
+        if pinned {
+            // Stop movement when pinning
+            self.velocity = Vec2::ZERO;
+            self.target = None;
+        }
     }
 
     /// Returns the visual radius.

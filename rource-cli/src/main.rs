@@ -218,11 +218,20 @@ mod tests {
         let initial_pos = app.camera.target_position();
 
         // Start drag
-        crate::input::handle_mouse_move(100.0, 100.0, &mut app.mouse, &mut app.camera, None, false);
+        crate::input::handle_mouse_move(
+            100.0,
+            100.0,
+            &mut app.mouse,
+            &mut app.scene,
+            &mut app.camera,
+            None,
+            false,
+        );
         crate::input::handle_mouse_button(
             MouseButton::Left,
             ElementState::Pressed,
             &mut app.mouse,
+            &mut app.scene,
             &mut app.camera,
             None,
             (800.0, 600.0),
@@ -232,7 +241,15 @@ mod tests {
         assert!(app.mouse.dragging);
 
         // Move mouse (should pan)
-        crate::input::handle_mouse_move(150.0, 150.0, &mut app.mouse, &mut app.camera, None, false);
+        crate::input::handle_mouse_move(
+            150.0,
+            150.0,
+            &mut app.mouse,
+            &mut app.scene,
+            &mut app.camera,
+            None,
+            false,
+        );
 
         // Camera should have moved (pan inverts direction)
         assert_ne!(app.camera.target_position(), initial_pos);
@@ -242,6 +259,7 @@ mod tests {
             MouseButton::Left,
             ElementState::Released,
             &mut app.mouse,
+            &mut app.scene,
             &mut app.camera,
             None,
             (800.0, 600.0),
@@ -287,18 +305,35 @@ mod tests {
         let initial_zoom = app.camera.target_zoom();
 
         // Try to drag
-        crate::input::handle_mouse_move(100.0, 100.0, &mut app.mouse, &mut app.camera, None, true);
+        crate::input::handle_mouse_move(
+            100.0,
+            100.0,
+            &mut app.mouse,
+            &mut app.scene,
+            &mut app.camera,
+            None,
+            true,
+        );
         crate::input::handle_mouse_button(
             MouseButton::Left,
             ElementState::Pressed,
             &mut app.mouse,
+            &mut app.scene,
             &mut app.camera,
             None,
             (800.0, 600.0),
             100,
             true,
         );
-        crate::input::handle_mouse_move(200.0, 200.0, &mut app.mouse, &mut app.camera, None, true);
+        crate::input::handle_mouse_move(
+            200.0,
+            200.0,
+            &mut app.mouse,
+            &mut app.scene,
+            &mut app.camera,
+            None,
+            true,
+        );
 
         // Camera should not have moved (input disabled)
         assert_eq!(app.camera.target_position(), initial_pos);
@@ -329,6 +364,7 @@ mod tests {
             MouseButton::Middle,
             ElementState::Pressed,
             &mut app.mouse,
+            &mut app.scene,
             &mut app.camera,
             None,
             (800.0, 600.0),
