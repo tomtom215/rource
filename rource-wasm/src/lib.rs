@@ -1453,10 +1453,10 @@ impl Rource {
                     let dist = (user.position() - world_pos).length();
                     // Check if within the user's radius (with some tolerance)
                     let effective_radius = user.radius() + hit_radius * 0.5;
-                    if dist <= effective_radius {
-                        if closest_user.is_none() || dist < closest_user.unwrap().1 {
-                            closest_user = Some((user_id, dist));
-                        }
+                    if dist <= effective_radius
+                        && (closest_user.is_none() || dist < closest_user.unwrap().1)
+                    {
+                        closest_user = Some((user_id, dist));
                     }
                 }
             }
@@ -1485,10 +1485,10 @@ impl Rource {
                     let dist = (file.position() - world_pos).length();
                     // Check if within the file's radius (with some tolerance)
                     let effective_radius = file.radius() + hit_radius * 0.5;
-                    if dist <= effective_radius {
-                        if closest_file.is_none() || dist < closest_file.unwrap().1 {
-                            closest_file = Some((file_id, dist));
-                        }
+                    if dist <= effective_radius
+                        && (closest_file.is_none() || dist < closest_file.unwrap().1)
+                    {
+                        closest_file = Some((file_id, dist));
                     }
                 }
             }
