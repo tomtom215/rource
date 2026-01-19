@@ -2679,7 +2679,7 @@ footer a {
     height: 16px;
 }
 
-/* Fullscreen mode adjustments */
+/* Fullscreen mode adjustments - for document-level fullscreen */
 :fullscreen .app-container,
 :-webkit-full-screen .app-container {
     height: 100vh;
@@ -2714,6 +2714,126 @@ footer a {
 :fullscreen .viz-panel,
 :-webkit-full-screen .viz-panel {
     grid-column: 1 / -1;
+}
+
+/* Canvas container fullscreen mode (for element-level fullscreen) */
+#canvas-container:fullscreen,
+#canvas-container:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-primary);
+}
+
+#canvas-container:fullscreen #canvas,
+#canvas-container:-webkit-full-screen #canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Keep overlays visible in canvas-container fullscreen */
+#canvas-container:fullscreen .stats-overlay,
+#canvas-container:-webkit-full-screen .stats-overlay,
+#canvas-container:fullscreen .perf-overlay,
+#canvas-container:-webkit-full-screen .perf-overlay,
+#canvas-container:fullscreen .legend-panel,
+#canvas-container:-webkit-full-screen .legend-panel,
+#canvas-container:fullscreen .authors-panel,
+#canvas-container:-webkit-full-screen .authors-panel {
+    position: fixed;
+}
+
+/* Pseudo-fullscreen mode for mobile (iOS Safari doesn't support Fullscreen API) */
+.pseudo-fullscreen {
+    overflow: hidden;
+}
+
+.pseudo-fullscreen .app-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+}
+
+.pseudo-fullscreen header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.pseudo-fullscreen header:hover,
+.pseudo-fullscreen header:focus-within {
+    opacity: 1;
+}
+
+.pseudo-fullscreen footer {
+    display: none;
+}
+
+.pseudo-fullscreen .sidebar-panel {
+    display: none;
+}
+
+.pseudo-fullscreen .viz-panel {
+    grid-column: 1 / -1;
+    width: 100vw;
+    height: 100vh;
+}
+
+.pseudo-fullscreen #canvas-container {
+    width: 100vw;
+    height: 100vh;
+}
+
+.pseudo-fullscreen #canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Keep controls visible in pseudo-fullscreen */
+.pseudo-fullscreen .playback-controls {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.pseudo-fullscreen .playback-controls:hover {
+    opacity: 1;
+}
+
+/* Hide overlays that shouldn't be visible in fullscreen */
+.pseudo-fullscreen .sidebar-overlay {
+    display: none;
+}
+
+/* Ensure stats overlay stays visible and positioned correctly */
+.pseudo-fullscreen .stats-overlay {
+    position: fixed;
+    bottom: 4rem;
+    left: 1rem;
+}
+
+.pseudo-fullscreen .perf-overlay {
+    position: fixed;
+}
+
+.pseudo-fullscreen .legend-panel {
+    position: fixed;
+}
+
+.pseudo-fullscreen .authors-panel {
+    position: fixed;
 }
 
 /* ========================================

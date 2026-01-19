@@ -9,7 +9,9 @@ use rource_core::scene::{FileNode, Scene};
 use rource_core::{DirId, FileId, UserId};
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::effects::{BloomEffect, ShadowEffect};
-use rource_render::{FontId, Renderer, SoftwareRenderer, TextureId};
+use rource_render::{
+    estimate_text_width, FontId, LabelPlacer, Renderer, SoftwareRenderer, TextureId,
+};
 use rource_vcs::Commit;
 
 use crate::app::{App, PlaybackState};
@@ -527,6 +529,9 @@ fn render_files(
     // Use curves when zoomed out (better visual, acceptable perf)
     let use_curves = camera_zoom < 0.8;
 
+    // Collect label candidates for collision-aware rendering
+    let mut label_candidates: Vec<(Vec2, f32, f32, &str, f32)> = Vec::new();
+
     for &file_id in visible_ids {
         let Some(file) = scene.get_file(file_id) else {
             continue;
@@ -585,26 +590,76 @@ fn render_files(
             renderer.draw_disc(screen_pos, effective_radius * 0.5, highlight);
         }
 
-        // Draw filename label for prominent files when zoomed in
-        if show_filenames && file.alpha() > 0.5 && camera_zoom > 0.35 {
-            if let Some(fid) = font_id {
-                let name = file.name();
-                let label_pos = Vec2::new(
-                    screen_pos.x + effective_radius + 3.0,
-                    screen_pos.y - file_font_size * 0.3,
-                );
-                // Subtle shadow for readability
-                let shadow_color = Color::new(0.0, 0.0, 0.0, 0.5 * file.alpha());
-                renderer.draw_text(
-                    name,
-                    label_pos + Vec2::new(1.0, 1.0),
-                    fid,
-                    file_font_size,
-                    shadow_color,
-                );
-                let label_color = Color::new(0.95, 0.95, 0.95, 0.8 * file.alpha());
-                renderer.draw_text(name, label_pos, fid, file_font_size, label_color);
-            }
+        // Collect label candidate if conditions are met
+        if show_filenames && file.alpha() > 0.3 && camera_zoom > 0.15 {
+            // Priority based on visibility and activity (higher = more important)
+            let activity_bonus = if is_touched { 100.0 } else { 0.0 };
+            let priority = file.radius() * file.alpha() * 10.0 + activity_bonus;
+            label_candidates.push((
+                screen_pos,
+                effective_radius,
+                file.alpha(),
+                file.name(),
+                priority,
+            ));
+        }
+    }
+
+    // Draw labels with collision avoidance
+    if let Some(fid) = font_id {
+        render_file_labels(
+            renderer,
+            &mut label_candidates,
+            camera_zoom,
+            file_font_size,
+            fid,
+        );
+    }
+}
+
+/// Renders file labels with collision avoidance and adaptive visibility.
+fn render_file_labels(
+    renderer: &mut SoftwareRenderer,
+    candidates: &mut [(Vec2, f32, f32, &str, f32)],
+    camera_zoom: f32,
+    font_size: f32,
+    font_id: FontId,
+) {
+    // Sort by priority (highest first)
+    candidates.sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Create label placer with zoom-based limit
+    let mut placer = LabelPlacer::new(camera_zoom);
+
+    for &(screen_pos, radius, alpha, name, _priority) in candidates.iter() {
+        if !placer.can_place_more() {
+            break;
+        }
+
+        // Calculate label dimensions
+        let text_width = estimate_text_width(name, font_size);
+        let text_height = font_size;
+
+        // Primary position: right of the file
+        let primary_pos = Vec2::new(screen_pos.x + radius + 3.0, screen_pos.y - font_size * 0.3);
+
+        // Try to place with fallback positions
+        if let Some(label_pos) =
+            placer.try_place_with_fallback(primary_pos, text_width, text_height, screen_pos, radius)
+        {
+            // Draw shadow for readability
+            let shadow_color = Color::new(0.0, 0.0, 0.0, 0.5 * alpha);
+            renderer.draw_text(
+                name,
+                label_pos + Vec2::new(1.0, 1.0),
+                font_id,
+                font_size,
+                shadow_color,
+            );
+
+            // Draw label
+            let label_color = Color::new(0.95, 0.95, 0.95, 0.8 * alpha);
+            renderer.draw_text(name, label_pos, font_id, font_size, label_color);
         }
     }
 }

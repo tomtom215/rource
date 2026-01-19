@@ -52,7 +52,10 @@ use rource_core::config::Settings;
 use rource_core::entity::{DirId, FileId, UserId};
 use rource_core::scene::{ActionType, EntityType, Scene};
 use rource_math::{Bounds, Color, Vec2};
-use rource_render::{default_font, FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
+use rource_render::{
+    default_font, estimate_text_width, FontId, LabelPlacer, Renderer, SoftwareRenderer,
+    WebGl2Renderer,
+};
 use rource_vcs::parser::{CustomParser, GitParser, Parser};
 use rource_vcs::{Commit, FileAction};
 
@@ -1981,28 +1984,66 @@ impl Rource {
                     }
                 }
 
-                // Draw file name labels when zoomed in enough
-                if camera_zoom > 0.35 {
+                // Draw file name labels with collision avoidance and adaptive visibility
+                if camera_zoom > 0.15 {
                     let file_font_size = font_size * 0.8;
+
+                    // Collect label candidates with priority
+                    let mut label_candidates: Vec<(Vec2, f32, f32, &str, f32)> = Vec::new();
                     for file_id in &visible_files {
                         if let Some(file) = self.scene.get_file(*file_id) {
-                            if file.alpha() < 0.5 {
+                            if file.alpha() < 0.3 {
                                 continue;
                             }
 
                             let screen_pos = self.camera.world_to_screen(file.position());
                             let radius = (file.radius() * camera_zoom).max(2.0);
+                            let is_touched = file.touch_time() > 0.0;
 
-                            // Position label to the right of the file
-                            let label_pos = Vec2::new(
-                                screen_pos.x + radius + 3.0,
-                                screen_pos.y - file_font_size * 0.3,
-                            );
-                            let alpha = file.alpha();
+                            // Priority based on visibility and activity
+                            let activity_bonus = if is_touched { 100.0 } else { 0.0 };
+                            let priority = file.radius() * file.alpha() * 10.0 + activity_bonus;
 
-                            // Get just the filename, not the full path
-                            let name = file.name();
+                            label_candidates.push((
+                                screen_pos,
+                                radius,
+                                file.alpha(),
+                                file.name(),
+                                priority,
+                            ));
+                        }
+                    }
 
+                    // Sort by priority (highest first)
+                    label_candidates
+                        .sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
+
+                    // Use label placer for collision avoidance
+                    let mut placer = LabelPlacer::new(camera_zoom);
+
+                    for (screen_pos, radius, alpha, name, _priority) in &label_candidates {
+                        if !placer.can_place_more() {
+                            break;
+                        }
+
+                        // Calculate label dimensions
+                        let text_width = estimate_text_width(name, file_font_size);
+                        let text_height = file_font_size;
+
+                        // Primary position: right of the file
+                        let primary_pos = Vec2::new(
+                            screen_pos.x + radius + 3.0,
+                            screen_pos.y - file_font_size * 0.3,
+                        );
+
+                        // Try to place with fallback positions
+                        if let Some(label_pos) = placer.try_place_with_fallback(
+                            primary_pos,
+                            text_width,
+                            text_height,
+                            *screen_pos,
+                            *radius,
+                        ) {
                             // Shadow for better readability
                             let shadow_color = Color::new(0.0, 0.0, 0.0, 0.5 * alpha);
                             renderer.draw_text(
