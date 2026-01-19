@@ -297,6 +297,18 @@ export class Rource {
         wasm.rource_togglePlay(this.__wbg_ptr);
     }
     /**
+     * Zooms the camera toward a specific screen point.
+     *
+     * This keeps the point under the mouse cursor stationary while zooming,
+     * making it easier to zoom into specific areas of the visualization.
+     * @param {number} screen_x
+     * @param {number} screen_y
+     * @param {number} factor
+     */
+    zoomToward(screen_x, screen_y, factor) {
+        wasm.rource_zoomToward(this.__wbg_ptr, screen_x, screen_y, factor);
+    }
+    /**
      * Returns the number of loaded commits.
      * @returns {number}
      */
@@ -707,13 +719,16 @@ export class Rource {
         return ret;
     }
     /**
-     * Handles mouse wheel events for zooming.
+     * Handles mouse wheel events for zooming toward the mouse position.
      *
      * Uses a smooth, proportional zoom based on scroll amount.
+     * Zooms toward the mouse position so the content under the cursor stays in place.
      * @param {number} delta_y
+     * @param {number} mouse_x
+     * @param {number} mouse_y
      */
-    onWheel(delta_y) {
-        wasm.rource_onWheel(this.__wbg_ptr, delta_y);
+    onWheel(delta_y, mouse_x, mouse_y) {
+        wasm.rource_onWheel(this.__wbg_ptr, delta_y, mouse_x, mouse_y);
     }
     /**
      * Gets the current playback speed.

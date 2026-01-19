@@ -40,6 +40,13 @@ export class Rource {
    */
   togglePlay(): void;
   /**
+   * Zooms the camera toward a specific screen point.
+   *
+   * This keeps the point under the mouse cursor stationary while zooming,
+   * making it easier to zoom into specific areas of the visualization.
+   */
+  zoomToward(screen_x: number, screen_y: number, factor: number): void;
+  /**
    * Returns the number of loaded commits.
    */
   commitCount(): number;
@@ -229,11 +236,12 @@ export class Rource {
    */
   getZoom(): number;
   /**
-   * Handles mouse wheel events for zooming.
+   * Handles mouse wheel events for zooming toward the mouse position.
    *
    * Uses a smooth, proportional zoom based on scroll amount.
+   * Zooms toward the mouse position so the content under the cursor stays in place.
    */
-  onWheel(delta_y: number): void;
+  onWheel(delta_y: number, mouse_x: number, mouse_y: number): void;
   /**
    * Gets the current playback speed.
    */
@@ -303,7 +311,7 @@ export interface InitOutput {
   readonly rource_onMouseDown: (a: number, b: number, c: number) => void;
   readonly rource_onMouseMove: (a: number, b: number, c: number) => void;
   readonly rource_onMouseUp: (a: number) => void;
-  readonly rource_onWheel: (a: number, b: number) => void;
+  readonly rource_onWheel: (a: number, b: number, c: number, d: number) => void;
   readonly rource_pan: (a: number, b: number, c: number) => void;
   readonly rource_pause: (a: number) => void;
   readonly rource_play: (a: number) => void;
@@ -318,6 +326,7 @@ export interface InitOutput {
   readonly rource_stepForward: (a: number) => void;
   readonly rource_togglePlay: (a: number) => void;
   readonly rource_zoom: (a: number, b: number) => void;
+  readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
   readonly init_panic_hook: () => void;
   readonly __wbindgen_export: (a: number, b: number) => number;
   readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;

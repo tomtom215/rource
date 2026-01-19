@@ -952,8 +952,32 @@ impl Rource {
 
     /// Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
     pub fn zoom(&mut self, factor: f32) {
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.1, 10.0);
+        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 10.0);
         self.camera.set_zoom(new_zoom);
+    }
+
+    /// Zooms the camera toward a specific screen point.
+    ///
+    /// This keeps the point under the mouse cursor stationary while zooming,
+    /// making it easier to zoom into specific areas of the visualization.
+    #[wasm_bindgen(js_name = zoomToward)]
+    pub fn zoom_toward(&mut self, screen_x: f32, screen_y: f32, factor: f32) {
+        let screen_point = Vec2::new(screen_x, screen_y);
+
+        // Get world position before zoom
+        let world_before = self.camera.screen_to_world(screen_point);
+
+        // Apply zoom
+        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 10.0);
+        self.camera.set_zoom(new_zoom);
+
+        // Get world position after zoom
+        let world_after = self.camera.screen_to_world(screen_point);
+
+        // Adjust camera position so the world point stays at the same screen position
+        let diff = world_before - world_after;
+        let new_pos = self.camera.position() + diff;
+        self.camera.jump_to(new_pos);
     }
 
     /// Pans the camera by the given delta in screen pixels.
@@ -1139,11 +1163,12 @@ impl Rource {
         }
     }
 
-    /// Handles mouse wheel events for zooming.
+    /// Handles mouse wheel events for zooming toward the mouse position.
     ///
     /// Uses a smooth, proportional zoom based on scroll amount.
+    /// Zooms toward the mouse position so the content under the cursor stays in place.
     #[wasm_bindgen(js_name = onWheel)]
-    pub fn on_wheel(&mut self, delta_y: f32) {
+    pub fn on_wheel(&mut self, delta_y: f32, mouse_x: f32, mouse_y: f32) {
         // Normalize delta_y - different browsers/devices report different ranges
         // Typical values: ~100 for line mode, ~3 for pixel mode (trackpad)
         let normalized_delta = delta_y / 100.0;
@@ -1155,7 +1180,8 @@ impl Rource {
         // Use a gentler factor for smoother zooming
         let factor = 1.0 - (clamped_delta * 0.08);
 
-        self.zoom(factor);
+        // Zoom toward the mouse position
+        self.zoom_toward(mouse_x, mouse_y, factor);
     }
 
     /// Steps forward to the next commit.
@@ -1695,7 +1721,7 @@ impl Rource {
 
                 let zoom_x = screen_width / padded_bounds.width();
                 let zoom_y = screen_height / padded_bounds.height();
-                let zoom = zoom_x.min(zoom_y).clamp(0.1, 5.0);
+                let zoom = zoom_x.min(zoom_y).clamp(0.01, 10.0);
 
                 self.camera.jump_to(padded_bounds.center());
                 self.camera.set_zoom(zoom);

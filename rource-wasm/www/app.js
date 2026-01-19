@@ -2615,7 +2615,10 @@ function registerCanvasEventListeners() {
     addManagedEventListener(canvas, 'wheel', (e) => {
         if (!isWasmHealthy()) return;
         e.preventDefault();
-        safeWasmVoid('onWheel', () => rource.onWheel(e.deltaY));
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        safeWasmVoid('onWheel', () => rource.onWheel(e.deltaY, mouseX, mouseY));
     }, { passive: false });
 
     // Touch controls with error boundaries
