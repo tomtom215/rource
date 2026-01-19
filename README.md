@@ -14,7 +14,7 @@ Rource visualizes your repository's commit history as an animated tree where dir
 ## Features
 
 - **Portable**: Pure Rust with software rendering - runs on any CPU without GPU requirements
-- **Lightweight**: ~2.5MB native binary, ~76KB WASM (gzipped)
+- **Lightweight**: ~3.8MB native binary, ~226KB WASM (gzipped)
 - **Fast**: Handles repositories with 100k+ commits
 - **Cross-platform**: Native (Linux, macOS, Windows) and WebAssembly
 - **Compatible**: Supports Git, SVN, Mercurial, Bazaar, and custom log formats
@@ -31,7 +31,7 @@ This project was developed with AI-assisted programming using [Claude](https://w
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 733 tests | - |
+| **Test Coverage** | 821 tests | - |
 | **Rendering** | CPU + WebGL2 | OpenGL only |
 
 ### Performance Highlights
@@ -45,12 +45,12 @@ This project was developed with AI-assisted programming using [Claude](https://w
 ```
 rource/
 ├── crates/
-│   ├── rource-math/    141 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/     130 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/    236 tests   Scene graph, physics, camera
-│   └── rource-render/   99 tests   Software + WebGL2 rendering
-├── rource-cli/          41 tests   Native application (winit + softbuffer)
-└── rource-wasm/         18 tests   WebAssembly (browser)
+│   ├── rource-math/    182 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/     138 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/    240 tests   Scene graph, physics, camera
+│   └── rource-render/   96 tests   Software + WebGL2 rendering
+├── rource-cli/          90 tests   Native application (winit + softbuffer)
+└── rource-wasm/         48 tests   WebAssembly (browser)
 ```
 
 ## Installation
@@ -140,10 +140,22 @@ Options:
 
 | Action | Effect |
 |--------|--------|
-| Left drag | Pan camera |
+| Left drag | Pan camera or drag entities |
 | Scroll wheel | Zoom in/out |
 | Middle click | Reset camera |
 | Click progress bar | Seek to position |
+
+## Visual Elements
+
+| Element | Description |
+|---------|-------------|
+| **Colored dots** | Files - color indicates file type (e.g., orange = Rust, blue = TypeScript) |
+| **Large circles** | Users/developers - each has a unique color |
+| **Gray hollow circles** | Directories - with center dots, connected by branch lines |
+| **Colored beams** | Actions - lines connecting users to files they're modifying |
+| **Branch lines** | Directory structure - curved lines showing folder hierarchy |
+
+The visualization uses a radial layout where the root directory is at the center, and subdirectories branch outward. Files orbit around their parent directories.
 
 ## Configuration
 
