@@ -162,8 +162,12 @@ impl WebGl2Renderer {
         )
         .ok();
         // Also set alpha to true for proper transparency blending
-        js_sys::Reflect::set(&context_options, &JsValue::from_str("alpha"), &JsValue::from(true))
-            .ok();
+        js_sys::Reflect::set(
+            &context_options,
+            &JsValue::from_str("alpha"),
+            &JsValue::from(true),
+        )
+        .ok();
 
         let gl = canvas
             .get_context_with_context_options("webgl2", &context_options)
