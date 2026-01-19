@@ -821,15 +821,13 @@ impl DirTree {
 
     /// Applies radial positions to all directories based on their sectors.
     fn apply_radial_positions(&mut self) {
-        for node_opt in &mut self.nodes {
-            if let Some(node) = node_opt {
-                let depth = node.depth();
-                let distance = depth as f32 * RADIAL_DISTANCE_SCALE;
-                node.set_radial_distance(distance);
+        for node in self.nodes.iter_mut().flatten() {
+            let depth = node.depth();
+            let distance = depth as f32 * RADIAL_DISTANCE_SCALE;
+            node.set_radial_distance(distance);
 
-                let new_pos = node.calculate_radial_position();
-                node.set_position(new_pos);
-            }
+            let new_pos = node.calculate_radial_position();
+            node.set_position(new_pos);
         }
     }
 
@@ -839,7 +837,7 @@ impl DirTree {
     pub fn update_branch_layout(&mut self, dir_id: DirId) {
         // Find the root of this branch (first ancestor with multiple children or root)
         let mut branch_root = dir_id;
-        while let Some(parent_id) = self.get(branch_root).and_then(|n| n.parent()) {
+        while let Some(parent_id) = self.get(branch_root).and_then(DirNode::parent) {
             if let Some(parent) = self.get(parent_id) {
                 if parent.children().len() > 1 || parent.is_root() {
                     branch_root = parent_id;
