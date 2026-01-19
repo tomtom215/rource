@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_format_timestamp_year_2000() {
         // Jan 1, 2000 (approximately)
-        let ts = 946684800; // 2000-01-01 00:00:00 UTC
+        let ts = 946_684_800; // 2000-01-01 00:00:00 UTC
         let formatted = format_timestamp(ts);
         assert!(formatted.starts_with("200"));
     }
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn test_format_timestamp_far_future() {
         // Far future date
-        let ts = 4102444800; // 2100-01-01 approximately
+        let ts = 4_102_444_800; // 2100-01-01 approximately
         let formatted = format_timestamp(ts);
         assert!(formatted.starts_with("21"));
     }

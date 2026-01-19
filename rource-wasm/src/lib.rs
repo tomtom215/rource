@@ -2578,7 +2578,7 @@ mod tests {
 
     #[test]
     fn test_write_png_transparent_pixel() {
-        let pixels: Vec<u32> = vec![0x00000000]; // Fully transparent
+        let pixels: Vec<u32> = vec![0x0000_0000]; // Fully transparent
         let mut output = Vec::new();
         write_png(&mut output, &pixels, 1, 1).unwrap();
         // Should still produce valid PNG
@@ -2589,10 +2589,10 @@ mod tests {
     fn test_write_png_various_colors() {
         // 4 pixels: red, green, blue, white
         let pixels: Vec<u32> = vec![
-            0xFFFF0000, // Red
-            0xFF00FF00, // Green
-            0xFF0000FF, // Blue
-            0xFFFFFFFF, // White
+            0xFFFF_0000, // Red
+            0xFF00_FF00, // Green
+            0xFF00_00FF, // Blue
+            0xFFFF_FFFF, // White
         ];
         let mut output = Vec::new();
         write_png(&mut output, &pixels, 2, 2).unwrap();
@@ -2606,7 +2606,7 @@ mod tests {
     #[test]
     fn test_write_png_wide_image() {
         // 10x1 image
-        let pixels: Vec<u32> = vec![0xFFFFFFFF; 10];
+        let pixels: Vec<u32> = vec![0xFFFF_FFFF; 10];
         let mut output = Vec::new();
         write_png(&mut output, &pixels, 10, 1).unwrap();
         assert!(output.windows(4).any(|w| w == b"IHDR"));
@@ -2616,7 +2616,7 @@ mod tests {
     #[test]
     fn test_write_png_tall_image() {
         // 1x10 image
-        let pixels: Vec<u32> = vec![0xFF000000; 10];
+        let pixels: Vec<u32> = vec![0xFF00_0000; 10];
         let mut output = Vec::new();
         write_png(&mut output, &pixels, 1, 10).unwrap();
         assert!(output.windows(4).any(|w| w == b"IHDR"));
