@@ -79,17 +79,14 @@ FILE_CHANGE_COUNT=$(wc -l < "$TEMP_LOG" | tr -d ' ')
 FILE_COUNT=$(cut -d'|' -f4 "$TEMP_LOG" | sort -u | wc -l | tr -d ' ')
 AUTHOR_COUNT=$(cut -d'|' -f2 "$TEMP_LOG" | sort -u | wc -l | tr -d ' ')
 
-# Get actual git commit count (includes merge commits without file changes)
-GIT_COMMIT_COUNT=$(git rev-list --count HEAD)
-
-log_info "Found $GIT_COMMIT_COUNT git commits, $FILE_CHANGE_COUNT file changes, $FILE_COUNT unique files, $AUTHOR_COUNT authors"
+log_info "Found $FILE_CHANGE_COUNT file changes, $FILE_COUNT unique files, $AUTHOR_COUNT authors"
 
 # Get current date for the comment
 CURRENT_DATE=$(date +%Y-%m-%d)
 
 # Create the replacement JavaScript constant
 # Using Python for reliable multiline string handling
-export CACHE_FILE CURRENT_DATE TEMP_LOG GIT_COMMIT_COUNT
+export CACHE_FILE CURRENT_DATE TEMP_LOG
 python3 << 'PYTHON_SCRIPT'
 import sys
 import re
@@ -98,7 +95,6 @@ import os
 cache_file = os.environ.get('CACHE_FILE')
 current_date = os.environ.get('CURRENT_DATE')
 temp_log = os.environ.get('TEMP_LOG')
-git_commit_count = os.environ.get('GIT_COMMIT_COUNT', '0')
 
 # Read the log content from temp file
 with open(temp_log, 'r', encoding='utf-8') as f:
@@ -112,9 +108,9 @@ with open(cache_file, 'r', encoding='utf-8') as f:
 date_pattern = re.compile(r'(\* Last updated: )\d{4}-\d{2}-\d{2}')
 content = date_pattern.sub(f'\\g<1>{current_date}', content)
 
-# Update TOTAL_GIT_COMMITS constant (the actual git commit count)
-commits_pattern = re.compile(r'export const TOTAL_GIT_COMMITS = \d+;')
-content = commits_pattern.sub(f'export const TOTAL_GIT_COMMITS = {git_commit_count};', content)
+# Note: TOTAL_GIT_COMMITS was removed from cached-data.js
+# The visualization commit count is now calculated dynamically from ROURCE_CACHED_DATA
+# to ensure consistency between stats display and timeline
 
 # Pattern to match the ROURCE_CACHED_DATA export constant
 # Matches: export const ROURCE_CACHED_DATA = `...`;
@@ -136,16 +132,15 @@ with open(cache_file, 'w', encoding='utf-8') as f:
     f.write(new_content)
 
 print(f"SUCCESS: Updated ROURCE_CACHED_DATA with {len(log_content.splitlines())} entries")
-print(f"Total git commits: {git_commit_count}")
 PYTHON_SCRIPT
 
 if [[ $? -eq 0 ]]; then
     log_info "Successfully updated $CACHE_FILE"
     log_info "Cache date: $CURRENT_DATE"
-    log_info "Git commits: $GIT_COMMIT_COUNT"
     log_info "File changes: $FILE_CHANGE_COUNT"
     log_info "Unique files: $FILE_COUNT"
     log_info "Authors: $AUTHOR_COUNT"
+    log_info "(Note: Visualization commit count is calculated dynamically from data)"
 else
     log_error "Failed to update cache file"
     exit 1

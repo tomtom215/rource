@@ -10,7 +10,7 @@ import { showToast } from './toast.js';
 import { safeWasmCall } from './wasm-api.js';
 import { debugLog } from './telemetry.js';
 import { parseUrlParams } from './url-state.js';
-import { ROURCE_CACHED_DATA, DEMO_DATA, ROURCE_STATS, TOTAL_GIT_COMMITS, getFullCachedData } from './cached-data.js';
+import { ROURCE_CACHED_DATA, DEMO_DATA, ROURCE_STATS, getFullCachedData } from './cached-data.js';
 
 // Callbacks for UI updates
 let onDataLoadedCallback = null;
@@ -168,11 +168,11 @@ export function loadLogData(content, format = 'custom', options = {}) {
 
 /**
  * Loads the cached Rource repository data.
- * Uses the actual git commit count (including merge commits) for display.
+ * Uses the visualization commit count for display (consistent with timeline).
  * @returns {boolean} True if successful
  */
 export function loadRourceData() {
-    return loadLogData(getFullCachedData(), 'custom', { totalCommits: TOTAL_GIT_COMMITS });
+    return loadLogData(getFullCachedData(), 'custom');
 }
 
 /**
