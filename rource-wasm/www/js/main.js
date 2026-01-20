@@ -1084,6 +1084,8 @@ function updateLegend(content) {
         </div>`;
 
     legendItems.innerHTML = html;
+    // Add role="list" now that we have items with role="listitem"
+    legendItems.setAttribute('role', 'list');
 }
 
 /**
@@ -1132,6 +1134,10 @@ function updateAuthorsLegend(content) {
         }
 
         authorsItems.innerHTML = html;
+        // Add role="list" now that we have items with role="listitem"
+        if (html) {
+            authorsItems.setAttribute('role', 'list');
+        }
     } catch {
         // Authors may not be available yet
     }
