@@ -125,7 +125,7 @@ function getLegendData() {
 
     items.forEach(item => {
         const colorEl = item.querySelector('.legend-color');
-        const nameEl = item.querySelector('.legend-name');
+        const nameEl = item.querySelector('.legend-label');
         const countEl = item.querySelector('.legend-count');
 
         if (colorEl && nameEl && countEl) {
