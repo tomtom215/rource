@@ -201,6 +201,31 @@ export function initKeyboard() {
                     showHelp();
                 }
                 break;
+
+            // Authors panel toggle
+            case 'a':
+                if (!e.ctrlKey && !e.metaKey && hasData()) {
+                    const authorsPanel = getElement('authorsPanel');
+                    const authorsToggle = getElement('authorsToggle');
+                    if (authorsPanel && !authorsPanel.classList.contains('hidden')) {
+                        authorsPanel.classList.toggle('collapsed');
+                        const isExpanded = !authorsPanel.classList.contains('collapsed');
+                        if (authorsToggle) {
+                            authorsToggle.setAttribute('aria-expanded', isExpanded.toString());
+                        }
+                    }
+                }
+                break;
+
+            // Performance overlay toggle
+            case 'p':
+                if (!e.ctrlKey && !e.metaKey && hasData()) {
+                    const perfOverlay = getElement('perfOverlay');
+                    if (perfOverlay) {
+                        perfOverlay.classList.toggle('hidden');
+                    }
+                }
+                break;
         }
     });
 }
