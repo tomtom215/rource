@@ -1542,10 +1542,10 @@ impl Rource {
         let visible_bounds = self.camera.visible_bounds();
         let camera_zoom = self.camera.zoom();
 
-        // Get visible entities
-        let visible_dirs = self.scene.visible_directory_ids(&visible_bounds);
-        let visible_files = self.scene.visible_file_ids(&visible_bounds);
-        let visible_users = self.scene.visible_user_ids(&visible_bounds);
+        // Get visible entities - single spatial query instead of three separate ones
+        // This is more efficient as it traverses the quadtree once instead of three times
+        let (visible_dirs, visible_files, visible_users) =
+            self.scene.visible_entities(&visible_bounds);
 
         // Collect render statistics
         let active_actions = self
