@@ -16,6 +16,10 @@ let perfUpdateCounter = 0;
 // UI update callback (set by main module)
 let uiUpdateCallback = null;
 
+// Animation generation counter to prevent race conditions during restart
+// When restartAnimation() is called mid-frame, the old animate() call should not schedule next frame
+let animationGeneration = 0;
+
 /**
  * Sets the UI update callback function.
  * @param {Function} callback - Function to call after each frame
@@ -58,8 +62,14 @@ let uncappedTimeoutId = null;
 /**
  * Main animation loop.
  * @param {number} timestamp - Frame timestamp from requestAnimationFrame (or performance.now() in uncapped mode)
+ * @param {number} [generation] - Animation generation to detect restarts during execution
  */
-export function animate(timestamp) {
+export function animate(timestamp, generation = animationGeneration) {
+    // If animation was restarted while this frame was executing, don't schedule next frame
+    if (generation !== animationGeneration) {
+        return;
+    }
+
     const rource = getRource();
     const isUncapped = get('uncappedFps');
 
@@ -79,14 +89,19 @@ export function animate(timestamp) {
         }
     }
 
+    // Check generation again before scheduling - animation might have been stopped during frame processing
+    if (generation !== animationGeneration) {
+        return;
+    }
+
     // Schedule next frame based on mode
     if (isUncapped) {
         // Uncapped mode: use setTimeout(0) to run as fast as possible
         // Note: browsers typically clamp setTimeout to ~4ms minimum
-        uncappedTimeoutId = setTimeout(() => animate(performance.now()), 0);
+        uncappedTimeoutId = setTimeout(() => animate(performance.now(), generation), 0);
         setAnimationId(uncappedTimeoutId);
     } else {
-        setAnimationId(requestAnimationFrame(animate));
+        setAnimationId(requestAnimationFrame((ts) => animate(ts, generation)));
     }
 }
 
@@ -94,6 +109,7 @@ export function animate(timestamp) {
  * Restarts the animation loop (used when switching between capped/uncapped modes).
  */
 export function restartAnimation() {
+    // stopAnimation() increments generation, which invalidates any currently executing animate() calls
     stopAnimation();
     startAnimation();
 }
@@ -104,11 +120,12 @@ export function restartAnimation() {
 export function startAnimation() {
     if (getAnimationId() === null) {
         const isUncapped = get('uncappedFps');
+        const generation = animationGeneration;
         if (isUncapped) {
-            uncappedTimeoutId = setTimeout(() => animate(performance.now()), 0);
+            uncappedTimeoutId = setTimeout(() => animate(performance.now(), generation), 0);
             setAnimationId(uncappedTimeoutId);
         } else {
-            setAnimationId(requestAnimationFrame(animate));
+            setAnimationId(requestAnimationFrame((ts) => animate(ts, generation)));
         }
     }
 }
@@ -117,6 +134,8 @@ export function startAnimation() {
  * Stops the animation loop.
  */
 export function stopAnimation() {
+    // Increment generation to invalidate any currently executing animate() calls
+    animationGeneration++;
     const animationId = getAnimationId();
     if (animationId !== null) {
         // Clear both types of animation scheduling
