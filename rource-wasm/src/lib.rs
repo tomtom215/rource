@@ -1649,18 +1649,17 @@ impl Rource {
 
         // Cap at reasonable maximum (browser limits, typically 16384x16384)
         let max_dimension = 16384_u32;
-        let (final_width, final_height, final_zoom) = if canvas_width > max_dimension
-            || canvas_height > max_dimension
-        {
-            // Scale down to fit within limits
-            let scale = (max_dimension as f32) / (canvas_width.max(canvas_height) as f32);
-            let scaled_width = ((canvas_width as f32) * scale).ceil() as u32;
-            let scaled_height = ((canvas_height as f32) * scale).ceil() as u32;
-            let scaled_zoom = readable_zoom * scale;
-            (scaled_width, scaled_height, scaled_zoom)
-        } else {
-            (canvas_width, canvas_height, readable_zoom)
-        };
+        let (final_width, final_height, final_zoom) =
+            if canvas_width > max_dimension || canvas_height > max_dimension {
+                // Scale down to fit within limits
+                let scale = (max_dimension as f32) / (canvas_width.max(canvas_height) as f32);
+                let scaled_width = ((canvas_width as f32) * scale).ceil() as u32;
+                let scaled_height = ((canvas_height as f32) * scale).ceil() as u32;
+                let scaled_zoom = readable_zoom * scale;
+                (scaled_width, scaled_height, scaled_zoom)
+            } else {
+                (canvas_width, canvas_height, readable_zoom)
+            };
 
         // Center point
         let center = bounds.center();
