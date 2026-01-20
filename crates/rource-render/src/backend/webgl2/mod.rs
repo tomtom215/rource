@@ -621,6 +621,28 @@ impl WebGl2Renderer {
     pub fn font_cache_mut(&mut self) -> &mut FontCache {
         &mut self.font_cache
     }
+
+    /// Synchronizes CPU with GPU by waiting for all pending commands to complete.
+    ///
+    /// This is a blocking call that should only be used when GPU synchronization
+    /// is required, such as before reading from the canvas (screenshots, exports).
+    /// Do NOT call this every frame as it defeats the purpose of double-buffering
+    /// and can significantly reduce performance.
+    ///
+    /// # Performance Note
+    ///
+    /// `gl.finish()` blocks the CPU until all GPU commands complete. For normal
+    /// rendering, this is unnecessary because:
+    /// - The browser's compositor handles frame presentation timing
+    /// - `requestAnimationFrame` ensures frames are ready before paint
+    /// - Double-buffering naturally hides GPU latency
+    ///
+    /// Only call this when you need to read from the canvas (e.g., `canvas.toBlob()`).
+    pub fn sync(&self) {
+        if !self.context_lost {
+            self.gl.finish();
+        }
+    }
 }
 
 impl Renderer for WebGl2Renderer {
@@ -647,12 +669,13 @@ impl Renderer for WebGl2Renderer {
             return;
         }
 
-        // Flush all batched draw calls
+        // Flush all batched draw calls to the GPU
         self.flush();
 
-        // Ensure all GPU commands complete - critical for screenshot capture
-        // Without this, canvas.toBlob() may capture a stale/incomplete frame
-        self.gl.finish();
+        // Note: gl.finish() is NOT called here for performance.
+        // Normal rendering relies on the browser's compositor for frame timing.
+        // For operations that require GPU synchronization (screenshots, exports),
+        // call sync() explicitly after render.
     }
 
     fn clear(&mut self, color: Color) {

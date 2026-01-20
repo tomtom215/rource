@@ -233,6 +233,20 @@ impl RendererBackend {
             Self::Software { renderer, .. } => renderer.load_font(data),
         }
     }
+
+    /// Synchronizes CPU with GPU by waiting for all pending commands to complete.
+    ///
+    /// For WebGL2: calls `gl.finish()` to block until GPU is done.
+    /// For Software: no-op (CPU rendering is inherently synchronous).
+    ///
+    /// Call this ONLY when you need to read from the canvas (screenshots, exports).
+    /// Do NOT call every frame as it hurts performance.
+    fn sync(&self) {
+        if let Self::WebGl2(r) = self {
+            r.sync();
+        }
+        // Software renderer is synchronous - no sync needed
+    }
 }
 
 // ============================================================================
@@ -1222,6 +1236,10 @@ impl Rource {
     ///
     /// This method ensures the viewport is synchronized with the current canvas
     /// dimensions before rendering, which is critical for screenshots and exports.
+    ///
+    /// Unlike the normal render path, this also calls `sync()` to ensure all GPU
+    /// commands complete before returning. This is necessary for `canvas.toBlob()`
+    /// to capture a complete frame.
     #[wasm_bindgen(js_name = forceRender)]
     pub fn force_render(&mut self) {
         // Ensure the backend dimensions match the canvas dimensions
@@ -1235,6 +1253,10 @@ impl Rource {
         }
 
         self.render();
+
+        // Synchronize GPU to ensure frame is complete before returning.
+        // This is critical for screenshot/export operations that read from canvas.
+        self.backend.sync();
     }
 
     /// Captures a screenshot and returns it as PNG data (`Uint8Array`).
