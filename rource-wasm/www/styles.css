@@ -3112,3 +3112,76 @@ footer a {
 .author-filter-clear.visible {
     display: block;
 }
+
+/* ========================================
+   ACCESSIBILITY: REDUCED MOTION
+   ======================================== */
+
+/**
+ * Disable animations and transitions for users who prefer reduced motion.
+ * This respects the prefers-reduced-motion media query for accessibility.
+ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    /* Allow subtle hover effects but remove transitions */
+    .control-btn,
+    .collapsible-header,
+    .timeline-slider,
+    .theme-toggle,
+    .sidebar-toggle,
+    .btn,
+    .input-group input {
+        transition: none !important;
+    }
+
+    /* Disable parallax or sliding effects */
+    .sidebar-panel {
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY: AUTO COLOR SCHEME
+   ======================================== */
+
+/**
+ * Automatically apply light theme for users with light system preference.
+ * This can be overridden by the manual theme toggle (JS adds/removes .light-theme class).
+ * The :not(.theme-manual) check prevents auto-switching when user has manually toggled.
+ */
+@media (prefers-color-scheme: light) {
+    :root:not(.theme-manual) {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f6f8fa;
+        --bg-tertiary: #eaeef2;
+        --bg-canvas: #f0f3f6;
+        --text-primary: #1f2328;
+        --text-secondary: #4d5561;
+        --text-muted: #656d76;
+        --border: #d0d7de;
+        --border-light: #afb8c1;
+        --shadow: rgba(31, 35, 40, 0.12);
+    }
+
+    :root:not(.theme-manual) .legend-panel,
+    :root:not(.theme-manual) .authors-panel,
+    :root:not(.theme-manual) .perf-overlay,
+    :root:not(.theme-manual) .stats-overlay {
+        background: rgba(246, 248, 250, 0.95);
+    }
+
+    :root:not(.theme-manual) #canvas-container {
+        background: #e8ecf0;
+    }
+
+    :root:not(.theme-manual) .theme-toggle .sun-icon { display: block; }
+    :root:not(.theme-manual) .theme-toggle .moon-icon { display: none; }
+}
