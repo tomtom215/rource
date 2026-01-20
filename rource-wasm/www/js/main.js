@@ -341,6 +341,63 @@ function setupEventListeners(elements, rource) {
             setTimeout(() => window.location.reload(), CONFIG.CONTEXT_RESTORE_DELAY_MS);
         });
     }
+
+    // Legend panel toggle
+    if (elements.legendToggle) {
+        const toggleLegend = () => {
+            if (elements.legendPanel) {
+                elements.legendPanel.classList.toggle('collapsed');
+                const isExpanded = !elements.legendPanel.classList.contains('collapsed');
+                elements.legendToggle.setAttribute('aria-expanded', isExpanded.toString());
+                updatePreference('panelStates.legend', !isExpanded);
+            }
+        };
+        elements.legendToggle.addEventListener('click', toggleLegend);
+        elements.legendToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleLegend();
+            }
+        });
+    }
+
+    // Authors panel toggle
+    if (elements.authorsToggle) {
+        const toggleAuthorsPanel = () => {
+            if (elements.authorsPanel) {
+                elements.authorsPanel.classList.toggle('collapsed');
+                const isExpanded = !elements.authorsPanel.classList.contains('collapsed');
+                elements.authorsToggle.setAttribute('aria-expanded', isExpanded.toString());
+                updatePreference('panelStates.authors', !isExpanded);
+            }
+        };
+        elements.authorsToggle.addEventListener('click', toggleAuthorsPanel);
+        elements.authorsToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleAuthorsPanel();
+            }
+        });
+    }
+
+    // Performance overlay toggle
+    if (elements.perfToggle) {
+        const togglePerfOverlay = () => {
+            if (elements.perfOverlay) {
+                elements.perfOverlay.classList.toggle('collapsed');
+                const isExpanded = !elements.perfOverlay.classList.contains('collapsed');
+                elements.perfToggle.setAttribute('aria-expanded', isExpanded.toString());
+                updatePreference('panelStates.perf', !isExpanded);
+            }
+        };
+        elements.perfToggle.addEventListener('click', togglePerfOverlay);
+        elements.perfToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                togglePerfOverlay();
+            }
+        });
+    }
 }
 
 /**
