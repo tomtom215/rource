@@ -2062,14 +2062,26 @@ btnScreenshot.addEventListener('click', () => {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const filename = `rource-${timestamp}.png`;
 
-        // Force a render right before capturing to ensure the buffer has content.
-        // This is critical for WebGL2 because even with preserveDrawingBuffer: true,
-        // the async toBlob() can capture a cleared/stale buffer if the animation
-        // loop's clear() runs before toBlob() reads the pixels.
+        // CRITICAL: Stop the animation loop BEFORE capturing.
+        // The animation loop continuously renders frames, and toBlob() is async.
+        // Without pausing, the next frame's begin_frame()/clear() will wipe the
+        // framebuffer before toBlob() can read it, resulting in corrupted output.
+        const wasAnimating = animationId !== null;
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+
+        // Force a render to ensure the buffer has the current frame content
         rource.forceRender();
 
         // Use canvas.toBlob for best quality (works with WebGL2 too)
         canvas.toBlob((blob) => {
+            // Resume animation loop AFTER capture completes
+            if (wasAnimating && !animationId) {
+                animationId = requestAnimationFrame(animate);
+            }
+
             if (!blob) {
                 showToast('Screenshot failed. Try pausing the visualization first.', 'error');
                 return;
@@ -2090,6 +2102,10 @@ btnScreenshot.addEventListener('click', () => {
     } catch (error) {
         console.error('Screenshot error:', error);
         showToast('Failed to capture screenshot: ' + error.message, 'error');
+        // Resume animation on error
+        if (!animationId && rource && hasLoadedData) {
+            animationId = requestAnimationFrame(animate);
+        }
     }
 });
 
