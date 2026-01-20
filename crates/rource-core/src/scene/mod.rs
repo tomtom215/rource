@@ -46,6 +46,9 @@ const FORCE_MAX_VELOCITY: f32 = 300.0;
 /// Minimum distance for force calculation to prevent extreme forces.
 const FORCE_MIN_DISTANCE: f32 = 5.0;
 
+/// Directory data for force-directed layout calculation.
+type DirForceData = (DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32);
+
 /// Entity type for spatial indexing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityType {
@@ -686,8 +689,7 @@ impl Scene {
     /// - **Damping**: Friction-like force that stabilizes the system
     fn apply_force_directed_layout(&mut self, dt: f32) {
         // Collect directory data for force calculation
-        // (id, position, depth, parent_id, parent_position, target_distance)
-        let dir_data: Vec<(DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32)> = self
+        let dir_data: Vec<DirForceData> = self
             .directories
             .iter()
             .map(|d| {
@@ -706,13 +708,10 @@ impl Scene {
         let mut forces: HashMap<DirId, Vec2> = HashMap::new();
 
         // Calculate repulsion forces between related directories (O(n²) but n is typically small)
-        let len = dir_data.len();
-        for i in 0..len {
-            let (id_i, pos_i, depth_i, parent_i, _, _) = dir_data[i];
-
-            for j in (i + 1)..len {
-                let (id_j, pos_j, depth_j, parent_j, _, _) = dir_data[j];
-
+        for (i, &(id_i, pos_i, depth_i, parent_i, _, _)) in dir_data.iter().enumerate() {
+            for (j, &(id_j, pos_j, depth_j, parent_j, _, _)) in
+                dir_data.iter().enumerate().skip(i + 1)
+            {
                 // Repel if:
                 // 1. Siblings (same parent)
                 // 2. Close in depth (within 1 level)
