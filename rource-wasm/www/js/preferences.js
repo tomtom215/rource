@@ -14,7 +14,7 @@ const defaultPrefs = {
     showLabels: true,      // Show file/user labels
     panelStates: {         // Collapsed state for panels
         shortcuts: true,   // Keyboard shortcuts panel
-        guide: true,       // Quick guide panel
+        guide: false,      // Quick guide panel (expanded by default)
         techSpecs: true,   // Technical specifications panel
         legend: true,      // File types legend
         authors: true,     // Authors legend

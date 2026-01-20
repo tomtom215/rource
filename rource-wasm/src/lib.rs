@@ -1569,6 +1569,173 @@ impl Rource {
             ))
         }
     }
+
+    // ========================================================================
+    // Font Size Control
+    // ========================================================================
+
+    /// Sets the font size for labels (user names, file names, directory names).
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - Font size in pixels (clamped to 4.0 - 200.0 range)
+    #[wasm_bindgen(js_name = setFontSize)]
+    pub fn set_font_size(&mut self, size: f32) {
+        self.settings.display.font_size = size.clamp(4.0, 200.0);
+    }
+
+    /// Gets the current font size for labels.
+    #[wasm_bindgen(js_name = getFontSize)]
+    pub fn get_font_size(&self) -> f32 {
+        self.settings.display.font_size
+    }
+
+    // ========================================================================
+    // Entity Bounds & Full Map Export
+    // ========================================================================
+
+    /// Returns the bounding box of all entities as a JSON object.
+    ///
+    /// Returns: `{ "minX": f32, "minY": f32, "maxX": f32, "maxY": f32, "width": f32, "height": f32 }`
+    ///
+    /// Returns null if no entities exist.
+    #[wasm_bindgen(js_name = getEntityBounds)]
+    pub fn get_entity_bounds(&mut self) -> Option<String> {
+        self.scene.compute_entity_bounds().map(|bounds| {
+            format!(
+                r#"{{"minX":{},"minY":{},"maxX":{},"maxY":{},"width":{},"height":{}}}"#,
+                bounds.min.x,
+                bounds.min.y,
+                bounds.max.x,
+                bounds.max.y,
+                bounds.width(),
+                bounds.height()
+            )
+        })
+    }
+
+    /// Calculates the required canvas dimensions to render the full map at a readable zoom level.
+    ///
+    /// # Arguments
+    ///
+    /// * `min_label_font_size` - Minimum font size for labels to be readable (default: 10.0)
+    ///
+    /// Returns: `{ "width": u32, "height": u32, "zoom": f32, "centerX": f32, "centerY": f32 }`
+    ///
+    /// Returns null if no entities exist.
+    #[wasm_bindgen(js_name = getFullMapDimensions)]
+    pub fn get_full_map_dimensions(&mut self, min_label_font_size: f32) -> Option<String> {
+        let bounds = self.scene.compute_entity_bounds()?;
+
+        // Add padding around the bounds (20% on each side)
+        let padding = 0.2;
+        let padded_width = bounds.width() * (1.0 + padding * 2.0);
+        let padded_height = bounds.height() * (1.0 + padding * 2.0);
+
+        if padded_width <= 0.0 || padded_height <= 0.0 {
+            return None;
+        }
+
+        // Calculate zoom level where labels are readable
+        // Base font size is settings.display.font_size (default 12.0)
+        // We want: base_font_size * zoom >= min_label_font_size
+        let base_font_size = self.settings.display.font_size;
+        let readable_zoom = (min_label_font_size / base_font_size).max(0.5);
+
+        // Calculate canvas dimensions
+        // world_size * zoom = canvas_size
+        let canvas_width = (padded_width * readable_zoom).ceil() as u32;
+        let canvas_height = (padded_height * readable_zoom).ceil() as u32;
+
+        // Cap at reasonable maximum (browser limits, typically 16384x16384)
+        let max_dimension = 16384_u32;
+        let (final_width, final_height, final_zoom) =
+            if canvas_width > max_dimension || canvas_height > max_dimension {
+                // Scale down to fit within limits
+                let scale = (max_dimension as f32) / (canvas_width.max(canvas_height) as f32);
+                let scaled_width = ((canvas_width as f32) * scale).ceil() as u32;
+                let scaled_height = ((canvas_height as f32) * scale).ceil() as u32;
+                let scaled_zoom = readable_zoom * scale;
+                (scaled_width, scaled_height, scaled_zoom)
+            } else {
+                (canvas_width, canvas_height, readable_zoom)
+            };
+
+        // Center point
+        let center = bounds.center();
+
+        Some(format!(
+            r#"{{"width":{},"height":{},"zoom":{},"centerX":{},"centerY":{}}}"#,
+            final_width, final_height, final_zoom, center.x, center.y
+        ))
+    }
+
+    /// Prepares the renderer for full map export by setting up camera and viewport.
+    ///
+    /// # Arguments
+    ///
+    /// * `width` - Target canvas width
+    /// * `height` - Target canvas height
+    /// * `zoom` - Zoom level to use
+    /// * `center_x` - World X coordinate to center on
+    /// * `center_y` - World Y coordinate to center on
+    ///
+    /// Call this before resizing canvas and calling `forceRender()`.
+    #[wasm_bindgen(js_name = prepareFullMapExport)]
+    pub fn prepare_full_map_export(
+        &mut self,
+        width: u32,
+        height: u32,
+        zoom: f32,
+        center_x: f32,
+        center_y: f32,
+    ) {
+        // Update camera viewport size
+        self.camera = Camera::new(width as f32, height as f32);
+        self.camera.jump_to(Vec2::new(center_x, center_y));
+        self.camera.set_zoom(zoom);
+
+        // Update settings
+        self.settings.display.width = width;
+        self.settings.display.height = height;
+    }
+
+    /// Restores the renderer after full map export.
+    ///
+    /// # Arguments
+    ///
+    /// * `width` - Original canvas width
+    /// * `height` - Original canvas height
+    #[wasm_bindgen(js_name = restoreAfterExport)]
+    pub fn restore_after_export(&mut self, width: u32, height: u32) {
+        // Restore camera
+        self.camera = Camera::new(width as f32, height as f32);
+        self.settings.display.width = width;
+        self.settings.display.height = height;
+
+        // Fit camera to content
+        self.fit_camera_to_content();
+    }
+
+    /// Returns the current camera state as JSON for saving/restoring.
+    ///
+    /// Returns: `{ "x": f32, "y": f32, "zoom": f32 }`
+    #[wasm_bindgen(js_name = getCameraState)]
+    pub fn get_camera_state(&self) -> String {
+        format!(
+            r#"{{"x":{},"y":{},"zoom":{}}}"#,
+            self.camera.position().x,
+            self.camera.position().y,
+            self.camera.zoom()
+        )
+    }
+
+    /// Restores camera state from previously saved values.
+    #[wasm_bindgen(js_name = restoreCameraState)]
+    pub fn restore_camera_state(&mut self, x: f32, y: f32, zoom: f32) {
+        self.camera.jump_to(Vec2::new(x, y));
+        self.camera.set_zoom(zoom);
+    }
 }
 
 // Private implementation

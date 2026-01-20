@@ -35,6 +35,19 @@ export function initDomElements() {
     // Screenshot
     elements.btnScreenshot = document.getElementById('btn-screenshot');
 
+    // Full Map Export
+    elements.btnFullMap = document.getElementById('btn-full-map');
+
+    // Video Recording
+    elements.btnRecord = document.getElementById('btn-record');
+    elements.recordText = document.getElementById('record-text');
+
+    // Font Size Control
+    elements.fontSizeControl = document.getElementById('font-size-control');
+    elements.btnFontDecrease = document.getElementById('btn-font-decrease');
+    elements.btnFontIncrease = document.getElementById('btn-font-increase');
+    elements.fontSizeValue = document.getElementById('font-size-value');
+
     // WebGL context loss
     elements.contextLostOverlay = document.getElementById('context-lost-overlay');
     elements.btnRestoreContext = document.getElementById('btn-restore-context');

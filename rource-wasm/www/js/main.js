@@ -40,6 +40,18 @@ import { initHelp, maybeShowFirstTimeHelp, showHelp } from './features/help.js';
 import { initKeyboard } from './features/keyboard.js';
 import { fetchGitHubWithProgress, parseGitHubUrl } from './github-fetch.js';
 
+// New features
+import {
+    initFullMapExport, exportFullMap, setFullMapAnimateCallback
+} from './features/full-map-export.js';
+import {
+    initFontSizeControl, enableFontSizeControls, updateFontSizeUI
+} from './features/font-size.js';
+import {
+    initVideoRecording, enableRecordButton, setRecordingAnimateCallback,
+    isRecordingSupported
+} from './features/video-recording.js';
+
 // ============================================================
 // Initialization
 // ============================================================
@@ -88,8 +100,15 @@ async function main() {
         initHelp();
         initKeyboard();
 
-        // Set up animation callback for screenshot
+        // Initialize new feature modules
+        initFullMapExport();
+        initFontSizeControl();
+        initVideoRecording();
+
+        // Set up animation callbacks for all features that need them
         setAnimateCallback(animate);
+        setFullMapAnimateCallback(animate);
+        setRecordingAnimateCallback(animate);
 
         // Set up UI update callback
         setUIUpdateCallback(updatePlaybackUI);
@@ -200,6 +219,10 @@ function handleDataLoaded(content, stats) {
     // Update authors legend with commit counts
     updateAuthorsLegend(content);
 
+    // Enable font size controls now that data is loaded
+    enableFontSizeControls();
+    updateFontSizeUI();
+
     // Update timeline markers
     updateTimelineMarkers(content);
 
@@ -251,6 +274,15 @@ function enableControls(elements) {
         elements.btnScreenshot.disabled = false;
         elements.btnScreenshot.title = 'Save screenshot (S)';
     }
+    if (elements.btnFullMap) {
+        elements.btnFullMap.disabled = false;
+        elements.btnFullMap.title = 'Export full map at high resolution (M)';
+    }
+    if (elements.btnRecord && isRecordingSupported()) {
+        elements.btnRecord.disabled = false;
+        elements.btnRecord.title = 'Record visualization as video';
+    }
+    // Font size controls are enabled separately when data is loaded
     if (elements.btnLoad) elements.btnLoad.disabled = false;
     if (elements.btnFetchGithub) elements.btnFetchGithub.disabled = false;
     if (elements.btnVisualizeRource) elements.btnVisualizeRource.disabled = false;

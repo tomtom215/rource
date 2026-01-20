@@ -141,6 +141,28 @@ export class Rource {
         }
     }
     /**
+     * Returns the current camera state as JSON for saving/restoring.
+     *
+     * Returns: `{ "x": f32, "y": f32, "zoom": f32 }`
+     * @returns {string}
+     */
+    getCameraState() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCameraState(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Returns the canvas height in pixels.
      * @returns {number}
      */
@@ -165,6 +187,38 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns the bounding box of all entities as a JSON object.
+     *
+     * Returns: `{ "minX": f32, "minY": f32, "maxX": f32, "maxY": f32, "width": f32, "height": f32 }`
+     *
+     * Returns null if no entities exist.
+     * @returns {string | undefined}
+     */
+    getEntityBounds() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getEntityBounds(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export3(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Gets the current font size for labels.
+     * @returns {number}
+     */
+    getFontSize() {
+        const ret = wasm.rource_getFontSize(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Returns the current frames per second (rolling average over 60 frames).
      * @returns {number}
      */
@@ -179,6 +233,35 @@ export class Rource {
     getFrameTimeMs() {
         const ret = wasm.rource_getFrameTimeMs(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Calculates the required canvas dimensions to render the full map at a readable zoom level.
+     *
+     * # Arguments
+     *
+     * * `min_label_font_size` - Minimum font size for labels to be readable (default: 10.0)
+     *
+     * Returns: `{ "width": u32, "height": u32, "zoom": f32, "centerX": f32, "centerY": f32 }`
+     *
+     * Returns null if no entities exist.
+     * @param {number} min_label_font_size
+     * @returns {string | undefined}
+     */
+    getFullMapDimensions(min_label_font_size) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getFullMapDimensions(retptr, this.__wbg_ptr, min_label_font_size);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export3(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
      * Returns the type of renderer being used ("webgl2" or "software").
@@ -473,6 +556,27 @@ export class Rource {
         wasm.rource_play(this.__wbg_ptr);
     }
     /**
+     * Prepares the renderer for full map export by setting up camera and viewport.
+     *
+     * # Arguments
+     *
+     * * `width` - Target canvas width
+     * * `height` - Target canvas height
+     * * `zoom` - Zoom level to use
+     * * `center_x` - World X coordinate to center on
+     * * `center_y` - World Y coordinate to center on
+     *
+     * Call this before resizing canvas and calling `forceRender()`.
+     * @param {number} width
+     * @param {number} height
+     * @param {number} zoom
+     * @param {number} center_x
+     * @param {number} center_y
+     */
+    prepareFullMapExport(width, height, zoom, center_x, center_y) {
+        wasm.rource_prepareFullMapExport(this.__wbg_ptr, width, height, zoom, center_x, center_y);
+    }
+    /**
      * Attempts to recover from a lost WebGL context.
      *
      * Returns true if recovery was successful or if context was not lost.
@@ -501,6 +605,28 @@ export class Rource {
         wasm.rource_resize(this.__wbg_ptr, width, height);
     }
     /**
+     * Restores the renderer after full map export.
+     *
+     * # Arguments
+     *
+     * * `width` - Original canvas width
+     * * `height` - Original canvas height
+     * @param {number} width
+     * @param {number} height
+     */
+    restoreAfterExport(width, height) {
+        wasm.rource_restoreAfterExport(this.__wbg_ptr, width, height);
+    }
+    /**
+     * Restores camera state from previously saved values.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} zoom
+     */
+    restoreCameraState(x, y, zoom) {
+        wasm.rource_restoreCameraState(this.__wbg_ptr, x, y, zoom);
+    }
+    /**
      * Seeks to a specific commit index.
      * @param {number} commit_index
      */
@@ -522,6 +648,17 @@ export class Rource {
      */
     setBloom(enabled) {
         wasm.rource_setBloom(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Sets the font size for labels (user names, file names, directory names).
+     *
+     * # Arguments
+     *
+     * * `size` - Font size in pixels (clamped to 4.0 - 200.0 range)
+     * @param {number} size
+     */
+    setFontSize(size) {
+        wasm.rource_setFontSize(this.__wbg_ptr, size);
     }
     /**
      * Sets whether to show labels (user names, file names).

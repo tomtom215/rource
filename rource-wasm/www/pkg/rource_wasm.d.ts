@@ -62,6 +62,12 @@ export class Rource {
      */
     getAuthors(): string;
     /**
+     * Returns the current camera state as JSON for saving/restoring.
+     *
+     * Returns: `{ "x": f32, "y": f32, "zoom": f32 }`
+     */
+    getCameraState(): string;
+    /**
      * Returns the canvas height in pixels.
      */
     getCanvasHeight(): number;
@@ -74,6 +80,18 @@ export class Rource {
      */
     getDrawCalls(): number;
     /**
+     * Returns the bounding box of all entities as a JSON object.
+     *
+     * Returns: `{ "minX": f32, "minY": f32, "maxX": f32, "maxY": f32, "width": f32, "height": f32 }`
+     *
+     * Returns null if no entities exist.
+     */
+    getEntityBounds(): string | undefined;
+    /**
+     * Gets the current font size for labels.
+     */
+    getFontSize(): number;
+    /**
      * Returns the current frames per second (rolling average over 60 frames).
      */
     getFps(): number;
@@ -81,6 +99,18 @@ export class Rource {
      * Returns the last frame time in milliseconds.
      */
     getFrameTimeMs(): number;
+    /**
+     * Calculates the required canvas dimensions to render the full map at a readable zoom level.
+     *
+     * # Arguments
+     *
+     * * `min_label_font_size` - Minimum font size for labels to be readable (default: 10.0)
+     *
+     * Returns: `{ "width": u32, "height": u32, "zoom": f32, "centerX": f32, "centerY": f32 }`
+     *
+     * Returns null if no entities exist.
+     */
+    getFullMapDimensions(min_label_font_size: number): string | undefined;
     /**
      * Returns the type of renderer being used ("webgl2" or "software").
      */
@@ -221,6 +251,20 @@ export class Rource {
      */
     play(): void;
     /**
+     * Prepares the renderer for full map export by setting up camera and viewport.
+     *
+     * # Arguments
+     *
+     * * `width` - Target canvas width
+     * * `height` - Target canvas height
+     * * `zoom` - Zoom level to use
+     * * `center_x` - World X coordinate to center on
+     * * `center_y` - World Y coordinate to center on
+     *
+     * Call this before resizing canvas and calling `forceRender()`.
+     */
+    prepareFullMapExport(width: number, height: number, zoom: number, center_x: number, center_y: number): void;
+    /**
      * Attempts to recover from a lost WebGL context.
      *
      * Returns true if recovery was successful or if context was not lost.
@@ -239,6 +283,19 @@ export class Rource {
      */
     resize(width: number, height: number): void;
     /**
+     * Restores the renderer after full map export.
+     *
+     * # Arguments
+     *
+     * * `width` - Original canvas width
+     * * `height` - Original canvas height
+     */
+    restoreAfterExport(width: number, height: number): void;
+    /**
+     * Restores camera state from previously saved values.
+     */
+    restoreCameraState(x: number, y: number, zoom: number): void;
+    /**
      * Seeks to a specific commit index.
      */
     seek(commit_index: number): void;
@@ -250,6 +307,14 @@ export class Rource {
      * Sets whether to show bloom effect.
      */
     setBloom(enabled: boolean): void;
+    /**
+     * Sets the font size for labels (user names, file names, directory names).
+     *
+     * # Arguments
+     *
+     * * `size` - Font size in pixels (clamped to 4.0 - 200.0 range)
+     */
+    setFontSize(size: number): void;
     /**
      * Sets whether to show labels (user names, file names).
      */
@@ -308,11 +373,15 @@ export interface InitOutput {
     readonly rource_getActiveActions: (a: number) => number;
     readonly rource_getAuthorColor: (a: number, b: number, c: number, d: number) => void;
     readonly rource_getAuthors: (a: number, b: number) => void;
+    readonly rource_getCameraState: (a: number, b: number) => void;
     readonly rource_getCanvasHeight: (a: number) => number;
     readonly rource_getCanvasWidth: (a: number) => number;
     readonly rource_getDrawCalls: (a: number) => number;
+    readonly rource_getEntityBounds: (a: number, b: number) => void;
+    readonly rource_getFontSize: (a: number) => number;
     readonly rource_getFps: (a: number) => number;
     readonly rource_getFrameTimeMs: (a: number) => number;
+    readonly rource_getFullMapDimensions: (a: number, b: number, c: number) => void;
     readonly rource_getRendererType: (a: number, b: number) => void;
     readonly rource_getShowLabels: (a: number) => number;
     readonly rource_getSpeed: (a: number) => number;
@@ -339,12 +408,16 @@ export interface InitOutput {
     readonly rource_pan: (a: number, b: number, c: number) => void;
     readonly rource_pause: (a: number) => void;
     readonly rource_play: (a: number) => void;
+    readonly rource_prepareFullMapExport: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly rource_recoverContext: (a: number) => number;
     readonly rource_resetCamera: (a: number) => void;
     readonly rource_resize: (a: number, b: number, c: number) => void;
+    readonly rource_restoreAfterExport: (a: number, b: number, c: number) => void;
+    readonly rource_restoreCameraState: (a: number, b: number, c: number, d: number) => void;
     readonly rource_seek: (a: number, b: number) => void;
     readonly rource_setBackgroundColor: (a: number, b: number, c: number) => void;
     readonly rource_setBloom: (a: number, b: number) => void;
+    readonly rource_setFontSize: (a: number, b: number) => void;
     readonly rource_setShowLabels: (a: number, b: number) => void;
     readonly rource_setSpeed: (a: number, b: number) => void;
     readonly rource_stepBackward: (a: number) => void;
