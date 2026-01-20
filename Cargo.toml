@@ -13,7 +13,7 @@ members = [
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.76"
-license = "GPL-3.0"
+license = "GPL-3.0-only"
 repository = "https://github.com/tomtom215/rource"
 authors = ["Rource Contributors"]
 
