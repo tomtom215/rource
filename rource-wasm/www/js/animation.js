@@ -221,6 +221,42 @@ export function updatePerfMetrics() {
 }
 
 /**
+ * Formats a Unix timestamp to a readable date string.
+ * @param {number} timestamp - Unix timestamp in seconds
+ * @param {boolean} short - If true, use short format (e.g., "Jan 20")
+ * @returns {string} Formatted date string
+ */
+function formatDate(timestamp, short = false) {
+    if (!timestamp || timestamp <= 0) return '--';
+    const date = new Date(timestamp * 1000);
+    if (short) {
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+    return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+
+/**
+ * Formats a Unix timestamp to a date with optional time.
+ * @param {number} timestamp - Unix timestamp in seconds
+ * @returns {string} Formatted date and time string
+ */
+function formatDateTime(timestamp) {
+    if (!timestamp || timestamp <= 0) return '--';
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+/**
  * Updates playback UI (play button, timeline).
  */
 export function updatePlaybackUI() {
@@ -228,7 +264,10 @@ export function updatePlaybackUI() {
     if (!rource) return;
 
     const elements = getAllElements();
-    const { btnPlayMain, playIconMain, timelineSlider, timelineInfo } = elements;
+    const {
+        btnPlayMain, playIconMain, timelineSlider, timelineInfoNumbers,
+        timelineDate, timelineCommitInfo, timelineStartDate, timelineEndDate
+    } = elements;
 
     if (!btnPlayMain || !playIconMain) return;
 
@@ -259,23 +298,75 @@ export function updatePlaybackUI() {
         btnPlayMain.classList.remove('replay');
     }
 
-    // Update timeline
-    if (timelineSlider && timelineInfo) {
+    // Update timeline slider and commit numbers
+    if (timelineSlider && timelineInfoNumbers) {
         if (total > 0) {
             timelineSlider.max = total - 1;
             timelineSlider.value = Math.min(current, total - 1);
             timelineSlider.disabled = false;
             const displayCurrent = Math.min(current + 1, total);
-            timelineInfo.textContent = `${displayCurrent} / ${total}`;
-            timelineSlider.setAttribute('aria-valuetext', `${displayCurrent} of ${total} commits`);
+            timelineInfoNumbers.textContent = `${displayCurrent} / ${total}`;
+            timelineSlider.setAttribute('aria-valuetext', `Commit ${displayCurrent} of ${total}`);
         } else {
             timelineSlider.max = 0;
             timelineSlider.value = 0;
             timelineSlider.disabled = true;
-            timelineInfo.textContent = '0 / 0';
+            timelineInfoNumbers.textContent = '0 / 0';
             timelineSlider.setAttribute('aria-valuetext', '0 of 0 commits');
         }
     }
+
+    // Update current commit date display
+    if (timelineDate && total > 0) {
+        const currentIndex = Math.min(current, total - 1);
+        const timestamp = safeWasmCall('getCommitTimestamp', () => rource.getCommitTimestamp(currentIndex), 0);
+        timelineDate.textContent = formatDateTime(timestamp);
+    } else if (timelineDate) {
+        timelineDate.textContent = '--';
+    }
+
+    // Update commit info (author and file count)
+    if (timelineCommitInfo && total > 0) {
+        const currentIndex = Math.min(current, total - 1);
+        const author = safeWasmCall('getCommitAuthor', () => rource.getCommitAuthor(currentIndex), '');
+        const fileCount = safeWasmCall('getCommitFileCount', () => rource.getCommitFileCount(currentIndex), 0);
+        if (author) {
+            const filesText = fileCount === 1 ? '1 file' : `${fileCount} files`;
+            timelineCommitInfo.textContent = `${author} - ${filesText}`;
+        } else {
+            timelineCommitInfo.textContent = '';
+        }
+    } else if (timelineCommitInfo) {
+        timelineCommitInfo.textContent = '';
+    }
+
+    // Update date range (start and end dates) - only need to do once when data changes
+    // We check if the start date shows "--" which indicates it needs updating
+    if (timelineStartDate && timelineEndDate && total > 0) {
+        if (timelineStartDate.textContent === '--') {
+            const startTimestamp = safeWasmCall('getCommitTimestamp', () => rource.getCommitTimestamp(0), 0);
+            const endTimestamp = safeWasmCall('getCommitTimestamp', () => rource.getCommitTimestamp(total - 1), 0);
+            timelineStartDate.textContent = formatDate(startTimestamp, true);
+            timelineEndDate.textContent = formatDate(endTimestamp, true);
+        }
+    } else if (timelineStartDate && timelineEndDate) {
+        timelineStartDate.textContent = '--';
+        timelineEndDate.textContent = '--';
+    }
+}
+
+/**
+ * Resets the timeline date range labels.
+ * Call this when new data is loaded to force re-calculation of date range.
+ */
+export function resetTimelineDateLabels() {
+    const elements = getAllElements();
+    const { timelineStartDate, timelineEndDate, timelineDate, timelineCommitInfo } = elements;
+
+    if (timelineStartDate) timelineStartDate.textContent = '--';
+    if (timelineEndDate) timelineEndDate.textContent = '--';
+    if (timelineDate) timelineDate.textContent = '--';
+    if (timelineCommitInfo) timelineCommitInfo.textContent = '';
 }
 
 /**

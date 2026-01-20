@@ -3,12 +3,14 @@
  *
  * Exports the entire visualization at high resolution with readable labels.
  * This creates a "poster-style" image of the complete codebase structure.
+ * Includes file type legend and repository statistics overlay.
  */
 
 import { getElement, getAllElements } from '../dom.js';
-import { getRource, isContextLost, getAnimationId, setAnimationId, hasData } from '../state.js';
+import { getRource, isContextLost, getAnimationId, setAnimationId, hasData, get } from '../state.js';
 import { showToast } from '../toast.js';
 import { safeWasmCall, safeWasmVoid } from '../wasm-api.js';
+import { EXTENSION_COLORS, getExtensionColor } from '../config.js';
 
 // Reference to animate function (set by main module)
 let animateCallback = null;
@@ -110,6 +112,171 @@ function estimateFileSize(width, height) {
 }
 
 /**
+ * Gets legend data (file extensions and their counts/colors).
+ * @returns {Array} Array of { ext, color, count } sorted by count
+ */
+function getLegendData() {
+    // Get legend items from DOM (already computed by main.js)
+    const legendItems = getElement('legendItems');
+    if (!legendItems) return [];
+
+    const data = [];
+    const items = legendItems.querySelectorAll('.legend-item');
+
+    items.forEach(item => {
+        const colorEl = item.querySelector('.legend-color');
+        const nameEl = item.querySelector('.legend-name');
+        const countEl = item.querySelector('.legend-count');
+
+        if (colorEl && nameEl && countEl) {
+            const color = colorEl.style.backgroundColor || getExtensionColor(nameEl.textContent.replace('.', ''));
+            data.push({
+                ext: nameEl.textContent,
+                color: color,
+                count: parseInt(countEl.textContent, 10) || 0
+            });
+        }
+    });
+
+    return data;
+}
+
+/**
+ * Gets stats data for the export overlay.
+ * @returns {Object} { commits, files, authors }
+ */
+function getStatsData() {
+    const statCommits = getElement('statCommits');
+    const statFiles = getElement('statFiles');
+    const statAuthors = getElement('statAuthors');
+
+    return {
+        commits: statCommits?.textContent || '0',
+        files: statFiles?.textContent || '0',
+        authors: statAuthors?.textContent || '0'
+    };
+}
+
+/**
+ * Draws the legend and stats overlay on the canvas.
+ * @param {HTMLCanvasElement} canvas - The canvas to draw on
+ * @param {number} fontSize - Base font size for the overlay
+ */
+function drawLegendOverlay(canvas, fontSize = 12) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const legendData = getLegendData();
+    const stats = getStatsData();
+
+    // Configuration
+    const padding = fontSize * 1.5;
+    const lineHeight = fontSize * 1.8;
+    const colorBoxSize = fontSize * 1.2;
+    const colorBoxGap = fontSize * 0.6;
+    const sectionGap = fontSize * 2;
+
+    // Calculate overlay dimensions
+    const maxLegendItems = Math.min(legendData.length, 15); // Limit items
+    const legendHeight = maxLegendItems * lineHeight + padding * 2;
+    const statsHeight = lineHeight * 4 + padding * 2;
+    const overlayWidth = fontSize * 18;
+    const overlayHeight = legendHeight + statsHeight + sectionGap;
+
+    // Position (bottom-right corner with margin)
+    const margin = fontSize * 2;
+    const x = canvas.width - overlayWidth - margin;
+    const y = canvas.height - overlayHeight - margin;
+
+    // Draw background
+    ctx.save();
+    ctx.fillStyle = 'rgba(30, 32, 36, 0.92)';
+    ctx.beginPath();
+    ctx.roundRect(x, y, overlayWidth, overlayHeight, fontSize * 0.5);
+    ctx.fill();
+
+    // Draw border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Stats section (top of overlay)
+    let currentY = y + padding + fontSize;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = `bold ${fontSize * 0.9}px system-ui, -apple-system, sans-serif`;
+    ctx.fillText('REPOSITORY STATS', x + padding, currentY);
+    currentY += lineHeight;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `${fontSize}px system-ui, -apple-system, sans-serif`;
+
+    const statsItems = [
+        { label: 'Commits:', value: stats.commits },
+        { label: 'Files:', value: stats.files },
+        { label: 'Authors:', value: stats.authors }
+    ];
+
+    statsItems.forEach(item => {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.fillText(item.label, x + padding, currentY);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText(item.value, x + padding + fontSize * 5, currentY);
+        ctx.font = `${fontSize}px system-ui, -apple-system, sans-serif`;
+        currentY += lineHeight;
+    });
+
+    // Separator line
+    currentY += sectionGap * 0.3;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.moveTo(x + padding, currentY);
+    ctx.lineTo(x + overlayWidth - padding, currentY);
+    ctx.stroke();
+    currentY += sectionGap * 0.5;
+
+    // File types section
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = `bold ${fontSize * 0.9}px system-ui, -apple-system, sans-serif`;
+    ctx.fillText('FILE TYPES', x + padding, currentY);
+    currentY += lineHeight;
+
+    // Legend items
+    ctx.font = `${fontSize}px system-ui, -apple-system, sans-serif`;
+    const displayItems = legendData.slice(0, maxLegendItems);
+
+    displayItems.forEach(item => {
+        // Color box
+        ctx.fillStyle = item.color;
+        ctx.beginPath();
+        ctx.roundRect(x + padding, currentY - colorBoxSize + 2, colorBoxSize, colorBoxSize, 2);
+        ctx.fill();
+
+        // Extension name
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(item.ext, x + padding + colorBoxSize + colorBoxGap, currentY);
+
+        // Count (right-aligned)
+        const countText = item.count.toLocaleString();
+        const countWidth = ctx.measureText(countText).width;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillText(countText, x + overlayWidth - padding - countWidth, currentY);
+
+        currentY += lineHeight;
+    });
+
+    // Show "and X more..." if truncated
+    if (legendData.length > maxLegendItems) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.font = `italic ${fontSize * 0.9}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText(`and ${legendData.length - maxLegendItems} more...`, x + padding, currentY);
+    }
+
+    ctx.restore();
+}
+
+/**
  * Shows the export options modal.
  * @returns {Promise<Object|null>} Export options or null if cancelled
  */
@@ -174,6 +341,10 @@ function showExportModal(defaultDimensions) {
                     <p class="export-option-help">
                         Larger labels = larger export image. Adjust based on your needs.
                     </p>
+                    <label class="export-option export-checkbox-option">
+                        <input type="checkbox" id="export-include-legend" checked>
+                        <span>Include file type legend and stats</span>
+                    </label>
                 </div>
 
                 <div class="export-actions">
@@ -250,7 +421,12 @@ function showExportModal(defaultDimensions) {
         // Confirm handler
         confirmBtn.addEventListener('click', () => {
             const fontSize = parseInt(fontSlider.value, 10);
+            const includeLegendCheckbox = modal.querySelector('#export-include-legend');
+            const includeLegend = includeLegendCheckbox?.checked ?? true;
             const dims = getFullMapDimensions(fontSize);
+            if (dims) {
+                dims.includeLegend = includeLegend;
+            }
             closeModal(dims);
         });
 
@@ -281,7 +457,7 @@ async function performExport(options) {
         return;
     }
 
-    const { width, height, zoom, centerX, centerY } = options;
+    const { width, height, zoom, centerX, centerY, includeLegend = true } = options;
 
     // Show progress toast
     showToast('Preparing full map export...', 'info', 0);
@@ -309,6 +485,13 @@ async function performExport(options) {
 
         // Small delay to ensure render completes
         await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Draw legend and stats overlay (if enabled)
+        if (includeLegend) {
+            // Scale overlay font size proportionally to canvas size
+            const overlayFontSize = Math.max(14, Math.min(24, Math.round(Math.min(width, height) / 80)));
+            drawLegendOverlay(canvas, overlayFontSize);
+        }
 
         // Generate filename
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);

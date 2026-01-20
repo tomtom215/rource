@@ -598,6 +598,49 @@ impl Rource {
         self.current_commit
     }
 
+    /// Returns the timestamp (Unix epoch seconds) for a commit at the given index.
+    ///
+    /// Returns 0 if the index is out of bounds.
+    #[wasm_bindgen(js_name = getCommitTimestamp)]
+    pub fn get_commit_timestamp(&self, index: usize) -> i64 {
+        self.commits.get(index).map_or(0, |c| c.timestamp)
+    }
+
+    /// Returns the author name for a commit at the given index.
+    ///
+    /// Returns empty string if the index is out of bounds.
+    #[wasm_bindgen(js_name = getCommitAuthor)]
+    pub fn get_commit_author(&self, index: usize) -> String {
+        self.commits
+            .get(index)
+            .map_or_else(String::new, |c| c.author.clone())
+    }
+
+    /// Returns the number of files changed in a commit at the given index.
+    ///
+    /// Returns 0 if the index is out of bounds.
+    #[wasm_bindgen(js_name = getCommitFileCount)]
+    pub fn get_commit_file_count(&self, index: usize) -> usize {
+        self.commits.get(index).map_or(0, |c| c.files.len())
+    }
+
+    /// Returns the date range of all commits as a JSON object.
+    ///
+    /// Returns: `{ "startTimestamp": i64, "endTimestamp": i64 }` or null if no commits.
+    #[wasm_bindgen(js_name = getDateRange)]
+    pub fn get_date_range(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+
+        let start = self.commits.first().map_or(0, |c| c.timestamp);
+        let end = self.commits.last().map_or(0, |c| c.timestamp);
+
+        Some(format!(
+            r#"{{"startTimestamp":{start},"endTimestamp":{end}}}"#
+        ))
+    }
+
     /// Sets playback speed (seconds per day of repository history).
     ///
     /// The speed is clamped between 1.0 (10x, fastest) and 1000.0 (very slow) seconds per day.

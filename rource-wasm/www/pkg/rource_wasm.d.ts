@@ -79,6 +79,30 @@ export class Rource {
      */
     getCanvasWidth(): number;
     /**
+     * Returns the author name for a commit at the given index.
+     *
+     * Returns empty string if the index is out of bounds.
+     */
+    getCommitAuthor(index: number): string;
+    /**
+     * Returns the number of files changed in a commit at the given index.
+     *
+     * Returns 0 if the index is out of bounds.
+     */
+    getCommitFileCount(index: number): number;
+    /**
+     * Returns the timestamp (Unix epoch seconds) for a commit at the given index.
+     *
+     * Returns 0 if the index is out of bounds.
+     */
+    getCommitTimestamp(index: number): bigint;
+    /**
+     * Returns the date range of all commits as a JSON object.
+     *
+     * Returns: `{ "startTimestamp": i64, "endTimestamp": i64 }` or null if no commits.
+     */
+    getDateRange(): string | undefined;
+    /**
      * Returns the estimated draw call count for the last frame.
      */
     getDrawCalls(): number;
@@ -379,6 +403,10 @@ export interface InitOutput {
     readonly rource_getCameraState: (a: number, b: number) => void;
     readonly rource_getCanvasHeight: (a: number) => number;
     readonly rource_getCanvasWidth: (a: number) => number;
+    readonly rource_getCommitAuthor: (a: number, b: number, c: number) => void;
+    readonly rource_getCommitFileCount: (a: number, b: number) => number;
+    readonly rource_getCommitTimestamp: (a: number, b: number) => bigint;
+    readonly rource_getDateRange: (a: number, b: number) => void;
     readonly rource_getDrawCalls: (a: number) => number;
     readonly rource_getEntityBounds: (a: number, b: number) => void;
     readonly rource_getFontSize: (a: number) => number;
