@@ -94,8 +94,9 @@ export class Rource {
      * Returns the timestamp (Unix epoch seconds) for a commit at the given index.
      *
      * Returns 0 if the index is out of bounds.
+     * Note: Returns f64 instead of i64 to avoid BigInt conversion issues in JavaScript.
      */
-    getCommitTimestamp(index: number): bigint;
+    getCommitTimestamp(index: number): number;
     /**
      * Returns the date range of all commits as a JSON object.
      *
@@ -160,8 +161,9 @@ export class Rource {
     getTotalFiles(): number;
     /**
      * Returns the total number of frames rendered since initialization.
+     * Note: Returns f64 instead of u64 to avoid BigInt conversion issues in JavaScript.
      */
-    getTotalFrames(): bigint;
+    getTotalFrames(): number;
     /**
      * Returns the total number of users in the scene.
      */
@@ -405,7 +407,7 @@ export interface InitOutput {
     readonly rource_getCanvasWidth: (a: number) => number;
     readonly rource_getCommitAuthor: (a: number, b: number, c: number) => void;
     readonly rource_getCommitFileCount: (a: number, b: number) => number;
-    readonly rource_getCommitTimestamp: (a: number, b: number) => bigint;
+    readonly rource_getCommitTimestamp: (a: number, b: number) => number;
     readonly rource_getDateRange: (a: number, b: number) => void;
     readonly rource_getDrawCalls: (a: number) => number;
     readonly rource_getEntityBounds: (a: number, b: number) => void;
@@ -418,7 +420,7 @@ export interface InitOutput {
     readonly rource_getSpeed: (a: number) => number;
     readonly rource_getTotalEntities: (a: number) => number;
     readonly rource_getTotalFiles: (a: number) => number;
-    readonly rource_getTotalFrames: (a: number) => bigint;
+    readonly rource_getTotalFrames: (a: number) => number;
     readonly rource_getTotalUsers: (a: number) => number;
     readonly rource_getUptime: (a: number) => number;
     readonly rource_getVisibleDirectories: (a: number) => number;

@@ -219,8 +219,9 @@ export class Rource {
      * Returns the timestamp (Unix epoch seconds) for a commit at the given index.
      *
      * Returns 0 if the index is out of bounds.
+     * Note: Returns f64 instead of i64 to avoid BigInt conversion issues in JavaScript.
      * @param {number} index
-     * @returns {bigint}
+     * @returns {number}
      */
     getCommitTimestamp(index) {
         const ret = wasm.rource_getCommitTimestamp(this.__wbg_ptr, index);
@@ -387,11 +388,12 @@ export class Rource {
     }
     /**
      * Returns the total number of frames rendered since initialization.
-     * @returns {bigint}
+     * Note: Returns f64 instead of u64 to avoid BigInt conversion issues in JavaScript.
+     * @returns {number}
      */
     getTotalFrames() {
         const ret = wasm.rource_getTotalFrames(this.__wbg_ptr);
-        return BigInt.asUintN(64, ret);
+        return ret;
     }
     /**
      * Returns the total number of users in the scene.

@@ -601,9 +601,10 @@ impl Rource {
     /// Returns the timestamp (Unix epoch seconds) for a commit at the given index.
     ///
     /// Returns 0 if the index is out of bounds.
+    /// Note: Returns f64 instead of i64 to avoid BigInt conversion issues in JavaScript.
     #[wasm_bindgen(js_name = getCommitTimestamp)]
-    pub fn get_commit_timestamp(&self, index: usize) -> i64 {
-        self.commits.get(index).map_or(0, |c| c.timestamp)
+    pub fn get_commit_timestamp(&self, index: usize) -> f64 {
+        self.commits.get(index).map_or(0.0, |c| c.timestamp as f64)
     }
 
     /// Returns the author name for a commit at the given index.
@@ -1063,9 +1064,10 @@ impl Rource {
     }
 
     /// Returns the total number of frames rendered since initialization.
+    /// Note: Returns f64 instead of u64 to avoid BigInt conversion issues in JavaScript.
     #[wasm_bindgen(js_name = getTotalFrames)]
-    pub fn get_total_frames(&self) -> u64 {
-        self.perf_metrics.total_frames
+    pub fn get_total_frames(&self) -> f64 {
+        self.perf_metrics.total_frames as f64
     }
 
     /// Returns the uptime in seconds since initialization.
