@@ -608,6 +608,8 @@ enum DragTarget {
     File(FileId),
     /// Dragging a user entity.
     User(UserId),
+    /// Dragging a directory entity.
+    Directory(DirId),
 }
 
 /// Performance metrics for FPS tracking and profiling.
@@ -1123,6 +1125,19 @@ impl Rource {
             return;
         }
 
+        // Check directories (lowest priority - users and files are easier to target)
+        if let Some(drag_target) = self.hit_test_directory(world_pos, hit_radius) {
+            self.drag_target = Some(drag_target);
+            // Calculate offset from click point to entity center
+            if let DragTarget::Directory(dir_id) = drag_target {
+                if let Some(dir) = self.scene.directories().get(dir_id) {
+                    self.drag_offset = dir.position() - world_pos;
+                    self.drag_last_pos = dir.position();
+                }
+            }
+            return;
+        }
+
         // No entity hit, set up for camera panning
         self.drag_target = None;
         self.camera_start_x = self.camera.position().x;
@@ -1197,6 +1212,16 @@ impl Rource {
                     if let Some(dir_id) = dir_id {
                         self.move_connected_entities_for_file(file_id, dir_id, delta);
                     }
+                }
+                DragTarget::Directory(dir_id) => {
+                    // Move the directory and zero its velocity so physics doesn't fight
+                    if let Some(dir) = self.scene.directories_mut().get_mut(dir_id) {
+                        dir.set_position(new_entity_pos);
+                        dir.set_velocity(Vec2::ZERO);
+                    }
+
+                    // Move connected entities (children and files in this directory)
+                    self.move_connected_entities_for_directory(dir_id, delta);
                 }
             }
 
@@ -1608,6 +1633,39 @@ impl Rource {
         closest_file.map(|(id, _)| DragTarget::File(id))
     }
 
+    /// Tests if a directory is within the hit radius of the given world position.
+    ///
+    /// Returns the drag target if a directory is found.
+    /// Skips the root directory (cannot be dragged).
+    fn hit_test_directory(&self, world_pos: Vec2, hit_radius: f32) -> Option<DragTarget> {
+        // Query entities in the hit area
+        let entities = self.scene.query_entities_circle(world_pos, hit_radius);
+
+        // Find the closest directory (excluding root)
+        let mut closest_dir: Option<(DirId, f32)> = None;
+
+        for entity in entities {
+            if let EntityType::Directory(dir_id) = entity {
+                if let Some(dir) = self.scene.directories().get(dir_id) {
+                    // Skip root directory - it's anchored and shouldn't be dragged
+                    if dir.is_root() {
+                        continue;
+                    }
+                    let dist = (dir.position() - world_pos).length();
+                    // Check if within the directory's radius (with some tolerance)
+                    let effective_radius = dir.radius() + hit_radius * 0.5;
+                    if dist <= effective_radius
+                        && (closest_dir.is_none() || dist < closest_dir.unwrap().1)
+                    {
+                        closest_dir = Some((dir_id, dist));
+                    }
+                }
+            }
+        }
+
+        closest_dir.map(|(id, _)| DragTarget::Directory(id))
+    }
+
     /// Drag coupling strength for connected entities (0.0 = no coupling, 1.0 = full coupling).
     /// Lower values create a more elastic, spring-like effect.
     const DRAG_COUPLING_STRENGTH: f32 = 0.6;
@@ -1719,6 +1777,94 @@ impl Rource {
                     let new_pos = file.position() + delta * coupling;
                     file.set_position(new_pos);
                     file.set_target(new_pos);
+                }
+            }
+        }
+    }
+
+    /// Moves entities connected to a dragged directory.
+    ///
+    /// Connected entities include:
+    /// - Child directories
+    /// - Files in this directory
+    /// - Sibling directories (with reduced coupling)
+    fn move_connected_entities_for_directory(&mut self, dir_id: DirId, delta: Vec2) {
+        // Skip if delta is negligible
+        if delta.length() < 0.1 {
+            return;
+        }
+
+        // Get the dragged directory's position for distance-based coupling
+        let dragged_pos = self
+            .scene
+            .directories()
+            .get(dir_id)
+            .map_or(Vec2::ZERO, rource_core::scene::DirNode::position);
+
+        // Collect child directory IDs
+        let child_dir_ids: Vec<DirId> = self
+            .scene
+            .directories()
+            .get(dir_id)
+            .map(|d| d.children().to_vec())
+            .unwrap_or_default();
+
+        // Move child directories with full coupling (they move with parent)
+        for child_id in child_dir_ids {
+            if let Some(child) = self.scene.directories_mut().get_mut(child_id) {
+                let new_pos = child.position() + delta;
+                child.set_position(new_pos);
+                child.set_velocity(Vec2::ZERO);
+            }
+        }
+
+        // Collect file IDs in this directory
+        let file_ids: Vec<FileId> = self
+            .scene
+            .directories()
+            .get(dir_id)
+            .map(|d| d.files().to_vec())
+            .unwrap_or_default();
+
+        // Move files in this directory with full coupling
+        for file_id in file_ids {
+            if let Some(file) = self.scene.get_file_mut(file_id) {
+                let new_pos = file.position() + delta;
+                file.set_position(new_pos);
+                file.set_target(new_pos);
+            }
+        }
+
+        // Move sibling directories with distance-based reduced coupling
+        let parent_id = self
+            .scene
+            .directories()
+            .get(dir_id)
+            .and_then(rource_core::scene::DirNode::parent);
+        if let Some(parent_id) = parent_id {
+            let sibling_ids: Vec<DirId> = self
+                .scene
+                .directories()
+                .get(parent_id)
+                .map(|d| d.children().to_vec())
+                .unwrap_or_default();
+
+            for sibling_id in sibling_ids {
+                if sibling_id == dir_id {
+                    continue; // Skip the dragged directory itself
+                }
+
+                if let Some(sibling) = self.scene.directories_mut().get_mut(sibling_id) {
+                    let distance = (sibling.position() - dragged_pos).length();
+                    let distance_factor =
+                        (1.0 - distance / Self::DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+                    let coupling = Self::DRAG_COUPLING_STRENGTH * 0.3 * distance_factor;
+
+                    if coupling > 0.01 {
+                        let new_pos = sibling.position() + delta * coupling;
+                        sibling.set_position(new_pos);
+                        sibling.set_velocity(Vec2::ZERO);
+                    }
                 }
             }
         }

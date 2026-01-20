@@ -83,6 +83,7 @@ export function initDomElements() {
     elements.perfVisible = document.getElementById('perf-visible');
     elements.perfDraws = document.getElementById('perf-draws');
     elements.perfResolution = document.getElementById('perf-resolution');
+    elements.perfUncapped = document.getElementById('perf-uncapped');
 
     // Showcase panel (Rource repo)
     elements.btnVisualizeRource = document.getElementById('btn-visualize-rource');

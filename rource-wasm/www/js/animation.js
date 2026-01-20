@@ -52,12 +52,16 @@ export function resizeCanvas() {
  */
 export const debouncedResize = debounce(resizeCanvas, CONFIG.DEBOUNCE_DELAY_MS);
 
+// Track uncapped mode timeout ID separately
+let uncappedTimeoutId = null;
+
 /**
  * Main animation loop.
- * @param {number} timestamp - Frame timestamp from requestAnimationFrame
+ * @param {number} timestamp - Frame timestamp from requestAnimationFrame (or performance.now() in uncapped mode)
  */
 export function animate(timestamp) {
     const rource = getRource();
+    const isUncapped = get('uncappedFps');
 
     if (rource) {
         safeWasmCall('frame', () => rource.frame(timestamp), undefined);
@@ -75,7 +79,23 @@ export function animate(timestamp) {
         }
     }
 
-    setAnimationId(requestAnimationFrame(animate));
+    // Schedule next frame based on mode
+    if (isUncapped) {
+        // Uncapped mode: use setTimeout(0) to run as fast as possible
+        // Note: browsers typically clamp setTimeout to ~4ms minimum
+        uncappedTimeoutId = setTimeout(() => animate(performance.now()), 0);
+        setAnimationId(uncappedTimeoutId);
+    } else {
+        setAnimationId(requestAnimationFrame(animate));
+    }
+}
+
+/**
+ * Restarts the animation loop (used when switching between capped/uncapped modes).
+ */
+export function restartAnimation() {
+    stopAnimation();
+    startAnimation();
 }
 
 /**
@@ -83,7 +103,13 @@ export function animate(timestamp) {
  */
 export function startAnimation() {
     if (getAnimationId() === null) {
-        setAnimationId(requestAnimationFrame(animate));
+        const isUncapped = get('uncappedFps');
+        if (isUncapped) {
+            uncappedTimeoutId = setTimeout(() => animate(performance.now()), 0);
+            setAnimationId(uncappedTimeoutId);
+        } else {
+            setAnimationId(requestAnimationFrame(animate));
+        }
     }
 }
 
@@ -93,7 +119,13 @@ export function startAnimation() {
 export function stopAnimation() {
     const animationId = getAnimationId();
     if (animationId !== null) {
+        // Clear both types of animation scheduling
         cancelAnimationFrame(animationId);
+        clearTimeout(animationId);
+        if (uncappedTimeoutId !== null) {
+            clearTimeout(uncappedTimeoutId);
+            uncappedTimeoutId = null;
+        }
         setAnimationId(null);
     }
 }
@@ -151,6 +183,7 @@ export function updatePerfMetrics() {
         const total = safeWasmCall('commitCount', () => rource.commitCount(), 0);
         const current = safeWasmCall('currentCommit', () => rource.currentCommit(), 0);
         const isComplete = current >= total - 1 && !isPlaying;
+        const isUncapped = get('uncappedFps');
 
         if (isComplete) {
             perfFps.textContent = `Complete`;
@@ -158,6 +191,10 @@ export function updatePerfMetrics() {
         } else if (!isPlaying) {
             perfFps.textContent = `Paused`;
             perfFps.className = 'perf-fps paused';
+        } else if (isUncapped) {
+            // In uncapped mode, show FPS with special styling
+            perfFps.textContent = `${fpsRounded} FPS`;
+            perfFps.className = 'perf-fps uncapped';
         } else {
             perfFps.textContent = `${fpsRounded} FPS`;
             perfFps.className = 'perf-fps ' + (fpsRounded >= 55 ? 'good' : fpsRounded >= 30 ? 'ok' : 'bad');
