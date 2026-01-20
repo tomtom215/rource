@@ -94,7 +94,7 @@ export class Rource {
      * Returns the timestamp (Unix epoch seconds) for a commit at the given index.
      *
      * Returns 0 if the index is out of bounds.
-     * Note: Returns f64 instead of i64 to avoid BigInt conversion issues in JavaScript.
+     * Note: Returns f64 instead of i64 to avoid `BigInt` conversion issues in JavaScript.
      */
     getCommitTimestamp(index: number): number;
     /**
@@ -161,7 +161,7 @@ export class Rource {
     getTotalFiles(): number;
     /**
      * Returns the total number of frames rendered since initialization.
-     * Note: Returns f64 instead of u64 to avoid BigInt conversion issues in JavaScript.
+     * Note: Returns f64 instead of u64 to avoid `BigInt` conversion issues in JavaScript.
      */
     getTotalFrames(): number;
     /**
