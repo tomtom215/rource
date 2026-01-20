@@ -866,7 +866,7 @@ mod tests {
 
         // Should produce a valid matrix (no NaN values)
         for i in 0..16 {
-            assert!(m.m[i].is_finite(), "Matrix element {} is not finite", i);
+            assert!(m.m[i].is_finite(), "Matrix element {i} is not finite");
         }
     }
 
@@ -883,7 +883,7 @@ mod tests {
 
         // Should produce valid matrix
         for i in 0..16 {
-            assert!(m.m[i].is_finite(), "Matrix element {} is not finite", i);
+            assert!(m.m[i].is_finite(), "Matrix element {i} is not finite");
         }
     }
 
