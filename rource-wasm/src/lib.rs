@@ -42,6 +42,7 @@
 
 mod interaction;
 mod png;
+mod render_phases;
 mod rendering;
 
 use std::fmt::Write as FmtWrite;
@@ -53,7 +54,10 @@ use interaction::{
     ENTITY_HIT_RADIUS,
 };
 use png::write_png;
-use rendering::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
+use render_phases::{
+    render_actions, render_directories, render_directory_labels, render_file_labels, render_files,
+    render_user_labels, render_users, RenderContext,
+};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -63,10 +67,7 @@ use rource_core::camera::Camera;
 use rource_core::config::Settings;
 use rource_core::scene::{ActionType, Scene};
 use rource_math::{Bounds, Color, Vec2};
-use rource_render::{
-    default_font, estimate_text_width, FontId, LabelPlacer, Renderer, SoftwareRenderer,
-    WebGl2Renderer,
-};
+use rource_render::{default_font, FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
 use rource_vcs::parser::{CustomParser, GitParser, Parser};
 use rource_vcs::{Commit, FileAction};
 
@@ -1522,32 +1523,33 @@ impl Rource {
     }
 
     /// Renders the current frame to the canvas.
-    #[allow(clippy::too_many_lines)]
+    ///
+    /// This method orchestrates the phased rendering pipeline:
+    /// 1. Setup - Begin frame, clear, compute visible entities
+    /// 2. Directories - Draw directory nodes and connections
+    /// 3. Files - Draw file nodes and connections
+    /// 4. Actions - Draw action beams from users to files
+    /// 5. Users - Draw user avatars
+    /// 6. Labels - Draw text labels (if enabled)
+    /// 7. Finalize - End frame, present to canvas
     fn render(&mut self) {
         // Skip rendering if WebGL context is lost
-        // This prevents errors and allows graceful recovery
         if self.backend.is_context_lost() {
             return;
         }
 
+        // === Phase 1: Setup ===
         let renderer = self.backend.as_renderer_mut();
-
-        // Begin frame
         renderer.begin_frame();
-
-        // Clear with background color
         renderer.clear(self.settings.display.background_color);
 
-        // Compute visible bounds in world space
+        // Compute visible bounds and entities
         let visible_bounds = self.camera.visible_bounds();
         let camera_zoom = self.camera.zoom();
-
-        // Get visible entities - single spatial query instead of three separate ones
-        // This is more efficient as it traverses the quadtree once instead of three times
         let (visible_dirs, visible_files, visible_users) =
             self.scene.visible_entities(&visible_bounds);
 
-        // Collect render statistics
+        // Update render statistics
         let active_actions = self
             .scene
             .actions()
@@ -1563,340 +1565,43 @@ impl Rource {
                 + self.scene.user_count()
                 + self.scene.directories().len()
                 + self.scene.actions().len(),
-            // Estimate draw calls: directories (lines + circles) + files + actions (lines + circles) + users (2 circles + ring)
-            draw_calls: if self.renderer_type == RendererType::WebGl2 {
-                // WebGL2 batches by primitive type: ~6 draw calls typically
-                6
-            } else {
-                // Software renderer: one per primitive
-                visible_dirs.len() * 2
-                    + visible_files.len()
-                    + active_actions * 2
-                    + visible_users.len() * 3
+            draw_calls: if self.renderer_type == RendererType::WebGl2 { 6 } else {
+                visible_dirs.len() * 2 + visible_files.len() + active_actions * 2 + visible_users.len() * 3
             },
         };
 
-        // Use curves when zoomed out (better visual, acceptable perf)
-        let use_curves = camera_zoom < 0.8;
+        // Create render context for phase functions
+        let ctx = RenderContext {
+            visible_bounds,
+            camera_zoom,
+            use_curves: camera_zoom < 0.8,
+            visible_dirs,
+            visible_files,
+            visible_users,
+            show_labels: self.show_labels,
+            font_id: self.font_id,
+            font_size: self.settings.display.font_size,
+        };
 
-        // Draw directories with enhanced styling
-        for dir_id in &visible_dirs {
-            if let Some(dir) = self.scene.directories().get(*dir_id) {
-                if !dir.is_visible() {
-                    continue;
-                }
+        // === Phase 2: Directories ===
+        render_directories(renderer, &ctx, &self.scene, &self.camera);
 
-                let screen_pos = self.camera.world_to_screen(dir.position());
-                let radius = dir.radius() * camera_zoom;
+        // === Phase 3: Files ===
+        render_files(renderer, &ctx, &self.scene, &self.camera);
 
-                // Enhanced directory styling based on depth
-                let depth = dir.depth() as f32;
-                let depth_factor = (depth / 6.0).min(1.0);
+        // === Phase 4: Actions ===
+        render_actions(renderer, &ctx, &self.scene, &self.camera);
 
-                // Gradient color with depth
-                let base_brightness = 0.25 + 0.1 * (1.0 - depth_factor);
-                let dir_color = Color::new(
-                    base_brightness * 0.9,
-                    base_brightness,
-                    base_brightness * 1.1 + 0.05,
-                    0.55,
-                );
+        // === Phase 5: Users ===
+        render_users(renderer, &ctx, &self.scene, &self.camera);
 
-                // Draw soft glow behind directory node
-                let glow_color = dir_color.with_alpha(0.1);
-                renderer.draw_disc(screen_pos, radius * 1.5, glow_color);
+        // === Phase 6: Labels (rendered last for visibility) ===
+        render_directory_labels(renderer, &ctx, &self.scene, &self.camera);
+        render_user_labels(renderer, &ctx, &self.scene, &self.camera);
+        render_file_labels(renderer, &ctx, &self.scene, &self.camera);
 
-                // Draw directory as a hollow circle
-                renderer.draw_circle(screen_pos, radius, 1.5, dir_color);
-
-                // Small filled center dot
-                let center_color = dir_color.with_alpha(0.4);
-                renderer.draw_disc(screen_pos, radius * 0.25, center_color);
-
-                // Draw connection to parent with curved branches
-                if let Some(parent_pos) = dir.parent_position() {
-                    let parent_screen = self.camera.world_to_screen(parent_pos);
-
-                    // Branch width based on depth
-                    let branch_width = (1.5 - depth_factor * 0.5).max(0.8);
-
-                    // Branch color with gradient effect
-                    let branch_color = Color::new(
-                        dir_color.r * 1.1,
-                        dir_color.g * 1.1,
-                        dir_color.b * 1.2,
-                        0.35,
-                    );
-
-                    draw_curved_branch(
-                        renderer,
-                        parent_screen,
-                        screen_pos,
-                        branch_width,
-                        branch_color,
-                        use_curves,
-                    );
-                }
-
-                // Draw directory name label if labels are enabled
-                // Only show for shallow directories (depth <= 2) to avoid clutter
-                if self.show_labels && dir.depth() <= 2 {
-                    if let Some(fid) = self.font_id {
-                        let name = dir.name();
-                        // Skip empty names (root directory)
-                        if !name.is_empty() {
-                            let dir_font_size = self.settings.display.font_size * 0.75;
-                            let label_pos = Vec2::new(
-                                screen_pos.x + radius + 4.0,
-                                screen_pos.y - dir_font_size * 0.3,
-                            );
-
-                            // Shadow for better readability
-                            let shadow_color = Color::new(0.0, 0.0, 0.0, 0.4);
-                            renderer.draw_text(
-                                name,
-                                label_pos + Vec2::new(1.0, 1.0),
-                                fid,
-                                dir_font_size,
-                                shadow_color,
-                            );
-
-                            // Main label in soft blue-gray
-                            let label_color = Color::new(0.75, 0.78, 0.85, 0.7);
-                            renderer.draw_text(name, label_pos, fid, dir_font_size, label_color);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Draw files with enhanced styling
-        for file_id in &visible_files {
-            if let Some(file) = self.scene.get_file(*file_id) {
-                if file.alpha() < 0.01 {
-                    continue;
-                }
-
-                let screen_pos = self.camera.world_to_screen(file.position());
-                let radius = file.radius() * camera_zoom;
-                let color = file.current_color().with_alpha(file.alpha());
-                let effective_radius = radius.max(2.0);
-
-                // Draw connection to parent directory first (behind file)
-                if let Some(dir) = self.scene.directories().get(file.directory()) {
-                    let dir_screen = self.camera.world_to_screen(dir.position());
-
-                    // Branch color matches file color for visual cohesion
-                    let branch_color = Color::new(
-                        color.r * 0.7,
-                        color.g * 0.7,
-                        color.b * 0.7,
-                        0.25 * file.alpha(),
-                    );
-
-                    draw_curved_branch(
-                        renderer,
-                        dir_screen,
-                        screen_pos,
-                        0.8,
-                        branch_color,
-                        use_curves,
-                    );
-                }
-
-                // Draw soft glow behind file
-                let is_touched = file.touch_time() > 0.0;
-                let glow_intensity = if is_touched { 0.25 } else { 0.08 };
-                let glow_color = color.with_alpha(glow_intensity * file.alpha());
-                renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
-
-                // Outer ring (darker border)
-                let border_color = Color::new(color.r * 0.6, color.g * 0.6, color.b * 0.6, color.a);
-                renderer.draw_disc(screen_pos, effective_radius + 0.5, border_color);
-
-                // Main file disc
-                renderer.draw_disc(screen_pos, effective_radius, color);
-
-                // Bright highlight for active/touched files
-                if is_touched {
-                    let highlight = Color::new(1.0, 1.0, 1.0, 0.3 * file.alpha());
-                    renderer.draw_disc(screen_pos, effective_radius * 0.5, highlight);
-                }
-            }
-        }
-
-        // Draw actions (beams from users to files) with enhanced glow effects
-        for action in self.scene.actions() {
-            if action.is_complete() {
-                continue;
-            }
-
-            let user_opt = self.scene.get_user(action.user());
-            let file_opt = self.scene.get_file(action.file());
-
-            if let (Some(user), Some(file)) = (user_opt, file_opt) {
-                let user_screen = self.camera.world_to_screen(user.position());
-                let file_screen = self.camera.world_to_screen(file.position());
-                let beam_color = action.beam_color();
-
-                // Use enhanced beam drawing with glow
-                draw_action_beam(
-                    renderer,
-                    user_screen,
-                    file_screen,
-                    action.progress(),
-                    beam_color,
-                    camera_zoom,
-                );
-            }
-        }
-
-        // Draw users with stylized avatar shapes
-        for user_id in &visible_users {
-            if let Some(user) = self.scene.get_user(*user_id) {
-                if user.alpha() < 0.01 {
-                    continue;
-                }
-
-                let screen_pos = self.camera.world_to_screen(user.position());
-                let radius = (user.radius() * camera_zoom).max(5.0);
-                let color = user.display_color();
-
-                // Draw stylized avatar shape (modern person silhouette)
-                draw_avatar_shape(
-                    renderer,
-                    screen_pos,
-                    radius,
-                    color,
-                    user.is_active(),
-                    user.alpha(),
-                );
-            }
-        }
-
-        // Draw labels if enabled and font is loaded
-        if self.show_labels {
-            if let Some(font_id) = self.font_id {
-                let font_size = self.settings.display.font_size;
-
-                // Draw user name labels with shadows
-                for user_id in &visible_users {
-                    if let Some(user) = self.scene.get_user(*user_id) {
-                        if user.alpha() < 0.01 {
-                            continue;
-                        }
-
-                        let screen_pos = self.camera.world_to_screen(user.position());
-                        let radius = (user.radius() * camera_zoom).max(5.0);
-
-                        // Position label to the right of the user
-                        let label_pos =
-                            Vec2::new(screen_pos.x + radius + 5.0, screen_pos.y - font_size * 0.3);
-                        let alpha = user.alpha();
-
-                        // Shadow for better readability
-                        let shadow_color = Color::new(0.0, 0.0, 0.0, 0.5 * alpha);
-                        renderer.draw_text(
-                            user.name(),
-                            label_pos + Vec2::new(1.0, 1.0),
-                            font_id,
-                            font_size,
-                            shadow_color,
-                        );
-
-                        let label_color = Color::new(1.0, 1.0, 1.0, 0.9 * alpha);
-                        renderer.draw_text(user.name(), label_pos, font_id, font_size, label_color);
-                    }
-                }
-
-                // Draw file name labels with collision avoidance and adaptive visibility
-                if camera_zoom > 0.15 {
-                    let file_font_size = font_size * 0.8;
-
-                    // Collect label candidates with priority
-                    let mut label_candidates: Vec<(Vec2, f32, f32, &str, f32)> = Vec::new();
-                    for file_id in &visible_files {
-                        if let Some(file) = self.scene.get_file(*file_id) {
-                            if file.alpha() < 0.3 {
-                                continue;
-                            }
-
-                            let screen_pos = self.camera.world_to_screen(file.position());
-                            let radius = (file.radius() * camera_zoom).max(2.0);
-                            let is_touched = file.touch_time() > 0.0;
-
-                            // Priority based on visibility and activity
-                            let activity_bonus = if is_touched { 100.0 } else { 0.0 };
-                            let priority = file.radius() * file.alpha() * 10.0 + activity_bonus;
-
-                            label_candidates.push((
-                                screen_pos,
-                                radius,
-                                file.alpha(),
-                                file.name(),
-                                priority,
-                            ));
-                        }
-                    }
-
-                    // Sort by priority (highest first)
-                    label_candidates
-                        .sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
-
-                    // Use label placer for collision avoidance
-                    let mut placer = LabelPlacer::new(camera_zoom);
-
-                    for (screen_pos, radius, alpha, name, _priority) in &label_candidates {
-                        if !placer.can_place_more() {
-                            break;
-                        }
-
-                        // Calculate label dimensions
-                        let text_width = estimate_text_width(name, file_font_size);
-                        let text_height = file_font_size;
-
-                        // Primary position: right of the file
-                        let primary_pos = Vec2::new(
-                            screen_pos.x + radius + 3.0,
-                            screen_pos.y - file_font_size * 0.3,
-                        );
-
-                        // Try to place with fallback positions
-                        if let Some(label_pos) = placer.try_place_with_fallback(
-                            primary_pos,
-                            text_width,
-                            text_height,
-                            *screen_pos,
-                            *radius,
-                        ) {
-                            // Shadow for better readability
-                            let shadow_color = Color::new(0.0, 0.0, 0.0, 0.5 * alpha);
-                            renderer.draw_text(
-                                name,
-                                label_pos + Vec2::new(1.0, 1.0),
-                                font_id,
-                                file_font_size,
-                                shadow_color,
-                            );
-
-                            let label_color = Color::new(0.95, 0.95, 0.95, 0.8 * alpha);
-                            renderer.draw_text(
-                                name,
-                                label_pos,
-                                font_id,
-                                file_font_size,
-                                label_color,
-                            );
-                        }
-                    }
-                }
-            }
-        }
-
-        // End frame
+        // === Phase 7: Finalize ===
         renderer.end_frame();
-
-        // Present (copy to canvas for software renderer)
         self.backend.present();
     }
 }
