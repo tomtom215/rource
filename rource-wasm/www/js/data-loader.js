@@ -148,16 +148,20 @@ export function loadLogData(content, format = 'custom', options = {}) {
 
     } catch (e) {
         // Provide user-friendly error messages
+        // Use case-insensitive matching for error detection
         let userMessage = 'Unable to load visualization data. ';
-        if (e.message?.includes('Invalid') || e.message?.includes('parse')) {
+        const errorMsg = (e.message || String(e)).toLowerCase();
+        if (errorMsg.includes('invalid') || errorMsg.includes('parse')) {
             userMessage += 'Please check your log format matches: timestamp|author|action|filepath';
-        } else if (e.message?.includes('empty')) {
+        } else if (errorMsg.includes('empty')) {
             userMessage += 'The log appears to be empty.';
         } else {
             userMessage += 'Try a different log file or check the format.';
         }
         showToast(userMessage, 'error');
         debugLog('loadLogData', 'Parse error', e);
+        // Also log to console for debugging
+        console.error('[Rource] Data loading failed:', e);
         return false;
     }
 }
