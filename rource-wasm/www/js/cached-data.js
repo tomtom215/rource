@@ -10,7 +10,7 @@
 
 // Total git commits in the repository (includes merge commits without file changes)
 // This is the count users see on GitHub
-export const TOTAL_GIT_COMMITS = 202;
+export const TOTAL_GIT_COMMITS = 203;
 
 // Complete commit history of the Rource project
 // Note: Only commits with file changes are included (merge commits without files are excluded)
@@ -561,7 +561,13 @@ export const ROURCE_CACHED_DATA = `1768004902|Tom F|A|LICENSE
 1768912704|Claude|M|Cargo.toml
 1768912704|Claude|M|deny.toml
 1768912704|Claude|M|rource-wasm/Cargo.toml
-1768913011|Claude|M|deny.toml`;
+1768913011|Claude|M|deny.toml
+1768914137|Claude|M|rource-wasm/www/js/cached-data.js
+1768914137|Claude|M|rource-wasm/www/js/data-loader.js
+1768914137|Claude|M|rource-wasm/www/js/features/fullscreen.js
+1768914137|Claude|M|rource-wasm/www/styles.css
+1768914422|Claude|M|rource-wasm/www/js/cached-data.js
+1768914422|Claude|M|rource-wasm/www/js/data-loader.js`;
 
 // Pre-calculate stats for the cached Rource data
 // Note: We use TOTAL_GIT_COMMITS for the commit count to match what users see on GitHub

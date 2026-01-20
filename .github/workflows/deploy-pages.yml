@@ -142,7 +142,7 @@ jobs:
           # Get today's date for the comment
           TODAY=$(date +%Y-%m-%d)
 
-          # Update js/cached-data.js with fresh commit data
+          # Update js/cached-data.js with fresh commit data and stats
           # We use a Python script for reliable multi-line replacement
           python3 << 'PYTHON_SCRIPT'
           import re
@@ -156,13 +156,21 @@ jobs:
           with open('js/cached-data.js', 'r') as f:
               content = f.read()
 
-          # Get today's date
+          # Get values from environment
           today = os.popen('date +%Y-%m-%d').read().strip()
+          commit_count = os.environ.get('COMMIT_COUNT', '0')
 
           # Update the "Last updated" comment
           content = re.sub(
               r'\* Last updated: \d{4}-\d{2}-\d{2}',
               f'* Last updated: {today}',
+              content
+          )
+
+          # Update TOTAL_GIT_COMMITS constant (the actual git commit count from git rev-list)
+          content = re.sub(
+              r'export const TOTAL_GIT_COMMITS = \d+;',
+              f'export const TOTAL_GIT_COMMITS = {commit_count};',
               content
           )
 
@@ -176,6 +184,7 @@ jobs:
               f.write(content)
 
           print(f"Updated js/cached-data.js with fresh commit data (as of {today})")
+          print(f"Total git commits: {commit_count}")
           PYTHON_SCRIPT
 
           # Update index.html with fresh technical specs
