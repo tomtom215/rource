@@ -157,7 +157,10 @@ pub fn render_directory_labels<R: Renderer + ?Sized>(
 
             let screen_pos = camera.world_to_screen(dir.position());
             let radius = dir.radius() * ctx.camera_zoom;
-            let label_pos = Vec2::new(screen_pos.x + radius + 4.0, screen_pos.y - dir_font_size * 0.3);
+            let label_pos = Vec2::new(
+                screen_pos.x + radius + 4.0,
+                screen_pos.y - dir_font_size * 0.3,
+            );
 
             // Shadow for better readability
             let shadow_color = Color::new(0.0, 0.0, 0.0, 0.4);
@@ -324,7 +327,10 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
 
             let screen_pos = camera.world_to_screen(user.position());
             let radius = (user.radius() * ctx.camera_zoom).max(5.0);
-            let label_pos = Vec2::new(screen_pos.x + radius + 5.0, screen_pos.y - ctx.font_size * 0.3);
+            let label_pos = Vec2::new(
+                screen_pos.x + radius + 5.0,
+                screen_pos.y - ctx.font_size * 0.3,
+            );
             let alpha = user.alpha();
 
             // Shadow for better readability
@@ -409,8 +415,8 @@ impl LabelPlacer {
         // Fallback positions
         let fallbacks = [
             Vec2::new(anchor.x - width - radius - 3.0, anchor.y - height * 0.3), // Left
-            Vec2::new(anchor.x - width * 0.5, anchor.y + radius + 3.0),           // Below
-            Vec2::new(anchor.x - width * 0.5, anchor.y - radius - height - 3.0),  // Above
+            Vec2::new(anchor.x - width * 0.5, anchor.y + radius + 3.0),          // Below
+            Vec2::new(anchor.x - width * 0.5, anchor.y - radius - height - 3.0), // Above
         ];
 
         for pos in &fallbacks {
@@ -426,10 +432,7 @@ impl LabelPlacer {
 /// Checks if two rectangles intersect.
 #[inline]
 fn rects_intersect(a: &Rect, b: &Rect) -> bool {
-    a.x < b.x + b.width
-        && a.x + a.width > b.x
-        && a.y < b.y + b.height
-        && a.y + a.height > b.y
+    a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
 }
 
 /// Renders file name labels with collision avoidance.
@@ -484,13 +487,19 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
         let text_height = file_font_size;
 
         // Primary position: right of the file
-        let primary_pos =
-            Vec2::new(screen_pos.x + radius + 3.0, screen_pos.y - file_font_size * 0.3);
+        let primary_pos = Vec2::new(
+            screen_pos.x + radius + 3.0,
+            screen_pos.y - file_font_size * 0.3,
+        );
 
         // Try to place with fallback positions
-        if let Some(label_pos) =
-            placer.try_place_with_fallback(primary_pos, text_width, text_height, *screen_pos, *radius)
-        {
+        if let Some(label_pos) = placer.try_place_with_fallback(
+            primary_pos,
+            text_width,
+            text_height,
+            *screen_pos,
+            *radius,
+        ) {
             // Shadow for better readability
             let shadow_color = Color::new(0.0, 0.0, 0.0, 0.5 * alpha);
             renderer.draw_text(

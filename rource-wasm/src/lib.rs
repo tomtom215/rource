@@ -1565,8 +1565,13 @@ impl Rource {
                 + self.scene.user_count()
                 + self.scene.directories().len()
                 + self.scene.actions().len(),
-            draw_calls: if self.renderer_type == RendererType::WebGl2 { 6 } else {
-                visible_dirs.len() * 2 + visible_files.len() + active_actions * 2 + visible_users.len() * 3
+            draw_calls: if self.renderer_type == RendererType::WebGl2 {
+                6
+            } else {
+                visible_dirs.len() * 2
+                    + visible_files.len()
+                    + active_actions * 2
+                    + visible_users.len() * 3
             },
         };
 
