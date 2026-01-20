@@ -182,6 +182,73 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns the author name for a commit at the given index.
+     *
+     * Returns empty string if the index is out of bounds.
+     * @param {number} index
+     * @returns {string}
+     */
+    getCommitAuthor(index) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCommitAuthor(retptr, this.__wbg_ptr, index);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Returns the number of files changed in a commit at the given index.
+     *
+     * Returns 0 if the index is out of bounds.
+     * @param {number} index
+     * @returns {number}
+     */
+    getCommitFileCount(index) {
+        const ret = wasm.rource_getCommitFileCount(this.__wbg_ptr, index);
+        return ret >>> 0;
+    }
+    /**
+     * Returns the timestamp (Unix epoch seconds) for a commit at the given index.
+     *
+     * Returns 0 if the index is out of bounds.
+     * @param {number} index
+     * @returns {bigint}
+     */
+    getCommitTimestamp(index) {
+        const ret = wasm.rource_getCommitTimestamp(this.__wbg_ptr, index);
+        return ret;
+    }
+    /**
+     * Returns the date range of all commits as a JSON object.
+     *
+     * Returns: `{ "startTimestamp": i64, "endTimestamp": i64 }` or null if no commits.
+     * @returns {string | undefined}
+     */
+    getDateRange() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getDateRange(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export3(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the estimated draw call count for the last frame.
      * @returns {number}
      */

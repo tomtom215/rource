@@ -3,12 +3,15 @@
  *
  * Records the visualization as a WebM video using the MediaRecorder API.
  * Supports various quality presets including 1080p and 4K.
+ *
+ * By default, recording starts from the beginning and stops at the end
+ * of the visualization. Users can also manually start/stop recording.
  */
 
 import { getElement } from '../dom.js';
 import { getRource, isContextLost, hasData, getAnimationId, setAnimationId } from '../state.js';
 import { showToast } from '../toast.js';
-import { safeWasmVoid } from '../wasm-api.js';
+import { safeWasmVoid, safeWasmCall } from '../wasm-api.js';
 
 // Recording state
 let mediaRecorder = null;
@@ -16,6 +19,7 @@ let recordedChunks = [];
 let isRecording = false;
 let recordingStartTime = 0;
 let recordingDurationInterval = null;
+let endCheckInterval = null;
 
 // Reference to animate callback
 let animateCallback = null;
@@ -70,8 +74,13 @@ function getBestCodec() {
 /**
  * Starts recording the canvas.
  * @param {string} quality - Quality preset key
+ * @param {Object} options - Recording options
+ * @param {boolean} options.fromBeginning - Start from beginning (default: true)
+ * @param {boolean} options.stopAtEnd - Stop when visualization ends (default: true)
  */
-export function startRecording(quality = DEFAULT_QUALITY) {
+export function startRecording(quality = DEFAULT_QUALITY, options = {}) {
+    const { fromBeginning = true, stopAtEnd = true } = options;
+
     const rource = getRource();
     const canvas = getElement('canvas');
 
@@ -96,6 +105,12 @@ export function startRecording(quality = DEFAULT_QUALITY) {
     }
 
     try {
+        // Seek to beginning if requested
+        if (fromBeginning) {
+            safeWasmVoid('seek', () => rource.seek(0));
+            showToast('Starting recording from beginning...', 'info', 2000);
+        }
+
         // Get quality settings
         const preset = QUALITY_PRESETS[quality] || QUALITY_PRESETS[DEFAULT_QUALITY];
 
@@ -141,6 +156,13 @@ export function startRecording(quality = DEFAULT_QUALITY) {
         // Start duration display update
         recordingDurationInterval = setInterval(updateRecordingDuration, 1000);
 
+        // Start end detection if requested
+        if (stopAtEnd) {
+            endCheckInterval = setInterval(() => {
+                checkForVisualizationEnd();
+            }, 500);
+        }
+
         // Update UI
         updateRecordingUI(true);
 
@@ -152,7 +174,6 @@ export function startRecording(quality = DEFAULT_QUALITY) {
             setAnimationId(requestAnimationFrame(animateCallback));
         }
 
-        showToast('Recording started', 'info', 2000);
         return true;
 
     } catch (error) {
@@ -160,6 +181,29 @@ export function startRecording(quality = DEFAULT_QUALITY) {
         showToast(`Failed to start recording: ${error.message}`, 'error');
         cleanupRecording();
         return false;
+    }
+}
+
+/**
+ * Checks if the visualization has reached the end and stops recording if so.
+ */
+function checkForVisualizationEnd() {
+    const rource = getRource();
+    if (!rource || !isRecording) return;
+
+    const total = safeWasmCall('commitCount', () => rource.commitCount(), 0);
+    const current = safeWasmCall('currentCommit', () => rource.currentCommit(), 0);
+    const isPlaying = safeWasmCall('isPlaying', () => rource.isPlaying(), false);
+
+    // Check if we've reached the end
+    if (total > 0 && current >= total - 1 && !isPlaying) {
+        // Give a small delay to capture the final state
+        setTimeout(() => {
+            if (isRecording) {
+                showToast('Visualization complete - saving recording...', 'info', 2000);
+                stopRecording();
+            }
+        }, 1500);
     }
 }
 
@@ -242,6 +286,11 @@ function cleanupRecording() {
     if (recordingDurationInterval) {
         clearInterval(recordingDurationInterval);
         recordingDurationInterval = null;
+    }
+
+    if (endCheckInterval) {
+        clearInterval(endCheckInterval);
+        endCheckInterval = null;
     }
 
     updateRecordingUI(false);

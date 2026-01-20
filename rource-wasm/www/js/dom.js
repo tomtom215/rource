@@ -71,8 +71,13 @@ export function initDomElements() {
     // Timeline
     elements.timelineSlider = document.getElementById('timeline-slider');
     elements.timelineInfo = document.getElementById('timeline-info');
+    elements.timelineInfoNumbers = document.getElementById('timeline-info-numbers');
     elements.timelineMarkers = document.getElementById('timeline-markers');
     elements.speedSelect = document.getElementById('speed-select');
+    elements.timelineDate = document.getElementById('timeline-date');
+    elements.timelineCommitInfo = document.getElementById('timeline-commit-info');
+    elements.timelineStartDate = document.getElementById('timeline-start-date');
+    elements.timelineEndDate = document.getElementById('timeline-end-date');
 
     // Renderer info
     elements.rendererBadge = document.getElementById('renderer-badge');

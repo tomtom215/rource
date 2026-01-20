@@ -266,12 +266,19 @@
             </div>
 
             <div class="timeline-container" role="group" aria-label="Playback controls">
+                <!-- Date and commit info row -->
+                <div class="timeline-date-row">
+                    <span class="timeline-date" id="timeline-date" title="Current commit date">--</span>
+                    <span class="timeline-commit-info" id="timeline-commit-info" title="Current commit details"></span>
+                </div>
                 <!-- Slider row -->
                 <div class="timeline-slider-row">
+                    <span class="timeline-date-label" id="timeline-start-date" title="First commit">--</span>
                     <div class="timeline-slider-container" id="timeline-slider-container">
                         <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="0" value="0" disabled aria-label="Timeline position" aria-valuetext="0 of 0 commits">
                         <div class="timeline-markers" id="timeline-markers"></div>
                     </div>
+                    <span class="timeline-date-label" id="timeline-end-date" title="Latest commit">--</span>
                 </div>
                 <!-- Controls row -->
                 <div class="timeline-controls-row">
@@ -295,7 +302,10 @@
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
                         </button>
                     </div>
-                    <span class="timeline-info" id="timeline-info">0 / 0</span>
+                    <span class="timeline-info" id="timeline-info" title="Commit progress">
+                        <span class="timeline-info-label">Commit</span>
+                        <span class="timeline-info-numbers" id="timeline-info-numbers">0 / 0</span>
+                    </span>
                     <div class="timeline-right-controls">
                         <div class="speed-control">
                             <label for="speed-select">Speed:</label>

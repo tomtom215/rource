@@ -28,7 +28,8 @@ import { ROURCE_STATS, getFullCachedData, setAdditionalCommits, getAdditionalCom
 import { showToast, hideToast, initToast } from './toast.js';
 import {
     initAnimation, resizeCanvas, startAnimation, stopAnimation,
-    animate, updatePlaybackUI, setUIUpdateCallback, isAtEnd, restartAnimation
+    animate, updatePlaybackUI, setUIUpdateCallback, isAtEnd, restartAnimation,
+    resetTimelineDateLabels
 } from './animation.js';
 import { loadLogData, analyzeLogData, loadRourceData, setOnDataLoadedCallback, parseCommits } from './data-loader.js';
 
@@ -204,6 +205,9 @@ async function main() {
  */
 function handleDataLoaded(content, stats) {
     const elements = getAllElements();
+
+    // Reset timeline date labels so they get recalculated
+    resetTimelineDateLabels();
 
     // Parse commits for tooltip
     parsedCommits = parseCommits(content);
