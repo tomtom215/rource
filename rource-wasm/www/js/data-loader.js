@@ -82,6 +82,10 @@ export function loadLogData(content, format = 'custom') {
         // Analyze data
         const stats = analyzeLogData(content);
 
+        // Use WASM commit count as authoritative (it's what drives the visualization)
+        // Override JS-calculated commit count with WASM count for consistency
+        stats.commits = count;
+
         // Update stats overlay
         if (elements.statCommits) elements.statCommits.textContent = count;
         if (elements.statFiles) elements.statFiles.textContent = stats.files;

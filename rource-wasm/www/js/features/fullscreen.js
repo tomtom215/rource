@@ -105,7 +105,8 @@ export function supportsNativeFullscreen() {
  * Toggles fullscreen mode.
  */
 export async function toggleFullscreen() {
-    const canvasContainer = getElement('canvasContainer');
+    // Use viz-panel as fullscreen target to include timeline controls
+    const vizPanel = document.querySelector('.viz-panel');
 
     if (isInFullscreenMode()) {
         // Exit fullscreen
@@ -120,19 +121,18 @@ export async function toggleFullscreen() {
         }
     } else {
         // Enter fullscreen - try native first, fall back to pseudo
-        const elem = canvasContainer || document.getElementById('canvas-container');
         let nativeWorked = false;
 
-        if (elem?.requestFullscreen) {
+        if (vizPanel?.requestFullscreen) {
             try {
-                await elem.requestFullscreen();
+                await vizPanel.requestFullscreen();
                 nativeWorked = true;
             } catch {
                 // Native fullscreen failed, use pseudo
             }
-        } else if (elem?.webkitRequestFullscreen) {
+        } else if (vizPanel?.webkitRequestFullscreen) {
             try {
-                elem.webkitRequestFullscreen();
+                vizPanel.webkitRequestFullscreen();
                 nativeWorked = true;
             } catch {
                 // Native fullscreen failed, use pseudo
