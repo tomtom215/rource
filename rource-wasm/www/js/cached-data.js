@@ -5,7 +5,7 @@
  * This ensures the demo always works without API rate limits.
  *
  * Generated from: git log --reverse --format="%at|%an" --name-status
- * Last updated: 2026-01-11
+ * Last updated: 2026-01-20
  */
 
 // Complete commit history of the Rource project
@@ -306,27 +306,227 @@ export const ROURCE_CACHED_DATA = `1768004902|Tom F|A|LICENSE
 1768162045|Claude|M|CLAUDE.md
 1768162312|Claude|M|rource-wasm/www/app.js
 1768162312|Claude|M|rource-wasm/www/index.html
-1768162312|Claude|M|rource-wasm/www/styles.css`;
+1768162312|Claude|M|rource-wasm/www/styles.css
+1768170516|Claude|M|rource-wasm/www/app.js
+1768172092|Claude|A|CONTRIBUTING.md
+1768172092|Claude|M|README.md
+1768172092|Claude|M|crates/rource-core/src/camera/camera3d.rs
+1768172092|Claude|M|crates/rource-core/src/config/config_env.rs
+1768172092|Claude|M|crates/rource-core/src/config/config_file.rs
+1768172092|Claude|M|crates/rource-core/src/config/settings.rs
+1768172092|Claude|M|crates/rource-core/src/scene/mod.rs
+1768172092|Claude|M|crates/rource-render/src/backend/webgl2/buffers.rs
+1768172092|Claude|M|crates/rource-render/src/backend/webgl2/mod.rs
+1768172092|Claude|M|crates/rource-render/src/image.rs
+1768172092|Claude|M|crates/rource-vcs/examples/memory_benchmark.rs
+1768172092|Claude|M|crates/rource-vcs/src/compact.rs
+1768172092|Claude|M|crates/rource-vcs/src/intern.rs
+1768172092|Claude|M|crates/rource-vcs/src/stream.rs
+1768172092|Claude|M|rource-cli/src/args.rs
+1768172092|Claude|M|rource-cli/src/main.rs
+1768172092|Claude|M|rource-wasm/src/lib.rs
+1768172092|Claude|M|rource-wasm/www/app.js
+1768172092|Claude|M|rource-wasm/www/index.html
+1768172092|Claude|M|rource-wasm/www/styles.css
+1768208930|Claude|M|rource-cli/src/avatar.rs
+1768208930|Claude|M|rource-cli/src/main.rs
+1768208930|Claude|M|rource-wasm/src/lib.rs
+1768208930|Claude|M|rource-wasm/www/app.js
+1768208930|Claude|M|rource-wasm/www/styles.css
+1768209547|Claude|M|README.md
+1768209547|Claude|M|rource-wasm/www/app.js
+1768209547|Claude|M|rource-wasm/www/index.html
+1768209547|Claude|M|rource-wasm/www/styles.css
+1768209852|Claude|M|rource-wasm/www/app.js
+1768209852|Claude|M|rource-wasm/www/index.html
+1768209852|Claude|M|rource-wasm/www/styles.css
+1768212897|Claude|A|rource-cli/src/app.rs
+1768212897|Claude|A|rource-cli/src/headless.rs
+1768212897|Claude|A|rource-cli/src/helpers.rs
+1768212897|Claude|A|rource-cli/src/input.rs
+1768212897|Claude|M|rource-cli/src/main.rs
+1768212897|Claude|A|rource-cli/src/rendering.rs
+1768212897|Claude|A|rource-cli/src/window.rs
+1768213464|Claude|M|rource-cli/src/app.rs
+1768213464|Claude|M|rource-cli/src/headless.rs
+1768213464|Claude|M|rource-cli/src/window.rs
+1768214204|Claude|A|.github/workflows/ci.yml
+1768214204|Claude|A|.github/workflows/release.yml
+1768214426|Claude|A|.github/dependabot.yml
+1768214426|Claude|A|.github/workflows/bench.yml
+1768214426|Claude|M|.github/workflows/ci.yml
+1768214426|Claude|A|.github/workflows/security.yml
+1768214426|Claude|M|README.md
+1768215537|Claude|M|.github/workflows/ci.yml
+1768215537|Claude|M|.gitignore
+1768215537|Claude|A|Cargo.lock
+1768215537|Claude|M|crates/rource-core/src/config/config_file.rs
+1768215537|Claude|M|crates/rource-render/src/image.rs
+1768215537|Claude|M|crates/rource-vcs/examples/memory_benchmark.rs
+1768215537|Claude|M|crates/rource-vcs/src/compact.rs
+1768215537|Claude|M|crates/rource-vcs/src/stream.rs
+1768215537|Claude|M|rource-cli/src/args.rs
+1768215537|Claude|M|rource-cli/src/avatar.rs
+1768215537|Claude|M|rource-cli/src/export.rs
+1768215537|Claude|M|rource-wasm/src/lib.rs
+1768215647|Claude|M|README.md
+1768216054|Claude|M|Cargo.lock
+1768216054|Claude|M|crates/rource-render/src/image.rs
+1768216054|Claude|M|crates/rource-vcs/examples/memory_benchmark.rs
+1768216054|Claude|M|rource-wasm/src/lib.rs
+1768217936|Claude|M|crates/rource-core/src/scene/action.rs
+1768217936|Claude|M|crates/rource-math/src/color.rs
+1768218469|dependabot[bot]|M|.github/workflows/release.yml
+1768219579|dependabot[bot]|M|.github/workflows/release.yml
+1768219959|dependabot[bot]|M|.github/workflows/deploy-pages.yml
+1768220913|dependabot[bot]|M|.github/workflows/bench.yml
+1768220913|dependabot[bot]|M|.github/workflows/release.yml
+1768221217|dependabot[bot]|M|.github/workflows/bench.yml
+1768221217|dependabot[bot]|M|.github/workflows/ci.yml
+1768221217|dependabot[bot]|M|.github/workflows/deploy-pages.yml
+1768221217|dependabot[bot]|M|.github/workflows/release.yml
+1768221217|dependabot[bot]|M|.github/workflows/security.yml
+1768222456|Claude|M|.github/workflows/deploy-pages.yml
+1768222456|Claude|M|rource-wasm/www/index.html
+1768222456|Claude|M|rource-wasm/www/styles.css
+1768222671|Claude|M|rource-wasm/www/app.js
+1768222804|Claude|M|rource-wasm/www/app.js
+1768223413|Claude|M|rource-wasm/www/app.js
+1768225408|Claude|M|rource-wasm/src/lib.rs
+1768225408|Claude|M|rource-wasm/www/app.js
+1768225408|Claude|M|rource-wasm/www/pkg/rource_wasm.d.ts
+1768225408|Claude|M|rource-wasm/www/pkg/rource_wasm.js
+1768225408|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768227886|Claude|M|rource-wasm/src/lib.rs
+1768227886|Claude|M|rource-wasm/www/app.js
+1768227886|Claude|M|rource-wasm/www/pkg/rource_wasm.d.ts
+1768227886|Claude|M|rource-wasm/www/pkg/rource_wasm.js
+1768227886|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768229542|Claude|M|rource-cli/src/args.rs
+1768838388|Claude|M|.github/workflows/deploy-pages.yml
+1768841344|Claude|M|rource-cli/src/rendering.rs
+1768842313|Claude|M|rource-cli/src/rendering.rs
+1768848497|Claude|M|rource-wasm/src/lib.rs
+1768848497|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768848727|Claude|M|CLAUDE.md
+1768850147|Claude|M|rource-wasm/src/lib.rs
+1768850147|Claude|M|rource-wasm/www/pkg/rource_wasm.d.ts
+1768850147|Claude|M|rource-wasm/www/pkg/rource_wasm.js
+1768850147|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768850312|Claude|M|rource-wasm/src/lib.rs
+1768851526|Claude|M|crates/rource-render/src/backend/webgl2/mod.rs
+1768851526|Claude|M|rource-wasm/src/lib.rs
+1768851526|Claude|M|rource-wasm/www/pkg/rource_wasm.d.ts
+1768851526|Claude|M|rource-wasm/www/pkg/rource_wasm.js
+1768851526|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768852226|Claude|M|crates/rource-render/src/backend/webgl2/mod.rs
+1768854326|Claude|M|rource-wasm/src/lib.rs
+1768854362|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768855570|Claude|M|rource-wasm/src/lib.rs
+1768855570|Claude|M|rource-wasm/www/app.js
+1768855570|Claude|M|rource-wasm/www/pkg/rource_wasm.d.ts
+1768855570|Claude|M|rource-wasm/www/pkg/rource_wasm.js
+1768855570|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768855570|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm.d.ts
+1768856536|Claude|M|.github/workflows/bench.yml
+1768856536|Claude|M|.github/workflows/ci.yml
+1768856536|Claude|M|.github/workflows/deploy-pages.yml
+1768856536|Claude|M|.github/workflows/release.yml
+1768856536|Claude|M|Cargo.lock
+1768856536|Claude|M|Cargo.toml
+1768856536|Claude|M|crates/rource-render/Cargo.toml
+1768856536|Claude|M|crates/rource-render/src/image.rs
+1768856536|Claude|M|rource-cli/Cargo.toml
+1768856536|Claude|M|rource-wasm/www/pkg/rource_wasm.d.ts
+1768856536|Claude|M|rource-wasm/www/pkg/rource_wasm.js
+1768856536|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768857113|Claude|M|crates/rource-core/src/scene/mod.rs
+1768857113|Claude|M|crates/rource-core/src/scene/tree.rs
+1768857113|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768857463|Claude|M|.github/workflows/ci.yml
+1768857463|Claude|M|Cargo.toml
+1768857463|Claude|M|crates/rource-core/src/scene/tree.rs
+1768857463|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768857721|Claude|M|crates/rource-core/src/scene/tree.rs
+1768859049|Claude|M|rource-wasm/www/app.js
+1768859083|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768859690|Claude|A|crates/rource-render/src/label.rs
+1768859690|Claude|M|crates/rource-render/src/lib.rs
+1768859690|Claude|M|rource-cli/src/rendering.rs
+1768859690|Claude|M|rource-wasm/src/lib.rs
+1768859690|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768859913|Claude|M|README.md
+1768859913|Claude|M|rource-wasm/www/app.js
+1768859913|Claude|M|rource-wasm/www/styles.css
+1768861107|Claude|M|crates/rource-core/src/scene/file.rs
+1768861107|Claude|M|crates/rource-core/src/scene/mod.rs
+1768861107|Claude|M|crates/rource-render/src/backend/webgl2/mod.rs
+1768861107|Claude|M|rource-wasm/src/lib.rs
+1768861107|Claude|M|rource-wasm/www/pkg/rource_wasm.js
+1768861107|Claude|M|rource-wasm/www/pkg/rource_wasm_bg.wasm
+1768861633|Claude|M|rource-cli/src/avatar.rs
+1768861633|Claude|M|rource-cli/src/helpers.rs
+1768861633|Claude|M|rource-wasm/src/lib.rs
+1768861633|Claude|M|rource-wasm/www/index.html
+1768862426|Claude|M|README.md
+1768862426|Claude|M|crates/rource-core/src/scene/tree.rs
+1768862426|Claude|M|crates/rource-vcs/src/intern.rs
+1768862861|Claude|M|README.md
+1768862861|Claude|M|rource-wasm/www/app.js
+1768862861|Claude|M|rource-wasm/www/index.html
+1768862861|Claude|M|rource-wasm/www/styles.css
+1768863033|Claude|M|rource-cli/src/helpers.rs
+1768863033|Claude|M|rource-wasm/src/lib.rs
+1768864002|Claude|M|rource-wasm/www/index.html
+1768864002|Claude|M|rource-wasm/www/styles.css
+1768868854|Claude|M|rource-wasm/www/app.js
+1768869840|Claude|M|rource-wasm/www/index.html
+1768869840|Claude|A|rource-wasm/www/js/animation.js
+1768869840|Claude|A|rource-wasm/www/js/cached-data.js
+1768869840|Claude|A|rource-wasm/www/js/config.js
+1768869840|Claude|A|rource-wasm/www/js/data-loader.js
+1768869840|Claude|A|rource-wasm/www/js/dom.js
+1768869840|Claude|A|rource-wasm/www/js/features/fullscreen.js
+1768869840|Claude|A|rource-wasm/www/js/features/help.js
+1768869840|Claude|A|rource-wasm/www/js/features/keyboard.js
+1768869840|Claude|A|rource-wasm/www/js/features/screenshot.js
+1768869840|Claude|A|rource-wasm/www/js/features/theme.js
+1768869840|Claude|A|rource-wasm/www/js/main.js
+1768869840|Claude|A|rource-wasm/www/js/preferences.js
+1768869840|Claude|A|rource-wasm/www/js/state.js
+1768869840|Claude|A|rource-wasm/www/js/telemetry.js
+1768869840|Claude|A|rource-wasm/www/js/toast.js
+1768869840|Claude|A|rource-wasm/www/js/url-state.js
+1768869840|Claude|A|rource-wasm/www/js/utils.js
+1768869840|Claude|A|rource-wasm/www/js/wasm-api.js
+1768870040|Claude|M|CLAUDE.md
+1768870040|Claude|M|CONTRIBUTING.md
+1768870040|Claude|M|GOURCE_RUST_REWRITE_PLAN.md
+1768870224|Claude|M|CLAUDE.md
+1768870224|Claude|D|GOURCE_RUST_REWRITE_PLAN.md
+1768871165|Claude|M|rource-wasm/www/js/features/keyboard.js
+1768871165|Claude|M|rource-wasm/www/js/main.js`;
 
 // Pre-calculate stats for the cached Rource data
+// Note: Each unique timestamp represents a commit; multiple file changes can share the same timestamp
 export const ROURCE_STATS = (() => {
     const lines = ROURCE_CACHED_DATA.split('\n');
     const files = new Set();
     const authors = new Set();
-    let commits = 0;
+    const timestamps = new Set(); // Track unique timestamps (commits)
     let lastTimestamp = 0;
     for (const line of lines) {
         if (!line.trim()) continue;
         const parts = line.split('|');
         if (parts.length >= 4) {
-            commits++;
+            const ts = parseInt(parts[0], 10);
+            timestamps.add(ts); // Count unique timestamps as commits
             authors.add(parts[1].trim());
             files.add(parts[3].trim());
-            const ts = parseInt(parts[0], 10);
             if (ts > lastTimestamp) lastTimestamp = ts;
         }
     }
-    return { commits, files: files.size, authors: authors.size, lastTimestamp };
+    return { commits: timestamps.size, files: files.size, authors: authors.size, lastTimestamp };
 })();
 
 // Track additional commits fetched via refresh
