@@ -14,8 +14,8 @@ This document provides context and guidance for Claude (AI assistant) when worki
 - **Feature-complete**: Maintain at minimum feature parity with Gource
 
 ### Key Documents
-- `GOURCE_RUST_REWRITE_PLAN.md` - Comprehensive implementation plan (2,691 lines)
 - `README.md` - Project overview and usage instructions
+- `CONTRIBUTING.md` - Development guidelines and code style
 - `LICENSE` - GPL-3.0 license (same as original Gource)
 
 ## Session Setup
@@ -691,9 +691,8 @@ test: add unit tests for Vec2 operations
 This project uses Claude (AI assistant) for development assistance. When working with Claude:
 
 1. Reference this document for project context
-2. Point to `GOURCE_RUST_REWRITE_PLAN.md` for detailed implementation specs
-3. Run `source scripts/session-setup.sh` at the start of each session
-4. Commit frequently with clear messages
+2. Run `source scripts/session-setup.sh` at the start of each session
+3. Commit frequently with clear messages
 
 ---
 
