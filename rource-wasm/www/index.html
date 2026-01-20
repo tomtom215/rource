@@ -190,19 +190,11 @@
                 </div>
                 <div id="legend-panel" class="legend-panel collapsed" role="complementary" aria-label="File type legend">
                     <div class="legend-header" id="legend-toggle" role="button" tabindex="0" aria-expanded="false">
-                        <h4>File Types</h4>
+                        <span class="legend-title">File Types</span>
                         <span class="legend-toggle" aria-hidden="true">&#9660;</span>
                     </div>
-                    <div class="legend-items" id="legend-items" role="list"></div>
-                    <div class="legend-structure" id="legend-structure">
-                        <div class="legend-divider"></div>
-                        <div class="legend-item legend-item-structure" role="listitem" title="Directories are shown as gray circles with center dots. Lines connect parent folders to child folders.">
-                            <svg class="legend-structure-icon" viewBox="0 0 20 20" aria-hidden="true">
-                                <circle cx="10" cy="10" r="7" fill="none" stroke="#6e7681" stroke-width="1.5" opacity="0.7"/>
-                                <circle cx="10" cy="10" r="2" fill="#6e7681" opacity="0.6"/>
-                            </svg>
-                            <span class="legend-ext">Directories</span>
-                        </div>
+                    <div class="legend-items" id="legend-items" role="list">
+                        <!-- Dynamic legend items inserted via JS with role="listitem" -->
                     </div>
                 </div>
                 <div id="stats-overlay" class="stats-overlay hidden">
@@ -222,7 +214,7 @@
                 <!-- Authors legend panel -->
                 <div id="authors-panel" class="authors-panel hidden collapsed" role="complementary" aria-label="Authors legend">
                     <div class="authors-header" id="authors-toggle" role="button" tabindex="0" aria-expanded="false">
-                        <h4>Authors</h4>
+                        <span class="authors-title">Authors</span>
                         <span class="authors-toggle" aria-hidden="true">&#9660;</span>
                     </div>
                     <div class="authors-items" id="authors-items" role="list"></div>
@@ -255,10 +247,10 @@
                             <span class="perf-value" id="perf-resolution">--</span>
                         </div>
                         <div class="perf-row perf-toggle-row">
-                            <label class="perf-label" for="perf-uncapped">Uncapped</label>
-                            <label class="perf-switch">
-                                <input type="checkbox" id="perf-uncapped" aria-label="Enable uncapped frame rate for performance testing">
-                                <span class="perf-slider"></span>
+                            <span class="perf-label" id="perf-uncapped-label">Uncapped</span>
+                            <label class="perf-switch" aria-labelledby="perf-uncapped-label">
+                                <input type="checkbox" id="perf-uncapped">
+                                <span class="perf-slider" aria-hidden="true"></span>
                             </label>
                         </div>
                     </div>
@@ -612,7 +604,7 @@
 
             <!-- About Panel -->
             <div class="about-banner">
-                <h4>Built with Rust + WebAssembly</h4>
+                <h3>Built with Rust + WebAssembly</h3>
                 <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> is a modern rewrite of <a href="https://gource.io" target="_blank" rel="noopener">Gource</a>, the popular version control visualization tool.</p>
                 <div class="about-links">
                     <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener" class="btn btn-sm btn-outline">

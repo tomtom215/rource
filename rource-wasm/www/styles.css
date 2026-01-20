@@ -212,7 +212,7 @@ header h1 {
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 500;
-    transition: all var(--transition-normal);
+    transition: background-color var(--transition-normal), border-color var(--transition-normal), opacity var(--transition-normal), transform var(--transition-normal);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -227,8 +227,9 @@ header h1 {
 
 .btn:disabled {
     background: var(--bg-tertiary);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .btn-secondary {
@@ -482,12 +483,12 @@ header h1 {
     margin-bottom: 0.5rem;
 }
 
-.legend-header h4 {
+.legend-header .legend-title {
     font-size: 0.7rem;
+    font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin: 0;
 }
 
 .legend-toggle {
@@ -901,7 +902,7 @@ header h1 {
 /* Date labels at ends of slider */
 .timeline-date-label {
     font-size: 0.65rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     min-width: 52px;
@@ -1770,7 +1771,7 @@ textarea:focus {
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s, transform 0.2s, opacity 0.2s;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -1784,12 +1785,11 @@ textarea:focus {
 .showcase-btn:hover {
     background: var(--accent-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
 }
 
 .showcase-btn:disabled {
     background: var(--bg-tertiary);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     cursor: not-allowed;
     box-shadow: none;
     transform: none;
@@ -1927,12 +1927,12 @@ textarea:focus {
     margin-bottom: 0.5rem;
 }
 
-.authors-header h4 {
+.authors-header .authors-title {
     font-size: 0.7rem;
+    font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin: 0;
 }
 
 .authors-toggle {
@@ -1990,7 +1990,7 @@ textarea:focus {
     box-sizing: border-box;
 }
 
-.about-banner h4 {
+.about-banner h3 {
     font-size: 0.85rem;
     margin-bottom: 0.5rem;
 }
@@ -2048,15 +2048,27 @@ textarea:focus {
 }
 
 .skeleton-bar {
-    background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border) 50%, var(--bg-tertiary) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    background: var(--bg-tertiary);
     border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent 25%, var(--border) 50%, transparent 75%);
+    animation: shimmer 1.5s infinite;
+    transform: translateX(-100%);
 }
 
 @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 .skeleton-logo {
@@ -2273,7 +2285,7 @@ footer {
     text-align: center;
     border-top: 1px solid var(--border);
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     flex-shrink: 0;
 }
 

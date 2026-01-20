@@ -1066,12 +1066,22 @@ function updateLegend(content) {
     let html = '';
     for (const [ext, count] of sortedExts) {
         const color = getExtensionColor(ext);
-        html += `<div class="legend-item">
+        html += `<div class="legend-item" role="listitem">
             <span class="legend-color" style="background-color: ${escapeHtml(color)}"></span>
             <span class="legend-label">.${escapeHtml(ext)}</span>
             <span class="legend-count">${count}</span>
         </div>`;
     }
+
+    // Add separator and structure item after dynamic items
+    html += `<div class="legend-divider" role="separator" aria-hidden="true"></div>
+        <div class="legend-item legend-item-structure" role="listitem" title="Directories are shown as gray circles with center dots. Lines connect parent folders to child folders.">
+            <svg class="legend-structure-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="10" cy="10" r="7" fill="none" stroke="#6e7681" stroke-width="1.5" opacity="0.7"/>
+                <circle cx="10" cy="10" r="2" fill="#6e7681" opacity="0.6"/>
+            </svg>
+            <span class="legend-ext">Directories</span>
+        </div>`;
 
     legendItems.innerHTML = html;
 }
@@ -1114,7 +1124,7 @@ function updateAuthorsLegend(content) {
 
         for (const [author, commitCount] of sortedAuthors) {
             const color = safeWasmCall('getAuthorColor', () => rource.getAuthorColor(author), '#888');
-            html += `<div class="author-item" data-author="${escapeHtml(author)}">
+            html += `<div class="author-item" role="listitem" data-author="${escapeHtml(author)}">
                 <span class="author-color" style="background-color: ${escapeHtml(color)}"></span>
                 <span class="author-name">${escapeHtml(author)}</span>
                 <span class="author-commits">${commitCount}</span>
