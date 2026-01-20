@@ -58,6 +58,11 @@ fn main() -> Result<()> {
         eprintln!("Warning: {e}");
     }
 
+    // Validate all arguments after all sources have been applied
+    if let Err(e) = args.validate() {
+        anyhow::bail!("{e}");
+    }
+
     // Handle --save-config
     if let Some(ref config_path) = args.save_config {
         let settings = args.to_settings();

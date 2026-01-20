@@ -46,9 +46,9 @@ jobs:
           echo "=== Files containing unsafe code ==="
           grep -rl "unsafe {" --include="*.rs" . | grep -v "target/" || echo "No unsafe blocks found"
 
-  # Check for known unmaintained crates
-  advisories:
-    name: Advisory Check
+  # Check for known vulnerabilities and license compliance
+  deny-check:
+    name: cargo-deny Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -56,5 +56,11 @@ jobs:
       - name: Install cargo-deny
         run: cargo install cargo-deny
 
-      - name: Check advisories
-        run: cargo deny check advisories || true
+      - name: Check for vulnerabilities and advisories
+        run: cargo deny check advisories
+
+      - name: Check licenses
+        run: cargo deny check licenses
+
+      - name: Check for banned/duplicate dependencies
+        run: cargo deny check bans

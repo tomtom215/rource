@@ -217,8 +217,18 @@ impl ForceSimulation {
     /// Calculates the repulsion force between two nodes.
     ///
     /// Uses inverse square law: F = k / d²
+    ///
+    /// # Safety
+    ///
+    /// Returns `Vec2::ZERO` if `delta` has near-zero length to prevent
+    /// invalid normalized vectors. Callers should check `distance > 0.001`
+    /// before calling for meaningful results.
     #[must_use]
     fn repulsion_force(&self, delta: Vec2, distance: f32) -> Vec2 {
+        // Guard against zero-length delta which would produce zero normalized vector
+        if delta.length_squared() < 0.000_001 {
+            return Vec2::ZERO;
+        }
         let safe_distance = distance.max(self.config.min_distance);
         let magnitude = self.config.repulsion / (safe_distance * safe_distance);
         delta.normalized() * magnitude
@@ -227,9 +237,18 @@ impl ForceSimulation {
     /// Calculates the attraction force toward a parent.
     ///
     /// Uses linear spring: `F = k * (d - rest_length)`
+    ///
+    /// # Safety
+    ///
+    /// Returns `Vec2::ZERO` if `delta` has near-zero length or if
+    /// distance is within target distance.
     #[must_use]
     fn attraction_force(&self, delta: Vec2, distance: f32, target_distance: f32) -> Vec2 {
         if distance > target_distance {
+            // Guard against zero-length delta which would produce zero normalized vector
+            if delta.length_squared() < 0.000_001 {
+                return Vec2::ZERO;
+            }
             let excess = distance - target_distance;
             delta.normalized() * excess * self.config.attraction
         } else {

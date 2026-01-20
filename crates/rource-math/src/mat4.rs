@@ -253,18 +253,50 @@ impl Mat4 {
     ///
     /// # Arguments
     ///
-    /// * `fov_y` - Vertical field of view in radians
-    /// * `aspect` - Aspect ratio (width / height)
-    /// * `near` - Near clipping plane (must be positive)
-    /// * `far` - Far clipping plane (must be greater than near)
+    /// * `fov_y` - Vertical field of view in radians (must be > 0 and < PI)
+    /// * `aspect` - Aspect ratio (width / height, must be > 0)
+    /// * `near` - Near clipping plane (must be > 0)
+    /// * `far` - Far clipping plane (must be > near)
+    ///
+    /// # Panics
+    ///
+    /// Panics in debug builds if any parameter is invalid. In release builds,
+    /// invalid parameters may produce a matrix with NaN or infinity values.
     #[must_use]
     pub fn perspective(fov_y: f32, aspect: f32, near: f32, far: f32) -> Self {
-        let f = 1.0 / (fov_y / 2.0).tan();
-        let nf = 1.0 / (near - far);
+        debug_assert!(
+            fov_y > 0.0 && fov_y < std::f32::consts::PI,
+            "fov_y must be between 0 and PI radians"
+        );
+        debug_assert!(aspect > 0.0, "aspect ratio must be positive");
+        debug_assert!(near > 0.0, "near plane must be positive");
+        debug_assert!(far > near, "far plane must be greater than near plane");
+
+        // Guard against division by zero in release builds
+        let half_fov = fov_y / 2.0;
+        let tan_half_fov = half_fov.tan();
+        let f = if tan_half_fov.abs() < f32::EPSILON {
+            f32::MAX // Prevent division by zero
+        } else {
+            1.0 / tan_half_fov
+        };
+
+        let plane_diff = near - far;
+        let nf = if plane_diff.abs() < f32::EPSILON {
+            0.0 // Degenerate case: near == far
+        } else {
+            1.0 / plane_diff
+        };
+
+        let safe_aspect = if aspect.abs() < f32::EPSILON {
+            1.0
+        } else {
+            aspect
+        };
 
         Self {
             m: [
-                f / aspect,
+                f / safe_aspect,
                 0.0,
                 0.0,
                 0.0,
@@ -291,10 +323,33 @@ impl Mat4 {
     /// * `eye` - Camera position
     /// * `target` - Point the camera is looking at
     /// * `up` - Up direction (usually `Vec3::Y`)
+    ///
+    /// # Degenerate Cases
+    ///
+    /// - If `eye == target`, returns identity matrix (camera has no direction)
+    /// - If forward direction is parallel to up, uses a fallback up vector
     #[must_use]
     pub fn look_at(eye: Vec3, target: Vec3, up: Vec3) -> Self {
-        let f = (target - eye).normalized();
-        let s = f.cross(up).normalized();
+        let forward = target - eye;
+
+        // Handle degenerate case: eye == target
+        if forward.length_squared() < f32::EPSILON {
+            return Self::IDENTITY;
+        }
+
+        let f = forward.normalized();
+        let mut s = f.cross(up);
+
+        // Handle degenerate case: forward parallel to up
+        // When forward and up are parallel, cross product is zero
+        // Fall back to a perpendicular vector
+        if s.length_squared() < f32::EPSILON {
+            // Choose a different "up" vector that isn't parallel to forward
+            let alt_up = if f.y.abs() < 0.9 { Vec3::Y } else { Vec3::X };
+            s = f.cross(alt_up);
+        }
+
+        s = s.normalized();
         let u = s.cross(f);
 
         Self {
@@ -788,5 +843,71 @@ mod tests {
     #[test]
     fn test_default() {
         assert_eq!(Mat4::default(), Mat4::IDENTITY);
+    }
+
+    #[test]
+    fn test_look_at_degenerate_eye_equals_target() {
+        // When eye == target, should return identity (no valid direction)
+        let eye = Vec3::new(1.0, 2.0, 3.0);
+        let target = eye; // Same position
+        let up = Vec3::Y;
+
+        let m = Mat4::look_at(eye, target, up);
+
+        // Should return identity matrix instead of NaN
+        assert!(m.approx_eq(Mat4::IDENTITY));
+    }
+
+    #[test]
+    fn test_look_at_forward_parallel_to_up() {
+        // When looking straight up, forward is parallel to the up vector
+        let eye = Vec3::ZERO;
+        let target = Vec3::new(0.0, 10.0, 0.0); // Looking straight up
+        let up = Vec3::Y;
+
+        let m = Mat4::look_at(eye, target, up);
+
+        // Should produce a valid matrix (no NaN values)
+        for i in 0..16 {
+            assert!(m.m[i].is_finite(), "Matrix element {i} is not finite");
+        }
+    }
+
+    #[test]
+    fn test_perspective_valid_inputs() {
+        use std::f32::consts::PI;
+
+        let fov = PI / 4.0; // 45 degrees
+        let aspect = 16.0 / 9.0;
+        let near = 0.1;
+        let far = 100.0;
+
+        let m = Mat4::perspective(fov, aspect, near, far);
+
+        // Should produce valid matrix
+        for i in 0..16 {
+            assert!(m.m[i].is_finite(), "Matrix element {i} is not finite");
+        }
+    }
+
+    /// Tests degenerate perspective matrix case.
+    /// This test only runs in release mode because debug builds
+    /// assert valid input parameters.
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn test_perspective_degenerate_near_equals_far() {
+        use std::f32::consts::PI;
+
+        // This is invalid but should not produce NaN in release builds
+        let m = Mat4::perspective(PI / 4.0, 1.0, 1.0, 1.0);
+
+        // Should produce valid (though possibly incorrect) matrix
+        for i in 0..16 {
+            assert!(
+                m.m[i].is_finite(),
+                "Matrix element {} is not finite with near==far",
+                i
+            );
+        }
     }
 }

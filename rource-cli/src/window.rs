@@ -98,7 +98,10 @@ pub fn handle_resize(app: &mut App, size: PhysicalSize<u32>) {
 /// Apply pending commits from `last_applied_commit` to `current_commit`.
 pub fn apply_pending_commits(app: &mut App) {
     while app.last_applied_commit < app.current_commit {
-        let commit = &app.commits[app.last_applied_commit];
+        // Bounds check to prevent panic on invalid indices
+        let Some(commit) = app.commits.get(app.last_applied_commit) else {
+            break;
+        };
 
         // Skip commits from filtered-out users
         if !app.filter.should_include_user(&commit.author) {

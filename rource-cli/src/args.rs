@@ -321,6 +321,35 @@ impl Args {
         Self::parse()
     }
 
+    /// Validate all arguments and return an error if any are invalid.
+    ///
+    /// This should be called after parsing to catch issues that clap's type
+    /// system doesn't enforce (e.g., minimum values, cross-field validation).
+    pub fn validate(&self) -> Result<(), String> {
+        validate_dimension(self.width, "width")?;
+        validate_dimension(self.height, "height")?;
+        validate_framerate(self.framerate)?;
+        validate_seconds_per_day(self.seconds_per_day)?;
+        validate_font_size(self.font_size)?;
+
+        // Validate hex color can be parsed
+        if parse_hex_color(&self.background_color).is_none() {
+            return Err(format!(
+                "Invalid background color '{}'. Expected 6-character hex string (e.g., 'FF0000' or '#FF0000')",
+                self.background_color
+            ));
+        }
+
+        // Validate headless mode requires output
+        if self.headless && self.output.is_none() {
+            return Err(
+                "--headless requires --output to specify frame output directory".to_string(),
+            );
+        }
+
+        Ok(())
+    }
+
     /// Parse the background color from hex string.
     pub fn parse_background_color(&self) -> rource_math::Color {
         parse_hex_color(&self.background_color).unwrap_or(rource_math::Color::BLACK)
@@ -886,6 +915,88 @@ fn parse_hex_color(s: &str) -> Option<rource_math::Color> {
     ))
 }
 
+/// Validate dimension (width/height) is within reasonable bounds.
+///
+/// Returns an error message if validation fails.
+pub fn validate_dimension(value: u32, name: &str) -> Result<(), String> {
+    const MIN_DIMENSION: u32 = 16;
+    const MAX_DIMENSION: u32 = 16384;
+
+    if value < MIN_DIMENSION {
+        return Err(format!(
+            "{name} must be at least {MIN_DIMENSION} pixels, got {value}"
+        ));
+    }
+    if value > MAX_DIMENSION {
+        return Err(format!(
+            "{name} must be at most {MAX_DIMENSION} pixels, got {value}"
+        ));
+    }
+    Ok(())
+}
+
+/// Validate framerate is within reasonable bounds.
+///
+/// Returns an error message if validation fails.
+pub fn validate_framerate(value: u32) -> Result<(), String> {
+    const MIN_FRAMERATE: u32 = 1;
+    const MAX_FRAMERATE: u32 = 240;
+
+    if value < MIN_FRAMERATE {
+        return Err(format!(
+            "framerate must be at least {MIN_FRAMERATE} FPS, got {value}"
+        ));
+    }
+    if value > MAX_FRAMERATE {
+        return Err(format!(
+            "framerate must be at most {MAX_FRAMERATE} FPS, got {value}"
+        ));
+    }
+    Ok(())
+}
+
+/// Validate `seconds_per_day` is a positive value.
+///
+/// Returns an error message if validation fails.
+#[allow(dead_code)] // Used by Args::validate()
+fn validate_seconds_per_day(value: f32) -> Result<(), String> {
+    const MIN_SECONDS: f32 = 0.001;
+
+    if !value.is_finite() {
+        return Err(format!(
+            "seconds_per_day must be a finite number, got {value}"
+        ));
+    }
+    if value < MIN_SECONDS {
+        return Err(format!(
+            "seconds_per_day must be at least {MIN_SECONDS}, got {value}"
+        ));
+    }
+    Ok(())
+}
+
+/// Validate font size is within reasonable bounds.
+///
+/// Returns an error message if validation fails.
+#[allow(dead_code)] // Used by Args::validate()
+fn validate_font_size(value: f32) -> Result<(), String> {
+    const MIN_SIZE: f32 = 4.0;
+    const MAX_SIZE: f32 = 200.0;
+
+    if !value.is_finite() {
+        return Err(format!("font_size must be a finite number, got {value}"));
+    }
+    if value < MIN_SIZE {
+        return Err(format!(
+            "font_size must be at least {MIN_SIZE}, got {value}"
+        ));
+    }
+    if value > MAX_SIZE {
+        return Err(format!("font_size must be at most {MAX_SIZE}, got {value}"));
+    }
+    Ok(())
+}
+
 /// Parse an offset string in `XxY` or `X,Y` format.
 fn parse_offset(s: &str) -> Option<(i32, i32)> {
     let s = s.trim();
@@ -1191,5 +1302,111 @@ width = 1920
 
         // Clean up
         std::env::remove_var("ROURCE_WIDTH");
+    }
+
+    #[test]
+    fn test_validate_dimension() {
+        // Valid dimensions
+        assert!(validate_dimension(1280, "width").is_ok());
+        assert!(validate_dimension(16, "width").is_ok());
+        assert!(validate_dimension(16384, "width").is_ok());
+
+        // Invalid dimensions
+        assert!(validate_dimension(0, "width").is_err());
+        assert!(validate_dimension(15, "width").is_err());
+        assert!(validate_dimension(16385, "width").is_err());
+    }
+
+    #[test]
+    fn test_validate_framerate() {
+        // Valid framerates
+        assert!(validate_framerate(60).is_ok());
+        assert!(validate_framerate(1).is_ok());
+        assert!(validate_framerate(240).is_ok());
+
+        // Invalid framerates
+        assert!(validate_framerate(0).is_err());
+        assert!(validate_framerate(241).is_err());
+    }
+
+    #[test]
+    fn test_validate_seconds_per_day() {
+        // Valid values
+        assert!(validate_seconds_per_day(10.0).is_ok());
+        assert!(validate_seconds_per_day(0.001).is_ok());
+        assert!(validate_seconds_per_day(1000.0).is_ok());
+
+        // Invalid values
+        assert!(validate_seconds_per_day(0.0).is_err());
+        assert!(validate_seconds_per_day(-1.0).is_err());
+        assert!(validate_seconds_per_day(f32::NAN).is_err());
+        assert!(validate_seconds_per_day(f32::INFINITY).is_err());
+    }
+
+    #[test]
+    fn test_validate_font_size() {
+        // Valid sizes
+        assert!(validate_font_size(12.0).is_ok());
+        assert!(validate_font_size(4.0).is_ok());
+        assert!(validate_font_size(200.0).is_ok());
+
+        // Invalid sizes
+        assert!(validate_font_size(3.9).is_err());
+        assert!(validate_font_size(201.0).is_err());
+        assert!(validate_font_size(-1.0).is_err());
+        assert!(validate_font_size(f32::NAN).is_err());
+    }
+
+    #[test]
+    fn test_args_validate() {
+        // Valid args
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+
+        // Invalid width
+        let args = Args {
+            width: 0,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_err());
+
+        // Invalid background color
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "invalid".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_err());
+
+        // Headless without output
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            headless: true,
+            output: None,
+            ..Args::default()
+        };
+        assert!(args.validate().is_err());
     }
 }

@@ -562,6 +562,17 @@ impl RendererBackend {
         // WebGL2 renders directly to canvas, no copy needed
     }
 
+    /// Returns true if the WebGL context is lost (always false for software renderer).
+    ///
+    /// When the context is lost, rendering operations should be skipped until
+    /// the context is restored.
+    fn is_context_lost(&self) -> bool {
+        match self {
+            Self::WebGl2(r) => r.is_context_lost(),
+            Self::Software { .. } => false, // Software renderer never loses context
+        }
+    }
+
     /// Returns pixel data for screenshot (software only).
     fn pixels(&self) -> Option<&[u32]> {
         if let Self::Software { renderer, .. } = self {
@@ -815,6 +826,35 @@ impl Rource {
     #[wasm_bindgen(js_name = isWebGL2)]
     pub fn is_webgl2(&self) -> bool {
         self.renderer_type == RendererType::WebGl2
+    }
+
+    /// Returns true if the WebGL context is lost.
+    ///
+    /// This can happen when the GPU is reset, the browser tab is backgrounded
+    /// for a long time, or system resources are exhausted. When the context is
+    /// lost, rendering operations are skipped automatically.
+    ///
+    /// Software renderer always returns false (it never loses context).
+    #[wasm_bindgen(js_name = isContextLost)]
+    pub fn is_context_lost(&self) -> bool {
+        self.backend.is_context_lost()
+    }
+
+    /// Attempts to recover from a lost WebGL context.
+    ///
+    /// Returns true if recovery was successful or if context was not lost.
+    /// Returns false if recovery failed (e.g., WebGL is permanently unavailable).
+    ///
+    /// After a successful recovery, the visualization will continue from where
+    /// it left off on the next frame.
+    #[wasm_bindgen(js_name = recoverContext)]
+    pub fn recover_context(&mut self) -> bool {
+        if let RendererBackend::WebGl2(ref mut renderer) = self.backend {
+            renderer.recover_context().is_ok()
+        } else {
+            // Software renderer never loses context
+            true
+        }
     }
 
     /// Loads commits from custom pipe-delimited format.
@@ -1744,6 +1784,12 @@ impl Rource {
     /// Renders the current frame to the canvas.
     #[allow(clippy::too_many_lines)]
     fn render(&mut self) {
+        // Skip rendering if WebGL context is lost
+        // This prevents errors and allows graceful recovery
+        if self.backend.is_context_lost() {
+            return;
+        }
+
         let renderer = self.backend.as_renderer_mut();
 
         // Begin frame

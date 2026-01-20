@@ -43,7 +43,18 @@ const BEAM_GLOW_LAYERS: usize = 3;
 ///
 /// Creates smooth curves through the given points using Catmull-Rom
 /// interpolation, which passes through all control points.
+///
+/// # Arguments
+///
+/// * `points` - Control points to interpolate through (minimum 2 required for output)
+/// * `segments_per_span` - Number of interpolated points per span between control points
+///
+/// # Returns
+///
+/// Returns the interpolated points. For 0-2 input points, returns a copy of the input.
+/// For 3+ points, returns smoothly interpolated spline points.
 fn catmull_rom_spline(points: &[Vec2], segments_per_span: usize) -> Vec<Vec2> {
+    // Handle edge cases: empty, single point, or two points
     if points.len() < 2 {
         return points.to_vec();
     }
@@ -52,6 +63,8 @@ fn catmull_rom_spline(points: &[Vec2], segments_per_span: usize) -> Vec<Vec2> {
         // For two points, just return them (straight line)
         return points.to_vec();
     }
+
+    // At this point, points.len() >= 3, so last() is guaranteed to succeed
 
     let mut result = Vec::with_capacity(points.len() * segments_per_span);
 

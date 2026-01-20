@@ -38,6 +38,7 @@ import { initFullscreen, toggleFullscreen } from './features/fullscreen.js';
 import { initTheme, toggleTheme } from './features/theme.js';
 import { initHelp, maybeShowFirstTimeHelp, showHelp } from './features/help.js';
 import { initKeyboard } from './features/keyboard.js';
+import { fetchGitHubWithProgress, parseGitHubUrl } from './github-fetch.js';
 
 // ============================================================
 // Initialization
@@ -134,10 +135,6 @@ async function main() {
 
         // Check URL parameters
         const urlParams = parseUrlParams();
-        if (urlParams.repo) {
-            // Load from URL param (TODO: implement GitHub fetch)
-            console.log('Rource: URL repo param:', urlParams.repo);
-        }
 
         // Apply speed from URL
         if (urlParams.speed) {
@@ -146,9 +143,31 @@ async function main() {
             safeWasmCall('setSpeed', () => rource.setSpeed(speedValue), undefined);
         }
 
-        // Auto-load Rource data after a short delay
-        setTimeout(() => {
-            if (!hasData()) {
+        // Load data based on URL params or default
+        setTimeout(async () => {
+            if (urlParams.repo) {
+                // Load from URL param - fetch from GitHub
+                console.log('Rource: Loading from URL repo param:', urlParams.repo);
+                if (elements.githubUrlInput) {
+                    elements.githubUrlInput.value = urlParams.repo;
+                }
+                if (elements.fetchStatus) {
+                    elements.fetchStatus.classList.add('visible', 'loading');
+                }
+                const logData = await fetchGitHubWithProgress(urlParams.repo, {
+                    statusEl: elements.fetchStatusText,
+                });
+                if (elements.fetchStatus) {
+                    elements.fetchStatus.classList.remove('visible', 'loading');
+                }
+                if (logData) {
+                    loadLogData(logData, 'custom');
+                } else if (!hasData()) {
+                    // Fall back to default if GitHub fetch failed
+                    loadRourceData();
+                }
+            } else if (!hasData()) {
+                // Auto-load Rource data if no URL param
                 loadRourceData();
             }
         }, CONFIG.INIT_DELAY_MS);
@@ -499,7 +518,36 @@ function setupEventListeners(elements, rource) {
                 showToast('Please enter a GitHub repository URL.', 'error');
                 return;
             }
-            showToast('GitHub fetch is coming soon! Use cached Rource data for now.', 'info');
+
+            // Disable button during fetch
+            elements.btnFetchGithub.disabled = true;
+            const originalText = elements.btnFetchGithub.textContent;
+            elements.btnFetchGithub.textContent = 'Fetching...';
+
+            try {
+                // Show status container and update text
+                if (elements.fetchStatus) {
+                    elements.fetchStatus.classList.add('visible', 'loading');
+                }
+                const logData = await fetchGitHubWithProgress(url, {
+                    statusEl: elements.fetchStatusText,
+                });
+
+                if (logData) {
+                    // Load the fetched data into visualization
+                    const success = loadLogData(logData, 'custom');
+                    if (success) {
+                        const parsed = parseGitHubUrl(url);
+                        showToast(`Loaded ${parsed?.owner}/${parsed?.repo} successfully!`, 'success');
+                    }
+                }
+            } finally {
+                elements.btnFetchGithub.disabled = false;
+                elements.btnFetchGithub.textContent = originalText;
+                if (elements.fetchStatus) {
+                    elements.fetchStatus.classList.remove('visible', 'loading');
+                }
+            }
         });
 
         // Enter key to fetch
@@ -626,6 +674,17 @@ function setupEventListeners(elements, rource) {
                 );
 
                 if (!response.ok) {
+                    // Check for rate limiting
+                    const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
+                    const rateLimitReset = response.headers.get('X-RateLimit-Reset');
+
+                    if (response.status === 403 && rateLimitRemaining === '0') {
+                        const resetTime = rateLimitReset ? new Date(parseInt(rateLimitReset) * 1000) : null;
+                        const waitMsg = resetTime
+                            ? ` Try again after ${resetTime.toLocaleTimeString()}.`
+                            : ' Please wait a few minutes.';
+                        throw new Error(`GitHub API rate limit exceeded.${waitMsg}`);
+                    }
                     throw new Error(`GitHub API error: ${response.status}`);
                 }
 
