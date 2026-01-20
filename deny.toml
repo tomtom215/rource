@@ -13,9 +13,7 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = []
 
 [licenses]
-# We use GPL-3.0 which is copyleft
-unlicensed = "deny"
-# Allow common permissive licenses
+# Allow common permissive licenses and GPL-3.0 (our license)
 allow = [
     "MIT",
     "Apache-2.0",
