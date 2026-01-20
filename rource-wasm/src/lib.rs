@@ -637,8 +637,7 @@ impl Rource {
         let end = self.commits.last().map_or(0, |c| c.timestamp);
 
         Some(format!(
-            r#"{{"startTimestamp":{},"endTimestamp":{}}}"#,
-            start, end
+            r#"{{"startTimestamp":{start},"endTimestamp":{end}}}"#
         ))
     }
 
