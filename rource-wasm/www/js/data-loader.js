@@ -25,6 +25,7 @@ export function setOnDataLoadedCallback(callback) {
 
 /**
  * Analyzes log data for statistics.
+ * Note: Each unique timestamp represents a commit; multiple file changes can share the same timestamp.
  * @param {string} content - Log content
  * @returns {Object} Stats with commits, files, authors
  */
@@ -32,19 +33,19 @@ export function analyzeLogData(content) {
     const lines = content.split('\n');
     const files = new Set();
     const authors = new Set();
-    let commits = 0;
+    const timestamps = new Set(); // Track unique timestamps (commits)
 
     for (const line of lines) {
         if (!line.trim()) continue;
         const parts = line.split('|');
         if (parts.length >= 4) {
-            commits++;
+            timestamps.add(parts[0].trim()); // Count unique timestamps as commits
             authors.add(parts[1].trim());
             files.add(parts[3].trim());
         }
     }
 
-    return { commits, files: files.size, authors };
+    return { commits: timestamps.size, files: files.size, authors };
 }
 
 /**
