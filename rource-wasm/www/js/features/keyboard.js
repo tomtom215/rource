@@ -11,6 +11,9 @@ import { toggleFullscreen } from './fullscreen.js';
 import { captureScreenshot } from './screenshot.js';
 import { toggleTheme } from './theme.js';
 import { showHelp, hideHelp } from './help.js';
+import { exportFullMap } from './full-map-export.js';
+import { increaseFontSize, decreaseFontSize } from './font-size.js';
+import { toggleRecording, isRecordingSupported } from './video-recording.js';
 import { isAtEnd, updatePlaybackUI } from '../animation.js';
 import { updatePreference } from '../preferences.js';
 import { updateUrlState } from '../url-state.js';
@@ -273,6 +276,37 @@ export function initKeyboard() {
                     if (perfOverlay) {
                         perfOverlay.classList.toggle('hidden');
                     }
+                }
+                break;
+
+            // Full map export
+            case 'm':
+                if (!e.ctrlKey && !e.metaKey && hasData()) {
+                    e.preventDefault();
+                    exportFullMap();
+                }
+                break;
+
+            // Video recording toggle
+            case 'v':
+                if (!e.ctrlKey && !e.metaKey && hasData() && isRecordingSupported()) {
+                    e.preventDefault();
+                    toggleRecording();
+                }
+                break;
+
+            // Font size controls (Ctrl/Cmd + Shift + +/-)
+            case 'arrowup':
+                if (e.shiftKey && hasData()) {
+                    e.preventDefault();
+                    increaseFontSize();
+                }
+                break;
+
+            case 'arrowdown':
+                if (e.shiftKey && hasData()) {
+                    e.preventDefault();
+                    decreaseFontSize();
                 }
                 break;
         }
