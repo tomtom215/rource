@@ -2745,7 +2745,86 @@ footer a {
     grid-column: 1 / -1;
 }
 
-/* Canvas container fullscreen mode (for element-level fullscreen) */
+/* Viz-panel fullscreen mode (includes both canvas and timeline controls) */
+.viz-panel:fullscreen,
+.viz-panel:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+}
+
+.viz-panel:fullscreen #canvas-container,
+.viz-panel:-webkit-full-screen #canvas-container {
+    flex: 1;
+    min-height: 0;
+    border-radius: 0;
+    border: none;
+}
+
+.viz-panel:fullscreen #canvas,
+.viz-panel:-webkit-full-screen #canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.viz-panel:fullscreen .timeline-container,
+.viz-panel:-webkit-full-screen .timeline-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    background: rgba(22, 27, 34, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    opacity: 0.85;
+    transition: opacity 0.3s;
+}
+
+.viz-panel:fullscreen .timeline-container:hover,
+.viz-panel:-webkit-full-screen .timeline-container:hover {
+    opacity: 1;
+}
+
+/* Keep overlays visible in viz-panel fullscreen */
+.viz-panel:fullscreen .stats-overlay,
+.viz-panel:-webkit-full-screen .stats-overlay,
+.viz-panel:fullscreen .perf-overlay,
+.viz-panel:-webkit-full-screen .perf-overlay,
+.viz-panel:fullscreen .legend-panel,
+.viz-panel:-webkit-full-screen .legend-panel,
+.viz-panel:fullscreen .authors-panel,
+.viz-panel:-webkit-full-screen .authors-panel {
+    position: fixed;
+}
+
+/* Adjust stats overlay position in fullscreen to avoid timeline overlap */
+.viz-panel:fullscreen .stats-overlay,
+.viz-panel:-webkit-full-screen .stats-overlay {
+    bottom: 80px;
+}
+
+/* Authors panel position in fullscreen */
+.viz-panel:fullscreen .authors-panel,
+.viz-panel:-webkit-full-screen .authors-panel {
+    bottom: 80px;
+}
+
+/* Exit fullscreen button in viz-panel fullscreen */
+.viz-panel:fullscreen .exit-fullscreen-btn,
+.viz-panel:-webkit-full-screen .exit-fullscreen-btn {
+    display: flex;
+    position: fixed;
+}
+
+/* Legacy canvas-container fullscreen support (fallback) */
 #canvas-container:fullscreen,
 #canvas-container:-webkit-full-screen {
     width: 100vw;
@@ -2826,18 +2905,24 @@ footer a {
     height: 100% !important;
 }
 
-/* Keep controls visible in pseudo-fullscreen */
-.pseudo-fullscreen .playback-controls {
+/* Keep timeline controls visible in pseudo-fullscreen */
+.pseudo-fullscreen .timeline-container {
     position: fixed;
-    bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    background: rgba(22, 27, 34, 0.95);
+    backdrop-filter: blur(8px);
     z-index: 10000;
-    opacity: 0.7;
+    opacity: 0.85;
     transition: opacity 0.3s;
 }
 
-.pseudo-fullscreen .playback-controls:hover {
+.pseudo-fullscreen .timeline-container:hover {
     opacity: 1;
 }
 
@@ -2849,8 +2934,13 @@ footer a {
 /* Ensure stats overlay stays visible and positioned correctly */
 .pseudo-fullscreen .stats-overlay {
     position: fixed;
-    bottom: 4rem;
+    bottom: 80px;
     left: 1rem;
+}
+
+/* Authors panel position in pseudo-fullscreen */
+.pseudo-fullscreen .authors-panel {
+    bottom: 80px;
 }
 
 .pseudo-fullscreen .perf-overlay {

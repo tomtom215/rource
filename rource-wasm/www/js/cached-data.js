@@ -8,7 +8,12 @@
  * Last updated: 2026-01-20
  */
 
+// Total git commits in the repository (includes merge commits without file changes)
+// This is the count users see on GitHub
+export const TOTAL_GIT_COMMITS = 203;
+
 // Complete commit history of the Rource project
+// Note: Only commits with file changes are included (merge commits without files are excluded)
 export const ROURCE_CACHED_DATA = `1768004902|Tom F|A|LICENSE
 1768004902|Tom F|A|README.md
 1768006231|Claude|A|GOURCE_RUST_REWRITE_PLAN.md
@@ -505,15 +510,72 @@ export const ROURCE_CACHED_DATA = `1768004902|Tom F|A|LICENSE
 1768870224|Claude|M|CLAUDE.md
 1768870224|Claude|D|GOURCE_RUST_REWRITE_PLAN.md
 1768871165|Claude|M|rource-wasm/www/js/features/keyboard.js
-1768871165|Claude|M|rource-wasm/www/js/main.js`;
+1768871165|Claude|M|rource-wasm/www/js/main.js
+1768871948|Claude|M|rource-wasm/www/js/cached-data.js
+1768871948|Claude|M|rource-wasm/www/js/data-loader.js
+1768871948|Claude|M|scripts/update-wasm-cache.sh
+1768897827|Claude|M|rource-wasm/www/js/features/keyboard.js
+1768897827|Claude|M|rource-wasm/www/js/main.js
+1768897909|Claude|M|rource-wasm/www/js/cached-data.js
+1768897909|Claude|M|rource-wasm/www/js/data-loader.js
+1768897977|Claude|M|rource-wasm/www/js/main.js
+1768899386|Claude|D|rource-wasm/www/app.js
+1768899386|Claude|M|rource-wasm/www/js/main.js
+1768900927|Claude|M|rource-wasm/Cargo.toml
+1768907699|Claude|M|.github/workflows/deploy-pages.yml
+1768910334|Claude|M|.github/workflows/deploy-pages.yml
+1768910334|Claude|M|.github/workflows/security.yml
+1768910334|Claude|M|CLAUDE.md
+1768910334|Claude|M|CONTRIBUTING.md
+1768910334|Claude|M|crates/rource-core/src/physics/force.rs
+1768910334|Claude|M|crates/rource-math/src/mat4.rs
+1768910334|Claude|M|crates/rource-math/src/vec2.rs
+1768910334|Claude|M|crates/rource-math/src/vec3.rs
+1768910334|Claude|M|crates/rource-math/src/vec4.rs
+1768910334|Claude|M|crates/rource-vcs/src/compact.rs
+1768910334|Claude|M|crates/rource-vcs/src/intern.rs
+1768910334|Claude|M|crates/rource-vcs/src/parser/bazaar.rs
+1768910334|Claude|M|crates/rource-vcs/src/parser/mercurial.rs
+1768910334|Claude|M|crates/rource-vcs/src/parser/svn.rs
+1768910334|Claude|A|deny.toml
+1768910334|Claude|M|rource-cli/src/args.rs
+1768910334|Claude|M|rource-cli/src/headless.rs
+1768910334|Claude|M|rource-cli/src/main.rs
+1768910334|Claude|M|rource-cli/src/window.rs
+1768910334|Claude|M|rource-wasm/Cargo.toml
+1768910334|Claude|M|rource-wasm/src/lib.rs
+1768910334|Claude|M|rource-wasm/www/js/main.js
+1768910334|Claude|M|rource-wasm/www/js/preferences.js
+1768911246|Claude|M|rource-cli/src/rendering.rs
+1768911246|Claude|M|rource-wasm/www/js/features/theme.js
+1768911246|Claude|A|rource-wasm/www/js/github-fetch.js
+1768911246|Claude|M|rource-wasm/www/js/main.js
+1768911246|Claude|M|rource-wasm/www/styles.css
+1768911565|Claude|M|crates/rource-math/src/mat4.rs
+1768911619|Claude|M|crates/rource-math/src/mat4.rs
+1768911619|Claude|M|crates/rource-vcs/src/compact.rs
+1768911619|Claude|M|rource-cli/src/args.rs
+1768911910|Claude|M|deny.toml
+1768912214|Claude|M|deny.toml
+1768912388|Claude|M|rource-wasm/Cargo.toml
+1768912704|Claude|M|Cargo.toml
+1768912704|Claude|M|deny.toml
+1768912704|Claude|M|rource-wasm/Cargo.toml
+1768913011|Claude|M|deny.toml
+1768914137|Claude|M|rource-wasm/www/js/cached-data.js
+1768914137|Claude|M|rource-wasm/www/js/data-loader.js
+1768914137|Claude|M|rource-wasm/www/js/features/fullscreen.js
+1768914137|Claude|M|rource-wasm/www/styles.css
+1768914422|Claude|M|rource-wasm/www/js/cached-data.js
+1768914422|Claude|M|rource-wasm/www/js/data-loader.js`;
 
 // Pre-calculate stats for the cached Rource data
-// Note: Commits are grouped by (timestamp, author) pairs - this matches the WASM parser behavior
+// Note: We use TOTAL_GIT_COMMITS for the commit count to match what users see on GitHub
+// The visualization data only includes commits with file changes, but we display the total
 export const ROURCE_STATS = (() => {
     const lines = ROURCE_CACHED_DATA.split('\n');
     const files = new Set();
     const authors = new Set();
-    const commits = new Set(); // Track unique (timestamp, author) pairs as commits
     let lastTimestamp = 0;
     for (const line of lines) {
         if (!line.trim()) continue;
@@ -521,13 +583,13 @@ export const ROURCE_STATS = (() => {
         if (parts.length >= 4) {
             const ts = parseInt(parts[0], 10);
             const author = parts[1].trim();
-            commits.add(`${ts}|${author}`); // Count unique (timestamp, author) as commits
             authors.add(author);
             files.add(parts[3].trim());
             if (ts > lastTimestamp) lastTimestamp = ts;
         }
     }
-    return { commits: commits.size, files: files.size, authors: authors.size, lastTimestamp };
+    // Use the actual git commit count for display, not the grouped visualization commits
+    return { commits: TOTAL_GIT_COMMITS, files: files.size, authors: authors.size, lastTimestamp };
 })();
 
 // Track additional commits fetched via refresh

@@ -10,7 +10,7 @@ import { showToast } from './toast.js';
 import { safeWasmCall } from './wasm-api.js';
 import { debugLog } from './telemetry.js';
 import { parseUrlParams } from './url-state.js';
-import { ROURCE_CACHED_DATA, DEMO_DATA, ROURCE_STATS, getFullCachedData } from './cached-data.js';
+import { ROURCE_CACHED_DATA, DEMO_DATA, ROURCE_STATS, TOTAL_GIT_COMMITS, getFullCachedData } from './cached-data.js';
 
 // Callbacks for UI updates
 let onDataLoadedCallback = null;
@@ -54,9 +54,11 @@ export function analyzeLogData(content) {
  * Loads log data into the visualization.
  * @param {string} content - Log content
  * @param {string} [format='custom'] - Format: 'custom' or 'git'
+ * @param {Object} [options] - Additional options
+ * @param {number} [options.totalCommits] - Total git commits to display (for repos where we know the full count)
  * @returns {boolean} True if successful
  */
-export function loadLogData(content, format = 'custom') {
+export function loadLogData(content, format = 'custom', options = {}) {
     const rource = getRource();
 
     if (!rource || !content.trim()) {
@@ -67,14 +69,14 @@ export function loadLogData(content, format = 'custom') {
     const elements = getAllElements();
 
     try {
-        let count;
+        let visualizationCommits;
         if (format === 'git') {
-            count = safeWasmCall('loadGitLog', () => rource.loadGitLog(content), 0);
+            visualizationCommits = safeWasmCall('loadGitLog', () => rource.loadGitLog(content), 0);
         } else {
-            count = safeWasmCall('loadCustomLog', () => rource.loadCustomLog(content), 0);
+            visualizationCommits = safeWasmCall('loadCustomLog', () => rource.loadCustomLog(content), 0);
         }
 
-        if (count === 0) {
+        if (visualizationCommits === 0) {
             showToast('No commits found. Check your log format.', 'error');
             return false;
         }
@@ -82,15 +84,25 @@ export function loadLogData(content, format = 'custom') {
         // Analyze data
         const stats = analyzeLogData(content);
 
-        // Update stats overlay
-        if (elements.statCommits) elements.statCommits.textContent = count;
+        // Use totalCommits override if provided (e.g., for Rource repo where we know the actual git commit count)
+        // Otherwise use the WASM visualization commit count
+        const displayCommits = options.totalCommits || visualizationCommits;
+        stats.commits = displayCommits;
+
+        // Update stats overlay (show display commits, which may include merge commits)
+        if (elements.statCommits) elements.statCommits.textContent = displayCommits;
         if (elements.statFiles) elements.statFiles.textContent = stats.files;
         if (elements.statAuthors) elements.statAuthors.textContent = stats.authors.size;
 
-        // Update state
+        // Update state (store both display and visualization counts)
         setState({
             hasLoadedData: true,
-            commitStats: { commits: count, files: stats.files, authors: stats.authors },
+            commitStats: {
+                commits: displayCommits,
+                visualizationCommits: visualizationCommits,
+                files: stats.files,
+                authors: stats.authors
+            },
         });
 
         // Update UI visibility
@@ -116,11 +128,11 @@ export function loadLogData(content, format = 'custom') {
             onDataLoadedCallback(content, stats);
         }
 
-        // Check for commit position in URL
+        // Check for commit position in URL (use visualization commits for seeking)
         const urlParams = parseUrlParams();
         if (urlParams.commit) {
             const commitIndex = parseInt(urlParams.commit, 10);
-            if (!isNaN(commitIndex) && commitIndex >= 0 && commitIndex < count) {
+            if (!isNaN(commitIndex) && commitIndex >= 0 && commitIndex < visualizationCommits) {
                 safeWasmCall('seek', () => rource.seek(commitIndex), undefined);
             }
         }
@@ -130,7 +142,7 @@ export function loadLogData(content, format = 'custom') {
             safeWasmCall('play', () => rource.play(), undefined);
         }
 
-        showToast(`Loaded ${count} commits from ${stats.authors.size} authors!`, 'success', 3000);
+        showToast(`Loaded ${displayCommits} commits from ${stats.authors.size} authors!`, 'success', 3000);
 
         return true;
 
@@ -152,10 +164,11 @@ export function loadLogData(content, format = 'custom') {
 
 /**
  * Loads the cached Rource repository data.
+ * Uses the actual git commit count (including merge commits) for display.
  * @returns {boolean} True if successful
  */
 export function loadRourceData() {
-    return loadLogData(getFullCachedData(), 'custom');
+    return loadLogData(getFullCachedData(), 'custom', { totalCommits: TOTAL_GIT_COMMITS });
 }
 
 /**
