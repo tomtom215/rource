@@ -18,11 +18,33 @@ pub use file::FileNode;
 pub use tree::{DirNode, DirTree};
 pub use user::User;
 
-use crate::entity::{ActionId, FileId, IdAllocator, UserId};
+use crate::entity::{ActionId, DirId, FileId, IdAllocator, UserId};
 use crate::physics::QuadTree;
 
 /// Default bounds for the scene.
 pub const DEFAULT_SCENE_SIZE: f32 = 10000.0;
+
+// ============================================================================
+// Force-directed layout constants
+// ============================================================================
+
+/// Repulsion constant between directory nodes.
+/// Higher values push sibling directories further apart.
+const FORCE_REPULSION: f32 = 800.0;
+
+/// Attraction constant to parent directory.
+/// Higher values pull children closer to their parents.
+const FORCE_ATTRACTION: f32 = 0.03;
+
+/// Velocity damping factor (0.0-1.0).
+/// Applied each frame to prevent oscillation.
+const FORCE_DAMPING: f32 = 0.85;
+
+/// Maximum velocity to prevent instability.
+const FORCE_MAX_VELOCITY: f32 = 300.0;
+
+/// Minimum distance for force calculation to prevent extreme forces.
+const FORCE_MIN_DISTANCE: f32 = 5.0;
 
 /// Entity type for spatial indexing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -576,12 +598,11 @@ impl Scene {
             self.update_file_positions_for_layout();
         }
 
-        // Update directory physics (light forces to maintain stability)
+        // Update parent positions for force calculation
         self.directories.update_parent_positions();
-        for dir in self.directories.iter_mut() {
-            // Apply very light physics to allow minor adjustments
-            dir.update_physics(dt, 0.98);
-        }
+
+        // Apply force-directed layout to directories
+        self.apply_force_directed_layout(dt);
 
         // Invalidate bounds cache since entities may have moved
         // (only every N frames to avoid constant recomputation)
@@ -652,6 +673,121 @@ impl Scene {
                 file.set_target(new_pos);
                 // Optionally, snap position immediately for layout changes
                 file.set_position(new_pos);
+            }
+        }
+    }
+
+    /// Applies force-directed layout to directory nodes.
+    ///
+    /// This simulates physical forces between directories to create a natural,
+    /// organic-looking tree layout:
+    /// - **Repulsion**: Sibling directories and nearby nodes push each other apart
+    /// - **Attraction**: Child directories are pulled toward their parents
+    /// - **Damping**: Friction-like force that stabilizes the system
+    fn apply_force_directed_layout(&mut self, dt: f32) {
+        // Collect directory data for force calculation
+        // (id, position, depth, parent_id, parent_position, target_distance)
+        let dir_data: Vec<(DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32)> = self
+            .directories
+            .iter()
+            .map(|d| {
+                (
+                    d.id(),
+                    d.position(),
+                    d.depth(),
+                    d.parent(),
+                    d.parent_position(),
+                    d.target_distance(),
+                )
+            })
+            .collect();
+
+        // Calculate forces for each directory
+        let mut forces: HashMap<DirId, Vec2> = HashMap::new();
+
+        // Calculate repulsion forces between related directories (O(n²) but n is typically small)
+        let len = dir_data.len();
+        for i in 0..len {
+            let (id_i, pos_i, depth_i, parent_i, _, _) = dir_data[i];
+
+            for j in (i + 1)..len {
+                let (id_j, pos_j, depth_j, parent_j, _, _) = dir_data[j];
+
+                // Repel if:
+                // 1. Siblings (same parent)
+                // 2. Close in depth (within 1 level)
+                let are_siblings = parent_i == parent_j && parent_i.is_some();
+                let close_depth = depth_i.abs_diff(depth_j) <= 1;
+
+                if !are_siblings && !close_depth {
+                    continue;
+                }
+
+                let delta = pos_j - pos_i;
+                let distance = delta.length().max(FORCE_MIN_DISTANCE);
+
+                // Inverse square repulsion: F = k / d²
+                let force_magnitude = FORCE_REPULSION / (distance * distance);
+
+                // Guard against zero-length delta
+                if delta.length_squared() < 0.001 {
+                    // Push apart randomly based on indices
+                    let offset = Vec2::new((i as f32).sin() * 5.0, (j as f32).cos() * 5.0);
+                    *forces.entry(id_i).or_insert(Vec2::ZERO) -= offset;
+                    *forces.entry(id_j).or_insert(Vec2::ZERO) += offset;
+                    continue;
+                }
+
+                let force = delta.normalized() * force_magnitude;
+
+                // Apply equal and opposite forces
+                *forces.entry(id_i).or_insert(Vec2::ZERO) -= force;
+                *forces.entry(id_j).or_insert(Vec2::ZERO) += force;
+            }
+        }
+
+        // Calculate attraction forces to parents
+        for (id, pos, _depth, _parent_id, parent_pos, target_dist) in &dir_data {
+            if let Some(parent_pos) = parent_pos {
+                let delta = *parent_pos - *pos;
+                let distance = delta.length();
+
+                // Only attract if beyond target distance
+                if distance > *target_dist && delta.length_squared() > 0.001 {
+                    let excess = distance - target_dist;
+                    let force = delta.normalized() * excess * FORCE_ATTRACTION;
+                    *forces.entry(*id).or_insert(Vec2::ZERO) += force;
+                }
+            }
+        }
+
+        // Apply forces to directories
+        for dir in self.directories.iter_mut() {
+            // Skip root (anchor it in place)
+            if dir.is_root() {
+                continue;
+            }
+
+            if let Some(&force) = forces.get(&dir.id()) {
+                // Apply force as acceleration (assuming unit mass)
+                dir.add_velocity(force * dt);
+
+                // Clamp velocity to prevent instability
+                let vel = dir.velocity();
+                let speed = vel.length();
+                if speed > FORCE_MAX_VELOCITY {
+                    dir.set_velocity(vel.normalized() * FORCE_MAX_VELOCITY);
+                }
+
+                // Apply damping
+                dir.set_velocity(dir.velocity() * FORCE_DAMPING);
+
+                // Integrate position
+                let new_pos = dir.position() + dir.velocity() * dt;
+                dir.set_position(new_pos);
+            } else {
+                // No force but still apply damping and integration for existing velocity
+                dir.update_physics(dt, FORCE_DAMPING);
             }
         }
     }

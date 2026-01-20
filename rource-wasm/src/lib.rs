@@ -1897,6 +1897,36 @@ impl Rource {
                         use_curves,
                     );
                 }
+
+                // Draw directory name label if labels are enabled
+                // Only show for shallow directories (depth <= 2) to avoid clutter
+                if self.show_labels && dir.depth() <= 2 {
+                    if let Some(fid) = self.font_id {
+                        let name = dir.name();
+                        // Skip empty names (root directory)
+                        if !name.is_empty() {
+                            let dir_font_size = self.settings.display.font_size * 0.75;
+                            let label_pos = Vec2::new(
+                                screen_pos.x + radius + 4.0,
+                                screen_pos.y - dir_font_size * 0.3,
+                            );
+
+                            // Shadow for better readability
+                            let shadow_color = Color::new(0.0, 0.0, 0.0, 0.4);
+                            renderer.draw_text(
+                                name,
+                                label_pos + Vec2::new(1.0, 1.0),
+                                fid,
+                                dir_font_size,
+                                shadow_color,
+                            );
+
+                            // Main label in soft blue-gray
+                            let label_color = Color::new(0.75, 0.78, 0.85, 0.7);
+                            renderer.draw_text(name, label_pos, fid, dir_font_size, label_color);
+                        }
+                    }
+                }
             }
         }
 
