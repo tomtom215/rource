@@ -1583,8 +1583,9 @@ impl Rource {
             font_size: self.settings.display.font_size,
         };
 
-        // === Phase 2: Directories ===
+        // === Phase 2: Directories (with labels - rendered early so files/users appear on top) ===
         render_directories(renderer, &ctx, &self.scene, &self.camera);
+        render_directory_labels(renderer, &ctx, &self.scene, &self.camera);
 
         // === Phase 3: Files ===
         render_files(renderer, &ctx, &self.scene, &self.camera);
@@ -1595,8 +1596,7 @@ impl Rource {
         // === Phase 5: Users ===
         render_users(renderer, &ctx, &self.scene, &self.camera);
 
-        // === Phase 6: Labels (rendered last for visibility) ===
-        render_directory_labels(renderer, &ctx, &self.scene, &self.camera);
+        // === Phase 6: Labels (user and file labels rendered last for visibility) ===
         render_user_labels(renderer, &ctx, &self.scene, &self.camera);
         render_file_labels(renderer, &ctx, &self.scene, &self.camera);
 

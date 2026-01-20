@@ -887,6 +887,9 @@ function __wbg_get_imports() {
         __wbg_deleteVertexArray_7bc7f92769862f93: function(arg0, arg1) {
             getObject(arg0).deleteVertexArray(getObject(arg1));
         },
+        __wbg_disable_7fe6fb3e97717f88: function(arg0, arg1) {
+            getObject(arg0).disable(arg1 >>> 0);
+        },
         __wbg_drawArraysInstanced_ec30adc616ec58d5: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).drawArraysInstanced(arg1 >>> 0, arg2, arg3, arg4);
         },
@@ -993,6 +996,9 @@ function __wbg_get_imports() {
         __wbg_putImageData_78318465ad96c2c3: function() { return handleError(function (arg0, arg1, arg2, arg3) {
             getObject(arg0).putImageData(getObject(arg1), arg2, arg3);
         }, arguments); },
+        __wbg_scissor_2ff8f18f05a6d408: function(arg0, arg1, arg2, arg3, arg4) {
+            getObject(arg0).scissor(arg1, arg2, arg3, arg4);
+        },
         __wbg_set_6cb8631f80447a67: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = Reflect.set(getObject(arg0), getObject(arg1), getObject(arg2));
             return ret;
