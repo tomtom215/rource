@@ -71,6 +71,9 @@ function getBestCodec() {
     return 'video/webm';
 }
 
+// Flag to track if we're in preparation phase
+let isPreparing = false;
+
 /**
  * Starts recording the canvas.
  * @param {string} quality - Quality preset key
@@ -99,18 +102,42 @@ export function startRecording(quality = DEFAULT_QUALITY, options = {}) {
         return false;
     }
 
-    if (isRecording) {
+    if (isRecording || isPreparing) {
         showToast('Already recording', 'warning');
         return false;
     }
 
-    try {
-        // Seek to beginning if requested
-        if (fromBeginning) {
-            safeWasmVoid('seek', () => rource.seek(0));
-            showToast('Starting recording from beginning...', 'info', 2000);
-        }
+    // Show preparation message and start after brief delay
+    isPreparing = true;
+    updateRecordingUI(true, true); // Show "preparing" state
 
+    // Seek to beginning if requested
+    if (fromBeginning) {
+        safeWasmVoid('seek', () => rource.seek(0));
+    }
+
+    // Show user guidance
+    showToast(
+        'Recording visible area in 2s... Adjust zoom/pan now if needed.',
+        'info',
+        2500
+    );
+
+    // Start actual recording after delay
+    setTimeout(() => {
+        if (!isPreparing) return; // Cancelled during preparation
+        isPreparing = false;
+        actuallyStartRecording(quality, stopAtEnd, canvas, rource);
+    }, 2000);
+
+    return true;
+}
+
+/**
+ * Internal function that actually starts the recording.
+ */
+function actuallyStartRecording(quality, stopAtEnd, canvas, rource) {
+    try {
         // Get quality settings
         const preset = QUALITY_PRESETS[quality] || QUALITY_PRESETS[DEFAULT_QUALITY];
 
@@ -174,13 +201,12 @@ export function startRecording(quality = DEFAULT_QUALITY, options = {}) {
             setAnimationId(requestAnimationFrame(animateCallback));
         }
 
-        return true;
+        showToast('Recording started - will auto-stop at end', 'success', 3000);
 
     } catch (error) {
         console.error('Failed to start recording:', error);
         showToast(`Failed to start recording: ${error.message}`, 'error');
         cleanupRecording();
-        return false;
     }
 }
 
@@ -227,7 +253,12 @@ export function stopRecording() {
  * Toggles recording on/off.
  */
 export function toggleRecording() {
-    if (isRecording) {
+    if (isPreparing) {
+        // Cancel preparation
+        isPreparing = false;
+        updateRecordingUI(false);
+        showToast('Recording cancelled', 'info', 2000);
+    } else if (isRecording) {
         stopRecording();
     } else {
         startRecording();
@@ -279,6 +310,7 @@ function finishRecording() {
  */
 function cleanupRecording() {
     isRecording = false;
+    isPreparing = false;
     mediaRecorder = null;
     recordedChunks = [];
     recordingStartTime = 0;
@@ -314,18 +346,32 @@ function updateRecordingDuration() {
 /**
  * Updates the recording UI.
  * @param {boolean} recording - Whether recording is active
+ * @param {boolean} preparing - Whether in preparation phase
  */
-function updateRecordingUI(recording) {
+function updateRecordingUI(recording, preparing = false) {
     const btnRecord = getElement('btnRecord');
     const recordText = getElement('recordText');
 
     if (btnRecord) {
         btnRecord.classList.toggle('recording', recording);
-        btnRecord.title = recording ? 'Stop recording' : 'Record visualization as video';
+        btnRecord.classList.toggle('preparing', preparing && !recording);
+        if (preparing && !recording) {
+            btnRecord.title = 'Cancel recording';
+        } else if (recording) {
+            btnRecord.title = 'Stop recording';
+        } else {
+            btnRecord.title = 'Record visualization as video (records visible area from start to end)';
+        }
     }
 
     if (recordText) {
-        recordText.textContent = recording ? '0:00' : 'Record';
+        if (preparing && !recording) {
+            recordText.textContent = '2...';
+        } else if (recording) {
+            recordText.textContent = '0:00';
+        } else {
+            recordText.textContent = 'Record';
+        }
     }
 }
 
@@ -334,7 +380,7 @@ function updateRecordingUI(recording) {
  * @returns {boolean}
  */
 export function getIsRecording() {
-    return isRecording;
+    return isRecording || isPreparing;
 }
 
 /**
