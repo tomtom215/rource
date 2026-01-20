@@ -40,8 +40,20 @@
 //! }
 //! ```
 
+mod interaction;
+mod png;
+mod rendering;
+
 use std::fmt::Write as FmtWrite;
 use std::path::PathBuf;
+
+use interaction::{
+    hit_test_directory, hit_test_file, hit_test_user, move_connected_entities_for_directory,
+    move_connected_entities_for_file, move_connected_entities_for_user, DragTarget,
+    ENTITY_HIT_RADIUS,
+};
+use png::write_png;
+use rendering::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -49,8 +61,7 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 use rource_core::camera::Camera;
 use rource_core::config::Settings;
-use rource_core::entity::{DirId, FileId, UserId};
-use rource_core::scene::{ActionType, EntityType, Scene};
+use rource_core::scene::{ActionType, Scene};
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::{
     default_font, estimate_text_width, FontId, LabelPlacer, Renderer, SoftwareRenderer,
@@ -72,373 +83,6 @@ fn file_action_to_action_type(action: FileAction) -> ActionType {
         FileAction::Modify => ActionType::Modify,
         FileAction::Delete => ActionType::Delete,
     }
-}
-
-// ============================================================================
-// Enhanced Visual Rendering
-// ============================================================================
-
-/// Number of segments for Catmull-Rom spline interpolation
-const SPLINE_SEGMENTS: usize = 12;
-
-/// Curve tension for branch splines (0.0 = straight, 0.5 = natural curves)
-const BRANCH_CURVE_TENSION: f32 = 0.4;
-
-/// Glow intensity multiplier for action beams
-const BEAM_GLOW_INTENSITY: f32 = 0.4;
-
-/// Number of glow layers for beams
-const BEAM_GLOW_LAYERS: usize = 3;
-
-/// Generates Catmull-Rom spline points between control points.
-fn catmull_rom_spline(points: &[Vec2], segments_per_span: usize) -> Vec<Vec2> {
-    if points.len() < 2 {
-        return points.to_vec();
-    }
-
-    if points.len() == 2 {
-        return points.to_vec();
-    }
-
-    let mut result = Vec::with_capacity(points.len() * segments_per_span);
-
-    for i in 0..points.len() - 1 {
-        let p0 = if i == 0 { points[0] } else { points[i - 1] };
-        let p1 = points[i];
-        let p2 = points[i + 1];
-        let p3 = if i + 2 >= points.len() {
-            points[points.len() - 1]
-        } else {
-            points[i + 2]
-        };
-
-        for j in 0..segments_per_span {
-            let t = j as f32 / segments_per_span as f32;
-            let point = catmull_rom_interpolate(p0, p1, p2, p3, t);
-            result.push(point);
-        }
-    }
-
-    result.push(*points.last().unwrap());
-    result
-}
-
-/// Performs Catmull-Rom interpolation between p1 and p2.
-#[inline]
-fn catmull_rom_interpolate(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
-    let t2 = t * t;
-    let t3 = t2 * t;
-
-    let c0 = -0.5 * t3 + t2 - 0.5 * t;
-    let c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
-    let c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
-    let c3 = 0.5 * t3 - 0.5 * t2;
-
-    Vec2::new(
-        c0 * p0.x + c1 * p1.x + c2 * p2.x + c3 * p3.x,
-        c0 * p0.y + c1 * p1.y + c2 * p2.y + c3 * p3.y,
-    )
-}
-
-/// Creates a curved path between two points with natural-looking curvature.
-fn create_branch_curve(start: Vec2, end: Vec2, tension: f32) -> Vec<Vec2> {
-    let mid = start.lerp(end, 0.5);
-    let dir = end - start;
-    let length = dir.length();
-
-    if length < 1.0 {
-        return vec![start, end];
-    }
-
-    let perp = Vec2::new(-dir.y, dir.x).normalized();
-    let offset = perp * length * tension * 0.15;
-
-    let ctrl1 = start.lerp(mid, 0.33) + offset * 0.5;
-    let ctrl2 = start.lerp(mid, 0.66) + offset;
-    let ctrl3 = mid.lerp(end, 0.33) + offset * 0.5;
-    let ctrl4 = mid.lerp(end, 0.66);
-
-    catmull_rom_spline(
-        &[start, ctrl1, ctrl2, ctrl3, ctrl4, end],
-        SPLINE_SEGMENTS / 2,
-    )
-}
-
-/// Draws a stylized avatar shape (modern person silhouette).
-fn draw_avatar_shape<R: Renderer + ?Sized>(
-    renderer: &mut R,
-    center: Vec2,
-    radius: f32,
-    color: Color,
-    is_active: bool,
-    alpha: f32,
-) {
-    let effective_alpha = color.a * alpha;
-    if effective_alpha < 0.01 {
-        return;
-    }
-
-    let head_radius = radius * 0.42;
-    let body_width = radius * 0.7;
-    let body_height = radius * 0.65;
-
-    let head_center = Vec2::new(center.x, center.y - radius * 0.28);
-    let body_center = Vec2::new(center.x, center.y + radius * 0.32);
-
-    // Draw outer glow for active users
-    if is_active {
-        for i in 0..4 {
-            let glow_radius = radius * (1.4 + i as f32 * 0.15);
-            let glow_alpha = effective_alpha * 0.12 * (1.0 - i as f32 * 0.2);
-            let glow_color = color.with_alpha(glow_alpha);
-            renderer.draw_disc(center, glow_radius, glow_color);
-        }
-    }
-
-    // Draw shadow/base layer
-    let shadow_color = Color::new(
-        color.r * 0.2,
-        color.g * 0.2,
-        color.b * 0.2,
-        effective_alpha * 0.6,
-    );
-    renderer.draw_disc(center, radius * 1.05, shadow_color);
-
-    // Draw body (pill shape approximated with overlapping discs)
-    let body_color = Color::new(
-        color.r * 0.85,
-        color.g * 0.85,
-        color.b * 0.85,
-        effective_alpha,
-    );
-
-    let body_top = body_center.y - body_height * 0.4;
-    let body_bottom = body_center.y + body_height * 0.4;
-    let steps = 6;
-    for i in 0..=steps {
-        let t = i as f32 / steps as f32;
-        let y = body_top + t * (body_bottom - body_top);
-        let taper = 1.0 - (t - 0.5).abs() * 0.3;
-        let w = body_width * taper * 0.5;
-        renderer.draw_disc(Vec2::new(center.x, y), w, body_color);
-    }
-
-    // Draw head
-    let head_color = color.with_alpha(effective_alpha);
-    renderer.draw_disc(head_center, head_radius, head_color);
-
-    // Head highlight
-    let highlight_offset = Vec2::new(-head_radius * 0.25, -head_radius * 0.25);
-    let highlight_color = Color::new(1.0, 1.0, 1.0, effective_alpha * 0.25);
-    renderer.draw_disc(
-        head_center + highlight_offset,
-        head_radius * 0.35,
-        highlight_color,
-    );
-
-    // Active indicator ring
-    if is_active {
-        let ring_color = Color::new(1.0, 1.0, 1.0, effective_alpha * 0.4);
-        renderer.draw_circle(center, radius * 1.15, 1.5, ring_color);
-    }
-}
-
-/// Draws an action beam with glow effect.
-fn draw_action_beam<R: Renderer + ?Sized>(
-    renderer: &mut R,
-    start: Vec2,
-    end: Vec2,
-    progress: f32,
-    color: Color,
-    zoom: f32,
-) {
-    let beam_end = start.lerp(end, progress);
-
-    // Draw glow layers
-    for i in 0..BEAM_GLOW_LAYERS {
-        let layer = i as f32;
-        let width = (2.0 + layer * 2.0) * zoom.max(0.5);
-        let alpha = color.a * BEAM_GLOW_INTENSITY * (1.0 - layer * 0.25);
-        let glow_color = color.with_alpha(alpha);
-        renderer.draw_line(start, beam_end, width, glow_color);
-    }
-
-    // Draw core beam (brightest)
-    let core_color = Color::new(
-        (color.r + 0.3).min(1.0),
-        (color.g + 0.3).min(1.0),
-        (color.b + 0.3).min(1.0),
-        color.a,
-    );
-    renderer.draw_line(start, beam_end, 1.5 * zoom.max(0.5), core_color);
-
-    // Draw beam head with glow
-    let head_radius = (4.0 * zoom).max(2.5);
-
-    for i in 0..2 {
-        let glow_r = head_radius * (1.5 + i as f32 * 0.5);
-        let glow_a = color.a * 0.3 * (1.0 - i as f32 * 0.3);
-        renderer.draw_disc(beam_end, glow_r, color.with_alpha(glow_a));
-    }
-
-    renderer.draw_disc(beam_end, head_radius, core_color);
-
-    // Tiny bright center
-    let center_color = Color::new(1.0, 1.0, 1.0, color.a * 0.8);
-    renderer.draw_disc(beam_end, head_radius * 0.4, center_color);
-}
-
-/// Draws a curved branch line with gradient effect.
-fn draw_curved_branch<R: Renderer + ?Sized>(
-    renderer: &mut R,
-    start: Vec2,
-    end: Vec2,
-    width: f32,
-    color: Color,
-    use_curve: bool,
-) {
-    if color.a < 0.01 {
-        return;
-    }
-
-    if use_curve {
-        let curve_points = create_branch_curve(start, end, BRANCH_CURVE_TENSION);
-        renderer.draw_spline(&curve_points, width, color);
-
-        // Subtle glow along the curve
-        let glow_color = color.with_alpha(color.a * 0.15);
-        renderer.draw_spline(&curve_points, width * 2.5, glow_color);
-    } else {
-        renderer.draw_line(start, end, width, color);
-    }
-}
-
-// ============================================================================
-// PNG Export (minimal, dependency-free implementation)
-// ============================================================================
-
-use std::io::{self, Write};
-
-/// Writes a frame buffer to PNG format.
-fn write_png<W: Write>(writer: &mut W, pixels: &[u32], width: u32, height: u32) -> io::Result<()> {
-    // PNG signature
-    writer.write_all(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])?;
-
-    // IHDR chunk
-    let ihdr_data = {
-        let mut data = Vec::with_capacity(13);
-        data.extend_from_slice(&width.to_be_bytes());
-        data.extend_from_slice(&height.to_be_bytes());
-        data.push(8); // Bit depth
-        data.push(2); // Color type: RGB
-        data.push(0); // Compression method
-        data.push(0); // Filter method
-        data.push(0); // Interlace method
-        data
-    };
-    write_png_chunk(writer, *b"IHDR", &ihdr_data)?;
-
-    // Prepare raw image data (1 filter byte + 3 RGB bytes per pixel per row)
-    let raw_size = (1 + (width as usize) * 3) * height as usize;
-    let mut raw_data = Vec::with_capacity(raw_size);
-
-    for y in 0..height as usize {
-        raw_data.push(0); // Filter type: None
-        for x in 0..width as usize {
-            let pixel = pixels[y * width as usize + x];
-            raw_data.push(((pixel >> 16) & 0xFF) as u8); // R
-            raw_data.push(((pixel >> 8) & 0xFF) as u8); // G
-            raw_data.push((pixel & 0xFF) as u8); // B
-        }
-    }
-
-    // Compress and write IDAT
-    let compressed = deflate_compress(&raw_data);
-    write_png_chunk(writer, *b"IDAT", &compressed)?;
-
-    // IEND chunk
-    write_png_chunk(writer, *b"IEND", &[])?;
-
-    writer.flush()
-}
-
-/// Writes a PNG chunk.
-fn write_png_chunk<W: Write>(writer: &mut W, chunk_type: [u8; 4], data: &[u8]) -> io::Result<()> {
-    writer.write_all(&(data.len() as u32).to_be_bytes())?;
-    writer.write_all(&chunk_type)?;
-    writer.write_all(data)?;
-    let crc = crc32(&chunk_type, data);
-    writer.write_all(&crc.to_be_bytes())?;
-    Ok(())
-}
-
-/// Computes CRC-32 for PNG chunks.
-fn crc32(chunk_type: &[u8], data: &[u8]) -> u32 {
-    const CRC_TABLE: [u32; 256] = {
-        let mut table = [0u32; 256];
-        let mut i = 0;
-        while i < 256 {
-            let mut crc = i as u32;
-            let mut j = 0;
-            while j < 8 {
-                if crc & 1 != 0 {
-                    crc = 0xEDB8_8320 ^ (crc >> 1);
-                } else {
-                    crc >>= 1;
-                }
-                j += 1;
-            }
-            table[i] = crc;
-            i += 1;
-        }
-        table
-    };
-
-    let mut crc = 0xFFFF_FFFF_u32;
-    for &byte in chunk_type.iter().chain(data.iter()) {
-        let index = ((crc ^ u32::from(byte)) & 0xFF) as usize;
-        crc = CRC_TABLE[index] ^ (crc >> 8);
-    }
-    !crc
-}
-
-/// Maximum bytes per uncompressed DEFLATE block.
-const MAX_DEFLATE_BLOCK: usize = 65535;
-
-/// Simple DEFLATE compression with zlib wrapper (uncompressed blocks).
-fn deflate_compress(data: &[u8]) -> Vec<u8> {
-    let mut output = Vec::new();
-    output.push(0x78); // CMF
-    output.push(0x01); // FLG
-
-    let mut offset = 0;
-    while offset < data.len() {
-        let remaining = data.len() - offset;
-        let block_len = remaining.min(MAX_DEFLATE_BLOCK);
-        let is_final = offset + block_len >= data.len();
-
-        output.push(u8::from(is_final));
-        let len = block_len as u16;
-        output.push((len & 0xFF) as u8);
-        output.push((len >> 8) as u8);
-        output.push((!len & 0xFF) as u8);
-        output.push((!len >> 8) as u8);
-        output.extend_from_slice(&data[offset..offset + block_len]);
-
-        offset += block_len;
-    }
-
-    // Adler-32
-    let mut a: u32 = 1;
-    let mut b: u32 = 0;
-    for &byte in data {
-        a = (a + u32::from(byte)) % 65521;
-        b = (b + a) % 65521;
-    }
-    let adler = (b << 16) | a;
-    output.extend_from_slice(&adler.to_be_bytes());
-
-    output
 }
 
 // ============================================================================
@@ -597,20 +241,6 @@ impl RendererBackend {
 
 /// Number of frame samples for FPS averaging.
 const FRAME_SAMPLE_COUNT: usize = 60;
-
-/// Hit radius for entity picking (in world units).
-const ENTITY_HIT_RADIUS: f32 = 15.0;
-
-/// Draggable entity type.
-#[derive(Debug, Clone, Copy)]
-enum DragTarget {
-    /// Dragging a file entity.
-    File(FileId),
-    /// Dragging a user entity.
-    User(UserId),
-    /// Dragging a directory entity.
-    Directory(DirId),
-}
 
 /// Performance metrics for FPS tracking and profiling.
 #[derive(Debug, Clone)]
@@ -1098,7 +728,7 @@ impl Rource {
         let hit_radius = ENTITY_HIT_RADIUS / self.camera.zoom();
 
         // Check users first (they're larger and more important to interact with)
-        if let Some(drag_target) = self.hit_test_user(world_pos, hit_radius) {
+        if let Some(drag_target) = hit_test_user(&self.scene, world_pos, hit_radius) {
             self.drag_target = Some(drag_target);
             // Calculate offset from click point to entity center
             if let DragTarget::User(user_id) = drag_target {
@@ -1111,7 +741,7 @@ impl Rource {
         }
 
         // Check files
-        if let Some(drag_target) = self.hit_test_file(world_pos, hit_radius) {
+        if let Some(drag_target) = hit_test_file(&self.scene, world_pos, hit_radius) {
             self.drag_target = Some(drag_target);
             // Calculate offset from click point to entity center
             if let DragTarget::File(file_id) = drag_target {
@@ -1126,7 +756,7 @@ impl Rource {
         }
 
         // Check directories (lowest priority - users and files are easier to target)
-        if let Some(drag_target) = self.hit_test_directory(world_pos, hit_radius) {
+        if let Some(drag_target) = hit_test_directory(&self.scene, world_pos, hit_radius) {
             self.drag_target = Some(drag_target);
             // Calculate offset from click point to entity center
             if let DragTarget::Directory(dir_id) = drag_target {
@@ -1193,7 +823,7 @@ impl Rource {
                     }
 
                     // Move connected files (files with active actions from this user)
-                    self.move_connected_entities_for_user(user_id, delta);
+                    move_connected_entities_for_user(&mut self.scene, user_id, delta);
                 }
                 DragTarget::File(file_id) => {
                     // Get file info before moving
@@ -1210,7 +840,7 @@ impl Rource {
 
                     // Move connected entities (siblings and parent directory)
                     if let Some(dir_id) = dir_id {
-                        self.move_connected_entities_for_file(file_id, dir_id, delta);
+                        move_connected_entities_for_file(&mut self.scene, file_id, dir_id, delta);
                     }
                 }
                 DragTarget::Directory(dir_id) => {
@@ -1221,7 +851,7 @@ impl Rource {
                     }
 
                     // Move connected entities (children and files in this directory)
-                    self.move_connected_entities_for_directory(dir_id, delta);
+                    move_connected_entities_for_directory(&mut self.scene, dir_id, delta);
                 }
             }
 
@@ -1544,8 +1174,21 @@ impl Rource {
     }
 
     /// Forces a render without updating simulation (useful for static views).
+    ///
+    /// This method ensures the viewport is synchronized with the current canvas
+    /// dimensions before rendering, which is critical for screenshots and exports.
     #[wasm_bindgen(js_name = forceRender)]
     pub fn force_render(&mut self) {
+        // Ensure the backend dimensions match the canvas dimensions
+        // This is critical after canvas resize operations
+        let canvas_width = self.canvas.width();
+        let canvas_height = self.canvas.height();
+
+        // Sync backend if dimensions don't match
+        if self.backend.width() != canvas_width || self.backend.height() != canvas_height {
+            self.backend.resize(canvas_width, canvas_height);
+        }
+
         self.render();
     }
 
@@ -1690,7 +1333,14 @@ impl Rource {
         center_x: f32,
         center_y: f32,
     ) {
-        // Update camera viewport size
+        // Update canvas dimensions
+        self.canvas.set_width(width);
+        self.canvas.set_height(height);
+
+        // Update backend renderer (viewport and internal dimensions)
+        self.backend.resize(width, height);
+
+        // Update camera viewport size and position
         self.camera = Camera::new(width as f32, height as f32);
         self.camera.jump_to(Vec2::new(center_x, center_y));
         self.camera.set_zoom(zoom);
@@ -1708,6 +1358,13 @@ impl Rource {
     /// * `height` - Original canvas height
     #[wasm_bindgen(js_name = restoreAfterExport)]
     pub fn restore_after_export(&mut self, width: u32, height: u32) {
+        // Restore canvas dimensions
+        self.canvas.set_width(width);
+        self.canvas.set_height(height);
+
+        // Restore backend renderer dimensions
+        self.backend.resize(width, height);
+
         // Restore camera
         self.camera = Camera::new(width as f32, height as f32);
         self.settings.display.width = width;
@@ -1740,303 +1397,6 @@ impl Rource {
 
 // Private implementation
 impl Rource {
-    /// Tests if a user is within the hit radius of the given world position.
-    ///
-    /// Returns the drag target if a user is found.
-    fn hit_test_user(&self, world_pos: Vec2, hit_radius: f32) -> Option<DragTarget> {
-        // Query entities in the hit area
-        let entities = self.scene.query_entities_circle(world_pos, hit_radius);
-
-        // Find the closest user
-        let mut closest_user: Option<(UserId, f32)> = None;
-
-        for entity in entities {
-            if let EntityType::User(user_id) = entity {
-                if let Some(user) = self.scene.get_user(user_id) {
-                    let dist = (user.position() - world_pos).length();
-                    // Check if within the user's radius (with some tolerance)
-                    let effective_radius = user.radius() + hit_radius * 0.5;
-                    if dist <= effective_radius
-                        && (closest_user.is_none() || dist < closest_user.unwrap().1)
-                    {
-                        closest_user = Some((user_id, dist));
-                    }
-                }
-            }
-        }
-
-        closest_user.map(|(id, _)| DragTarget::User(id))
-    }
-
-    /// Tests if a file is within the hit radius of the given world position.
-    ///
-    /// Returns the drag target if a file is found.
-    fn hit_test_file(&self, world_pos: Vec2, hit_radius: f32) -> Option<DragTarget> {
-        // Query entities in the hit area
-        let entities = self.scene.query_entities_circle(world_pos, hit_radius);
-
-        // Find the closest file
-        let mut closest_file: Option<(FileId, f32)> = None;
-
-        for entity in entities {
-            if let EntityType::File(file_id) = entity {
-                if let Some(file) = self.scene.get_file(file_id) {
-                    // Skip files that are faded out
-                    if file.alpha() < 0.1 {
-                        continue;
-                    }
-                    let dist = (file.position() - world_pos).length();
-                    // Check if within the file's radius (with some tolerance)
-                    let effective_radius = file.radius() + hit_radius * 0.5;
-                    if dist <= effective_radius
-                        && (closest_file.is_none() || dist < closest_file.unwrap().1)
-                    {
-                        closest_file = Some((file_id, dist));
-                    }
-                }
-            }
-        }
-
-        closest_file.map(|(id, _)| DragTarget::File(id))
-    }
-
-    /// Tests if a directory is within the hit radius of the given world position.
-    ///
-    /// Returns the drag target if a directory is found.
-    /// Skips the root directory (cannot be dragged).
-    fn hit_test_directory(&self, world_pos: Vec2, hit_radius: f32) -> Option<DragTarget> {
-        // Query entities in the hit area
-        let entities = self.scene.query_entities_circle(world_pos, hit_radius);
-
-        // Find the closest directory (excluding root)
-        let mut closest_dir: Option<(DirId, f32)> = None;
-
-        for entity in entities {
-            if let EntityType::Directory(dir_id) = entity {
-                if let Some(dir) = self.scene.directories().get(dir_id) {
-                    // Skip root directory - it's anchored and shouldn't be dragged
-                    if dir.is_root() {
-                        continue;
-                    }
-                    let dist = (dir.position() - world_pos).length();
-                    // Check if within the directory's radius (with some tolerance)
-                    let effective_radius = dir.radius() + hit_radius * 0.5;
-                    if dist <= effective_radius
-                        && (closest_dir.is_none() || dist < closest_dir.unwrap().1)
-                    {
-                        closest_dir = Some((dir_id, dist));
-                    }
-                }
-            }
-        }
-
-        closest_dir.map(|(id, _)| DragTarget::Directory(id))
-    }
-
-    /// Drag coupling strength for connected entities (0.0 = no coupling, 1.0 = full coupling).
-    /// Lower values create a more elastic, spring-like effect.
-    const DRAG_COUPLING_STRENGTH: f32 = 0.6;
-
-    /// Distance threshold beyond which coupling decreases (in world units).
-    const DRAG_COUPLING_DISTANCE_THRESHOLD: f32 = 150.0;
-
-    /// Moves entities connected to a dragged file.
-    ///
-    /// Connected entities include:
-    /// - Sibling files in the same directory
-    /// - The parent directory
-    /// - Child directories (if dragging a directory)
-    fn move_connected_entities_for_file(
-        &mut self,
-        dragged_file_id: FileId,
-        dir_id: DirId,
-        delta: Vec2,
-    ) {
-        // Skip if delta is negligible
-        if delta.length() < 0.1 {
-            return;
-        }
-
-        // Get the dragged file's position for distance-based coupling
-        let dragged_pos = self
-            .scene
-            .get_file(dragged_file_id)
-            .map_or(Vec2::ZERO, rource_core::scene::FileNode::position);
-
-        // Move sibling files in the same directory
-        let sibling_ids: Vec<FileId> = self
-            .scene
-            .directories()
-            .get(dir_id)
-            .map(|dir| dir.files().to_vec())
-            .unwrap_or_default();
-
-        for sibling_id in sibling_ids {
-            if sibling_id == dragged_file_id {
-                continue; // Skip the dragged file itself
-            }
-
-            if let Some(sibling) = self.scene.get_file_mut(sibling_id) {
-                // Calculate distance-based coupling (closer = stronger)
-                let distance = (sibling.position() - dragged_pos).length();
-                let distance_factor =
-                    (1.0 - distance / Self::DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
-                let coupling = Self::DRAG_COUPLING_STRENGTH * distance_factor;
-
-                if coupling > 0.01 {
-                    let new_pos = sibling.position() + delta * coupling;
-                    sibling.set_position(new_pos);
-                    sibling.set_target(new_pos);
-                }
-            }
-        }
-
-        // Move the parent directory (with reduced coupling)
-        // Also zero velocity so physics doesn't fight the drag
-        if let Some(dir) = self.scene.directories_mut().get_mut(dir_id) {
-            let distance = (dir.position() - dragged_pos).length();
-            let distance_factor =
-                (1.0 - distance / Self::DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
-            let coupling = Self::DRAG_COUPLING_STRENGTH * 0.5 * distance_factor;
-
-            if coupling > 0.01 {
-                let new_pos = dir.position() + delta * coupling;
-                dir.set_position(new_pos);
-                dir.set_velocity(Vec2::ZERO);
-            }
-        }
-    }
-
-    /// Moves entities connected to a dragged user.
-    ///
-    /// Connected entities include files that have active action beams from this user.
-    fn move_connected_entities_for_user(&mut self, user_id: UserId, delta: Vec2) {
-        // Skip if delta is negligible
-        if delta.length() < 0.1 {
-            return;
-        }
-
-        // Get the dragged user's position for distance-based coupling
-        let dragged_pos = self
-            .scene
-            .get_user(user_id)
-            .map_or(Vec2::ZERO, rource_core::scene::User::position);
-
-        // Collect file IDs that have active actions from this user
-        let connected_file_ids: Vec<FileId> = self
-            .scene
-            .actions()
-            .iter()
-            .filter(|action| action.user() == user_id && !action.is_complete())
-            .map(rource_core::scene::Action::file)
-            .collect();
-
-        // Move connected files and update their targets so they don't snap back
-        for file_id in connected_file_ids {
-            if let Some(file) = self.scene.get_file_mut(file_id) {
-                // Calculate distance-based coupling
-                let distance = (file.position() - dragged_pos).length();
-                let distance_factor =
-                    (1.0 - distance / Self::DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
-                let coupling = Self::DRAG_COUPLING_STRENGTH * distance_factor;
-
-                if coupling > 0.01 {
-                    let new_pos = file.position() + delta * coupling;
-                    file.set_position(new_pos);
-                    file.set_target(new_pos);
-                }
-            }
-        }
-    }
-
-    /// Moves entities connected to a dragged directory.
-    ///
-    /// Connected entities include:
-    /// - Child directories
-    /// - Files in this directory
-    /// - Sibling directories (with reduced coupling)
-    fn move_connected_entities_for_directory(&mut self, dir_id: DirId, delta: Vec2) {
-        // Skip if delta is negligible
-        if delta.length() < 0.1 {
-            return;
-        }
-
-        // Get the dragged directory's position for distance-based coupling
-        let dragged_pos = self
-            .scene
-            .directories()
-            .get(dir_id)
-            .map_or(Vec2::ZERO, rource_core::scene::DirNode::position);
-
-        // Collect child directory IDs
-        let child_dir_ids: Vec<DirId> = self
-            .scene
-            .directories()
-            .get(dir_id)
-            .map(|d| d.children().to_vec())
-            .unwrap_or_default();
-
-        // Move child directories with full coupling (they move with parent)
-        for child_id in child_dir_ids {
-            if let Some(child) = self.scene.directories_mut().get_mut(child_id) {
-                let new_pos = child.position() + delta;
-                child.set_position(new_pos);
-                child.set_velocity(Vec2::ZERO);
-            }
-        }
-
-        // Collect file IDs in this directory
-        let file_ids: Vec<FileId> = self
-            .scene
-            .directories()
-            .get(dir_id)
-            .map(|d| d.files().to_vec())
-            .unwrap_or_default();
-
-        // Move files in this directory with full coupling
-        for file_id in file_ids {
-            if let Some(file) = self.scene.get_file_mut(file_id) {
-                let new_pos = file.position() + delta;
-                file.set_position(new_pos);
-                file.set_target(new_pos);
-            }
-        }
-
-        // Move sibling directories with distance-based reduced coupling
-        let parent_id = self
-            .scene
-            .directories()
-            .get(dir_id)
-            .and_then(rource_core::scene::DirNode::parent);
-        if let Some(parent_id) = parent_id {
-            let sibling_ids: Vec<DirId> = self
-                .scene
-                .directories()
-                .get(parent_id)
-                .map(|d| d.children().to_vec())
-                .unwrap_or_default();
-
-            for sibling_id in sibling_ids {
-                if sibling_id == dir_id {
-                    continue; // Skip the dragged directory itself
-                }
-
-                if let Some(sibling) = self.scene.directories_mut().get_mut(sibling_id) {
-                    let distance = (sibling.position() - dragged_pos).length();
-                    let distance_factor =
-                        (1.0 - distance / Self::DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
-                    let coupling = Self::DRAG_COUPLING_STRENGTH * 0.3 * distance_factor;
-
-                    if coupling > 0.01 {
-                        let new_pos = sibling.position() + delta * coupling;
-                        sibling.set_position(new_pos);
-                        sibling.set_velocity(Vec2::ZERO);
-                    }
-                }
-            }
-        }
-    }
-
     /// Applies a VCS commit to the scene.
     fn apply_vcs_commit(&mut self, commit: &Commit) {
         let files: Vec<(PathBuf, ActionType)> = commit
@@ -2552,94 +1912,6 @@ mod tests {
     }
 
     // ========================================================================
-    // PNG/CRC32 Tests
-    // ========================================================================
-
-    #[test]
-    fn test_crc32_empty() {
-        let result = crc32(b"IEND", &[]);
-        // Known CRC32 for empty IEND chunk
-        assert_eq!(result, 0xAE42_6082);
-    }
-
-    #[test]
-    fn test_crc32_ihdr() {
-        // Test with a known IHDR chunk (1x1 RGB image)
-        let ihdr_data = [
-            0, 0, 0, 1, // width = 1
-            0, 0, 0, 1, // height = 1
-            8, // bit depth
-            2, // color type (RGB)
-            0, // compression
-            0, // filter
-            0, // interlace
-        ];
-        let crc = crc32(b"IHDR", &ihdr_data);
-        // Should be a valid non-zero CRC
-        assert_ne!(crc, 0);
-    }
-
-    #[test]
-    fn test_deflate_compress_empty() {
-        let result = deflate_compress(&[]);
-        // Compressed empty data should have zlib header + empty block + adler32
-        assert!(!result.is_empty());
-        // Check zlib header
-        assert_eq!(result[0], 0x78);
-        assert_eq!(result[1], 0x01);
-    }
-
-    #[test]
-    fn test_deflate_compress_small() {
-        let data = b"Hello, World!";
-        let result = deflate_compress(data);
-        // Compressed data should be larger than original for small data
-        // (uncompressed storage adds overhead)
-        assert!(!result.is_empty());
-        // Should contain the original data
-        assert!(result.windows(data.len()).any(|w| w == data));
-    }
-
-    #[test]
-    fn test_write_png_small_image() {
-        // Create a 2x2 red image
-        let pixels: Vec<u32> = vec![
-            0xFFFF_0000,
-            0xFFFF_0000, // Red, Red
-            0xFFFF_0000,
-            0xFFFF_0000, // Red, Red
-        ];
-        let mut output = Vec::new();
-        write_png(&mut output, &pixels, 2, 2).unwrap();
-
-        // Check PNG signature
-        assert_eq!(
-            &output[0..8],
-            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
-        );
-
-        // Check IHDR chunk type
-        assert_eq!(&output[12..16], b"IHDR");
-
-        // Output should contain IEND
-        assert!(output.windows(4).any(|w| w == b"IEND"));
-    }
-
-    #[test]
-    fn test_write_png_1x1_pixel() {
-        let pixels: Vec<u32> = vec![0xFF00_FF00]; // Green
-        let mut output = Vec::new();
-        write_png(&mut output, &pixels, 1, 1).unwrap();
-
-        // Should produce valid PNG with signature
-        assert!(output.len() > 8);
-        assert_eq!(
-            &output[0..8],
-            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
-        );
-    }
-
-    // ========================================================================
     // Performance Metrics Tests
     // ========================================================================
 
@@ -2732,181 +2004,6 @@ mod tests {
     }
 
     // ========================================================================
-    // Catmull-Rom Spline Tests
-    // ========================================================================
-
-    #[test]
-    fn test_catmull_rom_spline_empty() {
-        let points: Vec<Vec2> = vec![];
-        let result = catmull_rom_spline(&points, 10);
-        assert!(result.is_empty());
-    }
-
-    #[test]
-    fn test_catmull_rom_spline_single_point() {
-        let points = vec![Vec2::new(1.0, 2.0)];
-        let result = catmull_rom_spline(&points, 10);
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0], Vec2::new(1.0, 2.0));
-    }
-
-    #[test]
-    fn test_catmull_rom_spline_two_points() {
-        let points = vec![Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)];
-        let result = catmull_rom_spline(&points, 10);
-        // With only 2 points, returns the original points
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0], Vec2::new(0.0, 0.0));
-        assert_eq!(result[1], Vec2::new(10.0, 10.0));
-    }
-
-    #[test]
-    fn test_catmull_rom_spline_three_points() {
-        let points = vec![
-            Vec2::new(0.0, 0.0),
-            Vec2::new(5.0, 5.0),
-            Vec2::new(10.0, 0.0),
-        ];
-        let result = catmull_rom_spline(&points, 4);
-        // Should have segments + 1 points per span, plus final point
-        assert!(result.len() > 3);
-        // First and last should match original
-        assert_eq!(result[0], Vec2::new(0.0, 0.0));
-        assert_eq!(*result.last().unwrap(), Vec2::new(10.0, 0.0));
-    }
-
-    #[test]
-    fn test_catmull_rom_spline_many_points() {
-        let points = vec![
-            Vec2::new(0.0, 0.0),
-            Vec2::new(2.0, 4.0),
-            Vec2::new(4.0, 0.0),
-            Vec2::new(6.0, 4.0),
-            Vec2::new(8.0, 0.0),
-        ];
-        let result = catmull_rom_spline(&points, 8);
-        // Should produce smooth interpolation
-        assert!(result.len() > points.len());
-        // Endpoints preserved
-        assert_eq!(result[0], points[0]);
-        assert_eq!(*result.last().unwrap(), *points.last().unwrap());
-    }
-
-    #[test]
-    fn test_catmull_rom_interpolate_at_zero() {
-        let p0 = Vec2::new(-1.0, 0.0);
-        let p1 = Vec2::new(0.0, 0.0);
-        let p2 = Vec2::new(1.0, 0.0);
-        let p3 = Vec2::new(2.0, 0.0);
-        let result = catmull_rom_interpolate(p0, p1, p2, p3, 0.0);
-        // At t=0, should be at p1
-        assert!((result.x - p1.x).abs() < 0.001);
-        assert!((result.y - p1.y).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_catmull_rom_interpolate_at_one() {
-        let p0 = Vec2::new(-1.0, 0.0);
-        let p1 = Vec2::new(0.0, 0.0);
-        let p2 = Vec2::new(1.0, 0.0);
-        let p3 = Vec2::new(2.0, 0.0);
-        let result = catmull_rom_interpolate(p0, p1, p2, p3, 1.0);
-        // At t=1, should be at p2
-        assert!((result.x - p2.x).abs() < 0.001);
-        assert!((result.y - p2.y).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_catmull_rom_interpolate_midpoint() {
-        let p0 = Vec2::new(0.0, 0.0);
-        let p1 = Vec2::new(0.0, 0.0);
-        let p2 = Vec2::new(4.0, 0.0);
-        let p3 = Vec2::new(4.0, 0.0);
-        let result = catmull_rom_interpolate(p0, p1, p2, p3, 0.5);
-        // At t=0.5, should be roughly in the middle
-        assert!(result.x > 1.0 && result.x < 3.0);
-    }
-
-    // ========================================================================
-    // Branch Curve Tests
-    // ========================================================================
-
-    #[test]
-    fn test_create_branch_curve_very_short() {
-        let start = Vec2::new(0.0, 0.0);
-        let end = Vec2::new(0.1, 0.1);
-        let result = create_branch_curve(start, end, 0.5);
-        // Very short distance returns just start and end
-        assert_eq!(result.len(), 2);
-    }
-
-    #[test]
-    fn test_create_branch_curve_horizontal() {
-        let start = Vec2::new(0.0, 0.0);
-        let end = Vec2::new(100.0, 0.0);
-        let result = create_branch_curve(start, end, 0.5);
-        // Should have multiple points for a proper curve
-        assert!(result.len() >= 2);
-        // Start and end preserved
-        assert_eq!(result[0], start);
-        assert_eq!(*result.last().unwrap(), end);
-    }
-
-    #[test]
-    fn test_create_branch_curve_vertical() {
-        let start = Vec2::new(0.0, 0.0);
-        let end = Vec2::new(0.0, 100.0);
-        let result = create_branch_curve(start, end, 0.5);
-        assert!(result.len() >= 2);
-        assert_eq!(result[0], start);
-        assert_eq!(*result.last().unwrap(), end);
-    }
-
-    #[test]
-    fn test_create_branch_curve_diagonal() {
-        let start = Vec2::new(0.0, 0.0);
-        let end = Vec2::new(100.0, 100.0);
-        let result = create_branch_curve(start, end, 0.4);
-        assert!(result.len() >= 2);
-        // The curve should have control points that add natural curvature
-    }
-
-    #[test]
-    fn test_create_branch_curve_zero_tension() {
-        let start = Vec2::new(0.0, 0.0);
-        let end = Vec2::new(50.0, 50.0);
-        let result = create_branch_curve(start, end, 0.0);
-        // With zero tension, should still produce a valid curve
-        assert!(result.len() >= 2);
-    }
-
-    // ========================================================================
-    // DragTarget Tests
-    // ========================================================================
-
-    #[test]
-    fn test_drag_target_user() {
-        let user_id = UserId::from_index(42);
-        let target = DragTarget::User(user_id);
-        assert!(matches!(target, DragTarget::User(_)));
-    }
-
-    #[test]
-    fn test_drag_target_file() {
-        let file_id = FileId::from_index(123);
-        let target = DragTarget::File(file_id);
-        assert!(matches!(target, DragTarget::File(_)));
-    }
-
-    #[test]
-    fn test_drag_target_copy() {
-        let file_id = FileId::from_index(5);
-        let target1 = DragTarget::File(file_id);
-        let target2 = target1;
-        assert!(matches!(target2, DragTarget::File(_)));
-    }
-
-    // ========================================================================
     // Additional PerformanceMetrics Tests
     // ========================================================================
 
@@ -2959,86 +2056,5 @@ mod tests {
         assert_eq!(stats.active_actions, 10);
         assert_eq!(stats.total_entities, 125);
         assert_eq!(stats.draw_calls, 50);
-    }
-
-    // ========================================================================
-    // PNG Writing Edge Cases
-    // ========================================================================
-
-    #[test]
-    fn test_write_png_transparent_pixel() {
-        let pixels: Vec<u32> = vec![0x0000_0000]; // Fully transparent
-        let mut output = Vec::new();
-        write_png(&mut output, &pixels, 1, 1).unwrap();
-        // Should still produce valid PNG
-        assert!(output.len() > 8);
-    }
-
-    #[test]
-    fn test_write_png_various_colors() {
-        // 4 pixels: red, green, blue, white
-        let pixels: Vec<u32> = vec![
-            0xFFFF_0000, // Red
-            0xFF00_FF00, // Green
-            0xFF00_00FF, // Blue
-            0xFFFF_FFFF, // White
-        ];
-        let mut output = Vec::new();
-        write_png(&mut output, &pixels, 2, 2).unwrap();
-        // Check valid PNG signature
-        assert_eq!(
-            &output[0..8],
-            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
-        );
-    }
-
-    #[test]
-    fn test_write_png_wide_image() {
-        // 10x1 image
-        let pixels: Vec<u32> = vec![0xFFFF_FFFF; 10];
-        let mut output = Vec::new();
-        write_png(&mut output, &pixels, 10, 1).unwrap();
-        assert!(output.windows(4).any(|w| w == b"IHDR"));
-        assert!(output.windows(4).any(|w| w == b"IEND"));
-    }
-
-    #[test]
-    fn test_write_png_tall_image() {
-        // 1x10 image
-        let pixels: Vec<u32> = vec![0xFF00_0000; 10];
-        let mut output = Vec::new();
-        write_png(&mut output, &pixels, 1, 10).unwrap();
-        assert!(output.windows(4).any(|w| w == b"IHDR"));
-        assert!(output.windows(4).any(|w| w == b"IEND"));
-    }
-
-    // ========================================================================
-    // Deflate Compression Tests
-    // ========================================================================
-
-    #[test]
-    fn test_deflate_compress_repeated_data() {
-        // Highly compressible data
-        let data = vec![0xAA; 1000];
-        let result = deflate_compress(&data);
-        // Should still produce valid output
-        assert!(!result.is_empty());
-    }
-
-    #[test]
-    fn test_deflate_compress_random_like_data() {
-        // Less compressible data
-        let data: Vec<u8> = (0..=255).collect();
-        let result = deflate_compress(&data);
-        assert!(!result.is_empty());
-    }
-
-    #[test]
-    fn test_deflate_compress_single_byte() {
-        let data = vec![0x42];
-        let result = deflate_compress(&data);
-        assert!(!result.is_empty());
-        // Should contain the original byte
-        assert!(result.windows(1).any(|w| w[0] == 0x42));
     }
 }

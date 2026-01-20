@@ -299,22 +299,12 @@ async function performExport(options) {
     const originalCamera = getCameraState();
 
     try {
-        // Prepare renderer for export
+        // Prepare renderer for export (handles canvas resize, viewport, and camera)
         safeWasmVoid('prepareFullMapExport', () =>
             rource.prepareFullMapExport(width, height, zoom, centerX, centerY)
         );
 
-        // Resize canvas (this creates the off-screen buffer)
-        canvas.width = width;
-        canvas.height = height;
-        safeWasmVoid('resize', () => rource.resize(width, height));
-
-        // Re-apply camera settings after resize (resize resets camera)
-        safeWasmVoid('prepareFullMapExport', () =>
-            rource.prepareFullMapExport(width, height, zoom, centerX, centerY)
-        );
-
-        // Force render
+        // Force render with synchronized dimensions
         safeWasmVoid('forceRender', () => rource.forceRender());
 
         // Small delay to ensure render completes
@@ -351,23 +341,24 @@ async function performExport(options) {
         showToast(`Export failed: ${error.message}`, 'error');
 
     } finally {
-        // Restore original canvas size
-        canvas.width = originalWidth;
-        canvas.height = originalHeight;
-        safeWasmVoid('resize', () => rource.resize(originalWidth, originalHeight));
-
-        // Restore camera
+        // Restore original size and camera
+        // restoreAfterExport handles canvas, viewport, camera, and settings
         if (originalCamera) {
+            // Restore to specific camera state
+            safeWasmVoid('restoreAfterExport', () =>
+                rource.restoreAfterExport(originalWidth, originalHeight)
+            );
             safeWasmVoid('restoreCameraState', () =>
                 rource.restoreCameraState(originalCamera.x, originalCamera.y, originalCamera.zoom)
             );
         } else {
+            // Restore and fit to content
             safeWasmVoid('restoreAfterExport', () =>
                 rource.restoreAfterExport(originalWidth, originalHeight)
             );
         }
 
-        // Force render at original size
+        // Force render at original size with synchronized dimensions
         safeWasmVoid('forceRender', () => rource.forceRender());
 
         // Resume animation

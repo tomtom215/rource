@@ -56,6 +56,9 @@ export class Rource {
     }
     /**
      * Forces a render without updating simulation (useful for static views).
+     *
+     * This method ensures the viewport is synchronized with the current canvas
+     * dimensions before rendering, which is critical for screenshots and exports.
      */
     forceRender() {
         wasm.rource_forceRender(this.__wbg_ptr);
