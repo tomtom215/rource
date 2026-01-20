@@ -198,7 +198,7 @@
                     </div>
                 </div>
                 <div id="stats-overlay" class="stats-overlay hidden">
-                    <div class="stat-item">
+                    <div class="stat-item" title="Visualization steps through file changes grouped by time and author">
                         <span class="stat-value" id="stat-commits">0</span>
                         <span class="stat-label">Commits</span>
                     </div>
@@ -294,7 +294,7 @@
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
                         </button>
                     </div>
-                    <span class="timeline-info" id="timeline-info" title="Commit progress">
+                    <span class="timeline-info" id="timeline-info" title="Each step shows file changes from the same moment in time. May differ from git commit count if commits share timestamps.">
                         <span class="timeline-info-label">Commit</span>
                         <span class="timeline-info-numbers" id="timeline-info-numbers">0 / 0</span>
                     </span>
@@ -356,7 +356,7 @@
                 </div>
                 <div id="refresh-status" class="refresh-status hidden"></div>
                 <div class="showcase-stats">
-                    <div class="showcase-stat">
+                    <div class="showcase-stat" title="Visualization steps (file changes grouped by time)">
                         <div class="showcase-stat-value" id="showcase-commits">--</div>
                         <div class="showcase-stat-label">Commits</div>
                     </div>
@@ -732,6 +732,9 @@
                     Rource visualizes your Git history as an animated tree. Each commit creates "beams" connecting
                     developers to the files they modify. Files branch out from the root based on their directory
                     structure. The visualization uses a force-directed layout to naturally organize files and prevent overlap.
+                </p>
+                <p style="color: var(--text-muted); font-size: 0.8rem; line-height: 1.5; margin-top: 0.5rem;">
+                    <strong>Note:</strong> The commit count groups file changes by timestamp and author. This may differ slightly from your git commit count if multiple commits share the same second.
                 </p>
             </div>
 
