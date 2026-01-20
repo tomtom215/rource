@@ -69,24 +69,36 @@ impl StringInterner {
     ///
     /// If the string has been interned before, returns the existing handle.
     /// Otherwise, stores the string and returns a new handle.
+    ///
+    /// # Panics
+    ///
+    /// Panics if more than `u32::MAX` (4 billion) unique strings are interned.
+    /// This is effectively impossible in practice as it would require hundreds
+    /// of GB of memory.
     pub fn intern(&mut self, s: &str) -> InternedString {
         if let Some(&idx) = self.lookup.get(s) {
             return InternedString(idx);
         }
 
-        let idx = self.strings.len() as u32;
+        let idx = u32::try_from(self.strings.len())
+            .expect("string interner capacity exceeded (>4 billion unique strings)");
         self.strings.push(s.to_owned());
         self.lookup.insert(s.to_owned(), idx);
         InternedString(idx)
     }
 
     /// Interns an owned string, avoiding allocation if possible.
+    ///
+    /// # Panics
+    ///
+    /// Panics if more than `u32::MAX` (4 billion) unique strings are interned.
     pub fn intern_owned(&mut self, s: String) -> InternedString {
         if let Some(&idx) = self.lookup.get(&s) {
             return InternedString(idx);
         }
 
-        let idx = self.strings.len() as u32;
+        let idx = u32::try_from(self.strings.len())
+            .expect("string interner capacity exceeded (>4 billion unique strings)");
         self.lookup.insert(s.clone(), idx);
         self.strings.push(s);
         InternedString(idx)
@@ -190,6 +202,10 @@ impl PathInterner {
     }
 
     /// Interns a path, returning a handle to it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if more than `u32::MAX` (4 billion) unique paths are interned.
     pub fn intern(&mut self, path: &str) -> InternedPath {
         // Check if we've seen this exact path before
         if let Some(&idx) = self.lookup.get(path) {
@@ -203,7 +219,8 @@ impl PathInterner {
             .map(|seg| self.segments.intern(seg))
             .collect();
 
-        let idx = self.paths.len() as u32;
+        let idx = u32::try_from(self.paths.len())
+            .expect("path interner capacity exceeded (>4 billion unique paths)");
         self.paths.push(segments);
         self.lookup.insert(path.to_owned(), idx);
         InternedPath(idx)

@@ -62,6 +62,8 @@ jobs:
 
       - name: Generate fresh Rource commit data
         run: |
+          set -euo pipefail
+
           # Generate commit log for the Rource project itself
           # Format: timestamp|author|action|path
           git log --reverse --format="%at|%an" --name-status | awk '
@@ -69,10 +71,22 @@ jobs:
             /^[AMD]\t/ { print info"|"substr($0,1,1)"|"substr($0,3) }
           ' > /tmp/rource_commits.log
 
+          # Validate commit log was generated
+          if [ ! -s /tmp/rource_commits.log ]; then
+            echo "ERROR: Failed to generate commit log or log is empty"
+            exit 1
+          fi
+
           # Count stats
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          FILE_COUNT=$(cat /tmp/rource_commits.log | wc -l)
+          FILE_COUNT=$(wc -l < /tmp/rource_commits.log)
           AUTHOR_COUNT=$(git log --format="%an" | sort -u | wc -l)
+
+          # Validate counts are reasonable
+          if [ "$COMMIT_COUNT" -lt 1 ]; then
+            echo "ERROR: Invalid commit count: $COMMIT_COUNT"
+            exit 1
+          fi
 
           echo "Generated commit log with $COMMIT_COUNT commits, $FILE_COUNT file changes, $AUTHOR_COUNT authors"
           echo "COMMIT_COUNT=$COMMIT_COUNT" >> $GITHUB_ENV
@@ -81,8 +95,19 @@ jobs:
 
       - name: Count unit tests
         run: |
+          set -euo pipefail
+
           # Run cargo test with --list to count tests without running them
-          TEST_COUNT=$(cargo test --workspace -- --list 2>/dev/null | grep -c "test$" || echo "0")
+          # The grep counts lines ending with "test"
+          TEST_COUNT=$(cargo test --workspace -- --list 2>&1 | grep -c ": test$" || echo "0")
+
+          # Validate we got a reasonable count
+          if [ "$TEST_COUNT" -lt 100 ]; then
+            echo "WARNING: Low test count ($TEST_COUNT). This may indicate a build error."
+            echo "Attempting full test run to verify..."
+            cargo test --workspace --no-fail-fast 2>&1 | tail -20 || true
+          fi
+
           echo "Found $TEST_COUNT unit tests"
           echo "TEST_COUNT=$TEST_COUNT" >> $GITHUB_ENV
 

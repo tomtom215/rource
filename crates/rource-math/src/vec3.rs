@@ -440,6 +440,16 @@ impl Mul for Vec3 {
     }
 }
 
+/// Divides a `Vec3` by a scalar.
+///
+/// # Division by Zero
+///
+/// Division by zero follows IEEE 754 floating-point semantics:
+/// - Positive components divided by 0.0 produce positive infinity
+/// - Negative components divided by 0.0 produce negative infinity
+/// - 0.0 divided by 0.0 produces NaN
+///
+/// For safe division, check for zero or use a small epsilon threshold.
 impl Div<f32> for Vec3 {
     type Output = Self;
 

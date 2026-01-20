@@ -400,11 +400,20 @@ fn parse_month(s: &str) -> Option<u32> {
 }
 
 /// Calculate days since Unix epoch (Jan 1, 1970).
+///
+/// Returns `None` if the date is invalid (year < 1970, month not in 1-12, or day not in 1-31).
 fn days_since_unix_epoch(year: i32, month: u32, day: u32) -> Option<u32> {
     // Days per month (non-leap year)
     const DAYS_PER_MONTH: [u32; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
+    // Validate inputs to prevent array bounds violations and underflow
     if year < 1970 {
+        return None;
+    }
+    if !(1..=12).contains(&month) {
+        return None;
+    }
+    if !(1..=31).contains(&day) {
         return None;
     }
 
@@ -416,6 +425,7 @@ fn days_since_unix_epoch(year: i32, month: u32, day: u32) -> Option<u32> {
     }
 
     // Add days for complete months in current year
+    // Safe: month is validated to be 1-12, so (month - 1) is 0-11
     for m in 1..month {
         days += DAYS_PER_MONTH[m as usize - 1];
         if m == 2 && is_leap_year(year) {
@@ -424,6 +434,7 @@ fn days_since_unix_epoch(year: i32, month: u32, day: u32) -> Option<u32> {
     }
 
     // Add remaining days
+    // Safe: day is validated to be >= 1, so day - 1 won't underflow
     days += day - 1;
 
     Some(days)
@@ -553,6 +564,22 @@ files:       src/lib.rs src/utils.rs
         assert_eq!(days_since_unix_epoch(1970, 1, 2), Some(1));
         // Before epoch should return None
         assert_eq!(days_since_unix_epoch(1969, 1, 1), None);
+    }
+
+    #[test]
+    fn test_days_since_unix_epoch_invalid_month() {
+        // Month 0 is invalid
+        assert_eq!(days_since_unix_epoch(2024, 0, 15), None);
+        // Month 13 is invalid
+        assert_eq!(days_since_unix_epoch(2024, 13, 15), None);
+    }
+
+    #[test]
+    fn test_days_since_unix_epoch_invalid_day() {
+        // Day 0 is invalid
+        assert_eq!(days_since_unix_epoch(2024, 6, 0), None);
+        // Day 32 is invalid
+        assert_eq!(days_since_unix_epoch(2024, 6, 32), None);
     }
 
     #[test]

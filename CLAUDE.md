@@ -35,7 +35,7 @@ This script will:
 ### Required Tools
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Rust | 1.75+ | Core language |
+| Rust | 1.76+ | Core language |
 | Cargo | Latest | Package manager |
 | wasm-pack | 0.12+ | WASM bundling |
 | rustup | Latest | Toolchain management |
@@ -696,4 +696,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-20 (Web UI modularized, 840+ tests)*
+*Last updated: 2026-01-20 (Web UI modularized, 856+ tests)*

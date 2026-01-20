@@ -1,0 +1,60 @@
+# cargo-deny configuration
+# https://embarkstudios.github.io/cargo-deny/
+
+[advisories]
+# The path to the local copy of the advisory database
+db-path = "~/.cargo/advisory-db"
+# The URL of the advisory database
+url = "https://github.com/rustsec/advisory-db"
+# The lint level for vulnerabilities with a CVE
+vulnerability = "deny"
+# The lint level for unmaintained crates
+unmaintained = "warn"
+# The lint level for yanked crates
+yanked = "warn"
+# How to treat notice-level advisories
+notice = "warn"
+# Ignore specific advisories (add IDs here if you need to allow specific issues)
+ignore = []
+
+[licenses]
+# We use GPL-3.0 which is copyleft
+unlicensed = "deny"
+# Copyleft licenses are allowed since we're GPL-3.0
+copyleft = "allow"
+# Allow common permissive licenses
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "CC0-1.0",
+    "Unlicense",
+    "Unicode-DFS-2016",
+    "GPL-3.0",
+]
+# Confidence threshold for license detection
+confidence-threshold = 0.8
+# Allow license text if the crate is not in crates.io
+clarify = []
+
+[bans]
+# Lint level for multiple versions of the same crate
+multiple-versions = "warn"
+# Wildcards in dependencies are not allowed
+wildcards = "deny"
+# Allow specific crates with multiple versions (if needed)
+skip = []
+# Deny specific crates (blacklist)
+deny = []
+
+[sources]
+# Allow crates from crates.io
+unknown-registry = "deny"
+# Allow crates from git (for development)
+unknown-git = "warn"
+# List of allowed registries
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

@@ -64,13 +64,33 @@ export function loadPreferences() {
 /**
  * Save user preferences to localStorage.
  * @param {Object} prefs - Preferences to save
+ * @returns {boolean} True if save was successful, false otherwise
  */
 export function savePreferences(prefs) {
     try {
         localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
         cachedPrefs = prefs;
+        return true;
     } catch (e) {
-        console.warn('Failed to save preferences:', e);
+        // Handle quota exceeded error specifically
+        if (e.name === 'QuotaExceededError' ||
+            e.code === 22 || // Legacy Chrome
+            (e.code === 1014 && e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) { // Firefox
+            console.error('localStorage quota exceeded. Preferences could not be saved.');
+            // Try to clear and retry once
+            try {
+                localStorage.removeItem(PREFS_KEY);
+                localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+                cachedPrefs = prefs;
+                console.info('Cleared old preferences and saved successfully.');
+                return true;
+            } catch (retryError) {
+                console.error('Failed to save preferences even after clearing:', retryError);
+            }
+        } else {
+            console.warn('Failed to save preferences:', e);
+        }
+        return false;
     }
 }
 

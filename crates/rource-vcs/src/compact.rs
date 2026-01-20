@@ -116,6 +116,11 @@ impl CommitStore {
     /// Adds a new commit to the store.
     ///
     /// Returns a `CommitId` that can be used to add file changes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if more than `u32::MAX` (4 billion) commits or file changes are stored.
+    /// This is effectively impossible in practice.
     pub fn add_commit(&mut self, timestamp: i64, author: &str, hash: Option<&str>) -> CommitId {
         let author_id = self.authors.intern(author);
 
@@ -126,26 +131,39 @@ impl CommitStore {
             short_hash[..len].copy_from_slice(&bytes[..len]);
         }
 
+        let files_start = u32::try_from(self.file_changes.len())
+            .expect("file change count exceeded u32::MAX");
+
         let commit = CompactCommit {
             author: author_id,
             short_hash,
             timestamp,
-            files_start: self.file_changes.len() as u32,
+            files_start,
             files_count: 0,
         };
 
-        let id = CommitId(self.commits.len() as u32);
+        let id_val = u32::try_from(self.commits.len())
+            .expect("commit count exceeded u32::MAX");
         self.commits.push(commit);
-        id
+        CommitId(id_val)
     }
 
     /// Adds a file change to a commit.
     ///
     /// # Panics
     ///
-    /// Panics if the `commit_id` is invalid or if too many files are added
-    /// to a single commit (max 65535).
-    pub fn add_file_change(&mut self, commit_id: CommitId, path: &str, action: FileAction) {
+    /// Panics if too many files are added to a single commit (max 65535).
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if the file change was added, `false` if the `commit_id` was invalid.
+    pub fn add_file_change(&mut self, commit_id: CommitId, path: &str, action: FileAction) -> bool {
+        // Bounds check the commit_id before modifying state
+        let commit_idx = commit_id.0 as usize;
+        if commit_idx >= self.commits.len() {
+            return false;
+        }
+
         let path_id = self.paths.intern(path);
 
         let change = CompactFileChange {
@@ -155,11 +173,13 @@ impl CommitStore {
 
         self.file_changes.push(change);
 
-        let commit = &mut self.commits[commit_id.0 as usize];
+        let commit = &mut self.commits[commit_idx];
         commit.files_count = commit
             .files_count
             .checked_add(1)
             .expect("too many files in commit");
+
+        true
     }
 
     /// Gets a commit by ID.
@@ -169,18 +189,35 @@ impl CommitStore {
     }
 
     /// Returns an iterator over all commits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the iterator index exceeds `u32::MAX`. This should never happen
+    /// since `add_commit` enforces this limit.
     pub fn commits(&self) -> impl Iterator<Item = (CommitId, &CompactCommit)> {
-        self.commits
-            .iter()
-            .enumerate()
-            .map(|(i, c)| (CommitId(i as u32), c))
+        self.commits.iter().enumerate().map(|(i, c)| {
+            // Safe: add_commit() enforces that commits.len() <= u32::MAX
+            let idx = u32::try_from(i).expect("commit index overflow");
+            (CommitId(idx), c)
+        })
     }
 
     /// Returns the file changes for a commit.
+    ///
+    /// Returns an empty slice if the commit's file range is out of bounds.
     #[must_use]
     pub fn file_changes(&self, commit: &CompactCommit) -> &[CompactFileChange] {
         let start = commit.files_start as usize;
-        let end = start + commit.files_count as usize;
+        let count = commit.files_count as usize;
+
+        // Use saturating_add to prevent overflow, then bounds check
+        let end = start.saturating_add(count);
+
+        // Return empty slice if range is invalid
+        if start > self.file_changes.len() || end > self.file_changes.len() {
+            return &[];
+        }
+
         &self.file_changes[start..end]
     }
 
@@ -267,7 +304,8 @@ impl CommitStore {
             let id = self.add_commit(commit.timestamp, &commit.author, Some(&commit.hash));
             for file in commit.files {
                 let path_str = file.path.to_string_lossy();
-                self.add_file_change(id, &path_str, file.action);
+                // id is guaranteed valid since we just created it above
+                let _ = self.add_file_change(id, &path_str, file.action);
             }
         }
     }
@@ -489,5 +527,50 @@ mod tests {
 
         assert_eq!(store.commit_count(), 2);
         assert_eq!(store.file_change_count(), 3);
+    }
+
+    #[test]
+    fn test_add_file_change_invalid_commit_id() {
+        let mut store = CommitStore::new();
+
+        // Create a valid commit
+        let valid_id = store.add_commit(100, "Alice", None);
+
+        // Try to add a file change with an invalid CommitId
+        let invalid_id = CommitId(999);
+        let result = store.add_file_change(invalid_id, "test.rs", FileAction::Create);
+
+        // Should return false for invalid commit_id
+        assert!(!result);
+
+        // Valid id should still work
+        let result = store.add_file_change(valid_id, "valid.rs", FileAction::Create);
+        assert!(result);
+
+        // Verify only the valid file change was added
+        assert_eq!(store.file_change_count(), 1);
+    }
+
+    #[test]
+    fn test_file_changes_bounds_safety() {
+        let mut store = CommitStore::new();
+
+        // Add a commit to get a valid author id, then test with corrupted file range
+        let id = store.add_commit(100, "Alice", None);
+        let commit = store.get_commit(id).unwrap();
+        let author = commit.author;
+
+        // Create a commit with out-of-bounds file range (simulates corrupted data)
+        let bad_commit = CompactCommit {
+            author,
+            short_hash: [0; 7],
+            timestamp: 0,
+            files_start: 1000, // Way out of bounds
+            files_count: 10,
+        };
+
+        // Should return empty slice instead of panicking
+        let files = store.file_changes(&bad_commit);
+        assert!(files.is_empty());
     }
 }

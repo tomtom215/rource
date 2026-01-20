@@ -626,6 +626,17 @@ function setupEventListeners(elements, rource) {
                 );
 
                 if (!response.ok) {
+                    // Check for rate limiting
+                    const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
+                    const rateLimitReset = response.headers.get('X-RateLimit-Reset');
+
+                    if (response.status === 403 && rateLimitRemaining === '0') {
+                        const resetTime = rateLimitReset ? new Date(parseInt(rateLimitReset) * 1000) : null;
+                        const waitMsg = resetTime
+                            ? ` Try again after ${resetTime.toLocaleTimeString()}.`
+                            : ' Please wait a few minutes.';
+                        throw new Error(`GitHub API rate limit exceeded.${waitMsg}`);
+                    }
                     throw new Error(`GitHub API error: ${response.status}`);
                 }
 

@@ -102,12 +102,28 @@ impl SvnParser {
                 value: date_str.to_string(),
             })?;
 
+        // Validate month is in valid range (1-12)
+        if !(1..=12).contains(&month) {
+            return Err(ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            });
+        }
+
         let day: i64 = date_parts[2]
             .parse()
             .map_err(|_| ParseError::InvalidTimestamp {
                 line_number,
                 value: date_str.to_string(),
             })?;
+
+        // Validate day is in valid range (1-31)
+        if !(1..=31).contains(&day) {
+            return Err(ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            });
+        }
 
         // Parse time (ignore fractional seconds and timezone for simplicity)
         let time_str = parts[1].split('.').next().unwrap_or(parts[1]);
@@ -440,6 +456,24 @@ mod tests {
     fn test_parse_svn_date_invalid() {
         assert!(SvnParser::parse_svn_date("invalid", 1).is_err());
         assert!(SvnParser::parse_svn_date("", 1).is_err());
+    }
+
+    #[test]
+    fn test_parse_svn_date_invalid_month() {
+        // Month 0 is invalid
+        assert!(SvnParser::parse_svn_date("2023-00-15T10:30:00.000000Z", 1).is_err());
+        // Month 13 is invalid
+        assert!(SvnParser::parse_svn_date("2023-13-15T10:30:00.000000Z", 1).is_err());
+        // Negative month (parsed as invalid)
+        assert!(SvnParser::parse_svn_date("2023--1-15T10:30:00.000000Z", 1).is_err());
+    }
+
+    #[test]
+    fn test_parse_svn_date_invalid_day() {
+        // Day 0 is invalid
+        assert!(SvnParser::parse_svn_date("2023-06-00T10:30:00.000000Z", 1).is_err());
+        // Day 32 is invalid
+        assert!(SvnParser::parse_svn_date("2023-06-32T10:30:00.000000Z", 1).is_err());
     }
 
     #[test]

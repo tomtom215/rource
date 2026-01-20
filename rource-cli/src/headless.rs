@@ -331,7 +331,10 @@ pub fn run_headless(args: &Args) -> Result<()> {
         // Apply pending commits (with filtering)
         let commit_apply_start = Instant::now();
         while last_applied_commit < current_commit {
-            let commit = &commits[last_applied_commit];
+            // Bounds check to prevent panic on invalid indices
+            let Some(commit) = commits.get(last_applied_commit) else {
+                break;
+            };
 
             if filter.should_include_user(&commit.author) {
                 let files: Vec<(std::path::PathBuf, ActionType)> = commit
