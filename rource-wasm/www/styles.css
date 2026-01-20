@@ -572,12 +572,18 @@ header h1 {
     display: flex;
     gap: 1rem;
     font-size: 0.75rem;
+    z-index: 50; /* Ensure stats overlay is above canvas for tooltip hover */
 }
 
 .stat-item {
     display: flex;
     flex-direction: column;
     align-items: center;
+}
+
+/* Stats with tooltips should show help cursor */
+.stat-item[title] {
+    cursor: help;
 }
 
 .stat-value {
@@ -1090,6 +1096,11 @@ header h1 {
     align-items: center;
     justify-content: center;
     gap: 0.3rem;
+}
+
+/* Timeline info with tooltip should show help cursor */
+.timeline-info[title] {
+    cursor: help;
 }
 
 .timeline-info-label {
@@ -1881,6 +1892,11 @@ textarea:focus {
     text-align: center;
     flex: 1;
     min-width: 0;
+}
+
+/* Stats with tooltips should show help cursor */
+.showcase-stat[title] {
+    cursor: help;
 }
 
 .showcase-stat-value {
