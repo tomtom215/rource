@@ -131,8 +131,8 @@ impl CommitStore {
             short_hash[..len].copy_from_slice(&bytes[..len]);
         }
 
-        let files_start = u32::try_from(self.file_changes.len())
-            .expect("file change count exceeded u32::MAX");
+        let files_start =
+            u32::try_from(self.file_changes.len()).expect("file change count exceeded u32::MAX");
 
         let commit = CompactCommit {
             author: author_id,
@@ -142,8 +142,7 @@ impl CommitStore {
             files_count: 0,
         };
 
-        let id_val = u32::try_from(self.commits.len())
-            .expect("commit count exceeded u32::MAX");
+        let id_val = u32::try_from(self.commits.len()).expect("commit count exceeded u32::MAX");
         self.commits.push(commit);
         CommitId(id_val)
     }

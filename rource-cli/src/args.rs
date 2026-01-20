@@ -342,7 +342,9 @@ impl Args {
 
         // Validate headless mode requires output
         if self.headless && self.output.is_none() {
-            return Err("--headless requires --output to specify frame output directory".to_string());
+            return Err(
+                "--headless requires --output to specify frame output directory".to_string(),
+            );
         }
 
         Ok(())
@@ -961,7 +963,9 @@ fn validate_seconds_per_day(value: f32) -> Result<(), String> {
     const MIN_SECONDS: f32 = 0.001;
 
     if !value.is_finite() {
-        return Err(format!("seconds_per_day must be a finite number, got {value}"));
+        return Err(format!(
+            "seconds_per_day must be a finite number, got {value}"
+        ));
     }
     if value < MIN_SECONDS {
         return Err(format!(
@@ -983,7 +987,9 @@ fn validate_font_size(value: f32) -> Result<(), String> {
         return Err(format!("font_size must be a finite number, got {value}"));
     }
     if value < MIN_SIZE {
-        return Err(format!("font_size must be at least {MIN_SIZE}, got {value}"));
+        return Err(format!(
+            "font_size must be at least {MIN_SIZE}, got {value}"
+        ));
     }
     if value > MAX_SIZE {
         return Err(format!("font_size must be at most {MAX_SIZE}, got {value}"));

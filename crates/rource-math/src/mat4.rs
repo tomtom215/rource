@@ -264,7 +264,10 @@ impl Mat4 {
     /// invalid parameters may produce a matrix with NaN or infinity values.
     #[must_use]
     pub fn perspective(fov_y: f32, aspect: f32, near: f32, far: f32) -> Self {
-        debug_assert!(fov_y > 0.0 && fov_y < std::f32::consts::PI, "fov_y must be between 0 and PI radians");
+        debug_assert!(
+            fov_y > 0.0 && fov_y < std::f32::consts::PI,
+            "fov_y must be between 0 and PI radians"
+        );
         debug_assert!(aspect > 0.0, "aspect ratio must be positive");
         debug_assert!(near > 0.0, "near plane must be positive");
         debug_assert!(far > near, "far plane must be greater than near plane");
@@ -285,7 +288,11 @@ impl Mat4 {
             1.0 / plane_diff
         };
 
-        let safe_aspect = if aspect.abs() < f32::EPSILON { 1.0 } else { aspect };
+        let safe_aspect = if aspect.abs() < f32::EPSILON {
+            1.0
+        } else {
+            aspect
+        };
 
         Self {
             m: [
@@ -338,11 +345,7 @@ impl Mat4 {
         // Fall back to a perpendicular vector
         if s.length_squared() < f32::EPSILON {
             // Choose a different "up" vector that isn't parallel to forward
-            let alt_up = if f.y.abs() < 0.9 {
-                Vec3::Y
-            } else {
-                Vec3::X
-            };
+            let alt_up = if f.y.abs() < 0.9 { Vec3::Y } else { Vec3::X };
             s = f.cross(alt_up);
         }
 
@@ -900,7 +903,11 @@ mod tests {
 
         // Should produce valid (though possibly incorrect) matrix
         for i in 0..16 {
-            assert!(m.m[i].is_finite(), "Matrix element {} is not finite with near==far", i);
+            assert!(
+                m.m[i].is_finite(),
+                "Matrix element {} is not finite with near==far",
+                i
+            );
         }
     }
 }
