@@ -508,25 +508,26 @@ export const ROURCE_CACHED_DATA = `1768004902|Tom F|A|LICENSE
 1768871165|Claude|M|rource-wasm/www/js/main.js`;
 
 // Pre-calculate stats for the cached Rource data
-// Note: Each unique timestamp represents a commit; multiple file changes can share the same timestamp
+// Note: Commits are grouped by (timestamp, author) pairs - this matches the WASM parser behavior
 export const ROURCE_STATS = (() => {
     const lines = ROURCE_CACHED_DATA.split('\n');
     const files = new Set();
     const authors = new Set();
-    const timestamps = new Set(); // Track unique timestamps (commits)
+    const commits = new Set(); // Track unique (timestamp, author) pairs as commits
     let lastTimestamp = 0;
     for (const line of lines) {
         if (!line.trim()) continue;
         const parts = line.split('|');
         if (parts.length >= 4) {
             const ts = parseInt(parts[0], 10);
-            timestamps.add(ts); // Count unique timestamps as commits
-            authors.add(parts[1].trim());
+            const author = parts[1].trim();
+            commits.add(`${ts}|${author}`); // Count unique (timestamp, author) as commits
+            authors.add(author);
             files.add(parts[3].trim());
             if (ts > lastTimestamp) lastTimestamp = ts;
         }
     }
-    return { commits: timestamps.size, files: files.size, authors: authors.size, lastTimestamp };
+    return { commits: commits.size, files: files.size, authors: authors.size, lastTimestamp };
 })();
 
 // Track additional commits fetched via refresh
