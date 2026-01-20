@@ -289,6 +289,20 @@ export class Rource {
         return ret;
     }
     /**
+     * Returns true if the WebGL context is lost.
+     *
+     * This can happen when the GPU is reset, the browser tab is backgrounded
+     * for a long time, or system resources are exhausted. When the context is
+     * lost, rendering operations are skipped automatically.
+     *
+     * Software renderer always returns false (it never loses context).
+     * @returns {boolean}
+     */
+    isContextLost() {
+        const ret = wasm.rource_isContextLost(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Returns whether playback is active.
      * @returns {boolean}
      */
@@ -457,6 +471,20 @@ export class Rource {
      */
     play() {
         wasm.rource_play(this.__wbg_ptr);
+    }
+    /**
+     * Attempts to recover from a lost WebGL context.
+     *
+     * Returns true if recovery was successful or if context was not lost.
+     * Returns false if recovery failed (e.g., WebGL is permanently unavailable).
+     *
+     * After a successful recovery, the visualization will continue from where
+     * it left off on the next frame.
+     * @returns {boolean}
+     */
+    recoverContext() {
+        const ret = wasm.rource_recoverContext(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Resets the camera to fit all content.

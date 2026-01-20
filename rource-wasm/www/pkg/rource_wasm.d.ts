@@ -130,6 +130,16 @@ export class Rource {
      */
     getZoom(): number;
     /**
+     * Returns true if the WebGL context is lost.
+     *
+     * This can happen when the GPU is reset, the browser tab is backgrounded
+     * for a long time, or system resources are exhausted. When the context is
+     * lost, rendering operations are skipped automatically.
+     *
+     * Software renderer always returns false (it never loses context).
+     */
+    isContextLost(): boolean;
+    /**
      * Returns whether playback is active.
      */
     isPlaying(): boolean;
@@ -210,6 +220,16 @@ export class Rource {
      * Starts playback.
      */
     play(): void;
+    /**
+     * Attempts to recover from a lost WebGL context.
+     *
+     * Returns true if recovery was successful or if context was not lost.
+     * Returns false if recovery failed (e.g., WebGL is permanently unavailable).
+     *
+     * After a successful recovery, the visualization will continue from where
+     * it left off on the next frame.
+     */
+    recoverContext(): boolean;
     /**
      * Resets the camera to fit all content.
      */
@@ -305,6 +325,7 @@ export interface InitOutput {
     readonly rource_getVisibleFiles: (a: number) => number;
     readonly rource_getVisibleUsers: (a: number) => number;
     readonly rource_getZoom: (a: number) => number;
+    readonly rource_isContextLost: (a: number) => number;
     readonly rource_isPlaying: (a: number) => number;
     readonly rource_isWebGL2: (a: number) => number;
     readonly rource_loadCustomLog: (a: number, b: number, c: number, d: number) => void;
@@ -318,6 +339,7 @@ export interface InitOutput {
     readonly rource_pan: (a: number, b: number, c: number) => void;
     readonly rource_pause: (a: number) => void;
     readonly rource_play: (a: number) => void;
+    readonly rource_recoverContext: (a: number) => number;
     readonly rource_resetCamera: (a: number) => void;
     readonly rource_resize: (a: number, b: number, c: number) => void;
     readonly rource_seek: (a: number, b: number) => void;
