@@ -25,7 +25,7 @@ export function setOnDataLoadedCallback(callback) {
 
 /**
  * Analyzes log data for statistics.
- * Note: Each unique timestamp represents a commit; multiple file changes can share the same timestamp.
+ * Note: Commits are grouped by (timestamp, author) pairs - this matches the WASM parser behavior.
  * @param {string} content - Log content
  * @returns {Object} Stats with commits, files, authors
  */
@@ -33,19 +33,21 @@ export function analyzeLogData(content) {
     const lines = content.split('\n');
     const files = new Set();
     const authors = new Set();
-    const timestamps = new Set(); // Track unique timestamps (commits)
+    const commits = new Set(); // Track unique (timestamp, author) pairs as commits
 
     for (const line of lines) {
         if (!line.trim()) continue;
         const parts = line.split('|');
         if (parts.length >= 4) {
-            timestamps.add(parts[0].trim()); // Count unique timestamps as commits
-            authors.add(parts[1].trim());
+            const ts = parts[0].trim();
+            const author = parts[1].trim();
+            commits.add(`${ts}|${author}`); // Count unique (timestamp, author) as commits
+            authors.add(author);
             files.add(parts[3].trim());
         }
     }
 
-    return { commits: timestamps.size, files: files.size, authors };
+    return { commits: commits.size, files: files.size, authors };
 }
 
 /**

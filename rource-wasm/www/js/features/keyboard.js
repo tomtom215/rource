@@ -12,6 +12,9 @@ import { captureScreenshot } from './screenshot.js';
 import { toggleTheme } from './theme.js';
 import { showHelp, hideHelp } from './help.js';
 import { isAtEnd, updatePlaybackUI } from '../animation.js';
+import { updatePreference } from '../preferences.js';
+import { updateUrlState } from '../url-state.js';
+import { validateSpeed } from '../telemetry.js';
 
 /**
  * Handles play/pause with replay support.
@@ -86,13 +89,15 @@ function toggleLabels() {
     const labelsText = getElement('labelsText');
     const btnLabels = getElement('btnLabels');
 
-    const showLabels = safeWasmCall('toggleLabels', () => rource.toggleLabels(), false);
+    const currentState = safeWasmCall('getShowLabels', () => rource.getShowLabels(), true);
+    const newState = !currentState;
+    safeWasmCall('setShowLabels', () => rource.setShowLabels(newState), undefined);
 
     if (labelsText) {
-        labelsText.textContent = showLabels ? 'On' : 'Off';
+        labelsText.textContent = newState ? 'On' : 'Off';
     }
     if (btnLabels) {
-        btnLabels.classList.toggle('active', showLabels);
+        btnLabels.classList.toggle('active', newState);
     }
 }
 
@@ -104,6 +109,39 @@ function restart() {
     if (!rource || !hasData()) return;
     safeWasmCall('seek', () => rource.seek(0), undefined);
     updatePlaybackUI();
+}
+
+/**
+ * Speed options in order.
+ */
+const SPEED_OPTIONS = ['0.5', '1', '2', '5', '10', '20', '50', '100'];
+
+/**
+ * Changes speed to the next or previous option.
+ * @param {boolean} increase - True to increase speed, false to decrease
+ */
+function changeSpeed(increase) {
+    const rource = getRource();
+    const speedSelect = getElement('speedSelect');
+    if (!rource || !speedSelect) return;
+
+    const currentValue = speedSelect.value;
+    const currentIndex = SPEED_OPTIONS.indexOf(currentValue);
+
+    let newIndex;
+    if (increase) {
+        newIndex = Math.min(currentIndex + 1, SPEED_OPTIONS.length - 1);
+    } else {
+        newIndex = Math.max(currentIndex - 1, 0);
+    }
+
+    if (newIndex !== currentIndex) {
+        const newSpeed = SPEED_OPTIONS[newIndex];
+        speedSelect.value = newSpeed;
+        safeWasmCall('setSpeed', () => rource.setSpeed(parseFloat(newSpeed)), undefined);
+        updatePreference('speed', newSpeed);
+        updateUrlState({ speed: newSpeed });
+    }
 }
 
 /**
@@ -154,6 +192,17 @@ export function initKeyboard() {
             case '_':
                 e.preventDefault();
                 zoomOut();
+                break;
+
+            // Speed control
+            case '[':
+                e.preventDefault();
+                changeSpeed(false); // Slower
+                break;
+
+            case ']':
+                e.preventDefault();
+                changeSpeed(true); // Faster
                 break;
 
             // Camera

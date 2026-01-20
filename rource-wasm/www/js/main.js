@@ -22,7 +22,7 @@ import {
 } from './preferences.js';
 import { parseUrlParams, updateUrlState } from './url-state.js';
 import { safeWasmCall, safeWasmVoid } from './wasm-api.js';
-import { ROURCE_STATS, getFullCachedData } from './cached-data.js';
+import { ROURCE_STATS, getFullCachedData, setAdditionalCommits, getAdditionalCommits } from './cached-data.js';
 
 // Application modules
 import { showToast, hideToast, initToast } from './toast.js';
@@ -105,12 +105,12 @@ async function main() {
         if (elements.speedSelect) {
             elements.speedSelect.value = prefs.speed || '10';
             const speed = validateSpeed(prefs.speed || 10);
-            safeWasmCall('setSecondsPerDay', () => rource.setSecondsPerDay(speed), undefined);
+            safeWasmCall('setSpeed', () => rource.setSpeed(speed), undefined);
         }
 
         // Apply saved labels preference
         if (prefs.showLabels === false) {
-            safeWasmCall('setLabels', () => rource.setLabels(false), undefined);
+            safeWasmCall('setShowLabels', () => rource.setShowLabels(false), undefined);
             if (elements.labelsText) elements.labelsText.textContent = 'Off';
             if (elements.btnLabels) elements.btnLabels.classList.remove('active');
         }
@@ -143,7 +143,7 @@ async function main() {
         if (urlParams.speed) {
             const speedValue = validateSpeed(urlParams.speed);
             if (elements.speedSelect) elements.speedSelect.value = String(speedValue);
-            safeWasmCall('setSecondsPerDay', () => rource.setSecondsPerDay(speedValue), undefined);
+            safeWasmCall('setSpeed', () => rource.setSpeed(speedValue), undefined);
         }
 
         // Auto-load Rource data after a short delay
@@ -165,17 +165,43 @@ async function main() {
  * Handles data loaded event.
  */
 function handleDataLoaded(content, stats) {
+    const elements = getAllElements();
+
     // Parse commits for tooltip
     parsedCommits = parseCommits(content);
 
-    // Update legend
+    // Update legend with file counts
     updateLegend(content);
 
-    // Update authors legend
-    updateAuthorsLegend();
+    // Update authors legend with commit counts
+    updateAuthorsLegend(content);
 
     // Update timeline markers
     updateTimelineMarkers(content);
+
+    // Show authors panel
+    if (elements.authorsPanel) {
+        elements.authorsPanel.classList.remove('hidden');
+        elements.authorsPanel.classList.remove('collapsed');
+        if (elements.authorsToggle) {
+            elements.authorsToggle.setAttribute('aria-expanded', 'true');
+        }
+    }
+
+    // Show legend panel
+    if (elements.legendPanel) {
+        elements.legendPanel.classList.remove('collapsed');
+        if (elements.legendToggle) {
+            elements.legendToggle.setAttribute('aria-expanded', 'true');
+        }
+    }
+
+    // Auto-play the visualization
+    const rource = getRource();
+    if (rource) {
+        safeWasmCall('play', () => rource.play(), undefined);
+        updatePlaybackUI();
+    }
 
     // Show first-time help
     maybeShowFirstTimeHelp();
@@ -248,12 +274,14 @@ function setupEventListeners(elements, rource) {
     // Labels toggle
     if (elements.btnLabels) {
         elements.btnLabels.addEventListener('click', () => {
-            const showLabels = safeWasmCall('toggleLabels', () => rource.toggleLabels(), false);
+            const currentState = safeWasmCall('getShowLabels', () => rource.getShowLabels(), true);
+            const newState = !currentState;
+            safeWasmCall('setShowLabels', () => rource.setShowLabels(newState), undefined);
             if (elements.labelsText) {
-                elements.labelsText.textContent = showLabels ? 'On' : 'Off';
+                elements.labelsText.textContent = newState ? 'On' : 'Off';
             }
-            elements.btnLabels.classList.toggle('active', showLabels);
-            updatePreference('showLabels', showLabels);
+            elements.btnLabels.classList.toggle('active', newState);
+            updatePreference('showLabels', newState);
         });
     }
 
@@ -266,7 +294,7 @@ function setupEventListeners(elements, rource) {
     if (elements.speedSelect) {
         elements.speedSelect.addEventListener('change', (e) => {
             const speed = validateSpeed(e.target.value);
-            safeWasmCall('setSecondsPerDay', () => rource.setSecondsPerDay(speed), undefined);
+            safeWasmCall('setSpeed', () => rource.setSpeed(speed), undefined);
             updatePreference('speed', e.target.value);
             updateUrlState({ speed: e.target.value });
         });
@@ -276,7 +304,8 @@ function setupEventListeners(elements, rource) {
     if (elements.timelineSlider) {
         elements.timelineSlider.addEventListener('input', (e) => {
             const commitIndex = parseInt(e.target.value, 10);
-            safeWasmCall('seekToCommit', () => rource.seekToCommit(commitIndex), undefined);
+            safeWasmCall('pause', () => rource.pause(), undefined);
+            safeWasmCall('seek', () => rource.seek(commitIndex), undefined);
             updatePlaybackUI();
         });
     }
@@ -398,6 +427,355 @@ function setupEventListeners(elements, rource) {
             }
         });
     }
+
+    // Tab switching (Git Command / Upload File / Paste Log)
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+
+            document.querySelectorAll('.tab-content').forEach(c => {
+                c.classList.remove('active');
+                c.setAttribute('hidden', '');
+            });
+            const content = document.getElementById(`tab-${tab}`);
+            if (content) {
+                content.classList.add('active');
+                content.removeAttribute('hidden');
+            }
+        });
+    });
+
+    // File drop zone
+    if (elements.fileDropZone) {
+        elements.fileDropZone.addEventListener('click', () => {
+            if (elements.fileInput) elements.fileInput.click();
+        });
+
+        elements.fileDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.fileDropZone.classList.add('dragover');
+        });
+
+        elements.fileDropZone.addEventListener('dragleave', () => {
+            elements.fileDropZone.classList.remove('dragover');
+        });
+
+        elements.fileDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.fileDropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    // Load file button
+    if (elements.btnLoadFile) {
+        elements.btnLoadFile.addEventListener('click', () => {
+            if (uploadedFileContent) {
+                loadLogData(uploadedFileContent, 'custom');
+            } else {
+                showToast('Please select a file first', 'error');
+            }
+        });
+    }
+
+    // GitHub fetch button
+    if (elements.btnFetchGithub) {
+        elements.btnFetchGithub.addEventListener('click', async () => {
+            const url = elements.githubUrlInput?.value.trim();
+            if (!url) {
+                showToast('Please enter a GitHub repository URL.', 'error');
+                return;
+            }
+            showToast('GitHub fetch is coming soon! Use cached Rource data for now.', 'info');
+        });
+
+        // Enter key to fetch
+        if (elements.githubUrlInput) {
+            elements.githubUrlInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && elements.btnFetchGithub) {
+                    elements.btnFetchGithub.click();
+                }
+            });
+        }
+    }
+
+    // Popular repo chips
+    document.querySelectorAll('.repo-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const repo = chip.dataset.repo;
+            if (elements.githubUrlInput) {
+                elements.githubUrlInput.value = `https://github.com/${repo}`;
+            }
+            if (elements.btnFetchGithub) {
+                elements.btnFetchGithub.click();
+            }
+        });
+    });
+
+    // Copy command button
+    if (elements.btnCopyCommand) {
+        elements.btnCopyCommand.addEventListener('click', async () => {
+            const commandEl = document.getElementById('git-command');
+            const command = commandEl?.textContent || '';
+            try {
+                await navigator.clipboard.writeText(command);
+                elements.btnCopyCommand.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!';
+                setTimeout(() => {
+                    elements.btnCopyCommand.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy Command';
+                }, CONFIG.COPY_FEEDBACK_DELAY_MS || 2000);
+            } catch (e) {
+                showToast('Failed to copy. Please select and copy manually.', 'error');
+            }
+        });
+    }
+
+    // Share URL button
+    if (elements.btnShare) {
+        elements.btnShare.addEventListener('click', async () => {
+            const url = generateShareableUrl();
+            try {
+                await navigator.clipboard.writeText(url);
+                showToast('Shareable URL copied to clipboard!', 'success', 3000);
+            } catch (error) {
+                // Fallback for browsers without clipboard API
+                const textArea = document.createElement('textarea');
+                textArea.value = url;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Shareable URL copied to clipboard!', 'success', 3000);
+                } catch (e) {
+                    showToast('Could not copy URL. Please copy manually: ' + url, 'error', 8000);
+                }
+                document.body.removeChild(textArea);
+            }
+        });
+    }
+
+    // Sidebar mobile toggle
+    if (elements.sidebarToggle) {
+        elements.sidebarToggle.addEventListener('click', () => {
+            if (elements.sidebarPanel) {
+                elements.sidebarPanel.classList.add('open');
+            }
+            if (elements.sidebarOverlay) {
+                elements.sidebarOverlay.classList.add('visible');
+            }
+        });
+    }
+
+    if (elements.sidebarClose) {
+        elements.sidebarClose.addEventListener('click', closeSidebar);
+    }
+
+    if (elements.sidebarOverlay) {
+        elements.sidebarOverlay.addEventListener('click', closeSidebar);
+    }
+
+    // Scroll indicator logic
+    if (elements.sidebarPanel) {
+        const scrollIndicator = document.querySelector('.sidebar-scroll-indicator');
+        if (scrollIndicator) {
+            const checkScroll = () => {
+                const scrollTop = elements.sidebarPanel.scrollTop;
+                const scrollHeight = elements.sidebarPanel.scrollHeight;
+                const clientHeight = elements.sidebarPanel.clientHeight;
+                const nearBottom = scrollHeight - scrollTop - clientHeight < 50;
+                scrollIndicator.classList.toggle('hidden', nearBottom);
+            };
+            elements.sidebarPanel.addEventListener('scroll', checkScroll);
+            // Initial check
+            setTimeout(checkScroll, 100);
+        }
+    }
+
+    // Refresh Rource button (fetch latest commits from GitHub)
+    if (elements.btnRefreshRource) {
+        elements.btnRefreshRource.addEventListener('click', async () => {
+            if (elements.btnRefreshRource.classList.contains('loading')) return;
+
+            elements.btnRefreshRource.classList.add('loading');
+            if (elements.refreshStatus) {
+                elements.refreshStatus.className = 'refresh-status loading';
+                elements.refreshStatus.textContent = 'Fetching latest commits...';
+                elements.refreshStatus.classList.remove('hidden');
+            }
+
+            try {
+                // Fetch commits since the cached timestamp
+                const sinceDate = new Date(ROURCE_STATS.lastTimestamp * 1000).toISOString();
+                const response = await fetch(
+                    `https://api.github.com/repos/tomtom215/rource/commits?since=${sinceDate}&per_page=100`,
+                    { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+
+                const commits = await response.json();
+
+                if (commits.length <= 1) {
+                    // Only the last cached commit or none - no new commits
+                    if (elements.refreshStatus) {
+                        elements.refreshStatus.className = 'refresh-status success';
+                        elements.refreshStatus.textContent = 'Already up to date!';
+                        setTimeout(() => elements.refreshStatus.classList.add('hidden'), CONFIG.STATUS_HIDE_DELAY_MS);
+                    }
+                } else {
+                    // Fetch files for each new commit (skip the first which is our cached one)
+                    let newEntries = [];
+                    for (const commit of commits.slice(1)) {
+                        const timestamp = Math.floor(new Date(commit.commit.author.date).getTime() / 1000);
+                        const author = commit.commit.author.name || 'Unknown';
+
+                        // Fetch commit details for files
+                        const detailResponse = await fetch(commit.url, {
+                            headers: { 'Accept': 'application/vnd.github.v3+json' }
+                        });
+
+                        if (detailResponse.ok) {
+                            const detail = await detailResponse.json();
+                            for (const file of (detail.files || [])) {
+                                const action = file.status === 'added' ? 'A'
+                                    : file.status === 'removed' ? 'D' : 'M';
+                                newEntries.push(`${timestamp}|${author}|${action}|${file.filename}`);
+                            }
+                        }
+                    }
+
+                    if (newEntries.length > 0) {
+                        setAdditionalCommits(newEntries.join('\n'));
+                        const newCommitCount = commits.length - 1;
+                        if (elements.refreshStatus) {
+                            elements.refreshStatus.className = 'refresh-status success';
+                            elements.refreshStatus.textContent = `Found ${newCommitCount} new commit${newCommitCount === 1 ? '' : 's'} (${newEntries.length} files). Click "Visualize" to reload.`;
+                        }
+
+                        // Update showcase stats
+                        if (elements.showcaseCommits) {
+                            const totalCommits = ROURCE_STATS.commits + newCommitCount;
+                            elements.showcaseCommits.textContent = totalCommits.toLocaleString() + '+';
+                        }
+                    } else {
+                        if (elements.refreshStatus) {
+                            elements.refreshStatus.className = 'refresh-status success';
+                            elements.refreshStatus.textContent = 'Already up to date!';
+                            setTimeout(() => elements.refreshStatus.classList.add('hidden'), CONFIG.STATUS_HIDE_DELAY_MS);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Refresh error:', error);
+                if (elements.refreshStatus) {
+                    elements.refreshStatus.className = 'refresh-status error';
+                    elements.refreshStatus.textContent = error.message || 'Failed to fetch updates';
+                }
+                showToast('Failed to fetch updates: ' + error.message, 'error');
+            } finally {
+                elements.btnRefreshRource.classList.remove('loading');
+            }
+        });
+    }
+}
+
+// Track uploaded file content
+let uploadedFileContent = null;
+
+/**
+ * Handles file upload.
+ */
+function handleFileUpload(file) {
+    const elements = getAllElements();
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+    if (file.size > MAX_FILE_SIZE) {
+        showToast('File too large. Maximum size is 10MB.', 'error');
+        return;
+    }
+
+    // Show loading state
+    if (elements.fileNameEl) {
+        elements.fileNameEl.textContent = `Loading ${file.name}...`;
+        elements.fileNameEl.classList.remove('hidden');
+    }
+    if (elements.btnLoadFile) {
+        elements.btnLoadFile.disabled = true;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        uploadedFileContent = e.target.result;
+        if (elements.fileNameEl) {
+            elements.fileNameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        }
+        if (elements.btnLoadFile) {
+            elements.btnLoadFile.disabled = false;
+        }
+    };
+
+    reader.onerror = () => {
+        if (elements.fileNameEl) {
+            elements.fileNameEl.textContent = 'Failed to read file';
+        }
+        showToast('Failed to read file. Please try again.', 'error');
+    };
+
+    reader.readAsText(file);
+}
+
+/**
+ * Closes the sidebar (mobile).
+ */
+function closeSidebar() {
+    const elements = getAllElements();
+    if (elements.sidebarPanel) {
+        elements.sidebarPanel.classList.remove('open');
+    }
+    if (elements.sidebarOverlay) {
+        elements.sidebarOverlay.classList.remove('visible');
+    }
+}
+
+/**
+ * Generates a shareable URL with current state.
+ */
+function generateShareableUrl() {
+    const rource = getRource();
+    const elements = getAllElements();
+    const params = new URLSearchParams();
+
+    // Add speed if not default
+    const currentSpeed = elements.speedSelect?.value;
+    if (currentSpeed && currentSpeed !== '10') {
+        params.set('speed', currentSpeed);
+    }
+
+    // Add current commit position
+    if (rource && hasData()) {
+        const current = safeWasmCall('currentCommit', () => rource.currentCommit(), 0);
+        const total = safeWasmCall('commitCount', () => rource.commitCount(), 0);
+        if (current > 0 && current < total - 1) {
+            params.set('commit', current.toString());
+        }
+    }
+
+    // Build URL
+    const baseUrl = window.location.origin + window.location.pathname;
+    const queryString = params.toString();
+    return queryString ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
 /**
@@ -511,34 +889,45 @@ function handleFileSelect(e) {
 }
 
 /**
- * Updates the file types legend.
+ * Updates the file types legend with file counts.
  */
 function updateLegend(content) {
     const legendItems = getElement('legendItems');
     if (!legendItems) return;
 
-    // Get unique extensions
-    const extensions = new Set();
+    // Count files per extension
+    const extensionCounts = new Map();
     const lines = content.split('\n');
+    const processedFiles = new Set(); // Track unique files
+
     for (const line of lines) {
         const parts = line.split('|');
         if (parts.length >= 4) {
             const file = parts[3].trim();
-            const ext = file.split('.').pop()?.toLowerCase();
-            if (ext && ext !== file) {
-                extensions.add(ext);
+            // Only count unique files
+            if (!processedFiles.has(file)) {
+                processedFiles.add(file);
+                const ext = file.includes('.') ? file.split('.').pop()?.toLowerCase() : '';
+                if (ext) {
+                    extensionCounts.set(ext, (extensionCounts.get(ext) || 0) + 1);
+                }
             }
         }
     }
 
+    // Sort by count descending
+    const sortedExts = Array.from(extensionCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20); // Limit to 20
+
     // Build legend HTML
     let html = '';
-    const sortedExts = Array.from(extensions).sort();
-    for (const ext of sortedExts.slice(0, 20)) { // Limit to 20
+    for (const [ext, count] of sortedExts) {
         const color = getExtensionColor(ext);
         html += `<div class="legend-item">
             <span class="legend-color" style="background-color: ${escapeHtml(color)}"></span>
             <span class="legend-label">.${escapeHtml(ext)}</span>
+            <span class="legend-count">${count}</span>
         </div>`;
     }
 
@@ -546,22 +935,47 @@ function updateLegend(content) {
 }
 
 /**
- * Updates the authors legend.
+ * Updates the authors legend with commit counts.
  */
-function updateAuthorsLegend() {
+function updateAuthorsLegend(content) {
     const authorsItems = getElement('authorsItems');
     const rource = getRource();
     if (!authorsItems || !rource) return;
 
     try {
-        const authors = safeWasmCall('getAuthors', () => rource.getAuthors(), []);
+        // Count commits per author from content
+        const authorCommitCounts = new Map();
+        if (content) {
+            const lines = content.split('\n');
+            const seenCommits = new Set(); // Track unique timestamp+author combos
+
+            for (const line of lines) {
+                const parts = line.split('|');
+                if (parts.length >= 4) {
+                    const timestamp = parts[0].trim();
+                    const author = parts[1].trim();
+                    const commitKey = `${timestamp}|${author}`;
+                    if (!seenCommits.has(commitKey)) {
+                        seenCommits.add(commitKey);
+                        authorCommitCounts.set(author, (authorCommitCounts.get(author) || 0) + 1);
+                    }
+                }
+            }
+        }
+
+        // Sort by commit count descending
+        const sortedAuthors = Array.from(authorCommitCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 30); // Limit to 30
+
         let html = '';
 
-        for (const author of authors.slice(0, 30)) { // Limit to 30
+        for (const [author, commitCount] of sortedAuthors) {
             const color = safeWasmCall('getAuthorColor', () => rource.getAuthorColor(author), '#888');
             html += `<div class="author-item" data-author="${escapeHtml(author)}">
                 <span class="author-color" style="background-color: ${escapeHtml(color)}"></span>
                 <span class="author-name">${escapeHtml(author)}</span>
+                <span class="author-commits">${commitCount}</span>
             </div>`;
         }
 
