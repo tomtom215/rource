@@ -55,6 +55,7 @@ rource/
 ├── rource-cli/           # Native command-line application
 ├── rource-wasm/          # WebAssembly application
 │   └── www/              # Web demo (HTML, CSS, JavaScript)
+│       └── js/           # Modular ES modules (main.js, features/, etc.)
 ├── scripts/              # Build and development scripts
 └── benchmarks/           # Performance benchmarks
 ```
@@ -208,10 +209,34 @@ pub fn compute_entity_bounds(&self) -> Option<Bounds> {
 
 ### JavaScript (Web UI)
 
-- Use ES modules
+The web UI uses a modular ES Module architecture located in `rource-wasm/www/js/`:
+
+```
+js/
+├── main.js          # Entry point - WASM init and module coordination
+├── config.js        # Constants and extension colors
+├── state.js         # Observable application state
+├── wasm-api.js      # Safe WASM call wrappers
+├── animation.js     # Render loop and canvas management
+├── preferences.js   # localStorage handling
+├── dom.js           # Centralized DOM element references
+└── features/        # Feature-specific modules
+    ├── screenshot.js
+    ├── fullscreen.js
+    ├── theme.js
+    ├── help.js
+    └── keyboard.js
+```
+
+**Guidelines:**
+
+- Use ES modules with explicit imports/exports
 - Use `const` by default, `let` when reassignment needed
-- Handle all error cases with user feedback
+- Handle all error cases with user feedback via `showToast()`
 - Follow accessibility best practices (ARIA labels, keyboard navigation)
+- Use `safeWasmCall()` from `wasm-api.js` for all WASM method calls
+- Add new features in `features/` directory as separate modules
+- Keep state in `state.js`, access via `getRource()`, `hasData()`, etc.
 
 ### CSS
 

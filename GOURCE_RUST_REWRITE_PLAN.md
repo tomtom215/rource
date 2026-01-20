@@ -497,9 +497,16 @@ rource/
 │   │   ├── lib.rs                # WASM bindings
 │   │   └── web.rs                # Web-specific code
 │   ├── www/                      # Web frontend
-│   │   ├── index.html
-│   │   ├── main.js
-│   │   └── style.css
+│   │   ├── index.html            # Page structure, controls
+│   │   ├── styles.css            # Complete styling
+│   │   ├── js/                   # Modular ES modules
+│   │   │   ├── main.js           # Entry point
+│   │   │   ├── config.js         # Configuration
+│   │   │   ├── state.js          # Application state
+│   │   │   ├── wasm-api.js       # Safe WASM wrappers
+│   │   │   ├── animation.js      # Render loop
+│   │   │   └── features/         # Feature modules
+│   │   └── pkg/                  # WASM build output
 │   └── Cargo.toml
 │
 └── assets/                       # Bundled assets

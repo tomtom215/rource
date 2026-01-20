@@ -319,19 +319,60 @@ for (id, commit) in store.commits() {
 }
 ```
 
-### Web UI Development (2026-01-11)
+### Web UI Development (2026-01-20)
 
-The WASM demo includes a rich web UI (`rource-wasm/www/`) with interactive controls. Key architecture decisions and lessons learned:
+The WASM demo includes a rich web UI (`rource-wasm/www/`) with interactive controls. The JavaScript code uses a modular ES Module architecture for maintainability.
 
 #### File Structure
 
 ```
 rource-wasm/www/
-├── index.html    # Page structure, sidebar panels, controls
-├── styles.css    # Complete styling including responsive design
-├── app.js        # Application logic, event handlers, state management
-└── pkg/          # WASM build output (auto-generated)
+├── index.html           # Page structure, sidebar panels, controls
+├── styles.css           # Complete styling including responsive design
+├── app.js               # Legacy monolithic file (kept for reference)
+├── pkg/                 # WASM build output (auto-generated)
+└── js/                  # Modular JavaScript (ES Modules)
+    ├── main.js          # Entry point - initializes WASM and coordinates modules
+    ├── config.js        # Configuration constants and extension colors
+    ├── telemetry.js     # Observability and debugging utilities
+    ├── utils.js         # Utility functions (debounce, escapeHtml, etc.)
+    ├── state.js         # Application state with observable pattern
+    ├── preferences.js   # localStorage handling for user preferences
+    ├── url-state.js     # URL parameters for shareable links
+    ├── wasm-api.js      # Safe WASM call wrappers with error boundaries
+    ├── cached-data.js   # Embedded demo repository data
+    ├── dom.js           # Centralized DOM element references
+    ├── toast.js         # Toast notification system
+    ├── animation.js     # Render loop, canvas management, perf metrics
+    ├── data-loader.js   # Data loading and format detection
+    └── features/        # Feature-specific modules
+        ├── screenshot.js   # Screenshot capture
+        ├── fullscreen.js   # Native and pseudo-fullscreen support
+        ├── theme.js        # Light/dark theme toggle
+        ├── help.js         # First-time user help overlay
+        └── keyboard.js     # Centralized keyboard shortcuts
 ```
+
+#### Module Architecture
+
+The modular architecture follows these principles:
+
+1. **Single Responsibility**: Each module handles one concern
+2. **Explicit Dependencies**: All imports are at the top of each file
+3. **Observable State**: `state.js` provides subscribe/setState for loose coupling
+4. **Error Boundaries**: `wasm-api.js` wraps all WASM calls with error handling
+5. **Centralized DOM**: `dom.js` lazily initializes and caches element references
+
+#### Key Modules
+
+| Module | Purpose |
+|--------|---------|
+| `main.js` | Entry point, WASM init, event listeners, coordinates all modules |
+| `state.js` | Observable application state with subscribe pattern |
+| `wasm-api.js` | Safe WASM call wrappers (safeWasmCall, safeWasmVoid) |
+| `animation.js` | Render loop, resizeCanvas, updatePlaybackUI, performance metrics |
+| `preferences.js` | localStorage read/write with panel state management |
+| `features/screenshot.js` | Screenshot capture with animation loop pause/resume |
 
 #### Sidebar Architecture
 
@@ -349,11 +390,11 @@ The sidebar uses a scroll indicator pattern to show users when more content is a
 </div>
 ```
 
-JavaScript detects scroll position and hides the indicator when near the bottom.
+JavaScript (in `main.js`) detects scroll position and hides the indicator when near the bottom.
 
 #### Collapsible Panels
 
-Panels use a single consolidated handler in `setupPanelToggleHandlers()` that:
+Panels use a single consolidated handler in `setupPanelToggleHandlers()` (from `preferences.js`) that:
 1. Toggles the `collapsed` class
 2. Updates `aria-expanded` for accessibility
 3. Saves state to localStorage via `updatePreference()`
@@ -364,10 +405,11 @@ Panels use a single consolidated handler in `setupPanelToggleHandlers()` that:
 
 | Symptom | Cause | Solution |
 |---------|-------|----------|
-| Collapsible panels don't toggle | Duplicate handlers (toggle twice = no effect) | Use single handler via `setupPanelToggleHandlers()` |
+| Collapsible panels don't toggle | Duplicate handlers (toggle twice = no effect) | Use single handler via `setupPanelToggleHandlers()` in `preferences.js` |
 | Fetch button errors not visible | Error caught but not displayed | Show toast AND update status element |
 | Buttons disabled after load | WASM not initialized | Buttons enable in `main()` after `init()` |
-| Panel state not persisting | Wrong preference key | Check `panelMappings` in `setupPanelToggleHandlers()` |
+| Panel state not persisting | Wrong preference key | Check `panelMappings` in `preferences.js` |
+| Screenshot corrupted/blank | Animation loop races with toBlob() | Stop animation before capture (see `features/screenshot.js`) |
 
 #### Testing Web UI Changes
 
@@ -377,6 +419,7 @@ Since JavaScript has no compile-time checks, test manually:
 3. Test fetch with valid URL, invalid URL, and empty input
 4. Test on mobile viewport (sidebar becomes overlay)
 5. Verify scroll indicator appears/disappears correctly
+6. Test screenshot functionality (should pause/resume animation)
 
 ### Headless Rendering Implementation (2026-01-10)
 
@@ -594,6 +637,8 @@ RUST_LOG=debug cargo run
 | UI clicks do nothing | Duplicate event handlers | Consolidate to single handler, avoid both `onclick` and `addEventListener` |
 | GitHub fetch silently fails | Error swallowed in catch | Always show error via `showToast()` and update status UI |
 | WASM visuals don't match CLI | Rendering code not synced | Update both `rource-cli/src/rendering.rs` AND `rource-wasm/src/lib.rs` |
+| Module import errors in browser | Wrong path or missing export | Check imports match exports, use relative paths (`./module.js`) |
+| Screenshot blank/corrupted | Animation loop races with capture | Use `features/screenshot.js` which pauses animation during capture |
 
 ## Git Workflow
 
@@ -652,4 +697,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-11 (Phase 7 in progress - 678 tests)*
+*Last updated: 2026-01-20 (Web UI modularized, 840+ tests)*
