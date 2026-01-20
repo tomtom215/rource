@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license = "GPL-3.0-only"
-repository.workspace = true
+repository = "https://github.com/tomtom215/rource"
 authors.workspace = true
 description = "WebAssembly bindings for Rource - software version control visualization"
 
