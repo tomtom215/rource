@@ -233,6 +233,20 @@ impl RendererBackend {
             Self::Software { renderer, .. } => renderer.load_font(data),
         }
     }
+
+    /// Synchronizes CPU with GPU by waiting for all pending commands to complete.
+    ///
+    /// For WebGL2: calls `gl.finish()` to block until GPU is done.
+    /// For Software: no-op (CPU rendering is inherently synchronous).
+    ///
+    /// Call this ONLY when you need to read from the canvas (screenshots, exports).
+    /// Do NOT call every frame as it hurts performance.
+    fn sync(&self) {
+        if let Self::WebGl2(r) = self {
+            r.sync();
+        }
+        // Software renderer is synchronous - no sync needed
+    }
 }
 
 // ============================================================================
@@ -1222,6 +1236,10 @@ impl Rource {
     ///
     /// This method ensures the viewport is synchronized with the current canvas
     /// dimensions before rendering, which is critical for screenshots and exports.
+    ///
+    /// Unlike the normal render path, this also calls `sync()` to ensure all GPU
+    /// commands complete before returning. This is necessary for `canvas.toBlob()`
+    /// to capture a complete frame.
     #[wasm_bindgen(js_name = forceRender)]
     pub fn force_render(&mut self) {
         // Ensure the backend dimensions match the canvas dimensions
@@ -1235,6 +1253,10 @@ impl Rource {
         }
 
         self.render();
+
+        // Synchronize GPU to ensure frame is complete before returning.
+        // This is critical for screenshot/export operations that read from canvas.
+        self.backend.sync();
     }
 
     /// Captures a screenshot and returns it as PNG data (`Uint8Array`).
@@ -1520,10 +1542,10 @@ impl Rource {
         let visible_bounds = self.camera.visible_bounds();
         let camera_zoom = self.camera.zoom();
 
-        // Get visible entities
-        let visible_dirs = self.scene.visible_directory_ids(&visible_bounds);
-        let visible_files = self.scene.visible_file_ids(&visible_bounds);
-        let visible_users = self.scene.visible_user_ids(&visible_bounds);
+        // Get visible entities - single spatial query instead of three separate ones
+        // This is more efficient as it traverses the quadtree once instead of three times
+        let (visible_dirs, visible_files, visible_users) =
+            self.scene.visible_entities(&visible_bounds);
 
         // Collect render statistics
         let active_actions = self

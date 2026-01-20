@@ -26,6 +26,10 @@ export class Rource {
      *
      * This method ensures the viewport is synchronized with the current canvas
      * dimensions before rendering, which is critical for screenshots and exports.
+     *
+     * Unlike the normal render path, this also calls `sync()` to ensure all GPU
+     * commands complete before returning. This is necessary for `canvas.toBlob()`
+     * to capture a complete frame.
      */
     forceRender(): void;
     /**
