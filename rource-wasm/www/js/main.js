@@ -22,7 +22,7 @@ import {
 } from './preferences.js';
 import { parseUrlParams, updateUrlState } from './url-state.js';
 import { safeWasmCall, safeWasmVoid } from './wasm-api.js';
-import { ROURCE_STATS, getFullCachedData } from './cached-data.js';
+import { ROURCE_STATS, getFullCachedData, setAdditionalCommits, getAdditionalCommits } from './cached-data.js';
 
 // Application modules
 import { showToast, hideToast, initToast } from './toast.js';
@@ -598,6 +598,95 @@ function setupEventListeners(elements, rource) {
             // Initial check
             setTimeout(checkScroll, 100);
         }
+    }
+
+    // Refresh Rource button (fetch latest commits from GitHub)
+    if (elements.btnRefreshRource) {
+        elements.btnRefreshRource.addEventListener('click', async () => {
+            if (elements.btnRefreshRource.classList.contains('loading')) return;
+
+            elements.btnRefreshRource.classList.add('loading');
+            if (elements.refreshStatus) {
+                elements.refreshStatus.className = 'refresh-status loading';
+                elements.refreshStatus.textContent = 'Fetching latest commits...';
+                elements.refreshStatus.classList.remove('hidden');
+            }
+
+            try {
+                // Fetch commits since the cached timestamp
+                const sinceDate = new Date(ROURCE_STATS.lastTimestamp * 1000).toISOString();
+                const response = await fetch(
+                    `https://api.github.com/repos/tomtom215/rource/commits?since=${sinceDate}&per_page=100`,
+                    { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+
+                const commits = await response.json();
+
+                if (commits.length <= 1) {
+                    // Only the last cached commit or none - no new commits
+                    if (elements.refreshStatus) {
+                        elements.refreshStatus.className = 'refresh-status success';
+                        elements.refreshStatus.textContent = 'Already up to date!';
+                        setTimeout(() => elements.refreshStatus.classList.add('hidden'), CONFIG.STATUS_HIDE_DELAY_MS);
+                    }
+                } else {
+                    // Fetch files for each new commit (skip the first which is our cached one)
+                    let newEntries = [];
+                    for (const commit of commits.slice(1)) {
+                        const timestamp = Math.floor(new Date(commit.commit.author.date).getTime() / 1000);
+                        const author = commit.commit.author.name || 'Unknown';
+
+                        // Fetch commit details for files
+                        const detailResponse = await fetch(commit.url, {
+                            headers: { 'Accept': 'application/vnd.github.v3+json' }
+                        });
+
+                        if (detailResponse.ok) {
+                            const detail = await detailResponse.json();
+                            for (const file of (detail.files || [])) {
+                                const action = file.status === 'added' ? 'A'
+                                    : file.status === 'removed' ? 'D' : 'M';
+                                newEntries.push(`${timestamp}|${author}|${action}|${file.filename}`);
+                            }
+                        }
+                    }
+
+                    if (newEntries.length > 0) {
+                        setAdditionalCommits(newEntries.join('\n'));
+                        const newCommitCount = commits.length - 1;
+                        if (elements.refreshStatus) {
+                            elements.refreshStatus.className = 'refresh-status success';
+                            elements.refreshStatus.textContent = `Found ${newCommitCount} new commit${newCommitCount === 1 ? '' : 's'} (${newEntries.length} files). Click "Visualize" to reload.`;
+                        }
+
+                        // Update showcase stats
+                        if (elements.showcaseCommits) {
+                            const totalCommits = ROURCE_STATS.commits + newCommitCount;
+                            elements.showcaseCommits.textContent = totalCommits.toLocaleString() + '+';
+                        }
+                    } else {
+                        if (elements.refreshStatus) {
+                            elements.refreshStatus.className = 'refresh-status success';
+                            elements.refreshStatus.textContent = 'Already up to date!';
+                            setTimeout(() => elements.refreshStatus.classList.add('hidden'), CONFIG.STATUS_HIDE_DELAY_MS);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Refresh error:', error);
+                if (elements.refreshStatus) {
+                    elements.refreshStatus.className = 'refresh-status error';
+                    elements.refreshStatus.textContent = error.message || 'Failed to fetch updates';
+                }
+                showToast('Failed to fetch updates: ' + error.message, 'error');
+            } finally {
+                elements.btnRefreshRource.classList.remove('loading');
+            }
+        });
     }
 }
 
