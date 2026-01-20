@@ -170,6 +170,11 @@ function handleDataLoaded(content, stats) {
     // Parse commits for tooltip
     parsedCommits = parseCommits(content);
 
+    // Update showcase stats with actual loaded data
+    if (elements.showcaseCommits) elements.showcaseCommits.textContent = stats.commits.toLocaleString();
+    if (elements.showcaseFiles) elements.showcaseFiles.textContent = stats.files.toLocaleString();
+    if (elements.showcaseAuthors) elements.showcaseAuthors.textContent = stats.authors.size.toLocaleString();
+
     // Update legend with file counts
     updateLegend(content);
 
@@ -658,15 +663,35 @@ function setupEventListeners(elements, rource) {
                     if (newEntries.length > 0) {
                         setAdditionalCommits(newEntries.join('\n'));
                         const newCommitCount = commits.length - 1;
-                        if (elements.refreshStatus) {
-                            elements.refreshStatus.className = 'refresh-status success';
-                            elements.refreshStatus.textContent = `Found ${newCommitCount} new commit${newCommitCount === 1 ? '' : 's'} (${newEntries.length} files). Click "Visualize" to reload.`;
+
+                        // Count unique files and authors from new entries
+                        const newFiles = new Set();
+                        const newAuthors = new Set();
+                        for (const entry of newEntries) {
+                            const parts = entry.split('|');
+                            if (parts.length >= 4) {
+                                newAuthors.add(parts[1]);
+                                newFiles.add(parts[3]);
+                            }
                         }
 
-                        // Update showcase stats
+                        if (elements.refreshStatus) {
+                            elements.refreshStatus.className = 'refresh-status success';
+                            elements.refreshStatus.textContent = `Found ${newCommitCount} new commit${newCommitCount === 1 ? '' : 's'} (${newFiles.size} files). Click "Visualize" to reload.`;
+                        }
+
+                        // Update showcase stats with "+" to indicate more data pending
                         if (elements.showcaseCommits) {
                             const totalCommits = ROURCE_STATS.commits + newCommitCount;
                             elements.showcaseCommits.textContent = totalCommits.toLocaleString() + '+';
+                        }
+                        if (elements.showcaseFiles) {
+                            const totalFiles = ROURCE_STATS.files + newFiles.size;
+                            elements.showcaseFiles.textContent = totalFiles.toLocaleString() + '+';
+                        }
+                        if (elements.showcaseAuthors) {
+                            // Authors may overlap, so just show a "+" indicator
+                            elements.showcaseAuthors.textContent = ROURCE_STATS.authors.toLocaleString() + '+';
                         }
                     } else {
                         if (elements.refreshStatus) {
