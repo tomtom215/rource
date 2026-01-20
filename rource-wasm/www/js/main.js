@@ -864,54 +864,64 @@ function generateShareableUrl() {
 
 /**
  * Sets up canvas mouse/touch events.
+ *
+ * Uses WASM mouse event handlers for entity dragging and camera panning.
+ * The WASM code internally handles hit-testing entities (files, users) and
+ * decides whether to drag an entity or pan the camera.
  */
 function setupCanvasEvents(canvas, rource) {
     if (!canvas) return;
 
-    let isDragging = false;
-    let lastX = 0;
-    let lastY = 0;
+    // Convert client coordinates to canvas-relative coordinates
+    function getCanvasCoords(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
 
+    // Mouse events - delegate to WASM for entity drag / camera pan handling
     canvas.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
+        const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+        safeWasmVoid('onMouseDown', () => rource.onMouseDown(x, y));
         canvas.style.cursor = 'grabbing';
     });
 
     canvas.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const dx = e.clientX - lastX;
-        const dy = e.clientY - lastY;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        safeWasmCall('pan', () => rource.pan(-dx, -dy), undefined);
+        const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+        // Always call onMouseMove - WASM tracks mouse_down state internally
+        safeWasmVoid('onMouseMove', () => rource.onMouseMove(x, y));
     });
 
     canvas.addEventListener('mouseup', () => {
-        isDragging = false;
+        safeWasmVoid('onMouseUp', () => rource.onMouseUp());
         canvas.style.cursor = 'grab';
     });
 
     canvas.addEventListener('mouseleave', () => {
-        isDragging = false;
+        safeWasmVoid('onMouseUp', () => rource.onMouseUp());
         canvas.style.cursor = 'grab';
     });
 
+    // Wheel events - use WASM onWheel for zoom-toward-cursor
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
-        const factor = e.deltaY > 0 ? 0.9 : 1.1;
-        safeWasmCall('zoom', () => rource.zoom(factor), undefined);
+        const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+        safeWasmVoid('onWheel', () => rource.onWheel(e.deltaY, x, y));
     }, { passive: false });
 
     // Touch events for mobile
     let touchStartDist = 0;
+    let lastTouchX = 0;
+    let lastTouchY = 0;
 
     canvas.addEventListener('touchstart', (e) => {
         if (e.touches.length === 1) {
-            isDragging = true;
-            lastX = e.touches[0].clientX;
-            lastY = e.touches[0].clientY;
+            const { x, y } = getCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+            lastTouchX = x;
+            lastTouchY = y;
+            safeWasmVoid('onMouseDown', () => rource.onMouseDown(x, y));
         } else if (e.touches.length === 2) {
             touchStartDist = Math.hypot(
                 e.touches[0].clientX - e.touches[1].clientX,
@@ -922,12 +932,11 @@ function setupCanvasEvents(canvas, rource) {
 
     canvas.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        if (e.touches.length === 1 && isDragging) {
-            const dx = e.touches[0].clientX - lastX;
-            const dy = e.touches[0].clientY - lastY;
-            lastX = e.touches[0].clientX;
-            lastY = e.touches[0].clientY;
-            safeWasmCall('pan', () => rource.pan(-dx, -dy), undefined);
+        if (e.touches.length === 1) {
+            const { x, y } = getCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+            safeWasmVoid('onMouseMove', () => rource.onMouseMove(x, y));
+            lastTouchX = x;
+            lastTouchY = y;
         } else if (e.touches.length === 2) {
             const dist = Math.hypot(
                 e.touches[0].clientX - e.touches[1].clientX,
@@ -942,7 +951,7 @@ function setupCanvasEvents(canvas, rource) {
     }, { passive: false });
 
     canvas.addEventListener('touchend', () => {
-        isDragging = false;
+        safeWasmVoid('onMouseUp', () => rource.onMouseUp());
         touchStartDist = 0;
     });
 
