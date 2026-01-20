@@ -32,8 +32,8 @@ confidence-threshold = 0.8
 [bans]
 # Lint level for multiple versions of the same crate
 multiple-versions = "warn"
-# Wildcards in dependencies are not allowed
-wildcards = "deny"
+# Wildcards in dependencies - allow for workspace path dependencies
+wildcards = "allow"
 # Allow specific crates with multiple versions (if needed)
 skip = []
 
