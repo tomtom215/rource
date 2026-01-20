@@ -1174,8 +1174,21 @@ impl Rource {
     }
 
     /// Forces a render without updating simulation (useful for static views).
+    ///
+    /// This method ensures the viewport is synchronized with the current canvas
+    /// dimensions before rendering, which is critical for screenshots and exports.
     #[wasm_bindgen(js_name = forceRender)]
     pub fn force_render(&mut self) {
+        // Ensure the backend dimensions match the canvas dimensions
+        // This is critical after canvas resize operations
+        let canvas_width = self.canvas.width();
+        let canvas_height = self.canvas.height();
+
+        // Sync backend if dimensions don't match
+        if self.backend.width() != canvas_width || self.backend.height() != canvas_height {
+            self.backend.resize(canvas_width, canvas_height);
+        }
+
         self.render();
     }
 
@@ -1320,7 +1333,14 @@ impl Rource {
         center_x: f32,
         center_y: f32,
     ) {
-        // Update camera viewport size
+        // Update canvas dimensions
+        self.canvas.set_width(width);
+        self.canvas.set_height(height);
+
+        // Update backend renderer (viewport and internal dimensions)
+        self.backend.resize(width, height);
+
+        // Update camera viewport size and position
         self.camera = Camera::new(width as f32, height as f32);
         self.camera.jump_to(Vec2::new(center_x, center_y));
         self.camera.set_zoom(zoom);
@@ -1338,6 +1358,13 @@ impl Rource {
     /// * `height` - Original canvas height
     #[wasm_bindgen(js_name = restoreAfterExport)]
     pub fn restore_after_export(&mut self, width: u32, height: u32) {
+        // Restore canvas dimensions
+        self.canvas.set_width(width);
+        self.canvas.set_height(height);
+
+        // Restore backend renderer dimensions
+        self.backend.resize(width, height);
+
         // Restore camera
         self.camera = Camera::new(width as f32, height as f32);
         self.settings.display.width = width;
