@@ -8,9 +8,9 @@
  * Last updated: 2026-01-20
  */
 
-// Total git commits in the repository (includes merge commits without file changes)
-// This is the count users see on GitHub
-export const TOTAL_GIT_COMMITS = 203;
+// Note: TOTAL_GIT_COMMITS was removed to ensure consistent commit counts
+// across the UI. The visualization shows unique (timestamp, author) pairs
+// which matches what the WASM parser counts and what the timeline displays.
 
 // Complete commit history of the Rource project
 // Note: Only commits with file changes are included (merge commits without files are excluded)
@@ -570,12 +570,13 @@ export const ROURCE_CACHED_DATA = `1768004902|Tom F|A|LICENSE
 1768914422|Claude|M|rource-wasm/www/js/data-loader.js`;
 
 // Pre-calculate stats for the cached Rource data
-// Note: We use TOTAL_GIT_COMMITS for the commit count to match what users see on GitHub
-// The visualization data only includes commits with file changes, but we display the total
+// Count unique (timestamp, author) pairs to match what the WASM parser counts
+// This ensures consistency between the stats display and the timeline
 export const ROURCE_STATS = (() => {
     const lines = ROURCE_CACHED_DATA.split('\n');
     const files = new Set();
     const authors = new Set();
+    const commits = new Set(); // Track unique (timestamp, author) pairs
     let lastTimestamp = 0;
     for (const line of lines) {
         if (!line.trim()) continue;
@@ -583,13 +584,14 @@ export const ROURCE_STATS = (() => {
         if (parts.length >= 4) {
             const ts = parseInt(parts[0], 10);
             const author = parts[1].trim();
+            commits.add(`${ts}|${author}`); // Count unique (timestamp, author) as commits
             authors.add(author);
             files.add(parts[3].trim());
             if (ts > lastTimestamp) lastTimestamp = ts;
         }
     }
-    // Use the actual git commit count for display, not the grouped visualization commits
-    return { commits: TOTAL_GIT_COMMITS, files: files.size, authors: authors.size, lastTimestamp };
+    // Use visualization commit count for consistency with timeline
+    return { commits: commits.size, files: files.size, authors: authors.size, lastTimestamp };
 })();
 
 // Track additional commits fetched via refresh
