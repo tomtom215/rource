@@ -40,6 +40,9 @@ const appState = {
 
     // Fullscreen state
     isPseudoFullscreen: false,
+
+    // Performance testing - uncapped FPS mode
+    uncappedFps: false,
 };
 
 /**

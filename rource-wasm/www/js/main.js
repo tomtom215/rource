@@ -28,7 +28,7 @@ import { ROURCE_STATS, getFullCachedData, setAdditionalCommits, getAdditionalCom
 import { showToast, hideToast, initToast } from './toast.js';
 import {
     initAnimation, resizeCanvas, startAnimation, stopAnimation,
-    animate, updatePlaybackUI, setUIUpdateCallback, isAtEnd
+    animate, updatePlaybackUI, setUIUpdateCallback, isAtEnd, restartAnimation
 } from './animation.js';
 import { loadLogData, analyzeLogData, loadRourceData, setOnDataLoadedCallback, parseCommits } from './data-loader.js';
 
@@ -448,6 +448,19 @@ function setupEventListeners(elements, rource) {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 togglePerfOverlay();
+            }
+        });
+    }
+
+    // Uncapped FPS toggle
+    if (elements.perfUncapped) {
+        elements.perfUncapped.addEventListener('change', (e) => {
+            const isUncapped = e.target.checked;
+            setState({ uncappedFps: isUncapped });
+            // Restart animation loop to switch between requestAnimationFrame and setTimeout
+            restartAnimation();
+            if (isUncapped) {
+                showToast('Uncapped mode: Testing maximum frame rate', 'info');
             }
         });
     }
