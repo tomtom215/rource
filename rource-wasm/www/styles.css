@@ -26,6 +26,7 @@
     --accent-hover: #ff6b6b;
     --accent-secondary: #238636;
     --accent-blue: #58a6ff;
+    --accent-purple: #8b5cf6;
     --text-primary: #f0f6fc;
     --text-secondary: #9ca3af;
     --text-muted: #848d97;
@@ -3747,6 +3748,159 @@ footer a {
 .timeline-marker.recent-commit {
     background: var(--accent-blue);
     height: 14px;
+}
+
+/* ========================================
+   TIMELINE DATE TICKS
+   ======================================== */
+
+/* Base tick style */
+.timeline-tick {
+    position: absolute;
+    width: 1px;
+    transform: translateX(-50%);
+    bottom: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease-out, height 0.2s ease-out;
+    pointer-events: auto;
+    cursor: help;
+}
+
+/* Visible state (animated in) */
+.timeline-tick.visible {
+    opacity: 1;
+}
+
+/* Height variants */
+.timeline-tick.tick-minor {
+    height: 6px;
+    background: var(--text-muted);
+    opacity: 0;
+}
+
+.timeline-tick.tick-minor.visible {
+    opacity: 0.35;
+}
+
+.timeline-tick.tick-medium {
+    height: 8px;
+    background: var(--text-secondary);
+    opacity: 0;
+}
+
+.timeline-tick.tick-medium.visible {
+    opacity: 0.5;
+}
+
+.timeline-tick.tick-major {
+    height: 12px;
+    background: var(--text-primary);
+    width: 2px;
+    border-radius: 1px;
+    opacity: 0;
+}
+
+.timeline-tick.tick-major.visible {
+    opacity: 0.7;
+}
+
+/* Interval-specific colors */
+.timeline-tick.tick-day {
+    background: var(--accent-blue);
+}
+
+.timeline-tick.tick-week {
+    background: var(--accent-purple);
+}
+
+.timeline-tick.tick-month {
+    background: var(--accent);
+}
+
+.timeline-tick.tick-quarter {
+    background: var(--success);
+}
+
+.timeline-tick.tick-year {
+    background: var(--warning);
+}
+
+/* Major tick override for all types */
+.timeline-tick.tick-major.tick-day,
+.timeline-tick.tick-major.tick-week,
+.timeline-tick.tick-major.tick-month,
+.timeline-tick.tick-major.tick-quarter {
+    background: var(--warning);
+}
+
+/* Hover effect with tooltip enhancement */
+.timeline-tick:hover {
+    opacity: 1 !important;
+    height: 14px !important;
+    z-index: 10;
+}
+
+/* Native tooltip styling via title attribute is handled by browser */
+/* For custom tooltips, we use CSS pseudo-elements */
+.timeline-tick::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+}
+
+.timeline-tick:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+/* Stagger animation for tick appearance */
+@keyframes tickFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) scaleY(0);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) scaleY(1);
+    }
+}
+
+.timeline-tick.visible {
+    animation: tickFadeIn 0.25s ease-out forwards;
+    transform-origin: bottom center;
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .timeline-tick.tick-minor.visible {
+    opacity: 0.4;
+}
+
+[data-theme="light"] .timeline-tick.tick-medium.visible {
+    opacity: 0.55;
+}
+
+[data-theme="light"] .timeline-tick.tick-major.visible {
+    opacity: 0.75;
+}
+
+[data-theme="light"] .timeline-tick::after {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* ========================================

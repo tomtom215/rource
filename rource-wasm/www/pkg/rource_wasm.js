@@ -2,6 +2,13 @@
 
 /**
  * The main Rource visualization controller for browser usage.
+ *
+ * This struct manages the entire visualization lifecycle including:
+ * - Rendering (WebGL2 or Software backend)
+ * - Scene management (files, users, directories)
+ * - Camera controls (pan, zoom)
+ * - Playback timeline (play, pause, seek)
+ * - User interaction (mouse, keyboard)
  */
 export class Rource {
     __destroy_into_raw() {
@@ -15,9 +22,7 @@ export class Rource {
         wasm.__wbg_rource_free(ptr, 0);
     }
     /**
-     * Captures a screenshot and returns it as PNG data (`Uint8Array`).
-     *
-     * Note: This only works with the software renderer. For WebGL2, returns an error.
+     * Captures a screenshot and returns it as PNG data.
      * @returns {Uint8Array}
      */
     captureScreenshot() {
@@ -55,24 +60,13 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Forces a render without updating simulation (useful for static views).
-     *
-     * This method ensures the viewport is synchronized with the current canvas
-     * dimensions before rendering, which is critical for screenshots and exports.
-     *
-     * Unlike the normal render path, this also calls `sync()` to ensure all GPU
-     * commands complete before returning. This is necessary for `canvas.toBlob()`
-     * to capture a complete frame.
+     * Forces a render without updating simulation.
      */
     forceRender() {
         wasm.rource_forceRender(this.__wbg_ptr);
     }
     /**
      * Updates and renders a single frame.
-     *
-     * # Arguments
-     *
-     * * `timestamp` - Current time in milliseconds (from requestAnimationFrame)
      *
      * Returns true if there are more frames to render.
      * @param {number} timestamp
@@ -91,10 +85,7 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Returns the color for a given author name as a hex string (e.g., "#ff5500").
-     *
-     * This uses the same deterministic color generation as the visualization,
-     * so colors will match what's displayed on screen.
+     * Returns the color for a given author name as a hex string.
      * @param {string} name
      * @returns {string}
      */
@@ -118,17 +109,6 @@ export class Rource {
     }
     /**
      * Returns author data as a JSON string array.
-     *
-     * Each entry contains: `{ "name": "Author Name", "color": "#rrggbb", "commits": count }`
-     * Sorted by commit count (most active first).
-     *
-     * # Example (JavaScript)
-     *
-     * ```javascript,ignore
-     * const authorsJson = rource.getAuthors();
-     * const authors = JSON.parse(authorsJson);
-     * authors.forEach(a => console.log(a.name, a.color, a.commits));
-     * ```
      * @returns {string}
      */
     getAuthors() {
@@ -148,9 +128,7 @@ export class Rource {
         }
     }
     /**
-     * Returns the current camera state as JSON for saving/restoring.
-     *
-     * Returns: `{ "x": f32, "y": f32, "zoom": f32 }`
+     * Returns the current camera state as JSON.
      * @returns {string}
      */
     getCameraState() {
@@ -187,8 +165,6 @@ export class Rource {
     }
     /**
      * Returns the author name for a commit at the given index.
-     *
-     * Returns empty string if the index is out of bounds.
      * @param {number} index
      * @returns {string}
      */
@@ -210,8 +186,6 @@ export class Rource {
     }
     /**
      * Returns the number of files changed in a commit at the given index.
-     *
-     * Returns 0 if the index is out of bounds.
      * @param {number} index
      * @returns {number}
      */
@@ -220,10 +194,7 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Returns the timestamp (Unix epoch seconds) for a commit at the given index.
-     *
-     * Returns 0 if the index is out of bounds.
-     * Note: Returns f64 instead of i64 to avoid `BigInt` conversion issues in JavaScript.
+     * Returns the timestamp for a commit at the given index.
      * @param {number} index
      * @returns {number}
      */
@@ -233,8 +204,6 @@ export class Rource {
     }
     /**
      * Returns the date range of all commits as a JSON object.
-     *
-     * Returns: `{ "startTimestamp": i64, "endTimestamp": i64 }` or null if no commits.
      * @returns {string | undefined}
      */
     getDateRange() {
@@ -254,7 +223,7 @@ export class Rource {
         }
     }
     /**
-     * Returns the estimated draw call count for the last frame.
+     * Returns the estimated draw call count.
      * @returns {number}
      */
     getDrawCalls() {
@@ -262,11 +231,7 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Returns the bounding box of all entities as a JSON object.
-     *
-     * Returns: `{ "minX": f32, "minY": f32, "maxX": f32, "maxY": f32, "width": f32, "height": f32 }`
-     *
-     * Returns null if no entities exist.
+     * Returns the bounding box of all entities as JSON.
      * @returns {string | undefined}
      */
     getEntityBounds() {
@@ -294,7 +259,7 @@ export class Rource {
         return ret;
     }
     /**
-     * Returns the current frames per second (rolling average over 60 frames).
+     * Returns the current frames per second.
      * @returns {number}
      */
     getFps() {
@@ -310,15 +275,7 @@ export class Rource {
         return ret;
     }
     /**
-     * Calculates the required canvas dimensions to render the full map at a readable zoom level.
-     *
-     * # Arguments
-     *
-     * * `min_label_font_size` - Minimum font size for labels to be readable (default: 10.0)
-     *
-     * Returns: `{ "width": u32, "height": u32, "zoom": f32, "centerX": f32, "centerY": f32 }`
-     *
-     * Returns null if no entities exist.
+     * Calculates the required canvas dimensions for full map export.
      * @param {number} min_label_font_size
      * @returns {string | undefined}
      */
@@ -375,7 +332,7 @@ export class Rource {
         return ret;
     }
     /**
-     * Returns the total number of entities in the scene.
+     * Returns the total number of entities.
      * @returns {number}
      */
     getTotalEntities() {
@@ -383,7 +340,7 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Returns the total number of files in the scene.
+     * Returns the total number of files.
      * @returns {number}
      */
     getTotalFiles() {
@@ -391,8 +348,7 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Returns the total number of frames rendered since initialization.
-     * Note: Returns f64 instead of u64 to avoid `BigInt` conversion issues in JavaScript.
+     * Returns the total number of frames rendered.
      * @returns {number}
      */
     getTotalFrames() {
@@ -400,7 +356,7 @@ export class Rource {
         return ret;
     }
     /**
-     * Returns the total number of users in the scene.
+     * Returns the total number of users.
      * @returns {number}
      */
     getTotalUsers() {
@@ -408,7 +364,7 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Returns the uptime in seconds since initialization.
+     * Returns the uptime in seconds.
      * @returns {number}
      */
     getUptime() {
@@ -416,7 +372,7 @@ export class Rource {
         return ret;
     }
     /**
-     * Returns the number of visible directories currently being rendered.
+     * Returns the number of visible directories.
      * @returns {number}
      */
     getVisibleDirectories() {
@@ -424,7 +380,7 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Returns the number of visible files currently being rendered.
+     * Returns the number of visible files.
      * @returns {number}
      */
     getVisibleFiles() {
@@ -432,7 +388,7 @@ export class Rource {
         return ret >>> 0;
     }
     /**
-     * Returns the number of visible users currently being rendered.
+     * Returns the number of visible users.
      * @returns {number}
      */
     getVisibleUsers() {
@@ -449,12 +405,6 @@ export class Rource {
     }
     /**
      * Returns true if the WebGL context is lost.
-     *
-     * This can happen when the GPU is reset, the browser tab is backgrounded
-     * for a long time, or system resources are exhausted. When the context is
-     * lost, rendering operations are skipped automatically.
-     *
-     * Software renderer always returns false (it never loses context).
      * @returns {boolean}
      */
     isContextLost() {
@@ -481,16 +431,6 @@ export class Rource {
      * Loads commits from custom pipe-delimited format.
      *
      * Format: `timestamp|author|action|path` per line
-     * - timestamp: Unix timestamp
-     * - author: Committer name
-     * - action: A=add, M=modify, D=delete
-     * - path: File path
-     *
-     * # Example (JavaScript)
-     *
-     * ```javascript,ignore
-     * rource.loadCustomLog("1234567890|John Doe|A|src/main.rs\n1234567891|Jane|M|src/lib.rs");
-     * ```
      * @param {string} log
      * @returns {number}
      */
@@ -513,8 +453,6 @@ export class Rource {
     }
     /**
      * Loads commits from git log format.
-     *
-     * Expected format is `git log --pretty=format:... --name-status`
      * @param {string} log
      * @returns {number}
      */
@@ -573,9 +511,6 @@ export class Rource {
     }
     /**
      * Handles mouse down events.
-     *
-     * Checks for entity under cursor first. If an entity is found, starts dragging it.
-     * Otherwise, starts camera panning.
      * @param {number} x
      * @param {number} y
      */
@@ -584,9 +519,6 @@ export class Rource {
     }
     /**
      * Handles mouse move events.
-     *
-     * If dragging an entity, updates its position and applies force-directed
-     * movement to connected entities. Otherwise, pans the camera.
      * @param {number} x
      * @param {number} y
      */
@@ -600,10 +532,7 @@ export class Rource {
         wasm.rource_onMouseUp(this.__wbg_ptr);
     }
     /**
-     * Handles mouse wheel events for zooming toward the mouse position.
-     *
-     * Uses a smooth, proportional zoom based on scroll amount.
-     * Zooms toward the mouse position so the content under the cursor stays in place.
+     * Handles mouse wheel events for zooming.
      * @param {number} delta_y
      * @param {number} mouse_x
      * @param {number} mouse_y
@@ -632,17 +561,7 @@ export class Rource {
         wasm.rource_play(this.__wbg_ptr);
     }
     /**
-     * Prepares the renderer for full map export by setting up camera and viewport.
-     *
-     * # Arguments
-     *
-     * * `width` - Target canvas width
-     * * `height` - Target canvas height
-     * * `zoom` - Zoom level to use
-     * * `center_x` - World X coordinate to center on
-     * * `center_y` - World Y coordinate to center on
-     *
-     * Call this before resizing canvas and calling `forceRender()`.
+     * Prepares the renderer for full map export.
      * @param {number} width
      * @param {number} height
      * @param {number} zoom
@@ -654,12 +573,6 @@ export class Rource {
     }
     /**
      * Attempts to recover from a lost WebGL context.
-     *
-     * Returns true if recovery was successful or if context was not lost.
-     * Returns false if recovery failed (e.g., WebGL is permanently unavailable).
-     *
-     * After a successful recovery, the visualization will continue from where
-     * it left off on the next frame.
      * @returns {boolean}
      */
     recoverContext() {
@@ -682,11 +595,6 @@ export class Rource {
     }
     /**
      * Restores the renderer after full map export.
-     *
-     * # Arguments
-     *
-     * * `width` - Original canvas width
-     * * `height` - Original canvas height
      * @param {number} width
      * @param {number} height
      */
@@ -726,18 +634,14 @@ export class Rource {
         wasm.rource_setBloom(this.__wbg_ptr, enabled);
     }
     /**
-     * Sets the font size for labels (user names, file names, directory names).
-     *
-     * # Arguments
-     *
-     * * `size` - Font size in pixels (clamped to 4.0 - 200.0 range)
+     * Sets the font size for labels.
      * @param {number} size
      */
     setFontSize(size) {
         wasm.rource_setFontSize(this.__wbg_ptr, size);
     }
     /**
-     * Sets whether to show labels (user names, file names).
+     * Sets whether to show labels.
      * @param {boolean} show
      */
     setShowLabels(show) {
@@ -745,13 +649,6 @@ export class Rource {
     }
     /**
      * Sets playback speed (seconds per day of repository history).
-     *
-     * The speed is clamped between 1.0 (10x, fastest) and 1000.0 (very slow) seconds per day.
-     * NaN, infinite, and non-positive values are replaced with the default of 10.0.
-     *
-     * The formula `seconds_per_commit = seconds_per_day / 10.0` means:
-     * - At speed=1.0 (10x): 0.1s per commit = ~6 frames at 60fps (acceptable)
-     * - At speed=0.1 (100x): 0.01s per commit = ~1.7 commits/frame (too fast!)
      * @param {number} seconds_per_day
      */
     setSpeed(seconds_per_day) {
@@ -784,9 +681,6 @@ export class Rource {
     }
     /**
      * Zooms the camera toward a specific screen point.
-     *
-     * This keeps the point under the mouse cursor stationary while zooming,
-     * making it easier to zoom into specific areas of the visualization.
      * @param {number} screen_x
      * @param {number} screen_y
      * @param {number} factor

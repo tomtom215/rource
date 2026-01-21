@@ -30,6 +30,7 @@ import {
     updatePlaybackUI, setUIUpdateCallback, resetTimelineDateLabels
 } from './animation.js';
 import { loadLogData, loadRourceData, parseCommits, setOnDataLoadedCallback } from './data-loader.js';
+import { generateTimelineTicks } from './timeline-markers.js';
 import { fetchGitHubWithProgress } from './github-fetch.js';
 
 // Feature modules
@@ -443,14 +444,12 @@ function updateAuthorsLegend(content) {
 
 /**
  * Updates timeline markers for significant commits.
- * @param {string} content - Log content
+ * Generates date tick marks showing time period boundaries (days/weeks/months/years).
+ * @param {string} content - Log content (unused, timestamps come from WASM)
  */
 function updateTimelineMarkers(content) {
-    const timelineMarkers = getElement('timelineMarkers');
-    if (!timelineMarkers) return;
-
-    // Clear existing markers
-    timelineMarkers.innerHTML = '';
+    // Generate date tick marks based on commit timestamps
+    generateTimelineTicks();
 }
 
 // Start the application
