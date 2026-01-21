@@ -696,4 +696,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-20 (Web UI modularized, 856+ tests)*
+*Last updated: 2026-01-21 (Test coverage improved, 900+ tests)*
