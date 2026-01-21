@@ -11,7 +11,18 @@ description = "WebAssembly bindings for Rource - software version control visual
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-# Disable wasm-opt (requires binaryen which may not be available)
+# wasm-opt configuration
+# We disable wasm-opt here because we run it manually in build-wasm.sh with
+# custom flags for better control:
+#   -O3: Maximum performance optimization (instead of -Oz for size)
+#   --converge: Iterate until no further improvement
+#   --low-memory-unused: Enable load/store offset folding
+#   --enable-simd: Enable SIMD optimizations
+#
+# This approach allows us to:
+# 1. Show before/after sizes during build
+# 2. Use performance-optimized flags (-O3) for the portfolio demo
+# 3. Skip optimization gracefully if binaryen is not installed
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
 
