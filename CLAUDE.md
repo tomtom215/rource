@@ -64,12 +64,16 @@ rource/
 ```
 
 ### Rendering Backends
-1. **Software Rasterizer** - Pure CPU rendering, works everywhere (native and WASM)
-2. **WebGL2 (WASM)** - GPU-accelerated browser rendering (default for WASM)
-3. **Canvas2D (WASM)** - Software renderer + canvas ImageData (fallback)
+1. **wgpu (Native + WASM)** - Cross-platform GPU rendering via WebGPU/Vulkan/Metal/DX12
+2. **WebGL2 (WASM)** - GPU-accelerated browser rendering (fallback for older browsers)
+3. **Software Rasterizer** - Pure CPU rendering, works everywhere (maximum compatibility)
 
-The WASM build automatically tries WebGL2 first and falls back to software rendering
-if WebGL2 is unavailable. You can check which renderer is active via `rource.getRendererType()`.
+**Backend Priority (recommended):**
+- Native: wgpu → Software
+- WASM: wgpu (WebGPU) → WebGL2 → Software (Canvas2D)
+
+The WASM build automatically tries backends in priority order.
+Check active renderer via `rource.getRendererType()`.
 
 ### IMPORTANT: CLI and WASM Rendering Synchronization
 
@@ -181,6 +185,7 @@ wasm-pack build --target nodejs --release
 - [x] Headless rendering mode (batch export without window)
 - [x] WASM/Canvas2D (software renderer + ImageData)
 - [x] WASM/WebGL2 (GPU acceleration, with automatic fallback to software)
+- [x] wgpu backend (cross-platform WebGPU/Vulkan/Metal/DX12 with GPU compute)
 
 ## Recent Progress & Insights
 
@@ -698,6 +703,57 @@ Successfully implemented WebAssembly support for running Rource in web browsers:
 4. **Build**: `scripts/build-wasm.sh` uses wasm-pack
    - Output in `rource-wasm/www/pkg/`
    - Demo page in `rource-wasm/www/index.html`
+
+### wgpu Backend Implementation (2026-01-21)
+
+Implemented production-grade wgpu rendering backend for cross-platform GPU rendering:
+
+#### Architecture
+
+```
+crates/rource-render/src/backend/wgpu/
+├── mod.rs          # WgpuRenderer implementing Renderer trait
+├── buffers.rs      # Instance/uniform buffer management
+├── compute.rs      # GPU compute shaders for physics simulation
+├── pipeline.rs     # Render pipeline creation and caching
+├── shaders.rs      # WGSL shader source code
+├── state.rs        # Render state caching (pipeline, bind groups)
+├── stats.rs        # Frame statistics with active primitive tracking
+├── textures.rs     # Font atlas and texture management
+├── bloom.rs        # GPU bloom post-processing pipeline
+└── shadow.rs       # GPU drop shadow effect
+```
+
+#### Key Features
+
+1. **Cross-Platform GPU**: Native (Vulkan/Metal/DX12) + WASM (WebGPU/WebGL)
+2. **Instanced Rendering**: All primitives use GPU instancing for efficient batching
+3. **WGSL Shaders**: Distance-field anti-aliasing for smooth edges
+4. **Font Atlas**: Row-based packing with automatic defragmentation
+5. **State Caching**: Minimizes redundant GPU API calls
+6. **GPU Compute**: Force-directed physics simulation on GPU
+7. **Post-Processing**: Configurable bloom and shadow effects
+8. **Deterministic Output**: Identical inputs produce identical outputs
+
+#### Usage
+
+```rust
+// Native - headless
+let renderer = WgpuRenderer::new_headless(800, 600)?;
+
+// Native - with window
+let renderer = WgpuRenderer::new_with_window(&window)?;
+
+// WASM - with canvas (async)
+let renderer = WgpuRenderer::new_from_canvas(&canvas).await?;
+```
+
+#### Feature Flag
+
+Enable with `wgpu` feature in Cargo.toml:
+```toml
+rource-render = { path = "...", features = ["wgpu"] }
+```
 
 ### WebGL2 Backend Implementation (2026-01-11)
 

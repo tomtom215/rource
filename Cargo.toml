@@ -12,7 +12,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.76"
+rust-version = "1.82"
 license = "GPL-3.0-only"
 repository = "https://github.com/tomtom215/rource"
 authors = ["Rource Contributors"]
@@ -50,6 +50,8 @@ suboptimal_flops = "allow"
 missing_const_for_fn = "allow"
 # Cargo metadata (readme, keywords, categories) not required for workspace crates
 cargo_common_metadata = "allow"
+# wgpu brings in multiple versions of bitflags, hashbrown, thiserror
+multiple_crate_versions = "allow"
 
 [workspace.dependencies]
 # Serialization (optional, for config files)
