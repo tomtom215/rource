@@ -945,9 +945,7 @@ pub fn present_frame(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rource_render::visual::{
-        catmull_rom_interpolate, catmull_rom_spline, create_branch_curve,
-    };
+    use rource_render::visual::{catmull_rom_interpolate, catmull_rom_spline, create_branch_curve};
 
     #[test]
     fn test_get_initials() {
