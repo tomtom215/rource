@@ -406,7 +406,7 @@ impl Rource {
         } else {
             10.0
         };
-        self.settings.playback.seconds_per_day = speed.clamp(1.0, 1000.0);
+        self.settings.playback.seconds_per_day = speed.clamp(0.01, 1000.0);
     }
 
     /// Gets the current playback speed.
