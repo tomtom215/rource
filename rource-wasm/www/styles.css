@@ -876,6 +876,8 @@ header h1 {
     border: 1px solid var(--border);
     /* Reserve space to prevent CLS during load */
     min-height: 90px;
+    /* Contain layout to prevent CLS propagation */
+    contain: content;
 }
 
 /* Date and commit info row at top */
@@ -885,6 +887,8 @@ header h1 {
     justify-content: space-between;
     gap: 0.5rem;
     padding: 0 0.25rem;
+    /* Reserve consistent height to prevent CLS */
+    min-height: 1.4em;
 }
 
 .timeline-date {
@@ -892,6 +896,8 @@ header h1 {
     font-weight: 600;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
+    /* Reserve space for date text */
+    min-height: 1.2em;
 }
 
 .timeline-commit-info {
@@ -902,6 +908,8 @@ header h1 {
     overflow: hidden;
     max-width: 50%;
     text-align: right;
+    /* Reserve space for commit info */
+    min-height: 1.2em;
 }
 
 .timeline-slider-row {
@@ -990,8 +998,10 @@ header h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    /* Only transition composited properties for better performance */
+    transition: transform 0.2s;
     box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
+    will-change: transform;
 }
 
 .play-btn-main:hover:not(:disabled) {
