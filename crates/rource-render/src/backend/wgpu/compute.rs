@@ -1061,6 +1061,11 @@ pub fn workgroups_for(count: u32, workgroup_size: u32) -> u32 {
     count.div_ceil(workgroup_size)
 }
 
+// Compile-time constant validation
+const _: () = {
+    assert!(BUFFER_GROWTH_FACTOR > 1.0);
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1313,8 +1318,3 @@ mod tests {
         assert_eq!(dense_cells, 128 * 128);
     }
 }
-
-// Compile-time constant validation
-const _: () = {
-    assert!(BUFFER_GROWTH_FACTOR > 1.0);
-};

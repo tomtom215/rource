@@ -875,6 +875,15 @@ impl BloomPipeline {
     }
 }
 
+// Compile-time constant validation
+const _: () = {
+    assert!(DEFAULT_BLOOM_THRESHOLD > 0.0);
+    assert!(DEFAULT_BLOOM_THRESHOLD < 1.0);
+    assert!(DEFAULT_BLOOM_INTENSITY > 0.0);
+    assert!(DEFAULT_BLOOM_DOWNSCALE >= 1);
+    assert!(DEFAULT_BLOOM_PASSES >= 1);
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -930,12 +939,3 @@ mod tests {
         let _ = DEFAULT_BLOOM_PASSES;
     }
 }
-
-// Compile-time constant validation
-const _: () = {
-    assert!(DEFAULT_BLOOM_THRESHOLD > 0.0);
-    assert!(DEFAULT_BLOOM_THRESHOLD < 1.0);
-    assert!(DEFAULT_BLOOM_INTENSITY > 0.0);
-    assert!(DEFAULT_BLOOM_DOWNSCALE >= 1);
-    assert!(DEFAULT_BLOOM_PASSES >= 1);
-};

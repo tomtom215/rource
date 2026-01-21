@@ -657,6 +657,15 @@ impl StorageBuffer {
     }
 }
 
+// Compile-time constant validation
+const _: () = {
+    assert!(MIN_BUFFER_CAPACITY > 0);
+    assert!(SHRINK_THRESHOLD > 0.0);
+    assert!(SHRINK_THRESHOLD < 1.0);
+    assert!(SHRINK_STABILITY_FRAMES > 0);
+    assert!(GROWTH_FACTOR >= 2);
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -732,12 +741,3 @@ mod tests {
     // Note: Tests requiring wgpu::Device are integration tests that need
     // actual GPU access. They should be run with the full test harness.
 }
-
-// Compile-time constant validation
-const _: () = {
-    assert!(MIN_BUFFER_CAPACITY > 0);
-    assert!(SHRINK_THRESHOLD > 0.0);
-    assert!(SHRINK_THRESHOLD < 1.0);
-    assert!(SHRINK_STABILITY_FRAMES > 0);
-    assert!(GROWTH_FACTOR >= 2);
-};

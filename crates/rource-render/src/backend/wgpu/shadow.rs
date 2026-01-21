@@ -769,6 +769,14 @@ impl ShadowPipeline {
     }
 }
 
+// Compile-time constant validation
+const _: () = {
+    assert!(DEFAULT_SHADOW_OPACITY > 0.0);
+    assert!(DEFAULT_SHADOW_OPACITY <= 1.0);
+    assert!(DEFAULT_SHADOW_BLUR_PASSES > 0);
+    assert!(DEFAULT_SHADOW_DOWNSCALE > 0);
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -814,11 +822,3 @@ mod tests {
         let _ = DEFAULT_SHADOW_DOWNSCALE;
     }
 }
-
-// Compile-time constant validation
-const _: () = {
-    assert!(DEFAULT_SHADOW_OPACITY > 0.0);
-    assert!(DEFAULT_SHADOW_OPACITY <= 1.0);
-    assert!(DEFAULT_SHADOW_BLUR_PASSES > 0);
-    assert!(DEFAULT_SHADOW_DOWNSCALE > 0);
-};
