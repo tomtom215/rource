@@ -523,7 +523,7 @@ mod tests {
         tree.get_or_create_path(Path::new("src"));
         tree.get_or_create_path(Path::new("tests"));
 
-        let names: Vec<_> = tree.iter().map(|n| n.name()).collect();
+        let names: Vec<_> = tree.iter().map(DirNode::name).collect();
         assert_eq!(names.len(), 3);
         assert!(names.contains(&"")); // root
         assert!(names.contains(&"src"));
