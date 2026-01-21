@@ -75,7 +75,7 @@ use rource_core::config::Settings;
 use rource_core::scene::Scene;
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::{default_font, FontId};
-use rource_vcs::parser::{CustomParser, GitParser, Parser};
+use rource_vcs::parser::{CustomParser, GitParser, ParseOptions, Parser};
 use rource_vcs::Commit;
 
 // Re-exports for internal use
@@ -269,9 +269,13 @@ impl Rource {
     /// Loads commits from custom pipe-delimited format.
     ///
     /// Format: `timestamp|author|action|path` per line
+    ///
+    /// Uses lenient parsing by default to skip invalid lines (e.g., lines with
+    /// pipe characters in author names or unsupported git statuses).
     #[wasm_bindgen(js_name = loadCustomLog)]
     pub fn load_custom_log(&mut self, log: &str) -> Result<usize, JsValue> {
-        let parser = CustomParser::new();
+        // Use lenient parsing to handle malformed lines gracefully
+        let parser = CustomParser::with_options(ParseOptions::lenient());
         let commits = parser
             .parse_str(log)
             .map_err(|e| JsValue::from_str(&format!("Parse error: {e}")))?;

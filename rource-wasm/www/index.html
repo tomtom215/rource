@@ -590,7 +590,7 @@
                 <div id="tab-command" class="tab-content active" role="tabpanel">
                     <p class="help-text" style="margin-bottom: 0.75rem;">Generate a log file from your local repository:</p>
                     <div class="command-box">
-                        <code id="git-command">git log --reverse --format="%at|%an" --name-status | awk '/^[0-9]+\|/{info=$0;next}/^[AMD]\t/{print info"|"substr($0,1,1)"|"substr($0,3)}' &gt; rource.log</code>
+                        <code id="git-command">git log --reverse --format="%at|%an" --name-status | awk '/^[0-9]+\|/{info=$0;next}/^[AMD]\t/{print info"|"substr($0,1,1)"|"substr($0,3)}/^[RC][0-9]*\t/{n=split($0,a,"\t");print info"|M|"a[n]}' &gt; rource.log</code>
                     </div>
                     <button type="button" id="btn-copy-command" class="btn btn-sm btn-secondary">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
@@ -605,6 +605,7 @@
                         </ol>
                         <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
                             <strong>Note:</strong> Works on Linux/macOS. For Windows, use Git Bash or WSL.
+                            Lines with invalid format are automatically skipped.
                         </p>
                     </div>
                 </div>
