@@ -6,10 +6,10 @@ This document explains Rource's dual-backend rendering strategy and the design d
 
 Rource supports two rendering backends:
 
-| Backend | Target | Performance | Compatibility |
-|---------|--------|-------------|---------------|
-| **Software** | Native + WASM fallback | Good | Universal |
-| **WebGL2** | WASM primary | Best | WebGL2 required |
+| Backend      | Target                 | Performance | Compatibility    |
+|--------------|------------------------|-------------|------------------|
+| **Software** | Native + WASM fallback | Good        | Universal        |
+| **WebGL2**   | WASM primary           | Best        | WebGL2 required  |
 
 The WASM build automatically tries WebGL2 first and falls back to Software if WebGL2 is unavailable.
 
@@ -55,16 +55,16 @@ The `SoftwareRenderer` is a pure CPU rasterizer that works everywhere.
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    SoftwareRenderer                          │
-├─────────────────────────────────────────────────────────────┤
-│  Pixel Buffer: Vec<u32>  (ARGB format)                      │
-│  Width × Height pixels                                      │
-├─────────────────────────────────────────────────────────────┤
-│  Clip Stack: Vec<Rect>                                      │
-│  Font Cache: HashMap<FontId, fontdue::Font>                 │
-│  Glyph Cache: HashMap<(char, size), RasterizedGlyph>        │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                   SoftwareRenderer                    │
+├───────────────────────────────────────────────────────┤
+│  Pixel Buffer: Vec<u32>  (ARGB format)                │
+│  Width × Height pixels                                │
+├───────────────────────────────────────────────────────┤
+│  Clip Stack: Vec<Rect>                                │
+│  Font Cache: HashMap<FontId, fontdue::Font>           │
+│  Glyph Cache: HashMap<(char, size), RasterizedGlyph>  │
+└───────────────────────────────────────────────────────┘
 ```
 
 ### Anti-Aliasing Algorithms
@@ -107,13 +107,13 @@ The software renderer includes CPU-based bloom:
 
 ### Performance Characteristics
 
-| Operation | Complexity | Notes |
-|-----------|------------|-------|
-| Clear | O(w×h) | Memset entire buffer |
-| Circle | O(r²) | Scan bounding box |
-| Line | O(length) | Bresenham + Wu AA |
-| Text | O(chars×glyph_size) | Cached glyphs |
-| Bloom | O(w×h×9) | 3-pass blur |
+| Operation | Complexity          | Notes                 |
+|-----------|---------------------|-----------------------|
+| Clear     | O(w×h)              | Memset entire buffer  |
+| Circle    | O(r²)               | Scan bounding box     |
+| Line      | O(length)           | Bresenham + Wu AA     |
+| Text      | O(chars×glyph_size) | Cached glyphs         |
+| Bloom     | O(w×h×9)            | 3-pass blur           |
 
 ## WebGL2 Renderer
 
@@ -122,26 +122,26 @@ The `WebGl2Renderer` uses GPU-accelerated instanced rendering for best performan
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     WebGl2Renderer                           │
-├─────────────────────────────────────────────────────────────┤
-│  WebGL2 Context (from canvas)                               │
-├─────────────────────────────────────────────────────────────┤
-│  Shader Programs:                                           │
-│  • circle_program  (instanced circles/rings)                │
-│  • line_program    (instanced line segments)                │
-│  • quad_program    (instanced quads)                        │
-│  • text_program    (textured quads for glyphs)              │
-├─────────────────────────────────────────────────────────────┤
-│  Buffers (per primitive type):                              │
-│  • Vertex Buffer (unit geometry)                            │
-│  • Instance Buffer (per-instance data: pos, size, color)    │
-├─────────────────────────────────────────────────────────────┤
-│  Font Atlas:                                                │
-│  • GL_R8 texture (single-channel alpha)                     │
-│  • Row-based packing (512→2048 max)                         │
-│  • UV cache for glyphs                                      │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                    WebGl2Renderer                     │
+├───────────────────────────────────────────────────────┤
+│  WebGL2 Context (from canvas)                         │
+├───────────────────────────────────────────────────────┤
+│  Shader Programs:                                     │
+│   • circle_program  (instanced circles/rings)         │
+│   • line_program    (instanced line segments)         │
+│   • quad_program    (instanced quads)                 │
+│   • text_program    (textured quads for glyphs)       │
+├───────────────────────────────────────────────────────┤
+│  Buffers (per primitive type):                        │
+│   • Vertex Buffer (unit geometry)                     │
+│   • Instance Buffer (per-instance data)               │
+├───────────────────────────────────────────────────────┤
+│  Font Atlas:                                          │
+│   • GL_R8 texture (single-channel alpha)              │
+│   • Row-based packing (512→2048 max)                  │
+│   • UV cache for glyphs                               │
+└───────────────────────────────────────────────────────┘
 ```
 
 ### Instanced Rendering
@@ -187,14 +187,14 @@ gl_FragColor = vec4(v_color.rgb, v_color.a * alpha);
 ### Font Atlas Management
 
 ```
-┌────────────────────────────────────────┐
-│ Font Atlas Texture (GL_R8)             │
-├────────────────────────────────────────┤
-│ Row 0: A B C D E F G H I J K L M N ... │ height: max glyph height
-│ Row 1: a b c d e f g h i j k l m n ... │
-│ Row 2: 0 1 2 3 4 5 6 7 8 9 ! @ # $ ... │
-│ ...                                    │
-└────────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│ Font Atlas Texture (GL_R8)               │
+├──────────────────────────────────────────┤
+│ Row 0: A B C D E F G H I J K L M N ...   │
+│ Row 1: a b c d e f g h i j k l m n ...   │
+│ Row 2: 0 1 2 3 4 5 6 7 8 9 ! @ # $ ...   │
+│ ...                                      │
+└──────────────────────────────────────────┘
 
 Glyph Cache: HashMap<(char, size_bucket), GlyphInfo>
 GlyphInfo: { uv_min, uv_max, advance, offset }
@@ -276,22 +276,22 @@ if (rource.isContextLost()) {
 ### Per-Frame Flow
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ frame(timestamp) {                                          │
-│   // 1. Calculate delta time                                │
-│   dt = (timestamp - last_time) / 1000.0;                    │
-│                                                             │
-│   // 2. Update simulation (if playing)                      │
-│   if (playing) {                                            │
-│     apply_pending_commits();                                │
-│   }                                                         │
-│   scene.update(dt);  // Physics + animations                │
-│   camera.update(dt); // Smooth following                    │
-│                                                             │
-│   // 3. Render                                              │
-│   render();                                                 │
-│ }                                                           │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│ frame(timestamp) {                                    │
+│   // 1. Calculate delta time                          │
+│   dt = (timestamp - last_time) / 1000.0;              │
+│                                                       │
+│   // 2. Update simulation (if playing)                │
+│   if (playing) {                                      │
+│     apply_pending_commits();                          │
+│   }                                                   │
+│   scene.update(dt);  // Physics + animations          │
+│   camera.update(dt); // Smooth following              │
+│                                                       │
+│   // 3. Render                                        │
+│   render();                                           │
+│ }                                                     │
+└───────────────────────────────────────────────────────┘
 ```
 
 ### Render Layer Order
@@ -330,21 +330,21 @@ for dir_id in visible_dirs {
 
 Tested on MacBook Pro M1, 1920x1080, 10k files:
 
-| Metric | Software | WebGL2 | Improvement |
-|--------|----------|--------|-------------|
-| Draw calls | ~30,000 | 6 | 5000x fewer |
-| Frame time | 16ms | 2ms | 8x faster |
-| Max FPS | ~60 | ~500 | Uncapped |
-| Memory | 8MB buffer | 2MB + GPU | GPU offload |
+| Metric     | Software  | WebGL2    | Improvement  |
+|------------|-----------|-----------|--------------|
+| Draw calls | ~30,000   | 6         | 5000x fewer  |
+| Frame time | 16ms      | 2ms       | 8x faster    |
+| Max FPS    | ~60       | ~500      | Uncapped     |
+| Memory     | 8MB buffer| 2MB + GPU | GPU offload  |
 
 ## CLI/WASM Rendering Synchronization
 
 **Important**: The CLI and WASM have separate rendering code that must be kept in sync.
 
-| Component | Location |
-|-----------|----------|
-| Native CLI | `rource-cli/src/rendering.rs` |
-| WASM | `rource-wasm/src/render_phases.rs`, `rource-wasm/src/rendering.rs` |
+| Component  | Location                                                      |
+|------------|---------------------------------------------------------------|
+| Native CLI | `rource-cli/src/rendering.rs`                                 |
+| WASM       | `rource-wasm/src/render_phases.rs`, `rource-wasm/src/rendering.rs` |
 
 When modifying visual elements (avatar styles, beam effects, curves):
 1. Update CLI rendering code

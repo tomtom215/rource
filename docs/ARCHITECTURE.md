@@ -10,21 +10,21 @@ Rource is designed as a modular, multi-platform visualization system with three 
 - **Headless**: Server-side rendering for video export
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          User Interface                              │
-├─────────────────────┬─────────────────────┬─────────────────────────┤
-│   rource-cli        │   rource-wasm       │   Headless Mode         │
-│   (Native Desktop)  │   (Browser)         │   (Video Export)        │
-├─────────────────────┴─────────────────────┴─────────────────────────┤
-│                          rource-core                                 │
-│                     (Scene, Camera, Config)                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                          rource-render                               │
-│              (Software Renderer, WebGL2 Renderer)                    │
-├─────────────────────┬───────────────────────────────────────────────┤
-│   rource-math       │              rource-vcs                        │
-│   (Vec2, Mat4, etc) │   (Git, SVN, Custom format parsers)           │
-└─────────────────────┴───────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                         User Interface                            │
+├─────────────────────┬─────────────────────┬───────────────────────┤
+│     rource-cli      │     rource-wasm     │    Headless Mode      │
+│   (Native Desktop)  │      (Browser)      │    (Video Export)     │
+├─────────────────────┴─────────────────────┴───────────────────────┤
+│                          rource-core                              │
+│                    (Scene, Camera, Config)                        │
+├───────────────────────────────────────────────────────────────────┤
+│                         rource-render                             │
+│             (Software Renderer, WebGL2 Renderer)                  │
+├─────────────────────┬─────────────────────────────────────────────┤
+│     rource-math     │                rource-vcs                   │
+│   (Vec2, Mat4, etc) │     (Git, SVN, Custom format parsers)       │
+└─────────────────────┴─────────────────────────────────────────────┘
 ```
 
 ## Crate Structure
@@ -44,19 +44,19 @@ Pure math library with no dependencies. Provides:
 Version control system log parsing with memory-efficient storage:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      rource-vcs                          │
-├───────────────┬─────────────────┬───────────────────────┤
-│   Parsers     │   Compact Store │   String Interning    │
-│               │                 │                        │
-│ • GitParser   │ • CommitStore   │ • StringInterner      │
-│ • SvnParser   │ • CompactCommit │ • PathInterner        │
-│ • CustomParser│ • CompactChange │                       │
-│ • BazaarParser│                 │                       │
-├───────────────┴─────────────────┴───────────────────────┤
-│                  StreamingCommitLoader                   │
-│              (Memory-efficient large repos)              │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                      rource-vcs                       │
+├─────────────────┬─────────────────┬───────────────────┤
+│     Parsers     │  Compact Store  │  String Interning │
+│                 │                 │                   │
+│  • GitParser    │  • CommitStore  │  • StringInterner │
+│  • SvnParser    │  • CompactCommit│  • PathInterner   │
+│  • CustomParser │  • CompactChange│                   │
+│  • BazaarParser │                 │                   │
+├─────────────────┴─────────────────┴───────────────────┤
+│                StreamingCommitLoader                  │
+│            (Memory-efficient large repos)             │
+└───────────────────────────────────────────────────────┘
 ```
 
 **Key Features**:
@@ -69,24 +69,24 @@ Version control system log parsing with memory-efficient storage:
 Core visualization logic independent of rendering:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      rource-core                         │
-├───────────────────────┬─────────────────────────────────┤
-│         Scene         │           Camera                 │
-│                       │                                  │
-│ • DirTree (hierarchy) │ • 2D orthographic projection    │
-│ • FileNode (files)    │ • Smooth pan/zoom               │
-│ • User (authors)      │ • Frustum culling               │
-│ • Action (beams)      │ • Visible bounds calculation    │
-│ • Quadtree (spatial)  │                                 │
-├───────────────────────┼─────────────────────────────────┤
-│       Physics         │          Config                  │
-│                       │                                  │
-│ • Force-directed      │ • Settings struct               │
-│ • Spring forces       │ • Environment variables         │
-│ • Repulsion forces    │ • TOML config files             │
-│ • Damping             │ • Filter patterns               │
-└───────────────────────┴─────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                      rource-core                      │
+├───────────────────────────┬───────────────────────────┤
+│           Scene           │          Camera           │
+│                           │                           │
+│  • DirTree (hierarchy)    │  • 2D orthographic proj.  │
+│  • FileNode (files)       │  • Smooth pan/zoom        │
+│  • User (authors)         │  • Frustum culling        │
+│  • Action (beams)         │  • Visible bounds calc    │
+│  • Quadtree (spatial)     │                           │
+├───────────────────────────┼───────────────────────────┤
+│          Physics          │          Config           │
+│                           │                           │
+│  • Force-directed         │  • Settings struct        │
+│  • Spring forces          │  • Environment variables  │
+│  • Repulsion forces       │  • TOML config files      │
+│  • Damping                │  • Filter patterns        │
+└───────────────────────────┴───────────────────────────┘
 ```
 
 **Scene Graph Architecture**:
@@ -113,22 +113,22 @@ Scene
 Backend-agnostic rendering with multiple implementations:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     rource-render                        │
-├─────────────────────────────────────────────────────────┤
-│                   Renderer Trait                         │
-│  • begin_frame() / end_frame()                          │
-│  • draw_circle(), draw_line(), draw_text()              │
-│  • Clip rectangles, alpha blending                      │
-├──────────────────────┬──────────────────────────────────┤
-│   SoftwareRenderer   │        WebGl2Renderer            │
-│                      │                                   │
-│ • Pure CPU rendering │ • GPU-accelerated                │
-│ • Xiaolin Wu AA      │ • Instanced rendering            │
-│ • Bloom post-process │ • GLSL ES 3.0 shaders           │
-│ • Platform agnostic  │ • Font atlas texture            │
-│                      │ • Context loss handling         │
-└──────────────────────┴──────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                     rource-render                     │
+├───────────────────────────────────────────────────────┤
+│                    Renderer Trait                     │
+│   • begin_frame() / end_frame()                       │
+│   • draw_circle(), draw_line(), draw_text()           │
+│   • Clip rectangles, alpha blending                   │
+├───────────────────────────┬───────────────────────────┤
+│    SoftwareRenderer       │      WebGl2Renderer       │
+│                           │                           │
+│  • Pure CPU rendering     │  • GPU-accelerated        │
+│  • Xiaolin Wu AA          │  • Instanced rendering    │
+│  • Bloom post-process     │  • GLSL ES 3.0 shaders    │
+│  • Platform agnostic      │  • Font atlas texture     │
+│                           │  • Context loss handling  │
+└───────────────────────────┴───────────────────────────┘
 ```
 
 ### rource-cli
@@ -136,16 +136,16 @@ Backend-agnostic rendering with multiple implementations:
 Native desktop application:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      rource-cli                          │
-├─────────────────────────────────────────────────────────┤
-│  main.rs        - Entry point, event loop               │
-│  args.rs        - CLI argument parsing (clap)           │
-│  window.rs      - Window creation, input handling       │
-│  rendering.rs   - Scene to pixel rendering              │
-│  avatar.rs      - User avatar image loading             │
-│  headless.rs    - Batch video export mode               │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                       rource-cli                      │
+├───────────────────────────────────────────────────────┤
+│   main.rs       - Entry point, event loop             │
+│   args.rs       - CLI argument parsing (clap)         │
+│   window.rs     - Window creation, input handling     │
+│   rendering.rs  - Scene to pixel rendering            │
+│   avatar.rs     - User avatar image loading           │
+│   headless.rs   - Batch video export mode             │
+└───────────────────────────────────────────────────────┘
 ```
 
 ### rource-wasm
@@ -153,27 +153,27 @@ Native desktop application:
 WebAssembly module for browser deployment:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      rource-wasm                         │
-├─────────────────────────────────────────────────────────┤
-│  lib.rs          - WASM entry, Rource class API         │
-│  backend.rs      - RendererBackend abstraction          │
-│  metrics.rs      - FPS tracking, render statistics      │
-│  playback.rs     - Timeline management                  │
-│  interaction.rs  - Mouse/touch handling                 │
-│  render_phases.rs- Phased rendering pipeline            │
-│  rendering.rs    - Splines, curves, visual helpers      │
-│  png.rs          - Screenshot export                    │
-├─────────────────────────────────────────────────────────┤
-│  www/            - Web demo page                        │
-│  ├── index.html  - Page structure                       │
-│  ├── styles.css  - Responsive styling                   │
-│  └── js/         - Modular JavaScript (ES Modules)      │
-│      ├── main.js         - Entry point                  │
-│      ├── state.js        - Observable state             │
-│      ├── animation.js    - Render loop                  │
-│      └── features/       - Feature modules              │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                      rource-wasm                      │
+├───────────────────────────────────────────────────────┤
+│   lib.rs           - WASM entry, Rource class API    │
+│   backend.rs       - RendererBackend abstraction      │
+│   metrics.rs       - FPS tracking, render statistics  │
+│   playback.rs      - Timeline management              │
+│   interaction.rs   - Mouse/touch handling             │
+│   render_phases.rs - Phased rendering pipeline        │
+│   rendering.rs     - Splines, curves, visual helpers  │
+│   png.rs           - Screenshot export                │
+├───────────────────────────────────────────────────────┤
+│   www/             - Web demo page                    │
+│   ├── index.html   - Page structure                   │
+│   ├── styles.css   - Responsive styling               │
+│   └── js/          - Modular JavaScript (ES Modules)  │
+│       ├── main.js       - Entry point                 │
+│       ├── state.js      - Observable state            │
+│       ├── animation.js  - Render loop                 │
+│       └── features/     - Feature modules             │
+└───────────────────────────────────────────────────────┘
 ```
 
 ## Data Flow
@@ -183,42 +183,42 @@ WebAssembly module for browser deployment:
 ```
 ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
 │ Git Log  │───▶│  Parser  │───▶│ Commit[] │───▶│  Scene   │
-│ (text)   │    │          │    │          │    │ .apply() │
+│  (text)  │    │          │    │          │    │ .apply() │
 └──────────┘    └──────────┘    └──────────┘    └──────────┘
                                                      │
-┌──────────────────────────────────────────────────────────┐
-│                     Per-Frame Update                      │
-├──────────────────────────────────────────────────────────┤
-│  1. Apply pending commits (based on playback speed)      │
-│  2. Update physics (force-directed layout)               │
-│  3. Update entity animations (fade-in, pulse, etc.)      │
-│  4. Update camera (smooth following, zoom)               │
-│  5. Cull non-visible entities (frustum culling)          │
-│  6. Render visible entities (files, users, connections)  │
-└──────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│                      Per-Frame Update                      │
+├────────────────────────────────────────────────────────────┤
+│   1. Apply pending commits (based on playback speed)       │
+│   2. Update physics (force-directed layout)                │
+│   3. Update entity animations (fade-in, pulse, etc.)       │
+│   4. Update camera (smooth following, zoom)                │
+│   5. Cull non-visible entities (frustum culling)           │
+│   6. Render visible entities (files, users, connections)   │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ### Rendering Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Frame Rendering                         │
-├─────────────────────────────────────────────────────────────┤
-│  1. begin_frame()                                           │
-│  2. clear(background_color)                                 │
-│  3. Calculate visible entities (quadtree query)             │
-│  4. Render layers (back to front):                          │
-│     a. Directory connections (tree branches)                │
-│     b. Directory labels                                     │
-│     c. Files (colored dots)                                 │
-│     d. Action beams (user → file connections)               │
-│     e. Users (avatars/circles)                              │
-│     f. User labels                                          │
-│     g. File labels                                          │
-│  5. Apply post-processing (bloom, if enabled)               │
-│  6. end_frame()                                             │
-│  7. present() (software) or implicit (WebGL)                │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│                      Frame Rendering                       │
+├────────────────────────────────────────────────────────────┤
+│   1. begin_frame()                                         │
+│   2. clear(background_color)                               │
+│   3. Calculate visible entities (quadtree query)           │
+│   4. Render layers (back to front):                        │
+│      a. Directory connections (tree branches)              │
+│      b. Directory labels                                   │
+│      c. Files (colored dots)                               │
+│      d. Action beams (user → file connections)             │
+│      e. Users (avatars/circles)                            │
+│      f. User labels                                        │
+│      g. File labels                                        │
+│   5. Apply post-processing (bloom, if enabled)             │
+│   6. end_frame()                                           │
+│   7. present() (software) or implicit (WebGL)              │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ## Key Design Patterns
@@ -262,12 +262,12 @@ Directories are positioned using a radial layout algorithm:
 
 ```
         Root (center)
-           │
-    ┌──────┼──────┐
-    │      │      │
-   src   tests   docs
-   /│\     │      │
-  / │ \    │      │
+             │
+    ┌────────┼────────┐
+    │        │        │
+   src     tests    docs
+   /│\       │        │
+  / │ \      │        │
 lib main utils  tests.rs  README.md
 ```
 
