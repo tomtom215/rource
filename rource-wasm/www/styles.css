@@ -183,23 +183,25 @@ header h1 {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-size: 0.875rem;
-    padding: 0.4rem 0.75rem;
+    font-weight: 500;
+    padding: 0.5rem 0.85rem;
     border-radius: 6px;
-    border: 1px solid var(--border);
+    border: 1px solid #d4a72c;
+    background: rgba(212, 167, 44, 0.1);
     transition: all 0.2s;
 }
 
 .github-link:hover {
-    color: var(--text-primary);
-    border-color: var(--border-light);
-    background: var(--bg-tertiary);
+    color: white;
+    border-color: #f0c142;
+    background: rgba(212, 167, 44, 0.25);
     text-decoration: none;
 }
 
 .github-link svg {
-    fill: currentColor;
+    fill: #f0c142;
 }
 
 /* Buttons */
