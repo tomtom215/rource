@@ -10,7 +10,7 @@ import { safeWasmCall } from '../wasm-api.js';
 import { getElement, getAllElements } from '../dom.js';
 import { showToast } from '../toast.js';
 import { CONFIG } from '../config.js';
-import { loadLogData, loadRourceData } from '../data-loader.js';
+import { loadLogData, loadRourceData, detectLogFormat } from '../data-loader.js';
 import { fetchGitHubWithProgress, parseGitHubUrl } from '../github-fetch.js';
 import { ROURCE_STATS, setAdditionalCommits } from '../cached-data.js';
 
@@ -73,7 +73,12 @@ function handleFileSelect(e) {
     const reader = new FileReader();
     reader.onload = (event) => {
         const content = event.target.result;
-        loadLogData(content, 'custom');
+        // Auto-detect format for better compatibility
+        const format = detectLogFormat(content);
+        if (format === 'unknown') {
+            showToast('Unknown log format. Trying custom format...', 'warning', 3000);
+        }
+        loadLogData(content, format === 'unknown' ? 'custom' : format);
 
         const fileNameEl = getElement('fileNameEl');
         if (fileNameEl) {
@@ -108,7 +113,10 @@ function initLoadFromTextarea() {
     addManagedEventListener(btnLoad, 'click', () => {
         const logInput = getElement('logInput');
         if (logInput && logInput.value.trim()) {
-            loadLogData(logInput.value, 'custom');
+            const content = logInput.value;
+            // Auto-detect format
+            const format = detectLogFormat(content);
+            loadLogData(content, format === 'unknown' ? 'custom' : format);
         } else {
             showToast('Please enter log data first', 'error');
         }
@@ -164,7 +172,9 @@ function initLoadFileButton() {
 
     addManagedEventListener(btnLoadFile, 'click', () => {
         if (uploadedFileContent) {
-            loadLogData(uploadedFileContent, 'custom');
+            // Auto-detect format
+            const format = detectLogFormat(uploadedFileContent);
+            loadLogData(uploadedFileContent, format === 'unknown' ? 'custom' : format);
         } else {
             showToast('Please select a file first', 'error');
         }

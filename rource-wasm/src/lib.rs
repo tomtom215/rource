@@ -287,9 +287,12 @@ impl Rource {
     }
 
     /// Loads commits from git log format.
+    ///
+    /// Uses lenient parsing to handle malformed lines gracefully.
     #[wasm_bindgen(js_name = loadGitLog)]
     pub fn load_git_log(&mut self, log: &str) -> Result<usize, JsValue> {
-        let parser = GitParser::new();
+        // Use lenient parsing to handle malformed lines gracefully
+        let parser = GitParser::with_options(ParseOptions::lenient());
         let commits = parser
             .parse_str(log)
             .map_err(|e| JsValue::from_str(&format!("Parse error: {e}")))?;
