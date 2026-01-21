@@ -922,6 +922,8 @@ header h1 {
     align-items: center;
     gap: 0.5rem;
     width: 100%;
+    overflow: visible;  /* Allow tick labels/tooltips to show above */
+    padding-top: 12px;  /* Space for tick labels above slider */
 }
 
 /* Date labels at ends of slider */
@@ -3706,6 +3708,7 @@ footer a {
     height: 20px;
     display: flex;
     align-items: center;
+    overflow: visible;  /* Allow tick labels and tooltips to overflow */
 }
 
 .timeline-slider-container .timeline-slider {
@@ -3720,10 +3723,11 @@ footer a {
     top: 50%;
     left: 8px;  /* Account for slider thumb radius */
     right: 8px;
-    height: 16px;
+    height: 24px;
     transform: translateY(-50%);
     pointer-events: none;
-    z-index: 1;
+    z-index: 3;  /* Above slider for tooltips */
+    overflow: visible;  /* Allow labels and tooltips to show */
 }
 
 .timeline-slider-container .timeline-marker {
@@ -3757,13 +3761,14 @@ footer a {
 /* Base tick style */
 .timeline-tick {
     position: absolute;
-    width: 1px;
+    width: 2px;
     transform: translateX(-50%);
-    bottom: 0;
+    bottom: 4px;
     opacity: 0;
     transition: opacity 0.3s ease-out, height 0.2s ease-out;
     pointer-events: auto;
-    cursor: help;
+    cursor: pointer;
+    border-radius: 1px;
 }
 
 /* Visible state (animated in) */
@@ -3773,27 +3778,28 @@ footer a {
 
 /* Height variants */
 .timeline-tick.tick-minor {
-    height: 6px;
+    height: 10px;
     background: var(--text-muted);
     opacity: 0;
 }
 
 .timeline-tick.tick-minor.visible {
-    opacity: 0.35;
-}
-
-.timeline-tick.tick-medium {
-    height: 8px;
-    background: var(--text-secondary);
-    opacity: 0;
-}
-
-.timeline-tick.tick-medium.visible {
     opacity: 0.5;
 }
 
+.timeline-tick.tick-medium {
+    height: 14px;
+    background: var(--text-secondary);
+    opacity: 0;
+    width: 2px;
+}
+
+.timeline-tick.tick-medium.visible {
+    opacity: 0.7;
+}
+
 .timeline-tick.tick-major {
-    height: 12px;
+    height: 18px;
     background: var(--text-primary);
     width: 2px;
     border-radius: 1px;
@@ -3801,7 +3807,7 @@ footer a {
 }
 
 .timeline-tick.tick-major.visible {
-    opacity: 0.7;
+    opacity: 0.85;
 }
 
 /* Interval-specific colors */
@@ -3836,35 +3842,61 @@ footer a {
 /* Hover effect with tooltip enhancement */
 .timeline-tick:hover {
     opacity: 1 !important;
-    height: 14px !important;
-    z-index: 10;
+    height: 20px !important;
+    z-index: 20;
+    background: var(--accent) !important;
 }
 
-/* Native tooltip styling via title attribute is handled by browser */
-/* For custom tooltips, we use CSS pseudo-elements */
+/* Custom tooltip via CSS pseudo-element */
 .timeline-tick::after {
-    content: attr(title);
+    content: attr(data-label);
     position: absolute;
-    bottom: calc(100% + 4px);
+    bottom: calc(100% + 18px);
     left: 50%;
     transform: translateX(-50%) scale(0.9);
-    background: var(--bg-secondary);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
-    padding: 2px 6px;
+    padding: 4px 10px;
     border-radius: 4px;
-    font-size: 0.65rem;
+    font-size: 0.7rem;
+    font-weight: 500;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s ease-out, transform 0.15s ease-out;
     border: 1px solid var(--border-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
     z-index: 100;
 }
 
 .timeline-tick:hover::after {
     opacity: 1;
     transform: translateX(-50%) scale(1);
+}
+
+/* Date label above tick for major ticks */
+.timeline-tick-label {
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.55rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0.9;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Hide labels on hover so tooltip takes over */
+.timeline-tick:hover .timeline-tick-label {
+    opacity: 0;
+}
+
+/* Hide labels on minor ticks to avoid clutter */
+.timeline-tick.tick-minor .timeline-tick-label {
+    display: none;
 }
 
 /* Stagger animation for tick appearance */
@@ -3886,21 +3918,25 @@ footer a {
 
 /* Light theme adjustments */
 [data-theme="light"] .timeline-tick.tick-minor.visible {
-    opacity: 0.4;
-}
-
-[data-theme="light"] .timeline-tick.tick-medium.visible {
     opacity: 0.55;
 }
 
+[data-theme="light"] .timeline-tick.tick-medium.visible {
+    opacity: 0.7;
+}
+
 [data-theme="light"] .timeline-tick.tick-major.visible {
-    opacity: 0.75;
+    opacity: 0.9;
 }
 
 [data-theme="light"] .timeline-tick::after {
     background: var(--bg-primary);
     border-color: var(--border-color);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .timeline-tick-label {
+    color: var(--text-muted);
 }
 
 /* ========================================

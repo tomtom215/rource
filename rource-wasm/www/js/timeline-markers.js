@@ -343,13 +343,28 @@ function calculatePosition(timestamp, startTimestamp, endTimestamp) {
 }
 
 /**
+ * Formats a full date label for tooltip display.
+ * @param {Date} date - Date to format
+ * @returns {string} Full formatted date
+ */
+function formatFullDateLabel(date) {
+    return date.toLocaleDateString(undefined, {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+}
+
+/**
  * Creates a tick marker DOM element.
  * @param {Object} boundary - Boundary object with date, label, isMajor
  * @param {number} position - Position percentage
  * @param {Object} config - Interval configuration
+ * @param {boolean} showLabel - Whether to show an inline label
  * @returns {HTMLElement} Tick marker element
  */
-function createTickElement(boundary, position, config) {
+function createTickElement(boundary, position, config, showLabel = false) {
     const tick = document.createElement('div');
     tick.className = `timeline-tick ${config.markerClass} ${config.heightClass}`;
 
@@ -359,8 +374,18 @@ function createTickElement(boundary, position, config) {
 
     tick.style.left = `${position}%`;
     tick.setAttribute('data-date', boundary.date.toISOString());
+    // Use data-label for CSS ::after tooltip content
+    tick.setAttribute('data-label', formatFullDateLabel(boundary.date));
     tick.setAttribute('title', boundary.label);
-    tick.setAttribute('aria-hidden', 'true');
+    tick.setAttribute('aria-label', `Timeline marker: ${boundary.label}`);
+
+    // Add inline label for major ticks or when explicitly requested
+    if (showLabel && (boundary.isMajor || config.heightClass === 'tick-major')) {
+        const label = document.createElement('span');
+        label.className = 'timeline-tick-label';
+        label.textContent = boundary.label;
+        tick.appendChild(label);
+    }
 
     return tick;
 }
@@ -474,6 +499,41 @@ function getCoarserInterval(intervalType) {
 }
 
 /**
+ * Determines which ticks should show inline labels.
+ * Returns indices of ticks that should have labels, spaced to avoid overlap.
+ * @param {Array} boundaries - Array of boundary objects with positions calculated
+ * @param {number} minSpacing - Minimum spacing percentage between labels
+ * @returns {Set<number>} Set of indices that should show labels
+ */
+function selectLabeledTicks(boundaries, minSpacing = 15) {
+    const labeled = new Set();
+    let lastLabelPos = -Infinity;
+
+    // First pass: label all major ticks that have enough spacing
+    for (let i = 0; i < boundaries.length; i++) {
+        const boundary = boundaries[i];
+        if (boundary.isMajor && boundary.position - lastLabelPos >= minSpacing) {
+            labeled.add(i);
+            lastLabelPos = boundary.position;
+        }
+    }
+
+    // If we have very few labels, try to add more
+    if (labeled.size < 3 && boundaries.length >= 3) {
+        lastLabelPos = -Infinity;
+        for (let i = 0; i < boundaries.length; i++) {
+            const boundary = boundaries[i];
+            if (boundary.position - lastLabelPos >= minSpacing) {
+                labeled.add(i);
+                lastLabelPos = boundary.position;
+            }
+        }
+    }
+
+    return labeled;
+}
+
+/**
  * Renders tick marks to the container.
  * @param {Array} boundaries - Array of boundary objects
  * @param {Object} config - Interval configuration
@@ -486,18 +546,24 @@ function renderTicks(boundaries, config, startTimestamp, endTimestamp, container
     const fragment = document.createDocumentFragment();
 
     // Filter out ticks that would be too close to the edges (within 2%)
-    const filteredBoundaries = boundaries.filter(boundary => {
-        const pos = calculatePosition(boundary.date.getTime() / 1000, startTimestamp, endTimestamp);
-        return pos > 2 && pos < 98;
-    });
+    // and calculate positions
+    const filteredBoundaries = boundaries
+        .map(boundary => {
+            const timestampSecs = boundary.date.getTime() / 1000;
+            const position = calculatePosition(timestampSecs, startTimestamp, endTimestamp);
+            return { ...boundary, position };
+        })
+        .filter(boundary => boundary.position > 2 && boundary.position < 98);
+
+    // Determine which ticks get inline labels
+    const labeledIndices = selectLabeledTicks(filteredBoundaries);
 
     // Add ticks
-    for (const boundary of filteredBoundaries) {
-        const timestampSecs = boundary.date.getTime() / 1000;
-        const position = calculatePosition(timestampSecs, startTimestamp, endTimestamp);
-        const tick = createTickElement(boundary, position, config);
+    filteredBoundaries.forEach((boundary, index) => {
+        const showLabel = labeledIndices.has(index);
+        const tick = createTickElement(boundary, boundary.position, config, showLabel);
         fragment.appendChild(tick);
-    }
+    });
 
     // Append all at once
     container.appendChild(fragment);
