@@ -1446,7 +1446,7 @@ mod tests {
 
         // Create some entities
         for i in 0..100 {
-            scene.create_file(&Path::new(&format!("file_{i}.rs")));
+            scene.create_file(Path::new(&format!("file_{i}.rs")));
         }
         scene.get_or_create_user("TestUser");
 
@@ -1484,7 +1484,11 @@ mod tests {
         }
 
         // Record positions
-        let mut positions: Vec<_> = scene.directories.iter().map(|d| d.position()).collect();
+        let mut positions: Vec<_> = scene
+            .directories
+            .iter()
+            .map(super::dir_node::DirNode::position)
+            .collect();
 
         // Run more updates
         for _ in 0..50 {
@@ -1492,7 +1496,11 @@ mod tests {
         }
 
         // Positions should be relatively stable (not moving much)
-        let new_positions: Vec<_> = scene.directories.iter().map(|d| d.position()).collect();
+        let new_positions: Vec<_> = scene
+            .directories
+            .iter()
+            .map(super::dir_node::DirNode::position)
+            .collect();
 
         for (old, new) in positions.iter_mut().zip(new_positions.iter()) {
             let delta = (*new - *old).length();

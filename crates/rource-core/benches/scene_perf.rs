@@ -3,8 +3,12 @@
 //! These benchmarks measure the performance of critical scene operations
 //! to establish baselines and verify optimizations.
 
+// Benchmarks don't need documentation - suppress the warning from criterion macros
+#![allow(missing_docs)]
+
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_core::scene::{ActionType, Scene};
+use std::fmt::Write;
 use std::path::PathBuf;
 
 /// Creates a scene with the specified number of files distributed across directories.
@@ -22,9 +26,9 @@ fn create_test_scene(file_count: usize, dir_depth: usize) -> Scene {
         } else {
             let mut path_str = String::new();
             for d in 0..depth {
-                path_str.push_str(&format!("dir_{}/", (dir_index + d) % 50));
+                let _ = write!(path_str, "dir_{}/", (dir_index + d) % 50);
             }
-            path_str.push_str(&format!("file_{i}.rs"));
+            let _ = write!(path_str, "file_{i}.rs");
             path_str.into()
         };
 
@@ -44,7 +48,7 @@ fn create_test_scene(file_count: usize, dir_depth: usize) -> Scene {
     scene
 }
 
-/// Benchmarks Scene::update() which is called every frame.
+/// Benchmarks `Scene::update()` which is called every frame.
 fn bench_scene_update(c: &mut Criterion) {
     let mut group = c.benchmark_group("scene_update");
 
@@ -97,7 +101,7 @@ fn bench_force_layout(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks visible_entities() spatial queries.
+/// Benchmarks `visible_entities()` spatial queries.
 fn bench_spatial_query(c: &mut Criterion) {
     use rource_math::{Bounds, Vec2};
 
@@ -127,7 +131,7 @@ fn bench_spatial_query(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks file_extension_stats() which computes legend data.
+/// Benchmarks `file_extension_stats()` which computes legend data.
 fn bench_extension_stats(c: &mut Criterion) {
     let mut group = c.benchmark_group("extension_stats");
 
@@ -154,7 +158,7 @@ fn bench_extension_stats(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks cached file_extension_stats() to show cache benefit.
+/// Benchmarks cached `file_extension_stats()` to show cache benefit.
 fn bench_extension_stats_cached(c: &mut Criterion) {
     let mut group = c.benchmark_group("extension_stats_cached");
 
@@ -182,7 +186,7 @@ fn bench_extension_stats_cached(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks apply_commit() which processes VCS data.
+/// Benchmarks `apply_commit()` which processes VCS data.
 fn bench_apply_commit(c: &mut Criterion) {
     let mut group = c.benchmark_group("apply_commit");
 
@@ -209,7 +213,7 @@ fn bench_apply_commit(c: &mut Criterion) {
                                 PathBuf::from(format!("src/existing_{}.rs", i % 500))
                             } else {
                                 // Create new
-                                PathBuf::from(format!("src/new_{}_{i}.rs", commit_num))
+                                PathBuf::from(format!("src/new_{commit_num}_{i}.rs"))
                             };
                             let action = if i % 3 == 0 {
                                 ActionType::Modify
@@ -230,7 +234,7 @@ fn bench_apply_commit(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks rebuild_spatial_index() which is called periodically.
+/// Benchmarks `rebuild_spatial_index()` which is called periodically.
 fn bench_rebuild_spatial_index(c: &mut Criterion) {
     let mut group = c.benchmark_group("rebuild_spatial_index");
 
