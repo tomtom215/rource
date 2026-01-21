@@ -167,8 +167,9 @@ export function loadLogData(content, format = 'custom', options = {}) {
         const displayCommits = options.totalCommits || visualizationCommits;
         stats.commits = displayCommits;
 
-        // Get directory count from WASM (scene has directories after loading)
-        const dirCount = safeWasmCall('getTotalDirectories', () => rource.getTotalDirectories(), 0);
+        // Get directory count from all commits (not just scene state)
+        // Use getCommitDirectoryCount which calculates from file paths
+        const dirCount = safeWasmCall('getCommitDirectoryCount', () => rource.getCommitDirectoryCount(), 0);
 
         // Update stats overlay (show display commits, which may include merge commits)
         if (elements.statCommits) elements.statCommits.textContent = displayCommits;

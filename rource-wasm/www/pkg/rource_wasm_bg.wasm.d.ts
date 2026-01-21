@@ -15,6 +15,7 @@ export const rource_getCameraState: (a: number, b: number) => void;
 export const rource_getCanvasHeight: (a: number) => number;
 export const rource_getCanvasWidth: (a: number) => number;
 export const rource_getCommitAuthor: (a: number, b: number, c: number) => void;
+export const rource_getCommitDirectoryCount: (a: number) => number;
 export const rource_getCommitFileCount: (a: number, b: number) => number;
 export const rource_getCommitTimestamp: (a: number, b: number) => number;
 export const rource_getDateRange: (a: number, b: number) => void;

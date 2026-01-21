@@ -115,9 +115,10 @@ function restart() {
 }
 
 /**
- * Speed options in order.
+ * Speed options in order (fastest to slowest playback).
+ * Lower values = faster playback (seconds per day of commit history).
  */
-const SPEED_OPTIONS = ['0.5', '1', '2', '5', '10', '20', '50', '100'];
+const SPEED_OPTIONS = ['0.1', '0.5', '1', '2', '5', '10', '20', '50', '100'];
 
 /**
  * Changes speed to the next or previous option.
