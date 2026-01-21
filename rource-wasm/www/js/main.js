@@ -112,17 +112,23 @@ async function main() {
             throw new Error('Canvas element not found');
         }
 
-        const rource = new Rource(canvas);
+        // Use async factory method: Rource.create()
+        // It tries backends in order: wgpu (WebGPU) → WebGL2 → Software
+        const rource = await Rource.create(canvas);
         setRource(rource);
 
         // Check renderer type
-        const isWebGL2 = rource.isWebGL2();
+        const isGPU = rource.isGPUAccelerated();
         const rendererType = rource.getRendererType();
         console.log(`Rource: Using ${rendererType} renderer`);
 
         // Update renderer badge
         if (elements.techRenderer) {
-            elements.techRenderer.textContent = isWebGL2 ? 'WebGL2' : 'CPU';
+            // Show backend type: "WebGPU", "WebGL2", or "CPU"
+            const badgeText = rendererType === 'wgpu' ? 'WebGPU'
+                           : rendererType === 'webgl2' ? 'WebGL2'
+                           : 'CPU';
+            elements.techRenderer.textContent = badgeText;
         }
 
         // Initialize core modules

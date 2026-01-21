@@ -6,13 +6,14 @@
 //!
 //! ## Rendering Backends
 //!
-//! Rource WASM supports two rendering backends:
+//! Rource WASM supports three rendering backends (in priority order):
 //!
-//! - **WebGL2** (default): GPU-accelerated rendering for best performance
-//! - **Software**: Pure CPU rendering via `Canvas2D` for maximum compatibility
+//! 1. **wgpu (WebGPU)**: Best performance, modern GPU API (Chrome 113+, Edge 113+, Firefox 128+)
+//! 2. **WebGL2**: Good performance, widely supported in all modern browsers
+//! 3. **Software**: Pure CPU rendering via `Canvas2D` for maximum compatibility
 //!
-//! The constructor automatically tries WebGL2 first and falls back to software
-//! rendering if WebGL2 is unavailable.
+//! The async constructor automatically tries wgpu first, then WebGL2, and finally
+//! falls back to software rendering.
 //!
 //! ## Module Structure
 //!
@@ -32,10 +33,17 @@
 //!     await init();
 //!
 //!     const canvas = document.getElementById('canvas');
-//!     const rource = new Rource(canvas);
+//!     // Use the async factory method Rource.create()
+//!     const rource = await Rource.create(canvas);
 //!
 //!     // Check which backend is being used
 //!     console.log('Renderer:', rource.getRendererType());
+//!     // Possible values: "wgpu", "webgl2", or "software"
+//!
+//!     // Check if GPU-accelerated
+//!     if (rource.isGPUAccelerated()) {
+//!         console.log('Using GPU acceleration');
+//!     }
 //!
 //!     // Load a git log
 //!     const log = `1234567890|John Doe|A|src/main.rs
@@ -178,19 +186,39 @@ pub struct Rource {
 
 #[wasm_bindgen]
 impl Rource {
-    /// Creates a new Rource instance attached to a canvas element.
+    /// Creates a new Rource instance attached to a canvas element (async factory method).
     ///
-    /// Automatically tries WebGL2 first, falling back to software rendering if unavailable.
+    /// Automatically tries wgpu (WebGPU) first, then WebGL2, falling back to
+    /// software rendering if neither is available.
     ///
     /// # Arguments
     ///
     /// * `canvas` - The HTML canvas element to render to
-    #[wasm_bindgen(constructor)]
-    pub fn new(canvas: HtmlCanvasElement) -> Result<Self, JsValue> {
+    ///
+    /// # Backend Selection Priority
+    ///
+    /// 1. **wgpu (WebGPU)**: Best performance, modern GPU API (Chrome 113+, Edge 113+)
+    /// 2. **WebGL2**: Good performance, widely supported
+    /// 3. **Software**: Maximum compatibility, CPU-based
+    ///
+    /// # JavaScript Usage
+    ///
+    /// ```javascript
+    /// const rource = await Rource.create(canvas);
+    /// ```
+    ///
+    /// # Note on Send
+    ///
+    /// This future is not `Send` because JavaScript/browser APIs are single-threaded.
+    /// This is expected and safe for WASM usage.
+    #[wasm_bindgen(js_name = create)]
+    #[allow(clippy::future_not_send)]
+    pub async fn create(canvas: HtmlCanvasElement) -> Result<Self, JsValue> {
         let width = canvas.width();
         let height = canvas.height();
 
-        let (mut backend, renderer_type) = RendererBackend::new(&canvas)?;
+        // Use async initialization to try wgpu (WebGPU) first
+        let (mut backend, renderer_type) = RendererBackend::new_async(&canvas).await?;
 
         // Load the default font for text rendering
         let font_id = backend.load_font(default_font::ROBOTO_MONO);
@@ -236,10 +264,22 @@ impl Rource {
         })
     }
 
-    /// Returns the type of renderer being used ("webgl2" or "software").
+    /// Returns the type of renderer being used ("wgpu", "webgl2", or "software").
     #[wasm_bindgen(js_name = getRendererType)]
     pub fn get_renderer_type(&self) -> String {
         self.renderer_type.as_str().to_string()
+    }
+
+    /// Returns true if using a GPU-accelerated renderer (wgpu or WebGL2).
+    #[wasm_bindgen(js_name = isGPUAccelerated)]
+    pub fn is_gpu_accelerated(&self) -> bool {
+        self.renderer_type.is_gpu_accelerated()
+    }
+
+    /// Returns true if using wgpu (WebGPU) renderer.
+    #[wasm_bindgen(js_name = isWgpu)]
+    pub fn is_wgpu(&self) -> bool {
+        self.renderer_type == RendererType::Wgpu
     }
 
     /// Returns true if using WebGL2 renderer.
@@ -248,13 +288,13 @@ impl Rource {
         self.renderer_type == RendererType::WebGl2
     }
 
-    /// Returns true if the WebGL context is lost.
+    /// Returns true if the GPU context is lost.
     #[wasm_bindgen(js_name = isContextLost)]
     pub fn is_context_lost(&self) -> bool {
         self.backend.is_context_lost()
     }
 
-    /// Attempts to recover from a lost WebGL context.
+    /// Attempts to recover from a lost GPU context.
     #[wasm_bindgen(js_name = recoverContext)]
     pub fn recover_context(&mut self) -> bool {
         self.backend.recover_context().is_ok()

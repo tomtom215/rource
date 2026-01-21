@@ -991,7 +991,11 @@ impl ComputePipeline {
     }
 
     /// Downloads entity data from the staging buffer (WASM version).
+    ///
+    /// This method is async for API consistency even though the current implementation
+    /// uses synchronous polling. Future implementations may use true async buffer mapping.
     #[cfg(target_arch = "wasm32")]
+    #[allow(clippy::unused_async)]
     pub async fn download_entities_async(&mut self, device: &Device) -> Vec<ComputeEntity> {
         use wgpu::BufferSlice;
 
