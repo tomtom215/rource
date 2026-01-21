@@ -435,6 +435,88 @@ fn use_program(&mut self, gl: &WebGl2RenderingContext, program: &WebGlProgram) {
 }
 ```
 
+### Phase 6 Optimizations (2026-01-21)
+
+Additional WebGL2 rendering optimizations for reduced API overhead:
+
+#### 1. Uniform Buffer Objects (UBOs)
+
+Implemented UBOs for sharing common uniforms across all shader programs. Instead of
+setting `u_resolution` individually for each shader (~12 calls/frame), we now upload
+it once via a uniform buffer.
+
+**Files Added**:
+- `crates/rource-render/src/backend/webgl2/ubo.rs` - UBO management
+
+**Implementation**:
+```rust
+// UBO binding point shared by all shaders
+pub const COMMON_UNIFORMS_BINDING: u32 = 0;
+
+// UBO layout (std140):
+// - bytes 0-7: u_resolution (vec2)
+// - bytes 8-15: padding (std140 alignment)
+
+// Per-frame update (once per frame instead of per-shader):
+ubo_manager.set_resolution(width, height);
+ubo_manager.upload(gl);
+ubo_manager.bind(gl);
+```
+
+**UBO-Enabled Shaders**:
+All primitive vertex shaders now have UBO variants (`*_UBO` suffix) that use a
+uniform block instead of individual uniforms:
+
+```glsl
+// UBO-enabled shader (std140 layout, binding = 0)
+layout(std140, binding = 0) uniform CommonUniforms {
+    vec2 u_resolution;
+    vec2 _padding;
+};
+```
+
+**Performance Impact**:
+- Legacy mode: ~12 `gl.uniform2f()` calls per frame
+- UBO mode: 1 `gl.bufferSubData()` call per frame
+- ~90% reduction in uniform-related API overhead
+
+**Automatic Fallback**: If UBO initialization fails, the renderer falls back to
+legacy shaders with individual uniforms transparently.
+
+#### 2. Frame Statistics for Debugging
+
+Added comprehensive frame statistics tracking for performance profiling:
+
+**Files Added**:
+- `crates/rource-render/src/backend/webgl2/stats.rs` - FrameStats struct
+
+**Statistics Tracked**:
+
+| Metric | Description |
+|--------|-------------|
+| `draw_calls` | Number of instanced draw calls |
+| `total_instances` | Total primitives rendered |
+| `circle_instances` | Circles rendered |
+| `ring_instances` | Rings rendered |
+| `line_instances` | Lines rendered |
+| `quad_instances` | Solid quads rendered |
+| `textured_quad_instances` | Textured quads rendered |
+| `text_instances` | Text glyphs rendered |
+| `program_switches` | Shader program changes |
+| `vao_switches` | VAO binding changes |
+| `texture_binds` | Texture binding calls |
+| `uniform_calls` | Uniform calls (legacy mode only) |
+| `ubo_enabled` | Whether UBO mode is active |
+
+**API Usage**:
+```rust
+let stats = renderer.frame_stats();
+println!("{}", stats.summary());
+// Output: "Draws: 6, Instances: 1200 (200.0/draw), Programs: 6, VAOs: 6, UBO: on"
+```
+
+**Test Count**: 950 tests (added 11 new tests for UBO and stats modules)
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -445,10 +527,15 @@ hardware-accelerated glow effects around bright areas of the scene.
 ```
 crates/rource-render/src/backend/webgl2/
 ├── mod.rs          # WebGl2Renderer with bloom integration
-├── bloom.rs        # BloomPipeline, BloomFbo, BloomConfig (NEW)
-├── shaders.rs      # GLSL ES 3.0 shaders including bloom passes
+├── bloom.rs        # BloomPipeline, BloomFbo, BloomConfig
+├── shadow.rs       # ShadowPipeline for drop shadows
+├── shaders.rs      # GLSL ES 3.0 shaders (legacy + UBO variants)
 ├── buffers.rs      # VBO/VAO management including fullscreen quad
-└── textures.rs     # Texture atlas for font glyphs
+├── textures.rs     # Texture atlas for font glyphs
+├── state.rs        # GlStateCache for state caching
+├── stats.rs        # FrameStats for debugging
+├── ubo.rs          # UniformBufferManager for shared uniforms
+└── adaptive.rs     # Adaptive quality controller
 ```
 
 #### Pipeline Overview
@@ -560,9 +647,14 @@ Successfully implemented GPU-accelerated WebGL2 rendering backend for WASM:
 crates/rource-render/src/backend/webgl2/
 ├── mod.rs          # WebGl2Renderer implementing Renderer trait
 ├── bloom.rs        # GPU bloom post-processing pipeline
-├── shaders.rs      # GLSL ES 3.0 shader sources
+├── shadow.rs       # GPU shadow post-processing pipeline
+├── shaders.rs      # GLSL ES 3.0 shader sources (legacy + UBO variants)
 ├── buffers.rs      # VBO/VAO management for instanced rendering
-└── textures.rs     # Texture atlas for font glyphs
+├── textures.rs     # Texture atlas for font glyphs
+├── state.rs        # GlStateCache for avoiding redundant API calls
+├── stats.rs        # FrameStats for debugging and profiling
+├── ubo.rs          # Uniform Buffer Objects for shared uniforms
+└── adaptive.rs     # Adaptive quality controller
 ```
 
 #### Key Features
@@ -1041,4 +1133,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-21 (Performance optimizations: GPU buffer sub-data updates, state caching - 939 tests)*
+*Last updated: 2026-01-21 (Phase 6 optimizations: UBOs, frame statistics - 950 tests)*

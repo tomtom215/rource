@@ -30,7 +30,9 @@ pub mod buffers;
 pub mod shaders;
 pub mod shadow;
 pub mod state;
+pub mod stats;
 pub mod textures;
+pub mod ubo;
 
 use std::collections::HashMap;
 
@@ -45,19 +47,22 @@ use crate::{FontCache, FontId, Renderer, TextureId};
 use bloom::BloomPipeline;
 use buffers::{InstanceBuffer, VertexArrayManager};
 use shaders::{
-    CIRCLE_FRAGMENT_SHADER, CIRCLE_VERTEX_SHADER, LINE_FRAGMENT_SHADER, LINE_VERTEX_SHADER,
-    QUAD_FRAGMENT_SHADER, QUAD_VERTEX_SHADER, RING_FRAGMENT_SHADER, RING_VERTEX_SHADER,
-    TEXTURED_QUAD_FRAGMENT_SHADER, TEXTURED_QUAD_VERTEX_SHADER, TEXT_FRAGMENT_SHADER,
-    TEXT_VERTEX_SHADER,
+    CIRCLE_FRAGMENT_SHADER, CIRCLE_VERTEX_SHADER, CIRCLE_VERTEX_SHADER_UBO, LINE_FRAGMENT_SHADER,
+    LINE_VERTEX_SHADER, LINE_VERTEX_SHADER_UBO, QUAD_FRAGMENT_SHADER, QUAD_VERTEX_SHADER,
+    QUAD_VERTEX_SHADER_UBO, RING_FRAGMENT_SHADER, RING_VERTEX_SHADER, RING_VERTEX_SHADER_UBO,
+    TEXTURED_QUAD_FRAGMENT_SHADER, TEXTURED_QUAD_VERTEX_SHADER, TEXTURED_QUAD_VERTEX_SHADER_UBO,
+    TEXT_FRAGMENT_SHADER, TEXT_VERTEX_SHADER, TEXT_VERTEX_SHADER_UBO,
 };
 use shadow::ShadowPipeline;
 use state::GlStateCache;
 use textures::{FontAtlas, GlyphKey, TextureManager};
+use ubo::UniformBufferManager;
 
 // Re-export post-processing configuration for external use
 pub use adaptive::{AdaptiveQuality, QualityAdjustment, QualityLevel};
 pub use bloom::{BloomConfig, BloomPipeline as BloomEffect};
 pub use shadow::{ShadowConfig, ShadowPipeline as ShadowEffect};
+pub use stats::FrameStats;
 
 /// Error type for WebGL2 renderer initialization.
 #[derive(Debug, Clone)]
@@ -169,6 +174,15 @@ pub struct WebGl2Renderer {
     /// GPU state cache for avoiding redundant API calls.
     state_cache: GlStateCache,
 
+    /// Uniform Buffer Object manager for shared uniforms.
+    ubo_manager: UniformBufferManager,
+
+    /// Whether UBO mode is active (uses UBO shaders instead of legacy).
+    ubo_enabled: bool,
+
+    /// Frame statistics for debugging and profiling.
+    frame_stats: FrameStats,
+
     /// Whether context was lost.
     context_lost: bool,
 }
@@ -229,6 +243,9 @@ impl WebGl2Renderer {
             shadow_pipeline: ShadowPipeline::new(),
             adaptive_quality: AdaptiveQuality::new(),
             state_cache: GlStateCache::new(),
+            ubo_manager: UniformBufferManager::new(),
+            ubo_enabled: false,
+            frame_stats: FrameStats::new(),
             context_lost: false,
         };
 
@@ -258,15 +275,42 @@ impl WebGl2Renderer {
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
 
-        // Compile shader programs
-        self.circle_program =
-            Some(self.compile_program(CIRCLE_VERTEX_SHADER, CIRCLE_FRAGMENT_SHADER)?);
-        self.ring_program = Some(self.compile_program(RING_VERTEX_SHADER, RING_FRAGMENT_SHADER)?);
-        self.line_program = Some(self.compile_program(LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER)?);
-        self.quad_program = Some(self.compile_program(QUAD_VERTEX_SHADER, QUAD_FRAGMENT_SHADER)?);
-        self.textured_quad_program =
-            Some(self.compile_program(TEXTURED_QUAD_VERTEX_SHADER, TEXTURED_QUAD_FRAGMENT_SHADER)?);
-        self.text_program = Some(self.compile_program(TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER)?);
+        // Try to initialize UBO system
+        // UBO mode reduces uniform API calls from ~12/frame to 1/frame
+        self.ubo_enabled = self.ubo_manager.initialize(gl);
+
+        if self.ubo_enabled {
+            // Use UBO-enabled shaders
+            self.circle_program =
+                Some(self.compile_program(CIRCLE_VERTEX_SHADER_UBO, CIRCLE_FRAGMENT_SHADER)?);
+            self.ring_program =
+                Some(self.compile_program(RING_VERTEX_SHADER_UBO, RING_FRAGMENT_SHADER)?);
+            self.line_program =
+                Some(self.compile_program(LINE_VERTEX_SHADER_UBO, LINE_FRAGMENT_SHADER)?);
+            self.quad_program =
+                Some(self.compile_program(QUAD_VERTEX_SHADER_UBO, QUAD_FRAGMENT_SHADER)?);
+            self.textured_quad_program = Some(self.compile_program(
+                TEXTURED_QUAD_VERTEX_SHADER_UBO,
+                TEXTURED_QUAD_FRAGMENT_SHADER,
+            )?);
+            self.text_program =
+                Some(self.compile_program(TEXT_VERTEX_SHADER_UBO, TEXT_FRAGMENT_SHADER)?);
+        } else {
+            // Fallback to legacy shaders with individual uniforms
+            self.circle_program =
+                Some(self.compile_program(CIRCLE_VERTEX_SHADER, CIRCLE_FRAGMENT_SHADER)?);
+            self.ring_program =
+                Some(self.compile_program(RING_VERTEX_SHADER, RING_FRAGMENT_SHADER)?);
+            self.line_program =
+                Some(self.compile_program(LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER)?);
+            self.quad_program =
+                Some(self.compile_program(QUAD_VERTEX_SHADER, QUAD_FRAGMENT_SHADER)?);
+            self.textured_quad_program = Some(
+                self.compile_program(TEXTURED_QUAD_VERTEX_SHADER, TEXTURED_QUAD_FRAGMENT_SHADER)?,
+            );
+            self.text_program =
+                Some(self.compile_program(TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER)?);
+        }
 
         // Create VAO manager vertex buffer
         self.vao_manager.create_vertex_buffer(gl);
@@ -544,22 +588,40 @@ impl WebGl2Renderer {
 
         // Use program (state cache avoids redundant bind)
         let program_changed = self.state_cache.use_program(gl, &program.program);
+        if program_changed {
+            self.frame_stats.program_switches += 1;
+        }
 
         // Bind VAO (state cache avoids redundant bind)
-        self.state_cache
+        let vao_changed = self
+            .state_cache
             .bind_vao(gl, self.vao_manager.circle_vao.as_ref());
+        if vao_changed {
+            self.frame_stats.vao_switches += 1;
+        }
 
-        // Set uniforms only if program changed
+        // Set uniforms only if program changed (legacy mode only)
         if program_changed {
             if let Some(loc) = &program.resolution_loc {
                 let (w, h) = self.state_cache.resolution();
                 gl.uniform2f(Some(loc), w, h);
+                self.frame_stats.uniform_calls += 1;
             }
         }
 
         // Draw instanced
-        let instance_count = self.circle_instances.instance_count() as i32;
-        gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
+        let instance_count = self.circle_instances.instance_count();
+        gl.draw_arrays_instanced(
+            WebGl2RenderingContext::TRIANGLE_STRIP,
+            0,
+            4,
+            instance_count as i32,
+        );
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.circle_instances += instance_count as u32;
+        self.frame_stats.total_instances += instance_count as u32;
 
         self.circle_instances.clear();
     }
@@ -584,21 +646,39 @@ impl WebGl2Renderer {
 
         // Use program (state cache avoids redundant bind)
         let program_changed = self.state_cache.use_program(gl, &program.program);
+        if program_changed {
+            self.frame_stats.program_switches += 1;
+        }
 
         // Bind VAO (state cache avoids redundant bind)
-        self.state_cache
+        let vao_changed = self
+            .state_cache
             .bind_vao(gl, self.vao_manager.ring_vao.as_ref());
+        if vao_changed {
+            self.frame_stats.vao_switches += 1;
+        }
 
-        // Set uniforms only if program changed
+        // Set uniforms only if program changed (legacy mode only)
         if program_changed {
             if let Some(loc) = &program.resolution_loc {
                 let (w, h) = self.state_cache.resolution();
                 gl.uniform2f(Some(loc), w, h);
+                self.frame_stats.uniform_calls += 1;
             }
         }
 
-        let instance_count = self.ring_instances.instance_count() as i32;
-        gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
+        let instance_count = self.ring_instances.instance_count();
+        gl.draw_arrays_instanced(
+            WebGl2RenderingContext::TRIANGLE_STRIP,
+            0,
+            4,
+            instance_count as i32,
+        );
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.ring_instances += instance_count as u32;
+        self.frame_stats.total_instances += instance_count as u32;
 
         self.ring_instances.clear();
     }
@@ -623,21 +703,39 @@ impl WebGl2Renderer {
 
         // Use program (state cache avoids redundant bind)
         let program_changed = self.state_cache.use_program(gl, &program.program);
+        if program_changed {
+            self.frame_stats.program_switches += 1;
+        }
 
         // Bind VAO (state cache avoids redundant bind)
-        self.state_cache
+        let vao_changed = self
+            .state_cache
             .bind_vao(gl, self.vao_manager.line_vao.as_ref());
+        if vao_changed {
+            self.frame_stats.vao_switches += 1;
+        }
 
-        // Set uniforms only if program changed
+        // Set uniforms only if program changed (legacy mode only)
         if program_changed {
             if let Some(loc) = &program.resolution_loc {
                 let (w, h) = self.state_cache.resolution();
                 gl.uniform2f(Some(loc), w, h);
+                self.frame_stats.uniform_calls += 1;
             }
         }
 
-        let instance_count = self.line_instances.instance_count() as i32;
-        gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
+        let instance_count = self.line_instances.instance_count();
+        gl.draw_arrays_instanced(
+            WebGl2RenderingContext::TRIANGLE_STRIP,
+            0,
+            4,
+            instance_count as i32,
+        );
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.line_instances += instance_count as u32;
+        self.frame_stats.total_instances += instance_count as u32;
 
         self.line_instances.clear();
     }
@@ -662,21 +760,39 @@ impl WebGl2Renderer {
 
         // Use program (state cache avoids redundant bind)
         let program_changed = self.state_cache.use_program(gl, &program.program);
+        if program_changed {
+            self.frame_stats.program_switches += 1;
+        }
 
         // Bind VAO (state cache avoids redundant bind)
-        self.state_cache
+        let vao_changed = self
+            .state_cache
             .bind_vao(gl, self.vao_manager.quad_vao.as_ref());
+        if vao_changed {
+            self.frame_stats.vao_switches += 1;
+        }
 
-        // Set uniforms only if program changed
+        // Set uniforms only if program changed (legacy mode only)
         if program_changed {
             if let Some(loc) = &program.resolution_loc {
                 let (w, h) = self.state_cache.resolution();
                 gl.uniform2f(Some(loc), w, h);
+                self.frame_stats.uniform_calls += 1;
             }
         }
 
-        let instance_count = self.quad_instances.instance_count() as i32;
-        gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
+        let instance_count = self.quad_instances.instance_count();
+        gl.draw_arrays_instanced(
+            WebGl2RenderingContext::TRIANGLE_STRIP,
+            0,
+            4,
+            instance_count as i32,
+        );
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.quad_instances += instance_count as u32;
+        self.frame_stats.total_instances += instance_count as u32;
 
         self.quad_instances.clear();
     }
@@ -695,12 +811,16 @@ impl WebGl2Renderer {
 
         // Use program (state cache avoids redundant bind)
         let program_changed = self.state_cache.use_program(gl, &program.program);
+        if program_changed {
+            self.frame_stats.program_switches += 1;
+        }
 
-        // Set uniforms only if program changed
+        // Set uniforms only if program changed (legacy mode only)
         if program_changed {
             if let Some(loc) = &program.resolution_loc {
                 let (w, h) = self.state_cache.resolution();
                 gl.uniform2f(Some(loc), w, h);
+                self.frame_stats.uniform_calls += 1;
             }
 
             if let Some(loc) = &program.texture_loc {
@@ -721,6 +841,7 @@ impl WebGl2Renderer {
 
                 // Bind texture (state cache tracks bound textures)
                 self.texture_manager.bind(gl, tex_id, 0);
+                self.frame_stats.texture_binds += 1;
 
                 // Setup VAO if needed
                 if self.vao_manager.textured_quad_vao.is_none() {
@@ -728,16 +849,25 @@ impl WebGl2Renderer {
                 }
 
                 // Bind VAO (state cache avoids redundant bind)
-                self.state_cache
+                let vao_changed = self
+                    .state_cache
                     .bind_vao(gl, self.vao_manager.textured_quad_vao.as_ref());
+                if vao_changed {
+                    self.frame_stats.vao_switches += 1;
+                }
 
-                let instance_count = instances.instance_count() as i32;
+                let instance_count = instances.instance_count();
                 gl.draw_arrays_instanced(
                     WebGl2RenderingContext::TRIANGLE_STRIP,
                     0,
                     4,
-                    instance_count,
+                    instance_count as i32,
                 );
+
+                // Track statistics
+                self.frame_stats.draw_calls += 1;
+                self.frame_stats.textured_quad_instances += instance_count as u32;
+                self.frame_stats.total_instances += instance_count as u32;
 
                 instances.clear();
             }
@@ -770,16 +900,24 @@ impl WebGl2Renderer {
 
         // Use program (state cache avoids redundant bind)
         let program_changed = self.state_cache.use_program(gl, &program.program);
+        if program_changed {
+            self.frame_stats.program_switches += 1;
+        }
 
         // Bind VAO (state cache avoids redundant bind)
-        self.state_cache
+        let vao_changed = self
+            .state_cache
             .bind_vao(gl, self.vao_manager.text_vao.as_ref());
+        if vao_changed {
+            self.frame_stats.vao_switches += 1;
+        }
 
-        // Set uniforms only if program changed
+        // Set uniforms only if program changed (legacy mode only)
         if program_changed {
             if let Some(loc) = &program.resolution_loc {
                 let (w, h) = self.state_cache.resolution();
                 gl.uniform2f(Some(loc), w, h);
+                self.frame_stats.uniform_calls += 1;
             }
 
             if let Some(loc) = &program.texture_loc {
@@ -789,9 +927,20 @@ impl WebGl2Renderer {
 
         // Bind font atlas
         self.font_atlas.bind(gl, 0);
+        self.frame_stats.texture_binds += 1;
 
-        let instance_count = self.text_instances.instance_count() as i32;
-        gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
+        let instance_count = self.text_instances.instance_count();
+        gl.draw_arrays_instanced(
+            WebGl2RenderingContext::TRIANGLE_STRIP,
+            0,
+            4,
+            instance_count as i32,
+        );
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.text_instances += instance_count as u32;
+        self.frame_stats.total_instances += instance_count as u32;
 
         self.text_instances.clear();
     }
@@ -809,7 +958,10 @@ impl WebGl2Renderer {
 
         self.context_lost = false;
 
-        // Reinitialize GL state
+        // Invalidate UBO state (must be re-initialized)
+        self.ubo_manager.invalidate();
+
+        // Reinitialize GL state (will re-initialize UBO)
         self.init_gl()?;
 
         // Clear font atlas (glyphs need to be re-cached)
@@ -856,6 +1008,28 @@ impl WebGl2Renderer {
     /// Returns mutable access to the font cache.
     pub fn font_cache_mut(&mut self) -> &mut FontCache {
         &mut self.font_cache
+    }
+
+    /// Returns whether UBO mode is enabled.
+    ///
+    /// When enabled, shaders use Uniform Buffer Objects for the `u_resolution`
+    /// uniform instead of individual uniform calls. This reduces API overhead
+    /// by ~90% for uniform-related calls.
+    ///
+    /// UBO mode is enabled by default on all WebGL2-capable browsers.
+    #[inline]
+    pub fn is_ubo_enabled(&self) -> bool {
+        self.ubo_enabled
+    }
+
+    /// Returns statistics from the last rendered frame.
+    ///
+    /// These statistics are useful for debugging and performance profiling.
+    /// Call this after `end_frame()` to get accurate metrics for the
+    /// most recently completed frame.
+    #[inline]
+    pub fn frame_stats(&self) -> &FrameStats {
+        &self.frame_stats
     }
 
     // =========================================================================
@@ -1172,8 +1346,20 @@ impl Renderer for WebGl2Renderer {
             return;
         }
 
+        // Reset frame statistics
+        self.frame_stats.reset();
+        self.frame_stats.ubo_enabled = self.ubo_enabled;
+
         // Initialize state cache for this frame
         self.state_cache.begin_frame(self.width, self.height);
+
+        // Update and bind UBO if enabled
+        if self.ubo_enabled {
+            self.ubo_manager
+                .set_resolution(self.width as f32, self.height as f32);
+            self.ubo_manager.upload(&self.gl);
+            self.ubo_manager.bind(&self.gl);
+        }
 
         // Clear instance buffers
         self.circle_instances.clear();
@@ -1545,6 +1731,7 @@ impl Drop for WebGl2Renderer {
         self.vao_manager.destroy(&self.gl);
         self.font_atlas.destroy(&self.gl);
         self.texture_manager.destroy(&self.gl);
+        self.ubo_manager.destroy(&self.gl);
         self.circle_instances.destroy(&self.gl);
         self.ring_instances.destroy(&self.gl);
         self.line_instances.destroy(&self.gl);
