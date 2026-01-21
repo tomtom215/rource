@@ -27,8 +27,8 @@
     --accent-secondary: #238636;
     --accent-blue: #58a6ff;
     --text-primary: #f0f6fc;
-    --text-secondary: #8b949e;
-    --text-muted: #6e7681;
+    --text-secondary: #9ca3af;
+    --text-muted: #848d97;
     --border: #30363d;
     --border-light: #484f58;
     --success: #3fb950;
@@ -148,29 +148,31 @@ header h1 {
     background-clip: text;
 }
 
-.renderer-badge {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.5rem;
-    background: var(--bg-tertiary);
-    border-radius: 12px;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-.renderer-badge.webgl2 {
-    color: var(--success);
-    border-color: var(--success);
-    background: rgba(63, 185, 80, 0.1);
-}
-
 .controls {
     display: flex;
     gap: 0.5rem;
     align-items: center;
     flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.control-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 0.25rem;
+}
+
+/* Hide dividers on small screens when controls wrap */
+@media (max-width: 900px) {
+    .control-divider {
+        display: none;
+    }
 }
 
 .header-links {
@@ -183,23 +185,25 @@ header h1 {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-size: 0.875rem;
-    padding: 0.4rem 0.75rem;
+    font-weight: 500;
+    padding: 0.5rem 0.85rem;
     border-radius: 6px;
-    border: 1px solid var(--border);
+    border: 1px solid #d4a72c;
+    background: rgba(212, 167, 44, 0.1);
     transition: all 0.2s;
 }
 
 .github-link:hover {
-    color: var(--text-primary);
-    border-color: var(--border-light);
-    background: var(--bg-tertiary);
+    color: white;
+    border-color: #f0c142;
+    background: rgba(212, 167, 44, 0.25);
     text-decoration: none;
 }
 
 .github-link svg {
-    fill: currentColor;
+    fill: #f0c142;
 }
 
 /* Buttons */
@@ -1275,6 +1279,7 @@ header h1 {
     gap: 0.5rem;
 }
 
+.panel-header h2,
 .panel-header h3 {
     font-size: 0.8rem;
     font-weight: 600;
@@ -1326,6 +1331,7 @@ header h1 {
     color: var(--text-primary);
 }
 
+.panel.collapsible .panel-header h2,
 .panel.collapsible .panel-header h3 {
     color: var(--text-primary);
 }
@@ -1775,6 +1781,7 @@ textarea:focus {
     margin: 0 auto 0.5rem;
 }
 
+.showcase-panel h2,
 .showcase-panel h3 {
     font-size: 1rem;
     font-weight: 700;
@@ -2022,6 +2029,7 @@ textarea:focus {
     box-sizing: border-box;
 }
 
+.about-banner h2,
 .about-banner h3 {
     font-size: 0.85rem;
     margin-bottom: 0.5rem;
