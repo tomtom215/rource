@@ -59,6 +59,8 @@ features = [
     "WheelEvent",
     "Element",
     "DomRect",
+    # OffscreenCanvas for WebGL2 availability detection
+    "OffscreenCanvas",
     # WebGL2 support
     "WebGl2RenderingContext",
     "WebGlBuffer",
