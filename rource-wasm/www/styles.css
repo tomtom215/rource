@@ -297,6 +297,7 @@ header h1 {
     flex: 1;
     min-height: 0; /* Critical for flex children to shrink properly */
     overflow: hidden;
+    contain: layout style; /* Prevent CLS propagation */
 }
 
 @media (max-width: 1600px) {
@@ -334,6 +335,7 @@ header h1 {
     gap: 0.75rem;
     min-height: 0; /* Allow shrinking in flex container */
     overflow: hidden;
+    contain: layout; /* Prevent CLS propagation */
 }
 
 #canvas-container {
@@ -344,6 +346,7 @@ header h1 {
     overflow: hidden;
     position: relative;
     border: 1px solid var(--border);
+    contain: strict; /* Full containment for canvas area */
 }
 
 @media (max-width: 768px) {
@@ -1166,6 +1169,7 @@ header h1 {
     flex-direction: column;
     min-height: 0; /* Critical for overflow in flex/grid children */
     position: relative;
+    contain: layout; /* Prevent CLS propagation */
 }
 
 /* Sidebar Panel - Scrollable independent of main content */
@@ -2337,6 +2341,7 @@ footer {
     font-size: 0.75rem;
     color: var(--text-secondary);
     flex-shrink: 0;
+    min-height: 32px; /* Fixed height to prevent CLS */
 }
 
 footer a {

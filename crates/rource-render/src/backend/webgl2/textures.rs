@@ -2,6 +2,19 @@
 //!
 //! This module provides texture loading, font glyph caching in texture atlases,
 //! and efficient texture switching for batched rendering.
+//!
+//! ## Texture Atlas Defragmentation
+//!
+//! The font atlas uses row-based packing which can lead to fragmentation over time,
+//! especially in long-running sessions with many unique glyphs. The atlas tracks
+//! fragmentation statistics and can be defragmented to reclaim wasted space.
+//!
+//! Key metrics:
+//! - **Used area**: Total pixels occupied by actual glyph data
+//! - **Allocated area**: Total pixels in allocated regions (includes padding)
+//! - **Fragmentation ratio**: 1 - (used / allocated), higher = more fragmented
+//!
+//! When fragmentation exceeds 50%, call `defragment()` to compact the atlas.
 
 use std::collections::HashMap;
 
@@ -14,6 +27,9 @@ const MAX_ATLAS_SIZE: u32 = 2048;
 
 /// Initial atlas size.
 const INITIAL_ATLAS_SIZE: u32 = 512;
+
+/// Fragmentation threshold above which defragmentation is recommended.
+const DEFRAG_THRESHOLD: f32 = 0.5;
 
 /// A region in the font atlas.
 #[derive(Debug, Clone, Copy)]
@@ -132,6 +148,28 @@ pub struct GlyphKey {
     pub size_tenths: u32,
 }
 
+/// Statistics about font atlas usage.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AtlasStats {
+    /// Total number of glyphs in the atlas.
+    pub glyph_count: u32,
+    /// Total pixels used by glyph data (width * height sum).
+    pub used_pixels: u64,
+    /// Total pixels allocated (including padding).
+    pub allocated_pixels: u64,
+    /// Current atlas size (width = height).
+    pub atlas_size: u32,
+    /// Fragmentation ratio (0.0 = no fragmentation, 1.0 = fully fragmented).
+    pub fragmentation: f32,
+}
+
+impl AtlasStats {
+    /// Returns whether defragmentation is recommended.
+    pub fn needs_defragmentation(&self) -> bool {
+        self.fragmentation > DEFRAG_THRESHOLD && self.glyph_count > 0
+    }
+}
+
 /// A font texture atlas for efficient text rendering.
 #[derive(Debug)]
 pub struct FontAtlas {
@@ -145,10 +183,16 @@ pub struct FontAtlas {
     packer: RowPacker,
     /// Cached glyph regions.
     glyphs: HashMap<GlyphKey, AtlasRegion>,
+    /// Cached glyph bitmap data for defragmentation.
+    glyph_bitmaps: HashMap<GlyphKey, Vec<u8>>,
     /// Whether atlas needs upload.
     dirty: bool,
     /// Whether atlas was resized.
     resized: bool,
+    /// Total pixels used by glyph data.
+    used_pixels: u64,
+    /// Total pixels allocated (including padding).
+    allocated_pixels: u64,
 }
 
 impl FontAtlas {
@@ -161,8 +205,11 @@ impl FontAtlas {
             data: vec![0u8; (size * size) as usize],
             packer: RowPacker::new(size),
             glyphs: HashMap::new(),
+            glyph_bitmaps: HashMap::new(),
             dirty: false,
             resized: false,
+            used_pixels: 0,
+            allocated_pixels: 0,
         }
     }
 
@@ -191,10 +238,19 @@ impl FontAtlas {
         // Try to allocate
         let mut region = self.packer.allocate(width, height);
 
-        // If failed, try to resize atlas
-        if region.is_none() && self.size < MAX_ATLAS_SIZE {
-            self.resize(self.size * 2);
-            region = self.packer.allocate(width, height);
+        // If failed, try defragmentation first (if worthwhile), then resize
+        if region.is_none() {
+            // Try defragmentation if fragmented
+            if self.stats().needs_defragmentation() {
+                self.defragment_internal();
+                region = self.packer.allocate(width, height);
+            }
+
+            // If still no space and we can resize, do it
+            if region.is_none() && self.size < MAX_ATLAS_SIZE {
+                self.resize(self.size * 2);
+                region = self.packer.allocate(width, height);
+            }
         }
 
         let region = region?;
@@ -207,6 +263,15 @@ impl FontAtlas {
                 self.data[dst_idx] = bitmap.get(src_idx).copied().unwrap_or(0);
             }
         }
+
+        // Track statistics
+        let glyph_pixels = u64::from(width) * u64::from(height);
+        let allocated_pixels = u64::from(width + 1) * u64::from(height + 1); // +1 for padding
+        self.used_pixels += glyph_pixels;
+        self.allocated_pixels += allocated_pixels;
+
+        // Store bitmap for potential defragmentation
+        self.glyph_bitmaps.insert(key, bitmap.to_vec());
 
         self.glyphs.insert(key, region);
         self.dirty = true;
@@ -329,11 +394,111 @@ impl FontAtlas {
         self.size
     }
 
+    /// Returns statistics about atlas usage.
+    pub fn stats(&self) -> AtlasStats {
+        let fragmentation = if self.allocated_pixels > 0 {
+            1.0 - (self.used_pixels as f32 / self.allocated_pixels as f32)
+        } else {
+            0.0
+        };
+
+        AtlasStats {
+            glyph_count: self.glyphs.len() as u32,
+            used_pixels: self.used_pixels,
+            allocated_pixels: self.allocated_pixels,
+            atlas_size: self.size,
+            fragmentation,
+        }
+    }
+
+    /// Returns whether defragmentation is recommended.
+    ///
+    /// Defragmentation is recommended when more than 50% of allocated space
+    /// is wasted due to row-based packing inefficiency.
+    pub fn needs_defragmentation(&self) -> bool {
+        self.stats().needs_defragmentation()
+    }
+
+    /// Defragments the atlas by repacking all glyphs.
+    ///
+    /// This method:
+    /// 1. Sorts glyphs by height (tallest first) for better row packing
+    /// 2. Clears the atlas data and packer
+    /// 3. Re-inserts all glyphs in optimal order
+    /// 4. Updates all region positions
+    ///
+    /// # Returns
+    ///
+    /// `true` if defragmentation was performed, `false` if not needed or
+    /// if there are no bitmaps stored (glyphs added before defrag support).
+    pub fn defragment(&mut self) -> bool {
+        if !self.needs_defragmentation() {
+            return false;
+        }
+        self.defragment_internal();
+        true
+    }
+
+    /// Internal defragmentation implementation.
+    fn defragment_internal(&mut self) {
+        if self.glyph_bitmaps.is_empty() {
+            return;
+        }
+
+        // Collect all glyphs with their bitmaps, sorted by height (tallest first)
+        let mut glyph_entries: Vec<_> = self
+            .glyphs
+            .iter()
+            .filter_map(|(key, region)| {
+                self.glyph_bitmaps
+                    .get(key)
+                    .map(|bitmap| (*key, region.width, region.height, bitmap.clone()))
+            })
+            .collect();
+
+        // Sort by height descending, then width descending for better packing
+        glyph_entries.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| b.1.cmp(&a.1)));
+
+        // Clear atlas data and reset packer
+        self.data.fill(0);
+        self.packer = RowPacker::new(self.size);
+        self.glyphs.clear();
+        self.used_pixels = 0;
+        self.allocated_pixels = 0;
+
+        // Re-insert all glyphs in optimal order
+        for (key, width, height, bitmap) in glyph_entries {
+            if let Some(region) = self.packer.allocate(width, height) {
+                // Copy bitmap to new position
+                for y in 0..height {
+                    for x in 0..width {
+                        let src_idx = (y * width + x) as usize;
+                        let dst_idx = ((region.y + y) * self.size + region.x + x) as usize;
+                        self.data[dst_idx] = bitmap.get(src_idx).copied().unwrap_or(0);
+                    }
+                }
+
+                // Update statistics
+                self.used_pixels += u64::from(width) * u64::from(height);
+                self.allocated_pixels += u64::from(width + 1) * u64::from(height + 1);
+
+                self.glyphs.insert(key, region);
+            }
+            // If allocation fails, the glyph is dropped (shouldn't happen after defrag)
+        }
+
+        self.dirty = true;
+        self.resized = true; // Force full texture upload
+    }
+
     /// Clears the atlas (for context recovery).
     pub fn clear(&mut self) {
         self.glyphs.clear();
+        self.glyph_bitmaps.clear();
         self.packer = RowPacker::new(self.size);
         self.data.fill(0);
+        self.used_pixels = 0;
+        self.allocated_pixels = 0;
         self.dirty = true;
     }
 
@@ -561,5 +726,120 @@ mod tests {
         });
 
         assert_eq!(set.len(), 3);
+    }
+
+    #[test]
+    fn test_atlas_stats_empty() {
+        let atlas = FontAtlas::new();
+        let stats = atlas.stats();
+
+        assert_eq!(stats.glyph_count, 0);
+        assert_eq!(stats.used_pixels, 0);
+        assert_eq!(stats.allocated_pixels, 0);
+        assert_eq!(stats.atlas_size, INITIAL_ATLAS_SIZE);
+        assert!((stats.fragmentation - 0.0).abs() < 0.001);
+        assert!(!stats.needs_defragmentation());
+    }
+
+    #[test]
+    fn test_atlas_stats_with_glyphs() {
+        let mut atlas = FontAtlas::new();
+
+        // Add a glyph
+        let key = GlyphKey {
+            ch: 'X',
+            size_tenths: 160,
+        };
+        let bitmap = vec![255u8; 10 * 12];
+        atlas.add_glyph(key, 10, 12, &bitmap);
+
+        let stats = atlas.stats();
+        assert_eq!(stats.glyph_count, 1);
+        assert_eq!(stats.used_pixels, 10 * 12);
+        // Allocated includes padding: (10+1) * (12+1) = 143
+        assert_eq!(stats.allocated_pixels, 11 * 13);
+    }
+
+    #[test]
+    fn test_atlas_defragmentation_not_needed() {
+        let mut atlas = FontAtlas::new();
+
+        // Add a few glyphs with good packing
+        for ch in 'A'..='D' {
+            let key = GlyphKey {
+                ch,
+                size_tenths: 160,
+            };
+            let bitmap = vec![128u8; 10 * 12];
+            atlas.add_glyph(key, 10, 12, &bitmap);
+        }
+
+        // With uniform sizes, fragmentation should be low
+        assert!(!atlas.needs_defragmentation());
+        assert!(!atlas.defragment()); // Should return false
+    }
+
+    #[test]
+    fn test_atlas_clear_resets_stats() {
+        let mut atlas = FontAtlas::new();
+
+        // Add some glyphs
+        for ch in 'A'..='Z' {
+            let key = GlyphKey {
+                ch,
+                size_tenths: 160,
+            };
+            let bitmap = vec![128u8; 10 * 12];
+            atlas.add_glyph(key, 10, 12, &bitmap);
+        }
+
+        let stats_before = atlas.stats();
+        assert!(stats_before.glyph_count > 0);
+        assert!(stats_before.used_pixels > 0);
+
+        atlas.clear();
+
+        let stats_after = atlas.stats();
+        assert_eq!(stats_after.glyph_count, 0);
+        assert_eq!(stats_after.used_pixels, 0);
+        assert_eq!(stats_after.allocated_pixels, 0);
+    }
+
+    #[test]
+    fn test_atlas_stats_defrag_threshold() {
+        // Verify the defrag threshold constant
+        let stats = AtlasStats {
+            glyph_count: 10,
+            used_pixels: 100,
+            allocated_pixels: 250, // 60% fragmentation (100/250 = 40% used)
+            atlas_size: 512,
+            fragmentation: 0.6,
+        };
+        assert!(stats.needs_defragmentation());
+
+        let stats = AtlasStats {
+            glyph_count: 10,
+            used_pixels: 100,
+            allocated_pixels: 150, // 33% fragmentation
+            atlas_size: 512,
+            fragmentation: 0.33,
+        };
+        assert!(!stats.needs_defragmentation());
+    }
+
+    #[test]
+    fn test_atlas_stores_bitmaps() {
+        let mut atlas = FontAtlas::new();
+
+        let key = GlyphKey {
+            ch: 'A',
+            size_tenths: 160,
+        };
+        let bitmap = vec![255u8; 10 * 12];
+        atlas.add_glyph(key, 10, 12, &bitmap);
+
+        // Bitmap should be stored for defragmentation
+        assert!(atlas.glyph_bitmaps.contains_key(&key));
+        assert_eq!(atlas.glyph_bitmaps.get(&key).unwrap().len(), 10 * 12);
     }
 }

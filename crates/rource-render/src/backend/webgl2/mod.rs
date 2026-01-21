@@ -271,7 +271,146 @@ impl WebGl2Renderer {
         // Create VAO manager vertex buffer
         self.vao_manager.create_vertex_buffer(gl);
 
+        // Warmup all shaders to eliminate first-frame stutters
+        self.warmup_shaders();
+
         Ok(())
+    }
+
+    /// Warms up all shader programs by performing zero-instance draws.
+    ///
+    /// GPU shader compilation often happens lazily when a program is first used
+    /// with actual draw calls. This can cause visible stutters on the first frame
+    /// where each primitive type is drawn. By performing warmup draws during
+    /// initialization, we move this compilation cost to the startup phase.
+    ///
+    /// The warmup consists of:
+    /// 1. Using each shader program
+    /// 2. Setting all uniforms with valid values
+    /// 3. Binding the appropriate VAO
+    /// 4. Issuing a zero-instance draw call to trigger GPU compilation
+    ///
+    /// This technique is especially important for WebGL where shader compilation
+    /// can be deferred until the first draw call, and GPU drivers may perform
+    /// additional optimizations on first use.
+    fn warmup_shaders(&mut self) {
+        let gl = &self.gl;
+
+        // Use a default resolution for warmup
+        let warmup_width = self.width.max(1) as f32;
+        let warmup_height = self.height.max(1) as f32;
+
+        // Ensure VAOs are created for warmup draws
+        // We need to create minimal instance buffers and upload dummy data
+        // to set up the VAO attribute pointers correctly
+
+        // Create temporary instance buffers with minimal data for VAO setup
+        self.circle_instances
+            .push_raw(&[0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.circle_instances.upload(gl);
+        self.vao_manager
+            .setup_circle_vao(gl, &self.circle_instances);
+        self.circle_instances.clear();
+
+        self.ring_instances
+            .push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.ring_instances.upload(gl);
+        self.vao_manager.setup_ring_vao(gl, &self.ring_instances);
+        self.ring_instances.clear();
+
+        self.line_instances
+            .push_raw(&[0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.line_instances.upload(gl);
+        self.vao_manager.setup_line_vao(gl, &self.line_instances);
+        self.line_instances.clear();
+
+        self.quad_instances
+            .push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.quad_instances.upload(gl);
+        self.vao_manager.setup_quad_vao(gl, &self.quad_instances);
+        self.quad_instances.clear();
+
+        self.text_instances
+            .push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.text_instances.upload(gl);
+        self.vao_manager
+            .setup_textured_vao(gl, &self.text_instances);
+        // Move textured VAO to text VAO and recreate textured
+        self.vao_manager.text_vao = self.vao_manager.textured_quad_vao.take();
+        self.text_instances.clear();
+
+        // Setup fullscreen VAO for bloom/shadow warmup
+        self.vao_manager.setup_fullscreen_vao(gl);
+
+        // Warmup circle shader
+        if let Some(program) = &self.circle_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            gl.bind_vertex_array(self.vao_manager.circle_vao.as_ref());
+            // Zero-instance draw triggers GPU shader compilation without rendering anything
+            gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
+        }
+
+        // Warmup ring shader
+        if let Some(program) = &self.ring_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            gl.bind_vertex_array(self.vao_manager.ring_vao.as_ref());
+            gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
+        }
+
+        // Warmup line shader
+        if let Some(program) = &self.line_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            gl.bind_vertex_array(self.vao_manager.line_vao.as_ref());
+            gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
+        }
+
+        // Warmup quad shader
+        if let Some(program) = &self.quad_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            gl.bind_vertex_array(self.vao_manager.quad_vao.as_ref());
+            gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
+        }
+
+        // Warmup textured quad shader (creates its own VAO on demand, but we can warmup the program)
+        if let Some(program) = &self.textured_quad_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            if let Some(loc) = &program.texture_loc {
+                gl.uniform1i(Some(loc), 0);
+            }
+            // No draw call since we don't have a textured VAO yet (created on demand)
+        }
+
+        // Warmup text shader
+        if let Some(program) = &self.text_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            if let Some(loc) = &program.texture_loc {
+                gl.uniform1i(Some(loc), 0);
+            }
+            gl.bind_vertex_array(self.vao_manager.text_vao.as_ref());
+            gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
+        }
+
+        // Cleanup warmup state
+        gl.bind_vertex_array(None);
+        gl.use_program(None);
     }
 
     /// Compiles a shader program from vertex and fragment shader sources.
