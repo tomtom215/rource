@@ -2,8 +2,8 @@
 // Test count is static; update by running: cargo test --all 2>&1 | grep "^test result:" | awk '{sum += $4} END {print sum}'
 export const BUILD_INFO = {
     wasmGzipKB: 251,
-    jsGzipKB: 9,
+    jsGzipKB: 10,
     crateCount: 4,
-    testCount: 950,
-    buildDate: '2026-01-21T19:26:00Z'
+    testCount: 903,
+    buildDate: '2026-01-21T20:01:58Z'
 };

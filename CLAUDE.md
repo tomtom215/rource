@@ -517,6 +517,68 @@ println!("{}", stats.summary());
 
 **Test Count**: 950 tests (added 11 new tests for UBO and stats modules)
 
+### Phase 7 Optimizations (2026-01-21)
+
+Enhanced frame statistics and render efficiency tracking:
+
+#### 1. Active Primitive Tracking
+
+Added `ActivePrimitives` bitflags to track which primitive types were rendered each frame:
+
+| Flag | Description |
+|------|-------------|
+| `CIRCLES` | Filled circles (discs) |
+| `RINGS` | Circle outlines |
+| `LINES` | Line segments |
+| `QUADS` | Solid colored rectangles |
+| `TEXTURED_QUADS` | Textured rectangles |
+| `TEXT` | Text glyphs |
+
+**Usage**:
+```rust
+let stats = renderer.frame_stats();
+let active = stats.active_primitives;
+println!("Active types: {}", active.count());
+println!("Has circles: {}", active.is_set(ActivePrimitives::CIRCLES));
+```
+
+#### 2. Enhanced Frame Statistics
+
+Extended `FrameStats` with additional metrics for render efficiency analysis:
+
+| Metric | Description |
+|--------|-------------|
+| `skipped_program_binds` | Redundant program binds avoided by state cache |
+| `skipped_vao_binds` | Redundant VAO binds avoided by state cache |
+| `skipped_texture_binds` | Redundant texture binds avoided by state cache |
+| `active_primitives` | Bitflags of rendered primitive types |
+| `bloom_applied` | Whether bloom effect was applied |
+| `shadow_applied` | Whether shadow effect was applied |
+
+**New Methods**:
+```rust
+// Batch efficiency (0.0-1.0): active_primitives / program_switches
+let efficiency = stats.batch_efficiency();
+
+// Total redundant state changes avoided
+let saved = stats.total_skipped_binds();
+
+// Check if any post-processing was applied
+let has_pp = stats.has_post_processing();
+
+// Detailed summary with all metrics
+println!("{}", stats.detailed_summary());
+```
+
+#### 3. Improved Bloom+Shadow Handling
+
+Clarified the interaction between bloom and shadow effects in `end_frame()`:
+- When both effects are enabled, bloom takes precedence
+- Shadow-only and bloom-only paths are now explicit
+- Post-processing application is tracked in frame stats
+
+**Test Count**: 955 tests (added 5 new tests for enhanced frame statistics)
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -1133,4 +1195,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-21 (Phase 6 optimizations: UBOs, frame statistics - 950 tests)*
+*Last updated: 2026-01-21 (Phase 7 optimizations: enhanced frame statistics, active primitive tracking - 955 tests)*

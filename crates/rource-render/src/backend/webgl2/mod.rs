@@ -55,6 +55,7 @@ use shaders::{
 };
 use shadow::ShadowPipeline;
 use state::GlStateCache;
+use stats::ActivePrimitives;
 use textures::{FontAtlas, GlyphKey, TextureManager};
 use ubo::UniformBufferManager;
 
@@ -590,6 +591,8 @@ impl WebGl2Renderer {
         let program_changed = self.state_cache.use_program(gl, &program.program);
         if program_changed {
             self.frame_stats.program_switches += 1;
+        } else {
+            self.frame_stats.skipped_program_binds += 1;
         }
 
         // Bind VAO (state cache avoids redundant bind)
@@ -598,6 +601,8 @@ impl WebGl2Renderer {
             .bind_vao(gl, self.vao_manager.circle_vao.as_ref());
         if vao_changed {
             self.frame_stats.vao_switches += 1;
+        } else {
+            self.frame_stats.skipped_vao_binds += 1;
         }
 
         // Set uniforms only if program changed (legacy mode only)
@@ -622,6 +627,9 @@ impl WebGl2Renderer {
         self.frame_stats.draw_calls += 1;
         self.frame_stats.circle_instances += instance_count as u32;
         self.frame_stats.total_instances += instance_count as u32;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::CIRCLES);
 
         self.circle_instances.clear();
     }
@@ -648,6 +656,8 @@ impl WebGl2Renderer {
         let program_changed = self.state_cache.use_program(gl, &program.program);
         if program_changed {
             self.frame_stats.program_switches += 1;
+        } else {
+            self.frame_stats.skipped_program_binds += 1;
         }
 
         // Bind VAO (state cache avoids redundant bind)
@@ -656,6 +666,8 @@ impl WebGl2Renderer {
             .bind_vao(gl, self.vao_manager.ring_vao.as_ref());
         if vao_changed {
             self.frame_stats.vao_switches += 1;
+        } else {
+            self.frame_stats.skipped_vao_binds += 1;
         }
 
         // Set uniforms only if program changed (legacy mode only)
@@ -679,6 +691,9 @@ impl WebGl2Renderer {
         self.frame_stats.draw_calls += 1;
         self.frame_stats.ring_instances += instance_count as u32;
         self.frame_stats.total_instances += instance_count as u32;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::RINGS);
 
         self.ring_instances.clear();
     }
@@ -705,6 +720,8 @@ impl WebGl2Renderer {
         let program_changed = self.state_cache.use_program(gl, &program.program);
         if program_changed {
             self.frame_stats.program_switches += 1;
+        } else {
+            self.frame_stats.skipped_program_binds += 1;
         }
 
         // Bind VAO (state cache avoids redundant bind)
@@ -713,6 +730,8 @@ impl WebGl2Renderer {
             .bind_vao(gl, self.vao_manager.line_vao.as_ref());
         if vao_changed {
             self.frame_stats.vao_switches += 1;
+        } else {
+            self.frame_stats.skipped_vao_binds += 1;
         }
 
         // Set uniforms only if program changed (legacy mode only)
@@ -736,6 +755,9 @@ impl WebGl2Renderer {
         self.frame_stats.draw_calls += 1;
         self.frame_stats.line_instances += instance_count as u32;
         self.frame_stats.total_instances += instance_count as u32;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::LINES);
 
         self.line_instances.clear();
     }
@@ -762,6 +784,8 @@ impl WebGl2Renderer {
         let program_changed = self.state_cache.use_program(gl, &program.program);
         if program_changed {
             self.frame_stats.program_switches += 1;
+        } else {
+            self.frame_stats.skipped_program_binds += 1;
         }
 
         // Bind VAO (state cache avoids redundant bind)
@@ -770,6 +794,8 @@ impl WebGl2Renderer {
             .bind_vao(gl, self.vao_manager.quad_vao.as_ref());
         if vao_changed {
             self.frame_stats.vao_switches += 1;
+        } else {
+            self.frame_stats.skipped_vao_binds += 1;
         }
 
         // Set uniforms only if program changed (legacy mode only)
@@ -793,6 +819,9 @@ impl WebGl2Renderer {
         self.frame_stats.draw_calls += 1;
         self.frame_stats.quad_instances += instance_count as u32;
         self.frame_stats.total_instances += instance_count as u32;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::QUADS);
 
         self.quad_instances.clear();
     }
@@ -813,6 +842,8 @@ impl WebGl2Renderer {
         let program_changed = self.state_cache.use_program(gl, &program.program);
         if program_changed {
             self.frame_stats.program_switches += 1;
+        } else {
+            self.frame_stats.skipped_program_binds += 1;
         }
 
         // Set uniforms only if program changed (legacy mode only)
@@ -828,6 +859,9 @@ impl WebGl2Renderer {
             }
         }
 
+        // Track whether any textured quads were rendered
+        let mut rendered_any = false;
+
         // Draw each texture's instances
         let texture_ids: Vec<TextureId> = self.textured_quad_instances.keys().copied().collect();
 
@@ -837,6 +871,7 @@ impl WebGl2Renderer {
                     continue;
                 }
 
+                rendered_any = true;
                 instances.upload(gl);
 
                 // Bind texture (state cache tracks bound textures)
@@ -854,6 +889,8 @@ impl WebGl2Renderer {
                     .bind_vao(gl, self.vao_manager.textured_quad_vao.as_ref());
                 if vao_changed {
                     self.frame_stats.vao_switches += 1;
+                } else {
+                    self.frame_stats.skipped_vao_binds += 1;
                 }
 
                 let instance_count = instances.instance_count();
@@ -871,6 +908,12 @@ impl WebGl2Renderer {
 
                 instances.clear();
             }
+        }
+
+        if rendered_any {
+            self.frame_stats
+                .active_primitives
+                .set(ActivePrimitives::TEXTURED_QUADS);
         }
     }
 
@@ -902,6 +945,8 @@ impl WebGl2Renderer {
         let program_changed = self.state_cache.use_program(gl, &program.program);
         if program_changed {
             self.frame_stats.program_switches += 1;
+        } else {
+            self.frame_stats.skipped_program_binds += 1;
         }
 
         // Bind VAO (state cache avoids redundant bind)
@@ -910,6 +955,8 @@ impl WebGl2Renderer {
             .bind_vao(gl, self.vao_manager.text_vao.as_ref());
         if vao_changed {
             self.frame_stats.vao_switches += 1;
+        } else {
+            self.frame_stats.skipped_vao_binds += 1;
         }
 
         // Set uniforms only if program changed (legacy mode only)
@@ -941,6 +988,9 @@ impl WebGl2Renderer {
         self.frame_stats.draw_calls += 1;
         self.frame_stats.text_instances += instance_count as u32;
         self.frame_stats.total_instances += instance_count as u32;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::TEXT);
 
         self.text_instances.clear();
     }
@@ -1405,18 +1455,33 @@ impl Renderer for WebGl2Renderer {
         self.flush();
 
         // Post-processing effects use their own programs, so invalidate cache
-        let needs_post_processing =
-            self.bloom_pipeline.is_active() || self.shadow_pipeline.is_active();
+        let bloom_active = self.bloom_pipeline.is_active();
+        let shadow_active = self.shadow_pipeline.is_active();
+        let needs_post_processing = bloom_active || shadow_active;
 
         if needs_post_processing {
             self.state_cache.invalidate_program();
         }
 
-        // Apply shadow effect if active (and bloom is not active)
-        // When both are enabled, bloom takes precedence since it provides
-        // its own compositing. Shadow support with bloom can be added in
-        // a future iteration with a combined pipeline.
-        if self.shadow_pipeline.is_active() && !self.bloom_pipeline.is_active() {
+        // Combined bloom+shadow or standalone effects
+        if bloom_active && shadow_active {
+            // Combined pipeline: shadow is applied first, then bloom on top
+            // The bloom pipeline's scene FBO contains the rendered scene.
+            // We apply shadow effect first (renders shadow behind scene),
+            // then apply bloom on the combined result.
+            //
+            // Implementation approach:
+            // 1. Shadow renders to its own FBO using bloom's scene texture
+            // 2. Bloom composites everything together
+            //
+            // For now, bloom takes precedence as shadow+bloom combined
+            // requires rendering shadow to an intermediate FBO that bloom
+            // can then use. This is a future enhancement.
+            self.bloom_pipeline.apply(&self.gl, &mut self.vao_manager);
+            self.frame_stats.bloom_applied = true;
+            // Note: Shadow is skipped when bloom is active (future: combined pipeline)
+        } else if shadow_active {
+            // Shadow-only: apply shadow pipeline
             if let Some(scene_texture) = self.bloom_pipeline.scene_texture() {
                 let (scene_width, scene_height) = self.bloom_pipeline.scene_size();
                 self.shadow_pipeline.apply(
@@ -1426,12 +1491,12 @@ impl Renderer for WebGl2Renderer {
                     scene_height,
                     &mut self.vao_manager,
                 );
+                self.frame_stats.shadow_applied = true;
             }
-        }
-
-        // Apply bloom post-processing if active
-        if self.bloom_pipeline.is_active() {
+        } else if bloom_active {
+            // Bloom-only: apply bloom pipeline
             self.bloom_pipeline.apply(&self.gl, &mut self.vao_manager);
+            self.frame_stats.bloom_applied = true;
         }
 
         // Re-enable blending after post-processing
