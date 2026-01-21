@@ -23,9 +23,12 @@
 ///
 /// This block is used by all primitive shaders when UBO mode is enabled.
 /// Uses std140 layout for consistent memory layout across shaders.
+///
+/// Note: WebGL2 (GLSL ES 3.0) does NOT support `layout(binding = N)` syntax.
+/// The binding is done programmatically via `gl.uniformBlockBinding()`.
 pub const COMMON_UNIFORMS_BLOCK: &str = r#"
-// Common uniforms shared across all shaders via UBO (binding = 0)
-layout(std140, binding = 0) uniform CommonUniforms {
+// Common uniforms shared across all shaders via UBO
+layout(std140) uniform CommonUniforms {
     vec2 u_resolution;  // Canvas size in pixels
     vec2 _padding;      // std140 requires vec4 alignment
 };
@@ -538,7 +541,7 @@ pub const CIRCLE_VERTEX_SHADER_UBO: &str = r#"#version 300 es
 precision highp float;
 
 // Common uniforms via UBO (binding point 0)
-layout(std140, binding = 0) uniform CommonUniforms {
+layout(std140) uniform CommonUniforms {
     vec2 u_resolution;
     vec2 _padding;
 };
@@ -569,7 +572,7 @@ void main() {
 pub const RING_VERTEX_SHADER_UBO: &str = r#"#version 300 es
 precision highp float;
 
-layout(std140, binding = 0) uniform CommonUniforms {
+layout(std140) uniform CommonUniforms {
     vec2 u_resolution;
     vec2 _padding;
 };
@@ -602,7 +605,7 @@ void main() {
 pub const LINE_VERTEX_SHADER_UBO: &str = r#"#version 300 es
 precision highp float;
 
-layout(std140, binding = 0) uniform CommonUniforms {
+layout(std140) uniform CommonUniforms {
     vec2 u_resolution;
     vec2 _padding;
 };
@@ -644,7 +647,7 @@ void main() {
 pub const QUAD_VERTEX_SHADER_UBO: &str = r#"#version 300 es
 precision highp float;
 
-layout(std140, binding = 0) uniform CommonUniforms {
+layout(std140) uniform CommonUniforms {
     vec2 u_resolution;
     vec2 _padding;
 };
@@ -672,7 +675,7 @@ void main() {
 pub const TEXTURED_QUAD_VERTEX_SHADER_UBO: &str = r#"#version 300 es
 precision highp float;
 
-layout(std140, binding = 0) uniform CommonUniforms {
+layout(std140) uniform CommonUniforms {
     vec2 u_resolution;
     vec2 _padding;
 };
@@ -701,7 +704,7 @@ void main() {
 pub const TEXT_VERTEX_SHADER_UBO: &str = r#"#version 300 es
 precision highp float;
 
-layout(std140, binding = 0) uniform CommonUniforms {
+layout(std140) uniform CommonUniforms {
     vec2 u_resolution;
     vec2 _padding;
 };
@@ -801,13 +804,13 @@ mod tests {
         assert!(TEXTURED_QUAD_VERTEX_SHADER_UBO.contains("CommonUniforms"));
         assert!(TEXT_VERTEX_SHADER_UBO.contains("CommonUniforms"));
 
-        // All should use std140 layout with binding = 0
-        assert!(CIRCLE_VERTEX_SHADER_UBO.contains("std140, binding = 0"));
-        assert!(RING_VERTEX_SHADER_UBO.contains("std140, binding = 0"));
-        assert!(LINE_VERTEX_SHADER_UBO.contains("std140, binding = 0"));
-        assert!(QUAD_VERTEX_SHADER_UBO.contains("std140, binding = 0"));
-        assert!(TEXTURED_QUAD_VERTEX_SHADER_UBO.contains("std140, binding = 0"));
-        assert!(TEXT_VERTEX_SHADER_UBO.contains("std140, binding = 0"));
+        // All should use std140 layout (binding is done programmatically in WebGL2)
+        assert!(CIRCLE_VERTEX_SHADER_UBO.contains("layout(std140)"));
+        assert!(RING_VERTEX_SHADER_UBO.contains("layout(std140)"));
+        assert!(LINE_VERTEX_SHADER_UBO.contains("layout(std140)"));
+        assert!(QUAD_VERTEX_SHADER_UBO.contains("layout(std140)"));
+        assert!(TEXTURED_QUAD_VERTEX_SHADER_UBO.contains("layout(std140)"));
+        assert!(TEXT_VERTEX_SHADER_UBO.contains("layout(std140)"));
     }
 
     #[test]
