@@ -291,9 +291,79 @@ Automatic resize when dimensions change.
 #### Performance Testing
 
 All optimizations have been verified:
-- Test suite: 907 tests passing
-- WASM build: 548KB (239KB gzipped)
+- Test suite: 908 tests passing
+- WASM build: 583KB (250KB gzipped)
 - No clippy warnings
+
+### Phase 4 Optimizations (2026-01-21)
+
+Additional performance optimizations for WebGL2 renderer:
+
+#### 1. Shader Warmup/Precompilation
+
+GPU shader compilation often happens lazily when a program is first used with actual
+draw calls, causing visible stutters on the first frame. The `warmup_shaders()` method
+moves this cost to initialization:
+
+**Implementation** (in `mod.rs`):
+```rust
+fn warmup_shaders(&mut self) {
+    // For each shader program:
+    // 1. Use the program (gl.use_program)
+    // 2. Set all uniforms with valid values
+    // 3. Bind the appropriate VAO
+    // 4. Issue zero-instance draw call (triggers GPU compilation)
+}
+```
+
+**Benefits**:
+- Eliminates first-frame stutters for each primitive type
+- Forces GPU driver optimization at startup instead of during rendering
+- Especially important for WebGL where compilation can be heavily deferred
+
+**Timing**: Called at end of `init_gl()` after all shaders are compiled.
+
+#### 2. Texture Atlas Defragmentation
+
+The font atlas uses row-based packing which can lead to fragmentation over time.
+Added tracking and automatic defragmentation:
+
+**Statistics** (`AtlasStats` struct):
+| Field | Description |
+|-------|-------------|
+| `glyph_count` | Total number of glyphs in atlas |
+| `used_pixels` | Pixels occupied by actual glyph data |
+| `allocated_pixels` | Pixels in allocated regions (includes padding) |
+| `fragmentation` | Ratio: `1 - (used / allocated)` |
+
+**Configuration**:
+```rust
+const DEFRAG_THRESHOLD: f32 = 0.5; // 50% fragmentation triggers defrag
+```
+
+**Defragmentation Process**:
+1. Collect all glyphs with their stored bitmaps
+2. Sort by height (tallest first) for better row packing
+3. Clear atlas data and reset packer
+4. Re-insert all glyphs in optimal order
+5. Update all region positions
+6. Force full texture upload
+
+**API**:
+```rust
+// Check if defragmentation is recommended
+let needs_defrag = atlas.needs_defragmentation();
+
+// Get detailed statistics
+let stats = atlas.stats();
+println!("Fragmentation: {:.1}%", stats.fragmentation * 100.0);
+
+// Manually trigger defragmentation
+let did_defrag = atlas.defragment();
+```
+
+**Automatic Trigger**: When allocation fails and fragmentation > 50%, defragmentation
+is attempted before resizing the atlas.
 
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
