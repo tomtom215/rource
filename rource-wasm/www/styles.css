@@ -148,29 +148,6 @@ header h1 {
     background-clip: text;
 }
 
-.renderer-badge {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.5rem;
-    background: var(--bg-tertiary);
-    border-radius: 12px;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-/* Hide badge when empty (before WASM loads) */
-.renderer-badge:empty {
-    display: none;
-}
-
-.renderer-badge.webgl2 {
-    color: var(--success);
-    border-color: var(--success);
-    background: rgba(63, 185, 80, 0.1);
-}
-
 .controls {
     display: flex;
     gap: 0.5rem;

@@ -80,7 +80,6 @@ export function initDomElements() {
     elements.timelineEndDate = document.getElementById('timeline-end-date');
 
     // Renderer info
-    elements.rendererBadge = document.getElementById('renderer-badge');
     elements.techRenderer = document.getElementById('tech-renderer');
 
     // Stats overlay
