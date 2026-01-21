@@ -385,6 +385,14 @@ export class Rource {
         return ret;
     }
     /**
+     * Returns the total number of directories.
+     * @returns {number}
+     */
+    getTotalDirectories() {
+        const ret = wasm.rource_getTotalDirectories(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Returns the total number of entities.
      * @returns {number}
      */

@@ -143,16 +143,18 @@ function getLegendData() {
 
 /**
  * Gets stats data for the export overlay.
- * @returns {Object} { commits, files, authors }
+ * @returns {Object} { commits, files, dirs, authors }
  */
 function getStatsData() {
     const statCommits = getElement('statCommits');
     const statFiles = getElement('statFiles');
+    const statDirs = getElement('statDirs');
     const statAuthors = getElement('statAuthors');
 
     return {
         commits: statCommits?.textContent || '0',
         files: statFiles?.textContent || '0',
+        dirs: statDirs?.textContent || '0',
         authors: statAuthors?.textContent || '0'
     };
 }
@@ -179,7 +181,7 @@ function drawLegendOverlay(canvas, fontSize = 12) {
     // Calculate overlay dimensions
     const maxLegendItems = Math.min(legendData.length, 15); // Limit items
     const legendHeight = maxLegendItems * lineHeight + padding * 2;
-    const statsHeight = lineHeight * 4 + padding * 2;
+    const statsHeight = lineHeight * 5 + padding * 2; // 4 stats + header
     const overlayWidth = fontSize * 18;
     const overlayHeight = legendHeight + statsHeight + sectionGap;
 
@@ -214,6 +216,7 @@ function drawLegendOverlay(canvas, fontSize = 12) {
     const statsItems = [
         { label: 'Commits:', value: stats.commits },
         { label: 'Files:', value: stats.files },
+        { label: 'Dirs:', value: stats.dirs },
         { label: 'Authors:', value: stats.authors }
     ];
 

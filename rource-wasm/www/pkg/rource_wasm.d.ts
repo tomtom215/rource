@@ -145,6 +145,10 @@ export class Rource {
      */
     getSpeed(): number;
     /**
+     * Returns the total number of directories.
+     */
+    getTotalDirectories(): number;
+    /**
      * Returns the total number of entities.
      */
     getTotalEntities(): number;
@@ -419,6 +423,7 @@ export interface InitOutput {
     readonly rource_getRendererType: (a: number, b: number) => void;
     readonly rource_getShowLabels: (a: number) => number;
     readonly rource_getSpeed: (a: number) => number;
+    readonly rource_getTotalDirectories: (a: number) => number;
     readonly rource_getTotalEntities: (a: number) => number;
     readonly rource_getTotalFiles: (a: number) => number;
     readonly rource_getTotalFrames: (a: number) => number;

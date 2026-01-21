@@ -86,6 +86,7 @@ export function initDomElements() {
     elements.statsOverlay = document.getElementById('stats-overlay');
     elements.statCommits = document.getElementById('stat-commits');
     elements.statFiles = document.getElementById('stat-files');
+    elements.statDirs = document.getElementById('stat-dirs');
     elements.statAuthors = document.getElementById('stat-authors');
 
     // Toast notification

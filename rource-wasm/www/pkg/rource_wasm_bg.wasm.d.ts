@@ -28,6 +28,7 @@ export const rource_getLayoutConfig: (a: number, b: number) => void;
 export const rource_getRendererType: (a: number, b: number) => void;
 export const rource_getShowLabels: (a: number) => number;
 export const rource_getSpeed: (a: number) => number;
+export const rource_getTotalDirectories: (a: number) => number;
 export const rource_getTotalEntities: (a: number) => number;
 export const rource_getTotalFiles: (a: number) => number;
 export const rource_getTotalFrames: (a: number) => number;

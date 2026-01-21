@@ -207,6 +207,7 @@ impl Rource {
         settings.display.height = height;
 
         let mut camera = Camera::new(width as f32, height as f32);
+        camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
         camera.jump_to(Vec2::ZERO);
 
         Ok(Self {
@@ -481,6 +482,7 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
+        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
         self.settings.display.width = width;
         self.settings.display.height = height;
     }
@@ -1066,6 +1068,12 @@ impl Rource {
         self.scene.file_count()
     }
 
+    /// Returns the total number of directories.
+    #[wasm_bindgen(js_name = getTotalDirectories)]
+    pub fn get_total_directories(&self) -> usize {
+        self.scene.directory_count()
+    }
+
     /// Returns the total number of users.
     #[wasm_bindgen(js_name = getTotalUsers)]
     pub fn get_total_users(&self) -> usize {
@@ -1212,6 +1220,7 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
+        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
         self.camera.jump_to(Vec2::new(center_x, center_y));
         self.camera.set_zoom(zoom);
         self.settings.display.width = width;
@@ -1225,6 +1234,7 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
+        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
         self.settings.display.width = width;
         self.settings.display.height = height;
         self.fit_camera_to_content();

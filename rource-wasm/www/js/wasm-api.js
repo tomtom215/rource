@@ -253,3 +253,15 @@ export function getAuthorColor(name) {
     }
     return '#888888';
 }
+
+/**
+ * Safely gets total directory count.
+ * @returns {number} Directory count
+ */
+export function getTotalDirectories() {
+    const rource = getRource();
+    if (rource) {
+        return safeWasmCall('getTotalDirectories', () => rource.getTotalDirectories(), 0);
+    }
+    return 0;
+}
