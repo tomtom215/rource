@@ -35,6 +35,66 @@ use crate::error::{ParseError, ParseResult};
 use crate::parser::{ParseOptions, Parser};
 use std::path::PathBuf;
 
+/// State machine states for parsing verbose bzr log format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ParseState {
+    /// Waiting for a field or separator line.
+    Header,
+    /// Inside the message section (ignored for visualization).
+    Message,
+    /// Capturing added files.
+    AddedFiles,
+    /// Capturing modified files.
+    ModifiedFiles,
+    /// Capturing removed files.
+    RemovedFiles,
+    /// Capturing renamed files (treated as modified).
+    RenamedFiles,
+}
+
+impl ParseState {
+    /// Returns the file action for file capture states, if applicable.
+    const fn file_action(self) -> Option<FileAction> {
+        match self {
+            Self::AddedFiles => Some(FileAction::Create),
+            Self::ModifiedFiles | Self::RenamedFiles => Some(FileAction::Modify),
+            Self::RemovedFiles => Some(FileAction::Delete),
+            Self::Header | Self::Message => None,
+        }
+    }
+}
+
+/// Accumulated data for a commit being parsed.
+#[derive(Debug, Default)]
+struct CommitBuilder {
+    revno: Option<String>,
+    author: Option<String>,
+    timestamp: Option<i64>,
+    files: Vec<FileChange>,
+}
+
+impl CommitBuilder {
+    /// Resets the builder for a new commit.
+    fn reset(&mut self) {
+        self.revno = None;
+        self.author = None;
+        self.timestamp = None;
+        self.files.clear();
+    }
+
+    /// Attempts to build a commit if all required fields are present.
+    fn build(&mut self) -> Option<Commit> {
+        let author = self.author.take()?;
+        let timestamp = self.timestamp.take()?;
+        if self.files.is_empty() {
+            return None;
+        }
+        let hash = self.revno.take().unwrap_or_default();
+        let files = std::mem::take(&mut self.files);
+        Some(Commit::new(hash, timestamp, author).with_files(files))
+    }
+}
+
 /// Parser for Bazaar log output.
 #[derive(Debug, Clone)]
 pub struct BazaarParser {
@@ -56,111 +116,110 @@ impl BazaarParser {
         Self { options }
     }
 
-    /// Parses verbose bzr log format.
+    /// Checks if a line is a commit separator.
+    fn is_separator(line: &str) -> bool {
+        line.starts_with("----") && line.chars().filter(|&c| c == '-').count() >= 10
+    }
+
+    /// Parses a header field and updates the commit builder.
+    /// Returns the new parse state if a section header is found.
+    fn parse_header_field(trimmed: &str, builder: &mut CommitBuilder) -> Option<ParseState> {
+        if trimmed.starts_with("revno:") {
+            let revno_str = trimmed.trim_start_matches("revno:").trim();
+            builder.revno = Some(
+                revno_str
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
+                    .to_string(),
+            );
+            return Some(ParseState::Header);
+        }
+
+        if trimmed.starts_with("committer:") {
+            let author_str = trimmed.trim_start_matches("committer:").trim();
+            builder.author = Some(extract_author_name(author_str).to_string());
+            return Some(ParseState::Header);
+        }
+
+        if trimmed.starts_with("author:") {
+            let author_str = trimmed.trim_start_matches("author:").trim();
+            builder.author = Some(extract_author_name(author_str).to_string());
+            return Some(ParseState::Header);
+        }
+
+        if trimmed.starts_with("timestamp:") {
+            let date_str = trimmed.trim_start_matches("timestamp:").trim();
+            builder.timestamp = parse_bzr_date(date_str);
+            return Some(ParseState::Header);
+        }
+
+        // Check for section transitions
+        match trimmed {
+            "message:" => Some(ParseState::Message),
+            "added:" => Some(ParseState::AddedFiles),
+            "modified:" => Some(ParseState::ModifiedFiles),
+            "removed:" => Some(ParseState::RemovedFiles),
+            "renamed:" => Some(ParseState::RenamedFiles),
+            _ => None,
+        }
+    }
+
+    /// Saves the current commit if valid and within options constraints.
+    fn save_commit(&self, builder: &mut CommitBuilder, commits: &mut Vec<Commit>) -> bool {
+        if let Some(commit) = builder.build() {
+            if self.options.timestamp_in_range(commit.timestamp) {
+                commits.push(commit);
+                return self.options.limit_reached(commits.len());
+            }
+        }
+        builder.reset();
+        false
+    }
+
+    /// Parses verbose bzr log format using a state machine.
     fn parse_verbose(&self, input: &str) -> Vec<Commit> {
         let mut commits = Vec::new();
-        let mut current_revno: Option<String> = None;
-        let mut current_author: Option<String> = None;
-        let mut current_date: Option<i64> = None;
-        let mut current_files: Vec<FileChange> = Vec::new();
-        let mut current_action: Option<FileAction> = None;
-        let mut in_message = false;
+        let mut builder = CommitBuilder::default();
+        let mut state = ParseState::Header;
 
         for line in input.lines() {
-            // Check for separator line
-            if line.starts_with("----") && line.chars().filter(|&c| c == '-').count() >= 10 {
-                // Save previous commit if exists
-                if let (Some(author), Some(timestamp)) = (&current_author, current_date) {
-                    if !current_files.is_empty() && self.options.timestamp_in_range(timestamp) {
-                        let hash = current_revno.take().unwrap_or_default();
-                        let files = std::mem::take(&mut current_files);
-                        commits
-                            .push(Commit::new(hash, timestamp, author.clone()).with_files(files));
-
-                        if self.options.limit_reached(commits.len()) {
-                            return commits;
-                        }
-                    }
+            // Check for separator line - signals new commit
+            if Self::is_separator(line) {
+                if self.save_commit(&mut builder, &mut commits) {
+                    return commits;
                 }
-
-                // Start new commit
-                current_revno = None;
-                current_author = None;
-                current_date = None;
-                current_files.clear();
-                current_action = None;
-                in_message = false;
+                builder.reset();
+                state = ParseState::Header;
                 continue;
             }
 
             let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
 
-            // Check for section headers
-            if trimmed.starts_with("revno:") {
-                // Extract revision number (may include merge marker like "123 [merge]")
-                let revno_str = trimmed.trim_start_matches("revno:").trim();
-                current_revno = Some(
-                    revno_str
-                        .split_whitespace()
-                        .next()
-                        .unwrap_or("")
-                        .to_string(),
-                );
-                in_message = false;
-                current_action = None;
-            } else if trimmed.starts_with("committer:") || trimmed.starts_with("author:") {
-                let author_str = if trimmed.starts_with("committer:") {
-                    trimmed.trim_start_matches("committer:")
-                } else {
-                    trimmed.trim_start_matches("author:")
-                };
-                current_author = Some(extract_author_name(author_str.trim()).to_string());
-                in_message = false;
-                current_action = None;
-            } else if trimmed.starts_with("timestamp:") {
-                let date_str = trimmed.trim_start_matches("timestamp:").trim();
-                current_date = parse_bzr_date(date_str);
-                in_message = false;
-                current_action = None;
-            } else if trimmed == "message:" {
-                in_message = true;
-                current_action = None;
-            } else if trimmed == "added:" {
-                current_action = Some(FileAction::Create);
-                in_message = false;
-            } else if trimmed == "modified:" {
-                current_action = Some(FileAction::Modify);
-                in_message = false;
-            } else if trimmed == "removed:" {
-                current_action = Some(FileAction::Delete);
-                in_message = false;
-            } else if trimmed == "renamed:" {
-                current_action = Some(FileAction::Modify); // Treat rename as modify
-                in_message = false;
-            } else if let Some(action) = current_action {
-                if !in_message && !trimmed.is_empty() {
-                    // This is a file path
-                    let path = parse_bzr_file_path(trimmed);
-                    if !path.is_empty() {
-                        current_files.push(FileChange {
-                            path: PathBuf::from(path),
-                            action,
-                        });
-                    }
+            // Try to parse as a header field or section transition
+            if let Some(new_state) = Self::parse_header_field(trimmed, &mut builder) {
+                state = new_state;
+                continue;
+            }
+
+            // If we're in a file-capture state, add the file
+            if let Some(action) = state.file_action() {
+                let path = parse_bzr_file_path(trimmed);
+                if !path.is_empty() {
+                    builder.files.push(FileChange {
+                        path: PathBuf::from(path),
+                        action,
+                    });
                 }
             }
-            // Skip other metadata lines we don't care about (branch nick, tags, etc.)
+            // Other lines (branch nick, tags, message content) are ignored
         }
 
         // Don't forget the last commit
-        if let (Some(author), Some(timestamp)) = (&current_author, current_date) {
-            if !current_files.is_empty() && self.options.timestamp_in_range(timestamp) {
-                let hash = current_revno.unwrap_or_default();
-                commits
-                    .push(Commit::new(hash, timestamp, author.clone()).with_files(current_files));
-            }
-        }
-
+        let _ = self.save_commit(&mut builder, &mut commits);
         commits
     }
 
