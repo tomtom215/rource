@@ -10,7 +10,11 @@ all-features = true
 # The URLs of the advisory databases
 db-urls = ["https://github.com/rustsec/advisory-db"]
 # Ignore specific advisories (add IDs here if you need to allow specific issues)
-ignore = []
+ignore = [
+    # paste is unmaintained but not a security issue - transitive dep from wgpu via metal
+    # https://rustsec.org/advisories/RUSTSEC-2024-0436
+    "RUSTSEC-2024-0436",
+]
 
 [licenses]
 # Allow common permissive licenses and GPL-3.0-only (our license)
