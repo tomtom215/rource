@@ -679,6 +679,7 @@ export class Rource {
     }
     /**
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
+     * Max zoom increased to 1000.0 to support deep zoom into massive repositories.
      * @param {number} factor
      */
     zoom(factor) {
