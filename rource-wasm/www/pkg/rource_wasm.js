@@ -883,6 +883,9 @@ function __wbg_get_imports() {
         __wbg_bindBuffer_c9068e8712a034f5: function(arg0, arg1, arg2) {
             getObject(arg0).bindBuffer(arg1 >>> 0, getObject(arg2));
         },
+        __wbg_bindFramebuffer_031c73ba501cb8f6: function(arg0, arg1, arg2) {
+            getObject(arg0).bindFramebuffer(arg1 >>> 0, getObject(arg2));
+        },
         __wbg_bindTexture_b2b7b1726a83f93e: function(arg0, arg1, arg2) {
             getObject(arg0).bindTexture(arg1 >>> 0, getObject(arg2));
         },
@@ -895,6 +898,10 @@ function __wbg_get_imports() {
         __wbg_bufferData_037b591220c42be7: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).bufferData(arg1 >>> 0, getArrayU8FromWasm0(arg2, arg3), arg4 >>> 0);
         },
+        __wbg_checkFramebufferStatus_9d9acdb931c7370b: function(arg0, arg1) {
+            const ret = getObject(arg0).checkFramebufferStatus(arg1 >>> 0);
+            return ret;
+        },
         __wbg_clearColor_404a3b16d43db93b: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).clearColor(arg1, arg2, arg3, arg4);
         },
@@ -906,6 +913,10 @@ function __wbg_get_imports() {
         },
         __wbg_createBuffer_26534c05e01b8559: function(arg0) {
             const ret = getObject(arg0).createBuffer();
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
+        },
+        __wbg_createFramebuffer_41512c38358a41c4: function(arg0) {
+            const ret = getObject(arg0).createFramebuffer();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
         __wbg_createProgram_9b7710a1f2701c2c: function(arg0) {
@@ -927,6 +938,9 @@ function __wbg_get_imports() {
         __wbg_deleteBuffer_ab099883c168644d: function(arg0, arg1) {
             getObject(arg0).deleteBuffer(getObject(arg1));
         },
+        __wbg_deleteFramebuffer_9738f3bb85c1ab35: function(arg0, arg1) {
+            getObject(arg0).deleteFramebuffer(getObject(arg1));
+        },
         __wbg_deleteProgram_9298fb3e3c1d3a78: function(arg0, arg1) {
             getObject(arg0).deleteProgram(getObject(arg1));
         },
@@ -945,6 +959,9 @@ function __wbg_get_imports() {
         __wbg_drawArraysInstanced_ec30adc616ec58d5: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).drawArraysInstanced(arg1 >>> 0, arg2, arg3, arg4);
         },
+        __wbg_drawArrays_075228181299b824: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).drawArrays(arg1 >>> 0, arg2, arg3);
+        },
         __wbg_enableVertexAttribArray_475e06c31777296d: function(arg0, arg1) {
             getObject(arg0).enableVertexAttribArray(arg1 >>> 0);
         },
@@ -962,8 +979,14 @@ function __wbg_get_imports() {
                 wasm.__wbindgen_export3(deferred0_0, deferred0_1, 1);
             }
         },
+        __wbg_error_9a7fe3f932034cde: function(arg0) {
+            console.error(getObject(arg0));
+        },
         __wbg_finish_ee0b71d14fa50456: function(arg0) {
             getObject(arg0).finish();
+        },
+        __wbg_framebufferTexture2D_c283e928186aa542: function(arg0, arg1, arg2, arg3, arg4, arg5) {
+            getObject(arg0).framebufferTexture2D(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, getObject(arg4), arg5);
         },
         __wbg_getContext_2a5764d48600bc43: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = getObject(arg0).getContext(getStringFromWasm0(arg1, arg2));
@@ -1080,6 +1103,9 @@ function __wbg_get_imports() {
         __wbg_texSubImage2D_c0140b758462635d: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
             getObject(arg0).texSubImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7 >>> 0, arg8 >>> 0, arg9 === 0 ? undefined : getArrayU8FromWasm0(arg9, arg10));
         }, arguments); },
+        __wbg_uniform1f_b500ede5b612bea2: function(arg0, arg1, arg2) {
+            getObject(arg0).uniform1f(getObject(arg1), arg2);
+        },
         __wbg_uniform1i_e9aee4b9e7fe8c4b: function(arg0, arg1, arg2) {
             getObject(arg0).uniform1i(getObject(arg1), arg2);
         },

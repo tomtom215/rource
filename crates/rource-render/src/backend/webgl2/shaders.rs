@@ -364,7 +364,19 @@ void main() {
 }
 "#;
 
-/// Vertex shader for fullscreen post-processing (bloom).
+// ============================================================================
+// Bloom Post-Processing Shaders
+// ============================================================================
+//
+// GPU bloom pipeline consists of 4 passes:
+// 1. Render scene to FBO (uses normal shaders)
+// 2. Extract bright pixels (BLOOM_BRIGHT_FRAGMENT_SHADER)
+// 3. Gaussian blur - horizontal then vertical (BLOOM_BLUR_FRAGMENT_SHADER)
+// 4. Composite bloom + scene (BLOOM_COMPOSITE_FRAGMENT_SHADER)
+
+/// Vertex shader for fullscreen post-processing passes.
+///
+/// Used by all bloom passes. Maps clip-space quad (-1 to 1) to UV coordinates (0 to 1).
 pub const BLOOM_VERTEX_SHADER: &str = r#"#version 300 es
 precision highp float;
 
@@ -378,7 +390,54 @@ void main() {
 }
 "#;
 
-/// Fragment shader for bloom blur pass.
+/// Fragment shader for extracting bright pixels above a threshold.
+///
+/// This is the first pass of the bloom effect. Pixels with perceived brightness
+/// above the threshold are extracted and scaled by intensity. Dark pixels become
+/// black (transparent to the bloom effect).
+///
+/// Uses ITU-R BT.601 luminance coefficients for perceptually accurate brightness.
+pub const BLOOM_BRIGHT_FRAGMENT_SHADER: &str = r#"#version 300 es
+precision highp float;
+
+uniform sampler2D u_texture;
+uniform float u_threshold;   // Brightness threshold (0.0 - 1.0)
+uniform float u_intensity;   // Bloom intensity multiplier
+
+in vec2 v_uv;
+
+out vec4 fragColor;
+
+void main() {
+    vec4 color = texture(u_texture, v_uv);
+
+    // Calculate perceived brightness using ITU-R BT.601 coefficients
+    // This matches the CPU bloom implementation for visual consistency
+    float brightness = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+
+    // Extract bright pixels above threshold
+    if (brightness > u_threshold) {
+        // Scale by how much the brightness exceeds threshold
+        float factor = (brightness - u_threshold) * u_intensity;
+        fragColor = vec4(color.rgb * factor, 1.0);
+    } else {
+        fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+}
+"#;
+
+/// Fragment shader for separable Gaussian blur pass.
+///
+/// This shader implements a 9-tap Gaussian blur that can be applied horizontally
+/// or vertically via the `u_direction` uniform. Two passes (H then V) produce
+/// a full 2D Gaussian blur more efficiently than a single 2D kernel.
+///
+/// The weights are pre-computed Gaussian coefficients that sum to 1.0:
+/// - Center weight: 0.227027
+/// - Offset ±1: 0.1945946 each
+/// - Offset ±2: 0.1216216 each
+/// - Offset ±3: 0.054054 each
+/// - Offset ±4: 0.016216 each
 pub const BLOOM_BLUR_FRAGMENT_SHADER: &str = r#"#version 300 es
 precision highp float;
 
@@ -407,7 +466,12 @@ void main() {
 }
 "#;
 
-/// Fragment shader for bloom composite (add bloom to original).
+/// Fragment shader for final bloom compositing.
+///
+/// Additively blends the blurred bloom texture with the original scene.
+/// The bloom intensity can be adjusted via `u_intensity` uniform.
+///
+/// Final color = `scene_color` + `bloom_color` * intensity
 pub const BLOOM_COMPOSITE_FRAGMENT_SHADER: &str = r#"#version 300 es
 precision highp float;
 
@@ -446,6 +510,7 @@ mod tests {
         assert!(!TEXT_VERTEX_SHADER.is_empty());
         assert!(!TEXT_FRAGMENT_SHADER.is_empty());
         assert!(!BLOOM_VERTEX_SHADER.is_empty());
+        assert!(!BLOOM_BRIGHT_FRAGMENT_SHADER.is_empty());
         assert!(!BLOOM_BLUR_FRAGMENT_SHADER.is_empty());
         assert!(!BLOOM_COMPOSITE_FRAGMENT_SHADER.is_empty());
     }
@@ -457,5 +522,27 @@ mod tests {
         assert!(CIRCLE_FRAGMENT_SHADER.contains("#version 300 es"));
         assert!(LINE_VERTEX_SHADER.contains("#version 300 es"));
         assert!(LINE_FRAGMENT_SHADER.contains("#version 300 es"));
+        assert!(BLOOM_VERTEX_SHADER.contains("#version 300 es"));
+        assert!(BLOOM_BRIGHT_FRAGMENT_SHADER.contains("#version 300 es"));
+        assert!(BLOOM_BLUR_FRAGMENT_SHADER.contains("#version 300 es"));
+        assert!(BLOOM_COMPOSITE_FRAGMENT_SHADER.contains("#version 300 es"));
+    }
+
+    #[test]
+    fn test_bloom_shaders_have_required_uniforms() {
+        // Bright pass needs threshold and intensity
+        assert!(BLOOM_BRIGHT_FRAGMENT_SHADER.contains("u_threshold"));
+        assert!(BLOOM_BRIGHT_FRAGMENT_SHADER.contains("u_intensity"));
+        assert!(BLOOM_BRIGHT_FRAGMENT_SHADER.contains("u_texture"));
+
+        // Blur pass needs direction and resolution
+        assert!(BLOOM_BLUR_FRAGMENT_SHADER.contains("u_direction"));
+        assert!(BLOOM_BLUR_FRAGMENT_SHADER.contains("u_resolution"));
+        assert!(BLOOM_BLUR_FRAGMENT_SHADER.contains("u_texture"));
+
+        // Composite needs scene, bloom textures and intensity
+        assert!(BLOOM_COMPOSITE_FRAGMENT_SHADER.contains("u_scene"));
+        assert!(BLOOM_COMPOSITE_FRAGMENT_SHADER.contains("u_bloom"));
+        assert!(BLOOM_COMPOSITE_FRAGMENT_SHADER.contains("u_intensity"));
     }
 }

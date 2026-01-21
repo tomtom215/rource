@@ -295,6 +295,94 @@ All optimizations have been verified:
 - WASM build: 548KB (239KB gzipped)
 - No clippy warnings
 
+### GPU Bloom Effect for WebGL2 (2026-01-21)
+
+Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
+hardware-accelerated glow effects around bright areas of the scene.
+
+#### Architecture
+
+```
+crates/rource-render/src/backend/webgl2/
+├── mod.rs          # WebGl2Renderer with bloom integration
+├── bloom.rs        # BloomPipeline, BloomFbo, BloomConfig (NEW)
+├── shaders.rs      # GLSL ES 3.0 shaders including bloom passes
+├── buffers.rs      # VBO/VAO management including fullscreen quad
+└── textures.rs     # Texture atlas for font glyphs
+```
+
+#### Pipeline Overview
+
+The bloom effect is implemented as a multi-pass post-processing pipeline:
+
+1. **Scene Render**: Scene is rendered to a scene FBO instead of directly to canvas
+2. **Bright Pass**: Extract pixels above brightness threshold (using ITU-R BT.601 luminance)
+3. **Blur Pass (H)**: Horizontal 9-tap Gaussian blur on downscaled bloom FBO
+4. **Blur Pass (V)**: Vertical blur (ping-pong to second FBO)
+5. **Composite**: Additively blend bloom with original scene to canvas
+
+#### Key Components
+
+| Component | Description |
+|-----------|-------------|
+| `BloomConfig` | Configuration struct (enabled, threshold, intensity, downscale, passes) |
+| `BloomFbo` | Framebuffer object wrapper with texture attachment |
+| `BloomPipeline` | Orchestrates the full bloom pipeline |
+| `BloomProgram` | Compiled shader program with uniform locations |
+
+#### Configuration Options
+
+```rust
+// Default configuration
+pub const DEFAULT_BLOOM_THRESHOLD: f32 = 0.7;  // Brightness threshold (0.0 - 1.0)
+pub const DEFAULT_BLOOM_INTENSITY: f32 = 1.0;  // Glow intensity multiplier
+pub const DEFAULT_BLOOM_DOWNSCALE: u32 = 4;    // Bloom buffer downscale factor
+pub const DEFAULT_BLOOM_PASSES: u32 = 2;       // Number of blur passes
+```
+
+#### Preset Configurations
+
+```rust
+// Subtle bloom - gentle glow on very bright areas
+let subtle = BloomConfig::subtle();   // threshold=0.8, intensity=0.5, passes=1
+
+// Intense bloom - pronounced glow effect
+let intense = BloomConfig::intense(); // threshold=0.5, intensity=2.0, passes=3
+```
+
+#### WebGL2 Renderer API
+
+```rust
+// Enable/disable bloom
+renderer.set_bloom_enabled(true);
+
+// Configure bloom parameters
+renderer.set_bloom_threshold(0.7);   // Lower = more bloom
+renderer.set_bloom_intensity(1.0);   // Higher = brighter glow
+renderer.set_bloom_downscale(4);     // Higher = faster but blockier
+renderer.set_bloom_passes(2);        // More = softer, spread-out bloom
+
+// Get full configuration
+let config = renderer.bloom_config();
+renderer.set_bloom_config(BloomConfig::intense());
+```
+
+#### Performance Characteristics
+
+| Aspect | Details |
+|--------|---------|
+| Memory | 3 FBOs: scene (full res), bloom A/B (downscaled) |
+| GPU Cost | 4 draw calls per frame (bright + 2×blur + composite) |
+| Downscale | Bloom computed at 1/4 resolution by default |
+| Lazy Init | FBOs created only when bloom is enabled |
+| Context Recovery | Full state preserved across WebGL context loss |
+
+#### WASM Integration Note
+
+The GPU bloom is automatically wired into the WebGL2 backend. When WASM calls
+`setBloom(true)`, the `WebGl2Renderer::set_bloom_enabled()` method activates the
+full GPU pipeline. No additional JavaScript code is required.
+
 ### WebAssembly Implementation (2026-01-10)
 
 Successfully implemented WebAssembly support for running Rource in web browsers:
@@ -331,6 +419,7 @@ Successfully implemented GPU-accelerated WebGL2 rendering backend for WASM:
 ```
 crates/rource-render/src/backend/webgl2/
 ├── mod.rs          # WebGl2Renderer implementing Renderer trait
+├── bloom.rs        # GPU bloom post-processing pipeline
 ├── shaders.rs      # GLSL ES 3.0 shader sources
 ├── buffers.rs      # VBO/VAO management for instanced rendering
 └── textures.rs     # Texture atlas for font glyphs
@@ -357,6 +446,11 @@ crates/rource-render/src/backend/webgl2/
 5. **Context Loss Handling**: Graceful recovery from WebGL context loss
    - Detects loss via `gl.is_context_lost()`
    - `recover_context()` method to reinitialize resources
+
+6. **GPU Bloom Effect**: Full post-processing bloom pipeline
+   - FBO-based render-to-texture for scene capture
+   - Separable Gaussian blur (9-tap, configurable passes)
+   - Additive compositing with original scene
 
 #### JavaScript API Additions
 
