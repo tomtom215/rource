@@ -160,6 +160,11 @@ header h1 {
     letter-spacing: 0.5px;
 }
 
+/* Hide badge when empty (before WASM loads) */
+.renderer-badge:empty {
+    display: none;
+}
+
 .renderer-badge.webgl2 {
     color: var(--success);
     border-color: var(--success);
@@ -171,6 +176,26 @@ header h1 {
     gap: 0.5rem;
     align-items: center;
     flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.control-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 0.25rem;
+}
+
+/* Hide dividers on small screens when controls wrap */
+@media (max-width: 900px) {
+    .control-divider {
+        display: none;
+    }
 }
 
 .header-links {
