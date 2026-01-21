@@ -26,11 +26,6 @@ let uploadedFileContent = null;
 function handleFileUpload(file) {
     const elements = getAllElements();
 
-    if (file.size > CONFIG.MAX_FILE_SIZE_BYTES) {
-        showToast('File too large. Maximum size is 10MB.', 'error');
-        return;
-    }
-
     // Show loading state
     if (elements.fileNameEl) {
         elements.fileNameEl.textContent = `Loading ${file.name}...`;

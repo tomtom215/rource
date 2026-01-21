@@ -12,9 +12,6 @@ export const CONFIG = {
     SCROLL_INDICATOR_THRESHOLD: 50,  // Pixels from bottom to hide indicator
     DEBOUNCE_DELAY_MS: 150,          // Debounce delay for resize events
 
-    // Limits
-    MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024,  // 10MB max file upload
-
     // UI
     TOOLTIP_WIDTH: 320,              // Tooltip width in pixels
     TOOLTIP_HEIGHT: 150,             // Tooltip height in pixels
