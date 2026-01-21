@@ -16,12 +16,12 @@
 //!
 //! ## Module Structure
 //!
-//! - [`backend`]: Renderer backend abstraction (WebGL2/Software)
-//! - [`metrics`]: Performance tracking and render statistics
-//! - [`playback`]: Timeline and commit playback management
-//! - [`interaction`]: Mouse/touch input handling
-//! - [`render_phases`]: Phased rendering pipeline
-//! - [`rendering`]: Low-level rendering utilities
+//! - `backend`: Renderer backend abstraction (WebGL2/Software)
+//! - `metrics`: Performance tracking and render statistics
+//! - `playback`: Timeline and commit playback management
+//! - `interaction`: Mouse/touch input handling
+//! - `render_phases`: Phased rendering pipeline
+//! - `rendering`: Low-level rendering utilities
 //!
 //! ## Usage
 //!
