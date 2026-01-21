@@ -69,8 +69,8 @@ mod config_file;
 pub use config_env::{env_var_names, load_env, merge_env};
 pub use settings::{
     CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
-    FilterSettings, InputSettings, LimitSettings, OverlaySettings, PlaybackSettings, Settings,
-    TitleSettings, VisibilitySettings,
+    FilterSettings, InputSettings, LayoutSettings, LimitSettings, OverlaySettings,
+    PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
 };
 
 #[cfg(feature = "config-file")]

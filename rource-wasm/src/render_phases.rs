@@ -34,6 +34,11 @@ pub struct RenderContext {
     pub font_id: Option<FontId>,
     /// Font size for labels.
     pub font_size: f32,
+    /// Opacity falloff rate for branch lines based on depth.
+    /// Higher values make deep branches fade faster (0.0-1.0).
+    pub branch_depth_fade: f32,
+    /// Maximum opacity for directory-to-parent branch lines (0.0-1.0).
+    pub branch_opacity_max: f32,
 }
 
 /// Rendering statistics (for future performance monitoring).
@@ -99,15 +104,20 @@ pub fn render_directories<R: Renderer + ?Sized>(
             if let Some(parent_pos) = dir.parent_position() {
                 let parent_screen = camera.world_to_screen(parent_pos);
 
-                // Branch width based on depth
+                // Branch width based on depth (thinner for deeper nodes)
                 let branch_width = (1.5 - depth_factor * 0.5).max(0.8);
 
-                // Branch color with gradient effect
+                // Depth-based opacity: fades deeper branches to reduce visual noise
+                // opacity = max_opacity * (1.0 - depth_factor * fade_rate)
+                let depth_opacity = ctx.branch_opacity_max
+                    * (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
+
+                // Branch color with depth-based opacity
                 let branch_color = Color::new(
                     dir_color.r * 1.1,
                     dir_color.g * 1.1,
                     dir_color.b * 1.2,
-                    0.35,
+                    depth_opacity,
                 );
 
                 draw_curved_branch(
@@ -202,12 +212,18 @@ pub fn render_files<R: Renderer + ?Sized>(
             if let Some(dir) = scene.directories().get(file.directory()) {
                 let dir_screen = camera.world_to_screen(dir.position());
 
+                // Depth-based opacity for file branches
+                let dir_depth = dir.depth();
+                let depth_factor = (dir_depth as f32 / 6.0).min(1.0);
+                let depth_opacity = (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
+
                 // Branch color matches file color for visual cohesion
+                // Combine file alpha, base opacity, and depth fade
                 let branch_color = Color::new(
                     color.r * 0.7,
                     color.g * 0.7,
                     color.b * 0.7,
-                    0.25 * file.alpha(),
+                    0.25 * file.alpha() * depth_opacity,
                 );
 
                 draw_curved_branch(

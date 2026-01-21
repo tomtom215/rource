@@ -23,6 +23,24 @@ export class Rource {
      */
     commitCount(): number;
     /**
+     * Configures the layout algorithm for a given repository size.
+     *
+     * This automatically computes optimal layout parameters based on
+     * repository statistics. Should be called after loading data or
+     * when repository characteristics are known.
+     *
+     * # Arguments
+     * * `file_count` - Total number of files
+     * * `max_depth` - Maximum directory depth (0 if unknown)
+     * * `dir_count` - Total number of directories (0 if unknown)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.configureLayoutForRepo(50000, 12, 3000);
+     * ```
+     */
+    configureLayoutForRepo(file_count: number, max_depth: number, dir_count: number): void;
+    /**
      * Returns the current commit index.
      */
     currentCommit(): number;
@@ -100,6 +118,18 @@ export class Rource {
      * Calculates the required canvas dimensions for full map export.
      */
     getFullMapDimensions(min_label_font_size: number): string | undefined;
+    /**
+     * Gets the current layout configuration as a JSON string.
+     *
+     * Returns a JSON object with all layout parameters.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * const config = JSON.parse(rource.getLayoutConfig());
+     * console.log(config.radial_distance_scale);
+     * ```
+     */
+    getLayoutConfig(): string;
     /**
      * Returns the type of renderer being used ("webgl2" or "software").
      */
@@ -254,9 +284,72 @@ export class Rource {
      */
     setBloom(enabled: boolean): void;
     /**
+     * Sets the branch depth fade rate.
+     *
+     * Higher values make deep branches fade faster (0.0-1.0).
+     * Default: 0.3
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setBranchDepthFade(0.7);
+     * ```
+     */
+    setBranchDepthFade(fade: number): void;
+    /**
+     * Sets the maximum branch opacity.
+     *
+     * Controls visibility of directory-to-parent connections (0.0-1.0).
+     * Default: 0.35
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setBranchOpacityMax(0.15);
+     * ```
+     */
+    setBranchOpacityMax(opacity: number): void;
+    /**
+     * Sets the depth distance exponent for non-linear depth scaling.
+     *
+     * Values > 1.0 add extra spacing at deeper levels.
+     * Default: 1.0 (linear), Range: [0.5, 2.0]
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setDepthDistanceExponent(1.3);
+     * ```
+     */
+    setDepthDistanceExponent(exponent: number): void;
+    /**
      * Sets the font size for labels.
      */
     setFontSize(size: number): void;
+    /**
+     * Sets the layout preset for different repository sizes.
+     *
+     * # Presets
+     * * "small" - Repos < 1000 files (compact layout)
+     * * "medium" - Repos 1000-10000 files (default)
+     * * "large" - Repos 10000-50000 files (spread out)
+     * * "massive" - Repos 50000+ files (maximum spread)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setLayoutPreset("massive");
+     * ```
+     */
+    setLayoutPreset(preset: string): void;
+    /**
+     * Sets the radial distance scale for directory positioning.
+     *
+     * Higher values spread the tree outward more. Range: [40.0, 500.0]
+     * Default: 80.0
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setRadialDistanceScale(160.0);
+     * ```
+     */
+    setRadialDistanceScale(scale: number): void;
     /**
      * Sets whether to show labels.
      */
@@ -300,6 +393,7 @@ export interface InitOutput {
     readonly __wbg_rource_free: (a: number, b: number) => void;
     readonly rource_captureScreenshot: (a: number, b: number) => void;
     readonly rource_commitCount: (a: number) => number;
+    readonly rource_configureLayoutForRepo: (a: number, b: number, c: number, d: number) => void;
     readonly rource_currentCommit: (a: number) => number;
     readonly rource_forceRender: (a: number) => void;
     readonly rource_frame: (a: number, b: number) => number;
@@ -319,6 +413,7 @@ export interface InitOutput {
     readonly rource_getFps: (a: number) => number;
     readonly rource_getFrameTimeMs: (a: number) => number;
     readonly rource_getFullMapDimensions: (a: number, b: number, c: number) => void;
+    readonly rource_getLayoutConfig: (a: number, b: number) => void;
     readonly rource_getRendererType: (a: number, b: number) => void;
     readonly rource_getShowLabels: (a: number) => number;
     readonly rource_getSpeed: (a: number) => number;
@@ -354,7 +449,12 @@ export interface InitOutput {
     readonly rource_seek: (a: number, b: number) => void;
     readonly rource_setBackgroundColor: (a: number, b: number, c: number) => void;
     readonly rource_setBloom: (a: number, b: number) => void;
+    readonly rource_setBranchDepthFade: (a: number, b: number) => void;
+    readonly rource_setBranchOpacityMax: (a: number, b: number) => void;
+    readonly rource_setDepthDistanceExponent: (a: number, b: number) => void;
     readonly rource_setFontSize: (a: number, b: number) => void;
+    readonly rource_setLayoutPreset: (a: number, b: number, c: number) => void;
+    readonly rource_setRadialDistanceScale: (a: number, b: number) => void;
     readonly rource_setShowLabels: (a: number, b: number) => void;
     readonly rource_setSpeed: (a: number, b: number) => void;
     readonly rource_stepBackward: (a: number) => void;
