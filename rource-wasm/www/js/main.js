@@ -56,8 +56,8 @@ import { animate } from './animation.js';
 let parsedCommits = [];
 
 /**
- * Update DOM elements with build info (WASM size, etc.)
- * This ensures displayed sizes match the actual built artifacts.
+ * Update DOM elements with build info (WASM size, test count, etc.)
+ * This ensures displayed values match the actual built artifacts.
  */
 function updateBuildInfo() {
     const sizeText = `~${BUILD_INFO.wasmGzipKB}KB`;
@@ -72,6 +72,18 @@ function updateBuildInfo() {
     const techSize = document.getElementById('tech-wasm-size');
     if (techSize) {
         techSize.textContent = sizeText;
+    }
+
+    // Update test count
+    const techTests = document.getElementById('tech-tests');
+    if (techTests) {
+        techTests.textContent = BUILD_INFO.testCount.toLocaleString();
+    }
+
+    // Update crate count
+    const techCrates = document.getElementById('tech-crates');
+    if (techCrates) {
+        techCrates.textContent = BUILD_INFO.crateCount;
     }
 }
 
