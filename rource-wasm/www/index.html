@@ -590,7 +590,7 @@
                 <div id="tab-command" class="tab-content active" role="tabpanel">
                     <p class="help-text" style="margin-bottom: 0.75rem;">Generate a log file from your local repository:</p>
                     <div class="command-box">
-                        <code id="git-command">git log --reverse --format="%at|%an" --name-status | awk '/^[0-9]+\|/{info=$0;next}/^[AMD]\t/{print info"|"substr($0,1,1)"|"substr($0,3)}' &gt; rource.log</code>
+                        <code id="git-command">git log --reverse --pretty=format:"commit %H%nAuthor: %an%nDate: %at%n" --name-status &gt; rource.log</code>
                     </div>
                     <button type="button" id="btn-copy-command" class="btn btn-sm btn-secondary">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
@@ -604,7 +604,7 @@
                             <li>Upload the generated file using the "Upload File" tab</li>
                         </ol>
                         <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
-                            <strong>Note:</strong> Works on Linux/macOS. For Windows, use Git Bash or WSL.
+                            <strong>Note:</strong> Works on Linux/macOS/Windows (Git Bash). Handles renames and all file statuses.
                         </p>
                     </div>
                 </div>
@@ -628,20 +628,19 @@
                     <div id="file-name" class="file-name hidden"></div>
                     <button type="button" id="btn-load-file" class="btn btn-sm" disabled>Load Uploaded File</button>
                     <div class="help-text" style="margin-top: 0.75rem;">
-                        <strong>Accepted formats:</strong><br>
-                        <code>.txt</code>, <code>.log</code>, or <code>.csv</code> files containing log data in the format:<br>
-                        <code>timestamp|author|action|path</code><br>
-                        <em>Example:</em> <code>1609459200|John Doe|A|src/main.rs</code><br>
-                        <span style="color: var(--text-muted); font-size: 0.85em;">Use the "Git Command" tab to generate this file from your local repository.</span>
+                        <strong>Supported formats (auto-detected):</strong><br>
+                        <span style="color: var(--text-secondary);">• Native git log format</span> (from "Git Command" tab)<br>
+                        <span style="color: var(--text-secondary);">• Custom pipe-delimited:</span> <code>timestamp|author|action|path</code><br>
+                        <span style="color: var(--text-muted); font-size: 0.85em;">Invalid lines are automatically skipped.</span>
                     </div>
                 </div>
 
                 <div id="tab-paste" class="tab-content" role="tabpanel" hidden>
-                    <textarea id="log-input" placeholder="Paste your log data here...&#10;Format: timestamp|author|action|path"></textarea>
+                    <textarea id="log-input" placeholder="Paste your log data here...&#10;Formats auto-detected: git log or timestamp|author|action|path"></textarea>
                     <button type="button" id="btn-load" class="btn btn-sm" disabled>Load Log Data</button>
                     <p class="help-text">
-                        Format: <code>timestamp|author|action|path</code><br>
-                        Actions: <code>A</code>=Add, <code>M</code>=Modify, <code>D</code>=Delete
+                        Supported formats (auto-detected):<br>
+                        <code>git log --name-status</code> output, or <code>timestamp|author|action|path</code>
                     </p>
                 </div>
             </div>
