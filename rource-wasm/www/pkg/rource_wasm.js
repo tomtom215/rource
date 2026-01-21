@@ -1039,6 +1039,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getShaderParameter(getObject(arg1), arg2 >>> 0);
             return addHeapObject(ret);
         },
+        __wbg_getUniformBlockIndex_1ee7e922e6d96d7e: function(arg0, arg1, arg2, arg3) {
+            const ret = getObject(arg0).getUniformBlockIndex(getObject(arg1), getStringFromWasm0(arg2, arg3));
+            return ret;
+        },
         __wbg_getUniformLocation_d06b3a5b3c60e95c: function(arg0, arg1, arg2, arg3) {
             const ret = getObject(arg0).getUniformLocation(getObject(arg1), getStringFromWasm0(arg2, arg3));
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -1173,6 +1177,9 @@ function __wbg_get_imports() {
         },
         __wbg_uniform4f_f6b5e2024636033a: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).uniform4f(getObject(arg1), arg2, arg3, arg4, arg5);
+        },
+        __wbg_uniformBlockBinding_1cf9fd2c49adf0f3: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).uniformBlockBinding(getObject(arg1), arg2 >>> 0, arg3 >>> 0);
         },
         __wbg_useProgram_fe720ade4d3b6edb: function(arg0, arg1) {
             getObject(arg0).useProgram(getObject(arg1));

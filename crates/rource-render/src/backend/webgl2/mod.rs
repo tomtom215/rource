@@ -296,6 +296,27 @@ impl WebGl2Renderer {
             )?);
             self.text_program =
                 Some(self.compile_program(TEXT_VERTEX_SHADER_UBO, TEXT_FRAGMENT_SHADER)?);
+
+            // Bind each shader's uniform block to the UBO binding point
+            // This is required in WebGL2/GLSL ES 3.0 since layout(binding = N) is not supported
+            if let Some(prog) = &self.circle_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
+            if let Some(prog) = &self.ring_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
+            if let Some(prog) = &self.line_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
+            if let Some(prog) = &self.quad_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
+            if let Some(prog) = &self.textured_quad_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
+            if let Some(prog) = &self.text_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
         } else {
             // Fallback to legacy shaders with individual uniforms
             self.circle_program =
