@@ -67,6 +67,10 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::map_unwrap_or)]
 #![allow(clippy::too_many_arguments)]
+// On WASM, wgpu types aren't Send/Sync due to browser single-threaded runtime.
+// These warnings are expected and safe to ignore for WASM targets.
+#![cfg_attr(target_arch = "wasm32", allow(clippy::future_not_send))]
+#![cfg_attr(target_arch = "wasm32", allow(clippy::arc_with_non_send_sync))]
 
 pub mod bloom;
 pub mod buffers;
@@ -374,7 +378,14 @@ impl WgpuRenderer {
     }
 
     /// Creates a new wgpu renderer from a canvas element (WASM).
+    ///
+    /// # Note on Send/Sync
+    ///
+    /// This function is not `Send` on WASM because browser APIs are single-threaded.
+    /// wgpu types cannot be `Send`/`Sync` in the browser environment, which is expected
+    /// and safe for single-threaded WASM usage.
     #[cfg(target_arch = "wasm32")]
+    #[allow(clippy::future_not_send)]
     pub async fn new_from_canvas(canvas: &web_sys::HtmlCanvasElement) -> Result<Self, WgpuError> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::BROWSER_WEBGPU | wgpu::Backends::GL,

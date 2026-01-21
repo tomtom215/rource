@@ -1,16 +1,101 @@
 //! Renderer backend abstraction for Rource WASM.
 //!
-//! This module provides a unified interface for rendering that can use either
-//! WebGL2 (GPU-accelerated) or Software (CPU-based) rendering backends.
+//! This module provides a unified interface for rendering that can use
+//! wgpu (WebGPU), WebGL2, or Software (CPU-based) rendering backends.
 //!
-//! The backend is selected automatically at construction time, with WebGL2
-//! being preferred and Software as a fallback for maximum compatibility.
+//! The backend is selected automatically at construction time, with wgpu
+//! being preferred (when WebGPU is available), then WebGL2, and finally
+//! Software as a fallback for maximum compatibility.
+//!
+//! ## Backend Selection Priority
+//!
+//! 1. **wgpu (WebGPU)** - Best performance with modern GPU APIs
+//! 2. **WebGL2** - Good performance, widely supported
+//! 3. **Software** - Maximum compatibility, CPU-based
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, OffscreenCanvas};
 
 use rource_render::{FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
+
+#[cfg(target_arch = "wasm32")]
+use rource_render::WgpuRenderer;
+
+/// Checks if WebGPU is available in the browser.
+///
+/// WebGPU is a modern graphics API that provides lower overhead and better
+/// performance than WebGL. It's supported in Chrome 113+, Edge 113+, and
+/// Firefox 128+ (behind flag).
+///
+/// Returns `true` if `navigator.gpu` exists and is available.
+fn is_webgpu_available() -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+
+    let Some(navigator) = window.navigator().dyn_into::<web_sys::Navigator>().ok() else {
+        return false;
+    };
+
+    // Check if navigator.gpu exists
+    js_sys::Reflect::has(&navigator, &JsValue::from_str("gpu")).unwrap_or(false)
+}
+
+/// Asynchronously checks if WebGPU can actually be used (adapter available).
+///
+/// This goes beyond `is_webgpu_available()` by actually requesting an adapter,
+/// which may fail even if `navigator.gpu` exists (e.g., no compatible GPU).
+///
+/// # Note on Send
+///
+/// This future is not `Send` because JavaScript/browser APIs are single-threaded.
+/// This is expected and safe for WASM usage.
+#[allow(clippy::future_not_send)]
+async fn can_use_webgpu() -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+
+    let Some(navigator) = window.navigator().dyn_into::<web_sys::Navigator>().ok() else {
+        return false;
+    };
+
+    // Get navigator.gpu
+    let Ok(gpu_value) = js_sys::Reflect::get(&navigator, &JsValue::from_str("gpu")) else {
+        return false;
+    };
+
+    if gpu_value.is_undefined() || gpu_value.is_null() {
+        return false;
+    }
+
+    // Try to request an adapter
+    let Ok(request_adapter) =
+        js_sys::Reflect::get(&gpu_value, &JsValue::from_str("requestAdapter"))
+    else {
+        return false;
+    };
+
+    if !request_adapter.is_function() {
+        return false;
+    }
+
+    let request_adapter_fn = request_adapter.unchecked_into::<js_sys::Function>();
+    let Ok(promise) = request_adapter_fn.call0(&gpu_value) else {
+        return false;
+    };
+
+    let Ok(promise) = promise.dyn_into::<js_sys::Promise>() else {
+        return false;
+    };
+
+    // Await the adapter request
+    JsFuture::from(promise)
+        .await
+        .is_ok_and(|adapter| !adapter.is_null() && !adapter.is_undefined())
+}
 
 /// Checks if WebGL2 is available by testing on an offscreen canvas.
 ///
@@ -48,6 +133,8 @@ fn is_webgl2_available() -> bool {
 /// The type of renderer being used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RendererType {
+    /// wgpu renderer using WebGPU API.
+    Wgpu,
     /// WebGL2 GPU-accelerated renderer.
     WebGl2,
     /// Software CPU renderer with `Canvas2D` output.
@@ -57,13 +144,20 @@ pub enum RendererType {
 impl RendererType {
     /// Returns the renderer type as a string identifier.
     ///
-    /// Returns `"webgl2"` for WebGL2 renderer or `"software"` for software renderer.
+    /// Returns `"wgpu"`, `"webgl2"`, or `"software"`.
     #[inline]
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Wgpu => "wgpu",
             Self::WebGl2 => "webgl2",
             Self::Software => "software",
         }
+    }
+
+    /// Returns `true` if this is a GPU-accelerated renderer (wgpu or WebGL2).
+    #[inline]
+    pub fn is_gpu_accelerated(self) -> bool {
+        matches!(self, Self::Wgpu | Self::WebGl2)
     }
 }
 
@@ -71,24 +165,29 @@ impl RendererType {
 // Renderer Backend
 // ============================================================================
 
-/// Unified renderer backend that can be either WebGL2 or Software.
+/// Unified renderer backend that can be wgpu, WebGL2, or Software.
 ///
-/// This enum abstracts over the two rendering backends, providing a unified
+/// This enum abstracts over the three rendering backends, providing a unified
 /// interface for all rendering operations. The backend is selected at
 /// construction time based on browser capabilities.
 ///
 /// # Backend Selection
 ///
-/// When created via [`RendererBackend::new`], the backend will:
-/// 1. First attempt to create a WebGL2 context
-/// 2. Fall back to Software rendering with `Canvas2D` if WebGL2 is unavailable
+/// When created via [`RendererBackend::new_async`], the backend will:
+/// 1. First attempt to create a wgpu (WebGPU) context (best performance)
+/// 2. Fall back to WebGL2 if WebGPU is unavailable
+/// 3. Fall back to Software rendering with `Canvas2D` if WebGL2 is unavailable
 ///
 /// # Performance Characteristics
 ///
-/// - **WebGL2**: Best performance, GPU-accelerated, uses instanced rendering
+/// - **wgpu (WebGPU)**: Best performance, modern GPU API, lower overhead
+/// - **WebGL2**: Good performance, GPU-accelerated, uses instanced rendering
 /// - **Software**: Maximum compatibility, CPU-based, may be slower on complex scenes
-#[allow(clippy::large_enum_variant)] // WebGl2Renderer is larger, but boxing adds complexity for little gain
+#[allow(clippy::large_enum_variant)] // GPU renderers are larger, but boxing adds complexity for little gain
 pub enum RendererBackend {
+    /// wgpu renderer using WebGPU API.
+    #[cfg(target_arch = "wasm32")]
+    Wgpu(WgpuRenderer),
     /// WebGL2 GPU-accelerated renderer.
     WebGl2(WebGl2Renderer),
     /// Software CPU renderer with `Canvas2D` output context.
@@ -101,7 +200,8 @@ pub enum RendererBackend {
 }
 
 impl RendererBackend {
-    /// Creates a new renderer backend, trying WebGL2 first then falling back to Software.
+    /// Creates a new renderer backend asynchronously, trying wgpu first, then WebGL2,
+    /// then falling back to Software.
     ///
     /// # Arguments
     ///
@@ -111,48 +211,122 @@ impl RendererBackend {
     ///
     /// A tuple of `(backend, renderer_type)` on success, or a `JsValue` error on failure.
     ///
-    /// # Errors
+    /// # Backend Selection Priority
     ///
-    /// Returns an error if neither WebGL2 nor `Canvas2D` contexts can be obtained.
+    /// 1. **wgpu (WebGPU)**: Best performance, modern GPU API
+    /// 2. **WebGL2**: Good performance, widely supported
+    /// 3. **Software**: Maximum compatibility, CPU-based
     ///
     /// # Context Selection
     ///
-    /// This function first checks if WebGL2 is available using an offscreen canvas
-    /// test. This is crucial because HTML5 Canvas only allows one context type per
-    /// canvas - once you call `getContext("webgl2")`, you cannot later get a 2D
-    /// context from that same canvas, even if the WebGL2 call failed.
+    /// This function checks capabilities on offscreen canvases before touching the main
+    /// canvas. This is crucial because HTML5 Canvas only allows one context type per
+    /// canvas - once you call `getContext()` with one type, you cannot get another.
     ///
-    /// By testing on an offscreen canvas first, we avoid "tainting" the main canvas
-    /// with a failed WebGL context attempt.
-    pub fn new(canvas: &HtmlCanvasElement) -> Result<(Self, RendererType), JsValue> {
+    /// # Note on Send
+    ///
+    /// This future is not `Send` because JavaScript/browser APIs are single-threaded.
+    /// This is expected and safe for WASM usage.
+    #[allow(clippy::future_not_send)]
+    pub async fn new_async(canvas: &HtmlCanvasElement) -> Result<(Self, RendererType), JsValue> {
         let width = canvas.width();
         let height = canvas.height();
 
-        // IMPORTANT: Check WebGL2 availability BEFORE touching the main canvas.
-        // Once you call getContext() with one type, you cannot get a different type.
+        // Try wgpu (WebGPU) first - best performance (only available on wasm32)
+        #[cfg(target_arch = "wasm32")]
+        {
+            if is_webgpu_available() {
+                web_sys::console::log_1(&"Rource: WebGPU API detected, checking adapter...".into());
+
+                if can_use_webgpu().await {
+                    web_sys::console::log_1(&"Rource: Attempting wgpu (WebGPU) renderer...".into());
+
+                    match WgpuRenderer::new_from_canvas(canvas).await {
+                        Ok(wgpu) => {
+                            web_sys::console::log_1(&"Rource: Using wgpu (WebGPU) renderer".into());
+                            return Ok((Self::Wgpu(wgpu), RendererType::Wgpu));
+                        }
+                        Err(e) => {
+                            web_sys::console::warn_1(
+                                &format!("Rource: wgpu init failed: {e}, trying WebGL2...").into(),
+                            );
+                            // wgpu failed, but canvas might not be tainted since wgpu
+                            // uses WebGPU API, not getContext. Fall through to WebGL2.
+                        }
+                    }
+                } else {
+                    web_sys::console::log_1(
+                        &"Rource: WebGPU adapter not available, trying WebGL2...".into(),
+                    );
+                }
+            }
+        }
+
+        // Suppress unused variable warning on non-wasm targets
+        let _ = (width, height);
+
+        // Try WebGL2 next
         if is_webgl2_available() {
-            // WebGL2 is available, try to create the renderer on the main canvas
             if let Ok(webgl2) = WebGl2Renderer::new(canvas) {
                 web_sys::console::log_1(&"Rource: Using WebGL2 renderer".into());
                 return Ok((Self::WebGl2(webgl2), RendererType::WebGl2));
             }
-            // WebGL2 was available but renderer creation failed (shader compilation, etc.)
-            // This is rare but can happen. We can still try 2D since we haven't touched
-            // the canvas yet (WebGl2Renderer::new only calls getContext if we get here).
-            // Actually, WebGl2Renderer::new DOES call getContext, so if it failed,
-            // the canvas is tainted. Log a warning.
             web_sys::console::warn_1(
                 &"Rource: WebGL2 available but renderer init failed, canvas may be tainted".into(),
             );
         } else {
-            // WebGL2 not available - go straight to software renderer without
-            // ever trying WebGL on the main canvas
             web_sys::console::log_1(
                 &"Rource: WebGL2 not available, using software renderer".into(),
             );
         }
 
         // Fall back to software rendering with 2D context
+        let context = canvas
+            .get_context("2d")
+            .map_err(|e| JsValue::from_str(&format!("Failed to get 2D context: {e:?}")))?
+            .ok_or_else(|| JsValue::from_str("Canvas 2D context not available"))?
+            .dyn_into::<CanvasRenderingContext2d>()?;
+
+        let renderer = SoftwareRenderer::new(width, height);
+        web_sys::console::log_1(&"Rource: Using software renderer".into());
+
+        Ok((Self::Software { renderer, context }, RendererType::Software))
+    }
+
+    /// Creates a new renderer backend synchronously (WebGL2 or Software only).
+    ///
+    /// This is a convenience method for cases where async is not available.
+    /// **Note**: This method cannot use wgpu since wgpu initialization is async.
+    /// Use [`new_async`](Self::new_async) to get the best available renderer.
+    ///
+    /// # Arguments
+    ///
+    /// * `canvas` - The HTML canvas element to render to
+    ///
+    /// # Returns
+    ///
+    /// A tuple of `(backend, renderer_type)` on success, or a `JsValue` error on failure.
+    #[allow(dead_code)] // Keep for potential future use where async is not available
+    pub fn new(canvas: &HtmlCanvasElement) -> Result<(Self, RendererType), JsValue> {
+        let width = canvas.width();
+        let height = canvas.height();
+
+        // Try WebGL2 first (can't use wgpu synchronously)
+        if is_webgl2_available() {
+            if let Ok(webgl2) = WebGl2Renderer::new(canvas) {
+                web_sys::console::log_1(&"Rource: Using WebGL2 renderer".into());
+                return Ok((Self::WebGl2(webgl2), RendererType::WebGl2));
+            }
+            web_sys::console::warn_1(
+                &"Rource: WebGL2 available but renderer init failed, canvas may be tainted".into(),
+            );
+        } else {
+            web_sys::console::log_1(
+                &"Rource: WebGL2 not available, using software renderer".into(),
+            );
+        }
+
+        // Fall back to software rendering
         let context = canvas
             .get_context("2d")
             .map_err(|e| JsValue::from_str(&format!("Failed to get 2D context: {e:?}")))?
@@ -168,6 +342,8 @@ impl RendererBackend {
     #[inline]
     pub fn width(&self) -> u32 {
         match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(r) => r.width(),
             Self::WebGl2(r) => r.width(),
             Self::Software { renderer, .. } => renderer.width(),
         }
@@ -177,6 +353,8 @@ impl RendererBackend {
     #[inline]
     pub fn height(&self) -> u32 {
         match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(r) => r.height(),
             Self::WebGl2(r) => r.height(),
             Self::Software { renderer, .. } => renderer.height(),
         }
@@ -190,6 +368,8 @@ impl RendererBackend {
     /// * `height` - New height in pixels
     pub fn resize(&mut self, width: u32, height: u32) {
         match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(r) => r.resize(width, height),
             Self::WebGl2(r) => r.resize(width, height),
             Self::Software { renderer, .. } => renderer.resize(width, height),
         }
@@ -202,6 +382,8 @@ impl RendererBackend {
     #[inline]
     pub fn as_renderer_mut(&mut self) -> &mut dyn Renderer {
         match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(r) => r,
             Self::WebGl2(r) => r,
             Self::Software { renderer, .. } => renderer,
         }
@@ -210,7 +392,7 @@ impl RendererBackend {
     /// Presents the rendered frame to the canvas.
     ///
     /// For Software renderer, this copies the pixel buffer to the canvas via `ImageData`.
-    /// For WebGL2, this is a no-op since WebGL renders directly to the canvas.
+    /// For wgpu/WebGL2, this is a no-op since they render directly to the canvas.
     ///
     /// Call this after `end_frame()` to display the rendered content.
     pub fn present(&self) {
@@ -238,10 +420,10 @@ impl RendererBackend {
                 let _ = context.put_image_data(&image_data, 0.0, 0.0);
             }
         }
-        // WebGL2 renders directly to canvas, no copy needed
+        // wgpu and WebGL2 render directly to canvas, no copy needed
     }
 
-    /// Returns true if the WebGL context is lost.
+    /// Returns true if the GPU context is lost.
     ///
     /// This can happen when the GPU is reset, the browser tab is backgrounded
     /// for a long time, or system resources are exhausted.
@@ -250,12 +432,14 @@ impl RendererBackend {
     #[inline]
     pub fn is_context_lost(&self) -> bool {
         match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(_) => false, // wgpu handles this internally via surface errors
             Self::WebGl2(r) => r.is_context_lost(),
             Self::Software { .. } => false,
         }
     }
 
-    /// Attempts to recover from a lost WebGL context.
+    /// Attempts to recover from a lost GPU context.
     ///
     /// # Returns
     ///
@@ -264,13 +448,17 @@ impl RendererBackend {
     ///
     /// For Software renderer, this always succeeds.
     pub fn recover_context(&mut self) -> Result<(), JsValue> {
-        if let Self::WebGl2(ref mut renderer) = self {
-            renderer
+        match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(_) => {
+                // wgpu handles context loss via surface reconfiguration
+                // which happens automatically in resize/begin_frame
+                Ok(())
+            }
+            Self::WebGl2(ref mut renderer) => renderer
                 .recover_context()
-                .map_err(|e| JsValue::from_str(&format!("{e:?}")))
-        } else {
-            // Software renderer never loses context
-            Ok(())
+                .map_err(|e| JsValue::from_str(&format!("{e:?}"))),
+            Self::Software { .. } => Ok(()),
         }
     }
 
@@ -279,7 +467,7 @@ impl RendererBackend {
     /// # Returns
     ///
     /// - `Some(&[u32])` - ARGB pixel buffer for software renderer
-    /// - `None` - For WebGL2 renderer (use `canvas.toBlob()` instead)
+    /// - `None` - For GPU renderers (use `canvas.toBlob()` instead)
     #[inline]
     pub fn pixels(&self) -> Option<&[u32]> {
         if let Self::Software { renderer, .. } = self {
@@ -300,6 +488,8 @@ impl RendererBackend {
     /// The font ID if loading succeeded, `None` otherwise.
     pub fn load_font(&mut self, data: &[u8]) -> Option<FontId> {
         match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(r) => r.load_font(data),
             Self::WebGl2(r) => r.load_font(data),
             Self::Software { renderer, .. } => renderer.load_font(data),
         }
@@ -307,17 +497,22 @@ impl RendererBackend {
 
     /// Synchronizes CPU with GPU by waiting for all pending commands to complete.
     ///
-    /// For WebGL2: calls `gl.finish()` to block until GPU is done.
+    /// For GPU renderers: blocks until GPU is done with pending work.
     /// For Software: no-op (CPU rendering is inherently synchronous).
     ///
     /// **Important**: Call this ONLY when you need to read from the canvas
     /// (screenshots, exports). Do NOT call every frame as it hurts performance.
     #[inline]
     pub fn sync(&self) {
-        if let Self::WebGl2(r) = self {
-            r.sync();
+        match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(_) => {
+                // wgpu doesn't have a direct sync equivalent in WASM
+                // The submit/present model handles this
+            }
+            Self::WebGl2(r) => r.sync(),
+            Self::Software { .. } => {}
         }
-        // Software renderer is synchronous - no sync needed
     }
 }
 
@@ -331,27 +526,40 @@ mod tests {
 
     #[test]
     fn test_renderer_type_as_str() {
+        assert_eq!(RendererType::Wgpu.as_str(), "wgpu");
         assert_eq!(RendererType::WebGl2.as_str(), "webgl2");
         assert_eq!(RendererType::Software.as_str(), "software");
     }
 
     #[test]
     fn test_renderer_type_equality() {
+        assert_eq!(RendererType::Wgpu, RendererType::Wgpu);
         assert_eq!(RendererType::WebGl2, RendererType::WebGl2);
         assert_eq!(RendererType::Software, RendererType::Software);
+        assert_ne!(RendererType::Wgpu, RendererType::WebGl2);
         assert_ne!(RendererType::WebGl2, RendererType::Software);
     }
 
     #[test]
     fn test_renderer_type_copy() {
-        let t1 = RendererType::WebGl2;
+        let t1 = RendererType::Wgpu;
         let t2 = t1;
         assert_eq!(t1, t2);
     }
 
     #[test]
     fn test_renderer_type_debug() {
+        let debug_str = format!("{:?}", RendererType::Wgpu);
+        assert!(debug_str.contains("Wgpu"));
+
         let debug_str = format!("{:?}", RendererType::WebGl2);
         assert!(debug_str.contains("WebGl2"));
+    }
+
+    #[test]
+    fn test_renderer_type_is_gpu_accelerated() {
+        assert!(RendererType::Wgpu.is_gpu_accelerated());
+        assert!(RendererType::WebGl2.is_gpu_accelerated());
+        assert!(!RendererType::Software.is_gpu_accelerated());
     }
 }
