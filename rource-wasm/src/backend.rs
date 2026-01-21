@@ -15,6 +15,7 @@
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, OffscreenCanvas};
 
@@ -30,6 +31,7 @@ use rource_render::WgpuRenderer;
 /// Firefox 128+ (behind flag).
 ///
 /// Returns `true` if `navigator.gpu` exists and is available.
+#[cfg(target_arch = "wasm32")]
 fn is_webgpu_available() -> bool {
     let Some(window) = web_sys::window() else {
         return false;
@@ -52,6 +54,7 @@ fn is_webgpu_available() -> bool {
 ///
 /// This future is not `Send` because JavaScript/browser APIs are single-threaded.
 /// This is expected and safe for WASM usage.
+#[cfg(target_arch = "wasm32")]
 #[allow(clippy::future_not_send)]
 async fn can_use_webgpu() -> bool {
     let Some(window) = web_sys::window() else {
@@ -228,6 +231,7 @@ impl RendererBackend {
     /// This future is not `Send` because JavaScript/browser APIs are single-threaded.
     /// This is expected and safe for WASM usage.
     #[allow(clippy::future_not_send)]
+    #[allow(clippy::unused_async)] // On non-wasm targets, no await is used (wgpu block is cfg'd out)
     pub async fn new_async(canvas: &HtmlCanvasElement) -> Result<(Self, RendererType), JsValue> {
         let width = canvas.width();
         let height = canvas.height();
