@@ -201,9 +201,9 @@ export function loadLogData(content, format = 'custom', options = {}) {
             elements.speedSelect.disabled = false;
         }
 
-        // Call callback if set
+        // Call callback if set (pass format so UI can parse correctly)
         if (onDataLoadedCallback) {
-            onDataLoadedCallback(content, stats);
+            onDataLoadedCallback(content, stats, format);
         }
 
         // Check for commit position in URL (use visualization commits for seeking)

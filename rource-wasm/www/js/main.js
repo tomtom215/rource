@@ -239,8 +239,9 @@ async function main() {
  * Handles data loaded event.
  * @param {string} content - Loaded log content
  * @param {Object} stats - Data statistics
+ * @param {string} [format='custom'] - Log format: 'custom' or 'git'
  */
-function handleDataLoaded(content, stats) {
+function handleDataLoaded(content, stats, format = 'custom') {
     const elements = getAllElements();
 
     // Reset timeline date labels so they get recalculated
@@ -254,11 +255,11 @@ function handleDataLoaded(content, stats) {
     if (elements.showcaseFiles) elements.showcaseFiles.textContent = stats.files.toLocaleString();
     if (elements.showcaseAuthors) elements.showcaseAuthors.textContent = stats.authors.size.toLocaleString();
 
-    // Update legend with file counts
-    updateLegend(content);
+    // Update legend with file counts (pass format for correct parsing)
+    updateLegend(content, format);
 
-    // Update authors legend with commit counts
-    updateAuthorsLegend(content);
+    // Update authors legend with commit counts (uses WASM API, no content needed)
+    updateAuthorsLegend();
 
     // Enable font size controls now that data is loaded
     enableFontSizeControls();
@@ -333,8 +334,9 @@ function enableControls(elements) {
 /**
  * Updates the file types legend with file counts.
  * @param {string} content - Log content
+ * @param {string} [format='custom'] - Log format: 'custom' or 'git'
  */
-function updateLegend(content) {
+function updateLegend(content, format = 'custom') {
     const legendItems = getElement('legendItems');
     if (!legendItems) return;
 
@@ -344,15 +346,38 @@ function updateLegend(content) {
     const processedFiles = new Set();
 
     for (const line of lines) {
-        const parts = line.split('|');
-        if (parts.length >= 4) {
-            const file = parts[3].trim();
-            if (!processedFiles.has(file)) {
-                processedFiles.add(file);
-                const ext = file.includes('.') ? file.split('.').pop()?.toLowerCase() : '';
-                if (ext) {
-                    extensionCounts.set(ext, (extensionCounts.get(ext) || 0) + 1);
+        let file = null;
+
+        if (format === 'git') {
+            // Git format: status lines like "A\tfile.txt" or "M  file.txt"
+            const trimmed = line.trim();
+            const statusMatch = trimmed.match(/^([AMDRCTU])\d*[\t\s]+(.+)$/i);
+            if (statusMatch) {
+                file = statusMatch[2].trim();
+                // For rename/copy format "old -> new", take the new path
+                const arrowIdx = file.indexOf(' -> ');
+                if (arrowIdx > 0) {
+                    file = file.slice(arrowIdx + 4).trim();
                 }
+                // For tab-separated rename format "old\tnew", take the new path
+                const tabIdx = file.indexOf('\t');
+                if (tabIdx > 0) {
+                    file = file.slice(tabIdx + 1).trim();
+                }
+            }
+        } else {
+            // Custom format: timestamp|author|action|filepath
+            const parts = line.split('|');
+            if (parts.length >= 4) {
+                file = parts[3].trim();
+            }
+        }
+
+        if (file && !processedFiles.has(file)) {
+            processedFiles.add(file);
+            const ext = file.includes('.') ? file.split('.').pop()?.toLowerCase() : '';
+            if (ext) {
+                extensionCounts.set(ext, (extensionCounts.get(ext) || 0) + 1);
             }
         }
     }
@@ -389,47 +414,28 @@ function updateLegend(content) {
 
 /**
  * Updates the authors legend with commit counts.
- * @param {string} content - Log content
+ * Uses the WASM getAuthors() API which works for all log formats (git, custom, etc.)
  */
-function updateAuthorsLegend(content) {
+function updateAuthorsLegend() {
     const authorsItems = getElement('authorsItems');
     const rource = getRource();
     if (!authorsItems || !rource) return;
 
     try {
-        // Count commits per author from content
-        const authorCommitCounts = new Map();
-        if (content) {
-            const lines = content.split('\n');
-            const seenCommits = new Set();
+        // Use WASM API to get authors - works for all log formats
+        const authorsJson = safeWasmCall('getAuthors', () => rource.getAuthors(), '[]');
+        const authors = JSON.parse(authorsJson);
 
-            for (const line of lines) {
-                const parts = line.split('|');
-                if (parts.length >= 4) {
-                    const timestamp = parts[0].trim();
-                    const author = parts[1].trim();
-                    const commitKey = `${timestamp}|${author}`;
-                    if (!seenCommits.has(commitKey)) {
-                        seenCommits.add(commitKey);
-                        authorCommitCounts.set(author, (authorCommitCounts.get(author) || 0) + 1);
-                    }
-                }
-            }
-        }
-
-        // Sort by commit count descending
-        const sortedAuthors = Array.from(authorCommitCounts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 30);
+        // Take top 30 authors (already sorted by commit count from WASM)
+        const topAuthors = authors.slice(0, 30);
 
         let html = '';
 
-        for (const [author, commitCount] of sortedAuthors) {
-            const color = safeWasmCall('getAuthorColor', () => rource.getAuthorColor(author), '#888');
-            html += `<div class="author-item" role="listitem" data-author="${escapeHtml(author)}">
-                <span class="author-color" style="background-color: ${escapeHtml(color)}"></span>
-                <span class="author-name">${escapeHtml(author)}</span>
-                <span class="author-commits">${commitCount}</span>
+        for (const author of topAuthors) {
+            html += `<div class="author-item" role="listitem" data-author="${escapeHtml(author.name)}">
+                <span class="author-color" style="background-color: ${escapeHtml(author.color)}"></span>
+                <span class="author-name">${escapeHtml(author.name)}</span>
+                <span class="author-commits">${author.commits}</span>
             </div>`;
         }
 
