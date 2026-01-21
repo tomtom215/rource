@@ -511,4 +511,248 @@ mod tests {
         let _ = BRANCH_CURVE_TENSION; // Ensure constant is used
         let _ = BEAM_GLOW_INTENSITY; // Ensure constant is used
     }
+
+    // ========================================================================
+    // MockRenderer for testing draw functions
+    // ========================================================================
+
+    use rource_math::Bounds;
+    use std::cell::RefCell;
+
+    /// Tracks all draw calls for verification in tests.
+    #[derive(Debug, Clone, Default)]
+    struct DrawCalls {
+        discs: Vec<(Vec2, f32, Color)>,
+        circles: Vec<(Vec2, f32, f32, Color)>,
+        lines: Vec<(Vec2, Vec2, f32, Color)>,
+        splines: Vec<(Vec<Vec2>, f32, Color)>,
+    }
+
+    /// A mock renderer that tracks draw calls without actual rendering.
+    struct MockRenderer {
+        calls: RefCell<DrawCalls>,
+    }
+
+    impl MockRenderer {
+        fn new() -> Self {
+            Self {
+                calls: RefCell::new(DrawCalls::default()),
+            }
+        }
+
+        fn calls(&self) -> DrawCalls {
+            self.calls.borrow().clone()
+        }
+    }
+
+    impl crate::Renderer for MockRenderer {
+        fn begin_frame(&mut self) {}
+        fn end_frame(&mut self) {}
+        fn clear(&mut self, _color: Color) {}
+
+        fn draw_circle(&mut self, center: Vec2, radius: f32, width: f32, color: Color) {
+            self.calls
+                .borrow_mut()
+                .circles
+                .push((center, radius, width, color));
+        }
+
+        fn draw_disc(&mut self, center: Vec2, radius: f32, color: Color) {
+            self.calls.borrow_mut().discs.push((center, radius, color));
+        }
+
+        fn draw_line(&mut self, start: Vec2, end: Vec2, width: f32, color: Color) {
+            self.calls
+                .borrow_mut()
+                .lines
+                .push((start, end, width, color));
+        }
+
+        fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color) {
+            self.calls
+                .borrow_mut()
+                .splines
+                .push((points.to_vec(), width, color));
+        }
+
+        fn draw_quad(
+            &mut self,
+            _bounds: Bounds,
+            _texture: Option<crate::TextureId>,
+            _color: Color,
+        ) {
+        }
+        fn draw_text(
+            &mut self,
+            _text: &str,
+            _position: Vec2,
+            _font: crate::FontId,
+            _size: f32,
+            _color: Color,
+        ) {
+        }
+        fn load_font(&mut self, _data: &[u8]) -> Option<crate::FontId> {
+            None
+        }
+        fn set_transform(&mut self, _transform: rource_math::Mat4) {}
+        fn transform(&self) -> rource_math::Mat4 {
+            rource_math::Mat4::IDENTITY
+        }
+        fn push_clip(&mut self, _bounds: Bounds) {}
+        fn pop_clip(&mut self) {}
+        fn resize(&mut self, _width: u32, _height: u32) {}
+        fn width(&self) -> u32 {
+            800
+        }
+        fn height(&self) -> u32 {
+            600
+        }
+        fn load_texture(&mut self, _width: u32, _height: u32, _data: &[u8]) -> crate::TextureId {
+            crate::TextureId::new(0)
+        }
+        fn unload_texture(&mut self, _texture: crate::TextureId) {}
+    }
+
+    // ========================================================================
+    // Drawing function tests
+    // ========================================================================
+
+    #[test]
+    fn test_draw_avatar_shape_active() {
+        let mut renderer = MockRenderer::new();
+        let center = Vec2::new(100.0, 100.0);
+        let radius = 20.0;
+        let color = Color::new(0.5, 0.5, 1.0, 1.0);
+
+        draw_avatar_shape(&mut renderer, center, radius, color, true, 1.0);
+
+        let calls = renderer.calls();
+        // Active avatar should draw glow layers, shadow, body discs, head, highlight, and ring
+        assert!(!calls.discs.is_empty(), "Should draw discs for avatar");
+        assert!(!calls.circles.is_empty(), "Active avatar should draw ring");
+    }
+
+    #[test]
+    fn test_draw_avatar_shape_inactive() {
+        let mut renderer = MockRenderer::new();
+        let center = Vec2::new(100.0, 100.0);
+        let radius = 20.0;
+        let color = Color::new(0.5, 0.5, 1.0, 1.0);
+
+        draw_avatar_shape(&mut renderer, center, radius, color, false, 1.0);
+
+        let calls = renderer.calls();
+        // Inactive avatar should draw body and head but no active ring/glow
+        assert!(!calls.discs.is_empty(), "Should draw discs for avatar");
+        assert!(
+            calls.circles.is_empty(),
+            "Inactive avatar should not draw ring"
+        );
+    }
+
+    #[test]
+    fn test_draw_avatar_shape_invisible() {
+        let mut renderer = MockRenderer::new();
+        let center = Vec2::new(100.0, 100.0);
+        let radius = 20.0;
+        let color = Color::new(0.5, 0.5, 1.0, 1.0);
+
+        // Alpha below threshold should skip drawing
+        draw_avatar_shape(&mut renderer, center, radius, color, true, 0.005);
+
+        let calls = renderer.calls();
+        assert!(calls.discs.is_empty(), "Very low alpha should skip drawing");
+    }
+
+    #[test]
+    fn test_draw_action_beam() {
+        let mut renderer = MockRenderer::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let color = Color::new(1.0, 0.5, 0.0, 1.0);
+
+        draw_action_beam(&mut renderer, start, end, 0.5, color, 1.0);
+
+        let calls = renderer.calls();
+        // Should draw glow layers + core line
+        assert!(
+            calls.lines.len() > BEAM_GLOW_LAYERS,
+            "Should draw glow layers and core"
+        );
+        // Should draw beam head (discs for glow and core)
+        assert!(
+            calls.discs.len() >= 3,
+            "Should draw beam head with glow and core"
+        );
+    }
+
+    #[test]
+    fn test_draw_action_beam_progress_zero() {
+        let mut renderer = MockRenderer::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let color = Color::new(1.0, 0.5, 0.0, 1.0);
+
+        draw_action_beam(&mut renderer, start, end, 0.0, color, 1.0);
+
+        let calls = renderer.calls();
+        // At progress=0, lines should be from start to start (zero length)
+        for (line_start, line_end, _, _) in &calls.lines {
+            assert_eq!(*line_start, start);
+            assert_eq!(*line_end, start);
+        }
+    }
+
+    #[test]
+    fn test_draw_curved_branch_with_curve() {
+        let mut renderer = MockRenderer::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        draw_curved_branch(&mut renderer, start, end, 2.0, color, true);
+
+        let calls = renderer.calls();
+        // Should draw spline (main curve and glow)
+        assert_eq!(calls.splines.len(), 2, "Should draw main spline and glow");
+        // Check that the wider glow is drawn
+        let widths: Vec<f32> = calls.splines.iter().map(|(_, w, _)| *w).collect();
+        assert!(
+            widths.iter().any(|&w| w > 2.0),
+            "Should have wider glow spline"
+        );
+    }
+
+    #[test]
+    fn test_draw_curved_branch_straight() {
+        let mut renderer = MockRenderer::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        draw_curved_branch(&mut renderer, start, end, 2.0, color, false);
+
+        let calls = renderer.calls();
+        // Should draw a single line, not splines
+        assert!(
+            calls.splines.is_empty(),
+            "Straight branch should not use splines"
+        );
+        assert_eq!(calls.lines.len(), 1, "Should draw one straight line");
+    }
+
+    #[test]
+    fn test_draw_curved_branch_invisible() {
+        let mut renderer = MockRenderer::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let color = Color::new(0.5, 0.5, 0.5, 0.005);
+
+        draw_curved_branch(&mut renderer, start, end, 2.0, color, true);
+
+        let calls = renderer.calls();
+        // Very low alpha should skip drawing
+        assert!(calls.splines.is_empty(), "Invisible branch should not draw");
+        assert!(calls.lines.is_empty(), "Invisible branch should not draw");
+    }
 }
