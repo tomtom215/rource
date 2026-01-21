@@ -19,14 +19,14 @@ use rource_render::{FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
 /// By testing on an offscreen canvas first, we don't "taint" the main canvas.
 fn is_webgl2_available() -> bool {
     // First check if WebGL2RenderingContext exists in the global scope
-    let window = match web_sys::window() {
-        Some(w) => w,
-        None => return false,
+    let Some(window) = web_sys::window() else {
+        return false;
     };
 
     // Check if WebGL2RenderingContext is defined
-    let has_webgl2_class = js_sys::Reflect::has(&window, &JsValue::from_str("WebGL2RenderingContext"))
-        .unwrap_or(false);
+    let has_webgl2_class =
+        js_sys::Reflect::has(&window, &JsValue::from_str("WebGL2RenderingContext"))
+            .unwrap_or(false);
     if !has_webgl2_class {
         return false;
     }
@@ -34,16 +34,11 @@ fn is_webgl2_available() -> bool {
     // Try to actually get a WebGL2 context on an offscreen canvas
     // This catches cases where the class exists but context creation fails
     // (e.g., software rendering fallback in some browsers, or GPU blocklisted)
-    let offscreen = match OffscreenCanvas::new(1, 1) {
-        Ok(canvas) => canvas,
-        Err(_) => return false,
+    let Ok(offscreen) = OffscreenCanvas::new(1, 1) else {
+        return false;
     };
 
-    offscreen
-        .get_context("webgl2")
-        .ok()
-        .flatten()
-        .is_some()
+    offscreen.get_context("webgl2").ok().flatten().is_some()
 }
 
 // ============================================================================
