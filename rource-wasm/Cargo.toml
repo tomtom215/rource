@@ -31,7 +31,7 @@ workspace = true
 
 [dependencies]
 rource-core = { path = "../crates/rource-core" }
-rource-render = { path = "../crates/rource-render", features = ["webgl2"] }
+rource-render = { path = "../crates/rource-render", features = ["webgl2", "wgpu"] }
 rource-vcs = { path = "../crates/rource-vcs" }
 rource-math = { path = "../crates/rource-math" }
 
@@ -42,6 +42,11 @@ js-sys = "0.3"
 
 # Better panic messages in WASM
 console_error_panic_hook = "0.1"
+
+# wgpu for WebGPU rendering (primary GPU backend)
+# webgpu: Enable WebGPU backend for WASM
+# webgl: Enable WebGL fallback for browsers without WebGPU
+wgpu = { version = "24", features = ["webgpu", "webgl"] }
 
 # Web APIs
 [dependencies.web-sys]
@@ -72,4 +77,14 @@ features = [
     "WebGlTexture",
     "WebGlUniformLocation",
     "WebGlVertexArrayObject",
+    # WebGPU support (primary GPU backend)
+    "Gpu",
+    "GpuAdapter",
+    "GpuAdapterInfo",
+    "GpuCanvasContext",
+    "GpuDevice",
+    "GpuQueue",
+    "GpuTexture",
+    "GpuTextureView",
+    "Navigator",
 ]

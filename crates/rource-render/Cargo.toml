@@ -15,6 +15,9 @@ workspace = true
 default = []
 # WebGL2 backend for WASM (GPU-accelerated rendering in browsers)
 webgl2 = ["wasm-bindgen", "web-sys", "js-sys"]
+# wgpu backend for WebGPU (primary GPU path, native + WASM)
+# Provides modern GPU rendering via wgpu-rs with automatic fallback to WebGL
+wgpu = ["dep:wgpu", "dep:raw-window-handle", "dep:bytemuck", "dep:pollster"]
 
 [dependencies]
 rource-math = { path = "../rource-math" }
@@ -28,6 +31,13 @@ png = "0.18"
 # WebGL2 dependencies (optional, for WASM builds)
 wasm-bindgen = { version = "0.2", optional = true }
 js-sys = { version = "0.3", optional = true }
+
+# wgpu backend dependencies (optional, for GPU-accelerated rendering)
+# wgpu provides WebGPU support for WASM and native Vulkan/Metal/DX12
+wgpu = { version = "24", optional = true }
+raw-window-handle = { version = "0.6", optional = true }
+bytemuck = { version = "1.14", features = ["derive"], optional = true }
+pollster = { version = "0.4", optional = true }
 
 [dependencies.web-sys]
 version = "0.3"

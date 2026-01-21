@@ -1,0 +1,1632 @@
+//! wgpu rendering backend for cross-platform GPU-accelerated rendering.
+//!
+//! This module provides a wgpu-based renderer that implements the [`Renderer`] trait,
+//! enabling GPU-accelerated rendering on native (Vulkan, Metal, DX12) and web (WebGPU).
+//!
+//! ## Features
+//!
+//! - Instanced rendering for efficient draw call batching
+//! - Anti-aliased primitives (circles, lines) via WGSL shaders
+//! - Font atlas for efficient text rendering
+//! - GPU bloom and shadow post-processing effects
+//! - GPU compute for physics simulation
+//! - State caching to minimize API overhead
+//! - Deterministic output for identical inputs
+//!
+//! ## Usage
+//!
+//! ### Native
+//!
+//! ```ignore
+//! use rource_render::backend::wgpu::WgpuRenderer;
+//!
+//! // Create renderer with a window
+//! let renderer = WgpuRenderer::new_with_window(&window)?;
+//!
+//! // Or create headless for offscreen rendering
+//! let renderer = WgpuRenderer::new_headless(800, 600)?;
+//! ```
+//!
+//! ### WASM (WebGPU)
+//!
+//! ```ignore
+//! use rource_render::backend::wgpu::WgpuRenderer;
+//!
+//! let canvas: web_sys::HtmlCanvasElement = ...;
+//! let renderer = WgpuRenderer::new_from_canvas(&canvas).await?;
+//! ```
+//!
+//! ## Architecture
+//!
+//! ```text
+//! ┌─────────────────────────────────────────────────────────────────────┐
+//! │                         WgpuRenderer                                │
+//! │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌───────────────┐ │
+//! │  │ PipelineManager │ FontAtlas │ │BloomPipeline│ │ComputePipeline│ │
+//! │  │ (pipelines) │ │ (textures) │ │ (effects)  │ │ (physics)    │ │
+//! │  └─────────────┘ └─────────────┘ └─────────────┘ └───────────────┘ │
+//! │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌───────────────┐ │
+//! │  │ InstanceBuffers│ RenderState │ │ShadowPipeline│ │  FrameStats  │ │
+//! │  │ (batching)  │ │ (caching)  │ │ (effects)  │ │ (metrics)    │ │
+//! │  └─────────────┘ └─────────────┘ └─────────────┘ └───────────────┘ │
+//! └─────────────────────────────────────────────────────────────────────┘
+//! ```
+//!
+//! ## Performance Characteristics
+//!
+//! | Aspect | Details |
+//! |--------|---------|
+//! | Draw Batching | All primitives use GPU instancing |
+//! | State Caching | Redundant binds avoided via RenderState |
+//! | Buffer Updates | Sub-data updates when capacity permits |
+//! | Post-Processing | FBO-based bloom and shadow effects |
+//! | Physics | GPU compute shaders for force simulation |
+//! | Determinism | Identical input produces identical output |
+
+// Allow common patterns in new code
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::map_unwrap_or)]
+#![allow(clippy::too_many_arguments)]
+
+pub mod bloom;
+pub mod buffers;
+pub mod compute;
+pub mod pipeline;
+pub mod shaders;
+pub mod shadow;
+pub mod state;
+pub mod stats;
+pub mod textures;
+
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use rource_math::{Bounds, Color, Mat4, Vec2};
+
+use crate::{FontCache, FontId, Renderer, TextureId};
+
+use bloom::BloomPipeline;
+use buffers::{InstanceBuffer, UniformBuffer, Uniforms, VertexBuffers};
+use pipeline::PipelineManager;
+use shadow::ShadowPipeline;
+use state::{PipelineId, RenderState};
+use textures::{FontAtlas, GlyphKey, ManagedTexture};
+
+// Re-export key types for external use
+pub use bloom::BloomConfig;
+pub use compute::{ComputeEntity, ComputePipeline, ComputeStats, PhysicsConfig};
+pub use shadow::ShadowConfig;
+pub use stats::{ActivePrimitives, FrameStats};
+
+/// Error type for wgpu renderer operations.
+#[derive(Debug, Clone)]
+pub enum WgpuError {
+    /// Failed to create wgpu adapter.
+    AdapterNotFound,
+    /// Failed to create wgpu device.
+    DeviceCreationFailed(String),
+    /// Failed to create surface.
+    SurfaceCreationFailed(String),
+    /// Shader compilation failed.
+    ShaderCompilationFailed(String),
+    /// Pipeline creation failed.
+    PipelineCreationFailed(String),
+    /// Context lost.
+    ContextLost,
+}
+
+impl std::fmt::Display for WgpuError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AdapterNotFound => write!(f, "wgpu adapter not found"),
+            Self::DeviceCreationFailed(msg) => write!(f, "wgpu device creation failed: {msg}"),
+            Self::SurfaceCreationFailed(msg) => write!(f, "wgpu surface creation failed: {msg}"),
+            Self::ShaderCompilationFailed(msg) => write!(f, "Shader compilation failed: {msg}"),
+            Self::PipelineCreationFailed(msg) => write!(f, "Pipeline creation failed: {msg}"),
+            Self::ContextLost => write!(f, "GPU context lost"),
+        }
+    }
+}
+
+impl std::error::Error for WgpuError {}
+
+/// wgpu renderer implementing the Renderer trait.
+///
+/// This renderer uses wgpu for GPU-accelerated rendering across native and web platforms.
+/// It batches draw calls using instanced rendering for optimal performance.
+#[allow(dead_code)]
+pub struct WgpuRenderer {
+    /// wgpu instance (retained for context recovery).
+    instance: wgpu::Instance,
+
+    /// wgpu adapter (retained for device recreation).
+    adapter: wgpu::Adapter,
+
+    /// wgpu device.
+    device: Arc<wgpu::Device>,
+
+    /// wgpu queue.
+    queue: Arc<wgpu::Queue>,
+
+    /// Render surface (None for headless).
+    surface: Option<wgpu::Surface<'static>>,
+
+    /// Surface configuration (None for headless).
+    surface_config: Option<wgpu::SurfaceConfiguration>,
+
+    /// Viewport width.
+    width: u32,
+
+    /// Viewport height.
+    height: u32,
+
+    /// Current transformation matrix.
+    transform: Mat4,
+
+    /// Clip rectangle stack.
+    clips: Vec<Bounds>,
+
+    /// Font cache for glyph rasterization.
+    font_cache: FontCache,
+
+    /// Font atlas for GPU text rendering.
+    font_atlas: FontAtlas,
+
+    /// User-loaded textures.
+    textures: HashMap<TextureId, ManagedTexture>,
+
+    /// Next texture ID.
+    next_texture_id: u32,
+
+    /// Shared uniform buffer.
+    uniform_buffer: UniformBuffer,
+
+    /// Shared bind group for uniforms.
+    uniform_bind_group: wgpu::BindGroup,
+
+    /// Uniform bind group layout.
+    uniform_bind_group_layout: wgpu::BindGroupLayout,
+
+    /// Vertex buffers for unit quads.
+    vertex_buffers: VertexBuffers,
+
+    /// Pipeline manager for render pipelines (created lazily).
+    pipeline_manager: Option<PipelineManager>,
+
+    /// Texture bind group layout for font atlas and user textures.
+    texture_bind_group_layout: wgpu::BindGroupLayout,
+
+    /// Instance buffer for circles.
+    circle_instances: InstanceBuffer,
+
+    /// Instance buffer for rings.
+    ring_instances: InstanceBuffer,
+
+    /// Instance buffer for lines.
+    line_instances: InstanceBuffer,
+
+    /// Instance buffer for solid quads.
+    quad_instances: InstanceBuffer,
+
+    /// Instance buffers for textured quads (grouped by texture).
+    textured_quad_instances: HashMap<TextureId, InstanceBuffer>,
+
+    /// Instance buffer for text glyphs.
+    text_instances: InstanceBuffer,
+
+    /// GPU bloom post-processing pipeline.
+    bloom_pipeline: Option<BloomPipeline>,
+
+    /// GPU shadow post-processing pipeline.
+    shadow_pipeline: Option<ShadowPipeline>,
+
+    /// GPU compute pipeline for physics.
+    compute_pipeline: Option<ComputePipeline>,
+
+    /// GPU state cache.
+    render_state: RenderState,
+
+    /// Frame statistics.
+    frame_stats: FrameStats,
+
+    /// Current frame's command encoder.
+    current_encoder: Option<wgpu::CommandEncoder>,
+
+    /// Current frame's surface texture.
+    current_surface_texture: Option<wgpu::SurfaceTexture>,
+
+    /// Current frame's render target view.
+    current_target_view: Option<wgpu::TextureView>,
+
+    /// Scene FBO for post-processing (render-to-texture).
+    scene_texture: Option<wgpu::Texture>,
+
+    /// Scene texture view.
+    scene_texture_view: Option<wgpu::TextureView>,
+
+    /// Whether bloom is enabled.
+    bloom_enabled: bool,
+
+    /// Whether shadow is enabled.
+    shadow_enabled: bool,
+}
+
+impl WgpuRenderer {
+    /// Creates a new headless wgpu renderer for offscreen rendering.
+    ///
+    /// # Arguments
+    ///
+    /// * `width` - Viewport width in pixels
+    /// * `height` - Viewport height in pixels
+    ///
+    /// # Returns
+    ///
+    /// A new `WgpuRenderer` or an error if initialization fails.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn new_headless(width: u32, height: u32) -> Result<Self, WgpuError> {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))
+        .ok_or(WgpuError::AdapterNotFound)?;
+
+        let (device, queue) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("Rource Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::default(),
+            },
+            None,
+        ))
+        .map_err(|e| WgpuError::DeviceCreationFailed(e.to_string()))?;
+
+        let device = Arc::new(device);
+        let queue = Arc::new(queue);
+
+        Self::initialize(instance, adapter, device, queue, None, None, width, height)
+    }
+
+    /// Creates a new wgpu renderer from a raw window handle.
+    ///
+    /// # Safety
+    ///
+    /// The window handle must be valid for the lifetime of the renderer.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn new_with_window<W>(window: W) -> Result<Self, WgpuError>
+    where
+        W: raw_window_handle::HasWindowHandle
+            + raw_window_handle::HasDisplayHandle
+            + Send
+            + Sync
+            + 'static,
+    {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        // Get window size (default to 800x600 if not available)
+        let (width, height) = (800, 600);
+
+        let surface = instance
+            .create_surface(window)
+            .map_err(|e| WgpuError::SurfaceCreationFailed(e.to_string()))?;
+
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: Some(&surface),
+            force_fallback_adapter: false,
+        }))
+        .ok_or(WgpuError::AdapterNotFound)?;
+
+        let (device, queue) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("Rource Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::default(),
+            },
+            None,
+        ))
+        .map_err(|e| WgpuError::DeviceCreationFailed(e.to_string()))?;
+
+        let device = Arc::new(device);
+        let queue = Arc::new(queue);
+
+        let surface_caps = surface.get_capabilities(&adapter);
+        let surface_format = surface_caps
+            .formats
+            .iter()
+            .copied()
+            .find(wgpu::TextureFormat::is_srgb)
+            .unwrap_or(surface_caps.formats[0]);
+
+        let surface_config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width,
+            height,
+            present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
+            desired_maximum_frame_latency: 2,
+        };
+
+        surface.configure(&device, &surface_config);
+
+        Self::initialize(
+            instance,
+            adapter,
+            device,
+            queue,
+            Some(surface),
+            Some(surface_config),
+            width,
+            height,
+        )
+    }
+
+    /// Creates a new wgpu renderer from a canvas element (WASM).
+    #[cfg(target_arch = "wasm32")]
+    pub async fn new_from_canvas(canvas: &web_sys::HtmlCanvasElement) -> Result<Self, WgpuError> {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::BROWSER_WEBGPU | wgpu::Backends::GL,
+            ..Default::default()
+        });
+
+        let width = canvas.width();
+        let height = canvas.height();
+
+        let surface = instance
+            .create_surface(wgpu::SurfaceTarget::Canvas(canvas.clone()))
+            .map_err(|e| WgpuError::SurfaceCreationFailed(e.to_string()))?;
+
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            })
+            .await
+            .ok_or(WgpuError::AdapterNotFound)?;
+
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: Some("Rource Device"),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
+                    memory_hints: wgpu::MemoryHints::default(),
+                },
+                None,
+            )
+            .await
+            .map_err(|e| WgpuError::DeviceCreationFailed(e.to_string()))?;
+
+        let device = Arc::new(device);
+        let queue = Arc::new(queue);
+
+        let surface_caps = surface.get_capabilities(&adapter);
+        let surface_format = surface_caps
+            .formats
+            .iter()
+            .copied()
+            .find(wgpu::TextureFormat::is_srgb)
+            .unwrap_or(surface_caps.formats[0]);
+
+        let surface_config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width,
+            height,
+            present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
+            desired_maximum_frame_latency: 2,
+        };
+
+        surface.configure(&device, &surface_config);
+
+        Self::initialize(
+            instance,
+            adapter,
+            device,
+            queue,
+            Some(surface),
+            Some(surface_config),
+            width,
+            height,
+        )
+    }
+
+    /// Internal initialization shared by all constructors.
+    #[allow(clippy::unnecessary_wraps)]
+    fn initialize(
+        instance: wgpu::Instance,
+        adapter: wgpu::Adapter,
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+        surface: Option<wgpu::Surface<'static>>,
+        surface_config: Option<wgpu::SurfaceConfiguration>,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, WgpuError> {
+        // Create uniform bind group layout
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Uniform Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        // Create uniform buffer
+        let uniform_buffer = UniformBuffer::new(&device);
+
+        // Create uniform bind group
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Uniform Bind Group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.buffer().as_entire_binding(),
+            }],
+        });
+
+        // Create vertex buffers
+        let vertex_buffers = VertexBuffers::new(&device);
+
+        // Create texture bind group layout (for font atlas and user textures)
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Texture Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        // Create instance buffers with initial capacity
+        // Floats per instance = bytes / 4
+        let circle_instances = InstanceBuffer::new(&device, 7, 1000, "circle_instances"); // 7 floats = 28 bytes
+        let ring_instances = InstanceBuffer::new(&device, 8, 500, "ring_instances"); // 8 floats = 32 bytes
+        let line_instances = InstanceBuffer::new(&device, 9, 1000, "line_instances"); // 9 floats = 36 bytes
+        let quad_instances = InstanceBuffer::new(&device, 8, 500, "quad_instances"); // 8 floats = 32 bytes
+        let text_instances = InstanceBuffer::new(&device, 12, 2000, "text_instances"); // 12 floats = 48 bytes
+
+        // Create font atlas
+        let font_atlas = FontAtlas::new(&device, &texture_bind_group_layout);
+
+        let mut renderer = Self {
+            instance,
+            adapter,
+            device,
+            queue,
+            surface,
+            surface_config,
+            width,
+            height,
+            transform: Mat4::IDENTITY,
+            clips: Vec::new(),
+            font_cache: FontCache::new(),
+            font_atlas,
+            textures: HashMap::new(),
+            next_texture_id: 1,
+            uniform_buffer,
+            uniform_bind_group,
+            uniform_bind_group_layout,
+            vertex_buffers,
+            pipeline_manager: None,
+            texture_bind_group_layout,
+            circle_instances,
+            ring_instances,
+            line_instances,
+            quad_instances,
+            textured_quad_instances: HashMap::new(),
+            text_instances,
+            bloom_pipeline: None,
+            shadow_pipeline: None,
+            compute_pipeline: None,
+            render_state: RenderState::new(),
+            frame_stats: FrameStats::new(),
+            current_encoder: None,
+            current_surface_texture: None,
+            current_target_view: None,
+            scene_texture: None,
+            scene_texture_view: None,
+            bloom_enabled: false,
+            shadow_enabled: false,
+        };
+
+        // Initialize pipelines
+        renderer.initialize_pipelines();
+
+        Ok(renderer)
+    }
+
+    /// Initializes render pipelines.
+    fn initialize_pipelines(&mut self) {
+        let format = self
+            .surface_config
+            .as_ref()
+            .map(|c| c.format)
+            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+
+        // Create pipeline manager with the surface format
+        let mut pipeline_manager = PipelineManager::new(&self.device, format);
+
+        // Warmup all pipelines
+        pipeline_manager.warmup(&self.device);
+
+        self.pipeline_manager = Some(pipeline_manager);
+    }
+
+    /// Returns the wgpu device.
+    #[inline]
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    /// Returns the wgpu queue.
+    #[inline]
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.queue
+    }
+
+    /// Returns frame statistics from the last completed frame.
+    #[inline]
+    pub fn frame_stats(&self) -> &FrameStats {
+        &self.frame_stats
+    }
+
+    /// Enables or disables bloom post-processing.
+    pub fn set_bloom_enabled(&mut self, enabled: bool) {
+        self.bloom_enabled = enabled;
+        if enabled && self.bloom_pipeline.is_none() {
+            let format = self
+                .surface_config
+                .as_ref()
+                .map(|c| c.format)
+                .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+            self.bloom_pipeline = Some(BloomPipeline::new(&self.device, format));
+        }
+    }
+
+    /// Returns whether bloom is enabled.
+    #[inline]
+    pub fn is_bloom_enabled(&self) -> bool {
+        self.bloom_enabled
+    }
+
+    /// Sets bloom configuration.
+    pub fn set_bloom_config(&mut self, config: BloomConfig) {
+        let format = self
+            .surface_config
+            .as_ref()
+            .map(|c| c.format)
+            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+
+        if let Some(ref mut bloom) = self.bloom_pipeline {
+            bloom.config = config;
+        } else {
+            let mut bloom = BloomPipeline::new(&self.device, format);
+            bloom.config = config;
+            self.bloom_pipeline = Some(bloom);
+        }
+    }
+
+    /// Returns the current bloom configuration.
+    pub fn bloom_config(&self) -> Option<&BloomConfig> {
+        self.bloom_pipeline.as_ref().map(|b| &b.config)
+    }
+
+    /// Enables or disables shadow post-processing.
+    pub fn set_shadow_enabled(&mut self, enabled: bool) {
+        self.shadow_enabled = enabled;
+        if enabled && self.shadow_pipeline.is_none() {
+            let format = self
+                .surface_config
+                .as_ref()
+                .map(|c| c.format)
+                .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+            self.shadow_pipeline = Some(ShadowPipeline::new(&self.device, format));
+        }
+    }
+
+    /// Returns whether shadow is enabled.
+    #[inline]
+    pub fn is_shadow_enabled(&self) -> bool {
+        self.shadow_enabled
+    }
+
+    /// Sets shadow configuration.
+    pub fn set_shadow_config(&mut self, config: ShadowConfig) {
+        let format = self
+            .surface_config
+            .as_ref()
+            .map(|c| c.format)
+            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+
+        if let Some(ref mut shadow) = self.shadow_pipeline {
+            shadow.config = config;
+        } else {
+            let mut shadow = ShadowPipeline::new(&self.device, format);
+            shadow.config = config;
+            self.shadow_pipeline = Some(shadow);
+        }
+    }
+
+    /// Returns the current shadow configuration.
+    pub fn shadow_config(&self) -> Option<&ShadowConfig> {
+        self.shadow_pipeline.as_ref().map(|s| &s.config)
+    }
+
+    /// Returns a reference to the compute pipeline, creating it if needed.
+    pub fn compute_pipeline(&mut self) -> &mut ComputePipeline {
+        if self.compute_pipeline.is_none() {
+            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
+        }
+        self.compute_pipeline.as_mut().unwrap()
+    }
+
+    /// Transforms a point from world to screen coordinates.
+    #[inline]
+    fn transform_point(&self, point: Vec2) -> Vec2 {
+        let p = self
+            .transform
+            .transform_point(rource_math::Vec3::from_vec2(point, 0.0));
+        Vec2::new(p.x, p.y)
+    }
+
+    /// Ensures the scene texture exists and is the correct size.
+    fn ensure_scene_texture(&mut self) {
+        let needs_recreate = self.scene_texture.as_ref().is_none_or(|tex| {
+            let size = tex.size();
+            size.width != self.width || size.height != self.height
+        });
+
+        if needs_recreate && (self.bloom_enabled || self.shadow_enabled) {
+            let format = self
+                .surface_config
+                .as_ref()
+                .map(|c| c.format)
+                .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+
+            let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("Scene Texture"),
+                size: wgpu::Extent3d {
+                    width: self.width,
+                    height: self.height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+
+            self.scene_texture_view = Some(texture.create_view(&wgpu::TextureViewDescriptor {
+                label: Some("Scene Texture View"),
+                ..Default::default()
+            }));
+            self.scene_texture = Some(texture);
+        }
+    }
+
+    /// Flushes all batched draw calls to the current render pass.
+    fn flush(&mut self, encoder: &mut wgpu::CommandEncoder, target_view: &wgpu::TextureView) {
+        // Update uniforms
+        let uniforms = Uniforms {
+            resolution: [self.width as f32, self.height as f32],
+            time: 0.0,
+            padding: 0.0,
+        };
+        self.uniform_buffer.update(&self.queue, &uniforms);
+
+        let format = self
+            .surface_config
+            .as_ref()
+            .map(|c| c.format)
+            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+
+        // Upload all instance data first
+        self.circle_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.ring_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.line_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.quad_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.text_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.upload_textured_quads();
+
+        // Create render pass
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Main Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: target_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            // Flush each primitive type
+            self.flush_circles_pass(&mut render_pass, format);
+            self.flush_rings_pass(&mut render_pass, format);
+            self.flush_lines_pass(&mut render_pass, format);
+            self.flush_quads_pass(&mut render_pass, format);
+            self.flush_textured_quads_pass(&mut render_pass, format);
+            self.flush_text_pass(&mut render_pass, format);
+        }
+
+        // Clear all instance buffers
+        self.circle_instances.clear();
+        self.ring_instances.clear();
+        self.line_instances.clear();
+        self.quad_instances.clear();
+        self.text_instances.clear();
+        self.clear_textured_quads();
+    }
+
+    /// Flushes circle draw calls within a render pass.
+    fn flush_circles_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.circle_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        // Get or create pipeline
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Circle);
+
+        // Set pipeline
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Circle, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        // Set bind groups
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+
+        // Set vertex buffer (unit quad)
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
+
+        // Set instance buffer
+        render_pass.set_vertex_buffer(1, self.circle_instances.buffer().slice(..));
+
+        // Draw instanced
+        let instance_count = self.circle_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.circle_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::CIRCLES);
+    }
+
+    /// Flushes ring draw calls within a render pass.
+    fn flush_rings_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.ring_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Ring);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Ring, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.ring_instances.buffer().slice(..));
+
+        let instance_count = self.ring_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.ring_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::RINGS);
+    }
+
+    /// Flushes line draw calls within a render pass.
+    fn flush_lines_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.line_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Line);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Line, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.line_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.line_instances.buffer().slice(..));
+
+        let instance_count = self.line_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.line_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::LINES);
+    }
+
+    /// Flushes solid quad draw calls within a render pass.
+    fn flush_quads_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.quad_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Quad);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Quad, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.quad_instances.buffer().slice(..));
+
+        let instance_count = self.quad_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.quad_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::QUADS);
+    }
+
+    /// Uploads all textured quad instance buffers.
+    fn upload_textured_quads(&mut self) {
+        // Collect texture IDs that need uploading
+        let tex_ids: Vec<TextureId> = self.textured_quad_instances.keys().copied().collect();
+
+        for tex_id in tex_ids {
+            if let Some(instances) = self.textured_quad_instances.get_mut(&tex_id) {
+                if !instances.is_empty() {
+                    instances.upload(&self.device, &self.queue, &mut self.frame_stats);
+                }
+            }
+        }
+    }
+
+    /// Flushes textured quad draw calls within a render pass.
+    fn flush_textured_quads_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        // Collect texture IDs that have instances to render
+        let tex_ids: Vec<TextureId> = self
+            .textured_quad_instances
+            .iter()
+            .filter(|(_, instances)| !instances.is_empty())
+            .map(|(id, _)| *id)
+            .collect();
+
+        if tex_ids.is_empty() {
+            return;
+        }
+
+        // Get or create pipeline
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::TexturedQuad);
+
+        // Set pipeline once for all textured quads
+        if self
+            .render_state
+            .set_pipeline(PipelineId::TexturedQuad, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+
+        // Render each texture group
+        for tex_id in tex_ids {
+            let Some(instances) = self.textured_quad_instances.get(&tex_id) else {
+                continue;
+            };
+
+            // Set texture bind group
+            if let Some(texture) = self.textures.get(&tex_id) {
+                render_pass.set_bind_group(1, &texture.bind_group, &[]);
+            }
+
+            render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
+            render_pass.set_vertex_buffer(1, instances.buffer().slice(..));
+
+            let instance_count = instances.instance_count() as u32;
+            render_pass.draw(0..4, 0..instance_count);
+
+            self.frame_stats.draw_calls += 1;
+            self.frame_stats.textured_quad_instances += instance_count;
+            self.frame_stats.total_instances += instance_count;
+            self.frame_stats
+                .active_primitives
+                .set(ActivePrimitives::TEXTURED_QUADS);
+        }
+    }
+
+    /// Clears all textured quad instance buffers.
+    fn clear_textured_quads(&mut self) {
+        for instances in self.textured_quad_instances.values_mut() {
+            instances.clear();
+        }
+    }
+
+    /// Flushes text draw calls within a render pass.
+    fn flush_text_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.text_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        // Get or create pipeline
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Text);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Text, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_bind_group(1, self.font_atlas.bind_group(), &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.text_instances.buffer().slice(..));
+
+        let instance_count = self.text_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.text_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::TEXT);
+    }
+
+    /// Interpolates a Catmull-Rom spline for drawing.
+    fn interpolate_spline(points: &[Vec2], segments_per_span: usize) -> Vec<Vec2> {
+        if points.len() < 2 {
+            return points.to_vec();
+        }
+
+        if points.len() == 2 {
+            return points.to_vec();
+        }
+
+        let mut result = Vec::with_capacity(points.len() * segments_per_span);
+
+        for i in 0..points.len() - 1 {
+            let p0 = points[i.saturating_sub(1)];
+            let p1 = points[i];
+            let p2 = points[(i + 1).min(points.len() - 1)];
+            let p3 = points[(i + 2).min(points.len() - 1)];
+
+            for j in 0..segments_per_span {
+                let t = j as f32 / segments_per_span as f32;
+                let t2 = t * t;
+                let t3 = t2 * t;
+
+                // Catmull-Rom coefficients
+                let x = 0.5
+                    * ((2.0 * p1.x)
+                        + (-p0.x + p2.x) * t
+                        + (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * t2
+                        + (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * t3);
+                let y = 0.5
+                    * ((2.0 * p1.y)
+                        + (-p0.y + p2.y) * t
+                        + (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * t2
+                        + (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * t3);
+
+                result.push(Vec2::new(x, y));
+            }
+        }
+
+        // Add final point
+        result.push(*points.last().unwrap());
+
+        result
+    }
+}
+
+impl Renderer for WgpuRenderer {
+    fn begin_frame(&mut self) {
+        // Reset frame stats
+        self.frame_stats.reset();
+        self.render_state.begin_frame(self.width, self.height);
+
+        // Ensure scene texture for post-processing
+        if self.bloom_enabled || self.shadow_enabled {
+            self.ensure_scene_texture();
+        }
+
+        // Get surface texture if available
+        if let Some(ref surface) = self.surface {
+            match surface.get_current_texture() {
+                Ok(texture) => {
+                    self.current_surface_texture = Some(texture);
+                }
+                Err(_) => {
+                    // Surface lost, will skip frame
+                    return;
+                }
+            }
+        }
+
+        // Create command encoder
+        self.current_encoder = Some(self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("Frame Command Encoder"),
+            },
+        ));
+
+        // Determine target view
+        if self.bloom_enabled || self.shadow_enabled {
+            // Render to scene texture for post-processing
+            self.current_target_view = self.scene_texture_view.clone();
+        } else if let Some(ref texture) = self.current_surface_texture {
+            // Render directly to surface
+            self.current_target_view =
+                Some(texture.texture.create_view(&wgpu::TextureViewDescriptor {
+                    label: Some("Surface Texture View"),
+                    ..Default::default()
+                }));
+        }
+    }
+
+    fn end_frame(&mut self) {
+        let Some(mut encoder) = self.current_encoder.take() else {
+            return;
+        };
+
+        let Some(target_view) = self.current_target_view.take() else {
+            return;
+        };
+
+        // Flush all batched draw calls
+        self.flush(&mut encoder, &target_view);
+
+        // Apply post-processing if enabled
+        if let Some(ref surface_texture) = self.current_surface_texture {
+            let _surface_view = surface_texture
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+
+            if self.bloom_enabled || self.shadow_enabled {
+                // Apply post-processing pipeline
+                // (Implementation would go here, involving bloom/shadow passes)
+                // For now, just blit scene to surface
+                // TODO: Implement full post-processing chain
+            }
+        }
+
+        // Submit command buffer
+        self.queue.submit(Some(encoder.finish()));
+
+        // Present surface
+        if let Some(texture) = self.current_surface_texture.take() {
+            texture.present();
+        }
+    }
+
+    fn clear(&mut self, color: Color) {
+        let Some(ref mut encoder) = self.current_encoder else {
+            return;
+        };
+
+        let Some(ref target_view) = self.current_target_view else {
+            return;
+        };
+
+        // Create clear render pass
+        let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Clear Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: f64::from(color.r),
+                        g: f64::from(color.g),
+                        b: f64::from(color.b),
+                        a: f64::from(color.a),
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        // Render pass is dropped, executing the clear
+    }
+
+    fn draw_circle(&mut self, center: Vec2, radius: f32, width: f32, color: Color) {
+        let center = self.transform_point(center);
+
+        // Ring instance: center(2) + radius(1) + width(1) + color(4)
+        self.ring_instances.push_raw(&[
+            center.x, center.y, radius, width, color.r, color.g, color.b, color.a,
+        ]);
+    }
+
+    fn draw_disc(&mut self, center: Vec2, radius: f32, color: Color) {
+        let center = self.transform_point(center);
+
+        // Circle instance: center(2) + radius(1) + color(4)
+        self.circle_instances.push_raw(&[
+            center.x, center.y, radius, color.r, color.g, color.b, color.a,
+        ]);
+    }
+
+    fn draw_line(&mut self, start: Vec2, end: Vec2, width: f32, color: Color) {
+        let start = self.transform_point(start);
+        let end = self.transform_point(end);
+
+        // Line instance: start(2) + end(2) + width(1) + color(4)
+        self.line_instances.push_raw(&[
+            start.x, start.y, end.x, end.y, width, color.r, color.g, color.b, color.a,
+        ]);
+    }
+
+    fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color) {
+        if points.len() < 2 {
+            return;
+        }
+
+        let interpolated = Self::interpolate_spline(points, 8);
+
+        for window in interpolated.windows(2) {
+            self.draw_line(window[0], window[1], width, color);
+        }
+    }
+
+    fn draw_quad(&mut self, bounds: Bounds, texture: Option<TextureId>, color: Color) {
+        let min = self.transform_point(bounds.min);
+        let max = self.transform_point(bounds.max);
+
+        if let Some(tex_id) = texture {
+            // Textured quad
+            let instances = self
+                .textured_quad_instances
+                .entry(tex_id)
+                .or_insert_with(|| {
+                    InstanceBuffer::new(&self.device, 12, 100, "textured_quad_instances")
+                    // 12 floats = 48 bytes
+                });
+
+            // bounds(4) + uv_bounds(4) + color(4)
+            instances.push_raw(&[
+                min.x, min.y, max.x, max.y, 0.0, 0.0, 1.0, 1.0, // UV bounds
+                color.r, color.g, color.b, color.a,
+            ]);
+        } else {
+            // Solid quad: bounds(4) + color(4)
+            self.quad_instances.push_raw(&[
+                min.x, min.y, max.x, max.y, color.r, color.g, color.b, color.a,
+            ]);
+        }
+    }
+
+    fn draw_text(&mut self, text: &str, position: Vec2, font: FontId, size: f32, color: Color) {
+        let position = self.transform_point(position);
+
+        // Verify font exists
+        if self.font_cache.get(font).is_none() {
+            return;
+        }
+
+        let mut cursor_x = position.x;
+
+        for ch in text.chars() {
+            // Get or rasterize glyph using FontCache
+            let Some(glyph) = self.font_cache.rasterize(font, ch, size) else {
+                continue;
+            };
+
+            let metrics = glyph.metrics;
+            let bitmap = &glyph.bitmap;
+
+            // Skip if glyph has no visual representation
+            if metrics.width == 0 || metrics.height == 0 {
+                cursor_x += metrics.advance_width;
+                continue;
+            }
+
+            // Get or insert glyph in GPU atlas
+            let glyph_key = GlyphKey::new(ch, size);
+            let region = if let Some(region) = self.font_atlas.get(&glyph_key) {
+                *region
+            } else if let Some(region) = self.font_atlas.insert(
+                &self.device,
+                &self.texture_bind_group_layout,
+                glyph_key,
+                metrics.width as u32,
+                metrics.height as u32,
+                bitmap,
+            ) {
+                region
+            } else {
+                // Atlas full, skip this glyph
+                cursor_x += metrics.advance_width;
+                continue;
+            };
+
+            // Calculate glyph position
+            let x = cursor_x + metrics.xmin as f32;
+            let y = position.y + (size - metrics.ymin as f32 - metrics.height as f32);
+            let w = metrics.width as f32;
+            let h = metrics.height as f32;
+
+            // Get UV coordinates
+            let atlas_size = self.font_atlas.size();
+            let (u_min, v_min, u_max, v_max) = region.uv_bounds(atlas_size);
+
+            // Text instance: bounds(4) + uv_bounds(4) + color(4)
+            self.text_instances.push_raw(&[
+                x,
+                y,
+                x + w,
+                y + h,
+                u_min,
+                v_min,
+                u_max,
+                v_max,
+                color.r,
+                color.g,
+                color.b,
+                color.a,
+            ]);
+
+            cursor_x += metrics.advance_width;
+        }
+    }
+
+    fn set_transform(&mut self, transform: Mat4) {
+        self.transform = transform;
+    }
+
+    fn transform(&self) -> Mat4 {
+        self.transform
+    }
+
+    fn push_clip(&mut self, bounds: Bounds) {
+        self.clips.push(bounds);
+        // TODO: Implement scissor test via render pass
+    }
+
+    fn pop_clip(&mut self) {
+        self.clips.pop();
+    }
+
+    fn width(&self) -> u32 {
+        self.width
+    }
+
+    fn height(&self) -> u32 {
+        self.height
+    }
+
+    fn resize(&mut self, width: u32, height: u32) {
+        if width == 0 || height == 0 {
+            return;
+        }
+
+        self.width = width;
+        self.height = height;
+
+        // Reconfigure surface
+        if let (Some(ref surface), Some(ref mut config)) = (&self.surface, &mut self.surface_config)
+        {
+            config.width = width;
+            config.height = height;
+            surface.configure(&self.device, config);
+        }
+
+        // Invalidate scene texture
+        self.scene_texture = None;
+        self.scene_texture_view = None;
+    }
+
+    fn load_texture(&mut self, width: u32, height: u32, data: &[u8]) -> TextureId {
+        let id = TextureId::new(self.next_texture_id);
+        self.next_texture_id += 1;
+
+        let label = format!("texture_{}", id.raw());
+        let managed = ManagedTexture::new(
+            &self.device,
+            &self.queue,
+            &self.texture_bind_group_layout,
+            width,
+            height,
+            data,
+            &label,
+        );
+        self.textures.insert(id, managed);
+
+        id
+    }
+
+    fn unload_texture(&mut self, texture: TextureId) {
+        self.textures.remove(&texture);
+        self.textured_quad_instances.remove(&texture);
+    }
+
+    fn load_font(&mut self, data: &[u8]) -> Option<FontId> {
+        self.font_cache.load(data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wgpu_error_display() {
+        let err = WgpuError::AdapterNotFound;
+        assert!(format!("{err}").contains("adapter"));
+
+        let err = WgpuError::DeviceCreationFailed("test".into());
+        assert!(format!("{err}").contains("device"));
+        assert!(format!("{err}").contains("test"));
+    }
+
+    #[test]
+    fn test_interpolate_spline_empty() {
+        let points: Vec<Vec2> = vec![];
+        let result = WgpuRenderer::interpolate_spline(&points, 8);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_interpolate_spline_single() {
+        let points = vec![Vec2::new(0.0, 0.0)];
+        let result = WgpuRenderer::interpolate_spline(&points, 8);
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_interpolate_spline_two_points() {
+        let points = vec![Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)];
+        let result = WgpuRenderer::interpolate_spline(&points, 8);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_interpolate_spline_multiple() {
+        let points = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 10.0),
+            Vec2::new(20.0, 5.0),
+            Vec2::new(30.0, 15.0),
+        ];
+        let result = WgpuRenderer::interpolate_spline(&points, 8);
+
+        // Should have many more points than input
+        assert!(result.len() > points.len());
+
+        // First and last should be close to original
+        assert!((result[0] - points[0]).length() < 0.001);
+        assert!((result[result.len() - 1] - points[points.len() - 1]).length() < 0.001);
+    }
+
+    #[test]
+    fn test_frame_stats_tracking() {
+        let mut stats = FrameStats::new();
+        assert_eq!(stats.draw_calls, 0);
+        assert_eq!(stats.total_instances, 0);
+
+        stats.draw_calls = 5;
+        stats.total_instances = 100;
+        stats.circle_instances = 50;
+
+        assert_eq!(stats.instances_per_draw_call(), 20.0);
+
+        stats.reset();
+        assert_eq!(stats.draw_calls, 0);
+    }
+
+    #[test]
+    fn test_active_primitives() {
+        let mut primitives = ActivePrimitives::none();
+        assert!(!primitives.is_set(ActivePrimitives::CIRCLES));
+
+        primitives.set(ActivePrimitives::CIRCLES);
+        assert!(primitives.is_set(ActivePrimitives::CIRCLES));
+
+        primitives.set(ActivePrimitives::LINES);
+        assert_eq!(primitives.count(), 2);
+    }
+
+    #[test]
+    fn test_bloom_config() {
+        let config = BloomConfig::default();
+        assert!(config.threshold > 0.0);
+        assert!(config.intensity > 0.0);
+
+        let subtle = BloomConfig::subtle();
+        let intense = BloomConfig::intense();
+        assert!(intense.intensity > subtle.intensity);
+    }
+
+    #[test]
+    fn test_shadow_config() {
+        let config = ShadowConfig::default();
+        assert!(config.opacity > 0.0);
+        assert!(config.offset_x != 0.0 || config.offset_y != 0.0);
+
+        let subtle = ShadowConfig::subtle();
+        let strong = ShadowConfig::strong();
+        assert!(strong.opacity > subtle.opacity);
+    }
+
+    #[test]
+    fn test_physics_config_presets() {
+        let default = PhysicsConfig::default();
+        let dense = PhysicsConfig::dense();
+        let sparse = PhysicsConfig::sparse();
+
+        assert!(dense.repulsion_strength > default.repulsion_strength);
+        assert!(sparse.repulsion_strength < default.repulsion_strength);
+    }
+
+    #[test]
+    fn test_compute_entity() {
+        let entity = ComputeEntity::new(100.0, 200.0, 10.0);
+        assert_eq!(entity.position(), (100.0, 200.0));
+        assert_eq!(entity.radius, 10.0);
+
+        let entity = entity.with_velocity(5.0, -3.0);
+        assert_eq!(entity.velocity(), (5.0, -3.0));
+    }
+
+    #[test]
+    fn test_render_state() {
+        let mut state = RenderState::new();
+        let mut stats = FrameStats::new();
+
+        // First set should return true
+        assert!(state.set_pipeline(PipelineId::Circle, &mut stats));
+
+        // Same pipeline should return false
+        assert!(!state.set_pipeline(PipelineId::Circle, &mut stats));
+
+        // Different pipeline should return true
+        assert!(state.set_pipeline(PipelineId::Ring, &mut stats));
+
+        // Reset and try again
+        state.invalidate();
+        assert!(state.set_pipeline(PipelineId::Circle, &mut stats));
+    }
+
+    #[test]
+    fn test_pipeline_id_variants() {
+        let ids = [
+            PipelineId::Circle,
+            PipelineId::Ring,
+            PipelineId::Line,
+            PipelineId::Quad,
+            PipelineId::TexturedQuad,
+            PipelineId::Text,
+        ];
+
+        // All should be distinct
+        for (i, id1) in ids.iter().enumerate() {
+            for (j, id2) in ids.iter().enumerate() {
+                if i == j {
+                    assert_eq!(id1, id2);
+                } else {
+                    assert_ne!(id1, id2);
+                }
+            }
+        }
+    }
+}

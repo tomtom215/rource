@@ -39,6 +39,9 @@ pub use backend::software::SoftwareRenderer;
 
 #[cfg(feature = "webgl2")]
 pub use backend::webgl2::WebGl2Renderer;
+
+#[cfg(feature = "wgpu")]
+pub use backend::wgpu::WgpuRenderer;
 pub use command::{DrawCommand, DrawQueue};
 pub use font::FontCache;
 pub use label::{estimate_text_width, LabelConfig, LabelPlacer};
