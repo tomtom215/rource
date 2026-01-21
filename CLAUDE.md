@@ -254,11 +254,45 @@ if dist2 <= inner_sq {
 
 **Impact**: ~78% of pixels in a typical disc skip the sqrt() call entirely.
 
+#### 5. Zero-Allocation Post-Processing Effects
+
+Eliminated per-frame allocations in `BloomEffect` and `ShadowEffect` by pre-allocating
+reusable buffers that persist across frames.
+
+**Files Modified**:
+- `crates/rource-render/src/effects/bloom.rs`
+- `crates/rource-render/src/effects/shadow.rs`
+
+**BloomEffect Buffers** (for 1920x1080):
+| Buffer | Size | Purpose |
+|--------|------|---------|
+| `bright_buffer` | 8.3 MB | Extracted bright pixels |
+| `small_buffer` | 518 KB | Downscaled for blur |
+| `blur_temp` | 518 KB | Blur intermediate |
+| `bloom_buffer` | 8.3 MB | Final upscaled bloom |
+| **Total saved** | **~19.2 MB/frame** | |
+
+**ShadowEffect Buffers** (for 1920x1080):
+| Buffer | Size | Purpose |
+|--------|------|---------|
+| `silhouette_buffer` | 2.1 MB | Alpha channel extraction |
+| `offset_buffer` | 2.1 MB | Offset shadow |
+| `blur_temp` | 2.1 MB | Blur intermediate |
+| **Total saved** | **~8.4 MB/frame** | |
+
+**Memory Churn Eliminated**:
+- At 60 FPS: **1.66 GB/second** (bloom + shadow combined)
+- At 144 FPS: **3.97 GB/second** (bloom + shadow combined)
+
+**API Change**: Both effects now use `apply(&mut self, ...)` instead of `apply(&self, ...)`.
+Buffers are allocated lazily on first `apply()` and reused for subsequent frames.
+Automatic resize when dimensions change.
+
 #### Performance Testing
 
 All optimizations have been verified:
 - Test suite: 907 tests passing
-- WASM build: 518KB (241KB gzipped)
+- WASM build: 548KB (239KB gzipped)
 - No clippy warnings
 
 ### WebAssembly Implementation (2026-01-10)

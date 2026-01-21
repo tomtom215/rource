@@ -146,11 +146,11 @@ pub fn render_frame(app: &mut App) {
 
     renderer.end_frame();
 
-    // Apply post-processing effects
+    // Apply post-processing effects (both effects use pre-allocated buffers for zero allocation)
     apply_effects(
         renderer,
-        app.shadow.as_ref(),
-        app.bloom.as_ref(),
+        app.shadow.as_mut(),
+        app.bloom.as_mut(),
         app.args.hide_bloom,
     );
 }
@@ -956,21 +956,22 @@ fn render_logo(
 }
 
 /// Apply post-processing effects.
+/// Both effects use pre-allocated buffers for zero per-frame allocation.
 fn apply_effects(
     renderer: &mut SoftwareRenderer,
-    shadow: Option<&ShadowEffect>,
-    bloom: Option<&BloomEffect>,
+    shadow: Option<&mut ShadowEffect>,
+    bloom: Option<&mut BloomEffect>,
     hide_bloom: bool,
 ) {
     let w = renderer.width() as usize;
     let h = renderer.height() as usize;
 
-    // Apply shadow effect if enabled
+    // Apply shadow effect if enabled (uses pre-allocated buffers for zero allocation)
     if let Some(shadow_effect) = shadow {
         shadow_effect.apply(renderer.pixels_mut(), w, h);
     }
 
-    // Apply bloom effect if enabled
+    // Apply bloom effect if enabled (uses pre-allocated buffers for zero allocation)
     if !hide_bloom {
         if let Some(bloom_effect) = bloom {
             bloom_effect.apply(renderer.pixels_mut(), w, h);
