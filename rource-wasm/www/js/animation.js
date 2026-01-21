@@ -16,6 +16,22 @@ let perfUpdateCounter = 0;
 // UI update callback (set by main module)
 let uiUpdateCallback = null;
 
+// Cached state to avoid redundant DOM updates (memory leak prevention)
+const playbackUICache = {
+    playing: null,
+    current: -1,
+    total: -1,
+    atEnd: null,
+    lastTimestamp: 0,
+    lastAuthor: '',
+    lastFileCount: -1,
+};
+
+// Pre-allocated SVG icon strings (avoid allocations in hot path)
+const ICON_PAUSE = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+const ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
+const ICON_REPLAY = '<path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>';
+
 // Animation generation counter to prevent race conditions during restart
 // When restartAnimation() is called mid-frame, the old animate() call should not schedule next frame
 let animationGeneration = 0;
@@ -277,6 +293,7 @@ function formatDateTime(timestamp) {
 
 /**
  * Updates playback UI (play button, timeline).
+ * Uses caching to avoid redundant DOM updates that cause memory churn.
  */
 export function updatePlaybackUI() {
     const rource = getRource();
@@ -295,30 +312,37 @@ export function updatePlaybackUI() {
     const current = safeWasmCall('currentCommit', () => rource.currentCommit(), 0);
     const atEnd = total > 0 && current >= total - 1 && !playing;
 
-    // Update play button icon - show replay icon when at end
-    const pauseIcon = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
-    const playIconPath = '<path d="M8 5v14l11-7z"/>';
-    const replayIcon = '<path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>';
+    // Only update play button if state changed (avoids innerHTML allocation)
+    if (playing !== playbackUICache.playing || atEnd !== playbackUICache.atEnd) {
+        playbackUICache.playing = playing;
+        playbackUICache.atEnd = atEnd;
 
-    if (playing) {
-        playIconMain.innerHTML = pauseIcon;
-        btnPlayMain.title = 'Pause (Space)';
-        btnPlayMain.classList.add('active');
-        btnPlayMain.classList.remove('replay');
-    } else if (atEnd) {
-        playIconMain.innerHTML = replayIcon;
-        btnPlayMain.title = 'Replay from start (Space)';
-        btnPlayMain.classList.remove('active');
-        btnPlayMain.classList.add('replay');
-    } else {
-        playIconMain.innerHTML = playIconPath;
-        btnPlayMain.title = 'Play (Space)';
-        btnPlayMain.classList.remove('active');
-        btnPlayMain.classList.remove('replay');
+        if (playing) {
+            playIconMain.innerHTML = ICON_PAUSE;
+            btnPlayMain.title = 'Pause (Space)';
+            btnPlayMain.classList.add('active');
+            btnPlayMain.classList.remove('replay');
+        } else if (atEnd) {
+            playIconMain.innerHTML = ICON_REPLAY;
+            btnPlayMain.title = 'Replay from start (Space)';
+            btnPlayMain.classList.remove('active');
+            btnPlayMain.classList.add('replay');
+        } else {
+            playIconMain.innerHTML = ICON_PLAY;
+            btnPlayMain.title = 'Play (Space)';
+            btnPlayMain.classList.remove('active');
+            btnPlayMain.classList.remove('replay');
+        }
     }
 
-    // Update timeline slider and commit numbers
-    if (timelineSlider && timelineInfoNumbers) {
+    // Only update timeline if current or total changed
+    const currentChanged = current !== playbackUICache.current;
+    const totalChanged = total !== playbackUICache.total;
+
+    if (timelineSlider && timelineInfoNumbers && (currentChanged || totalChanged)) {
+        playbackUICache.current = current;
+        playbackUICache.total = total;
+
         if (total > 0) {
             timelineSlider.max = total - 1;
             timelineSlider.value = Math.min(current, total - 1);
@@ -335,28 +359,40 @@ export function updatePlaybackUI() {
         }
     }
 
-    // Update current commit date display
-    if (timelineDate && total > 0) {
+    // Only fetch commit details if current index changed
+    if (currentChanged && total > 0) {
         const currentIndex = Math.min(current, total - 1);
         const timestamp = safeWasmCall('getCommitTimestamp', () => rource.getCommitTimestamp(currentIndex), 0);
-        timelineDate.textContent = formatDateTime(timestamp);
-    } else if (timelineDate) {
-        timelineDate.textContent = '--';
-    }
 
-    // Update commit info (author and file count)
-    if (timelineCommitInfo && total > 0) {
-        const currentIndex = Math.min(current, total - 1);
-        const author = safeWasmCall('getCommitAuthor', () => rource.getCommitAuthor(currentIndex), '');
-        const fileCount = safeWasmCall('getCommitFileCount', () => rource.getCommitFileCount(currentIndex), 0);
-        if (author) {
-            const filesText = fileCount === 1 ? '1 file' : `${fileCount} files`;
-            timelineCommitInfo.textContent = `${author} - ${filesText}`;
-        } else {
-            timelineCommitInfo.textContent = '';
+        // Only update date display if timestamp changed
+        if (timestamp !== playbackUICache.lastTimestamp) {
+            playbackUICache.lastTimestamp = timestamp;
+            if (timelineDate) {
+                timelineDate.textContent = formatDateTime(timestamp);
+            }
         }
-    } else if (timelineCommitInfo) {
-        timelineCommitInfo.textContent = '';
+
+        // Only update commit info if changed
+        if (timelineCommitInfo) {
+            const author = safeWasmCall('getCommitAuthor', () => rource.getCommitAuthor(currentIndex), '');
+            const fileCount = safeWasmCall('getCommitFileCount', () => rource.getCommitFileCount(currentIndex), 0);
+
+            if (author !== playbackUICache.lastAuthor || fileCount !== playbackUICache.lastFileCount) {
+                playbackUICache.lastAuthor = author;
+                playbackUICache.lastFileCount = fileCount;
+
+                if (author) {
+                    const filesText = fileCount === 1 ? '1 file' : `${fileCount} files`;
+                    timelineCommitInfo.textContent = `${author} - ${filesText}`;
+                } else {
+                    timelineCommitInfo.textContent = '';
+                }
+            }
+        }
+    } else if (currentChanged && total === 0) {
+        // Clear displays when no data
+        if (timelineDate) timelineDate.textContent = '--';
+        if (timelineCommitInfo) timelineCommitInfo.textContent = '';
     }
 
     // Update date range (start and end dates) - only need to do once when data changes
@@ -368,14 +404,14 @@ export function updatePlaybackUI() {
             timelineStartDate.textContent = formatDate(startTimestamp, true);
             timelineEndDate.textContent = formatDate(endTimestamp, true);
         }
-    } else if (timelineStartDate && timelineEndDate) {
+    } else if (timelineStartDate && timelineEndDate && totalChanged && total === 0) {
         timelineStartDate.textContent = '--';
         timelineEndDate.textContent = '--';
     }
 }
 
 /**
- * Resets the timeline date range labels.
+ * Resets the timeline date range labels and playback UI cache.
  * Call this when new data is loaded to force re-calculation of date range.
  */
 export function resetTimelineDateLabels() {
@@ -386,6 +422,15 @@ export function resetTimelineDateLabels() {
     if (timelineEndDate) timelineEndDate.textContent = '--';
     if (timelineDate) timelineDate.textContent = '--';
     if (timelineCommitInfo) timelineCommitInfo.textContent = '';
+
+    // Reset cache to force UI refresh with new data
+    playbackUICache.playing = null;
+    playbackUICache.current = -1;
+    playbackUICache.total = -1;
+    playbackUICache.atEnd = null;
+    playbackUICache.lastTimestamp = 0;
+    playbackUICache.lastAuthor = '';
+    playbackUICache.lastFileCount = -1;
 }
 
 /**
