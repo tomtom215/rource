@@ -13,48 +13,50 @@ import { CONFIG } from '../config.js';
 import { loadLogData, loadRourceData, detectLogFormat } from '../data-loader.js';
 import { fetchGitHubWithProgress, parseGitHubUrl } from '../github-fetch.js';
 import { ROURCE_STATS, setAdditionalCommits } from '../cached-data.js';
+import { formatBytes } from '../utils.js';
 
 /**
- * Uploaded file content storage.
+ * Uploaded file content storage (for "Load Uploaded File" button fallback).
  */
 let uploadedFileContent = null;
 
 /**
- * Handles file upload from input or drop.
+ * Handles file upload from drag-and-drop.
+ * Auto-loads the file content like file browse does.
  * @param {File} file - File to upload
  */
 function handleFileUpload(file) {
-    const elements = getAllElements();
-
-    if (file.size > CONFIG.MAX_FILE_SIZE_BYTES) {
-        showToast('File too large. Maximum size is 10MB.', 'error');
-        return;
-    }
+    const fileNameEl = getElement('fileNameEl');
 
     // Show loading state
-    if (elements.fileNameEl) {
-        elements.fileNameEl.textContent = `Loading ${file.name}...`;
-        elements.fileNameEl.classList.remove('hidden');
-    }
-    if (elements.btnLoadFile) {
-        elements.btnLoadFile.disabled = true;
+    if (fileNameEl) {
+        fileNameEl.textContent = `Loading ${file.name}...`;
+        fileNameEl.classList.remove('hidden');
     }
 
     const reader = new FileReader();
 
     reader.onload = (e) => {
-        uploadedFileContent = e.target.result;
-        if (elements.fileNameEl) {
-            elements.fileNameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        const content = e.target.result;
+        // Store for "Load Uploaded File" button fallback
+        uploadedFileContent = content;
+
+        // Show filename with size
+        if (fileNameEl) {
+            fileNameEl.textContent = `${file.name} (${formatBytes(file.size)})`;
         }
-        if (elements.btnLoadFile) {
-            elements.btnLoadFile.disabled = false;
+
+        // Auto-detect format and load (consistent with file browse behavior)
+        const format = detectLogFormat(content);
+        if (format === 'unknown') {
+            showToast('Unknown log format. Trying custom format...', 'warning', 3000);
         }
+        loadLogData(content, format === 'unknown' ? 'custom' : format);
     };
 
     reader.onerror = () => {
-        if (elements.fileNameEl) {
-            elements.fileNameEl.textContent = 'Failed to read file';
+        if (fileNameEl) {
+            fileNameEl.textContent = 'Failed to read file';
         }
         showToast('Failed to read file. Please try again.', 'error');
     };
@@ -63,29 +65,43 @@ function handleFileUpload(file) {
 }
 
 /**
- * Handles file input change event.
+ * Handles file input change event (file browse).
  * @param {Event} e - Change event
  */
 function handleFileSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
 
+    const fileNameEl = getElement('fileNameEl');
+
+    // Show loading state
+    if (fileNameEl) {
+        fileNameEl.textContent = `Loading ${file.name}...`;
+        fileNameEl.classList.remove('hidden');
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
         const content = event.target.result;
-        // Auto-detect format for better compatibility
+        // Store for "Load Uploaded File" button fallback
+        uploadedFileContent = content;
+
+        // Show filename with size
+        if (fileNameEl) {
+            fileNameEl.textContent = `${file.name} (${formatBytes(file.size)})`;
+        }
+
+        // Auto-detect format and load
         const format = detectLogFormat(content);
         if (format === 'unknown') {
             showToast('Unknown log format. Trying custom format...', 'warning', 3000);
         }
         loadLogData(content, format === 'unknown' ? 'custom' : format);
-
-        const fileNameEl = getElement('fileNameEl');
-        if (fileNameEl) {
-            fileNameEl.textContent = file.name;
-        }
     };
     reader.onerror = () => {
+        if (fileNameEl) {
+            fileNameEl.textContent = 'Failed to read file';
+        }
         showToast('Failed to read file', 'error');
     };
     reader.readAsText(file);

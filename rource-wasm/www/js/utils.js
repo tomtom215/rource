@@ -84,6 +84,23 @@ export function clamp(value, min, max) {
 }
 
 /**
+ * Formats bytes into a human-readable string (KB, MB, GB).
+ * @param {number} bytes - Number of bytes
+ * @param {number} [decimals=1] - Number of decimal places
+ * @returns {string} Formatted size string
+ */
+export function formatBytes(bytes, decimals = 1) {
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
+
+    return `${(bytes / Math.pow(k, i)).toFixed(decimals)} ${sizes[i]}`;
+}
+
+/**
  * Generates a simple hash from a string (for color generation).
  * @param {string} str - Input string
  * @returns {number} Hash value
