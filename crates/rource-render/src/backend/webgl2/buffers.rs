@@ -851,11 +851,10 @@ mod tests {
         assert_eq!(buffer.peak_usage(), 3);
     }
 
-    #[test]
-    fn test_shrink_constants() {
-        // Verify shrink constants are reasonable
+    // Compile-time verification that shrink constants are reasonable
+    const _: () = {
         assert!(MIN_BUFFER_CAPACITY > 0);
         assert!(SHRINK_THRESHOLD > 0.0 && SHRINK_THRESHOLD < 1.0);
         assert!(SHRINK_STABILITY_FRAMES > 0);
-    }
+    };
 }
