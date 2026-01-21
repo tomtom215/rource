@@ -799,7 +799,7 @@ fn render_legend(
     // Get file extension stats (limited to top 10)
     let stats = scene.file_extension_stats();
     let max_legend_entries = 10;
-    let legend_entries: Vec<_> = stats.into_iter().take(max_legend_entries).collect();
+    let legend_entries: Vec<_> = stats.iter().take(max_legend_entries).collect();
 
     if legend_entries.is_empty() {
         return;
