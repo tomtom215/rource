@@ -368,7 +368,11 @@ fn render_files(
 
         // Collect label candidate if conditions are met
         // LOD: Only add label candidates for files large enough to be readable
-        if show_filenames && file.alpha() > 0.3 && camera_zoom > 0.15 && radius >= LOD_MIN_FILE_LABEL_RADIUS {
+        if show_filenames
+            && file.alpha() > 0.3
+            && camera_zoom > 0.15
+            && radius >= LOD_MIN_FILE_LABEL_RADIUS
+        {
             // Priority based on visibility and activity (higher = more important)
             let activity_bonus = if is_touched { 100.0 } else { 0.0 };
             let priority = file.radius() * file.alpha() * 10.0 + activity_bonus;
