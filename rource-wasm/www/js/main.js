@@ -419,12 +419,31 @@ function updateLegend(content, format = 'custom') {
 function updateAuthorsLegend() {
     const authorsItems = getElement('authorsItems');
     const rource = getRource();
-    if (!authorsItems || !rource) return;
+    if (!authorsItems || !rource) {
+        console.warn('[Rource] updateAuthorsLegend: Missing authorsItems or rource');
+        return;
+    }
 
     try {
         // Use WASM API to get authors - works for all log formats
         const authorsJson = safeWasmCall('getAuthors', () => rource.getAuthors(), '[]');
+
+        // Debug log to help diagnose issues
+        if (CONFIG.LOG_WASM_ERRORS) {
+            console.log('[Rource] getAuthors returned:', authorsJson.substring(0, 200) + (authorsJson.length > 200 ? '...' : ''));
+        }
+
         const authors = JSON.parse(authorsJson);
+
+        if (!Array.isArray(authors)) {
+            console.error('[Rource] getAuthors did not return an array:', typeof authors);
+            return;
+        }
+
+        // Debug log author count
+        if (CONFIG.LOG_WASM_ERRORS) {
+            console.log(`[Rource] Parsed ${authors.length} authors from WASM`);
+        }
 
         // Take top 30 authors (already sorted by commit count from WASM)
         const topAuthors = authors.slice(0, 30);
@@ -432,10 +451,14 @@ function updateAuthorsLegend() {
         let html = '';
 
         for (const author of topAuthors) {
+            if (!author || !author.name) {
+                console.warn('[Rource] Skipping invalid author entry:', author);
+                continue;
+            }
             html += `<div class="author-item" role="listitem" data-author="${escapeHtml(author.name)}">
-                <span class="author-color" style="background-color: ${escapeHtml(author.color)}"></span>
+                <span class="author-color" style="background-color: ${escapeHtml(author.color || '#888888')}"></span>
                 <span class="author-name">${escapeHtml(author.name)}</span>
-                <span class="author-commits">${author.commits}</span>
+                <span class="author-commits">${author.commits || 0}</span>
             </div>`;
         }
 
@@ -443,8 +466,9 @@ function updateAuthorsLegend() {
         if (html) {
             authorsItems.setAttribute('role', 'list');
         }
-    } catch {
-        // Authors may not be available yet
+    } catch (error) {
+        // Log the error for debugging
+        console.error('[Rource] updateAuthorsLegend error:', error);
     }
 }
 

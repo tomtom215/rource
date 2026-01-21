@@ -210,6 +210,15 @@ export class Rource {
         }
     }
     /**
+     * Returns the total number of unique directories across all loaded commits.
+     * This calculates directory count from file paths, independent of playback state.
+     * @returns {number}
+     */
+    getCommitDirectoryCount() {
+        const ret = wasm.rource_getCommitDirectoryCount(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Returns the number of files changed in a commit at the given index.
      * @param {number} index
      * @returns {number}
@@ -385,7 +394,9 @@ export class Rource {
         return ret;
     }
     /**
-     * Returns the total number of directories.
+     * Returns the total number of directories currently in the scene.
+     * Note: This only includes directories that have been created so far during playback.
+     * For total directories across all commits, use `getCommitDirectoryCount()`.
      * @returns {number}
      */
     getTotalDirectories() {

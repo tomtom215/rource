@@ -175,12 +175,12 @@ export function getFrameTimeMs() {
 
 /**
  * Safely sets playback speed.
- * @param {number} secondsPerDay - Seconds per day
+ * @param {number} secondsPerDay - Seconds per day of commit history
  */
 export function setSpeed(secondsPerDay) {
     const rource = getRource();
     if (rource) {
-        safeWasmVoid('setSecondsPerDay', () => rource.setSecondsPerDay(secondsPerDay));
+        safeWasmVoid('setSpeed', () => rource.setSpeed(secondsPerDay));
     }
 }
 
@@ -255,12 +255,31 @@ export function getAuthorColor(name) {
 }
 
 /**
- * Safely gets total directory count.
+ * Safely gets total directory count from scene.
+ * Note: This only includes directories created so far during playback.
  * @returns {number} Directory count
  */
 export function getTotalDirectories() {
     const rource = getRource();
     if (rource) {
+        return safeWasmCall('getTotalDirectories', () => rource.getTotalDirectories(), 0);
+    }
+    return 0;
+}
+
+/**
+ * Safely gets total directory count from all commits.
+ * This calculates directory count from file paths, independent of playback state.
+ * @returns {number} Directory count
+ */
+export function getCommitDirectoryCount() {
+    const rource = getRource();
+    if (rource) {
+        // Try the new API first, fall back to getTotalDirectories if not available
+        if (typeof rource.getCommitDirectoryCount === 'function') {
+            return safeWasmCall('getCommitDirectoryCount', () => rource.getCommitDirectoryCount(), 0);
+        }
+        // Fallback for older WASM builds
         return safeWasmCall('getTotalDirectories', () => rource.getTotalDirectories(), 0);
     }
     return 0;

@@ -85,6 +85,11 @@ export class Rource {
      */
     getCommitAuthor(index: number): string;
     /**
+     * Returns the total number of unique directories across all loaded commits.
+     * This calculates directory count from file paths, independent of playback state.
+     */
+    getCommitDirectoryCount(): number;
+    /**
      * Returns the number of files changed in a commit at the given index.
      */
     getCommitFileCount(index: number): number;
@@ -145,7 +150,9 @@ export class Rource {
      */
     getSpeed(): number;
     /**
-     * Returns the total number of directories.
+     * Returns the total number of directories currently in the scene.
+     * Note: This only includes directories that have been created so far during playback.
+     * For total directories across all commits, use `getCommitDirectoryCount()`.
      */
     getTotalDirectories(): number;
     /**
@@ -410,6 +417,7 @@ export interface InitOutput {
     readonly rource_getCanvasHeight: (a: number) => number;
     readonly rource_getCanvasWidth: (a: number) => number;
     readonly rource_getCommitAuthor: (a: number, b: number, c: number) => void;
+    readonly rource_getCommitDirectoryCount: (a: number) => number;
     readonly rource_getCommitFileCount: (a: number, b: number) => number;
     readonly rource_getCommitTimestamp: (a: number, b: number) => number;
     readonly rource_getDateRange: (a: number, b: number) => void;
