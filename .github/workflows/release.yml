@@ -14,6 +14,60 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Generate changelog for the release
+  changelog:
+    name: Generate Changelog
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Upload changelog
+        uses: actions/upload-artifact@v6
+        with:
+          name: changelog
+          path: CHANGELOG.md
+
+  # Generate Software Bill of Materials
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-sbom
+        run: cargo install cargo-sbom
+
+      - name: Generate SBOM (SPDX)
+        run: |
+          cargo sbom --output-format spdx_json_2_3 > sbom-spdx.json
+
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          cargo sbom --output-format cyclone_dx_json_1_4 > sbom-cyclonedx.json
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: sbom
+          path: |
+            sbom-spdx.json
+            sbom-cyclonedx.json
+
   build:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
@@ -188,15 +242,17 @@ jobs:
             rource-wasm.tar.gz
             rource-wasm.tar.gz.sha256
 
-  # Upload to GitHub Release (only on release event)
+  # Sign and upload to GitHub Release
   upload-release:
     name: Upload to Release
-    needs: [build, wasm]
+    needs: [build, wasm, sbom, changelog]
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
+
       - name: Download all artifacts
         uses: actions/download-artifact@v7
         with:
@@ -205,11 +261,53 @@ jobs:
       - name: Display structure
         run: ls -R artifacts
 
+      - name: Import GPG key
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Sign release artifacts
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        run: |
+          # Sign all release artifacts
+          for file in artifacts/**/*.tar.gz artifacts/**/*.zip; do
+            if [ -f "$file" ]; then
+              gpg --armor --detach-sign "$file"
+              echo "Signed: $file"
+            fi
+          done
+
+      - name: Generate checksums manifest
+        run: |
+          # Create a single checksums file for all artifacts
+          echo "# SHA256 Checksums" > checksums.txt
+          echo "# Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> checksums.txt
+          echo "" >> checksums.txt
+
+          for sha_file in artifacts/**/*.sha256; do
+            if [ -f "$sha_file" ]; then
+              cat "$sha_file" >> checksums.txt
+            fi
+          done
+
+          echo "" >> checksums.txt
+          echo "# Verify with: sha256sum -c checksums.txt" >> checksums.txt
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.tar.gz.sha256
+            artifacts/**/*.tar.gz.asc
             artifacts/**/*.zip
             artifacts/**/*.zip.sha256
+            artifacts/**/*.zip.asc
+            artifacts/sbom/sbom-spdx.json
+            artifacts/sbom/sbom-cyclonedx.json
+            artifacts/changelog/CHANGELOG.md
+            checksums.txt
+          body_path: artifacts/changelog/CHANGELOG.md
+          fail_on_unmatched_files: false

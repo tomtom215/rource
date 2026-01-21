@@ -1,0 +1,227 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Headless rendering integration tests
+  headless:
+    name: Headless Rendering
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 50  # Need some git history for testing
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-integration-
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Generate test commit log
+        run: |
+          # Create a test log with sample commits
+          mkdir -p /tmp/test-output
+          cat > /tmp/test-commits.log << 'EOF'
+          1609459200|alice|A|src/main.rs
+          1609459260|bob|A|README.md
+          1609459320|alice|M|src/main.rs
+          1609459380|charlie|A|src/lib.rs
+          1609459440|bob|M|README.md
+          1609459500|alice|A|src/utils.rs
+          1609459560|charlie|M|src/lib.rs
+          1609459620|alice|D|src/old.rs
+          EOF
+
+      - name: Test headless rendering with custom log
+        run: |
+          # Test basic headless rendering
+          ./target/release/rource \
+            --headless \
+            --output /tmp/test-output/custom \
+            --seconds-per-day 0.1 \
+            --custom-log /tmp/test-commits.log
+
+          # Verify frames were generated
+          FRAME_COUNT=$(ls /tmp/test-output/custom/*.ppm 2>/dev/null | wc -l)
+          echo "Generated $FRAME_COUNT frames from custom log"
+
+          if [ "$FRAME_COUNT" -lt 1 ]; then
+            echo "::error::No frames generated from custom log"
+            exit 1
+          fi
+
+      - name: Test headless rendering with repository
+        run: |
+          # Test with actual git repository (limited commits for speed)
+          ./target/release/rource \
+            --headless \
+            --output /tmp/test-output/repo \
+            --seconds-per-day 0.01 \
+            --no-bloom \
+            .
+
+          # Verify frames were generated
+          FRAME_COUNT=$(ls /tmp/test-output/repo/*.ppm 2>/dev/null | wc -l)
+          echo "Generated $FRAME_COUNT frames from repository"
+
+          if [ "$FRAME_COUNT" -lt 1 ]; then
+            echo "::error::No frames generated from repository"
+            exit 1
+          fi
+
+      - name: Validate PPM frame format
+        run: |
+          # Check that PPM files have valid headers
+          FIRST_FRAME=$(ls /tmp/test-output/custom/*.ppm | head -1)
+          HEADER=$(head -1 "$FIRST_FRAME")
+
+          if [ "$HEADER" != "P6" ]; then
+            echo "::error::Invalid PPM header: $HEADER (expected P6)"
+            exit 1
+          fi
+
+          echo "PPM format validation passed"
+
+      - name: Check frame content (not all black)
+        run: |
+          python3 << 'EOF'
+          import os
+          import sys
+
+          frame_dir = '/tmp/test-output/custom'
+          frames = sorted([f for f in os.listdir(frame_dir) if f.endswith('.ppm')])
+
+          if not frames:
+              print("ERROR: No frames found")
+              sys.exit(1)
+
+          # Check middle frame (more likely to have content)
+          mid_frame = frames[len(frames) // 2]
+          frame_path = os.path.join(frame_dir, mid_frame)
+
+          with open(frame_path, 'rb') as f:
+              # Skip PPM header (3 lines)
+              for _ in range(3):
+                  f.readline()
+              data = f.read()
+
+          # Count non-black pixels
+          non_zero = sum(1 for b in data if b != 0)
+          total = len(data)
+          pct = 100.0 * non_zero / total if total > 0 else 0
+
+          print(f"Frame {mid_frame}: {non_zero}/{total} non-zero bytes ({pct:.1f}%)")
+
+          if pct < 0.1:
+              print("WARNING: Frame appears mostly black - may indicate rendering issue")
+              # Don't fail, as some frames might legitimately be dark
+
+          print("Frame content check passed")
+          EOF
+
+      - name: Test screenshot mode
+        run: |
+          # Test single frame screenshot
+          ./target/release/rource \
+            --screenshot /tmp/test-output/screenshot.png \
+            --custom-log /tmp/test-commits.log
+
+          if [ ! -f /tmp/test-output/screenshot.png ]; then
+            echo "::error::Screenshot was not generated"
+            exit 1
+          fi
+
+          # Verify PNG magic bytes
+          MAGIC=$(xxd -l 4 /tmp/test-output/screenshot.png | awk '{print $2$3}')
+          if [ "$MAGIC" != "89504e47" ]; then
+            echo "::error::Screenshot is not a valid PNG file"
+            exit 1
+          fi
+
+          echo "Screenshot test passed"
+          ls -lh /tmp/test-output/screenshot.png
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: integration-test-frames
+          path: /tmp/test-output/
+          retention-days: 7
+
+  # Nightly Rust compatibility check
+  nightly:
+    name: Nightly Rust
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Don't fail CI on nightly issues
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt, clippy
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-nightly-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-nightly-
+
+      - name: Check with nightly
+        run: cargo check --all --all-features
+
+      - name: Test with nightly
+        run: cargo test --all
+
+      - name: Clippy with nightly
+        run: cargo clippy --all --all-features -- -D warnings
+        continue-on-error: true  # Nightly clippy may have new lints
+
+  # Beta Rust compatibility check
+  beta:
+    name: Beta Rust
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@beta
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-beta-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-beta-
+
+      - name: Check with beta
+        run: cargo check --all --all-features
+
+      - name: Test with beta
+        run: cargo test --all

@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  deployments: write
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -32,11 +36,84 @@ jobs:
       - name: Run benchmarks
         run: cargo bench --all -- --noplot 2>&1 | tee benchmark-results.txt
 
+      - name: Extract Criterion results
+        run: |
+          # Convert Criterion output to JSON format for benchmark-action
+          echo '[]' > benchmark-data.json
+          python3 << 'EOF'
+          import json
+          import re
+          import os
+
+          results = []
+          with open('benchmark-results.txt', 'r') as f:
+              content = f.read()
+
+          # Parse Criterion benchmark output
+          # Format: "benchmark_name    time:   [lower bound  estimate  upper bound]"
+          pattern = r'(\S+)\s+time:\s+\[([0-9.]+)\s+(\w+)\s+([0-9.]+)\s+(\w+)\s+([0-9.]+)\s+(\w+)\]'
+
+          for match in re.finditer(pattern, content):
+              name = match.group(1)
+              value = float(match.group(4))  # Use estimate (middle value)
+              unit = match.group(5)
+
+              # Convert to nanoseconds for consistency
+              multipliers = {'ns': 1, 'µs': 1000, 'us': 1000, 'ms': 1000000, 's': 1000000000}
+              value_ns = value * multipliers.get(unit, 1)
+
+              results.append({
+                  'name': name,
+                  'unit': 'ns',
+                  'value': value_ns
+              })
+
+          with open('benchmark-data.json', 'w') as f:
+              json.dump(results, f, indent=2)
+
+          print(f"Extracted {len(results)} benchmark results")
+          EOF
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: Rust Benchmarks
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-data.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Alert if performance regresses by more than 10%
+          alert-threshold: '110%'
+          comment-on-alert: true
+          fail-on-alert: false
+          # Store benchmark data in gh-pages branch
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+
+      - name: Compare benchmark results (PR)
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'pull_request'
+        with:
+          name: Rust Benchmarks
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-data.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          # Alert if performance regresses by more than 10%
+          alert-threshold: '110%'
+          comment-on-alert: true
+          fail-on-alert: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+
       - name: Upload benchmark results
         uses: actions/upload-artifact@v6
         with:
           name: benchmark-results
-          path: benchmark-results.txt
+          path: |
+            benchmark-results.txt
+            benchmark-data.json
 
   # Size tracking - monitor binary and WASM sizes
   size-check:
@@ -112,7 +189,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Size Targets" >> $GITHUB_STEP_SUMMARY
           echo "- Native binary: < 5MB" >> $GITHUB_STEP_SUMMARY
-          echo "- WASM (gzipped): < 100KB" >> $GITHUB_STEP_SUMMARY
+          echo "- WASM (gzipped): < 300KB" >> $GITHUB_STEP_SUMMARY
 
       - name: Check size limits
         run: |
@@ -122,8 +199,37 @@ jobs:
             echo "::warning::Native binary exceeds 5MB target: $(numfmt --to=iec-i --suffix=B $native_bytes)"
           fi
 
-          # Check WASM gzipped size (< 100KB)
+          # Check WASM gzipped size (< 300KB - adjusted for wgpu backend)
           wasm_gzip=$(gzip -c rource-wasm/pkg/rource_wasm_bg.wasm | wc -c)
-          if [ $wasm_gzip -gt 102400 ]; then
-            echo "::warning::WASM gzipped exceeds 100KB target: $(numfmt --to=iec-i --suffix=B $wasm_gzip)"
+          if [ $wasm_gzip -gt 307200 ]; then
+            echo "::warning::WASM gzipped exceeds 300KB target: $(numfmt --to=iec-i --suffix=B $wasm_gzip)"
           fi
+
+      - name: Create size metrics JSON
+        run: |
+          native_bytes=$(stat -c%s target/release/rource)
+          wasm_bytes=$(stat -c%s rource-wasm/pkg/rource_wasm_bg.wasm)
+          wasm_gzip=$(gzip -c rource-wasm/pkg/rource_wasm_bg.wasm | wc -c)
+
+          cat > size-metrics.json << EOF
+          [
+            {"name": "Native Binary", "unit": "bytes", "value": $native_bytes},
+            {"name": "WASM Bundle", "unit": "bytes", "value": $wasm_bytes},
+            {"name": "WASM Gzipped", "unit": "bytes", "value": $wasm_gzip}
+          ]
+          EOF
+
+      - name: Store size metrics
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: Binary Sizes
+          tool: 'customSmallerIsBetter'
+          output-file-path: size-metrics.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/sizes
