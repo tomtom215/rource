@@ -305,29 +305,36 @@ impl WebGl2Renderer {
         // to set up the VAO attribute pointers correctly
 
         // Create temporary instance buffers with minimal data for VAO setup
-        self.circle_instances.push_raw(&[0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.circle_instances
+            .push_raw(&[0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
         self.circle_instances.upload(gl);
-        self.vao_manager.setup_circle_vao(gl, &self.circle_instances);
+        self.vao_manager
+            .setup_circle_vao(gl, &self.circle_instances);
         self.circle_instances.clear();
 
-        self.ring_instances.push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.ring_instances
+            .push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
         self.ring_instances.upload(gl);
         self.vao_manager.setup_ring_vao(gl, &self.ring_instances);
         self.ring_instances.clear();
 
-        self.line_instances.push_raw(&[0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.line_instances
+            .push_raw(&[0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
         self.line_instances.upload(gl);
         self.vao_manager.setup_line_vao(gl, &self.line_instances);
         self.line_instances.clear();
 
-        self.quad_instances.push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.quad_instances
+            .push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
         self.quad_instances.upload(gl);
         self.vao_manager.setup_quad_vao(gl, &self.quad_instances);
         self.quad_instances.clear();
 
-        self.text_instances.push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        self.text_instances
+            .push_raw(&[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
         self.text_instances.upload(gl);
-        self.vao_manager.setup_textured_vao(gl, &self.text_instances);
+        self.vao_manager
+            .setup_textured_vao(gl, &self.text_instances);
         // Move textured VAO to text VAO and recreate textured
         self.vao_manager.text_vao = self.vao_manager.textured_quad_vao.take();
         self.text_instances.clear();

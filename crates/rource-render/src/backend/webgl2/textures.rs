@@ -450,16 +450,14 @@ impl FontAtlas {
             .glyphs
             .iter()
             .filter_map(|(key, region)| {
-                self.glyph_bitmaps.get(key).map(|bitmap| {
-                    (*key, region.width, region.height, bitmap.clone())
-                })
+                self.glyph_bitmaps
+                    .get(key)
+                    .map(|bitmap| (*key, region.width, region.height, bitmap.clone()))
             })
             .collect();
 
         // Sort by height descending, then width descending for better packing
-        glyph_entries.sort_by(|a, b| {
-            b.2.cmp(&a.2).then_with(|| b.1.cmp(&a.1))
-        });
+        glyph_entries.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| b.1.cmp(&a.1)));
 
         // Clear atlas data and reset packer
         self.data.fill(0);
