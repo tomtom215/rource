@@ -14,7 +14,7 @@ Rource visualizes your repository's commit history as an animated tree where dir
 ## Features
 
 - **Portable**: Pure Rust with software rendering - runs on any CPU without GPU requirements
-- **Lightweight**: ~3.8MB native binary, ~226KB WASM (gzipped)
+- **Lightweight**: ~3.8MB native binary, ~235KB WASM (gzipped)
 - **Fast**: Handles repositories with 100k+ commits
 - **Cross-platform**: Native (Linux, macOS, Windows) and WebAssembly
 - **Compatible**: Supports Git, SVN, Mercurial, Bazaar, and custom log formats
@@ -31,7 +31,7 @@ This project was developed with AI-assisted programming using [Claude](https://w
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 840 tests | - |
+| **Test Coverage** | 900+ tests | - |
 | **Rendering** | CPU + WebGL2 | OpenGL only |
 
 ### Performance Highlights
@@ -45,12 +45,12 @@ This project was developed with AI-assisted programming using [Claude](https://w
 ```
 rource/
 ├── crates/
-│   ├── rource-math/    141 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/     142 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/    252 tests   Scene graph, physics, camera
-│   └── rource-render/  107 tests   Software + WebGL2 rendering
-├── rource-cli/          90 tests   Native application (winit + softbuffer)
-└── rource-wasm/         48 tests   WebAssembly (browser)
+│   ├── rource-math/    185 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/     158 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/    256 tests   Scene graph, physics, camera
+│   └── rource-render/  115 tests   Software + WebGL2 rendering
+├── rource-cli/          95 tests   Native application (winit + softbuffer)
+└── rource-wasm/         68 tests   WebAssembly (browser)
 ```
 
 ## Installation

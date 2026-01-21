@@ -165,7 +165,7 @@
                         <svg class="context-lost-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                         </svg>
-                        <h3>Graphics Context Lost</h3>
+                        <h2 class="h3-style">Graphics Context Lost</h2>
                         <p>The WebGL rendering context was lost. This can happen on mobile devices or when switching tabs.</p>
                         <button type="button" id="btn-restore-context" class="btn btn-primary">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -185,7 +185,7 @@
                         <line x1="50" y1="50" x2="34" y2="58" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
                         <line x1="50" y1="50" x2="66" y2="53" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
                     </svg>
-                    <h3>Ready to Visualize</h3>
+                    <h2 class="h3-style">Ready to Visualize</h2>
                     <p>Enter a GitHub repository URL or load your own git log data to watch your codebase come to life.</p>
                 </div>
                 <div id="legend-panel" class="legend-panel collapsed" role="complementary" aria-label="File type legend">
@@ -386,6 +386,9 @@
                     <div class="docs-section">
                         <h4>What is Rource?</h4>
                         <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> visualizes software version control history as an animated tree. Each file is a colored node, each developer has a unique color, and commits create "beams" connecting developers to files they modify.</p>
+                        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                            What you see is rendered live in your browser—not a video, but real-time computation powered by WebAssembly.
+                        </p>
                         <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
                             Inspired by <a href="https://gource.io" target="_blank" rel="noopener">Gource</a>, Rource is a complete rewrite from scratch in Rust and WebAssembly.
                         </p>
@@ -396,7 +399,7 @@
                             <li>WebGL2 GPU-accelerated rendering</li>
                             <li>Force-directed graph layout</li>
                             <li>Color-coded file types</li>
-                            <li>Runs entirely in browser (~76KB)</li>
+                            <li>Runs entirely in browser (<span id="feature-wasm-size">~235KB</span>)</li>
                             <li>No server or installation needed</li>
                         </ul>
                     </div>
@@ -582,7 +585,7 @@
                 </button>
                 <div class="tech-grid" id="tech-info-body">
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-wasm-size">~76KB</div>
+                        <div class="tech-item-value" id="tech-wasm-size">~235KB</div>
                         <div class="tech-item-label">WASM Gzipped</div>
                     </div>
                     <div class="tech-item">
@@ -590,7 +593,7 @@
                         <div class="tech-item-label">Renderer</div>
                     </div>
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-tests">671</div>
+                        <div class="tech-item-value" id="tech-tests">894</div>
                         <div class="tech-item-label">Unit Tests</div>
                     </div>
                     <div class="tech-item">
@@ -601,7 +604,7 @@
                 <div class="tech-badges">
                     <span class="tech-badge highlight">Rust</span>
                     <span class="tech-badge highlight">WebAssembly</span>
-                    <span class="tech-badge">Zero Dependencies</span>
+                    <span class="tech-badge">Minimal Dependencies</span>
                     <span class="tech-badge">GPU Accelerated</span>
                     <span class="tech-badge">Instanced Rendering</span>
                     <span class="tech-badge">60 FPS Target</span>

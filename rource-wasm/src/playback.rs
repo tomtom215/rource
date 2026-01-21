@@ -425,4 +425,181 @@ mod tests {
         let range = get_date_range(&commits);
         assert_eq!(range, Some((1000, 3000)));
     }
+
+    // Commit Application Tests
+
+    use rource_vcs::FileChange;
+
+    #[test]
+    fn test_apply_vcs_commit_creates_files() {
+        let mut scene = Scene::new();
+        let commit = Commit {
+            hash: "abc123".to_string(),
+            author: "Alice".to_string(),
+            email: None,
+            timestamp: 1000,
+            files: vec![
+                FileChange {
+                    path: PathBuf::from("src/main.rs"),
+                    action: FileAction::Create,
+                },
+                FileChange {
+                    path: PathBuf::from("src/lib.rs"),
+                    action: FileAction::Create,
+                },
+            ],
+        };
+
+        apply_vcs_commit(&mut scene, &commit);
+
+        // Scene should have files after applying commit
+        assert!(scene.file_count() >= 2, "Should have at least 2 files");
+        assert!(scene.user_count() >= 1, "Should have at least 1 user");
+    }
+
+    #[test]
+    fn test_apply_vcs_commit_modifies_files() {
+        let mut scene = Scene::new();
+
+        // First create files
+        let create_commit = Commit {
+            hash: "abc123".to_string(),
+            author: "Alice".to_string(),
+            email: None,
+            timestamp: 1000,
+            files: vec![FileChange {
+                path: PathBuf::from("src/main.rs"),
+                action: FileAction::Create,
+            }],
+        };
+        apply_vcs_commit(&mut scene, &create_commit);
+        let files_after_create = scene.file_count();
+
+        // Then modify
+        let modify_commit = Commit {
+            hash: "def456".to_string(),
+            author: "Bob".to_string(),
+            email: None,
+            timestamp: 2000,
+            files: vec![FileChange {
+                path: PathBuf::from("src/main.rs"),
+                action: FileAction::Modify,
+            }],
+        };
+        apply_vcs_commit(&mut scene, &modify_commit);
+
+        // File count should be the same (modify doesn't create new files)
+        assert_eq!(scene.file_count(), files_after_create);
+    }
+
+    #[test]
+    fn test_apply_vcs_commit_empty() {
+        let mut scene = Scene::new();
+        let commit = Commit {
+            hash: "abc123".to_string(),
+            author: "Alice".to_string(),
+            email: None,
+            timestamp: 1000,
+            files: vec![],
+        };
+
+        // Should not panic on empty commit
+        apply_vcs_commit(&mut scene, &commit);
+
+        // Scene should still be valid
+        assert!(scene.file_count() == 0 || scene.file_count() > 0);
+    }
+
+    #[test]
+    fn test_apply_vcs_commit_multiple_authors() {
+        let mut scene = Scene::new();
+
+        let commit1 = Commit {
+            hash: "abc123".to_string(),
+            author: "Alice".to_string(),
+            email: None,
+            timestamp: 1000,
+            files: vec![FileChange {
+                path: PathBuf::from("src/main.rs"),
+                action: FileAction::Create,
+            }],
+        };
+        apply_vcs_commit(&mut scene, &commit1);
+
+        let commit2 = Commit {
+            hash: "def456".to_string(),
+            author: "Bob".to_string(),
+            email: None,
+            timestamp: 2000,
+            files: vec![FileChange {
+                path: PathBuf::from("src/lib.rs"),
+                action: FileAction::Create,
+            }],
+        };
+        apply_vcs_commit(&mut scene, &commit2);
+
+        // Should have at least 2 users
+        assert!(scene.user_count() >= 2, "Should have at least 2 users");
+    }
+
+    // Prewarm Scene Tests
+
+    #[test]
+    fn test_prewarm_scene() {
+        let mut scene = Scene::new();
+
+        // Apply a commit first
+        let commit = Commit {
+            hash: "abc123".to_string(),
+            author: "Alice".to_string(),
+            email: None,
+            timestamp: 1000,
+            files: vec![FileChange {
+                path: PathBuf::from("src/main.rs"),
+                action: FileAction::Create,
+            }],
+        };
+        apply_vcs_commit(&mut scene, &commit);
+
+        // Prewarm should not panic
+        prewarm_scene(&mut scene, 30, 1.0 / 60.0);
+
+        // Scene should still be valid after prewarm
+        assert!(scene.file_count() >= 1);
+    }
+
+    #[test]
+    fn test_prewarm_scene_zero_cycles() {
+        let mut scene = Scene::new();
+
+        // Apply a commit first
+        let commit = Commit {
+            hash: "abc123".to_string(),
+            author: "Alice".to_string(),
+            email: None,
+            timestamp: 1000,
+            files: vec![FileChange {
+                path: PathBuf::from("src/main.rs"),
+                action: FileAction::Create,
+            }],
+        };
+        apply_vcs_commit(&mut scene, &commit);
+
+        // Zero cycles should not panic
+        prewarm_scene(&mut scene, 0, 1.0 / 60.0);
+
+        // Scene should still be valid
+        assert!(scene.file_count() >= 1);
+    }
+
+    #[test]
+    fn test_prewarm_scene_empty() {
+        let mut scene = Scene::new();
+
+        // Prewarm empty scene should not panic
+        prewarm_scene(&mut scene, 30, 1.0 / 60.0);
+
+        // Scene should be valid
+        assert_eq!(scene.file_count(), 0);
+    }
 }

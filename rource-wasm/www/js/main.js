@@ -45,6 +45,7 @@ import { initHelp, maybeShowFirstTimeHelp } from './features/help.js';
 import { initKeyboard } from './features/keyboard.js';
 import { initFullMapExport, setFullMapAnimateCallback } from './features/full-map-export.js';
 import { initFontSizeControl, enableFontSizeControls, updateFontSizeUI } from './features/font-size.js';
+import { BUILD_INFO } from './build-info.js';
 import {
     initVideoRecording, enableRecordButton, setRecordingAnimateCallback,
     isRecordingSupported
@@ -53,6 +54,38 @@ import { animate } from './animation.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
+
+/**
+ * Update DOM elements with build info (WASM size, test count, etc.)
+ * This ensures displayed values match the actual built artifacts.
+ */
+function updateBuildInfo() {
+    const sizeText = `~${BUILD_INFO.wasmGzipKB}KB`;
+
+    // Update feature list
+    const featureSize = document.getElementById('feature-wasm-size');
+    if (featureSize) {
+        featureSize.textContent = sizeText;
+    }
+
+    // Update technical specifications
+    const techSize = document.getElementById('tech-wasm-size');
+    if (techSize) {
+        techSize.textContent = sizeText;
+    }
+
+    // Update test count
+    const techTests = document.getElementById('tech-tests');
+    if (techTests) {
+        techTests.textContent = BUILD_INFO.testCount.toLocaleString();
+    }
+
+    // Update crate count
+    const techCrates = document.getElementById('tech-crates');
+    if (techCrates) {
+        techCrates.textContent = BUILD_INFO.crateCount;
+    }
+}
 
 /**
  * Main initialization function.
@@ -68,6 +101,9 @@ async function main() {
         // Initialize DOM references
         initDomElements();
         const elements = getAllElements();
+
+        // Update build info (WASM size, etc.)
+        updateBuildInfo();
 
         // Get canvas and create Rource instance
         const canvas = getElement('canvas');
