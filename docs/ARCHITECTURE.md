@@ -156,7 +156,7 @@ WebAssembly module for browser deployment:
 ┌───────────────────────────────────────────────────────┐
 │                      rource-wasm                      │
 ├───────────────────────────────────────────────────────┤
-│   lib.rs           - WASM entry, Rource class API    │
+│   lib.rs           - WASM entry, Rource class API     │
 │   backend.rs       - RendererBackend abstraction      │
 │   metrics.rs       - FPS tracking, render statistics  │
 │   playback.rs      - Timeline management              │
