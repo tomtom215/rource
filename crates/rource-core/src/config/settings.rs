@@ -338,7 +338,7 @@ pub struct LayoutSettings {
 
     /// Exponent for depth-based distance scaling.
     /// Values > 1.0 add extra spacing at deeper levels.
-    /// Formula: distance = base_distance * depth^exponent
+    /// Formula: `distance = base_distance * depth^exponent`
     /// Default: 1.0 (linear), Range: [0.5, 2.0]
     pub depth_distance_exponent: f32,
 
@@ -358,7 +358,7 @@ pub struct LayoutSettings {
     pub branch_opacity_max: f32,
 
     /// File count threshold for "large repository" mode.
-    /// When exceeded and auto_scale is true, layout adapts.
+    /// When exceeded and `auto_scale` is true, layout adapts.
     /// Default: 10000
     pub large_repo_threshold: usize,
 
@@ -452,15 +452,19 @@ impl LayoutSettings {
     /// Layout settings tuned for the given repository characteristics.
     #[must_use]
     pub fn from_repo_stats(file_count: usize, max_depth: u32, dir_count: usize) -> Self {
-        // Start with defaults
-        let mut settings = Self::default();
-        settings.auto_scale = false; // We're computing explicit values
+        // Start with defaults, but auto_scale is false since we're computing explicit values
+        let mut settings = Self {
+            auto_scale: false,
+            ..Default::default()
+        };
 
         // Logarithmic scaling for radial distance based on file count
         // Formula: base * (1 + log2(files / threshold))
         if file_count > settings.large_repo_threshold {
-            let scale_factor = 1.0 + (file_count as f32 / settings.large_repo_threshold as f32).log2();
-            settings.radial_distance_scale = (80.0 * scale_factor).min(settings.max_radial_distance_scale);
+            let scale_factor =
+                1.0 + (file_count as f32 / settings.large_repo_threshold as f32).log2();
+            settings.radial_distance_scale =
+                (80.0 * scale_factor).min(settings.max_radial_distance_scale);
         }
 
         // Adjust angular span based on average children per directory
@@ -1622,7 +1626,7 @@ mod tests {
         assert!(settings.radial_distance_scale > 80.0);
 
         // Massive repo (like Home Assistant)
-        let settings = LayoutSettings::from_repo_stats(100000, 15, 5000);
+        let settings = LayoutSettings::from_repo_stats(100_000, 15, 5000);
         assert!((settings.branch_depth_fade - 0.7).abs() < 0.01);
         assert!((settings.branch_opacity_max - 0.15).abs() < 0.01);
         // Radial scale should be significantly increased

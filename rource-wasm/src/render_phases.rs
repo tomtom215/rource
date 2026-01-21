@@ -109,8 +109,8 @@ pub fn render_directories<R: Renderer + ?Sized>(
 
                 // Depth-based opacity: fades deeper branches to reduce visual noise
                 // opacity = max_opacity * (1.0 - depth_factor * fade_rate)
-                let depth_opacity = ctx.branch_opacity_max
-                    * (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
+                let depth_opacity =
+                    ctx.branch_opacity_max * (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
 
                 // Branch color with depth-based opacity
                 let branch_color = Color::new(

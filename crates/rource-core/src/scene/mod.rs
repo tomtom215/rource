@@ -238,7 +238,12 @@ impl Scene {
     /// * `file_count` - Total number of files
     /// * `max_depth` - Maximum directory depth
     /// * `dir_count` - Total number of directories
-    pub fn configure_layout_for_repo(&mut self, file_count: usize, max_depth: u32, dir_count: usize) {
+    pub fn configure_layout_for_repo(
+        &mut self,
+        file_count: usize,
+        max_depth: u32,
+        dir_count: usize,
+    ) {
         self.layout_config = LayoutConfig::from_repo_stats(file_count, max_depth, dir_count);
         self.layout_dirty = true;
     }

@@ -592,14 +592,20 @@ impl Rource {
     /// rource.configureLayoutForRepo(50000, 12, 3000);
     /// ```
     #[wasm_bindgen(js_name = configureLayoutForRepo)]
-    pub fn configure_layout_for_repo(&mut self, file_count: usize, max_depth: u32, dir_count: usize) {
+    pub fn configure_layout_for_repo(
+        &mut self,
+        file_count: usize,
+        max_depth: u32,
+        dir_count: usize,
+    ) {
         use rource_core::config::LayoutSettings;
 
         let settings = LayoutSettings::from_repo_stats(file_count, max_depth, dir_count);
         self.settings.layout = settings;
 
         // Also update the scene's layout config
-        self.scene.configure_layout_for_repo(file_count, max_depth, dir_count);
+        self.scene
+            .configure_layout_for_repo(file_count, max_depth, dir_count);
     }
 
     /// Sets the layout preset for different repository sizes.

@@ -348,7 +348,7 @@ impl DirTree {
     /// - Each directory owns an angular sector
     /// - Child directories inherit portions of their parent's sector
     ///
-    /// For customizable layout parameters, use [`compute_radial_layout_with_config`].
+    /// For customizable layout parameters, use [`Self::compute_radial_layout_with_config`].
     pub fn compute_radial_layout(&mut self) {
         self.compute_radial_layout_with_config(&LayoutConfig::default());
     }
@@ -416,7 +416,7 @@ impl DirTree {
         weights
     }
 
-    /// Recursively assigns angular sectors to directories (default config).
+    /// Recursively assigns angular sectors to directories using default configuration.
     fn assign_angular_sectors(
         &mut self,
         dir_id: DirId,
@@ -433,7 +433,7 @@ impl DirTree {
         );
     }
 
-    /// Recursively assigns angular sectors to directories with custom config.
+    /// Recursively assigns angular sectors to directories with custom configuration.
     fn assign_angular_sectors_with_config(
         &mut self,
         dir_id: DirId,
@@ -496,12 +496,7 @@ impl DirTree {
         }
     }
 
-    /// Applies radial positions to all directories (default config).
-    fn apply_radial_positions(&mut self) {
-        self.apply_radial_positions_with_config(&LayoutConfig::default());
-    }
-
-    /// Applies radial positions to all directories with custom config.
+    /// Applies radial positions to all directories.
     ///
     /// Uses configurable radial distance scaling and depth exponent:
     /// - `distance = radial_distance_scale * depth^depth_distance_exponent`
