@@ -63,7 +63,7 @@
     <!-- Critical CSS (inlined for fast initial render - eliminates render blocking) -->
     <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    :root{--bg-primary:#0d1117;--bg-secondary:#161b22;--bg-tertiary:#21262d;--bg-canvas:#010409;--accent:#e94560;--accent-hover:#ff6b6b;--accent-secondary:#238636;--accent-blue:#58a6ff;--text-primary:#f0f6fc;--text-secondary:#8b949e;--text-muted:#6e7681;--border:#30363d;--border-light:#484f58;--success:#3fb950;--error:#f85149;--warning:#d29922;--shadow:rgba(0,0,0,0.4);--spacing-xs:0.25rem;--spacing-sm:0.5rem;--spacing-md:0.75rem;--spacing-lg:1rem;--spacing-xl:1.5rem;--radius-sm:4px;--radius-md:6px;--radius-lg:8px;--radius-xl:12px;--radius-full:9999px;--transition-fast:0.15s;--transition-normal:0.2s;--transition-slow:0.3s}
+    :root{--bg-primary:#0d1117;--bg-secondary:#161b22;--bg-tertiary:#21262d;--bg-canvas:#010409;--accent:#e94560;--accent-hover:#ff6b6b;--accent-secondary:#238636;--accent-blue:#58a6ff;--text-primary:#f0f6fc;--text-secondary:#9ca3af;--text-muted:#848d97;--border:#30363d;--border-light:#484f58;--success:#3fb950;--error:#f85149;--warning:#d29922;--shadow:rgba(0,0,0,0.4);--spacing-xs:0.25rem;--spacing-sm:0.5rem;--spacing-md:0.75rem;--spacing-lg:1rem;--spacing-xl:1.5rem;--radius-sm:4px;--radius-md:6px;--radius-lg:8px;--radius-xl:12px;--radius-full:9999px;--transition-fast:0.15s;--transition-normal:0.2s;--transition-slow:0.3s}
     html,body{height:100%;overflow:hidden}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif;background:var(--bg-primary);color:var(--text-primary);line-height:1.5;display:flex;flex-direction:column}
     :focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px}
@@ -433,7 +433,7 @@
                     <line x1="50" y1="50" x2="32" y2="58" stroke="white" stroke-width="2"/>
                     <line x1="50" y1="50" x2="68" y2="53" stroke="white" stroke-width="2"/>
                 </svg>
-                <h3>Visualize This Project</h3>
+                <h2>Visualize This Project</h2>
                 <p>Watch the complete development history of Rource itself. Cached locally - no API limits.</p>
                 <div class="showcase-buttons">
                     <button type="button" id="btn-visualize-rource" class="showcase-btn" disabled>
@@ -470,12 +470,12 @@
             <!-- Quick Guide Panel (Collapsible, expanded by default) -->
             <div class="panel collapsible" id="panel-guide">
                 <button type="button" class="panel-header" id="panel-guide-toggle" aria-expanded="true" aria-controls="panel-guide-body">
-                    <h3>
+                    <h2>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-6h2v6zm0-8h-2V7h2v4z"/>
                         </svg>
                         Quick Guide
-                    </h3>
+                    </h2>
                     <span class="panel-toggle" aria-hidden="true">&#9660;</span>
                 </button>
                 <div class="panel-body docs-panel" id="panel-guide-body">
@@ -517,12 +517,12 @@
             <!-- GitHub URL Panel -->
             <div class="panel">
                 <div class="panel-header">
-                    <h3>
+                    <h2>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                         </svg>
                         Other Repositories
-                    </h3>
+                    </h2>
                 </div>
                 <div class="panel-body">
                     <div class="github-input-group">
@@ -637,12 +637,12 @@
             <!-- Controls Panel - Keyboard and Mouse (Collapsible) -->
             <div class="panel collapsible collapsed" id="panel-shortcuts">
                 <button type="button" class="panel-header" id="panel-shortcuts-toggle" aria-expanded="false" aria-controls="panel-shortcuts-body">
-                    <h3>
+                    <h2>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
                         </svg>
                         Keyboard Shortcuts
-                    </h3>
+                    </h2>
                     <span class="panel-toggle" aria-hidden="true">&#9660;</span>
                 </button>
                 <div class="panel-body" id="panel-shortcuts-body">
@@ -709,7 +709,7 @@
 
             <!-- About Panel -->
             <div class="about-banner">
-                <h3>Built with Rust + WebAssembly</h3>
+                <h2>Built with Rust + WebAssembly</h2>
                 <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> is a modern rewrite of <a href="https://gource.io" target="_blank" rel="noopener">Gource</a>, the popular version control visualization tool.</p>
                 <div class="about-links">
                     <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
