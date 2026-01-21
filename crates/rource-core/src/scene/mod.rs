@@ -141,7 +141,7 @@ pub struct Scene {
     files_to_remove_buffer: Vec<FileId>,
 
     /// Reusable buffer for force-directed layout forces.
-    /// Cleared and reused each frame to avoid HashMap allocation overhead.
+    /// Cleared and reused each frame to avoid `HashMap` allocation overhead.
     forces_buffer: HashMap<DirId, Vec2>,
 
     /// Reusable buffer for directory data in force calculations.
@@ -152,7 +152,7 @@ pub struct Scene {
     // Cached statistics (performance optimization to avoid per-frame recomputation)
     // ========================================================================
     /// Cached file extension statistics for legend rendering.
-    /// Invalidated when files are added/removed or every STATS_CACHE_INTERVAL frames.
+    /// Invalidated when files are added/removed or every `STATS_CACHE_INTERVAL` frames.
     extension_stats_cache: Vec<(String, usize)>,
 
     /// Whether extension stats cache needs refresh.
@@ -601,7 +601,8 @@ impl Scene {
         self.completed_actions_buffer.clear();
         for action in &mut self.actions {
             if !action.update(dt) {
-                self.completed_actions_buffer.push((action.id(), action.user()));
+                self.completed_actions_buffer
+                    .push((action.id(), action.user()));
             }
         }
 
@@ -1057,7 +1058,7 @@ impl Scene {
 
         // Sort by count descending, then by extension name
         self.extension_stats_cache.clear();
-        self.extension_stats_cache.extend(stats.into_iter());
+        self.extension_stats_cache.extend(stats);
         self.extension_stats_cache
             .sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     }
