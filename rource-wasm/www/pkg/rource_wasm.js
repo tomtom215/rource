@@ -132,6 +132,8 @@ export class Rource {
     }
     /**
      * Returns author data as a JSON string array.
+     * Iterates over all commits to get complete author statistics,
+     * not just users currently visible in the scene.
      * @returns {string}
      */
     getAuthors() {
