@@ -1,0 +1,42 @@
+# Cargo configuration for Rource project
+#
+# This file configures target-specific compiler flags for optimal performance.
+
+# =============================================================================
+# WASM Target Configuration
+# =============================================================================
+# Enable SIMD (Single Instruction, Multiple Data) for WebAssembly builds.
+#
+# SIMD provides significant performance improvements for math-heavy operations:
+# - Vec2/Vec3/Vec4 operations benefit from 128-bit vector instructions
+# - Pixel processing in bloom/blur effects can be auto-vectorized
+# - Matrix transformations are accelerated
+#
+# Browser Support (as of 2025):
+# - Chrome/Edge: Full support (shipped in v91, May 2021)
+# - Firefox: Full support (shipped in v89, June 2021)
+# - Safari: Full support (shipped in v16.4, March 2023)
+#
+# Expected Performance Impact:
+# - Array/vector operations: 2-6x speedup (verified by V8 benchmarks)
+# - Mandelbrot-style calculations: 2.65x speedup (Emscripten docs)
+# - LLVM auto-vectorizes loops when simd128 is enabled
+#
+# Reference: https://webassembly.org/roadmap/
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]
+
+# =============================================================================
+# Native Target Optimizations (Optional)
+# =============================================================================
+# Uncomment the following sections for specific native targets if needed.
+# These are not required but can provide marginal improvements for CLI builds.
+
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = ["-C", "target-cpu=native"]
+
+# [target.x86_64-apple-darwin]
+# rustflags = ["-C", "target-cpu=native"]
+
+# [target.aarch64-apple-darwin]
+# rustflags = ["-C", "target-cpu=native"]

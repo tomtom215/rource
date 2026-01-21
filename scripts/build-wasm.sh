@@ -27,13 +27,44 @@ echo "Copying package to www directory..."
 cp -r pkg www/
 
 # Optimize with wasm-opt if available
+# Flags explained:
+#   -O3: Maximum performance optimization (vs -Oz for size)
+#   --converge: Iterate optimization passes until no further improvement
+#   --low-memory-unused: Enable load/store offset folding for addresses <1024
+#
+#   Feature flags (MUST come before input file for validation):
+#   --enable-simd: Enable SIMD operations (from our +simd128 rustflag)
+#   --enable-bulk-memory: Enable bulk memory operations (memory.copy, memory.fill)
+#   --enable-sign-ext: Enable sign extension operations (i32.extend16_s, etc.)
+#   --enable-nontrapping-float-to-int: Enable saturating float-to-int conversions
+#   --enable-mutable-globals: Enable mutable global imports/exports
+#
+# IMPORTANT: Feature flags must appear BEFORE the input file in the command line.
+# wasm-opt validates the input file as it reads it, so features must be enabled
+# before validation occurs. Otherwise you get "SIMD is disabled" errors.
+#
+# Note: -O3 produces slightly larger binaries than -Oz but with better runtime performance.
+# For a portfolio demo, runtime performance is prioritized over binary size.
 if command -v wasm-opt &> /dev/null; then
-    echo "Optimizing with wasm-opt..."
-    wasm-opt -Oz -o www/pkg/rource_wasm_bg_opt.wasm www/pkg/rource_wasm_bg.wasm
+    echo "Optimizing with wasm-opt (-O3 for performance)..."
+    BEFORE_SIZE=$(stat -c%s www/pkg/rource_wasm_bg.wasm 2>/dev/null || stat -f%z www/pkg/rource_wasm_bg.wasm)
+    # Feature flags MUST come before input file to enable features during validation
+    wasm-opt \
+        --enable-simd \
+        --enable-bulk-memory \
+        --enable-sign-ext \
+        --enable-nontrapping-float-to-int \
+        --enable-mutable-globals \
+        -O3 --converge --low-memory-unused \
+        -o www/pkg/rource_wasm_bg_opt.wasm www/pkg/rource_wasm_bg.wasm
     mv www/pkg/rource_wasm_bg_opt.wasm www/pkg/rource_wasm_bg.wasm
-    echo "WASM optimized"
+    AFTER_SIZE=$(stat -c%s www/pkg/rource_wasm_bg.wasm 2>/dev/null || stat -f%z www/pkg/rource_wasm_bg.wasm)
+    echo "  Before: $(numfmt --to=iec $BEFORE_SIZE 2>/dev/null || echo "$BEFORE_SIZE bytes")"
+    echo "  After:  $(numfmt --to=iec $AFTER_SIZE 2>/dev/null || echo "$AFTER_SIZE bytes")"
+    echo "WASM optimized for performance"
 else
-    echo "Note: wasm-opt not found (optional - install via binaryen for smaller output)"
+    echo "Note: wasm-opt not found (optional - install via binaryen for better performance)"
+    echo "      Install with: apt-get install binaryen  OR  brew install binaryen"
 fi
 
 # Print output sizes

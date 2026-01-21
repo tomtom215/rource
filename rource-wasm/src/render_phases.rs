@@ -2,6 +2,22 @@
 //!
 //! This module splits the main render loop into focused phases for maintainability.
 //! Each phase handles a specific aspect of rendering and can be tested independently.
+//!
+//! ## Level-of-Detail (LOD) Optimization
+//!
+//! To maintain high FPS regardless of repository size, we skip rendering entities
+//! that would appear smaller than a certain threshold on screen. This is controlled
+//! by the `LOD_*` constants below.
+//!
+//! The screen radius of an entity is: `world_radius * camera_zoom`
+//!
+//! When this falls below the threshold, the entity is either:
+//! - Skipped entirely (for very small entities)
+//! - Rendered without labels (for medium-small entities)
+//!
+//! This provides significant performance gains for large repositories:
+//! - At zoom=0.01 with 50,000 files, most files are sub-pixel and skipped
+//! - Labels are the most expensive to render; skipping them has high impact
 
 use rource_core::entity::DirId;
 use rource_core::{FileId, UserId};
@@ -9,6 +25,43 @@ use rource_math::{Bounds, Color, Rect, Vec2};
 use rource_render::{FontId, Renderer};
 
 use crate::rendering::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
+
+// =============================================================================
+// Level-of-Detail (LOD) Constants
+// =============================================================================
+// These thresholds control when entities are skipped for performance.
+// Values are in screen pixels.
+
+/// Minimum screen radius for a file to be rendered at all.
+/// Files smaller than this are completely invisible and skipped.
+/// Set to 0.5 pixels - below this, the entity cannot contribute a visible pixel.
+pub const LOD_MIN_FILE_RADIUS: f32 = 0.5;
+
+/// Minimum screen radius for a directory node to be rendered.
+/// Directories are more important landmarks, so we use a lower threshold.
+pub const LOD_MIN_DIR_RADIUS: f32 = 0.3;
+
+/// Minimum screen radius for file labels to be rendered.
+/// Labels are expensive (text rendering + shadow) so we skip them earlier.
+/// At 3.0 pixels radius, the entity is visible but labels would be unreadable.
+pub const LOD_MIN_FILE_LABEL_RADIUS: f32 = 3.0;
+
+/// Minimum screen radius for directory labels to be rendered.
+pub const LOD_MIN_DIR_LABEL_RADIUS: f32 = 4.0;
+
+/// Minimum screen radius for user avatars to be rendered.
+/// Users are key visual elements, so we keep the threshold low.
+pub const LOD_MIN_USER_RADIUS: f32 = 1.0;
+
+/// Minimum screen radius for user labels to be rendered.
+pub const LOD_MIN_USER_LABEL_RADIUS: f32 = 5.0;
+
+/// Minimum zoom level for rendering file-to-directory connections.
+/// Below this zoom, branch lines create visual noise without benefit.
+pub const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.05;
+
+/// Minimum zoom level for rendering directory-to-parent connections.
+pub const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.02;
 
 /// Context shared between rendering phases.
 ///
@@ -60,6 +113,10 @@ pub struct PhaseStats {
 }
 
 /// Renders directory nodes with enhanced styling.
+///
+/// Applies LOD (Level-of-Detail) optimization:
+/// - Directories with screen radius < `LOD_MIN_DIR_RADIUS` are skipped
+/// - Directory-to-parent branches are skipped when zoom < `LOD_MIN_ZOOM_FOR_DIR_BRANCHES`
 #[inline(never)] // Prevent inlining for better profiling
 pub fn render_directories<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -67,6 +124,9 @@ pub fn render_directories<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
+    // Pre-compute whether we should render directory branches at this zoom level
+    let render_branches = ctx.camera_zoom >= LOD_MIN_ZOOM_FOR_DIR_BRANCHES;
+
     for dir_id in &ctx.visible_dirs {
         if let Some(dir) = scene.directories().get(*dir_id) {
             if !dir.is_visible() {
@@ -75,6 +135,12 @@ pub fn render_directories<R: Renderer + ?Sized>(
 
             let screen_pos = camera.world_to_screen(dir.position());
             let radius = dir.radius() * ctx.camera_zoom;
+
+            // LOD: Skip directories that are too small to be visible
+            // Root directory (depth 0) is always rendered as it's the anchor point
+            if radius < LOD_MIN_DIR_RADIUS && dir.depth() > 0 {
+                continue;
+            }
 
             // Enhanced directory styling based on depth
             let depth = dir.depth() as f32;
@@ -101,39 +167,46 @@ pub fn render_directories<R: Renderer + ?Sized>(
             renderer.draw_disc(screen_pos, radius * 0.25, center_color);
 
             // Draw connection to parent with curved branches
-            if let Some(parent_pos) = dir.parent_position() {
-                let parent_screen = camera.world_to_screen(parent_pos);
+            // LOD: Skip branches at very low zoom levels
+            if render_branches {
+                if let Some(parent_pos) = dir.parent_position() {
+                    let parent_screen = camera.world_to_screen(parent_pos);
 
-                // Branch width based on depth (thinner for deeper nodes)
-                let branch_width = (1.5 - depth_factor * 0.5).max(0.8);
+                    // Branch width based on depth (thinner for deeper nodes)
+                    let branch_width = (1.5 - depth_factor * 0.5).max(0.8);
 
-                // Depth-based opacity: fades deeper branches to reduce visual noise
-                // opacity = max_opacity * (1.0 - depth_factor * fade_rate)
-                let depth_opacity =
-                    ctx.branch_opacity_max * (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
+                    // Depth-based opacity: fades deeper branches to reduce visual noise
+                    // opacity = max_opacity * (1.0 - depth_factor * fade_rate)
+                    let depth_opacity = ctx.branch_opacity_max
+                        * (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
 
-                // Branch color with depth-based opacity
-                let branch_color = Color::new(
-                    dir_color.r * 1.1,
-                    dir_color.g * 1.1,
-                    dir_color.b * 1.2,
-                    depth_opacity,
-                );
+                    // Branch color with depth-based opacity
+                    let branch_color = Color::new(
+                        dir_color.r * 1.1,
+                        dir_color.g * 1.1,
+                        dir_color.b * 1.2,
+                        depth_opacity,
+                    );
 
-                draw_curved_branch(
-                    renderer,
-                    parent_screen,
-                    screen_pos,
-                    branch_width,
-                    branch_color,
-                    ctx.use_curves,
-                );
+                    draw_curved_branch(
+                        renderer,
+                        parent_screen,
+                        screen_pos,
+                        branch_width,
+                        branch_color,
+                        ctx.use_curves,
+                    );
+                }
             }
         }
     }
 }
 
 /// Renders directory labels (separate from nodes for layering).
+///
+/// Applies LOD (Level-of-Detail) optimization:
+/// - Labels are skipped when screen radius < `LOD_MIN_DIR_LABEL_RADIUS`
+/// - Labels are skipped for deep directories (depth > 2)
 #[inline(never)]
 pub fn render_directory_labels<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -167,6 +240,13 @@ pub fn render_directory_labels<R: Renderer + ?Sized>(
 
             let screen_pos = camera.world_to_screen(dir.position());
             let radius = dir.radius() * ctx.camera_zoom;
+
+            // LOD: Skip labels for directories that are too small on screen
+            // Labels on tiny nodes would be unreadable anyway
+            if radius < LOD_MIN_DIR_LABEL_RADIUS {
+                continue;
+            }
+
             let label_pos = Vec2::new(
                 screen_pos.x + radius + 4.0,
                 screen_pos.y - dir_font_size * 0.3,
@@ -190,6 +270,10 @@ pub fn render_directory_labels<R: Renderer + ?Sized>(
 }
 
 /// Renders file nodes with enhanced styling.
+///
+/// Applies LOD (Level-of-Detail) optimization:
+/// - Files with screen radius < `LOD_MIN_FILE_RADIUS` are skipped entirely
+/// - File-to-directory branches are skipped when zoom < `LOD_MIN_ZOOM_FOR_FILE_BRANCHES`
 #[inline(never)]
 pub fn render_files<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -197,6 +281,9 @@ pub fn render_files<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
+    // Pre-compute whether we should render file branches at this zoom level
+    let render_branches = ctx.camera_zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES;
+
     for file_id in &ctx.visible_files {
         if let Some(file) = scene.get_file(*file_id) {
             if file.alpha() < 0.01 {
@@ -205,35 +292,45 @@ pub fn render_files<R: Renderer + ?Sized>(
 
             let screen_pos = camera.world_to_screen(file.position());
             let radius = file.radius() * ctx.camera_zoom;
+
+            // LOD: Skip files that are too small to be visible on screen
+            // This provides significant performance gains for large repos at low zoom
+            if radius < LOD_MIN_FILE_RADIUS {
+                continue;
+            }
+
             let color = file.current_color().with_alpha(file.alpha());
             let effective_radius = radius.max(2.0);
 
             // Draw connection to parent directory first (behind file)
-            if let Some(dir) = scene.directories().get(file.directory()) {
-                let dir_screen = camera.world_to_screen(dir.position());
+            // LOD: Skip branches at very low zoom levels where they create visual noise
+            if render_branches {
+                if let Some(dir) = scene.directories().get(file.directory()) {
+                    let dir_screen = camera.world_to_screen(dir.position());
 
-                // Depth-based opacity for file branches
-                let dir_depth = dir.depth();
-                let depth_factor = (dir_depth as f32 / 6.0).min(1.0);
-                let depth_opacity = (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
+                    // Depth-based opacity for file branches
+                    let dir_depth = dir.depth();
+                    let depth_factor = (dir_depth as f32 / 6.0).min(1.0);
+                    let depth_opacity = (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
 
-                // Branch color matches file color for visual cohesion
-                // Combine file alpha, base opacity, and depth fade
-                let branch_color = Color::new(
-                    color.r * 0.7,
-                    color.g * 0.7,
-                    color.b * 0.7,
-                    0.25 * file.alpha() * depth_opacity,
-                );
+                    // Branch color matches file color for visual cohesion
+                    // Combine file alpha, base opacity, and depth fade
+                    let branch_color = Color::new(
+                        color.r * 0.7,
+                        color.g * 0.7,
+                        color.b * 0.7,
+                        0.25 * file.alpha() * depth_opacity,
+                    );
 
-                draw_curved_branch(
-                    renderer,
-                    dir_screen,
-                    screen_pos,
-                    0.8,
-                    branch_color,
-                    ctx.use_curves,
-                );
+                    draw_curved_branch(
+                        renderer,
+                        dir_screen,
+                        screen_pos,
+                        0.8,
+                        branch_color,
+                        ctx.use_curves,
+                    );
+                }
             }
 
             // Draw soft glow behind file
@@ -292,6 +389,10 @@ pub fn render_actions<R: Renderer + ?Sized>(
 }
 
 /// Renders user avatar shapes.
+///
+/// Applies LOD (Level-of-Detail) optimization:
+/// - Users with screen radius < `LOD_MIN_USER_RADIUS` are skipped
+/// - Users are important visual landmarks, so threshold is kept low
 #[inline(never)]
 pub fn render_users<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -306,7 +407,15 @@ pub fn render_users<R: Renderer + ?Sized>(
             }
 
             let screen_pos = camera.world_to_screen(user.position());
-            let radius = (user.radius() * ctx.camera_zoom).max(5.0);
+            let raw_radius = user.radius() * ctx.camera_zoom;
+
+            // LOD: Skip users that are too small on screen
+            // Users are important visual elements, so we use a low threshold
+            if raw_radius < LOD_MIN_USER_RADIUS {
+                continue;
+            }
+
+            let radius = raw_radius.max(5.0);
             let color = user.display_color();
 
             draw_avatar_shape(
@@ -322,6 +431,9 @@ pub fn render_users<R: Renderer + ?Sized>(
 }
 
 /// Renders user name labels.
+///
+/// Applies LOD (Level-of-Detail) optimization:
+/// - Labels are skipped when screen radius < `LOD_MIN_USER_LABEL_RADIUS`
 #[inline(never)]
 pub fn render_user_labels<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -342,7 +454,14 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
             }
 
             let screen_pos = camera.world_to_screen(user.position());
-            let radius = (user.radius() * ctx.camera_zoom).max(5.0);
+            let raw_radius = user.radius() * ctx.camera_zoom;
+
+            // LOD: Skip labels for users that are too small on screen
+            if raw_radius < LOD_MIN_USER_LABEL_RADIUS {
+                continue;
+            }
+
+            let radius = raw_radius.max(5.0);
             let label_pos = Vec2::new(
                 screen_pos.x + radius + 5.0,
                 screen_pos.y - ctx.font_size * 0.3,
@@ -452,6 +571,11 @@ fn rects_intersect(a: &Rect, b: &Rect) -> bool {
 }
 
 /// Renders file name labels with collision avoidance.
+///
+/// Applies LOD (Level-of-Detail) optimization:
+/// - Labels are skipped when camera zoom is too low (< 0.15)
+/// - Labels are skipped for files with screen radius < `LOD_MIN_FILE_LABEL_RADIUS`
+/// - Label collision avoidance limits total labels rendered
 #[inline(never)]
 pub fn render_file_labels<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -468,6 +592,7 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
     let file_font_size = ctx.font_size * 0.8;
 
     // Collect label candidates with priority
+    // LOD: Only consider files large enough on screen for readable labels
     let mut label_candidates: Vec<(Vec2, f32, f32, &str, f32)> = Vec::new();
     for file_id in &ctx.visible_files {
         if let Some(file) = scene.get_file(*file_id) {
@@ -476,7 +601,15 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
             }
 
             let screen_pos = camera.world_to_screen(file.position());
-            let radius = (file.radius() * ctx.camera_zoom).max(2.0);
+            let raw_radius = file.radius() * ctx.camera_zoom;
+
+            // LOD: Skip labels for files that are too small on screen
+            // Labels would be unreadable at this size anyway
+            if raw_radius < LOD_MIN_FILE_LABEL_RADIUS {
+                continue;
+            }
+
+            let radius = raw_radius.max(2.0);
             let is_touched = file.touch_time() > 0.0;
 
             // Priority based on visibility and activity
@@ -585,5 +718,158 @@ mod tests {
         let width = estimate_text_width("test", 12.0);
         assert!(width > 0.0);
         assert!(width < 100.0);
+    }
+
+    // =============================================================================
+    // Level-of-Detail (LOD) Tests
+    // =============================================================================
+
+    #[test]
+    #[allow(clippy::assertions_on_constants)]
+    fn test_lod_constants_are_reasonable() {
+        // Verify LOD constants are in sensible ranges for pixel-based thresholds
+
+        // File radius threshold should be sub-pixel (< 1.0)
+        assert!(
+            LOD_MIN_FILE_RADIUS > 0.0,
+            "File radius threshold must be positive"
+        );
+        assert!(
+            LOD_MIN_FILE_RADIUS < 1.0,
+            "File radius threshold should be sub-pixel"
+        );
+
+        // Directory radius threshold should be very small
+        assert!(
+            LOD_MIN_DIR_RADIUS > 0.0,
+            "Dir radius threshold must be positive"
+        );
+        assert!(
+            LOD_MIN_DIR_RADIUS < 1.0,
+            "Dir radius threshold should be sub-pixel"
+        );
+
+        // Label thresholds should be larger than entity thresholds
+        assert!(
+            LOD_MIN_FILE_LABEL_RADIUS > LOD_MIN_FILE_RADIUS,
+            "File label threshold should be larger than file threshold"
+        );
+        assert!(
+            LOD_MIN_DIR_LABEL_RADIUS > LOD_MIN_DIR_RADIUS,
+            "Dir label threshold should be larger than dir threshold"
+        );
+        assert!(
+            LOD_MIN_USER_LABEL_RADIUS > LOD_MIN_USER_RADIUS,
+            "User label threshold should be larger than user threshold"
+        );
+
+        // Label thresholds should be readable sizes (at least a few pixels)
+        assert!(
+            LOD_MIN_FILE_LABEL_RADIUS >= 2.0,
+            "File labels should be at least 2px"
+        );
+        assert!(
+            LOD_MIN_DIR_LABEL_RADIUS >= 2.0,
+            "Dir labels should be at least 2px"
+        );
+        assert!(
+            LOD_MIN_USER_LABEL_RADIUS >= 2.0,
+            "User labels should be at least 2px"
+        );
+
+        // Zoom thresholds should be positive and less than 1.0
+        assert!(
+            LOD_MIN_ZOOM_FOR_FILE_BRANCHES > 0.0,
+            "Branch zoom threshold must be positive"
+        );
+        assert!(
+            LOD_MIN_ZOOM_FOR_FILE_BRANCHES < 1.0,
+            "Branch zoom threshold should be less than 1.0"
+        );
+        assert!(
+            LOD_MIN_ZOOM_FOR_DIR_BRANCHES > 0.0,
+            "Dir branch zoom threshold must be positive"
+        );
+        assert!(
+            LOD_MIN_ZOOM_FOR_DIR_BRANCHES < 1.0,
+            "Dir branch zoom threshold should be less than 1.0"
+        );
+    }
+
+    #[test]
+    fn test_lod_file_visibility_at_various_zoom_levels() {
+        // Simulate LOD behavior at different zoom levels
+        let file_world_radius = 5.0; // Typical file radius in world units
+
+        // At zoom = 1.0, file should be visible (5px > 0.5px threshold)
+        let zoom_normal = 1.0;
+        let screen_radius_normal = file_world_radius * zoom_normal;
+        assert!(
+            screen_radius_normal >= LOD_MIN_FILE_RADIUS,
+            "File visible at normal zoom"
+        );
+
+        // At zoom = 0.01, file should be invisible (0.05px < 0.5px threshold)
+        let zoom_far = 0.01;
+        let screen_radius_far = file_world_radius * zoom_far;
+        assert!(
+            screen_radius_far < LOD_MIN_FILE_RADIUS,
+            "File culled at far zoom"
+        );
+
+        // At zoom = 0.1, file should be visible (0.5px = threshold)
+        let zoom_threshold = LOD_MIN_FILE_RADIUS / file_world_radius;
+        let screen_radius_threshold = file_world_radius * zoom_threshold;
+        assert!(
+            (screen_radius_threshold - LOD_MIN_FILE_RADIUS).abs() < 0.001,
+            "File at exact threshold"
+        );
+    }
+
+    #[test]
+    fn test_lod_label_visibility_separate_from_entity() {
+        // Labels should disappear before entities
+        let file_world_radius = 5.0;
+
+        // Find zoom where file is visible but label is not
+        let zoom_file_visible_label_hidden = LOD_MIN_FILE_LABEL_RADIUS / file_world_radius - 0.1;
+        let screen_radius = file_world_radius * zoom_file_visible_label_hidden.max(0.0);
+
+        // At this zoom, the file entity would be visible but label would be skipped
+        // (assuming zoom is not too low)
+        if zoom_file_visible_label_hidden > LOD_MIN_FILE_RADIUS / file_world_radius {
+            assert!(
+                screen_radius < LOD_MIN_FILE_LABEL_RADIUS,
+                "Label should be hidden"
+            );
+            assert!(
+                screen_radius >= LOD_MIN_FILE_RADIUS,
+                "File should still be visible"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::assertions_on_constants)]
+    fn test_lod_branch_rendering_zoom_thresholds() {
+        // Verify branch rendering is controlled by zoom thresholds
+
+        // File branches should render at normal zoom
+        assert!(
+            1.0 >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES,
+            "File branches at normal zoom"
+        );
+
+        // File branches should not render at very low zoom
+        assert!(
+            0.01 < LOD_MIN_ZOOM_FOR_FILE_BRANCHES,
+            "File branches culled at very low zoom"
+        );
+
+        // Directory branches have lower threshold (more important structure)
+        assert!(
+            LOD_MIN_ZOOM_FOR_DIR_BRANCHES <= LOD_MIN_ZOOM_FOR_FILE_BRANCHES,
+            "Dir branches have lower (or equal) threshold than file branches"
+        );
     }
 }

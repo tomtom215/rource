@@ -9,6 +9,12 @@
 //! Core visual utilities (spline interpolation, avatar drawing, beam effects,
 //! curved branches) are defined in `rource_render::visual` and shared between
 //! CLI and WASM builds to ensure visual parity.
+//!
+//! ## Level-of-Detail (LOD) Optimization
+//!
+//! To maintain high FPS regardless of repository size, we skip rendering entities
+//! that would appear smaller than a certain threshold on screen. See the `LOD_*`
+//! constants below for configuration.
 
 use rource_core::camera::Camera;
 use rource_core::scene::{FileNode, Scene};
@@ -25,6 +31,36 @@ use crate::app::{App, PlaybackState};
 use crate::args::Args;
 use crate::avatar::AvatarRegistry;
 use crate::helpers::get_initials;
+
+// =============================================================================
+// Level-of-Detail (LOD) Constants
+// =============================================================================
+// These thresholds control when entities are skipped for performance.
+// Values are in screen pixels. These match the WASM renderer for visual parity.
+
+/// Minimum screen radius for a file to be rendered at all.
+const LOD_MIN_FILE_RADIUS: f32 = 0.5;
+
+/// Minimum screen radius for a directory node to be rendered.
+const LOD_MIN_DIR_RADIUS: f32 = 0.3;
+
+/// Minimum screen radius for file labels to be rendered.
+const LOD_MIN_FILE_LABEL_RADIUS: f32 = 3.0;
+
+/// Minimum screen radius for directory labels to be rendered.
+const LOD_MIN_DIR_LABEL_RADIUS: f32 = 4.0;
+
+/// Minimum screen radius for user avatars to be rendered.
+const LOD_MIN_USER_RADIUS: f32 = 1.0;
+
+/// Minimum screen radius for user labels to be rendered.
+const LOD_MIN_USER_LABEL_RADIUS: f32 = 5.0;
+
+/// Minimum zoom level for rendering file-to-directory connections.
+const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.05;
+
+/// Minimum zoom level for rendering directory-to-parent connections.
+const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.02;
 
 /// Render a frame in windowed mode.
 ///
@@ -119,7 +155,7 @@ pub fn render_frame(app: &mut App) {
     );
 }
 
-/// Render directory entities with enhanced visual styling.
+/// Render directory entities with enhanced visual styling and LOD optimization.
 fn render_directories(
     renderer: &mut SoftwareRenderer,
     scene: &Scene,
@@ -138,6 +174,9 @@ fn render_directories(
     // Use curves for zoomed-out views (performance-friendly)
     let use_curves = zoom < 0.8;
 
+    // LOD: Pre-compute whether we should render directory branches at this zoom level
+    let render_branches = !hide_tree && zoom >= LOD_MIN_ZOOM_FOR_DIR_BRANCHES;
+
     for &dir_id in visible_ids {
         let Some(dir) = scene.directories().get(dir_id) else {
             continue;
@@ -154,6 +193,12 @@ fn render_directories(
 
         let screen_pos = camera.world_to_screen(dir.position());
         let radius = dir.radius() * zoom;
+
+        // LOD: Skip directories that are too small to be visible
+        // Root directory (depth 0) is always rendered as it's the anchor point
+        if radius < LOD_MIN_DIR_RADIUS && dir.depth() > 0 {
+            continue;
+        }
 
         // Enhanced directory styling based on depth
         let depth = dir.depth() as f32;
@@ -180,7 +225,8 @@ fn render_directories(
         renderer.draw_disc(screen_pos, radius * 0.25, center_color);
 
         // Draw connection to parent with curved branches
-        if !hide_tree {
+        // LOD: Skip branches at very low zoom levels
+        if render_branches {
             if let Some(parent_pos) = dir.parent_position() {
                 let parent_screen = camera.world_to_screen(parent_pos);
 
@@ -207,7 +253,8 @@ fn render_directories(
         }
 
         // Draw directory name label if enabled and within depth limit
-        if !hide_dirnames && dir.depth() <= dir_name_depth {
+        // LOD: Also check screen radius threshold for readability
+        if !hide_dirnames && dir.depth() <= dir_name_depth && radius >= LOD_MIN_DIR_LABEL_RADIUS {
             if let Some(fid) = font_id {
                 let name = dir.name();
                 let label_pos = Vec2::new(
@@ -231,6 +278,7 @@ fn render_directories(
 }
 
 /// Render file entities with enhanced visuals.
+/// Render file entities with enhanced visuals and LOD optimization.
 fn render_files(
     renderer: &mut SoftwareRenderer,
     scene: &Scene,
@@ -247,6 +295,9 @@ fn render_files(
     // Use curves when zoomed out (better visual, acceptable perf)
     let use_curves = camera_zoom < 0.8;
 
+    // LOD: Pre-compute whether we should render file branches at this zoom level
+    let render_branches = !hide_tree && camera_zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES;
+
     // Collect label candidates for collision-aware rendering
     let mut label_candidates: Vec<(Vec2, f32, f32, &str, f32)> = Vec::new();
 
@@ -261,11 +312,18 @@ fn render_files(
 
         let screen_pos = camera.world_to_screen(file.position());
         let radius = file.radius() * camera_zoom;
+
+        // LOD: Skip files that are too small to be visible on screen
+        if radius < LOD_MIN_FILE_RADIUS {
+            continue;
+        }
+
         let color = file.current_color().with_alpha(file.alpha());
         let effective_radius = radius.max(2.0);
 
         // Draw connection to parent directory first (behind file)
-        if !hide_tree {
+        // LOD: Skip branches at very low zoom levels
+        if render_branches {
             if let Some(dir) = scene.directories().get(file.directory()) {
                 let dir_screen = camera.world_to_screen(dir.position());
 
@@ -309,7 +367,12 @@ fn render_files(
         }
 
         // Collect label candidate if conditions are met
-        if show_filenames && file.alpha() > 0.3 && camera_zoom > 0.15 {
+        // LOD: Only add label candidates for files large enough to be readable
+        if show_filenames
+            && file.alpha() > 0.3
+            && camera_zoom > 0.15
+            && radius >= LOD_MIN_FILE_LABEL_RADIUS
+        {
             // Priority based on visibility and activity (higher = more important)
             let activity_bonus = if is_touched { 100.0 } else { 0.0 };
             let priority = file.radius() * file.alpha() * 10.0 + activity_bonus;
@@ -409,7 +472,7 @@ fn render_actions(renderer: &mut SoftwareRenderer, scene: &Scene, camera: &Camer
     }
 }
 
-/// Render user entities with stylized avatar shapes.
+/// Render user entities with stylized avatar shapes and LOD optimization.
 #[allow(clippy::too_many_arguments)]
 fn render_users(
     renderer: &mut SoftwareRenderer,
@@ -422,6 +485,7 @@ fn render_users(
 ) {
     let show_usernames = !args.hide_usernames;
     let name_font_size = args.font_size;
+    let camera_zoom = camera.zoom();
 
     for &user_id in visible_ids {
         let Some(user) = scene.get_user(user_id) else {
@@ -433,7 +497,13 @@ fn render_users(
         }
 
         let screen_pos = camera.world_to_screen(user.position());
-        let radius = user.radius() * camera.zoom();
+        let radius = user.radius() * camera_zoom;
+
+        // LOD: Skip users that are too small on screen
+        if radius < LOD_MIN_USER_RADIUS {
+            continue;
+        }
+
         let color = user.display_color();
         let effective_radius = radius.max(5.0);
 
@@ -500,7 +570,8 @@ fn render_users(
         }
 
         // Draw username label
-        if show_usernames {
+        // LOD: Skip labels for users that are too small on screen
+        if show_usernames && radius >= LOD_MIN_USER_LABEL_RADIUS {
             if let Some(fid) = font_id {
                 let name = user.name();
                 let label_pos = Vec2::new(
