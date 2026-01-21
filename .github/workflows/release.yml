@@ -161,10 +161,14 @@ jobs:
       - name: Optimize WASM
         run: |
           cd rource-wasm/pkg
-          wasm-opt -Oz \
+          # Feature flags MUST come before input file for validation
+          wasm-opt \
+            --enable-simd \
             --enable-bulk-memory \
             --enable-sign-ext \
             --enable-nontrapping-float-to-int \
+            --enable-mutable-globals \
+            -Oz \
             -o rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
           mv rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
 

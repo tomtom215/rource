@@ -121,11 +121,15 @@ jobs:
         run: |
           cd rource-wasm/www/pkg
           # Enable modern WASM features that Rust emits by default
-          # These are well-supported in all modern browsers (Chrome 75+, Firefox 79+, Safari 14.1+)
-          wasm-opt -Oz \
+          # These are well-supported in all modern browsers (Chrome 91+, Firefox 89+, Safari 16.4+)
+          # Feature flags MUST come before input file for validation
+          wasm-opt \
+            --enable-simd \
             --enable-bulk-memory \
             --enable-sign-ext \
             --enable-nontrapping-float-to-int \
+            --enable-mutable-globals \
+            -Oz \
             -o rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
           mv rource_wasm_bg_opt.wasm rource_wasm_bg.wasm
           echo "=== WASM sizes ==="
