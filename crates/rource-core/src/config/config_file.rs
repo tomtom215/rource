@@ -54,7 +54,8 @@
 
 use crate::config::{
     CameraModeSetting, CameraSettings, DisplaySettings, ExportSettings, FilterSettings,
-    InputSettings, LimitSettings, PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
+    InputSettings, LayoutSettings, LimitSettings, PlaybackSettings, Settings, TitleSettings,
+    VisibilitySettings,
 };
 use rource_math::Color;
 use serde::Deserialize;
@@ -472,6 +473,7 @@ impl TomlConfig {
             directory,
             overlay,
             filter: FilterSettings::default(),
+            layout: LayoutSettings::default(),
         })
     }
 }
@@ -751,6 +753,7 @@ pub fn merge_config_file<P: AsRef<Path>>(base: Settings, path: P) -> Result<Sett
         directory,
         overlay,
         filter: FilterSettings::default(),
+        layout: LayoutSettings::default(),
     };
 
     let errors = settings.validate();

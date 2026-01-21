@@ -19,7 +19,91 @@ use std::path::Path;
 
 use rource_math::Vec2;
 
+use crate::config::LayoutSettings;
 use crate::entity::{DirId, Generation};
+
+/// Runtime configuration for radial layout computation.
+///
+/// This struct holds the computed layout parameters used during layout.
+/// It can be constructed from [`LayoutSettings`] or using defaults.
+///
+/// # Performance
+///
+/// Creating a `LayoutConfig` is cheap (no allocations). It's designed to
+/// be created once per layout computation and passed by reference.
+#[derive(Debug, Clone, Copy)]
+pub struct LayoutConfig {
+    /// Distance per depth level (world units).
+    pub radial_distance_scale: f32,
+    /// Minimum angular span per directory (radians).
+    pub min_angular_span: f32,
+    /// Exponent for depth-based distance scaling.
+    pub depth_distance_exponent: f32,
+    /// Multiplier for sibling angular spacing.
+    pub sibling_spacing_multiplier: f32,
+}
+
+impl Default for LayoutConfig {
+    fn default() -> Self {
+        Self {
+            radial_distance_scale: RADIAL_DISTANCE_SCALE,
+            min_angular_span: MIN_ANGULAR_SPAN,
+            depth_distance_exponent: 1.0,
+            sibling_spacing_multiplier: 1.0,
+        }
+    }
+}
+
+impl LayoutConfig {
+    /// Creates a layout config from layout settings.
+    #[must_use]
+    pub fn from_settings(settings: &LayoutSettings) -> Self {
+        Self {
+            radial_distance_scale: settings.radial_distance_scale,
+            min_angular_span: settings.min_angular_span,
+            depth_distance_exponent: settings.depth_distance_exponent,
+            sibling_spacing_multiplier: settings.sibling_spacing_multiplier,
+        }
+    }
+
+    /// Creates a layout config optimized for large repositories.
+    ///
+    /// Uses increased spacing and wider angular spans to reduce center density.
+    #[must_use]
+    pub fn large_repo() -> Self {
+        Self {
+            radial_distance_scale: 160.0,
+            min_angular_span: 0.08,
+            depth_distance_exponent: 1.2,
+            sibling_spacing_multiplier: 1.2,
+        }
+    }
+
+    /// Creates a layout config optimized for massive repositories (50k+ files).
+    ///
+    /// Uses maximum spacing and aggressive depth scaling.
+    #[must_use]
+    pub fn massive_repo() -> Self {
+        Self {
+            radial_distance_scale: 250.0,
+            min_angular_span: 0.1,
+            depth_distance_exponent: 1.3,
+            sibling_spacing_multiplier: 1.5,
+        }
+    }
+
+    /// Computes an appropriate layout config based on repository statistics.
+    ///
+    /// # Arguments
+    /// * `file_count` - Total number of files
+    /// * `max_depth` - Maximum directory depth
+    /// * `dir_count` - Total number of directories
+    #[must_use]
+    pub fn from_repo_stats(file_count: usize, max_depth: u32, dir_count: usize) -> Self {
+        let settings = LayoutSettings::from_repo_stats(file_count, max_depth, dir_count);
+        Self::from_settings(&settings)
+    }
+}
 
 /// The directory tree containing all directory nodes.
 ///
@@ -255,7 +339,7 @@ impl DirTree {
         }
     }
 
-    /// Computes the radial tree layout for all directories.
+    /// Computes the radial tree layout for all directories using default configuration.
     ///
     /// This assigns angular sectors and radial positions to create a
     /// Gource-like radial tree visualization where:
@@ -263,15 +347,42 @@ impl DirTree {
     /// - Directories branch out radially based on depth
     /// - Each directory owns an angular sector
     /// - Child directories inherit portions of their parent's sector
+    ///
+    /// For customizable layout parameters, use [`Self::compute_radial_layout_with_config`].
     pub fn compute_radial_layout(&mut self) {
+        self.compute_radial_layout_with_config(&LayoutConfig::default());
+    }
+
+    /// Computes the radial tree layout with custom configuration.
+    ///
+    /// This version allows tuning layout parameters for different repository sizes.
+    /// Use [`LayoutConfig::from_repo_stats`] to automatically compute optimal
+    /// parameters based on repository characteristics.
+    ///
+    /// # Arguments
+    /// * `config` - Layout configuration with spacing and scaling parameters
+    ///
+    /// # Example
+    /// ```ignore
+    /// // For a large repository
+    /// let config = LayoutConfig::from_repo_stats(50000, 12, 3000);
+    /// tree.compute_radial_layout_with_config(&config);
+    /// ```
+    pub fn compute_radial_layout_with_config(&mut self, config: &LayoutConfig) {
         // First pass: calculate weights (total descendants) for each node
         let weights = self.calculate_subtree_weights();
 
         // Second pass: assign angular sectors starting from root
-        self.assign_angular_sectors(self.root_id, 0.0, std::f32::consts::TAU, &weights);
+        self.assign_angular_sectors_with_config(
+            self.root_id,
+            0.0,
+            std::f32::consts::TAU,
+            &weights,
+            config,
+        );
 
         // Third pass: calculate and apply radial positions
-        self.apply_radial_positions();
+        self.apply_radial_positions_with_config(config);
     }
 
     /// Calculates the total weight (descendants count) for each directory.
@@ -305,13 +416,31 @@ impl DirTree {
         weights
     }
 
-    /// Recursively assigns angular sectors to directories.
+    /// Recursively assigns angular sectors to directories using default configuration.
     fn assign_angular_sectors(
         &mut self,
         dir_id: DirId,
         start_angle: f32,
         end_angle: f32,
         weights: &[f32],
+    ) {
+        self.assign_angular_sectors_with_config(
+            dir_id,
+            start_angle,
+            end_angle,
+            weights,
+            &LayoutConfig::default(),
+        );
+    }
+
+    /// Recursively assigns angular sectors to directories with custom configuration.
+    fn assign_angular_sectors_with_config(
+        &mut self,
+        dir_id: DirId,
+        start_angle: f32,
+        end_angle: f32,
+        weights: &[f32],
+        config: &LayoutConfig,
     ) {
         let idx = dir_id.index_usize();
 
@@ -338,7 +467,11 @@ impl DirTree {
         // Allocate sectors to children based on weight
         let total_weight: f32 = child_weights.iter().sum();
         let span = end_angle - start_angle;
-        let mut current_angle = start_angle;
+
+        // Apply sibling spacing multiplier to increase angular separation
+        let effective_span = span * config.sibling_spacing_multiplier.min(1.0);
+        let padding = (span - effective_span) / 2.0;
+        let mut current_angle = start_angle + padding;
 
         for (child_id, weight) in children.iter().zip(child_weights.iter()) {
             let proportion = if total_weight > 0.0 {
@@ -346,20 +479,43 @@ impl DirTree {
             } else {
                 1.0 / children.len() as f32
             };
-            let child_span = (span * proportion).max(MIN_ANGULAR_SPAN);
+
+            // Use configurable minimum angular span
+            let child_span = (effective_span * proportion).max(config.min_angular_span);
             let child_end = current_angle + child_span;
 
-            self.assign_angular_sectors(*child_id, current_angle, child_end, weights);
+            self.assign_angular_sectors_with_config(
+                *child_id,
+                current_angle,
+                child_end,
+                weights,
+                config,
+            );
 
             current_angle = child_end;
         }
     }
 
-    /// Applies radial positions to all directories based on their sectors.
-    fn apply_radial_positions(&mut self) {
+    /// Applies radial positions to all directories.
+    ///
+    /// Uses configurable radial distance scaling and depth exponent:
+    /// - `distance = radial_distance_scale * depth^depth_distance_exponent`
+    ///
+    /// The depth exponent allows deeper directories to have proportionally
+    /// more spacing, which helps reduce center density in large repos.
+    fn apply_radial_positions_with_config(&mut self, config: &LayoutConfig) {
         for node in self.nodes.iter_mut().flatten() {
             let depth = node.depth();
-            let distance = depth as f32 * RADIAL_DISTANCE_SCALE;
+
+            // Apply depth exponent for non-linear scaling
+            // depth^exponent where exponent > 1 spreads deeper levels more
+            let depth_factor = if config.depth_distance_exponent == 1.0 {
+                depth as f32
+            } else {
+                (depth as f32).powf(config.depth_distance_exponent)
+            };
+
+            let distance = depth_factor * config.radial_distance_scale;
             node.set_radial_distance(distance);
 
             let new_pos = node.calculate_radial_position();

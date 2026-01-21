@@ -96,8 +96,8 @@
 
 use crate::config::{
     CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
-    InputSettings, LimitSettings, OverlaySettings, PlaybackSettings, Settings, TitleSettings,
-    VisibilitySettings,
+    InputSettings, LayoutSettings, LimitSettings, OverlaySettings, PlaybackSettings, Settings,
+    TitleSettings, VisibilitySettings,
 };
 use rource_math::Color;
 use std::env;
@@ -433,6 +433,7 @@ pub fn merge_env(base: Settings) -> Settings {
         directory,
         overlay,
         filter,
+        layout: LayoutSettings::default(),
     }
 }
 

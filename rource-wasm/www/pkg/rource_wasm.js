@@ -52,6 +52,29 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Configures the layout algorithm for a given repository size.
+     *
+     * This automatically computes optimal layout parameters based on
+     * repository statistics. Should be called after loading data or
+     * when repository characteristics are known.
+     *
+     * # Arguments
+     * * `file_count` - Total number of files
+     * * `max_depth` - Maximum directory depth (0 if unknown)
+     * * `dir_count` - Total number of directories (0 if unknown)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.configureLayoutForRepo(50000, 12, 3000);
+     * ```
+     * @param {number} file_count
+     * @param {number} max_depth
+     * @param {number} dir_count
+     */
+    configureLayoutForRepo(file_count, max_depth, dir_count) {
+        wasm.rource_configureLayoutForRepo(this.__wbg_ptr, file_count, max_depth, dir_count);
+    }
+    /**
      * Returns the current commit index.
      * @returns {number}
      */
@@ -293,6 +316,34 @@ export class Rource {
             return v1;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Gets the current layout configuration as a JSON string.
+     *
+     * Returns a JSON object with all layout parameters.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * const config = JSON.parse(rource.getLayoutConfig());
+     * console.log(config.radial_distance_scale);
+     * ```
+     * @returns {string}
+     */
+    getLayoutConfig() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getLayoutConfig(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred1_0, deferred1_1, 1);
         }
     }
     /**
@@ -639,11 +690,91 @@ export class Rource {
         wasm.rource_setBloom(this.__wbg_ptr, enabled);
     }
     /**
+     * Sets the branch depth fade rate.
+     *
+     * Higher values make deep branches fade faster (0.0-1.0).
+     * Default: 0.3
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setBranchDepthFade(0.7);
+     * ```
+     * @param {number} fade
+     */
+    setBranchDepthFade(fade) {
+        wasm.rource_setBranchDepthFade(this.__wbg_ptr, fade);
+    }
+    /**
+     * Sets the maximum branch opacity.
+     *
+     * Controls visibility of directory-to-parent connections (0.0-1.0).
+     * Default: 0.35
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setBranchOpacityMax(0.15);
+     * ```
+     * @param {number} opacity
+     */
+    setBranchOpacityMax(opacity) {
+        wasm.rource_setBranchOpacityMax(this.__wbg_ptr, opacity);
+    }
+    /**
+     * Sets the depth distance exponent for non-linear depth scaling.
+     *
+     * Values > 1.0 add extra spacing at deeper levels.
+     * Default: 1.0 (linear), Range: [0.5, 2.0]
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setDepthDistanceExponent(1.3);
+     * ```
+     * @param {number} exponent
+     */
+    setDepthDistanceExponent(exponent) {
+        wasm.rource_setDepthDistanceExponent(this.__wbg_ptr, exponent);
+    }
+    /**
      * Sets the font size for labels.
      * @param {number} size
      */
     setFontSize(size) {
         wasm.rource_setFontSize(this.__wbg_ptr, size);
+    }
+    /**
+     * Sets the layout preset for different repository sizes.
+     *
+     * # Presets
+     * * "small" - Repos < 1000 files (compact layout)
+     * * "medium" - Repos 1000-10000 files (default)
+     * * "large" - Repos 10000-50000 files (spread out)
+     * * "massive" - Repos 50000+ files (maximum spread)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setLayoutPreset("massive");
+     * ```
+     * @param {string} preset
+     */
+    setLayoutPreset(preset) {
+        const ptr0 = passStringToWasm0(preset, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.rource_setLayoutPreset(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Sets the radial distance scale for directory positioning.
+     *
+     * Higher values spread the tree outward more. Range: [40.0, 500.0]
+     * Default: 80.0
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setRadialDistanceScale(160.0);
+     * ```
+     * @param {number} scale
+     */
+    setRadialDistanceScale(scale) {
+        wasm.rource_setRadialDistanceScale(this.__wbg_ptr, scale);
     }
     /**
      * Sets whether to show labels.
@@ -679,6 +810,7 @@ export class Rource {
     }
     /**
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
+     * Max zoom increased to 1000.0 to support deep zoom into massive repositories.
      * @param {number} factor
      */
     zoom(factor) {

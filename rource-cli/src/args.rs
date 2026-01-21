@@ -5,8 +5,8 @@
 use clap::Parser;
 use rource_core::config::{
     CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
-    FilterSettings, InputSettings, LimitSettings, OverlaySettings, PlaybackSettings, Settings,
-    TitleSettings, VisibilitySettings,
+    FilterSettings, InputSettings, LayoutSettings, LimitSettings, OverlaySettings,
+    PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
 };
 use std::path::PathBuf;
 
@@ -487,6 +487,7 @@ impl Args {
             directory,
             overlay,
             filter,
+            layout: LayoutSettings::default(),
         }
     }
 

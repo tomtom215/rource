@@ -16,7 +16,7 @@ use rource_math::{Bounds, Vec2};
 
 pub use action::{Action, ActionType};
 pub use file::FileNode;
-pub use tree::{DirNode, DirTree};
+pub use tree::{DirNode, DirTree, LayoutConfig};
 pub use user::User;
 
 use crate::entity::{ActionId, DirId, FileId, IdAllocator, UserId};
@@ -160,6 +160,10 @@ pub struct Scene {
 
     /// Frame counter for throttling stats refresh.
     stats_cache_frame: u32,
+
+    /// Layout configuration for radial tree positioning.
+    /// Controls spacing, scaling, and depth effects.
+    layout_config: LayoutConfig,
 }
 
 impl Scene {
@@ -198,7 +202,50 @@ impl Scene {
             extension_stats_cache: Vec::new(),
             extension_stats_dirty: true,
             stats_cache_frame: 0,
+            // Default layout configuration
+            layout_config: LayoutConfig::default(),
         }
+    }
+
+    /// Sets the layout configuration for radial tree positioning.
+    ///
+    /// Call this before loading data for large repositories to optimize
+    /// the visualization layout. Use [`LayoutConfig::from_repo_stats`] to
+    /// automatically compute optimal settings.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // For a repository with ~50k files
+    /// scene.set_layout_config(LayoutConfig::massive_repo());
+    /// ```
+    pub fn set_layout_config(&mut self, config: LayoutConfig) {
+        self.layout_config = config;
+        self.layout_dirty = true; // Force layout recomputation
+    }
+
+    /// Returns the current layout configuration.
+    #[must_use]
+    pub fn layout_config(&self) -> &LayoutConfig {
+        &self.layout_config
+    }
+
+    /// Configures the layout based on repository statistics.
+    ///
+    /// This automatically computes optimal layout parameters for the
+    /// given repository size. Should be called after loading data.
+    ///
+    /// # Arguments
+    /// * `file_count` - Total number of files
+    /// * `max_depth` - Maximum directory depth
+    /// * `dir_count` - Total number of directories
+    pub fn configure_layout_for_repo(
+        &mut self,
+        file_count: usize,
+        max_depth: u32,
+        dir_count: usize,
+    ) {
+        self.layout_config = LayoutConfig::from_repo_stats(file_count, max_depth, dir_count);
+        self.layout_dirty = true;
     }
 
     /// Returns the directory tree.
@@ -651,7 +698,8 @@ impl Scene {
 
         // Update radial layout if tree structure changed
         if self.layout_dirty {
-            self.directories.compute_radial_layout();
+            self.directories
+                .compute_radial_layout_with_config(&self.layout_config);
             self.layout_dirty = false;
 
             // Update file positions to match new directory positions
