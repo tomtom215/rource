@@ -41,8 +41,8 @@ export const CONFIG = {
 
     // Playback speed limits (seconds per day)
     // At 60fps, seconds_per_commit = seconds_per_day / 10.0
-    // Min of 1.0 gives 0.1s/commit = ~6 frames per commit (acceptable for 10x speed)
-    SPEED_MIN: 1,                    // Minimum speed (10x, fastest playback)
+    // Min of 0.1 gives 0.01s/commit = ~0.6 frames per commit (100x hyper fast)
+    SPEED_MIN: 0.1,                  // Minimum speed (100x, hyper fast playback)
     SPEED_MAX: 1000,                 // Maximum speed (slowest playback)
     SPEED_DEFAULT: 10,               // Default speed (1x)
 };

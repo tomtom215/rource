@@ -315,6 +315,10 @@
                         <span class="stat-label">Files</span>
                     </div>
                     <div class="stat-item">
+                        <span class="stat-value" id="stat-dirs">0</span>
+                        <span class="stat-label">Dirs</span>
+                    </div>
+                    <div class="stat-item">
                         <span class="stat-value" id="stat-authors">0</span>
                         <span class="stat-label">Authors</span>
                     </div>
@@ -416,6 +420,7 @@
                                 <option value="5">2x</option>
                                 <option value="2">5x (Fast)</option>
                                 <option value="1">10x (Very Fast)</option>
+                                <option value="0.1">100x (Hyper Fast)</option>
                             </select>
                         </div>
                     </div>
@@ -507,7 +512,7 @@
                             <li>WebGL2 GPU-accelerated rendering</li>
                             <li>Force-directed graph layout</li>
                             <li>Color-coded file types</li>
-                            <li>Runs entirely in browser (<span id="feature-wasm-size">~235KB</span>)</li>
+                            <li>Runs entirely in browser (<span id="feature-wasm-size">~238KB</span>)</li>
                             <li>No server or installation needed</li>
                         </ul>
                     </div>
@@ -575,6 +580,7 @@
                     </div>
                     <p class="help-text" style="margin-top: 0.75rem;">
                         Fetches up to 100 recent commits from any public GitHub repository using the GitHub API.
+                        All data is processed locally in your browser.
                     </p>
                 </div>
             </div>
@@ -622,7 +628,10 @@
                             </svg>
                         </div>
                         <div class="file-upload-text">
-                            <strong>Click to upload</strong> or drag and drop
+                            <strong>Select a file</strong> or drag and drop
+                        </div>
+                        <div class="file-upload-privacy">
+                            100% client-side - your data never leaves your browser
                         </div>
                     </div>
                     <div id="file-name" class="file-name hidden"></div>
@@ -641,6 +650,9 @@
                     <p class="help-text">
                         Supported formats (auto-detected):<br>
                         <code>git log --name-status</code> output, or <code>timestamp|author|action|path</code>
+                    </p>
+                    <p class="file-upload-privacy" style="margin-top: 0.5rem;">
+                        100% client-side - your data never leaves your browser
                     </p>
                 </div>
             </div>
@@ -692,7 +704,7 @@
                 </button>
                 <div class="tech-grid" id="tech-info-body">
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-wasm-size">~235KB</div>
+                        <div class="tech-item-value" id="tech-wasm-size">~238KB</div>
                         <div class="tech-item-label">WASM Gzipped</div>
                     </div>
                     <div class="tech-item">
@@ -700,7 +712,7 @@
                         <div class="tech-item-label">Renderer</div>
                     </div>
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-tests">894</div>
+                        <div class="tech-item-value" id="tech-tests">903</div>
                         <div class="tech-item-label">Unit Tests</div>
                     </div>
                     <div class="tech-item">

@@ -132,6 +132,8 @@ export class Rource {
     }
     /**
      * Returns author data as a JSON string array.
+     * Iterates over all commits to get complete author statistics,
+     * not just users currently visible in the scene.
      * @returns {string}
      */
     getAuthors() {
@@ -381,6 +383,14 @@ export class Rource {
     getSpeed() {
         const ret = wasm.rource_getSpeed(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Returns the total number of directories.
+     * @returns {number}
+     */
+    getTotalDirectories() {
+        const ret = wasm.rource_getTotalDirectories(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Returns the total number of entities.

@@ -1607,6 +1607,13 @@ textarea:focus {
     color: var(--accent);
 }
 
+.file-upload-privacy {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    opacity: 0.8;
+}
+
 .file-name {
     margin-bottom: 0.75rem;
     color: var(--text-secondary);

@@ -64,6 +64,8 @@ export class Rource {
     getAuthorColor(name: string): string;
     /**
      * Returns author data as a JSON string array.
+     * Iterates over all commits to get complete author statistics,
+     * not just users currently visible in the scene.
      */
     getAuthors(): string;
     /**
@@ -142,6 +144,10 @@ export class Rource {
      * Gets the current playback speed.
      */
     getSpeed(): number;
+    /**
+     * Returns the total number of directories.
+     */
+    getTotalDirectories(): number;
     /**
      * Returns the total number of entities.
      */
@@ -417,6 +423,7 @@ export interface InitOutput {
     readonly rource_getRendererType: (a: number, b: number) => void;
     readonly rource_getShowLabels: (a: number) => number;
     readonly rource_getSpeed: (a: number) => number;
+    readonly rource_getTotalDirectories: (a: number) => number;
     readonly rource_getTotalEntities: (a: number) => number;
     readonly rource_getTotalFiles: (a: number) => number;
     readonly rource_getTotalFrames: (a: number) => number;

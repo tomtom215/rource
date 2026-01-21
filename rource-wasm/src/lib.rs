@@ -207,6 +207,7 @@ impl Rource {
         settings.display.height = height;
 
         let mut camera = Camera::new(width as f32, height as f32);
+        camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
         camera.jump_to(Vec2::ZERO);
 
         Ok(Self {
@@ -481,6 +482,7 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
+        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
         self.settings.display.width = width;
         self.settings.display.height = height;
     }
@@ -1066,6 +1068,12 @@ impl Rource {
         self.scene.file_count()
     }
 
+    /// Returns the total number of directories.
+    #[wasm_bindgen(js_name = getTotalDirectories)]
+    pub fn get_total_directories(&self) -> usize {
+        self.scene.directory_count()
+    }
+
     /// Returns the total number of users.
     #[wasm_bindgen(js_name = getTotalUsers)]
     pub fn get_total_users(&self) -> usize {
@@ -1080,22 +1088,29 @@ impl Rource {
 #[wasm_bindgen]
 impl Rource {
     /// Returns author data as a JSON string array.
+    /// Iterates over all commits to get complete author statistics,
+    /// not just users currently visible in the scene.
     #[wasm_bindgen(js_name = getAuthors)]
     pub fn get_authors(&self) -> String {
-        let mut authors: Vec<(&str, Color, usize)> = self
-            .scene
-            .users()
-            .values()
-            .map(|user| {
-                let commit_count = self
-                    .commits
-                    .iter()
-                    .filter(|c| c.author == user.name())
-                    .count();
-                (user.name(), user.color(), commit_count)
+        use rource_core::scene::User;
+        use std::collections::HashMap;
+
+        // Count commits per author from ALL commits
+        let mut author_counts: HashMap<&str, usize> = HashMap::new();
+        for commit in &self.commits {
+            *author_counts.entry(commit.author.as_str()).or_insert(0) += 1;
+        }
+
+        // Build authors list with colors derived from names
+        let mut authors: Vec<(&str, Color, usize)> = author_counts
+            .into_iter()
+            .map(|(name, count)| {
+                let color = User::color_from_name(name);
+                (name, color, count)
             })
             .collect();
 
+        // Sort by commit count descending
         authors.sort_by(|a, b| b.2.cmp(&a.2));
 
         let mut json = String::from("[");
@@ -1205,6 +1220,7 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
+        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
         self.camera.jump_to(Vec2::new(center_x, center_y));
         self.camera.set_zoom(zoom);
         self.settings.display.width = width;
@@ -1218,6 +1234,7 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
+        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
         self.settings.display.width = width;
         self.settings.display.height = height;
         self.fit_camera_to_content();
