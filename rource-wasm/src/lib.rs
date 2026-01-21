@@ -440,8 +440,9 @@ impl Rource {
 #[wasm_bindgen]
 impl Rource {
     /// Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
+    /// Max zoom increased to 1000.0 to support deep zoom into massive repositories.
     pub fn zoom(&mut self, factor: f32) {
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 100.0);
+        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 1000.0);
         self.camera.set_zoom(new_zoom);
     }
 
@@ -451,7 +452,8 @@ impl Rource {
         let screen_point = Vec2::new(screen_x, screen_y);
         let world_before = self.camera.screen_to_world(screen_point);
 
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 100.0);
+        // Max zoom increased to 1000.0 to support deep zoom into massive repositories
+        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 1000.0);
         self.camera.set_zoom(new_zoom);
 
         let world_after = self.camera.screen_to_world(screen_point);
@@ -1117,7 +1119,7 @@ impl Rource {
 
                 let zoom_x = screen_width / padded_bounds.width();
                 let zoom_y = screen_height / padded_bounds.height();
-                let zoom = zoom_x.min(zoom_y).clamp(0.01, 100.0);
+                let zoom = zoom_x.min(zoom_y).clamp(0.01, 1000.0);
 
                 self.camera.jump_to(padded_bounds.center());
                 self.camera.set_zoom(zoom);
