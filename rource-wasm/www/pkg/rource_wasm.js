@@ -898,6 +898,12 @@ function __wbg_get_imports() {
         __wbg_bufferData_037b591220c42be7: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).bufferData(arg1 >>> 0, getArrayU8FromWasm0(arg2, arg3), arg4 >>> 0);
         },
+        __wbg_bufferData_32d26eba0c74a53c: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).bufferData(arg1 >>> 0, arg2, arg3 >>> 0);
+        },
+        __wbg_bufferSubData_4edddd9f793fec78: function(arg0, arg1, arg2, arg3, arg4) {
+            getObject(arg0).bufferSubData(arg1 >>> 0, arg2, getArrayU8FromWasm0(arg3, arg4));
+        },
         __wbg_checkFramebufferStatus_9d9acdb931c7370b: function(arg0, arg1) {
             const ret = getObject(arg0).checkFramebufferStatus(arg1 >>> 0);
             return ret;
