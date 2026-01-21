@@ -8,7 +8,7 @@ This document provides context and guidance for Claude (AI assistant) when worki
 
 ### Goals
 - **Portable**: Run on any CPU architecture without requiring a dedicated GPU
-- **Lightweight**: Minimal dependencies, small binary size (~2.5MB native, ~76KB WASM gzip)
+- **Lightweight**: Minimal dependencies, small binary size (~3.8MB native, ~235KB WASM gzip)
 - **Fast**: Leverage Rust's performance and modern rendering techniques
 - **User-friendly**: Better UI/UX than original Gource
 - **Feature-complete**: Maintain at minimum feature parity with Gource
@@ -193,7 +193,7 @@ Successfully implemented WebAssembly support for running Rource in web browsers:
 1. **Architecture**: Uses software renderer with ImageData transfer to canvas
    - Reuses existing SoftwareRenderer for all drawing operations
    - Converts ARGB pixel buffer to RGBA for web canvas
-   - ~76KB gzipped WASM bundle
+   - ~235KB gzipped WASM bundle
 
 2. **JavaScript API**: Exposes Rource class with methods:
    - `loadCustomLog(log)`: Load pipe-delimited commit data

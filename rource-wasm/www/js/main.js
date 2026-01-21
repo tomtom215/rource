@@ -45,6 +45,7 @@ import { initHelp, maybeShowFirstTimeHelp } from './features/help.js';
 import { initKeyboard } from './features/keyboard.js';
 import { initFullMapExport, setFullMapAnimateCallback } from './features/full-map-export.js';
 import { initFontSizeControl, enableFontSizeControls, updateFontSizeUI } from './features/font-size.js';
+import { BUILD_INFO } from './build-info.js';
 import {
     initVideoRecording, enableRecordButton, setRecordingAnimateCallback,
     isRecordingSupported
@@ -53,6 +54,26 @@ import { animate } from './animation.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
+
+/**
+ * Update DOM elements with build info (WASM size, etc.)
+ * This ensures displayed sizes match the actual built artifacts.
+ */
+function updateBuildInfo() {
+    const sizeText = `~${BUILD_INFO.wasmGzipKB}KB`;
+
+    // Update feature list
+    const featureSize = document.getElementById('feature-wasm-size');
+    if (featureSize) {
+        featureSize.textContent = sizeText;
+    }
+
+    // Update technical specifications
+    const techSize = document.getElementById('tech-wasm-size');
+    if (techSize) {
+        techSize.textContent = sizeText;
+    }
+}
 
 /**
  * Main initialization function.
@@ -68,6 +89,9 @@ async function main() {
         // Initialize DOM references
         initDomElements();
         const elements = getAllElements();
+
+        // Update build info (WASM size, etc.)
+        updateBuildInfo();
 
         // Get canvas and create Rource instance
         const canvas = getElement('canvas');

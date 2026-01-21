@@ -14,7 +14,7 @@ Rource visualizes your repository's commit history as an animated tree where dir
 ## Features
 
 - **Portable**: Pure Rust with software rendering - runs on any CPU without GPU requirements
-- **Lightweight**: ~3.8MB native binary, ~226KB WASM (gzipped)
+- **Lightweight**: ~3.8MB native binary, ~235KB WASM (gzipped)
 - **Fast**: Handles repositories with 100k+ commits
 - **Cross-platform**: Native (Linux, macOS, Windows) and WebAssembly
 - **Compatible**: Supports Git, SVN, Mercurial, Bazaar, and custom log formats
