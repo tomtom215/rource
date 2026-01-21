@@ -544,6 +544,21 @@ impl BloomPipeline {
         self.scene_fbo.bind(gl);
     }
 
+    /// Returns a reference to the scene FBO texture.
+    ///
+    /// This is used by other post-processing effects (like shadow) that need
+    /// access to the rendered scene.
+    #[inline]
+    pub fn scene_texture(&self) -> Option<&WebGlTexture> {
+        self.scene_fbo.texture.as_ref()
+    }
+
+    /// Returns the scene FBO dimensions.
+    #[inline]
+    pub fn scene_size(&self) -> (u32, u32) {
+        (self.scene_fbo.width, self.scene_fbo.height)
+    }
+
     /// Executes the bloom post-processing pipeline.
     ///
     /// This should be called after the scene has been rendered to the scene FBO.

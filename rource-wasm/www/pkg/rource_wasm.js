@@ -1112,6 +1112,9 @@ function __wbg_get_imports() {
         __wbg_uniform2f_1887b1268f65bfee: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform2f(getObject(arg1), arg2, arg3);
         },
+        __wbg_uniform4f_f6b5e2024636033a: function(arg0, arg1, arg2, arg3, arg4, arg5) {
+            getObject(arg0).uniform4f(getObject(arg1), arg2, arg3, arg4, arg5);
+        },
         __wbg_useProgram_fe720ade4d3b6edb: function(arg0, arg1) {
             getObject(arg0).useProgram(getObject(arg1));
         },

@@ -24,9 +24,12 @@
 // WebGL APIs use i32 for sizes which may involve u32 casts
 #![allow(clippy::cast_possible_wrap)]
 
+pub mod adaptive;
 pub mod bloom;
 pub mod buffers;
 pub mod shaders;
+pub mod shadow;
+pub mod state;
 pub mod textures;
 
 use std::collections::HashMap;
@@ -47,10 +50,14 @@ use shaders::{
     TEXTURED_QUAD_FRAGMENT_SHADER, TEXTURED_QUAD_VERTEX_SHADER, TEXT_FRAGMENT_SHADER,
     TEXT_VERTEX_SHADER,
 };
+use shadow::ShadowPipeline;
+use state::GlStateCache;
 use textures::{FontAtlas, GlyphKey, TextureManager};
 
-// Re-export bloom configuration for external use
+// Re-export post-processing configuration for external use
+pub use adaptive::{AdaptiveQuality, QualityAdjustment, QualityLevel};
 pub use bloom::{BloomConfig, BloomPipeline as BloomEffect};
+pub use shadow::{ShadowConfig, ShadowPipeline as ShadowEffect};
 
 /// Error type for WebGL2 renderer initialization.
 #[derive(Debug, Clone)]
@@ -153,6 +160,15 @@ pub struct WebGl2Renderer {
     /// GPU bloom post-processing pipeline.
     bloom_pipeline: BloomPipeline,
 
+    /// GPU shadow post-processing pipeline.
+    shadow_pipeline: ShadowPipeline,
+
+    /// Adaptive quality controller for auto-adjusting effect parameters.
+    adaptive_quality: AdaptiveQuality,
+
+    /// GPU state cache for avoiding redundant API calls.
+    state_cache: GlStateCache,
+
     /// Whether context was lost.
     context_lost: bool,
 }
@@ -210,6 +226,9 @@ impl WebGl2Renderer {
             textured_quad_instances: HashMap::new(),
             text_instances: InstanceBuffer::new(12, 2000), // bounds(4) + uv_bounds(4) + color(4)
             bloom_pipeline: BloomPipeline::new(),
+            shadow_pipeline: ShadowPipeline::new(),
+            adaptive_quality: AdaptiveQuality::new(),
+            state_cache: GlStateCache::new(),
             context_lost: false,
         };
 
@@ -218,6 +237,11 @@ impl WebGl2Renderer {
         // Initialize bloom pipeline (non-fatal if it fails)
         if !renderer.bloom_pipeline.initialize(&renderer.gl) {
             web_sys::console::warn_1(&"Rource: Bloom pipeline initialization failed".into());
+        }
+
+        // Initialize shadow pipeline (non-fatal if it fails)
+        if !renderer.shadow_pipeline.initialize(&renderer.gl) {
+            web_sys::console::warn_1(&"Rource: Shadow pipeline initialization failed".into());
         }
 
         Ok(renderer)
@@ -379,20 +403,24 @@ impl WebGl2Renderer {
                 .setup_circle_vao(gl, &self.circle_instances);
         }
 
-        // Use program and bind VAO
-        gl.use_program(Some(&program.program));
-        gl.bind_vertex_array(self.vao_manager.circle_vao.as_ref());
+        // Use program (state cache avoids redundant bind)
+        let program_changed = self.state_cache.use_program(gl, &program.program);
 
-        // Set uniforms
-        if let Some(loc) = &program.resolution_loc {
-            gl.uniform2f(Some(loc), self.width as f32, self.height as f32);
+        // Bind VAO (state cache avoids redundant bind)
+        self.state_cache
+            .bind_vao(gl, self.vao_manager.circle_vao.as_ref());
+
+        // Set uniforms only if program changed
+        if program_changed {
+            if let Some(loc) = &program.resolution_loc {
+                let (w, h) = self.state_cache.resolution();
+                gl.uniform2f(Some(loc), w, h);
+            }
         }
 
         // Draw instanced
         let instance_count = self.circle_instances.instance_count() as i32;
         gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
-
-        gl.bind_vertex_array(None);
 
         self.circle_instances.clear();
     }
@@ -415,17 +443,23 @@ impl WebGl2Renderer {
             self.vao_manager.setup_ring_vao(gl, &self.ring_instances);
         }
 
-        gl.use_program(Some(&program.program));
-        gl.bind_vertex_array(self.vao_manager.ring_vao.as_ref());
+        // Use program (state cache avoids redundant bind)
+        let program_changed = self.state_cache.use_program(gl, &program.program);
 
-        if let Some(loc) = &program.resolution_loc {
-            gl.uniform2f(Some(loc), self.width as f32, self.height as f32);
+        // Bind VAO (state cache avoids redundant bind)
+        self.state_cache
+            .bind_vao(gl, self.vao_manager.ring_vao.as_ref());
+
+        // Set uniforms only if program changed
+        if program_changed {
+            if let Some(loc) = &program.resolution_loc {
+                let (w, h) = self.state_cache.resolution();
+                gl.uniform2f(Some(loc), w, h);
+            }
         }
 
         let instance_count = self.ring_instances.instance_count() as i32;
         gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
-
-        gl.bind_vertex_array(None);
 
         self.ring_instances.clear();
     }
@@ -448,17 +482,23 @@ impl WebGl2Renderer {
             self.vao_manager.setup_line_vao(gl, &self.line_instances);
         }
 
-        gl.use_program(Some(&program.program));
-        gl.bind_vertex_array(self.vao_manager.line_vao.as_ref());
+        // Use program (state cache avoids redundant bind)
+        let program_changed = self.state_cache.use_program(gl, &program.program);
 
-        if let Some(loc) = &program.resolution_loc {
-            gl.uniform2f(Some(loc), self.width as f32, self.height as f32);
+        // Bind VAO (state cache avoids redundant bind)
+        self.state_cache
+            .bind_vao(gl, self.vao_manager.line_vao.as_ref());
+
+        // Set uniforms only if program changed
+        if program_changed {
+            if let Some(loc) = &program.resolution_loc {
+                let (w, h) = self.state_cache.resolution();
+                gl.uniform2f(Some(loc), w, h);
+            }
         }
 
         let instance_count = self.line_instances.instance_count() as i32;
         gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
-
-        gl.bind_vertex_array(None);
 
         self.line_instances.clear();
     }
@@ -481,17 +521,23 @@ impl WebGl2Renderer {
             self.vao_manager.setup_quad_vao(gl, &self.quad_instances);
         }
 
-        gl.use_program(Some(&program.program));
-        gl.bind_vertex_array(self.vao_manager.quad_vao.as_ref());
+        // Use program (state cache avoids redundant bind)
+        let program_changed = self.state_cache.use_program(gl, &program.program);
 
-        if let Some(loc) = &program.resolution_loc {
-            gl.uniform2f(Some(loc), self.width as f32, self.height as f32);
+        // Bind VAO (state cache avoids redundant bind)
+        self.state_cache
+            .bind_vao(gl, self.vao_manager.quad_vao.as_ref());
+
+        // Set uniforms only if program changed
+        if program_changed {
+            if let Some(loc) = &program.resolution_loc {
+                let (w, h) = self.state_cache.resolution();
+                gl.uniform2f(Some(loc), w, h);
+            }
         }
 
         let instance_count = self.quad_instances.instance_count() as i32;
         gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
-
-        gl.bind_vertex_array(None);
 
         self.quad_instances.clear();
     }
@@ -508,14 +554,19 @@ impl WebGl2Renderer {
 
         let gl = &self.gl;
 
-        gl.use_program(Some(&program.program));
+        // Use program (state cache avoids redundant bind)
+        let program_changed = self.state_cache.use_program(gl, &program.program);
 
-        if let Some(loc) = &program.resolution_loc {
-            gl.uniform2f(Some(loc), self.width as f32, self.height as f32);
-        }
+        // Set uniforms only if program changed
+        if program_changed {
+            if let Some(loc) = &program.resolution_loc {
+                let (w, h) = self.state_cache.resolution();
+                gl.uniform2f(Some(loc), w, h);
+            }
 
-        if let Some(loc) = &program.texture_loc {
-            gl.uniform1i(Some(loc), 0); // Texture unit 0
+            if let Some(loc) = &program.texture_loc {
+                gl.uniform1i(Some(loc), 0); // Texture unit 0
+            }
         }
 
         // Draw each texture's instances
@@ -529,7 +580,7 @@ impl WebGl2Renderer {
 
                 instances.upload(gl);
 
-                // Bind texture
+                // Bind texture (state cache tracks bound textures)
                 self.texture_manager.bind(gl, tex_id, 0);
 
                 // Setup VAO if needed
@@ -537,7 +588,9 @@ impl WebGl2Renderer {
                     self.vao_manager.setup_textured_vao(gl, instances);
                 }
 
-                gl.bind_vertex_array(self.vao_manager.textured_quad_vao.as_ref());
+                // Bind VAO (state cache avoids redundant bind)
+                self.state_cache
+                    .bind_vao(gl, self.vao_manager.textured_quad_vao.as_ref());
 
                 let instance_count = instances.instance_count() as i32;
                 gl.draw_arrays_instanced(
@@ -550,8 +603,6 @@ impl WebGl2Renderer {
                 instances.clear();
             }
         }
-
-        gl.bind_vertex_array(None);
     }
 
     /// Flushes text draw calls.
@@ -578,15 +629,23 @@ impl WebGl2Renderer {
             self.vao_manager.text_vao = self.vao_manager.textured_quad_vao.take();
         }
 
-        gl.use_program(Some(&program.program));
-        gl.bind_vertex_array(self.vao_manager.text_vao.as_ref());
+        // Use program (state cache avoids redundant bind)
+        let program_changed = self.state_cache.use_program(gl, &program.program);
 
-        if let Some(loc) = &program.resolution_loc {
-            gl.uniform2f(Some(loc), self.width as f32, self.height as f32);
-        }
+        // Bind VAO (state cache avoids redundant bind)
+        self.state_cache
+            .bind_vao(gl, self.vao_manager.text_vao.as_ref());
 
-        if let Some(loc) = &program.texture_loc {
-            gl.uniform1i(Some(loc), 0);
+        // Set uniforms only if program changed
+        if program_changed {
+            if let Some(loc) = &program.resolution_loc {
+                let (w, h) = self.state_cache.resolution();
+                gl.uniform2f(Some(loc), w, h);
+            }
+
+            if let Some(loc) = &program.texture_loc {
+                gl.uniform1i(Some(loc), 0);
+            }
         }
 
         // Bind font atlas
@@ -594,8 +653,6 @@ impl WebGl2Renderer {
 
         let instance_count = self.text_instances.instance_count() as i32;
         gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, instance_count);
-
-        gl.bind_vertex_array(None);
 
         self.text_instances.clear();
     }
@@ -619,6 +676,9 @@ impl WebGl2Renderer {
         // Clear font atlas (glyphs need to be re-cached)
         self.font_atlas.clear();
 
+        // Invalidate state cache (all GPU state is stale after context loss)
+        self.state_cache.invalidate();
+
         // Recreate VAOs
         self.vao_manager = VertexArrayManager::new();
         self.vao_manager.create_vertex_buffer(&self.gl);
@@ -632,6 +692,17 @@ impl WebGl2Renderer {
         if !self.bloom_pipeline.initialize(&self.gl) {
             web_sys::console::warn_1(
                 &"Rource: Bloom pipeline re-initialization failed after context recovery".into(),
+            );
+        }
+
+        // Reinitialize shadow pipeline
+        let shadow_config = self.shadow_pipeline.config;
+        self.shadow_pipeline.destroy(&self.gl);
+        self.shadow_pipeline = ShadowPipeline::new();
+        self.shadow_pipeline.config = shadow_config;
+        if !self.shadow_pipeline.initialize(&self.gl) {
+            web_sys::console::warn_1(
+                &"Rource: Shadow pipeline re-initialization failed after context recovery".into(),
             );
         }
 
@@ -747,6 +818,187 @@ impl WebGl2Renderer {
     }
 
     // =========================================================================
+    // Shadow Effect API
+    // =========================================================================
+
+    /// Returns whether the shadow effect is enabled.
+    #[inline]
+    pub fn is_shadow_enabled(&self) -> bool {
+        self.shadow_pipeline.config.enabled
+    }
+
+    /// Enables or disables the shadow effect.
+    ///
+    /// When enabled, entities will cast soft drop shadows.
+    /// Shadow is processed entirely on the GPU for maximum performance.
+    #[inline]
+    pub fn set_shadow_enabled(&mut self, enabled: bool) {
+        self.shadow_pipeline.config.enabled = enabled;
+    }
+
+    /// Returns the current shadow offset (X, Y) in pixels.
+    #[inline]
+    pub fn shadow_offset(&self) -> (f32, f32) {
+        (
+            self.shadow_pipeline.config.offset_x,
+            self.shadow_pipeline.config.offset_y,
+        )
+    }
+
+    /// Sets the shadow offset in pixels.
+    ///
+    /// Positive values move the shadow right and down.
+    ///
+    /// Default: (4.0, 4.0)
+    #[inline]
+    pub fn set_shadow_offset(&mut self, offset_x: f32, offset_y: f32) {
+        self.shadow_pipeline.config.offset_x = offset_x;
+        self.shadow_pipeline.config.offset_y = offset_y;
+    }
+
+    /// Returns the current shadow opacity.
+    #[inline]
+    pub fn shadow_opacity(&self) -> f32 {
+        self.shadow_pipeline.config.opacity
+    }
+
+    /// Sets the shadow opacity (0.0 - 1.0).
+    ///
+    /// Default: 0.5
+    #[inline]
+    pub fn set_shadow_opacity(&mut self, opacity: f32) {
+        self.shadow_pipeline.config.opacity = opacity.clamp(0.0, 1.0);
+    }
+
+    /// Returns the current shadow blur passes.
+    #[inline]
+    pub fn shadow_blur_passes(&self) -> u32 {
+        self.shadow_pipeline.config.blur_passes
+    }
+
+    /// Sets the number of shadow blur passes.
+    ///
+    /// More passes create softer shadow edges.
+    ///
+    /// Default: 2
+    #[inline]
+    pub fn set_shadow_blur_passes(&mut self, passes: u32) {
+        self.shadow_pipeline.config.blur_passes = passes.max(1);
+    }
+
+    /// Returns the current shadow color (RGBA).
+    #[inline]
+    pub fn shadow_color(&self) -> [f32; 4] {
+        self.shadow_pipeline.config.color
+    }
+
+    /// Sets the shadow color (RGBA).
+    ///
+    /// Default: [0.0, 0.0, 0.0, 1.0] (black)
+    #[inline]
+    pub fn set_shadow_color(&mut self, color: [f32; 4]) {
+        self.shadow_pipeline.config.color = color;
+    }
+
+    /// Returns the full shadow configuration.
+    #[inline]
+    pub fn shadow_config(&self) -> ShadowConfig {
+        self.shadow_pipeline.config
+    }
+
+    /// Sets the full shadow configuration.
+    #[inline]
+    pub fn set_shadow_config(&mut self, config: ShadowConfig) {
+        self.shadow_pipeline.config = config;
+    }
+
+    // =========================================================================
+    // Adaptive Quality API
+    // =========================================================================
+
+    /// Returns whether adaptive quality is enabled.
+    #[inline]
+    pub fn is_adaptive_quality_enabled(&self) -> bool {
+        self.adaptive_quality.is_enabled()
+    }
+
+    /// Enables or disables adaptive quality adjustment.
+    ///
+    /// When enabled, the renderer will automatically adjust bloom and shadow
+    /// quality based on frame timing to maintain target FPS.
+    #[inline]
+    pub fn set_adaptive_quality_enabled(&mut self, enabled: bool) {
+        self.adaptive_quality.set_enabled(enabled);
+    }
+
+    /// Returns the current adaptive quality level.
+    #[inline]
+    pub fn adaptive_quality_level(&self) -> QualityLevel {
+        self.adaptive_quality.level()
+    }
+
+    /// Sets the adaptive quality level directly.
+    ///
+    /// This overrides automatic adjustment temporarily.
+    #[inline]
+    pub fn set_adaptive_quality_level(&mut self, level: QualityLevel) {
+        self.adaptive_quality.set_level(level);
+        self.apply_quality_adjustment(level.adjustment());
+    }
+
+    /// Returns the target FPS for adaptive quality.
+    #[inline]
+    pub fn adaptive_quality_target_fps(&self) -> f32 {
+        self.adaptive_quality.target_fps()
+    }
+
+    /// Sets the target FPS for adaptive quality adjustment.
+    ///
+    /// The adaptive system will try to maintain this frame rate by
+    /// adjusting effect quality.
+    ///
+    /// Default: 60.0
+    #[inline]
+    pub fn set_adaptive_quality_target_fps(&mut self, fps: f32) {
+        self.adaptive_quality.set_target_fps(fps);
+    }
+
+    /// Updates adaptive quality based on the latest frame time.
+    ///
+    /// Call this once per frame with the frame duration. If quality
+    /// adjustments are needed, they will be applied automatically.
+    ///
+    /// # Arguments
+    ///
+    /// * `frame_time_ms` - Duration of the last frame in milliseconds.
+    ///
+    /// # Returns
+    ///
+    /// `true` if quality was adjusted, `false` otherwise.
+    pub fn update_adaptive_quality(&mut self, frame_time_ms: f32) -> bool {
+        self.adaptive_quality
+            .update(frame_time_ms)
+            .is_some_and(|adjustment| {
+                self.apply_quality_adjustment(adjustment);
+                true
+            })
+    }
+
+    /// Applies a quality adjustment to bloom and shadow pipelines.
+    fn apply_quality_adjustment(&mut self, adjustment: QualityAdjustment) {
+        self.bloom_pipeline.config.downscale = adjustment.bloom_downscale;
+        self.bloom_pipeline.config.passes = adjustment.bloom_passes;
+        self.shadow_pipeline.config.downscale = adjustment.shadow_downscale;
+        self.shadow_pipeline.config.blur_passes = adjustment.shadow_blur_passes;
+    }
+
+    /// Resets adaptive quality to initial state.
+    pub fn reset_adaptive_quality(&mut self) {
+        self.adaptive_quality.reset();
+        self.apply_quality_adjustment(QualityAdjustment::default());
+    }
+
+    // =========================================================================
     // Synchronization
     // =========================================================================
 
@@ -781,6 +1033,9 @@ impl Renderer for WebGl2Renderer {
             return;
         }
 
+        // Initialize state cache for this frame
+        self.state_cache.begin_frame(self.width, self.height);
+
         // Clear instance buffers
         self.circle_instances.clear();
         self.ring_instances.clear();
@@ -791,9 +1046,14 @@ impl Renderer for WebGl2Renderer {
         }
         self.text_instances.clear();
 
-        // If bloom is active, render to scene FBO instead of canvas
-        if self.bloom_pipeline.config.enabled {
-            // Ensure FBOs are sized correctly
+        // If bloom or shadow is active, render to scene FBO instead of canvas
+        // Both effects use the bloom pipeline's scene FBO for the source
+        let needs_scene_fbo =
+            self.bloom_pipeline.config.enabled || self.shadow_pipeline.config.enabled;
+
+        if needs_scene_fbo {
+            // Ensure bloom FBOs are sized correctly (even if only shadow is enabled)
+            // Shadow uses bloom's scene FBO as input
             if self
                 .bloom_pipeline
                 .ensure_size(&self.gl, self.width, self.height)
@@ -801,6 +1061,12 @@ impl Renderer for WebGl2Renderer {
                 self.bloom_pipeline.bind_scene_fbo(&self.gl);
                 self.gl
                     .viewport(0, 0, self.width as i32, self.height as i32);
+            }
+
+            // Also ensure shadow FBOs are sized if shadow is enabled
+            if self.shadow_pipeline.config.enabled {
+                self.shadow_pipeline
+                    .ensure_size(&self.gl, self.width, self.height);
             }
         }
     }
@@ -813,17 +1079,47 @@ impl Renderer for WebGl2Renderer {
         // Flush all batched draw calls to the GPU
         self.flush();
 
+        // Post-processing effects use their own programs, so invalidate cache
+        let needs_post_processing =
+            self.bloom_pipeline.is_active() || self.shadow_pipeline.is_active();
+
+        if needs_post_processing {
+            self.state_cache.invalidate_program();
+        }
+
+        // Apply shadow effect if active (and bloom is not active)
+        // When both are enabled, bloom takes precedence since it provides
+        // its own compositing. Shadow support with bloom can be added in
+        // a future iteration with a combined pipeline.
+        if self.shadow_pipeline.is_active() && !self.bloom_pipeline.is_active() {
+            if let Some(scene_texture) = self.bloom_pipeline.scene_texture() {
+                let (scene_width, scene_height) = self.bloom_pipeline.scene_size();
+                self.shadow_pipeline.apply(
+                    &self.gl,
+                    scene_texture,
+                    scene_width,
+                    scene_height,
+                    &mut self.vao_manager,
+                );
+            }
+        }
+
         // Apply bloom post-processing if active
         if self.bloom_pipeline.is_active() {
             self.bloom_pipeline.apply(&self.gl, &mut self.vao_manager);
+        }
 
-            // Re-enable blending after bloom (bloom disables it)
+        // Re-enable blending after post-processing
+        if needs_post_processing {
             self.gl.enable(WebGl2RenderingContext::BLEND);
             self.gl.blend_func(
                 WebGl2RenderingContext::SRC_ALPHA,
                 WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
             );
         }
+
+        // Unbind VAO at end of frame for clean state
+        self.state_cache.unbind_vao(&self.gl);
 
         // Note: gl.finish() is NOT called here for performance.
         // Normal rendering relies on the browser's compositor for frame timing.
@@ -1005,12 +1301,19 @@ impl Renderer for WebGl2Renderer {
     }
 
     fn set_transform(&mut self, transform: Mat4) {
-        // Flush before changing transform
+        // Flush before changing transform to ensure buffered primitives
+        // are rendered with the current transform
+        let has_textured_quads = self
+            .textured_quad_instances
+            .values()
+            .any(|buf| buf.instance_count() > 0);
+
         if self.circle_instances.instance_count() > 0
             || self.ring_instances.instance_count() > 0
             || self.line_instances.instance_count() > 0
             || self.quad_instances.instance_count() > 0
             || self.text_instances.instance_count() > 0
+            || has_textured_quads
         {
             self.flush();
         }
@@ -1112,8 +1415,9 @@ impl Drop for WebGl2Renderer {
         }
         self.text_instances.destroy(&self.gl);
 
-        // Clean up bloom pipeline (FBOs, textures, shader programs)
+        // Clean up post-processing pipelines (FBOs, textures, shader programs)
         self.bloom_pipeline.destroy(&self.gl);
+        self.shadow_pipeline.destroy(&self.gl);
 
         // Delete shader programs
         if let Some(prog) = &self.circle_program {
