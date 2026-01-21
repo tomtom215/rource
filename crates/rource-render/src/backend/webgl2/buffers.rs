@@ -62,6 +62,15 @@ pub const FULLSCREEN_QUAD: [f32; 8] = [
     1.0, 1.0, // Top-right
 ];
 
+/// Minimum capacity threshold - buffers won't shrink below this.
+const MIN_BUFFER_CAPACITY: usize = 100;
+
+/// Shrink threshold - buffer shrinks if usage is below this fraction of capacity.
+const SHRINK_THRESHOLD: f32 = 0.25;
+
+/// Number of frames of low usage before shrinking.
+const SHRINK_STABILITY_FRAMES: u32 = 120;
+
 /// A buffer for storing per-instance data for batch rendering.
 #[derive(Debug)]
 pub struct InstanceBuffer {
@@ -77,6 +86,12 @@ pub struct InstanceBuffer {
     /// Maximum capacity in instances.
     capacity: usize,
 
+    /// Peak usage in instances during the current measurement window.
+    peak_usage: usize,
+
+    /// Frames since last significant usage.
+    low_usage_frames: u32,
+
     /// Needs upload flag.
     dirty: bool,
 }
@@ -89,12 +104,20 @@ impl InstanceBuffer {
             data: Vec::with_capacity(floats_per_instance * initial_capacity),
             floats_per_instance,
             capacity: initial_capacity,
+            peak_usage: 0,
+            low_usage_frames: 0,
             dirty: false,
         }
     }
 
-    /// Clears all instance data.
+    /// Clears all instance data and updates usage tracking.
     pub fn clear(&mut self) {
+        // Track peak usage before clearing
+        let current_instances = self.instance_count();
+        if current_instances > self.peak_usage {
+            self.peak_usage = current_instances;
+        }
+
         self.data.clear();
         self.dirty = true;
     }
@@ -152,6 +175,67 @@ impl InstanceBuffer {
         }
 
         self.dirty = false;
+    }
+
+    /// Called at end of frame to update usage tracking and potentially shrink.
+    ///
+    /// Returns `true` if the buffer was shrunk.
+    pub fn end_frame(&mut self, gl: &WebGl2RenderingContext) -> bool {
+        let usage_fraction = if self.capacity > 0 {
+            self.peak_usage as f32 / self.capacity as f32
+        } else {
+            1.0
+        };
+
+        if usage_fraction < SHRINK_THRESHOLD && self.capacity > MIN_BUFFER_CAPACITY {
+            self.low_usage_frames += 1;
+
+            if self.low_usage_frames >= SHRINK_STABILITY_FRAMES {
+                // Shrink to 2x peak usage or minimum capacity
+                let new_capacity = (self.peak_usage * 2).max(MIN_BUFFER_CAPACITY);
+
+                if new_capacity < self.capacity {
+                    self.shrink_to(gl, new_capacity);
+                    self.low_usage_frames = 0;
+                    self.peak_usage = 0;
+                    return true;
+                }
+            }
+        } else {
+            self.low_usage_frames = 0;
+        }
+
+        // Reset peak usage for next measurement window
+        self.peak_usage = 0;
+        false
+    }
+
+    /// Shrinks the buffer to a new capacity.
+    fn shrink_to(&mut self, gl: &WebGl2RenderingContext, new_capacity: usize) {
+        // Shrink the Vec capacity
+        let new_vec_capacity = new_capacity * self.floats_per_instance;
+        self.data.shrink_to(new_vec_capacity);
+        self.capacity = new_capacity;
+
+        // The next upload will reallocate the GPU buffer with the new size
+        self.dirty = true;
+
+        // Optionally, delete and recreate the buffer to release GPU memory
+        if let Some(buffer) = self.buffer.take() {
+            gl.delete_buffer(Some(&buffer));
+        }
+    }
+
+    /// Returns the current capacity in instances.
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+
+    /// Returns the peak usage since last reset.
+    #[inline]
+    pub fn peak_usage(&self) -> usize {
+        self.peak_usage
     }
 
     /// Returns the WebGL buffer.
@@ -738,5 +822,40 @@ mod tests {
         assert_eq!(UNIT_QUAD_LINE.len(), 8);
         assert_eq!(UNIT_QUAD_STANDARD.len(), 8);
         assert_eq!(FULLSCREEN_QUAD.len(), 8);
+    }
+
+    #[test]
+    fn test_instance_buffer_capacity() {
+        let buffer = InstanceBuffer::new(4, 500);
+        assert_eq!(buffer.capacity(), 500);
+    }
+
+    #[test]
+    fn test_instance_buffer_peak_usage_tracking() {
+        let mut buffer = InstanceBuffer::new(2, 100);
+
+        // Push some data
+        buffer.push_raw(&[1.0, 2.0]);
+        buffer.push_raw(&[3.0, 4.0]);
+        buffer.push_raw(&[5.0, 6.0]);
+
+        // Clear should update peak usage
+        buffer.clear();
+        assert_eq!(buffer.peak_usage(), 3);
+
+        // Push fewer items
+        buffer.push_raw(&[1.0, 2.0]);
+        buffer.clear();
+
+        // Peak should remain at 3 (highest seen)
+        assert_eq!(buffer.peak_usage(), 3);
+    }
+
+    #[test]
+    fn test_shrink_constants() {
+        // Verify shrink constants are reasonable
+        assert!(MIN_BUFFER_CAPACITY > 0);
+        assert!(SHRINK_THRESHOLD > 0.0 && SHRINK_THRESHOLD < 1.0);
+        assert!(SHRINK_STABILITY_FRAMES > 0);
     }
 }
