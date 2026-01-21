@@ -880,6 +880,9 @@ function __wbg_get_imports() {
         __wbg_attachShader_b36058e5c9eeaf54: function(arg0, arg1, arg2) {
             getObject(arg0).attachShader(getObject(arg1), getObject(arg2));
         },
+        __wbg_bindBufferBase_e36c8faca91d77ea: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).bindBufferBase(arg1 >>> 0, arg2 >>> 0, getObject(arg3));
+        },
         __wbg_bindBuffer_c9068e8712a034f5: function(arg0, arg1, arg2) {
             getObject(arg0).bindBuffer(arg1 >>> 0, getObject(arg2));
         },
