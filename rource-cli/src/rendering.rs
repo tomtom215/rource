@@ -102,7 +102,7 @@ pub fn render_frame(app: &mut App) {
         app.default_font,
         &app.commits,
         app.current_commit,
-        &app.scene,
+        &mut app.scene,
         app.logo_texture,
         app.logo_dimensions,
         app.logo_offset,
@@ -532,7 +532,7 @@ fn render_overlays(
     font_id: Option<FontId>,
     commits: &[Commit],
     current_commit: usize,
-    scene: &Scene,
+    scene: &mut Scene,
     logo_texture: Option<TextureId>,
     logo_dimensions: Option<(u32, u32)>,
     logo_offset: (i32, i32),
@@ -784,7 +784,7 @@ fn render_text_overlays(
 /// Render file extension legend.
 fn render_legend(
     renderer: &mut SoftwareRenderer,
-    scene: &Scene,
+    scene: &mut Scene,
     font_id: FontId,
     font_size: f32,
     width: f32,
