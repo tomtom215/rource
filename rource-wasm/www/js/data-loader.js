@@ -24,12 +24,12 @@ export function setOnDataLoadedCallback(callback) {
 }
 
 /**
- * Analyzes log data for statistics.
+ * Analyzes pipe-delimited custom log data for statistics.
  * Note: Commits are grouped by (timestamp, author) pairs - this matches the WASM parser behavior.
- * @param {string} content - Log content
+ * @param {string} content - Log content in custom format (timestamp|author|action|filepath)
  * @returns {Object} Stats with commits, files, authors
  */
-export function analyzeLogData(content) {
+export function analyzeCustomLogData(content) {
     const lines = content.split('\n');
     const files = new Set();
     const authors = new Set();
@@ -48,6 +48,84 @@ export function analyzeLogData(content) {
     }
 
     return { commits: commits.size, files: files.size, authors };
+}
+
+/**
+ * Analyzes git log format data for statistics.
+ * Handles the format from: git log --pretty=format:"commit %H%nAuthor: %an%nDate: %at%n" --name-status
+ * @param {string} content - Git log content
+ * @returns {Object} Stats with commits, files, authors
+ */
+export function analyzeGitLogData(content) {
+    const lines = content.split('\n');
+    const files = new Set();
+    const authors = new Set();
+    let commitCount = 0;
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Count commit lines
+        if (trimmed.startsWith('commit ') || trimmed.startsWith('Commit ')) {
+            commitCount++;
+            continue;
+        }
+
+        // Extract author from "Author: Name <email>" or "Author: Name"
+        if (trimmed.startsWith('Author:') || trimmed.startsWith('author:')) {
+            let authorPart = trimmed.slice(7).trim(); // Remove "Author:" prefix
+            // Remove email if present: "Name <email>" -> "Name"
+            const emailStart = authorPart.lastIndexOf('<');
+            if (emailStart > 0) {
+                authorPart = authorPart.slice(0, emailStart).trim();
+            }
+            if (authorPart) {
+                authors.add(authorPart);
+            }
+            continue;
+        }
+
+        // Extract file from status lines: "A\tfile.txt" or "M  file.txt"
+        // Git status codes: A(dd), M(odify), D(elete), R(ename), C(opy), T(ype change), U(nmerged)
+        const statusMatch = trimmed.match(/^([AMDRCTU])\d*[\t\s]+(.+)$/i);
+        if (statusMatch) {
+            let filepath = statusMatch[2].trim();
+            // For rename/copy format "old -> new", take the new path
+            const arrowIdx = filepath.indexOf(' -> ');
+            if (arrowIdx > 0) {
+                filepath = filepath.slice(arrowIdx + 4).trim();
+            }
+            // For tab-separated rename format "old\tnew", take the new path
+            const tabIdx = filepath.indexOf('\t');
+            if (tabIdx > 0) {
+                filepath = filepath.slice(tabIdx + 1).trim();
+            }
+            if (filepath) {
+                files.add(filepath);
+            }
+        }
+    }
+
+    return { commits: commitCount, files: files.size, authors };
+}
+
+/**
+ * Analyzes log data for statistics, auto-detecting format.
+ * @param {string} content - Log content
+ * @param {string} [format='auto'] - Format hint: 'custom', 'git', or 'auto'
+ * @returns {Object} Stats with commits, files, authors
+ */
+export function analyzeLogData(content, format = 'auto') {
+    // Determine format if auto
+    if (format === 'auto') {
+        format = detectLogFormat(content);
+    }
+
+    if (format === 'git') {
+        return analyzeGitLogData(content);
+    }
+    return analyzeCustomLogData(content);
 }
 
 /**
@@ -81,8 +159,8 @@ export function loadLogData(content, format = 'custom', options = {}) {
             return false;
         }
 
-        // Analyze data
-        const stats = analyzeLogData(content);
+        // Analyze data using the correct format parser
+        const stats = analyzeLogData(content, format);
 
         // Use totalCommits override if provided (e.g., for Rource repo where we know the actual git commit count)
         // Otherwise use the WASM visualization commit count

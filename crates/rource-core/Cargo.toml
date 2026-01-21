@@ -24,3 +24,8 @@ serde = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "scene_perf"
+harness = false

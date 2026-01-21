@@ -431,6 +431,9 @@ export class Rource {
      * Loads commits from custom pipe-delimited format.
      *
      * Format: `timestamp|author|action|path` per line
+     *
+     * Uses lenient parsing by default to skip invalid lines (e.g., lines with
+     * pipe characters in author names or unsupported git statuses).
      * @param {string} log
      * @returns {number}
      */
@@ -453,6 +456,8 @@ export class Rource {
     }
     /**
      * Loads commits from git log format.
+     *
+     * Uses lenient parsing to handle malformed lines gracefully.
      * @param {string} log
      * @returns {number}
      */

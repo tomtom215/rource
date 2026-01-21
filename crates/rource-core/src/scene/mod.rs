@@ -44,8 +44,18 @@ const FORCE_DAMPING: f32 = 0.85;
 /// Maximum velocity to prevent instability.
 const FORCE_MAX_VELOCITY: f32 = 300.0;
 
+/// Squared maximum velocity for optimized comparisons (avoids sqrt).
+const FORCE_MAX_VELOCITY_SQ: f32 = FORCE_MAX_VELOCITY * FORCE_MAX_VELOCITY;
+
 /// Minimum distance for force calculation to prevent extreme forces.
 const FORCE_MIN_DISTANCE: f32 = 5.0;
+
+/// Squared minimum distance for optimized comparisons (avoids sqrt).
+const FORCE_MIN_DISTANCE_SQ: f32 = FORCE_MIN_DISTANCE * FORCE_MIN_DISTANCE;
+
+/// How often to refresh extension stats cache (in frames).
+/// At 60fps, 30 frames = 0.5 seconds - acceptable for legend updates.
+const STATS_CACHE_INTERVAL: u32 = 30;
 
 /// Directory data for force-directed layout calculation.
 type DirForceData = (DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32);
@@ -118,6 +128,38 @@ pub struct Scene {
 
     /// Whether the radial layout needs recomputation.
     layout_dirty: bool,
+
+    // ========================================================================
+    // Reusable buffers (performance optimization to avoid per-frame allocations)
+    // ========================================================================
+    /// Reusable buffer for completed action tracking during update.
+    /// Cleared and reused each frame to avoid allocation overhead.
+    completed_actions_buffer: Vec<(ActionId, UserId)>,
+
+    /// Reusable buffer for files marked for removal during update.
+    /// Cleared and reused each frame to avoid allocation overhead.
+    files_to_remove_buffer: Vec<FileId>,
+
+    /// Reusable buffer for force-directed layout forces.
+    /// Cleared and reused each frame to avoid `HashMap` allocation overhead.
+    forces_buffer: HashMap<DirId, Vec2>,
+
+    /// Reusable buffer for directory data in force calculations.
+    /// Cleared and reused each frame to avoid Vec allocation overhead.
+    dir_data_buffer: Vec<DirForceData>,
+
+    // ========================================================================
+    // Cached statistics (performance optimization to avoid per-frame recomputation)
+    // ========================================================================
+    /// Cached file extension statistics for legend rendering.
+    /// Invalidated when files are added/removed or every `STATS_CACHE_INTERVAL` frames.
+    extension_stats_cache: Vec<(String, usize)>,
+
+    /// Whether extension stats cache needs refresh.
+    extension_stats_dirty: bool,
+
+    /// Frame counter for throttling stats refresh.
+    stats_cache_frame: u32,
 }
 
 impl Scene {
@@ -147,6 +189,15 @@ impl Scene {
             cached_entity_bounds: None,
             bounds_dirty: true,
             layout_dirty: true,
+            // Pre-allocate reusable buffers with reasonable initial capacity
+            completed_actions_buffer: Vec::with_capacity(64),
+            files_to_remove_buffer: Vec::with_capacity(32),
+            forces_buffer: HashMap::with_capacity(128),
+            dir_data_buffer: Vec::with_capacity(128),
+            // Initialize stats cache as empty (will be populated on first request)
+            extension_stats_cache: Vec::new(),
+            extension_stats_dirty: true,
+            stats_cache_frame: 0,
         }
     }
 
@@ -406,8 +457,9 @@ impl Scene {
         self.file_by_path.insert(path.to_path_buf(), id);
         self.files.insert(id, file);
 
-        // Invalidate bounds cache since we added a new entity
+        // Invalidate caches since we added a new entity
         self.bounds_dirty = true;
+        self.extension_stats_dirty = true;
 
         Some(id)
     }
@@ -545,16 +597,19 @@ impl Scene {
         self.time += dt;
         self.update_count = self.update_count.wrapping_add(1);
 
-        // Update actions and remove completed ones
-        let mut completed_actions = Vec::new();
+        // Update actions and collect completed ones (reusing buffer)
+        self.completed_actions_buffer.clear();
         for action in &mut self.actions {
             if !action.update(dt) {
-                completed_actions.push((action.id(), action.user()));
+                self.completed_actions_buffer
+                    .push((action.id(), action.user()));
             }
         }
 
         // Remove completed actions and update users
-        for (action_id, user_id) in completed_actions {
+        // Note: We iterate by index to work around borrow checker with the buffer
+        for i in 0..self.completed_actions_buffer.len() {
+            let (action_id, user_id) = self.completed_actions_buffer[i];
             if let Some(user) = self.users.get_mut(&user_id) {
                 user.remove_action(action_id);
             }
@@ -566,18 +621,19 @@ impl Scene {
             user.update(dt);
         }
 
-        // Update files and collect ones to remove
-        let mut files_to_remove = Vec::new();
+        // Update files and collect ones to remove (reusing buffer)
+        self.files_to_remove_buffer.clear();
         for (id, file) in &mut self.files {
             file.update(dt);
             if file.should_remove() {
-                files_to_remove.push(*id);
+                self.files_to_remove_buffer.push(*id);
             }
         }
 
         // Remove deleted files
-        let files_removed = !files_to_remove.is_empty();
-        for id in files_to_remove {
+        let files_removed = !self.files_to_remove_buffer.is_empty();
+        for i in 0..self.files_to_remove_buffer.len() {
+            let id = self.files_to_remove_buffer[i];
             if let Some(file) = self.files.remove(&id) {
                 self.file_by_path.remove(file.path());
 
@@ -612,6 +668,11 @@ impl Scene {
         // (only every N frames to avoid constant recomputation)
         if self.update_count % Self::SPATIAL_REBUILD_INTERVAL == 0 || files_removed {
             self.bounds_dirty = true;
+        }
+
+        // Invalidate extension stats cache when files are removed
+        if files_removed {
+            self.extension_stats_dirty = true;
         }
 
         // Rebuild spatial index periodically (throttled for performance)
@@ -689,30 +750,29 @@ impl Scene {
     /// - **Attraction**: Child directories are pulled toward their parents
     /// - **Damping**: Friction-like force that stabilizes the system
     fn apply_force_directed_layout(&mut self, dt: f32) {
-        // Collect directory data for force calculation
-        let dir_data: Vec<DirForceData> = self
-            .directories
-            .iter()
-            .map(|d| {
-                (
-                    d.id(),
-                    d.position(),
-                    d.depth(),
-                    d.parent(),
-                    d.parent_position(),
-                    d.target_distance(),
-                )
-            })
-            .collect();
+        // Collect directory data for force calculation (reusing buffer)
+        self.dir_data_buffer.clear();
+        for d in self.directories.iter() {
+            self.dir_data_buffer.push((
+                d.id(),
+                d.position(),
+                d.depth(),
+                d.parent(),
+                d.parent_position(),
+                d.target_distance(),
+            ));
+        }
 
-        // Calculate forces for each directory
-        let mut forces: HashMap<DirId, Vec2> = HashMap::new();
+        // Calculate forces for each directory (reusing buffer)
+        self.forces_buffer.clear();
 
         // Calculate repulsion forces between related directories (O(n²) but n is typically small)
-        for (i, &(id_i, pos_i, depth_i, parent_i, _, _)) in dir_data.iter().enumerate() {
-            for (j, &(id_j, pos_j, depth_j, parent_j, _, _)) in
-                dir_data.iter().enumerate().skip(i + 1)
-            {
+        let dir_count = self.dir_data_buffer.len();
+        for i in 0..dir_count {
+            let (id_i, pos_i, depth_i, parent_i, _, _) = self.dir_data_buffer[i];
+            for j in (i + 1)..dir_count {
+                let (id_j, pos_j, depth_j, parent_j, _, _) = self.dir_data_buffer[j];
+
                 // Repel if:
                 // 1. Siblings (same parent)
                 // 2. Close in depth (within 1 level)
@@ -724,39 +784,49 @@ impl Scene {
                 }
 
                 let delta = pos_j - pos_i;
-                let distance = delta.length().max(FORCE_MIN_DISTANCE);
+                let distance_sq = delta.length_squared();
 
-                // Inverse square repulsion: F = k / d²
-                let force_magnitude = FORCE_REPULSION / (distance * distance);
-
-                // Guard against zero-length delta
-                if delta.length_squared() < 0.001 {
+                // Guard against zero-length delta (check squared distance)
+                if distance_sq < 0.001 {
                     // Push apart randomly based on indices
                     let offset = Vec2::new((i as f32).sin() * 5.0, (j as f32).cos() * 5.0);
-                    *forces.entry(id_i).or_insert(Vec2::ZERO) -= offset;
-                    *forces.entry(id_j).or_insert(Vec2::ZERO) += offset;
+                    *self.forces_buffer.entry(id_i).or_insert(Vec2::ZERO) -= offset;
+                    *self.forces_buffer.entry(id_j).or_insert(Vec2::ZERO) += offset;
                     continue;
                 }
 
-                let force = delta.normalized() * force_magnitude;
+                // Use squared distance for inverse-square repulsion: F = k / d²
+                // Clamp to minimum squared distance to prevent extreme forces
+                let clamped_dist_sq = distance_sq.max(FORCE_MIN_DISTANCE_SQ);
+                let force_magnitude = FORCE_REPULSION / clamped_dist_sq;
+
+                // Compute direction only when needed (requires sqrt via length)
+                let distance = distance_sq.sqrt();
+                let direction = delta / distance; // Equivalent to delta.normalized()
+                let force = direction * force_magnitude;
 
                 // Apply equal and opposite forces
-                *forces.entry(id_i).or_insert(Vec2::ZERO) -= force;
-                *forces.entry(id_j).or_insert(Vec2::ZERO) += force;
+                *self.forces_buffer.entry(id_i).or_insert(Vec2::ZERO) -= force;
+                *self.forces_buffer.entry(id_j).or_insert(Vec2::ZERO) += force;
             }
         }
 
         // Calculate attraction forces to parents
-        for (id, pos, _depth, _parent_id, parent_pos, target_dist) in &dir_data {
+        for i in 0..dir_count {
+            let (id, pos, _depth, _parent_id, parent_pos, target_dist) = self.dir_data_buffer[i];
             if let Some(parent_pos) = parent_pos {
-                let delta = *parent_pos - *pos;
-                let distance = delta.length();
+                let delta = parent_pos - pos;
+                let distance_sq = delta.length_squared();
+                let target_dist_sq = target_dist * target_dist;
 
-                // Only attract if beyond target distance
-                if distance > *target_dist && delta.length_squared() > 0.001 {
+                // Only attract if beyond target distance (compare squared to avoid sqrt)
+                if distance_sq > target_dist_sq && distance_sq > 0.001 {
+                    // Now compute actual distance since we need it for the force
+                    let distance = distance_sq.sqrt();
                     let excess = distance - target_dist;
-                    let force = delta.normalized() * excess * FORCE_ATTRACTION;
-                    *forces.entry(*id).or_insert(Vec2::ZERO) += force;
+                    let direction = delta / distance; // Equivalent to delta.normalized()
+                    let force = direction * excess * FORCE_ATTRACTION;
+                    *self.forces_buffer.entry(id).or_insert(Vec2::ZERO) += force;
                 }
             }
         }
@@ -768,15 +838,17 @@ impl Scene {
                 continue;
             }
 
-            if let Some(&force) = forces.get(&dir.id()) {
+            if let Some(&force) = self.forces_buffer.get(&dir.id()) {
                 // Apply force as acceleration (assuming unit mass)
                 dir.add_velocity(force * dt);
 
-                // Clamp velocity to prevent instability
+                // Clamp velocity to prevent instability (use squared comparison)
                 let vel = dir.velocity();
-                let speed = vel.length();
-                if speed > FORCE_MAX_VELOCITY {
-                    dir.set_velocity(vel.normalized() * FORCE_MAX_VELOCITY);
+                let speed_sq = vel.length_squared();
+                if speed_sq > FORCE_MAX_VELOCITY_SQ {
+                    // Only compute sqrt when actually needed for clamping
+                    let speed = speed_sq.sqrt();
+                    dir.set_velocity(vel * (FORCE_MAX_VELOCITY / speed));
                 }
 
                 // Apply damping
@@ -947,8 +1019,29 @@ impl Scene {
     /// Returns file extension statistics (extension -> count).
     ///
     /// Only includes extensions for files that are currently visible (alpha > 0.1).
+    /// Uses caching to avoid recomputation every frame - cache is refreshed when:
+    /// - Files are added or removed
+    /// - Every `STATS_CACHE_INTERVAL` frames (to account for alpha changes)
     #[must_use]
-    pub fn file_extension_stats(&self) -> Vec<(String, usize)> {
+    pub fn file_extension_stats(&mut self) -> &[(String, usize)] {
+        // Check if cache needs refresh
+        let needs_refresh = self.extension_stats_dirty
+            || self.stats_cache_frame >= STATS_CACHE_INTERVAL
+            || self.extension_stats_cache.is_empty();
+
+        if needs_refresh {
+            self.recompute_extension_stats();
+            self.extension_stats_dirty = false;
+            self.stats_cache_frame = 0;
+        } else {
+            self.stats_cache_frame += 1;
+        }
+
+        &self.extension_stats_cache
+    }
+
+    /// Recomputes extension statistics and updates the cache.
+    fn recompute_extension_stats(&mut self) {
         use std::collections::HashMap;
 
         let mut stats: HashMap<String, usize> = HashMap::new();
@@ -964,9 +1057,27 @@ impl Scene {
         }
 
         // Sort by count descending, then by extension name
-        let mut result: Vec<_> = stats.into_iter().collect();
-        result.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-        result
+        self.extension_stats_cache.clear();
+        self.extension_stats_cache.extend(stats);
+        self.extension_stats_cache
+            .sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    }
+
+    /// Returns file extension statistics without updating the cache.
+    ///
+    /// This is useful when you need stats but don't want to mutate the scene.
+    /// Note: This may return stale data if the cache hasn't been refreshed recently.
+    #[must_use]
+    pub fn file_extension_stats_cached(&self) -> &[(String, usize)] {
+        &self.extension_stats_cache
+    }
+
+    /// Invalidates the extension stats cache, forcing a recomputation on next access.
+    ///
+    /// This is useful for testing or when you need fresh statistics immediately.
+    #[inline]
+    pub fn invalidate_extension_stats(&mut self) {
+        self.extension_stats_dirty = true;
     }
 }
 
@@ -1255,5 +1366,148 @@ mod tests {
 
         assert_eq!(expanded.min, Vec2::new(-10.0, -10.0));
         assert_eq!(expanded.max, Vec2::new(110.0, 110.0));
+    }
+
+    // ========================================================================
+    // Performance optimization tests
+    // ========================================================================
+
+    #[test]
+    fn test_extension_stats_caching() {
+        let mut scene = Scene::new();
+
+        // Create files with different extensions
+        scene.create_file(Path::new("src/main.rs"));
+        scene.create_file(Path::new("src/lib.rs"));
+        scene.create_file(Path::new("src/test.rs"));
+        scene.create_file(Path::new("docs/readme.md"));
+
+        // Warm up the files so they're visible (alpha > 0.1)
+        for _ in 0..10 {
+            scene.update(0.1);
+        }
+
+        // First call should compute stats
+        let stats1: Vec<_> = scene.file_extension_stats().to_vec();
+        assert!(!stats1.is_empty());
+
+        // Find the rs count
+        let rs_count = stats1.iter().find(|(ext, _)| ext == "rs").map(|(_, c)| *c);
+        assert_eq!(rs_count, Some(3), "Should have 3 .rs files");
+
+        // Second call should return cached result (same data)
+        let stats2: Vec<_> = scene.file_extension_stats().to_vec();
+        assert_eq!(stats1, stats2, "Cached result should match");
+
+        // Invalidate and verify new computation
+        scene.invalidate_extension_stats();
+        let stats3: Vec<_> = scene.file_extension_stats().to_vec();
+        assert_eq!(stats3, stats1, "Re-computed stats should match");
+    }
+
+    #[test]
+    fn test_extension_stats_cache_invalidation_on_file_add() {
+        let mut scene = Scene::new();
+
+        scene.create_file(Path::new("test.rs"));
+        for _ in 0..5 {
+            scene.update(0.1);
+        }
+
+        let rs_count1 = scene
+            .file_extension_stats()
+            .iter()
+            .find(|(ext, _)| ext == "rs")
+            .map(|(_, c)| *c);
+
+        // Add another file - should invalidate cache
+        scene.create_file(Path::new("another.rs"));
+        for _ in 0..5 {
+            scene.update(0.1);
+        }
+
+        let rs_count2 = scene
+            .file_extension_stats()
+            .iter()
+            .find(|(ext, _)| ext == "rs")
+            .map(|(_, c)| *c);
+
+        // Should have one more .rs file
+        assert_eq!(
+            rs_count2,
+            rs_count1.map(|c| c + 1),
+            "Adding file should update stats"
+        );
+    }
+
+    #[test]
+    fn test_reusable_buffers_dont_leak() {
+        let mut scene = Scene::new();
+
+        // Create some entities
+        for i in 0..100 {
+            scene.create_file(Path::new(&format!("file_{i}.rs")));
+        }
+        scene.get_or_create_user("TestUser");
+
+        // Run many update cycles
+        for _ in 0..100 {
+            scene.update(1.0 / 60.0);
+        }
+
+        // Buffers should be reused, not growing unbounded
+        // The completed_actions_buffer capacity should be reasonable
+        // (This is a sanity check - exact values depend on implementation)
+        assert!(
+            scene.completed_actions_buffer.capacity() < 1000,
+            "Buffer should not grow unbounded"
+        );
+        assert!(
+            scene.files_to_remove_buffer.capacity() < 1000,
+            "Buffer should not grow unbounded"
+        );
+    }
+
+    #[test]
+    fn test_force_directed_layout_stability() {
+        let mut scene = Scene::new();
+
+        // Create a tree structure
+        scene.create_file(Path::new("src/main.rs"));
+        scene.create_file(Path::new("src/lib.rs"));
+        scene.create_file(Path::new("src/utils/helpers.rs"));
+        scene.create_file(Path::new("tests/test_main.rs"));
+
+        // Let physics settle
+        for _ in 0..100 {
+            scene.update(1.0 / 60.0);
+        }
+
+        // Record positions
+        let mut positions: Vec<_> = scene
+            .directories
+            .iter()
+            .map(super::dir_node::DirNode::position)
+            .collect();
+
+        // Run more updates
+        for _ in 0..50 {
+            scene.update(1.0 / 60.0);
+        }
+
+        // Positions should be relatively stable (not moving much)
+        let new_positions: Vec<_> = scene
+            .directories
+            .iter()
+            .map(super::dir_node::DirNode::position)
+            .collect();
+
+        for (old, new) in positions.iter_mut().zip(new_positions.iter()) {
+            let delta = (*new - *old).length();
+            assert!(
+                delta < 10.0,
+                "Directory positions should stabilize, but moved {delta}"
+            );
+        }
     }
 }
