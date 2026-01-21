@@ -8,9 +8,43 @@
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, OffscreenCanvas};
 
 use rource_render::{FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
+
+/// Checks if WebGL2 is available by testing on an offscreen canvas.
+///
+/// This is important because once you call `getContext()` on a canvas with one
+/// context type, you cannot get a different context type from that canvas.
+/// By testing on an offscreen canvas first, we don't "taint" the main canvas.
+fn is_webgl2_available() -> bool {
+    // First check if WebGL2RenderingContext exists in the global scope
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return false,
+    };
+
+    // Check if WebGL2RenderingContext is defined
+    let has_webgl2_class = js_sys::Reflect::has(&window, &JsValue::from_str("WebGL2RenderingContext"))
+        .unwrap_or(false);
+    if !has_webgl2_class {
+        return false;
+    }
+
+    // Try to actually get a WebGL2 context on an offscreen canvas
+    // This catches cases where the class exists but context creation fails
+    // (e.g., software rendering fallback in some browsers, or GPU blocklisted)
+    let offscreen = match OffscreenCanvas::new(1, 1) {
+        Ok(canvas) => canvas,
+        Err(_) => return false,
+    };
+
+    offscreen
+        .get_context("webgl2")
+        .ok()
+        .flatten()
+        .is_some()
+}
 
 // ============================================================================
 // Renderer Type
@@ -85,21 +119,45 @@ impl RendererBackend {
     /// # Errors
     ///
     /// Returns an error if neither WebGL2 nor `Canvas2D` contexts can be obtained.
+    ///
+    /// # Context Selection
+    ///
+    /// This function first checks if WebGL2 is available using an offscreen canvas
+    /// test. This is crucial because HTML5 Canvas only allows one context type per
+    /// canvas - once you call `getContext("webgl2")`, you cannot later get a 2D
+    /// context from that same canvas, even if the WebGL2 call failed.
+    ///
+    /// By testing on an offscreen canvas first, we avoid "tainting" the main canvas
+    /// with a failed WebGL context attempt.
     pub fn new(canvas: &HtmlCanvasElement) -> Result<(Self, RendererType), JsValue> {
         let width = canvas.width();
         let height = canvas.height();
 
-        // Try WebGL2 first
-        if let Ok(webgl2) = WebGl2Renderer::new(canvas) {
-            web_sys::console::log_1(&"Rource: Using WebGL2 renderer".into());
-            return Ok((Self::WebGl2(webgl2), RendererType::WebGl2));
+        // IMPORTANT: Check WebGL2 availability BEFORE touching the main canvas.
+        // Once you call getContext() with one type, you cannot get a different type.
+        if is_webgl2_available() {
+            // WebGL2 is available, try to create the renderer on the main canvas
+            if let Ok(webgl2) = WebGl2Renderer::new(canvas) {
+                web_sys::console::log_1(&"Rource: Using WebGL2 renderer".into());
+                return Ok((Self::WebGl2(webgl2), RendererType::WebGl2));
+            }
+            // WebGL2 was available but renderer creation failed (shader compilation, etc.)
+            // This is rare but can happen. We can still try 2D since we haven't touched
+            // the canvas yet (WebGl2Renderer::new only calls getContext if we get here).
+            // Actually, WebGl2Renderer::new DOES call getContext, so if it failed,
+            // the canvas is tainted. Log a warning.
+            web_sys::console::warn_1(
+                &"Rource: WebGL2 available but renderer init failed, canvas may be tainted".into(),
+            );
+        } else {
+            // WebGL2 not available - go straight to software renderer without
+            // ever trying WebGL on the main canvas
+            web_sys::console::log_1(
+                &"Rource: WebGL2 not available, using software renderer".into(),
+            );
         }
 
-        // Fall back to software rendering
-        web_sys::console::log_1(
-            &"Rource: WebGL2 not available, falling back to software renderer".into(),
-        );
-
+        // Fall back to software rendering with 2D context
         let context = canvas
             .get_context("2d")
             .map_err(|e| JsValue::from_str(&format!("Failed to get 2D context: {e:?}")))?
