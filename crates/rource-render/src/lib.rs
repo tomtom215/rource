@@ -33,6 +33,7 @@ pub mod font;
 pub mod image;
 pub mod label;
 pub mod texture;
+pub mod visual;
 
 pub use backend::software::SoftwareRenderer;
 

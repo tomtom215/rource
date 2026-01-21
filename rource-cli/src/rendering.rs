@@ -3,12 +3,19 @@
 //! This module provides frame rendering for the interactive windowed
 //! visualization mode with enhanced visuals including stylized avatars
 //! and curved tree branches.
+//!
+//! ## Shared Rendering Code
+//!
+//! Core visual utilities (spline interpolation, avatar drawing, beam effects,
+//! curved branches) are defined in `rource_render::visual` and shared between
+//! CLI and WASM builds to ensure visual parity.
 
 use rource_core::camera::Camera;
 use rource_core::scene::{FileNode, Scene};
 use rource_core::{DirId, FileId, UserId};
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::effects::{BloomEffect, ShadowEffect};
+use rource_render::visual::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
 use rource_render::{
     estimate_text_width, FontId, LabelPlacer, Renderer, SoftwareRenderer, TextureId,
 };
@@ -18,308 +25,6 @@ use crate::app::{App, PlaybackState};
 use crate::args::Args;
 use crate::avatar::AvatarRegistry;
 use crate::helpers::get_initials;
-
-// ============================================================================
-// Visual Style Constants
-// ============================================================================
-
-/// Number of segments for Catmull-Rom spline interpolation
-const SPLINE_SEGMENTS: usize = 12;
-
-/// Curve tension for branch splines (0.0 = straight, 0.5 = natural curves)
-const BRANCH_CURVE_TENSION: f32 = 0.4;
-
-/// Glow intensity multiplier for action beams
-const BEAM_GLOW_INTENSITY: f32 = 0.4;
-
-/// Number of glow layers for beams
-const BEAM_GLOW_LAYERS: usize = 3;
-
-// ============================================================================
-// Spline Interpolation
-// ============================================================================
-
-/// Generates Catmull-Rom spline points between control points.
-///
-/// Creates smooth curves through the given points using Catmull-Rom
-/// interpolation, which passes through all control points.
-///
-/// # Arguments
-///
-/// * `points` - Control points to interpolate through (minimum 2 required for output)
-/// * `segments_per_span` - Number of interpolated points per span between control points
-///
-/// # Returns
-///
-/// Returns the interpolated points. For 0-2 input points, returns a copy of the input.
-/// For 3+ points, returns smoothly interpolated spline points.
-fn catmull_rom_spline(points: &[Vec2], segments_per_span: usize) -> Vec<Vec2> {
-    // Handle edge cases: empty, single point, or two points
-    if points.len() < 2 {
-        return points.to_vec();
-    }
-
-    if points.len() == 2 {
-        // For two points, just return them (straight line)
-        return points.to_vec();
-    }
-
-    // At this point, points.len() >= 3, so last() is guaranteed to succeed
-
-    let mut result = Vec::with_capacity(points.len() * segments_per_span);
-
-    // For Catmull-Rom, we need 4 control points for each span
-    // We'll duplicate the first and last points to handle the edges
-    for i in 0..points.len() - 1 {
-        let p0 = if i == 0 { points[0] } else { points[i - 1] };
-        let p1 = points[i];
-        let p2 = points[i + 1];
-        let p3 = if i + 2 >= points.len() {
-            points[points.len() - 1]
-        } else {
-            points[i + 2]
-        };
-
-        // Generate points along this span
-        for j in 0..segments_per_span {
-            let t = j as f32 / segments_per_span as f32;
-            let point = catmull_rom_interpolate(p0, p1, p2, p3, t);
-            result.push(point);
-        }
-    }
-
-    // Add the final point
-    result.push(*points.last().unwrap());
-
-    result
-}
-
-/// Performs Catmull-Rom interpolation between p1 and p2.
-#[inline]
-fn catmull_rom_interpolate(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
-    let t2 = t * t;
-    let t3 = t2 * t;
-
-    // Catmull-Rom basis matrix coefficients
-    let c0 = -0.5 * t3 + t2 - 0.5 * t;
-    let c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
-    let c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
-    let c3 = 0.5 * t3 - 0.5 * t2;
-
-    Vec2::new(
-        c0 * p0.x + c1 * p1.x + c2 * p2.x + c3 * p3.x,
-        c0 * p0.y + c1 * p1.y + c2 * p2.y + c3 * p3.y,
-    )
-}
-
-/// Creates a curved path between two points with natural-looking curvature.
-///
-/// The curve bends perpendicular to the line between points, creating
-/// an organic tree-branch appearance.
-fn create_branch_curve(start: Vec2, end: Vec2, tension: f32) -> Vec<Vec2> {
-    let mid = start.lerp(end, 0.5);
-    let dir = end - start;
-    let length = dir.length();
-
-    if length < 1.0 {
-        return vec![start, end];
-    }
-
-    // Perpendicular offset for natural curve
-    let perp = Vec2::new(-dir.y, dir.x).normalized();
-    let offset = perp * length * tension * 0.15;
-
-    // Create control points with slight S-curve
-    let ctrl1 = start.lerp(mid, 0.33) + offset * 0.5;
-    let ctrl2 = start.lerp(mid, 0.66) + offset;
-    let ctrl3 = mid.lerp(end, 0.33) + offset * 0.5;
-    let ctrl4 = mid.lerp(end, 0.66);
-
-    catmull_rom_spline(
-        &[start, ctrl1, ctrl2, ctrl3, ctrl4, end],
-        SPLINE_SEGMENTS / 2,
-    )
-}
-
-// ============================================================================
-// Avatar Drawing
-// ============================================================================
-
-/// Draws a stylized avatar shape (modern person silhouette).
-///
-/// Creates a distinctive, portfolio-quality avatar with:
-/// - Circular head with subtle highlight
-/// - Rounded body/torso below
-/// - Soft glow effect for active users
-fn draw_avatar_shape(
-    renderer: &mut SoftwareRenderer,
-    center: Vec2,
-    radius: f32,
-    color: Color,
-    is_active: bool,
-    alpha: f32,
-) {
-    let effective_alpha = color.a * alpha;
-    if effective_alpha < 0.01 {
-        return;
-    }
-
-    // Dimensions relative to radius
-    let head_radius = radius * 0.42;
-    let body_width = radius * 0.7;
-    let body_height = radius * 0.65;
-
-    // Positions
-    let head_center = Vec2::new(center.x, center.y - radius * 0.28);
-    let body_center = Vec2::new(center.x, center.y + radius * 0.32);
-
-    // Draw outer glow for active users
-    if is_active {
-        for i in 0..4 {
-            let glow_radius = radius * (1.4 + i as f32 * 0.15);
-            let glow_alpha = effective_alpha * 0.12 * (1.0 - i as f32 * 0.2);
-            let glow_color = color.with_alpha(glow_alpha);
-            renderer.draw_disc(center, glow_radius, glow_color);
-        }
-    }
-
-    // Draw shadow/base layer (slightly larger, darker)
-    let shadow_color = Color::new(
-        color.r * 0.2,
-        color.g * 0.2,
-        color.b * 0.2,
-        effective_alpha * 0.6,
-    );
-    renderer.draw_disc(center, radius * 1.05, shadow_color);
-
-    // Draw body (rounded rectangle approximated with overlapping shapes)
-    let body_color = Color::new(
-        color.r * 0.85,
-        color.g * 0.85,
-        color.b * 0.85,
-        effective_alpha,
-    );
-
-    // Body: stack of discs forming a pill shape
-    let body_top = body_center.y - body_height * 0.4;
-    let body_bottom = body_center.y + body_height * 0.4;
-    let steps = 6;
-    for i in 0..=steps {
-        let t = i as f32 / steps as f32;
-        let y = body_top + t * (body_bottom - body_top);
-        // Taper the body slightly at top and bottom
-        let taper = 1.0 - (t - 0.5).abs() * 0.3;
-        let w = body_width * taper * 0.5;
-        renderer.draw_disc(Vec2::new(center.x, y), w, body_color);
-    }
-
-    // Draw head
-    let head_color = color.with_alpha(effective_alpha);
-    renderer.draw_disc(head_center, head_radius, head_color);
-
-    // Head highlight (subtle 3D effect)
-    let highlight_offset = Vec2::new(-head_radius * 0.25, -head_radius * 0.25);
-    let highlight_color = Color::new(1.0, 1.0, 1.0, effective_alpha * 0.25);
-    renderer.draw_disc(
-        head_center + highlight_offset,
-        head_radius * 0.35,
-        highlight_color,
-    );
-
-    // Active indicator: pulsing ring
-    if is_active {
-        let ring_color = Color::new(1.0, 1.0, 1.0, effective_alpha * 0.4);
-        renderer.draw_circle(center, radius * 1.15, 1.5, ring_color);
-    }
-}
-
-// ============================================================================
-// Enhanced Beam Drawing
-// ============================================================================
-
-/// Draws an action beam with glow effect.
-///
-/// Creates a more visually striking beam from user to file with:
-/// - Multiple glow layers for soft edges
-/// - Animated head with trail effect
-fn draw_action_beam(
-    renderer: &mut SoftwareRenderer,
-    start: Vec2,
-    end: Vec2,
-    progress: f32,
-    color: Color,
-    zoom: f32,
-) {
-    let beam_end = start.lerp(end, progress);
-
-    // Draw glow layers (wider, more transparent)
-    for i in 0..BEAM_GLOW_LAYERS {
-        let layer = i as f32;
-        let width = (2.0 + layer * 2.0) * zoom.max(0.5);
-        let alpha = color.a * BEAM_GLOW_INTENSITY * (1.0 - layer * 0.25);
-        let glow_color = color.with_alpha(alpha);
-        renderer.draw_line(start, beam_end, width, glow_color);
-    }
-
-    // Draw core beam (brightest)
-    let core_color = Color::new(
-        (color.r + 0.3).min(1.0),
-        (color.g + 0.3).min(1.0),
-        (color.b + 0.3).min(1.0),
-        color.a,
-    );
-    renderer.draw_line(start, beam_end, 1.5 * zoom.max(0.5), core_color);
-
-    // Draw beam head with glow
-    let head_radius = (4.0 * zoom).max(2.5);
-
-    // Head glow
-    for i in 0..2 {
-        let glow_r = head_radius * (1.5 + i as f32 * 0.5);
-        let glow_a = color.a * 0.3 * (1.0 - i as f32 * 0.3);
-        renderer.draw_disc(beam_end, glow_r, color.with_alpha(glow_a));
-    }
-
-    // Head core (bright center)
-    renderer.draw_disc(beam_end, head_radius, core_color);
-
-    // Tiny bright center for extra pop
-    let center_color = Color::new(1.0, 1.0, 1.0, color.a * 0.8);
-    renderer.draw_disc(beam_end, head_radius * 0.4, center_color);
-}
-
-// ============================================================================
-// Enhanced Branch Drawing
-// ============================================================================
-
-/// Draws a curved branch line with gradient effect.
-fn draw_curved_branch(
-    renderer: &mut SoftwareRenderer,
-    start: Vec2,
-    end: Vec2,
-    width: f32,
-    color: Color,
-    use_curve: bool,
-) {
-    if color.a < 0.01 {
-        return;
-    }
-
-    if use_curve {
-        // Generate smooth curve points
-        let curve_points = create_branch_curve(start, end, BRANCH_CURVE_TENSION);
-
-        // Draw the spline with gradient (brighter at end/file)
-        renderer.draw_spline(&curve_points, width, color);
-
-        // Add subtle glow along the curve
-        let glow_color = color.with_alpha(color.a * 0.15);
-        renderer.draw_spline(&curve_points, width * 2.5, glow_color);
-    } else {
-        // Fallback to straight line
-        renderer.draw_line(start, end, width, color);
-    }
-}
 
 /// Render a frame in windowed mode.
 ///
@@ -1240,6 +945,7 @@ pub fn present_frame(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rource_render::visual::{catmull_rom_interpolate, catmull_rom_spline, create_branch_curve};
 
     #[test]
     fn test_get_initials() {

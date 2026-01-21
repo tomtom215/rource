@@ -4,6 +4,7 @@
 //! and manages their relationships and updates.
 
 pub mod action;
+pub mod dir_node;
 pub mod file;
 pub mod tree;
 pub mod user;
