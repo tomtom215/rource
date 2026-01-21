@@ -220,13 +220,14 @@ pub fn run_headless(args: &Args) -> Result<()> {
     let mut scene = Scene::new();
     let mut camera = Camera::new(args.width as f32, args.height as f32);
 
-    // Initialize effects
-    let bloom = if args.no_bloom {
+    // Initialize effects (BloomEffect uses pre-allocated buffers for zero allocation per frame)
+    let mut bloom = if args.no_bloom {
         None
     } else {
         Some(BloomEffect::new())
     };
-    let shadow = if args.shadows {
+    // ShadowEffect uses pre-allocated buffers for zero allocation per frame
+    let mut shadow = if args.shadows {
         Some(ShadowEffect::subtle())
     } else {
         None
@@ -383,12 +384,12 @@ pub fn run_headless(args: &Args) -> Result<()> {
 
         // Apply effects
         let effects_start = Instant::now();
-        if let Some(ref shadow_effect) = shadow {
+        if let Some(ref mut shadow_effect) = shadow {
             let w = renderer.width() as usize;
             let h = renderer.height() as usize;
             shadow_effect.apply(renderer.pixels_mut(), w, h);
         }
-        if let Some(ref bloom_effect) = bloom {
+        if let Some(ref mut bloom_effect) = bloom {
             let w = renderer.width() as usize;
             let h = renderer.height() as usize;
             bloom_effect.apply(renderer.pixels_mut(), w, h);
@@ -955,7 +956,7 @@ pub fn run_screenshot(args: &Args, screenshot_path: &Path) -> Result<()> {
 
     // Apply effects if enabled
     if !args.no_bloom {
-        let bloom = BloomEffect::new();
+        let mut bloom = BloomEffect::new();
         bloom.apply(
             renderer.pixels_mut(),
             args.width as usize,
@@ -964,7 +965,7 @@ pub fn run_screenshot(args: &Args, screenshot_path: &Path) -> Result<()> {
     }
 
     if args.shadows {
-        let shadow = ShadowEffect::subtle();
+        let mut shadow = ShadowEffect::subtle();
         shadow.apply(
             renderer.pixels_mut(),
             args.width as usize,

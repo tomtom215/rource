@@ -7,11 +7,25 @@
 //! 2. Downscaling for faster blur
 //! 3. Applying box blur (faster than Gaussian)
 //! 4. Upscaling and additively blending back
+//!
+//! # Performance Optimization
+//!
+//! This implementation uses pre-allocated buffers to eliminate per-frame allocations.
+//! At 1920x1080 with default settings, this saves ~19.2 MB of allocations per frame:
+//! - `bright_buffer`: 8.3 MB (full resolution)
+//! - `small_buffer`: 518 KB (downscaled)
+//! - `blur_temp`: 518 KB (downscaled)
+//! - `bloom_buffer`: 8.3 MB (full resolution)
+//!
+//! Buffers are automatically resized when dimensions change.
 
 // Allow lossless casts written as `as` for brevity in numeric code
 #![allow(clippy::cast_lossless)]
 
 /// Configuration for the bloom effect.
+///
+/// Contains both effect parameters and pre-allocated buffers for zero-allocation
+/// per-frame rendering. Use `apply()` which reuses internal buffers.
 #[derive(Debug, Clone)]
 pub struct BloomEffect {
     /// Brightness threshold (0.0-1.0). Pixels brighter than this will bloom.
@@ -28,6 +42,20 @@ pub struct BloomEffect {
 
     /// Blur radius in pixels.
     pub radius: i32,
+
+    // Pre-allocated buffers for zero-allocation rendering
+    /// Buffer for bright pixel extraction (full resolution)
+    bright_buffer: Vec<u32>,
+    /// Buffer for downscaled/blurred data
+    small_buffer: Vec<u32>,
+    /// Temporary buffer for blur passes
+    blur_temp: Vec<u32>,
+    /// Buffer for upscaled bloom result
+    bloom_buffer: Vec<u32>,
+
+    /// Cached dimensions to detect resize
+    cached_width: usize,
+    cached_height: usize,
 }
 
 impl BloomEffect {
@@ -39,6 +67,8 @@ impl BloomEffect {
     /// - passes: 2
     /// - downscale: 4
     /// - radius: 2
+    ///
+    /// Buffers are allocated lazily on first `apply()` call.
     pub fn new() -> Self {
         Self {
             threshold: 0.7,
@@ -46,6 +76,13 @@ impl BloomEffect {
             passes: 2,
             downscale: 4,
             radius: 2,
+            // Buffers start empty, allocated on first apply()
+            bright_buffer: Vec::new(),
+            small_buffer: Vec::new(),
+            blur_temp: Vec::new(),
+            bloom_buffer: Vec::new(),
+            cached_width: 0,
+            cached_height: 0,
         }
     }
 
@@ -57,6 +94,12 @@ impl BloomEffect {
             passes: 1,
             downscale: 4,
             radius: 2,
+            bright_buffer: Vec::new(),
+            small_buffer: Vec::new(),
+            blur_temp: Vec::new(),
+            bloom_buffer: Vec::new(),
+            cached_width: 0,
+            cached_height: 0,
         }
     }
 
@@ -68,6 +111,12 @@ impl BloomEffect {
             passes: 3,
             downscale: 2,
             radius: 3,
+            bright_buffer: Vec::new(),
+            small_buffer: Vec::new(),
+            blur_temp: Vec::new(),
+            bloom_buffer: Vec::new(),
+            cached_width: 0,
+            cached_height: 0,
         }
     }
 
@@ -106,75 +155,89 @@ impl BloomEffect {
     /// Applies the bloom effect to a pixel buffer.
     ///
     /// The pixel buffer should be in ARGB8 format (0xAARRGGBB).
+    /// This method reuses internal buffers to avoid per-frame allocations.
     ///
     /// # Arguments
     /// * `pixels` - Mutable pixel buffer to apply the effect to
     /// * `width` - Buffer width in pixels
     /// * `height` - Buffer height in pixels
-    pub fn apply(&self, pixels: &mut [u32], width: usize, height: usize) {
+    pub fn apply(&mut self, pixels: &mut [u32], width: usize, height: usize) {
         if pixels.is_empty() || width == 0 || height == 0 {
             return;
         }
 
-        // 1. Extract bright pixels
-        let bright = self.extract_bright(pixels, width, height);
-
-        // 2. Downscale for faster blur
+        // Calculate dimensions
         let small_w = (width / self.downscale).max(1);
         let small_h = (height / self.downscale).max(1);
-        let mut small = self.downscale_buffer(&bright, width, height, small_w, small_h);
 
-        // 3. Apply box blur multiple times
+        // Ensure buffers are properly sized (only reallocates when dimensions change)
+        self.ensure_buffers(width, height, small_w, small_h);
+
+        // 1. Extract bright pixels into pre-allocated buffer
+        self.extract_bright_into(pixels);
+
+        // 2. Downscale for faster blur
+        self.downscale_into(width, height, small_w, small_h);
+
+        // 3. Apply box blur multiple times (ping-pong between small_buffer and blur_temp)
         for _ in 0..self.passes {
-            small = self.box_blur(&small, small_w, small_h);
+            self.box_blur_in_place(small_w, small_h);
         }
 
-        // 4. Upscale and blend back
-        let bloom = self.upscale_buffer(&small, small_w, small_h, width, height);
+        // 4. Upscale into bloom_buffer
+        self.upscale_into(small_w, small_h, width, height);
 
         // 5. Additive blend
-        for (pixel, bloom_pixel) in pixels.iter_mut().zip(bloom.iter()) {
-            *pixel = self.additive_blend(*pixel, *bloom_pixel);
+        for (pixel, bloom_pixel) in pixels.iter_mut().zip(self.bloom_buffer.iter()) {
+            *pixel = Self::additive_blend(*pixel, *bloom_pixel);
         }
     }
 
-    /// Extracts bright pixels above the threshold.
-    fn extract_bright(&self, pixels: &[u32], _width: usize, _height: usize) -> Vec<u32> {
-        pixels
-            .iter()
-            .map(|&p| {
-                let r = ((p >> 16) & 0xFF) as f32 / 255.0;
-                let g = ((p >> 8) & 0xFF) as f32 / 255.0;
-                let b = (p & 0xFF) as f32 / 255.0;
+    /// Ensures all internal buffers are properly sized for the given dimensions.
+    /// Only reallocates when dimensions change.
+    fn ensure_buffers(&mut self, width: usize, height: usize, small_w: usize, small_h: usize) {
+        let full_size = width * height;
+        let small_size = small_w * small_h;
 
-                // Calculate perceived brightness (ITU-R BT.601)
-                let brightness = r * 0.299 + g * 0.587 + b * 0.114;
+        // Check if dimensions changed
+        if self.cached_width != width || self.cached_height != height {
+            self.cached_width = width;
+            self.cached_height = height;
 
-                if brightness > self.threshold {
-                    let factor = (brightness - self.threshold) * self.intensity;
-                    let nr = ((r * factor * 255.0) as u32).min(255);
-                    let ng = ((g * factor * 255.0) as u32).min(255);
-                    let nb = ((b * factor * 255.0) as u32).min(255);
-                    0xFF00_0000 | (nr << 16) | (ng << 8) | nb
-                } else {
-                    0xFF00_0000 // Black with full alpha
-                }
-            })
-            .collect()
+            // Resize full-resolution buffers
+            self.bright_buffer.resize(full_size, 0xFF00_0000);
+            self.bloom_buffer.resize(full_size, 0xFF00_0000);
+
+            // Resize downscaled buffers
+            self.small_buffer.resize(small_size, 0xFF00_0000);
+            self.blur_temp.resize(small_size, 0xFF00_0000);
+        }
     }
 
-    /// Downscales a buffer using box filtering.
-    #[allow(clippy::unused_self)]
-    fn downscale_buffer(
-        &self,
-        src: &[u32],
-        src_w: usize,
-        src_h: usize,
-        dst_w: usize,
-        dst_h: usize,
-    ) -> Vec<u32> {
-        let mut dst = vec![0xFF00_0000_u32; dst_w * dst_h];
+    /// Extracts bright pixels above the threshold into `bright_buffer`.
+    fn extract_bright_into(&mut self, pixels: &[u32]) {
+        for (dst, &p) in self.bright_buffer.iter_mut().zip(pixels.iter()) {
+            let r = ((p >> 16) & 0xFF) as f32 / 255.0;
+            let g = ((p >> 8) & 0xFF) as f32 / 255.0;
+            let b = (p & 0xFF) as f32 / 255.0;
 
+            // Calculate perceived brightness (ITU-R BT.601)
+            let brightness = r * 0.299 + g * 0.587 + b * 0.114;
+
+            *dst = if brightness > self.threshold {
+                let factor = (brightness - self.threshold) * self.intensity;
+                let nr = ((r * factor * 255.0) as u32).min(255);
+                let ng = ((g * factor * 255.0) as u32).min(255);
+                let nb = ((b * factor * 255.0) as u32).min(255);
+                0xFF00_0000 | (nr << 16) | (ng << 8) | nb
+            } else {
+                0xFF00_0000 // Black with full alpha
+            };
+        }
+    }
+
+    /// Downscales `bright_buffer` into `small_buffer` using box filtering.
+    fn downscale_into(&mut self, src_w: usize, src_h: usize, dst_w: usize, dst_h: usize) {
         let scale_x = src_w as f32 / dst_w as f32;
         let scale_y = src_h as f32 / dst_h as f32;
 
@@ -192,7 +255,7 @@ impl BloomEffect {
 
                 for sy in sy_start..sy_end.min(src_h) {
                     for sx in sx_start..sx_end.min(src_w) {
-                        let pixel = src[sy * src_w + sx];
+                        let pixel = self.bright_buffer[sy * src_w + sx];
                         r_sum += (pixel >> 16) & 0xFF;
                         g_sum += (pixel >> 8) & 0xFF;
                         b_sum += pixel & 0xFF;
@@ -200,30 +263,20 @@ impl BloomEffect {
                     }
                 }
 
-                if count > 0 {
+                self.small_buffer[dy * dst_w + dx] = if count > 0 {
                     let r = r_sum / count;
                     let g = g_sum / count;
                     let b = b_sum / count;
-                    dst[dy * dst_w + dx] = 0xFF00_0000 | (r << 16) | (g << 8) | b;
-                }
+                    0xFF00_0000 | (r << 16) | (g << 8) | b
+                } else {
+                    0xFF00_0000
+                };
             }
         }
-
-        dst
     }
 
-    /// Upscales a buffer using bilinear interpolation.
-    #[allow(clippy::unused_self)]
-    fn upscale_buffer(
-        &self,
-        src: &[u32],
-        src_w: usize,
-        src_h: usize,
-        dst_w: usize,
-        dst_h: usize,
-    ) -> Vec<u32> {
-        let mut dst = vec![0xFF00_0000_u32; dst_w * dst_h];
-
+    /// Upscales `small_buffer` into `bloom_buffer` using bilinear interpolation.
+    fn upscale_into(&mut self, src_w: usize, src_h: usize, dst_w: usize, dst_h: usize) {
         let scale_x = (src_w - 1) as f32 / (dst_w - 1).max(1) as f32;
         let scale_y = (src_h - 1) as f32 / (dst_h - 1).max(1) as f32;
 
@@ -240,10 +293,10 @@ impl BloomEffect {
                 let fx = sx.fract();
                 let fy = sy.fract();
 
-                let p00 = src[y0 * src_w + x0];
-                let p10 = src[y0 * src_w + x1];
-                let p01 = src[y1 * src_w + x0];
-                let p11 = src[y1 * src_w + x1];
+                let p00 = self.small_buffer[y0 * src_w + x0];
+                let p10 = self.small_buffer[y0 * src_w + x1];
+                let p01 = self.small_buffer[y1 * src_w + x0];
+                let p11 = self.small_buffer[y1 * src_w + x1];
 
                 let lerp = |a: u32, b: u32, t: f32| -> u32 {
                     ((a as f32 * (1.0 - t) + b as f32 * t) as u32).min(255)
@@ -261,24 +314,22 @@ impl BloomEffect {
                 let b1 = lerp(p01 & 0xFF, p11 & 0xFF, fx);
                 let b = lerp(b0, b1, fy);
 
-                dst[dy * dst_w + dx] = 0xFF00_0000 | (r << 16) | (g << 8) | b;
+                self.bloom_buffer[dy * dst_w + dx] = 0xFF00_0000 | (r << 16) | (g << 8) | b;
             }
         }
-
-        dst
     }
 
-    /// Applies a separable box blur.
+    /// Applies a separable box blur in-place using `small_buffer` and `blur_temp`.
+    /// After this call, result is in `small_buffer`.
     #[allow(clippy::cast_possible_wrap)] // Dimensions will never overflow i32
-    fn box_blur(&self, src: &[u32], width: usize, height: usize) -> Vec<u32> {
-        if src.is_empty() || width == 0 || height == 0 {
-            return src.to_vec();
+    fn box_blur_in_place(&mut self, width: usize, height: usize) {
+        if width == 0 || height == 0 {
+            return;
         }
 
         let radius = self.radius;
 
-        // Horizontal pass
-        let mut temp = vec![0xFF00_0000_u32; src.len()];
+        // Horizontal pass: small_buffer -> blur_temp
         for y in 0..height {
             for x in 0..width {
                 let mut r = 0u32;
@@ -288,20 +339,19 @@ impl BloomEffect {
 
                 for dx in -radius..=radius {
                     let nx = (x as i32 + dx).clamp(0, width as i32 - 1) as usize;
-                    let pixel = src[y * width + nx];
+                    let pixel = self.small_buffer[y * width + nx];
                     r += (pixel >> 16) & 0xFF;
                     g += (pixel >> 8) & 0xFF;
                     b += pixel & 0xFF;
                     count += 1;
                 }
 
-                temp[y * width + x] =
+                self.blur_temp[y * width + x] =
                     0xFF00_0000 | ((r / count) << 16) | ((g / count) << 8) | (b / count);
             }
         }
 
-        // Vertical pass
-        let mut dst = vec![0xFF00_0000_u32; src.len()];
+        // Vertical pass: blur_temp -> small_buffer
         for y in 0..height {
             for x in 0..width {
                 let mut r = 0u32;
@@ -311,25 +361,22 @@ impl BloomEffect {
 
                 for dy in -radius..=radius {
                     let ny = (y as i32 + dy).clamp(0, height as i32 - 1) as usize;
-                    let pixel = temp[ny * width + x];
+                    let pixel = self.blur_temp[ny * width + x];
                     r += (pixel >> 16) & 0xFF;
                     g += (pixel >> 8) & 0xFF;
                     b += pixel & 0xFF;
                     count += 1;
                 }
 
-                dst[y * width + x] =
+                self.small_buffer[y * width + x] =
                     0xFF00_0000 | ((r / count) << 16) | ((g / count) << 8) | (b / count);
             }
         }
-
-        dst
     }
 
     /// Additively blends two pixels.
     #[inline]
-    #[allow(clippy::unused_self)]
-    fn additive_blend(&self, base: u32, bloom: u32) -> u32 {
+    fn additive_blend(base: u32, bloom: u32) -> u32 {
         let r = (((base >> 16) & 0xFF) + ((bloom >> 16) & 0xFF)).min(255);
         let g = (((base >> 8) & 0xFF) + ((bloom >> 8) & 0xFF)).min(255);
         let b = ((base & 0xFF) + (bloom & 0xFF)).min(255);
@@ -398,7 +445,7 @@ mod tests {
 
     #[test]
     fn test_bloom_apply_empty() {
-        let bloom = BloomEffect::new();
+        let mut bloom = BloomEffect::new();
         let mut pixels: Vec<u32> = vec![];
         bloom.apply(&mut pixels, 0, 0);
         assert!(pixels.is_empty());
@@ -406,7 +453,7 @@ mod tests {
 
     #[test]
     fn test_bloom_apply_all_black() {
-        let bloom = BloomEffect::new();
+        let mut bloom = BloomEffect::new();
         let mut pixels = vec![0xFF00_0000_u32; 16 * 16];
         bloom.apply(&mut pixels, 16, 16);
 
@@ -418,7 +465,7 @@ mod tests {
 
     #[test]
     fn test_bloom_apply_bright_pixels() {
-        let bloom = BloomEffect::new().with_threshold(0.5);
+        let mut bloom = BloomEffect::new().with_threshold(0.5);
         let mut pixels = vec![0xFF00_0000_u32; 16 * 16];
 
         // Add some bright white pixels in the center
@@ -446,97 +493,109 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_bright() {
-        let bloom = BloomEffect::new().with_threshold(0.5);
+    fn test_bloom_buffer_reuse() {
+        // Test that buffers are reused across multiple apply() calls
+        let mut bloom = BloomEffect::new().with_threshold(0.5);
+        let mut pixels = vec![0xFFFF_FFFF_u32; 16 * 16];
 
-        // White pixel (brightness 1.0 > 0.5)
-        let pixels = vec![0xFFFF_FFFF];
-        let bright = bloom.extract_bright(&pixels, 1, 1);
-        assert_ne!(bright[0], 0xFF00_0000, "White pixel should be extracted");
+        // First apply - allocates buffers
+        bloom.apply(&mut pixels, 16, 16);
+        assert_eq!(bloom.cached_width, 16);
+        assert_eq!(bloom.cached_height, 16);
+        assert!(!bloom.bright_buffer.is_empty());
 
-        // Black pixel (brightness 0.0 < 0.5)
-        let pixels = vec![0xFF00_0000];
-        let bright = bloom.extract_bright(&pixels, 1, 1);
-        assert_eq!(
-            bright[0], 0xFF00_0000,
-            "Black pixel should not be extracted"
-        );
+        // Second apply - reuses buffers (same dimensions)
+        let mut pixels2 = vec![0xFFFF_FFFF_u32; 16 * 16];
+        bloom.apply(&mut pixels2, 16, 16);
+        // Dimensions unchanged means buffers were reused
+        assert_eq!(bloom.cached_width, 16);
+        assert_eq!(bloom.cached_height, 16);
     }
 
     #[test]
-    fn test_box_blur() {
-        let bloom = BloomEffect::new();
+    fn test_bloom_buffer_resize() {
+        // Test that buffers resize when dimensions change
+        let mut bloom = BloomEffect::new().with_threshold(0.5);
 
-        // Create a simple gradient
-        let mut pixels = vec![0xFF00_0000_u32; 4 * 4];
-        pixels[5] = 0xFFFF_FFFF; // Center pixel white
-        pixels[6] = 0xFFFF_FFFF;
-        pixels[9] = 0xFFFF_FFFF;
-        pixels[10] = 0xFFFF_FFFF;
+        // First apply at 16x16
+        let mut pixels1 = vec![0xFFFF_FFFF_u32; 16 * 16];
+        bloom.apply(&mut pixels1, 16, 16);
+        assert_eq!(bloom.cached_width, 16);
+        assert_eq!(bloom.cached_height, 16);
 
-        let blurred = bloom.box_blur(&pixels, 4, 4);
-
-        // After blur, the bright region should spread
-        // Corner pixels should have some brightness now
-        let corner = blurred[0];
-        let r = (corner >> 16) & 0xFF;
-        assert!(r > 0, "Blur should spread brightness to corners");
+        // Second apply at 32x32 - buffers should resize
+        let mut pixels2 = vec![0xFFFF_FFFF_u32; 32 * 32];
+        bloom.apply(&mut pixels2, 32, 32);
+        assert_eq!(bloom.cached_width, 32);
+        assert_eq!(bloom.cached_height, 32);
+        assert_eq!(bloom.bright_buffer.len(), 32 * 32);
+        assert_eq!(bloom.bloom_buffer.len(), 32 * 32);
     }
 
     #[test]
     fn test_additive_blend() {
-        let bloom = BloomEffect::new();
-
         // Blend black with white
-        let result = bloom.additive_blend(0xFF00_0000, 0xFFFF_FFFF);
+        let result = BloomEffect::additive_blend(0xFF00_0000, 0xFFFF_FFFF);
         assert_eq!(result, 0xFFFF_FFFF);
 
         // Blend gray with gray (should saturate)
-        let result = bloom.additive_blend(0xFF80_8080, 0xFF80_8080);
+        let result = BloomEffect::additive_blend(0xFF80_8080, 0xFF80_8080);
         assert_eq!(result, 0xFFFF_FFFF); // Saturated to white
 
         // Blend dark colors
-        let result = bloom.additive_blend(0xFF20_2020, 0xFF10_1010);
+        let result = BloomEffect::additive_blend(0xFF20_2020, 0xFF10_1010);
         assert_eq!(result, 0xFF30_3030);
     }
 
     #[test]
-    fn test_downscale_buffer() {
-        let bloom = BloomEffect::new();
+    fn test_bloom_preserves_black_pixels() {
+        // Test that all-black image stays black after bloom
+        let mut bloom = BloomEffect::new();
+        let mut pixels = vec![0xFF00_0000_u32; 32 * 32];
 
-        // Create a 4x4 white image
-        let src = vec![0xFFFF_FFFF; 4 * 4];
+        bloom.apply(&mut pixels, 32, 32);
 
-        // Downscale to 2x2
-        let dst = bloom.downscale_buffer(&src, 4, 4, 2, 2);
-
-        assert_eq!(dst.len(), 4);
-        // All pixels should still be white
-        for &pixel in &dst {
-            let r = (pixel >> 16) & 0xFF;
-            assert_eq!(r, 255, "Downscaled white should still be white");
+        for &pixel in &pixels {
+            assert_eq!(pixel, 0xFF00_0000, "Black pixels should stay black");
         }
     }
 
     #[test]
-    fn test_upscale_buffer() {
-        let bloom = BloomEffect::new();
+    fn test_bloom_spreads_bright_pixels() {
+        // Test that bright pixels spread to neighbors
+        // Use downscale=1 to avoid downsampling artifacts and verify pure blur spreading
+        let mut bloom = BloomEffect::new()
+            .with_threshold(0.3)
+            .with_intensity(2.0)
+            .with_passes(2)
+            .with_downscale(1); // No downscaling for predictable spreading
+        let mut pixels = vec![0xFF00_0000_u32; 32 * 32];
 
-        // Create a 2x2 image with one white pixel
-        let mut src = vec![0xFF00_0000; 2 * 2];
-        src[0] = 0xFFFF_FFFF; // Top-left white
+        // Put a 4x4 bright region in the center for clear visibility
+        for dy in 0..4 {
+            for dx in 0..4 {
+                pixels[(14 + dy) * 32 + (14 + dx)] = 0xFFFF_FFFF;
+            }
+        }
 
-        // Upscale to 4x4
-        let dst = bloom.upscale_buffer(&src, 2, 2, 4, 4);
+        let original = pixels.clone();
+        bloom.apply(&mut pixels, 32, 32);
 
-        assert_eq!(dst.len(), 16);
+        // Check that some previously dark pixels now have bloom
+        let mut count_bloomed = 0;
+        for y in 0..32 {
+            for x in 0..32 {
+                // Was originally black but now has some color
+                if original[y * 32 + x] == 0xFF00_0000 && pixels[y * 32 + x] != 0xFF00_0000 {
+                    count_bloomed += 1;
+                }
+            }
+        }
 
-        // Top-left should still be bright
-        let tl = (dst[0] >> 16) & 0xFF;
-        assert_eq!(tl, 255, "Top-left should be white");
-
-        // Bottom-right should be dark
-        let br = (dst[15] >> 16) & 0xFF;
-        assert_eq!(br, 0, "Bottom-right should be black");
+        // With downscale=1, blur radius=2, passes=2, we should see some spreading
+        assert!(
+            count_bloomed > 0,
+            "Bloom should spread to at least some pixels outside bright region"
+        );
     }
 }

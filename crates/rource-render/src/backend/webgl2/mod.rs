@@ -24,6 +24,7 @@
 // WebGL APIs use i32 for sizes which may involve u32 casts
 #![allow(clippy::cast_possible_wrap)]
 
+pub mod bloom;
 pub mod buffers;
 pub mod shaders;
 pub mod textures;
@@ -38,6 +39,7 @@ use rource_math::{Bounds, Color, Mat4, Vec2};
 
 use crate::{FontCache, FontId, Renderer, TextureId};
 
+use bloom::BloomPipeline;
 use buffers::{InstanceBuffer, VertexArrayManager};
 use shaders::{
     CIRCLE_FRAGMENT_SHADER, CIRCLE_VERTEX_SHADER, LINE_FRAGMENT_SHADER, LINE_VERTEX_SHADER,
@@ -46,6 +48,9 @@ use shaders::{
     TEXT_VERTEX_SHADER,
 };
 use textures::{FontAtlas, GlyphKey, TextureManager};
+
+// Re-export bloom configuration for external use
+pub use bloom::{BloomConfig, BloomPipeline as BloomEffect};
 
 /// Error type for WebGL2 renderer initialization.
 #[derive(Debug, Clone)]
@@ -145,6 +150,9 @@ pub struct WebGl2Renderer {
     /// Instance buffer for text glyphs.
     text_instances: InstanceBuffer,
 
+    /// GPU bloom post-processing pipeline.
+    bloom_pipeline: BloomPipeline,
+
     /// Whether context was lost.
     context_lost: bool,
 }
@@ -201,10 +209,16 @@ impl WebGl2Renderer {
             quad_instances: InstanceBuffer::new(8, 500), // bounds(4) + color(4)
             textured_quad_instances: HashMap::new(),
             text_instances: InstanceBuffer::new(12, 2000), // bounds(4) + uv_bounds(4) + color(4)
+            bloom_pipeline: BloomPipeline::new(),
             context_lost: false,
         };
 
         renderer.init_gl()?;
+
+        // Initialize bloom pipeline (non-fatal if it fails)
+        if !renderer.bloom_pipeline.initialize(&renderer.gl) {
+            web_sys::console::warn_1(&"Rource: Bloom pipeline initialization failed".into());
+        }
 
         Ok(renderer)
     }
@@ -609,6 +623,18 @@ impl WebGl2Renderer {
         self.vao_manager = VertexArrayManager::new();
         self.vao_manager.create_vertex_buffer(&self.gl);
 
+        // Reinitialize bloom pipeline
+        // Preserve config but recreate GPU resources
+        let bloom_config = self.bloom_pipeline.config;
+        self.bloom_pipeline.destroy(&self.gl);
+        self.bloom_pipeline = BloomPipeline::new();
+        self.bloom_pipeline.config = bloom_config;
+        if !self.bloom_pipeline.initialize(&self.gl) {
+            web_sys::console::warn_1(
+                &"Rource: Bloom pipeline re-initialization failed after context recovery".into(),
+            );
+        }
+
         Ok(())
     }
 
@@ -621,6 +647,108 @@ impl WebGl2Renderer {
     pub fn font_cache_mut(&mut self) -> &mut FontCache {
         &mut self.font_cache
     }
+
+    // =========================================================================
+    // Bloom Effect API
+    // =========================================================================
+
+    /// Returns whether the bloom effect is enabled.
+    #[inline]
+    pub fn is_bloom_enabled(&self) -> bool {
+        self.bloom_pipeline.config.enabled
+    }
+
+    /// Enables or disables the bloom effect.
+    ///
+    /// When enabled, bright areas of the scene will have a soft glow effect.
+    /// Bloom is processed entirely on the GPU for maximum performance.
+    #[inline]
+    pub fn set_bloom_enabled(&mut self, enabled: bool) {
+        self.bloom_pipeline.config.enabled = enabled;
+    }
+
+    /// Returns the current bloom brightness threshold.
+    #[inline]
+    pub fn bloom_threshold(&self) -> f32 {
+        self.bloom_pipeline.config.threshold
+    }
+
+    /// Sets the bloom brightness threshold (0.0 - 1.0).
+    ///
+    /// Pixels brighter than this value will contribute to the bloom effect.
+    /// Lower values = more bloom, higher values = bloom only on very bright areas.
+    ///
+    /// Default: 0.7
+    #[inline]
+    pub fn set_bloom_threshold(&mut self, threshold: f32) {
+        self.bloom_pipeline.config.threshold = threshold.clamp(0.0, 1.0);
+    }
+
+    /// Returns the current bloom intensity multiplier.
+    #[inline]
+    pub fn bloom_intensity(&self) -> f32 {
+        self.bloom_pipeline.config.intensity
+    }
+
+    /// Sets the bloom intensity multiplier.
+    ///
+    /// Higher values create a brighter, more pronounced glow effect.
+    ///
+    /// Default: 1.0
+    #[inline]
+    pub fn set_bloom_intensity(&mut self, intensity: f32) {
+        self.bloom_pipeline.config.intensity = intensity.max(0.0);
+    }
+
+    /// Returns the current bloom downscale factor.
+    #[inline]
+    pub fn bloom_downscale(&self) -> u32 {
+        self.bloom_pipeline.config.downscale
+    }
+
+    /// Sets the bloom downscale factor.
+    ///
+    /// The bloom effect is rendered at `width/downscale` x `height/downscale`
+    /// resolution for performance. Higher values = faster but blockier bloom.
+    ///
+    /// Default: 4
+    #[inline]
+    pub fn set_bloom_downscale(&mut self, downscale: u32) {
+        self.bloom_pipeline.config.downscale = downscale.max(1);
+    }
+
+    /// Returns the current number of bloom blur passes.
+    #[inline]
+    pub fn bloom_passes(&self) -> u32 {
+        self.bloom_pipeline.config.passes
+    }
+
+    /// Sets the number of bloom blur passes.
+    ///
+    /// More passes create a softer, more spread-out glow.
+    /// Each pass adds a horizontal and vertical blur.
+    ///
+    /// Default: 2
+    #[inline]
+    pub fn set_bloom_passes(&mut self, passes: u32) {
+        self.bloom_pipeline.config.passes = passes.max(1);
+    }
+
+    /// Returns the full bloom configuration.
+    #[inline]
+    pub fn bloom_config(&self) -> BloomConfig {
+        self.bloom_pipeline.config
+    }
+
+    /// Sets the full bloom configuration.
+    #[inline]
+    pub fn set_bloom_config(&mut self, config: BloomConfig) {
+        self.bloom_pipeline.config = config;
+    }
+
+    // =========================================================================
+    // Synchronization
+    // =========================================================================
 
     /// Synchronizes CPU with GPU by waiting for all pending commands to complete.
     ///
@@ -662,6 +790,19 @@ impl Renderer for WebGl2Renderer {
             instances.clear();
         }
         self.text_instances.clear();
+
+        // If bloom is active, render to scene FBO instead of canvas
+        if self.bloom_pipeline.config.enabled {
+            // Ensure FBOs are sized correctly
+            if self
+                .bloom_pipeline
+                .ensure_size(&self.gl, self.width, self.height)
+            {
+                self.bloom_pipeline.bind_scene_fbo(&self.gl);
+                self.gl
+                    .viewport(0, 0, self.width as i32, self.height as i32);
+            }
+        }
     }
 
     fn end_frame(&mut self) {
@@ -671,6 +812,18 @@ impl Renderer for WebGl2Renderer {
 
         // Flush all batched draw calls to the GPU
         self.flush();
+
+        // Apply bloom post-processing if active
+        if self.bloom_pipeline.is_active() {
+            self.bloom_pipeline.apply(&self.gl, &mut self.vao_manager);
+
+            // Re-enable blending after bloom (bloom disables it)
+            self.gl.enable(WebGl2RenderingContext::BLEND);
+            self.gl.blend_func(
+                WebGl2RenderingContext::SRC_ALPHA,
+                WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
+            );
+        }
 
         // Note: gl.finish() is NOT called here for performance.
         // Normal rendering relies on the browser's compositor for frame timing.
@@ -958,6 +1111,9 @@ impl Drop for WebGl2Renderer {
             instances.destroy(&self.gl);
         }
         self.text_instances.destroy(&self.gl);
+
+        // Clean up bloom pipeline (FBOs, textures, shader programs)
+        self.bloom_pipeline.destroy(&self.gl);
 
         // Delete shader programs
         if let Some(prog) = &self.circle_program {
