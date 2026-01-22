@@ -1764,6 +1764,32 @@ eprintln!("Frame {}: {} non-black pixels", frame, non_black);
 3. Add feature flag in `Cargo.toml`
 4. Update backend selection logic
 
+### CLI Args Module Structure (refactored 2026-01-22)
+
+The CLI argument parsing is organized as a module with the following structure:
+
+```
+rource-cli/src/args/
+├── mod.rs              # Args struct, clap derive, core methods (814 lines)
+├── config_methods.rs   # Config file and env var loading (283 lines)
+├── help_text.rs        # Sample config and env help text (160 lines)
+└── helpers.rs          # Parsing and validation helpers (239 lines)
+```
+
+**Key Components:**
+
+| File | Description |
+|------|-------------|
+| `mod.rs` | Args struct with clap derive, `validate()`, `to_settings()` |
+| `config_methods.rs` | `apply_config_file()`, `apply_env()` methods |
+| `help_text.rs` | `sample_config()`, `env_help()` static strings |
+| `helpers.rs` | `parse_hex_color()`, `validate_*()`, `parse_offset()`, `parse_date()` |
+
+**Refactoring Notes:**
+- Original args.rs was 1,413 lines, now mod.rs is 814 lines (42% reduction)
+- Uses `impl Args` blocks in separate files to extend the main struct
+- Helper functions moved to dedicated module for reusability
+
 ### Adding a New Configuration Option
 
 1. Add field to the appropriate settings module in `rource-core/src/config/settings/`:
@@ -1780,7 +1806,7 @@ eprintln!("Frame {}: {} non-black pixels", frame, non_black);
    - `overlay.rs` - Logo/background overlays
    - `filter.rs` - User/file filtering
    - `mod.rs` - Main `Settings` struct (add new sub-struct field here)
-2. Add CLI argument in `rource-cli/src/args.rs`
+2. Add CLI argument in `rource-cli/src/args/mod.rs`
 3. Add environment variable handling in `rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/lib.rs`
 5. Update documentation
