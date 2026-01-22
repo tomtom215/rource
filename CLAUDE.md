@@ -1747,7 +1747,20 @@ eprintln!("Frame {}: {} non-black pixels", frame, non_black);
 
 ### Adding a New Configuration Option
 
-1. Add field to `Settings` struct in `rource-core/src/config/settings.rs`
+1. Add field to the appropriate settings module in `rource-core/src/config/settings/`:
+   - `camera.rs` - Camera behavior settings
+   - `display.rs` - Display/visual settings
+   - `playback.rs` - Playback timing settings
+   - `visibility.rs` - UI element visibility
+   - `limits.rs` - Performance limits
+   - `input.rs` - Input handling
+   - `export.rs` - Video/screenshot export
+   - `title.rs` - Title and captions
+   - `directory.rs` - Directory display
+   - `layout.rs` - Radial tree layout
+   - `overlay.rs` - Logo/background overlays
+   - `filter.rs` - User/file filtering
+   - `mod.rs` - Main `Settings` struct (add new sub-struct field here)
 2. Add CLI argument in `rource-cli/src/args.rs`
 3. Add environment variable handling in `rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/lib.rs`
@@ -2070,4 +2083,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (Texture array infrastructure for file icons - 1,129 tests)*
+*Last updated: 2026-01-22 (Refactored settings.rs into modular structure - 1,129 tests)*

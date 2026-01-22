@@ -1112,10 +1112,7 @@ impl WgpuRenderer {
             || !self.curve_instances.is_empty()
             || !self.quad_instances.is_empty()
             || !self.text_instances.is_empty()
-            || self
-                .textured_quad_instances
-                .values()
-                .any(|b| !b.is_empty());
+            || self.textured_quad_instances.values().any(|b| !b.is_empty());
 
         if has_pending && self.current_encoder.is_some() && self.current_target_view.is_some() {
             // Take ownership temporarily for the flush
@@ -1836,6 +1833,11 @@ impl Renderer for WgpuRenderer {
     }
 
     fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color) {
+        // LOD thresholds for curve rendering (in screen pixels)
+        // Below MIN_CURVE_LENGTH: use a straight line (visually equivalent)
+        // Above: use GPU curve tessellation
+        const MIN_CURVE_LENGTH_SQ: f32 = 16.0; // 4 pixels squared
+
         if points.len() < 2 {
             return;
         }
@@ -1845,11 +1847,6 @@ impl Renderer for WgpuRenderer {
             self.draw_line(points[0], points[1], width, color);
             return;
         }
-
-        // LOD thresholds for curve rendering (in screen pixels)
-        // Below MIN_CURVE_LENGTH: use a straight line (visually equivalent)
-        // Above: use GPU curve tessellation
-        const MIN_CURVE_LENGTH_SQ: f32 = 16.0; // 4 pixels squared
 
         // Use GPU curve tessellation for 3+ points
         // Each span (from point i to i+1) becomes one curve instance
