@@ -1417,25 +1417,33 @@ Enable with `wgpu` feature in Cargo.toml:
 rource-render = { path = "...", features = ["wgpu"] }
 ```
 
-### WebGL2 Backend Implementation (2026-01-11)
+### WebGL2 Backend Implementation (2026-01-11, refactored 2026-01-22)
 
-Successfully implemented GPU-accelerated WebGL2 rendering backend for WASM:
+Successfully implemented GPU-accelerated WebGL2 rendering backend for WASM.
+
+**Refactored from 1,896 lines to modular structure** (main mod.rs reduced to 1,161 lines).
 
 #### Architecture
 
 ```
 crates/rource-render/src/backend/webgl2/
-├── mod.rs          # WebGl2Renderer implementing Renderer trait
-├── bloom.rs        # GPU bloom post-processing pipeline
-├── shadow.rs       # GPU shadow post-processing pipeline
-├── shaders.rs      # GLSL ES 3.0 shader sources (legacy + UBO variants)
-├── buffers.rs      # VBO/VAO management for instanced rendering
-├── textures.rs     # Texture atlas for font glyphs
-├── state.rs        # GlStateCache for avoiding redundant API calls
-├── stats.rs        # FrameStats for debugging and profiling
-├── ubo.rs          # Uniform Buffer Objects for shared uniforms
-└── adaptive.rs     # Adaptive quality controller
+├── mod.rs              # WebGl2Renderer struct, constructors, Renderer trait impl (1,161 lines)
+├── error.rs            # WebGl2Error enum (52 lines)
+├── bloom.rs            # GPU bloom post-processing pipeline
+├── shadow.rs           # GPU shadow post-processing pipeline
+├── shaders.rs          # GLSL ES 3.0 shader sources (legacy + UBO variants)
+├── buffers.rs          # VBO/VAO management for instanced rendering
+├── textures.rs         # Texture atlas for font glyphs
+├── state.rs            # GlStateCache for avoiding redundant API calls
+├── stats.rs            # FrameStats for debugging and profiling
+├── ubo.rs              # Uniform Buffer Objects for shared uniforms
+├── adaptive.rs         # Adaptive quality controller
+├── effects_methods.rs  # Bloom/shadow/adaptive quality configuration methods (340 lines)
+└── flush_passes.rs     # Flush pass rendering methods (450 lines)
 ```
+
+The `*_methods.rs` files contain `impl WebGl2Renderer` blocks that extend the main struct
+with focused functionality, keeping each module under 500 lines for maintainability.
 
 #### Key Features
 
