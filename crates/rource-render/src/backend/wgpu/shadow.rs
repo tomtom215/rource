@@ -399,7 +399,10 @@ impl ShadowPipeline {
     /// Note: `scene_texture_bg` cannot be cached because it depends on the `scene_view`
     /// parameter passed to `apply()`, which may vary between calls.
     fn create_cached_bind_groups(&mut self, device: &wgpu::Device) {
-        let shadow_target = self.shadow_target.as_ref().expect("shadow_target must exist");
+        let shadow_target = self
+            .shadow_target
+            .as_ref()
+            .expect("shadow_target must exist");
         let blur_target = self.blur_target.as_ref().expect("blur_target must exist");
 
         // Uniform bind groups - reference buffers updated via queue.write_buffer()

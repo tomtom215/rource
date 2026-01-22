@@ -492,8 +492,14 @@ impl BloomPipeline {
     /// that persist across frames. By caching them, we avoid per-frame allocations.
     fn create_cached_bind_groups(&mut self, device: &wgpu::Device) {
         let scene_target = self.scene_target.as_ref().expect("scene_target must exist");
-        let bloom_a = self.bloom_target_a.as_ref().expect("bloom_target_a must exist");
-        let bloom_b = self.bloom_target_b.as_ref().expect("bloom_target_b must exist");
+        let bloom_a = self
+            .bloom_target_a
+            .as_ref()
+            .expect("bloom_target_a must exist");
+        let bloom_b = self
+            .bloom_target_b
+            .as_ref()
+            .expect("bloom_target_b must exist");
 
         // Uniform bind groups - reference buffers that are updated via queue.write_buffer()
         let bright_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
