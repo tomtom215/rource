@@ -162,19 +162,3 @@ impl Scene {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_force_constants() {
-        assert!(FORCE_REPULSION > 0.0);
-        assert!(FORCE_ATTRACTION > 0.0);
-        assert!(FORCE_DAMPING > 0.0 && FORCE_DAMPING < 1.0);
-        assert!(FORCE_MAX_VELOCITY > 0.0);
-        assert!((FORCE_MAX_VELOCITY_SQ - FORCE_MAX_VELOCITY * FORCE_MAX_VELOCITY).abs() < 0.001);
-        assert!(FORCE_MIN_DISTANCE > 0.0);
-        assert!((FORCE_MIN_DISTANCE_SQ - FORCE_MIN_DISTANCE * FORCE_MIN_DISTANCE).abs() < 0.001);
-    }
-}

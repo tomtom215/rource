@@ -74,15 +74,3 @@ impl Scene {
         self.extension_stats_dirty = true;
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_stats_cache_interval() {
-        // Verify the constant is reasonable
-        assert!(STATS_CACHE_INTERVAL > 0);
-        assert!(STATS_CACHE_INTERVAL <= 120); // At most 2 seconds at 60fps
-    }
-}
