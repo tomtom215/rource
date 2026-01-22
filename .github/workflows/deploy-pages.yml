@@ -10,8 +10,9 @@ permissions:
   pages: write
   id-token: write
 
+# Ensure only one deployment runs at a time
 concurrency:
-  group: "pages"
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -20,7 +21,9 @@ env:
 
 jobs:
   build:
+    name: Build WASM Demo
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -209,10 +212,12 @@ jobs:
           path: rource-wasm/www
 
   deploy:
+    name: Deploy to Pages
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build
     steps:
       - name: Deploy to GitHub Pages

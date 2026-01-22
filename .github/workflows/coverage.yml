@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Prevent concurrent coverage runs on the same branch/PR
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -14,6 +19,7 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 

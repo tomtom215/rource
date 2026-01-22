@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Prevent concurrent CI runs on the same branch/PR
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -16,6 +21,7 @@ jobs:
   fmt:
     name: Format
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -27,6 +33,7 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -47,6 +54,7 @@ jobs:
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -64,12 +72,28 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-test-
       - name: Run tests
-        run: cargo test --all
+        run: cargo test --all 2>&1 | tee test-output.txt
+
+      - name: Generate test summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Test Results (${{ matrix.os }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract test counts from output
+          if grep -q "test result:" test-output.txt; then
+            RESULT=$(grep "test result:" test-output.txt | tail -1)
+            echo "$RESULT" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Test output not available" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # MSRV (Minimum Supported Rust Version) check
   msrv:
     name: MSRV (Rust ${{ matrix.rust }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         rust: ["1.82"]
@@ -94,6 +118,7 @@ jobs:
   build:
     name: Build (Native)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -108,16 +133,29 @@ jobs:
             ${{ runner.os }}-cargo-build-
       - name: Build release
         run: cargo build --release
-      - name: Show binary size
+
+      - name: Generate build summary
         run: |
-          ls -lh target/release/rource
-          echo "=== Binary info ==="
-          file target/release/rource
+          echo "## Native Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          BINARY_SIZE=$(ls -lh target/release/rource | awk '{print $5}')
+          BINARY_BYTES=$(stat -c%s target/release/rource)
+          echo "| Binary Size | $BINARY_SIZE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Binary Type | $(file -b target/release/rource | head -c 60) |" >> $GITHUB_STEP_SUMMARY
+
+          # Size check
+          if [ $BINARY_BYTES -gt 5242880 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> **Warning:** Binary exceeds 5MB target" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # WASM build check
   wasm:
     name: Build (WASM)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -140,15 +178,32 @@ jobs:
         run: |
           cd rource-wasm
           wasm-pack build --target web --release
-      - name: Show WASM size
+
+      - name: Generate WASM summary
         run: |
-          ls -lh rource-wasm/pkg/*.wasm
-          gzip -c rource-wasm/pkg/rource_wasm_bg.wasm | wc -c | xargs -I {} echo "Gzipped: {} bytes"
+          echo "## WASM Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+
+          WASM_SIZE=$(ls -lh rource-wasm/pkg/rource_wasm_bg.wasm | awk '{print $5}')
+          WASM_GZIP=$(gzip -c rource-wasm/pkg/rource_wasm_bg.wasm | wc -c)
+          WASM_GZIP_KB=$((WASM_GZIP / 1024))
+
+          echo "| WASM Size | $WASM_SIZE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Gzipped | ${WASM_GZIP_KB}KB |" >> $GITHUB_STEP_SUMMARY
+
+          # Size check (< 300KB gzipped)
+          if [ $WASM_GZIP -gt 307200 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> **Warning:** WASM gzipped exceeds 300KB target" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # Doc check
   docs:
     name: Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -170,6 +225,7 @@ jobs:
   features:
     name: Features
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
