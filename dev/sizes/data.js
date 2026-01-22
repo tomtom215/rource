@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769093615046,
+  "lastUpdate": 1769099086496,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -155,6 +155,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 968802,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52a5ad2dbbb1994012a33b7c2bddce931cb9e1c7",
+          "message": "Merge pull request #114 from tomtom215/claude/optimize-webgpu-performance-loLas\n\nOptimize Rource WebGPU Performance",
+          "timestamp": "2026-01-22T17:21:01+01:00",
+          "tree_id": "67d88658e80c10e7702c7e5ee612f65f8b9e5ae1",
+          "url": "https://github.com/tomtom215/rource/commit/52a5ad2dbbb1994012a33b7c2bddce931cb9e1c7"
+        },
+        "date": 1769099086031,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3872992,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2508356,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 969497,
             "unit": "bytes"
           }
         ]
