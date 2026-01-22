@@ -8,6 +8,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Prevent concurrent Docker builds on the same branch/PR
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -16,6 +21,7 @@ jobs:
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -89,6 +95,7 @@ jobs:
   scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build
     if: github.event_name != 'pull_request'
     permissions:

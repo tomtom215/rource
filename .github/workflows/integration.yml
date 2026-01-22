@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Prevent concurrent integration test runs on the same branch/PR
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -16,6 +21,7 @@ jobs:
   headless:
     name: Headless Rendering
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
@@ -162,6 +168,36 @@ jobs:
           echo "Screenshot test passed"
           ls -lh /tmp/test-output/screenshot.png
 
+      - name: Generate integration test summary
+        if: always()
+        run: |
+          echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          CUSTOM_FRAMES=$(ls /tmp/test-output/custom/*.ppm 2>/dev/null | wc -l)
+          REPO_FRAMES=$(ls /tmp/test-output/repo/*.ppm 2>/dev/null | wc -l)
+
+          if [ "$CUSTOM_FRAMES" -gt 0 ]; then
+            echo "| Custom log rendering | Passed ($CUSTOM_FRAMES frames) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Custom log rendering | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$REPO_FRAMES" -gt 0 ]; then
+            echo "| Repository rendering | Passed ($REPO_FRAMES frames) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Repository rendering | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f /tmp/test-output/screenshot.png ]; then
+            SCREENSHOT_SIZE=$(ls -lh /tmp/test-output/screenshot.png | awk '{print $5}')
+            echo "| Screenshot export | Passed ($SCREENSHOT_SIZE) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Screenshot export | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Upload test artifacts
         uses: actions/upload-artifact@v6
         if: always()
@@ -174,6 +210,7 @@ jobs:
   nightly:
     name: Nightly Rust
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     continue-on-error: true  # Don't fail CI on nightly issues
     steps:
       - uses: actions/checkout@v6
@@ -206,6 +243,7 @@ jobs:
   beta:
     name: Beta Rust
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     continue-on-error: true
     steps:
       - uses: actions/checkout@v6
