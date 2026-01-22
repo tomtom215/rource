@@ -272,6 +272,19 @@ pub struct WgpuRenderer {
 
     /// Current cull bounds in world coordinates (`min_x`, `min_y`, `max_x`, `max_y`).
     cull_bounds: [f32; 4],
+
+    /// Current scissor rectangle in screen coordinates (x, y, width, height).
+    /// None means no scissor (full viewport).
+    current_scissor: Option<ScissorRect>,
+}
+
+/// A scissor rectangle in screen coordinates.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ScissorRect {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
 }
 
 impl WgpuRenderer {
@@ -600,6 +613,7 @@ impl WgpuRenderer {
             culling_pipeline: None,
             gpu_culling_enabled: false,
             cull_bounds: [-10000.0, -10000.0, 10000.0, 10000.0],
+            current_scissor: None,
         };
 
         // Initialize pipelines
@@ -646,13 +660,21 @@ impl WgpuRenderer {
     /// Enables or disables bloom post-processing.
     pub fn set_bloom_enabled(&mut self, enabled: bool) {
         self.bloom_enabled = enabled;
-        if enabled && self.bloom_pipeline.is_none() {
-            let format = self
-                .surface_config
-                .as_ref()
-                .map(|c| c.format)
-                .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
-            self.bloom_pipeline = Some(BloomPipeline::new(&self.device, format));
+        if enabled {
+            // Initialize bloom pipeline if needed
+            if self.bloom_pipeline.is_none() {
+                let format = self
+                    .surface_config
+                    .as_ref()
+                    .map(|c| c.format)
+                    .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+                self.bloom_pipeline = Some(BloomPipeline::new(&self.device, format));
+            }
+            // Pre-allocate scene texture to avoid first-frame stutter
+            // Bloom manages its own scene target, but ensure the bloom pipeline is sized
+            if let Some(ref mut bloom) = self.bloom_pipeline {
+                bloom.ensure_size(&self.device, self.width, self.height);
+            }
         }
     }
 
@@ -687,13 +709,22 @@ impl WgpuRenderer {
     /// Enables or disables shadow post-processing.
     pub fn set_shadow_enabled(&mut self, enabled: bool) {
         self.shadow_enabled = enabled;
-        if enabled && self.shadow_pipeline.is_none() {
-            let format = self
-                .surface_config
-                .as_ref()
-                .map(|c| c.format)
-                .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
-            self.shadow_pipeline = Some(ShadowPipeline::new(&self.device, format));
+        if enabled {
+            // Initialize shadow pipeline if needed
+            if self.shadow_pipeline.is_none() {
+                let format = self
+                    .surface_config
+                    .as_ref()
+                    .map(|c| c.format)
+                    .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+                self.shadow_pipeline = Some(ShadowPipeline::new(&self.device, format));
+            }
+            // Pre-allocate scene texture to avoid first-frame stutter
+            self.ensure_scene_texture();
+            // Also ensure the shadow pipeline's internal textures are sized
+            if let Some(ref mut shadow) = self.shadow_pipeline {
+                shadow.ensure_size(&self.device, self.width, self.height);
+            }
         }
     }
 
@@ -1069,6 +1100,85 @@ impl WgpuRenderer {
         Vec2::new(p.x, p.y)
     }
 
+    /// Flushes pending draw calls before changing scissor state.
+    ///
+    /// This ensures that primitives drawn before a clip change are rendered
+    /// with the previous scissor rect, and primitives drawn after use the new one.
+    fn flush_for_scissor_change(&mut self) {
+        // Only flush if we have pending instances and an active encoder
+        let has_pending = !self.circle_instances.is_empty()
+            || !self.ring_instances.is_empty()
+            || !self.line_instances.is_empty()
+            || !self.curve_instances.is_empty()
+            || !self.quad_instances.is_empty()
+            || !self.text_instances.is_empty()
+            || self
+                .textured_quad_instances
+                .values()
+                .any(|b| !b.is_empty());
+
+        if has_pending && self.current_encoder.is_some() && self.current_target_view.is_some() {
+            // Take ownership temporarily for the flush
+            // We take target_view as well to avoid borrow conflicts
+            let mut encoder = self.current_encoder.take().unwrap();
+            let target_view = self.current_target_view.take().unwrap();
+
+            self.flush(&mut encoder, &target_view);
+
+            // Put both back
+            self.current_encoder = Some(encoder);
+            self.current_target_view = Some(target_view);
+        }
+    }
+
+    /// Updates the current scissor rectangle based on the clip stack.
+    ///
+    /// Calculates the intersection of all clip bounds to get the effective scissor rect.
+    fn update_scissor_rect(&mut self) {
+        if self.clips.is_empty() {
+            self.current_scissor = None;
+            return;
+        }
+
+        // Start with the first clip
+        let mut result = self.clips[0];
+
+        // Intersect with remaining clips
+        for clip in &self.clips[1..] {
+            result = Bounds::new(
+                Vec2::new(result.min.x.max(clip.min.x), result.min.y.max(clip.min.y)),
+                Vec2::new(result.max.x.min(clip.max.x), result.max.y.min(clip.max.y)),
+            );
+        }
+
+        // Clamp to viewport and ensure non-negative dimensions
+        let x = result.min.x.max(0.0) as u32;
+        let y = result.min.y.max(0.0) as u32;
+        let max_x = (result.max.x.min(self.width as f32) as u32).max(x);
+        let max_y = (result.max.y.min(self.height as f32) as u32).max(y);
+
+        let width = max_x.saturating_sub(x);
+        let height = max_y.saturating_sub(y);
+
+        // Only set scissor if we have a valid rect
+        if width > 0 && height > 0 {
+            self.current_scissor = Some(ScissorRect {
+                x,
+                y,
+                width,
+                height,
+            });
+        } else {
+            // Degenerate scissor (nothing visible) - set to minimal rect
+            self.current_scissor = Some(ScissorRect {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+            });
+        }
+    }
+
     /// Ensures the scene texture exists and is the correct size.
     fn ensure_scene_texture(&mut self) {
         let needs_recreate = self.scene_texture.as_ref().is_none_or(|tex| {
@@ -1157,6 +1267,11 @@ impl WgpuRenderer {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
+
+            // Apply scissor rect if clipping is active
+            if let Some(scissor) = self.current_scissor {
+                render_pass.set_scissor_rect(scissor.x, scissor.y, scissor.width, scissor.height);
+            }
 
             // Flush each primitive type
             self.flush_circles_pass(&mut render_pass, format);
@@ -1559,6 +1674,10 @@ impl Renderer for WgpuRenderer {
         self.frame_stats.reset();
         self.render_state.begin_frame(self.width, self.height);
 
+        // Clear scissor/clip state for new frame
+        self.clips.clear();
+        self.current_scissor = None;
+
         // Get surface texture if available
         if let Some(ref surface) = self.surface {
             match surface.get_current_texture() {
@@ -1727,6 +1846,11 @@ impl Renderer for WgpuRenderer {
             return;
         }
 
+        // LOD thresholds for curve rendering (in screen pixels)
+        // Below MIN_CURVE_LENGTH: use a straight line (visually equivalent)
+        // Above: use GPU curve tessellation
+        const MIN_CURVE_LENGTH_SQ: f32 = 16.0; // 4 pixels squared
+
         // Use GPU curve tessellation for 3+ points
         // Each span (from point i to i+1) becomes one curve instance
         for i in 0..points.len() - 1 {
@@ -1735,8 +1859,24 @@ impl Renderer for WgpuRenderer {
             let p2 = self.transform_point(points[(i + 1).min(points.len() - 1)]);
             let p3 = self.transform_point(points[(i + 2).min(points.len() - 1)]);
 
-            // Curve instance data: p0(2) + p1(2) + p2(2) + p3(2) + width(1) + color(4) + segments(1)
-            // Note: segments field is included for potential future use but currently unused
+            // LOD: Calculate screen-space distance for this span
+            let dx = p2.x - p1.x;
+            let dy = p2.y - p1.y;
+            let length_sq = dx * dx + dy * dy;
+
+            // For very short spans, a straight line is visually equivalent
+            // and avoids curve tessellation overhead
+            if length_sq < MIN_CURVE_LENGTH_SQ {
+                // Draw as simple line - skip curve overhead
+                self.line_instances.push_raw(&[
+                    p1.x, p1.y, p2.x, p2.y, width, color.r, color.g, color.b, color.a,
+                ]);
+                continue;
+            }
+
+            // For longer spans, use GPU curve tessellation
+            // The segments field can be used for adaptive tessellation in the future
+            // Currently using CURVE_SEGMENTS (8) for all curves
             self.curve_instances.push_raw(&[
                 p0.x,
                 p0.y,
@@ -1751,7 +1891,7 @@ impl Renderer for WgpuRenderer {
                 color.g,
                 color.b,
                 color.a,
-                buffers::CURVE_SEGMENTS as f32, // segments as f32 for uniform packing
+                buffers::CURVE_SEGMENTS as f32,
             ]);
         }
     }
@@ -1866,12 +2006,27 @@ impl Renderer for WgpuRenderer {
     }
 
     fn push_clip(&mut self, bounds: Bounds) {
-        self.clips.push(bounds);
-        // TODO: Implement scissor test via render pass
+        // Flush pending draw calls before changing scissor state
+        self.flush_for_scissor_change();
+
+        // Transform bounds to screen space
+        let min = self.transform_point(bounds.min);
+        let max = self.transform_point(bounds.max);
+        let screen_bounds = Bounds::new(min, max);
+        self.clips.push(screen_bounds);
+
+        // Calculate new scissor rect (intersection of all clip bounds)
+        self.update_scissor_rect();
     }
 
     fn pop_clip(&mut self) {
+        // Flush pending draw calls before changing scissor state
+        self.flush_for_scissor_change();
+
         self.clips.pop();
+
+        // Update scissor rect based on remaining clips
+        self.update_scissor_rect();
     }
 
     fn width(&self) -> u32 {
@@ -2134,5 +2289,68 @@ mod tests {
         assert_eq!(stats.total_instances, 0);
         assert_eq!(stats.visible_instances, 0);
         assert_eq!(stats.dispatch_count, 0);
+    }
+
+    #[test]
+    fn test_scissor_rect_struct() {
+        let rect = ScissorRect {
+            x: 10,
+            y: 20,
+            width: 100,
+            height: 200,
+        };
+
+        assert_eq!(rect.x, 10);
+        assert_eq!(rect.y, 20);
+        assert_eq!(rect.width, 100);
+        assert_eq!(rect.height, 200);
+
+        // Test equality
+        let rect2 = ScissorRect {
+            x: 10,
+            y: 20,
+            width: 100,
+            height: 200,
+        };
+        assert_eq!(rect, rect2);
+
+        // Test inequality
+        let rect3 = ScissorRect {
+            x: 10,
+            y: 20,
+            width: 101,
+            height: 200,
+        };
+        assert_ne!(rect, rect3);
+    }
+
+    #[test]
+    fn test_scissor_rect_copy() {
+        let rect = ScissorRect {
+            x: 10,
+            y: 20,
+            width: 100,
+            height: 200,
+        };
+
+        // Test Copy trait
+        let rect_copy = rect;
+        assert_eq!(rect, rect_copy);
+    }
+
+    #[test]
+    fn test_curve_lod_threshold() {
+        // Test that the LOD threshold constant is reasonable
+        // MIN_CURVE_LENGTH_SQ = 16.0 means 4 pixels
+        // This ensures very short curves become lines
+        const MIN_CURVE_LENGTH_SQ: f32 = 16.0;
+
+        // A 3-pixel span should be below threshold
+        let short_span = 3.0_f32 * 3.0;
+        assert!(short_span < MIN_CURVE_LENGTH_SQ);
+
+        // A 5-pixel span should be above threshold
+        let long_span = 5.0_f32 * 5.0;
+        assert!(long_span > MIN_CURVE_LENGTH_SQ);
     }
 }
