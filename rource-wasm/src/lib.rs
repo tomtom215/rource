@@ -308,7 +308,7 @@ impl Rource {
             drag_last_pos: Vec2::ZERO,
             font_id,
             show_labels: true,
-            auto_fit: false, // Disabled by default to prevent entity visibility issues
+            auto_fit: true, // Auto-zoom to fit all content (MIN_ZOOM=0.05 prevents LOD culling)
             perf_metrics: PerformanceMetrics::new(),
             render_stats: RenderStats::default(),
             // Pre-allocate visibility buffers for zero-allocation rendering

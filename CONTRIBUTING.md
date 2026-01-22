@@ -284,7 +284,10 @@ cargo flamegraph -- --headless --output /tmp/frames .
 
 ### New Configuration Option
 
-1. Add field to `Settings` in `rource-core/src/config/settings.rs`
+1. Add field to the appropriate settings module in `rource-core/src/config/settings/`:
+   - `camera.rs`, `display.rs`, `playback.rs`, `visibility.rs`, `limits.rs`
+   - `input.rs`, `export.rs`, `title.rs`, `directory.rs`, `layout.rs`
+   - `overlay.rs`, `filter.rs`, or `mod.rs` for new setting categories
 2. Add CLI argument in `rource-cli/src/args.rs`
 3. Add environment variable in `rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/lib.rs`
