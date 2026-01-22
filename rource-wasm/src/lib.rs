@@ -283,7 +283,8 @@ impl Rource {
         settings.display.height = height;
 
         let mut camera = Camera::new(width as f32, height as f32);
-        camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
+        // Use AUTO_FIT_MIN_ZOOM (0.03) as minimum to prevent LOD culling all entities
+        camera.set_zoom_limits(AUTO_FIT_MIN_ZOOM, 1000.0);
         camera.jump_to(Vec2::ZERO);
 
         Ok(Self {
