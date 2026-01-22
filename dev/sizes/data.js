@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769102532439,
+  "lastUpdate": 1769104545735,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -272,6 +272,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 970570,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b0d5dd07ca07ac7892e957d876a381b2c15761a0",
+          "message": "Merge pull request #117 from tomtom215/claude/fix-autozoom-lod-issue-x4a9F\n\nAdjust LOD thresholds and minimum zoom to improve entity visibility",
+          "timestamp": "2026-01-22T18:51:55+01:00",
+          "tree_id": "14e3534ffccf09d23166babb6f82376750ed3dee",
+          "url": "https://github.com/tomtom215/rource/commit/b0d5dd07ca07ac7892e957d876a381b2c15761a0"
+        },
+        "date": 1769104544921,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3872960,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2509065,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 970589,
             "unit": "bytes"
           }
         ]
