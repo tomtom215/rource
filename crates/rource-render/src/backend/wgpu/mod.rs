@@ -784,6 +784,9 @@ impl WgpuRenderer {
             .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.upload_textured_quads();
 
+        // Upload font atlas texture to GPU (critical for text rendering!)
+        self.font_atlas.upload(&self.queue);
+
         // Create render pass
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
