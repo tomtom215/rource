@@ -39,7 +39,9 @@ jobs:
       - name: Generate test commit log
         run: |
           # Create a test log with sample commits
-          mkdir -p /tmp/test-output
+          # Create output directories for each test
+          mkdir -p /tmp/test-output/custom
+          mkdir -p /tmp/test-output/repo
           cat > /tmp/test-commits.log << 'EOF'
           1609459200|alice|A|src/main.rs
           1609459260|bob|A|README.md
