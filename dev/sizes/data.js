@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769100715645,
+  "lastUpdate": 1769102532439,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -233,6 +233,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 969479,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2f8101ead2f51fc3be5f5d61249eb8696ff64d2f",
+          "message": "Merge pull request #116 from tomtom215/claude/fix-wasm-visualization-overflow-2gyDb\n\nAdd auto-fit camera mode to keep visualization content visible",
+          "timestamp": "2026-01-22T18:18:19+01:00",
+          "tree_id": "169de3076adfd96e2f50a6d6c3632f3a6c271411",
+          "url": "https://github.com/tomtom215/rource/commit/2f8101ead2f51fc3be5f5d61249eb8696ff64d2f"
+        },
+        "date": 1769102531569,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3872992,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2509065,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 970570,
             "unit": "bytes"
           }
         ]
