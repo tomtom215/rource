@@ -206,6 +206,10 @@ pub struct Rource {
     /// Whether to show labels (user names, file names).
     show_labels: bool,
 
+    /// Whether to automatically adjust camera to keep all content visible.
+    /// When enabled, the camera smoothly zooms out as the visualization grows.
+    auto_fit: bool,
+
     // ---- Metrics ----
     /// Performance metrics (FPS tracking, frame timing).
     perf_metrics: PerformanceMetrics,
@@ -303,6 +307,7 @@ impl Rource {
             drag_last_pos: Vec2::ZERO,
             font_id,
             show_labels: true,
+            auto_fit: true, // Enabled by default for better UX
             perf_metrics: PerformanceMetrics::new(),
             render_stats: RenderStats::default(),
             // Pre-allocate visibility buffers for zero-allocation rendering
@@ -458,6 +463,11 @@ impl Rource {
         // Update scene physics and animations
         self.scene.update(dt);
 
+        // Auto-fit camera to keep content visible (if enabled)
+        if self.auto_fit {
+            self.auto_fit_camera(dt);
+        }
+
         // Update camera
         self.camera.update(dt);
 
@@ -552,6 +562,57 @@ impl Rource {
                 self.camera.jump_to(padded_bounds.center());
                 self.camera.set_zoom(zoom);
             }
+        }
+    }
+
+    /// Smoothly adjusts camera to keep all content visible (called each frame when `auto_fit` is on).
+    fn auto_fit_camera(&mut self, dt: f32) {
+        let Some(entity_bounds) = self.scene.compute_entity_bounds() else {
+            return;
+        };
+
+        if entity_bounds.width() <= 0.0 || entity_bounds.height() <= 0.0 {
+            return;
+        }
+
+        // Add padding around content (20%)
+        let padded_bounds = Bounds::from_center_size(
+            entity_bounds.center(),
+            Vec2::new(entity_bounds.width() * 1.2, entity_bounds.height() * 1.2),
+        );
+
+        let screen_width = self.backend.width() as f32;
+        let screen_height = self.backend.height() as f32;
+
+        // Calculate the zoom needed to fit all content
+        let zoom_x = screen_width / padded_bounds.width();
+        let zoom_y = screen_height / padded_bounds.height();
+        let target_zoom = zoom_x.min(zoom_y).clamp(0.01, 1000.0);
+
+        let current_zoom = self.camera.zoom();
+
+        // Only zoom out, never zoom in automatically (let user control zoom in)
+        // Also only adjust if we need to zoom out significantly (5% threshold)
+        if target_zoom < current_zoom * 0.95 {
+            // Smooth interpolation toward target zoom
+            // Use a rate that feels natural - faster when far from target
+            let zoom_rate = 2.0; // How fast to adjust
+            let t = (zoom_rate * dt).min(0.15); // Cap max adjustment per frame
+            let new_zoom = current_zoom + (target_zoom - current_zoom) * t;
+            self.camera.set_zoom(new_zoom);
+        }
+
+        // Smoothly pan toward content center
+        let target_center = padded_bounds.center();
+        let current_center = self.camera.position();
+        let distance = (target_center - current_center).length();
+
+        // Only pan if content center is significantly off-screen
+        if distance > 10.0 {
+            let pan_rate = 2.0;
+            let t = (pan_rate * dt).min(0.15);
+            let new_center = current_center + (target_center - current_center) * t;
+            self.camera.jump_to(new_center);
         }
     }
 
