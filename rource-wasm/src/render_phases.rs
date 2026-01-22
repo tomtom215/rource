@@ -34,12 +34,13 @@ use crate::rendering::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
 
 /// Minimum screen radius for a file to be rendered at all.
 /// Files smaller than this are completely invisible and skipped.
-/// Set to 0.5 pixels - below this, the entity cannot contribute a visible pixel.
-pub const LOD_MIN_FILE_RADIUS: f32 = 0.5;
+/// Set low (0.1px) because we enforce a minimum render size of 2px anyway.
+/// This allows files to remain visible at low zoom levels.
+pub const LOD_MIN_FILE_RADIUS: f32 = 0.1;
 
 /// Minimum screen radius for a directory node to be rendered.
-/// Directories are more important landmarks, so we use a lower threshold.
-pub const LOD_MIN_DIR_RADIUS: f32 = 0.3;
+/// Directories are important landmarks, so we use a very low threshold.
+pub const LOD_MIN_DIR_RADIUS: f32 = 0.05;
 
 /// Minimum screen radius for file labels to be rendered.
 /// Labels are expensive (text rendering + shadow) so we skip them earlier.
@@ -50,18 +51,19 @@ pub const LOD_MIN_FILE_LABEL_RADIUS: f32 = 3.0;
 pub const LOD_MIN_DIR_LABEL_RADIUS: f32 = 4.0;
 
 /// Minimum screen radius for user avatars to be rendered.
-/// Users are key visual elements, so we keep the threshold low.
-pub const LOD_MIN_USER_RADIUS: f32 = 1.0;
+/// Set low (0.3px) because we enforce a minimum render size of 5px anyway.
+/// This allows users to remain visible at low zoom levels.
+pub const LOD_MIN_USER_RADIUS: f32 = 0.3;
 
 /// Minimum screen radius for user labels to be rendered.
 pub const LOD_MIN_USER_LABEL_RADIUS: f32 = 5.0;
 
 /// Minimum zoom level for rendering file-to-directory connections.
-/// Below this zoom, branch lines create visual noise without benefit.
-pub const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.05;
+/// Set low to keep branch structure visible during zoom out.
+pub const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.02;
 
 /// Minimum zoom level for rendering directory-to-parent connections.
-pub const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.02;
+pub const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.01;
 
 /// Context shared between rendering phases.
 ///
