@@ -65,8 +65,11 @@ pub enum PipelineId {
 }
 
 impl PipelineId {
-    /// Returns all primitive pipeline IDs (excluding post-processing).
-    pub const fn primitives() -> [Self; 8] {
+    /// Returns all primitive pipeline IDs (excluding post-processing and special pipelines).
+    ///
+    /// Note: `TextureArray` is excluded because it requires special creation with a
+    /// texture array bind group layout. It should be created through dedicated methods.
+    pub const fn primitives() -> [Self; 7] {
         [
             Self::Circle,
             Self::Ring,
@@ -75,7 +78,6 @@ impl PipelineId {
             Self::TexturedQuad,
             Self::Text,
             Self::Curve,
-            Self::TextureArray,
         ]
     }
 
@@ -545,11 +547,11 @@ mod tests {
     #[test]
     fn test_pipeline_id_primitives() {
         let primitives = PipelineId::primitives();
-        assert_eq!(primitives.len(), 8);
+        // TextureArray is excluded because it requires special creation
+        assert_eq!(primitives.len(), 7);
         assert_eq!(primitives[0], PipelineId::Circle);
         assert_eq!(primitives[5], PipelineId::Text);
         assert_eq!(primitives[6], PipelineId::Curve);
-        assert_eq!(primitives[7], PipelineId::TextureArray);
     }
 
     #[test]
