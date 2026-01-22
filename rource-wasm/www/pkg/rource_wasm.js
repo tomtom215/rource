@@ -1021,7 +1021,7 @@ export class Rource {
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
      *
      * Max zoom is 1000.0 to support deep zoom into massive repositories.
-     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.05) to prevent LOD culling all entities.
      * Disables auto-fit when user manually zooms.
      * @param {number} factor
      */
@@ -1033,7 +1033,7 @@ export class Rource {
      *
      * This provides intuitive zoom behavior where the point under the cursor
      * stays fixed during zoom operations.
-     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.05) to prevent LOD culling all entities.
      * Disables auto-fit when user manually zooms.
      * @param {number} screen_x
      * @param {number} screen_y
