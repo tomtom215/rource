@@ -213,6 +213,9 @@ pub struct WgpuRenderer {
     /// Instance buffer for lines.
     line_instances: InstanceBuffer,
 
+    /// Instance buffer for Catmull-Rom curves.
+    curve_instances: InstanceBuffer,
+
     /// Instance buffer for solid quads.
     quad_instances: InstanceBuffer,
 
@@ -546,6 +549,7 @@ impl WgpuRenderer {
         let circle_instances = InstanceBuffer::new(&device, 7, 1000, "circle_instances"); // 7 floats = 28 bytes
         let ring_instances = InstanceBuffer::new(&device, 8, 500, "ring_instances"); // 8 floats = 32 bytes
         let line_instances = InstanceBuffer::new(&device, 9, 1000, "line_instances"); // 9 floats = 36 bytes
+        let curve_instances = InstanceBuffer::new(&device, 14, 500, "curve_instances"); // 14 floats = 56 bytes
         let quad_instances = InstanceBuffer::new(&device, 8, 500, "quad_instances"); // 8 floats = 32 bytes
         let text_instances = InstanceBuffer::new(&device, 12, 2000, "text_instances"); // 12 floats = 48 bytes
 
@@ -576,6 +580,7 @@ impl WgpuRenderer {
             circle_instances,
             ring_instances,
             line_instances,
+            curve_instances,
             quad_instances,
             textured_quad_instances: HashMap::new(),
             text_instances,
@@ -1155,6 +1160,7 @@ impl WgpuRenderer {
             self.flush_circles_pass(&mut render_pass, format);
             self.flush_rings_pass(&mut render_pass, format);
             self.flush_lines_pass(&mut render_pass, format);
+            self.flush_curves_pass(&mut render_pass, format);
             self.flush_quads_pass(&mut render_pass, format);
             self.flush_textured_quads_pass(&mut render_pass, format);
             self.flush_text_pass(&mut render_pass, format);
@@ -1164,6 +1170,7 @@ impl WgpuRenderer {
         self.circle_instances.clear();
         self.ring_instances.clear();
         self.line_instances.clear();
+        self.curve_instances.clear();
         self.quad_instances.clear();
         self.text_instances.clear();
         self.clear_textured_quads();
@@ -1290,6 +1297,44 @@ impl WgpuRenderer {
         self.frame_stats
             .active_primitives
             .set(ActivePrimitives::LINES);
+    }
+
+    /// Flushes curve draw calls within a render pass.
+    fn flush_curves_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.curve_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Curve);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Curve, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.curve_strip.slice(..));
+        render_pass.set_vertex_buffer(1, self.curve_instances.buffer().slice(..));
+
+        let instance_count = self.curve_instances.instance_count() as u32;
+        render_pass.draw(0..buffers::CURVE_STRIP_VERTEX_COUNT, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.curve_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::CURVES);
     }
 
     /// Flushes solid quad draw calls within a render pass.
@@ -1670,9 +1715,6 @@ impl Renderer for WgpuRenderer {
     }
 
     fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color) {
-        /// Number of segments per span for Catmull-Rom interpolation.
-        const SEGMENTS_PER_SPAN: usize = 8;
-
         if points.len() < 2 {
             return;
         }
@@ -1683,37 +1725,32 @@ impl Renderer for WgpuRenderer {
             return;
         }
 
-        // Zero-allocation streaming spline interpolation
-        // Computes Catmull-Rom points on-the-fly and draws immediately
-        let mut prev_point = points[0];
-
+        // Use GPU curve tessellation for 3+ points
+        // Each span (from point i to i+1) becomes one curve instance
         for i in 0..points.len() - 1 {
-            let p0 = points[i.saturating_sub(1)];
-            let p1 = points[i];
-            let p2 = points[(i + 1).min(points.len() - 1)];
-            let p3 = points[(i + 2).min(points.len() - 1)];
+            let p0 = self.transform_point(points[i.saturating_sub(1)]);
+            let p1 = self.transform_point(points[i]);
+            let p2 = self.transform_point(points[(i + 1).min(points.len() - 1)]);
+            let p3 = self.transform_point(points[(i + 2).min(points.len() - 1)]);
 
-            for j in 1..=SEGMENTS_PER_SPAN {
-                let t = j as f32 / SEGMENTS_PER_SPAN as f32;
-                let t2 = t * t;
-                let t3 = t2 * t;
-
-                // Catmull-Rom coefficients
-                let x = 0.5
-                    * ((2.0 * p1.x)
-                        + (-p0.x + p2.x) * t
-                        + (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * t2
-                        + (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * t3);
-                let y = 0.5
-                    * ((2.0 * p1.y)
-                        + (-p0.y + p2.y) * t
-                        + (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * t2
-                        + (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * t3);
-
-                let curr_point = Vec2::new(x, y);
-                self.draw_line(prev_point, curr_point, width, color);
-                prev_point = curr_point;
-            }
+            // Curve instance data: p0(2) + p1(2) + p2(2) + p3(2) + width(1) + color(4) + segments(1)
+            // Note: segments field is included for potential future use but currently unused
+            self.curve_instances.push_raw(&[
+                p0.x,
+                p0.y,
+                p1.x,
+                p1.y,
+                p2.x,
+                p2.y,
+                p3.x,
+                p3.y,
+                width,
+                color.r,
+                color.g,
+                color.b,
+                color.a,
+                buffers::CURVE_SEGMENTS as f32, // segments as f32 for uniform packing
+            ]);
         }
     }
 

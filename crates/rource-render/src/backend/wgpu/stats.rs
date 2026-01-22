@@ -41,6 +41,8 @@ impl ActivePrimitives {
     pub const TEXTURED_QUADS: u8 = 1 << 4;
     /// Text glyphs are active.
     pub const TEXT: u8 = 1 << 5;
+    /// Curves are active.
+    pub const CURVES: u8 = 1 << 6;
 
     /// Creates an empty set with no active primitives.
     #[inline]
@@ -57,7 +59,8 @@ impl ActivePrimitives {
                 | Self::LINES
                 | Self::QUADS
                 | Self::TEXTURED_QUADS
-                | Self::TEXT,
+                | Self::TEXT
+                | Self::CURVES,
         }
     }
 
@@ -146,6 +149,9 @@ pub struct FrameStats {
     /// Number of line instances rendered.
     pub line_instances: u32,
 
+    /// Number of curve instances rendered.
+    pub curve_instances: u32,
+
     /// Number of solid quad instances rendered.
     pub quad_instances: u32,
 
@@ -215,6 +221,7 @@ impl FrameStats {
             circle_instances: 0,
             ring_instances: 0,
             line_instances: 0,
+            curve_instances: 0,
             quad_instances: 0,
             textured_quad_instances: 0,
             text_instances: 0,
@@ -539,7 +546,7 @@ mod tests {
         let active = ActivePrimitives::all();
         assert!(active.any());
         assert!(!active.is_empty());
-        assert_eq!(active.count(), 6);
+        assert_eq!(active.count(), 7);
     }
 
     #[test]
@@ -560,11 +567,11 @@ mod tests {
     #[test]
     fn test_active_primitives_clear() {
         let mut active = ActivePrimitives::all();
-        assert_eq!(active.count(), 6);
+        assert_eq!(active.count(), 7);
 
         active.clear(ActivePrimitives::CIRCLES);
         assert!(!active.is_set(ActivePrimitives::CIRCLES));
-        assert_eq!(active.count(), 5);
+        assert_eq!(active.count(), 6);
     }
 
     #[test]

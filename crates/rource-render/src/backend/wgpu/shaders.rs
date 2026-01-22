@@ -707,6 +707,144 @@ fn cs_integrate(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }
 "#;
 
+/// Catmull-Rom curve shader for instanced curve rendering.
+///
+/// This shader renders smooth curves using Catmull-Rom spline interpolation.
+/// Each instance represents a single span defined by 4 control points.
+/// The shader tessellates the curve into segments on the GPU, dramatically
+/// reducing the number of draw calls compared to drawing individual lines.
+///
+/// ## Instance Data Layout
+///
+/// | Field | Type | Description |
+/// |-------|------|-------------|
+/// | p0 | vec2<f32> | Control point before start |
+/// | p1 | vec2<f32> | Start point |
+/// | p2 | vec2<f32> | End point |
+/// | p3 | vec2<f32> | Control point after end |
+/// | width | f32 | Line width |
+/// | color | vec4<f32> | RGBA color |
+/// | segments | u32 | Number of tessellation segments |
+///
+/// ## Performance
+///
+/// For a spline with N control points:
+/// - Previous: (N-1) spans × 8 segments = 8(N-1) line instances
+/// - New: (N-1) curve instances (8x reduction in instance count)
+pub const CURVE_SHADER: &str = r#"
+// ============================================================================
+// Catmull-Rom Curve Shader
+// ============================================================================
+
+struct Uniforms {
+    resolution: vec2<f32>,
+    time: f32,
+    _padding: f32,
+};
+
+@group(0) @binding(0)
+var<uniform> uniforms: Uniforms;
+
+// Curve instance data
+struct CurveInstance {
+    @location(1) p0: vec2<f32>,        // Control point before start
+    @location(2) p1: vec2<f32>,        // Start point
+    @location(3) p2: vec2<f32>,        // End point
+    @location(4) p3: vec2<f32>,        // Control point after end
+    @location(5) width: f32,           // Line width
+    @location(6) color: vec4<f32>,     // RGBA color
+    @location(7) segments: u32,        // Number of tessellation segments
+};
+
+struct CurveVertexInput {
+    @location(0) position: vec2<f32>,  // Unit quad vertex
+};
+
+struct CurveVertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) local_pos: vec2<f32>,
+    @location(1) width: f32,
+    @location(2) color: vec4<f32>,
+};
+
+// Catmull-Rom spline interpolation
+fn catmull_rom(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p3: vec2<f32>, t: f32) -> vec2<f32> {
+    let t2 = t * t;
+    let t3 = t2 * t;
+
+    // Catmull-Rom basis matrix coefficients
+    let c0 = -0.5 * t3 + t2 - 0.5 * t;
+    let c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+    let c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+    let c3 = 0.5 * t3 - 0.5 * t2;
+
+    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+}
+
+// Catmull-Rom tangent (derivative)
+fn catmull_rom_tangent(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p3: vec2<f32>, t: f32) -> vec2<f32> {
+    let t2 = t * t;
+
+    // Derivative of Catmull-Rom basis
+    let c0 = -1.5 * t2 + 2.0 * t - 0.5;
+    let c1 = 4.5 * t2 - 5.0 * t;
+    let c2 = -4.5 * t2 + 4.0 * t + 0.5;
+    let c3 = 1.5 * t2 - t;
+
+    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+}
+
+@vertex
+fn vs_curve(
+    vertex: CurveVertexInput,
+    instance: CurveInstance,
+    @builtin(vertex_index) vertex_index: u32,
+    @builtin(instance_index) instance_index: u32
+) -> CurveVertexOutput {
+    var out: CurveVertexOutput;
+
+    // Determine which segment this vertex belongs to based on vertex position
+    // The quad's X position (0 to 1) maps to the curve parameter t
+    let t = vertex.position.x;
+
+    // Calculate position and tangent on the curve
+    let curve_pos = catmull_rom(instance.p0, instance.p1, instance.p2, instance.p3, t);
+    let tangent = catmull_rom_tangent(instance.p0, instance.p1, instance.p2, instance.p3, t);
+
+    // Normalize tangent and get perpendicular
+    let tangent_len = length(tangent);
+    let tangent_norm = select(vec2<f32>(1.0, 0.0), tangent / tangent_len, tangent_len > 0.0001);
+    let perp = vec2<f32>(-tangent_norm.y, tangent_norm.x);
+
+    // Expand perpendicular to line width with AA padding
+    let half_width = (instance.width * 0.5) + 1.0;
+    let world_pos = curve_pos + perp * vertex.position.y * half_width * 2.0;
+
+    // Convert to NDC
+    let ndc = (world_pos / uniforms.resolution) * 2.0 - 1.0;
+    out.clip_position = vec4<f32>(ndc.x, -ndc.y, 0.0, 1.0);
+
+    out.local_pos = vertex.position;
+    out.width = instance.width;
+    out.color = instance.color;
+
+    return out;
+}
+
+@fragment
+fn fs_curve(in: CurveVertexOutput) -> @location(0) vec4<f32> {
+    // Distance from curve centerline (perpendicular)
+    let perp_dist = abs(in.local_pos.y) * ((in.width * 0.5) + 1.0) * 2.0;
+    let half_width = in.width * 0.5;
+
+    // Anti-aliased edge
+    let aa_width = 1.0;
+    let alpha = 1.0 - smoothstep(half_width - aa_width, half_width + aa_width, perp_dist);
+
+    return vec4<f32>(in.color.rgb, in.color.a * alpha);
+}
+"#;
+
 /// Visibility culling compute shader.
 ///
 /// Filters instance data based on view bounds, outputting only visible instances
@@ -1130,10 +1268,36 @@ mod tests {
     }
 
     #[test]
+    fn test_curve_shader_exists() {
+        assert!(!CURVE_SHADER.is_empty());
+        assert!(CURVE_SHADER.contains("vs_curve"));
+        assert!(CURVE_SHADER.contains("fs_curve"));
+    }
+
+    #[test]
+    fn test_curve_shader_has_catmull_rom() {
+        assert!(CURVE_SHADER.contains("catmull_rom"));
+        assert!(CURVE_SHADER.contains("catmull_rom_tangent"));
+    }
+
+    #[test]
+    fn test_curve_shader_instance_data() {
+        // Verify curve instance contains all required fields
+        assert!(CURVE_SHADER.contains("p0: vec2<f32>"));
+        assert!(CURVE_SHADER.contains("p1: vec2<f32>"));
+        assert!(CURVE_SHADER.contains("p2: vec2<f32>"));
+        assert!(CURVE_SHADER.contains("p3: vec2<f32>"));
+        assert!(CURVE_SHADER.contains("width: f32"));
+        assert!(CURVE_SHADER.contains("color: vec4<f32>"));
+        assert!(CURVE_SHADER.contains("segments: u32"));
+    }
+
+    #[test]
     fn test_all_shaders_have_valid_wgsl_syntax() {
         // Basic syntax checks - these catch common typos
         let shaders = [
             PRIMITIVE_SHADER,
+            CURVE_SHADER,
             BLOOM_BRIGHT_SHADER,
             BLOOM_BLUR_SHADER,
             BLOOM_COMPOSITE_SHADER,

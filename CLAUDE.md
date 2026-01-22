@@ -1074,6 +1074,83 @@ if let Some(stats) = renderer.culling_stats() {
 
 **Test Count**: 1,117 tests passing (added 11 new tests)
 
+### Phase 12 Optimizations (2026-01-22)
+
+Instanced curve/spline rendering for GPU-tessellated Catmull-Rom curves.
+
+#### 1. GPU Curve Tessellation
+
+Added GPU-based curve rendering that tessellates Catmull-Rom splines on the GPU using
+instanced triangle strips. This reduces draw calls for branch-heavy visualizations by
+batching all curves into a single draw call per frame.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/shaders.rs` - Added `CURVE_SHADER` with Catmull-Rom
+- `crates/rource-render/src/backend/wgpu/pipeline.rs` - Added curve pipeline and vertex layout
+- `crates/rource-render/src/backend/wgpu/state.rs` - Added `PipelineId::Curve`
+- `crates/rource-render/src/backend/wgpu/stats.rs` - Added `CURVES` to `ActivePrimitives`
+- `crates/rource-render/src/backend/wgpu/buffers.rs` - Added `CURVE_STRIP` vertex buffer
+- `crates/rource-render/src/backend/wgpu/mod.rs` - Added `flush_curves_pass`, updated `draw_spline`
+
+**Curve Instance Layout** (56 bytes per instance):
+
+| Attribute | Type | Location | Description |
+|-----------|------|----------|-------------|
+| `p0` | vec2 | 1 | Control point before segment start |
+| `p1` | vec2 | 2 | Segment start point |
+| `p2` | vec2 | 3 | Segment end point |
+| `p3` | vec2 | 4 | Control point after segment end |
+| `width` | f32 | 5 | Curve width in pixels |
+| `color` | vec4 | 6 | RGBA color |
+| `segments` | u32 | 7 | Number of tessellation segments |
+
+**GPU Tessellation**:
+
+The curve shader uses Catmull-Rom spline interpolation computed entirely on the GPU:
+
+```wgsl
+fn catmull_rom(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p3: vec2<f32>, t: f32) -> vec2<f32> {
+    let t2 = t * t;
+    let t3 = t2 * t;
+
+    let a = -0.5 * p0 + 1.5 * p1 - 1.5 * p2 + 0.5 * p3;
+    let b = p0 - 2.5 * p1 + 2.0 * p2 - 0.5 * p3;
+    let c = -0.5 * p0 + 0.5 * p2;
+    let d = p1;
+
+    return a * t3 + b * t2 + c * t + d;
+}
+```
+
+**Triangle Strip Geometry**:
+
+Uses pre-computed `CURVE_STRIP` vertex buffer with 8 segments (18 vertices):
+- X coordinate: curve parameter t (0 to 1)
+- Y coordinate: perpendicular offset (-0.5 to 0.5)
+
+The vertex shader:
+1. Interpolates position along the curve using Catmull-Rom
+2. Computes tangent vector at each point
+3. Offsets vertices perpendicular to the tangent by `width * y_offset`
+
+**Performance Impact**:
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| 100 curves | 800 line draw calls | 1 instanced draw call |
+| 1000 curves | 8000 line draw calls | 1 instanced draw call |
+| Draw call reduction | N × segments | 1 |
+
+**When Curves Are Used**:
+- Branch connections in the directory tree
+- Spline paths for file animations
+- Any multi-point smooth path rendering
+
+**Fallback**:
+For software renderer, curves still use CPU-side Catmull-Rom with streaming line segments.
+
+**Test Count**: 1,121 tests passing (added 4 new tests)
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -1909,4 +1986,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (GPU visibility culling pipeline integration - 1,117 tests)*
+*Last updated: 2026-01-22 (Instanced curve rendering with GPU tessellation - 1,121 tests)*

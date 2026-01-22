@@ -76,6 +76,38 @@ pub const FULLSCREEN_QUAD: [f32; 8] = [
     1.0, 1.0, // Top-right
 ];
 
+/// Number of segments for curve tessellation.
+/// More segments = smoother curves but more vertices.
+pub const CURVE_SEGMENTS: usize = 8;
+
+/// Curve strip vertices for GPU curve tessellation.
+///
+/// Contains (`CURVE_SEGMENTS` + 1) * 2 vertices arranged as a triangle strip.
+/// X coordinate: 0 to 1 (curve parameter t)
+/// Y coordinate: -0.5 to 0.5 (perpendicular offset)
+pub const CURVE_STRIP: [f32; (CURVE_SEGMENTS + 1) * 4] = generate_curve_strip();
+
+/// Generates curve strip vertex data at compile time.
+const fn generate_curve_strip() -> [f32; (CURVE_SEGMENTS + 1) * 4] {
+    let mut vertices = [0.0f32; (CURVE_SEGMENTS + 1) * 4];
+    let mut i = 0;
+    while i <= CURVE_SEGMENTS {
+        let t = i as f32 / CURVE_SEGMENTS as f32;
+        let idx = i * 4;
+        // Bottom vertex (y = -0.5)
+        vertices[idx] = t;
+        vertices[idx + 1] = -0.5;
+        // Top vertex (y = 0.5)
+        vertices[idx + 2] = t;
+        vertices[idx + 3] = 0.5;
+        i += 1;
+    }
+    vertices
+}
+
+/// Number of vertices in the curve strip.
+pub const CURVE_STRIP_VERTEX_COUNT: u32 = ((CURVE_SEGMENTS + 1) * 2) as u32;
+
 /// Minimum capacity threshold - buffers won't shrink below this.
 const MIN_BUFFER_CAPACITY: usize = 100;
 
@@ -498,6 +530,9 @@ pub struct VertexBuffers {
 
     /// Fullscreen quad for post-processing (-1 to 1 clip space).
     pub fullscreen_quad: wgpu::Buffer,
+
+    /// Curve strip for GPU curve tessellation.
+    pub curve_strip: wgpu::Buffer,
 }
 
 impl VertexBuffers {
@@ -526,6 +561,11 @@ impl VertexBuffers {
             fullscreen_quad: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("fullscreen_quad_vertices"),
                 contents: bytemuck::cast_slice(&FULLSCREEN_QUAD),
+                usage: wgpu::BufferUsages::VERTEX,
+            }),
+            curve_strip: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("curve_strip_vertices"),
+                contents: bytemuck::cast_slice(&CURVE_STRIP),
                 usage: wgpu::BufferUsages::VERTEX,
             }),
         }
