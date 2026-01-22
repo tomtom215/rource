@@ -714,6 +714,52 @@ Completed the integration of the wgpu GPU bloom post-processing pipeline:
 - Shadow-only renders when only shadow is enabled
 - Direct rendering when no effects are enabled
 
+#### 6. Bind Group Caching for Bloom/Shadow (2026-01-22)
+
+Eliminated per-frame bind group allocations in wgpu bloom and shadow pipelines.
+
+**Problem**: The `apply()` methods were creating bind groups on every frame call,
+resulting in ~8-13 allocations per frame (480-780 allocations/second at 60 FPS).
+
+**Solution**: Cache bind groups in `ensure_size()` when render targets are created,
+reuse them in `apply()`.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/bloom.rs` - Added `CachedBindGroups` struct
+- `crates/rource-render/src/backend/wgpu/shadow.rs` - Added `CachedShadowBindGroups` struct
+
+**Bloom Pipeline Cached Bind Groups** (7 total):
+| Bind Group | References |
+|------------|------------|
+| `bright_uniform_bg` | `bright_uniforms` buffer |
+| `blur_uniform_bg` | `blur_uniforms` buffer |
+| `composite_uniform_bg` | `composite_uniforms` buffer |
+| `scene_texture_bg` | `scene_target` texture view |
+| `bloom_a_texture_bg` | `bloom_target_a` texture view |
+| `bloom_b_texture_bg` | `bloom_target_b` texture view |
+| `bloom_final_texture_bg` | `bloom_target_a` (for composite) |
+
+**Shadow Pipeline Cached Bind Groups** (5 total):
+| Bind Group | References |
+|------------|------------|
+| `blur_uniform_bg` | `blur_uniforms` buffer |
+| `composite_uniform_bg` | `composite_uniforms` buffer |
+| `shadow_texture_bg` | `shadow_target` texture view |
+| `blur_texture_bg` | `blur_target` texture view |
+| `shadow_final_texture_bg` | `shadow_target` (for composite) |
+
+**Note**: Shadow's `scene_texture_bg` cannot be cached because `scene_view` is passed
+as a parameter to `apply()` and may vary between calls.
+
+**Performance Impact**:
+- Bloom: ~8 allocations/frame eliminated → 0
+- Shadow: ~5 allocations/frame eliminated → 1 (scene_texture_bg)
+- At 60 FPS: **780 allocations/second → 60 allocations/second** (92% reduction)
+
+**When Bind Groups Are Recreated**:
+- Viewport resize (via `ensure_size()`)
+- First frame after initialization
+
 **Test Count**: 1,094 tests passing
 
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
@@ -1551,4 +1597,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (wgpu bloom pipeline wiring complete - 1,094 tests)*
+*Last updated: 2026-01-22 (wgpu bind group caching for bloom/shadow - 1,094 tests)*

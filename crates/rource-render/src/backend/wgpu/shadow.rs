@@ -120,6 +120,36 @@ struct ShadowBlurUniforms {
     resolution: [f32; 2],
 }
 
+/// Cached bind groups for shadow pipeline to avoid per-frame allocations.
+///
+/// These bind groups reference GPU resources (buffers, textures, samplers) that
+/// persist across frames. By caching them, we eliminate ~5 allocations per frame.
+///
+/// Note: `scene_texture_bg` is NOT cached because it depends on the `scene_view`
+/// parameter passed to `apply()`, which may vary between calls.
+///
+/// Bind groups are recreated when:
+/// - Render targets are resized (viewport change)
+/// - Pipeline is first initialized
+#[derive(Debug)]
+#[allow(clippy::struct_field_names)] // All fields are bind groups, `_bg` suffix is intentional
+struct CachedShadowBindGroups {
+    /// Blur pass uniform bind group (references `blur_uniforms` buffer).
+    blur_uniform_bg: wgpu::BindGroup,
+
+    /// Composite pass uniform bind group (references `composite_uniforms` buffer).
+    composite_uniform_bg: wgpu::BindGroup,
+
+    /// Shadow target texture bind group (references `shadow_target` texture view).
+    shadow_texture_bg: wgpu::BindGroup,
+
+    /// Blur target texture bind group (references `blur_target` texture view).
+    blur_texture_bg: wgpu::BindGroup,
+
+    /// Final shadow texture bind group for composite (references `shadow_target`).
+    shadow_final_texture_bg: wgpu::BindGroup,
+}
+
 /// GPU shadow effect pipeline.
 #[derive(Debug)]
 pub struct ShadowPipeline {
@@ -170,6 +200,11 @@ pub struct ShadowPipeline {
 
     /// Whether the pipeline is initialized.
     initialized: bool,
+
+    /// Cached bind groups to avoid per-frame allocations.
+    /// Created in `ensure_size()` when render targets are allocated.
+    /// Note: `scene_texture_bg` is NOT cached (depends on `apply()` parameter).
+    cached_bind_groups: Option<CachedShadowBindGroups>,
 }
 
 impl ShadowPipeline {
@@ -305,6 +340,7 @@ impl ShadowPipeline {
             cached_size: (0, 0),
             surface_format,
             initialized: true,
+            cached_bind_groups: None,
         }
     }
 
@@ -315,6 +351,9 @@ impl ShadowPipeline {
     }
 
     /// Ensures render targets are sized correctly.
+    ///
+    /// This method also creates and caches bind groups when render targets are
+    /// (re)allocated, eliminating per-frame bind group creation overhead.
     pub fn ensure_size(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         if !self.config.enabled {
             return;
@@ -345,17 +384,114 @@ impl ShadowPipeline {
             self.surface_format,
             "shadow_blur_target",
         ));
+
+        // Cache bind groups now that render targets exist
+        // This eliminates ~5 bind group allocations per frame
+        // Note: `scene_texture_bg` is NOT cached (depends on `apply()` parameter)
+        self.create_cached_bind_groups(device);
     }
 
-    /// Applies the shadow effect.
+    /// Creates and caches bind groups used in the shadow pipeline.
+    ///
+    /// Bind groups reference GPU resources (uniform buffers, texture views, samplers)
+    /// that persist across frames. By caching them, we avoid per-frame allocations.
+    ///
+    /// Note: `scene_texture_bg` cannot be cached because it depends on the `scene_view`
+    /// parameter passed to `apply()`, which may vary between calls.
+    fn create_cached_bind_groups(&mut self, device: &wgpu::Device) {
+        let shadow_target = self.shadow_target.as_ref().expect("shadow_target must exist");
+        let blur_target = self.blur_target.as_ref().expect("blur_target must exist");
+
+        // Uniform bind groups - reference buffers updated via queue.write_buffer()
+        let blur_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("shadow_blur_uniform_bg_cached"),
+            layout: &self.uniform_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.blur_uniforms.as_entire_binding(),
+            }],
+        });
+
+        let composite_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("shadow_composite_uniform_bg_cached"),
+            layout: &self.uniform_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.composite_uniforms.as_entire_binding(),
+            }],
+        });
+
+        // Texture bind groups - reference texture views that change when targets resize
+        let shadow_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("shadow_texture_bg_cached"),
+            layout: &self.texture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(shadow_target.view()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+
+        let blur_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("shadow_blur_texture_bg_cached"),
+            layout: &self.texture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(blur_target.view()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+
+        // Final shadow texture for composite pass (same as shadow_target)
+        let shadow_final_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("shadow_final_texture_bg_cached"),
+            layout: &self.composite_texture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(shadow_target.view()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+
+        self.cached_bind_groups = Some(CachedShadowBindGroups {
+            blur_uniform_bg,
+            composite_uniform_bg,
+            shadow_texture_bg,
+            blur_texture_bg,
+            shadow_final_texture_bg,
+        });
+    }
+
+    /// Applies the shadow effect using cached bind groups where possible.
     ///
     /// # Arguments
     ///
-    /// * `device` - wgpu device
-    /// * `queue` - wgpu queue
+    /// * `device` - wgpu device (used only for `scene_texture_bg` which cannot be cached)
+    /// * `queue` - wgpu queue (for uniform buffer updates)
     /// * `encoder` - Command encoder
     /// * `scene_view` - Scene texture view (from bloom pipeline or direct)
     /// * `output_view` - Output view (surface)
+    ///
+    /// # Performance
+    ///
+    /// This method uses bind groups cached in `ensure_size()`, eliminating ~5
+    /// bind group allocations per frame. Only `scene_texture_bg` is created
+    /// per-call because it depends on the `scene_view` parameter.
     pub fn apply(
         &self,
         device: &wgpu::Device,
@@ -368,6 +504,12 @@ impl ShadowPipeline {
             return;
         }
 
+        // Get cached bind groups - they must exist if is_active() returned true
+        let cached = self
+            .cached_bind_groups
+            .as_ref()
+            .expect("cached_bind_groups must exist when shadow is active");
+
         let shadow_target = self.shadow_target.as_ref().unwrap();
         let blur_target = self.blur_target.as_ref().unwrap();
         let shadow_dims = shadow_target.dimensions();
@@ -376,7 +518,7 @@ impl ShadowPipeline {
         let offset_x = self.config.offset_x / self.cached_size.0 as f32;
         let offset_y = self.config.offset_y / self.cached_size.1 as f32;
 
-        // Update composite uniforms
+        // Update uniform buffer data (cheap GPU-side copy, no allocation)
         queue.write_buffer(
             &self.composite_uniforms,
             0,
@@ -388,7 +530,8 @@ impl ShadowPipeline {
             }]),
         );
 
-        // Create bind groups
+        // scene_texture_bg cannot be cached because scene_view is a parameter
+        // that may vary between calls (different callers, different sources)
         let scene_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("shadow_scene_texture_bg"),
             layout: &self.texture_layout,
@@ -405,7 +548,7 @@ impl ShadowPipeline {
         });
 
         // =====================================================================
-        // Pass 1: Extract silhouette (alpha channel)
+        // Pass 1: Extract silhouette (alpha channel from scene)
         // =====================================================================
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -430,7 +573,7 @@ impl ShadowPipeline {
         }
 
         // =====================================================================
-        // Pass 2: Optional blur
+        // Pass 2: Optional blur (ping-pong between shadow and blur targets)
         // =====================================================================
         if self.config.blur_passes > 0 {
             for _ in 0..self.config.blur_passes {
@@ -444,30 +587,6 @@ impl ShadowPipeline {
                             resolution: [shadow_dims.0 as f32, shadow_dims.1 as f32],
                         }]),
                     );
-
-                    let blur_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("shadow_blur_h_uniform_bg"),
-                        layout: &self.uniform_layout,
-                        entries: &[wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: self.blur_uniforms.as_entire_binding(),
-                        }],
-                    });
-
-                    let shadow_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("shadow_texture_bg"),
-                        layout: &self.texture_layout,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: wgpu::BindingResource::TextureView(shadow_target.view()),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 1,
-                                resource: wgpu::BindingResource::Sampler(&self.sampler),
-                            },
-                        ],
-                    });
 
                     let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("shadow_blur_h_pass"),
@@ -485,8 +604,8 @@ impl ShadowPipeline {
                     });
 
                     render_pass.set_pipeline(&self.blur_pipeline);
-                    render_pass.set_bind_group(0, &blur_uniform_bg, &[]);
-                    render_pass.set_bind_group(1, &shadow_texture_bg, &[]);
+                    render_pass.set_bind_group(0, &cached.blur_uniform_bg, &[]);
+                    render_pass.set_bind_group(1, &cached.shadow_texture_bg, &[]);
                     render_pass.set_vertex_buffer(0, self.fullscreen_quad.slice(..));
                     render_pass.draw(0..4, 0..1);
                 }
@@ -501,30 +620,6 @@ impl ShadowPipeline {
                             resolution: [shadow_dims.0 as f32, shadow_dims.1 as f32],
                         }]),
                     );
-
-                    let blur_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("shadow_blur_v_uniform_bg"),
-                        layout: &self.uniform_layout,
-                        entries: &[wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: self.blur_uniforms.as_entire_binding(),
-                        }],
-                    });
-
-                    let blur_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("blur_texture_bg"),
-                        layout: &self.texture_layout,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: wgpu::BindingResource::TextureView(blur_target.view()),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 1,
-                                resource: wgpu::BindingResource::Sampler(&self.sampler),
-                            },
-                        ],
-                    });
 
                     let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("shadow_blur_v_pass"),
@@ -542,43 +637,18 @@ impl ShadowPipeline {
                     });
 
                     render_pass.set_pipeline(&self.blur_pipeline);
-                    render_pass.set_bind_group(0, &blur_uniform_bg, &[]);
-                    render_pass.set_bind_group(1, &blur_texture_bg, &[]);
+                    render_pass.set_bind_group(0, &cached.blur_uniform_bg, &[]);
+                    render_pass.set_bind_group(1, &cached.blur_texture_bg, &[]);
                     render_pass.set_vertex_buffer(0, self.fullscreen_quad.slice(..));
                     render_pass.draw(0..4, 0..1);
                 }
             }
         }
-        let final_shadow_view = shadow_target.view();
 
         // =====================================================================
         // Pass 3: Composite shadow with scene
         // =====================================================================
         {
-            let composite_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("shadow_composite_uniform_bg"),
-                layout: &self.uniform_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.composite_uniforms.as_entire_binding(),
-                }],
-            });
-
-            let shadow_final_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("shadow_final_texture_bg"),
-                layout: &self.composite_texture_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(final_shadow_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.sampler),
-                    },
-                ],
-            });
-
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow_composite_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -595,9 +665,9 @@ impl ShadowPipeline {
             });
 
             render_pass.set_pipeline(&self.composite_pipeline);
-            render_pass.set_bind_group(0, &composite_uniform_bg, &[]);
+            render_pass.set_bind_group(0, &cached.composite_uniform_bg, &[]);
             render_pass.set_bind_group(1, &scene_texture_bg, &[]);
-            render_pass.set_bind_group(2, &shadow_final_texture_bg, &[]);
+            render_pass.set_bind_group(2, &cached.shadow_final_texture_bg, &[]);
             render_pass.set_vertex_buffer(0, self.fullscreen_quad.slice(..));
             render_pass.draw(0..4, 0..1);
         }
