@@ -106,7 +106,7 @@ use metrics::{PerformanceMetrics, RenderStats};
 use playback::{apply_vcs_commit, calculate_seconds_per_commit, prewarm_scene, PlaybackState};
 use render_phases::{
     render_actions, render_directories, render_directory_labels, render_file_labels, render_files,
-    render_user_labels, render_users, RenderContext,
+    render_user_labels, render_users, RenderContext, AUTO_FIT_MIN_ZOOM,
 };
 
 // ============================================================================
@@ -557,7 +557,9 @@ impl Rource {
 
                 let zoom_x = screen_width / padded_bounds.width();
                 let zoom_y = screen_height / padded_bounds.height();
-                let zoom = zoom_x.min(zoom_y).clamp(0.01, 1000.0);
+                // Use AUTO_FIT_MIN_ZOOM to prevent zooming out so far that
+                // LOD culling removes all entities from the visualization
+                let zoom = zoom_x.min(zoom_y).clamp(AUTO_FIT_MIN_ZOOM, 1000.0);
 
                 self.camera.jump_to(padded_bounds.center());
                 self.camera.set_zoom(zoom);
@@ -585,9 +587,11 @@ impl Rource {
         let screen_height = self.backend.height() as f32;
 
         // Calculate the zoom needed to fit all content
+        // Use AUTO_FIT_MIN_ZOOM to prevent zooming out so far that
+        // LOD culling removes all entities from the visualization
         let zoom_x = screen_width / padded_bounds.width();
         let zoom_y = screen_height / padded_bounds.height();
-        let target_zoom = zoom_x.min(zoom_y).clamp(0.01, 1000.0);
+        let target_zoom = zoom_x.min(zoom_y).clamp(AUTO_FIT_MIN_ZOOM, 1000.0);
 
         let current_zoom = self.camera.zoom();
 

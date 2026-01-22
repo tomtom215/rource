@@ -51,7 +51,13 @@ use crate::animation::{Easing, Tween};
 pub const DEFAULT_ZOOM: f32 = 1.0;
 
 /// Minimum zoom level (zoomed out).
-pub const MIN_ZOOM: f32 = 0.01;
+///
+/// Set to 0.03 to ensure entities remain visible above LOD thresholds:
+/// - Files: `world_radius`=5.0, LOD=0.1 → `min_zoom` = 0.1/5.0 = 0.02
+/// - Users: `world_radius`=15.0, LOD=0.3 → `min_zoom` = 0.3/15.0 = 0.02
+///
+/// Using 0.03 provides a comfortable margin above the thresholds.
+pub const MIN_ZOOM: f32 = 0.03;
 
 /// Maximum zoom level (zoomed in).
 pub const MAX_ZOOM: f32 = 10.0;
