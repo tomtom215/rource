@@ -40,7 +40,7 @@ This project was developed with AI-assisted programming using [Claude](https://w
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 1000+ tests | - |
+| **Test Coverage** | 1,094 tests | - |
 | **Rendering** | CPU + WebGL2 + wgpu | OpenGL only |
 
 ### Performance Highlights
@@ -59,7 +59,10 @@ rource/
 │   ├── rource-core/    261 tests   Scene graph, physics, camera
 │   └── rource-render/  310 tests   Software + WebGL2 + wgpu rendering
 ├── rource-cli/          95 tests   Native application (winit + softbuffer)
-└── rource-wasm/         72 tests   WebAssembly (browser)
+└── rource-wasm/         73 tests   WebAssembly (browser)
+                       + 61 integration/doc tests
+                      ─────
+                      1,094 total
 ```
 
 ## Installation

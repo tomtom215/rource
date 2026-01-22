@@ -55,12 +55,13 @@ This script will:
 ```
 rource/
 ├── crates/
-│   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [141 tests]
-│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [130 tests]
-│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [236 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, bloom, shadows, fonts) [108 tests]
-├── rource-cli/           # Native CLI application (winit + softbuffer) [41 tests]
-└── rource-wasm/          # WebAssembly application [3 tests]
+│   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [144 tests]
+│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [150 tests]
+│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [261 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [310 tests]
+├── rource-cli/           # Native CLI application (winit + softbuffer) [95 tests]
+└── rource-wasm/          # WebAssembly application [73 tests]
+                          # Plus 61 integration/doc tests = 1,094 total
 ```
 
 ### Rendering Backends
