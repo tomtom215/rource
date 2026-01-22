@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769106578019,
+  "lastUpdate": 1769108038147,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -350,6 +350,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 970589,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1856d07bd8708074341ff4e6987d8b4ad343144d",
+          "message": "Merge pull request #119 from tomtom215/claude/fix-wasm-autozoom-DA1xJ\n\nDisable auto-fit by default to prevent entity visibility issues",
+          "timestamp": "2026-01-22T19:50:19+01:00",
+          "tree_id": "418501d16cb9e14e66d1679b029a2c3ce50fc6b0",
+          "url": "https://github.com/tomtom215/rource/commit/1856d07bd8708074341ff4e6987d8b4ad343144d"
+        },
+        "date": 1769108037869,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3872960,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2509064,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 970583,
             "unit": "bytes"
           }
         ]
