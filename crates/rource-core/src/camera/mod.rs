@@ -52,12 +52,13 @@ pub const DEFAULT_ZOOM: f32 = 1.0;
 
 /// Minimum zoom level (zoomed out).
 ///
-/// Set to 0.03 to ensure entities remain visible above LOD thresholds:
+/// Set to 0.05 to ensure entities remain visible above LOD thresholds:
 /// - Files: `world_radius`=5.0, LOD=0.1 → `min_zoom` = 0.1/5.0 = 0.02
 /// - Users: `world_radius`=15.0, LOD=0.3 → `min_zoom` = 0.3/15.0 = 0.02
 ///
-/// Using 0.03 provides a comfortable margin above the thresholds.
-pub const MIN_ZOOM: f32 = 0.03;
+/// Using 0.05 provides a comfortable margin (150% above threshold at minimum zoom).
+/// At 0.05: file `screen_radius` = 5.0 * 0.05 = 0.25 > 0.1 threshold
+pub const MIN_ZOOM: f32 = 0.05;
 
 /// Maximum zoom level (zoomed in).
 pub const MAX_ZOOM: f32 = 10.0;

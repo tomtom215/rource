@@ -112,4 +112,75 @@ impl Rource {
     pub fn get_total_users(&self) -> usize {
         self.scene.user_count()
     }
+
+    /// Returns debug information about zoom and entity visibility.
+    ///
+    /// Returns JSON with zoom level, entity radii, and screen radii to help
+    /// diagnose visibility issues.
+    #[wasm_bindgen(js_name = getZoomDebugInfo)]
+    pub fn get_zoom_debug_info(&self) -> String {
+        use crate::render_phases::{LOD_MIN_DIR_RADIUS, LOD_MIN_FILE_RADIUS, LOD_MIN_USER_RADIUS};
+
+        let zoom = self.camera.zoom();
+
+        // Get some sample entity radii
+        let mut file_radii: Vec<f32> = self
+            .scene
+            .files()
+            .values()
+            .take(10)
+            .map(rource_core::scene::FileNode::radius)
+            .collect();
+        file_radii.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut dir_radii: Vec<f32> = self
+            .scene
+            .directories()
+            .iter()
+            .take(10)
+            .map(rource_core::scene::DirNode::radius)
+            .collect();
+        dir_radii.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut user_radii: Vec<f32> = self
+            .scene
+            .users()
+            .values()
+            .take(10)
+            .map(rource_core::scene::User::radius)
+            .collect();
+        user_radii.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Calculate minimum screen radii
+        let min_file_radius = file_radii.first().copied().unwrap_or(5.0);
+        let min_dir_radius = dir_radii.first().copied().unwrap_or(5.0);
+        let min_user_radius = user_radii.first().copied().unwrap_or(15.0);
+
+        let min_file_screen_radius = min_file_radius * zoom;
+        let min_dir_screen_radius = min_dir_radius * zoom;
+        let min_user_screen_radius = min_user_radius * zoom;
+
+        // Check which entity types would pass LOD
+        let files_pass_lod = min_file_screen_radius >= LOD_MIN_FILE_RADIUS;
+        let dirs_pass_lod = min_dir_screen_radius >= LOD_MIN_DIR_RADIUS;
+        let users_pass_lod = min_user_screen_radius >= LOD_MIN_USER_RADIUS;
+
+        format!(
+            r#"{{"zoom":{:.6},"minZoomLimit":{:.6},"lodThresholds":{{"file":{},"dir":{},"user":{}}},"minEntityRadii":{{"file":{},"dir":{},"user":{}}},"minScreenRadii":{{"file":{:.4},"dir":{:.4},"user":{:.4}}},"passLod":{{"file":{},"dir":{},"user":{}}}}}"#,
+            zoom,
+            crate::render_phases::AUTO_FIT_MIN_ZOOM,
+            LOD_MIN_FILE_RADIUS,
+            LOD_MIN_DIR_RADIUS,
+            LOD_MIN_USER_RADIUS,
+            min_file_radius,
+            min_dir_radius,
+            min_user_radius,
+            min_file_screen_radius,
+            min_dir_screen_radius,
+            min_user_screen_radius,
+            files_pass_lod,
+            dirs_pass_lod,
+            users_pass_lod,
+        )
+    }
 }

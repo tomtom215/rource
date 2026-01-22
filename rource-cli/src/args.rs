@@ -860,7 +860,7 @@ LIMIT SETTINGS
 
 CAMERA SETTINGS
   ROURCE_CAMERA_MODE        Camera mode: overview, track, follow (default: overview)
-  ROURCE_MIN_ZOOM           Minimum zoom level (default: 0.01)
+  ROURCE_MIN_ZOOM           Minimum zoom level (default: 0.05, prevents LOD culling)
   ROURCE_MAX_ZOOM           Maximum zoom level (default: 10.0)
   ROURCE_CAMERA_SMOOTHNESS  Camera smoothness 0.0-1.0 (default: 0.85)
   ROURCE_CAMERA_PADDING     Padding when auto-fitting (default: 100.0)

@@ -281,6 +281,13 @@ export class Rource {
      */
     getZoom(): number;
     /**
+     * Returns debug information about zoom and entity visibility.
+     *
+     * Returns JSON with zoom level, entity radii, and screen radii to help
+     * diagnose visibility issues.
+     */
+    getZoomDebugInfo(): string;
+    /**
      * Returns whether auto-fit mode is currently enabled.
      */
     isAutoFit(): boolean;
@@ -543,7 +550,7 @@ export class Rource {
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
      *
      * Max zoom is 1000.0 to support deep zoom into massive repositories.
-     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.05) to prevent LOD culling all entities.
      * Disables auto-fit when user manually zooms.
      */
     zoom(factor: number): void;
@@ -552,7 +559,7 @@ export class Rource {
      *
      * This provides intuitive zoom behavior where the point under the cursor
      * stays fixed during zoom operations.
-     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.05) to prevent LOD culling all entities.
      * Disables auto-fit when user manually zooms.
      */
     zoomToward(screen_x: number, screen_y: number, factor: number): void;
@@ -606,6 +613,7 @@ export interface InitOutput {
     readonly rource_getVisibleFiles: (a: number) => number;
     readonly rource_getVisibleUsers: (a: number) => number;
     readonly rource_getZoom: (a: number) => number;
+    readonly rource_getZoomDebugInfo: (a: number, b: number) => void;
     readonly rource_isAutoFit: (a: number) => number;
     readonly rource_isContextLost: (a: number) => number;
     readonly rource_isGPUAccelerated: (a: number) => number;
@@ -646,9 +654,9 @@ export interface InitOutput {
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_6182: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6237: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6183: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_6192: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6247: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6193: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

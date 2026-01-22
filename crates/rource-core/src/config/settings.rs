@@ -201,7 +201,7 @@ impl Default for CameraSettings {
     fn default() -> Self {
         Self {
             mode: CameraModeSetting::Overview,
-            min_zoom: 0.01,
+            min_zoom: 0.05, // Matches AUTO_FIT_MIN_ZOOM to prevent LOD culling all entities
             max_zoom: 10.0,
             smoothness: 0.85,
             padding: 100.0,

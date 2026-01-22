@@ -71,9 +71,10 @@ pub const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.01;
 /// - Files: `world_radius`=5.0, LOD=0.1 → `min_zoom` = 0.1/5.0 = 0.02
 /// - Users: `world_radius`=15.0, LOD=0.3 → `min_zoom` = 0.3/15.0 = 0.02
 ///
-/// We use 0.03 to provide a comfortable margin above the thresholds,
-/// ensuring entities remain meaningfully visible (not just barely above threshold).
-pub const AUTO_FIT_MIN_ZOOM: f32 = 0.03;
+/// We use 0.05 to provide a comfortable margin above the thresholds,
+/// ensuring entities remain visible even at extreme zoom-out.
+/// At 0.05: file `screen_radius` = 5.0 * 0.05 = 0.25 > 0.1 threshold (150% margin)
+pub const AUTO_FIT_MIN_ZOOM: f32 = 0.05;
 
 /// Context shared between rendering phases.
 ///

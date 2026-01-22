@@ -576,6 +576,29 @@ export class Rource {
         return ret;
     }
     /**
+     * Returns debug information about zoom and entity visibility.
+     *
+     * Returns JSON with zoom level, entity radii, and screen radii to help
+     * diagnose visibility issues.
+     * @returns {string}
+     */
+    getZoomDebugInfo() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getZoomDebugInfo(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Returns whether auto-fit mode is currently enabled.
      * @returns {boolean}
      */
@@ -998,7 +1021,7 @@ export class Rource {
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
      *
      * Max zoom is 1000.0 to support deep zoom into massive repositories.
-     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.05) to prevent LOD culling all entities.
      * Disables auto-fit when user manually zooms.
      * @param {number} factor
      */
@@ -1010,7 +1033,7 @@ export class Rource {
      *
      * This provides intuitive zoom behavior where the point under the cursor
      * stays fixed during zoom operations.
-     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.05) to prevent LOD culling all entities.
      * Disables auto-fit when user manually zooms.
      * @param {number} screen_x
      * @param {number} screen_y
@@ -1883,7 +1906,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6237(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6247(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2807,7 +2830,7 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { dtor_idx: 1778, function: Function { arguments: [Externref], shim_idx: 1779, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6182, __wasm_bindgen_func_elem_6183);
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6192, __wasm_bindgen_func_elem_6193);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -2869,12 +2892,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_6183(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_6183(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_6193(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_6193(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6237(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6237(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6247(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6247(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

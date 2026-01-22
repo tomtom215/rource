@@ -23,7 +23,7 @@ impl Rource {
     /// Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
     ///
     /// Max zoom is 1000.0 to support deep zoom into massive repositories.
-    /// Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+    /// Min zoom is `AUTO_FIT_MIN_ZOOM` (0.05) to prevent LOD culling all entities.
     /// Disables auto-fit when user manually zooms.
     pub fn zoom(&mut self, factor: f32) {
         self.auto_fit = false; // User is taking manual control
@@ -35,7 +35,7 @@ impl Rource {
     ///
     /// This provides intuitive zoom behavior where the point under the cursor
     /// stays fixed during zoom operations.
-    /// Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+    /// Min zoom is `AUTO_FIT_MIN_ZOOM` (0.05) to prevent LOD culling all entities.
     /// Disables auto-fit when user manually zooms.
     #[wasm_bindgen(js_name = zoomToward)]
     pub fn zoom_toward(&mut self, screen_x: f32, screen_y: f32, factor: f32) {
@@ -43,7 +43,7 @@ impl Rource {
         let screen_point = Vec2::new(screen_x, screen_y);
         let world_before = self.camera.screen_to_world(screen_point);
 
-        // Use AUTO_FIT_MIN_ZOOM (0.03) as minimum to prevent LOD culling all entities
+        // Use AUTO_FIT_MIN_ZOOM (0.05) as minimum to prevent LOD culling all entities
         let new_zoom = (self.camera.zoom() * factor).clamp(AUTO_FIT_MIN_ZOOM, 1000.0);
         self.camera.set_zoom(new_zoom);
 
@@ -76,7 +76,7 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
-        // Use AUTO_FIT_MIN_ZOOM (0.03) as minimum to prevent LOD culling all entities
+        // Use AUTO_FIT_MIN_ZOOM (0.05) as minimum to prevent LOD culling all entities
         self.camera.set_zoom_limits(AUTO_FIT_MIN_ZOOM, 1000.0);
         self.settings.display.width = width;
         self.settings.display.height = height;
