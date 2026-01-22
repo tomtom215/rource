@@ -1051,6 +1051,7 @@ impl Scene {
     /// // Each frame - zero allocations after initial capacity
     /// scene.visible_entities_into(&visible_bounds, &mut dirs_buf, &mut files_buf, &mut users_buf);
     /// ```
+    #[inline]
     pub fn visible_entities_into(
         &self,
         bounds: &Bounds,

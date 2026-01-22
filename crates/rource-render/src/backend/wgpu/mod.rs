@@ -1227,10 +1227,11 @@ impl Renderer for WgpuRenderer {
                 .create_view(&wgpu::TextureViewDescriptor::default());
 
             if self.bloom_enabled || self.shadow_enabled {
-                // Apply post-processing pipeline
-                // (Implementation would go here, involving bloom/shadow passes)
-                // For now, just blit scene to surface
-                // TODO: Implement full post-processing chain
+                // Note: wgpu post-processing (bloom/shadow) is not yet wired in.
+                // The BloomPipeline and ShadowPipeline exist with full implementations
+                // but need integration here. For now, scene renders directly to surface.
+                // See WebGL2 backend for reference implementation.
+                // Tracking: This is a known limitation for wgpu backend.
             }
         }
 
@@ -1275,6 +1276,7 @@ impl Renderer for WgpuRenderer {
         // Render pass is dropped, executing the clear
     }
 
+    #[inline]
     fn draw_circle(&mut self, center: Vec2, radius: f32, width: f32, color: Color) {
         let center = self.transform_point(center);
 
@@ -1284,6 +1286,7 @@ impl Renderer for WgpuRenderer {
         ]);
     }
 
+    #[inline]
     fn draw_disc(&mut self, center: Vec2, radius: f32, color: Color) {
         let center = self.transform_point(center);
 
@@ -1293,6 +1296,7 @@ impl Renderer for WgpuRenderer {
         ]);
     }
 
+    #[inline]
     fn draw_line(&mut self, start: Vec2, end: Vec2, width: f32, color: Color) {
         let start = self.transform_point(start);
         let end = self.transform_point(end);
