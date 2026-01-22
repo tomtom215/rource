@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769114451146,
+  "lastUpdate": 1769115705944,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -467,6 +467,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 974246,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8ff41315a4110acf23eb0163e732eeede989bf0a",
+          "message": "Merge pull request #122 from tomtom215/claude/fix-entity-zoom-bug-LsENt\n\nAdd curve instances upload to WgpuRenderer frame update",
+          "timestamp": "2026-01-22T21:58:00+01:00",
+          "tree_id": "361e9004b9ced1f4dfca0a688c601e059f399897",
+          "url": "https://github.com/tomtom215/rource/commit/8ff41315a4110acf23eb0163e732eeede989bf0a"
+        },
+        "date": 1769115705523,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3873008,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2522367,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 974206,
             "unit": "bytes"
           }
         ]
