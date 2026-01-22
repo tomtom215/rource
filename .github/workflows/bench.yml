@@ -99,6 +99,29 @@ jobs:
             echo "Found $RESULT_COUNT benchmark results"
           fi
 
+      - name: Check and create gh-pages branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.check_benchmarks.outputs.result_count != '0'
+        run: |
+          # Check if gh-pages branch exists on remote
+          if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            echo "gh-pages branch exists"
+          else
+            echo "Creating gh-pages branch..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            # Create orphan branch with initial commit
+            git checkout --orphan gh-pages
+            git reset --hard
+            echo "# Benchmark Results" > README.md
+            echo "" >> README.md
+            echo "This branch contains benchmark data for the rource project." >> README.md
+            git add README.md
+            git commit -m "Initialize gh-pages branch for benchmarks"
+            git push origin gh-pages
+            # Return to original branch
+            git checkout -
+          fi
+
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.check_benchmarks.outputs.result_count != '0'
@@ -243,6 +266,29 @@ jobs:
             {"name": "WASM Gzipped", "unit": "bytes", "value": $wasm_gzip}
           ]
           EOF
+
+      - name: Check and create gh-pages branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          # Check if gh-pages branch exists on remote
+          if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            echo "gh-pages branch exists"
+          else
+            echo "Creating gh-pages branch..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            # Create orphan branch with initial commit
+            git checkout --orphan gh-pages
+            git reset --hard
+            echo "# Benchmark Results" > README.md
+            echo "" >> README.md
+            echo "This branch contains benchmark and size metrics for the rource project." >> README.md
+            git add README.md
+            git commit -m "Initialize gh-pages branch for metrics"
+            git push origin gh-pages
+            # Return to original branch
+            git checkout -
+          fi
 
       - name: Store size metrics
         uses: benchmark-action/github-action-benchmark@v1
