@@ -763,6 +763,118 @@ as a parameter to `apply()` and may vary between calls.
 
 **Test Count**: 1,094 tests passing
 
+### Phase 9 Optimizations (2026-01-22)
+
+GPU physics dispatch API for wgpu renderer.
+
+#### 1. GPU Physics Dispatch Methods
+
+Added methods to `WgpuRenderer` for running force-directed physics simulation on the GPU.
+The existing `ComputePipeline` (1,325 lines, fully implemented) is now accessible through
+a high-level API.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/mod.rs` - Added physics dispatch methods
+
+**New Methods**:
+
+| Method | Platform | Description |
+|--------|----------|-------------|
+| `warmup_physics()` | All | Pre-compiles compute shaders to avoid first-frame stutter |
+| `dispatch_physics()` | Native | Synchronous physics step with immediate results |
+| `dispatch_physics_with_bounds()` | Native | Physics + bounding box calculation |
+| `dispatch_physics_async()` | WASM | Async physics step for non-blocking operation |
+| `set_physics_config()` | All | Configure physics parameters |
+| `physics_config()` | All | Get current physics configuration |
+| `physics_stats()` | All | Get compute statistics from last dispatch |
+
+**API Usage (Native)**:
+```rust
+use rource_render::backend::wgpu::{WgpuRenderer, ComputeEntity, PhysicsConfig};
+
+// Create renderer
+let mut renderer = WgpuRenderer::new_headless(800, 600)?;
+
+// Optional: warmup to avoid first-frame stutter
+renderer.warmup_physics();
+
+// Configure physics (optional, has sensible defaults)
+renderer.set_physics_config(PhysicsConfig::dense());
+
+// Create entities from scene data
+let entities: Vec<ComputeEntity> = scene_nodes.iter()
+    .map(|node| ComputeEntity::new(node.x, node.y, node.radius))
+    .collect();
+
+// Run physics step (synchronous)
+let updated = renderer.dispatch_physics(&entities, 0.016); // dt = 1/60s
+
+// Apply updated positions back to scene
+for (node, entity) in scene_nodes.iter_mut().zip(updated.iter()) {
+    let (x, y) = entity.position();
+    node.set_position(x, y);
+}
+```
+
+**API Usage (WASM)**:
+```rust
+// Async version for WASM (non-blocking)
+let updated = renderer.dispatch_physics_async(&entities, 0.016).await;
+```
+
+**Physics Configuration Presets**:
+
+| Preset | Repulsion | Attraction | Damping | Use Case |
+|--------|-----------|------------|---------|----------|
+| `PhysicsConfig::default()` | 1000 | 0.05 | 0.9 | General use |
+| `PhysicsConfig::dense()` | 2000 | 0.1 | 0.85 | Tightly packed nodes |
+| `PhysicsConfig::sparse()` | 500 | 0.02 | 0.95 | Spread out layouts |
+| `PhysicsConfig::fast_converge()` | 1500 | 0.08 | 0.8 | Quick settling |
+
+**Compute Pipeline Architecture**:
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    GPU Physics Pipeline                              │
+│                                                                      │
+│  upload_entities()                                                   │
+│       │                                                              │
+│       ▼                                                              │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │
+│  │ Clear Grid  │→│ Build Grid  │→│ Calc Forces │→│  Integrate  │   │
+│  │ (spatial    │ │ (populate   │ │ (repulsion  │ │ (velocity + │   │
+│  │  hash)      │ │  cells)     │ │ + attract)  │ │  position)  │   │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘   │
+│       │                                                  │           │
+│       ▼                                                  ▼           │
+│  ┌─────────────┐                              ┌─────────────┐       │
+│  │ Calc Bounds │ (optional)                   │  Readback   │       │
+│  │ (AABB)      │                              │ (download)  │       │
+│  └─────────────┘                              └─────────────┘       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Performance Characteristics**:
+
+| Aspect | CPU Physics | GPU Physics |
+|--------|-------------|-------------|
+| Algorithm | O(n²) pairwise | Spatial hash grid |
+| 1000 nodes | ~1M comparisons/frame | ~Local neighbors only |
+| 5000 nodes | ~25M comparisons/frame | ~Same overhead |
+| Parallelization | Single-threaded | 64-thread workgroups |
+| Best for | < 500 nodes | > 1000 nodes |
+
+**When to Use GPU Physics**:
+- Large repositories with 1000+ directories
+- Need for real-time interaction at high FPS
+- GPU compute is available (WebGPU or native Vulkan/Metal/DX12)
+
+**When to Use CPU Physics**:
+- Small repositories (< 500 nodes)
+- No GPU compute available (software renderer fallback)
+- Need for deterministic cross-platform results
+
+**Test Count**: 1,094 tests passing
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
