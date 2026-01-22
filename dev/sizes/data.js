@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769118850212,
+  "lastUpdate": 1769123804505,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -545,6 +545,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 975012,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "944bcb7dd7c5668011e92e501cd96ced9bb55469",
+          "message": "Merge pull request #124 from tomtom215/claude/continue-rource-refactoring-bf5SX\n\nRefactor wgpu backend into modular architecture",
+          "timestamp": "2026-01-23T00:12:50+01:00",
+          "tree_id": "9d0072d1212fa4157b179f8a6813baa5bf1e2127",
+          "url": "https://github.com/tomtom215/rource/commit/944bcb7dd7c5668011e92e501cd96ced9bb55469"
+        },
+        "date": 1769123803605,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3873072,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2524911,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 974859,
             "unit": "bytes"
           }
         ]
