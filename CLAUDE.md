@@ -55,12 +55,13 @@ This script will:
 ```
 rource/
 ├── crates/
-│   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [141 tests]
-│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [130 tests]
-│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [236 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, bloom, shadows, fonts) [108 tests]
-├── rource-cli/           # Native CLI application (winit + softbuffer) [41 tests]
-└── rource-wasm/          # WebAssembly application [3 tests]
+│   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [144 tests]
+│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [150 tests]
+│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [261 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [310 tests]
+├── rource-cli/           # Native CLI application (winit + softbuffer) [95 tests]
+└── rource-wasm/          # WebAssembly application [73 tests]
+                          # Plus 61 integration/doc tests = 1,094 total
 ```
 
 ### Rendering Backends
@@ -673,6 +674,92 @@ Added `#[inline]` hints to frequently-called functions:
 | Visibility query | 180 allocs/sec | 0 |
 | Spline interpolation | N × curves/sec | 0 |
 | Texture ID collection | 60 allocs/sec | 0 |
+
+#### 5. wgpu Bloom Pipeline Wiring (2026-01-22)
+
+Completed the integration of the wgpu GPU bloom post-processing pipeline:
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/mod.rs` - Updated `begin_frame()` and `end_frame()`
+
+**Architecture**:
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Frame Flow                                   │
+│                                                                      │
+│  begin_frame()                    end_frame()                       │
+│  ┌─────────────┐                  ┌─────────────────────────────┐  │
+│  │ Bloom       │──► scene_view() ─│ flush() to scene target    │  │
+│  │ enabled?    │                  │ bloom.apply() ──► surface  │  │
+│  └─────────────┘                  └─────────────────────────────┘  │
+│  ┌─────────────┐                  ┌─────────────────────────────┐  │
+│  │ Shadow-only │──► scene_texture │ flush() to scene texture   │  │
+│  │ enabled?    │                  │ shadow.apply() ─► surface  │  │
+│  └─────────────┘                  └─────────────────────────────┘  │
+│  ┌─────────────┐                  ┌─────────────────────────────┐  │
+│  │ No effects  │──► surface view  │ flush() direct to surface  │  │
+│  └─────────────┘                  └─────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Changes**:
+- `begin_frame()`: When bloom is enabled, calls `bloom_pipeline.ensure_size()` and uses
+  `bloom_pipeline.scene_view()` as the render target (BloomPipeline manages its own scene FBO)
+- `end_frame()`: Calls `bloom.apply()` to run the full bloom pipeline (bright extraction,
+  gaussian blur passes, composite) and output to the surface
+- Shadow-only path uses renderer's `scene_texture` and calls `shadow.apply()`
+- Frame stats track `bloom_applied` and `shadow_applied` for debugging
+
+**Post-Processing Priority**:
+- Bloom takes precedence when both bloom and shadow are enabled
+- Shadow-only renders when only shadow is enabled
+- Direct rendering when no effects are enabled
+
+#### 6. Bind Group Caching for Bloom/Shadow (2026-01-22)
+
+Eliminated per-frame bind group allocations in wgpu bloom and shadow pipelines.
+
+**Problem**: The `apply()` methods were creating bind groups on every frame call,
+resulting in ~8-13 allocations per frame (480-780 allocations/second at 60 FPS).
+
+**Solution**: Cache bind groups in `ensure_size()` when render targets are created,
+reuse them in `apply()`.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/bloom.rs` - Added `CachedBindGroups` struct
+- `crates/rource-render/src/backend/wgpu/shadow.rs` - Added `CachedShadowBindGroups` struct
+
+**Bloom Pipeline Cached Bind Groups** (7 total):
+| Bind Group | References |
+|------------|------------|
+| `bright_uniform_bg` | `bright_uniforms` buffer |
+| `blur_uniform_bg` | `blur_uniforms` buffer |
+| `composite_uniform_bg` | `composite_uniforms` buffer |
+| `scene_texture_bg` | `scene_target` texture view |
+| `bloom_a_texture_bg` | `bloom_target_a` texture view |
+| `bloom_b_texture_bg` | `bloom_target_b` texture view |
+| `bloom_final_texture_bg` | `bloom_target_a` (for composite) |
+
+**Shadow Pipeline Cached Bind Groups** (5 total):
+| Bind Group | References |
+|------------|------------|
+| `blur_uniform_bg` | `blur_uniforms` buffer |
+| `composite_uniform_bg` | `composite_uniforms` buffer |
+| `shadow_texture_bg` | `shadow_target` texture view |
+| `blur_texture_bg` | `blur_target` texture view |
+| `shadow_final_texture_bg` | `shadow_target` (for composite) |
+
+**Note**: Shadow's `scene_texture_bg` cannot be cached because `scene_view` is passed
+as a parameter to `apply()` and may vary between calls.
+
+**Performance Impact**:
+- Bloom: ~8 allocations/frame eliminated → 0
+- Shadow: ~5 allocations/frame eliminated → 1 (scene_texture_bg)
+- At 60 FPS: **780 allocations/second → 60 allocations/second** (92% reduction)
+
+**When Bind Groups Are Recreated**:
+- Viewport resize (via `ensure_size()`)
+- First frame after initialization
 
 **Test Count**: 1,094 tests passing
 
@@ -1511,4 +1598,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (Phase 8 optimizations: zero-allocation hot paths, streaming spline, cached texture IDs - 1,094 tests)*
+*Last updated: 2026-01-22 (wgpu bind group caching for bloom/shadow - 1,094 tests)*

@@ -188,6 +188,40 @@ struct BloomCompositeUniforms {
     _padding: [f32; 3],
 }
 
+/// Cached bind groups for bloom pipeline to avoid per-frame allocations.
+///
+/// These bind groups reference GPU resources (buffers, textures, samplers) that
+/// persist across frames. By caching the bind groups, we eliminate ~8 allocations
+/// per frame at 60 FPS (480 allocations/second).
+///
+/// Bind groups are recreated when:
+/// - Render targets are resized (viewport change)
+/// - Pipeline is first initialized
+#[derive(Debug)]
+#[allow(clippy::struct_field_names)] // All fields are bind groups, `_bg` suffix is intentional
+struct CachedBindGroups {
+    /// Bright pass uniform bind group (references `bright_uniforms` buffer).
+    bright_uniform_bg: wgpu::BindGroup,
+
+    /// Blur pass uniform bind group (references `blur_uniforms` buffer).
+    blur_uniform_bg: wgpu::BindGroup,
+
+    /// Composite pass uniform bind group (references `composite_uniforms` buffer).
+    composite_uniform_bg: wgpu::BindGroup,
+
+    /// Scene texture bind group (references `scene_target` texture view).
+    scene_texture_bg: wgpu::BindGroup,
+
+    /// Bloom target A texture bind group (references `bloom_target_a` texture view).
+    bloom_a_texture_bg: wgpu::BindGroup,
+
+    /// Bloom target B texture bind group (references `bloom_target_b` texture view).
+    bloom_b_texture_bg: wgpu::BindGroup,
+
+    /// Composite bloom texture bind group (references `bloom_target_a` for final composite).
+    bloom_final_texture_bg: wgpu::BindGroup,
+}
+
 /// GPU bloom effect pipeline.
 #[derive(Debug)]
 pub struct BloomPipeline {
@@ -244,6 +278,10 @@ pub struct BloomPipeline {
 
     /// Whether the pipeline is initialized.
     initialized: bool,
+
+    /// Cached bind groups to avoid per-frame allocations.
+    /// Created in `ensure_size()` when render targets are allocated.
+    cached_bind_groups: Option<CachedBindGroups>,
 }
 
 impl BloomPipeline {
@@ -389,6 +427,7 @@ impl BloomPipeline {
             cached_size: (0, 0),
             surface_format,
             initialized: true,
+            cached_bind_groups: None,
         }
     }
 
@@ -399,6 +438,9 @@ impl BloomPipeline {
     }
 
     /// Ensures render targets are sized correctly.
+    ///
+    /// This method also creates and caches bind groups when render targets are
+    /// (re)allocated, eliminating per-frame bind group creation overhead.
     pub fn ensure_size(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         if !self.config.enabled {
             return;
@@ -438,6 +480,126 @@ impl BloomPipeline {
             self.surface_format,
             "bloom_target_b",
         ));
+
+        // Cache bind groups now that render targets exist
+        // This eliminates ~8 bind group allocations per frame
+        self.create_cached_bind_groups(device);
+    }
+
+    /// Creates and caches all bind groups used in the bloom pipeline.
+    ///
+    /// Bind groups reference GPU resources (uniform buffers, texture views, samplers)
+    /// that persist across frames. By caching them, we avoid per-frame allocations.
+    fn create_cached_bind_groups(&mut self, device: &wgpu::Device) {
+        let scene_target = self.scene_target.as_ref().expect("scene_target must exist");
+        let bloom_a = self
+            .bloom_target_a
+            .as_ref()
+            .expect("bloom_target_a must exist");
+        let bloom_b = self
+            .bloom_target_b
+            .as_ref()
+            .expect("bloom_target_b must exist");
+
+        // Uniform bind groups - reference buffers that are updated via queue.write_buffer()
+        let bright_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bloom_bright_uniform_bg_cached"),
+            layout: &self.uniform_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.bright_uniforms.as_entire_binding(),
+            }],
+        });
+
+        let blur_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bloom_blur_uniform_bg_cached"),
+            layout: &self.uniform_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.blur_uniforms.as_entire_binding(),
+            }],
+        });
+
+        let composite_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bloom_composite_uniform_bg_cached"),
+            layout: &self.uniform_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.composite_uniforms.as_entire_binding(),
+            }],
+        });
+
+        // Texture bind groups - reference texture views that change when targets resize
+        let scene_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bloom_scene_texture_bg_cached"),
+            layout: &self.texture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(scene_target.view()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+
+        let bloom_a_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bloom_a_texture_bg_cached"),
+            layout: &self.texture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(bloom_a.view()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+
+        let bloom_b_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bloom_b_texture_bg_cached"),
+            layout: &self.texture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(bloom_b.view()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+
+        // Composite uses bloom_a as the final blurred result (uses composite_texture_layout)
+        let bloom_final_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bloom_final_texture_bg_cached"),
+            layout: &self.composite_texture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(bloom_a.view()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+
+        self.cached_bind_groups = Some(CachedBindGroups {
+            bright_uniform_bg,
+            blur_uniform_bg,
+            composite_uniform_bg,
+            scene_texture_bg,
+            bloom_a_texture_bg,
+            bloom_b_texture_bg,
+            bloom_final_texture_bg,
+        });
     }
 
     /// Returns the scene render target view for rendering the scene.
@@ -445,13 +607,19 @@ impl BloomPipeline {
         self.scene_target.as_ref().map(RenderTarget::view)
     }
 
-    /// Applies the bloom effect.
+    /// Applies the bloom effect using cached bind groups.
     ///
     /// Call this after rendering the scene to the scene target.
     /// The result is written to the provided output view (typically the surface).
+    ///
+    /// # Performance
+    ///
+    /// This method uses bind groups cached in `ensure_size()`, eliminating ~8
+    /// bind group allocations per frame. Only uniform buffer data is updated
+    /// via `queue.write_buffer()`, which is a cheap GPU-side copy operation.
     pub fn apply(
         &self,
-        device: &wgpu::Device,
+        _device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         output_view: &wgpu::TextureView,
@@ -460,11 +628,16 @@ impl BloomPipeline {
             return;
         }
 
-        let scene_target = self.scene_target.as_ref().unwrap();
+        // Get cached bind groups - they must exist if is_active() returned true
+        let cached = self
+            .cached_bind_groups
+            .as_ref()
+            .expect("cached_bind_groups must exist when bloom is active");
+
         let bloom_a = self.bloom_target_a.as_ref().unwrap();
         let bloom_b = self.bloom_target_b.as_ref().unwrap();
 
-        // Update uniforms
+        // Update uniform buffer data (cheap GPU-side copy, no allocation)
         queue.write_buffer(
             &self.bright_uniforms,
             0,
@@ -484,33 +657,8 @@ impl BloomPipeline {
             }]),
         );
 
-        // Create bind groups
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("bloom_bright_uniform_bg"),
-            layout: &self.uniform_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: self.bright_uniforms.as_entire_binding(),
-            }],
-        });
-
-        let scene_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("bloom_scene_texture_bg"),
-            layout: &self.texture_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(scene_target.view()),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
-                },
-            ],
-        });
-
         // =====================================================================
-        // Pass 1: Extract bright pixels
+        // Pass 1: Extract bright pixels (scene_target -> bloom_a)
         // =====================================================================
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -529,14 +677,14 @@ impl BloomPipeline {
             });
 
             render_pass.set_pipeline(&self.bright_pipeline);
-            render_pass.set_bind_group(0, &uniform_bind_group, &[]);
-            render_pass.set_bind_group(1, &scene_texture_bg, &[]);
+            render_pass.set_bind_group(0, &cached.bright_uniform_bg, &[]);
+            render_pass.set_bind_group(1, &cached.scene_texture_bg, &[]);
             render_pass.set_vertex_buffer(0, self.fullscreen_quad.slice(..));
             render_pass.draw(0..4, 0..1);
         }
 
         // =====================================================================
-        // Pass 2: Gaussian blur (ping-pong)
+        // Pass 2: Gaussian blur (ping-pong between bloom_a and bloom_b)
         // =====================================================================
         let bloom_dims = bloom_a.dimensions();
 
@@ -551,30 +699,6 @@ impl BloomPipeline {
                         resolution: [bloom_dims.0 as f32, bloom_dims.1 as f32],
                     }]),
                 );
-
-                let blur_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("bloom_blur_h_uniform_bg"),
-                    layout: &self.uniform_layout,
-                    entries: &[wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.blur_uniforms.as_entire_binding(),
-                    }],
-                });
-
-                let bloom_a_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("bloom_a_texture_bg"),
-                    layout: &self.texture_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(bloom_a.view()),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&self.sampler),
-                        },
-                    ],
-                });
 
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bloom_blur_h_pass"),
@@ -592,8 +716,8 @@ impl BloomPipeline {
                 });
 
                 render_pass.set_pipeline(&self.blur_pipeline);
-                render_pass.set_bind_group(0, &blur_uniform_bg, &[]);
-                render_pass.set_bind_group(1, &bloom_a_texture_bg, &[]);
+                render_pass.set_bind_group(0, &cached.blur_uniform_bg, &[]);
+                render_pass.set_bind_group(1, &cached.bloom_a_texture_bg, &[]);
                 render_pass.set_vertex_buffer(0, self.fullscreen_quad.slice(..));
                 render_pass.draw(0..4, 0..1);
             }
@@ -608,30 +732,6 @@ impl BloomPipeline {
                         resolution: [bloom_dims.0 as f32, bloom_dims.1 as f32],
                     }]),
                 );
-
-                let blur_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("bloom_blur_v_uniform_bg"),
-                    layout: &self.uniform_layout,
-                    entries: &[wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.blur_uniforms.as_entire_binding(),
-                    }],
-                });
-
-                let bloom_b_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("bloom_b_texture_bg"),
-                    layout: &self.texture_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(bloom_b.view()),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&self.sampler),
-                        },
-                    ],
-                });
 
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bloom_blur_v_pass"),
@@ -649,41 +749,17 @@ impl BloomPipeline {
                 });
 
                 render_pass.set_pipeline(&self.blur_pipeline);
-                render_pass.set_bind_group(0, &blur_uniform_bg, &[]);
-                render_pass.set_bind_group(1, &bloom_b_texture_bg, &[]);
+                render_pass.set_bind_group(0, &cached.blur_uniform_bg, &[]);
+                render_pass.set_bind_group(1, &cached.bloom_b_texture_bg, &[]);
                 render_pass.set_vertex_buffer(0, self.fullscreen_quad.slice(..));
                 render_pass.draw(0..4, 0..1);
             }
         }
 
         // =====================================================================
-        // Pass 3: Composite
+        // Pass 3: Composite (scene + bloom_a -> output)
         // =====================================================================
         {
-            let composite_uniform_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("bloom_composite_uniform_bg"),
-                layout: &self.uniform_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.composite_uniforms.as_entire_binding(),
-                }],
-            });
-
-            let bloom_final_texture_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("bloom_final_texture_bg"),
-                layout: &self.composite_texture_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(bloom_a.view()),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.sampler),
-                    },
-                ],
-            });
-
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bloom_composite_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -700,9 +776,9 @@ impl BloomPipeline {
             });
 
             render_pass.set_pipeline(&self.composite_pipeline);
-            render_pass.set_bind_group(0, &composite_uniform_bg, &[]);
-            render_pass.set_bind_group(1, &scene_texture_bg, &[]);
-            render_pass.set_bind_group(2, &bloom_final_texture_bg, &[]);
+            render_pass.set_bind_group(0, &cached.composite_uniform_bg, &[]);
+            render_pass.set_bind_group(1, &cached.scene_texture_bg, &[]);
+            render_pass.set_bind_group(2, &cached.bloom_final_texture_bg, &[]);
             render_pass.set_vertex_buffer(0, self.fullscreen_quad.slice(..));
             render_pass.draw(0..4, 0..1);
         }

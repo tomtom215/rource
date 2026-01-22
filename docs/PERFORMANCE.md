@@ -159,12 +159,22 @@ for label in labels {
 }
 ```
 
-### LOD (Level of Detail) - Planned
+### LOD (Level of Detail) - Implemented
 
-When zoomed out, we could:
-1. Skip labels entirely (zoom < 0.3)
-2. Combine nearby files into clusters (zoom < 0.1)
-3. Simplify tree branches to single lines (zoom < 0.05)
+LOD culling skips sub-pixel entities for massive performance gains at low zoom levels:
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `LOD_MIN_FILE_RADIUS` | 0.5px | Skip files smaller than this |
+| `LOD_MIN_DIR_RADIUS` | 0.3px | Skip directories smaller than this |
+| `LOD_MIN_FILE_LABEL_RADIUS` | 3.0px | Skip file labels below this |
+| `LOD_MIN_DIR_LABEL_RADIUS` | 4.0px | Skip dir labels below this |
+| `LOD_MIN_USER_RADIUS` | 1.0px | Skip users smaller than this |
+| `LOD_MIN_USER_LABEL_RADIUS` | 5.0px | Skip user labels below this |
+| `LOD_MIN_ZOOM_FOR_FILE_BRANCHES` | 0.05 | Skip file branches below this zoom |
+| `LOD_MIN_ZOOM_FOR_DIR_BRANCHES` | 0.02 | Skip dir branches below this zoom |
+
+**Impact at Scale**: At zoom=0.01 with 50,000 files, most entities are sub-pixel and skipped entirely
 
 ## Physics Optimization
 
