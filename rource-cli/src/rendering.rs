@@ -39,10 +39,12 @@ use crate::helpers::get_initials;
 // Values are in screen pixels. These match the WASM renderer for visual parity.
 
 /// Minimum screen radius for a file to be rendered at all.
-const LOD_MIN_FILE_RADIUS: f32 = 0.5;
+/// Set low (0.1px) because we enforce a minimum render size of 2px anyway.
+const LOD_MIN_FILE_RADIUS: f32 = 0.1;
 
 /// Minimum screen radius for a directory node to be rendered.
-const LOD_MIN_DIR_RADIUS: f32 = 0.3;
+/// Directories are important landmarks, so we use a very low threshold.
+const LOD_MIN_DIR_RADIUS: f32 = 0.05;
 
 /// Minimum screen radius for file labels to be rendered.
 const LOD_MIN_FILE_LABEL_RADIUS: f32 = 3.0;
@@ -51,16 +53,17 @@ const LOD_MIN_FILE_LABEL_RADIUS: f32 = 3.0;
 const LOD_MIN_DIR_LABEL_RADIUS: f32 = 4.0;
 
 /// Minimum screen radius for user avatars to be rendered.
-const LOD_MIN_USER_RADIUS: f32 = 1.0;
+/// Set low (0.3px) because we enforce a minimum render size of 5px anyway.
+const LOD_MIN_USER_RADIUS: f32 = 0.3;
 
 /// Minimum screen radius for user labels to be rendered.
 const LOD_MIN_USER_LABEL_RADIUS: f32 = 5.0;
 
 /// Minimum zoom level for rendering file-to-directory connections.
-const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.05;
+const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.02;
 
 /// Minimum zoom level for rendering directory-to-parent connections.
-const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.02;
+const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.01;
 
 /// Render a frame in windowed mode.
 ///

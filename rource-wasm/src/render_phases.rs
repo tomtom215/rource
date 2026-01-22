@@ -65,6 +65,16 @@ pub const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.02;
 /// Minimum zoom level for rendering directory-to-parent connections.
 pub const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.01;
 
+/// Minimum zoom level for auto-fit to prevent LOD culling all entities.
+///
+/// This is calculated based on keeping entities above their LOD thresholds:
+/// - Files: `world_radius`=5.0, LOD=0.1 → `min_zoom` = 0.1/5.0 = 0.02
+/// - Users: `world_radius`=15.0, LOD=0.3 → `min_zoom` = 0.3/15.0 = 0.02
+///
+/// We use 0.03 to provide a comfortable margin above the thresholds,
+/// ensuring entities remain meaningfully visible (not just barely above threshold).
+pub const AUTO_FIT_MIN_ZOOM: f32 = 0.03;
+
 /// Context shared between rendering phases.
 ///
 /// This struct is passed to all rendering phase functions to provide
