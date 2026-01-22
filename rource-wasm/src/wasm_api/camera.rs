@@ -127,7 +127,8 @@ impl Rource {
     /// When enabled, the camera automatically zooms out to keep all content visible
     /// as the visualization grows. Manual zoom/pan operations disable auto-fit.
     ///
-    /// Auto-fit is enabled by default for a better out-of-the-box experience.
+    /// Auto-fit is disabled by default due to coordination issues with LOD culling
+    /// and spatial indexing. Use `resetCamera()` for one-time camera fitting instead.
     #[wasm_bindgen(js_name = setAutoFit)]
     pub fn set_auto_fit(&mut self, enabled: bool) {
         self.auto_fit = enabled;
