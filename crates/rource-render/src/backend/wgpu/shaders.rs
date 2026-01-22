@@ -707,6 +707,247 @@ fn cs_integrate(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }
 "#;
 
+/// Visibility culling compute shader.
+///
+/// Filters instance data based on view bounds, outputting only visible instances
+/// to a compacted buffer. Supports indirect draw command generation.
+pub const VISIBILITY_CULLING_SHADER: &str = r#"
+struct CullParams {
+    // View bounds in world coordinates (min_x, min_y, max_x, max_y)
+    view_bounds: vec4<f32>,
+    // Total number of input instances
+    instance_count: u32,
+    // Floats per instance (for stride calculation)
+    floats_per_instance: u32,
+    // Padding for alignment
+    _padding: vec2<u32>,
+};
+
+struct DrawIndirect {
+    vertex_count: u32,
+    instance_count: atomic<u32>,
+    first_vertex: u32,
+    first_instance: u32,
+};
+
+@group(0) @binding(0)
+var<uniform> params: CullParams;
+
+// Input instance buffer (raw floats)
+@group(0) @binding(1)
+var<storage, read> input_instances: array<f32>;
+
+// Output instance buffer (compacted visible instances)
+@group(0) @binding(2)
+var<storage, read_write> output_instances: array<f32>;
+
+// Indirect draw command buffer
+@group(0) @binding(3)
+var<storage, read_write> draw_indirect: DrawIndirect;
+
+// Workgroup-local counter for efficient compaction
+var<workgroup> workgroup_count: atomic<u32>;
+var<workgroup> workgroup_offset: u32;
+
+const WORKGROUP_SIZE: u32 = 256u;
+
+// Check if a circle instance is visible (first 3 floats: x, y, radius)
+fn is_circle_visible(base_idx: u32) -> bool {
+    let x = input_instances[base_idx];
+    let y = input_instances[base_idx + 1u];
+    let radius = input_instances[base_idx + 2u];
+
+    // AABB test with radius expansion
+    let min_x = x - radius;
+    let max_x = x + radius;
+    let min_y = y - radius;
+    let max_y = y + radius;
+
+    // Check overlap with view bounds
+    return max_x >= params.view_bounds.x &&
+           min_x <= params.view_bounds.z &&
+           max_y >= params.view_bounds.y &&
+           min_y <= params.view_bounds.w;
+}
+
+// Check if a line instance is visible (first 4 floats: start_x, start_y, end_x, end_y)
+fn is_line_visible(base_idx: u32) -> bool {
+    let start_x = input_instances[base_idx];
+    let start_y = input_instances[base_idx + 1u];
+    let end_x = input_instances[base_idx + 2u];
+    let end_y = input_instances[base_idx + 3u];
+
+    // AABB of line segment
+    let min_x = min(start_x, end_x);
+    let max_x = max(start_x, end_x);
+    let min_y = min(start_y, end_y);
+    let max_y = max(start_y, end_y);
+
+    return max_x >= params.view_bounds.x &&
+           min_x <= params.view_bounds.z &&
+           max_y >= params.view_bounds.y &&
+           min_y <= params.view_bounds.w;
+}
+
+// Check if a quad instance is visible (first 4 floats: min_x, min_y, max_x, max_y)
+fn is_quad_visible(base_idx: u32) -> bool {
+    let min_x = input_instances[base_idx];
+    let min_y = input_instances[base_idx + 1u];
+    let max_x = input_instances[base_idx + 2u];
+    let max_y = input_instances[base_idx + 3u];
+
+    return max_x >= params.view_bounds.x &&
+           min_x <= params.view_bounds.z &&
+           max_y >= params.view_bounds.y &&
+           min_y <= params.view_bounds.w;
+}
+
+// Reset the indirect draw command (call before culling)
+@compute @workgroup_size(1)
+fn cs_reset_indirect() {
+    atomicStore(&draw_indirect.instance_count, 0u);
+    draw_indirect.vertex_count = 4u;  // Quad vertices
+    draw_indirect.first_vertex = 0u;
+    draw_indirect.first_instance = 0u;
+}
+
+// Cull circles and compact visible instances
+@compute @workgroup_size(256)
+fn cs_cull_circles(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    let idx = global_id.x;
+    let lid = local_id.x;
+
+    // Initialize workgroup counter
+    if lid == 0u {
+        atomicStore(&workgroup_count, 0u);
+    }
+    workgroupBarrier();
+
+    var is_visible = false;
+    if idx < params.instance_count {
+        let base_idx = idx * params.floats_per_instance;
+        is_visible = is_circle_visible(base_idx);
+    }
+
+    // Count visible instances in workgroup
+    var local_offset = 0u;
+    if is_visible {
+        local_offset = atomicAdd(&workgroup_count, 1u);
+    }
+    workgroupBarrier();
+
+    // Get global offset for this workgroup
+    if lid == 0u {
+        let count = atomicLoad(&workgroup_count);
+        if count > 0u {
+            workgroup_offset = atomicAdd(&draw_indirect.instance_count, count);
+        }
+    }
+    workgroupBarrier();
+
+    // Write visible instances to output
+    if is_visible {
+        let src_base = idx * params.floats_per_instance;
+        let dst_base = (workgroup_offset + local_offset) * params.floats_per_instance;
+
+        for (var i = 0u; i < params.floats_per_instance; i++) {
+            output_instances[dst_base + i] = input_instances[src_base + i];
+        }
+    }
+}
+
+// Cull lines and compact visible instances
+@compute @workgroup_size(256)
+fn cs_cull_lines(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    let idx = global_id.x;
+    let lid = local_id.x;
+
+    if lid == 0u {
+        atomicStore(&workgroup_count, 0u);
+    }
+    workgroupBarrier();
+
+    var is_visible = false;
+    if idx < params.instance_count {
+        let base_idx = idx * params.floats_per_instance;
+        is_visible = is_line_visible(base_idx);
+    }
+
+    var local_offset = 0u;
+    if is_visible {
+        local_offset = atomicAdd(&workgroup_count, 1u);
+    }
+    workgroupBarrier();
+
+    if lid == 0u {
+        let count = atomicLoad(&workgroup_count);
+        if count > 0u {
+            workgroup_offset = atomicAdd(&draw_indirect.instance_count, count);
+        }
+    }
+    workgroupBarrier();
+
+    if is_visible {
+        let src_base = idx * params.floats_per_instance;
+        let dst_base = (workgroup_offset + local_offset) * params.floats_per_instance;
+
+        for (var i = 0u; i < params.floats_per_instance; i++) {
+            output_instances[dst_base + i] = input_instances[src_base + i];
+        }
+    }
+}
+
+// Cull quads and compact visible instances
+@compute @workgroup_size(256)
+fn cs_cull_quads(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    let idx = global_id.x;
+    let lid = local_id.x;
+
+    if lid == 0u {
+        atomicStore(&workgroup_count, 0u);
+    }
+    workgroupBarrier();
+
+    var is_visible = false;
+    if idx < params.instance_count {
+        let base_idx = idx * params.floats_per_instance;
+        is_visible = is_quad_visible(base_idx);
+    }
+
+    var local_offset = 0u;
+    if is_visible {
+        local_offset = atomicAdd(&workgroup_count, 1u);
+    }
+    workgroupBarrier();
+
+    if lid == 0u {
+        let count = atomicLoad(&workgroup_count);
+        if count > 0u {
+            workgroup_offset = atomicAdd(&draw_indirect.instance_count, count);
+        }
+    }
+    workgroupBarrier();
+
+    if is_visible {
+        let src_base = idx * params.floats_per_instance;
+        let dst_base = (workgroup_offset + local_offset) * params.floats_per_instance;
+
+        for (var i = 0u; i < params.floats_per_instance; i++) {
+            output_instances[dst_base + i] = input_instances[src_base + i];
+        }
+    }
+}
+"#;
+
 /// Bounds calculation compute shader.
 ///
 /// Calculates the bounding box of all entities using parallel reduction.
@@ -866,6 +1107,29 @@ mod tests {
     }
 
     #[test]
+    fn test_visibility_culling_shader_exists() {
+        assert!(!VISIBILITY_CULLING_SHADER.is_empty());
+        assert!(VISIBILITY_CULLING_SHADER.contains("cs_cull_circles"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("cs_cull_lines"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("cs_cull_quads"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("cs_reset_indirect"));
+    }
+
+    #[test]
+    fn test_visibility_culling_shader_has_params() {
+        assert!(VISIBILITY_CULLING_SHADER.contains("view_bounds"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("instance_count"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("floats_per_instance"));
+    }
+
+    #[test]
+    fn test_visibility_culling_has_indirect_draw() {
+        assert!(VISIBILITY_CULLING_SHADER.contains("DrawIndirect"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("vertex_count"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("instance_count"));
+    }
+
+    #[test]
     fn test_all_shaders_have_valid_wgsl_syntax() {
         // Basic syntax checks - these catch common typos
         let shaders = [
@@ -877,6 +1141,7 @@ mod tests {
             SHADOW_COMPOSITE_SHADER,
             PHYSICS_FORCE_SHADER,
             BOUNDS_SHADER,
+            VISIBILITY_CULLING_SHADER,
         ];
 
         for shader in shaders {
@@ -905,5 +1170,14 @@ mod tests {
     fn test_compute_shaders_have_workgroup_size() {
         assert!(PHYSICS_FORCE_SHADER.contains("@workgroup_size"));
         assert!(BOUNDS_SHADER.contains("@workgroup_size"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("@workgroup_size"));
+    }
+
+    #[test]
+    fn test_visibility_culling_visibility_functions() {
+        // Verify visibility check functions exist
+        assert!(VISIBILITY_CULLING_SHADER.contains("is_circle_visible"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("is_line_visible"));
+        assert!(VISIBILITY_CULLING_SHADER.contains("is_quad_visible"));
     }
 }

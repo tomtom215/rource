@@ -58,10 +58,10 @@ rource/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [144 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [150 tests]
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [261 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [310 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [322 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [95 tests]
 └── rource-wasm/          # WebAssembly application [73 tests]
-                          # Plus 61 integration/doc tests = 1,094 total
+                          # Plus 61 integration/doc tests = 1,106 total
 ```
 
 ### Rendering Backends
@@ -762,6 +762,229 @@ as a parameter to `apply()` and may vary between calls.
 - First frame after initialization
 
 **Test Count**: 1,094 tests passing
+
+### Phase 9 Optimizations (2026-01-22)
+
+GPU physics dispatch API for wgpu renderer.
+
+#### 1. GPU Physics Dispatch Methods
+
+Added methods to `WgpuRenderer` for running force-directed physics simulation on the GPU.
+The existing `ComputePipeline` (1,325 lines, fully implemented) is now accessible through
+a high-level API.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/mod.rs` - Added physics dispatch methods
+
+**New Methods**:
+
+| Method | Platform | Description |
+|--------|----------|-------------|
+| `warmup_physics()` | All | Pre-compiles compute shaders to avoid first-frame stutter |
+| `dispatch_physics()` | Native | Synchronous physics step with immediate results |
+| `dispatch_physics_with_bounds()` | Native | Physics + bounding box calculation |
+| `dispatch_physics_async()` | WASM | Async physics step for non-blocking operation |
+| `set_physics_config()` | All | Configure physics parameters |
+| `physics_config()` | All | Get current physics configuration |
+| `physics_stats()` | All | Get compute statistics from last dispatch |
+
+**API Usage (Native)**:
+```rust
+use rource_render::backend::wgpu::{WgpuRenderer, ComputeEntity, PhysicsConfig};
+
+// Create renderer
+let mut renderer = WgpuRenderer::new_headless(800, 600)?;
+
+// Optional: warmup to avoid first-frame stutter
+renderer.warmup_physics();
+
+// Configure physics (optional, has sensible defaults)
+renderer.set_physics_config(PhysicsConfig::dense());
+
+// Create entities from scene data
+let entities: Vec<ComputeEntity> = scene_nodes.iter()
+    .map(|node| ComputeEntity::new(node.x, node.y, node.radius))
+    .collect();
+
+// Run physics step (synchronous)
+let updated = renderer.dispatch_physics(&entities, 0.016); // dt = 1/60s
+
+// Apply updated positions back to scene
+for (node, entity) in scene_nodes.iter_mut().zip(updated.iter()) {
+    let (x, y) = entity.position();
+    node.set_position(x, y);
+}
+```
+
+**API Usage (WASM)**:
+```rust
+// Async version for WASM (non-blocking)
+let updated = renderer.dispatch_physics_async(&entities, 0.016).await;
+```
+
+**Physics Configuration Presets**:
+
+| Preset | Repulsion | Attraction | Damping | Use Case |
+|--------|-----------|------------|---------|----------|
+| `PhysicsConfig::default()` | 1000 | 0.05 | 0.9 | General use |
+| `PhysicsConfig::dense()` | 2000 | 0.1 | 0.85 | Tightly packed nodes |
+| `PhysicsConfig::sparse()` | 500 | 0.02 | 0.95 | Spread out layouts |
+| `PhysicsConfig::fast_converge()` | 1500 | 0.08 | 0.8 | Quick settling |
+
+**Compute Pipeline Architecture**:
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    GPU Physics Pipeline                              │
+│                                                                      │
+│  upload_entities()                                                   │
+│       │                                                              │
+│       ▼                                                              │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │
+│  │ Clear Grid  │→│ Build Grid  │→│ Calc Forces │→│  Integrate  │   │
+│  │ (spatial    │ │ (populate   │ │ (repulsion  │ │ (velocity + │   │
+│  │  hash)      │ │  cells)     │ │ + attract)  │ │  position)  │   │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘   │
+│       │                                                  │           │
+│       ▼                                                  ▼           │
+│  ┌─────────────┐                              ┌─────────────┐       │
+│  │ Calc Bounds │ (optional)                   │  Readback   │       │
+│  │ (AABB)      │                              │ (download)  │       │
+│  └─────────────┘                              └─────────────┘       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Performance Characteristics**:
+
+| Aspect | CPU Physics | GPU Physics |
+|--------|-------------|-------------|
+| Algorithm | O(n²) pairwise | Spatial hash grid |
+| 1000 nodes | ~1M comparisons/frame | ~Local neighbors only |
+| 5000 nodes | ~25M comparisons/frame | ~Same overhead |
+| Parallelization | Single-threaded | 64-thread workgroups |
+| Best for | < 500 nodes | > 1000 nodes |
+
+**When to Use GPU Physics**:
+- Large repositories with 1000+ directories
+- Need for real-time interaction at high FPS
+- GPU compute is available (WebGPU or native Vulkan/Metal/DX12)
+
+**When to Use CPU Physics**:
+- Small repositories (< 500 nodes)
+- No GPU compute available (software renderer fallback)
+- Need for deterministic cross-platform results
+
+**Test Count**: 1,094 tests passing
+
+### Phase 10 Optimizations (2026-01-22)
+
+GPU visibility culling infrastructure and indirect draw support.
+
+#### 1. GPU Visibility Culling Compute Shader
+
+Added compute shaders for GPU-side visibility culling that can filter instance data
+based on view bounds before rendering. This prepares the architecture for fully
+GPU-driven rendering in future optimizations.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/shaders.rs` - Added `VISIBILITY_CULLING_SHADER`
+- `crates/rource-render/src/backend/wgpu/buffers.rs` - Added culling infrastructure
+
+**New Compute Kernels**:
+
+| Kernel | Purpose |
+|--------|---------|
+| `cs_reset_indirect` | Reset indirect draw command before culling |
+| `cs_cull_circles` | Cull and compact circle instances |
+| `cs_cull_lines` | Cull and compact line instances |
+| `cs_cull_quads` | Cull and compact quad instances |
+
+**Visibility Check Functions**:
+- `is_circle_visible()` - AABB test with radius expansion
+- `is_line_visible()` - AABB of line segment
+- `is_quad_visible()` - Direct AABB test
+
+**Architecture**:
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    GPU Visibility Culling                            │
+│                                                                      │
+│  Input Instance Buffer                 Output Instance Buffer        │
+│  ┌─────────────────┐                  ┌─────────────────┐           │
+│  │ All instances   │──► cs_cull_X() ──│ Visible only    │           │
+│  │ (unculled)      │                  │ (compacted)     │           │
+│  └─────────────────┘                  └─────────────────┘           │
+│                                                │                     │
+│                                                ▼                     │
+│                                       ┌─────────────────┐           │
+│                                       │ DrawIndirect    │           │
+│                                       │ instance_count  │           │
+│                                       └─────────────────┘           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**When to Use GPU Culling**:
+- Scenes with 10,000+ instances where CPU culling becomes a bottleneck
+- Dynamic view bounds that change every frame (continuous panning/zooming)
+- GPU compute is available and render throughput is limited
+
+**Note**: Current implementation uses CPU-side quadtree culling which is optimal
+for most use cases. GPU culling is infrastructure for future extreme-scale scenarios.
+
+#### 2. Extended Uniforms with View Bounds
+
+Added `ExtendedUniforms` struct with view bounds for shader-based early-out:
+
+```rust
+pub struct ExtendedUniforms {
+    pub resolution: [f32; 2],       // Viewport resolution
+    pub time: f32,                  // Animation time
+    pub view_bounds: [f32; 4],      // min_x, min_y, max_x, max_y
+    pub zoom: f32,                  // Zoom level for LOD
+}
+```
+
+**Size**: 48 bytes (GPU-aligned)
+
+#### 3. Indirect Draw Command Support
+
+Added infrastructure for GPU-driven draw calls:
+
+**New Types**:
+
+| Type | Description |
+|------|-------------|
+| `DrawIndirectCommand` | 16-byte draw command matching `wgpu::DrawIndirect` |
+| `IndirectDrawBuffer` | GPU buffer for indirect draw commands |
+| `CullParams` | Culling parameters for compute shader |
+
+**`DrawIndirectCommand` Fields**:
+```rust
+pub struct DrawIndirectCommand {
+    pub vertex_count: u32,      // 4 for quads
+    pub instance_count: u32,    // Set by compute shader
+    pub first_vertex: u32,      // 0
+    pub first_instance: u32,    // 0
+}
+```
+
+**Usage Pattern**:
+```rust
+// Create indirect buffer
+let indirect = IndirectDrawBuffer::new(&device, "circle_indirect");
+
+// Update from compute shader (sets instance_count)
+// ...
+
+// Use with indirect draw
+render_pass.draw_indirect(&indirect.buffer(), 0);
+```
+
+**Performance Impact**:
+- Eliminates CPU→GPU roundtrip for instance counts
+- Enables fully GPU-driven rendering pipelines
+- Reduces CPU workload when culling large instance sets
+
+**Test Count**: 1,106 tests passing (added 12 new tests)
 
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
@@ -1598,4 +1821,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (wgpu bind group caching for bloom/shadow - 1,094 tests)*
+*Last updated: 2026-01-22 (GPU visibility culling and indirect draw support - 1,106 tests)*
