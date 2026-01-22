@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769104545735,
+  "lastUpdate": 1769106578019,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -296,6 +296,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/b0d5dd07ca07ac7892e957d876a381b2c15761a0"
         },
         "date": 1769104544921,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3872960,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2509065,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 970589,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b5aea9f30c039826f61c4446c6b8d3f8811acc27",
+          "message": "Merge pull request #118 from tomtom215/claude/fix-autozoom-visibility-U0BL7\n\nUse AUTO_FIT_MIN_ZOOM constant to prevent LOD culling issues",
+          "timestamp": "2026-01-22T19:25:59+01:00",
+          "tree_id": "7329c215c6479019de4dca0b29d7b28c6e70ef01",
+          "url": "https://github.com/tomtom215/rource/commit/b5aea9f30c039826f61c4446c6b8d3f8811acc27"
+        },
+        "date": 1769106577570,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
