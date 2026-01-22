@@ -793,13 +793,13 @@ fn cs_integrate(@builtin(global_invocation_id) global_id: vec3<u32>) {
 ///
 /// | Field | Type | Description |
 /// |-------|------|-------------|
-/// | p0 | vec2<f32> | Control point before start |
-/// | p1 | vec2<f32> | Start point |
-/// | p2 | vec2<f32> | End point |
-/// | p3 | vec2<f32> | Control point after end |
-/// | width | f32 | Line width |
-/// | color | vec4<f32> | RGBA color |
-/// | segments | u32 | Number of tessellation segments |
+/// | `p0` | `vec2<f32>` | Control point before start |
+/// | `p1` | `vec2<f32>` | Start point |
+/// | `p2` | `vec2<f32>` | End point |
+/// | `p3` | `vec2<f32>` | Control point after end |
+/// | `width` | `f32` | Line width |
+/// | `color` | `vec4<f32>` | RGBA color |
+/// | `segments` | `u32` | Number of tessellation segments |
 ///
 /// ## Performance
 ///
