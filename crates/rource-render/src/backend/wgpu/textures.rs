@@ -721,6 +721,361 @@ impl ManagedTexture {
     }
 }
 
+// ============================================================================
+// Texture Array for File Icons
+// ============================================================================
+
+/// Maximum number of layers in a texture array.
+///
+/// This limits the number of unique file types that can be rendered with a
+/// single draw call. 256 layers is sufficient for most use cases (~200 common
+/// file extensions).
+pub const MAX_TEXTURE_ARRAY_LAYERS: u32 = 256;
+
+/// Default layer size for file icons.
+pub const DEFAULT_ICON_SIZE: u32 = 32;
+
+/// Texture array for efficient file icon rendering.
+///
+/// Stores multiple textures as layers in a single GPU texture array,
+/// enabling all icons to be rendered in a single draw call.
+///
+/// ## Architecture
+///
+/// ```text
+/// ┌─────────────────────────────────────────────┐
+/// │ Layer 0: .rs icon                            │
+/// ├─────────────────────────────────────────────┤
+/// │ Layer 1: .py icon                            │
+/// ├─────────────────────────────────────────────┤
+/// │ Layer 2: .js icon                            │
+/// ├─────────────────────────────────────────────┤
+/// │ ...                                          │
+/// ├─────────────────────────────────────────────┤
+/// │ Layer N: last registered icon               │
+/// └─────────────────────────────────────────────┘
+/// ```
+///
+/// ## Usage
+///
+/// ```ignore
+/// // Create array with 32x32 icons
+/// let array = TextureArray::new(&device, &queue, 32, 32, 64)?;
+///
+/// // Register icons (returns layer index)
+/// let rs_layer = array.add_layer(&queue, &rs_icon_data)?;
+/// let py_layer = array.add_layer(&queue, &py_icon_data)?;
+///
+/// // Use layer index in shader to sample correct icon
+/// ```
+#[derive(Debug)]
+pub struct TextureArray {
+    /// The GPU texture array.
+    texture: wgpu::Texture,
+    /// Texture view for sampling all layers.
+    view: wgpu::TextureView,
+    /// Sampler for texture filtering.
+    sampler: wgpu::Sampler,
+    /// Bind group for shader access.
+    bind_group: wgpu::BindGroup,
+    /// Width of each layer.
+    width: u32,
+    /// Height of each layer.
+    height: u32,
+    /// Maximum number of layers.
+    max_layers: u32,
+    /// Number of layers currently allocated.
+    layer_count: u32,
+    /// Extension to layer index mapping.
+    extension_map: HashMap<String, u32>,
+}
+
+impl TextureArray {
+    /// Creates a new texture array.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for resource creation
+    /// * `texture_array_layout` - Bind group layout for texture array access
+    /// * `width` - Width of each layer in pixels
+    /// * `height` - Height of each layer in pixels
+    /// * `max_layers` - Maximum number of layers (up to 256)
+    ///
+    /// # Returns
+    ///
+    /// A new texture array, or `None` if `max_layers` exceeds the limit.
+    pub fn new(
+        device: &wgpu::Device,
+        texture_array_layout: &wgpu::BindGroupLayout,
+        width: u32,
+        height: u32,
+        max_layers: u32,
+    ) -> Option<Self> {
+        if max_layers == 0 || max_layers > MAX_TEXTURE_ARRAY_LAYERS {
+            return None;
+        }
+
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("texture_array"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: max_layers,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("texture_array_view"),
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
+            ..Default::default()
+        });
+
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("texture_array_sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("texture_array_bind_group"),
+            layout: texture_array_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+        });
+
+        Some(Self {
+            texture,
+            view,
+            sampler,
+            bind_group,
+            width,
+            height,
+            max_layers,
+            layer_count: 0,
+            extension_map: HashMap::new(),
+        })
+    }
+
+    /// Creates a texture array with default icon size (32x32).
+    pub fn with_default_size(
+        device: &wgpu::Device,
+        texture_array_layout: &wgpu::BindGroupLayout,
+        max_layers: u32,
+    ) -> Option<Self> {
+        Self::new(
+            device,
+            texture_array_layout,
+            DEFAULT_ICON_SIZE,
+            DEFAULT_ICON_SIZE,
+            max_layers,
+        )
+    }
+
+    /// Returns the layer width in pixels.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    /// Returns the layer height in pixels.
+    #[inline]
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// Returns the maximum number of layers.
+    #[inline]
+    pub fn max_layers(&self) -> u32 {
+        self.max_layers
+    }
+
+    /// Returns the current number of allocated layers.
+    #[inline]
+    pub fn layer_count(&self) -> u32 {
+        self.layer_count
+    }
+
+    /// Returns the bind group for shader access.
+    #[inline]
+    pub fn bind_group(&self) -> &wgpu::BindGroup {
+        &self.bind_group
+    }
+
+    /// Returns the texture view.
+    #[inline]
+    pub fn view(&self) -> &wgpu::TextureView {
+        &self.view
+    }
+
+    /// Returns the sampler.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn sampler(&self) -> &wgpu::Sampler {
+        &self.sampler
+    }
+
+    /// Adds a new layer with the given RGBA data.
+    ///
+    /// # Arguments
+    ///
+    /// * `queue` - wgpu queue for upload
+    /// * `data` - RGBA pixel data (must be `width * height * 4` bytes)
+    ///
+    /// # Returns
+    ///
+    /// The layer index, or `None` if the array is full or data is wrong size.
+    pub fn add_layer(&mut self, queue: &wgpu::Queue, data: &[u8]) -> Option<u32> {
+        let expected_size = (self.width * self.height * 4) as usize;
+        if data.len() != expected_size {
+            return None;
+        }
+
+        if self.layer_count >= self.max_layers {
+            return None;
+        }
+
+        let layer = self.layer_count;
+        self.layer_count += 1;
+
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: 0,
+                    y: 0,
+                    z: layer,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            data,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(self.width * 4),
+                rows_per_image: Some(self.height),
+            },
+            wgpu::Extent3d {
+                width: self.width,
+                height: self.height,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        Some(layer)
+    }
+
+    /// Registers a file extension and assigns it a layer.
+    ///
+    /// If the extension is already registered, returns the existing layer index.
+    /// If a new layer needs to be added, `icon_data` is uploaded.
+    ///
+    /// # Arguments
+    ///
+    /// * `queue` - wgpu queue for upload
+    /// * `extension` - File extension (e.g., "rs", "py", "js")
+    /// * `icon_data` - RGBA icon data (only used if extension is new)
+    ///
+    /// # Returns
+    ///
+    /// The layer index, or `None` if the array is full.
+    pub fn register_extension(
+        &mut self,
+        queue: &wgpu::Queue,
+        extension: &str,
+        icon_data: &[u8],
+    ) -> Option<u32> {
+        // Check if already registered
+        if let Some(&layer) = self.extension_map.get(extension) {
+            return Some(layer);
+        }
+
+        // Add new layer
+        let layer = self.add_layer(queue, icon_data)?;
+        self.extension_map.insert(extension.to_lowercase(), layer);
+
+        Some(layer)
+    }
+
+    /// Looks up the layer index for a file extension.
+    ///
+    /// # Returns
+    ///
+    /// The layer index, or `None` if the extension is not registered.
+    #[inline]
+    pub fn get_layer(&self, extension: &str) -> Option<u32> {
+        self.extension_map.get(&extension.to_lowercase()).copied()
+    }
+
+    /// Checks if an extension is registered.
+    #[inline]
+    pub fn has_extension(&self, extension: &str) -> bool {
+        self.extension_map.contains_key(&extension.to_lowercase())
+    }
+
+    /// Returns statistics about the texture array.
+    pub fn stats(&self) -> TextureArrayStats {
+        TextureArrayStats {
+            width: self.width,
+            height: self.height,
+            layer_count: self.layer_count,
+            max_layers: self.max_layers,
+            extension_count: self.extension_map.len(),
+            bytes_per_layer: self.width * self.height * 4,
+            total_bytes: self.width * self.height * 4 * self.layer_count,
+        }
+    }
+}
+
+/// Statistics for a texture array.
+#[derive(Debug, Clone, Copy)]
+pub struct TextureArrayStats {
+    /// Width of each layer.
+    pub width: u32,
+    /// Height of each layer.
+    pub height: u32,
+    /// Number of layers currently used.
+    pub layer_count: u32,
+    /// Maximum number of layers.
+    pub max_layers: u32,
+    /// Number of registered extensions.
+    pub extension_count: usize,
+    /// Bytes per layer.
+    pub bytes_per_layer: u32,
+    /// Total bytes used.
+    pub total_bytes: u32,
+}
+
+impl TextureArrayStats {
+    /// Returns the utilization ratio (0.0 - 1.0).
+    #[inline]
+    pub fn utilization(&self) -> f32 {
+        if self.max_layers == 0 {
+            0.0
+        } else {
+            self.layer_count as f32 / self.max_layers as f32
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -876,5 +1231,78 @@ mod tests {
         assert!(MAX_ATLAS_SIZE >= INITIAL_ATLAS_SIZE);
         assert!(GLYPH_PADDING >= 1);
         assert!(DEFRAG_THRESHOLD > 0.0 && DEFRAG_THRESHOLD < 1.0);
+    }
+
+    // ========================================================================
+    // TextureArray tests
+    // ========================================================================
+
+    #[test]
+    #[allow(clippy::assertions_on_constants)]
+    fn test_texture_array_constants() {
+        assert!(MAX_TEXTURE_ARRAY_LAYERS > 0);
+        assert!(MAX_TEXTURE_ARRAY_LAYERS <= 256);
+        assert!(DEFAULT_ICON_SIZE > 0);
+        assert!(DEFAULT_ICON_SIZE <= 128);
+    }
+
+    #[test]
+    fn test_texture_array_stats_utilization() {
+        let stats = TextureArrayStats {
+            width: 32,
+            height: 32,
+            layer_count: 64,
+            max_layers: 256,
+            extension_count: 50,
+            bytes_per_layer: 32 * 32 * 4,
+            total_bytes: 32 * 32 * 4 * 64,
+        };
+
+        assert!((stats.utilization() - 0.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_texture_array_stats_empty() {
+        let stats = TextureArrayStats {
+            width: 32,
+            height: 32,
+            layer_count: 0,
+            max_layers: 256,
+            extension_count: 0,
+            bytes_per_layer: 32 * 32 * 4,
+            total_bytes: 0,
+        };
+
+        assert!((stats.utilization() - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_texture_array_stats_full() {
+        let stats = TextureArrayStats {
+            width: 32,
+            height: 32,
+            layer_count: 256,
+            max_layers: 256,
+            extension_count: 200,
+            bytes_per_layer: 32 * 32 * 4,
+            total_bytes: 32 * 32 * 4 * 256,
+        };
+
+        assert!((stats.utilization() - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_texture_array_stats_zero_max() {
+        let stats = TextureArrayStats {
+            width: 32,
+            height: 32,
+            layer_count: 0,
+            max_layers: 0,
+            extension_count: 0,
+            bytes_per_layer: 32 * 32 * 4,
+            total_bytes: 0,
+        };
+
+        assert!((stats.utilization() - 0.0).abs() < 0.001);
     }
 }

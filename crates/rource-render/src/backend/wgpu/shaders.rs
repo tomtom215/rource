@@ -328,6 +328,81 @@ fn fs_text(in: TexturedQuadVertexOutput) -> @location(0) vec4<f32> {
 }
 "#;
 
+/// Texture array shader for efficient file icon rendering.
+///
+/// Uses a 2D texture array to batch all file icons into a single draw call.
+/// Each instance specifies which layer to sample from.
+///
+/// ## Instance Layout
+///
+/// | Attribute | Type | Location | Description |
+/// |-----------|------|----------|-------------|
+/// | `bounds` | vec4 | 1 | `min_x`, `min_y`, `max_x`, `max_y` |
+/// | `uv_bounds` | vec4 | 2 | `u_min`, `v_min`, `u_max`, `v_max` |
+/// | `color` | vec4 | 3 | RGBA tint color |
+/// | `layer` | u32 | 4 | Texture array layer index |
+///
+/// ## Bind Groups
+///
+/// - Group 0: Uniforms (resolution)
+/// - Group 1: Texture array + sampler
+pub const TEXTURE_ARRAY_SHADER: &str = r#"
+// ============================================================================
+// Texture Array Shader (for file icons)
+// ============================================================================
+
+struct TextureArrayInstance {
+    @location(1) bounds: vec4<f32>,     // min_x, min_y, max_x, max_y
+    @location(2) uv_bounds: vec4<f32>,  // u_min, v_min, u_max, v_max
+    @location(3) color: vec4<f32>,
+    @location(4) layer: u32,            // texture array layer index
+};
+
+struct TextureArrayVertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) @interpolate(flat) layer: u32,
+};
+
+struct Uniforms {
+    resolution: vec2<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> uniforms: Uniforms;
+
+@group(1) @binding(0)
+var t_texture_array: texture_2d_array<f32>;
+@group(1) @binding(1)
+var s_texture_array: sampler;
+
+struct QuadVertexInput {
+    @location(0) position: vec2<f32>,
+};
+
+@vertex
+fn vs_texture_array(vertex: QuadVertexInput, instance: TextureArrayInstance) -> TextureArrayVertexOutput {
+    var out: TextureArrayVertexOutput;
+
+    let world_pos = mix(instance.bounds.xy, instance.bounds.zw, vertex.position);
+    out.uv = mix(instance.uv_bounds.xy, instance.uv_bounds.zw, vertex.position);
+
+    let ndc = (world_pos / uniforms.resolution) * 2.0 - 1.0;
+    out.clip_position = vec4<f32>(ndc.x, -ndc.y, 0.0, 1.0);
+
+    out.color = instance.color;
+    out.layer = instance.layer;
+    return out;
+}
+
+@fragment
+fn fs_texture_array(in: TextureArrayVertexOutput) -> @location(0) vec4<f32> {
+    let tex_color = textureSample(t_texture_array, s_texture_array, in.uv, in.layer);
+    return tex_color * in.color;
+}
+"#;
+
 /// Bloom bright pass shader.
 ///
 /// Extracts pixels brighter than a threshold for bloom processing.
@@ -1298,6 +1373,7 @@ mod tests {
         let shaders = [
             PRIMITIVE_SHADER,
             CURVE_SHADER,
+            TEXTURE_ARRAY_SHADER,
             BLOOM_BRIGHT_SHADER,
             BLOOM_BLUR_SHADER,
             BLOOM_COMPOSITE_SHADER,
@@ -1343,5 +1419,29 @@ mod tests {
         assert!(VISIBILITY_CULLING_SHADER.contains("is_circle_visible"));
         assert!(VISIBILITY_CULLING_SHADER.contains("is_line_visible"));
         assert!(VISIBILITY_CULLING_SHADER.contains("is_quad_visible"));
+    }
+
+    #[test]
+    fn test_texture_array_shader_exists() {
+        assert!(!TEXTURE_ARRAY_SHADER.is_empty());
+        assert!(TEXTURE_ARRAY_SHADER.contains("vs_texture_array"));
+        assert!(TEXTURE_ARRAY_SHADER.contains("fs_texture_array"));
+    }
+
+    #[test]
+    fn test_texture_array_shader_has_layer_index() {
+        // Verify the shader uses texture array with layer index
+        assert!(TEXTURE_ARRAY_SHADER.contains("texture_2d_array"));
+        assert!(TEXTURE_ARRAY_SHADER.contains("layer: u32"));
+        assert!(TEXTURE_ARRAY_SHADER.contains("@interpolate(flat)"));
+    }
+
+    #[test]
+    fn test_texture_array_shader_instance_data() {
+        // Verify texture array instance contains all required fields
+        assert!(TEXTURE_ARRAY_SHADER.contains("bounds: vec4<f32>"));
+        assert!(TEXTURE_ARRAY_SHADER.contains("uv_bounds: vec4<f32>"));
+        assert!(TEXTURE_ARRAY_SHADER.contains("color: vec4<f32>"));
+        assert!(TEXTURE_ARRAY_SHADER.contains("layer: u32"));
     }
 }

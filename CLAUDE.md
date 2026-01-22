@@ -1151,6 +1151,90 @@ For software renderer, curves still use CPU-side Catmull-Rom with streaming line
 
 **Test Count**: 1,121 tests passing (added 4 new tests)
 
+### Phase 13 Optimizations (2026-01-22)
+
+Texture array infrastructure for efficient file icon batching.
+
+#### 1. Texture Array Support
+
+Added GPU texture array support for batching multiple file icons into a single draw call.
+Instead of switching textures per file type, all icons are stored in a single 2D array
+texture where each layer represents a different file extension.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/textures.rs` - Added `TextureArray`, `TextureArrayStats`
+- `crates/rource-render/src/backend/wgpu/shaders.rs` - Added `TEXTURE_ARRAY_SHADER`
+- `crates/rource-render/src/backend/wgpu/pipeline.rs` - Added `TEXTURE_ARRAY_INSTANCE` layout
+- `crates/rource-render/src/backend/wgpu/state.rs` - Added `PipelineId::TextureArray`
+- `crates/rource-render/src/backend/wgpu/stats.rs` - Added `TEXTURE_ARRAYS` to `ActivePrimitives`
+
+**`TextureArray` API**:
+
+```rust
+// Create texture array with 32x32 icons, max 64 layers
+let array = TextureArray::new(&device, &layout, 32, 32, 64)?;
+
+// Register file extension with icon data
+let rs_layer = array.register_extension(&queue, "rs", &rs_icon_rgba)?;
+let py_layer = array.register_extension(&queue, "py", &py_icon_rgba)?;
+
+// Look up layer index for rendering
+if let Some(layer) = array.get_layer("rs") {
+    // Use layer in instance data
+}
+```
+
+**Instance Layout** (52 bytes per instance):
+
+| Attribute | Type | Location | Description |
+|-----------|------|----------|-------------|
+| `bounds` | vec4 | 1 | `min_x`, `min_y`, `max_x`, `max_y` |
+| `uv_bounds` | vec4 | 2 | `u_min`, `v_min`, `u_max`, `v_max` |
+| `color` | vec4 | 3 | RGBA tint color |
+| `layer` | u32 | 4 | Texture array layer index |
+
+**Shader Architecture**:
+
+```wgsl
+@group(1) @binding(0)
+var t_texture_array: texture_2d_array<f32>;
+@group(1) @binding(1)
+var s_texture_array: sampler;
+
+@fragment
+fn fs_texture_array(in: TextureArrayVertexOutput) -> @location(0) vec4<f32> {
+    let tex_color = textureSample(t_texture_array, s_texture_array, in.uv, in.layer);
+    return tex_color * in.color;
+}
+```
+
+**Performance Characteristics**:
+
+| Aspect | Traditional | Texture Array |
+|--------|-------------|---------------|
+| Texture binds | 1 per file type | 1 total |
+| Draw calls | 1 per file type | 1 total |
+| GPU memory | N × icon_size | 1 × array_size |
+| State changes | High | Minimal |
+
+**Constants**:
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `MAX_TEXTURE_ARRAY_LAYERS` | 256 | Maximum layers (file types) |
+| `DEFAULT_ICON_SIZE` | 32 | Default icon dimensions |
+
+**When to Use**:
+- File visualizations with many different file types
+- Avatar/icon systems with multiple image variants
+- Any scenario requiring many small textures
+
+**Note**: This is infrastructure for future file icon rendering. The current
+visualization uses color-based file representation. The texture array can be
+integrated when icon assets are added.
+
+**Test Count**: 1,129 tests passing (added 8 new tests)
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -1986,4 +2070,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (Instanced curve rendering with GPU tessellation - 1,121 tests)*
+*Last updated: 2026-01-22 (Texture array infrastructure for file icons - 1,129 tests)*

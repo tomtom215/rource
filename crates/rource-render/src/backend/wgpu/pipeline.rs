@@ -44,6 +44,7 @@ pub use vertex_layouts::strides::LINE as LINE_INSTANCE_SIZE;
 pub use vertex_layouts::strides::QUAD as QUAD_INSTANCE_SIZE;
 pub use vertex_layouts::strides::RING as RING_INSTANCE_SIZE;
 pub use vertex_layouts::strides::TEXTURED_QUAD as TEXTURED_QUAD_INSTANCE_SIZE;
+pub use vertex_layouts::strides::TEXTURE_ARRAY as TEXTURE_ARRAY_INSTANCE_SIZE;
 
 /// Vertex attribute layouts for instance data.
 pub mod vertex_layouts {
@@ -195,6 +196,32 @@ pub mod vertex_layouts {
         },
     ];
 
+    /// Texture array instance attributes: bounds (vec4), `uv_bounds` (vec4), color (vec4), layer (u32).
+    ///
+    /// Used for batching multiple file icons into a single draw call using texture arrays.
+    pub const TEXTURE_ARRAY_INSTANCE: [VertexAttribute; 4] = [
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 0,
+            shader_location: 1, // bounds
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 16,
+            shader_location: 2, // uv_bounds
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 32,
+            shader_location: 3, // color
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Uint32,
+            offset: 48,
+            shader_location: 4, // layer
+        },
+    ];
+
     /// Instance stride calculations.
     pub mod strides {
         /// Circle: center (2) + radius (1) + color (4) = 7 floats = 28 bytes.
@@ -209,6 +236,9 @@ pub mod vertex_layouts {
         pub const TEXTURED_QUAD: u64 = 48;
         /// Curve: p0-p3 (8) + width (1) + color (4) + segments (1) = 14 floats = 56 bytes.
         pub const CURVE: u64 = 56;
+        /// Texture array: bounds (4) + `uv_bounds` (4) + color (4) + layer (1) = 13 floats.
+        /// Note: Actually 48 bytes for floats + 4 bytes for u32 = 52 bytes.
+        pub const TEXTURE_ARRAY: u64 = 52;
     }
 }
 

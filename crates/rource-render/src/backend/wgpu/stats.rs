@@ -43,6 +43,8 @@ impl ActivePrimitives {
     pub const TEXT: u8 = 1 << 5;
     /// Curves are active.
     pub const CURVES: u8 = 1 << 6;
+    /// Texture array quads are active.
+    pub const TEXTURE_ARRAYS: u8 = 1 << 7;
 
     /// Creates an empty set with no active primitives.
     #[inline]
@@ -60,7 +62,8 @@ impl ActivePrimitives {
                 | Self::QUADS
                 | Self::TEXTURED_QUADS
                 | Self::TEXT
-                | Self::CURVES,
+                | Self::CURVES
+                | Self::TEXTURE_ARRAYS,
         }
     }
 
@@ -161,6 +164,9 @@ pub struct FrameStats {
     /// Number of text glyph instances rendered.
     pub text_instances: u32,
 
+    /// Number of texture array quad instances rendered.
+    pub texture_array_instances: u32,
+
     /// Number of render pipeline switches.
     ///
     /// In wgpu, this corresponds to `set_pipeline()` calls.
@@ -225,6 +231,7 @@ impl FrameStats {
             quad_instances: 0,
             textured_quad_instances: 0,
             text_instances: 0,
+            texture_array_instances: 0,
             pipeline_switches: 0,
             bind_group_switches: 0,
             texture_binds: 0,
@@ -422,6 +429,13 @@ impl FrameStats {
         self.active_primitives.set(ActivePrimitives::TEXT);
     }
 
+    /// Records texture array instances.
+    #[inline]
+    pub fn record_texture_arrays(&mut self, count: u32) {
+        self.texture_array_instances += count;
+        self.active_primitives.set(ActivePrimitives::TEXTURE_ARRAYS);
+    }
+
     /// Records a compute dispatch.
     #[inline]
     pub fn record_compute(&mut self, entities: u32) {
@@ -546,7 +560,7 @@ mod tests {
         let active = ActivePrimitives::all();
         assert!(active.any());
         assert!(!active.is_empty());
-        assert_eq!(active.count(), 7);
+        assert_eq!(active.count(), 8);
     }
 
     #[test]
@@ -567,11 +581,11 @@ mod tests {
     #[test]
     fn test_active_primitives_clear() {
         let mut active = ActivePrimitives::all();
-        assert_eq!(active.count(), 7);
+        assert_eq!(active.count(), 8);
 
         active.clear(ActivePrimitives::CIRCLES);
         assert!(!active.is_set(ActivePrimitives::CIRCLES));
-        assert_eq!(active.count(), 6);
+        assert_eq!(active.count(), 7);
     }
 
     #[test]
