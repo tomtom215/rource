@@ -58,11 +58,15 @@ pub enum PipelineId {
     ShadowBlur = 10,
     /// Shadow composite pass pipeline.
     ShadowComposite = 11,
+    /// Catmull-Rom curve rendering pipeline.
+    Curve = 12,
+    /// Texture array rendering pipeline (for file icons).
+    TextureArray = 13,
 }
 
 impl PipelineId {
     /// Returns all primitive pipeline IDs (excluding post-processing).
-    pub const fn primitives() -> [Self; 6] {
+    pub const fn primitives() -> [Self; 8] {
         [
             Self::Circle,
             Self::Ring,
@@ -70,6 +74,8 @@ impl PipelineId {
             Self::Quad,
             Self::TexturedQuad,
             Self::Text,
+            Self::Curve,
+            Self::TextureArray,
         ]
     }
 
@@ -89,7 +95,7 @@ impl PipelineId {
 
     /// Returns the total number of pipeline types.
     pub const fn count() -> usize {
-        12
+        14
     }
 }
 
@@ -539,9 +545,11 @@ mod tests {
     #[test]
     fn test_pipeline_id_primitives() {
         let primitives = PipelineId::primitives();
-        assert_eq!(primitives.len(), 6);
+        assert_eq!(primitives.len(), 8);
         assert_eq!(primitives[0], PipelineId::Circle);
         assert_eq!(primitives[5], PipelineId::Text);
+        assert_eq!(primitives[6], PipelineId::Curve);
+        assert_eq!(primitives[7], PipelineId::TextureArray);
     }
 
     #[test]
@@ -558,7 +566,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_id_count() {
-        assert_eq!(PipelineId::count(), 12);
+        assert_eq!(PipelineId::count(), 14);
     }
 
     #[test]

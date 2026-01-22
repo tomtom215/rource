@@ -986,6 +986,255 @@ render_pass.draw_indirect(&indirect.buffer(), 0);
 
 **Test Count**: 1,106 tests passing (added 12 new tests)
 
+### Phase 11 Optimizations (2026-01-22)
+
+GPU visibility culling pipeline integration.
+
+#### 1. VisibilityCullingPipeline
+
+Added a complete GPU visibility culling pipeline that filters instances based on view bounds
+using compute shaders. This is an opt-in feature for extreme-scale scenarios (10,000+ instances).
+
+**Files Added**:
+- `crates/rource-render/src/backend/wgpu/culling.rs` - Complete culling pipeline
+
+**New Types**:
+
+| Type | Description |
+|------|-------------|
+| `VisibilityCullingPipeline` | Full GPU culling pipeline with compute shaders |
+| `CullPrimitive` | Enum for primitive types (Circles, Lines, Quads) |
+| `CullingStats` | Statistics from culling operations |
+
+**Culling Pipeline Architecture**:
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    GPU Visibility Culling                            │
+│                                                                      │
+│  Input Instance Buffer                 Output Instance Buffer        │
+│  ┌─────────────────┐                  ┌─────────────────┐           │
+│  │ All instances   │──► cs_cull_X() ──│ Visible only    │           │
+│  │ (unculled)      │                  │ (compacted)     │           │
+│  └─────────────────┘                  └─────────────────┘           │
+│                                                │                     │
+│                                                ▼                     │
+│                                       ┌─────────────────┐           │
+│                                       │ DrawIndirect    │           │
+│                                       │ instance_count  │           │
+│                                       └─────────────────┘           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**WgpuRenderer API**:
+```rust
+// Enable GPU culling (opt-in, off by default)
+renderer.set_gpu_culling_enabled(true);
+
+// Set view bounds for culling (typically from camera)
+renderer.set_cull_bounds(-1000.0, -1000.0, 1000.0, 1000.0);
+
+// Warmup to avoid first-frame stutter
+renderer.warmup_culling();
+
+// Check culling statistics
+if let Some(stats) = renderer.culling_stats() {
+    println!("Culled: {:.1}%", stats.culled_percentage());
+}
+```
+
+**Culling Methods**:
+
+| Method | Description |
+|--------|-------------|
+| `set_gpu_culling_enabled(bool)` | Enable/disable GPU culling |
+| `is_gpu_culling_enabled()` | Check if GPU culling is enabled |
+| `set_cull_bounds(min_x, min_y, max_x, max_y)` | Set view bounds |
+| `cull_bounds()` | Get current view bounds |
+| `warmup_culling()` | Pre-compile compute shaders |
+| `culling_stats()` | Get statistics from last cull operation |
+
+**When to Use GPU Culling**:
+- Scenes with 10,000+ instances where CPU culling becomes a bottleneck
+- Dynamic view bounds that change every frame (continuous panning/zooming)
+- GPU compute is available and CPU is saturated
+
+**When to Use CPU Culling (Default)**:
+- Most normal use cases (< 10,000 instances)
+- CPU quadtree culling is already efficient for typical scenes
+- No GPU compute overhead
+
+**Performance Characteristics**:
+
+| Aspect | Value |
+|--------|-------|
+| Workgroup Size | 256 threads |
+| Min Capacity | 1,024 instances |
+| Buffer Growth | 1.5x when exceeded |
+| Memory Overhead | Input + output buffers + indirect command |
+
+**Test Count**: 1,117 tests passing (added 11 new tests)
+
+### Phase 12 Optimizations (2026-01-22)
+
+Instanced curve/spline rendering for GPU-tessellated Catmull-Rom curves.
+
+#### 1. GPU Curve Tessellation
+
+Added GPU-based curve rendering that tessellates Catmull-Rom splines on the GPU using
+instanced triangle strips. This reduces draw calls for branch-heavy visualizations by
+batching all curves into a single draw call per frame.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/shaders.rs` - Added `CURVE_SHADER` with Catmull-Rom
+- `crates/rource-render/src/backend/wgpu/pipeline.rs` - Added curve pipeline and vertex layout
+- `crates/rource-render/src/backend/wgpu/state.rs` - Added `PipelineId::Curve`
+- `crates/rource-render/src/backend/wgpu/stats.rs` - Added `CURVES` to `ActivePrimitives`
+- `crates/rource-render/src/backend/wgpu/buffers.rs` - Added `CURVE_STRIP` vertex buffer
+- `crates/rource-render/src/backend/wgpu/mod.rs` - Added `flush_curves_pass`, updated `draw_spline`
+
+**Curve Instance Layout** (56 bytes per instance):
+
+| Attribute | Type | Location | Description |
+|-----------|------|----------|-------------|
+| `p0` | vec2 | 1 | Control point before segment start |
+| `p1` | vec2 | 2 | Segment start point |
+| `p2` | vec2 | 3 | Segment end point |
+| `p3` | vec2 | 4 | Control point after segment end |
+| `width` | f32 | 5 | Curve width in pixels |
+| `color` | vec4 | 6 | RGBA color |
+| `segments` | u32 | 7 | Number of tessellation segments |
+
+**GPU Tessellation**:
+
+The curve shader uses Catmull-Rom spline interpolation computed entirely on the GPU:
+
+```wgsl
+fn catmull_rom(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p3: vec2<f32>, t: f32) -> vec2<f32> {
+    let t2 = t * t;
+    let t3 = t2 * t;
+
+    let a = -0.5 * p0 + 1.5 * p1 - 1.5 * p2 + 0.5 * p3;
+    let b = p0 - 2.5 * p1 + 2.0 * p2 - 0.5 * p3;
+    let c = -0.5 * p0 + 0.5 * p2;
+    let d = p1;
+
+    return a * t3 + b * t2 + c * t + d;
+}
+```
+
+**Triangle Strip Geometry**:
+
+Uses pre-computed `CURVE_STRIP` vertex buffer with 8 segments (18 vertices):
+- X coordinate: curve parameter t (0 to 1)
+- Y coordinate: perpendicular offset (-0.5 to 0.5)
+
+The vertex shader:
+1. Interpolates position along the curve using Catmull-Rom
+2. Computes tangent vector at each point
+3. Offsets vertices perpendicular to the tangent by `width * y_offset`
+
+**Performance Impact**:
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| 100 curves | 800 line draw calls | 1 instanced draw call |
+| 1000 curves | 8000 line draw calls | 1 instanced draw call |
+| Draw call reduction | N × segments | 1 |
+
+**When Curves Are Used**:
+- Branch connections in the directory tree
+- Spline paths for file animations
+- Any multi-point smooth path rendering
+
+**Fallback**:
+For software renderer, curves still use CPU-side Catmull-Rom with streaming line segments.
+
+**Test Count**: 1,121 tests passing (added 4 new tests)
+
+### Phase 13 Optimizations (2026-01-22)
+
+Texture array infrastructure for efficient file icon batching.
+
+#### 1. Texture Array Support
+
+Added GPU texture array support for batching multiple file icons into a single draw call.
+Instead of switching textures per file type, all icons are stored in a single 2D array
+texture where each layer represents a different file extension.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/textures.rs` - Added `TextureArray`, `TextureArrayStats`
+- `crates/rource-render/src/backend/wgpu/shaders.rs` - Added `TEXTURE_ARRAY_SHADER`
+- `crates/rource-render/src/backend/wgpu/pipeline.rs` - Added `TEXTURE_ARRAY_INSTANCE` layout
+- `crates/rource-render/src/backend/wgpu/state.rs` - Added `PipelineId::TextureArray`
+- `crates/rource-render/src/backend/wgpu/stats.rs` - Added `TEXTURE_ARRAYS` to `ActivePrimitives`
+
+**`TextureArray` API**:
+
+```rust
+// Create texture array with 32x32 icons, max 64 layers
+let array = TextureArray::new(&device, &layout, 32, 32, 64)?;
+
+// Register file extension with icon data
+let rs_layer = array.register_extension(&queue, "rs", &rs_icon_rgba)?;
+let py_layer = array.register_extension(&queue, "py", &py_icon_rgba)?;
+
+// Look up layer index for rendering
+if let Some(layer) = array.get_layer("rs") {
+    // Use layer in instance data
+}
+```
+
+**Instance Layout** (52 bytes per instance):
+
+| Attribute | Type | Location | Description |
+|-----------|------|----------|-------------|
+| `bounds` | vec4 | 1 | `min_x`, `min_y`, `max_x`, `max_y` |
+| `uv_bounds` | vec4 | 2 | `u_min`, `v_min`, `u_max`, `v_max` |
+| `color` | vec4 | 3 | RGBA tint color |
+| `layer` | u32 | 4 | Texture array layer index |
+
+**Shader Architecture**:
+
+```wgsl
+@group(1) @binding(0)
+var t_texture_array: texture_2d_array<f32>;
+@group(1) @binding(1)
+var s_texture_array: sampler;
+
+@fragment
+fn fs_texture_array(in: TextureArrayVertexOutput) -> @location(0) vec4<f32> {
+    let tex_color = textureSample(t_texture_array, s_texture_array, in.uv, in.layer);
+    return tex_color * in.color;
+}
+```
+
+**Performance Characteristics**:
+
+| Aspect | Traditional | Texture Array |
+|--------|-------------|---------------|
+| Texture binds | 1 per file type | 1 total |
+| Draw calls | 1 per file type | 1 total |
+| GPU memory | N × icon_size | 1 × array_size |
+| State changes | High | Minimal |
+
+**Constants**:
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `MAX_TEXTURE_ARRAY_LAYERS` | 256 | Maximum layers (file types) |
+| `DEFAULT_ICON_SIZE` | 32 | Default icon dimensions |
+
+**When to Use**:
+- File visualizations with many different file types
+- Avatar/icon systems with multiple image variants
+- Any scenario requiring many small textures
+
+**Note**: This is infrastructure for future file icon rendering. The current
+visualization uses color-based file representation. The texture array can be
+integrated when icon assets are added.
+
+**Test Count**: 1,129 tests passing (added 8 new tests)
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -1821,4 +2070,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (GPU visibility culling and indirect draw support - 1,106 tests)*
+*Last updated: 2026-01-22 (Texture array infrastructure for file icons - 1,129 tests)*

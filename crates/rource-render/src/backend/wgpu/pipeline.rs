@@ -34,15 +34,17 @@
 //! └─────────────────────────────────────────────────────────────────┘
 //! ```
 
-use super::shaders::PRIMITIVE_SHADER;
+use super::shaders::{CURVE_SHADER, PRIMITIVE_SHADER};
 use super::state::PipelineId;
 
 // Re-export instance sizes at module level for convenience.
 pub use vertex_layouts::strides::CIRCLE as CIRCLE_INSTANCE_SIZE;
+pub use vertex_layouts::strides::CURVE as CURVE_INSTANCE_SIZE;
 pub use vertex_layouts::strides::LINE as LINE_INSTANCE_SIZE;
 pub use vertex_layouts::strides::QUAD as QUAD_INSTANCE_SIZE;
 pub use vertex_layouts::strides::RING as RING_INSTANCE_SIZE;
 pub use vertex_layouts::strides::TEXTURED_QUAD as TEXTURED_QUAD_INSTANCE_SIZE;
+pub use vertex_layouts::strides::TEXTURE_ARRAY as TEXTURE_ARRAY_INSTANCE_SIZE;
 
 /// Vertex attribute layouts for instance data.
 pub mod vertex_layouts {
@@ -155,6 +157,71 @@ pub mod vertex_layouts {
         },
     ];
 
+    /// Curve instance attributes: p0-p3 (4×vec2), width (f32), color (vec4), segments (u32).
+    pub const CURVE_INSTANCE: [VertexAttribute; 7] = [
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x2,
+            offset: 0,
+            shader_location: 1, // p0
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x2,
+            offset: 8,
+            shader_location: 2, // p1
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x2,
+            offset: 16,
+            shader_location: 3, // p2
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x2,
+            offset: 24,
+            shader_location: 4, // p3
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32,
+            offset: 32,
+            shader_location: 5, // width
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 36,
+            shader_location: 6, // color
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Uint32,
+            offset: 52,
+            shader_location: 7, // segments
+        },
+    ];
+
+    /// Texture array instance attributes: bounds (vec4), `uv_bounds` (vec4), color (vec4), layer (u32).
+    ///
+    /// Used for batching multiple file icons into a single draw call using texture arrays.
+    pub const TEXTURE_ARRAY_INSTANCE: [VertexAttribute; 4] = [
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 0,
+            shader_location: 1, // bounds
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 16,
+            shader_location: 2, // uv_bounds
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 32,
+            shader_location: 3, // color
+        },
+        VertexAttribute {
+            format: wgpu::VertexFormat::Uint32,
+            offset: 48,
+            shader_location: 4, // layer
+        },
+    ];
+
     /// Instance stride calculations.
     pub mod strides {
         /// Circle: center (2) + radius (1) + color (4) = 7 floats = 28 bytes.
@@ -167,6 +234,11 @@ pub mod vertex_layouts {
         pub const QUAD: u64 = 32;
         /// Textured quad: bounds (4) + `uv_bounds` (4) + color (4) = 12 floats = 48 bytes.
         pub const TEXTURED_QUAD: u64 = 48;
+        /// Curve: p0-p3 (8) + width (1) + color (4) + segments (1) = 14 floats = 56 bytes.
+        pub const CURVE: u64 = 56;
+        /// Texture array: bounds (4) + `uv_bounds` (4) + color (4) + layer (1) = 13 floats.
+        /// Note: Actually 48 bytes for floats + 4 bytes for u32 = 52 bytes.
+        pub const TEXTURE_ARRAY: u64 = 52;
     }
 }
 
@@ -212,6 +284,9 @@ pub fn additive_blend_state() -> wgpu::BlendState {
 pub struct PipelineManager {
     /// Compiled shader module containing all primitive shaders.
     shader_module: wgpu::ShaderModule,
+
+    /// Compiled shader module for curve rendering (separate for modularity).
+    curve_shader_module: Option<wgpu::ShaderModule>,
 
     /// Bind group layout for uniforms (group 0).
     uniform_layout: wgpu::BindGroupLayout,
@@ -288,6 +363,7 @@ impl PipelineManager {
 
         Self {
             shader_module,
+            curve_shader_module: None,
             uniform_layout,
             texture_layout,
             pipelines,
@@ -328,7 +404,7 @@ impl PipelineManager {
     }
 
     /// Creates a render pipeline for the given primitive type.
-    fn create_pipeline(&self, device: &wgpu::Device, id: PipelineId) -> wgpu::RenderPipeline {
+    fn create_pipeline(&mut self, device: &wgpu::Device, id: PipelineId) -> wgpu::RenderPipeline {
         match id {
             PipelineId::Circle => self.create_circle_pipeline(device),
             PipelineId::Ring => self.create_ring_pipeline(device),
@@ -336,6 +412,7 @@ impl PipelineManager {
             PipelineId::Quad => self.create_quad_pipeline(device),
             PipelineId::TexturedQuad => self.create_textured_quad_pipeline(device),
             PipelineId::Text => self.create_text_pipeline(device),
+            PipelineId::Curve => self.create_curve_pipeline(device),
             _ => panic!("Pipeline {id:?} should be created through specific methods"),
         }
     }
@@ -666,6 +743,75 @@ impl PipelineManager {
         })
     }
 
+    /// Creates the curve rendering pipeline.
+    ///
+    /// This pipeline renders Catmull-Rom spline curves using a separate shader module.
+    fn create_curve_pipeline(&mut self, device: &wgpu::Device) -> wgpu::RenderPipeline {
+        // Compile curve shader module if not already done
+        if self.curve_shader_module.is_none() {
+            self.curve_shader_module =
+                Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("curve_shader"),
+                    source: wgpu::ShaderSource::Wgsl(CURVE_SHADER.into()),
+                }));
+        }
+
+        let curve_shader = self.curve_shader_module.as_ref().unwrap();
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("curve_pipeline_layout"),
+            bind_group_layouts: &[&self.uniform_layout],
+            push_constant_ranges: &[],
+        });
+
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("curve_pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: curve_shader,
+                entry_point: Some("vs_curve"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[
+                    // Vertex buffer (position)
+                    wgpu::VertexBufferLayout {
+                        array_stride: 8,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &vertex_layouts::POSITION,
+                    },
+                    // Instance buffer
+                    wgpu::VertexBufferLayout {
+                        array_stride: vertex_layouts::strides::CURVE,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &vertex_layouts::CURVE_INSTANCE,
+                    },
+                ],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: curve_shader,
+                entry_point: Some("fs_curve"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: self.surface_format,
+                    blend: Some(alpha_blend_state()),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleStrip,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None,
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        })
+    }
+
     /// Returns whether a pipeline is already cached.
     #[inline]
     pub fn has_pipeline(&self, id: PipelineId) -> bool {
@@ -708,6 +854,8 @@ mod tests {
         assert_eq!(strides::QUAD, 8 * 4);
         // Textured quad: 12 floats
         assert_eq!(strides::TEXTURED_QUAD, 12 * 4);
+        // Curve: 14 floats (p0-p3 (8) + width (1) + color (4) + segments (1))
+        assert_eq!(strides::CURVE, 14 * 4);
     }
 
     #[test]
@@ -801,5 +949,39 @@ mod tests {
         assert_eq!(attrs.len(), 1);
         assert_eq!(attrs[0].shader_location, 0);
         assert_eq!(attrs[0].offset, 0);
+    }
+
+    #[test]
+    fn test_curve_instance_layout() {
+        let attrs = &vertex_layouts::CURVE_INSTANCE;
+        assert_eq!(attrs.len(), 7);
+
+        // p0 (vec2) at offset 0, location 1
+        assert_eq!(attrs[0].offset, 0);
+        assert_eq!(attrs[0].shader_location, 1);
+
+        // p1 (vec2) at offset 8, location 2
+        assert_eq!(attrs[1].offset, 8);
+        assert_eq!(attrs[1].shader_location, 2);
+
+        // p2 (vec2) at offset 16, location 3
+        assert_eq!(attrs[2].offset, 16);
+        assert_eq!(attrs[2].shader_location, 3);
+
+        // p3 (vec2) at offset 24, location 4
+        assert_eq!(attrs[3].offset, 24);
+        assert_eq!(attrs[3].shader_location, 4);
+
+        // width (f32) at offset 32, location 5
+        assert_eq!(attrs[4].offset, 32);
+        assert_eq!(attrs[4].shader_location, 5);
+
+        // color (vec4) at offset 36, location 6
+        assert_eq!(attrs[5].offset, 36);
+        assert_eq!(attrs[5].shader_location, 6);
+
+        // segments (u32) at offset 52, location 7
+        assert_eq!(attrs[6].offset, 52);
+        assert_eq!(attrs[6].shader_location, 7);
     }
 }
