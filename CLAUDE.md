@@ -1235,6 +1235,50 @@ integrated when icon assets are added.
 
 **Test Count**: 1,129 tests passing (added 8 new tests)
 
+### Scene Module Refactoring (2026-01-22)
+
+Refactored `scene/mod.rs` into modular structure for improved maintainability.
+
+**Refactored from 1,615 lines to modular structure** (main mod.rs reduced to 1,158 lines, 28% reduction).
+
+#### Architecture
+
+```
+crates/rource-core/src/scene/
+├── mod.rs              # Scene struct, core methods (1,158 lines)
+├── action.rs           # Action entities and types
+├── dir_node.rs         # Directory node entities
+├── file.rs             # File node entities
+├── tree.rs             # Directory tree structure
+├── user.rs             # User entities
+├── bounds_methods.rs   # Entity bounds computation (130 lines)
+├── layout_methods.rs   # Force-directed layout algorithm (180 lines)
+├── spatial_methods.rs  # Spatial index and visibility queries (227 lines)
+└── stats_methods.rs    # Extension statistics for legend (88 lines)
+```
+
+The `*_methods.rs` files contain `impl Scene` blocks that extend the main struct
+with focused functionality:
+
+| Module | Methods | Purpose |
+|--------|---------|---------|
+| `bounds_methods.rs` | `compute_entity_bounds()`, `compute_entity_bounds_uncached()`, `invalidate_bounds_cache()` | Camera fitting, cached bounds |
+| `layout_methods.rs` | `apply_force_directed_layout()` | Physics simulation for directory positioning |
+| `spatial_methods.rs` | `rebuild_spatial_index()`, `query_entities*()`, `visible_*()` | Frustum culling, spatial queries |
+| `stats_methods.rs` | `file_extension_stats()`, `recompute_extension_stats()` | Legend display, cached statistics |
+
+**Force-Directed Layout Constants** (in `layout_methods.rs`):
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `FORCE_REPULSION` | 800.0 | Push siblings apart |
+| `FORCE_ATTRACTION` | 0.03 | Pull children to parents |
+| `FORCE_DAMPING` | 0.85 | Prevent oscillation |
+| `FORCE_MAX_VELOCITY` | 300.0 | Cap maximum speed |
+| `FORCE_MIN_DISTANCE` | 5.0 | Prevent extreme forces |
+
+**Test Count**: 1,106 tests passing
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -1355,25 +1399,36 @@ Successfully implemented WebAssembly support for running Rource in web browsers:
    - Output in `rource-wasm/www/pkg/`
    - Demo page in `rource-wasm/www/index.html`
 
-### wgpu Backend Implementation (2026-01-21)
+### wgpu Backend Implementation (2026-01-21, refactored 2026-01-22)
 
-Implemented production-grade wgpu rendering backend for cross-platform GPU rendering:
+Implemented production-grade wgpu rendering backend for cross-platform GPU rendering.
+
+**Refactored from 2,353 lines to modular structure** (main mod.rs reduced to 1,447 lines).
 
 #### Architecture
 
 ```
 crates/rource-render/src/backend/wgpu/
-├── mod.rs          # WgpuRenderer implementing Renderer trait
-├── buffers.rs      # Instance/uniform buffer management
-├── compute.rs      # GPU compute shaders for physics simulation
-├── pipeline.rs     # Render pipeline creation and caching
-├── shaders.rs      # WGSL shader source code
-├── state.rs        # Render state caching (pipeline, bind groups)
-├── stats.rs        # Frame statistics with active primitive tracking
-├── textures.rs     # Font atlas and texture management
-├── bloom.rs        # GPU bloom post-processing pipeline
-└── shadow.rs       # GPU drop shadow effect
+├── mod.rs              # WgpuRenderer struct, constructors, Renderer trait impl (1,447 lines)
+├── error.rs            # WgpuError enum (72 lines)
+├── buffers.rs          # Instance/uniform buffer management
+├── compute.rs          # GPU compute shaders for physics simulation
+├── pipeline.rs         # Render pipeline creation and caching
+├── shaders.rs          # WGSL shader source code
+├── state.rs            # Render state caching (pipeline, bind groups)
+├── stats.rs            # Frame statistics with active primitive tracking
+├── textures.rs         # Font atlas and texture management
+├── bloom.rs            # GPU bloom post-processing pipeline
+├── shadow.rs           # GPU drop shadow effect
+├── culling.rs          # GPU visibility culling pipeline
+├── physics_methods.rs  # Physics dispatch methods (297 lines)
+├── effects_methods.rs  # Bloom/shadow configuration methods (137 lines)
+├── culling_methods.rs  # GPU culling methods (124 lines)
+└── flush_passes.rs     # Flush pass rendering methods (432 lines)
 ```
+
+The `*_methods.rs` files contain `impl WgpuRenderer` blocks that extend the main struct
+with focused functionality, keeping each module under 500 lines for maintainability.
 
 #### Key Features
 
@@ -1406,25 +1461,33 @@ Enable with `wgpu` feature in Cargo.toml:
 rource-render = { path = "...", features = ["wgpu"] }
 ```
 
-### WebGL2 Backend Implementation (2026-01-11)
+### WebGL2 Backend Implementation (2026-01-11, refactored 2026-01-22)
 
-Successfully implemented GPU-accelerated WebGL2 rendering backend for WASM:
+Successfully implemented GPU-accelerated WebGL2 rendering backend for WASM.
+
+**Refactored from 1,896 lines to modular structure** (main mod.rs reduced to 1,161 lines).
 
 #### Architecture
 
 ```
 crates/rource-render/src/backend/webgl2/
-├── mod.rs          # WebGl2Renderer implementing Renderer trait
-├── bloom.rs        # GPU bloom post-processing pipeline
-├── shadow.rs       # GPU shadow post-processing pipeline
-├── shaders.rs      # GLSL ES 3.0 shader sources (legacy + UBO variants)
-├── buffers.rs      # VBO/VAO management for instanced rendering
-├── textures.rs     # Texture atlas for font glyphs
-├── state.rs        # GlStateCache for avoiding redundant API calls
-├── stats.rs        # FrameStats for debugging and profiling
-├── ubo.rs          # Uniform Buffer Objects for shared uniforms
-└── adaptive.rs     # Adaptive quality controller
+├── mod.rs              # WebGl2Renderer struct, constructors, Renderer trait impl (1,161 lines)
+├── error.rs            # WebGl2Error enum (52 lines)
+├── bloom.rs            # GPU bloom post-processing pipeline
+├── shadow.rs           # GPU shadow post-processing pipeline
+├── shaders.rs          # GLSL ES 3.0 shader sources (legacy + UBO variants)
+├── buffers.rs          # VBO/VAO management for instanced rendering
+├── textures.rs         # Texture atlas for font glyphs
+├── state.rs            # GlStateCache for avoiding redundant API calls
+├── stats.rs            # FrameStats for debugging and profiling
+├── ubo.rs              # Uniform Buffer Objects for shared uniforms
+├── adaptive.rs         # Adaptive quality controller
+├── effects_methods.rs  # Bloom/shadow/adaptive quality configuration methods (340 lines)
+└── flush_passes.rs     # Flush pass rendering methods (450 lines)
 ```
+
+The `*_methods.rs` files contain `impl WebGl2Renderer` blocks that extend the main struct
+with focused functionality, keeping each module under 500 lines for maintainability.
 
 #### Key Features
 
@@ -1745,6 +1808,32 @@ eprintln!("Frame {}: {} non-black pixels", frame, non_black);
 3. Add feature flag in `Cargo.toml`
 4. Update backend selection logic
 
+### CLI Args Module Structure (refactored 2026-01-22)
+
+The CLI argument parsing is organized as a module with the following structure:
+
+```
+rource-cli/src/args/
+├── mod.rs              # Args struct, clap derive, core methods (814 lines)
+├── config_methods.rs   # Config file and env var loading (283 lines)
+├── help_text.rs        # Sample config and env help text (160 lines)
+└── helpers.rs          # Parsing and validation helpers (239 lines)
+```
+
+**Key Components:**
+
+| File | Description |
+|------|-------------|
+| `mod.rs` | Args struct with clap derive, `validate()`, `to_settings()` |
+| `config_methods.rs` | `apply_config_file()`, `apply_env()` methods |
+| `help_text.rs` | `sample_config()`, `env_help()` static strings |
+| `helpers.rs` | `parse_hex_color()`, `validate_*()`, `parse_offset()`, `parse_date()` |
+
+**Refactoring Notes:**
+- Original args.rs was 1,413 lines, now mod.rs is 814 lines (42% reduction)
+- Uses `impl Args` blocks in separate files to extend the main struct
+- Helper functions moved to dedicated module for reusability
+
 ### Adding a New Configuration Option
 
 1. Add field to the appropriate settings module in `rource-core/src/config/settings/`:
@@ -1761,7 +1850,7 @@ eprintln!("Frame {}: {} non-black pixels", frame, non_black);
    - `overlay.rs` - Logo/background overlays
    - `filter.rs` - User/file filtering
    - `mod.rs` - Main `Settings` struct (add new sub-struct field here)
-2. Add CLI argument in `rource-cli/src/args.rs`
+2. Add CLI argument in `rource-cli/src/args/mod.rs`
 3. Add environment variable handling in `rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/lib.rs`
 5. Update documentation
@@ -2083,4 +2172,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (Refactored settings.rs into modular structure - 1,129 tests)*
+*Last updated: 2026-01-22 (Refactored scene/mod.rs into modular structure - 1,106 tests)*

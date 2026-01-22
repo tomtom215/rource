@@ -23,7 +23,7 @@ Rource visualizes your repository's commit history as an animated tree where dir
 ## Features
 
 - **Portable**: Pure Rust with software rendering - runs on any CPU without GPU requirements
-- **Lightweight**: ~3.8MB native binary, ~250KB WASM (gzipped)
+- **Lightweight**: ~3.8MB native binary, ~1MB WASM (gzipped)
 - **Fast**: Handles repositories with 100k+ commits
 - **Cross-platform**: Native (Linux, macOS, Windows) and WebAssembly
 - **Compatible**: Supports Git, SVN, Mercurial, Bazaar, and custom log formats
@@ -40,13 +40,13 @@ This project was developed with AI-assisted programming using [Claude](https://w
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 1,094 tests | - |
+| **Test Coverage** | 1,177 tests | - |
 | **Rendering** | CPU + WebGL2 + wgpu | OpenGL only |
 
 ### Performance Highlights
 
 - **68% memory savings** on large repositories via string interning and compact storage
-- **WebGL2 GPU acceleration** in browsers (with automatic CPU fallback)
+- **GPU acceleration** in browsers via WebGPU or WebGL2 (with automatic CPU fallback)
 - **Tested with 100k+ commit repos** (Home Assistant: 103,533 commits, 533,366 file changes)
 
 ### Architecture
@@ -56,13 +56,13 @@ rource/
 ├── crates/
 │   ├── rource-math/    144 tests   Math primitives (Vec2, Vec3, Mat4, Color)
 │   ├── rource-vcs/     150 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/    261 tests   Scene graph, physics, camera
-│   └── rource-render/  310 tests   Software + WebGL2 + wgpu rendering
-├── rource-cli/          95 tests   Native application (winit + softbuffer)
+│   ├── rource-core/    267 tests   Scene graph, physics, camera
+│   └── rource-render/  357 tests   Software + WebGL2 + wgpu rendering
+├── rource-cli/          97 tests   Native application (winit + softbuffer)
 └── rource-wasm/         73 tests   WebAssembly (browser)
-                       + 61 integration/doc tests
+                       + 89 integration/doc tests
                       ─────
-                      1,094 total
+                      1,177 total
 ```
 
 ## Installation
@@ -82,7 +82,7 @@ cargo build --release
 
 ### Requirements
 
-- Rust 1.75+ (install via [rustup](https://rustup.rs/))
+- Rust 1.82+ (install via [rustup](https://rustup.rs/))
 - For WASM: `wasm-pack` (`cargo install wasm-pack`)
 
 ## Quick Start
@@ -293,14 +293,14 @@ Rource runs in web browsers via WebAssembly with GPU-accelerated rendering.
 ### Rendering Backends
 
 **Native (CLI):**
-- **wgpu** (optional): Modern GPU rendering via Vulkan/Metal/DX12/WebGPU
-- **Software** (default): Pure CPU rendering, works everywhere
+- **Software**: Pure CPU rendering, works everywhere without GPU requirements
 
 **WebAssembly (Browser):**
-- **WebGL2** (default): GPU-accelerated rendering for best performance
+- **wgpu (WebGPU)**: Best performance, modern GPU API (Chrome 113+, Edge 113+)
+- **WebGL2**: Good performance, widely supported in all modern browsers
 - **Software**: Pure CPU rendering via Canvas2D (automatic fallback)
 
-The WASM build automatically tries WebGL2 and falls back to software rendering if unavailable.
+The WASM build automatically tries wgpu (WebGPU) first, then WebGL2, and falls back to software rendering if unavailable.
 
 ### Building
 
