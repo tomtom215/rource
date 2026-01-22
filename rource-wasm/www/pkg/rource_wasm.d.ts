@@ -281,6 +281,13 @@ export class Rource {
      */
     getZoom(): number;
     /**
+     * Returns debug information about zoom and entity visibility.
+     *
+     * Returns JSON with zoom level, entity radii, and screen radii to help
+     * diagnose visibility issues.
+     */
+    getZoomDebugInfo(): string;
+    /**
      * Returns whether auto-fit mode is currently enabled.
      */
     isAutoFit(): boolean;
@@ -606,6 +613,7 @@ export interface InitOutput {
     readonly rource_getVisibleFiles: (a: number) => number;
     readonly rource_getVisibleUsers: (a: number) => number;
     readonly rource_getZoom: (a: number) => number;
+    readonly rource_getZoomDebugInfo: (a: number, b: number) => void;
     readonly rource_isAutoFit: (a: number) => number;
     readonly rource_isContextLost: (a: number) => number;
     readonly rource_isGPUAccelerated: (a: number) => number;
@@ -646,9 +654,9 @@ export interface InitOutput {
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_6182: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6237: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6183: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_6192: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6247: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6193: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
