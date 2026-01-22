@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769099086496,
+  "lastUpdate": 1769100715645,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -194,6 +194,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 969497,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "453ffeae561429591974ec16fc4eda42ee9d938a",
+          "message": "Merge pull request #115 from tomtom215/claude/fix-wasm-demo-loading-KvJ05\n\nAdd wgpu renderer support and improve TypeScript documentation",
+          "timestamp": "2026-01-22T17:48:10+01:00",
+          "tree_id": "f58cd228355b64b9ed42f752a2eab552a04b1311",
+          "url": "https://github.com/tomtom215/rource/commit/453ffeae561429591974ec16fc4eda42ee9d938a"
+        },
+        "date": 1769100715342,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3872992,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2508285,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 969479,
             "unit": "bytes"
           }
         ]
