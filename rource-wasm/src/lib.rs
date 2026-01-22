@@ -633,13 +633,25 @@ impl Rource {
 
         let visible_bounds = self.camera.visible_bounds();
         let camera_zoom = self.camera.zoom();
-        // Zero-allocation visibility query - reuses pre-allocated buffers
-        self.scene.visible_entities_into(
-            &visible_bounds,
-            &mut self.visible_dirs_buf,
-            &mut self.visible_files_buf,
-            &mut self.visible_users_buf,
+
+        // Populate visibility buffers with ALL entities - no spatial culling.
+        // This ensures entities never disappear when zooming. LOD culling in the
+        // render_* functions handles performance by skipping sub-pixel entities.
+        self.visible_dirs_buf.clear();
+        self.visible_dirs_buf.extend(
+            self.scene
+                .directories()
+                .iter()
+                .map(rource_core::scene::DirNode::id),
         );
+
+        self.visible_files_buf.clear();
+        self.visible_files_buf
+            .extend(self.scene.files().keys().copied());
+
+        self.visible_users_buf.clear();
+        self.visible_users_buf
+            .extend(self.scene.users().keys().copied());
 
         let active_actions = self
             .scene

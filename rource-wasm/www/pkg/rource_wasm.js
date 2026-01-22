@@ -576,6 +576,14 @@ export class Rource {
         return ret;
     }
     /**
+     * Returns whether auto-fit mode is currently enabled.
+     * @returns {boolean}
+     */
+    isAutoFit() {
+        const ret = wasm.rource_isAutoFit(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Returns true if the GPU context is lost.
      * @returns {boolean}
      */
@@ -727,6 +735,7 @@ export class Rource {
     }
     /**
      * Pans the camera by the given delta in screen pixels.
+     * Disables auto-fit when user manually pans.
      * @param {number} dx
      * @param {number} dy
      */
@@ -824,6 +833,19 @@ export class Rource {
      */
     seek(commit_index) {
         wasm.rource_seek(this.__wbg_ptr, commit_index);
+    }
+    /**
+     * Enables or disables auto-fit mode.
+     *
+     * When enabled, the camera automatically zooms out to keep all content visible
+     * as the visualization grows. Manual zoom/pan operations disable auto-fit.
+     *
+     * Auto-fit is disabled by default due to coordination issues with LOD culling
+     * and spatial indexing. Use `resetCamera()` for one-time camera fitting instead.
+     * @param {boolean} enabled
+     */
+    setAutoFit(enabled) {
+        wasm.rource_setAutoFit(this.__wbg_ptr, enabled);
     }
     /**
      * Sets the background color (hex string like "#000000" or "000000").
@@ -976,6 +998,8 @@ export class Rource {
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
      *
      * Max zoom is 1000.0 to support deep zoom into massive repositories.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Disables auto-fit when user manually zooms.
      * @param {number} factor
      */
     zoom(factor) {
@@ -986,6 +1010,8 @@ export class Rource {
      *
      * This provides intuitive zoom behavior where the point under the cursor
      * stays fixed during zoom operations.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Disables auto-fit when user manually zooms.
      * @param {number} screen_x
      * @param {number} screen_y
      * @param {number} factor

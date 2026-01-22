@@ -281,6 +281,10 @@ export class Rource {
      */
     getZoom(): number;
     /**
+     * Returns whether auto-fit mode is currently enabled.
+     */
+    isAutoFit(): boolean;
+    /**
      * Returns true if the GPU context is lost.
      */
     isContextLost(): boolean;
@@ -356,6 +360,7 @@ export class Rource {
     onWheel(delta_y: number, mouse_x: number, mouse_y: number): void;
     /**
      * Pans the camera by the given delta in screen pixels.
+     * Disables auto-fit when user manually pans.
      */
     pan(dx: number, dy: number): void;
     /**
@@ -417,6 +422,16 @@ export class Rource {
      * specified index, then pre-warms the physics simulation.
      */
     seek(commit_index: number): void;
+    /**
+     * Enables or disables auto-fit mode.
+     *
+     * When enabled, the camera automatically zooms out to keep all content visible
+     * as the visualization grows. Manual zoom/pan operations disable auto-fit.
+     *
+     * Auto-fit is disabled by default due to coordination issues with LOD culling
+     * and spatial indexing. Use `resetCamera()` for one-time camera fitting instead.
+     */
+    setAutoFit(enabled: boolean): void;
     /**
      * Sets the background color (hex string like "#000000" or "000000").
      *
@@ -528,6 +543,8 @@ export class Rource {
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
      *
      * Max zoom is 1000.0 to support deep zoom into massive repositories.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Disables auto-fit when user manually zooms.
      */
     zoom(factor: number): void;
     /**
@@ -535,6 +552,8 @@ export class Rource {
      *
      * This provides intuitive zoom behavior where the point under the cursor
      * stays fixed during zoom operations.
+     * Min zoom is `AUTO_FIT_MIN_ZOOM` (0.03) to prevent LOD culling all entities.
+     * Disables auto-fit when user manually zooms.
      */
     zoomToward(screen_x: number, screen_y: number, factor: number): void;
 }
@@ -587,6 +606,7 @@ export interface InitOutput {
     readonly rource_getVisibleFiles: (a: number) => number;
     readonly rource_getVisibleUsers: (a: number) => number;
     readonly rource_getZoom: (a: number) => number;
+    readonly rource_isAutoFit: (a: number) => number;
     readonly rource_isContextLost: (a: number) => number;
     readonly rource_isGPUAccelerated: (a: number) => number;
     readonly rource_isPlaying: (a: number) => number;
@@ -609,6 +629,7 @@ export interface InitOutput {
     readonly rource_restoreAfterExport: (a: number, b: number, c: number) => void;
     readonly rource_restoreCameraState: (a: number, b: number, c: number, d: number) => void;
     readonly rource_seek: (a: number, b: number) => void;
+    readonly rource_setAutoFit: (a: number, b: number) => void;
     readonly rource_setBackgroundColor: (a: number, b: number, c: number) => void;
     readonly rource_setBloom: (a: number, b: number) => void;
     readonly rource_setBranchDepthFade: (a: number, b: number) => void;
