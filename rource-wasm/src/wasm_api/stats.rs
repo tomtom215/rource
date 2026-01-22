@@ -119,9 +119,7 @@ impl Rource {
     /// diagnose visibility issues.
     #[wasm_bindgen(js_name = getZoomDebugInfo)]
     pub fn get_zoom_debug_info(&self) -> String {
-        use crate::render_phases::{
-            LOD_MIN_DIR_RADIUS, LOD_MIN_FILE_RADIUS, LOD_MIN_USER_RADIUS,
-        };
+        use crate::render_phases::{LOD_MIN_DIR_RADIUS, LOD_MIN_FILE_RADIUS, LOD_MIN_USER_RADIUS};
 
         let zoom = self.camera.zoom();
 
