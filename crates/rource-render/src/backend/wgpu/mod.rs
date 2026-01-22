@@ -253,6 +253,9 @@ pub struct WgpuRenderer {
 
     /// Whether shadow is enabled.
     shadow_enabled: bool,
+
+    /// Reusable buffer for texture IDs (avoids per-frame allocation in `upload_textured_quads`).
+    cached_texture_ids: Vec<TextureId>,
 }
 
 impl WgpuRenderer {
@@ -575,6 +578,7 @@ impl WgpuRenderer {
             scene_texture_view: None,
             bloom_enabled: false,
             shadow_enabled: false,
+            cached_texture_ids: Vec::with_capacity(16),
         };
 
         // Initialize pipelines
@@ -984,11 +988,15 @@ impl WgpuRenderer {
     }
 
     /// Uploads all textured quad instance buffers.
+    ///
+    /// Uses a cached texture ID buffer to avoid per-frame allocation.
     fn upload_textured_quads(&mut self) {
-        // Collect texture IDs that need uploading
-        let tex_ids: Vec<TextureId> = self.textured_quad_instances.keys().copied().collect();
+        // Reuse cached buffer - avoids allocation after first frame
+        self.cached_texture_ids.clear();
+        self.cached_texture_ids
+            .extend(self.textured_quad_instances.keys().copied());
 
-        for tex_id in tex_ids {
+        for &tex_id in &self.cached_texture_ids {
             if let Some(instances) = self.textured_quad_instances.get_mut(&tex_id) {
                 if !instances.is_empty() {
                     instances.upload(&self.device, &self.queue, &mut self.frame_stats);
@@ -1106,6 +1114,10 @@ impl WgpuRenderer {
     }
 
     /// Interpolates a Catmull-Rom spline for drawing.
+    ///
+    /// Note: This function is kept for test coverage. Production code uses
+    /// the zero-allocation streaming version in `draw_spline`.
+    #[cfg(test)]
     fn interpolate_spline(points: &[Vec2], segments_per_span: usize) -> Vec<Vec2> {
         if points.len() < 2 {
             return points.to_vec();
@@ -1292,14 +1304,50 @@ impl Renderer for WgpuRenderer {
     }
 
     fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color) {
+        /// Number of segments per span for Catmull-Rom interpolation.
+        const SEGMENTS_PER_SPAN: usize = 8;
+
         if points.len() < 2 {
             return;
         }
 
-        let interpolated = Self::interpolate_spline(points, 8);
+        // For 2-point splines, just draw a line (no interpolation needed)
+        if points.len() == 2 {
+            self.draw_line(points[0], points[1], width, color);
+            return;
+        }
 
-        for window in interpolated.windows(2) {
-            self.draw_line(window[0], window[1], width, color);
+        // Zero-allocation streaming spline interpolation
+        // Computes Catmull-Rom points on-the-fly and draws immediately
+        let mut prev_point = points[0];
+
+        for i in 0..points.len() - 1 {
+            let p0 = points[i.saturating_sub(1)];
+            let p1 = points[i];
+            let p2 = points[(i + 1).min(points.len() - 1)];
+            let p3 = points[(i + 2).min(points.len() - 1)];
+
+            for j in 1..=SEGMENTS_PER_SPAN {
+                let t = j as f32 / SEGMENTS_PER_SPAN as f32;
+                let t2 = t * t;
+                let t3 = t2 * t;
+
+                // Catmull-Rom coefficients
+                let x = 0.5
+                    * ((2.0 * p1.x)
+                        + (-p0.x + p2.x) * t
+                        + (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * t2
+                        + (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * t3);
+                let y = 0.5
+                    * ((2.0 * p1.y)
+                        + (-p0.y + p2.y) * t
+                        + (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * t2
+                        + (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * t3);
+
+                let curr_point = Vec2::new(x, y);
+                self.draw_line(prev_point, curr_point, width, color);
+                prev_point = curr_point;
+            }
         }
     }
 

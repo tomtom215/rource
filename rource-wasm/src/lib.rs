@@ -92,6 +92,7 @@ use web_sys::HtmlCanvasElement;
 
 use rource_core::camera::Camera;
 use rource_core::config::Settings;
+use rource_core::entity::{DirId, FileId, UserId};
 use rource_core::scene::Scene;
 use rource_math::{Bounds, Vec2};
 use rource_render::{default_font, FontId};
@@ -211,6 +212,16 @@ pub struct Rource {
 
     /// Render statistics for the current frame.
     render_stats: RenderStats,
+
+    // ---- Visibility Buffers (zero-allocation rendering) ----
+    /// Reusable buffer for visible directory IDs.
+    visible_dirs_buf: Vec<DirId>,
+
+    /// Reusable buffer for visible file IDs.
+    visible_files_buf: Vec<FileId>,
+
+    /// Reusable buffer for visible user IDs.
+    visible_users_buf: Vec<UserId>,
 }
 
 // ============================================================================
@@ -294,6 +305,10 @@ impl Rource {
             show_labels: true,
             perf_metrics: PerformanceMetrics::new(),
             render_stats: RenderStats::default(),
+            // Pre-allocate visibility buffers for zero-allocation rendering
+            visible_dirs_buf: Vec::with_capacity(1024),
+            visible_files_buf: Vec::with_capacity(4096),
+            visible_users_buf: Vec::with_capacity(256),
         })
     }
 
@@ -552,8 +567,13 @@ impl Rource {
 
         let visible_bounds = self.camera.visible_bounds();
         let camera_zoom = self.camera.zoom();
-        let (visible_dirs, visible_files, visible_users) =
-            self.scene.visible_entities(&visible_bounds);
+        // Zero-allocation visibility query - reuses pre-allocated buffers
+        self.scene.visible_entities_into(
+            &visible_bounds,
+            &mut self.visible_dirs_buf,
+            &mut self.visible_files_buf,
+            &mut self.visible_users_buf,
+        );
 
         let active_actions = self
             .scene
@@ -563,9 +583,9 @@ impl Rource {
             .count();
 
         self.render_stats.update(
-            visible_files.len(),
-            visible_users.len(),
-            visible_dirs.len(),
+            self.visible_files_buf.len(),
+            self.visible_users_buf.len(),
+            self.visible_dirs_buf.len(),
             active_actions,
             self.scene.file_count()
                 + self.scene.user_count()
@@ -574,10 +594,10 @@ impl Rource {
             if self.renderer_type == RendererType::WebGl2 {
                 6
             } else {
-                visible_dirs.len() * 2
-                    + visible_files.len()
+                self.visible_dirs_buf.len() * 2
+                    + self.visible_files_buf.len()
                     + active_actions * 2
-                    + visible_users.len() * 3
+                    + self.visible_users_buf.len() * 3
             },
         );
 
@@ -585,9 +605,9 @@ impl Rource {
             visible_bounds,
             camera_zoom,
             use_curves: camera_zoom < 0.8,
-            visible_dirs,
-            visible_files,
-            visible_users,
+            visible_dirs: &self.visible_dirs_buf,
+            visible_files: &self.visible_files_buf,
+            visible_users: &self.visible_users_buf,
             show_labels: self.show_labels,
             font_id: self.font_id,
             font_size: self.settings.display.font_size,

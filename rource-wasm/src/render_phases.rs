@@ -67,20 +67,24 @@ pub const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.02;
 ///
 /// This struct is passed to all rendering phase functions to provide
 /// shared state and configuration without needing to pass many parameters.
+/// Render context containing visibility data for a single frame.
+///
+/// Uses borrowed slices instead of owned Vecs to enable zero-allocation
+/// rendering when combined with reusable visibility buffers.
 #[allow(dead_code)] // Fields may be used by future phases
-pub struct RenderContext {
+pub struct RenderContext<'a> {
     /// Visible bounds in world space (for culling extensions).
     pub visible_bounds: Bounds,
     /// Camera zoom level.
     pub camera_zoom: f32,
     /// Whether to use curved branches.
     pub use_curves: bool,
-    /// Visible directory IDs.
-    pub visible_dirs: Vec<DirId>,
-    /// Visible file IDs.
-    pub visible_files: Vec<FileId>,
-    /// Visible user IDs.
-    pub visible_users: Vec<UserId>,
+    /// Visible directory IDs (borrowed from reusable buffer).
+    pub visible_dirs: &'a [DirId],
+    /// Visible file IDs (borrowed from reusable buffer).
+    pub visible_files: &'a [FileId],
+    /// Visible user IDs (borrowed from reusable buffer).
+    pub visible_users: &'a [UserId],
     /// Whether labels are enabled.
     pub show_labels: bool,
     /// Font ID for text rendering.
@@ -127,7 +131,7 @@ pub fn render_directories<R: Renderer + ?Sized>(
     // Pre-compute whether we should render directory branches at this zoom level
     let render_branches = ctx.camera_zoom >= LOD_MIN_ZOOM_FOR_DIR_BRANCHES;
 
-    for dir_id in &ctx.visible_dirs {
+    for dir_id in ctx.visible_dirs {
         if let Some(dir) = scene.directories().get(*dir_id) {
             if !dir.is_visible() {
                 continue;
@@ -222,7 +226,7 @@ pub fn render_directory_labels<R: Renderer + ?Sized>(
 
     let dir_font_size = ctx.font_size * 0.75;
 
-    for dir_id in &ctx.visible_dirs {
+    for dir_id in ctx.visible_dirs {
         if let Some(dir) = scene.directories().get(*dir_id) {
             if !dir.is_visible() {
                 continue;
@@ -284,7 +288,7 @@ pub fn render_files<R: Renderer + ?Sized>(
     // Pre-compute whether we should render file branches at this zoom level
     let render_branches = ctx.camera_zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES;
 
-    for file_id in &ctx.visible_files {
+    for file_id in ctx.visible_files {
         if let Some(file) = scene.get_file(*file_id) {
             if file.alpha() < 0.01 {
                 continue;
@@ -400,7 +404,7 @@ pub fn render_users<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
-    for user_id in &ctx.visible_users {
+    for user_id in ctx.visible_users {
         if let Some(user) = scene.get_user(*user_id) {
             if user.alpha() < 0.01 {
                 continue;
@@ -447,7 +451,7 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
 
     let Some(font_id) = ctx.font_id else { return };
 
-    for user_id in &ctx.visible_users {
+    for user_id in ctx.visible_users {
         if let Some(user) = scene.get_user(*user_id) {
             if user.alpha() < 0.01 {
                 continue;
@@ -594,7 +598,7 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
     // Collect label candidates with priority
     // LOD: Only consider files large enough on screen for readable labels
     let mut label_candidates: Vec<(Vec2, f32, f32, &str, f32)> = Vec::new();
-    for file_id in &ctx.visible_files {
+    for file_id in ctx.visible_files {
         if let Some(file) = scene.get_file(*file_id) {
             if file.alpha() < 0.3 {
                 continue;

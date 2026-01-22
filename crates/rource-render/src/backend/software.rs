@@ -841,12 +841,13 @@ impl Renderer for SoftwareRenderer {
             return;
         }
 
-        // Transform all points
-        let transformed: Vec<Vec2> = points.iter().map(|&p| self.transform_point(p)).collect();
+        // Zero-allocation streaming: transform and draw each segment immediately
+        let mut prev_point = self.transform_point(points[0]);
 
-        // Draw line segments between points
-        for window in transformed.windows(2) {
-            self.draw_thick_line_aa(window[0], window[1], width, color);
+        for &point in &points[1..] {
+            let curr_point = self.transform_point(point);
+            self.draw_thick_line_aa(prev_point, curr_point, width, color);
+            prev_point = curr_point;
         }
     }
 
