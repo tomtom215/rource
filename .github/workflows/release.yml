@@ -261,15 +261,26 @@ jobs:
       - name: Display structure
         run: ls -R artifacts
 
+      - name: Check GPG key availability
+        id: gpg-check
+        env:
+          GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          if [ -n "$GPG_KEY" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Import GPG key
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        if: steps.gpg-check.outputs.available == 'true'
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Sign release artifacts
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        if: steps.gpg-check.outputs.available == 'true'
         run: |
           # Sign all release artifacts
           for file in artifacts/**/*.tar.gz artifacts/**/*.zip; do
