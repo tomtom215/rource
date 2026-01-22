@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769115705944,
+  "lastUpdate": 1769118850212,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -506,6 +506,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 974206,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3c22a0fdc0d0d0e83670e4c556cfcccbfa448137",
+          "message": "Merge pull request #123 from tomtom215/claude/enable-autozoom-T5Jdm\n\nEnable auto-fit by default for improved viewport experience",
+          "timestamp": "2026-01-22T22:50:24+01:00",
+          "tree_id": "8d015f5628202a621f865317bc209dd2fa80ce34",
+          "url": "https://github.com/tomtom215/rource/commit/3c22a0fdc0d0d0e83670e4c556cfcccbfa448137"
+        },
+        "date": 1769118849665,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3873008,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2524872,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 975012,
             "unit": "bytes"
           }
         ]
