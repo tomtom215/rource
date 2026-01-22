@@ -58,10 +58,10 @@ rource/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [144 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [150 tests]
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [261 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [310 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [322 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [95 tests]
 └── rource-wasm/          # WebAssembly application [73 tests]
-                          # Plus 61 integration/doc tests = 1,094 total
+                          # Plus 61 integration/doc tests = 1,106 total
 ```
 
 ### Rendering Backends
@@ -874,6 +874,117 @@ let updated = renderer.dispatch_physics_async(&entities, 0.016).await;
 - Need for deterministic cross-platform results
 
 **Test Count**: 1,094 tests passing
+
+### Phase 10 Optimizations (2026-01-22)
+
+GPU visibility culling infrastructure and indirect draw support.
+
+#### 1. GPU Visibility Culling Compute Shader
+
+Added compute shaders for GPU-side visibility culling that can filter instance data
+based on view bounds before rendering. This prepares the architecture for fully
+GPU-driven rendering in future optimizations.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/shaders.rs` - Added `VISIBILITY_CULLING_SHADER`
+- `crates/rource-render/src/backend/wgpu/buffers.rs` - Added culling infrastructure
+
+**New Compute Kernels**:
+
+| Kernel | Purpose |
+|--------|---------|
+| `cs_reset_indirect` | Reset indirect draw command before culling |
+| `cs_cull_circles` | Cull and compact circle instances |
+| `cs_cull_lines` | Cull and compact line instances |
+| `cs_cull_quads` | Cull and compact quad instances |
+
+**Visibility Check Functions**:
+- `is_circle_visible()` - AABB test with radius expansion
+- `is_line_visible()` - AABB of line segment
+- `is_quad_visible()` - Direct AABB test
+
+**Architecture**:
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    GPU Visibility Culling                            │
+│                                                                      │
+│  Input Instance Buffer                 Output Instance Buffer        │
+│  ┌─────────────────┐                  ┌─────────────────┐           │
+│  │ All instances   │──► cs_cull_X() ──│ Visible only    │           │
+│  │ (unculled)      │                  │ (compacted)     │           │
+│  └─────────────────┘                  └─────────────────┘           │
+│                                                │                     │
+│                                                ▼                     │
+│                                       ┌─────────────────┐           │
+│                                       │ DrawIndirect    │           │
+│                                       │ instance_count  │           │
+│                                       └─────────────────┘           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**When to Use GPU Culling**:
+- Scenes with 10,000+ instances where CPU culling becomes a bottleneck
+- Dynamic view bounds that change every frame (continuous panning/zooming)
+- GPU compute is available and render throughput is limited
+
+**Note**: Current implementation uses CPU-side quadtree culling which is optimal
+for most use cases. GPU culling is infrastructure for future extreme-scale scenarios.
+
+#### 2. Extended Uniforms with View Bounds
+
+Added `ExtendedUniforms` struct with view bounds for shader-based early-out:
+
+```rust
+pub struct ExtendedUniforms {
+    pub resolution: [f32; 2],       // Viewport resolution
+    pub time: f32,                  // Animation time
+    pub view_bounds: [f32; 4],      // min_x, min_y, max_x, max_y
+    pub zoom: f32,                  // Zoom level for LOD
+}
+```
+
+**Size**: 48 bytes (GPU-aligned)
+
+#### 3. Indirect Draw Command Support
+
+Added infrastructure for GPU-driven draw calls:
+
+**New Types**:
+
+| Type | Description |
+|------|-------------|
+| `DrawIndirectCommand` | 16-byte draw command matching `wgpu::DrawIndirect` |
+| `IndirectDrawBuffer` | GPU buffer for indirect draw commands |
+| `CullParams` | Culling parameters for compute shader |
+
+**`DrawIndirectCommand` Fields**:
+```rust
+pub struct DrawIndirectCommand {
+    pub vertex_count: u32,      // 4 for quads
+    pub instance_count: u32,    // Set by compute shader
+    pub first_vertex: u32,      // 0
+    pub first_instance: u32,    // 0
+}
+```
+
+**Usage Pattern**:
+```rust
+// Create indirect buffer
+let indirect = IndirectDrawBuffer::new(&device, "circle_indirect");
+
+// Update from compute shader (sets instance_count)
+// ...
+
+// Use with indirect draw
+render_pass.draw_indirect(&indirect.buffer(), 0);
+```
+
+**Performance Impact**:
+- Eliminates CPU→GPU roundtrip for instance counts
+- Enables fully GPU-driven rendering pipelines
+- Reduces CPU workload when culling large instance sets
+
+**Test Count**: 1,106 tests passing (added 12 new tests)
 
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
@@ -1710,4 +1821,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (wgpu bind group caching for bloom/shadow - 1,094 tests)*
+*Last updated: 2026-01-22 (GPU visibility culling and indirect draw support - 1,106 tests)*

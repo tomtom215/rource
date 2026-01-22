@@ -547,6 +547,181 @@ impl VertexBuffers {
     }
 }
 
+/// Extended uniform buffer with view bounds for GPU culling.
+///
+/// This extends the basic uniforms with view bounds that can be used
+/// by fragment shaders for early-out or by compute shaders for culling.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ExtendedUniforms {
+    /// Viewport resolution (width, height).
+    pub resolution: [f32; 2],
+    /// Time in seconds (for animations).
+    pub time: f32,
+    /// Padding for 16-byte alignment (internal use).
+    padding1: f32,
+    /// View bounds in world coordinates (`min_x`, `min_y`, `max_x`, `max_y`).
+    pub view_bounds: [f32; 4],
+    /// Zoom level (for LOD calculations).
+    pub zoom: f32,
+    /// Padding for 16-byte alignment (internal use).
+    padding2: [f32; 3],
+}
+
+impl Default for ExtendedUniforms {
+    fn default() -> Self {
+        Self {
+            resolution: [1.0, 1.0],
+            time: 0.0,
+            padding1: 0.0,
+            view_bounds: [-1000.0, -1000.0, 1000.0, 1000.0],
+            zoom: 1.0,
+            padding2: [0.0; 3],
+        }
+    }
+}
+
+impl ExtendedUniforms {
+    /// Creates new extended uniforms with the given parameters.
+    pub fn new(width: f32, height: f32, time: f32, view_bounds: [f32; 4], zoom: f32) -> Self {
+        Self {
+            resolution: [width, height],
+            time,
+            padding1: 0.0,
+            view_bounds,
+            zoom,
+            padding2: [0.0; 3],
+        }
+    }
+}
+
+/// Indirect draw command buffer for GPU-driven rendering.
+///
+/// This buffer holds draw commands that can be populated by compute shaders,
+/// enabling GPU-side culling and instance count determination.
+#[derive(Debug)]
+pub struct IndirectDrawBuffer {
+    /// The wgpu buffer object.
+    buffer: wgpu::Buffer,
+    /// Debug label.
+    label: &'static str,
+}
+
+/// Indirect draw command structure (matches `wgpu::DrawIndirect`).
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct DrawIndirectCommand {
+    /// Number of vertices per instance (4 for quads).
+    pub vertex_count: u32,
+    /// Number of instances to draw.
+    pub instance_count: u32,
+    /// First vertex to draw.
+    pub first_vertex: u32,
+    /// First instance to draw.
+    pub first_instance: u32,
+}
+
+impl DrawIndirectCommand {
+    /// Creates a new draw command for quad rendering.
+    pub const fn quad(instance_count: u32) -> Self {
+        Self {
+            vertex_count: 4,
+            instance_count,
+            first_vertex: 0,
+            first_instance: 0,
+        }
+    }
+
+    /// Creates an empty draw command (no instances).
+    pub const fn empty() -> Self {
+        Self {
+            vertex_count: 4,
+            instance_count: 0,
+            first_vertex: 0,
+            first_instance: 0,
+        }
+    }
+}
+
+impl IndirectDrawBuffer {
+    /// Creates a new indirect draw buffer.
+    ///
+    /// The buffer is created with `INDIRECT | STORAGE | COPY_DST` usage
+    /// to support both indirect drawing and compute shader updates.
+    pub fn new(device: &wgpu::Device, label: &'static str) -> Self {
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(label),
+            size: std::mem::size_of::<DrawIndirectCommand>() as u64,
+            usage: wgpu::BufferUsages::INDIRECT
+                | wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        Self { buffer, label }
+    }
+
+    /// Creates a new indirect draw buffer with initial command.
+    pub fn new_with_command(
+        device: &wgpu::Device,
+        command: &DrawIndirectCommand,
+        label: &'static str,
+    ) -> Self {
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(label),
+            contents: bytemuck::cast_slice(&[*command]),
+            usage: wgpu::BufferUsages::INDIRECT
+                | wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST,
+        });
+
+        Self { buffer, label }
+    }
+
+    /// Updates the draw command.
+    pub fn update(&self, queue: &wgpu::Queue, command: &DrawIndirectCommand) {
+        queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[*command]));
+    }
+
+    /// Returns a reference to the buffer.
+    #[inline]
+    pub fn buffer(&self) -> &wgpu::Buffer {
+        &self.buffer
+    }
+
+    /// Returns the debug label.
+    #[inline]
+    pub fn label(&self) -> &'static str {
+        self.label
+    }
+}
+
+/// Culling parameters for visibility compute shader.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct CullParams {
+    /// View bounds in world coordinates (`min_x`, `min_y`, `max_x`, `max_y`).
+    pub view_bounds: [f32; 4],
+    /// Total number of input instances.
+    pub instance_count: u32,
+    /// Floats per instance (for stride calculation).
+    pub floats_per_instance: u32,
+    /// Padding for alignment (internal use).
+    padding: [u32; 2],
+}
+
+impl CullParams {
+    /// Creates new culling parameters.
+    pub fn new(view_bounds: [f32; 4], instance_count: u32, floats_per_instance: u32) -> Self {
+        Self {
+            view_bounds,
+            instance_count,
+            floats_per_instance,
+            padding: [0; 2],
+        }
+    }
+}
+
 /// Storage buffer for compute shaders.
 ///
 /// Used for GPU-side physics simulation data (positions, velocities, forces).
@@ -737,6 +912,68 @@ mod tests {
         let _ = SHRINK_THRESHOLD;
         let _ = SHRINK_STABILITY_FRAMES;
         let _ = GROWTH_FACTOR;
+    }
+
+    #[test]
+    fn test_extended_uniforms_default() {
+        let uniforms = ExtendedUniforms::default();
+        assert!((uniforms.resolution[0] - 1.0).abs() < 0.001);
+        assert!((uniforms.resolution[1] - 1.0).abs() < 0.001);
+        assert!((uniforms.time - 0.0).abs() < 0.001);
+        assert!((uniforms.zoom - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_extended_uniforms_size() {
+        // ExtendedUniforms must be 48 bytes (12 floats) for proper GPU alignment
+        assert_eq!(std::mem::size_of::<ExtendedUniforms>(), 48);
+    }
+
+    #[test]
+    fn test_extended_uniforms_new() {
+        let uniforms =
+            ExtendedUniforms::new(1920.0, 1080.0, 0.5, [-100.0, -100.0, 100.0, 100.0], 2.0);
+        assert!((uniforms.resolution[0] - 1920.0).abs() < 0.001);
+        assert!((uniforms.resolution[1] - 1080.0).abs() < 0.001);
+        assert!((uniforms.time - 0.5).abs() < 0.001);
+        assert!((uniforms.view_bounds[0] - (-100.0)).abs() < 0.001);
+        assert!((uniforms.zoom - 2.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_draw_indirect_command_quad() {
+        let cmd = DrawIndirectCommand::quad(100);
+        assert_eq!(cmd.vertex_count, 4);
+        assert_eq!(cmd.instance_count, 100);
+        assert_eq!(cmd.first_vertex, 0);
+        assert_eq!(cmd.first_instance, 0);
+    }
+
+    #[test]
+    fn test_draw_indirect_command_empty() {
+        let cmd = DrawIndirectCommand::empty();
+        assert_eq!(cmd.vertex_count, 4);
+        assert_eq!(cmd.instance_count, 0);
+    }
+
+    #[test]
+    fn test_draw_indirect_command_size() {
+        // DrawIndirectCommand must be 16 bytes (4 u32s)
+        assert_eq!(std::mem::size_of::<DrawIndirectCommand>(), 16);
+    }
+
+    #[test]
+    fn test_cull_params_new() {
+        let params = CullParams::new([-100.0, -100.0, 100.0, 100.0], 1000, 7);
+        assert_eq!(params.instance_count, 1000);
+        assert_eq!(params.floats_per_instance, 7);
+        assert!((params.view_bounds[0] - (-100.0)).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_cull_params_size() {
+        // CullParams must be 32 bytes for proper GPU alignment
+        assert_eq!(std::mem::size_of::<CullParams>(), 32);
     }
 
     // Note: Tests requiring wgpu::Device are integration tests that need
