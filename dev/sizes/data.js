@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769089713312,
+  "lastUpdate": 1769093615046,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -116,6 +116,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 991490,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d818823912d2369480eabd37021bcc6f091acef",
+          "message": "Merge pull request #113 from tomtom215/claude/webgpu-performance-optimizations-VyVxm\n\nClaude/webgpu performance optimizations vy vxm",
+          "timestamp": "2026-01-22T15:49:44+01:00",
+          "tree_id": "e907e5a876f5e5468eee726d2ac8597e6dbdd523",
+          "url": "https://github.com/tomtom215/rource/commit/2d818823912d2369480eabd37021bcc6f091acef"
+        },
+        "date": 1769093614520,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3874416,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2504362,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 968802,
             "unit": "bytes"
           }
         ]
