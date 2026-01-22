@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769111253050,
+  "lastUpdate": 1769114451146,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -428,6 +428,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 970539,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc31735c1c4e1c5e7206a4250b99596c91befa74",
+          "message": "Merge pull request #121 from tomtom215/claude/fix-wasm-zoom-entities-XAdA2\n\nIncrease minimum zoom level to 0.05 and add zoom debug info API",
+          "timestamp": "2026-01-22T21:37:06+01:00",
+          "tree_id": "45af00b3b347f436f3777bc56e01fe83f69a41a1",
+          "url": "https://github.com/tomtom215/rource/commit/dc31735c1c4e1c5e7206a4250b99596c91befa74"
+        },
+        "date": 1769114450327,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3873008,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2522344,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 974246,
             "unit": "bytes"
           }
         ]
