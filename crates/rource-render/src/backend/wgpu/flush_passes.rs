@@ -1,0 +1,432 @@
+//! Flush pass methods for the wgpu renderer.
+//!
+//! This module contains methods for flushing batched draw calls to the GPU.
+
+use crate::TextureId;
+
+use super::{
+    buffers::{self, InstanceBuffer, Uniforms},
+    state::PipelineId,
+    stats::ActivePrimitives,
+    WgpuRenderer,
+};
+
+impl WgpuRenderer {
+    /// Flushes all batched draw calls to the current render pass.
+    pub(super) fn flush(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        target_view: &wgpu::TextureView,
+    ) {
+        // Update uniforms
+        let uniforms = Uniforms {
+            resolution: [self.width as f32, self.height as f32],
+            time: 0.0,
+            padding: 0.0,
+        };
+        self.uniform_buffer.update(&self.queue, &uniforms);
+
+        let format = self
+            .surface_config
+            .as_ref()
+            .map(|c| c.format)
+            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
+
+        // Upload all instance data first
+        self.circle_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.ring_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.line_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.curve_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.quad_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.text_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.upload_textured_quads();
+
+        // Upload font atlas texture to GPU (critical for text rendering!)
+        self.font_atlas.upload(&self.queue);
+
+        // Create render pass
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Main Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: target_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            // Apply scissor rect if clipping is active
+            if let Some(scissor) = self.current_scissor {
+                render_pass.set_scissor_rect(scissor.x, scissor.y, scissor.width, scissor.height);
+            }
+
+            // Flush each primitive type
+            self.flush_circles_pass(&mut render_pass, format);
+            self.flush_rings_pass(&mut render_pass, format);
+            self.flush_lines_pass(&mut render_pass, format);
+            self.flush_curves_pass(&mut render_pass, format);
+            self.flush_quads_pass(&mut render_pass, format);
+            self.flush_textured_quads_pass(&mut render_pass, format);
+            self.flush_text_pass(&mut render_pass, format);
+        }
+
+        // Clear all instance buffers
+        self.circle_instances.clear();
+        self.ring_instances.clear();
+        self.line_instances.clear();
+        self.curve_instances.clear();
+        self.quad_instances.clear();
+        self.text_instances.clear();
+        self.clear_textured_quads();
+    }
+
+    /// Flushes circle draw calls within a render pass.
+    pub(super) fn flush_circles_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.circle_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        // Get or create pipeline
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Circle);
+
+        // Set pipeline
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Circle, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        // Set bind groups
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+
+        // Set vertex buffer (unit quad)
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
+
+        // Set instance buffer
+        render_pass.set_vertex_buffer(1, self.circle_instances.buffer().slice(..));
+
+        // Draw instanced
+        let instance_count = self.circle_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.circle_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::CIRCLES);
+    }
+
+    /// Flushes ring draw calls within a render pass.
+    pub(super) fn flush_rings_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.ring_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Ring);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Ring, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.ring_instances.buffer().slice(..));
+
+        let instance_count = self.ring_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.ring_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::RINGS);
+    }
+
+    /// Flushes line draw calls within a render pass.
+    pub(super) fn flush_lines_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.line_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Line);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Line, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.line_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.line_instances.buffer().slice(..));
+
+        let instance_count = self.line_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.line_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::LINES);
+    }
+
+    /// Flushes curve draw calls within a render pass.
+    pub(super) fn flush_curves_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.curve_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Curve);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Curve, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.curve_strip.slice(..));
+        render_pass.set_vertex_buffer(1, self.curve_instances.buffer().slice(..));
+
+        let instance_count = self.curve_instances.instance_count() as u32;
+        render_pass.draw(0..buffers::CURVE_STRIP_VERTEX_COUNT, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.curve_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::CURVES);
+    }
+
+    /// Flushes solid quad draw calls within a render pass.
+    pub(super) fn flush_quads_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.quad_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Quad);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Quad, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.quad_instances.buffer().slice(..));
+
+        let instance_count = self.quad_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.quad_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::QUADS);
+    }
+
+    /// Uploads all textured quad instance buffers.
+    ///
+    /// Uses a cached texture ID buffer to avoid per-frame allocation.
+    pub(super) fn upload_textured_quads(&mut self) {
+        // Reuse cached buffer - avoids allocation after first frame
+        self.cached_texture_ids.clear();
+        self.cached_texture_ids
+            .extend(self.textured_quad_instances.keys().copied());
+
+        for &tex_id in &self.cached_texture_ids {
+            if let Some(instances) = self.textured_quad_instances.get_mut(&tex_id) {
+                if !instances.is_empty() {
+                    instances.upload(&self.device, &self.queue, &mut self.frame_stats);
+                }
+            }
+        }
+    }
+
+    /// Flushes textured quad draw calls within a render pass.
+    pub(super) fn flush_textured_quads_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        // Collect texture IDs that have instances to render
+        let tex_ids: Vec<TextureId> = self
+            .textured_quad_instances
+            .iter()
+            .filter(|(_, instances)| !instances.is_empty())
+            .map(|(id, _)| *id)
+            .collect();
+
+        if tex_ids.is_empty() {
+            return;
+        }
+
+        // Get or create pipeline
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::TexturedQuad);
+
+        // Set pipeline once for all textured quads
+        if self
+            .render_state
+            .set_pipeline(PipelineId::TexturedQuad, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+
+        // Render each texture group
+        for tex_id in tex_ids {
+            let Some(instances) = self.textured_quad_instances.get(&tex_id) else {
+                continue;
+            };
+
+            // Set texture bind group
+            if let Some(texture) = self.textures.get(&tex_id) {
+                render_pass.set_bind_group(1, &texture.bind_group, &[]);
+            }
+
+            render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
+            render_pass.set_vertex_buffer(1, instances.buffer().slice(..));
+
+            let instance_count = instances.instance_count() as u32;
+            render_pass.draw(0..4, 0..instance_count);
+
+            self.frame_stats.draw_calls += 1;
+            self.frame_stats.textured_quad_instances += instance_count;
+            self.frame_stats.total_instances += instance_count;
+            self.frame_stats
+                .active_primitives
+                .set(ActivePrimitives::TEXTURED_QUADS);
+        }
+    }
+
+    /// Clears all textured quad instance buffers.
+    pub(super) fn clear_textured_quads(&mut self) {
+        for instances in self.textured_quad_instances.values_mut() {
+            instances.clear();
+        }
+    }
+
+    /// Flushes text draw calls within a render pass.
+    pub(super) fn flush_text_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.text_instances.is_empty() {
+            return;
+        }
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        // Get or create pipeline
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Text);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::Text, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_bind_group(1, self.font_atlas.bind_group(), &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.text_instances.buffer().slice(..));
+
+        let instance_count = self.text_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.text_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::TEXT);
+    }
+
+    /// Gets or creates an instance buffer for a specific texture.
+    pub(super) fn get_or_create_textured_quad_buffer(
+        &mut self,
+        tex_id: TextureId,
+    ) -> &mut InstanceBuffer {
+        self.textured_quad_instances
+            .entry(tex_id)
+            .or_insert_with(|| {
+                InstanceBuffer::new(&self.device, 12, 100, "textured_quad_instances")
+                // 12 floats = 48 bytes
+            })
+    }
+}

@@ -57,11 +57,33 @@
 //! | Aspect | Details |
 //! |--------|---------|
 //! | Draw Batching | All primitives use GPU instancing |
-//! | State Caching | Redundant binds avoided via RenderState |
+//! | State Caching | Redundant binds avoided via `RenderState` |
 //! | Buffer Updates | Sub-data updates when capacity permits |
 //! | Post-Processing | FBO-based bloom and shadow effects |
 //! | Physics | GPU compute shaders for force simulation |
 //! | Determinism | Identical input produces identical output |
+//!
+//! ## Module Structure
+//!
+//! The wgpu backend is split into focused modules:
+//!
+//! | Module | Purpose |
+//! |--------|---------|
+//! | `error` | Error types for wgpu operations |
+//! | `bloom` | GPU bloom post-processing pipeline |
+//! | `shadow` | GPU shadow post-processing pipeline |
+//! | `buffers` | Instance and vertex buffer management |
+//! | `compute` | GPU compute shaders for physics |
+//! | `culling` | GPU visibility culling pipeline |
+//! | `pipeline` | Render pipeline creation and management |
+//! | `shaders` | WGSL shader source code |
+//! | `state` | Render state caching |
+//! | `stats` | Frame statistics tracking |
+//! | `textures` | Font atlas and texture management |
+//! | `effects_methods` | Bloom/shadow configuration methods |
+//! | `physics_methods` | Physics dispatch methods |
+//! | `culling_methods` | GPU culling methods |
+//! | `flush_passes` | Flush pass rendering methods |
 
 // Allow common patterns in new code
 #![allow(clippy::too_many_lines)]
@@ -72,16 +94,24 @@
 #![cfg_attr(target_arch = "wasm32", allow(clippy::future_not_send))]
 #![cfg_attr(target_arch = "wasm32", allow(clippy::arc_with_non_send_sync))]
 
+// Core submodules (public API)
 pub mod bloom;
 pub mod buffers;
 pub mod compute;
 pub mod culling;
+pub mod error;
 pub mod pipeline;
 pub mod shaders;
 pub mod shadow;
 pub mod state;
 pub mod stats;
 pub mod textures;
+
+// Internal implementation modules (methods on WgpuRenderer)
+mod culling_methods;
+mod effects_methods;
+mod flush_passes;
+mod physics_methods;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -91,52 +121,23 @@ use rource_math::{Bounds, Color, Mat4, Vec2};
 use crate::{FontCache, FontId, Renderer, TextureId};
 
 use bloom::BloomPipeline;
-use buffers::{InstanceBuffer, UniformBuffer, Uniforms, VertexBuffers};
+use buffers::{InstanceBuffer, UniformBuffer, VertexBuffers};
+use compute::ComputePipeline;
 use pipeline::PipelineManager;
 use shadow::ShadowPipeline;
-use state::{PipelineId, RenderState};
+use state::RenderState;
+use stats::FrameStats;
 use textures::{FontAtlas, GlyphKey, ManagedTexture};
 
 use culling::VisibilityCullingPipeline;
 
 // Re-export key types for external use
 pub use bloom::BloomConfig;
-pub use compute::{ComputeEntity, ComputePipeline, ComputeStats, PhysicsConfig};
+pub use compute::{ComputeEntity, ComputeStats, PhysicsConfig};
 pub use culling::{CullPrimitive, CullingStats};
+pub use error::WgpuError;
 pub use shadow::ShadowConfig;
-pub use stats::{ActivePrimitives, FrameStats};
-
-/// Error type for wgpu renderer operations.
-#[derive(Debug, Clone)]
-pub enum WgpuError {
-    /// Failed to create wgpu adapter.
-    AdapterNotFound,
-    /// Failed to create wgpu device.
-    DeviceCreationFailed(String),
-    /// Failed to create surface.
-    SurfaceCreationFailed(String),
-    /// Shader compilation failed.
-    ShaderCompilationFailed(String),
-    /// Pipeline creation failed.
-    PipelineCreationFailed(String),
-    /// Context lost.
-    ContextLost,
-}
-
-impl std::fmt::Display for WgpuError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::AdapterNotFound => write!(f, "wgpu adapter not found"),
-            Self::DeviceCreationFailed(msg) => write!(f, "wgpu device creation failed: {msg}"),
-            Self::SurfaceCreationFailed(msg) => write!(f, "wgpu surface creation failed: {msg}"),
-            Self::ShaderCompilationFailed(msg) => write!(f, "Shader compilation failed: {msg}"),
-            Self::PipelineCreationFailed(msg) => write!(f, "Pipeline creation failed: {msg}"),
-            Self::ContextLost => write!(f, "GPU context lost"),
-        }
-    }
-}
-
-impl std::error::Error for WgpuError {}
+pub use stats::ActivePrimitives;
 
 /// wgpu renderer implementing the Renderer trait.
 ///
@@ -280,12 +281,16 @@ pub struct WgpuRenderer {
 
 /// A scissor rectangle in screen coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct ScissorRect {
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
+pub(crate) struct ScissorRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
 }
+
+// ============================================================================
+// Constructor and Initialization Methods
+// ============================================================================
 
 impl WgpuRenderer {
     /// Creates a new headless wgpu renderer for offscreen rendering.
@@ -638,7 +643,13 @@ impl WgpuRenderer {
 
         self.pipeline_manager = Some(pipeline_manager);
     }
+}
 
+// ============================================================================
+// Accessor Methods
+// ============================================================================
+
+impl WgpuRenderer {
     /// Returns the wgpu device.
     #[inline]
     pub fn device(&self) -> &wgpu::Device {
@@ -656,441 +667,13 @@ impl WgpuRenderer {
     pub fn frame_stats(&self) -> &FrameStats {
         &self.frame_stats
     }
+}
 
-    /// Enables or disables bloom post-processing.
-    pub fn set_bloom_enabled(&mut self, enabled: bool) {
-        self.bloom_enabled = enabled;
-        if enabled {
-            // Initialize bloom pipeline if needed
-            if self.bloom_pipeline.is_none() {
-                let format = self
-                    .surface_config
-                    .as_ref()
-                    .map(|c| c.format)
-                    .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
-                self.bloom_pipeline = Some(BloomPipeline::new(&self.device, format));
-            }
-            // Pre-allocate scene texture to avoid first-frame stutter
-            // Bloom manages its own scene target, but ensure the bloom pipeline is sized
-            if let Some(ref mut bloom) = self.bloom_pipeline {
-                bloom.ensure_size(&self.device, self.width, self.height);
-            }
-        }
-    }
+// ============================================================================
+// Internal Helper Methods
+// ============================================================================
 
-    /// Returns whether bloom is enabled.
-    #[inline]
-    pub fn is_bloom_enabled(&self) -> bool {
-        self.bloom_enabled
-    }
-
-    /// Sets bloom configuration.
-    pub fn set_bloom_config(&mut self, config: BloomConfig) {
-        let format = self
-            .surface_config
-            .as_ref()
-            .map(|c| c.format)
-            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
-
-        if let Some(ref mut bloom) = self.bloom_pipeline {
-            bloom.config = config;
-        } else {
-            let mut bloom = BloomPipeline::new(&self.device, format);
-            bloom.config = config;
-            self.bloom_pipeline = Some(bloom);
-        }
-    }
-
-    /// Returns the current bloom configuration.
-    pub fn bloom_config(&self) -> Option<&BloomConfig> {
-        self.bloom_pipeline.as_ref().map(|b| &b.config)
-    }
-
-    /// Enables or disables shadow post-processing.
-    pub fn set_shadow_enabled(&mut self, enabled: bool) {
-        self.shadow_enabled = enabled;
-        if enabled {
-            // Initialize shadow pipeline if needed
-            if self.shadow_pipeline.is_none() {
-                let format = self
-                    .surface_config
-                    .as_ref()
-                    .map(|c| c.format)
-                    .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
-                self.shadow_pipeline = Some(ShadowPipeline::new(&self.device, format));
-            }
-            // Pre-allocate scene texture to avoid first-frame stutter
-            self.ensure_scene_texture();
-            // Also ensure the shadow pipeline's internal textures are sized
-            if let Some(ref mut shadow) = self.shadow_pipeline {
-                shadow.ensure_size(&self.device, self.width, self.height);
-            }
-        }
-    }
-
-    /// Returns whether shadow is enabled.
-    #[inline]
-    pub fn is_shadow_enabled(&self) -> bool {
-        self.shadow_enabled
-    }
-
-    /// Sets shadow configuration.
-    pub fn set_shadow_config(&mut self, config: ShadowConfig) {
-        let format = self
-            .surface_config
-            .as_ref()
-            .map(|c| c.format)
-            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
-
-        if let Some(ref mut shadow) = self.shadow_pipeline {
-            shadow.config = config;
-        } else {
-            let mut shadow = ShadowPipeline::new(&self.device, format);
-            shadow.config = config;
-            self.shadow_pipeline = Some(shadow);
-        }
-    }
-
-    /// Returns the current shadow configuration.
-    pub fn shadow_config(&self) -> Option<&ShadowConfig> {
-        self.shadow_pipeline.as_ref().map(|s| &s.config)
-    }
-
-    /// Returns a reference to the compute pipeline, creating it if needed.
-    pub fn compute_pipeline(&mut self) -> &mut ComputePipeline {
-        if self.compute_pipeline.is_none() {
-            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
-        }
-        self.compute_pipeline.as_mut().unwrap()
-    }
-
-    /// Warms up the GPU physics compute pipeline.
-    ///
-    /// Call this during initialization to pre-compile compute shaders and avoid
-    /// first-frame stuttering when physics is first dispatched.
-    pub fn warmup_physics(&mut self) {
-        if self.compute_pipeline.is_none() {
-            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
-        }
-        if let Some(ref mut pipeline) = self.compute_pipeline {
-            pipeline.warmup(&self.device, &self.queue);
-        }
-    }
-
-    /// Runs GPU physics simulation synchronously.
-    ///
-    /// This method performs a complete physics simulation step on the GPU:
-    /// 1. Uploads entity data to GPU buffers
-    /// 2. Dispatches compute shaders (spatial hash, forces, integration)
-    /// 3. Downloads updated positions back to CPU
-    ///
-    /// # Arguments
-    ///
-    /// * `entities` - Slice of entities to simulate
-    /// * `delta_time` - Time step in seconds
-    ///
-    /// # Returns
-    ///
-    /// Vector of updated entities with new positions and velocities.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use rource_render::backend::wgpu::{WgpuRenderer, ComputeEntity};
-    ///
-    /// let mut renderer = WgpuRenderer::new_headless(800, 600)?;
-    ///
-    /// // Create entities from scene data
-    /// let entities: Vec<ComputeEntity> = scene_nodes.iter()
-    ///     .map(|node| ComputeEntity::new(node.x, node.y, node.radius))
-    ///     .collect();
-    ///
-    /// // Run physics step
-    /// let updated = renderer.dispatch_physics(&entities, 0.016);
-    ///
-    /// // Apply updated positions back to scene
-    /// for (node, entity) in scene_nodes.iter_mut().zip(updated.iter()) {
-    ///     node.set_position(entity.position[0], entity.position[1]);
-    /// }
-    /// ```
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn dispatch_physics(
-        &mut self,
-        entities: &[ComputeEntity],
-        delta_time: f32,
-    ) -> Vec<ComputeEntity> {
-        if entities.is_empty() {
-            return Vec::new();
-        }
-
-        // Initialize compute pipeline if needed
-        if self.compute_pipeline.is_none() {
-            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
-        }
-
-        let Some(ref mut pipeline) = self.compute_pipeline else {
-            return entities.to_vec();
-        };
-
-        // Upload entities
-        pipeline.upload_entities(&self.device, &self.queue, entities);
-
-        // Create command encoder
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Physics Compute Encoder"),
-            });
-
-        // Dispatch physics passes
-        pipeline.dispatch(&mut encoder, &self.queue, delta_time);
-
-        // Prepare readback
-        pipeline.prepare_readback(&self.device, &mut encoder);
-
-        // Submit and wait for completion
-        self.queue.submit(Some(encoder.finish()));
-
-        // Download results synchronously
-        pipeline.download_entities(&self.device)
-    }
-
-    /// Runs GPU physics simulation and calculates bounds.
-    ///
-    /// Like `dispatch_physics`, but also calculates the bounding box of all entities
-    /// after simulation. This is useful for camera fitting.
-    ///
-    /// # Arguments
-    ///
-    /// * `entities` - Slice of entities to simulate
-    /// * `delta_time` - Time step in seconds
-    ///
-    /// # Returns
-    ///
-    /// Tuple of (updated entities, computed bounds).
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn dispatch_physics_with_bounds(
-        &mut self,
-        entities: &[ComputeEntity],
-        delta_time: f32,
-    ) -> (Vec<ComputeEntity>, compute::ComputedBounds) {
-        if entities.is_empty() {
-            return (Vec::new(), compute::ComputedBounds::default());
-        }
-
-        // Initialize compute pipeline if needed
-        if self.compute_pipeline.is_none() {
-            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
-        }
-
-        let Some(ref mut pipeline) = self.compute_pipeline else {
-            return (entities.to_vec(), compute::ComputedBounds::default());
-        };
-
-        // Upload entities
-        pipeline.upload_entities(&self.device, &self.queue, entities);
-
-        // Create command encoder
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Physics Compute Encoder"),
-            });
-
-        // Dispatch physics passes
-        pipeline.dispatch(&mut encoder, &self.queue, delta_time);
-
-        // Dispatch bounds calculation
-        pipeline.dispatch_bounds(&mut encoder, &self.queue);
-
-        // Prepare readback
-        pipeline.prepare_readback(&self.device, &mut encoder);
-
-        // Submit and wait for completion
-        self.queue.submit(Some(encoder.finish()));
-
-        // Download results synchronously
-        let updated_entities = pipeline.download_entities(&self.device);
-
-        // Get bounds from stats (bounds are calculated on GPU but we need to read them)
-        // For now, calculate bounds from downloaded entities
-        let bounds = if updated_entities.is_empty() {
-            compute::ComputedBounds::default()
-        } else {
-            let mut min_x = f32::MAX;
-            let mut min_y = f32::MAX;
-            let mut max_x = f32::MIN;
-            let mut max_y = f32::MIN;
-
-            for entity in &updated_entities {
-                let (x, y) = entity.position();
-                let r = entity.radius;
-                min_x = min_x.min(x - r);
-                min_y = min_y.min(y - r);
-                max_x = max_x.max(x + r);
-                max_y = max_y.max(y + r);
-            }
-
-            compute::ComputedBounds {
-                min: [min_x, min_y],
-                max: [max_x, max_y],
-            }
-        };
-
-        (updated_entities, bounds)
-    }
-
-    /// Runs GPU physics simulation asynchronously (WASM).
-    ///
-    /// This is the async version for WASM where GPU operations must be non-blocking.
-    ///
-    /// # Arguments
-    ///
-    /// * `entities` - Slice of entities to simulate
-    /// * `delta_time` - Time step in seconds
-    ///
-    /// # Returns
-    ///
-    /// Vector of updated entities with new positions and velocities.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn dispatch_physics_async(
-        &mut self,
-        entities: &[ComputeEntity],
-        delta_time: f32,
-    ) -> Vec<ComputeEntity> {
-        if entities.is_empty() {
-            return Vec::new();
-        }
-
-        // Initialize compute pipeline if needed
-        if self.compute_pipeline.is_none() {
-            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
-        }
-
-        let Some(ref mut pipeline) = self.compute_pipeline else {
-            return entities.to_vec();
-        };
-
-        // Upload entities
-        pipeline.upload_entities(&self.device, &self.queue, entities);
-
-        // Create command encoder
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Physics Compute Encoder"),
-            });
-
-        // Dispatch physics passes
-        pipeline.dispatch(&mut encoder, &self.queue, delta_time);
-
-        // Prepare readback
-        pipeline.prepare_readback(&self.device, &mut encoder);
-
-        // Submit
-        self.queue.submit(Some(encoder.finish()));
-
-        // Download results asynchronously
-        pipeline.download_entities_async(&self.device).await
-    }
-
-    /// Sets the GPU physics configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - Physics configuration (repulsion, attraction, damping, etc.)
-    pub fn set_physics_config(&mut self, config: PhysicsConfig) {
-        if self.compute_pipeline.is_none() {
-            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
-        }
-        if let Some(ref mut pipeline) = self.compute_pipeline {
-            pipeline.set_config(config);
-        }
-    }
-
-    /// Returns the current GPU physics configuration.
-    pub fn physics_config(&self) -> Option<&PhysicsConfig> {
-        self.compute_pipeline.as_ref().map(ComputePipeline::config)
-    }
-
-    /// Returns compute statistics from the last physics dispatch.
-    pub fn physics_stats(&self) -> Option<&ComputeStats> {
-        self.compute_pipeline.as_ref().map(ComputePipeline::stats)
-    }
-
-    // ========================================================================
-    // GPU Visibility Culling Methods
-    // ========================================================================
-
-    /// Enables or disables GPU visibility culling.
-    ///
-    /// When enabled, the renderer will use GPU compute shaders to cull instances
-    /// based on the current cull bounds before rendering. This is beneficial for
-    /// extreme-scale scenarios (10,000+ instances) where CPU culling becomes a
-    /// bottleneck.
-    ///
-    /// For most use cases, the default CPU-side quadtree culling is more efficient.
-    ///
-    /// # Arguments
-    ///
-    /// * `enabled` - Whether to enable GPU culling
-    pub fn set_gpu_culling_enabled(&mut self, enabled: bool) {
-        self.gpu_culling_enabled = enabled;
-        if enabled && self.culling_pipeline.is_none() {
-            self.culling_pipeline = Some(VisibilityCullingPipeline::new(&self.device));
-        }
-    }
-
-    /// Returns whether GPU visibility culling is enabled.
-    #[inline]
-    pub fn is_gpu_culling_enabled(&self) -> bool {
-        self.gpu_culling_enabled
-    }
-
-    /// Sets the view bounds for GPU visibility culling.
-    ///
-    /// Instances outside these bounds will be culled by the GPU compute shader.
-    /// These bounds should match the camera's visible area in world coordinates.
-    ///
-    /// # Arguments
-    ///
-    /// * `min_x` - Minimum X coordinate
-    /// * `min_y` - Minimum Y coordinate
-    /// * `max_x` - Maximum X coordinate
-    /// * `max_y` - Maximum Y coordinate
-    pub fn set_cull_bounds(&mut self, min_x: f32, min_y: f32, max_x: f32, max_y: f32) {
-        self.cull_bounds = [min_x, min_y, max_x, max_y];
-        if let Some(ref mut pipeline) = self.culling_pipeline {
-            pipeline.set_view_bounds(min_x, min_y, max_x, max_y);
-        }
-    }
-
-    /// Returns the current cull bounds.
-    #[inline]
-    pub fn cull_bounds(&self) -> [f32; 4] {
-        self.cull_bounds
-    }
-
-    /// Warms up the GPU visibility culling pipeline.
-    ///
-    /// Call this during initialization to pre-compile compute shaders and avoid
-    /// first-frame stuttering when GPU culling is first enabled.
-    pub fn warmup_culling(&mut self) {
-        if self.culling_pipeline.is_none() {
-            self.culling_pipeline = Some(VisibilityCullingPipeline::new(&self.device));
-        }
-        if let Some(ref mut pipeline) = self.culling_pipeline {
-            pipeline.warmup(&self.device, &self.queue);
-        }
-    }
-
-    /// Returns statistics from the last GPU culling operation.
-    pub fn culling_stats(&self) -> Option<&CullingStats> {
-        self.culling_pipeline
-            .as_ref()
-            .map(VisibilityCullingPipeline::stats)
-    }
-
+impl WgpuRenderer {
     /// Transforms a point from world to screen coordinates.
     #[inline]
     fn transform_point(&self, point: Vec2) -> Vec2 {
@@ -1177,7 +760,7 @@ impl WgpuRenderer {
     }
 
     /// Ensures the scene texture exists and is the correct size.
-    fn ensure_scene_texture(&mut self) {
+    pub(crate) fn ensure_scene_texture(&mut self) {
         let needs_recreate = self.scene_texture.as_ref().is_none_or(|tex| {
             let size = tex.size();
             size.width != self.width || size.height != self.height
@@ -1212,407 +795,6 @@ impl WgpuRenderer {
             }));
             self.scene_texture = Some(texture);
         }
-    }
-
-    /// Flushes all batched draw calls to the current render pass.
-    fn flush(&mut self, encoder: &mut wgpu::CommandEncoder, target_view: &wgpu::TextureView) {
-        // Update uniforms
-        let uniforms = Uniforms {
-            resolution: [self.width as f32, self.height as f32],
-            time: 0.0,
-            padding: 0.0,
-        };
-        self.uniform_buffer.update(&self.queue, &uniforms);
-
-        let format = self
-            .surface_config
-            .as_ref()
-            .map(|c| c.format)
-            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
-
-        // Upload all instance data first
-        self.circle_instances
-            .upload(&self.device, &self.queue, &mut self.frame_stats);
-        self.ring_instances
-            .upload(&self.device, &self.queue, &mut self.frame_stats);
-        self.line_instances
-            .upload(&self.device, &self.queue, &mut self.frame_stats);
-        self.curve_instances
-            .upload(&self.device, &self.queue, &mut self.frame_stats);
-        self.quad_instances
-            .upload(&self.device, &self.queue, &mut self.frame_stats);
-        self.text_instances
-            .upload(&self.device, &self.queue, &mut self.frame_stats);
-        self.upload_textured_quads();
-
-        // Upload font atlas texture to GPU (critical for text rendering!)
-        self.font_atlas.upload(&self.queue);
-
-        // Create render pass
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Main Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: target_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-
-            // Apply scissor rect if clipping is active
-            if let Some(scissor) = self.current_scissor {
-                render_pass.set_scissor_rect(scissor.x, scissor.y, scissor.width, scissor.height);
-            }
-
-            // Flush each primitive type
-            self.flush_circles_pass(&mut render_pass, format);
-            self.flush_rings_pass(&mut render_pass, format);
-            self.flush_lines_pass(&mut render_pass, format);
-            self.flush_curves_pass(&mut render_pass, format);
-            self.flush_quads_pass(&mut render_pass, format);
-            self.flush_textured_quads_pass(&mut render_pass, format);
-            self.flush_text_pass(&mut render_pass, format);
-        }
-
-        // Clear all instance buffers
-        self.circle_instances.clear();
-        self.ring_instances.clear();
-        self.line_instances.clear();
-        self.curve_instances.clear();
-        self.quad_instances.clear();
-        self.text_instances.clear();
-        self.clear_textured_quads();
-    }
-
-    /// Flushes circle draw calls within a render pass.
-    fn flush_circles_pass(
-        &mut self,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        _format: wgpu::TextureFormat,
-    ) {
-        if self.circle_instances.is_empty() {
-            return;
-        }
-
-        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
-            return;
-        };
-
-        // Get or create pipeline
-        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Circle);
-
-        // Set pipeline
-        if self
-            .render_state
-            .set_pipeline(PipelineId::Circle, &mut self.frame_stats)
-        {
-            render_pass.set_pipeline(pipeline);
-        }
-
-        // Set bind groups
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-
-        // Set vertex buffer (unit quad)
-        render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
-
-        // Set instance buffer
-        render_pass.set_vertex_buffer(1, self.circle_instances.buffer().slice(..));
-
-        // Draw instanced
-        let instance_count = self.circle_instances.instance_count() as u32;
-        render_pass.draw(0..4, 0..instance_count);
-
-        // Track statistics
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.circle_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
-        self.frame_stats
-            .active_primitives
-            .set(ActivePrimitives::CIRCLES);
-    }
-
-    /// Flushes ring draw calls within a render pass.
-    fn flush_rings_pass(
-        &mut self,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        _format: wgpu::TextureFormat,
-    ) {
-        if self.ring_instances.is_empty() {
-            return;
-        }
-
-        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
-            return;
-        };
-
-        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Ring);
-
-        if self
-            .render_state
-            .set_pipeline(PipelineId::Ring, &mut self.frame_stats)
-        {
-            render_pass.set_pipeline(pipeline);
-        }
-
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
-        render_pass.set_vertex_buffer(1, self.ring_instances.buffer().slice(..));
-
-        let instance_count = self.ring_instances.instance_count() as u32;
-        render_pass.draw(0..4, 0..instance_count);
-
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.ring_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
-        self.frame_stats
-            .active_primitives
-            .set(ActivePrimitives::RINGS);
-    }
-
-    /// Flushes line draw calls within a render pass.
-    fn flush_lines_pass(
-        &mut self,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        _format: wgpu::TextureFormat,
-    ) {
-        if self.line_instances.is_empty() {
-            return;
-        }
-
-        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
-            return;
-        };
-
-        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Line);
-
-        if self
-            .render_state
-            .set_pipeline(PipelineId::Line, &mut self.frame_stats)
-        {
-            render_pass.set_pipeline(pipeline);
-        }
-
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffers.line_quad.slice(..));
-        render_pass.set_vertex_buffer(1, self.line_instances.buffer().slice(..));
-
-        let instance_count = self.line_instances.instance_count() as u32;
-        render_pass.draw(0..4, 0..instance_count);
-
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.line_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
-        self.frame_stats
-            .active_primitives
-            .set(ActivePrimitives::LINES);
-    }
-
-    /// Flushes curve draw calls within a render pass.
-    fn flush_curves_pass(
-        &mut self,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        _format: wgpu::TextureFormat,
-    ) {
-        if self.curve_instances.is_empty() {
-            return;
-        }
-
-        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
-            return;
-        };
-
-        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Curve);
-
-        if self
-            .render_state
-            .set_pipeline(PipelineId::Curve, &mut self.frame_stats)
-        {
-            render_pass.set_pipeline(pipeline);
-        }
-
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffers.curve_strip.slice(..));
-        render_pass.set_vertex_buffer(1, self.curve_instances.buffer().slice(..));
-
-        let instance_count = self.curve_instances.instance_count() as u32;
-        render_pass.draw(0..buffers::CURVE_STRIP_VERTEX_COUNT, 0..instance_count);
-
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.curve_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
-        self.frame_stats
-            .active_primitives
-            .set(ActivePrimitives::CURVES);
-    }
-
-    /// Flushes solid quad draw calls within a render pass.
-    fn flush_quads_pass(
-        &mut self,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        _format: wgpu::TextureFormat,
-    ) {
-        if self.quad_instances.is_empty() {
-            return;
-        }
-
-        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
-            return;
-        };
-
-        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Quad);
-
-        if self
-            .render_state
-            .set_pipeline(PipelineId::Quad, &mut self.frame_stats)
-        {
-            render_pass.set_pipeline(pipeline);
-        }
-
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
-        render_pass.set_vertex_buffer(1, self.quad_instances.buffer().slice(..));
-
-        let instance_count = self.quad_instances.instance_count() as u32;
-        render_pass.draw(0..4, 0..instance_count);
-
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.quad_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
-        self.frame_stats
-            .active_primitives
-            .set(ActivePrimitives::QUADS);
-    }
-
-    /// Uploads all textured quad instance buffers.
-    ///
-    /// Uses a cached texture ID buffer to avoid per-frame allocation.
-    fn upload_textured_quads(&mut self) {
-        // Reuse cached buffer - avoids allocation after first frame
-        self.cached_texture_ids.clear();
-        self.cached_texture_ids
-            .extend(self.textured_quad_instances.keys().copied());
-
-        for &tex_id in &self.cached_texture_ids {
-            if let Some(instances) = self.textured_quad_instances.get_mut(&tex_id) {
-                if !instances.is_empty() {
-                    instances.upload(&self.device, &self.queue, &mut self.frame_stats);
-                }
-            }
-        }
-    }
-
-    /// Flushes textured quad draw calls within a render pass.
-    fn flush_textured_quads_pass(
-        &mut self,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        _format: wgpu::TextureFormat,
-    ) {
-        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
-            return;
-        };
-
-        // Collect texture IDs that have instances to render
-        let tex_ids: Vec<TextureId> = self
-            .textured_quad_instances
-            .iter()
-            .filter(|(_, instances)| !instances.is_empty())
-            .map(|(id, _)| *id)
-            .collect();
-
-        if tex_ids.is_empty() {
-            return;
-        }
-
-        // Get or create pipeline
-        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::TexturedQuad);
-
-        // Set pipeline once for all textured quads
-        if self
-            .render_state
-            .set_pipeline(PipelineId::TexturedQuad, &mut self.frame_stats)
-        {
-            render_pass.set_pipeline(pipeline);
-        }
-
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-
-        // Render each texture group
-        for tex_id in tex_ids {
-            let Some(instances) = self.textured_quad_instances.get(&tex_id) else {
-                continue;
-            };
-
-            // Set texture bind group
-            if let Some(texture) = self.textures.get(&tex_id) {
-                render_pass.set_bind_group(1, &texture.bind_group, &[]);
-            }
-
-            render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
-            render_pass.set_vertex_buffer(1, instances.buffer().slice(..));
-
-            let instance_count = instances.instance_count() as u32;
-            render_pass.draw(0..4, 0..instance_count);
-
-            self.frame_stats.draw_calls += 1;
-            self.frame_stats.textured_quad_instances += instance_count;
-            self.frame_stats.total_instances += instance_count;
-            self.frame_stats
-                .active_primitives
-                .set(ActivePrimitives::TEXTURED_QUADS);
-        }
-    }
-
-    /// Clears all textured quad instance buffers.
-    fn clear_textured_quads(&mut self) {
-        for instances in self.textured_quad_instances.values_mut() {
-            instances.clear();
-        }
-    }
-
-    /// Flushes text draw calls within a render pass.
-    fn flush_text_pass(
-        &mut self,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        _format: wgpu::TextureFormat,
-    ) {
-        if self.text_instances.is_empty() {
-            return;
-        }
-
-        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
-            return;
-        };
-
-        // Get or create pipeline
-        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::Text);
-
-        if self
-            .render_state
-            .set_pipeline(PipelineId::Text, &mut self.frame_stats)
-        {
-            render_pass.set_pipeline(pipeline);
-        }
-
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_bind_group(1, self.font_atlas.bind_group(), &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
-        render_pass.set_vertex_buffer(1, self.text_instances.buffer().slice(..));
-
-        let instance_count = self.text_instances.instance_count() as u32;
-        render_pass.draw(0..4, 0..instance_count);
-
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.text_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
-        self.frame_stats
-            .active_primitives
-            .set(ActivePrimitives::TEXT);
     }
 
     /// Interpolates a Catmull-Rom spline for drawing.
@@ -1664,6 +846,10 @@ impl WgpuRenderer {
         result
     }
 }
+
+// ============================================================================
+// Renderer Trait Implementation
+// ============================================================================
 
 impl Renderer for WgpuRenderer {
     fn begin_frame(&mut self) {
@@ -1899,13 +1085,7 @@ impl Renderer for WgpuRenderer {
 
         if let Some(tex_id) = texture {
             // Textured quad
-            let instances = self
-                .textured_quad_instances
-                .entry(tex_id)
-                .or_insert_with(|| {
-                    InstanceBuffer::new(&self.device, 12, 100, "textured_quad_instances")
-                    // 12 floats = 48 bytes
-                });
+            let instances = self.get_or_create_textured_quad_buffer(tex_id);
 
             // bounds(4) + uv_bounds(4) + color(4)
             instances.push_raw(&[
@@ -2084,19 +1264,14 @@ impl Renderer for WgpuRenderer {
     }
 }
 
+// ============================================================================
+// Tests
+// ============================================================================
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_wgpu_error_display() {
-        let err = WgpuError::AdapterNotFound;
-        assert!(format!("{err}").contains("adapter"));
-
-        let err = WgpuError::DeviceCreationFailed("test".into());
-        assert!(format!("{err}").contains("device"));
-        assert!(format!("{err}").contains("test"));
-    }
+    use state::PipelineId;
 
     #[test]
     fn test_interpolate_spline_empty() {
@@ -2166,48 +1341,6 @@ mod tests {
     }
 
     #[test]
-    fn test_bloom_config() {
-        let config = BloomConfig::default();
-        assert!(config.threshold > 0.0);
-        assert!(config.intensity > 0.0);
-
-        let subtle = BloomConfig::subtle();
-        let intense = BloomConfig::intense();
-        assert!(intense.intensity > subtle.intensity);
-    }
-
-    #[test]
-    fn test_shadow_config() {
-        let config = ShadowConfig::default();
-        assert!(config.opacity > 0.0);
-        assert!(config.offset_x != 0.0 || config.offset_y != 0.0);
-
-        let subtle = ShadowConfig::subtle();
-        let strong = ShadowConfig::strong();
-        assert!(strong.opacity > subtle.opacity);
-    }
-
-    #[test]
-    fn test_physics_config_presets() {
-        let default = PhysicsConfig::default();
-        let dense = PhysicsConfig::dense();
-        let sparse = PhysicsConfig::sparse();
-
-        assert!(dense.repulsion_strength > default.repulsion_strength);
-        assert!(sparse.repulsion_strength < default.repulsion_strength);
-    }
-
-    #[test]
-    fn test_compute_entity() {
-        let entity = ComputeEntity::new(100.0, 200.0, 10.0);
-        assert_eq!(entity.position(), (100.0, 200.0));
-        assert_eq!(entity.radius, 10.0);
-
-        let entity = entity.with_velocity(5.0, -3.0);
-        assert_eq!(entity.velocity(), (5.0, -3.0));
-    }
-
-    #[test]
     fn test_render_state() {
         let mut state = RenderState::new();
         let mut stats = FrameStats::new();
@@ -2247,45 +1380,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    fn test_cull_primitive_types() {
-        // Verify primitive types have correct instance sizes
-        assert_eq!(CullPrimitive::Circles.floats_per_instance(), 7);
-        assert_eq!(CullPrimitive::Lines.floats_per_instance(), 9);
-        assert_eq!(CullPrimitive::Quads.floats_per_instance(), 8);
-    }
-
-    #[test]
-    fn test_culling_stats() {
-        let mut stats = CullingStats::default();
-        assert_eq!(stats.total_instances, 0);
-        assert_eq!(stats.visible_instances, 0);
-        assert_eq!(stats.dispatch_count, 0);
-
-        // Empty stats should have 1.0 cull ratio (100% visible)
-        assert!((stats.cull_ratio() - 1.0).abs() < 0.001);
-
-        // Test with actual values
-        stats.total_instances = 100;
-        stats.visible_instances = 25;
-        assert!((stats.cull_ratio() - 0.25).abs() < 0.001);
-        assert!((stats.culled_percentage() - 75.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_culling_stats_reset() {
-        let mut stats = CullingStats {
-            total_instances: 100,
-            visible_instances: 50,
-            dispatch_count: 5,
-        };
-
-        stats.reset();
-        assert_eq!(stats.total_instances, 0);
-        assert_eq!(stats.visible_instances, 0);
-        assert_eq!(stats.dispatch_count, 0);
     }
 
     #[test]

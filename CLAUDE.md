@@ -1355,25 +1355,36 @@ Successfully implemented WebAssembly support for running Rource in web browsers:
    - Output in `rource-wasm/www/pkg/`
    - Demo page in `rource-wasm/www/index.html`
 
-### wgpu Backend Implementation (2026-01-21)
+### wgpu Backend Implementation (2026-01-21, refactored 2026-01-22)
 
-Implemented production-grade wgpu rendering backend for cross-platform GPU rendering:
+Implemented production-grade wgpu rendering backend for cross-platform GPU rendering.
+
+**Refactored from 2,353 lines to modular structure** (main mod.rs reduced to 1,447 lines).
 
 #### Architecture
 
 ```
 crates/rource-render/src/backend/wgpu/
-├── mod.rs          # WgpuRenderer implementing Renderer trait
-├── buffers.rs      # Instance/uniform buffer management
-├── compute.rs      # GPU compute shaders for physics simulation
-├── pipeline.rs     # Render pipeline creation and caching
-├── shaders.rs      # WGSL shader source code
-├── state.rs        # Render state caching (pipeline, bind groups)
-├── stats.rs        # Frame statistics with active primitive tracking
-├── textures.rs     # Font atlas and texture management
-├── bloom.rs        # GPU bloom post-processing pipeline
-└── shadow.rs       # GPU drop shadow effect
+├── mod.rs              # WgpuRenderer struct, constructors, Renderer trait impl (1,447 lines)
+├── error.rs            # WgpuError enum (72 lines)
+├── buffers.rs          # Instance/uniform buffer management
+├── compute.rs          # GPU compute shaders for physics simulation
+├── pipeline.rs         # Render pipeline creation and caching
+├── shaders.rs          # WGSL shader source code
+├── state.rs            # Render state caching (pipeline, bind groups)
+├── stats.rs            # Frame statistics with active primitive tracking
+├── textures.rs         # Font atlas and texture management
+├── bloom.rs            # GPU bloom post-processing pipeline
+├── shadow.rs           # GPU drop shadow effect
+├── culling.rs          # GPU visibility culling pipeline
+├── physics_methods.rs  # Physics dispatch methods (297 lines)
+├── effects_methods.rs  # Bloom/shadow configuration methods (137 lines)
+├── culling_methods.rs  # GPU culling methods (124 lines)
+└── flush_passes.rs     # Flush pass rendering methods (432 lines)
 ```
+
+The `*_methods.rs` files contain `impl WgpuRenderer` blocks that extend the main struct
+with focused functionality, keeping each module under 500 lines for maintainability.
 
 #### Key Features
 
