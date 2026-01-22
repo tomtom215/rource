@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769108038147,
+  "lastUpdate": 1769111253050,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -389,6 +389,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 970583,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a1f5b6de156275a4cc6c994ccc9dace272cc9d2",
+          "message": "Merge pull request #120 from tomtom215/claude/fix-entity-culling-wasm-yVetO\n\nRemove spatial culling and add auto-fit camera mode",
+          "timestamp": "2026-01-22T20:43:50+01:00",
+          "tree_id": "d9a2c5b2f3c1ba19a0d2e70f9b1cc0bacadcf879",
+          "url": "https://github.com/tomtom215/rource/commit/3a1f5b6de156275a4cc6c994ccc9dace272cc9d2"
+        },
+        "date": 1769111252747,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3872960,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2509111,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 970539,
             "unit": "bytes"
           }
         ]
