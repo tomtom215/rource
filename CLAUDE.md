@@ -584,6 +584,98 @@ Clarified the interaction between bloom and shadow effects in `end_frame()`:
 
 **Test Count**: 955 tests (added 5 new tests for enhanced frame statistics)
 
+### Phase 8 Optimizations (2026-01-22)
+
+Zero-allocation hot path optimizations for maximum FPS in WASM WebGPU demo.
+
+#### 1. Zero-Allocation Visibility Query
+
+Added `visible_entities_into()` method to Scene that reuses pre-allocated buffers:
+
+**Files Modified**:
+- `crates/rource-core/src/scene/mod.rs` - Added `visible_entities_into()`
+- `rource-wasm/src/lib.rs` - Visibility buffers in Rource struct
+- `rource-wasm/src/render_phases.rs` - RenderContext uses borrowed slices
+
+**Before**:
+```rust
+// Allocates 3 new Vecs every frame
+let (dirs, files, users) = scene.visible_entities(&bounds);
+```
+
+**After**:
+```rust
+// Zero allocations after initial capacity
+scene.visible_entities_into(&bounds, &mut dirs_buf, &mut files_buf, &mut users_buf);
+```
+
+**Impact**: Eliminates 180 allocations/second at 60 FPS.
+
+#### 2. Streaming Spline Interpolation
+
+Replaced Vec-allocating spline interpolation with streaming computation:
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/mod.rs` - Streaming Catmull-Rom
+- `crates/rource-render/src/backend/software.rs` - Streaming transform
+
+**Before**:
+```rust
+let interpolated = Self::interpolate_spline(points, 8);  // Allocates Vec
+for window in interpolated.windows(2) { ... }
+```
+
+**After**:
+```rust
+// Zero-allocation streaming: compute and draw immediately
+for i in 0..points.len() - 1 {
+    for j in 1..=SEGMENTS_PER_SPAN {
+        // Catmull-Rom computed on-the-fly
+        self.draw_line(prev_point, curr_point, width, color);
+    }
+}
+```
+
+**Impact**: Eliminates 1 Vec allocation per visible curve (potentially 1000s/frame).
+
+#### 3. Cached Texture ID Buffer
+
+Both wgpu and WebGL2 renderers now cache texture ID lists:
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/mod.rs`
+- `crates/rource-render/src/backend/webgl2/mod.rs`
+
+**Before**:
+```rust
+let tex_ids: Vec<TextureId> = self.textured_quad_instances.keys().copied().collect();
+```
+
+**After**:
+```rust
+self.cached_texture_ids.clear();
+self.cached_texture_ids.extend(self.textured_quad_instances.keys().copied());
+```
+
+**Impact**: Eliminates 1 Vec allocation per frame per renderer.
+
+#### 4. Hot Path Inline Hints
+
+Added `#[inline]` hints to frequently-called functions:
+- `visible_entities_into()` - Called every frame
+- `draw_circle()`, `draw_disc()`, `draw_line()` - Called per primitive
+- `push_raw()` - Called for every instance
+
+#### Memory Impact Summary
+
+| Optimization | Before (60 FPS) | After |
+|-------------|-----------------|-------|
+| Visibility query | 180 allocs/sec | 0 |
+| Spline interpolation | N × curves/sec | 0 |
+| Texture ID collection | 60 allocs/sec | 0 |
+
+**Test Count**: 1,094 tests passing
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -1419,4 +1511,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-21 (Phase 7 optimizations: enhanced frame statistics, active primitive tracking - 955 tests)*
+*Last updated: 2026-01-22 (Phase 8 optimizations: zero-allocation hot paths, streaming spline, cached texture IDs - 1,094 tests)*

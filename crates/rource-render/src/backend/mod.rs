@@ -2,7 +2,7 @@
 //!
 //! This module contains different rendering backend implementations:
 //! - [`software`]: CPU-based software rasterizer for maximum portability
-//! - [`webgl2`]: GPU-accelerated WebGL2 renderer for browser (feature-gated)
+//! - `webgl2`: GPU-accelerated WebGL2 renderer for browser (feature-gated)
 //! - [`wgpu`]: Cross-platform GPU-accelerated renderer using wgpu (feature-gated)
 //!
 //! ## Backend Selection
@@ -22,7 +22,7 @@
 //!
 //! For WASM builds, the recommended hierarchy is:
 //! - [`WgpuRenderer`](wgpu::WgpuRenderer): WebGPU for modern browsers
-//! - [`WebGl2Renderer`](webgl2::WebGl2Renderer): WebGL2 fallback for older browsers
+//! - `WebGl2Renderer`: WebGL2 fallback for older browsers (feature-gated)
 //! - [`SoftwareRenderer`](software::SoftwareRenderer): `Canvas2D` for maximum compatibility
 //!
 //! ## Feature Flags

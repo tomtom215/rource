@@ -186,6 +186,9 @@ pub struct WebGl2Renderer {
 
     /// Whether context was lost.
     context_lost: bool,
+
+    /// Reusable buffer for texture IDs (avoids per-frame allocation in `flush_textured_quads`).
+    cached_texture_ids: Vec<TextureId>,
 }
 
 impl WebGl2Renderer {
@@ -248,6 +251,7 @@ impl WebGl2Renderer {
             ubo_enabled: false,
             frame_stats: FrameStats::new(),
             context_lost: false,
+            cached_texture_ids: Vec::with_capacity(16),
         };
 
         renderer.init_gl()?;
@@ -883,10 +887,12 @@ impl WebGl2Renderer {
         // Track whether any textured quads were rendered
         let mut rendered_any = false;
 
-        // Draw each texture's instances
-        let texture_ids: Vec<TextureId> = self.textured_quad_instances.keys().copied().collect();
+        // Reuse cached buffer - avoids allocation after first frame
+        self.cached_texture_ids.clear();
+        self.cached_texture_ids
+            .extend(self.textured_quad_instances.keys().copied());
 
-        for tex_id in texture_ids {
+        for &tex_id in &self.cached_texture_ids {
             if let Some(instances) = self.textured_quad_instances.get_mut(&tex_id) {
                 if instances.instance_count() == 0 {
                     continue;

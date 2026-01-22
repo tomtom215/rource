@@ -1028,6 +1028,50 @@ impl Scene {
         (dirs, files, users)
     }
 
+    /// Zero-allocation version of `visible_entities` that reuses existing buffers.
+    ///
+    /// This is the preferred method for hot paths (e.g., render loops) where
+    /// avoiding per-frame allocations is critical for performance.
+    ///
+    /// # Arguments
+    ///
+    /// * `bounds` - The visible area to query
+    /// * `dirs` - Buffer to fill with visible directory IDs (cleared first)
+    /// * `files` - Buffer to fill with visible file IDs (cleared first)
+    /// * `users` - Buffer to fill with visible user IDs (cleared first)
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Reusable buffers (stored in renderer state)
+    /// let mut dirs_buf = Vec::new();
+    /// let mut files_buf = Vec::new();
+    /// let mut users_buf = Vec::new();
+    ///
+    /// // Each frame - zero allocations after initial capacity
+    /// scene.visible_entities_into(&visible_bounds, &mut dirs_buf, &mut files_buf, &mut users_buf);
+    /// ```
+    #[inline]
+    pub fn visible_entities_into(
+        &self,
+        bounds: &Bounds,
+        dirs: &mut Vec<crate::entity::DirId>,
+        files: &mut Vec<FileId>,
+        users: &mut Vec<UserId>,
+    ) {
+        dirs.clear();
+        files.clear();
+        users.clear();
+
+        for entity in self.spatial.query(bounds) {
+            match entity {
+                EntityType::Directory(id) => dirs.push(*id),
+                EntityType::File(id) => files.push(*id),
+                EntityType::User(id) => users.push(*id),
+            }
+        }
+    }
+
     /// Returns the expanded bounds for visibility queries.
     ///
     /// This adds a margin to account for entity radii and ensures

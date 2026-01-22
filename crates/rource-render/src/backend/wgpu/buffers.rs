@@ -205,6 +205,7 @@ impl InstanceBuffer {
     /// # Panics
     ///
     /// Panics in debug builds if `data.len() != floats_per_instance`.
+    #[inline]
     pub fn push_raw(&mut self, data: &[f32]) {
         debug_assert_eq!(
             data.len(),
