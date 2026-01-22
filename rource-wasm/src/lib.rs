@@ -17,12 +17,23 @@
 //!
 //! ## Module Structure
 //!
-//! - `backend`: Renderer backend abstraction (WebGL2/Software)
+//! ### Internal Modules
+//! - `backend`: Renderer backend abstraction (wgpu/WebGL2/Software)
 //! - `metrics`: Performance tracking and render statistics
 //! - `playback`: Timeline and commit playback management
 //! - `interaction`: Mouse/touch input handling
 //! - `render_phases`: Phased rendering pipeline
 //! - `rendering`: Low-level rendering utilities
+//!
+//! ### WASM API Modules (JavaScript-facing)
+//! - `wasm_api::input`: Mouse and keyboard event handlers
+//! - `wasm_api::playback`: Timeline control (play, pause, seek, speed)
+//! - `wasm_api::camera`: View control (zoom, pan, resize)
+//! - `wasm_api::layout`: Layout algorithm configuration
+//! - `wasm_api::settings`: Visual settings (bloom, background, labels)
+//! - `wasm_api::export`: Screenshot and full-map export
+//! - `wasm_api::stats`: Render statistics and entity counts
+//! - `wasm_api::authors`: Author information and colors
 //!
 //! ## Usage
 //!
@@ -69,11 +80,12 @@ mod png;
 mod render_phases;
 mod rendering;
 
+// WASM API modules - each contains an impl block for Rource with related methods
+mod wasm_api;
+
 // ============================================================================
 // Imports
 // ============================================================================
-
-use std::fmt::Write as FmtWrite;
 
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
@@ -81,21 +93,16 @@ use web_sys::HtmlCanvasElement;
 use rource_core::camera::Camera;
 use rource_core::config::Settings;
 use rource_core::scene::Scene;
-use rource_math::{Bounds, Color, Vec2};
+use rource_math::{Bounds, Vec2};
 use rource_render::{default_font, FontId};
 use rource_vcs::parser::{CustomParser, GitParser, ParseOptions, Parser};
 use rource_vcs::Commit;
 
-// Re-exports for internal use
+// Internal re-exports for submodules
 use backend::{RendererBackend, RendererType};
-use interaction::{
-    hit_test_directory, hit_test_file, hit_test_user, move_connected_entities_for_directory,
-    move_connected_entities_for_file, move_connected_entities_for_user, DragTarget,
-    ENTITY_HIT_RADIUS,
-};
+use interaction::DragTarget;
 use metrics::{PerformanceMetrics, RenderStats};
-use playback::{apply_vcs_commit, prewarm_scene, PlaybackState};
-use png::write_png;
+use playback::{apply_vcs_commit, calculate_seconds_per_commit, prewarm_scene, PlaybackState};
 use render_phases::{
     render_actions, render_directories, render_directory_labels, render_file_labels, render_files,
     render_user_labels, render_users, RenderContext,
@@ -118,22 +125,38 @@ pub fn init_panic_hook() {
 /// The main Rource visualization controller for browser usage.
 ///
 /// This struct manages the entire visualization lifecycle including:
-/// - Rendering (WebGL2 or Software backend)
+/// - Rendering (wgpu, WebGL2, or Software backend)
 /// - Scene management (files, users, directories)
 /// - Camera controls (pan, zoom)
 /// - Playback timeline (play, pause, seek)
 /// - User interaction (mouse, keyboard)
+///
+/// ## API Organization
+///
+/// The public API is organized into focused modules:
+/// - **Constructor/Renderer**: `create()`, `getRendererType()`, `isGPUAccelerated()`
+/// - **Data Loading**: `loadCustomLog()`, `loadGitLog()`, `commitCount()`
+/// - **Playback**: `play()`, `pause()`, `seek()`, `setSpeed()` (see `wasm_api::playback`)
+/// - **Camera**: `zoom()`, `pan()`, `resize()` (see `wasm_api::camera`)
+/// - **Input**: `onMouseDown()`, `onKeyDown()` (see `wasm_api::input`)
+/// - **Layout**: `setLayoutPreset()`, `configureLayoutForRepo()` (see `wasm_api::layout`)
+/// - **Settings**: `setBloom()`, `setShowLabels()` (see `wasm_api::settings`)
+/// - **Export**: `captureScreenshot()`, `getFullMapDimensions()` (see `wasm_api::export`)
+/// - **Stats**: `getTotalFiles()`, `getVisibleEntities()` (see `wasm_api::stats`)
+/// - **Authors**: `getAuthors()`, `getAuthorColor()` (see `wasm_api::authors`)
 #[wasm_bindgen]
 pub struct Rource {
+    // ---- Canvas & Rendering ----
     /// Canvas element.
     canvas: HtmlCanvasElement,
 
-    /// Renderer backend (WebGL2 or Software).
+    /// Renderer backend (wgpu, WebGL2, or Software).
     backend: RendererBackend,
 
     /// Type of renderer being used.
     renderer_type: RendererType,
 
+    // ---- Scene & State ----
     /// Scene graph containing all entities.
     scene: Scene,
 
@@ -149,15 +172,23 @@ pub struct Rource {
     /// Playback state (timeline position, play/pause).
     playback: PlaybackState,
 
-    /// Mouse state for interaction.
+    // ---- Input State ----
+    /// Mouse X position (screen coordinates).
     mouse_x: f32,
+    /// Mouse Y position (screen coordinates).
     mouse_y: f32,
+    /// Whether mouse button is currently pressed.
     mouse_down: bool,
+    /// X position where drag started.
     drag_start_x: f32,
+    /// Y position where drag started.
     drag_start_y: f32,
+    /// Camera X position when drag started (for panning).
     camera_start_x: f32,
+    /// Camera Y position when drag started (for panning).
     camera_start_y: f32,
 
+    // ---- Entity Dragging ----
     /// Currently dragged entity (if any).
     drag_target: Option<DragTarget>,
 
@@ -167,12 +198,14 @@ pub struct Rource {
     /// Last position of dragged entity (for calculating movement delta).
     drag_last_pos: Vec2,
 
+    // ---- Display ----
     /// Font ID for text rendering.
     font_id: Option<FontId>,
 
     /// Whether to show labels (user names, file names).
     show_labels: bool,
 
+    // ---- Metrics ----
     /// Performance metrics (FPS tracking, frame timing).
     perf_metrics: PerformanceMetrics,
 
@@ -352,600 +385,6 @@ impl Rource {
 }
 
 // ============================================================================
-// Playback Control
-// ============================================================================
-
-#[wasm_bindgen]
-impl Rource {
-    /// Starts playback.
-    pub fn play(&mut self) {
-        self.playback.play();
-    }
-
-    /// Pauses playback.
-    pub fn pause(&mut self) {
-        self.playback.pause();
-    }
-
-    /// Returns whether playback is active.
-    #[wasm_bindgen(js_name = isPlaying)]
-    pub fn is_playing(&self) -> bool {
-        self.playback.is_playing()
-    }
-
-    /// Toggles play/pause state.
-    #[wasm_bindgen(js_name = togglePlay)]
-    pub fn toggle_play(&mut self) {
-        self.playback.toggle_play();
-    }
-
-    /// Seeks to a specific commit index.
-    pub fn seek(&mut self, commit_index: usize) {
-        if commit_index < self.commits.len() {
-            // Reset scene and replay commits up to the target
-            self.scene = Scene::new();
-            self.playback.set_current_commit(0);
-            self.playback.set_last_applied_commit(0);
-
-            for i in 0..=commit_index {
-                if i < self.commits.len() {
-                    apply_vcs_commit(&mut self.scene, &self.commits[i]);
-                }
-            }
-
-            self.playback.set_current_commit(commit_index);
-            self.playback.set_last_applied_commit(commit_index);
-            self.playback.reset_accumulated_time();
-
-            // Pre-warm the scene
-            prewarm_scene(&mut self.scene, 30, 1.0 / 60.0);
-
-            // Position camera
-            self.fit_camera_to_content();
-        }
-    }
-
-    /// Returns the current commit index.
-    #[wasm_bindgen(js_name = currentCommit)]
-    pub fn current_commit(&self) -> usize {
-        self.playback.current_commit()
-    }
-
-    /// Returns the timestamp for a commit at the given index.
-    #[wasm_bindgen(js_name = getCommitTimestamp)]
-    pub fn get_commit_timestamp(&self, index: usize) -> f64 {
-        self.commits.get(index).map_or(0.0, |c| c.timestamp as f64)
-    }
-
-    /// Returns the author name for a commit at the given index.
-    #[wasm_bindgen(js_name = getCommitAuthor)]
-    pub fn get_commit_author(&self, index: usize) -> String {
-        self.commits
-            .get(index)
-            .map_or_else(String::new, |c| c.author.clone())
-    }
-
-    /// Returns the number of files changed in a commit at the given index.
-    #[wasm_bindgen(js_name = getCommitFileCount)]
-    pub fn get_commit_file_count(&self, index: usize) -> usize {
-        self.commits.get(index).map_or(0, |c| c.files.len())
-    }
-
-    /// Returns the date range of all commits as a JSON object.
-    #[wasm_bindgen(js_name = getDateRange)]
-    pub fn get_date_range(&self) -> Option<String> {
-        playback::get_date_range(&self.commits)
-            .map(|(start, end)| format!(r#"{{"startTimestamp":{start},"endTimestamp":{end}}}"#))
-    }
-
-    /// Sets playback speed (seconds per day of repository history).
-    #[wasm_bindgen(js_name = setSpeed)]
-    pub fn set_speed(&mut self, seconds_per_day: f32) {
-        let speed = if seconds_per_day.is_finite() && seconds_per_day > 0.0 {
-            seconds_per_day
-        } else {
-            10.0
-        };
-        self.settings.playback.seconds_per_day = speed.clamp(0.01, 1000.0);
-    }
-
-    /// Gets the current playback speed.
-    #[wasm_bindgen(js_name = getSpeed)]
-    pub fn get_speed(&self) -> f32 {
-        self.settings.playback.seconds_per_day
-    }
-
-    /// Steps forward to the next commit.
-    #[wasm_bindgen(js_name = stepForward)]
-    pub fn step_forward(&mut self) {
-        let current = self.playback.current_commit();
-        if current < self.commits.len().saturating_sub(1) {
-            self.seek(current + 1);
-        }
-    }
-
-    /// Steps backward to the previous commit.
-    #[wasm_bindgen(js_name = stepBackward)]
-    pub fn step_backward(&mut self) {
-        let current = self.playback.current_commit();
-        if current > 0 {
-            self.seek(current - 1);
-        }
-    }
-}
-
-// ============================================================================
-// Camera Control
-// ============================================================================
-
-#[wasm_bindgen]
-impl Rource {
-    /// Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
-    /// Max zoom increased to 1000.0 to support deep zoom into massive repositories.
-    pub fn zoom(&mut self, factor: f32) {
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 1000.0);
-        self.camera.set_zoom(new_zoom);
-    }
-
-    /// Zooms the camera toward a specific screen point.
-    #[wasm_bindgen(js_name = zoomToward)]
-    pub fn zoom_toward(&mut self, screen_x: f32, screen_y: f32, factor: f32) {
-        let screen_point = Vec2::new(screen_x, screen_y);
-        let world_before = self.camera.screen_to_world(screen_point);
-
-        // Max zoom increased to 1000.0 to support deep zoom into massive repositories
-        let new_zoom = (self.camera.zoom() * factor).clamp(0.01, 1000.0);
-        self.camera.set_zoom(new_zoom);
-
-        let world_after = self.camera.screen_to_world(screen_point);
-        let diff = world_before - world_after;
-        let new_pos = self.camera.position() + diff;
-        self.camera.jump_to(new_pos);
-    }
-
-    /// Pans the camera by the given delta in screen pixels.
-    pub fn pan(&mut self, dx: f32, dy: f32) {
-        let world_delta = Vec2::new(dx, dy) / self.camera.zoom();
-        let new_pos = self.camera.position() - world_delta;
-        self.camera.jump_to(new_pos);
-    }
-
-    /// Resets the camera to fit all content.
-    #[wasm_bindgen(js_name = resetCamera)]
-    pub fn reset_camera(&mut self) {
-        self.fit_camera_to_content();
-    }
-
-    /// Resizes the canvas and renderer.
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.canvas.set_width(width);
-        self.canvas.set_height(height);
-        self.backend.resize(width, height);
-        self.camera = Camera::new(width as f32, height as f32);
-        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
-        self.settings.display.width = width;
-        self.settings.display.height = height;
-    }
-
-    /// Returns the current zoom level.
-    #[wasm_bindgen(js_name = getZoom)]
-    pub fn get_zoom(&self) -> f32 {
-        self.camera.zoom()
-    }
-
-    /// Returns the canvas width in pixels.
-    #[wasm_bindgen(js_name = getCanvasWidth)]
-    pub fn get_canvas_width(&self) -> u32 {
-        self.backend.width()
-    }
-
-    /// Returns the canvas height in pixels.
-    #[wasm_bindgen(js_name = getCanvasHeight)]
-    pub fn get_canvas_height(&self) -> u32 {
-        self.backend.height()
-    }
-
-    /// Returns the current camera state as JSON.
-    #[wasm_bindgen(js_name = getCameraState)]
-    pub fn get_camera_state(&self) -> String {
-        format!(
-            r#"{{"x":{},"y":{},"zoom":{}}}"#,
-            self.camera.position().x,
-            self.camera.position().y,
-            self.camera.zoom()
-        )
-    }
-
-    /// Restores camera state from previously saved values.
-    #[wasm_bindgen(js_name = restoreCameraState)]
-    pub fn restore_camera_state(&mut self, x: f32, y: f32, zoom: f32) {
-        self.camera.jump_to(Vec2::new(x, y));
-        self.camera.set_zoom(zoom);
-    }
-}
-
-// ============================================================================
-// Settings
-// ============================================================================
-
-#[wasm_bindgen]
-impl Rource {
-    /// Sets whether to show bloom effect.
-    #[wasm_bindgen(js_name = setBloom)]
-    pub fn set_bloom(&mut self, enabled: bool) {
-        self.settings.display.bloom_enabled = enabled;
-    }
-
-    /// Sets the background color (hex string like "#000000" or "000000").
-    #[wasm_bindgen(js_name = setBackgroundColor)]
-    pub fn set_background_color(&mut self, hex: &str) {
-        let hex = hex.trim_start_matches('#');
-        if hex.len() == 6 {
-            if let Ok(val) = u32::from_str_radix(hex, 16) {
-                self.settings.display.background_color = Color::from_hex(val);
-            }
-        }
-    }
-
-    /// Sets whether to show labels.
-    #[wasm_bindgen(js_name = setShowLabels)]
-    pub fn set_show_labels(&mut self, show: bool) {
-        self.show_labels = show;
-    }
-
-    /// Gets whether labels are being shown.
-    #[wasm_bindgen(js_name = getShowLabels)]
-    pub fn get_show_labels(&self) -> bool {
-        self.show_labels
-    }
-
-    /// Sets the font size for labels.
-    #[wasm_bindgen(js_name = setFontSize)]
-    pub fn set_font_size(&mut self, size: f32) {
-        self.settings.display.font_size = size.clamp(4.0, 200.0);
-    }
-
-    /// Gets the current font size for labels.
-    #[wasm_bindgen(js_name = getFontSize)]
-    pub fn get_font_size(&self) -> f32 {
-        self.settings.display.font_size
-    }
-}
-
-// ============================================================================
-// Layout Configuration
-// ============================================================================
-
-#[wasm_bindgen]
-impl Rource {
-    /// Configures the layout algorithm for a given repository size.
-    ///
-    /// This automatically computes optimal layout parameters based on
-    /// repository statistics. Should be called after loading data or
-    /// when repository characteristics are known.
-    ///
-    /// # Arguments
-    /// * `file_count` - Total number of files
-    /// * `max_depth` - Maximum directory depth (0 if unknown)
-    /// * `dir_count` - Total number of directories (0 if unknown)
-    ///
-    /// # Example (JavaScript)
-    /// ```javascript
-    /// rource.configureLayoutForRepo(50000, 12, 3000);
-    /// ```
-    #[wasm_bindgen(js_name = configureLayoutForRepo)]
-    pub fn configure_layout_for_repo(
-        &mut self,
-        file_count: usize,
-        max_depth: u32,
-        dir_count: usize,
-    ) {
-        use rource_core::config::LayoutSettings;
-
-        let settings = LayoutSettings::from_repo_stats(file_count, max_depth, dir_count);
-        self.settings.layout = settings;
-
-        // Also update the scene's layout config
-        self.scene
-            .configure_layout_for_repo(file_count, max_depth, dir_count);
-    }
-
-    /// Sets the layout preset for different repository sizes.
-    ///
-    /// # Presets
-    /// * "small" - Repos < 1000 files (compact layout)
-    /// * "medium" - Repos 1000-10000 files (default)
-    /// * "large" - Repos 10000-50000 files (spread out)
-    /// * "massive" - Repos 50000+ files (maximum spread)
-    ///
-    /// # Example (JavaScript)
-    /// ```javascript
-    /// rource.setLayoutPreset("massive");
-    /// ```
-    #[wasm_bindgen(js_name = setLayoutPreset)]
-    pub fn set_layout_preset(&mut self, preset: &str) {
-        use rource_core::config::LayoutSettings;
-        use rource_core::scene::LayoutConfig;
-
-        let (layout_settings, layout_config) = match preset.to_lowercase().as_str() {
-            "small" => (LayoutSettings::small_repo(), LayoutConfig::default()),
-            "medium" => (LayoutSettings::medium_repo(), LayoutConfig::default()),
-            "large" => (LayoutSettings::large_repo(), LayoutConfig::large_repo()),
-            "massive" => (LayoutSettings::massive_repo(), LayoutConfig::massive_repo()),
-            _ => return, // Unknown preset
-        };
-
-        self.settings.layout = layout_settings;
-        self.scene.set_layout_config(layout_config);
-    }
-
-    /// Sets the radial distance scale for directory positioning.
-    ///
-    /// Higher values spread the tree outward more. Range: [40.0, 500.0]
-    /// Default: 80.0
-    ///
-    /// # Example (JavaScript)
-    /// ```javascript
-    /// rource.setRadialDistanceScale(160.0);
-    /// ```
-    #[wasm_bindgen(js_name = setRadialDistanceScale)]
-    pub fn set_radial_distance_scale(&mut self, scale: f32) {
-        use rource_core::scene::LayoutConfig;
-
-        self.settings.layout.radial_distance_scale = scale.clamp(40.0, 500.0);
-        let config = LayoutConfig::from_settings(&self.settings.layout);
-        self.scene.set_layout_config(config);
-    }
-
-    /// Sets the depth distance exponent for non-linear depth scaling.
-    ///
-    /// Values > 1.0 add extra spacing at deeper levels.
-    /// Default: 1.0 (linear), Range: [0.5, 2.0]
-    ///
-    /// # Example (JavaScript)
-    /// ```javascript
-    /// rource.setDepthDistanceExponent(1.3);
-    /// ```
-    #[wasm_bindgen(js_name = setDepthDistanceExponent)]
-    pub fn set_depth_distance_exponent(&mut self, exponent: f32) {
-        use rource_core::scene::LayoutConfig;
-
-        self.settings.layout.depth_distance_exponent = exponent.clamp(0.5, 2.0);
-        let config = LayoutConfig::from_settings(&self.settings.layout);
-        self.scene.set_layout_config(config);
-    }
-
-    /// Sets the branch depth fade rate.
-    ///
-    /// Higher values make deep branches fade faster (0.0-1.0).
-    /// Default: 0.3
-    ///
-    /// # Example (JavaScript)
-    /// ```javascript
-    /// rource.setBranchDepthFade(0.7);
-    /// ```
-    #[wasm_bindgen(js_name = setBranchDepthFade)]
-    pub fn set_branch_depth_fade(&mut self, fade: f32) {
-        self.settings.layout.branch_depth_fade = fade.clamp(0.0, 1.0);
-    }
-
-    /// Sets the maximum branch opacity.
-    ///
-    /// Controls visibility of directory-to-parent connections (0.0-1.0).
-    /// Default: 0.35
-    ///
-    /// # Example (JavaScript)
-    /// ```javascript
-    /// rource.setBranchOpacityMax(0.15);
-    /// ```
-    #[wasm_bindgen(js_name = setBranchOpacityMax)]
-    pub fn set_branch_opacity_max(&mut self, opacity: f32) {
-        self.settings.layout.branch_opacity_max = opacity.clamp(0.0, 1.0);
-    }
-
-    /// Gets the current layout configuration as a JSON string.
-    ///
-    /// Returns a JSON object with all layout parameters.
-    ///
-    /// # Example (JavaScript)
-    /// ```javascript
-    /// const config = JSON.parse(rource.getLayoutConfig());
-    /// console.log(config.radial_distance_scale);
-    /// ```
-    #[wasm_bindgen(js_name = getLayoutConfig)]
-    pub fn get_layout_config(&self) -> String {
-        let layout = &self.settings.layout;
-        format!(
-            r#"{{"radial_distance_scale":{},"min_angular_span":{},"depth_distance_exponent":{},"sibling_spacing_multiplier":{},"branch_depth_fade":{},"branch_opacity_max":{},"auto_scale":{},"large_repo_threshold":{}}}"#,
-            layout.radial_distance_scale,
-            layout.min_angular_span,
-            layout.depth_distance_exponent,
-            layout.sibling_spacing_multiplier,
-            layout.branch_depth_fade,
-            layout.branch_opacity_max,
-            layout.auto_scale,
-            layout.large_repo_threshold
-        )
-    }
-}
-
-// ============================================================================
-// Input Handling
-// ============================================================================
-
-#[wasm_bindgen]
-impl Rource {
-    /// Handles mouse down events.
-    #[wasm_bindgen(js_name = onMouseDown)]
-    pub fn on_mouse_down(&mut self, x: f32, y: f32) {
-        self.mouse_down = true;
-        self.drag_start_x = x;
-        self.drag_start_y = y;
-        self.mouse_x = x;
-        self.mouse_y = y;
-
-        let screen_pos = Vec2::new(x, y);
-        let world_pos = self.camera.screen_to_world(screen_pos);
-        let hit_radius = ENTITY_HIT_RADIUS / self.camera.zoom();
-
-        // Check users first
-        if let Some(drag_target) = hit_test_user(&self.scene, world_pos, hit_radius) {
-            self.drag_target = Some(drag_target);
-            if let DragTarget::User(user_id) = drag_target {
-                if let Some(user) = self.scene.get_user(user_id) {
-                    self.drag_offset = user.position() - world_pos;
-                    self.drag_last_pos = user.position();
-                }
-            }
-            return;
-        }
-
-        // Check files
-        if let Some(drag_target) = hit_test_file(&self.scene, world_pos, hit_radius) {
-            self.drag_target = Some(drag_target);
-            if let DragTarget::File(file_id) = drag_target {
-                if let Some(file) = self.scene.get_file_mut(file_id) {
-                    self.drag_offset = file.position() - world_pos;
-                    self.drag_last_pos = file.position();
-                    file.set_pinned(true);
-                }
-            }
-            return;
-        }
-
-        // Check directories
-        if let Some(drag_target) = hit_test_directory(&self.scene, world_pos, hit_radius) {
-            self.drag_target = Some(drag_target);
-            if let DragTarget::Directory(dir_id) = drag_target {
-                if let Some(dir) = self.scene.directories().get(dir_id) {
-                    self.drag_offset = dir.position() - world_pos;
-                    self.drag_last_pos = dir.position();
-                }
-            }
-            return;
-        }
-
-        // No entity hit, set up for camera panning
-        self.drag_target = None;
-        self.camera_start_x = self.camera.position().x;
-        self.camera_start_y = self.camera.position().y;
-    }
-
-    /// Handles mouse up events.
-    #[wasm_bindgen(js_name = onMouseUp)]
-    pub fn on_mouse_up(&mut self) {
-        if let Some(DragTarget::File(file_id)) = self.drag_target {
-            if let Some(file) = self.scene.get_file_mut(file_id) {
-                file.set_pinned(false);
-            }
-        }
-
-        self.mouse_down = false;
-        self.drag_target = None;
-        self.drag_offset = Vec2::ZERO;
-        self.drag_last_pos = Vec2::ZERO;
-    }
-
-    /// Handles mouse move events.
-    #[wasm_bindgen(js_name = onMouseMove)]
-    pub fn on_mouse_move(&mut self, x: f32, y: f32) {
-        self.mouse_x = x;
-        self.mouse_y = y;
-
-        if !self.mouse_down {
-            return;
-        }
-
-        let screen_pos = Vec2::new(x, y);
-        let world_pos = self.camera.screen_to_world(screen_pos);
-
-        if let Some(drag_target) = self.drag_target {
-            let new_entity_pos = world_pos + self.drag_offset;
-            let delta = new_entity_pos - self.drag_last_pos;
-
-            match drag_target {
-                DragTarget::User(user_id) => {
-                    if let Some(user) = self.scene.get_user_mut(user_id) {
-                        user.set_position(new_entity_pos);
-                        user.clear_target();
-                    }
-                    move_connected_entities_for_user(&mut self.scene, user_id, delta);
-                }
-                DragTarget::File(file_id) => {
-                    let dir_id = self
-                        .scene
-                        .get_file(file_id)
-                        .map(rource_core::scene::FileNode::directory);
-
-                    if let Some(file) = self.scene.get_file_mut(file_id) {
-                        file.set_position(new_entity_pos);
-                        file.set_target(new_entity_pos);
-                    }
-
-                    if let Some(dir_id) = dir_id {
-                        move_connected_entities_for_file(&mut self.scene, file_id, dir_id, delta);
-                    }
-                }
-                DragTarget::Directory(dir_id) => {
-                    if let Some(dir) = self.scene.directories_mut().get_mut(dir_id) {
-                        dir.set_position(new_entity_pos);
-                        dir.set_velocity(Vec2::ZERO);
-                    }
-                    move_connected_entities_for_directory(&mut self.scene, dir_id, delta);
-                }
-            }
-
-            self.drag_last_pos = new_entity_pos;
-            self.scene.invalidate_bounds_cache();
-        } else {
-            // Camera panning
-            let dx = x - self.drag_start_x;
-            let dy = y - self.drag_start_y;
-            let world_delta = Vec2::new(dx, dy) / self.camera.zoom();
-            let new_pos = Vec2::new(self.camera_start_x, self.camera_start_y) - world_delta;
-            self.camera.jump_to(new_pos);
-        }
-    }
-
-    /// Handles mouse wheel events for zooming.
-    #[wasm_bindgen(js_name = onWheel)]
-    pub fn on_wheel(&mut self, delta_y: f32, mouse_x: f32, mouse_y: f32) {
-        let normalized_delta = delta_y / 100.0;
-        let clamped_delta = normalized_delta.clamp(-2.0, 2.0);
-        let factor = 1.0 - (clamped_delta * 0.08);
-        self.zoom_toward(mouse_x, mouse_y, factor);
-    }
-
-    /// Handles keyboard events.
-    #[wasm_bindgen(js_name = onKeyDown)]
-    pub fn on_key_down(&mut self, key: &str) {
-        match key {
-            " " | "Space" => self.toggle_play(),
-            "+" | "=" => self.zoom(1.2),
-            "-" | "_" => self.zoom(0.8),
-            "ArrowUp" => self.pan(0.0, -50.0),
-            "ArrowDown" => self.pan(0.0, 50.0),
-            "ArrowLeft" => self.pan(-50.0, 0.0),
-            "ArrowRight" => self.pan(50.0, 0.0),
-            "r" | "R" => self.reset_camera(),
-            "l" | "L" => self.show_labels = !self.show_labels,
-            "[" => self.set_speed(self.settings.playback.seconds_per_day * 0.5),
-            "]" => self.set_speed(self.settings.playback.seconds_per_day * 2.0),
-            "," | "<" => self.step_backward(),
-            "." | ">" => self.step_forward(),
-            "Home" => self.seek(0),
-            "End" => {
-                if !self.commits.is_empty() {
-                    let last = self.commits.len().saturating_sub(1);
-                    self.seek(last);
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-// ============================================================================
 // Frame Update and Rendering
 // ============================================================================
 
@@ -979,7 +418,7 @@ impl Rource {
             self.playback.add_time(dt);
 
             let seconds_per_commit =
-                playback::calculate_seconds_per_commit(self.settings.playback.seconds_per_day);
+                calculate_seconds_per_commit(self.settings.playback.seconds_per_day);
 
             while self.playback.accumulated_time() >= seconds_per_commit
                 && self.playback.current_commit() < self.commits.len()
@@ -1061,285 +500,6 @@ impl Rource {
 }
 
 // ============================================================================
-// Render Statistics API
-// ============================================================================
-
-#[wasm_bindgen]
-impl Rource {
-    /// Returns the number of visible files.
-    #[wasm_bindgen(js_name = getVisibleFiles)]
-    pub fn get_visible_files(&self) -> usize {
-        self.render_stats.visible_files
-    }
-
-    /// Returns the number of visible users.
-    #[wasm_bindgen(js_name = getVisibleUsers)]
-    pub fn get_visible_users(&self) -> usize {
-        self.render_stats.visible_users
-    }
-
-    /// Returns the number of visible directories.
-    #[wasm_bindgen(js_name = getVisibleDirectories)]
-    pub fn get_visible_directories(&self) -> usize {
-        self.render_stats.visible_directories
-    }
-
-    /// Returns the number of active action beams.
-    #[wasm_bindgen(js_name = getActiveActions)]
-    pub fn get_active_actions(&self) -> usize {
-        self.render_stats.active_actions
-    }
-
-    /// Returns the total number of entities.
-    #[wasm_bindgen(js_name = getTotalEntities)]
-    pub fn get_total_entities(&self) -> usize {
-        self.render_stats.total_entities
-    }
-
-    /// Returns the estimated draw call count.
-    #[wasm_bindgen(js_name = getDrawCalls)]
-    pub fn get_draw_calls(&self) -> usize {
-        self.render_stats.draw_calls
-    }
-
-    /// Returns the total number of files.
-    #[wasm_bindgen(js_name = getTotalFiles)]
-    pub fn get_total_files(&self) -> usize {
-        self.scene.file_count()
-    }
-
-    /// Returns the total number of directories currently in the scene.
-    /// Note: This only includes directories that have been created so far during playback.
-    /// For total directories across all commits, use `getCommitDirectoryCount()`.
-    #[wasm_bindgen(js_name = getTotalDirectories)]
-    pub fn get_total_directories(&self) -> usize {
-        self.scene.directory_count()
-    }
-
-    /// Returns the total number of unique directories across all loaded commits.
-    /// This calculates directory count from file paths, independent of playback state.
-    #[wasm_bindgen(js_name = getCommitDirectoryCount)]
-    pub fn get_commit_directory_count(&self) -> usize {
-        use std::collections::HashSet;
-
-        let mut directories: HashSet<String> = HashSet::new();
-
-        for commit in &self.commits {
-            for file in &commit.files {
-                // Extract parent directories from each file path
-                let path = file.path.to_string_lossy();
-                let mut current_path = String::new();
-
-                for (i, component) in path.split('/').enumerate() {
-                    if i > 0 {
-                        current_path.push('/');
-                    }
-                    // Check if this is the file (last component) or a directory
-                    // by checking if there are more components after this one
-                    if path.split('/').nth(i + 1).is_some() {
-                        // This is a directory component (not the file name)
-                        current_path.push_str(component);
-                        directories.insert(current_path.clone());
-                    }
-                }
-            }
-        }
-
-        // Add 1 for root directory if there are any directories
-        if directories.is_empty() && !self.commits.is_empty() {
-            1 // Just root
-        } else {
-            directories.len() + 1 // +1 for root
-        }
-    }
-
-    /// Returns the total number of users.
-    #[wasm_bindgen(js_name = getTotalUsers)]
-    pub fn get_total_users(&self) -> usize {
-        self.scene.user_count()
-    }
-}
-
-// ============================================================================
-// Author Information API
-// ============================================================================
-
-#[wasm_bindgen]
-impl Rource {
-    /// Returns author data as a JSON string array.
-    /// Iterates over all commits to get complete author statistics,
-    /// not just users currently visible in the scene.
-    #[wasm_bindgen(js_name = getAuthors)]
-    pub fn get_authors(&self) -> String {
-        use rource_core::scene::User;
-        use std::collections::HashMap;
-
-        // Count commits per author from ALL commits
-        let mut author_counts: HashMap<&str, usize> = HashMap::new();
-        for commit in &self.commits {
-            *author_counts.entry(commit.author.as_str()).or_insert(0) += 1;
-        }
-
-        // Build authors list with colors derived from names
-        let mut authors: Vec<(&str, Color, usize)> = author_counts
-            .into_iter()
-            .map(|(name, count)| {
-                let color = User::color_from_name(name);
-                (name, color, count)
-            })
-            .collect();
-
-        // Sort by commit count descending
-        authors.sort_by(|a, b| b.2.cmp(&a.2));
-
-        let mut json = String::from("[");
-        for (i, (name, color, commits)) in authors.iter().enumerate() {
-            if i > 0 {
-                json.push(',');
-            }
-            let r = (color.r * 255.0) as u8;
-            let g = (color.g * 255.0) as u8;
-            let b = (color.b * 255.0) as u8;
-            let escaped_name = name.replace('\\', "\\\\").replace('"', "\\\"");
-            let _ = FmtWrite::write_fmt(
-                &mut json,
-                format_args!("{{\"name\":\"{escaped_name}\",\"color\":\"#{r:02x}{g:02x}{b:02x}\",\"commits\":{commits}}}")
-            );
-        }
-        json.push(']');
-        json
-    }
-
-    /// Returns the color for a given author name as a hex string.
-    #[wasm_bindgen(js_name = getAuthorColor)]
-    pub fn get_author_color(&self, name: &str) -> String {
-        use rource_core::scene::User;
-        let color = User::color_from_name(name);
-        format!(
-            "#{:02x}{:02x}{:02x}",
-            (color.r * 255.0) as u8,
-            (color.g * 255.0) as u8,
-            (color.b * 255.0) as u8
-        )
-    }
-}
-
-// ============================================================================
-// Export / Screenshot API
-// ============================================================================
-
-#[wasm_bindgen]
-impl Rource {
-    /// Returns the bounding box of all entities as JSON.
-    #[wasm_bindgen(js_name = getEntityBounds)]
-    pub fn get_entity_bounds(&mut self) -> Option<String> {
-        self.scene.compute_entity_bounds().map(|bounds| {
-            format!(
-                r#"{{"minX":{},"minY":{},"maxX":{},"maxY":{},"width":{},"height":{}}}"#,
-                bounds.min.x,
-                bounds.min.y,
-                bounds.max.x,
-                bounds.max.y,
-                bounds.width(),
-                bounds.height()
-            )
-        })
-    }
-
-    /// Calculates the required canvas dimensions for full map export.
-    #[wasm_bindgen(js_name = getFullMapDimensions)]
-    pub fn get_full_map_dimensions(&mut self, min_label_font_size: f32) -> Option<String> {
-        let bounds = self.scene.compute_entity_bounds()?;
-
-        let padding = 0.2;
-        let padded_width = bounds.width() * (1.0 + padding * 2.0);
-        let padded_height = bounds.height() * (1.0 + padding * 2.0);
-
-        if padded_width <= 0.0 || padded_height <= 0.0 {
-            return None;
-        }
-
-        let base_font_size = self.settings.display.font_size;
-        let readable_zoom = (min_label_font_size / base_font_size).max(0.5);
-
-        let canvas_width = (padded_width * readable_zoom).ceil() as u32;
-        let canvas_height = (padded_height * readable_zoom).ceil() as u32;
-
-        let max_dimension = 16384_u32;
-        let (final_width, final_height, final_zoom) =
-            if canvas_width > max_dimension || canvas_height > max_dimension {
-                let scale = (max_dimension as f32) / (canvas_width.max(canvas_height) as f32);
-                let scaled_width = ((canvas_width as f32) * scale).ceil() as u32;
-                let scaled_height = ((canvas_height as f32) * scale).ceil() as u32;
-                let scaled_zoom = readable_zoom * scale;
-                (scaled_width, scaled_height, scaled_zoom)
-            } else {
-                (canvas_width, canvas_height, readable_zoom)
-            };
-
-        let center = bounds.center();
-
-        Some(format!(
-            r#"{{"width":{},"height":{},"zoom":{},"centerX":{},"centerY":{}}}"#,
-            final_width, final_height, final_zoom, center.x, center.y
-        ))
-    }
-
-    /// Prepares the renderer for full map export.
-    #[wasm_bindgen(js_name = prepareFullMapExport)]
-    pub fn prepare_full_map_export(
-        &mut self,
-        width: u32,
-        height: u32,
-        zoom: f32,
-        center_x: f32,
-        center_y: f32,
-    ) {
-        self.canvas.set_width(width);
-        self.canvas.set_height(height);
-        self.backend.resize(width, height);
-        self.camera = Camera::new(width as f32, height as f32);
-        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
-        self.camera.jump_to(Vec2::new(center_x, center_y));
-        self.camera.set_zoom(zoom);
-        self.settings.display.width = width;
-        self.settings.display.height = height;
-    }
-
-    /// Restores the renderer after full map export.
-    #[wasm_bindgen(js_name = restoreAfterExport)]
-    pub fn restore_after_export(&mut self, width: u32, height: u32) {
-        self.canvas.set_width(width);
-        self.canvas.set_height(height);
-        self.backend.resize(width, height);
-        self.camera = Camera::new(width as f32, height as f32);
-        self.camera.set_zoom_limits(0.01, 1000.0); // Support deep zoom for massive repos
-        self.settings.display.width = width;
-        self.settings.display.height = height;
-        self.fit_camera_to_content();
-    }
-
-    /// Captures a screenshot and returns it as PNG data.
-    #[wasm_bindgen(js_name = captureScreenshot)]
-    pub fn capture_screenshot(&self) -> Result<Vec<u8>, JsValue> {
-        if let Some(pixels) = self.backend.pixels() {
-            let width = self.backend.width();
-            let height = self.backend.height();
-
-            let mut png_data = Vec::new();
-            write_png(&mut png_data, pixels, width, height)
-                .map_err(|e| JsValue::from_str(&format!("Failed to create PNG: {e}")))?;
-
-            Ok(png_data)
-        } else {
-            Err(JsValue::from_str(
-                "Screenshot not supported with WebGL2 renderer",
-            ))
-        }
-    }
-}
-
-// ============================================================================
 // Private Implementation
 // ============================================================================
 
@@ -1359,7 +519,7 @@ impl Rource {
     }
 
     /// Fits the camera to show all content.
-    fn fit_camera_to_content(&mut self) {
+    pub(crate) fn fit_camera_to_content(&mut self) {
         if let Some(entity_bounds) = self.scene.compute_entity_bounds() {
             if entity_bounds.width() > 0.0 && entity_bounds.height() > 0.0 {
                 let padded_bounds = Bounds::from_center_size(

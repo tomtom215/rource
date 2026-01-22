@@ -34,24 +34,28 @@ jobs:
             ${{ runner.os }}-cargo-bench-
 
       - name: Run benchmarks
-        run: cargo bench --all -- --noplot 2>&1 | tee benchmark-results.txt
+        run: |
+          # Run benchmarks only for packages that have them defined
+          # Using --workspace instead of deprecated --all flag
+          cargo bench --workspace -- --noplot 2>&1 | tee benchmark-results.txt
+          echo "=== Benchmark output preview ==="
+          head -100 benchmark-results.txt || true
 
       - name: Extract Criterion results
         run: |
           # Convert Criterion output to JSON format for benchmark-action
-          echo '[]' > benchmark-data.json
           python3 << 'EOF'
           import json
           import re
-          import os
 
           results = []
           with open('benchmark-results.txt', 'r') as f:
               content = f.read()
 
           # Parse Criterion benchmark output
-          # Format: "benchmark_name    time:   [lower bound  estimate  upper bound]"
-          pattern = r'(\S+)\s+time:\s+\[([0-9.]+)\s+(\w+)\s+([0-9.]+)\s+(\w+)\s+([0-9.]+)\s+(\w+)\]'
+          # Format: "group/name/variant    time:   [lower bound  estimate  upper bound]"
+          # The name can include slashes and be quite long
+          pattern = r'([\w/]+)\s+time:\s+\[([0-9.]+)\s+(\w+)\s+([0-9.]+)\s+(\w+)\s+([0-9.]+)\s+(\w+)\]'
 
           for match in re.finditer(pattern, content):
               name = match.group(1)
@@ -68,15 +72,36 @@ jobs:
                   'value': value_ns
               })
 
+          # Write results even if empty (benchmark-action needs valid JSON)
           with open('benchmark-data.json', 'w') as f:
               json.dump(results, f, indent=2)
 
           print(f"Extracted {len(results)} benchmark results")
+
+          # If no results, show debug info
+          if len(results) == 0:
+              print("WARNING: No benchmark results extracted. Check benchmark output format.")
+              # Show lines containing 'time' for debugging
+              for line in content.split('\n'):
+                  if 'time' in line.lower() and '[' in line:
+                      print(f"  Line: {line[:100]}")
           EOF
+
+      - name: Check if benchmarks were extracted
+        id: check_benchmarks
+        run: |
+          # Check if we have any benchmark results
+          RESULT_COUNT=$(python3 -c "import json; print(len(json.load(open('benchmark-data.json'))))")
+          echo "result_count=$RESULT_COUNT" >> $GITHUB_OUTPUT
+          if [ "$RESULT_COUNT" -eq 0 ]; then
+            echo "::warning::No benchmark results were extracted. Skipping benchmark storage."
+          else
+            echo "Found $RESULT_COUNT benchmark results"
+          fi
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.check_benchmarks.outputs.result_count != '0'
         with:
           name: Rust Benchmarks
           tool: 'customSmallerIsBetter'
@@ -93,7 +118,7 @@ jobs:
 
       - name: Compare benchmark results (PR)
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.check_benchmarks.outputs.result_count != '0'
         with:
           name: Rust Benchmarks
           tool: 'customSmallerIsBetter'

@@ -30,7 +30,8 @@ RUN mkdir -p crates/rource-math/src && echo "pub fn dummy() {}" > crates/rource-
     mkdir -p rource-wasm/src && echo "pub fn dummy() {}" > rource-wasm/src/lib.rs
 
 # Build dependencies only (this layer is cached)
-RUN cargo build --release --package rource-cli 2>/dev/null || true
+# Note: Package name is "rource", not "rource-cli" (directory name)
+RUN cargo build --release --package rource 2>/dev/null || true
 
 # Copy actual source code
 COPY crates/ crates/
@@ -41,7 +42,8 @@ COPY rource-wasm/ rource-wasm/
 RUN touch crates/*/src/*.rs rource-cli/src/*.rs
 
 # Build the actual application
-RUN cargo build --release --package rource-cli && \
+# Note: Package name is "rource", not "rource-cli" (directory name)
+RUN cargo build --release --package rource && \
     strip /build/target/release/rource
 
 # Runtime stage - minimal image
