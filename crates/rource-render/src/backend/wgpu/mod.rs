@@ -1130,6 +1130,8 @@ impl WgpuRenderer {
             .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.line_instances
             .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.curve_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.quad_instances
             .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.text_instances
