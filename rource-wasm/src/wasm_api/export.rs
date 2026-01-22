@@ -11,6 +11,7 @@ use rource_core::camera::Camera;
 use rource_math::Vec2;
 
 use crate::png::write_png;
+use crate::render_phases::AUTO_FIT_MIN_ZOOM;
 use crate::Rource;
 
 // ============================================================================
@@ -113,7 +114,8 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
-        self.camera.set_zoom_limits(0.01, 1000.0);
+        // Use AUTO_FIT_MIN_ZOOM (0.03) as minimum to prevent LOD culling all entities
+        self.camera.set_zoom_limits(AUTO_FIT_MIN_ZOOM, 1000.0);
         self.camera.jump_to(Vec2::new(center_x, center_y));
         self.camera.set_zoom(zoom);
         self.settings.display.width = width;
@@ -133,7 +135,8 @@ impl Rource {
         self.canvas.set_height(height);
         self.backend.resize(width, height);
         self.camera = Camera::new(width as f32, height as f32);
-        self.camera.set_zoom_limits(0.01, 1000.0);
+        // Use AUTO_FIT_MIN_ZOOM (0.03) as minimum to prevent LOD culling all entities
+        self.camera.set_zoom_limits(AUTO_FIT_MIN_ZOOM, 1000.0);
         self.settings.display.width = width;
         self.settings.display.height = height;
         self.fit_camera_to_content();

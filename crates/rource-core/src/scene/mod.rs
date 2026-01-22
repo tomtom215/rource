@@ -22,8 +22,18 @@ pub use user::User;
 use crate::entity::{ActionId, DirId, FileId, IdAllocator, UserId};
 use crate::physics::QuadTree;
 
-/// Default bounds for the scene.
-pub const DEFAULT_SCENE_SIZE: f32 = 10000.0;
+/// Default bounds for the scene's spatial index.
+///
+/// This must be large enough to accommodate all entity positions from the layout
+/// algorithm. The radial layout can position entities at:
+/// - `depth_factor` × `radial_distance_scale`
+/// - Where `depth_factor` = depth^exponent (up to 30^1.5 ≈ 164)
+/// - And `radial_distance_scale` can be up to 400
+/// - Yielding maximum distances of ~65,000 units
+///
+/// We use 200,000 (±100,000 bounds) to provide ample margin.
+/// Entities outside these bounds are silently dropped from the spatial index!
+pub const DEFAULT_SCENE_SIZE: f32 = 200_000.0;
 
 // ============================================================================
 // Force-directed layout constants
