@@ -674,6 +674,46 @@ Added `#[inline]` hints to frequently-called functions:
 | Spline interpolation | N × curves/sec | 0 |
 | Texture ID collection | 60 allocs/sec | 0 |
 
+#### 5. wgpu Bloom Pipeline Wiring (2026-01-22)
+
+Completed the integration of the wgpu GPU bloom post-processing pipeline:
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/mod.rs` - Updated `begin_frame()` and `end_frame()`
+
+**Architecture**:
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Frame Flow                                   │
+│                                                                      │
+│  begin_frame()                    end_frame()                       │
+│  ┌─────────────┐                  ┌─────────────────────────────┐  │
+│  │ Bloom       │──► scene_view() ─│ flush() to scene target    │  │
+│  │ enabled?    │                  │ bloom.apply() ──► surface  │  │
+│  └─────────────┘                  └─────────────────────────────┘  │
+│  ┌─────────────┐                  ┌─────────────────────────────┐  │
+│  │ Shadow-only │──► scene_texture │ flush() to scene texture   │  │
+│  │ enabled?    │                  │ shadow.apply() ─► surface  │  │
+│  └─────────────┘                  └─────────────────────────────┘  │
+│  ┌─────────────┐                  ┌─────────────────────────────┐  │
+│  │ No effects  │──► surface view  │ flush() direct to surface  │  │
+│  └─────────────┘                  └─────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Changes**:
+- `begin_frame()`: When bloom is enabled, calls `bloom_pipeline.ensure_size()` and uses
+  `bloom_pipeline.scene_view()` as the render target (BloomPipeline manages its own scene FBO)
+- `end_frame()`: Calls `bloom.apply()` to run the full bloom pipeline (bright extraction,
+  gaussian blur passes, composite) and output to the surface
+- Shadow-only path uses renderer's `scene_texture` and calls `shadow.apply()`
+- Frame stats track `bloom_applied` and `shadow_applied` for debugging
+
+**Post-Processing Priority**:
+- Bloom takes precedence when both bloom and shadow are enabled
+- Shadow-only renders when only shadow is enabled
+- Direct rendering when no effects are enabled
+
 **Test Count**: 1,094 tests passing
 
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
@@ -1511,4 +1551,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (Phase 8 optimizations: zero-allocation hot paths, streaming spline, cached texture IDs - 1,094 tests)*
+*Last updated: 2026-01-22 (wgpu bloom pipeline wiring complete - 1,094 tests)*

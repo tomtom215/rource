@@ -1169,11 +1169,6 @@ impl Renderer for WgpuRenderer {
         self.frame_stats.reset();
         self.render_state.begin_frame(self.width, self.height);
 
-        // Ensure scene texture for post-processing
-        if self.bloom_enabled || self.shadow_enabled {
-            self.ensure_scene_texture();
-        }
-
         // Get surface texture if available
         if let Some(ref surface) = self.surface {
             match surface.get_current_texture() {
@@ -1194,12 +1189,22 @@ impl Renderer for WgpuRenderer {
             },
         ));
 
-        // Determine target view
-        if self.bloom_enabled || self.shadow_enabled {
-            // Render to scene texture for post-processing
+        // Determine render target based on post-processing state
+        if self.bloom_enabled {
+            // Bloom manages its own scene render target - use that
+            if let Some(ref mut bloom) = self.bloom_pipeline {
+                bloom.ensure_size(&self.device, self.width, self.height);
+                self.current_target_view = bloom.scene_view().cloned();
+            }
+        } else if self.shadow_enabled {
+            // Shadow-only: use renderer's scene texture
+            self.ensure_scene_texture();
+            if let Some(ref mut shadow) = self.shadow_pipeline {
+                shadow.ensure_size(&self.device, self.width, self.height);
+            }
             self.current_target_view = self.scene_texture_view.clone();
         } else if let Some(ref texture) = self.current_surface_texture {
-            // Render directly to surface
+            // No post-processing: render directly to surface
             self.current_target_view =
                 Some(texture.texture.create_view(&wgpu::TextureViewDescriptor {
                     label: Some("Surface Texture View"),
@@ -1222,16 +1227,30 @@ impl Renderer for WgpuRenderer {
 
         // Apply post-processing if enabled
         if let Some(ref surface_texture) = self.current_surface_texture {
-            let _surface_view = surface_texture
+            let surface_view = surface_texture
                 .texture
                 .create_view(&wgpu::TextureViewDescriptor::default());
 
-            if self.bloom_enabled || self.shadow_enabled {
-                // Note: wgpu post-processing (bloom/shadow) is not yet wired in.
-                // The BloomPipeline and ShadowPipeline exist with full implementations
-                // but need integration here. For now, scene renders directly to surface.
-                // See WebGL2 backend for reference implementation.
-                // Tracking: This is a known limitation for wgpu backend.
+            // Handle post-processing effects
+            // Priority: bloom takes precedence, then shadow-only
+            if self.bloom_enabled {
+                if let Some(ref bloom) = self.bloom_pipeline {
+                    bloom.apply(&self.device, &self.queue, &mut encoder, &surface_view);
+                    self.frame_stats.bloom_applied = true;
+                }
+            } else if self.shadow_enabled {
+                if let Some(ref shadow) = self.shadow_pipeline {
+                    if let Some(ref scene_view) = self.scene_texture_view {
+                        shadow.apply(
+                            &self.device,
+                            &self.queue,
+                            &mut encoder,
+                            scene_view,
+                            &surface_view,
+                        );
+                        self.frame_stats.shadow_applied = true;
+                    }
+                }
             }
         }
 
