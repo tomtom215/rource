@@ -4,8 +4,12 @@
 //! and manages their relationships and updates.
 
 pub mod action;
+mod bounds_methods;
 pub mod dir_node;
 pub mod file;
+mod layout_methods;
+mod spatial_methods;
+mod stats_methods;
 pub mod tree;
 pub mod user;
 
@@ -35,40 +39,8 @@ use crate::physics::QuadTree;
 /// Entities outside these bounds are silently dropped from the spatial index!
 pub const DEFAULT_SCENE_SIZE: f32 = 200_000.0;
 
-// ============================================================================
-// Force-directed layout constants
-// ============================================================================
-
-/// Repulsion constant between directory nodes.
-/// Higher values push sibling directories further apart.
-const FORCE_REPULSION: f32 = 800.0;
-
-/// Attraction constant to parent directory.
-/// Higher values pull children closer to their parents.
-const FORCE_ATTRACTION: f32 = 0.03;
-
-/// Velocity damping factor (0.0-1.0).
-/// Applied each frame to prevent oscillation.
-const FORCE_DAMPING: f32 = 0.85;
-
-/// Maximum velocity to prevent instability.
-const FORCE_MAX_VELOCITY: f32 = 300.0;
-
-/// Squared maximum velocity for optimized comparisons (avoids sqrt).
-const FORCE_MAX_VELOCITY_SQ: f32 = FORCE_MAX_VELOCITY * FORCE_MAX_VELOCITY;
-
-/// Minimum distance for force calculation to prevent extreme forces.
-const FORCE_MIN_DISTANCE: f32 = 5.0;
-
-/// Squared minimum distance for optimized comparisons (avoids sqrt).
-const FORCE_MIN_DISTANCE_SQ: f32 = FORCE_MIN_DISTANCE * FORCE_MIN_DISTANCE;
-
-/// How often to refresh extension stats cache (in frames).
-/// At 60fps, 30 frames = 0.5 seconds - acceptable for legend updates.
-const STATS_CACHE_INTERVAL: u32 = 30;
-
-/// Directory data for force-directed layout calculation.
-type DirForceData = (DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32);
+// Force-directed layout constants are in layout_methods.rs
+use layout_methods::DirForceData;
 
 /// Entity type for spatial indexing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -348,77 +320,7 @@ impl Scene {
         &self.bounds
     }
 
-    /// Computes the actual bounding box of all entities in the scene.
-    ///
-    /// Returns `None` if there are no entities with positions.
-    /// This is useful for camera fitting to actual content.
-    ///
-    /// Uses caching to avoid recomputing bounds every frame. The cache is
-    /// invalidated when entities are added or removed, or when
-    /// [`Self::invalidate_bounds_cache`] is called.
-    #[must_use]
-    pub fn compute_entity_bounds(&mut self) -> Option<Bounds> {
-        // Return cached bounds if still valid
-        if !self.bounds_dirty {
-            if let Some(cached) = self.cached_entity_bounds {
-                return Some(cached);
-            }
-        }
-
-        // Recompute bounds
-        let bounds = self.compute_entity_bounds_uncached();
-        self.cached_entity_bounds = bounds;
-        self.bounds_dirty = false;
-        bounds
-    }
-
-    /// Computes entity bounds without using cache.
-    ///
-    /// This is useful when you need fresh bounds and don't want to update the cache.
-    #[must_use]
-    pub fn compute_entity_bounds_uncached(&self) -> Option<Bounds> {
-        let mut bounds = Bounds::INVERTED;
-
-        // Include file positions
-        for file in self.files.values() {
-            let pos = file.position();
-            let radius = file.radius();
-            bounds = bounds
-                .include_point(pos - Vec2::splat(radius))
-                .include_point(pos + Vec2::splat(radius));
-        }
-
-        // Include user positions
-        for user in self.users.values() {
-            let pos = user.position();
-            let radius = user.radius();
-            bounds = bounds
-                .include_point(pos - Vec2::splat(radius))
-                .include_point(pos + Vec2::splat(radius));
-        }
-
-        // Include directory positions
-        for dir in self.directories.iter() {
-            let pos = dir.position();
-            let radius = dir.radius();
-            bounds = bounds
-                .include_point(pos - Vec2::splat(radius))
-                .include_point(pos + Vec2::splat(radius));
-        }
-
-        // Return None if bounds are still inverted (no entities)
-        if bounds.min.x > bounds.max.x || bounds.min.y > bounds.max.y {
-            None
-        } else {
-            Some(bounds)
-        }
-    }
-
-    /// Invalidates the cached entity bounds, forcing a recomputation on next access.
-    #[inline]
-    pub fn invalidate_bounds_cache(&mut self) {
-        self.bounds_dirty = true;
-    }
+    // Entity bounds methods are in bounds_methods.rs
 
     /// Gets or creates a user with the given name.
     ///
@@ -800,299 +702,9 @@ impl Scene {
         }
     }
 
-    /// Applies force-directed layout to directory nodes.
-    ///
-    /// This simulates physical forces between directories to create a natural,
-    /// organic-looking tree layout:
-    /// - **Repulsion**: Sibling directories and nearby nodes push each other apart
-    /// - **Attraction**: Child directories are pulled toward their parents
-    /// - **Damping**: Friction-like force that stabilizes the system
-    fn apply_force_directed_layout(&mut self, dt: f32) {
-        // Collect directory data for force calculation (reusing buffer)
-        self.dir_data_buffer.clear();
-        for d in self.directories.iter() {
-            self.dir_data_buffer.push((
-                d.id(),
-                d.position(),
-                d.depth(),
-                d.parent(),
-                d.parent_position(),
-                d.target_distance(),
-            ));
-        }
+    // Force-directed layout is in layout_methods.rs
 
-        // Calculate forces for each directory (reusing buffer)
-        self.forces_buffer.clear();
-
-        // Calculate repulsion forces between related directories (O(n²) but n is typically small)
-        let dir_count = self.dir_data_buffer.len();
-        for i in 0..dir_count {
-            let (id_i, pos_i, depth_i, parent_i, _, _) = self.dir_data_buffer[i];
-            for j in (i + 1)..dir_count {
-                let (id_j, pos_j, depth_j, parent_j, _, _) = self.dir_data_buffer[j];
-
-                // Repel if:
-                // 1. Siblings (same parent)
-                // 2. Close in depth (within 1 level)
-                let are_siblings = parent_i == parent_j && parent_i.is_some();
-                let close_depth = depth_i.abs_diff(depth_j) <= 1;
-
-                if !are_siblings && !close_depth {
-                    continue;
-                }
-
-                let delta = pos_j - pos_i;
-                let distance_sq = delta.length_squared();
-
-                // Guard against zero-length delta (check squared distance)
-                if distance_sq < 0.001 {
-                    // Push apart randomly based on indices
-                    let offset = Vec2::new((i as f32).sin() * 5.0, (j as f32).cos() * 5.0);
-                    *self.forces_buffer.entry(id_i).or_insert(Vec2::ZERO) -= offset;
-                    *self.forces_buffer.entry(id_j).or_insert(Vec2::ZERO) += offset;
-                    continue;
-                }
-
-                // Use squared distance for inverse-square repulsion: F = k / d²
-                // Clamp to minimum squared distance to prevent extreme forces
-                let clamped_dist_sq = distance_sq.max(FORCE_MIN_DISTANCE_SQ);
-                let force_magnitude = FORCE_REPULSION / clamped_dist_sq;
-
-                // Compute direction only when needed (requires sqrt via length)
-                let distance = distance_sq.sqrt();
-                let direction = delta / distance; // Equivalent to delta.normalized()
-                let force = direction * force_magnitude;
-
-                // Apply equal and opposite forces
-                *self.forces_buffer.entry(id_i).or_insert(Vec2::ZERO) -= force;
-                *self.forces_buffer.entry(id_j).or_insert(Vec2::ZERO) += force;
-            }
-        }
-
-        // Calculate attraction forces to parents
-        for i in 0..dir_count {
-            let (id, pos, _depth, _parent_id, parent_pos, target_dist) = self.dir_data_buffer[i];
-            if let Some(parent_pos) = parent_pos {
-                let delta = parent_pos - pos;
-                let distance_sq = delta.length_squared();
-                let target_dist_sq = target_dist * target_dist;
-
-                // Only attract if beyond target distance (compare squared to avoid sqrt)
-                if distance_sq > target_dist_sq && distance_sq > 0.001 {
-                    // Now compute actual distance since we need it for the force
-                    let distance = distance_sq.sqrt();
-                    let excess = distance - target_dist;
-                    let direction = delta / distance; // Equivalent to delta.normalized()
-                    let force = direction * excess * FORCE_ATTRACTION;
-                    *self.forces_buffer.entry(id).or_insert(Vec2::ZERO) += force;
-                }
-            }
-        }
-
-        // Apply forces to directories
-        for dir in self.directories.iter_mut() {
-            // Skip root (anchor it in place)
-            if dir.is_root() {
-                continue;
-            }
-
-            if let Some(&force) = self.forces_buffer.get(&dir.id()) {
-                // Apply force as acceleration (assuming unit mass)
-                dir.add_velocity(force * dt);
-
-                // Clamp velocity to prevent instability (use squared comparison)
-                let vel = dir.velocity();
-                let speed_sq = vel.length_squared();
-                if speed_sq > FORCE_MAX_VELOCITY_SQ {
-                    // Only compute sqrt when actually needed for clamping
-                    let speed = speed_sq.sqrt();
-                    dir.set_velocity(vel * (FORCE_MAX_VELOCITY / speed));
-                }
-
-                // Apply damping
-                dir.set_velocity(dir.velocity() * FORCE_DAMPING);
-
-                // Integrate position
-                let new_pos = dir.position() + dir.velocity() * dt;
-                dir.set_position(new_pos);
-            } else {
-                // No force but still apply damping and integration for existing velocity
-                dir.update_physics(dt, FORCE_DAMPING);
-            }
-        }
-    }
-
-    /// Rebuilds the spatial index with current entity positions.
-    pub fn rebuild_spatial_index(&mut self) {
-        self.spatial.clear();
-
-        // Add directories
-        for dir in self.directories.iter() {
-            self.spatial
-                .insert(dir.position(), EntityType::Directory(dir.id()));
-        }
-
-        // Add files
-        for (id, file) in &self.files {
-            self.spatial.insert(file.position(), EntityType::File(*id));
-        }
-
-        // Add users
-        for (id, user) in &self.users {
-            self.spatial.insert(user.position(), EntityType::User(*id));
-        }
-    }
-
-    /// Queries entities within the given bounds.
-    #[must_use]
-    pub fn query_entities(&self, bounds: &Bounds) -> Vec<EntityType> {
-        self.spatial.query(bounds).into_iter().copied().collect()
-    }
-
-    /// Queries entities within a circular region.
-    #[must_use]
-    pub fn query_entities_circle(&self, center: Vec2, radius: f32) -> Vec<EntityType> {
-        self.spatial
-            .query_circle_with_pos(center, radius)
-            .into_iter()
-            .map(|(_, &entity)| entity)
-            .collect()
-    }
-
-    /// Finds the nearest entity to the given position.
-    #[must_use]
-    pub fn nearest_entity(&self, position: Vec2) -> Option<EntityType> {
-        self.spatial.nearest(position).map(|(_, &entity)| entity)
-    }
-
-    /// Returns IDs of files visible within the given bounds.
-    ///
-    /// This is useful for frustum culling - only render files that are
-    /// within the camera's visible bounds. The bounds should typically
-    /// include some margin for entity radii.
-    #[must_use]
-    pub fn visible_file_ids(&self, bounds: &Bounds) -> Vec<FileId> {
-        self.spatial
-            .query(bounds)
-            .into_iter()
-            .filter_map(|entity| match entity {
-                EntityType::File(id) => Some(*id),
-                _ => None,
-            })
-            .collect()
-    }
-
-    /// Returns IDs of users visible within the given bounds.
-    ///
-    /// This is useful for frustum culling - only render users that are
-    /// within the camera's visible bounds.
-    #[must_use]
-    pub fn visible_user_ids(&self, bounds: &Bounds) -> Vec<UserId> {
-        self.spatial
-            .query(bounds)
-            .into_iter()
-            .filter_map(|entity| match entity {
-                EntityType::User(id) => Some(*id),
-                _ => None,
-            })
-            .collect()
-    }
-
-    /// Returns IDs of directories visible within the given bounds.
-    ///
-    /// This is useful for frustum culling - only render directories that are
-    /// within the camera's visible bounds.
-    #[must_use]
-    pub fn visible_directory_ids(&self, bounds: &Bounds) -> Vec<crate::entity::DirId> {
-        self.spatial
-            .query(bounds)
-            .into_iter()
-            .filter_map(|entity| match entity {
-                EntityType::Directory(id) => Some(*id),
-                _ => None,
-            })
-            .collect()
-    }
-
-    /// Returns all entity types visible within the given bounds, grouped by type.
-    ///
-    /// This provides efficient frustum culling by using the spatial index
-    /// to query only entities within the visible area.
-    #[must_use]
-    pub fn visible_entities(
-        &self,
-        bounds: &Bounds,
-    ) -> (Vec<crate::entity::DirId>, Vec<FileId>, Vec<UserId>) {
-        let mut dirs = Vec::new();
-        let mut files = Vec::new();
-        let mut users = Vec::new();
-
-        for entity in self.spatial.query(bounds) {
-            match entity {
-                EntityType::Directory(id) => dirs.push(*id),
-                EntityType::File(id) => files.push(*id),
-                EntityType::User(id) => users.push(*id),
-            }
-        }
-
-        (dirs, files, users)
-    }
-
-    /// Zero-allocation version of `visible_entities` that reuses existing buffers.
-    ///
-    /// This is the preferred method for hot paths (e.g., render loops) where
-    /// avoiding per-frame allocations is critical for performance.
-    ///
-    /// # Arguments
-    ///
-    /// * `bounds` - The visible area to query
-    /// * `dirs` - Buffer to fill with visible directory IDs (cleared first)
-    /// * `files` - Buffer to fill with visible file IDs (cleared first)
-    /// * `users` - Buffer to fill with visible user IDs (cleared first)
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// // Reusable buffers (stored in renderer state)
-    /// let mut dirs_buf = Vec::new();
-    /// let mut files_buf = Vec::new();
-    /// let mut users_buf = Vec::new();
-    ///
-    /// // Each frame - zero allocations after initial capacity
-    /// scene.visible_entities_into(&visible_bounds, &mut dirs_buf, &mut files_buf, &mut users_buf);
-    /// ```
-    #[inline]
-    pub fn visible_entities_into(
-        &self,
-        bounds: &Bounds,
-        dirs: &mut Vec<crate::entity::DirId>,
-        files: &mut Vec<FileId>,
-        users: &mut Vec<UserId>,
-    ) {
-        dirs.clear();
-        files.clear();
-        users.clear();
-
-        for entity in self.spatial.query(bounds) {
-            match entity {
-                EntityType::Directory(id) => dirs.push(*id),
-                EntityType::File(id) => files.push(*id),
-                EntityType::User(id) => users.push(*id),
-            }
-        }
-    }
-
-    /// Returns the expanded bounds for visibility queries.
-    ///
-    /// This adds a margin to account for entity radii and ensures
-    /// entities at the edge of the screen are included.
-    #[must_use]
-    pub fn expand_bounds_for_visibility(bounds: &Bounds, margin: f32) -> Bounds {
-        Bounds::new(
-            bounds.min - Vec2::splat(margin),
-            bounds.max + Vec2::splat(margin),
-        )
-    }
+    // Spatial index methods are in spatial_methods.rs
 
     /// Returns the number of files in the scene.
     #[must_use]
@@ -1118,69 +730,7 @@ impl Scene {
         self.actions.len()
     }
 
-    /// Returns file extension statistics (extension -> count).
-    ///
-    /// Only includes extensions for files that are currently visible (alpha > 0.1).
-    /// Uses caching to avoid recomputation every frame - cache is refreshed when:
-    /// - Files are added or removed
-    /// - Every `STATS_CACHE_INTERVAL` frames (to account for alpha changes)
-    #[must_use]
-    pub fn file_extension_stats(&mut self) -> &[(String, usize)] {
-        // Check if cache needs refresh
-        let needs_refresh = self.extension_stats_dirty
-            || self.stats_cache_frame >= STATS_CACHE_INTERVAL
-            || self.extension_stats_cache.is_empty();
-
-        if needs_refresh {
-            self.recompute_extension_stats();
-            self.extension_stats_dirty = false;
-            self.stats_cache_frame = 0;
-        } else {
-            self.stats_cache_frame += 1;
-        }
-
-        &self.extension_stats_cache
-    }
-
-    /// Recomputes extension statistics and updates the cache.
-    fn recompute_extension_stats(&mut self) {
-        use std::collections::HashMap;
-
-        let mut stats: HashMap<String, usize> = HashMap::new();
-
-        for file in self.files.values() {
-            if file.alpha() < 0.1 {
-                continue;
-            }
-            let ext = file
-                .extension()
-                .map_or_else(|| "other".to_string(), str::to_lowercase);
-            *stats.entry(ext).or_insert(0) += 1;
-        }
-
-        // Sort by count descending, then by extension name
-        self.extension_stats_cache.clear();
-        self.extension_stats_cache.extend(stats);
-        self.extension_stats_cache
-            .sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    }
-
-    /// Returns file extension statistics without updating the cache.
-    ///
-    /// This is useful when you need stats but don't want to mutate the scene.
-    /// Note: This may return stale data if the cache hasn't been refreshed recently.
-    #[must_use]
-    pub fn file_extension_stats_cached(&self) -> &[(String, usize)] {
-        &self.extension_stats_cache
-    }
-
-    /// Invalidates the extension stats cache, forcing a recomputation on next access.
-    ///
-    /// This is useful for testing or when you need fresh statistics immediately.
-    #[inline]
-    pub fn invalidate_extension_stats(&mut self) {
-        self.extension_stats_dirty = true;
-    }
+    // Extension stats methods are in stats_methods.rs
 }
 
 impl Default for Scene {
@@ -1461,14 +1011,7 @@ mod tests {
         assert!(!users.is_empty());
     }
 
-    #[test]
-    fn test_scene_expand_bounds_for_visibility() {
-        let bounds = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(100.0, 100.0));
-        let expanded = Scene::expand_bounds_for_visibility(&bounds, 10.0);
-
-        assert_eq!(expanded.min, Vec2::new(-10.0, -10.0));
-        assert_eq!(expanded.max, Vec2::new(110.0, 110.0));
-    }
+    // test_scene_expand_bounds_for_visibility is in spatial_methods.rs
 
     // ========================================================================
     // Performance optimization tests

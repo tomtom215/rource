@@ -1235,6 +1235,50 @@ integrated when icon assets are added.
 
 **Test Count**: 1,129 tests passing (added 8 new tests)
 
+### Scene Module Refactoring (2026-01-22)
+
+Refactored `scene/mod.rs` into modular structure for improved maintainability.
+
+**Refactored from 1,615 lines to modular structure** (main mod.rs reduced to 1,158 lines, 28% reduction).
+
+#### Architecture
+
+```
+crates/rource-core/src/scene/
+├── mod.rs              # Scene struct, core methods (1,158 lines)
+├── action.rs           # Action entities and types
+├── dir_node.rs         # Directory node entities
+├── file.rs             # File node entities
+├── tree.rs             # Directory tree structure
+├── user.rs             # User entities
+├── bounds_methods.rs   # Entity bounds computation (130 lines)
+├── layout_methods.rs   # Force-directed layout algorithm (180 lines)
+├── spatial_methods.rs  # Spatial index and visibility queries (227 lines)
+└── stats_methods.rs    # Extension statistics for legend (88 lines)
+```
+
+The `*_methods.rs` files contain `impl Scene` blocks that extend the main struct
+with focused functionality:
+
+| Module | Methods | Purpose |
+|--------|---------|---------|
+| `bounds_methods.rs` | `compute_entity_bounds()`, `compute_entity_bounds_uncached()`, `invalidate_bounds_cache()` | Camera fitting, cached bounds |
+| `layout_methods.rs` | `apply_force_directed_layout()` | Physics simulation for directory positioning |
+| `spatial_methods.rs` | `rebuild_spatial_index()`, `query_entities*()`, `visible_*()` | Frustum culling, spatial queries |
+| `stats_methods.rs` | `file_extension_stats()`, `recompute_extension_stats()` | Legend display, cached statistics |
+
+**Force-Directed Layout Constants** (in `layout_methods.rs`):
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `FORCE_REPULSION` | 800.0 | Push siblings apart |
+| `FORCE_ATTRACTION` | 0.03 | Pull children to parents |
+| `FORCE_DAMPING` | 0.85 | Prevent oscillation |
+| `FORCE_MAX_VELOCITY` | 300.0 | Cap maximum speed |
+| `FORCE_MIN_DISTANCE` | 5.0 | Prevent extreme forces |
+
+**Test Count**: 1,106 tests passing
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -2128,4 +2172,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (Refactored settings.rs into modular structure - 1,129 tests)*
+*Last updated: 2026-01-22 (Refactored scene/mod.rs into modular structure - 1,106 tests)*
