@@ -31,7 +31,10 @@ RUN mkdir -p crates/rource-math/src && echo "pub fn dummy() {}" > crates/rource-
 
 # Build dependencies only (this layer is cached)
 # Note: Package name is "rource", not "rource-cli" (directory name)
-RUN cargo build --release --package rource 2>/dev/null || true
+# This step may fail due to dummy source files not satisfying all constraints,
+# but it pre-compiles dependencies for faster subsequent builds.
+# Using explicit exit 0 instead of || true to be clear about intent.
+RUN cargo build --release --package rource 2>&1 || echo "Dependency pre-build completed (errors expected with dummy sources)"
 
 # Copy actual source code
 COPY crates/ crates/

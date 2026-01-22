@@ -65,8 +65,12 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          # Only build ARM64 for actual releases/main branch, not PR validation
+          # ARM64 builds use QEMU emulation which is 5-10x slower for Rust
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
           push: ${{ github.event_name != 'pull_request' }}
+          # Load image to local daemon for PR testing (only works with single platform)
+          load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -87,9 +91,12 @@ jobs:
       - name: Test Docker image
         if: github.event_name == 'pull_request'
         run: |
-          docker build -t rource-test .
-          docker run --rm rource-test --version
-          docker run --rm rource-test --help
+          # Use the image already built and loaded by buildx (no redundant rebuild)
+          # The image is loaded with tags from metadata action
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          echo "Testing image: ${IMAGE_TAG}"
+          docker run --rm "${IMAGE_TAG}" --version
+          docker run --rm "${IMAGE_TAG}" --help
 
   # Scan for vulnerabilities
   scan:
