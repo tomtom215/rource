@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+.github
+
+# Rust build artifacts
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# WASM build (not needed for Docker)
+rource-wasm/www/pkg/
+rource-wasm/pkg/
+
+# Test fixtures
+tests/fixtures/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Local development
+.env
+.env.*
+*.local
+
+# Misc
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

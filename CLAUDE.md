@@ -1195,6 +1195,174 @@ RUST_LOG=debug cargo run
 | Module import errors in browser | Wrong path or missing export | Check imports match exports, use relative paths (`./module.js`) |
 | Screenshot blank/corrupted | Animation loop races with capture | Use `features/screenshot.js` which pauses animation during capture |
 
+## CI/CD Pipeline
+
+The project uses a comprehensive GitHub Actions CI/CD pipeline designed for portfolio-quality standards.
+
+### Workflow Overview
+
+| Workflow | File | Purpose | Triggers |
+|----------|------|---------|----------|
+| **CI** | `ci.yml` | Core quality gates | Push/PR to main |
+| **Coverage** | `coverage.yml` | Code coverage with Codecov | Push/PR to main |
+| **Benchmarks** | `bench.yml` | Performance tracking & regression detection | Push/PR to main |
+| **Integration** | `integration.yml` | Headless rendering tests, nightly/beta Rust | Push/PR to main |
+| **Security** | `security.yml` | Audits, license checks, unsafe code scan | Push/PR/Weekly |
+| **Release** | `release.yml` | Multi-platform builds, signing, SBOM | Release published |
+| **Docker** | `docker.yml` | Multi-arch container images | Push to main/tags |
+| **Deploy Pages** | `deploy-pages.yml` | GitHub Pages deployment | Push to main |
+
+### CI Jobs (ci.yml)
+
+| Job | Description |
+|-----|-------------|
+| Format | `cargo fmt --check` |
+| Clippy | All lints with `-D warnings` |
+| Test | Multi-platform (Linux, macOS, Windows) |
+| MSRV | Minimum Supported Rust Version (1.82) |
+| Build (Native) | Release binary with size report |
+| Build (WASM) | WebAssembly with gzip size check |
+| Documentation | Rustdoc with warning-as-error |
+| Features | Feature matrix (default, all, none) |
+
+### Code Coverage (coverage.yml)
+
+Uses `cargo-llvm-cov` for accurate coverage metrics:
+
+```bash
+# Local coverage generation
+cargo llvm-cov --all-features --workspace --html
+open target/llvm-cov/html/index.html
+```
+
+Coverage is uploaded to Codecov and displayed as a badge in README.
+
+### Performance Regression Detection (bench.yml)
+
+Benchmarks are stored and compared using `github-action-benchmark`:
+
+- **Alert threshold**: 110% (10% regression triggers alert)
+- **Storage**: Results stored in `gh-pages` branch under `dev/bench/`
+- **PR comments**: Automatic comments on performance changes
+
+Size metrics are also tracked:
+- Native binary target: < 5MB
+- WASM gzipped target: < 300KB
+
+### Integration Tests (integration.yml)
+
+**Headless Rendering Tests:**
+- Tests custom log format parsing and rendering
+- Tests repository visualization
+- Validates PPM frame format and content
+- Tests screenshot mode with PNG output
+
+**Rust Toolchain Compatibility:**
+- Nightly Rust (non-blocking)
+- Beta Rust (non-blocking)
+
+### Security Audit (security.yml)
+
+| Check | Tool | Purpose |
+|-------|------|---------|
+| Vulnerabilities | `cargo audit` | Known CVE detection |
+| Unsafe code | grep scan | Informational count |
+| Advisories | `cargo deny` | RUSTSEC database |
+| Licenses | `cargo deny` | License compliance |
+| Bans | `cargo deny` | Dependency policies |
+
+Runs weekly on schedule plus on every push/PR.
+
+### Release Pipeline (release.yml)
+
+**Build Targets (5 platforms):**
+
+| Target | OS | Notes |
+|--------|----|----|
+| x86_64-unknown-linux-gnu | Ubuntu | Native |
+| aarch64-unknown-linux-gnu | Ubuntu | Cross-compiled |
+| x86_64-apple-darwin | macOS 13 | Intel |
+| aarch64-apple-darwin | macOS 14 | Apple Silicon |
+| x86_64-pc-windows-msvc | Windows | Native |
+
+**Release Features:**
+- GPG signed artifacts (requires `GPG_PRIVATE_KEY` secret)
+- SHA256 checksums for all artifacts
+- SBOM generation (SPDX + CycloneDX formats)
+- Auto-generated changelog via git-cliff
+
+### Docker Builds (docker.yml)
+
+Multi-architecture container images:
+
+```bash
+# Pull from GitHub Container Registry
+docker pull ghcr.io/tomtom215/rource:latest
+
+# Run with repository mounted
+docker run --rm -v $(pwd):/repo ghcr.io/tomtom215/rource /repo
+```
+
+**Features:**
+- Multi-arch: `linux/amd64`, `linux/arm64`
+- Build attestation for supply chain security
+- Trivy vulnerability scanning
+- Non-root user for security
+
+### Auto-Changelog (cliff.toml)
+
+Uses git-cliff with conventional commits:
+
+```bash
+# Generate changelog locally
+git cliff --output CHANGELOG.md
+
+# Preview unreleased changes
+git cliff --unreleased
+```
+
+Commit types mapped to sections:
+- `feat:` → Features
+- `fix:` → Bug Fixes
+- `perf:` → Performance
+- `docs:` → Documentation
+- `refactor:` → Refactoring
+- `test:` → Testing
+
+### Required Secrets
+
+For full CI functionality, configure these repository secrets:
+
+| Secret | Purpose | Required |
+|--------|---------|----------|
+| `GITHUB_TOKEN` | Automatic | Yes (auto) |
+| `GPG_PRIVATE_KEY` | Release signing | Optional |
+| `GPG_PASSPHRASE` | GPG key passphrase | Optional |
+| `CODECOV_TOKEN` | Coverage uploads | Optional |
+
+### Local CI Verification
+
+Before pushing, run these checks locally:
+
+```bash
+# Full CI check
+cargo fmt --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all
+cargo doc --no-deps --all-features
+
+# Coverage
+cargo llvm-cov --all-features --workspace
+
+# Security
+cargo audit
+cargo deny check
+
+# Integration test
+cargo build --release
+./target/release/rource --headless --output /tmp/frames --seconds-per-day 0.1 .
+```
+
 ## Git Workflow
 
 ### Branches
