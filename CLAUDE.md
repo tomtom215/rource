@@ -986,6 +986,94 @@ render_pass.draw_indirect(&indirect.buffer(), 0);
 
 **Test Count**: 1,106 tests passing (added 12 new tests)
 
+### Phase 11 Optimizations (2026-01-22)
+
+GPU visibility culling pipeline integration.
+
+#### 1. VisibilityCullingPipeline
+
+Added a complete GPU visibility culling pipeline that filters instances based on view bounds
+using compute shaders. This is an opt-in feature for extreme-scale scenarios (10,000+ instances).
+
+**Files Added**:
+- `crates/rource-render/src/backend/wgpu/culling.rs` - Complete culling pipeline
+
+**New Types**:
+
+| Type | Description |
+|------|-------------|
+| `VisibilityCullingPipeline` | Full GPU culling pipeline with compute shaders |
+| `CullPrimitive` | Enum for primitive types (Circles, Lines, Quads) |
+| `CullingStats` | Statistics from culling operations |
+
+**Culling Pipeline Architecture**:
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    GPU Visibility Culling                            │
+│                                                                      │
+│  Input Instance Buffer                 Output Instance Buffer        │
+│  ┌─────────────────┐                  ┌─────────────────┐           │
+│  │ All instances   │──► cs_cull_X() ──│ Visible only    │           │
+│  │ (unculled)      │                  │ (compacted)     │           │
+│  └─────────────────┘                  └─────────────────┘           │
+│                                                │                     │
+│                                                ▼                     │
+│                                       ┌─────────────────┐           │
+│                                       │ DrawIndirect    │           │
+│                                       │ instance_count  │           │
+│                                       └─────────────────┘           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**WgpuRenderer API**:
+```rust
+// Enable GPU culling (opt-in, off by default)
+renderer.set_gpu_culling_enabled(true);
+
+// Set view bounds for culling (typically from camera)
+renderer.set_cull_bounds(-1000.0, -1000.0, 1000.0, 1000.0);
+
+// Warmup to avoid first-frame stutter
+renderer.warmup_culling();
+
+// Check culling statistics
+if let Some(stats) = renderer.culling_stats() {
+    println!("Culled: {:.1}%", stats.culled_percentage());
+}
+```
+
+**Culling Methods**:
+
+| Method | Description |
+|--------|-------------|
+| `set_gpu_culling_enabled(bool)` | Enable/disable GPU culling |
+| `is_gpu_culling_enabled()` | Check if GPU culling is enabled |
+| `set_cull_bounds(min_x, min_y, max_x, max_y)` | Set view bounds |
+| `cull_bounds()` | Get current view bounds |
+| `warmup_culling()` | Pre-compile compute shaders |
+| `culling_stats()` | Get statistics from last cull operation |
+
+**When to Use GPU Culling**:
+- Scenes with 10,000+ instances where CPU culling becomes a bottleneck
+- Dynamic view bounds that change every frame (continuous panning/zooming)
+- GPU compute is available and CPU is saturated
+
+**When to Use CPU Culling (Default)**:
+- Most normal use cases (< 10,000 instances)
+- CPU quadtree culling is already efficient for typical scenes
+- No GPU compute overhead
+
+**Performance Characteristics**:
+
+| Aspect | Value |
+|--------|-------|
+| Workgroup Size | 256 threads |
+| Min Capacity | 1,024 instances |
+| Buffer Growth | 1.5x when exceeded |
+| Memory Overhead | Input + output buffers + indirect command |
+
+**Test Count**: 1,117 tests passing (added 11 new tests)
+
 ### GPU Bloom Effect for WebGL2 (2026-01-21)
 
 Implemented full GPU-based bloom post-processing for the WebGL2 backend. This provides
@@ -1821,4 +1909,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-22 (GPU visibility culling and indirect draw support - 1,106 tests)*
+*Last updated: 2026-01-22 (GPU visibility culling pipeline integration - 1,117 tests)*
