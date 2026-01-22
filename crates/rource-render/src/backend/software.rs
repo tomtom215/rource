@@ -60,6 +60,10 @@ pub struct SoftwareRenderer {
 
     /// Next texture ID
     next_texture_id: u32,
+
+    /// Reusable buffer for text glyph data (avoids per-draw_text allocation).
+    /// Stores (x, y, glyph) tuples for each character in a text string.
+    glyph_buffer: Vec<(i32, i32, crate::font::CachedGlyph)>,
 }
 
 impl SoftwareRenderer {
@@ -87,6 +91,8 @@ impl SoftwareRenderer {
             font_cache: FontCache::new(),
             textures: HashMap::new(),
             next_texture_id: 1,
+            // Pre-allocate glyph buffer with capacity for typical text lengths
+            glyph_buffer: Vec::with_capacity(256),
         }
     }
 
@@ -820,22 +826,26 @@ impl Renderer for SoftwareRenderer {
         }
     }
 
+    #[inline]
     fn draw_circle(&mut self, center: Vec2, radius: f32, width: f32, color: Color) {
         let center = self.transform_point(center);
         self.draw_circle_aa(center.x, center.y, radius, width, color);
     }
 
+    #[inline]
     fn draw_disc(&mut self, center: Vec2, radius: f32, color: Color) {
         let center = self.transform_point(center);
         self.draw_disc_aa(center.x, center.y, radius, color);
     }
 
+    #[inline]
     fn draw_line(&mut self, start: Vec2, end: Vec2, width: f32, color: Color) {
         let start = self.transform_point(start);
         let end = self.transform_point(end);
         self.draw_thick_line_aa(start, end, width, color);
     }
 
+    #[inline]
     fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color) {
         if points.len() < 2 {
             return;
@@ -851,6 +861,7 @@ impl Renderer for SoftwareRenderer {
         }
     }
 
+    #[inline]
     fn draw_quad(&mut self, bounds: Bounds, texture: Option<TextureId>, color: Color) {
         // Transform bounds corners
         let min = self.transform_point(bounds.min);
@@ -868,30 +879,35 @@ impl Renderer for SoftwareRenderer {
         }
     }
 
+    #[inline]
     fn draw_text(&mut self, text: &str, position: Vec2, font: FontId, size: f32, color: Color) {
         let position = self.transform_point(position);
 
         let mut x = position.x as i32;
         let y = position.y as i32;
 
-        // We need to handle the borrow checker carefully here
-        // First, collect all the glyph data we need
-        let mut glyph_data: Vec<(i32, i32, crate::font::CachedGlyph)> = Vec::new();
+        // Clear and reuse pre-allocated glyph buffer (zero-allocation hot path)
+        self.glyph_buffer.clear();
 
         for ch in text.chars() {
             if let Some(glyph) = self.font_cache.rasterize(font, ch, size) {
                 let gx = x + glyph.metrics.xmin;
                 let gy = y - glyph.metrics.ymin - glyph.metrics.height as i32 + (size * 0.8) as i32; // Baseline adjustment
 
-                glyph_data.push((gx, gy, glyph.clone()));
+                self.glyph_buffer.push((gx, gy, glyph.clone()));
                 x += glyph.metrics.advance_width as i32;
             }
         }
 
-        // Now draw all glyphs
-        for (gx, gy, glyph) in &glyph_data {
+        // Draw all glyphs
+        // We swap the buffer out temporarily to avoid borrow conflicts while drawing
+        let mut glyphs = std::mem::take(&mut self.glyph_buffer);
+        for (gx, gy, glyph) in &glyphs {
             self.draw_glyph(*gx, *gy, glyph, color);
         }
+        // Put the buffer back (preserves capacity for next call)
+        glyphs.clear();
+        self.glyph_buffer = glyphs;
     }
 
     fn set_transform(&mut self, transform: Mat4) {

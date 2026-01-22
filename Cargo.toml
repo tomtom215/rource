@@ -61,9 +61,15 @@ toml = "0.9"
 criterion = { version = "0.5", default-features = false }
 
 [profile.release]
+# Maximum optimization for performance (explicit for documentation)
+opt-level = 3
+# Full link-time optimization across all crates
 lto = true
+# Single codegen unit for whole-program optimization
 codegen-units = 1
+# Abort on panic (removes unwinding code, reduces binary size)
 panic = "abort"
+# Strip symbols (reduces binary size)
 strip = true
 
 [profile.dev]

@@ -10,6 +10,7 @@ use anyhow::{Context, Result};
 use rource_core::camera::Camera;
 use rource_core::config::FilterSettings;
 use rource_core::scene::{ActionType, Scene};
+use rource_core::{DirId, FileId, UserId};
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::effects::{BloomEffect, ShadowEffect};
 use rource_render::{FontId, Renderer, SoftwareRenderer, TextureId};
@@ -308,6 +309,12 @@ pub fn run_headless(args: &Args) -> Result<()> {
     let mut commits_applied = 0_usize;
     let loop_start = Instant::now();
 
+    // Pre-allocate visibility buffers to avoid per-frame allocations (Phase 8 optimization)
+    // At 60 FPS, this eliminates ~180 allocations/second
+    let mut visible_dirs_buffer: Vec<DirId> = Vec::with_capacity(1000);
+    let mut visible_files_buffer: Vec<FileId> = Vec::with_capacity(5000);
+    let mut visible_users_buffer: Vec<UserId> = Vec::with_capacity(100);
+
     // Main rendering loop
     loop {
         // Update simulation
@@ -366,7 +373,7 @@ pub fn run_headless(args: &Args) -> Result<()> {
         }
         total_scene_update_time += scene_update_start.elapsed();
 
-        // Render frame
+        // Render frame (using pre-allocated visibility buffers for zero-allocation)
         let render_start = Instant::now();
         render_frame_headless(
             &mut renderer,
@@ -379,6 +386,11 @@ pub fn run_headless(args: &Args) -> Result<()> {
             background_texture,
             logo_texture,
             logo_dimensions,
+            Some((
+                &mut visible_dirs_buffer,
+                &mut visible_files_buffer,
+                &mut visible_users_buffer,
+            )),
         );
         total_render_time += render_start.elapsed();
 
@@ -507,6 +519,12 @@ fn print_performance_summary(
 }
 
 /// Render a single frame in headless mode.
+///
+/// # Arguments
+///
+/// * `visibility_buffers` - Optional pre-allocated buffers for zero-allocation visibility queries.
+///   Pass `Some((dirs, files, users))` for the main render loop to avoid allocations.
+///   Pass `None` for one-time renders (like screenshots) where allocation is acceptable.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 pub fn render_frame_headless(
     renderer: &mut SoftwareRenderer,
@@ -519,6 +537,7 @@ pub fn render_frame_headless(
     background_texture: Option<TextureId>,
     logo_texture: Option<TextureId>,
     logo_dimensions: Option<(u32, u32)>,
+    visibility_buffers: Option<(&mut Vec<DirId>, &mut Vec<FileId>, &mut Vec<UserId>)>,
 ) {
     renderer.begin_frame();
 
@@ -539,8 +558,27 @@ pub fn render_frame_headless(
     let cull_start = Instant::now();
     let visible_bounds = camera.visible_bounds();
     let culling_bounds = Scene::expand_bounds_for_visibility(&visible_bounds, 100.0);
-    let (visible_dir_ids, visible_file_ids, visible_user_ids) =
-        scene.visible_entities(&culling_bounds);
+
+    // Use provided buffers (zero-allocation) or allocate new ones (for one-time renders)
+    let (visible_dir_ids, visible_file_ids, visible_user_ids): (Vec<DirId>, Vec<FileId>, Vec<UserId>);
+    let (dir_ids_ref, file_ids_ref, user_ids_ref): (&[DirId], &[FileId], &[UserId]);
+
+    if let Some((dirs_buf, files_buf, users_buf)) = visibility_buffers {
+        // Zero-allocation path: reuse provided buffers
+        scene.visible_entities_into(&culling_bounds, dirs_buf, files_buf, users_buf);
+        dir_ids_ref = dirs_buf.as_slice();
+        file_ids_ref = files_buf.as_slice();
+        user_ids_ref = users_buf.as_slice();
+    } else {
+        // Allocating path: for one-time renders like screenshots
+        let result = scene.visible_entities(&culling_bounds);
+        visible_dir_ids = result.0;
+        visible_file_ids = result.1;
+        visible_user_ids = result.2;
+        dir_ids_ref = &visible_dir_ids;
+        file_ids_ref = &visible_file_ids;
+        user_ids_ref = &visible_user_ids;
+    }
     let cull_time = cull_start.elapsed();
 
     let camera_zoom = camera.zoom();
@@ -555,7 +593,7 @@ pub fn render_frame_headless(
     // Render directories
     let dirs_start = Instant::now();
     let mut dirs_rendered = 0_u32;
-    for &dir_id in &visible_dir_ids {
+    for &dir_id in dir_ids_ref {
         let Some(dir) = scene.directories().get(dir_id) else {
             continue;
         };
@@ -591,7 +629,7 @@ pub fn render_frame_headless(
     let show_filenames = !args.hide_filenames;
     let file_font_size = args.font_size * 0.8;
 
-    for &file_id in &visible_file_ids {
+    for &file_id in file_ids_ref {
         let Some(file) = scene.get_file(file_id) else {
             continue;
         };
@@ -664,7 +702,7 @@ pub fn render_frame_headless(
     let show_usernames = !args.hide_usernames;
     let name_font_size = args.font_size;
 
-    for &user_id in &visible_user_ids {
+    for &user_id in user_ids_ref {
         let Some(user) = scene.get_user(user_id) else {
             continue;
         };
@@ -704,9 +742,9 @@ pub fn render_frame_headless(
         eprintln!(
             "  Culling:     {:.2}ms (vis: {} dirs, {} files, {} users)",
             cull_time.as_secs_f64() * 1000.0,
-            visible_dir_ids.len(),
-            visible_file_ids.len(),
-            visible_user_ids.len()
+            dir_ids_ref.len(),
+            file_ids_ref.len(),
+            user_ids_ref.len()
         );
         eprintln!(
             "  Directories: {:.2}ms ({} rendered)",
@@ -940,7 +978,7 @@ pub fn run_screenshot(args: &Args, screenshot_path: &Path) -> Result<()> {
         }
     }
 
-    // Render the frame
+    // Render the frame (None for visibility buffers: one-time render, allocation is acceptable)
     render_frame_headless(
         &mut renderer,
         &scene,
@@ -952,6 +990,7 @@ pub fn run_screenshot(args: &Args, screenshot_path: &Path) -> Result<()> {
         background_texture,
         logo_texture,
         logo_dimensions,
+        None,
     );
 
     // Apply effects if enabled
