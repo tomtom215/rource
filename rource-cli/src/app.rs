@@ -186,7 +186,6 @@ pub struct App {
     // ==========================================================================
     // These buffers are reused each frame to avoid allocations in visible_entities_into().
     // At 60 FPS, this eliminates ~180 allocations/second.
-
     /// Reusable buffer for visible directory IDs.
     pub visible_dirs_buffer: Vec<DirId>,
 

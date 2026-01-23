@@ -560,7 +560,11 @@ pub fn render_frame_headless(
     let culling_bounds = Scene::expand_bounds_for_visibility(&visible_bounds, 100.0);
 
     // Use provided buffers (zero-allocation) or allocate new ones (for one-time renders)
-    let (visible_dir_ids, visible_file_ids, visible_user_ids): (Vec<DirId>, Vec<FileId>, Vec<UserId>);
+    let (visible_dir_ids, visible_file_ids, visible_user_ids): (
+        Vec<DirId>,
+        Vec<FileId>,
+        Vec<UserId>,
+    );
     let (dir_ids_ref, file_ids_ref, user_ids_ref): (&[DirId], &[FileId], &[UserId]);
 
     if let Some((dirs_buf, files_buf, users_buf)) = visibility_buffers {
