@@ -46,6 +46,7 @@ import { initHelp, maybeShowFirstTimeHelp } from './features/help.js';
 import { initKeyboard } from './features/keyboard.js';
 import { initFullMapExport, setFullMapAnimateCallback } from './features/full-map-export.js';
 import { initFontSizeControl, enableFontSizeControls, updateFontSizeUI } from './features/font-size.js';
+import { initHoverTooltip } from './features/hover-tooltip.js';
 import { BUILD_INFO } from './build-info.js';
 import {
     initVideoRecording, enableRecordButton, setRecordingAnimateCallback,
@@ -256,6 +257,7 @@ async function main() {
         initTheme();
         initPlayback();
         initCanvasInput();
+        initHoverTooltip();
         initPanels();
         initDataInput();
         initWindowEvents();

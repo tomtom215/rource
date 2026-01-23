@@ -94,6 +94,26 @@ export class Rource {
      */
     currentCommit(): number;
     /**
+     * Releases GPU resources immediately.
+     *
+     * Call this method before the page unloads to prevent GPU resource
+     * contention when the page is refreshed quickly. This is especially
+     * important for WebGPU which may hold onto adapter resources.
+     *
+     * After calling `dispose()`, the Rource instance should not be used again.
+     *
+     * # Example
+     *
+     * ```javascript
+     * window.addEventListener('beforeunload', () => {
+     *     if (rource) {
+     *         rource.dispose();
+     *     }
+     * });
+     * ```
+     */
+    dispose(): void;
+    /**
      * Forces a render without updating simulation.
      */
     forceRender(): void;
@@ -180,6 +200,33 @@ export class Rource {
      * Returns the estimated draw call count for the current frame.
      */
     getDrawCalls(): number;
+    /**
+     * Gets information about the entity at the given screen coordinates.
+     *
+     * Returns a JSON string with entity information if an entity is found,
+     * or null if no entity is under the cursor.
+     *
+     * # Arguments
+     *
+     * * `x` - Screen X coordinate (canvas-relative)
+     * * `y` - Screen Y coordinate (canvas-relative)
+     *
+     * # Returns
+     *
+     * JSON string with format:
+     * ```json
+     * {
+     *   "entityType": "file" | "user" | "directory",
+     *   "name": "filename.rs",
+     *   "path": "src/lib.rs",
+     *   "extension": "rs",
+     *   "color": "#FF5500",
+     *   "radius": 5.0
+     * }
+     * ```
+     * Or `null` if no entity is under the cursor.
+     */
+    getEntityAtCursor(x: number, y: number): string | undefined;
     /**
      * Returns the bounding box of all entities as JSON.
      *
@@ -276,6 +323,18 @@ export class Rource {
      * ```
      */
     getLayoutConfig(): string;
+    /**
+     * Gets the current mouse position in screen coordinates.
+     *
+     * Returns an array `[x, y]` of the last known mouse position.
+     */
+    getMousePosition(): Float32Array;
+    /**
+     * Gets the current mouse position in world coordinates.
+     *
+     * Returns an array `[x, y]` of the mouse position in world space.
+     */
+    getMouseWorldPosition(): Float32Array;
     /**
      * Returns the type of renderer being used ("wgpu", "webgl2", or "software").
      */
@@ -865,6 +924,7 @@ export interface InitOutput {
     readonly rource_configureLayoutForRepo: (a: number, b: number, c: number, d: number) => void;
     readonly rource_create: (a: number) => number;
     readonly rource_currentCommit: (a: number) => number;
+    readonly rource_dispose: (a: number) => void;
     readonly rource_forceRender: (a: number) => void;
     readonly rource_frame: (a: number, b: number) => number;
     readonly rource_getActiveActions: (a: number) => number;
@@ -879,6 +939,7 @@ export interface InitOutput {
     readonly rource_getCommitTimestamp: (a: number, b: number) => number;
     readonly rource_getDateRange: (a: number, b: number) => void;
     readonly rource_getDrawCalls: (a: number) => number;
+    readonly rource_getEntityAtCursor: (a: number, b: number, c: number, d: number) => void;
     readonly rource_getEntityBounds: (a: number, b: number) => void;
     readonly rource_getFileIconCount: (a: number) => number;
     readonly rource_getFontSize: (a: number) => number;
@@ -889,6 +950,8 @@ export interface InitOutput {
     readonly rource_getGPUCullingThreshold: (a: number) => number;
     readonly rource_getGPUPhysicsThreshold: (a: number) => number;
     readonly rource_getLayoutConfig: (a: number, b: number) => void;
+    readonly rource_getMousePosition: (a: number, b: number) => void;
+    readonly rource_getMouseWorldPosition: (a: number, b: number) => void;
     readonly rource_getRendererType: (a: number, b: number) => void;
     readonly rource_getShowLabels: (a: number) => number;
     readonly rource_getSpeed: (a: number) => number;
@@ -956,9 +1019,9 @@ export interface InitOutput {
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_6422: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6480: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6423: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_2344: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6512: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2345: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

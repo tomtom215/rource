@@ -58,10 +58,10 @@ rource/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [144 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [150 tests]
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [286 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [373 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [379 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [97 tests]
-└── rource-wasm/          # WebAssembly application [73 tests]
-                          # Plus 62 integration/doc tests = 1,185 total
+└── rource-wasm/          # WebAssembly application [78 tests]
+                          # Plus 62 integration/doc tests = 1,196 total
 ```
 
 ### Rendering Backends
@@ -1941,6 +1941,77 @@ let p3 = Vec2::new(2.0 * points[n].x - points[n-1].x, 2.0 * points[n].y - points
 ```
 
 **Test Count**: 1,191 tests passing (added 6 new tests)
+
+### Phase 20: Entity Hover Tooltips (2026-01-23)
+
+Implemented hover detection and tooltip display for files, users, and directories.
+
+#### Overview
+
+When users hover over entities (files, users, or directories) in the visualization,
+a tooltip now appears showing details about that entity. This fulfills the help screen
+promise of "Hover over files or users to see details."
+
+#### Files Added/Modified
+
+| File | Description |
+|------|-------------|
+| `rource-wasm/src/wasm_api/hover.rs` | WASM API for entity hover detection |
+| `rource-wasm/src/wasm_api/mod.rs` | Added hover module export |
+| `rource-wasm/www/js/features/hover-tooltip.js` | JavaScript hover handling |
+| `rource-wasm/www/js/main.js` | Integrated hover tooltip initialization |
+
+#### WASM API
+
+```javascript
+// Get entity info at cursor position (returns JSON string or null)
+const entityJson = rource.getEntityAtCursor(x, y);
+if (entityJson) {
+    const entity = JSON.parse(entityJson);
+    // entity.entityType: "file" | "user" | "directory"
+    // entity.name: filename/username/dirname
+    // entity.path: full path (files/dirs only)
+    // entity.extension: file extension (files only)
+    // entity.color: hex color string
+    // entity.radius: visual radius
+}
+```
+
+#### HoverInfo Structure
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `entityType` | string | "file", "user", or "directory" |
+| `name` | string | Entity name |
+| `path` | string | Full path (empty for users) |
+| `extension` | string | File extension (files only) |
+| `color` | string | Hex color (e.g., "#FF5500") |
+| `radius` | number | Visual radius in world units |
+
+#### JavaScript Implementation
+
+The tooltip handler (`hover-tooltip.js`) provides:
+- **Debounced hover detection** (50ms) to reduce WASM calls
+- **Automatic positioning** to keep tooltip on screen
+- **Entity-type specific formatting** for files/users/directories
+- **Drag-to-hide** behavior (tooltip hides when dragging)
+
+#### Existing Tooltip HTML
+
+The tooltip UI was already present in `index.html` with the following structure:
+```html
+<div id="commit-tooltip" class="commit-tooltip">
+    <div class="commit-tooltip-header">
+        <div id="tooltip-author-color"></div>
+        <span id="tooltip-author"></span>
+        <span id="tooltip-date"></span>
+    </div>
+    <div id="tooltip-file"></div>
+    <span id="tooltip-action"></span>
+</div>
+```
+
+**Test Count**: 1,196 tests passing (added 5 new tests)
 
 ### Scene Module Refactoring (2026-01-22)
 

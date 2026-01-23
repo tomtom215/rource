@@ -15,10 +15,12 @@
 //! | `export` | Screenshot and full-map export |
 //! | `stats` | Render statistics and entity counts |
 //! | `authors` | Author information and colors |
+//! | `hover` | Hover detection and entity info for tooltips |
 
 mod authors;
 mod camera;
 mod export;
+mod hover;
 mod input;
 mod layout;
 mod playback;
