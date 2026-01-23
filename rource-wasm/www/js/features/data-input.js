@@ -349,6 +349,49 @@ function initRepoChips() {
 }
 
 /**
+ * Creates an SVG element with the given path.
+ * @param {string} pathD - SVG path d attribute
+ * @returns {SVGElement} SVG element
+ */
+function createCopyIcon(pathD) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '12');
+    svg.setAttribute('height', '12');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'currentColor');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathD);
+    svg.appendChild(path);
+
+    return svg;
+}
+
+/**
+ * Updates the copy button state using safe DOM APIs (no innerHTML).
+ * @param {HTMLElement} btn - Button element
+ * @param {boolean} copied - True if copied state, false for default state
+ */
+function updateCopyButtonState(btn, copied) {
+    // Clear existing content
+    while (btn.firstChild) {
+        btn.removeChild(btn.firstChild);
+    }
+
+    if (copied) {
+        // Checkmark icon
+        const checkPath = 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z';
+        btn.appendChild(createCopyIcon(checkPath));
+        btn.appendChild(document.createTextNode(' Copied!'));
+    } else {
+        // Copy icon
+        const copyPath = 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z';
+        btn.appendChild(createCopyIcon(copyPath));
+        btn.appendChild(document.createTextNode(' Copy Command'));
+    }
+}
+
+/**
  * Initializes copy command button.
  */
 function initCopyCommand() {
@@ -360,9 +403,10 @@ function initCopyCommand() {
         const command = commandEl?.textContent || '';
         try {
             await navigator.clipboard.writeText(command);
-            btnCopyCommand.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!';
+            // Update button using safe DOM APIs (no innerHTML)
+            updateCopyButtonState(btnCopyCommand, true);
             setTimeout(() => {
-                btnCopyCommand.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy Command';
+                updateCopyButtonState(btnCopyCommand, false);
             }, CONFIG.COPY_FEEDBACK_DELAY_MS);
         } catch (e) {
             showToast('Failed to copy. Please select and copy manually.', 'error');

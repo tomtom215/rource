@@ -43,7 +43,7 @@ export function isPseudo() {
 }
 
 /**
- * Updates the fullscreen button icon.
+ * Updates the fullscreen button icon using safe DOM APIs (no innerHTML).
  */
 export function updateFullscreenIcon() {
     const elements = getAllElements();
@@ -52,7 +52,18 @@ export function updateFullscreenIcon() {
     if (!btnFullscreen || !fullscreenIcon) return;
 
     const isFullscreen = isInFullscreenMode();
-    fullscreenIcon.innerHTML = `<path d="${isFullscreen ? EXIT_FULLSCREEN_PATH : ENTER_FULLSCREEN_PATH}"/>`;
+    const pathD = isFullscreen ? EXIT_FULLSCREEN_PATH : ENTER_FULLSCREEN_PATH;
+
+    // Clear existing content safely
+    while (fullscreenIcon.firstChild) {
+        fullscreenIcon.removeChild(fullscreenIcon.firstChild);
+    }
+
+    // Create path element using DOM APIs (no innerHTML)
+    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    pathEl.setAttribute('d', pathD);
+    fullscreenIcon.appendChild(pathEl);
+
     btnFullscreen.title = isFullscreen ? 'Exit fullscreen (F)' : 'Fullscreen (F)';
 }
 
