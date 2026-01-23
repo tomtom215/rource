@@ -33,6 +33,326 @@ const SKIP_FILE_LINES_ZOOM: f32 = 0.1;
 /// Static counter for render profiling (only used in debug/profiling).
 static RENDER_PROFILE_COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
+// ============================================================================
+// Helper Functions (testable without full context)
+// ============================================================================
+
+/// Helper functions for headless rendering calculations.
+///
+/// These functions encapsulate pure computations that can be unit tested
+/// without requiring a full rendering context.
+#[allow(dead_code)]
+mod helpers {
+    /// Calculates the estimated duration and frame count for a visualization.
+    ///
+    /// # Arguments
+    /// * `first_timestamp` - Unix timestamp of first commit
+    /// * `last_timestamp` - Unix timestamp of last commit
+    /// * `seconds_per_day` - Playback speed in seconds per day
+    /// * `framerate` - Output framerate
+    ///
+    /// # Returns
+    /// A tuple of (`duration_seconds`, `total_frames`).
+    ///
+    /// # Examples
+    /// ```
+    /// let (duration, frames) = calculate_estimated_duration(
+    ///     1000000,     // first commit
+    ///     1086400,     // last commit (1 day later)
+    ///     10.0,        // 10 seconds per day
+    ///     60,          // 60 fps
+    /// );
+    /// assert!((duration - 10.0).abs() < 0.1);
+    /// assert_eq!(frames, 600);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn calculate_estimated_duration(
+        first_timestamp: i64,
+        last_timestamp: i64,
+        seconds_per_day: f32,
+        framerate: u32,
+    ) -> (f64, u64) {
+        let days = (last_timestamp - first_timestamp) as f64 / 86400.0;
+        let estimated_seconds = days * f64::from(seconds_per_day);
+        let estimated_frames = (estimated_seconds * f64::from(framerate)) as u64;
+        (estimated_seconds, estimated_frames)
+    }
+
+    /// Calculates progress as a percentage (0.0 to 1.0).
+    ///
+    /// # Arguments
+    /// * `current_commit` - Current commit index
+    /// * `total_commits` - Total number of commits
+    ///
+    /// # Returns
+    /// Progress as a float from 0.0 to 1.0.
+    ///
+    /// # Examples
+    /// ```
+    /// assert!((calculate_progress_percent(50, 100) - 0.5).abs() < 0.001);
+    /// assert!((calculate_progress_percent(0, 100) - 0.0).abs() < 0.001);
+    /// assert!((calculate_progress_percent(100, 100) - 1.0).abs() < 0.001);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn calculate_progress_percent(current_commit: usize, total_commits: usize) -> f32 {
+        current_commit as f32 / total_commits.max(1) as f32
+    }
+
+    /// Formats a progress status string for display.
+    ///
+    /// # Arguments
+    /// * `frame` - Current frame number
+    /// * `progress` - Progress as percentage (0.0 to 1.0)
+    /// * `current` - Current commit index
+    /// * `total` - Total commits
+    ///
+    /// # Returns
+    /// A formatted progress string.
+    ///
+    /// # Examples
+    /// ```
+    /// let status = format_progress_status(100, 0.5, 50, 100);
+    /// assert!(status.contains("Frame 100"));
+    /// assert!(status.contains("50.0%"));
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn format_progress_status(
+        frame: u64,
+        progress: f32,
+        current: usize,
+        total: usize,
+    ) -> String {
+        format!(
+            "\rFrame {}: {:.1}% ({}/{})",
+            frame,
+            progress * 100.0,
+            current,
+            total
+        )
+    }
+
+    /// Checks if rendering is complete.
+    ///
+    /// # Arguments
+    /// * `current_commit` - Current commit index
+    /// * `last_applied_commit` - Last commit that was applied
+    /// * `total_commits` - Total number of commits
+    ///
+    /// # Returns
+    /// `true` if rendering is complete.
+    ///
+    /// # Examples
+    /// ```
+    /// // Not complete when current < total - 1
+    /// assert!(!is_render_complete(50, 50, 100));
+    /// // Complete when at last commit and all applied
+    /// assert!(is_render_complete(99, 99, 100));
+    /// // Not complete if not all commits applied
+    /// assert!(!is_render_complete(99, 98, 100));
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn is_render_complete(
+        current_commit: usize,
+        last_applied_commit: usize,
+        total_commits: usize,
+    ) -> bool {
+        total_commits > 0
+            && current_commit >= total_commits.saturating_sub(1)
+            && last_applied_commit >= current_commit
+    }
+
+    /// Calculates the target timestamp based on elapsed days.
+    ///
+    /// # Arguments
+    /// * `first_timestamp` - Unix timestamp of first commit
+    /// * `days_elapsed` - Number of days elapsed in simulation
+    ///
+    /// # Returns
+    /// Target Unix timestamp.
+    ///
+    /// # Examples
+    /// ```
+    /// // 1 day elapsed = 86400 seconds
+    /// assert_eq!(calculate_target_time(1000000, 1.0), 1086400);
+    /// // 0 days elapsed
+    /// assert_eq!(calculate_target_time(1000000, 0.0), 1000000);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn calculate_target_time(first_timestamp: i64, days_elapsed: f64) -> i64 {
+        first_timestamp + (days_elapsed * 86400.0) as i64
+    }
+
+    /// Calculates days elapsed from accumulated time.
+    ///
+    /// # Arguments
+    /// * `accumulated_time` - Total accumulated simulation time in seconds
+    /// * `seconds_per_day` - Playback speed in seconds per day
+    ///
+    /// # Returns
+    /// Number of days elapsed.
+    ///
+    /// # Examples
+    /// ```
+    /// // 10 seconds at 10 seconds per day = 1 day
+    /// assert!((calculate_days_elapsed(10.0, 10.0) - 1.0).abs() < 0.001);
+    /// // 5 seconds at 10 seconds per day = 0.5 days
+    /// assert!((calculate_days_elapsed(5.0, 10.0) - 0.5).abs() < 0.001);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn calculate_days_elapsed(accumulated_time: f64, seconds_per_day: f32) -> f64 {
+        let days_per_second = 1.0 / f64::from(seconds_per_day);
+        accumulated_time * days_per_second
+    }
+
+    /// Determines if the current frame should be profiled.
+    ///
+    /// # Arguments
+    /// * `frame_num` - Current frame number
+    /// * `interval` - Profile every N frames
+    ///
+    /// # Returns
+    /// `true` if this frame should be profiled.
+    ///
+    /// # Examples
+    /// ```
+    /// assert!(should_profile_frame(0, 100));
+    /// assert!(should_profile_frame(100, 100));
+    /// assert!(!should_profile_frame(50, 100));
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn should_profile_frame(frame_num: u32, interval: u32) -> bool {
+        interval > 0 && frame_num % interval == 0
+    }
+
+    /// Calculates the fixed time step for a given framerate.
+    ///
+    /// # Arguments
+    /// * `framerate` - Output framerate
+    ///
+    /// # Returns
+    /// Time step in seconds.
+    ///
+    /// # Examples
+    /// ```
+    /// assert!((calculate_dt(60) - 0.01666).abs() < 0.001);
+    /// assert!((calculate_dt(30) - 0.03333).abs() < 0.001);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn calculate_dt(framerate: u32) -> f64 {
+        1.0 / f64::from(framerate)
+    }
+
+    /// Formats a performance timing line for output.
+    ///
+    /// # Arguments
+    /// * `label` - Label for the timing
+    /// * `duration_ms` - Duration in milliseconds
+    ///
+    /// # Returns
+    /// A formatted performance line.
+    #[inline]
+    #[must_use]
+    pub fn format_perf_line(label: &str, duration_ms: f64) -> String {
+        format!("  {label}:    {duration_ms:.2}ms")
+    }
+
+    /// Calculates average time per item.
+    ///
+    /// # Arguments
+    /// * `total_time_ms` - Total time in milliseconds
+    /// * `count` - Number of items
+    ///
+    /// # Returns
+    /// Average time per item in milliseconds, or 0.0 if count is 0.
+    #[inline]
+    #[must_use]
+    pub fn calculate_average_time(total_time_ms: f64, count: usize) -> f64 {
+        if count > 0 {
+            total_time_ms / count as f64
+        } else {
+            0.0
+        }
+    }
+
+    /// Calculates initial camera zoom to fit bounds.
+    ///
+    /// # Arguments
+    /// * `bounds_width` - Width of entity bounds
+    /// * `bounds_height` - Height of entity bounds
+    /// * `viewport_width` - Viewport width
+    /// * `viewport_height` - Viewport height
+    /// * `padding` - Padding around bounds
+    ///
+    /// # Returns
+    /// Zoom level clamped to [0.01, 10.0].
+    ///
+    /// # Examples
+    /// ```
+    /// // Viewport exactly matches bounds (no padding)
+    /// let zoom = calculate_fit_zoom(1000.0, 1000.0, 1000.0, 1000.0, 0.0);
+    /// assert!((zoom - 1.0).abs() < 0.001);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn calculate_fit_zoom(
+        bounds_width: f32,
+        bounds_height: f32,
+        viewport_width: f32,
+        viewport_height: f32,
+        padding: f32,
+    ) -> f32 {
+        let zoom_x = viewport_width / (bounds_width + padding * 2.0);
+        let zoom_y = viewport_height / (bounds_height + padding * 2.0);
+        zoom_x.min(zoom_y).clamp(0.01, 10.0)
+    }
+
+    /// Calculates the directory depth-based color.
+    ///
+    /// # Arguments
+    /// * `depth` - Directory depth (0 = root)
+    ///
+    /// # Returns
+    /// Gray color value for the directory (lighter = deeper).
+    ///
+    /// # Examples
+    /// ```
+    /// let color = calculate_dir_depth_color(0);
+    /// assert!((color - 0.15).abs() < 0.001);
+    /// let color = calculate_dir_depth_color(5);
+    /// assert!((color - 0.40).abs() < 0.001);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn calculate_dir_depth_color(depth: usize) -> f32 {
+        0.15 + 0.05 * (depth as f32).min(5.0)
+    }
+
+    /// Determines if a progress update should be printed.
+    ///
+    /// # Arguments
+    /// * `frame_count` - Current frame count
+    /// * `interval` - Print every N frames
+    ///
+    /// # Returns
+    /// `true` if progress should be printed.
+    #[inline]
+    #[must_use]
+    pub fn should_print_progress(frame_count: u64, interval: u64) -> bool {
+        interval > 0 && frame_count % interval == 0
+    }
+}
+
+#[allow(unused_imports)]
+pub use helpers::*;
+
 /// Build filter settings from command-line arguments.
 fn build_filter(args: &Args) -> FilterSettings {
     let mut filter = FilterSettings::new();
@@ -1033,6 +1353,10 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    // ========================================================================
+    // Integration Tests (require Args context)
+    // ========================================================================
+
     #[test]
     fn test_headless_requires_output() {
         let args = Args {
@@ -1074,5 +1398,386 @@ mod tests {
             args.output.as_ref().unwrap().to_str().unwrap(),
             "/tmp/frames"
         );
+    }
+
+    // ========================================================================
+    // Estimated Duration Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_estimated_duration_one_day() {
+        // 1 day at 10 seconds per day = 10 seconds
+        let (duration, frames) = calculate_estimated_duration(0, 86400, 10.0, 60);
+        assert!((duration - 10.0).abs() < 0.1);
+        assert_eq!(frames, 600);
+    }
+
+    #[test]
+    fn test_calculate_estimated_duration_one_week() {
+        // 7 days at 10 seconds per day = 70 seconds
+        let (duration, frames) = calculate_estimated_duration(0, 7 * 86400, 10.0, 60);
+        assert!((duration - 70.0).abs() < 0.1);
+        assert_eq!(frames, 4200);
+    }
+
+    #[test]
+    fn test_calculate_estimated_duration_different_framerate() {
+        // 1 day at 10 seconds per day at 30 fps
+        let (duration, frames) = calculate_estimated_duration(0, 86400, 10.0, 30);
+        assert!((duration - 10.0).abs() < 0.1);
+        assert_eq!(frames, 300);
+    }
+
+    #[test]
+    fn test_calculate_estimated_duration_fast_playback() {
+        // 1 day at 1 second per day = 1 second
+        let (duration, frames) = calculate_estimated_duration(0, 86400, 1.0, 60);
+        assert!((duration - 1.0).abs() < 0.1);
+        assert_eq!(frames, 60);
+    }
+
+    #[test]
+    fn test_calculate_estimated_duration_zero_span() {
+        // Same timestamp = 0 duration
+        let (duration, frames) = calculate_estimated_duration(1000, 1000, 10.0, 60);
+        assert!((duration - 0.0).abs() < 0.1);
+        assert_eq!(frames, 0);
+    }
+
+    // ========================================================================
+    // Progress Calculation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_progress_percent_halfway() {
+        assert!((calculate_progress_percent(50, 100) - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_progress_percent_start() {
+        assert!((calculate_progress_percent(0, 100) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_progress_percent_end() {
+        assert!((calculate_progress_percent(100, 100) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_progress_percent_zero_total() {
+        // Should not panic, returns 0
+        assert!((calculate_progress_percent(0, 0) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_progress_percent_partial() {
+        assert!((calculate_progress_percent(25, 100) - 0.25).abs() < 0.001);
+        assert!((calculate_progress_percent(75, 100) - 0.75).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Progress Status Formatting Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_progress_status_basic() {
+        let status = format_progress_status(100, 0.5, 50, 100);
+        assert!(status.contains("Frame 100"));
+        assert!(status.contains("50.0%"));
+        assert!(status.contains("50/100"));
+    }
+
+    #[test]
+    fn test_format_progress_status_start() {
+        let status = format_progress_status(0, 0.0, 0, 100);
+        assert!(status.contains("Frame 0"));
+        assert!(status.contains("0.0%"));
+    }
+
+    #[test]
+    fn test_format_progress_status_end() {
+        let status = format_progress_status(1000, 1.0, 100, 100);
+        assert!(status.contains("Frame 1000"));
+        assert!(status.contains("100.0%"));
+    }
+
+    // ========================================================================
+    // Render Complete Tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_render_complete_not_started() {
+        assert!(!is_render_complete(0, 0, 100));
+    }
+
+    #[test]
+    fn test_is_render_complete_in_progress() {
+        assert!(!is_render_complete(50, 50, 100));
+    }
+
+    #[test]
+    fn test_is_render_complete_at_end() {
+        assert!(is_render_complete(99, 99, 100));
+    }
+
+    #[test]
+    fn test_is_render_complete_not_applied() {
+        // At last commit but not all applied
+        assert!(!is_render_complete(99, 98, 100));
+    }
+
+    #[test]
+    fn test_is_render_complete_empty() {
+        // No commits = not complete
+        assert!(!is_render_complete(0, 0, 0));
+    }
+
+    #[test]
+    fn test_is_render_complete_single_commit() {
+        assert!(is_render_complete(0, 0, 1));
+    }
+
+    // ========================================================================
+    // Target Time Calculation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_target_time_zero_elapsed() {
+        assert_eq!(calculate_target_time(1_000_000, 0.0), 1_000_000);
+    }
+
+    #[test]
+    fn test_calculate_target_time_one_day() {
+        // 1 day = 86400 seconds
+        assert_eq!(calculate_target_time(1_000_000, 1.0), 1_086_400);
+    }
+
+    #[test]
+    fn test_calculate_target_time_partial_day() {
+        // 0.5 days = 43200 seconds
+        assert_eq!(calculate_target_time(1_000_000, 0.5), 1_043_200);
+    }
+
+    #[test]
+    fn test_calculate_target_time_multiple_days() {
+        // 7 days = 604800 seconds
+        assert_eq!(calculate_target_time(1_000_000, 7.0), 1_604_800);
+    }
+
+    // ========================================================================
+    // Days Elapsed Calculation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_days_elapsed_one_day() {
+        // 10 seconds at 10 seconds per day = 1 day
+        assert!((calculate_days_elapsed(10.0, 10.0) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_days_elapsed_half_day() {
+        // 5 seconds at 10 seconds per day = 0.5 days
+        assert!((calculate_days_elapsed(5.0, 10.0) - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_days_elapsed_fast_speed() {
+        // 1 second at 1 second per day = 1 day
+        assert!((calculate_days_elapsed(1.0, 1.0) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_days_elapsed_slow_speed() {
+        // 100 seconds at 100 seconds per day = 1 day
+        assert!((calculate_days_elapsed(100.0, 100.0) - 1.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Profile Frame Tests
+    // ========================================================================
+
+    #[test]
+    fn test_should_profile_frame_at_interval() {
+        assert!(should_profile_frame(0, 100));
+        assert!(should_profile_frame(100, 100));
+        assert!(should_profile_frame(200, 100));
+    }
+
+    #[test]
+    fn test_should_profile_frame_not_at_interval() {
+        assert!(!should_profile_frame(50, 100));
+        assert!(!should_profile_frame(99, 100));
+        assert!(!should_profile_frame(101, 100));
+    }
+
+    #[test]
+    fn test_should_profile_frame_every_frame() {
+        // Interval of 1 = every frame
+        assert!(should_profile_frame(0, 1));
+        assert!(should_profile_frame(1, 1));
+        assert!(should_profile_frame(999, 1));
+    }
+
+    #[test]
+    fn test_should_profile_frame_disabled() {
+        // Interval of 0 = disabled
+        assert!(!should_profile_frame(0, 0));
+        assert!(!should_profile_frame(100, 0));
+    }
+
+    // ========================================================================
+    // Fixed Time Step Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_dt_60fps() {
+        let dt = calculate_dt(60);
+        assert!((dt - 1.0 / 60.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_calculate_dt_30fps() {
+        let dt = calculate_dt(30);
+        assert!((dt - 1.0 / 30.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_calculate_dt_144fps() {
+        let dt = calculate_dt(144);
+        assert!((dt - 1.0 / 144.0).abs() < 0.0001);
+    }
+
+    // ========================================================================
+    // Performance Line Formatting Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_perf_line_basic() {
+        let line = format_perf_line("Render", 16.5);
+        assert!(line.contains("Render"));
+        assert!(line.contains("16.50ms"));
+    }
+
+    #[test]
+    fn test_format_perf_line_small_value() {
+        let line = format_perf_line("Quick", 0.01);
+        assert!(line.contains("0.01ms"));
+    }
+
+    // ========================================================================
+    // Average Time Calculation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_average_time_normal() {
+        assert!((calculate_average_time(100.0, 10) - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_average_time_zero_count() {
+        assert!((calculate_average_time(100.0, 0) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_average_time_single_item() {
+        assert!((calculate_average_time(50.0, 1) - 50.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Camera Fit Zoom Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_fit_zoom_exact_match() {
+        // Viewport matches bounds exactly (no padding)
+        let zoom = calculate_fit_zoom(1000.0, 1000.0, 1000.0, 1000.0, 0.0);
+        assert!((zoom - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_wider_viewport() {
+        // Viewport is wider than bounds
+        let zoom = calculate_fit_zoom(500.0, 1000.0, 1000.0, 1000.0, 0.0);
+        assert!((zoom - 1.0).abs() < 0.001); // Height-limited
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_taller_viewport() {
+        // Viewport is taller than bounds
+        let zoom = calculate_fit_zoom(1000.0, 500.0, 1000.0, 1000.0, 0.0);
+        assert!((zoom - 1.0).abs() < 0.001); // Width-limited
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_with_padding() {
+        // With padding, zoom should be smaller
+        let zoom = calculate_fit_zoom(1000.0, 1000.0, 1000.0, 1000.0, 100.0);
+        assert!(zoom < 1.0);
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_clamp_max() {
+        // Very small bounds should be clamped to max 10.0
+        let zoom = calculate_fit_zoom(10.0, 10.0, 1000.0, 1000.0, 0.0);
+        assert!((zoom - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_clamp_min() {
+        // Very large bounds should be clamped to min 0.01
+        let zoom = calculate_fit_zoom(100_000.0, 100_000.0, 1000.0, 1000.0, 0.0);
+        assert!((zoom - 0.01).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Directory Depth Color Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_dir_depth_color_root() {
+        let color = calculate_dir_depth_color(0);
+        assert!((color - 0.15).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_dir_depth_color_depth_1() {
+        let color = calculate_dir_depth_color(1);
+        assert!((color - 0.20).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_dir_depth_color_depth_5() {
+        let color = calculate_dir_depth_color(5);
+        assert!((color - 0.40).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_dir_depth_color_deep() {
+        // Clamped to max depth 5
+        let color = calculate_dir_depth_color(10);
+        assert!((color - 0.40).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Progress Print Tests
+    // ========================================================================
+
+    #[test]
+    fn test_should_print_progress_at_interval() {
+        assert!(should_print_progress(0, 100));
+        assert!(should_print_progress(100, 100));
+        assert!(should_print_progress(200, 100));
+    }
+
+    #[test]
+    fn test_should_print_progress_not_at_interval() {
+        assert!(!should_print_progress(50, 100));
+        assert!(!should_print_progress(99, 100));
+    }
+
+    #[test]
+    fn test_should_print_progress_disabled() {
+        assert!(!should_print_progress(0, 0));
+        assert!(!should_print_progress(100, 0));
     }
 }
