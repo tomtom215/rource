@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769177536436,
+  "lastUpdate": 1769181238530,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -935,6 +935,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1024067,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e3671164b3329938bcc7c0b7e2d90121ca4d36d",
+          "message": "Merge pull request #134 from tomtom215/claude/optimize-wasm-webgpu-sRrEs\n\nAdd GPU curve rendering and texture array file icons to WebGL2",
+          "timestamp": "2026-01-23T16:10:01+01:00",
+          "tree_id": "0e9e8e814660ed21b67abee935e69dbefe0f12ce",
+          "url": "https://github.com/tomtom215/rource/commit/0e3671164b3329938bcc7c0b7e2d90121ca4d36d"
+        },
+        "date": 1769181238079,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3880704,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2669886,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1027476,
             "unit": "bytes"
           }
         ]
