@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Scene graph for the visualization.
 //!
 //! The scene contains all visual entities (directories, files, users, actions)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Hover detection and entity info for tooltips.
 //!
 //! This module provides methods for detecting which entity is under the mouse

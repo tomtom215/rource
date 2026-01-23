@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! 3D Orbit Camera for perspective visualization.
 //!
 //! This module provides a 3D camera with orbit controls for Gource-style

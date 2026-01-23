@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Renderer backend abstraction for Rource WASM.
 //!
 //! This module provides a unified interface for rendering that can use

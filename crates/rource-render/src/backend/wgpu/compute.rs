@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! GPU compute pipeline for physics simulation.
 //!
 //! This module provides GPU-accelerated physics simulation using compute shaders.

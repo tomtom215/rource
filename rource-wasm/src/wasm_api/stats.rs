@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Render statistics and entity count APIs.
 //!
 //! This module provides methods to query visualization metrics:

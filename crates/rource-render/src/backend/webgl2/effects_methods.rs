@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Post-processing effect configuration methods for the WebGL2 renderer.
 //!
 //! This module contains methods for configuring bloom, shadow, and adaptive quality effects.

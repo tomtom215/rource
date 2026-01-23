@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! GPU bloom effect implementation for wgpu.
 //!
 //! This module provides a high-performance GPU-based bloom effect that creates

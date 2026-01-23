@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! WebGL2 texture management and font atlas.
 //!
 //! This module provides texture loading, font glyph caching in texture atlases,

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Error types for the WebGL2 renderer.
 //!
 //! This module contains error types for WebGL2 renderer initialization and operations.

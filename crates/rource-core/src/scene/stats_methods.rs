@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Extension statistics methods for the scene.
 //!
 //! This module contains methods for computing and caching file extension

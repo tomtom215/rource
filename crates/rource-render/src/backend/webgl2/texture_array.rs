@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! WebGL2 texture array for efficient file icon batching.
 //!
 //! This module provides GPU texture array support for WebGL2, allowing multiple

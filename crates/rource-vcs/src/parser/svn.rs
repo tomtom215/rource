@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! SVN XML log format parser.
 //!
 //! This parser handles output from `svn log --xml` which produces:

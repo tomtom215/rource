@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 # Benchmark: Feature Parity Comparison
 # Documents which features are supported by Rource vs Gource
 

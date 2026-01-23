@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! WebGL2 rendering backend for GPU-accelerated browser rendering.
 //!
 //! This module provides a WebGL2-based renderer that implements the [`Renderer`] trait,

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Application state and playback management for Rource CLI.
 //!
 //! This module contains the main application state struct and playback

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 // Allow these clippy lints for config file generation code (pre-existing)
 // which uses format! strings with push_str for readability
 #![allow(clippy::format_push_string)]

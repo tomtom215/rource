@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Barnes-Hut algorithm for O(n log n) force-directed layout.
 //!
 //! The Barnes-Hut algorithm approximates the N-body problem by using a quadtree

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Uniform Buffer Objects (UBOs) for WebGL2 shared uniform management.
 //!
 //! This module provides efficient uniform data sharing across multiple shader programs.

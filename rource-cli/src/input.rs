@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Input handling for the Rource CLI.
 //!
 //! This module provides keyboard and mouse input handling for the windowed

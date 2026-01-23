@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 # Export repository history to MP4 video
 #
 # Usage: ./export-video.sh /path/to/repo output.mp4
