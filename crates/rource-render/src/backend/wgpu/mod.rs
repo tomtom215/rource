@@ -429,8 +429,12 @@ impl WgpuRenderer {
     #[cfg(target_arch = "wasm32")]
     #[allow(clippy::future_not_send)]
     pub async fn new_from_canvas(canvas: &web_sys::HtmlCanvasElement) -> Result<Self, WgpuError> {
+        // Only use WebGPU backend - if it's not available, we fall back to our
+        // dedicated WebGL2Renderer which provides clearer error reporting and
+        // deterministic behavior. Using BROWSER_WEBGPU | GL would silently fall
+        // back to WebGL through wgpu, making it unclear which backend is used.
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::BROWSER_WEBGPU | wgpu::Backends::GL,
+            backends: wgpu::Backends::BROWSER_WEBGPU,
             ..Default::default()
         });
 
