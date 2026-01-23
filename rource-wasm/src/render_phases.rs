@@ -910,6 +910,16 @@ impl LabelPlacer {
         }
     }
 
+    /// Resets the placer for a new frame (reuses internal Vec allocation).
+    ///
+    /// This is more efficient than creating a new `LabelPlacer` each frame
+    /// because it preserves the `Vec` capacity.
+    #[inline]
+    pub fn reset(&mut self, camera_zoom: f32) {
+        self.placed_labels.clear();
+        self.max_labels = compute_max_labels(camera_zoom);
+    }
+
     /// Checks if more labels can be placed.
     pub fn can_place_more(&self) -> bool {
         self.placed_labels.len() < self.max_labels
@@ -978,6 +988,8 @@ fn rects_intersect(a: &Rect, b: &Rect) -> bool {
 ///
 /// * `label_candidates` - Reusable buffer for label candidates (avoids per-frame allocation).
 ///   Will be cleared and repopulated each frame.
+/// * `label_placer` - Reusable label placer for collision avoidance (avoids per-frame Vec allocation).
+///   Will be reset via `reset()` at the start of each frame.
 #[inline(never)]
 pub fn render_file_labels<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -985,6 +997,7 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
     label_candidates: &mut Vec<(FileId, Vec2, f32, f32, f32)>,
+    label_placer: &mut LabelPlacer,
 ) {
     if !ctx.show_labels || ctx.camera_zoom <= 0.15 {
         return;
@@ -1027,11 +1040,11 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
     // Sort by priority (highest first)
     label_candidates.sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
 
-    // Use label placer for collision avoidance
-    let mut placer = LabelPlacer::new(ctx.camera_zoom);
+    // Reset label placer for this frame (reuses internal Vec allocation)
+    label_placer.reset(ctx.camera_zoom);
 
     for (file_id, screen_pos, radius, alpha, _priority) in label_candidates.iter() {
-        if !placer.can_place_more() {
+        if !label_placer.can_place_more() {
             break;
         }
 
@@ -1052,7 +1065,7 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
         );
 
         // Try to place with fallback positions
-        if let Some(label_pos) = placer.try_place_with_fallback(
+        if let Some(label_pos) = label_placer.try_place_with_fallback(
             primary_pos,
             text_width,
             text_height,

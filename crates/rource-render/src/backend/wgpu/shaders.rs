@@ -66,7 +66,8 @@ struct CircleInstance {
 struct CircleVertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) local_pos: vec2<f32>,
-    @location(1) color: vec4<f32>,
+    @location(1) aa_width: f32,  // Pre-computed in vertex shader to avoid per-fragment division
+    @location(2) color: vec4<f32>,
 };
 
 @vertex
@@ -75,6 +76,10 @@ fn vs_circle(vertex: CircleVertexInput, instance: CircleInstance) -> CircleVerte
 
     // Store local position for distance calculation in fragment shader
     out.local_pos = vertex.position;
+
+    // Pre-compute AA width (resolution-dependent, but constant per-instance)
+    // This avoids division per-fragment
+    out.aa_width = 1.5 / max(uniforms.resolution.x, uniforms.resolution.y) * 100.0;
 
     // Expand unit quad to circle bounds with 1px padding for AA
     let world_pos = instance.center + vertex.position * (instance.radius + 1.0);
@@ -94,8 +99,8 @@ fn fs_circle(in: CircleVertexOutput) -> @location(0) vec4<f32> {
 
     // Anti-aliased edge using smoothstep
     // Edge starts at radius=1.0 (the actual circle edge)
-    let aa_width = 1.5 / max(uniforms.resolution.x, uniforms.resolution.y) * 100.0;
-    let alpha = 1.0 - smoothstep(1.0 - aa_width, 1.0 + aa_width, dist);
+    // aa_width pre-computed in vertex shader to avoid per-fragment division
+    let alpha = 1.0 - smoothstep(1.0 - in.aa_width, 1.0 + in.aa_width, dist);
 
     return vec4<f32>(in.color.rgb, in.color.a * alpha);
 }
@@ -114,9 +119,9 @@ struct RingInstance {
 struct RingVertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) local_pos: vec2<f32>,
-    @location(1) radius: f32,
-    @location(2) width: f32,
-    @location(3) outer_radius: f32, // Pre-computed in vertex shader to avoid recalculation
+    @location(1) inner_radius: f32,    // Pre-computed: radius - width * 0.5
+    @location(2) outer_radius_actual: f32, // Pre-computed: radius + width * 0.5
+    @location(3) outer_radius_padded: f32, // Pre-computed: outer_radius_actual + 1.0 (for quad sizing)
     @location(4) color: vec4<f32>,
 };
 
@@ -125,14 +130,15 @@ fn vs_ring(vertex: CircleVertexInput, instance: RingInstance) -> RingVertexOutpu
     var out: RingVertexOutput;
 
     out.local_pos = vertex.position;
-    out.radius = instance.radius;
-    out.width = instance.width;
+
+    // Pre-compute inner and outer radius to avoid per-fragment calculation
+    out.inner_radius = instance.radius - instance.width * 0.5;
+    out.outer_radius_actual = instance.radius + instance.width * 0.5;
 
     // Expand quad to cover full ring including AA padding
-    // Pre-compute and pass to fragment shader to avoid per-fragment recalculation
-    let outer_radius = instance.radius + instance.width * 0.5 + 1.0;
-    out.outer_radius = outer_radius;
-    let world_pos = instance.center + vertex.position * outer_radius;
+    let outer_radius_padded = out.outer_radius_actual + 1.0;
+    out.outer_radius_padded = outer_radius_padded;
+    let world_pos = instance.center + vertex.position * outer_radius_padded;
 
     let ndc = (world_pos / uniforms.resolution) * 2.0 - 1.0;
     out.clip_position = vec4<f32>(ndc.x, -ndc.y, 0.0, 1.0);
@@ -143,17 +149,13 @@ fn vs_ring(vertex: CircleVertexInput, instance: RingInstance) -> RingVertexOutpu
 
 @fragment
 fn fs_ring(in: RingVertexOutput) -> @location(0) vec4<f32> {
-    // Scale local position to world units (outer_radius pre-computed in vertex shader)
-    let world_dist = length(in.local_pos) * in.outer_radius;
+    // Scale local position to world units (outer_radius_padded pre-computed in vertex shader)
+    let world_dist = length(in.local_pos) * in.outer_radius_padded;
 
-    // Distance from the ring centerline
-    let inner_radius = in.radius - in.width * 0.5;
-    let outer_radius_actual = in.radius + in.width * 0.5;
-
-    // Anti-aliased edges
+    // Anti-aliased edges using pre-computed inner/outer radius
     let aa_width = 1.0;
-    let inner_alpha = smoothstep(inner_radius - aa_width, inner_radius + aa_width, world_dist);
-    let outer_alpha = 1.0 - smoothstep(outer_radius_actual - aa_width, outer_radius_actual + aa_width, world_dist);
+    let inner_alpha = smoothstep(in.inner_radius - aa_width, in.inner_radius + aa_width, world_dist);
+    let outer_alpha = 1.0 - smoothstep(in.outer_radius_actual - aa_width, in.outer_radius_actual + aa_width, world_dist);
     let alpha = inner_alpha * outer_alpha;
 
     return vec4<f32>(in.color.rgb, in.color.a * alpha);

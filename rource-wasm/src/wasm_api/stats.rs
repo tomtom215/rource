@@ -103,7 +103,7 @@ mod helpers {
         total_directories: usize,
     ) -> String {
         format!(
-            r#"{{"fps":{fps:.2},"frameTimeMs":{frame_time_ms:.3},"totalEntities":{total_entities},"visibleFiles":{visible_files},"visibleUsers":{visible_users},"visibleDirectories":{visible_directories},"activeActions":{active_actions},"drawCalls":{draw_calls},"canvasWidth":{canvas_width},"canvasHeight":{canvas_height},"isPlaying":{is_playing},"commitCount":{commit_count},"currentCommit":{current_commit},"totalFiles":{total_files},"totalUsers":{total_users},"totalDirectories":{total_directories}}}"#
+            r#"{{"fps":{fps:.2},"frameTimeMs":{frame_time_ms:.4},"totalEntities":{total_entities},"visibleFiles":{visible_files},"visibleUsers":{visible_users},"visibleDirectories":{visible_directories},"activeActions":{active_actions},"drawCalls":{draw_calls},"canvasWidth":{canvas_width},"canvasHeight":{canvas_height},"isPlaying":{is_playing},"commitCount":{commit_count},"currentCommit":{current_commit},"totalFiles":{total_files},"totalUsers":{total_users},"totalDirectories":{total_directories}}}"#
         )
     }
 }
@@ -122,11 +122,26 @@ impl Rource {
     /// This batches 12+ individual getter calls into one, reducing per-frame
     /// overhead by approximately 90% when updating the performance metrics UI.
     ///
+    /// # Timing Precision
+    ///
+    /// Frame time is returned with 4 decimal places (0.1µs display resolution).
+    /// Actual measurement precision is limited by browser security mitigations
+    /// against timing attacks (Spectre/Meltdown):
+    ///
+    /// | Browser | Resolution | Source |
+    /// |---------|------------|--------|
+    /// | Chrome  | ~5µs       | [Chrome Security Blog](https://security.googleblog.com) |
+    /// | Firefox | ~20µs      | [MDN Spectre mitigations](https://developer.mozilla.org) |
+    /// | Safari  | ~100µs     | `WebKit` security notes |
+    ///
+    /// Nanosecond precision is not achievable from JavaScript's `performance.now()`.
+    /// The 4 decimal places display the full resolution available from the browser.
+    ///
     /// Returns a JSON string with the following structure:
     /// ```json
     /// {
     ///   "fps": 60.0,
-    ///   "frameTimeMs": 16.67,
+    ///   "frameTimeMs": 16.6700,
     ///   "totalEntities": 1500,
     ///   "visibleFiles": 200,
     ///   "visibleUsers": 5,
@@ -148,7 +163,7 @@ impl Rource {
         // Use write! macro to format JSON to avoid temporary string allocations
         // This is more efficient than format! for large strings
         format!(
-            r#"{{"fps":{:.2},"frameTimeMs":{:.3},"totalEntities":{},"visibleFiles":{},"visibleUsers":{},"visibleDirectories":{},"activeActions":{},"drawCalls":{},"canvasWidth":{},"canvasHeight":{},"isPlaying":{},"commitCount":{},"currentCommit":{},"totalFiles":{},"totalUsers":{},"totalDirectories":{}}}"#,
+            r#"{{"fps":{:.2},"frameTimeMs":{:.4},"totalEntities":{},"visibleFiles":{},"visibleUsers":{},"visibleDirectories":{},"activeActions":{},"drawCalls":{},"canvasWidth":{},"canvasHeight":{},"isPlaying":{},"commitCount":{},"currentCommit":{},"totalFiles":{},"totalUsers":{},"totalDirectories":{}}}"#,
             self.perf_metrics.fps(),
             self.perf_metrics.frame_time_ms(),
             self.render_stats.total_entities,
@@ -455,7 +470,7 @@ mod tests {
             60.0, 16.67, 1500, 200, 5, 50, 10, 6, 1920, 1080, true, 1000, 500, 500, 20, 100,
         );
         assert!(json.contains(r#""fps":60.00"#));
-        assert!(json.contains(r#""frameTimeMs":16.670"#));
+        assert!(json.contains(r#""frameTimeMs":16.6700"#));
         assert!(json.contains(r#""totalEntities":1500"#));
         assert!(json.contains(r#""isPlaying":true"#));
     }

@@ -428,6 +428,9 @@ pub struct Rource {
     /// Stores (`FileId`, `screen_pos`, `radius`, `alpha`, `priority`) tuples.
     file_label_candidates_buf: Vec<(FileId, Vec2, f32, f32, f32)>,
 
+    /// Reusable label placer for collision avoidance (avoids per-frame Vec allocation).
+    label_placer: render_phases::LabelPlacer,
+
     // ---- GPU Physics (wgpu only) ----
     /// Whether to use GPU physics (only available with wgpu backend).
     /// When enabled and directory count exceeds the threshold, physics
@@ -546,6 +549,8 @@ impl Rource {
             visible_files_buf: Vec::with_capacity(4096),
             visible_users_buf: Vec::with_capacity(256),
             file_label_candidates_buf: Vec::with_capacity(256),
+            // Reusable label placer (avoids per-frame Vec allocation)
+            label_placer: render_phases::LabelPlacer::new(1.0),
             // GPU physics (wgpu only) - default threshold 500 directories
             use_gpu_physics: false,
             gpu_physics_threshold: 500,
@@ -696,19 +701,22 @@ impl Rource {
             self.perf_metrics.set_start_time(timestamp);
         }
 
-        // Calculate delta time
-        let dt = if self.playback.last_frame_time() > 0.0 {
+        // Calculate delta time (raw measurement)
+        let raw_dt = if self.playback.last_frame_time() > 0.0 {
             ((timestamp - self.playback.last_frame_time()) / 1000.0) as f32
         } else {
             1.0 / 60.0
         };
         self.playback.set_last_frame_time(timestamp);
 
-        // Clamp dt to avoid huge jumps
-        let dt = dt.min(0.1);
+        // Record UNCLAMPED frame time for accurate performance measurement
+        // This is critical: we must display the actual frame time, not a clamped value.
+        // Clamping would hide stutters and make performance claims dishonest.
+        self.perf_metrics.record_frame(raw_dt);
 
-        // Record frame time for FPS calculation
-        self.perf_metrics.record_frame(dt);
+        // Clamp dt for SIMULATION ONLY to avoid physics instability
+        // (e.g., when tab is backgrounded, we don't want entities to fly off screen)
+        let dt = raw_dt.min(0.1);
 
         // Update simulation if playing
         if self.playback.is_playing() && !self.commits.is_empty() {
@@ -1150,6 +1158,7 @@ impl Rource {
             &self.scene,
             &self.camera,
             &mut self.file_label_candidates_buf,
+            &mut self.label_placer,
         );
 
         // Render watermark overlay (screen-space, rendered last to be on top)

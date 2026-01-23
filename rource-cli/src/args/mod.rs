@@ -344,6 +344,32 @@ pub struct Args {
     #[arg(long)]
     pub headless: bool,
 
+    /// Output benchmark results as JSON with nanosecond precision.
+    ///
+    /// Requires --headless mode. Outputs machine-readable JSON to stdout with
+    /// timing data for each rendering phase. Uses `std::time::Instant` for
+    /// true nanosecond precision (not limited by browser timing mitigations).
+    ///
+    /// Example output:
+    /// ```json
+    /// {
+    ///   "frames": 1000,
+    ///   "total_ns": 16500000000,
+    ///   "avg_frame_ns": 16500000,
+    ///   "min_frame_ns": 14200000,
+    ///   "max_frame_ns": 22100000,
+    ///   "phases": {
+    ///     "commit_apply_ns": 45000,
+    ///     "scene_update_ns": 850000,
+    ///     "render_ns": 12500000,
+    ///     "effects_ns": 2800000,
+    ///     "export_ns": 300000
+    ///   }
+    /// }
+    /// ```
+    #[arg(long)]
+    pub benchmark: bool,
+
     /// Save a screenshot to this file and exit.
     ///
     /// Supports PNG format. Renders the visualization at the specified position
@@ -415,6 +441,11 @@ impl Args {
             return Err(
                 "--headless requires --output to specify frame output directory".to_string(),
             );
+        }
+
+        // Validate benchmark mode requires headless
+        if self.benchmark && !self.headless {
+            return Err("--benchmark requires --headless mode".to_string());
         }
 
         Ok(())
