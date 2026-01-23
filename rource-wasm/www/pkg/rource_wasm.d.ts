@@ -213,6 +213,15 @@ export class Rource {
      */
     getFullMapDimensions(min_label_font_size: number): string | undefined;
     /**
+     * Returns the current GPU physics threshold.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * console.log('GPU physics threshold:', rource.getGPUPhysicsThreshold());
+     * ```
+     */
+    getGPUPhysicsThreshold(): number;
+    /**
      * Gets the current layout configuration as a JSON string.
      *
      * Returns a JSON object with all layout parameters.
@@ -299,6 +308,31 @@ export class Rource {
      * Returns true if using a GPU-accelerated renderer (wgpu or WebGL2).
      */
     isGPUAccelerated(): boolean;
+    /**
+     * Returns whether GPU physics is currently active.
+     *
+     * This checks all conditions required for GPU physics:
+     * 1. GPU physics is enabled via `setUseGPUPhysics(true)`
+     * 2. wgpu backend is being used
+     * 3. Directory count exceeds threshold (if threshold > 0)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isGPUPhysicsActive()) {
+     *     console.log('GPU physics is running');
+     * }
+     * ```
+     */
+    isGPUPhysicsActive(): boolean;
+    /**
+     * Returns whether GPU physics is currently enabled.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * console.log('GPU physics:', rource.isGPUPhysicsEnabled());
+     * ```
+     */
+    isGPUPhysicsEnabled(): boolean;
     /**
      * Returns whether playback is active.
      */
@@ -497,6 +531,29 @@ export class Rource {
      */
     setFontSize(size: number): void;
     /**
+     * Sets the directory count threshold for enabling GPU physics.
+     *
+     * When the scene has more directories than this threshold, GPU physics
+     * will be used (if enabled and wgpu backend is active).
+     *
+     * Set to 0 to always use GPU physics when enabled (ignores directory count).
+     *
+     * Default: 500 directories
+     *
+     * # Arguments
+     * * `threshold` - Minimum directory count to trigger GPU physics
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * // Use GPU physics for repos with 1000+ directories
+     * rource.setGPUPhysicsThreshold(1000);
+     *
+     * // Always use GPU physics when enabled (no threshold)
+     * rource.setGPUPhysicsThreshold(0);
+     * ```
+     */
+    setGPUPhysicsThreshold(threshold: number): void;
+    /**
      * Sets the layout preset for different repository sizes.
      *
      * # Presets
@@ -535,6 +592,30 @@ export class Rource {
      */
     setSpeed(seconds_per_day: number): void;
     /**
+     * Enables or disables GPU physics simulation.
+     *
+     * When enabled and using the wgpu backend, the force-directed physics
+     * simulation runs on the GPU using compute shaders. This provides
+     * significant performance improvements for large repositories (500+
+     * directories) where CPU physics becomes the bottleneck.
+     *
+     * **Note**: GPU physics only works with the wgpu backend. When using
+     * WebGL2 or Software renderers, this setting is ignored and CPU physics
+     * is always used.
+     *
+     * # Arguments
+     * * `enabled` - Whether to enable GPU physics
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     rource.setUseGPUPhysics(true);
+     *     console.log('GPU physics enabled');
+     * }
+     * ```
+     */
+    setUseGPUPhysics(enabled: boolean): void;
+    /**
      * Steps backward to the previous commit.
      */
     stepBackward(): void;
@@ -546,6 +627,23 @@ export class Rource {
      * Toggles play/pause state.
      */
     togglePlay(): void;
+    /**
+     * Warms up the GPU physics compute pipeline.
+     *
+     * Call this during initialization to pre-compile compute shaders
+     * and avoid first-frame stuttering when GPU physics is first used.
+     *
+     * **Note**: Only has an effect when using the wgpu backend.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     rource.warmupGPUPhysics();
+     *     rource.setUseGPUPhysics(true);
+     * }
+     * ```
+     */
+    warmupGPUPhysics(): void;
     /**
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
      *
@@ -599,6 +697,7 @@ export interface InitOutput {
     readonly rource_getFps: (a: number) => number;
     readonly rource_getFrameTimeMs: (a: number) => number;
     readonly rource_getFullMapDimensions: (a: number, b: number, c: number) => void;
+    readonly rource_getGPUPhysicsThreshold: (a: number) => number;
     readonly rource_getLayoutConfig: (a: number, b: number) => void;
     readonly rource_getRendererType: (a: number, b: number) => void;
     readonly rource_getShowLabels: (a: number) => number;
@@ -617,6 +716,8 @@ export interface InitOutput {
     readonly rource_isAutoFit: (a: number) => number;
     readonly rource_isContextLost: (a: number) => number;
     readonly rource_isGPUAccelerated: (a: number) => number;
+    readonly rource_isGPUPhysicsActive: (a: number) => number;
+    readonly rource_isGPUPhysicsEnabled: (a: number) => number;
     readonly rource_isPlaying: (a: number) => number;
     readonly rource_isWebGL2: (a: number) => number;
     readonly rource_isWgpu: (a: number) => number;
@@ -644,19 +745,22 @@ export interface InitOutput {
     readonly rource_setBranchOpacityMax: (a: number, b: number) => void;
     readonly rource_setDepthDistanceExponent: (a: number, b: number) => void;
     readonly rource_setFontSize: (a: number, b: number) => void;
+    readonly rource_setGPUPhysicsThreshold: (a: number, b: number) => void;
     readonly rource_setLayoutPreset: (a: number, b: number, c: number) => void;
     readonly rource_setRadialDistanceScale: (a: number, b: number) => void;
     readonly rource_setShowLabels: (a: number, b: number) => void;
     readonly rource_setSpeed: (a: number, b: number) => void;
+    readonly rource_setUseGPUPhysics: (a: number, b: number) => void;
     readonly rource_stepBackward: (a: number) => void;
     readonly rource_stepForward: (a: number) => void;
     readonly rource_togglePlay: (a: number) => void;
+    readonly rource_warmupGPUPhysics: (a: number) => void;
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_6192: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6247: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6193: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_6383: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6438: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6384: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

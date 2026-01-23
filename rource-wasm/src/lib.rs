@@ -95,6 +95,7 @@ use rource_core::config::Settings;
 use rource_core::entity::{DirId, FileId, UserId};
 use rource_core::scene::Scene;
 use rource_math::{Bounds, Vec2};
+use rource_render::backend::wgpu::ComputeEntity;
 use rource_render::{default_font, FontId};
 use rource_vcs::parser::{CustomParser, GitParser, ParseOptions, Parser};
 use rource_vcs::Commit;
@@ -146,6 +147,7 @@ pub fn init_panic_hook() {
 /// - **Stats**: `getTotalFiles()`, `getVisibleEntities()` (see `wasm_api::stats`)
 /// - **Authors**: `getAuthors()`, `getAuthorColor()` (see `wasm_api::authors`)
 #[wasm_bindgen]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Rource {
     // ---- Canvas & Rendering ----
     /// Canvas element.
@@ -226,6 +228,19 @@ pub struct Rource {
 
     /// Reusable buffer for visible user IDs.
     visible_users_buf: Vec<UserId>,
+
+    // ---- GPU Physics (wgpu only) ----
+    /// Whether to use GPU physics (only available with wgpu backend).
+    /// When enabled and directory count exceeds the threshold, physics
+    /// simulation runs on the GPU for better performance.
+    use_gpu_physics: bool,
+
+    /// Threshold for auto-enabling GPU physics (directory count).
+    gpu_physics_threshold: usize,
+
+    /// Reusable buffer for GPU physics entities (wasm32 only).
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    compute_entities_buf: Vec<ComputeEntity>,
 }
 
 // ============================================================================
@@ -315,6 +330,10 @@ impl Rource {
             visible_dirs_buf: Vec::with_capacity(1024),
             visible_files_buf: Vec::with_capacity(4096),
             visible_users_buf: Vec::with_capacity(256),
+            // GPU physics (wgpu only) - default threshold 500 directories
+            use_gpu_physics: false,
+            gpu_physics_threshold: 500,
+            compute_entities_buf: Vec::with_capacity(1024),
         })
     }
 
@@ -462,7 +481,12 @@ impl Rource {
         }
 
         // Update scene physics and animations
-        self.scene.update(dt);
+        // Use GPU physics when enabled and conditions are met (wgpu backend, threshold)
+        if self.should_use_gpu_physics() {
+            self.update_physics_gpu(dt);
+        } else {
+            self.scene.update(dt);
+        }
 
         // Auto-fit camera to keep content visible (if enabled)
         if self.auto_fit {
@@ -530,6 +554,123 @@ impl Rource {
 // ============================================================================
 
 impl Rource {
+    /// Collects directory data into `ComputeEntity` buffer for GPU physics.
+    ///
+    /// Returns the number of entities collected.
+    #[cfg(target_arch = "wasm32")]
+    #[inline]
+    fn collect_compute_entities(&mut self) -> usize {
+        self.compute_entities_buf.clear();
+
+        for dir in self.scene.directories().iter() {
+            // Skip root - it's anchored at origin
+            if dir.is_root() {
+                continue;
+            }
+
+            let pos = dir.position();
+            let vel = dir.velocity();
+
+            self.compute_entities_buf
+                .push(ComputeEntity::new(pos.x, pos.y, dir.radius()).with_velocity(vel.x, vel.y));
+        }
+
+        self.compute_entities_buf.len()
+    }
+
+    /// Applies GPU physics results back to scene directories.
+    ///
+    /// The entities must be in the same order as collected by `collect_compute_entities`.
+    #[cfg(target_arch = "wasm32")]
+    fn apply_compute_results(&mut self, entities: &[ComputeEntity]) {
+        // Skip root (index 0 in directories), so entities align with directories[1..]
+        let mut entity_idx = 0;
+
+        for dir in self.scene.directories_mut().iter_mut() {
+            if dir.is_root() {
+                continue;
+            }
+
+            if entity_idx >= entities.len() {
+                break;
+            }
+
+            let entity = &entities[entity_idx];
+            let (x, y) = entity.position();
+            let (vx, vy) = entity.velocity();
+
+            dir.set_position(Vec2::new(x, y));
+            dir.set_velocity(Vec2::new(vx, vy));
+
+            entity_idx += 1;
+        }
+    }
+
+    /// Returns whether GPU physics should be used for the current scene.
+    ///
+    /// Conditions:
+    /// 1. `use_gpu_physics` is enabled
+    /// 2. wgpu backend is active
+    /// 3. Directory count exceeds threshold (auto mode)
+    #[inline]
+    fn should_use_gpu_physics(&self) -> bool {
+        if !self.use_gpu_physics {
+            return false;
+        }
+
+        // Only wgpu supports compute shaders
+        if self.renderer_type != RendererType::Wgpu {
+            return false;
+        }
+
+        // Check threshold (0 = always use GPU physics when enabled)
+        if self.gpu_physics_threshold > 0
+            && self.scene.directories().len() < self.gpu_physics_threshold
+        {
+            return false;
+        }
+
+        true
+    }
+
+    /// Updates physics simulation using the GPU compute pipeline.
+    ///
+    /// This method:
+    /// 1. Collects directory data into ComputeEntity format
+    /// 2. Dispatches GPU physics simulation
+    /// 3. Applies results back to scene directories
+    /// 4. Updates file and user animations (CPU, same as normal update)
+    #[cfg(target_arch = "wasm32")]
+    fn update_physics_gpu(&mut self, dt: f32) {
+        // Collect entities from scene
+        let entity_count = self.collect_compute_entities();
+
+        if entity_count == 0 {
+            // No non-root directories, just update the scene normally
+            self.scene.update(dt);
+            return;
+        }
+
+        // Get mutable reference to wgpu renderer and dispatch physics
+        if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
+            let updated = wgpu_renderer.dispatch_physics_sync(&self.compute_entities_buf, dt);
+
+            // Apply GPU physics results back to scene directories
+            self.apply_compute_results(&updated);
+        }
+
+        // Update file/user animations and other scene state (CPU)
+        // This handles file fade-in, user positioning, action beams, etc.
+        self.scene.update_animations(dt);
+    }
+
+    /// Fallback for non-WASM targets (GPU physics not supported).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn update_physics_gpu(&mut self, dt: f32) {
+        // GPU physics only available on WASM with wgpu backend
+        self.scene.update(dt);
+    }
+
     /// Resets playback to the beginning.
     fn reset_playback(&mut self) {
         self.scene = Scene::new();

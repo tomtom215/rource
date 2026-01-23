@@ -518,6 +518,24 @@ impl RendererBackend {
             Self::Software { .. } => {}
         }
     }
+
+    /// Returns a mutable reference to the wgpu renderer if available.
+    ///
+    /// This is used for GPU-specific operations like compute shaders for
+    /// physics simulation.
+    ///
+    /// # Returns
+    ///
+    /// - `Some(&mut WgpuRenderer)` if using wgpu backend
+    /// - `None` for WebGL2 or Software backends
+    #[cfg(target_arch = "wasm32")]
+    #[inline]
+    pub fn as_wgpu_mut(&mut self) -> Option<&mut WgpuRenderer> {
+        match self {
+            Self::Wgpu(r) => Some(r),
+            _ => None,
+        }
+    }
 }
 
 // ============================================================================
