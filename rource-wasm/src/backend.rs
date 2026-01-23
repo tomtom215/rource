@@ -443,6 +443,24 @@ impl RendererBackend {
         }
     }
 
+    /// Initializes file icons for GPU-accelerated rendering.
+    ///
+    /// This pre-generates and caches icons for common file extensions using
+    /// GPU texture arrays for efficient batched rendering.
+    ///
+    /// # Returns
+    ///
+    /// `true` if file icons were initialized successfully, `false` otherwise.
+    /// Currently only wgpu backend supports file icons.
+    pub fn init_file_icons(&mut self) -> bool {
+        match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(r) => r.init_file_icons(),
+            Self::WebGl2(r) => r.init_file_icons(),
+            Self::Software { renderer, .. } => renderer.init_file_icons(),
+        }
+    }
+
     /// Synchronizes CPU with GPU by waiting for all pending commands to complete.
     ///
     /// For GPU renderers: blocks until GPU is done with pending work.

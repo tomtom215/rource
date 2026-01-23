@@ -228,6 +228,9 @@ pub struct WgpuRenderer {
     /// Instance buffer for text glyphs.
     text_instances: InstanceBuffer,
 
+    /// Instance buffer for file icons (texture array quads).
+    file_icon_instances: InstanceBuffer,
+
     /// GPU bloom post-processing pipeline.
     bloom_pipeline: Option<BloomPipeline>,
 
@@ -579,6 +582,7 @@ impl WgpuRenderer {
         let curve_instances = InstanceBuffer::new(&device, 14, 500, "curve_instances"); // 14 floats = 56 bytes
         let quad_instances = InstanceBuffer::new(&device, 8, 500, "quad_instances"); // 8 floats = 32 bytes
         let text_instances = InstanceBuffer::new(&device, 12, 2000, "text_instances"); // 12 floats = 48 bytes
+        let file_icon_instances = InstanceBuffer::new(&device, 13, 500, "file_icon_instances"); // 13 values = 52 bytes
 
         // Create font atlas
         let font_atlas = FontAtlas::new(&device, &texture_bind_group_layout);
@@ -611,6 +615,7 @@ impl WgpuRenderer {
             quad_instances,
             textured_quad_instances: HashMap::new(),
             text_instances,
+            file_icon_instances,
             bloom_pipeline: None,
             shadow_pipeline: None,
             compute_pipeline: None,
@@ -705,6 +710,7 @@ impl WgpuRenderer {
             || !self.curve_instances.is_empty()
             || !self.quad_instances.is_empty()
             || !self.text_instances.is_empty()
+            || !self.file_icon_instances.is_empty()
             || self.textured_quad_instances.values().any(|b| !b.is_empty());
 
         if has_pending && self.current_encoder.is_some() && self.current_target_view.is_some() {
@@ -1271,6 +1277,29 @@ impl Renderer for WgpuRenderer {
 
     fn load_font(&mut self, data: &[u8]) -> Option<FontId> {
         self.font_cache.load(data)
+    }
+
+    // File icon methods - delegate to icons_methods.rs implementations
+
+    fn init_file_icons(&mut self) -> bool {
+        // Delegate to the implementation in icons_methods.rs
+        Self::init_file_icons(self)
+    }
+
+    fn has_file_icons(&self) -> bool {
+        // Delegate to the implementation in icons_methods.rs
+        Self::has_file_icons(self)
+    }
+
+    fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
+        // If file icons are initialized, use the texture array pipeline
+        if self.file_icon_array.is_some() {
+            // Delegate to the implementation in icons_methods.rs
+            Self::draw_file_icon(self, center.x, center.y, size, extension, Some(color));
+        } else {
+            // Fallback to colored disc
+            self.draw_disc(center, size * 0.5, color);
+        }
     }
 }
 

@@ -360,8 +360,15 @@ pub fn render_files<R: Renderer + ?Sized>(
             let border_color = Color::new(color.r * 0.6, color.g * 0.6, color.b * 0.6, color.a);
             renderer.draw_disc(screen_pos, effective_radius + 0.5, border_color);
 
-            // Main file disc
-            renderer.draw_disc(screen_pos, effective_radius, color);
+            // Main file icon/disc - use file icons if available, otherwise colored disc
+            // The icon size should be the diameter (2x radius)
+            let icon_size = effective_radius * 2.0;
+            if let Some(ext) = file.extension() {
+                renderer.draw_file_icon(screen_pos, icon_size, ext, color);
+            } else {
+                // No extension - draw as colored disc
+                renderer.draw_disc(screen_pos, effective_radius, color);
+            }
 
             // Bright highlight for active/touched files
             if is_touched {

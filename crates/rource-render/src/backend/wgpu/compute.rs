@@ -274,11 +274,16 @@ impl PhysicsParams {
 }
 
 /// Bounds parameters for the bounds calculation shader.
+///
+/// This struct must match the WGSL std140 layout:
+/// - `entity_count` at offset 0 (4 bytes)
+/// - `vec3<u32>` padding at offset 16 (aligned, 12 bytes)
+/// - Total size: 32 bytes (rounded to next multiple of 16)
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct BoundsParams {
     entity_count: u32,
-    _padding: [u32; 3],
+    _padding: [u32; 7], // Pad to 32 bytes for std140 uniform buffer alignment
 }
 
 /// Computed bounds result from GPU.
@@ -880,7 +885,7 @@ impl ComputePipeline {
         // Upload bounds parameters
         let params = BoundsParams {
             entity_count: self.entity_count as u32,
-            _padding: [0; 3],
+            _padding: [0; 7],
         };
         queue.write_buffer(&self.bounds_params_buffer, 0, bytemuck::bytes_of(&params));
 
@@ -1298,11 +1303,16 @@ mod tests {
     fn test_bounds_params_padding() {
         let params = BoundsParams {
             entity_count: 42,
-            _padding: [0; 3],
+            _padding: [0; 7],
         };
 
-        // Should be 16 bytes (4 + 12 padding)
-        assert_eq!(std::mem::size_of::<BoundsParams>(), 16);
+        // Should be 32 bytes (4 + 28 padding) for std140 uniform buffer alignment
+        // WGSL vec3<u32> is aligned to 16 bytes, so:
+        // - entity_count at offset 0 (4 bytes)
+        // - padding to offset 16 (12 bytes)
+        // - vec3<u32> at offset 16 (12 bytes)
+        // - struct size rounded to 32 (next multiple of 16)
+        assert_eq!(std::mem::size_of::<BoundsParams>(), 32);
 
         let bytes = bytemuck::bytes_of(&params);
         assert_eq!(bytes[0..4], 42u32.to_le_bytes());
