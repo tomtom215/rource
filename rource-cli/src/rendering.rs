@@ -69,6 +69,493 @@ const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.02;
 /// Minimum zoom level for rendering directory-to-parent connections.
 const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.01;
 
+// =============================================================================
+// Pure Helper Functions (testable without renderer)
+// =============================================================================
+
+// These pure functions are extracted for unit testing. They are not called directly
+// from the main rendering code, which uses optimized inline versions.
+#[allow(dead_code)]
+#[allow(clippy::wildcard_imports)]
+mod helpers {
+    use super::*;
+
+    // ---- Directory Rendering Helpers ----
+
+    /// Computes the depth factor for a directory (0.0 to 1.0).
+    ///
+    /// Deeper directories have higher values, capped at depth 6.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_depth_factor(depth: u32) -> f32 {
+        (depth as f32 / 6.0).min(1.0)
+    }
+
+    /// Computes the base brightness for directory coloring.
+    ///
+    /// Shallower directories are brighter.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_base_brightness(depth_factor: f32) -> f32 {
+        0.25 + 0.1 * (1.0 - depth_factor)
+    }
+
+    /// Computes the directory node color based on depth.
+    ///
+    /// Returns a slightly blue-tinted color that gets darker with depth.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_color(depth: u32) -> Color {
+        let depth_factor = compute_dir_depth_factor(depth);
+        let base_brightness = compute_dir_base_brightness(depth_factor);
+        Color::new(
+            base_brightness * 0.9,
+            base_brightness,
+            base_brightness * 1.1 + 0.05,
+            0.55,
+        )
+    }
+
+    /// Computes the glow color for directory background effect.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_glow_color(dir_color: Color) -> Color {
+        dir_color.with_alpha(0.1)
+    }
+
+    /// Computes the center dot color for directory nodes.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_center_color(dir_color: Color) -> Color {
+        dir_color.with_alpha(0.4)
+    }
+
+    /// Computes the branch width based on depth.
+    ///
+    /// Branches are thicker near the root.
+    #[inline]
+    #[must_use]
+    pub fn compute_branch_width(depth_factor: f32) -> f32 {
+        (1.5 - depth_factor * 0.5).max(0.8)
+    }
+
+    /// Computes the branch color for directory connections.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_branch_color(dir_color: Color) -> Color {
+        Color::new(
+            dir_color.r * 1.1,
+            dir_color.g * 1.1,
+            dir_color.b * 1.2,
+            0.35,
+        )
+    }
+
+    /// Determines if a directory should be rendered based on LOD.
+    ///
+    /// Root directory (depth 0) is always rendered.
+    #[inline]
+    #[must_use]
+    pub fn should_render_dir(radius: f32, depth: u32) -> bool {
+        depth == 0 || radius >= LOD_MIN_DIR_RADIUS
+    }
+
+    /// Determines if directory branches should be rendered at this zoom level.
+    #[inline]
+    #[must_use]
+    pub fn should_render_dir_branches(zoom: f32, hide_tree: bool) -> bool {
+        !hide_tree && zoom >= LOD_MIN_ZOOM_FOR_DIR_BRANCHES
+    }
+
+    /// Determines if a directory label should be rendered.
+    #[inline]
+    #[must_use]
+    pub fn should_render_dir_label(
+        hide_dirnames: bool,
+        depth: u32,
+        dir_name_depth: u32,
+        radius: f32,
+    ) -> bool {
+        !hide_dirnames && depth <= dir_name_depth && radius >= LOD_MIN_DIR_LABEL_RADIUS
+    }
+
+    /// Computes the label position for a directory.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_label_position(screen_pos: Vec2, radius: f32, font_size: f32) -> Vec2 {
+        Vec2::new(screen_pos.x + radius + 4.0, screen_pos.y - font_size * 0.3)
+    }
+
+    // ---- File Rendering Helpers ----
+
+    /// Computes the effective file radius with minimum size enforcement.
+    #[inline]
+    #[must_use]
+    pub fn compute_effective_file_radius(radius: f32) -> f32 {
+        radius.max(2.0)
+    }
+
+    /// Computes the glow intensity based on whether file is touched.
+    #[inline]
+    #[must_use]
+    pub fn compute_file_glow_intensity(is_touched: bool) -> f32 {
+        if is_touched {
+            0.25
+        } else {
+            0.08
+        }
+    }
+
+    /// Computes the file glow color.
+    #[inline]
+    #[must_use]
+    pub fn compute_file_glow_color(color: Color, glow_intensity: f32, alpha: f32) -> Color {
+        color.with_alpha(glow_intensity * alpha)
+    }
+
+    /// Computes the file border color (darker version of the file color).
+    #[inline]
+    #[must_use]
+    pub fn compute_file_border_color(color: Color) -> Color {
+        Color::new(color.r * 0.6, color.g * 0.6, color.b * 0.6, color.a)
+    }
+
+    /// Computes label priority for a file (higher = more important).
+    #[inline]
+    #[must_use]
+    pub fn compute_file_label_priority(radius: f32, alpha: f32, is_touched: bool) -> f32 {
+        let activity_bonus = if is_touched { 100.0 } else { 0.0 };
+        radius * alpha * 10.0 + activity_bonus
+    }
+
+    /// Determines if a file should be rendered based on LOD.
+    #[inline]
+    #[must_use]
+    pub fn should_render_file(radius: f32) -> bool {
+        radius >= LOD_MIN_FILE_RADIUS
+    }
+
+    /// Determines if file branches should be rendered at this zoom level.
+    #[inline]
+    #[must_use]
+    pub fn should_render_file_branches(zoom: f32, hide_tree: bool) -> bool {
+        !hide_tree && zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES
+    }
+
+    /// Determines if a file should have its label collected for rendering.
+    #[inline]
+    #[must_use]
+    pub fn should_add_file_label(show_filenames: bool, alpha: f32, zoom: f32, radius: f32) -> bool {
+        show_filenames && alpha > 0.3 && zoom > 0.15 && radius >= LOD_MIN_FILE_LABEL_RADIUS
+    }
+
+    /// Computes the file branch color (matches file color but semi-transparent).
+    #[inline]
+    #[must_use]
+    pub fn compute_file_branch_color(color: Color, alpha: f32) -> Color {
+        Color::new(color.r * 0.7, color.g * 0.7, color.b * 0.7, 0.25 * alpha)
+    }
+
+    // ---- User Rendering Helpers ----
+
+    /// Computes the effective user radius with minimum size enforcement.
+    #[inline]
+    #[must_use]
+    pub fn compute_effective_user_radius(radius: f32) -> f32 {
+        radius.max(5.0)
+    }
+
+    /// Computes the user border color.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_border_color(color: Color, alpha: f32) -> Color {
+        Color::new(color.r * 0.5, color.g * 0.5, color.b * 0.5, alpha)
+    }
+
+    /// Computes the glow radius for a specific glow layer.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_glow_radius(effective_radius: f32, layer: u32) -> f32 {
+        effective_radius * (1.3 + layer as f32 * 0.15)
+    }
+
+    /// Computes the glow alpha for a specific glow layer.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_glow_alpha(alpha: f32, layer: u32) -> f32 {
+        alpha * 0.15 * (1.0 - layer as f32 * 0.25)
+    }
+
+    /// Computes the font size for user initials.
+    #[inline]
+    #[must_use]
+    pub fn compute_initials_font_size(effective_radius: f32) -> f32 {
+        (effective_radius * 0.55).clamp(8.0, 18.0)
+    }
+
+    /// Computes the text width estimate for initials.
+    #[inline]
+    #[must_use]
+    pub fn compute_initials_text_width(initials_len: usize, font_size: f32) -> f32 {
+        initials_len as f32 * font_size * 0.5
+    }
+
+    /// Computes the position for user initials (in body area).
+    #[inline]
+    #[must_use]
+    pub fn compute_initials_position(
+        screen_pos: Vec2,
+        effective_radius: f32,
+        text_width: f32,
+    ) -> Vec2 {
+        Vec2::new(
+            screen_pos.x - text_width * 0.5,
+            screen_pos.y + effective_radius * 0.15,
+        )
+    }
+
+    /// Determines if a user should be rendered based on LOD.
+    #[inline]
+    #[must_use]
+    pub fn should_render_user(radius: f32) -> bool {
+        radius >= LOD_MIN_USER_RADIUS
+    }
+
+    /// Determines if a user label should be rendered based on LOD.
+    #[inline]
+    #[must_use]
+    pub fn should_render_user_label(show_usernames: bool, radius: f32) -> bool {
+        show_usernames && radius >= LOD_MIN_USER_LABEL_RADIUS
+    }
+
+    /// Determines if user initials should be rendered (for avatars without textures).
+    #[inline]
+    #[must_use]
+    pub fn should_render_initials(effective_radius: f32) -> bool {
+        effective_radius > 14.0
+    }
+
+    /// Computes the user label position.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_label_position(
+        screen_pos: Vec2,
+        effective_radius: f32,
+        font_size: f32,
+    ) -> Vec2 {
+        Vec2::new(
+            screen_pos.x + effective_radius + 5.0,
+            screen_pos.y - font_size * 0.3,
+        )
+    }
+
+    // ---- Progress Bar Helpers ----
+
+    /// Computes the progress ratio (0.0 to 1.0).
+    #[inline]
+    #[must_use]
+    pub fn compute_progress(current_commit: usize, total_commits: usize) -> f32 {
+        current_commit as f32 / total_commits.max(1) as f32
+    }
+
+    // ---- Stats Indicator Helpers ----
+
+    /// Computes the file count indicator bar width (logarithmic scale).
+    #[inline]
+    #[must_use]
+    pub fn compute_file_indicator_bar(file_count: usize) -> f32 {
+        if file_count > 0 {
+            ((file_count as f32).ln() / 10.0).min(1.0)
+        } else {
+            0.0
+        }
+    }
+
+    /// Computes the user count indicator bar width (logarithmic scale).
+    #[inline]
+    #[must_use]
+    pub fn compute_user_indicator_bar(user_count: usize) -> f32 {
+        if user_count > 0 {
+            ((user_count as f32).ln() / 5.0).min(1.0)
+        } else {
+            0.0
+        }
+    }
+
+    // ---- Title/Text Helpers ----
+
+    /// Computes the X position for a centered title.
+    #[inline]
+    #[must_use]
+    pub fn compute_title_x_position(width: f32, title_len: usize, title_size: f32) -> f32 {
+        ((width / 2.0) - (title_len as f32 * title_size * 0.3)).max(10.0)
+    }
+
+    /// Determines if a speed indicator should be displayed.
+    #[inline]
+    #[must_use]
+    pub fn should_show_speed_indicator(speed: f32) -> bool {
+        (speed - 1.0).abs() > 0.01
+    }
+
+    /// Formats the stats text for display.
+    #[inline]
+    #[must_use]
+    pub fn format_stats_text(
+        current_commit: usize,
+        total_commits: usize,
+        file_count: usize,
+        user_count: usize,
+    ) -> String {
+        format!(
+            "{current_commit}/{total_commits} commits | {file_count} files | {user_count} users"
+        )
+    }
+
+    // ---- Legend Helpers ----
+
+    /// Computes the legend height based on number of entries.
+    #[inline]
+    #[must_use]
+    pub fn compute_legend_height(entry_count: usize, entry_height: f32, padding: f32) -> f32 {
+        entry_count as f32 * entry_height + padding * 2.0
+    }
+
+    /// Computes the legend position (bottom-right corner).
+    #[inline]
+    #[must_use]
+    pub fn compute_legend_position(
+        screen_width: f32,
+        screen_height: f32,
+        legend_width: f32,
+        legend_height: f32,
+        padding: f32,
+    ) -> (f32, f32) {
+        let x = screen_width - legend_width - padding;
+        let y = screen_height - legend_height - 20.0;
+        (x, y)
+    }
+
+    /// Truncates an extension name for display (max 8 chars).
+    #[inline]
+    #[must_use]
+    pub fn truncate_extension(ext: &str) -> String {
+        if ext.len() > 8 {
+            format!("{}..", &ext[..6])
+        } else {
+            ext.to_string()
+        }
+    }
+
+    // ---- Watermark Helpers ----
+
+    /// Computes the total height for watermark text block.
+    #[inline]
+    #[must_use]
+    pub fn compute_watermark_total_height(has_subtext: bool, line_height: f32) -> f32 {
+        if has_subtext {
+            line_height * 2.0
+        } else {
+            line_height
+        }
+    }
+
+    /// Computes the watermark position based on corner setting.
+    #[inline]
+    #[must_use]
+    pub fn compute_watermark_position_cli(
+        position: WatermarkPosition,
+        margin: f32,
+        max_width: f32,
+        total_height: f32,
+        screen_width: f32,
+        screen_height: f32,
+    ) -> (f32, f32) {
+        match position {
+            WatermarkPosition::TopLeft => (margin, margin),
+            WatermarkPosition::TopRight => (screen_width - max_width - margin, margin),
+            WatermarkPosition::BottomLeft => (margin, screen_height - total_height - margin),
+            WatermarkPosition::BottomRight => (
+                screen_width - max_width - margin,
+                screen_height - total_height - margin,
+            ),
+        }
+    }
+
+    /// Computes the X position for subtext (right-aligned for right corners).
+    #[inline]
+    #[must_use]
+    pub fn compute_subtext_x(
+        position: WatermarkPosition,
+        x: f32,
+        max_width: f32,
+        subtext_width: f32,
+    ) -> f32 {
+        match position {
+            WatermarkPosition::TopLeft | WatermarkPosition::BottomLeft => x,
+            WatermarkPosition::TopRight | WatermarkPosition::BottomRight => {
+                x + (max_width - subtext_width)
+            }
+        }
+    }
+
+    // ---- Label Shadow Helpers ----
+
+    /// Standard shadow color for labels.
+    pub const LABEL_SHADOW_COLOR: Color = Color {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.5,
+    };
+
+    /// Shadow offset for labels (1 pixel diagonal).
+    pub const LABEL_SHADOW_OFFSET: Vec2 = Vec2 { x: 1.0, y: 1.0 };
+
+    /// Computes the shadow color with adjusted alpha.
+    #[inline]
+    #[must_use]
+    pub fn compute_label_shadow_color(alpha: f32) -> Color {
+        Color::new(0.0, 0.0, 0.0, 0.5 * alpha)
+    }
+
+    /// Computes the file label color.
+    #[inline]
+    #[must_use]
+    pub fn compute_file_label_color(alpha: f32) -> Color {
+        Color::new(0.95, 0.95, 0.95, 0.8 * alpha)
+    }
+
+    /// Computes the user label color.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_label_color(alpha: f32) -> Color {
+        Color::new(1.0, 1.0, 1.0, 0.9 * alpha)
+    }
+
+    /// Computes the directory label shadow color.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_label_shadow_color() -> Color {
+        Color::new(0.0, 0.0, 0.0, 0.4)
+    }
+
+    /// Computes the directory label color.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_label_color() -> Color {
+        Color::new(0.75, 0.78, 0.85, 0.7)
+    }
+}
+
+// Re-export helpers for tests
+#[allow(unused_imports)]
+pub use helpers::*;
+
+// =============================================================================
+// Render Functions
+// =============================================================================
+
 /// Render a frame in windowed mode.
 ///
 /// This function renders all scene entities, UI overlays, and applies
@@ -1107,6 +1594,10 @@ mod tests {
     use super::*;
     use rource_render::visual::{catmull_rom_interpolate, catmull_rom_spline, create_branch_curve};
 
+    // ========================================================================
+    // Existing tests
+    // ========================================================================
+
     #[test]
     fn test_get_initials() {
         assert_eq!(get_initials("John Doe"), "JD");
@@ -1144,11 +1635,8 @@ mod tests {
             Vec2::new(20.0, 0.0),
         ];
         let result = catmull_rom_spline(&points, 5);
-        // Should have more points than input
         assert!(result.len() > 3);
-        // First point should match input
         assert_eq!(result[0], points[0]);
-        // Last point should match input
         assert_eq!(*result.last().unwrap(), *points.last().unwrap());
     }
 
@@ -1159,12 +1647,10 @@ mod tests {
         let p2 = Vec2::new(2.0, 0.0);
         let p3 = Vec2::new(3.0, 1.0);
 
-        // At t=0, should be at p1
         let result = catmull_rom_interpolate(p0, p1, p2, p3, 0.0);
         assert!((result.x - p1.x).abs() < 0.001);
         assert!((result.y - p1.y).abs() < 0.001);
 
-        // At t=1, should be at p2
         let result = catmull_rom_interpolate(p0, p1, p2, p3, 1.0);
         assert!((result.x - p2.x).abs() < 0.001);
         assert!((result.y - p2.y).abs() < 0.001);
@@ -1175,7 +1661,6 @@ mod tests {
         let start = Vec2::new(0.0, 0.0);
         let end = Vec2::new(0.5, 0.5);
         let result = create_branch_curve(start, end, 0.4);
-        // Short distances should return simple 2-point line
         assert_eq!(result.len(), 2);
     }
 
@@ -1184,11 +1669,506 @@ mod tests {
         let start = Vec2::new(0.0, 0.0);
         let end = Vec2::new(100.0, 100.0);
         let result = create_branch_curve(start, end, 0.4);
-        // Should create multiple interpolated points
         assert!(result.len() > 2);
-        // First point should be start
         assert_eq!(result[0], start);
-        // Last point should be end
         assert_eq!(*result.last().unwrap(), end);
+    }
+
+    // ========================================================================
+    // Directory Rendering Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_dir_depth_factor_zero() {
+        assert!((compute_dir_depth_factor(0) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_dir_depth_factor_mid() {
+        assert!((compute_dir_depth_factor(3) - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_dir_depth_factor_capped() {
+        // Depth 6 should give 1.0, depth 10 should also give 1.0 (capped)
+        assert!((compute_dir_depth_factor(6) - 1.0).abs() < 0.001);
+        assert!((compute_dir_depth_factor(10) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_dir_base_brightness() {
+        // At depth_factor=0 (root), brightness is highest
+        let brightness_root = compute_dir_base_brightness(0.0);
+        // At depth_factor=1 (deep), brightness is lowest
+        let brightness_deep = compute_dir_base_brightness(1.0);
+        assert!(brightness_root > brightness_deep);
+        assert!((brightness_root - 0.35).abs() < 0.001);
+        assert!((brightness_deep - 0.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_dir_color_structure() {
+        let color = compute_dir_color(0);
+        assert!(color.r > 0.0 && color.r < 1.0);
+        assert!(color.g > 0.0 && color.g < 1.0);
+        assert!(color.b > 0.0 && color.b < 1.0);
+        assert!((color.a - 0.55).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_dir_color_blue_tint() {
+        // Directory color should have a slight blue tint (b > g > r)
+        let color = compute_dir_color(3);
+        assert!(color.b >= color.g);
+    }
+
+    #[test]
+    fn test_compute_dir_glow_color() {
+        let dir_color = Color::new(0.5, 0.6, 0.7, 0.55);
+        let glow = compute_dir_glow_color(dir_color);
+        assert!((glow.r - dir_color.r).abs() < 0.001);
+        assert!((glow.a - 0.1).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_dir_center_color() {
+        let dir_color = Color::new(0.5, 0.6, 0.7, 0.55);
+        let center = compute_dir_center_color(dir_color);
+        assert!((center.a - 0.4).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_branch_width() {
+        // At root (depth_factor=0), branch is thickest
+        assert!((compute_branch_width(0.0) - 1.5).abs() < 0.001);
+        // At deep (depth_factor=1), branch is thinnest
+        assert!((compute_branch_width(1.0) - 1.0).abs() < 0.001);
+        // Never goes below 0.8
+        assert!(compute_branch_width(2.0) >= 0.8);
+    }
+
+    #[test]
+    fn test_compute_dir_branch_color() {
+        let dir_color = Color::new(0.3, 0.3, 0.3, 0.55);
+        let branch = compute_dir_branch_color(dir_color);
+        // Branch is brighter (multiplied by 1.1-1.2)
+        assert!(branch.r > dir_color.r);
+        assert!(branch.g > dir_color.g);
+        assert!(branch.b > dir_color.b);
+        assert!((branch.a - 0.35).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_should_render_dir_root_always() {
+        // Root (depth=0) always renders regardless of radius
+        assert!(should_render_dir(0.001, 0));
+        assert!(should_render_dir(0.0, 0));
+    }
+
+    #[test]
+    fn test_should_render_dir_by_radius() {
+        // Non-root needs minimum radius
+        assert!(!should_render_dir(0.01, 1));
+        assert!(should_render_dir(0.1, 1));
+    }
+
+    #[test]
+    fn test_should_render_dir_branches() {
+        // Hidden tree should not render
+        assert!(!should_render_dir_branches(1.0, true));
+        // Low zoom should not render
+        assert!(!should_render_dir_branches(0.005, false));
+        // Normal zoom should render
+        assert!(should_render_dir_branches(0.1, false));
+    }
+
+    #[test]
+    fn test_should_render_dir_label() {
+        // Hidden dirnames
+        assert!(!should_render_dir_label(true, 0, 3, 10.0));
+        // Depth exceeds limit
+        assert!(!should_render_dir_label(false, 5, 3, 10.0));
+        // Radius too small
+        assert!(!should_render_dir_label(false, 1, 3, 2.0));
+        // Should render
+        assert!(should_render_dir_label(false, 1, 3, 10.0));
+    }
+
+    #[test]
+    fn test_compute_dir_label_position() {
+        let pos = compute_dir_label_position(Vec2::new(100.0, 100.0), 10.0, 12.0);
+        assert!((pos.x - 114.0).abs() < 0.001); // 100 + 10 + 4
+        assert!((pos.y - 96.4).abs() < 0.1); // 100 - 12*0.3
+    }
+
+    // ========================================================================
+    // File Rendering Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_effective_file_radius() {
+        assert!((compute_effective_file_radius(5.0) - 5.0).abs() < 0.001);
+        assert!((compute_effective_file_radius(0.5) - 2.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_file_glow_intensity() {
+        assert!((compute_file_glow_intensity(true) - 0.25).abs() < 0.001);
+        assert!((compute_file_glow_intensity(false) - 0.08).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_file_glow_color() {
+        let color = Color::new(1.0, 0.5, 0.0, 1.0);
+        let glow = compute_file_glow_color(color, 0.25, 0.8);
+        assert!((glow.r - 1.0).abs() < 0.001);
+        assert!((glow.a - 0.2).abs() < 0.001); // 0.25 * 0.8
+    }
+
+    #[test]
+    fn test_compute_file_border_color() {
+        let color = Color::new(1.0, 0.5, 0.25, 0.9);
+        let border = compute_file_border_color(color);
+        assert!((border.r - 0.6).abs() < 0.001);
+        assert!((border.g - 0.3).abs() < 0.001);
+        assert!((border.a - 0.9).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_file_label_priority() {
+        // Active file gets bonus
+        let active = compute_file_label_priority(5.0, 1.0, true);
+        let inactive = compute_file_label_priority(5.0, 1.0, false);
+        assert!(active > inactive);
+        assert!((active - inactive - 100.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_should_render_file() {
+        assert!(!should_render_file(0.05));
+        assert!(should_render_file(0.2));
+    }
+
+    #[test]
+    fn test_should_render_file_branches() {
+        assert!(!should_render_file_branches(1.0, true));
+        assert!(!should_render_file_branches(0.01, false));
+        assert!(should_render_file_branches(0.1, false));
+    }
+
+    #[test]
+    fn test_should_add_file_label() {
+        // All conditions must be met
+        assert!(!should_add_file_label(false, 0.5, 0.5, 5.0));
+        assert!(!should_add_file_label(true, 0.2, 0.5, 5.0));
+        assert!(!should_add_file_label(true, 0.5, 0.1, 5.0));
+        assert!(!should_add_file_label(true, 0.5, 0.5, 1.0));
+        assert!(should_add_file_label(true, 0.5, 0.5, 5.0));
+    }
+
+    #[test]
+    fn test_compute_file_branch_color() {
+        let color = Color::new(1.0, 0.5, 0.0, 1.0);
+        let branch = compute_file_branch_color(color, 0.8);
+        assert!((branch.r - 0.7).abs() < 0.001);
+        assert!((branch.a - 0.2).abs() < 0.001); // 0.25 * 0.8
+    }
+
+    // ========================================================================
+    // User Rendering Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_effective_user_radius() {
+        assert!((compute_effective_user_radius(10.0) - 10.0).abs() < 0.001);
+        assert!((compute_effective_user_radius(3.0) - 5.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_user_border_color() {
+        let color = Color::new(1.0, 0.5, 0.0, 1.0);
+        let border = compute_user_border_color(color, 0.9);
+        assert!((border.r - 0.5).abs() < 0.001);
+        assert!((border.g - 0.25).abs() < 0.001);
+        assert!((border.a - 0.9).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_user_glow_radius() {
+        let r = compute_user_glow_radius(10.0, 0);
+        assert!((r - 13.0).abs() < 0.001); // 10 * (1.3 + 0*0.15)
+        let r2 = compute_user_glow_radius(10.0, 2);
+        assert!((r2 - 16.0).abs() < 0.001); // 10 * (1.3 + 2*0.15)
+    }
+
+    #[test]
+    fn test_compute_user_glow_alpha() {
+        let a = compute_user_glow_alpha(1.0, 0);
+        assert!((a - 0.15).abs() < 0.001);
+        let a2 = compute_user_glow_alpha(1.0, 2);
+        assert!((a2 - 0.075).abs() < 0.001); // 0.15 * (1 - 0.5)
+    }
+
+    #[test]
+    fn test_compute_initials_font_size() {
+        // Clamped between 8 and 18
+        assert!((compute_initials_font_size(10.0) - 8.0).abs() < 0.001);
+        assert!((compute_initials_font_size(40.0) - 18.0).abs() < 0.001);
+        assert!((compute_initials_font_size(25.0) - 13.75).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_initials_text_width() {
+        assert!((compute_initials_text_width(2, 12.0) - 12.0).abs() < 0.001);
+        assert!((compute_initials_text_width(3, 10.0) - 15.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_initials_position() {
+        let pos = compute_initials_position(Vec2::new(100.0, 100.0), 20.0, 10.0);
+        assert!((pos.x - 95.0).abs() < 0.001); // 100 - 10*0.5
+        assert!((pos.y - 103.0).abs() < 0.001); // 100 + 20*0.15
+    }
+
+    #[test]
+    fn test_should_render_user() {
+        assert!(!should_render_user(0.2));
+        assert!(should_render_user(0.5));
+    }
+
+    #[test]
+    fn test_should_render_user_label() {
+        assert!(!should_render_user_label(false, 10.0));
+        assert!(!should_render_user_label(true, 3.0));
+        assert!(should_render_user_label(true, 10.0));
+    }
+
+    #[test]
+    fn test_should_render_initials() {
+        assert!(!should_render_initials(10.0));
+        assert!(should_render_initials(20.0));
+    }
+
+    #[test]
+    fn test_compute_user_label_position() {
+        let pos = compute_user_label_position(Vec2::new(100.0, 100.0), 15.0, 12.0);
+        assert!((pos.x - 120.0).abs() < 0.001); // 100 + 15 + 5
+        assert!((pos.y - 96.4).abs() < 0.1); // 100 - 12*0.3
+    }
+
+    // ========================================================================
+    // Progress Bar Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_progress() {
+        assert!((compute_progress(0, 100) - 0.0).abs() < 0.001);
+        assert!((compute_progress(50, 100) - 0.5).abs() < 0.001);
+        assert!((compute_progress(100, 100) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_progress_zero_total() {
+        // Should not panic, returns 0
+        assert!((compute_progress(0, 0) - 0.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Stats Indicator Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_file_indicator_bar() {
+        assert!((compute_file_indicator_bar(0) - 0.0).abs() < 0.001);
+        assert!(compute_file_indicator_bar(100) > 0.0);
+        // Capped at 1.0
+        assert!(compute_file_indicator_bar(100_000) <= 1.0);
+    }
+
+    #[test]
+    fn test_compute_user_indicator_bar() {
+        assert!((compute_user_indicator_bar(0) - 0.0).abs() < 0.001);
+        assert!(compute_user_indicator_bar(10) > 0.0);
+        // Capped at 1.0
+        assert!(compute_user_indicator_bar(10000) <= 1.0);
+    }
+
+    // ========================================================================
+    // Title/Text Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_title_x_position() {
+        let x = compute_title_x_position(800.0, 10, 20.0);
+        // (800/2) - (10 * 20 * 0.3) = 400 - 60 = 340
+        assert!((x - 340.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_title_x_position_min() {
+        // Long title should still be at least 10px from edge
+        let x = compute_title_x_position(100.0, 50, 20.0);
+        assert!((x - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_should_show_speed_indicator() {
+        assert!(!should_show_speed_indicator(1.0));
+        assert!(!should_show_speed_indicator(1.005));
+        assert!(should_show_speed_indicator(1.5));
+        assert!(should_show_speed_indicator(0.5));
+    }
+
+    #[test]
+    fn test_format_stats_text() {
+        let text = format_stats_text(50, 100, 200, 10);
+        assert_eq!(text, "50/100 commits | 200 files | 10 users");
+    }
+
+    // ========================================================================
+    // Legend Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_legend_height() {
+        let h = compute_legend_height(5, 20.0, 10.0);
+        assert!((h - 120.0).abs() < 0.001); // 5*20 + 2*10
+    }
+
+    #[test]
+    fn test_compute_legend_position() {
+        let (x, y) = compute_legend_position(800.0, 600.0, 120.0, 200.0, 10.0);
+        assert!((x - 670.0).abs() < 0.001); // 800 - 120 - 10
+        assert!((y - 380.0).abs() < 0.001); // 600 - 200 - 20
+    }
+
+    #[test]
+    fn test_truncate_extension() {
+        assert_eq!(truncate_extension("rs"), "rs");
+        assert_eq!(truncate_extension("typescript"), "typesc..");
+    }
+
+    // ========================================================================
+    // Watermark Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_watermark_total_height() {
+        let h1 = compute_watermark_total_height(false, 20.0);
+        assert!((h1 - 20.0).abs() < 0.001);
+        let h2 = compute_watermark_total_height(true, 20.0);
+        assert!((h2 - 40.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_watermark_position_cli_top_left() {
+        let (x, y) = compute_watermark_position_cli(
+            WatermarkPosition::TopLeft,
+            10.0,
+            100.0,
+            40.0,
+            800.0,
+            600.0,
+        );
+        assert!((x - 10.0).abs() < 0.001);
+        assert!((y - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_watermark_position_cli_top_right() {
+        let (x, y) = compute_watermark_position_cli(
+            WatermarkPosition::TopRight,
+            10.0,
+            100.0,
+            40.0,
+            800.0,
+            600.0,
+        );
+        assert!((x - 690.0).abs() < 0.001); // 800 - 100 - 10
+        assert!((y - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_watermark_position_cli_bottom_left() {
+        let (x, y) = compute_watermark_position_cli(
+            WatermarkPosition::BottomLeft,
+            10.0,
+            100.0,
+            40.0,
+            800.0,
+            600.0,
+        );
+        assert!((x - 10.0).abs() < 0.001);
+        assert!((y - 550.0).abs() < 0.001); // 600 - 40 - 10
+    }
+
+    #[test]
+    fn test_compute_watermark_position_cli_bottom_right() {
+        let (x, y) = compute_watermark_position_cli(
+            WatermarkPosition::BottomRight,
+            10.0,
+            100.0,
+            40.0,
+            800.0,
+            600.0,
+        );
+        assert!((x - 690.0).abs() < 0.001);
+        assert!((y - 550.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_subtext_x_left() {
+        let x = compute_subtext_x(WatermarkPosition::TopLeft, 10.0, 100.0, 50.0);
+        assert!((x - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_subtext_x_right() {
+        let x = compute_subtext_x(WatermarkPosition::TopRight, 10.0, 100.0, 50.0);
+        assert!((x - 60.0).abs() < 0.001); // 10 + (100 - 50)
+    }
+
+    // ========================================================================
+    // Label Color Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_label_shadow_color() {
+        let shadow = compute_label_shadow_color(0.8);
+        assert!((shadow.a - 0.4).abs() < 0.001); // 0.5 * 0.8
+    }
+
+    #[test]
+    fn test_compute_file_label_color() {
+        let color = compute_file_label_color(0.9);
+        assert!((color.r - 0.95).abs() < 0.001);
+        assert!((color.a - 0.72).abs() < 0.001); // 0.8 * 0.9
+    }
+
+    #[test]
+    fn test_compute_user_label_color() {
+        let color = compute_user_label_color(0.8);
+        assert!((color.r - 1.0).abs() < 0.001);
+        assert!((color.a - 0.72).abs() < 0.001); // 0.9 * 0.8
+    }
+
+    #[test]
+    fn test_compute_dir_label_shadow_color() {
+        let shadow = compute_dir_label_shadow_color();
+        assert!((shadow.a - 0.4).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_dir_label_color() {
+        let color = compute_dir_label_color();
+        assert!((color.r - 0.75).abs() < 0.001);
+        assert!((color.a - 0.7).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_label_shadow_constants() {
+        assert!((LABEL_SHADOW_COLOR.a - 0.5).abs() < 0.001);
+        assert!((LABEL_SHADOW_OFFSET.x - 1.0).abs() < 0.001);
+        assert!((LABEL_SHADOW_OFFSET.y - 1.0).abs() < 0.001);
     }
 }

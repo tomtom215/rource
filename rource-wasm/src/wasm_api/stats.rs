@@ -14,6 +14,104 @@ use wasm_bindgen::prelude::*;
 use crate::Rource;
 
 // ============================================================================
+// Helper Functions (testable without Rource instance)
+// ============================================================================
+
+#[allow(dead_code)]
+mod helpers {
+    /// Extracts unique directory paths from a file path.
+    ///
+    /// Given a file path like "src/core/main.rs", this extracts all directory
+    /// components: `["src", "src/core"]`.
+    ///
+    /// # Arguments
+    /// * `path` - The file path to extract directories from
+    ///
+    /// # Returns
+    /// Vector of directory paths from outermost to innermost.
+    #[must_use]
+    pub fn extract_directories(path: &str) -> Vec<String> {
+        let mut directories = Vec::new();
+        let mut current_path = String::new();
+
+        let components: Vec<&str> = path.split('/').collect();
+        for (i, component) in components.iter().enumerate() {
+            if i > 0 {
+                current_path.push('/');
+            }
+            // Check if this is the file (last component) or a directory
+            if i < components.len() - 1 {
+                current_path.push_str(component);
+                directories.push(current_path.clone());
+            }
+        }
+
+        directories
+    }
+
+    /// Counts unique directories from a collection of file paths.
+    ///
+    /// # Arguments
+    /// * `paths` - Iterator of file paths
+    ///
+    /// # Returns
+    /// Total unique directory count including root.
+    #[must_use]
+    pub fn count_unique_directories<'a>(paths: impl Iterator<Item = &'a str>) -> usize {
+        use std::collections::HashSet;
+
+        let mut directories: HashSet<String> = HashSet::new();
+        let mut has_files = false;
+
+        for path in paths {
+            has_files = true;
+            for dir in extract_directories(path) {
+                directories.insert(dir);
+            }
+        }
+
+        if directories.is_empty() && has_files {
+            1 // Just root
+        } else if directories.is_empty() {
+            0 // No files at all
+        } else {
+            directories.len() + 1 // +1 for root
+        }
+    }
+
+    /// Formats frame statistics as a JSON string.
+    ///
+    /// This is a helper for testing the JSON formatting logic.
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    pub fn format_frame_stats(
+        fps: f64,
+        frame_time_ms: f64,
+        total_entities: usize,
+        visible_files: usize,
+        visible_users: usize,
+        visible_directories: usize,
+        active_actions: usize,
+        draw_calls: usize,
+        canvas_width: u32,
+        canvas_height: u32,
+        is_playing: bool,
+        commit_count: usize,
+        current_commit: usize,
+        total_files: usize,
+        total_users: usize,
+        total_directories: usize,
+    ) -> String {
+        format!(
+            r#"{{"fps":{fps:.2},"frameTimeMs":{frame_time_ms:.3},"totalEntities":{total_entities},"visibleFiles":{visible_files},"visibleUsers":{visible_users},"visibleDirectories":{visible_directories},"activeActions":{active_actions},"drawCalls":{draw_calls},"canvasWidth":{canvas_width},"canvasHeight":{canvas_height},"isPlaying":{is_playing},"commitCount":{commit_count},"currentCommit":{current_commit},"totalFiles":{total_files},"totalUsers":{total_users},"totalDirectories":{total_directories}}}"#
+        )
+    }
+}
+
+#[allow(unused_imports)]
+pub use helpers::*;
+
+// ============================================================================
 // Batched Frame Statistics API
 // ============================================================================
 
@@ -244,5 +342,166 @@ impl Rource {
             dirs_pass_lod,
             users_pass_lod,
         )
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Directory Extraction Tests
+    // ========================================================================
+
+    #[test]
+    fn test_extract_directories_simple() {
+        let dirs = extract_directories("src/main.rs");
+        assert_eq!(dirs, vec!["src"]);
+    }
+
+    #[test]
+    fn test_extract_directories_nested() {
+        let dirs = extract_directories("src/core/engine/main.rs");
+        assert_eq!(dirs, vec!["src", "src/core", "src/core/engine"]);
+    }
+
+    #[test]
+    fn test_extract_directories_single_file() {
+        let dirs = extract_directories("README.md");
+        assert!(dirs.is_empty());
+    }
+
+    #[test]
+    fn test_extract_directories_deeply_nested() {
+        let dirs = extract_directories("a/b/c/d/e/f.txt");
+        assert_eq!(dirs, vec!["a", "a/b", "a/b/c", "a/b/c/d", "a/b/c/d/e"]);
+    }
+
+    #[test]
+    fn test_extract_directories_empty_path() {
+        let dirs = extract_directories("");
+        assert!(dirs.is_empty());
+    }
+
+    // ========================================================================
+    // Unique Directory Count Tests
+    // ========================================================================
+
+    #[test]
+    fn test_count_unique_directories_single_file() {
+        let paths = ["src/main.rs"];
+        let count = count_unique_directories(paths.iter().copied());
+        assert_eq!(count, 2); // root + src
+    }
+
+    #[test]
+    fn test_count_unique_directories_multiple_files_same_dir() {
+        let paths = ["src/main.rs", "src/lib.rs", "src/utils.rs"];
+        let count = count_unique_directories(paths.iter().copied());
+        assert_eq!(count, 2); // root + src
+    }
+
+    #[test]
+    fn test_count_unique_directories_multiple_nested() {
+        let paths = [
+            "src/core/main.rs",
+            "src/core/lib.rs",
+            "src/utils/helpers.rs",
+        ];
+        let count = count_unique_directories(paths.iter().copied());
+        assert_eq!(count, 4); // root + src + src/core + src/utils
+    }
+
+    #[test]
+    fn test_count_unique_directories_root_only() {
+        let paths = ["README.md", "Cargo.toml"];
+        let count = count_unique_directories(paths.iter().copied());
+        assert_eq!(count, 1); // Just root
+    }
+
+    #[test]
+    fn test_count_unique_directories_empty() {
+        let paths: [&str; 0] = [];
+        let count = count_unique_directories(paths.iter().copied());
+        assert_eq!(count, 0); // No files
+    }
+
+    #[test]
+    fn test_count_unique_directories_complex() {
+        let paths = [
+            "src/main.rs",
+            "src/lib.rs",
+            "tests/unit/test_a.rs",
+            "tests/unit/test_b.rs",
+            "tests/integration/test_c.rs",
+            "docs/README.md",
+        ];
+        let count = count_unique_directories(paths.iter().copied());
+        // root + src + tests + tests/unit + tests/integration + docs = 6
+        assert_eq!(count, 6);
+    }
+
+    // ========================================================================
+    // Frame Stats Formatting Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_frame_stats_basic() {
+        let json = format_frame_stats(
+            60.0, 16.67, 1500, 200, 5, 50, 10, 6, 1920, 1080, true, 1000, 500, 500, 20, 100,
+        );
+        assert!(json.contains(r#""fps":60.00"#));
+        assert!(json.contains(r#""frameTimeMs":16.670"#));
+        assert!(json.contains(r#""totalEntities":1500"#));
+        assert!(json.contains(r#""isPlaying":true"#));
+    }
+
+    #[test]
+    fn test_format_frame_stats_zero_values() {
+        let json = format_frame_stats(0.0, 0.0, 0, 0, 0, 0, 0, 0, 800, 600, false, 0, 0, 0, 0, 0);
+        assert!(json.contains(r#""fps":0.00"#));
+        assert!(json.contains(r#""isPlaying":false"#));
+        assert!(json.contains(r#""totalEntities":0"#));
+    }
+
+    #[test]
+    fn test_format_frame_stats_large_values() {
+        let json = format_frame_stats(
+            144.0, 6.944, 100_000, 50_000, 1000, 10_000, 5000, 12, 3840, 2160, true, 100_000,
+            99_999, 75_000, 5000, 25_000,
+        );
+        assert!(json.contains(r#""fps":144.00"#));
+        assert!(json.contains(r#""totalEntities":100000"#));
+        assert!(json.contains(r#""canvasWidth":3840"#));
+        assert!(json.contains(r#""canvasHeight":2160"#));
+    }
+
+    #[test]
+    fn test_format_frame_stats_is_valid_json() {
+        let json = format_frame_stats(
+            60.0, 16.67, 1500, 200, 5, 50, 10, 6, 1920, 1080, true, 1000, 500, 500, 20, 100,
+        );
+
+        // Verify it starts and ends correctly
+        assert!(json.starts_with('{'));
+        assert!(json.ends_with('}'));
+
+        // Verify all expected keys are present
+        assert!(json.contains(r#""fps":"#));
+        assert!(json.contains(r#""frameTimeMs":"#));
+        assert!(json.contains(r#""visibleFiles":"#));
+        assert!(json.contains(r#""visibleUsers":"#));
+        assert!(json.contains(r#""visibleDirectories":"#));
+        assert!(json.contains(r#""activeActions":"#));
+        assert!(json.contains(r#""drawCalls":"#));
+        assert!(json.contains(r#""commitCount":"#));
+        assert!(json.contains(r#""currentCommit":"#));
+        assert!(json.contains(r#""totalFiles":"#));
+        assert!(json.contains(r#""totalUsers":"#));
+        assert!(json.contains(r#""totalDirectories":"#));
     }
 }
