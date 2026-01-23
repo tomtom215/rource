@@ -392,6 +392,14 @@ impl InstanceBuffer {
     pub fn label(&self) -> &'static str {
         self.label
     }
+
+    /// Returns a reference to the raw instance data.
+    ///
+    /// This is used by GPU culling to extract instance data for compute shaders.
+    #[inline]
+    pub fn raw_data(&self) -> &[f32] {
+        &self.data
+    }
 }
 
 /// Uniform buffer for shared shader parameters.
@@ -809,6 +817,36 @@ impl StorageBuffer {
         }
     }
 
+    /// Creates a new storage buffer that can also be used as a vertex buffer.
+    ///
+    /// This is used for GPU culling output buffers that need to be bound
+    /// directly as instance data for rendering.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for buffer creation
+    /// * `size` - Buffer size in bytes
+    /// * `label` - Debug label
+    pub fn new_vertex_storage(device: &wgpu::Device, size: usize, label: &'static str) -> Self {
+        let usage = wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::VERTEX
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::COPY_SRC;
+
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(label),
+            size: size as u64,
+            usage,
+            mapped_at_creation: false,
+        });
+
+        Self {
+            buffer,
+            size,
+            label,
+        }
+    }
+
     /// Creates a new storage buffer initialized with data.
     ///
     /// # Arguments
@@ -870,6 +908,14 @@ impl StorageBuffer {
     #[inline]
     pub fn label(&self) -> &'static str {
         self.label
+    }
+
+    /// Returns a buffer slice for the entire buffer.
+    ///
+    /// Used when binding as a vertex buffer after GPU culling.
+    #[inline]
+    pub fn slice(&self) -> wgpu::BufferSlice<'_> {
+        self.buffer.slice(..)
     }
 }
 

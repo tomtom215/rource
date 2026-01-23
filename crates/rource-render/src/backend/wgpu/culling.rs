@@ -4,6 +4,17 @@
 //! The culling pipeline filters instance data based on view bounds, outputting
 //! only visible instances to a compacted buffer for efficient rendering.
 //!
+//! ## Integration Status
+//!
+//! **Fully Integrated** - GPU visibility culling is wired into the render pipeline.
+//!
+//! When enabled via `set_gpu_culling_enabled(true)`, the renderer will:
+//! 1. Dispatch compute shaders to cull instances based on view bounds
+//! 2. Use the culled output buffers with indirect draw commands
+//! 3. Automatically fall back to normal rendering when culling is disabled
+//!
+//! See `culling_methods.rs` for the high-level API and usage examples.
+//!
 //! ## Architecture
 //!
 //! ```text
@@ -130,14 +141,133 @@ impl CullingStats {
     }
 }
 
+/// Buffers for culling a single primitive type.
+///
+/// Each primitive type (circles, lines, quads) needs its own set of buffers
+/// because they have different instance layouts (different floats per instance).
+pub struct PrimitiveCullingBuffers {
+    /// Input buffer (STORAGE) - holds raw instance data.
+    pub input_buffer: StorageBuffer,
+
+    /// Output buffer (STORAGE | VERTEX) - holds compacted visible instances.
+    /// Can be bound directly as vertex buffer for rendering.
+    pub output_buffer: StorageBuffer,
+
+    /// Indirect draw command buffer.
+    pub indirect_buffer: IndirectDrawBuffer,
+
+    /// Bind group for this primitive's buffers.
+    pub bind_group: wgpu::BindGroup,
+
+    /// Capacity in instances.
+    pub capacity: usize,
+
+    /// Floats per instance for this primitive type.
+    pub floats_per_instance: usize,
+}
+
+impl PrimitiveCullingBuffers {
+    /// Creates new culling buffers for a primitive type.
+    pub fn new(
+        device: &wgpu::Device,
+        bind_group_layout: &wgpu::BindGroupLayout,
+        params_buffer: &wgpu::Buffer,
+        primitive: CullPrimitive,
+        capacity: usize,
+    ) -> Self {
+        let floats_per_instance = primitive.floats_per_instance() as usize;
+        let buffer_size = capacity * floats_per_instance * std::mem::size_of::<f32>();
+        let label_prefix = match primitive {
+            CullPrimitive::Circles => "circles",
+            CullPrimitive::Lines => "lines",
+            CullPrimitive::Quads => "quads",
+        };
+
+        // Input buffer: STORAGE only (read by compute shader)
+        let input_buffer = StorageBuffer::new(device, buffer_size, "culling_input_buffer", false);
+
+        // Output buffer: STORAGE | VERTEX (written by compute, read as vertex buffer)
+        let output_buffer =
+            StorageBuffer::new_vertex_storage(device, buffer_size, "culling_output_buffer");
+
+        // Indirect draw command buffer
+        let indirect_buffer = IndirectDrawBuffer::new_with_command(
+            device,
+            &DrawIndirectCommand::empty(),
+            "culling_indirect_buffer",
+        );
+
+        // Create bind group
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some(&format!("{label_prefix}_culling_bind_group")),
+            layout: bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: input_buffer.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: indirect_buffer.buffer().as_entire_binding(),
+                },
+            ],
+        });
+
+        Self {
+            input_buffer,
+            output_buffer,
+            indirect_buffer,
+            bind_group,
+            capacity,
+            floats_per_instance,
+        }
+    }
+
+    /// Returns the output buffer slice for use as a vertex buffer.
+    #[inline]
+    pub fn output_slice(&self) -> wgpu::BufferSlice<'_> {
+        self.output_buffer.slice()
+    }
+
+    /// Returns the indirect draw buffer.
+    #[inline]
+    pub fn indirect(&self) -> &wgpu::Buffer {
+        self.indirect_buffer.buffer()
+    }
+}
+
+impl std::fmt::Debug for PrimitiveCullingBuffers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PrimitiveCullingBuffers")
+            .field("capacity", &self.capacity)
+            .field("floats_per_instance", &self.floats_per_instance)
+            .finish_non_exhaustive()
+    }
+}
+
 /// GPU visibility culling pipeline.
 ///
 /// This pipeline uses compute shaders to cull instances based on view bounds,
 /// outputting only visible instances to a compacted buffer. The indirect draw
 /// command buffer tracks the number of visible instances.
-#[allow(dead_code)]
+///
+/// ## Integration
+///
+/// The pipeline maintains separate buffers for each primitive type (circles, lines, quads).
+/// Output buffers have VERTEX usage so they can be bound directly for rendering.
+/// Use `dispatch_all()` to cull all primitives, then use `circles()`, `lines()`, `quads()`
+/// to get the output buffers for rendering with `draw_indirect()`.
 pub struct VisibilityCullingPipeline {
     /// Compute shader module (retained for potential hot-reload support).
+    #[allow(dead_code)]
     shader_module: wgpu::ShaderModule,
 
     /// Pipeline for resetting indirect draw commands.
@@ -158,26 +288,21 @@ pub struct VisibilityCullingPipeline {
     /// Uniform buffer for cull parameters.
     params_buffer: wgpu::Buffer,
 
-    /// Input instance buffer (raw data).
-    input_buffer: Option<StorageBuffer>,
-
-    /// Output instance buffer (compacted visible instances).
-    output_buffer: Option<StorageBuffer>,
-
-    /// Indirect draw command buffer.
-    indirect_buffer: Option<IndirectDrawBuffer>,
-
-    /// Cached bind group (recreated when buffers change).
-    bind_group: Option<wgpu::BindGroup>,
+    /// Per-primitive culling buffers.
+    circle_buffers: Option<PrimitiveCullingBuffers>,
+    line_buffers: Option<PrimitiveCullingBuffers>,
+    quad_buffers: Option<PrimitiveCullingBuffers>,
 
     /// Current view bounds for culling.
     view_bounds: [f32; 4],
 
-    /// Current buffer capacity in instances.
-    capacity: usize,
-
     /// Statistics from last culling operation.
     stats: CullingStats,
+
+    /// Whether culling was dispatched this frame (per primitive).
+    circles_dispatched: bool,
+    lines_dispatched: bool,
+    quads_dispatched: bool,
 }
 
 impl VisibilityCullingPipeline {
@@ -310,13 +435,14 @@ impl VisibilityCullingPipeline {
             cull_quads_pipeline,
             bind_group_layout,
             params_buffer,
-            input_buffer: None,
-            output_buffer: None,
-            indirect_buffer: None,
-            bind_group: None,
+            circle_buffers: None,
+            line_buffers: None,
+            quad_buffers: None,
             view_bounds: [-1000.0, -1000.0, 1000.0, 1000.0],
-            capacity: 0,
             stats: CullingStats::default(),
+            circles_dispatched: false,
+            lines_dispatched: false,
+            quads_dispatched: false,
         }
     }
 
@@ -324,41 +450,54 @@ impl VisibilityCullingPipeline {
     ///
     /// Call this during initialization to avoid first-frame stuttering.
     pub fn warmup(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        // Ensure we have at least minimum capacity buffers
-        self.ensure_capacity(device, MIN_CULLING_CAPACITY, CullPrimitive::Circles);
+        // Ensure we have buffers for all primitive types
+        self.ensure_primitive_buffers(device, MIN_CULLING_CAPACITY, CullPrimitive::Circles);
+        self.ensure_primitive_buffers(device, MIN_CULLING_CAPACITY, CullPrimitive::Lines);
+        self.ensure_primitive_buffers(device, MIN_CULLING_CAPACITY, CullPrimitive::Quads);
 
         // Create a dummy encoder and dispatch each pipeline once
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Culling Warmup Encoder"),
         });
 
-        // Get bind group (created by ensure_capacity)
-        if let Some(ref bind_group) = self.bind_group {
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Culling Warmup Pass"),
-                    timestamp_writes: None,
-                });
-
-                pass.set_bind_group(0, bind_group, &[]);
-
-                // Dispatch reset with 0 instances
-                pass.set_pipeline(&self.reset_pipeline);
-                pass.dispatch_workgroups(1, 1, 1);
-
-                // Dispatch each cull pipeline with 0 work (just for shader compilation)
-                pass.set_pipeline(&self.cull_circles_pipeline);
-                pass.dispatch_workgroups(0, 1, 1);
-
-                pass.set_pipeline(&self.cull_lines_pipeline);
-                pass.dispatch_workgroups(0, 1, 1);
-
-                pass.set_pipeline(&self.cull_quads_pipeline);
-                pass.dispatch_workgroups(0, 1, 1);
-            }
-
-            queue.submit(Some(encoder.finish()));
+        // Warmup each primitive type
+        if let Some(ref buffers) = self.circle_buffers {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Culling Warmup Pass - Circles"),
+                timestamp_writes: None,
+            });
+            pass.set_bind_group(0, &buffers.bind_group, &[]);
+            pass.set_pipeline(&self.reset_pipeline);
+            pass.dispatch_workgroups(1, 1, 1);
+            pass.set_pipeline(&self.cull_circles_pipeline);
+            pass.dispatch_workgroups(0, 1, 1);
         }
+
+        if let Some(ref buffers) = self.line_buffers {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Culling Warmup Pass - Lines"),
+                timestamp_writes: None,
+            });
+            pass.set_bind_group(0, &buffers.bind_group, &[]);
+            pass.set_pipeline(&self.reset_pipeline);
+            pass.dispatch_workgroups(1, 1, 1);
+            pass.set_pipeline(&self.cull_lines_pipeline);
+            pass.dispatch_workgroups(0, 1, 1);
+        }
+
+        if let Some(ref buffers) = self.quad_buffers {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Culling Warmup Pass - Quads"),
+                timestamp_writes: None,
+            });
+            pass.set_bind_group(0, &buffers.bind_group, &[]);
+            pass.set_pipeline(&self.reset_pipeline);
+            pass.dispatch_workgroups(1, 1, 1);
+            pass.set_pipeline(&self.cull_quads_pipeline);
+            pass.dispatch_workgroups(0, 1, 1);
+        }
+
+        queue.submit(Some(encoder.finish()));
     }
 
     /// Sets the view bounds for culling.
@@ -392,98 +531,51 @@ impl VisibilityCullingPipeline {
         self.stats.reset();
     }
 
-    /// Ensures the pipeline has sufficient buffer capacity.
-    fn ensure_capacity(
+    /// Ensures buffers exist for the given primitive type with sufficient capacity.
+    fn ensure_primitive_buffers(
         &mut self,
         device: &wgpu::Device,
         instance_count: usize,
         primitive: CullPrimitive,
     ) {
-        let floats_per_instance = primitive.floats_per_instance() as usize;
         let required_capacity = instance_count.max(MIN_CULLING_CAPACITY);
 
-        if required_capacity <= self.capacity && self.bind_group.is_some() {
+        // Get current capacity for this primitive
+        let current_capacity = match primitive {
+            CullPrimitive::Circles => self.circle_buffers.as_ref().map_or(0, |b| b.capacity),
+            CullPrimitive::Lines => self.line_buffers.as_ref().map_or(0, |b| b.capacity),
+            CullPrimitive::Quads => self.quad_buffers.as_ref().map_or(0, |b| b.capacity),
+        };
+
+        if required_capacity <= current_capacity {
             return;
         }
 
         // Calculate new capacity with growth factor
-        let new_capacity = if self.capacity == 0 {
+        let new_capacity = if current_capacity == 0 {
             required_capacity
         } else {
             ((required_capacity as f32) * CULLING_GROWTH_FACTOR).ceil() as usize
         };
 
-        // Calculate buffer sizes
-        let buffer_size = new_capacity * floats_per_instance * std::mem::size_of::<f32>();
-
-        // Create input buffer
-        self.input_buffer = Some(StorageBuffer::new(
+        // Create new buffers for this primitive type
+        let buffers = PrimitiveCullingBuffers::new(
             device,
-            buffer_size,
-            "culling_input_buffer",
-            false, // read-only
-        ));
-
-        // Create output buffer
-        self.output_buffer = Some(StorageBuffer::new(
-            device,
-            buffer_size,
-            "culling_output_buffer",
-            true, // read-write
-        ));
-
-        // Create indirect buffer
-        self.indirect_buffer = Some(IndirectDrawBuffer::new_with_command(
-            device,
-            &DrawIndirectCommand::empty(),
-            "culling_indirect_buffer",
-        ));
-
-        // Recreate bind group
-        self.bind_group = Some(
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Culling Bind Group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self
-                            .input_buffer
-                            .as_ref()
-                            .unwrap()
-                            .buffer()
-                            .as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: self
-                            .output_buffer
-                            .as_ref()
-                            .unwrap()
-                            .buffer()
-                            .as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: self
-                            .indirect_buffer
-                            .as_ref()
-                            .unwrap()
-                            .buffer()
-                            .as_entire_binding(),
-                    },
-                ],
-            }),
+            &self.bind_group_layout,
+            &self.params_buffer,
+            primitive,
+            new_capacity,
         );
 
-        self.capacity = new_capacity;
+        // Store buffers for this primitive type
+        match primitive {
+            CullPrimitive::Circles => self.circle_buffers = Some(buffers),
+            CullPrimitive::Lines => self.line_buffers = Some(buffers),
+            CullPrimitive::Quads => self.quad_buffers = Some(buffers),
+        }
     }
 
-    /// Dispatches visibility culling for instances.
+    /// Dispatches visibility culling for instances of a specific primitive type.
     ///
     /// This method:
     /// 1. Uploads instance data to the input buffer
@@ -513,16 +605,35 @@ impl VisibilityCullingPipeline {
         let instance_count = instances.len() / floats_per_instance;
 
         if instance_count == 0 {
+            // Mark as not dispatched
+            match primitive {
+                CullPrimitive::Circles => self.circles_dispatched = false,
+                CullPrimitive::Lines => self.lines_dispatched = false,
+                CullPrimitive::Quads => self.quads_dispatched = false,
+            }
             return false;
         }
 
-        // Ensure we have sufficient capacity
-        self.ensure_capacity(device, instance_count, primitive);
+        // Ensure we have sufficient capacity for this primitive type
+        self.ensure_primitive_buffers(device, instance_count, primitive);
 
-        // Upload instance data
-        if let Some(ref input_buffer) = self.input_buffer {
-            queue.write_buffer(input_buffer.buffer(), 0, bytemuck::cast_slice(instances));
-        }
+        // Get the buffers for this primitive type
+        let buffers = match primitive {
+            CullPrimitive::Circles => self.circle_buffers.as_ref(),
+            CullPrimitive::Lines => self.line_buffers.as_ref(),
+            CullPrimitive::Quads => self.quad_buffers.as_ref(),
+        };
+
+        let Some(buffers) = buffers else {
+            return false;
+        };
+
+        // Upload instance data to input buffer
+        queue.write_buffer(
+            buffers.input_buffer.buffer(),
+            0,
+            bytemuck::cast_slice(instances),
+        );
 
         // Update params
         let params = CullParams::new(
@@ -532,11 +643,6 @@ impl VisibilityCullingPipeline {
         );
         queue.write_buffer(&self.params_buffer, 0, bytemuck::cast_slice(&[params]));
 
-        // Get bind group
-        let Some(ref bind_group) = self.bind_group else {
-            return false;
-        };
-
         // Create compute pass
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -544,7 +650,7 @@ impl VisibilityCullingPipeline {
                 timestamp_writes: None,
             });
 
-            pass.set_bind_group(0, bind_group, &[]);
+            pass.set_bind_group(0, &buffers.bind_group, &[]);
 
             // Reset indirect buffer
             pass.set_pipeline(&self.reset_pipeline);
@@ -563,6 +669,13 @@ impl VisibilityCullingPipeline {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
+        // Mark as dispatched
+        match primitive {
+            CullPrimitive::Circles => self.circles_dispatched = true,
+            CullPrimitive::Lines => self.lines_dispatched = true,
+            CullPrimitive::Quads => self.quads_dispatched = true,
+        }
+
         // Update stats
         self.stats.total_instances += instance_count as u32;
         self.stats.dispatch_count += 1;
@@ -570,31 +683,74 @@ impl VisibilityCullingPipeline {
         true
     }
 
-    /// Returns a reference to the output buffer for rendering.
-    ///
-    /// This buffer contains the compacted visible instances after culling.
-    #[inline]
-    #[must_use]
-    pub fn output_buffer(&self) -> Option<&wgpu::Buffer> {
-        self.output_buffer.as_ref().map(StorageBuffer::buffer)
+    /// Resets the dispatched flags. Call at the start of each frame.
+    pub fn begin_frame(&mut self) {
+        self.circles_dispatched = false;
+        self.lines_dispatched = false;
+        self.quads_dispatched = false;
+        self.stats.reset();
     }
 
-    /// Returns a reference to the indirect draw buffer.
-    ///
-    /// This buffer contains the draw command with the visible instance count.
+    /// Returns the circle culling buffers if available and culling was dispatched.
     #[inline]
     #[must_use]
-    pub fn indirect_buffer(&self) -> Option<&wgpu::Buffer> {
-        self.indirect_buffer
-            .as_ref()
-            .map(IndirectDrawBuffer::buffer)
+    pub fn circles(&self) -> Option<&PrimitiveCullingBuffers> {
+        if self.circles_dispatched {
+            self.circle_buffers.as_ref()
+        } else {
+            None
+        }
     }
 
-    /// Returns the current buffer capacity in instances.
+    /// Returns the line culling buffers if available and culling was dispatched.
     #[inline]
     #[must_use]
-    pub fn capacity(&self) -> usize {
-        self.capacity
+    pub fn lines(&self) -> Option<&PrimitiveCullingBuffers> {
+        if self.lines_dispatched {
+            self.line_buffers.as_ref()
+        } else {
+            None
+        }
+    }
+
+    /// Returns the quad culling buffers if available and culling was dispatched.
+    #[inline]
+    #[must_use]
+    pub fn quads(&self) -> Option<&PrimitiveCullingBuffers> {
+        if self.quads_dispatched {
+            self.quad_buffers.as_ref()
+        } else {
+            None
+        }
+    }
+
+    /// Returns whether circles were dispatched for culling this frame.
+    #[inline]
+    pub fn circles_dispatched(&self) -> bool {
+        self.circles_dispatched
+    }
+
+    /// Returns whether lines were dispatched for culling this frame.
+    #[inline]
+    pub fn lines_dispatched(&self) -> bool {
+        self.lines_dispatched
+    }
+
+    /// Returns whether quads were dispatched for culling this frame.
+    #[inline]
+    pub fn quads_dispatched(&self) -> bool {
+        self.quads_dispatched
+    }
+
+    /// Returns the capacity for a specific primitive type.
+    #[inline]
+    #[must_use]
+    pub fn capacity(&self, primitive: CullPrimitive) -> usize {
+        match primitive {
+            CullPrimitive::Circles => self.circle_buffers.as_ref().map_or(0, |b| b.capacity),
+            CullPrimitive::Lines => self.line_buffers.as_ref().map_or(0, |b| b.capacity),
+            CullPrimitive::Quads => self.quad_buffers.as_ref().map_or(0, |b| b.capacity),
+        }
     }
 }
 
@@ -602,7 +758,12 @@ impl std::fmt::Debug for VisibilityCullingPipeline {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("VisibilityCullingPipeline")
             .field("view_bounds", &self.view_bounds)
-            .field("capacity", &self.capacity)
+            .field("circle_buffers", &self.circle_buffers)
+            .field("line_buffers", &self.line_buffers)
+            .field("quad_buffers", &self.quad_buffers)
+            .field("circles_dispatched", &self.circles_dispatched)
+            .field("lines_dispatched", &self.lines_dispatched)
+            .field("quads_dispatched", &self.quads_dispatched)
             .field("stats", &self.stats)
             .finish_non_exhaustive()
     }

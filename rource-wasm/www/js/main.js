@@ -57,6 +57,75 @@ import { animate } from './animation.js';
 let parsedCommits = [];
 
 /**
+ * Cleanup handler for page unload.
+ * Releases GPU resources to prevent contention on rapid refresh.
+ */
+function setupCleanupHandler() {
+    // Handle page unload - release GPU resources
+    window.addEventListener('beforeunload', () => {
+        const rource = getRource();
+        if (rource) {
+            try {
+                rource.dispose();
+            } catch (e) {
+                // Ignore errors during cleanup
+            }
+            setRource(null);
+        }
+    });
+
+    // Also handle visibility change for mobile browsers
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            // Page is being hidden, might be navigating away
+            // Don't dispose yet, just log
+            console.log('Rource: Page hidden');
+        }
+    });
+}
+
+/**
+ * Creates Rource instance with retry logic.
+ * Handles GPU resource contention from rapid page refreshes.
+ *
+ * @param {HTMLCanvasElement} canvas - The canvas element
+ * @param {number} maxRetries - Maximum retry attempts (default: 3)
+ * @param {number} baseDelay - Base delay in ms (default: 100)
+ * @returns {Promise<Object>} Rource instance
+ */
+async function createRourceWithRetry(canvas, maxRetries = 3, baseDelay = 100) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            // Small delay before first attempt if not the first try
+            if (attempt > 0) {
+                const delay = baseDelay * Math.pow(2, attempt - 1); // 100ms, 200ms, 400ms
+                console.log(`Rource: Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+
+            const rource = await Rource.create(canvas);
+            if (attempt > 0) {
+                console.log(`Rource: Successfully initialized on attempt ${attempt + 1}`);
+            }
+            return rource;
+        } catch (error) {
+            lastError = error;
+            console.warn(`Rource: Initialization attempt ${attempt + 1} failed:`, error.message || error);
+
+            // If we've exhausted retries, throw the last error
+            if (attempt === maxRetries) {
+                throw lastError;
+            }
+        }
+    }
+
+    // Should not reach here, but just in case
+    throw lastError || new Error('Failed to create Rource instance');
+}
+
+/**
  * Update DOM elements with build info (WASM size, test count, etc.)
  * This ensures displayed values match the actual built artifacts.
  */
@@ -95,6 +164,9 @@ async function main() {
     console.log('Rource: Initializing...');
     telemetry.initTime = Date.now();
 
+    // Setup cleanup handler first to catch page unload
+    setupCleanupHandler();
+
     try {
         // Initialize WASM
         await init();
@@ -112,9 +184,9 @@ async function main() {
             throw new Error('Canvas element not found');
         }
 
-        // Use async factory method: Rource.create()
-        // It tries backends in order: wgpu (WebGPU) → WebGL2 → Software
-        const rource = await Rource.create(canvas);
+        // Use async factory method with retry logic
+        // Retries handle GPU resource contention from rapid page refreshes
+        const rource = await createRourceWithRetry(canvas);
         setRource(rource);
 
         // Check renderer type - deterministic from WASM, never guessed

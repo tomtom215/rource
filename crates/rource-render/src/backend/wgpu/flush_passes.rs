@@ -32,7 +32,12 @@ impl WgpuRenderer {
             .map(|c| c.format)
             .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
 
-        // Upload all instance data first
+        // Dispatch GPU culling if enabled (before uploading to avoid duplicate uploads)
+        if self.gpu_culling_enabled {
+            self.dispatch_culling(encoder);
+        }
+
+        // Upload all instance data first (needed for non-culled primitives and fallback)
         self.circle_instances
             .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.ring_instances
@@ -97,12 +102,19 @@ impl WgpuRenderer {
     }
 
     /// Flushes circle draw calls within a render pass.
+    ///
+    /// When GPU culling is enabled and circles were culled, uses indirect draw
+    /// with the culled output buffer. Otherwise, uses the standard instance buffer.
     pub(super) fn flush_circles_pass(
         &mut self,
         render_pass: &mut wgpu::RenderPass<'_>,
         _format: wgpu::TextureFormat,
     ) {
-        if self.circle_instances.is_empty() {
+        // Check if we have culled buffers available
+        let use_culling = self.culled_circles().is_some();
+
+        // If not using culling, check if we have instances
+        if !use_culling && self.circle_instances.is_empty() {
             return;
         }
 
@@ -127,17 +139,29 @@ impl WgpuRenderer {
         // Set vertex buffer (unit quad)
         render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
 
-        // Set instance buffer
-        render_pass.set_vertex_buffer(1, self.circle_instances.buffer().slice(..));
+        // Use culled buffer or standard buffer
+        if let Some(culled) = self.culled_circles() {
+            // Use GPU-culled output buffer and indirect draw
+            render_pass.set_vertex_buffer(1, culled.output_slice());
+            render_pass.draw_indirect(culled.indirect(), 0);
 
-        // Draw instanced
-        let instance_count = self.circle_instances.instance_count() as u32;
-        render_pass.draw(0..4, 0..instance_count);
+            // Track statistics (instance count is determined by GPU, use input count)
+            let input_count = self.circle_instances.instance_count() as u32;
+            self.frame_stats.draw_calls += 1;
+            self.frame_stats.circle_instances += input_count;
+            self.frame_stats.total_instances += input_count;
+        } else {
+            // Standard path: use instance buffer directly
+            render_pass.set_vertex_buffer(1, self.circle_instances.buffer().slice(..));
+            let instance_count = self.circle_instances.instance_count() as u32;
+            render_pass.draw(0..4, 0..instance_count);
 
-        // Track statistics
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.circle_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
+            // Track statistics
+            self.frame_stats.draw_calls += 1;
+            self.frame_stats.circle_instances += instance_count;
+            self.frame_stats.total_instances += instance_count;
+        }
+
         self.frame_stats
             .active_primitives
             .set(ActivePrimitives::CIRCLES);
@@ -182,12 +206,19 @@ impl WgpuRenderer {
     }
 
     /// Flushes line draw calls within a render pass.
+    ///
+    /// When GPU culling is enabled and lines were culled, uses indirect draw
+    /// with the culled output buffer. Otherwise, uses the standard instance buffer.
     pub(super) fn flush_lines_pass(
         &mut self,
         render_pass: &mut wgpu::RenderPass<'_>,
         _format: wgpu::TextureFormat,
     ) {
-        if self.line_instances.is_empty() {
+        // Check if we have culled buffers available
+        let use_culling = self.culled_lines().is_some();
+
+        // If not using culling, check if we have instances
+        if !use_culling && self.line_instances.is_empty() {
             return;
         }
 
@@ -206,14 +237,29 @@ impl WgpuRenderer {
 
         render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffers.line_quad.slice(..));
-        render_pass.set_vertex_buffer(1, self.line_instances.buffer().slice(..));
 
-        let instance_count = self.line_instances.instance_count() as u32;
-        render_pass.draw(0..4, 0..instance_count);
+        // Use culled buffer or standard buffer
+        if let Some(culled) = self.culled_lines() {
+            // Use GPU-culled output buffer and indirect draw
+            render_pass.set_vertex_buffer(1, culled.output_slice());
+            render_pass.draw_indirect(culled.indirect(), 0);
 
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.line_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
+            // Track statistics
+            let input_count = self.line_instances.instance_count() as u32;
+            self.frame_stats.draw_calls += 1;
+            self.frame_stats.line_instances += input_count;
+            self.frame_stats.total_instances += input_count;
+        } else {
+            // Standard path
+            render_pass.set_vertex_buffer(1, self.line_instances.buffer().slice(..));
+            let instance_count = self.line_instances.instance_count() as u32;
+            render_pass.draw(0..4, 0..instance_count);
+
+            self.frame_stats.draw_calls += 1;
+            self.frame_stats.line_instances += instance_count;
+            self.frame_stats.total_instances += instance_count;
+        }
+
         self.frame_stats
             .active_primitives
             .set(ActivePrimitives::LINES);
@@ -258,12 +304,19 @@ impl WgpuRenderer {
     }
 
     /// Flushes solid quad draw calls within a render pass.
+    ///
+    /// When GPU culling is enabled and quads were culled, uses indirect draw
+    /// with the culled output buffer. Otherwise, uses the standard instance buffer.
     pub(super) fn flush_quads_pass(
         &mut self,
         render_pass: &mut wgpu::RenderPass<'_>,
         _format: wgpu::TextureFormat,
     ) {
-        if self.quad_instances.is_empty() {
+        // Check if we have culled buffers available
+        let use_culling = self.culled_quads().is_some();
+
+        // If not using culling, check if we have instances
+        if !use_culling && self.quad_instances.is_empty() {
             return;
         }
 
@@ -282,14 +335,29 @@ impl WgpuRenderer {
 
         render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
-        render_pass.set_vertex_buffer(1, self.quad_instances.buffer().slice(..));
 
-        let instance_count = self.quad_instances.instance_count() as u32;
-        render_pass.draw(0..4, 0..instance_count);
+        // Use culled buffer or standard buffer
+        if let Some(culled) = self.culled_quads() {
+            // Use GPU-culled output buffer and indirect draw
+            render_pass.set_vertex_buffer(1, culled.output_slice());
+            render_pass.draw_indirect(culled.indirect(), 0);
 
-        self.frame_stats.draw_calls += 1;
-        self.frame_stats.quad_instances += instance_count;
-        self.frame_stats.total_instances += instance_count;
+            // Track statistics
+            let input_count = self.quad_instances.instance_count() as u32;
+            self.frame_stats.draw_calls += 1;
+            self.frame_stats.quad_instances += input_count;
+            self.frame_stats.total_instances += input_count;
+        } else {
+            // Standard path
+            render_pass.set_vertex_buffer(1, self.quad_instances.buffer().slice(..));
+            let instance_count = self.quad_instances.instance_count() as u32;
+            render_pass.draw(0..4, 0..instance_count);
+
+            self.frame_stats.draw_calls += 1;
+            self.frame_stats.quad_instances += instance_count;
+            self.frame_stats.total_instances += instance_count;
+        }
+
         self.frame_stats
             .active_primitives
             .set(ActivePrimitives::QUADS);
