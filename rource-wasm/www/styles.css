@@ -193,7 +193,8 @@ header h1 {
     border-radius: 6px;
     border: 1px solid #d4a72c;
     background: rgba(212, 167, 44, 0.1);
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .github-link:hover {
@@ -977,7 +978,8 @@ header h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--transition-normal);
+    /* Use composited properties only for better performance */
+    transition: opacity var(--transition-normal), transform var(--transition-normal);
 }
 
 .timeline-btn:hover {
@@ -1055,7 +1057,8 @@ header h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .reset-btn:hover:not(:disabled) {
@@ -1434,7 +1437,8 @@ header h1 {
     border-radius: 16px;
     font-size: 0.7rem;
     cursor: pointer;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
     display: flex;
     align-items: center;
     gap: 0.25rem;
@@ -1514,7 +1518,8 @@ header h1 {
     cursor: pointer;
     font-size: 0.75rem;
     font-weight: 500;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
     white-space: nowrap;
@@ -1571,7 +1576,8 @@ textarea:focus {
     text-align: center;
     margin-bottom: 0.75rem;
     cursor: pointer;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .file-upload-area:hover {
@@ -1681,7 +1687,9 @@ textarea:focus {
     margin-bottom: 0;
 }
 
-.docs-section h4 {
+/* Docs section headings - h3 for proper hierarchy after h2 panel title */
+.docs-section h3,
+.docs-heading {
     font-size: 0.75rem;
     color: var(--accent);
     margin-bottom: 0.5rem;
@@ -1863,7 +1871,8 @@ textarea:focus {
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    transition: all 0.2s ease;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s ease, transform 0.2s ease;
     white-space: nowrap;
 }
 
@@ -2508,7 +2517,8 @@ footer a {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .theme-toggle:hover {
@@ -2544,7 +2554,8 @@ footer a {
     cursor: pointer;
     z-index: 200;
     box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
-    transition: all 0.3s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.3s, transform 0.3s;
 }
 
 .sidebar-toggle:hover {
@@ -2628,7 +2639,8 @@ footer a {
         z-index: 140;
         opacity: 0;
         visibility: hidden;
-        transition: all 0.3s;
+        /* Use composited properties only for better performance */
+        transition: opacity 0.3s, visibility 0.3s;
     }
 
     .sidebar-overlay.visible {
@@ -2715,7 +2727,8 @@ footer a {
     justify-content: center;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.3s, visibility 0.3s;
     backdrop-filter: blur(4px);
 }
 
@@ -2752,7 +2765,8 @@ footer a {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .help-close:hover {
@@ -2765,7 +2779,8 @@ footer a {
     outline-offset: 2px;
 }
 
-.help-content h3 {
+/* Help dialog title - using h2 for proper heading hierarchy */
+.help-content h2 {
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
     padding-right: 2rem;
@@ -2775,7 +2790,9 @@ footer a {
     margin-bottom: 1.5rem;
 }
 
-.help-section h4 {
+/* Help section headings - h3 for proper hierarchy after h2 dialog title */
+.help-section h3,
+.help-section-heading {
     font-size: 1rem;
     color: var(--accent);
     margin-bottom: 0.75rem;
@@ -2835,7 +2852,8 @@ footer a {
     justify-content: center;
     font-weight: bold;
     font-size: 1rem;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .help-btn:hover {
@@ -2865,7 +2883,8 @@ footer a {
     justify-content: center;
     opacity: 1;
     visibility: visible;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, visibility 0.2s;
     backdrop-filter: blur(4px);
 }
 
@@ -2911,7 +2930,8 @@ footer a {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
     font-size: 1.25rem;
     line-height: 1;
 }
@@ -3140,7 +3160,8 @@ footer a {
     justify-content: center;
     font-size: 1rem;
     font-weight: 600;
-    transition: all 0.15s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.15s, transform 0.15s;
 }
 
 .font-size-control .font-size-btn:hover:not(:disabled) {
@@ -3236,7 +3257,8 @@ footer a {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .fullscreen-btn:hover {
@@ -3267,7 +3289,8 @@ footer a {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .share-btn:hover {
@@ -3959,7 +3982,8 @@ footer a {
     padding: 0.25rem;
     margin: -0.25rem;
     border-radius: 4px;
-    transition: all 0.15s;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.15s, transform 0.15s;
 }
 
 .author-item:hover {

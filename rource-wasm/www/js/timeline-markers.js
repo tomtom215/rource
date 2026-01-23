@@ -377,6 +377,8 @@ function createTickElement(boundary, position, config, showLabel = false) {
     // Use data-label for CSS ::after tooltip content
     tick.setAttribute('data-label', formatFullDateLabel(boundary.date));
     tick.setAttribute('title', boundary.label);
+    // Use role="img" to allow aria-label on a div (visual timeline marker)
+    tick.setAttribute('role', 'img');
     tick.setAttribute('aria-label', `Timeline marker: ${boundary.label}`);
 
     // Add inline label for major ticks or when explicitly requested
