@@ -15,8 +15,6 @@
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen_futures::JsFuture;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, OffscreenCanvas};
 
 use rource_render::{FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
@@ -52,54 +50,6 @@ fn is_webgpu_available() -> bool {
 ///
 /// # Note on Send
 ///
-/// This future is not `Send` because JavaScript/browser APIs are single-threaded.
-/// This is expected and safe for WASM usage.
-#[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)]
-async fn can_use_webgpu() -> bool {
-    let Some(window) = web_sys::window() else {
-        return false;
-    };
-
-    let Some(navigator) = window.navigator().dyn_into::<web_sys::Navigator>().ok() else {
-        return false;
-    };
-
-    // Get navigator.gpu
-    let Ok(gpu_value) = js_sys::Reflect::get(&navigator, &JsValue::from_str("gpu")) else {
-        return false;
-    };
-
-    if gpu_value.is_undefined() || gpu_value.is_null() {
-        return false;
-    }
-
-    // Try to request an adapter
-    let Ok(request_adapter) =
-        js_sys::Reflect::get(&gpu_value, &JsValue::from_str("requestAdapter"))
-    else {
-        return false;
-    };
-
-    if !request_adapter.is_function() {
-        return false;
-    }
-
-    let request_adapter_fn = request_adapter.unchecked_into::<js_sys::Function>();
-    let Ok(promise) = request_adapter_fn.call0(&gpu_value) else {
-        return false;
-    };
-
-    let Ok(promise) = promise.dyn_into::<js_sys::Promise>() else {
-        return false;
-    };
-
-    // Await the adapter request
-    JsFuture::from(promise)
-        .await
-        .is_ok_and(|adapter| !adapter.is_null() && !adapter.is_undefined())
-}
-
 /// Checks if WebGL2 is available by testing on an offscreen canvas.
 ///
 /// This is important because once you call `getContext()` on a canvas with one
@@ -237,31 +187,25 @@ impl RendererBackend {
         let height = canvas.height();
 
         // Try wgpu (WebGPU) first - best performance (only available on wasm32)
+        // We skip the can_use_webgpu() pre-check to avoid double adapter requests which
+        // can fail intermittently due to browser GPU resource contention on page load.
         #[cfg(target_arch = "wasm32")]
         {
             if is_webgpu_available() {
-                web_sys::console::log_1(&"Rource: WebGPU API detected, checking adapter...".into());
+                web_sys::console::log_1(&"Rource: WebGPU API detected, initializing...".into());
 
-                if can_use_webgpu().await {
-                    web_sys::console::log_1(&"Rource: Attempting wgpu (WebGPU) renderer...".into());
-
-                    match WgpuRenderer::new_from_canvas(canvas).await {
-                        Ok(wgpu) => {
-                            web_sys::console::log_1(&"Rource: Using wgpu (WebGPU) renderer".into());
-                            return Ok((Self::Wgpu(wgpu), RendererType::Wgpu));
-                        }
-                        Err(e) => {
-                            web_sys::console::warn_1(
-                                &format!("Rource: wgpu init failed: {e}, trying WebGL2...").into(),
-                            );
-                            // wgpu failed, but canvas might not be tainted since wgpu
-                            // uses WebGPU API, not getContext. Fall through to WebGL2.
-                        }
+                match WgpuRenderer::new_from_canvas(canvas).await {
+                    Ok(wgpu) => {
+                        web_sys::console::log_1(&"Rource: Using wgpu (WebGPU) renderer".into());
+                        return Ok((Self::Wgpu(wgpu), RendererType::Wgpu));
                     }
-                } else {
-                    web_sys::console::log_1(
-                        &"Rource: WebGPU adapter not available, trying WebGL2...".into(),
-                    );
+                    Err(e) => {
+                        web_sys::console::warn_1(
+                            &format!("Rource: wgpu init failed: {e}, trying WebGL2...").into(),
+                        );
+                        // wgpu failed, but canvas might not be tainted since wgpu
+                        // uses WebGPU API, not getContext. Fall through to WebGL2.
+                    }
                 }
             }
         }
