@@ -4,7 +4,7 @@
 //! - Bloom effect toggle
 //! - Background color
 //! - Label visibility and font size
-//! - File icons (wgpu only)
+//! - File icons (all backends)
 
 use wasm_bindgen::prelude::*;
 
@@ -69,15 +69,16 @@ impl Rource {
     }
 
     // ========================================================================
-    // File Icons (wgpu only)
+    // File Icons (all backends)
     // ========================================================================
 
     /// Initializes the file icon system.
     ///
     /// This pre-generates icons for common file extensions (rs, js, py, etc.)
-    /// and stores them in a GPU texture array for efficient batched rendering.
-    ///
-    /// **Note**: Only has an effect when using the wgpu backend.
+    /// and stores them for efficient rendering:
+    /// - **wgpu**: Uses GPU texture arrays for batched rendering
+    /// - **WebGL2**: Uses GPU texture arrays (WebGL2 supports `TEXTURE_2D_ARRAY`)
+    /// - **Software**: Uses CPU textures
     ///
     /// # Returns
     ///
@@ -85,17 +86,27 @@ impl Rource {
     ///
     /// # Example (JavaScript)
     /// ```javascript
-    /// if (rource.isWgpu()) {
-    ///     const success = rource.initFileIcons();
-    ///     console.log('File icons initialized:', success);
-    /// }
+    /// const success = rource.initFileIcons();
+    /// console.log('File icons initialized:', success);
     /// ```
     #[wasm_bindgen(js_name = initFileIcons)]
     pub fn init_file_icons(&mut self) -> bool {
+        // Try wgpu first
         #[cfg(target_arch = "wasm32")]
         if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
             return wgpu_renderer.init_file_icons();
         }
+
+        // Try WebGL2
+        if let Some(webgl2_renderer) = self.backend.as_webgl2_mut() {
+            return webgl2_renderer.init_file_icons();
+        }
+
+        // Try Software
+        if let Some(software_renderer) = self.backend.as_software_mut() {
+            return software_renderer.init_file_icons();
+        }
+
         false
     }
 
@@ -109,10 +120,22 @@ impl Rource {
     /// ```
     #[wasm_bindgen(js_name = hasFileIcons)]
     pub fn has_file_icons(&self) -> bool {
+        // Try wgpu first
         #[cfg(target_arch = "wasm32")]
         if let Some(wgpu_renderer) = self.backend.as_wgpu() {
             return wgpu_renderer.has_file_icons();
         }
+
+        // Try WebGL2
+        if let Some(webgl2_renderer) = self.backend.as_webgl2() {
+            return webgl2_renderer.has_file_icons();
+        }
+
+        // Try Software
+        if let Some(software_renderer) = self.backend.as_software() {
+            return software_renderer.has_file_icons();
+        }
+
         false
     }
 
@@ -125,10 +148,22 @@ impl Rource {
     /// ```
     #[wasm_bindgen(js_name = getFileIconCount)]
     pub fn get_file_icon_count(&self) -> u32 {
+        // Try wgpu first
         #[cfg(target_arch = "wasm32")]
         if let Some(wgpu_renderer) = self.backend.as_wgpu() {
             return wgpu_renderer.file_icon_count();
         }
+
+        // Try WebGL2
+        if let Some(webgl2_renderer) = self.backend.as_webgl2() {
+            return webgl2_renderer.file_icon_count();
+        }
+
+        // Try Software
+        if let Some(software_renderer) = self.backend.as_software() {
+            return software_renderer.file_icon_count();
+        }
+
         0
     }
 
@@ -152,7 +187,6 @@ impl Rource {
     /// rource.registerFileIcon("myext", "#FF5500");
     /// ```
     #[wasm_bindgen(js_name = registerFileIcon)]
-    #[allow(unused_variables)]
     pub fn register_file_icon(&mut self, extension: &str, hex_color: &str) -> bool {
         let hex = hex_color.trim_start_matches('#');
         let color = if hex.len() == 6 {
@@ -165,10 +199,22 @@ impl Rource {
             return false;
         };
 
+        // Try wgpu first
         #[cfg(target_arch = "wasm32")]
         if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
             return wgpu_renderer.register_file_icon(extension, color);
         }
+
+        // Try WebGL2
+        if let Some(webgl2_renderer) = self.backend.as_webgl2_mut() {
+            return webgl2_renderer.register_file_icon(extension, color);
+        }
+
+        // Try Software
+        if let Some(software_renderer) = self.backend.as_software_mut() {
+            return software_renderer.register_file_icon(extension, color);
+        }
+
         false
     }
 }

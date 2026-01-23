@@ -553,6 +553,60 @@ impl RendererBackend {
             _ => None,
         }
     }
+
+    /// Returns a mutable reference to the WebGL2 renderer if available.
+    ///
+    /// # Returns
+    ///
+    /// - `Some(&mut WebGl2Renderer)` if using WebGL2 backend
+    /// - `None` for wgpu or Software backends
+    #[inline]
+    pub fn as_webgl2_mut(&mut self) -> Option<&mut WebGl2Renderer> {
+        match self {
+            Self::WebGl2(r) => Some(r),
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(_) => None,
+            Self::Software { .. } => None,
+        }
+    }
+
+    /// Returns an immutable reference to the WebGL2 renderer if available.
+    #[inline]
+    pub fn as_webgl2(&self) -> Option<&WebGl2Renderer> {
+        match self {
+            Self::WebGl2(r) => Some(r),
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(_) => None,
+            Self::Software { .. } => None,
+        }
+    }
+
+    /// Returns a mutable reference to the Software renderer if available.
+    ///
+    /// # Returns
+    ///
+    /// - `Some(&mut SoftwareRenderer)` if using Software backend
+    /// - `None` for wgpu or WebGL2 backends
+    #[inline]
+    pub fn as_software_mut(&mut self) -> Option<&mut SoftwareRenderer> {
+        match self {
+            Self::Software { renderer, .. } => Some(renderer),
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(_) => None,
+            Self::WebGl2(_) => None,
+        }
+    }
+
+    /// Returns an immutable reference to the Software renderer if available.
+    #[inline]
+    pub fn as_software(&self) -> Option<&SoftwareRenderer> {
+        match self {
+            Self::Software { renderer, .. } => Some(renderer),
+            #[cfg(target_arch = "wasm32")]
+            Self::Wgpu(_) => None,
+            Self::WebGl2(_) => None,
+        }
+    }
 }
 
 // ============================================================================
