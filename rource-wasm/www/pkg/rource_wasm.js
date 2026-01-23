@@ -471,6 +471,51 @@ export class Rource {
         return ret;
     }
     /**
+     * Returns all frame statistics in a single call to reduce WASM↔JS overhead.
+     *
+     * This batches 12+ individual getter calls into one, reducing per-frame
+     * overhead by approximately 90% when updating the performance metrics UI.
+     *
+     * Returns a JSON string with the following structure:
+     * ```json
+     * {
+     *   "fps": 60.0,
+     *   "frameTimeMs": 16.67,
+     *   "totalEntities": 1500,
+     *   "visibleFiles": 200,
+     *   "visibleUsers": 5,
+     *   "visibleDirectories": 50,
+     *   "activeActions": 10,
+     *   "drawCalls": 6,
+     *   "canvasWidth": 1920,
+     *   "canvasHeight": 1080,
+     *   "isPlaying": true,
+     *   "commitCount": 1000,
+     *   "currentCommit": 500,
+     *   "totalFiles": 500,
+     *   "totalUsers": 20,
+     *   "totalDirectories": 100
+     * }
+     * ```
+     * @returns {string}
+     */
+    getFrameStats() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getFrameStats(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Returns the last frame time in milliseconds.
      * @returns {number}
      */
@@ -918,6 +963,24 @@ export class Rource {
      */
     isPlaying() {
         const ret = wasm.rource_isPlaying(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Returns whether vsync is currently enabled.
+     *
+     * Returns `true` if:
+     * - Using wgpu backend with vsync enabled
+     * - Using WebGL2 or software backend (always vsync-aligned)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * const vsyncEnabled = rource.isVsyncEnabled();
+     * console.log('Vsync:', vsyncEnabled ? 'ON' : 'OFF');
+     * ```
+     * @returns {boolean}
+     */
+    isVsyncEnabled() {
+        const ret = wasm.rource_isVsyncEnabled(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -1428,6 +1491,32 @@ export class Rource {
      */
     setUseGPUPhysics(enabled) {
         wasm.rource_setUseGPUPhysics(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Sets vsync mode for the renderer.
+     *
+     * This controls whether frames are synchronized to the display refresh rate:
+     * - `true` (default): Vsync enabled, frames sync to display refresh (~60 FPS)
+     * - `false`: Vsync disabled, uncapped frame rate (300+ FPS possible)
+     *
+     * **Note:** This only affects the wgpu backend (WebGPU). WebGL2 and software
+     * renderers always use requestAnimationFrame timing which is vsync-aligned.
+     *
+     * **Performance Impact:** Disabling vsync increases GPU utilization and power
+     * consumption. Use with caution on battery-powered devices.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * // Disable vsync for uncapped FPS
+     * rource.setVsync(false);
+     *
+     * // Re-enable vsync for power efficiency
+     * rource.setVsync(true);
+     * ```
+     * @param {boolean} enabled
+     */
+    setVsync(enabled) {
+        wasm.rource_setVsync(this.__wbg_ptr, enabled);
     }
     /**
      * Steps backward to the previous commit.
@@ -2388,7 +2477,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6512(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6517(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -3357,7 +3446,7 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { dtor_idx: 669, function: Function { arguments: [Externref], shim_idx: 670, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2344, __wasm_bindgen_func_elem_2345);
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2349, __wasm_bindgen_func_elem_2350);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -3419,12 +3508,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_2345(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_2345(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_2350(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_2350(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6512(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6512(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6517(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6517(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

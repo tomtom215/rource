@@ -253,6 +253,35 @@ export class Rource {
      */
     getFps(): number;
     /**
+     * Returns all frame statistics in a single call to reduce WASM↔JS overhead.
+     *
+     * This batches 12+ individual getter calls into one, reducing per-frame
+     * overhead by approximately 90% when updating the performance metrics UI.
+     *
+     * Returns a JSON string with the following structure:
+     * ```json
+     * {
+     *   "fps": 60.0,
+     *   "frameTimeMs": 16.67,
+     *   "totalEntities": 1500,
+     *   "visibleFiles": 200,
+     *   "visibleUsers": 5,
+     *   "visibleDirectories": 50,
+     *   "activeActions": 10,
+     *   "drawCalls": 6,
+     *   "canvasWidth": 1920,
+     *   "canvasHeight": 1080,
+     *   "isPlaying": true,
+     *   "commitCount": 1000,
+     *   "currentCommit": 500,
+     *   "totalFiles": 500,
+     *   "totalUsers": 20,
+     *   "totalDirectories": 100
+     * }
+     * ```
+     */
+    getFrameStats(): string;
+    /**
      * Returns the last frame time in milliseconds.
      */
     getFrameTimeMs(): number;
@@ -495,6 +524,20 @@ export class Rource {
      * Returns whether playback is active.
      */
     isPlaying(): boolean;
+    /**
+     * Returns whether vsync is currently enabled.
+     *
+     * Returns `true` if:
+     * - Using wgpu backend with vsync enabled
+     * - Using WebGL2 or software backend (always vsync-aligned)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * const vsyncEnabled = rource.isVsyncEnabled();
+     * console.log('Vsync:', vsyncEnabled ? 'ON' : 'OFF');
+     * ```
+     */
+    isVsyncEnabled(): boolean;
     /**
      * Returns true if using WebGL2 renderer.
      */
@@ -845,6 +888,29 @@ export class Rource {
      */
     setUseGPUPhysics(enabled: boolean): void;
     /**
+     * Sets vsync mode for the renderer.
+     *
+     * This controls whether frames are synchronized to the display refresh rate:
+     * - `true` (default): Vsync enabled, frames sync to display refresh (~60 FPS)
+     * - `false`: Vsync disabled, uncapped frame rate (300+ FPS possible)
+     *
+     * **Note:** This only affects the wgpu backend (WebGPU). WebGL2 and software
+     * renderers always use requestAnimationFrame timing which is vsync-aligned.
+     *
+     * **Performance Impact:** Disabling vsync increases GPU utilization and power
+     * consumption. Use with caution on battery-powered devices.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * // Disable vsync for uncapped FPS
+     * rource.setVsync(false);
+     *
+     * // Re-enable vsync for power efficiency
+     * rource.setVsync(true);
+     * ```
+     */
+    setVsync(enabled: boolean): void;
+    /**
      * Steps backward to the previous commit.
      */
     stepBackward(): void;
@@ -944,6 +1010,7 @@ export interface InitOutput {
     readonly rource_getFileIconCount: (a: number) => number;
     readonly rource_getFontSize: (a: number) => number;
     readonly rource_getFps: (a: number) => number;
+    readonly rource_getFrameStats: (a: number, b: number) => void;
     readonly rource_getFrameTimeMs: (a: number) => number;
     readonly rource_getFullMapDimensions: (a: number, b: number, c: number) => void;
     readonly rource_getGPUCullingStats: (a: number, b: number) => void;
@@ -976,6 +1043,7 @@ export interface InitOutput {
     readonly rource_isGPUPhysicsActive: (a: number) => number;
     readonly rource_isGPUPhysicsEnabled: (a: number) => number;
     readonly rource_isPlaying: (a: number) => number;
+    readonly rource_isVsyncEnabled: (a: number) => number;
     readonly rource_isWebGL2: (a: number) => number;
     readonly rource_isWgpu: (a: number) => number;
     readonly rource_loadCustomLog: (a: number, b: number, c: number, d: number) => void;
@@ -1011,6 +1079,7 @@ export interface InitOutput {
     readonly rource_setSpeed: (a: number, b: number) => void;
     readonly rource_setUseGPUCulling: (a: number, b: number) => void;
     readonly rource_setUseGPUPhysics: (a: number, b: number) => void;
+    readonly rource_setVsync: (a: number, b: number) => void;
     readonly rource_stepBackward: (a: number) => void;
     readonly rource_stepForward: (a: number) => void;
     readonly rource_togglePlay: (a: number) => void;
@@ -1019,9 +1088,9 @@ export interface InitOutput {
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_2344: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6512: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2345: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_2349: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6517: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2350: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
