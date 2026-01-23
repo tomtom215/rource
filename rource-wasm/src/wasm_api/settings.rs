@@ -470,28 +470,34 @@ impl Rource {
 // Helper Functions for Testing
 // ============================================================================
 
-/// Parses a hex color string (with or without '#' prefix) into an RGB value.
-///
-/// Returns `None` if the string is not a valid 6-character hex color.
-///
-/// # Examples
-///
-/// ```ignore
-/// // Internal function - use set_background_color() from JavaScript
-/// assert_eq!(parse_hex_color("#FF0000"), Some(0xFF0000));
-/// assert_eq!(parse_hex_color("00FF00"), Some(0x00FF00));
-/// assert_eq!(parse_hex_color("invalid"), None);
-/// assert_eq!(parse_hex_color("#FFF"), None); // 3-char not supported
-/// ```
-#[must_use]
-pub fn parse_hex_color(hex: &str) -> Option<u32> {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() == 6 {
-        u32::from_str_radix(hex, 16).ok()
-    } else {
-        None
+#[allow(dead_code)]
+mod helpers {
+    /// Parses a hex color string (with or without '#' prefix) into an RGB value.
+    ///
+    /// Returns `None` if the string is not a valid 6-character hex color.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // Internal function - use set_background_color() from JavaScript
+    /// assert_eq!(parse_hex_color("#FF0000"), Some(0xFF0000));
+    /// assert_eq!(parse_hex_color("00FF00"), Some(0x00FF00));
+    /// assert_eq!(parse_hex_color("invalid"), None);
+    /// assert_eq!(parse_hex_color("#FFF"), None); // 3-char not supported
+    /// ```
+    #[must_use]
+    pub fn parse_hex_color(hex: &str) -> Option<u32> {
+        let hex = hex.trim_start_matches('#');
+        if hex.len() == 6 {
+            u32::from_str_radix(hex, 16).ok()
+        } else {
+            None
+        }
     }
 }
+
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // ============================================================================
 // Tests
@@ -507,30 +513,30 @@ mod tests {
 
     #[test]
     fn test_parse_hex_color_with_hash() {
-        assert_eq!(parse_hex_color("#FF0000"), Some(0xFF0000));
-        assert_eq!(parse_hex_color("#00FF00"), Some(0x00FF00));
-        assert_eq!(parse_hex_color("#0000FF"), Some(0x0000FF));
-        assert_eq!(parse_hex_color("#FFFFFF"), Some(0xFFFFFF));
-        assert_eq!(parse_hex_color("#000000"), Some(0x000000));
+        assert_eq!(parse_hex_color("#FF0000"), Some(0x00FF_0000));
+        assert_eq!(parse_hex_color("#00FF00"), Some(0x0000_FF00));
+        assert_eq!(parse_hex_color("#0000FF"), Some(0x0000_00FF));
+        assert_eq!(parse_hex_color("#FFFFFF"), Some(0x00FF_FFFF));
+        assert_eq!(parse_hex_color("#000000"), Some(0x0000_0000));
     }
 
     #[test]
     fn test_parse_hex_color_without_hash() {
-        assert_eq!(parse_hex_color("FF0000"), Some(0xFF0000));
-        assert_eq!(parse_hex_color("00FF00"), Some(0x00FF00));
-        assert_eq!(parse_hex_color("0000FF"), Some(0x0000FF));
+        assert_eq!(parse_hex_color("FF0000"), Some(0x00FF_0000));
+        assert_eq!(parse_hex_color("00FF00"), Some(0x0000_FF00));
+        assert_eq!(parse_hex_color("0000FF"), Some(0x0000_00FF));
     }
 
     #[test]
     fn test_parse_hex_color_lowercase() {
-        assert_eq!(parse_hex_color("#ff0000"), Some(0xFF0000));
-        assert_eq!(parse_hex_color("aabbcc"), Some(0xAABBCC));
+        assert_eq!(parse_hex_color("#ff0000"), Some(0x00FF_0000));
+        assert_eq!(parse_hex_color("aabbcc"), Some(0x00AA_BBCC));
     }
 
     #[test]
     fn test_parse_hex_color_mixed_case() {
-        assert_eq!(parse_hex_color("#Ff00fF"), Some(0xFF00FF));
-        assert_eq!(parse_hex_color("AaBbCc"), Some(0xAABBCC));
+        assert_eq!(parse_hex_color("#Ff00fF"), Some(0x00FF_00FF));
+        assert_eq!(parse_hex_color("AaBbCc"), Some(0x00AA_BBCC));
     }
 
     #[test]
@@ -563,14 +569,14 @@ mod tests {
     #[test]
     fn test_parse_hex_color_edge_cases() {
         // Leading zeros
-        assert_eq!(parse_hex_color("#000001"), Some(0x000001));
+        assert_eq!(parse_hex_color("#000001"), Some(0x0000_0001));
 
         // All same digit
-        assert_eq!(parse_hex_color("#111111"), Some(0x111111));
-        assert_eq!(parse_hex_color("#AAAAAA"), Some(0xAAAAAA));
+        assert_eq!(parse_hex_color("#111111"), Some(0x0011_1111));
+        assert_eq!(parse_hex_color("#AAAAAA"), Some(0x00AA_AAAA));
 
         // Max value
-        assert_eq!(parse_hex_color("#FFFFFF"), Some(0xFFFFFF));
+        assert_eq!(parse_hex_color("#FFFFFF"), Some(0x00FF_FFFF));
     }
 
     // ========================================================================

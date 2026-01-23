@@ -29,106 +29,123 @@ pub const MIN_COUPLING_THRESHOLD: f32 = 0.01;
 // Pure Helper Functions (testable without Scene)
 // =============================================================================
 
-/// Computes the distance-based coupling factor (0.0 to 1.0).
-///
-/// Returns 1.0 when distance is 0, decreasing linearly to 0.0 at the threshold.
-#[inline]
-#[must_use]
-pub fn compute_distance_factor(distance: f32, threshold: f32) -> f32 {
-    (1.0 - distance / threshold).clamp(0.0, 1.0)
+// These pure functions are extracted for unit testing. They are not called directly
+// from the main interaction code, which uses optimized inline versions.
+#[allow(dead_code)]
+#[allow(clippy::wildcard_imports)]
+mod helpers {
+    use super::*;
+
+    /// Computes the distance-based coupling factor (0.0 to 1.0).
+    ///
+    /// Returns 1.0 when distance is 0, decreasing linearly to 0.0 at the threshold.
+    #[inline]
+    #[must_use]
+    pub fn compute_distance_factor(distance: f32, threshold: f32) -> f32 {
+        (1.0 - distance / threshold).clamp(0.0, 1.0)
+    }
+
+    /// Computes the coupling strength from base coupling and distance factor.
+    #[inline]
+    #[must_use]
+    pub fn compute_coupling(base_coupling: f32, distance_factor: f32) -> f32 {
+        base_coupling * distance_factor
+    }
+
+    /// Computes coupling for sibling files (uses default coupling strength).
+    #[inline]
+    #[must_use]
+    pub fn compute_sibling_file_coupling(distance: f32) -> f32 {
+        let distance_factor = compute_distance_factor(distance, DRAG_COUPLING_DISTANCE_THRESHOLD);
+        compute_coupling(DRAG_COUPLING_STRENGTH, distance_factor)
+    }
+
+    /// Computes coupling for parent directory (half the default coupling).
+    #[inline]
+    #[must_use]
+    pub fn compute_parent_dir_coupling(distance: f32) -> f32 {
+        let distance_factor = compute_distance_factor(distance, DRAG_COUPLING_DISTANCE_THRESHOLD);
+        compute_coupling(DRAG_COUPLING_STRENGTH * 0.5, distance_factor)
+    }
+
+    /// Computes coupling for sibling directories (30% of default coupling).
+    #[inline]
+    #[must_use]
+    pub fn compute_sibling_dir_coupling(distance: f32) -> f32 {
+        let distance_factor = compute_distance_factor(distance, DRAG_COUPLING_DISTANCE_THRESHOLD);
+        compute_coupling(DRAG_COUPLING_STRENGTH * 0.3, distance_factor)
+    }
+
+    /// Computes coupling for connected files from user drag.
+    #[inline]
+    #[must_use]
+    pub fn compute_connected_file_coupling(distance: f32) -> f32 {
+        let distance_factor = compute_distance_factor(distance, DRAG_COUPLING_DISTANCE_THRESHOLD);
+        compute_coupling(DRAG_COUPLING_STRENGTH, distance_factor)
+    }
+
+    /// Computes the effective hit radius for entity picking.
+    ///
+    /// Adds half the hit radius as tolerance.
+    #[inline]
+    #[must_use]
+    pub fn compute_effective_hit_radius(entity_radius: f32, hit_radius: f32) -> f32 {
+        entity_radius + hit_radius * 0.5
+    }
+
+    /// Determines if a delta movement is significant enough to process.
+    #[inline]
+    #[must_use]
+    pub fn is_significant_delta(delta: Vec2) -> bool {
+        delta.length() >= MIN_SIGNIFICANT_DELTA
+    }
+
+    /// Determines if a coupling value is significant enough to apply.
+    #[inline]
+    #[must_use]
+    pub fn is_significant_coupling(coupling: f32) -> bool {
+        coupling > MIN_COUPLING_THRESHOLD
+    }
+
+    /// Computes the new position after applying a coupled delta.
+    #[inline]
+    #[must_use]
+    pub fn compute_coupled_position(current: Vec2, delta: Vec2, coupling: f32) -> Vec2 {
+        current + delta * coupling
+    }
+
+    /// Determines if a point is within an entity's effective hit area.
+    #[inline]
+    #[must_use]
+    pub fn is_within_hit_area(
+        entity_pos: Vec2,
+        entity_radius: f32,
+        point: Vec2,
+        hit_radius: f32,
+    ) -> bool {
+        let distance = (entity_pos - point).length();
+        let effective_radius = compute_effective_hit_radius(entity_radius, hit_radius);
+        distance <= effective_radius
+    }
+
+    /// Computes the distance between two points.
+    #[inline]
+    #[must_use]
+    pub fn compute_distance(a: Vec2, b: Vec2) -> f32 {
+        (a - b).length()
+    }
+
+    /// Determines which entity is closer (returns true if `dist_a` < `dist_b`).
+    #[inline]
+    #[must_use]
+    pub fn is_closer(dist_a: f32, dist_b: Option<f32>) -> bool {
+        dist_b.is_none_or(|b| dist_a < b)
+    }
 }
 
-/// Computes the coupling strength from base coupling and distance factor.
-#[inline]
-#[must_use]
-pub fn compute_coupling(base_coupling: f32, distance_factor: f32) -> f32 {
-    base_coupling * distance_factor
-}
-
-/// Computes coupling for sibling files (uses default coupling strength).
-#[inline]
-#[must_use]
-pub fn compute_sibling_file_coupling(distance: f32) -> f32 {
-    let distance_factor = compute_distance_factor(distance, DRAG_COUPLING_DISTANCE_THRESHOLD);
-    compute_coupling(DRAG_COUPLING_STRENGTH, distance_factor)
-}
-
-/// Computes coupling for parent directory (half the default coupling).
-#[inline]
-#[must_use]
-pub fn compute_parent_dir_coupling(distance: f32) -> f32 {
-    let distance_factor = compute_distance_factor(distance, DRAG_COUPLING_DISTANCE_THRESHOLD);
-    compute_coupling(DRAG_COUPLING_STRENGTH * 0.5, distance_factor)
-}
-
-/// Computes coupling for sibling directories (30% of default coupling).
-#[inline]
-#[must_use]
-pub fn compute_sibling_dir_coupling(distance: f32) -> f32 {
-    let distance_factor = compute_distance_factor(distance, DRAG_COUPLING_DISTANCE_THRESHOLD);
-    compute_coupling(DRAG_COUPLING_STRENGTH * 0.3, distance_factor)
-}
-
-/// Computes coupling for connected files from user drag.
-#[inline]
-#[must_use]
-pub fn compute_connected_file_coupling(distance: f32) -> f32 {
-    let distance_factor = compute_distance_factor(distance, DRAG_COUPLING_DISTANCE_THRESHOLD);
-    compute_coupling(DRAG_COUPLING_STRENGTH, distance_factor)
-}
-
-/// Computes the effective hit radius for entity picking.
-///
-/// Adds half the hit radius as tolerance.
-#[inline]
-#[must_use]
-pub fn compute_effective_hit_radius(entity_radius: f32, hit_radius: f32) -> f32 {
-    entity_radius + hit_radius * 0.5
-}
-
-/// Determines if a delta movement is significant enough to process.
-#[inline]
-#[must_use]
-pub fn is_significant_delta(delta: Vec2) -> bool {
-    delta.length() >= MIN_SIGNIFICANT_DELTA
-}
-
-/// Determines if a coupling value is significant enough to apply.
-#[inline]
-#[must_use]
-pub fn is_significant_coupling(coupling: f32) -> bool {
-    coupling > MIN_COUPLING_THRESHOLD
-}
-
-/// Computes the new position after applying a coupled delta.
-#[inline]
-#[must_use]
-pub fn compute_coupled_position(current: Vec2, delta: Vec2, coupling: f32) -> Vec2 {
-    current + delta * coupling
-}
-
-/// Determines if a point is within an entity's effective hit area.
-#[inline]
-#[must_use]
-pub fn is_within_hit_area(entity_pos: Vec2, entity_radius: f32, point: Vec2, hit_radius: f32) -> bool {
-    let distance = (entity_pos - point).length();
-    let effective_radius = compute_effective_hit_radius(entity_radius, hit_radius);
-    distance <= effective_radius
-}
-
-/// Computes the distance between two points.
-#[inline]
-#[must_use]
-pub fn compute_distance(a: Vec2, b: Vec2) -> f32 {
-    (a - b).length()
-}
-
-/// Determines which entity is closer (returns true if dist_a < dist_b).
-#[inline]
-#[must_use]
-pub fn is_closer(dist_a: f32, dist_b: Option<f32>) -> bool {
-    dist_b.map_or(true, |b| dist_a < b)
-}
+// Re-export helpers for tests
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // =============================================================================
 // Types
@@ -727,6 +744,7 @@ mod tests {
     // ========================================================================
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_entity_hit_radius_reasonable() {
         // Hit radius should be reasonable for picking
         assert!(ENTITY_HIT_RADIUS > 5.0);
@@ -734,6 +752,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_drag_coupling_strength_reasonable() {
         // Coupling should be between 0 and 1
         assert!(DRAG_COUPLING_STRENGTH > 0.0);
@@ -741,12 +760,14 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_drag_coupling_distance_threshold_reasonable() {
         // Threshold should be large enough for natural dragging
         assert!(DRAG_COUPLING_DISTANCE_THRESHOLD > 50.0);
     }
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_min_significant_delta_reasonable() {
         // Very small threshold to avoid jitter
         assert!(MIN_SIGNIFICANT_DELTA > 0.0);
@@ -754,6 +775,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_min_coupling_threshold_reasonable() {
         // Small threshold to avoid unnecessary computations
         assert!(MIN_COUPLING_THRESHOLD > 0.0);

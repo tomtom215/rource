@@ -19,40 +19,46 @@ use crate::Rource;
 // Helper Functions (testable without Rource instance)
 // ============================================================================
 
-/// Validates and clamps a playback speed value.
-///
-/// Returns a valid speed in the range [0.01, 1000.0], or the default (10.0)
-/// for invalid inputs like NaN, infinity, or non-positive values.
-///
-/// # Arguments
-/// * `seconds_per_day` - The requested playback speed
-///
-/// # Returns
-/// A valid, clamped speed value.
-#[inline]
-#[must_use]
-pub fn validate_speed(seconds_per_day: f32) -> f32 {
-    let speed = if seconds_per_day.is_finite() && seconds_per_day > 0.0 {
-        seconds_per_day
-    } else {
-        10.0
-    };
-    speed.clamp(0.01, 1000.0)
+#[allow(dead_code)]
+mod helpers {
+    /// Validates and clamps a playback speed value.
+    ///
+    /// Returns a valid speed in the range [0.01, 1000.0], or the default (10.0)
+    /// for invalid inputs like NaN, infinity, or non-positive values.
+    ///
+    /// # Arguments
+    /// * `seconds_per_day` - The requested playback speed
+    ///
+    /// # Returns
+    /// A valid, clamped speed value.
+    #[inline]
+    #[must_use]
+    pub fn validate_speed(seconds_per_day: f32) -> f32 {
+        let speed = if seconds_per_day.is_finite() && seconds_per_day > 0.0 {
+            seconds_per_day
+        } else {
+            10.0
+        };
+        speed.clamp(0.01, 1000.0)
+    }
+
+    /// Formats a date range as a JSON string.
+    ///
+    /// # Arguments
+    /// * `start` - Start timestamp in seconds since Unix epoch
+    /// * `end` - End timestamp in seconds since Unix epoch
+    ///
+    /// # Returns
+    /// JSON string with `startTimestamp` and `endTimestamp` fields.
+    #[inline]
+    #[must_use]
+    pub fn format_date_range(start: i64, end: i64) -> String {
+        format!(r#"{{"startTimestamp":{start},"endTimestamp":{end}}}"#)
+    }
 }
 
-/// Formats a date range as a JSON string.
-///
-/// # Arguments
-/// * `start` - Start timestamp in seconds since Unix epoch
-/// * `end` - End timestamp in seconds since Unix epoch
-///
-/// # Returns
-/// JSON string with `startTimestamp` and `endTimestamp` fields.
-#[inline]
-#[must_use]
-pub fn format_date_range(start: i64, end: i64) -> String {
-    format!(r#"{{"startTimestamp":{start},"endTimestamp":{end}}}"#)
-}
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // ============================================================================
 // Playback Control
@@ -277,7 +283,7 @@ mod tests {
     #[test]
     fn test_format_date_range_large_timestamps() {
         // Unix timestamp for 2026-01-23
-        let result = format_date_range(1769212800, 1769299200);
+        let result = format_date_range(1_769_212_800, 1_769_299_200);
         assert_eq!(
             result,
             r#"{"startTimestamp":1769212800,"endTimestamp":1769299200}"#

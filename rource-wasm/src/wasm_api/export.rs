@@ -21,128 +21,140 @@ use crate::Rource;
 // Helper Functions (testable without Rource instance)
 // ============================================================================
 
-/// Maximum dimension for WebGL textures.
-pub const MAX_TEXTURE_DIMENSION: u32 = 16384;
+#[allow(dead_code)]
+mod helpers {
+    /// Maximum dimension for WebGL textures.
+    pub const MAX_TEXTURE_DIMENSION: u32 = 16384;
 
-/// Default padding ratio for export bounds.
-pub const DEFAULT_PADDING: f32 = 0.2;
+    /// Default padding ratio for export bounds.
+    pub const DEFAULT_PADDING: f32 = 0.2;
 
-/// Calculates padded dimensions with a given padding ratio.
-///
-/// # Arguments
-/// * `width` - Original width
-/// * `height` - Original height
-/// * `padding` - Padding ratio (0.2 = 20% on each side)
-///
-/// # Returns
-/// Tuple of (padded_width, padded_height).
-#[inline]
-#[must_use]
-pub fn calculate_padded_dimensions(width: f32, height: f32, padding: f32) -> (f32, f32) {
-    let multiplier = 1.0 + padding * 2.0;
-    (width * multiplier, height * multiplier)
-}
+    /// Calculates padded dimensions with a given padding ratio.
+    ///
+    /// # Arguments
+    /// * `width` - Original width
+    /// * `height` - Original height
+    /// * `padding` - Padding ratio (0.2 = 20% on each side)
+    ///
+    /// # Returns
+    /// Tuple of (`padded_width`, `padded_height`).
+    #[inline]
+    #[must_use]
+    pub fn calculate_padded_dimensions(width: f32, height: f32, padding: f32) -> (f32, f32) {
+        let multiplier = 1.0 + padding * 2.0;
+        (width * multiplier, height * multiplier)
+    }
 
-/// Calculates the zoom level needed for readable labels.
-///
-/// # Arguments
-/// * `min_label_font_size` - Minimum desired font size for labels
-/// * `base_font_size` - The base font size in settings
-///
-/// # Returns
-/// The zoom level, clamped to at least 0.5.
-#[inline]
-#[must_use]
-pub fn calculate_readable_zoom(min_label_font_size: f32, base_font_size: f32) -> f32 {
-    (min_label_font_size / base_font_size).max(0.5)
-}
+    /// Calculates the zoom level needed for readable labels.
+    ///
+    /// # Arguments
+    /// * `min_label_font_size` - Minimum desired font size for labels
+    /// * `base_font_size` - The base font size in settings
+    ///
+    /// # Returns
+    /// The zoom level, clamped to at least 0.5.
+    #[inline]
+    #[must_use]
+    pub fn calculate_readable_zoom(min_label_font_size: f32, base_font_size: f32) -> f32 {
+        (min_label_font_size / base_font_size).max(0.5)
+    }
 
-/// Calculates canvas dimensions from world dimensions and zoom.
-///
-/// # Arguments
-/// * `world_width` - Width in world coordinates
-/// * `world_height` - Height in world coordinates
-/// * `zoom` - Zoom level
-///
-/// # Returns
-/// Tuple of (canvas_width, canvas_height) as u32.
-#[inline]
-#[must_use]
-pub fn calculate_canvas_dimensions(world_width: f32, world_height: f32, zoom: f32) -> (u32, u32) {
-    (
-        (world_width * zoom).ceil() as u32,
-        (world_height * zoom).ceil() as u32,
-    )
-}
+    /// Calculates canvas dimensions from world dimensions and zoom.
+    ///
+    /// # Arguments
+    /// * `world_width` - Width in world coordinates
+    /// * `world_height` - Height in world coordinates
+    /// * `zoom` - Zoom level
+    ///
+    /// # Returns
+    /// Tuple of (`canvas_width`, `canvas_height`) as u32.
+    #[inline]
+    #[must_use]
+    pub fn calculate_canvas_dimensions(
+        world_width: f32,
+        world_height: f32,
+        zoom: f32,
+    ) -> (u32, u32) {
+        (
+            (world_width * zoom).ceil() as u32,
+            (world_height * zoom).ceil() as u32,
+        )
+    }
 
-/// Scales dimensions to fit within the maximum texture size.
-///
-/// # Arguments
-/// * `width` - Original width
-/// * `height` - Original height
-/// * `zoom` - Original zoom level
-/// * `max_dimension` - Maximum allowed dimension
-///
-/// # Returns
-/// Tuple of (final_width, final_height, final_zoom).
-#[must_use]
-pub fn scale_to_max_dimension(
-    width: u32,
-    height: u32,
-    zoom: f32,
-    max_dimension: u32,
-) -> (u32, u32, f32) {
-    if width > max_dimension || height > max_dimension {
-        let scale = (max_dimension as f32) / (width.max(height) as f32);
-        let scaled_width = ((width as f32) * scale).ceil() as u32;
-        let scaled_height = ((height as f32) * scale).ceil() as u32;
-        let scaled_zoom = zoom * scale;
-        (scaled_width, scaled_height, scaled_zoom)
-    } else {
-        (width, height, zoom)
+    /// Scales dimensions to fit within the maximum texture size.
+    ///
+    /// # Arguments
+    /// * `width` - Original width
+    /// * `height` - Original height
+    /// * `zoom` - Original zoom level
+    /// * `max_dimension` - Maximum allowed dimension
+    ///
+    /// # Returns
+    /// Tuple of (`final_width`, `final_height`, `final_zoom`).
+    #[must_use]
+    pub fn scale_to_max_dimension(
+        width: u32,
+        height: u32,
+        zoom: f32,
+        max_dimension: u32,
+    ) -> (u32, u32, f32) {
+        if width > max_dimension || height > max_dimension {
+            let scale = (max_dimension as f32) / (width.max(height) as f32);
+            let scaled_width = ((width as f32) * scale).ceil() as u32;
+            let scaled_height = ((height as f32) * scale).ceil() as u32;
+            let scaled_zoom = zoom * scale;
+            (scaled_width, scaled_height, scaled_zoom)
+        } else {
+            (width, height, zoom)
+        }
+    }
+
+    /// Formats entity bounds as a JSON string.
+    ///
+    /// # Arguments
+    /// * `min_x` - Minimum X coordinate
+    /// * `min_y` - Minimum Y coordinate
+    /// * `max_x` - Maximum X coordinate
+    /// * `max_y` - Maximum Y coordinate
+    ///
+    /// # Returns
+    /// JSON string with bounds information.
+    #[must_use]
+    pub fn format_bounds_json(min_x: f32, min_y: f32, max_x: f32, max_y: f32) -> String {
+        let width = max_x - min_x;
+        let height = max_y - min_y;
+        format!(
+            r#"{{"minX":{min_x},"minY":{min_y},"maxX":{max_x},"maxY":{max_y},"width":{width},"height":{height}}}"#
+        )
+    }
+
+    /// Formats full map dimensions as a JSON string.
+    ///
+    /// # Arguments
+    /// * `width` - Canvas width
+    /// * `height` - Canvas height
+    /// * `zoom` - Zoom level
+    /// * `center_x` - Center X coordinate
+    /// * `center_y` - Center Y coordinate
+    ///
+    /// # Returns
+    /// JSON string with dimensions information.
+    #[must_use]
+    pub fn format_dimensions_json(
+        width: u32,
+        height: u32,
+        zoom: f32,
+        center_x: f32,
+        center_y: f32,
+    ) -> String {
+        format!(
+            r#"{{"width":{width},"height":{height},"zoom":{zoom},"centerX":{center_x},"centerY":{center_y}}}"#
+        )
     }
 }
 
-/// Formats entity bounds as a JSON string.
-///
-/// # Arguments
-/// * `min_x` - Minimum X coordinate
-/// * `min_y` - Minimum Y coordinate
-/// * `max_x` - Maximum X coordinate
-/// * `max_y` - Maximum Y coordinate
-///
-/// # Returns
-/// JSON string with bounds information.
-#[must_use]
-pub fn format_bounds_json(min_x: f32, min_y: f32, max_x: f32, max_y: f32) -> String {
-    let width = max_x - min_x;
-    let height = max_y - min_y;
-    format!(
-        r#"{{"minX":{min_x},"minY":{min_y},"maxX":{max_x},"maxY":{max_y},"width":{width},"height":{height}}}"#
-    )
-}
-
-/// Formats full map dimensions as a JSON string.
-///
-/// # Arguments
-/// * `width` - Canvas width
-/// * `height` - Canvas height
-/// * `zoom` - Zoom level
-/// * `center_x` - Center X coordinate
-/// * `center_y` - Center Y coordinate
-///
-/// # Returns
-/// JSON string with dimensions information.
-#[must_use]
-pub fn format_dimensions_json(
-    width: u32,
-    height: u32,
-    zoom: f32,
-    center_x: f32,
-    center_y: f32,
-) -> String {
-    format!(r#"{{"width":{width},"height":{height},"zoom":{zoom},"centerX":{center_x},"centerY":{center_y}}}"#)
-}
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // ============================================================================
 // Export / Screenshot API

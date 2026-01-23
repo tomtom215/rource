@@ -23,97 +23,106 @@ use crate::Rource;
 // Helper Functions (testable without Rource instance)
 // ============================================================================
 
-/// Normalizes mouse wheel delta to a consistent range.
-///
-/// Different browsers report different delta values. This normalizes
-/// by dividing by 100 and clamping to [-2, 2].
-///
-/// # Arguments
-/// * `delta_y` - Raw delta_y from wheel event
-///
-/// # Returns
-/// Normalized delta in range [-2, 2].
-#[inline]
-#[must_use]
-pub fn normalize_wheel_delta(delta_y: f32) -> f32 {
-    (delta_y / 100.0).clamp(-2.0, 2.0)
+#[allow(dead_code)]
+#[allow(clippy::wildcard_imports)]
+mod helpers {
+    use super::*;
+
+    /// Normalizes mouse wheel delta to a consistent range.
+    ///
+    /// Different browsers report different delta values. This normalizes
+    /// by dividing by 100 and clamping to [-2, 2].
+    ///
+    /// # Arguments
+    /// * `delta_y` - Raw `delta_y` from wheel event
+    ///
+    /// # Returns
+    /// Normalized delta in range [-2, 2].
+    #[inline]
+    #[must_use]
+    pub fn normalize_wheel_delta(delta_y: f32) -> f32 {
+        (delta_y / 100.0).clamp(-2.0, 2.0)
+    }
+
+    /// Calculates the zoom factor from normalized wheel delta.
+    ///
+    /// # Arguments
+    /// * `normalized_delta` - Normalized delta from `normalize_wheel_delta`
+    ///
+    /// # Returns
+    /// Zoom factor (> 1 for zoom in, < 1 for zoom out).
+    #[inline]
+    #[must_use]
+    pub fn calculate_wheel_zoom_factor(normalized_delta: f32) -> f32 {
+        1.0 - (normalized_delta * 0.08)
+    }
+
+    /// Calculates the hit test radius adjusted for current zoom level.
+    ///
+    /// # Arguments
+    /// * `base_radius` - The base hit test radius in screen pixels
+    /// * `zoom` - Current camera zoom level
+    ///
+    /// # Returns
+    /// Hit radius in world coordinates.
+    #[inline]
+    #[must_use]
+    pub fn calculate_hit_radius(base_radius: f32, zoom: f32) -> f32 {
+        base_radius / zoom
+    }
+
+    /// Calculates world delta from screen delta.
+    ///
+    /// # Arguments
+    /// * `screen_delta` - Delta in screen pixels
+    /// * `zoom` - Current camera zoom level
+    ///
+    /// # Returns
+    /// Delta in world coordinates.
+    #[inline]
+    #[must_use]
+    pub fn screen_to_world_delta(screen_delta: Vec2, zoom: f32) -> Vec2 {
+        screen_delta / zoom
+    }
+
+    /// Checks if a keyboard key is a recognized shortcut.
+    ///
+    /// # Arguments
+    /// * `key` - The key string from the keyboard event
+    ///
+    /// # Returns
+    /// `true` if the key is a recognized shortcut.
+    #[must_use]
+    pub fn is_recognized_shortcut(key: &str) -> bool {
+        matches!(
+            key,
+            " " | "Space"
+                | "+"
+                | "="
+                | "-"
+                | "_"
+                | "ArrowUp"
+                | "ArrowDown"
+                | "ArrowLeft"
+                | "ArrowRight"
+                | "r"
+                | "R"
+                | "l"
+                | "L"
+                | "["
+                | "]"
+                | ","
+                | "<"
+                | "."
+                | ">"
+                | "Home"
+                | "End"
+        )
+    }
 }
 
-/// Calculates the zoom factor from normalized wheel delta.
-///
-/// # Arguments
-/// * `normalized_delta` - Normalized delta from `normalize_wheel_delta`
-///
-/// # Returns
-/// Zoom factor (> 1 for zoom in, < 1 for zoom out).
-#[inline]
-#[must_use]
-pub fn calculate_wheel_zoom_factor(normalized_delta: f32) -> f32 {
-    1.0 - (normalized_delta * 0.08)
-}
-
-/// Calculates the hit test radius adjusted for current zoom level.
-///
-/// # Arguments
-/// * `base_radius` - The base hit test radius in screen pixels
-/// * `zoom` - Current camera zoom level
-///
-/// # Returns
-/// Hit radius in world coordinates.
-#[inline]
-#[must_use]
-pub fn calculate_hit_radius(base_radius: f32, zoom: f32) -> f32 {
-    base_radius / zoom
-}
-
-/// Calculates world delta from screen delta.
-///
-/// # Arguments
-/// * `screen_delta` - Delta in screen pixels
-/// * `zoom` - Current camera zoom level
-///
-/// # Returns
-/// Delta in world coordinates.
-#[inline]
-#[must_use]
-pub fn screen_to_world_delta(screen_delta: Vec2, zoom: f32) -> Vec2 {
-    screen_delta / zoom
-}
-
-/// Checks if a keyboard key is a recognized shortcut.
-///
-/// # Arguments
-/// * `key` - The key string from the keyboard event
-///
-/// # Returns
-/// `true` if the key is a recognized shortcut.
-#[must_use]
-pub fn is_recognized_shortcut(key: &str) -> bool {
-    matches!(
-        key,
-        " " | "Space"
-            | "+"
-            | "="
-            | "-"
-            | "_"
-            | "ArrowUp"
-            | "ArrowDown"
-            | "ArrowLeft"
-            | "ArrowRight"
-            | "r"
-            | "R"
-            | "l"
-            | "L"
-            | "["
-            | "]"
-            | ","
-            | "<"
-            | "."
-            | ">"
-            | "Home"
-            | "End"
-    )
-}
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // ============================================================================
 // Input Handling

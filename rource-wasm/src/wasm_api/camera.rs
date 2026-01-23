@@ -148,39 +148,48 @@ impl Rource {
 // Zoom Calculation Helpers
 // ============================================================================
 
-/// Calculates the new zoom level after applying a zoom factor.
-///
-/// The result is clamped to the valid zoom range [AUTO_FIT_MIN_ZOOM, 1000.0].
-///
-/// # Arguments
-///
-/// * `current_zoom` - The current zoom level
-/// * `factor` - The zoom factor (> 1 zooms in, < 1 zooms out)
-///
-/// # Returns
-///
-/// The new zoom level, clamped to valid range.
-#[inline]
-#[must_use]
-pub fn calculate_zoom(current_zoom: f32, factor: f32) -> f32 {
-    (current_zoom * factor).clamp(AUTO_FIT_MIN_ZOOM, 1000.0)
+#[allow(dead_code)]
+#[allow(clippy::wildcard_imports)]
+mod helpers {
+    use super::*;
+
+    /// Calculates the new zoom level after applying a zoom factor.
+    ///
+    /// The result is clamped to the valid zoom range \[`AUTO_FIT_MIN_ZOOM`, 1000.0\].
+    ///
+    /// # Arguments
+    ///
+    /// * `current_zoom` - The current zoom level
+    /// * `factor` - The zoom factor (> 1 zooms in, < 1 zooms out)
+    ///
+    /// # Returns
+    ///
+    /// The new zoom level, clamped to valid range.
+    #[inline]
+    #[must_use]
+    pub fn calculate_zoom(current_zoom: f32, factor: f32) -> f32 {
+        (current_zoom * factor).clamp(AUTO_FIT_MIN_ZOOM, 1000.0)
+    }
+
+    /// Calculates the world-space delta from a screen-space delta.
+    ///
+    /// # Arguments
+    ///
+    /// * `screen_delta` - The screen-space delta in pixels
+    /// * `zoom` - The current zoom level
+    ///
+    /// # Returns
+    ///
+    /// The world-space delta.
+    #[inline]
+    #[must_use]
+    pub fn screen_to_world_delta(screen_delta: Vec2, zoom: f32) -> Vec2 {
+        screen_delta / zoom
+    }
 }
 
-/// Calculates the world-space delta from a screen-space delta.
-///
-/// # Arguments
-///
-/// * `screen_delta` - The screen-space delta in pixels
-/// * `zoom` - The current zoom level
-///
-/// # Returns
-///
-/// The world-space delta.
-#[inline]
-#[must_use]
-pub fn screen_to_world_delta(screen_delta: Vec2, zoom: f32) -> Vec2 {
-    screen_delta / zoom
-}
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // ============================================================================
 // Tests

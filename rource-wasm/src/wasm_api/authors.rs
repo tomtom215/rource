@@ -20,52 +20,61 @@ use crate::Rource;
 // Helper Functions (testable without Rource instance)
 // ============================================================================
 
-/// Escapes a string for use in JSON.
-///
-/// Escapes backslashes and double quotes.
-///
-/// # Arguments
-/// * `s` - The string to escape
-///
-/// # Returns
-/// JSON-safe escaped string.
-#[inline]
-#[must_use]
-pub fn escape_json_string(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('"', "\\\"")
+#[allow(dead_code)]
+#[allow(clippy::wildcard_imports)]
+mod helpers {
+    use super::*;
+
+    /// Escapes a string for use in JSON.
+    ///
+    /// Escapes backslashes and double quotes.
+    ///
+    /// # Arguments
+    /// * `s` - The string to escape
+    ///
+    /// # Returns
+    /// JSON-safe escaped string.
+    #[inline]
+    #[must_use]
+    pub fn escape_json_string(s: &str) -> String {
+        s.replace('\\', "\\\\").replace('"', "\\\"")
+    }
+
+    /// Formats a Color as a hex string.
+    ///
+    /// # Arguments
+    /// * `color` - The color to format
+    ///
+    /// # Returns
+    /// Hex color string like "#e94560".
+    #[inline]
+    #[must_use]
+    pub fn color_to_hex(color: &Color) -> String {
+        let r = (color.r * 255.0) as u8;
+        let g = (color.g * 255.0) as u8;
+        let b = (color.b * 255.0) as u8;
+        format!("#{r:02x}{g:02x}{b:02x}")
+    }
+
+    /// Formats a single author entry as a JSON object.
+    ///
+    /// # Arguments
+    /// * `name` - Author name
+    /// * `color` - Author color
+    /// * `commits` - Number of commits
+    ///
+    /// # Returns
+    /// JSON object string.
+    #[must_use]
+    pub fn format_author_json(name: &str, color: &Color, commits: usize) -> String {
+        let escaped_name = escape_json_string(name);
+        let hex_color = color_to_hex(color);
+        format!(r#"{{"name":"{escaped_name}","color":"{hex_color}","commits":{commits}}}"#)
+    }
 }
 
-/// Formats a Color as a hex string.
-///
-/// # Arguments
-/// * `color` - The color to format
-///
-/// # Returns
-/// Hex color string like "#e94560".
-#[inline]
-#[must_use]
-pub fn color_to_hex(color: &Color) -> String {
-    let r = (color.r * 255.0) as u8;
-    let g = (color.g * 255.0) as u8;
-    let b = (color.b * 255.0) as u8;
-    format!("#{r:02x}{g:02x}{b:02x}")
-}
-
-/// Formats a single author entry as a JSON object.
-///
-/// # Arguments
-/// * `name` - Author name
-/// * `color` - Author color
-/// * `commits` - Number of commits
-///
-/// # Returns
-/// JSON object string.
-#[must_use]
-pub fn format_author_json(name: &str, color: &Color, commits: usize) -> String {
-    let escaped_name = escape_json_string(name);
-    let hex_color = color_to_hex(color);
-    format!(r#"{{"name":"{escaped_name}","color":"{hex_color}","commits":{commits}}}"#)
-}
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // ============================================================================
 // Author Information API
@@ -238,7 +247,7 @@ mod tests {
         let gray = Color::new(0.5, 0.5, 0.5, 1.0);
         let hex = color_to_hex(&gray);
         // Should be close to #7f7f7f (127)
-        assert!(hex.starts_with("#"));
+        assert!(hex.starts_with('#'));
         assert_eq!(hex.len(), 7);
     }
 
@@ -257,7 +266,10 @@ mod tests {
     fn test_format_author_json_with_spaces() {
         let color = Color::new(0.0, 1.0, 0.0, 1.0);
         let json = format_author_json("John Doe", &color, 17);
-        assert_eq!(json, r##"{"name":"John Doe","color":"#00ff00","commits":17}"##);
+        assert_eq!(
+            json,
+            r##"{"name":"John Doe","color":"#00ff00","commits":17}"##
+        );
     }
 
     #[test]
@@ -280,7 +292,7 @@ mod tests {
     #[test]
     fn test_format_author_json_large_commit_count() {
         let color = Color::new(1.0, 1.0, 0.0, 1.0);
-        let json = format_author_json("Prolific Author", &color, 999999);
+        let json = format_author_json("Prolific Author", &color, 999_999);
         assert!(json.contains(r#""commits":999999"#));
     }
 

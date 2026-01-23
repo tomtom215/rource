@@ -19,95 +19,104 @@ use crate::Rource;
 // Helper Functions (testable without Rource instance)
 // ============================================================================
 
-/// Parses a layout preset name and returns whether it's valid.
-///
-/// # Arguments
-/// * `preset` - The preset name (case-insensitive)
-///
-/// # Returns
-/// `true` if the preset is recognized.
-#[inline]
-#[must_use]
-pub fn is_valid_preset(preset: &str) -> bool {
-    matches!(
-        preset.to_lowercase().as_str(),
-        "small" | "medium" | "large" | "massive"
-    )
+#[allow(dead_code)]
+#[allow(clippy::wildcard_imports)]
+mod helpers {
+    use super::*;
+
+    /// Parses a layout preset name and returns whether it's valid.
+    ///
+    /// # Arguments
+    /// * `preset` - The preset name (case-insensitive)
+    ///
+    /// # Returns
+    /// `true` if the preset is recognized.
+    #[inline]
+    #[must_use]
+    pub fn is_valid_preset(preset: &str) -> bool {
+        matches!(
+            preset.to_lowercase().as_str(),
+            "small" | "medium" | "large" | "massive"
+        )
+    }
+
+    /// Clamps a radial distance scale to valid range.
+    ///
+    /// # Arguments
+    /// * `scale` - The scale value to clamp
+    ///
+    /// # Returns
+    /// Clamped value in range [40.0, 500.0].
+    #[inline]
+    #[must_use]
+    pub fn clamp_radial_distance_scale(scale: f32) -> f32 {
+        scale.clamp(40.0, 500.0)
+    }
+
+    /// Clamps a depth distance exponent to valid range.
+    ///
+    /// # Arguments
+    /// * `exponent` - The exponent value to clamp
+    ///
+    /// # Returns
+    /// Clamped value in range [0.5, 2.0].
+    #[inline]
+    #[must_use]
+    pub fn clamp_depth_distance_exponent(exponent: f32) -> f32 {
+        exponent.clamp(0.5, 2.0)
+    }
+
+    /// Clamps a branch depth fade value to valid range.
+    ///
+    /// # Arguments
+    /// * `fade` - The fade value to clamp
+    ///
+    /// # Returns
+    /// Clamped value in range [0.0, 1.0].
+    #[inline]
+    #[must_use]
+    pub fn clamp_branch_depth_fade(fade: f32) -> f32 {
+        fade.clamp(0.0, 1.0)
+    }
+
+    /// Clamps a branch opacity max value to valid range.
+    ///
+    /// # Arguments
+    /// * `opacity` - The opacity value to clamp
+    ///
+    /// # Returns
+    /// Clamped value in range [0.0, 1.0].
+    #[inline]
+    #[must_use]
+    pub fn clamp_branch_opacity_max(opacity: f32) -> f32 {
+        opacity.clamp(0.0, 1.0)
+    }
+
+    /// Formats layout settings as a JSON string.
+    ///
+    /// # Arguments
+    /// * `settings` - The layout settings to format
+    ///
+    /// # Returns
+    /// JSON string representation.
+    #[must_use]
+    pub fn format_layout_config(settings: &LayoutSettings) -> String {
+        format!(
+            r#"{{"radial_distance_scale":{},"min_angular_span":{},"depth_distance_exponent":{},"sibling_spacing_multiplier":{},"branch_depth_fade":{},"branch_opacity_max":{},"auto_scale":{},"large_repo_threshold":{}}}"#,
+            settings.radial_distance_scale,
+            settings.min_angular_span,
+            settings.depth_distance_exponent,
+            settings.sibling_spacing_multiplier,
+            settings.branch_depth_fade,
+            settings.branch_opacity_max,
+            settings.auto_scale,
+            settings.large_repo_threshold
+        )
+    }
 }
 
-/// Clamps a radial distance scale to valid range.
-///
-/// # Arguments
-/// * `scale` - The scale value to clamp
-///
-/// # Returns
-/// Clamped value in range [40.0, 500.0].
-#[inline]
-#[must_use]
-pub fn clamp_radial_distance_scale(scale: f32) -> f32 {
-    scale.clamp(40.0, 500.0)
-}
-
-/// Clamps a depth distance exponent to valid range.
-///
-/// # Arguments
-/// * `exponent` - The exponent value to clamp
-///
-/// # Returns
-/// Clamped value in range [0.5, 2.0].
-#[inline]
-#[must_use]
-pub fn clamp_depth_distance_exponent(exponent: f32) -> f32 {
-    exponent.clamp(0.5, 2.0)
-}
-
-/// Clamps a branch depth fade value to valid range.
-///
-/// # Arguments
-/// * `fade` - The fade value to clamp
-///
-/// # Returns
-/// Clamped value in range [0.0, 1.0].
-#[inline]
-#[must_use]
-pub fn clamp_branch_depth_fade(fade: f32) -> f32 {
-    fade.clamp(0.0, 1.0)
-}
-
-/// Clamps a branch opacity max value to valid range.
-///
-/// # Arguments
-/// * `opacity` - The opacity value to clamp
-///
-/// # Returns
-/// Clamped value in range [0.0, 1.0].
-#[inline]
-#[must_use]
-pub fn clamp_branch_opacity_max(opacity: f32) -> f32 {
-    opacity.clamp(0.0, 1.0)
-}
-
-/// Formats layout settings as a JSON string.
-///
-/// # Arguments
-/// * `settings` - The layout settings to format
-///
-/// # Returns
-/// JSON string representation.
-#[must_use]
-pub fn format_layout_config(settings: &LayoutSettings) -> String {
-    format!(
-        r#"{{"radial_distance_scale":{},"min_angular_span":{},"depth_distance_exponent":{},"sibling_spacing_multiplier":{},"branch_depth_fade":{},"branch_opacity_max":{},"auto_scale":{},"large_repo_threshold":{}}}"#,
-        settings.radial_distance_scale,
-        settings.min_angular_span,
-        settings.depth_distance_exponent,
-        settings.sibling_spacing_multiplier,
-        settings.branch_depth_fade,
-        settings.branch_opacity_max,
-        settings.auto_scale,
-        settings.large_repo_threshold
-    )
-}
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // ============================================================================
 // Layout Configuration

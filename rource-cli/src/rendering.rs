@@ -73,469 +73,484 @@ const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.01;
 // Pure Helper Functions (testable without renderer)
 // =============================================================================
 
-// ---- Directory Rendering Helpers ----
+// These pure functions are extracted for unit testing. They are not called directly
+// from the main rendering code, which uses optimized inline versions.
+#[allow(dead_code)]
+#[allow(clippy::wildcard_imports)]
+mod helpers {
+    use super::*;
 
-/// Computes the depth factor for a directory (0.0 to 1.0).
-///
-/// Deeper directories have higher values, capped at depth 6.
-#[inline]
-#[must_use]
-pub fn compute_dir_depth_factor(depth: u32) -> f32 {
-    (depth as f32 / 6.0).min(1.0)
-}
+    // ---- Directory Rendering Helpers ----
 
-/// Computes the base brightness for directory coloring.
-///
-/// Shallower directories are brighter.
-#[inline]
-#[must_use]
-pub fn compute_dir_base_brightness(depth_factor: f32) -> f32 {
-    0.25 + 0.1 * (1.0 - depth_factor)
-}
-
-/// Computes the directory node color based on depth.
-///
-/// Returns a slightly blue-tinted color that gets darker with depth.
-#[inline]
-#[must_use]
-pub fn compute_dir_color(depth: u32) -> Color {
-    let depth_factor = compute_dir_depth_factor(depth);
-    let base_brightness = compute_dir_base_brightness(depth_factor);
-    Color::new(
-        base_brightness * 0.9,
-        base_brightness,
-        base_brightness * 1.1 + 0.05,
-        0.55,
-    )
-}
-
-/// Computes the glow color for directory background effect.
-#[inline]
-#[must_use]
-pub fn compute_dir_glow_color(dir_color: Color) -> Color {
-    dir_color.with_alpha(0.1)
-}
-
-/// Computes the center dot color for directory nodes.
-#[inline]
-#[must_use]
-pub fn compute_dir_center_color(dir_color: Color) -> Color {
-    dir_color.with_alpha(0.4)
-}
-
-/// Computes the branch width based on depth.
-///
-/// Branches are thicker near the root.
-#[inline]
-#[must_use]
-pub fn compute_branch_width(depth_factor: f32) -> f32 {
-    (1.5 - depth_factor * 0.5).max(0.8)
-}
-
-/// Computes the branch color for directory connections.
-#[inline]
-#[must_use]
-pub fn compute_dir_branch_color(dir_color: Color) -> Color {
-    Color::new(
-        dir_color.r * 1.1,
-        dir_color.g * 1.1,
-        dir_color.b * 1.2,
-        0.35,
-    )
-}
-
-/// Determines if a directory should be rendered based on LOD.
-///
-/// Root directory (depth 0) is always rendered.
-#[inline]
-#[must_use]
-pub fn should_render_dir(radius: f32, depth: u32) -> bool {
-    depth == 0 || radius >= LOD_MIN_DIR_RADIUS
-}
-
-/// Determines if directory branches should be rendered at this zoom level.
-#[inline]
-#[must_use]
-pub fn should_render_dir_branches(zoom: f32, hide_tree: bool) -> bool {
-    !hide_tree && zoom >= LOD_MIN_ZOOM_FOR_DIR_BRANCHES
-}
-
-/// Determines if a directory label should be rendered.
-#[inline]
-#[must_use]
-pub fn should_render_dir_label(
-    hide_dirnames: bool,
-    depth: u32,
-    dir_name_depth: u32,
-    radius: f32,
-) -> bool {
-    !hide_dirnames && depth <= dir_name_depth && radius >= LOD_MIN_DIR_LABEL_RADIUS
-}
-
-/// Computes the label position for a directory.
-#[inline]
-#[must_use]
-pub fn compute_dir_label_position(screen_pos: Vec2, radius: f32, font_size: f32) -> Vec2 {
-    Vec2::new(screen_pos.x + radius + 4.0, screen_pos.y - font_size * 0.3)
-}
-
-// ---- File Rendering Helpers ----
-
-/// Computes the effective file radius with minimum size enforcement.
-#[inline]
-#[must_use]
-pub fn compute_effective_file_radius(radius: f32) -> f32 {
-    radius.max(2.0)
-}
-
-/// Computes the glow intensity based on whether file is touched.
-#[inline]
-#[must_use]
-pub fn compute_file_glow_intensity(is_touched: bool) -> f32 {
-    if is_touched {
-        0.25
-    } else {
-        0.08
+    /// Computes the depth factor for a directory (0.0 to 1.0).
+    ///
+    /// Deeper directories have higher values, capped at depth 6.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_depth_factor(depth: u32) -> f32 {
+        (depth as f32 / 6.0).min(1.0)
     }
-}
 
-/// Computes the file glow color.
-#[inline]
-#[must_use]
-pub fn compute_file_glow_color(color: Color, glow_intensity: f32, alpha: f32) -> Color {
-    color.with_alpha(glow_intensity * alpha)
-}
-
-/// Computes the file border color (darker version of the file color).
-#[inline]
-#[must_use]
-pub fn compute_file_border_color(color: Color) -> Color {
-    Color::new(color.r * 0.6, color.g * 0.6, color.b * 0.6, color.a)
-}
-
-/// Computes label priority for a file (higher = more important).
-#[inline]
-#[must_use]
-pub fn compute_file_label_priority(radius: f32, alpha: f32, is_touched: bool) -> f32 {
-    let activity_bonus = if is_touched { 100.0 } else { 0.0 };
-    radius * alpha * 10.0 + activity_bonus
-}
-
-/// Determines if a file should be rendered based on LOD.
-#[inline]
-#[must_use]
-pub fn should_render_file(radius: f32) -> bool {
-    radius >= LOD_MIN_FILE_RADIUS
-}
-
-/// Determines if file branches should be rendered at this zoom level.
-#[inline]
-#[must_use]
-pub fn should_render_file_branches(zoom: f32, hide_tree: bool) -> bool {
-    !hide_tree && zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES
-}
-
-/// Determines if a file should have its label collected for rendering.
-#[inline]
-#[must_use]
-pub fn should_add_file_label(show_filenames: bool, alpha: f32, zoom: f32, radius: f32) -> bool {
-    show_filenames && alpha > 0.3 && zoom > 0.15 && radius >= LOD_MIN_FILE_LABEL_RADIUS
-}
-
-/// Computes the file branch color (matches file color but semi-transparent).
-#[inline]
-#[must_use]
-pub fn compute_file_branch_color(color: Color, alpha: f32) -> Color {
-    Color::new(color.r * 0.7, color.g * 0.7, color.b * 0.7, 0.25 * alpha)
-}
-
-// ---- User Rendering Helpers ----
-
-/// Computes the effective user radius with minimum size enforcement.
-#[inline]
-#[must_use]
-pub fn compute_effective_user_radius(radius: f32) -> f32 {
-    radius.max(5.0)
-}
-
-/// Computes the user border color.
-#[inline]
-#[must_use]
-pub fn compute_user_border_color(color: Color, alpha: f32) -> Color {
-    Color::new(color.r * 0.5, color.g * 0.5, color.b * 0.5, alpha)
-}
-
-/// Computes the glow radius for a specific glow layer.
-#[inline]
-#[must_use]
-pub fn compute_user_glow_radius(effective_radius: f32, layer: u32) -> f32 {
-    effective_radius * (1.3 + layer as f32 * 0.15)
-}
-
-/// Computes the glow alpha for a specific glow layer.
-#[inline]
-#[must_use]
-pub fn compute_user_glow_alpha(alpha: f32, layer: u32) -> f32 {
-    alpha * 0.15 * (1.0 - layer as f32 * 0.25)
-}
-
-/// Computes the font size for user initials.
-#[inline]
-#[must_use]
-pub fn compute_initials_font_size(effective_radius: f32) -> f32 {
-    (effective_radius * 0.55).clamp(8.0, 18.0)
-}
-
-/// Computes the text width estimate for initials.
-#[inline]
-#[must_use]
-pub fn compute_initials_text_width(initials_len: usize, font_size: f32) -> f32 {
-    initials_len as f32 * font_size * 0.5
-}
-
-/// Computes the position for user initials (in body area).
-#[inline]
-#[must_use]
-pub fn compute_initials_position(
-    screen_pos: Vec2,
-    effective_radius: f32,
-    text_width: f32,
-) -> Vec2 {
-    Vec2::new(
-        screen_pos.x - text_width * 0.5,
-        screen_pos.y + effective_radius * 0.15,
-    )
-}
-
-/// Determines if a user should be rendered based on LOD.
-#[inline]
-#[must_use]
-pub fn should_render_user(radius: f32) -> bool {
-    radius >= LOD_MIN_USER_RADIUS
-}
-
-/// Determines if a user label should be rendered based on LOD.
-#[inline]
-#[must_use]
-pub fn should_render_user_label(show_usernames: bool, radius: f32) -> bool {
-    show_usernames && radius >= LOD_MIN_USER_LABEL_RADIUS
-}
-
-/// Determines if user initials should be rendered (for avatars without textures).
-#[inline]
-#[must_use]
-pub fn should_render_initials(effective_radius: f32) -> bool {
-    effective_radius > 14.0
-}
-
-/// Computes the user label position.
-#[inline]
-#[must_use]
-pub fn compute_user_label_position(
-    screen_pos: Vec2,
-    effective_radius: f32,
-    font_size: f32,
-) -> Vec2 {
-    Vec2::new(
-        screen_pos.x + effective_radius + 5.0,
-        screen_pos.y - font_size * 0.3,
-    )
-}
-
-// ---- Progress Bar Helpers ----
-
-/// Computes the progress ratio (0.0 to 1.0).
-#[inline]
-#[must_use]
-pub fn compute_progress(current_commit: usize, total_commits: usize) -> f32 {
-    current_commit as f32 / total_commits.max(1) as f32
-}
-
-// ---- Stats Indicator Helpers ----
-
-/// Computes the file count indicator bar width (logarithmic scale).
-#[inline]
-#[must_use]
-pub fn compute_file_indicator_bar(file_count: usize) -> f32 {
-    if file_count > 0 {
-        ((file_count as f32).ln() / 10.0).min(1.0)
-    } else {
-        0.0
+    /// Computes the base brightness for directory coloring.
+    ///
+    /// Shallower directories are brighter.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_base_brightness(depth_factor: f32) -> f32 {
+        0.25 + 0.1 * (1.0 - depth_factor)
     }
-}
 
-/// Computes the user count indicator bar width (logarithmic scale).
-#[inline]
-#[must_use]
-pub fn compute_user_indicator_bar(user_count: usize) -> f32 {
-    if user_count > 0 {
-        ((user_count as f32).ln() / 5.0).min(1.0)
-    } else {
-        0.0
+    /// Computes the directory node color based on depth.
+    ///
+    /// Returns a slightly blue-tinted color that gets darker with depth.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_color(depth: u32) -> Color {
+        let depth_factor = compute_dir_depth_factor(depth);
+        let base_brightness = compute_dir_base_brightness(depth_factor);
+        Color::new(
+            base_brightness * 0.9,
+            base_brightness,
+            base_brightness * 1.1 + 0.05,
+            0.55,
+        )
     }
-}
 
-// ---- Title/Text Helpers ----
-
-/// Computes the X position for a centered title.
-#[inline]
-#[must_use]
-pub fn compute_title_x_position(width: f32, title_len: usize, title_size: f32) -> f32 {
-    ((width / 2.0) - (title_len as f32 * title_size * 0.3)).max(10.0)
-}
-
-/// Determines if a speed indicator should be displayed.
-#[inline]
-#[must_use]
-pub fn should_show_speed_indicator(speed: f32) -> bool {
-    (speed - 1.0).abs() > 0.01
-}
-
-/// Formats the stats text for display.
-#[inline]
-#[must_use]
-pub fn format_stats_text(
-    current_commit: usize,
-    total_commits: usize,
-    file_count: usize,
-    user_count: usize,
-) -> String {
-    format!("{current_commit}/{total_commits} commits | {file_count} files | {user_count} users")
-}
-
-// ---- Legend Helpers ----
-
-/// Computes the legend height based on number of entries.
-#[inline]
-#[must_use]
-pub fn compute_legend_height(entry_count: usize, entry_height: f32, padding: f32) -> f32 {
-    entry_count as f32 * entry_height + padding * 2.0
-}
-
-/// Computes the legend position (bottom-right corner).
-#[inline]
-#[must_use]
-pub fn compute_legend_position(
-    screen_width: f32,
-    screen_height: f32,
-    legend_width: f32,
-    legend_height: f32,
-    padding: f32,
-) -> (f32, f32) {
-    let x = screen_width - legend_width - padding;
-    let y = screen_height - legend_height - 20.0;
-    (x, y)
-}
-
-/// Truncates an extension name for display (max 8 chars).
-#[inline]
-#[must_use]
-pub fn truncate_extension(ext: &str) -> String {
-    if ext.len() > 8 {
-        format!("{}..", &ext[..6])
-    } else {
-        ext.to_string()
+    /// Computes the glow color for directory background effect.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_glow_color(dir_color: Color) -> Color {
+        dir_color.with_alpha(0.1)
     }
-}
 
-// ---- Watermark Helpers ----
-
-/// Computes the total height for watermark text block.
-#[inline]
-#[must_use]
-pub fn compute_watermark_total_height(has_subtext: bool, line_height: f32) -> f32 {
-    if has_subtext {
-        line_height * 2.0
-    } else {
-        line_height
+    /// Computes the center dot color for directory nodes.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_center_color(dir_color: Color) -> Color {
+        dir_color.with_alpha(0.4)
     }
-}
 
-/// Computes the watermark position based on corner setting.
-#[inline]
-#[must_use]
-pub fn compute_watermark_position_cli(
-    position: WatermarkPosition,
-    margin: f32,
-    max_width: f32,
-    total_height: f32,
-    screen_width: f32,
-    screen_height: f32,
-) -> (f32, f32) {
-    match position {
-        WatermarkPosition::TopLeft => (margin, margin),
-        WatermarkPosition::TopRight => (screen_width - max_width - margin, margin),
-        WatermarkPosition::BottomLeft => (margin, screen_height - total_height - margin),
-        WatermarkPosition::BottomRight => {
-            (screen_width - max_width - margin, screen_height - total_height - margin)
+    /// Computes the branch width based on depth.
+    ///
+    /// Branches are thicker near the root.
+    #[inline]
+    #[must_use]
+    pub fn compute_branch_width(depth_factor: f32) -> f32 {
+        (1.5 - depth_factor * 0.5).max(0.8)
+    }
+
+    /// Computes the branch color for directory connections.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_branch_color(dir_color: Color) -> Color {
+        Color::new(
+            dir_color.r * 1.1,
+            dir_color.g * 1.1,
+            dir_color.b * 1.2,
+            0.35,
+        )
+    }
+
+    /// Determines if a directory should be rendered based on LOD.
+    ///
+    /// Root directory (depth 0) is always rendered.
+    #[inline]
+    #[must_use]
+    pub fn should_render_dir(radius: f32, depth: u32) -> bool {
+        depth == 0 || radius >= LOD_MIN_DIR_RADIUS
+    }
+
+    /// Determines if directory branches should be rendered at this zoom level.
+    #[inline]
+    #[must_use]
+    pub fn should_render_dir_branches(zoom: f32, hide_tree: bool) -> bool {
+        !hide_tree && zoom >= LOD_MIN_ZOOM_FOR_DIR_BRANCHES
+    }
+
+    /// Determines if a directory label should be rendered.
+    #[inline]
+    #[must_use]
+    pub fn should_render_dir_label(
+        hide_dirnames: bool,
+        depth: u32,
+        dir_name_depth: u32,
+        radius: f32,
+    ) -> bool {
+        !hide_dirnames && depth <= dir_name_depth && radius >= LOD_MIN_DIR_LABEL_RADIUS
+    }
+
+    /// Computes the label position for a directory.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_label_position(screen_pos: Vec2, radius: f32, font_size: f32) -> Vec2 {
+        Vec2::new(screen_pos.x + radius + 4.0, screen_pos.y - font_size * 0.3)
+    }
+
+    // ---- File Rendering Helpers ----
+
+    /// Computes the effective file radius with minimum size enforcement.
+    #[inline]
+    #[must_use]
+    pub fn compute_effective_file_radius(radius: f32) -> f32 {
+        radius.max(2.0)
+    }
+
+    /// Computes the glow intensity based on whether file is touched.
+    #[inline]
+    #[must_use]
+    pub fn compute_file_glow_intensity(is_touched: bool) -> f32 {
+        if is_touched {
+            0.25
+        } else {
+            0.08
         }
     }
-}
 
-/// Computes the X position for subtext (right-aligned for right corners).
-#[inline]
-#[must_use]
-pub fn compute_subtext_x(
-    position: WatermarkPosition,
-    x: f32,
-    max_width: f32,
-    subtext_width: f32,
-) -> f32 {
-    match position {
-        WatermarkPosition::TopLeft | WatermarkPosition::BottomLeft => x,
-        WatermarkPosition::TopRight | WatermarkPosition::BottomRight => {
-            x + (max_width - subtext_width)
+    /// Computes the file glow color.
+    #[inline]
+    #[must_use]
+    pub fn compute_file_glow_color(color: Color, glow_intensity: f32, alpha: f32) -> Color {
+        color.with_alpha(glow_intensity * alpha)
+    }
+
+    /// Computes the file border color (darker version of the file color).
+    #[inline]
+    #[must_use]
+    pub fn compute_file_border_color(color: Color) -> Color {
+        Color::new(color.r * 0.6, color.g * 0.6, color.b * 0.6, color.a)
+    }
+
+    /// Computes label priority for a file (higher = more important).
+    #[inline]
+    #[must_use]
+    pub fn compute_file_label_priority(radius: f32, alpha: f32, is_touched: bool) -> f32 {
+        let activity_bonus = if is_touched { 100.0 } else { 0.0 };
+        radius * alpha * 10.0 + activity_bonus
+    }
+
+    /// Determines if a file should be rendered based on LOD.
+    #[inline]
+    #[must_use]
+    pub fn should_render_file(radius: f32) -> bool {
+        radius >= LOD_MIN_FILE_RADIUS
+    }
+
+    /// Determines if file branches should be rendered at this zoom level.
+    #[inline]
+    #[must_use]
+    pub fn should_render_file_branches(zoom: f32, hide_tree: bool) -> bool {
+        !hide_tree && zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES
+    }
+
+    /// Determines if a file should have its label collected for rendering.
+    #[inline]
+    #[must_use]
+    pub fn should_add_file_label(show_filenames: bool, alpha: f32, zoom: f32, radius: f32) -> bool {
+        show_filenames && alpha > 0.3 && zoom > 0.15 && radius >= LOD_MIN_FILE_LABEL_RADIUS
+    }
+
+    /// Computes the file branch color (matches file color but semi-transparent).
+    #[inline]
+    #[must_use]
+    pub fn compute_file_branch_color(color: Color, alpha: f32) -> Color {
+        Color::new(color.r * 0.7, color.g * 0.7, color.b * 0.7, 0.25 * alpha)
+    }
+
+    // ---- User Rendering Helpers ----
+
+    /// Computes the effective user radius with minimum size enforcement.
+    #[inline]
+    #[must_use]
+    pub fn compute_effective_user_radius(radius: f32) -> f32 {
+        radius.max(5.0)
+    }
+
+    /// Computes the user border color.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_border_color(color: Color, alpha: f32) -> Color {
+        Color::new(color.r * 0.5, color.g * 0.5, color.b * 0.5, alpha)
+    }
+
+    /// Computes the glow radius for a specific glow layer.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_glow_radius(effective_radius: f32, layer: u32) -> f32 {
+        effective_radius * (1.3 + layer as f32 * 0.15)
+    }
+
+    /// Computes the glow alpha for a specific glow layer.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_glow_alpha(alpha: f32, layer: u32) -> f32 {
+        alpha * 0.15 * (1.0 - layer as f32 * 0.25)
+    }
+
+    /// Computes the font size for user initials.
+    #[inline]
+    #[must_use]
+    pub fn compute_initials_font_size(effective_radius: f32) -> f32 {
+        (effective_radius * 0.55).clamp(8.0, 18.0)
+    }
+
+    /// Computes the text width estimate for initials.
+    #[inline]
+    #[must_use]
+    pub fn compute_initials_text_width(initials_len: usize, font_size: f32) -> f32 {
+        initials_len as f32 * font_size * 0.5
+    }
+
+    /// Computes the position for user initials (in body area).
+    #[inline]
+    #[must_use]
+    pub fn compute_initials_position(
+        screen_pos: Vec2,
+        effective_radius: f32,
+        text_width: f32,
+    ) -> Vec2 {
+        Vec2::new(
+            screen_pos.x - text_width * 0.5,
+            screen_pos.y + effective_radius * 0.15,
+        )
+    }
+
+    /// Determines if a user should be rendered based on LOD.
+    #[inline]
+    #[must_use]
+    pub fn should_render_user(radius: f32) -> bool {
+        radius >= LOD_MIN_USER_RADIUS
+    }
+
+    /// Determines if a user label should be rendered based on LOD.
+    #[inline]
+    #[must_use]
+    pub fn should_render_user_label(show_usernames: bool, radius: f32) -> bool {
+        show_usernames && radius >= LOD_MIN_USER_LABEL_RADIUS
+    }
+
+    /// Determines if user initials should be rendered (for avatars without textures).
+    #[inline]
+    #[must_use]
+    pub fn should_render_initials(effective_radius: f32) -> bool {
+        effective_radius > 14.0
+    }
+
+    /// Computes the user label position.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_label_position(
+        screen_pos: Vec2,
+        effective_radius: f32,
+        font_size: f32,
+    ) -> Vec2 {
+        Vec2::new(
+            screen_pos.x + effective_radius + 5.0,
+            screen_pos.y - font_size * 0.3,
+        )
+    }
+
+    // ---- Progress Bar Helpers ----
+
+    /// Computes the progress ratio (0.0 to 1.0).
+    #[inline]
+    #[must_use]
+    pub fn compute_progress(current_commit: usize, total_commits: usize) -> f32 {
+        current_commit as f32 / total_commits.max(1) as f32
+    }
+
+    // ---- Stats Indicator Helpers ----
+
+    /// Computes the file count indicator bar width (logarithmic scale).
+    #[inline]
+    #[must_use]
+    pub fn compute_file_indicator_bar(file_count: usize) -> f32 {
+        if file_count > 0 {
+            ((file_count as f32).ln() / 10.0).min(1.0)
+        } else {
+            0.0
         }
+    }
+
+    /// Computes the user count indicator bar width (logarithmic scale).
+    #[inline]
+    #[must_use]
+    pub fn compute_user_indicator_bar(user_count: usize) -> f32 {
+        if user_count > 0 {
+            ((user_count as f32).ln() / 5.0).min(1.0)
+        } else {
+            0.0
+        }
+    }
+
+    // ---- Title/Text Helpers ----
+
+    /// Computes the X position for a centered title.
+    #[inline]
+    #[must_use]
+    pub fn compute_title_x_position(width: f32, title_len: usize, title_size: f32) -> f32 {
+        ((width / 2.0) - (title_len as f32 * title_size * 0.3)).max(10.0)
+    }
+
+    /// Determines if a speed indicator should be displayed.
+    #[inline]
+    #[must_use]
+    pub fn should_show_speed_indicator(speed: f32) -> bool {
+        (speed - 1.0).abs() > 0.01
+    }
+
+    /// Formats the stats text for display.
+    #[inline]
+    #[must_use]
+    pub fn format_stats_text(
+        current_commit: usize,
+        total_commits: usize,
+        file_count: usize,
+        user_count: usize,
+    ) -> String {
+        format!(
+            "{current_commit}/{total_commits} commits | {file_count} files | {user_count} users"
+        )
+    }
+
+    // ---- Legend Helpers ----
+
+    /// Computes the legend height based on number of entries.
+    #[inline]
+    #[must_use]
+    pub fn compute_legend_height(entry_count: usize, entry_height: f32, padding: f32) -> f32 {
+        entry_count as f32 * entry_height + padding * 2.0
+    }
+
+    /// Computes the legend position (bottom-right corner).
+    #[inline]
+    #[must_use]
+    pub fn compute_legend_position(
+        screen_width: f32,
+        screen_height: f32,
+        legend_width: f32,
+        legend_height: f32,
+        padding: f32,
+    ) -> (f32, f32) {
+        let x = screen_width - legend_width - padding;
+        let y = screen_height - legend_height - 20.0;
+        (x, y)
+    }
+
+    /// Truncates an extension name for display (max 8 chars).
+    #[inline]
+    #[must_use]
+    pub fn truncate_extension(ext: &str) -> String {
+        if ext.len() > 8 {
+            format!("{}..", &ext[..6])
+        } else {
+            ext.to_string()
+        }
+    }
+
+    // ---- Watermark Helpers ----
+
+    /// Computes the total height for watermark text block.
+    #[inline]
+    #[must_use]
+    pub fn compute_watermark_total_height(has_subtext: bool, line_height: f32) -> f32 {
+        if has_subtext {
+            line_height * 2.0
+        } else {
+            line_height
+        }
+    }
+
+    /// Computes the watermark position based on corner setting.
+    #[inline]
+    #[must_use]
+    pub fn compute_watermark_position_cli(
+        position: WatermarkPosition,
+        margin: f32,
+        max_width: f32,
+        total_height: f32,
+        screen_width: f32,
+        screen_height: f32,
+    ) -> (f32, f32) {
+        match position {
+            WatermarkPosition::TopLeft => (margin, margin),
+            WatermarkPosition::TopRight => (screen_width - max_width - margin, margin),
+            WatermarkPosition::BottomLeft => (margin, screen_height - total_height - margin),
+            WatermarkPosition::BottomRight => (
+                screen_width - max_width - margin,
+                screen_height - total_height - margin,
+            ),
+        }
+    }
+
+    /// Computes the X position for subtext (right-aligned for right corners).
+    #[inline]
+    #[must_use]
+    pub fn compute_subtext_x(
+        position: WatermarkPosition,
+        x: f32,
+        max_width: f32,
+        subtext_width: f32,
+    ) -> f32 {
+        match position {
+            WatermarkPosition::TopLeft | WatermarkPosition::BottomLeft => x,
+            WatermarkPosition::TopRight | WatermarkPosition::BottomRight => {
+                x + (max_width - subtext_width)
+            }
+        }
+    }
+
+    // ---- Label Shadow Helpers ----
+
+    /// Standard shadow color for labels.
+    pub const LABEL_SHADOW_COLOR: Color = Color {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.5,
+    };
+
+    /// Shadow offset for labels (1 pixel diagonal).
+    pub const LABEL_SHADOW_OFFSET: Vec2 = Vec2 { x: 1.0, y: 1.0 };
+
+    /// Computes the shadow color with adjusted alpha.
+    #[inline]
+    #[must_use]
+    pub fn compute_label_shadow_color(alpha: f32) -> Color {
+        Color::new(0.0, 0.0, 0.0, 0.5 * alpha)
+    }
+
+    /// Computes the file label color.
+    #[inline]
+    #[must_use]
+    pub fn compute_file_label_color(alpha: f32) -> Color {
+        Color::new(0.95, 0.95, 0.95, 0.8 * alpha)
+    }
+
+    /// Computes the user label color.
+    #[inline]
+    #[must_use]
+    pub fn compute_user_label_color(alpha: f32) -> Color {
+        Color::new(1.0, 1.0, 1.0, 0.9 * alpha)
+    }
+
+    /// Computes the directory label shadow color.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_label_shadow_color() -> Color {
+        Color::new(0.0, 0.0, 0.0, 0.4)
+    }
+
+    /// Computes the directory label color.
+    #[inline]
+    #[must_use]
+    pub fn compute_dir_label_color() -> Color {
+        Color::new(0.75, 0.78, 0.85, 0.7)
     }
 }
 
-// ---- Label Shadow Helpers ----
-
-/// Standard shadow color for labels.
-pub const LABEL_SHADOW_COLOR: Color = Color {
-    r: 0.0,
-    g: 0.0,
-    b: 0.0,
-    a: 0.5,
-};
-
-/// Shadow offset for labels (1 pixel diagonal).
-pub const LABEL_SHADOW_OFFSET: Vec2 = Vec2 { x: 1.0, y: 1.0 };
-
-/// Computes the shadow color with adjusted alpha.
-#[inline]
-#[must_use]
-pub fn compute_label_shadow_color(alpha: f32) -> Color {
-    Color::new(0.0, 0.0, 0.0, 0.5 * alpha)
-}
-
-/// Computes the file label color.
-#[inline]
-#[must_use]
-pub fn compute_file_label_color(alpha: f32) -> Color {
-    Color::new(0.95, 0.95, 0.95, 0.8 * alpha)
-}
-
-/// Computes the user label color.
-#[inline]
-#[must_use]
-pub fn compute_user_label_color(alpha: f32) -> Color {
-    Color::new(1.0, 1.0, 1.0, 0.9 * alpha)
-}
-
-/// Computes the directory label shadow color.
-#[inline]
-#[must_use]
-pub fn compute_dir_label_shadow_color() -> Color {
-    Color::new(0.0, 0.0, 0.0, 0.4)
-}
-
-/// Computes the directory label color.
-#[inline]
-#[must_use]
-pub fn compute_dir_label_color() -> Color {
-    Color::new(0.75, 0.78, 0.85, 0.7)
-}
+// Re-export helpers for tests
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // =============================================================================
 // Render Functions
@@ -1967,7 +1982,7 @@ mod tests {
         assert!((compute_file_indicator_bar(0) - 0.0).abs() < 0.001);
         assert!(compute_file_indicator_bar(100) > 0.0);
         // Capped at 1.0
-        assert!(compute_file_indicator_bar(100000) <= 1.0);
+        assert!(compute_file_indicator_bar(100_000) <= 1.0);
     }
 
     #[test]

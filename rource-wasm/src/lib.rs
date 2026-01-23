@@ -121,7 +121,7 @@ use render_phases::{
 
 /// Computes the frame delta time from timestamps (in seconds).
 ///
-/// Returns a reasonable default (1/60s) if last_frame_time is 0.
+/// Returns a reasonable default (1/60s) if `last_frame_time` is 0.
 #[inline]
 #[must_use]
 pub fn compute_frame_dt(timestamp: f64, last_frame_time: f64) -> f32 {
@@ -215,7 +215,13 @@ pub fn is_pan_needed(distance: f32, threshold: f32) -> bool {
 /// Computes a smoothly interpolated position.
 #[inline]
 #[must_use]
-pub fn compute_smooth_position(current: Vec2, target: Vec2, rate: f32, dt: f32, max_t: f32) -> Vec2 {
+pub fn compute_smooth_position(
+    current: Vec2,
+    target: Vec2,
+    rate: f32,
+    dt: f32,
+    max_t: f32,
+) -> Vec2 {
     let t = compute_interpolation_factor(rate, dt, max_t);
     current + (target - current) * t
 }
@@ -1259,7 +1265,7 @@ mod tests {
     #[test]
     fn test_compute_target_zoom_clamped_min() {
         // Very large bounds, zoom would be very small
-        let zoom = compute_target_zoom(100000.0, 100000.0, 800.0, 600.0, 0.01, 10.0);
+        let zoom = compute_target_zoom(100_000.0, 100_000.0, 800.0, 600.0, 0.01, 10.0);
         assert!((zoom - 0.01).abs() < 0.001);
     }
 

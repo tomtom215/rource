@@ -17,92 +17,99 @@ use crate::Rource;
 // Helper Functions (testable without Rource instance)
 // ============================================================================
 
-/// Extracts unique directory paths from a file path.
-///
-/// Given a file path like "src/core/main.rs", this extracts all directory
-/// components: ["src", "src/core"].
-///
-/// # Arguments
-/// * `path` - The file path to extract directories from
-///
-/// # Returns
-/// Vector of directory paths from outermost to innermost.
-#[must_use]
-pub fn extract_directories(path: &str) -> Vec<String> {
-    let mut directories = Vec::new();
-    let mut current_path = String::new();
+#[allow(dead_code)]
+mod helpers {
+    /// Extracts unique directory paths from a file path.
+    ///
+    /// Given a file path like "src/core/main.rs", this extracts all directory
+    /// components: `["src", "src/core"]`.
+    ///
+    /// # Arguments
+    /// * `path` - The file path to extract directories from
+    ///
+    /// # Returns
+    /// Vector of directory paths from outermost to innermost.
+    #[must_use]
+    pub fn extract_directories(path: &str) -> Vec<String> {
+        let mut directories = Vec::new();
+        let mut current_path = String::new();
 
-    let components: Vec<&str> = path.split('/').collect();
-    for (i, component) in components.iter().enumerate() {
-        if i > 0 {
-            current_path.push('/');
+        let components: Vec<&str> = path.split('/').collect();
+        for (i, component) in components.iter().enumerate() {
+            if i > 0 {
+                current_path.push('/');
+            }
+            // Check if this is the file (last component) or a directory
+            if i < components.len() - 1 {
+                current_path.push_str(component);
+                directories.push(current_path.clone());
+            }
         }
-        // Check if this is the file (last component) or a directory
-        if i < components.len() - 1 {
-            current_path.push_str(component);
-            directories.push(current_path.clone());
+
+        directories
+    }
+
+    /// Counts unique directories from a collection of file paths.
+    ///
+    /// # Arguments
+    /// * `paths` - Iterator of file paths
+    ///
+    /// # Returns
+    /// Total unique directory count including root.
+    #[must_use]
+    pub fn count_unique_directories<'a>(paths: impl Iterator<Item = &'a str>) -> usize {
+        use std::collections::HashSet;
+
+        let mut directories: HashSet<String> = HashSet::new();
+        let mut has_files = false;
+
+        for path in paths {
+            has_files = true;
+            for dir in extract_directories(path) {
+                directories.insert(dir);
+            }
+        }
+
+        if directories.is_empty() && has_files {
+            1 // Just root
+        } else if directories.is_empty() {
+            0 // No files at all
+        } else {
+            directories.len() + 1 // +1 for root
         }
     }
 
-    directories
-}
-
-/// Counts unique directories from a collection of file paths.
-///
-/// # Arguments
-/// * `paths` - Iterator of file paths
-///
-/// # Returns
-/// Total unique directory count including root.
-#[must_use]
-pub fn count_unique_directories<'a>(paths: impl Iterator<Item = &'a str>) -> usize {
-    use std::collections::HashSet;
-
-    let mut directories: HashSet<String> = HashSet::new();
-    let mut has_files = false;
-
-    for path in paths {
-        has_files = true;
-        for dir in extract_directories(path) {
-            directories.insert(dir);
-        }
-    }
-
-    if directories.is_empty() && has_files {
-        1 // Just root
-    } else if directories.is_empty() {
-        0 // No files at all
-    } else {
-        directories.len() + 1 // +1 for root
+    /// Formats frame statistics as a JSON string.
+    ///
+    /// This is a helper for testing the JSON formatting logic.
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    pub fn format_frame_stats(
+        fps: f64,
+        frame_time_ms: f64,
+        total_entities: usize,
+        visible_files: usize,
+        visible_users: usize,
+        visible_directories: usize,
+        active_actions: usize,
+        draw_calls: usize,
+        canvas_width: u32,
+        canvas_height: u32,
+        is_playing: bool,
+        commit_count: usize,
+        current_commit: usize,
+        total_files: usize,
+        total_users: usize,
+        total_directories: usize,
+    ) -> String {
+        format!(
+            r#"{{"fps":{fps:.2},"frameTimeMs":{frame_time_ms:.3},"totalEntities":{total_entities},"visibleFiles":{visible_files},"visibleUsers":{visible_users},"visibleDirectories":{visible_directories},"activeActions":{active_actions},"drawCalls":{draw_calls},"canvasWidth":{canvas_width},"canvasHeight":{canvas_height},"isPlaying":{is_playing},"commitCount":{commit_count},"currentCommit":{current_commit},"totalFiles":{total_files},"totalUsers":{total_users},"totalDirectories":{total_directories}}}"#
+        )
     }
 }
 
-/// Formats frame statistics as a JSON string.
-///
-/// This is a helper for testing the JSON formatting logic.
-#[must_use]
-pub fn format_frame_stats(
-    fps: f64,
-    frame_time_ms: f64,
-    total_entities: usize,
-    visible_files: usize,
-    visible_users: usize,
-    visible_directories: usize,
-    active_actions: usize,
-    draw_calls: usize,
-    canvas_width: u32,
-    canvas_height: u32,
-    is_playing: bool,
-    commit_count: usize,
-    current_commit: usize,
-    total_files: usize,
-    total_users: usize,
-    total_directories: usize,
-) -> String {
-    format!(
-        r#"{{"fps":{fps:.2},"frameTimeMs":{frame_time_ms:.3},"totalEntities":{total_entities},"visibleFiles":{visible_files},"visibleUsers":{visible_users},"visibleDirectories":{visible_directories},"activeActions":{active_actions},"drawCalls":{draw_calls},"canvasWidth":{canvas_width},"canvasHeight":{canvas_height},"isPlaying":{is_playing},"commitCount":{commit_count},"currentCommit":{current_commit},"totalFiles":{total_files},"totalUsers":{total_users},"totalDirectories":{total_directories}}}"#
-    )
-}
+#[allow(unused_imports)]
+pub use helpers::*;
 
 // ============================================================================
 // Batched Frame Statistics API
@@ -386,42 +393,46 @@ mod tests {
 
     #[test]
     fn test_count_unique_directories_single_file() {
-        let paths = vec!["src/main.rs"];
-        let count = count_unique_directories(paths.iter().map(|s| s.as_ref()));
+        let paths = ["src/main.rs"];
+        let count = count_unique_directories(paths.iter().copied());
         assert_eq!(count, 2); // root + src
     }
 
     #[test]
     fn test_count_unique_directories_multiple_files_same_dir() {
-        let paths = vec!["src/main.rs", "src/lib.rs", "src/utils.rs"];
-        let count = count_unique_directories(paths.iter().map(|s| s.as_ref()));
+        let paths = ["src/main.rs", "src/lib.rs", "src/utils.rs"];
+        let count = count_unique_directories(paths.iter().copied());
         assert_eq!(count, 2); // root + src
     }
 
     #[test]
     fn test_count_unique_directories_multiple_nested() {
-        let paths = vec!["src/core/main.rs", "src/core/lib.rs", "src/utils/helpers.rs"];
-        let count = count_unique_directories(paths.iter().map(|s| s.as_ref()));
+        let paths = [
+            "src/core/main.rs",
+            "src/core/lib.rs",
+            "src/utils/helpers.rs",
+        ];
+        let count = count_unique_directories(paths.iter().copied());
         assert_eq!(count, 4); // root + src + src/core + src/utils
     }
 
     #[test]
     fn test_count_unique_directories_root_only() {
-        let paths = vec!["README.md", "Cargo.toml"];
-        let count = count_unique_directories(paths.iter().map(|s| s.as_ref()));
+        let paths = ["README.md", "Cargo.toml"];
+        let count = count_unique_directories(paths.iter().copied());
         assert_eq!(count, 1); // Just root
     }
 
     #[test]
     fn test_count_unique_directories_empty() {
-        let paths: Vec<&str> = vec![];
-        let count = count_unique_directories(paths.iter().map(|s| s.as_ref()));
+        let paths: [&str; 0] = [];
+        let count = count_unique_directories(paths.iter().copied());
         assert_eq!(count, 0); // No files
     }
 
     #[test]
     fn test_count_unique_directories_complex() {
-        let paths = vec![
+        let paths = [
             "src/main.rs",
             "src/lib.rs",
             "tests/unit/test_a.rs",
@@ -429,7 +440,7 @@ mod tests {
             "tests/integration/test_c.rs",
             "docs/README.md",
         ];
-        let count = count_unique_directories(paths.iter().map(|s| s.as_ref()));
+        let count = count_unique_directories(paths.iter().copied());
         // root + src + tests + tests/unit + tests/integration + docs = 6
         assert_eq!(count, 6);
     }
@@ -460,8 +471,8 @@ mod tests {
     #[test]
     fn test_format_frame_stats_large_values() {
         let json = format_frame_stats(
-            144.0, 6.944, 100000, 50000, 1000, 10000, 5000, 12, 3840, 2160, true, 100000, 99999,
-            75000, 5000, 25000,
+            144.0, 6.944, 100_000, 50_000, 1000, 10_000, 5000, 12, 3840, 2160, true, 100_000,
+            99_999, 75_000, 5000, 25_000,
         );
         assert!(json.contains(r#""fps":144.00"#));
         assert!(json.contains(r#""totalEntities":100000"#));
