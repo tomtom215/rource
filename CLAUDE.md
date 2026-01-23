@@ -1706,6 +1706,127 @@ if self.should_use_gpu_culling() {
 
 **Test Count**: 1,169 tests passing
 
+### Phase 18: Procedural File Icons with Texture Arrays (2026-01-23)
+
+Added procedural icon generation system for file extensions using GPU texture arrays.
+
+#### Overview
+
+Instead of requiring external icon assets, the system now generates visually distinct document-style
+icons procedurally for each file extension. Icons are stored in a GPU texture array for efficient
+batched rendering with a single draw call per frame.
+
+**Benefits**:
+- No external asset dependencies
+- Smaller WASM bundle size (no icon images)
+- Consistent visual style across all file types
+- Easy to add new file extensions
+
+#### Files Added/Modified
+
+| File | Description |
+|------|-------------|
+| `crates/rource-render/src/backend/wgpu/icons.rs` | Procedural icon generator (32x32 RGBA) |
+| `crates/rource-render/src/backend/wgpu/icons_methods.rs` | WgpuRenderer icon management methods |
+| `crates/rource-render/src/backend/wgpu/mod.rs` | Added module exports and `file_icon_array` field |
+| `rource-wasm/src/wasm_api/settings.rs` | JavaScript API for file icons |
+| `rource-wasm/src/backend.rs` | Added `as_wgpu()` for immutable access |
+
+#### Icon Design
+
+Each icon is a stylized document shape with:
+- Folded corner effect (top-right)
+- Extension-based fill color (matches existing color scheme)
+- Subtle gradient from lighter top to darker bottom
+- 1.5px border in darker shade
+
+**Constants**:
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `ICON_SIZE` | 32 | Icon dimensions (32x32 pixels) |
+| `FOLD_SIZE` | 8 | Corner fold size in pixels |
+| `BORDER_WIDTH` | 1.5 | Border thickness |
+
+#### Pre-Registered Extensions (30 types)
+
+| Language | Extensions |
+|----------|------------|
+| Rust | `rs` |
+| JavaScript/TypeScript | `js`, `ts`, `jsx`, `tsx` |
+| Python | `py` |
+| Go | `go` |
+| Java/Kotlin | `java`, `kt` |
+| C/C++ | `c`, `h`, `cpp`, `hpp` |
+| C# | `cs` |
+| Web | `html`, `css`, `scss`, `vue` |
+| Data/Config | `json`, `yaml`, `yml`, `toml`, `xml` |
+| Documentation | `md`, `txt` |
+| Shell | `sh`, `bash` |
+| Database | `sql` |
+| Ruby | `rb` |
+| PHP | `php` |
+| Swift | `swift` |
+
+#### JavaScript API
+
+```javascript
+// Initialize file icons (wgpu only, call once)
+if (rource.isWgpu()) {
+    const success = rource.initFileIcons();
+    console.log('File icons initialized:', success);
+}
+
+// Check if file icons are ready
+if (rource.hasFileIcons()) {
+    console.log('File icons available');
+}
+
+// Get count of registered icon types
+const count = rource.getFileIconCount();
+console.log(`${count} file types registered`);
+
+// Register custom extension with color
+rource.registerFileIcon("myext", "#FF5500");
+```
+
+#### WgpuRenderer Methods
+
+| Method | Description |
+|--------|-------------|
+| `init_file_icons()` | Creates texture array and pre-registers common extensions |
+| `has_file_icons()` | Returns whether file icons are initialized |
+| `file_icon_count()` | Returns number of registered icon types |
+| `get_file_icon_layer(ext)` | Returns texture array layer for extension |
+| `register_file_icon(ext, color)` | Registers custom extension icon |
+| `file_icon_bind_group()` | Returns bind group for rendering |
+
+#### Texture Array Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Texture Array (2D Array)                          │
+│                                                                      │
+│  Layer 0: "rs"      Layer 1: "js"      Layer 2: "py"     ...        │
+│  ┌────────────┐    ┌────────────┐    ┌────────────┐                │
+│  │ 32×32 RGBA │    │ 32×32 RGBA │    │ 32×32 RGBA │    ...         │
+│  │ Rust icon  │    │ JS icon    │    │ Python icon│                │
+│  └────────────┘    └────────────┘    └────────────┘                │
+│                                                                      │
+│  Single bind group → Single draw call for all file icons            │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### Performance Impact
+
+| Aspect | Traditional | Texture Array |
+|--------|-------------|---------------|
+| Texture binds | 1 per file type | 1 total |
+| Draw calls | 1 per file type | 1 total |
+| Memory layout | Scattered | Contiguous |
+| GPU cache | Poor locality | Excellent locality |
+
+**Test Count**: 1,178 tests passing (added 9 icon tests)
+
 ### Scene Module Refactoring (2026-01-22)
 
 Refactored `scene/mod.rs` into modular structure for improved maintainability.

@@ -100,6 +100,7 @@ pub mod buffers;
 pub mod compute;
 pub mod culling;
 pub mod error;
+pub mod icons;
 pub mod pipeline;
 pub mod shaders;
 pub mod shadow;
@@ -111,6 +112,7 @@ pub mod textures;
 mod culling_methods;
 mod effects_methods;
 mod flush_passes;
+mod icons_methods;
 mod physics_methods;
 
 use std::collections::HashMap;
@@ -127,7 +129,7 @@ use pipeline::PipelineManager;
 use shadow::ShadowPipeline;
 use state::RenderState;
 use stats::FrameStats;
-use textures::{FontAtlas, GlyphKey, ManagedTexture};
+use textures::{FontAtlas, GlyphKey, ManagedTexture, TextureArray};
 
 use culling::VisibilityCullingPipeline;
 
@@ -277,6 +279,9 @@ pub struct WgpuRenderer {
     /// Current scissor rectangle in screen coordinates (x, y, width, height).
     /// None means no scissor (full viewport).
     current_scissor: Option<ScissorRect>,
+
+    /// File icon texture array (opt-in, call `init_file_icons()` to enable).
+    file_icon_array: Option<TextureArray>,
 }
 
 /// A scissor rectangle in screen coordinates.
@@ -619,6 +624,7 @@ impl WgpuRenderer {
             gpu_culling_enabled: false,
             cull_bounds: [-10000.0, -10000.0, 10000.0, 10000.0],
             current_scissor: None,
+            file_icon_array: None,
         };
 
         // Initialize pipelines

@@ -678,7 +678,7 @@ impl Rource {
     /// Updates physics simulation using the GPU compute pipeline.
     ///
     /// This method:
-    /// 1. Collects directory data into ComputeEntity format
+    /// 1. Collects directory data into `ComputeEntity` format
     /// 2. Dispatches GPU physics simulation
     /// 3. Applies results back to scene directories
     /// 4. Updates file and user animations (CPU, same as normal update)

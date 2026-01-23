@@ -3,9 +3,12 @@
 //! This module contains methods for running force-directed physics simulation on the GPU.
 
 use super::{
-    compute::{ComputeEntity, ComputePipeline, ComputeStats, ComputedBounds, PhysicsConfig},
+    compute::{ComputeEntity, ComputePipeline, ComputeStats, PhysicsConfig},
     WgpuRenderer,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use super::compute::ComputedBounds;
 
 impl WgpuRenderer {
     /// Returns a reference to the compute pipeline, creating it if needed.

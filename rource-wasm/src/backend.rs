@@ -536,6 +536,23 @@ impl RendererBackend {
             _ => None,
         }
     }
+
+    /// Returns an immutable reference to the wgpu renderer if available.
+    ///
+    /// This is used for querying GPU-specific state like file icon counts.
+    ///
+    /// # Returns
+    ///
+    /// - `Some(&WgpuRenderer)` if using wgpu backend
+    /// - `None` for WebGL2 or Software backends
+    #[cfg(target_arch = "wasm32")]
+    #[inline]
+    pub fn as_wgpu(&self) -> Option<&WgpuRenderer> {
+        match self {
+            Self::Wgpu(r) => Some(r),
+            _ => None,
+        }
+    }
 }
 
 // ============================================================================

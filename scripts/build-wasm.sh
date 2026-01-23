@@ -95,7 +95,7 @@ if command -v gzip &> /dev/null; then
 
     # Test count - expensive to calculate, so we use a static value
     # Update manually by running: cargo test --all 2>&1 | grep -E "^test result:" | awk '{sum += $4} END {print sum}'
-    TEST_COUNT=1169
+    TEST_COUNT=1178
 
     echo ""
     echo "Generating www/js/build-info.js..."
