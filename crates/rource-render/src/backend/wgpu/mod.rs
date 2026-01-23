@@ -1291,15 +1291,11 @@ impl Renderer for WgpuRenderer {
         Self::has_file_icons(self)
     }
 
-    fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
-        // If file icons are initialized, use the texture array pipeline
-        if self.file_icon_array.is_some() {
-            // Delegate to the implementation in icons_methods.rs
-            Self::draw_file_icon(self, center.x, center.y, size, extension, Some(color));
-        } else {
-            // Fallback to colored disc
-            self.draw_disc(center, size * 0.5, color);
-        }
+    fn draw_file_icon(&mut self, center: Vec2, size: f32, _extension: &str, color: Color) {
+        // Use colored disc - cleaner, scales better, more modern look.
+        // File icon texture array infrastructure is retained for future use
+        // (e.g., high-quality devicons integration) but disabled by default.
+        self.draw_disc(center, size * 0.5, color);
     }
 }
 

@@ -1248,39 +1248,11 @@ impl Renderer for WebGl2Renderer {
         Self::has_file_icons(self)
     }
 
-    fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
-        // If file icons are initialized, use the texture array pipeline
-        if self.file_icon_array.is_some() {
-            // Queue the file icon instance for rendering
-            let layer = self.get_file_icon_layer(extension).unwrap_or(0);
-
-            // Calculate bounds (centered quad)
-            let half_size = size * 0.5;
-            let min_x = center.x - half_size;
-            let min_y = center.y - half_size;
-            let max_x = center.x + half_size;
-            let max_y = center.y + half_size;
-
-            // Instance data: bounds(4) + uv_bounds(4) + color(4) + layer(1) = 13 floats
-            self.file_icon_instances.push_raw(&[
-                min_x,
-                min_y,
-                max_x,
-                max_y, // bounds
-                0.0,
-                0.0,
-                1.0,
-                1.0, // uv_bounds (full texture)
-                color.r,
-                color.g,
-                color.b,
-                color.a,      // color tint
-                layer as f32, // layer index
-            ]);
-        } else {
-            // Fallback to colored disc
-            self.draw_disc(center, size * 0.5, color);
-        }
+    fn draw_file_icon(&mut self, center: Vec2, size: f32, _extension: &str, color: Color) {
+        // Use colored disc - cleaner, scales better, more modern look.
+        // File icon texture array infrastructure is retained for future use
+        // (e.g., high-quality devicons integration) but disabled by default.
+        self.draw_disc(center, size * 0.5, color);
     }
 }
 
