@@ -6,11 +6,12 @@
  * Single responsibility: UI panel state management.
  */
 
-import { setState, addManagedEventListener } from '../state.js';
+import { setState, addManagedEventListener, getRource } from '../state.js';
 import { getElement, getAllElements } from '../dom.js';
 import { updatePreference } from '../preferences.js';
 import { restartAnimation } from '../animation.js';
 import { showToast } from '../toast.js';
+import { safeWasmVoid } from '../wasm-api.js';
 
 /**
  * Creates a panel toggle handler.
@@ -90,6 +91,11 @@ function initPerfOverlay() {
 
 /**
  * Initializes uncapped FPS toggle.
+ *
+ * When uncapped mode is enabled:
+ * 1. Disables vsync in wgpu renderer (allows GPU to render faster than refresh rate)
+ * 2. Switches animation loop from requestAnimationFrame to high-performance scheduler
+ * 3. Uses scheduler.postTask() > MessageChannel > setTimeout(0) for minimal overhead
  */
 function initUncappedFps() {
     const perfUncapped = getElement('perfUncapped');
@@ -98,10 +104,19 @@ function initUncappedFps() {
     addManagedEventListener(perfUncapped, 'change', (e) => {
         const isUncapped = e.target.checked;
         setState({ uncappedFps: isUncapped });
-        // Restart animation loop to switch between requestAnimationFrame and setTimeout
+
+        // Update vsync setting in wgpu renderer
+        // This allows the GPU to render faster than the display refresh rate
+        const rource = getRource();
+        if (rource) {
+            safeWasmVoid('setVsync', () => rource.setVsync(!isUncapped));
+        }
+
+        // Restart animation loop to switch between requestAnimationFrame and high-performance scheduler
         restartAnimation();
+
         if (isUncapped) {
-            showToast('Uncapped mode: Testing maximum frame rate', 'info');
+            showToast('Uncapped mode: Testing maximum frame rate (vsync disabled)', 'info');
         }
     });
 }

@@ -5,12 +5,16 @@
 //! - Background color
 //! - Label visibility and font size
 //! - File icons (all backends)
+//! - Vsync mode (wgpu only)
 
 use wasm_bindgen::prelude::*;
 
 use rource_math::Color;
 
 use crate::Rource;
+
+#[cfg(target_arch = "wasm32")]
+use rource_render::backend::wgpu::VsyncMode;
 
 // ============================================================================
 // Visual Settings
@@ -216,5 +220,69 @@ impl Rource {
         }
 
         false
+    }
+
+    // ========================================================================
+    // Vsync Mode (wgpu only)
+    // ========================================================================
+
+    /// Sets vsync mode for the renderer.
+    ///
+    /// This controls whether frames are synchronized to the display refresh rate:
+    /// - `true` (default): Vsync enabled, frames sync to display refresh (~60 FPS)
+    /// - `false`: Vsync disabled, uncapped frame rate (300+ FPS possible)
+    ///
+    /// **Note:** This only affects the wgpu backend (WebGPU). WebGL2 and software
+    /// renderers always use requestAnimationFrame timing which is vsync-aligned.
+    ///
+    /// **Performance Impact:** Disabling vsync increases GPU utilization and power
+    /// consumption. Use with caution on battery-powered devices.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// // Disable vsync for uncapped FPS
+    /// rource.setVsync(false);
+    ///
+    /// // Re-enable vsync for power efficiency
+    /// rource.setVsync(true);
+    /// ```
+    #[wasm_bindgen(js_name = setVsync)]
+    pub fn set_vsync(&mut self, enabled: bool) {
+        // wgpu backend supports vsync mode configuration
+        #[cfg(target_arch = "wasm32")]
+        if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
+            let mode = if enabled {
+                VsyncMode::Enabled
+            } else {
+                VsyncMode::Disabled
+            };
+            wgpu_renderer.set_vsync_mode(mode);
+        }
+
+        // Suppress unused variable warning on non-wasm32 targets
+        #[cfg(not(target_arch = "wasm32"))]
+        let _ = enabled;
+    }
+
+    /// Returns whether vsync is currently enabled.
+    ///
+    /// Returns `true` if:
+    /// - Using wgpu backend with vsync enabled
+    /// - Using WebGL2 or software backend (always vsync-aligned)
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// const vsyncEnabled = rource.isVsyncEnabled();
+    /// console.log('Vsync:', vsyncEnabled ? 'ON' : 'OFF');
+    /// ```
+    #[wasm_bindgen(js_name = isVsyncEnabled)]
+    pub fn is_vsync_enabled(&self) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(wgpu_renderer) = self.backend.as_wgpu() {
+            return wgpu_renderer.is_vsync_enabled();
+        }
+
+        // WebGL2 and software are always vsync-aligned via requestAnimationFrame
+        true
     }
 }
