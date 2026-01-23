@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769168421536,
+  "lastUpdate": 1769171304867,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -818,6 +818,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1019685,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4b78ee7b0183210061e44785ecc0fc05421dcd4a",
+          "message": "Merge pull request #131 from tomtom215/claude/file-icons-fallback-4dvp5\n\nAdd procedural file icon generation for file extensions",
+          "timestamp": "2026-01-23T13:24:32+01:00",
+          "tree_id": "9134d4e8a6f388e9177c42644de82f458eb0af57",
+          "url": "https://github.com/tomtom215/rource/commit/4b78ee7b0183210061e44785ecc0fc05421dcd4a"
+        },
+        "date": 1769171304017,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3880704,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2645414,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1020158,
             "unit": "bytes"
           }
         ]
