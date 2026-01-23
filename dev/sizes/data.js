@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769181238530,
+  "lastUpdate": 1769183827451,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -974,6 +974,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1027476,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "957122d552e2e5cd28182f59cda88bd94fe0d389",
+          "message": "Merge pull request #135 from tomtom215/claude/analyze-wasm-performance-xxVf0\n\nImplement MessageChannel-based frame scheduler for uncapped FPS mode",
+          "timestamp": "2026-01-23T16:53:21+01:00",
+          "tree_id": "3f5d6b0802e3efb8029fd442f0d6913128eac3cd",
+          "url": "https://github.com/tomtom215/rource/commit/957122d552e2e5cd28182f59cda88bd94fe0d389"
+        },
+        "date": 1769183826904,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3880704,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2671436,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1028020,
             "unit": "bytes"
           }
         ]
