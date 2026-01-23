@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769173788312,
+  "lastUpdate": 1769177536436,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -896,6 +896,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1021842,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "148ec097a27cbcafb1b21a73704d9653812cc4ea",
+          "message": "Merge pull request #133 from tomtom215/claude/optimize-wasm-webgpu-kFsjt\n\nDocument GPU culling integration status and future steps",
+          "timestamp": "2026-01-23T15:08:31+01:00",
+          "tree_id": "f6d89e1349d26b2796ba84698d8917639be18de1",
+          "url": "https://github.com/tomtom215/rource/commit/148ec097a27cbcafb1b21a73704d9653812cc4ea"
+        },
+        "date": 1769177536008,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3880704,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2653755,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1024067,
             "unit": "bytes"
           }
         ]
