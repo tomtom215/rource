@@ -450,6 +450,18 @@ const playbackUICache = {
 let animationGeneration = 0;
 
 /**
+ * Re-entrancy guard for WASM frame calls.
+ *
+ * When GPU physics is active, device.poll(wgpu::Maintain::Wait) can yield to the
+ * JavaScript event loop, allowing scheduler callbacks to fire. If a new frame
+ * starts before the previous one completes, wasm-bindgen detects the recursive
+ * borrow and panics with "recursive use of an object detected".
+ *
+ * This flag prevents that by skipping animate() calls while a frame is in progress.
+ */
+let frameInProgress = false;
+
+/**
  * Legacy timeout ID for cleanup during stop (setTimeout fallback path).
  * @type {number|null}
  */
@@ -530,6 +542,27 @@ export function animate(timestamp, generation = animationGeneration) {
         return;
     }
 
+    // Re-entrancy guard: skip if a frame is already being processed.
+    // This prevents crashes when GPU physics' device.poll() yields to the JS event loop
+    // and a scheduler callback tries to start a new frame.
+    if (frameInProgress) {
+        // Schedule retry on next frame instead of calling WASM recursively
+        const isUncapped = get('uncappedFps');
+        if (isUncapped) {
+            // In uncapped mode, use scheduler but with a small delay to avoid spin-waiting
+            setTimeout(() => {
+                if (generation === animationGeneration) {
+                    animate(performance.now(), generation);
+                }
+            }, 1);
+        }
+        // In capped mode, the next requestAnimationFrame will handle it
+        return;
+    }
+
+    // Mark frame as in progress to prevent re-entrancy
+    frameInProgress = true;
+
     const rource = getRource();
     const isUncapped = get('uncappedFps');
 
@@ -572,8 +605,12 @@ export function animate(timestamp, generation = animationGeneration) {
     // Second race condition check after frame processing
     // Animation might have been stopped during the render
     if (generation !== animationGeneration) {
+        frameInProgress = false;
         return;
     }
+
+    // Frame processing complete - clear re-entrancy guard before scheduling next frame
+    frameInProgress = false;
 
     // Schedule the next frame based on mode
     if (isUncapped) {
@@ -709,6 +746,9 @@ export function stopAnimation() {
     // Increment generation to invalidate any currently executing animate() calls
     // This is the primary mechanism for preventing race conditions
     animationGeneration++;
+
+    // Reset re-entrancy guard
+    frameInProgress = false;
 
     const animationId = getAnimationId();
     if (animationId !== null) {

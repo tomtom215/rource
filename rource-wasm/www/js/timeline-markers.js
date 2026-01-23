@@ -335,6 +335,7 @@ function generateBoundaries(intervalType, startDate, endDate) {
 
 /**
  * Calculates the position percentage for a timestamp within the timeline.
+ * NOTE: This function is deprecated for tick positioning. Use calculatePositionByCommitIndex instead.
  * @param {number} timestamp - Timestamp in seconds
  * @param {number} startTimestamp - Start timestamp in seconds
  * @param {number} endTimestamp - End timestamp in seconds
@@ -343,6 +344,72 @@ function generateBoundaries(intervalType, startDate, endDate) {
 function calculatePosition(timestamp, startTimestamp, endTimestamp) {
     if (endTimestamp === startTimestamp) return 50;
     return ((timestamp - startTimestamp) / (endTimestamp - startTimestamp)) * 100;
+}
+
+/**
+ * Finds the commit index closest to a given timestamp using binary search.
+ * The slider is positioned by commit index, not timestamp, so tick marks
+ * must be positioned by commit index to align properly.
+ *
+ * @param {Object} rource - Rource WASM instance
+ * @param {number} targetTimestamp - Target timestamp in seconds
+ * @param {number} totalCommits - Total number of commits
+ * @returns {number} Commit index closest to the target timestamp
+ */
+function findCommitIndexByTimestamp(rource, targetTimestamp, totalCommits) {
+    if (totalCommits <= 1) return 0;
+
+    let low = 0;
+    let high = totalCommits - 1;
+
+    // Binary search for the closest commit
+    while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        const midTimestamp = safeWasmCall(
+            'getCommitTimestamp',
+            () => rource.getCommitTimestamp(mid),
+            0
+        );
+
+        if (midTimestamp < targetTimestamp) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    // Check if we should use low-1 (if it's closer to target)
+    if (low > 0) {
+        const lowTimestamp = safeWasmCall(
+            'getCommitTimestamp',
+            () => rource.getCommitTimestamp(low),
+            0
+        );
+        const prevTimestamp = safeWasmCall(
+            'getCommitTimestamp',
+            () => rource.getCommitTimestamp(low - 1),
+            0
+        );
+
+        if (Math.abs(prevTimestamp - targetTimestamp) < Math.abs(lowTimestamp - targetTimestamp)) {
+            return low - 1;
+        }
+    }
+
+    return low;
+}
+
+/**
+ * Calculates the position percentage for a tick based on commit index.
+ * This aligns tick marks with the slider's commit-based positioning.
+ *
+ * @param {number} commitIndex - Commit index
+ * @param {number} totalCommits - Total number of commits
+ * @returns {number} Position as percentage (0-100)
+ */
+function calculatePositionByCommitIndex(commitIndex, totalCommits) {
+    if (totalCommits <= 1) return 50;
+    return (commitIndex / (totalCommits - 1)) * 100;
 }
 
 /**
@@ -451,7 +518,7 @@ export function generateTimelineTicks() {
             const finerConfig = INTERVAL_CONFIG[finerInterval];
             const finerBoundaries = generateBoundaries(finerInterval, startDate, endDate);
             if (finerBoundaries.length >= 2) {
-                renderTicks(finerBoundaries, finerConfig, startTimestamp, endTimestamp, timelineMarkers);
+                renderTicks(finerBoundaries, finerConfig, startTimestamp, endTimestamp, timelineMarkers, rource, totalCommits);
                 return;
             }
         }
@@ -461,12 +528,12 @@ export function generateTimelineTicks() {
         if (coarserInterval) {
             const coarserConfig = INTERVAL_CONFIG[coarserInterval];
             const coarserBoundaries = generateBoundaries(coarserInterval, startDate, endDate);
-            renderTicks(coarserBoundaries, coarserConfig, startTimestamp, endTimestamp, timelineMarkers);
+            renderTicks(coarserBoundaries, coarserConfig, startTimestamp, endTimestamp, timelineMarkers, rource, totalCommits);
             return;
         }
     }
 
-    renderTicks(boundaries, config, startTimestamp, endTimestamp, timelineMarkers);
+    renderTicks(boundaries, config, startTimestamp, endTimestamp, timelineMarkers, rource, totalCommits);
 }
 
 /**
@@ -540,23 +607,33 @@ function selectLabeledTicks(boundaries, minSpacing = 15) {
 
 /**
  * Renders tick marks to the container.
+ * Tick positions are calculated based on commit index, not timestamp,
+ * to align with the slider which is commit-index based.
+ *
  * @param {Array} boundaries - Array of boundary objects
  * @param {Object} config - Interval configuration
- * @param {number} startTimestamp - Start timestamp in seconds
- * @param {number} endTimestamp - End timestamp in seconds
+ * @param {number} startTimestamp - Start timestamp in seconds (unused, kept for API compatibility)
+ * @param {number} endTimestamp - End timestamp in seconds (unused, kept for API compatibility)
  * @param {HTMLElement} container - Container element
+ * @param {Object} rource - Rource WASM instance
+ * @param {number} totalCommits - Total number of commits
  */
-function renderTicks(boundaries, config, startTimestamp, endTimestamp, container) {
+function renderTicks(boundaries, config, startTimestamp, endTimestamp, container, rource, totalCommits) {
     // Create document fragment for performance
     const fragment = document.createDocumentFragment();
 
     // Filter out ticks that would be too close to the edges (within 2%)
-    // and calculate positions
+    // and calculate positions based on COMMIT INDEX (not timestamp)
+    // This is critical: the slider is positioned by commit index, so tick marks
+    // must use commit-index-based positions to align correctly.
     const filteredBoundaries = boundaries
         .map(boundary => {
             const timestampSecs = boundary.date.getTime() / 1000;
-            const position = calculatePosition(timestampSecs, startTimestamp, endTimestamp);
-            return { ...boundary, position };
+            // Find the commit index closest to this boundary date
+            const commitIndex = findCommitIndexByTimestamp(rource, timestampSecs, totalCommits);
+            // Calculate position based on commit index, not timestamp
+            const position = calculatePositionByCommitIndex(commitIndex, totalCommits);
+            return { ...boundary, position, commitIndex };
         })
         .filter(boundary => boundary.position > 2 && boundary.position < 98);
 
