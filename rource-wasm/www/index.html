@@ -362,6 +362,13 @@
                             <span class="perf-label">Resolution</span>
                             <span class="perf-value" id="perf-resolution">--</span>
                         </div>
+                        <div class="perf-row perf-backend-row">
+                            <span class="perf-label">Backend</span>
+                            <span class="perf-value perf-backend" id="perf-backend"
+                                  data-backend="unknown"
+                                  data-gpu-accelerated="false"
+                                  title="Rendering backend (from WASM)">--</span>
+                        </div>
                         <div class="perf-row perf-toggle-row">
                             <span class="perf-label" id="perf-uncapped-label">Uncapped</span>
                             <span class="perf-switch">
@@ -501,7 +508,7 @@
                 </button>
                 <div class="panel-body docs-panel" id="panel-guide-body">
                     <div class="docs-section">
-                        <h4>What is Rource?</h4>
+                        <h3 class="docs-heading">What is Rource?</h3>
                         <p><a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener">Rource</a> visualizes software version control history as an animated tree. Each file is a colored node, each developer has a unique color, and commits create "beams" connecting developers to files they modify.</p>
                         <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
                             This is live rendering via WebAssembly, not a video.
@@ -511,7 +518,7 @@
                         </p>
                     </div>
                     <div class="docs-section">
-                        <h4>Features</h4>
+                        <h3 class="docs-heading">Features</h3>
                         <ul class="feature-list">
                             <li>WebGPU/WebGL2 GPU-accelerated rendering</li>
                             <li>Force-directed graph layout</li>
@@ -521,7 +528,7 @@
                         </ul>
                     </div>
                     <div class="docs-section">
-                        <h4>About Commit Counts</h4>
+                        <h3 class="docs-heading">About Commit Counts</h3>
                         <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
                             The visualization groups file changes by timestamp and author. If multiple git commits happen in the same second by the same person, they appear as one step. This may result in a slightly different count than GitHub shows.
                         </p>
@@ -712,11 +719,13 @@
                         <div class="tech-item-label">WASM Gzipped</div>
                     </div>
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-renderer">WebGL2</div>
+                        <div class="tech-item-value" id="tech-renderer"
+                             data-backend="unknown"
+                             data-gpu-accelerated="false">--</div>
                         <div class="tech-item-label">Renderer</div>
                     </div>
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-tests">1094</div>
+                        <div class="tech-item-value" id="tech-tests">1169</div>
                         <div class="tech-item-label">Unit Tests</div>
                     </div>
                     <div class="tech-item">
@@ -804,13 +813,13 @@
                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                 </svg>
             </button>
-            <h3 id="help-title">What am I looking at?</h3>
+            <h2 id="help-title">What am I looking at?</h2>
 
             <div class="help-section">
-                <h4>
+                <h3 class="help-section-heading">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
                     Visual Elements
-                </h4>
+                </h3>
                 <div class="help-visual">
                     <div class="help-item">
                         <svg class="help-item-icon" viewBox="0 0 32 32">
@@ -856,10 +865,10 @@
             </div>
 
             <div class="help-section">
-                <h4>
+                <h3 class="help-section-heading">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                     How It Works
-                </h4>
+                </h3>
                 <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">
                     Rource visualizes your Git history as an animated tree. Each commit creates "beams" connecting
                     developers to the files they modify. Files branch out from the root based on their directory
@@ -871,10 +880,10 @@
             </div>
 
             <div class="help-section">
-                <h4>
+                <h3 class="help-section-heading">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                     Quick Tips
-                </h4>
+                </h3>
                 <ul style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem;">
                     <li><strong>Hover</strong> over files or users to see details</li>
                     <li><strong>Drag</strong> to pan around the visualization</li>

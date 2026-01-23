@@ -24,7 +24,7 @@ pub use tree::{DirNode, DirTree, LayoutConfig};
 pub use user::User;
 
 use crate::entity::{ActionId, DirId, FileId, IdAllocator, UserId};
-use crate::physics::QuadTree;
+use crate::physics::{BarnesHutTree, QuadTree};
 
 /// Default bounds for the scene's spatial index.
 ///
@@ -62,6 +62,7 @@ pub enum EntityType {
 /// - Action animations
 /// - Spatial indexing for efficient queries
 #[derive(Debug)]
+#[allow(clippy::struct_excessive_bools)] // Boolean flags for different concerns (dirty flags, feature toggles)
 pub struct Scene {
     /// The directory tree.
     directories: DirTree,
@@ -130,6 +131,19 @@ pub struct Scene {
     /// Cleared and reused each frame to avoid Vec allocation overhead.
     dir_data_buffer: Vec<DirForceData>,
 
+    /// Barnes-Hut tree for O(n log n) force calculations.
+    /// Reused each frame to avoid allocation overhead.
+    barnes_hut_tree: BarnesHutTree,
+
+    /// Whether to use Barnes-Hut algorithm for force calculations.
+    /// When true and directory count exceeds `barnes_hut_threshold`, uses
+    /// O(n log n) Barnes-Hut instead of O(n²) pairwise calculation.
+    use_barnes_hut: bool,
+
+    /// Minimum directory count to trigger Barnes-Hut algorithm.
+    /// Below this threshold, O(n²) is faster due to lower overhead.
+    barnes_hut_threshold: usize,
+
     // ========================================================================
     // Cached statistics (performance optimization to avoid per-frame recomputation)
     // ========================================================================
@@ -180,6 +194,10 @@ impl Scene {
             files_to_remove_buffer: Vec::with_capacity(32),
             forces_buffer: HashMap::with_capacity(128),
             dir_data_buffer: Vec::with_capacity(128),
+            // Barnes-Hut tree for O(n log n) force calculations
+            barnes_hut_tree: BarnesHutTree::new(bounds),
+            use_barnes_hut: true, // Enabled by default, auto-switches based on threshold
+            barnes_hut_threshold: 100, // Switch to Barnes-Hut above 100 directories
             // Initialize stats cache as empty (will be populated on first request)
             extension_stats_cache: Vec::new(),
             extension_stats_dirty: true,

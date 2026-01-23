@@ -117,18 +117,39 @@ async function main() {
         const rource = await Rource.create(canvas);
         setRource(rource);
 
-        // Check renderer type
+        // Check renderer type - deterministic from WASM, never guessed
         const isGPU = rource.isGPUAccelerated();
         const rendererType = rource.getRendererType();
-        console.log(`Rource: Using ${rendererType} renderer`);
 
-        // Update renderer badge
+        // Deterministic backend display text mapping
+        const BACKEND_DISPLAY_NAMES = {
+            'wgpu': 'WebGPU',
+            'webgl2': 'WebGL2',
+            'software': 'CPU'
+        };
+        const displayName = BACKEND_DISPLAY_NAMES[rendererType] || rendererType;
+
+        // Detailed console logging for observability and traceability
+        console.group('Rource Backend Detection');
+        console.log('Backend type (from WASM):', rendererType);
+        console.log('Display name:', displayName);
+        console.log('GPU accelerated:', isGPU);
+        console.log('isWgpu():', rource.isWgpu());
+        console.log('isWebGL2():', rource.isWebGL2());
+        console.groupEnd();
+
+        // Update tech panel renderer badge with data attributes
         if (elements.techRenderer) {
-            // Show backend type: "WebGPU", "WebGL2", or "CPU"
-            const badgeText = rendererType === 'wgpu' ? 'WebGPU'
-                           : rendererType === 'webgl2' ? 'WebGL2'
-                           : 'CPU';
-            elements.techRenderer.textContent = badgeText;
+            elements.techRenderer.textContent = displayName;
+            elements.techRenderer.setAttribute('data-backend', rendererType);
+            elements.techRenderer.setAttribute('data-gpu-accelerated', String(isGPU));
+        }
+
+        // Update performance overlay backend indicator
+        if (elements.perfBackend) {
+            elements.perfBackend.textContent = displayName;
+            elements.perfBackend.setAttribute('data-backend', rendererType);
+            elements.perfBackend.setAttribute('data-gpu-accelerated', String(isGPU));
         }
 
         // Initialize core modules
@@ -486,6 +507,68 @@ function updateAuthorsLegend() {
 function updateTimelineMarkers(content) {
     // Generate date tick marks based on commit timestamps
     generateTimelineTicks();
+}
+
+/**
+ * Global debug function for verifying backend detection.
+ * Can be called from browser console: window.rourceDebug.getBackendInfo()
+ *
+ * @returns {Object} Backend information for testing/verification
+ */
+function getBackendInfo() {
+    const rource = getRource();
+    if (!rource) {
+        return { error: 'Rource not initialized' };
+    }
+
+    const info = {
+        // Direct WASM queries (deterministic source of truth)
+        backend: rource.getRendererType(),
+        isGpuAccelerated: rource.isGPUAccelerated(),
+        isWgpu: rource.isWgpu(),
+        isWebGL2: rource.isWebGL2(),
+
+        // DOM state verification
+        domState: {
+            techRenderer: {
+                text: getElement('techRenderer')?.textContent,
+                dataBackend: getElement('techRenderer')?.getAttribute('data-backend'),
+                dataGpuAccelerated: getElement('techRenderer')?.getAttribute('data-gpu-accelerated'),
+            },
+            perfBackend: {
+                text: getElement('perfBackend')?.textContent,
+                dataBackend: getElement('perfBackend')?.getAttribute('data-backend'),
+                dataGpuAccelerated: getElement('perfBackend')?.getAttribute('data-gpu-accelerated'),
+            },
+        },
+
+        // Consistency check
+        isConsistent: false,
+    };
+
+    // Verify consistency between WASM and DOM
+    const wasmBackend = info.backend;
+    const domBackend = info.domState.techRenderer.dataBackend;
+    const perfBackend = info.domState.perfBackend.dataBackend;
+    info.isConsistent = wasmBackend === domBackend && domBackend === perfBackend;
+
+    if (!info.isConsistent) {
+        console.warn('[Rource] Backend state inconsistency detected:', {
+            wasm: wasmBackend,
+            techRenderer: domBackend,
+            perfBackend: perfBackend,
+        });
+    }
+
+    return info;
+}
+
+// Expose debug function globally for console testing
+if (typeof window !== 'undefined') {
+    window.rourceDebug = {
+        getBackendInfo,
+        version: '1.0.0',
+    };
 }
 
 // Start the application

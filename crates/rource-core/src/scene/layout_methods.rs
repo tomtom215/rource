@@ -2,11 +2,24 @@
 //!
 //! This module contains the force-directed layout algorithm for positioning
 //! directory nodes in a natural, organic-looking tree layout.
+//!
+//! ## Algorithm Selection
+//!
+//! The layout algorithm automatically selects between two modes:
+//!
+//! - **O(n²) Pairwise**: Used for small scenes (< 100 directories by default).
+//!   Simple and exact, with low overhead for small n.
+//!
+//! - **O(n log n) Barnes-Hut**: Used for large scenes. Approximates distant
+//!   clusters as single bodies, dramatically reducing computation time.
+//!
+//! The threshold can be configured via `Scene::set_barnes_hut_threshold()`.
 
 use rource_math::Vec2;
 
 use super::Scene;
 use crate::entity::DirId;
+use crate::physics::Body;
 
 // ============================================================================
 // Force-directed layout constants
@@ -40,6 +53,64 @@ pub(super) const FORCE_MIN_DISTANCE_SQ: f32 = FORCE_MIN_DISTANCE * FORCE_MIN_DIS
 pub(super) type DirForceData = (DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32);
 
 impl Scene {
+    /// Returns whether Barnes-Hut algorithm is enabled.
+    #[inline]
+    #[must_use]
+    pub fn is_barnes_hut_enabled(&self) -> bool {
+        self.use_barnes_hut
+    }
+
+    /// Enables or disables Barnes-Hut algorithm for force calculations.
+    ///
+    /// When enabled and directory count exceeds the threshold, uses O(n log n)
+    /// Barnes-Hut approximation instead of O(n²) pairwise calculation.
+    pub fn set_barnes_hut_enabled(&mut self, enabled: bool) {
+        self.use_barnes_hut = enabled;
+    }
+
+    /// Returns the current Barnes-Hut threshold.
+    #[inline]
+    #[must_use]
+    pub fn barnes_hut_threshold(&self) -> usize {
+        self.barnes_hut_threshold
+    }
+
+    /// Sets the threshold for Barnes-Hut algorithm activation.
+    ///
+    /// When directory count exceeds this threshold and Barnes-Hut is enabled,
+    /// the algorithm switches from O(n²) to O(n log n).
+    ///
+    /// Default is 100 directories. Set to 0 to always use Barnes-Hut.
+    pub fn set_barnes_hut_threshold(&mut self, threshold: usize) {
+        self.barnes_hut_threshold = threshold;
+    }
+
+    /// Sets the theta parameter for Barnes-Hut approximation.
+    ///
+    /// - θ = 0.0: Exact calculation (no approximation)
+    /// - θ = 0.5: Typical value for accurate simulations
+    /// - θ = 0.8: Good balance of speed and accuracy (default)
+    /// - θ = 1.0+: Faster but less accurate
+    pub fn set_barnes_hut_theta(&mut self, theta: f32) {
+        self.barnes_hut_tree.set_theta(theta);
+    }
+
+    /// Returns the current Barnes-Hut theta parameter.
+    #[inline]
+    #[must_use]
+    pub fn barnes_hut_theta(&self) -> f32 {
+        self.barnes_hut_tree.theta()
+    }
+
+    /// Returns whether Barnes-Hut is currently being used for layout calculations.
+    ///
+    /// True if Barnes-Hut is enabled AND directory count exceeds threshold.
+    #[inline]
+    #[must_use]
+    pub fn is_using_barnes_hut(&self) -> bool {
+        self.use_barnes_hut && self.directories.len() >= self.barnes_hut_threshold
+    }
+
     /// Applies force-directed layout to directory nodes.
     ///
     /// This simulates physical forces between directories to create a natural,
@@ -47,6 +118,9 @@ impl Scene {
     /// - **Repulsion**: Sibling directories and nearby nodes push each other apart
     /// - **Attraction**: Child directories are pulled toward their parents
     /// - **Damping**: Friction-like force that stabilizes the system
+    ///
+    /// Automatically selects between O(n²) pairwise and O(n log n) Barnes-Hut
+    /// based on directory count and configuration.
     pub(super) fn apply_force_directed_layout(&mut self, dt: f32) {
         // Collect directory data for force calculation (reusing buffer)
         self.dir_data_buffer.clear();
@@ -64,8 +138,26 @@ impl Scene {
         // Calculate forces for each directory (reusing buffer)
         self.forces_buffer.clear();
 
-        // Calculate repulsion forces between related directories (O(n²) but n is typically small)
         let dir_count = self.dir_data_buffer.len();
+
+        // Select algorithm based on directory count and configuration
+        if self.use_barnes_hut && dir_count >= self.barnes_hut_threshold {
+            self.calculate_repulsion_barnes_hut(dir_count);
+        } else {
+            self.calculate_repulsion_pairwise(dir_count);
+        }
+
+        // Calculate attraction forces to parents (always O(n))
+        self.calculate_attraction_forces(dir_count);
+
+        // Apply forces to directories
+        self.apply_forces_to_directories(dt);
+    }
+
+    /// Calculates repulsion forces using O(n²) pairwise algorithm.
+    ///
+    /// Best for small scenes (< 100 directories) where overhead is low.
+    fn calculate_repulsion_pairwise(&mut self, dir_count: usize) {
         for i in 0..dir_count {
             let (id_i, pos_i, depth_i, parent_i, _, _) = self.dir_data_buffer[i];
             for j in (i + 1)..dir_count {
@@ -108,8 +200,39 @@ impl Scene {
                 *self.forces_buffer.entry(id_j).or_insert(Vec2::ZERO) += force;
             }
         }
+    }
 
-        // Calculate attraction forces to parents
+    /// Calculates repulsion forces using O(n log n) Barnes-Hut algorithm.
+    ///
+    /// Uses a quadtree to approximate distant clusters as single bodies,
+    /// dramatically reducing computation for large scenes.
+    fn calculate_repulsion_barnes_hut(&mut self, dir_count: usize) {
+        // Build Barnes-Hut tree from current directory positions
+        self.barnes_hut_tree.clear();
+
+        for i in 0..dir_count {
+            let (_, pos, _, _, _, _) = self.dir_data_buffer[i];
+            self.barnes_hut_tree.insert(Body::new(pos));
+        }
+
+        // Calculate forces for each directory using Barnes-Hut approximation
+        for i in 0..dir_count {
+            let (id, pos, _, _, _, _) = self.dir_data_buffer[i];
+            let body = Body::new(pos);
+
+            // Get repulsive force from all other bodies (approximated by tree)
+            let force =
+                self.barnes_hut_tree
+                    .calculate_force(&body, FORCE_REPULSION, FORCE_MIN_DISTANCE_SQ);
+
+            if force.length_squared() > 0.001 {
+                *self.forces_buffer.entry(id).or_insert(Vec2::ZERO) += force;
+            }
+        }
+    }
+
+    /// Calculates attraction forces to parent directories (always O(n)).
+    fn calculate_attraction_forces(&mut self, dir_count: usize) {
         for i in 0..dir_count {
             let (id, pos, _depth, _parent_id, parent_pos, target_dist) = self.dir_data_buffer[i];
             if let Some(parent_pos) = parent_pos {
@@ -128,8 +251,10 @@ impl Scene {
                 }
             }
         }
+    }
 
-        // Apply forces to directories
+    /// Applies computed forces to directories and integrates physics.
+    fn apply_forces_to_directories(&mut self, dt: f32) {
         for dir in self.directories.iter_mut() {
             // Skip root (anchor it in place)
             if dir.is_root() {
@@ -160,5 +285,71 @@ impl Scene {
                 dir.update_physics(dt, FORCE_DAMPING);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[allow(clippy::assertions_on_constants)]
+    fn test_force_constants() {
+        // Verify constants are reasonable
+        assert!(FORCE_REPULSION > 0.0);
+        assert!(FORCE_ATTRACTION > 0.0);
+        assert!(FORCE_DAMPING > 0.0 && FORCE_DAMPING < 1.0);
+        assert!(FORCE_MAX_VELOCITY > 0.0);
+        assert!(FORCE_MIN_DISTANCE > 0.0);
+    }
+
+    #[test]
+    fn test_squared_constants() {
+        // Verify squared constants are correct
+        let expected_vel_sq = FORCE_MAX_VELOCITY * FORCE_MAX_VELOCITY;
+        assert!((FORCE_MAX_VELOCITY_SQ - expected_vel_sq).abs() < 0.001);
+
+        let expected_dist_sq = FORCE_MIN_DISTANCE * FORCE_MIN_DISTANCE;
+        assert!((FORCE_MIN_DISTANCE_SQ - expected_dist_sq).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_barnes_hut_threshold_default() {
+        let scene = Scene::new();
+        assert_eq!(scene.barnes_hut_threshold(), 100);
+    }
+
+    #[test]
+    fn test_barnes_hut_enabled_default() {
+        let scene = Scene::new();
+        assert!(scene.is_barnes_hut_enabled());
+    }
+
+    #[test]
+    fn test_set_barnes_hut_threshold() {
+        let mut scene = Scene::new();
+        scene.set_barnes_hut_threshold(500);
+        assert_eq!(scene.barnes_hut_threshold(), 500);
+    }
+
+    #[test]
+    fn test_set_barnes_hut_enabled() {
+        let mut scene = Scene::new();
+        scene.set_barnes_hut_enabled(false);
+        assert!(!scene.is_barnes_hut_enabled());
+    }
+
+    #[test]
+    fn test_is_using_barnes_hut() {
+        let scene = Scene::new();
+        // Empty scene should not use Barnes-Hut (0 < 100 threshold)
+        assert!(!scene.is_using_barnes_hut());
+    }
+
+    #[test]
+    fn test_barnes_hut_theta() {
+        let mut scene = Scene::new();
+        scene.set_barnes_hut_theta(0.5);
+        assert!((scene.barnes_hut_theta() - 0.5).abs() < 0.001);
     }
 }
