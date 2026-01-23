@@ -14,6 +14,144 @@ use rource_math::{Bounds, Color, Mat4, Vec2, Vec3};
 
 use crate::{FontCache, FontId, Renderer, Texture, TextureId};
 
+// ============================================================================
+// Free Functions for Split Borrow Pattern
+// ============================================================================
+//
+// These free functions enable split borrowing of SoftwareRenderer fields,
+// avoiding the need to clone texture data in draw_quad(). The borrow checker
+// can't see that self.textures and self.pixels are disjoint, so we pass them
+// as separate parameters to these functions.
+
+/// Helper function to check if a point is clipped (free function for split borrow pattern).
+#[inline]
+fn is_clipped_inner(x: i32, y: i32, width: u32, height: u32, clips: &[Bounds]) -> bool {
+    if x < 0 || y < 0 || x >= width as i32 || y >= height as i32 {
+        return true;
+    }
+    for clip in clips {
+        if x < clip.min.x as i32
+            || x > clip.max.x as i32
+            || y < clip.min.y as i32
+            || y > clip.max.y as i32
+        {
+            return true;
+        }
+    }
+    false
+}
+
+/// Helper function to get pixel index (free function for split borrow pattern).
+#[inline]
+fn pixel_index_inner(x: i32, y: i32, width: u32, height: u32) -> Option<usize> {
+    if x < 0 || y < 0 || x >= width as i32 || y >= height as i32 {
+        return None;
+    }
+    Some((y as usize) * (width as usize) + (x as usize))
+}
+
+/// Helper function to plot a pixel with premultiplied alpha (free function for split borrow pattern).
+#[inline]
+#[allow(clippy::too_many_arguments)] // Explicit parameters needed for split borrow pattern
+fn plot_premultiplied_inner(
+    pixels: &mut [u32],
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    clips: &[Bounds],
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+) {
+    if is_clipped_inner(x, y, width, height, clips) {
+        return;
+    }
+    let Some(idx) = pixel_index_inner(x, y, width, height) else {
+        return;
+    };
+
+    if a == 0 {
+        return;
+    }
+
+    let existing = pixels[idx];
+
+    if a == 255 {
+        pixels[idx] = 0xFF00_0000 | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
+        return;
+    }
+
+    let alpha = a as f32 / 255.0;
+    let inv_alpha = 1.0 - alpha;
+
+    let dst_r = ((existing >> 16) & 0xFF) as f32;
+    let dst_g = ((existing >> 8) & 0xFF) as f32;
+    let dst_b = (existing & 0xFF) as f32;
+
+    let new_r = ((r as f32 * alpha + dst_r * inv_alpha) as u32).min(255);
+    let new_g = ((g as f32 * alpha + dst_g * inv_alpha) as u32).min(255);
+    let new_b = ((b as f32 * alpha + dst_b * inv_alpha) as u32).min(255);
+
+    pixels[idx] = 0xFF00_0000 | (new_r << 16) | (new_g << 8) | new_b;
+}
+
+/// Draws a textured quad using explicit split borrows (free function).
+///
+/// This avoids the need to clone the entire texture by accepting pixels and textures
+/// as separate parameters, allowing the borrow checker to see they are disjoint.
+///
+/// # Performance
+///
+/// This function eliminates the texture clone that was previously required in `draw_quad()`.
+/// For a typical 32x32 icon texture, this saves 4KB per textured quad per frame.
+/// For larger textures (e.g., 512x512), the savings are over 1MB per quad.
+#[inline]
+#[allow(clippy::too_many_arguments)] // Explicit parameters needed for split borrow pattern
+fn draw_textured_quad_with_textures(
+    pixels: &mut [u32],
+    width: u32,
+    height: u32,
+    clips: &[Bounds],
+    textures: &HashMap<TextureId, Texture>,
+    tex_id: TextureId,
+    bounds: Bounds,
+    tint: Color,
+) {
+    let Some(texture) = textures.get(&tex_id) else {
+        return;
+    };
+
+    let min_x = bounds.min.x.floor() as i32;
+    let max_x = bounds.max.x.ceil() as i32;
+    let min_y = bounds.min.y.floor() as i32;
+    let max_y = bounds.max.y.ceil() as i32;
+
+    let w = bounds.max.x - bounds.min.x;
+    let h = bounds.max.y - bounds.min.y;
+
+    if w <= 0.0 || h <= 0.0 {
+        return;
+    }
+
+    for y in min_y..max_y {
+        for x in min_x..max_x {
+            let u = (x as f32 - bounds.min.x) / w;
+            let v = (y as f32 - bounds.min.y) / h;
+
+            let (tr, tg, tb, ta) = texture.sample(u, v);
+
+            let r = ((tr as f32 / 255.0) * tint.r * 255.0) as u8;
+            let g = ((tg as f32 / 255.0) * tint.g * 255.0) as u8;
+            let b = ((tb as f32 / 255.0) * tint.b * 255.0) as u8;
+            let a = ((ta as f32 / 255.0) * tint.a * 255.0) as u8;
+
+            plot_premultiplied_inner(pixels, x, y, width, height, clips, r, g, b, a);
+        }
+    }
+}
+
 /// Software renderer using CPU-based rasterization.
 ///
 /// This renderer provides:
@@ -527,42 +665,6 @@ impl SoftwareRenderer {
         self.pixels[idx] = 0xFF00_0000 | (new_r << 16) | (new_g << 8) | new_b;
     }
 
-    /// Plots a pixel with premultiplied alpha.
-    fn plot_premultiplied(&mut self, x: i32, y: i32, r: u8, g: u8, b: u8, a: u8) {
-        if self.is_clipped(x, y) {
-            return;
-        }
-
-        let Some(idx) = self.pixel_index(x, y) else {
-            return;
-        };
-
-        if a == 0 {
-            return;
-        }
-
-        let existing = self.pixels[idx];
-
-        if a == 255 {
-            // Fully opaque - just overwrite
-            self.pixels[idx] = 0xFF00_0000 | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
-            return;
-        }
-
-        let alpha = a as f32 / 255.0;
-        let inv_alpha = 1.0 - alpha;
-
-        let dst_r = ((existing >> 16) & 0xFF) as f32;
-        let dst_g = ((existing >> 8) & 0xFF) as f32;
-        let dst_b = (existing & 0xFF) as f32;
-
-        let new_r = ((r as f32 * alpha + dst_r * inv_alpha) as u32).min(255);
-        let new_g = ((g as f32 * alpha + dst_g * inv_alpha) as u32).min(255);
-        let new_b = ((b as f32 * alpha + dst_b * inv_alpha) as u32).min(255);
-
-        self.pixels[idx] = 0xFF00_0000 | (new_r << 16) | (new_g << 8) | new_b;
-    }
-
     /// Anti-aliased line drawing using Xiaolin Wu's algorithm.
     fn draw_line_aa(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, color: Color) {
         let steep = (y1 - y0).abs() > (x1 - x0).abs();
@@ -751,40 +853,6 @@ impl SoftwareRenderer {
         }
     }
 
-    /// Draws a textured quad.
-    fn draw_textured_quad(&mut self, bounds: Bounds, texture: &Texture, tint: Color) {
-        let min_x = bounds.min.x.floor() as i32;
-        let max_x = bounds.max.x.ceil() as i32;
-        let min_y = bounds.min.y.floor() as i32;
-        let max_y = bounds.max.y.ceil() as i32;
-
-        let width = bounds.max.x - bounds.min.x;
-        let height = bounds.max.y - bounds.min.y;
-
-        if width <= 0.0 || height <= 0.0 {
-            return;
-        }
-
-        for y in min_y..max_y {
-            for x in min_x..max_x {
-                // Calculate UV coordinates
-                let u = (x as f32 - bounds.min.x) / width;
-                let v = (y as f32 - bounds.min.y) / height;
-
-                // Sample texture with bilinear filtering
-                let (tr, tg, tb, ta) = texture.sample(u, v);
-
-                // Apply tint
-                let r = ((tr as f32 / 255.0) * tint.r * 255.0) as u8;
-                let g = ((tg as f32 / 255.0) * tint.g * 255.0) as u8;
-                let b = ((tb as f32 / 255.0) * tint.b * 255.0) as u8;
-                let a = ((ta as f32 / 255.0) * tint.a * 255.0) as u8;
-
-                self.plot_premultiplied(x, y, r, g, b, a);
-            }
-        }
-    }
-
     /// Draws a single character glyph.
     fn draw_glyph(&mut self, x: i32, y: i32, glyph: &crate::font::CachedGlyph, color: Color) {
         let glyph_width = glyph.metrics.width;
@@ -869,11 +937,19 @@ impl Renderer for SoftwareRenderer {
         let transformed = Bounds::new(min, max);
 
         if let Some(tex_id) = texture {
-            if let Some(tex) = self.textures.get(&tex_id) {
-                // Clone texture data to avoid borrow issues
-                let tex_clone = tex.clone();
-                self.draw_textured_quad(transformed, &tex_clone, color);
-            }
+            // Use split borrow pattern to avoid cloning the entire texture.
+            // By passing &mut self.pixels and &self.textures separately to a free function,
+            // the borrow checker can see these are disjoint borrows of different struct fields.
+            draw_textured_quad_with_textures(
+                &mut self.pixels,
+                self.width,
+                self.height,
+                &self.clips,
+                &self.textures,
+                tex_id,
+                transformed,
+                color,
+            );
         } else {
             self.draw_solid_quad(transformed, color);
         }

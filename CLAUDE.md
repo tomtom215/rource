@@ -1235,6 +1235,131 @@ integrated when icon assets are added.
 
 **Test Count**: 1,129 tests passing (added 8 new tests)
 
+### Phase 14 Optimizations (2026-01-23)
+
+WASM/WebGPU Performance Optimization Phase 2 - Zero-allocation texture drawing and verification.
+
+#### 1. Zero-Allocation Textured Quad Drawing
+
+Eliminated texture cloning in `SoftwareRenderer::draw_quad()` using explicit split borrow pattern.
+
+**Files Modified**:
+- `crates/rource-render/src/backend/software.rs` - Split borrow pattern for texture access
+
+**Problem**:
+```rust
+// Before: Cloned entire texture (4KB-1MB+) every frame per textured quad
+if let Some(tex) = self.textures.get(&tex_id) {
+    let tex_clone = tex.clone();  // EXPENSIVE: clones Vec<u8> data
+    self.draw_textured_quad(transformed, &tex_clone, color);
+}
+```
+
+**Solution**: Free functions with explicit split borrows:
+```rust
+// After: Zero allocation - separate borrows of disjoint struct fields
+draw_textured_quad_with_textures(
+    &mut self.pixels,    // Mutable borrow of pixels
+    self.width,
+    self.height,
+    &self.clips,
+    &self.textures,      // Immutable borrow of textures (disjoint)
+    tex_id,
+    transformed,
+    color,
+);
+```
+
+**Helper Functions Added**:
+
+| Function | Purpose |
+|----------|---------|
+| `is_clipped_inner()` | Check clip bounds (free function) |
+| `pixel_index_inner()` | Calculate pixel index (free function) |
+| `plot_premultiplied_inner()` | Plot pixel with alpha (free function) |
+| `draw_textured_quad_with_textures()` | Draw textured quad (free function) |
+
+**Performance Impact**:
+
+| Texture Size | Clone Cost (Before) | After |
+|--------------|--------------------| ------|
+| 32×32 icon | 4 KB/quad | 0 |
+| 128×128 avatar | 64 KB/quad | 0 |
+| 512×512 logo | 1 MB/quad | 0 |
+
+At 60 FPS with 10 textured quads: **~600 MB/second of memory churn eliminated**.
+
+#### 2. Verification: Streaming Compilation
+
+Verified that wasm-pack generated code already uses `WebAssembly.instantiateStreaming()`:
+
+**File**: `rource-wasm/www/pkg/rource_wasm.js`
+```javascript
+if (typeof WebAssembly.instantiateStreaming === 'function') {
+    return await WebAssembly.instantiateStreaming(module, imports);
+} else {
+    // Fallback for servers without application/wasm MIME type
+    return await WebAssembly.instantiate(bytes, imports);
+}
+```
+
+**Benefits**:
+- V8 code caching enabled automatically
+- Parallel download and compilation
+- No changes required (already optimized)
+
+#### 3. Verification: wgpu Pipeline Warmup
+
+Verified that wgpu render pipelines are warmed up during initialization:
+
+**File**: `crates/rource-render/src/backend/wgpu/mod.rs`
+```rust
+fn initialize_pipelines(&mut self) {
+    let mut pipeline_manager = PipelineManager::new(&self.device, format);
+    pipeline_manager.warmup(&self.device);  // Pre-creates all primitive pipelines
+    self.pipeline_manager = Some(pipeline_manager);
+}
+```
+
+**Note**: `warmup_physics()` and `warmup_culling()` are available but opt-in since
+GPU physics and visibility culling are optional features for extreme-scale scenarios.
+
+#### 4. Verification: WebGL2 UBO and Instance Buffers
+
+Confirmed both optimizations are **implemented and active by default**:
+
+**UBO (Uniform Buffer Objects)**:
+
+| Aspect | Status |
+|--------|--------|
+| Implementation | `crates/rource-render/src/backend/webgl2/ubo.rs` (216 lines) |
+| Enabled by Default | Yes (with legacy fallback) |
+| Frame Stats | `ubo_enabled: true` in `FrameStats` |
+| Impact | ~90% reduction in uniform API calls |
+
+**Instance Buffer Sub-Data Updates**:
+
+| Aspect | Status |
+|--------|--------|
+| Implementation | `crates/rource-render/src/backend/webgl2/buffers.rs` (921 lines) |
+| Enabled by Default | Yes |
+| Capacity Tracking | Separate CPU and GPU buffer sizes |
+| Impact | ~80% reduction in GPU buffer overhead |
+
+**Optimization Status Summary**:
+
+| Optimization | Status | Default |
+|-------------|--------|---------|
+| Streaming WASM compilation | ✓ Active | Yes |
+| wgpu pipeline warmup | ✓ Active | Yes |
+| WebGL2 UBO | ✓ Active | Yes |
+| WebGL2 instance sub-data | ✓ Active | Yes |
+| Texture clone elimination | ✓ Active | Yes |
+| GPU physics warmup | Available | Opt-in |
+| GPU culling warmup | Available | Opt-in |
+
+**Test Count**: 1,106+ tests passing
+
 ### Scene Module Refactoring (2026-01-22)
 
 Refactored `scene/mod.rs` into modular structure for improved maintainability.
