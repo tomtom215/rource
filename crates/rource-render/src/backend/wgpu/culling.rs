@@ -6,16 +6,14 @@
 //!
 //! ## Integration Status
 //!
-//! **Infrastructure: COMPLETE** | **Render Integration: NOT YET**
+//! **Fully Integrated** - GPU visibility culling is wired into the render pipeline.
 //!
-//! The culling pipeline is fully implemented with compute shaders for circles,
-//! lines, and quads. However, it is not yet wired into the render loop because:
+//! When enabled via `set_gpu_culling_enabled(true)`, the renderer will:
+//! 1. Dispatch compute shaders to cull instances based on view bounds
+//! 2. Use the culled output buffers with indirect draw commands
+//! 3. Automatically fall back to normal rendering when culling is disabled
 //!
-//! 1. CPU quadtree culling is efficient for typical use cases (< 10,000 entities)
-//! 2. Integration requires buffer layout changes (STORAGE → VERTEX+STORAGE)
-//! 3. Indirect draw adds synchronization complexity
-//!
-//! See `culling_methods.rs` for detailed integration steps when needed.
+//! See `culling_methods.rs` for the high-level API and usage examples.
 //!
 //! ## Architecture
 //!
