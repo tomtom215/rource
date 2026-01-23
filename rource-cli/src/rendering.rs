@@ -915,8 +915,8 @@ fn render_file_labels(
     font_size: f32,
     font_id: FontId,
 ) {
-    // Sort by priority (highest first) - priority is the 5th element (index 4)
-    candidates.sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
+    // Sort by priority (highest first) - use unstable sort for performance
+    candidates.sort_unstable_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
 
     // Create label placer with zoom-based limit
     let mut placer = LabelPlacer::new(camera_zoom);
