@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769204435126,
+  "lastUpdate": 1769209648637,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1169,6 +1169,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1035513,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9fda004ec71b776c0f63bad8602d46ba6237fbe",
+          "message": "Merge pull request #140 from tomtom215/claude/optimize-rource-performance-QFwpf\n\nOptimize file label rendering with reusable buffer allocation",
+          "timestamp": "2026-01-24T00:03:47+01:00",
+          "tree_id": "ce9cb9869d8a0c77c73f9c3e4aa31338861441af",
+          "url": "https://github.com/tomtom215/rource/commit/d9fda004ec71b776c0f63bad8602d46ba6237fbe"
+        },
+        "date": 1769209648111,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3909296,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2700646,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1035003,
             "unit": "bytes"
           }
         ]
