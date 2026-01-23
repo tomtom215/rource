@@ -4,9 +4,22 @@
 //! GPU physics dispatch methods for the wgpu renderer.
 //!
 //! This module contains methods for running force-directed physics simulation on the GPU.
+//!
+//! ## Algorithm Selection
+//!
+//! By default, the renderer uses the O(N) spatial hash algorithm which provides
+//! dramatically better performance for large entity counts:
+//!
+//! | Entities | O(N²) Comparisons | O(N) Comparisons | Speedup |
+//! |----------|-------------------|------------------|---------|
+//! | 1,000 | 1,000,000 | ~10,800 | ~93× |
+//! | 5,000 | 25,000,000 | ~54,000 | ~463× |
+//!
+//! Use `set_use_spatial_hash(false)` to fall back to the O(N²) brute force algorithm.
 
 use super::{
     compute::{ComputeEntity, ComputePipeline, ComputeStats, PhysicsConfig},
+    spatial_hash::SpatialHashPipeline,
     WgpuRenderer,
 };
 
@@ -14,7 +27,33 @@ use super::{
 use super::compute::ComputedBounds;
 
 impl WgpuRenderer {
-    /// Returns a reference to the compute pipeline, creating it if needed.
+    /// Returns whether O(N) spatial hash physics is enabled.
+    ///
+    /// When true (default), uses the O(N) spatial hash algorithm.
+    /// When false, uses O(N²) brute force for compatibility testing.
+    #[must_use]
+    pub fn use_spatial_hash(&self) -> bool {
+        self.use_spatial_hash
+    }
+
+    /// Sets whether to use O(N) spatial hash physics.
+    ///
+    /// # Arguments
+    ///
+    /// * `enabled` - `true` for O(N) spatial hash (default), `false` for O(N²) brute force
+    pub fn set_use_spatial_hash(&mut self, enabled: bool) {
+        self.use_spatial_hash = enabled;
+    }
+
+    /// Returns a reference to the spatial hash pipeline, creating it if needed.
+    pub fn spatial_hash_pipeline(&mut self) -> &mut SpatialHashPipeline {
+        if self.spatial_hash_pipeline.is_none() {
+            self.spatial_hash_pipeline = Some(SpatialHashPipeline::new(&self.device));
+        }
+        self.spatial_hash_pipeline.as_mut().unwrap()
+    }
+
+    /// Returns a reference to the compute pipeline (O(N²)), creating it if needed.
     pub fn compute_pipeline(&mut self) -> &mut ComputePipeline {
         if self.compute_pipeline.is_none() {
             self.compute_pipeline = Some(ComputePipeline::new(&self.device));
@@ -26,7 +65,28 @@ impl WgpuRenderer {
     ///
     /// Call this during initialization to pre-compile compute shaders and avoid
     /// first-frame stuttering when physics is first dispatched.
+    ///
+    /// Warms up the O(N) spatial hash pipeline by default. Use `warmup_physics_legacy()`
+    /// to warm up the O(N²) pipeline instead.
     pub fn warmup_physics(&mut self) {
+        if self.use_spatial_hash {
+            // Warm up O(N) spatial hash pipeline (default)
+            if self.spatial_hash_pipeline.is_none() {
+                self.spatial_hash_pipeline = Some(SpatialHashPipeline::new(&self.device));
+            }
+            if let Some(ref mut pipeline) = self.spatial_hash_pipeline {
+                pipeline.warmup(&self.device, &self.queue);
+            }
+        } else {
+            // Warm up O(N²) legacy pipeline
+            self.warmup_physics_legacy();
+        }
+    }
+
+    /// Warms up the O(N²) brute force physics pipeline.
+    ///
+    /// This is the legacy pipeline. Use `warmup_physics()` for the O(N) spatial hash.
+    pub fn warmup_physics_legacy(&mut self) {
         if self.compute_pipeline.is_none() {
             self.compute_pipeline = Some(ComputePipeline::new(&self.device));
         }
@@ -81,6 +141,59 @@ impl WgpuRenderer {
             return Vec::new();
         }
 
+        if self.use_spatial_hash {
+            // Use O(N) spatial hash pipeline (default)
+            self.dispatch_physics_spatial_hash(entities, delta_time)
+        } else {
+            // Use O(N²) brute force pipeline (legacy)
+            self.dispatch_physics_brute_force(entities, delta_time)
+        }
+    }
+
+    /// Dispatches physics using O(N) spatial hash algorithm.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn dispatch_physics_spatial_hash(
+        &mut self,
+        entities: &[ComputeEntity],
+        delta_time: f32,
+    ) -> Vec<ComputeEntity> {
+        // Initialize spatial hash pipeline if needed
+        if self.spatial_hash_pipeline.is_none() {
+            self.spatial_hash_pipeline = Some(SpatialHashPipeline::new(&self.device));
+        }
+
+        let Some(ref mut pipeline) = self.spatial_hash_pipeline else {
+            return entities.to_vec();
+        };
+
+        // Upload entities
+        pipeline.upload_entities(&self.device, &self.queue, entities);
+
+        // Create command encoder
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Spatial Hash Physics Encoder"),
+            });
+
+        // Dispatch all 9 compute passes
+        pipeline.dispatch(&mut encoder, &self.queue, delta_time);
+
+        // Submit and wait for completion
+        self.queue.submit(Some(encoder.finish()));
+        self.device.poll(wgpu::Maintain::Wait);
+
+        // Download results synchronously
+        pipeline.download_entities_sync(&self.device, &self.queue)
+    }
+
+    /// Dispatches physics using O(N²) brute force algorithm.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn dispatch_physics_brute_force(
+        &mut self,
+        entities: &[ComputeEntity],
+        delta_time: f32,
+    ) -> Vec<ComputeEntity> {
         // Initialize compute pipeline if needed
         if self.compute_pipeline.is_none() {
             self.compute_pipeline = Some(ComputePipeline::new(&self.device));
@@ -280,6 +393,59 @@ impl WgpuRenderer {
             return Vec::new();
         }
 
+        if self.use_spatial_hash {
+            // Use O(N) spatial hash pipeline (default)
+            self.dispatch_physics_sync_spatial_hash(entities, delta_time)
+        } else {
+            // Use O(N²) brute force pipeline (legacy)
+            self.dispatch_physics_sync_brute_force(entities, delta_time)
+        }
+    }
+
+    /// Dispatches physics synchronously using O(N) spatial hash algorithm (WASM).
+    #[cfg(target_arch = "wasm32")]
+    fn dispatch_physics_sync_spatial_hash(
+        &mut self,
+        entities: &[ComputeEntity],
+        delta_time: f32,
+    ) -> Vec<ComputeEntity> {
+        // Initialize spatial hash pipeline if needed
+        if self.spatial_hash_pipeline.is_none() {
+            self.spatial_hash_pipeline = Some(SpatialHashPipeline::new(&self.device));
+        }
+
+        let Some(ref mut pipeline) = self.spatial_hash_pipeline else {
+            return entities.to_vec();
+        };
+
+        // Upload entities
+        pipeline.upload_entities(&self.device, &self.queue, entities);
+
+        // Create command encoder
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Spatial Hash Physics Encoder"),
+            });
+
+        // Dispatch all 9 compute passes
+        pipeline.dispatch(&mut encoder, &self.queue, delta_time);
+
+        // Submit and wait for completion
+        self.queue.submit(Some(encoder.finish()));
+        self.device.poll(wgpu::Maintain::Wait);
+
+        // Download results synchronously
+        pipeline.download_entities_sync(&self.device, &self.queue)
+    }
+
+    /// Dispatches physics synchronously using O(N²) brute force algorithm (WASM).
+    #[cfg(target_arch = "wasm32")]
+    fn dispatch_physics_sync_brute_force(
+        &mut self,
+        entities: &[ComputeEntity],
+        delta_time: f32,
+    ) -> Vec<ComputeEntity> {
         // Initialize compute pipeline if needed
         if self.compute_pipeline.is_none() {
             self.compute_pipeline = Some(ComputePipeline::new(&self.device));
@@ -317,23 +483,52 @@ impl WgpuRenderer {
     /// # Arguments
     ///
     /// * `config` - Physics configuration (repulsion, attraction, damping, etc.)
+    ///
+    /// Note: This sets the config on the currently active pipeline (spatial hash or brute force).
     pub fn set_physics_config(&mut self, config: PhysicsConfig) {
-        if self.compute_pipeline.is_none() {
-            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
-        }
-        if let Some(ref mut pipeline) = self.compute_pipeline {
-            pipeline.set_config(config);
+        if self.use_spatial_hash {
+            // Set config on spatial hash pipeline
+            if self.spatial_hash_pipeline.is_none() {
+                self.spatial_hash_pipeline = Some(SpatialHashPipeline::new(&self.device));
+            }
+            if let Some(ref mut pipeline) = self.spatial_hash_pipeline {
+                pipeline.set_config(config);
+            }
+        } else {
+            // Set config on brute force pipeline
+            if self.compute_pipeline.is_none() {
+                self.compute_pipeline = Some(ComputePipeline::new(&self.device));
+            }
+            if let Some(ref mut pipeline) = self.compute_pipeline {
+                pipeline.set_config(config);
+            }
         }
     }
 
     /// Returns the current GPU physics configuration.
+    ///
+    /// Returns the config from the currently active pipeline.
     pub fn physics_config(&self) -> Option<&PhysicsConfig> {
-        self.compute_pipeline.as_ref().map(ComputePipeline::config)
+        if self.use_spatial_hash {
+            self.spatial_hash_pipeline
+                .as_ref()
+                .map(SpatialHashPipeline::config)
+        } else {
+            self.compute_pipeline.as_ref().map(ComputePipeline::config)
+        }
     }
 
     /// Returns compute statistics from the last physics dispatch.
+    ///
+    /// Returns stats from the currently active pipeline.
     pub fn physics_stats(&self) -> Option<&ComputeStats> {
-        self.compute_pipeline.as_ref().map(ComputePipeline::stats)
+        if self.use_spatial_hash {
+            self.spatial_hash_pipeline
+                .as_ref()
+                .map(SpatialHashPipeline::stats)
+        } else {
+            self.compute_pipeline.as_ref().map(ComputePipeline::stats)
+        }
     }
 }
 

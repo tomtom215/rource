@@ -136,6 +136,7 @@ use stats::FrameStats;
 use textures::{FontAtlas, GlyphKey, ManagedTexture, TextureArray};
 
 use culling::VisibilityCullingPipeline;
+use spatial_hash::SpatialHashPipeline;
 
 // Re-export key types for external use
 pub use bloom::BloomConfig;
@@ -150,7 +151,7 @@ pub use stats::ActivePrimitives;
 ///
 /// This renderer uses wgpu for GPU-accelerated rendering across native and web platforms.
 /// It batches draw calls using instanced rendering for optimal performance.
-#[allow(dead_code)]
+#[allow(dead_code, clippy::struct_excessive_bools)]
 pub struct WgpuRenderer {
     /// wgpu instance (retained for context recovery).
     instance: wgpu::Instance,
@@ -242,8 +243,15 @@ pub struct WgpuRenderer {
     /// GPU shadow post-processing pipeline.
     shadow_pipeline: Option<ShadowPipeline>,
 
-    /// GPU compute pipeline for physics.
+    /// GPU compute pipeline for physics (O(N²) brute force - legacy).
     compute_pipeline: Option<ComputePipeline>,
+
+    /// O(N) GPU spatial hash pipeline for physics (preferred).
+    spatial_hash_pipeline: Option<SpatialHashPipeline>,
+
+    /// Whether to use O(N) spatial hash (true) or O(N²) brute force (false).
+    /// Default is true for optimal performance with large entity counts.
+    use_spatial_hash: bool,
 
     /// GPU state cache.
     render_state: RenderState,
@@ -624,6 +632,8 @@ impl WgpuRenderer {
             bloom_pipeline: None,
             shadow_pipeline: None,
             compute_pipeline: None,
+            spatial_hash_pipeline: None,
+            use_spatial_hash: true, // Use O(N) by default
             render_state: RenderState::new(),
             frame_stats: FrameStats::new(),
             current_encoder: None,
