@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769159327981,
+  "lastUpdate": 1769162004878,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -701,6 +701,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1012026,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "267aabf48b4cca2f7cfe06c69fdac2dd37bcdc03",
+          "message": "Merge pull request #128 from tomtom215/claude/wasm-webgpu-optimization-Gnt79\n\nImplement Barnes-Hut algorithm for O(n log n) CPU physics",
+          "timestamp": "2026-01-23T10:49:38+01:00",
+          "tree_id": "7abf955e0da5b77308391f70adff5584621ad782",
+          "url": "https://github.com/tomtom215/rource/commit/267aabf48b4cca2f7cfe06c69fdac2dd37bcdc03"
+        },
+        "date": 1769162004590,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3880672,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2620268,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1013123,
             "unit": "bytes"
           }
         ]
