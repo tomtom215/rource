@@ -107,6 +107,7 @@ pub mod icons;
 pub mod pipeline;
 pub mod shaders;
 pub mod shadow;
+pub mod spatial_hash;
 pub mod state;
 pub mod stats;
 pub mod textures;
