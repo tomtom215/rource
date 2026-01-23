@@ -829,6 +829,203 @@ void main() {
 }
 "#;
 
+// ============================================================================
+// Curve Shaders (GPU-tessellated Catmull-Rom splines)
+// ============================================================================
+
+/// Vertex shader for GPU-tessellated Catmull-Rom curves.
+///
+/// The vertex buffer contains a triangle strip with vertices along t (0 to 1)
+/// and perpendicular offset (-0.5 to 0.5). The shader evaluates the spline
+/// position and tangent at each t value, then offsets perpendicular to the
+/// tangent to create the curve width.
+pub const CURVE_VERTEX_SHADER: &str = r#"#version 300 es
+precision highp float;
+
+// Per-vertex attributes (curve strip: t and offset)
+layout(location = 0) in vec2 a_position;  // x = t (0 to 1), y = offset (-0.5 to 0.5)
+
+// Per-instance attributes (curve segment)
+layout(location = 1) in vec2 a_p0;        // Control point before start
+layout(location = 2) in vec2 a_p1;        // Start point
+layout(location = 3) in vec2 a_p2;        // End point
+layout(location = 4) in vec2 a_p3;        // Control point after end
+layout(location = 5) in float a_width;    // Line width in pixels
+layout(location = 6) in vec4 a_color;     // RGBA color
+
+// Uniforms
+uniform vec2 u_resolution;  // Canvas size in pixels
+
+// Outputs
+out vec2 v_local_pos;       // For anti-aliasing
+out float v_width;
+out vec4 v_color;
+
+// Catmull-Rom spline interpolation
+vec2 catmull_rom(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t) {
+    float t2 = t * t;
+    float t3 = t2 * t;
+
+    // Catmull-Rom basis matrix coefficients
+    float c0 = -0.5 * t3 + t2 - 0.5 * t;
+    float c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+    float c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+    float c3 = 0.5 * t3 - 0.5 * t2;
+
+    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+}
+
+// Catmull-Rom tangent (derivative)
+vec2 catmull_rom_tangent(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t) {
+    float t2 = t * t;
+
+    // Derivative of Catmull-Rom basis
+    float c0 = -1.5 * t2 + 2.0 * t - 0.5;
+    float c1 = 4.5 * t2 - 5.0 * t;
+    float c2 = -4.5 * t2 + 4.0 * t + 0.5;
+    float c3 = 1.5 * t2 - t;
+
+    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+}
+
+void main() {
+    float t = a_position.x;
+    float offset = a_position.y;
+
+    // Calculate position and tangent on the curve
+    vec2 curve_pos = catmull_rom(a_p0, a_p1, a_p2, a_p3, t);
+    vec2 tangent = catmull_rom_tangent(a_p0, a_p1, a_p2, a_p3, t);
+
+    // Normalize tangent and get perpendicular
+    float tangent_len = length(tangent);
+    if (tangent_len > 0.0001) {
+        tangent = tangent / tangent_len;
+    } else {
+        tangent = vec2(1.0, 0.0);
+    }
+    vec2 normal = vec2(-tangent.y, tangent.x);
+
+    // Offset position perpendicular to curve
+    float half_width = (a_width + 1.0) * 0.5;  // +1 for anti-aliasing
+    vec2 pos = curve_pos + normal * offset * a_width;
+
+    // Convert to clip space
+    vec2 clip_pos = (pos / u_resolution) * 2.0 - 1.0;
+    clip_pos.y = -clip_pos.y;
+
+    gl_Position = vec4(clip_pos, 0.0, 1.0);
+    v_local_pos = vec2(0.0, offset * 2.0);  // -1 to 1 for edge distance
+    v_width = a_width;
+    v_color = a_color;
+}
+"#;
+
+/// Fragment shader for GPU-tessellated curves.
+///
+/// Uses the perpendicular offset to create smooth anti-aliased edges.
+pub const CURVE_FRAGMENT_SHADER: &str = r#"#version 300 es
+precision highp float;
+
+in vec2 v_local_pos;
+in float v_width;
+in vec4 v_color;
+
+out vec4 fragColor;
+
+void main() {
+    // Distance from center line (0 at center, 1 at edge)
+    float dist = abs(v_local_pos.y);
+
+    // Anti-aliased edge
+    float aa_width = 1.5 / max(v_width, 1.0);
+    float alpha = 1.0 - smoothstep(1.0 - aa_width, 1.0, dist);
+
+    if (alpha < 0.001) {
+        discard;
+    }
+
+    fragColor = vec4(v_color.rgb, v_color.a * alpha);
+}
+"#;
+
+/// UBO-enabled vertex shader for GPU-tessellated Catmull-Rom curves.
+pub const CURVE_VERTEX_SHADER_UBO: &str = r#"#version 300 es
+precision highp float;
+
+layout(std140) uniform CommonUniforms {
+    vec2 u_resolution;
+    vec2 _padding;
+};
+
+// Per-vertex attributes (curve strip: t and offset)
+layout(location = 0) in vec2 a_position;  // x = t (0 to 1), y = offset (-0.5 to 0.5)
+
+// Per-instance attributes (curve segment)
+layout(location = 1) in vec2 a_p0;        // Control point before start
+layout(location = 2) in vec2 a_p1;        // Start point
+layout(location = 3) in vec2 a_p2;        // End point
+layout(location = 4) in vec2 a_p3;        // Control point after end
+layout(location = 5) in float a_width;    // Line width in pixels
+layout(location = 6) in vec4 a_color;     // RGBA color
+
+// Outputs
+out vec2 v_local_pos;
+out float v_width;
+out vec4 v_color;
+
+// Catmull-Rom spline interpolation
+vec2 catmull_rom(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t) {
+    float t2 = t * t;
+    float t3 = t2 * t;
+
+    float c0 = -0.5 * t3 + t2 - 0.5 * t;
+    float c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+    float c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+    float c3 = 0.5 * t3 - 0.5 * t2;
+
+    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+}
+
+// Catmull-Rom tangent (derivative)
+vec2 catmull_rom_tangent(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t) {
+    float t2 = t * t;
+
+    float c0 = -1.5 * t2 + 2.0 * t - 0.5;
+    float c1 = 4.5 * t2 - 5.0 * t;
+    float c2 = -4.5 * t2 + 4.0 * t + 0.5;
+    float c3 = 1.5 * t2 - t;
+
+    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+}
+
+void main() {
+    float t = a_position.x;
+    float offset = a_position.y;
+
+    vec2 curve_pos = catmull_rom(a_p0, a_p1, a_p2, a_p3, t);
+    vec2 tangent = catmull_rom_tangent(a_p0, a_p1, a_p2, a_p3, t);
+
+    float tangent_len = length(tangent);
+    if (tangent_len > 0.0001) {
+        tangent = tangent / tangent_len;
+    } else {
+        tangent = vec2(1.0, 0.0);
+    }
+    vec2 normal = vec2(-tangent.y, tangent.x);
+
+    float half_width = (a_width + 1.0) * 0.5;
+    vec2 pos = curve_pos + normal * offset * a_width;
+
+    vec2 clip_pos = (pos / u_resolution) * 2.0 - 1.0;
+    clip_pos.y = -clip_pos.y;
+
+    gl_Position = vec4(clip_pos, 0.0, 1.0);
+    v_local_pos = vec2(0.0, offset * 2.0);
+    v_width = a_width;
+    v_color = a_color;
+}
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -851,6 +1048,8 @@ mod tests {
         assert!(!BLOOM_BRIGHT_FRAGMENT_SHADER.is_empty());
         assert!(!BLOOM_BLUR_FRAGMENT_SHADER.is_empty());
         assert!(!BLOOM_COMPOSITE_FRAGMENT_SHADER.is_empty());
+        assert!(!CURVE_VERTEX_SHADER.is_empty());
+        assert!(!CURVE_FRAGMENT_SHADER.is_empty());
     }
 
     #[test]
@@ -892,6 +1091,7 @@ mod tests {
         assert!(!QUAD_VERTEX_SHADER_UBO.is_empty());
         assert!(!TEXTURED_QUAD_VERTEX_SHADER_UBO.is_empty());
         assert!(!TEXT_VERTEX_SHADER_UBO.is_empty());
+        assert!(!CURVE_VERTEX_SHADER_UBO.is_empty());
     }
 
     #[test]
@@ -904,6 +1104,7 @@ mod tests {
         assert!(TEXTURED_QUAD_VERTEX_SHADER_UBO.contains("CommonUniforms"));
         assert!(TEXT_VERTEX_SHADER_UBO.contains("CommonUniforms"));
         assert!(TEXTURE_ARRAY_VERTEX_SHADER_UBO.contains("CommonUniforms"));
+        assert!(CURVE_VERTEX_SHADER_UBO.contains("CommonUniforms"));
 
         // All should use std140 layout (binding is done programmatically in WebGL2)
         assert!(CIRCLE_VERTEX_SHADER_UBO.contains("layout(std140)"));
@@ -913,6 +1114,7 @@ mod tests {
         assert!(TEXTURED_QUAD_VERTEX_SHADER_UBO.contains("layout(std140)"));
         assert!(TEXT_VERTEX_SHADER_UBO.contains("layout(std140)"));
         assert!(TEXTURE_ARRAY_VERTEX_SHADER_UBO.contains("layout(std140)"));
+        assert!(CURVE_VERTEX_SHADER_UBO.contains("layout(std140)"));
     }
 
     #[test]
@@ -938,5 +1140,38 @@ mod tests {
         // Fragment shader should sample from texture array
         assert!(TEXTURE_ARRAY_FRAGMENT_SHADER.contains("sampler2DArray"));
         assert!(TEXTURE_ARRAY_FRAGMENT_SHADER.contains("v_layer"));
+    }
+
+    #[test]
+    fn test_curve_shaders_not_empty() {
+        assert!(!CURVE_VERTEX_SHADER.is_empty());
+        assert!(!CURVE_FRAGMENT_SHADER.is_empty());
+        assert!(!CURVE_VERTEX_SHADER_UBO.is_empty());
+    }
+
+    #[test]
+    fn test_curve_shaders_have_catmull_rom() {
+        // Both vertex shaders should have Catmull-Rom functions
+        assert!(CURVE_VERTEX_SHADER.contains("catmull_rom"));
+        assert!(CURVE_VERTEX_SHADER.contains("catmull_rom_tangent"));
+        assert!(CURVE_VERTEX_SHADER_UBO.contains("catmull_rom"));
+        assert!(CURVE_VERTEX_SHADER_UBO.contains("catmull_rom_tangent"));
+    }
+
+    #[test]
+    fn test_curve_shaders_have_control_points() {
+        // Vertex shaders should have 4 control point inputs
+        assert!(CURVE_VERTEX_SHADER.contains("a_p0"));
+        assert!(CURVE_VERTEX_SHADER.contains("a_p1"));
+        assert!(CURVE_VERTEX_SHADER.contains("a_p2"));
+        assert!(CURVE_VERTEX_SHADER.contains("a_p3"));
+        assert!(CURVE_VERTEX_SHADER.contains("a_width"));
+        assert!(CURVE_VERTEX_SHADER.contains("a_color"));
+    }
+
+    #[test]
+    fn test_curve_ubo_shader_has_common_uniforms() {
+        assert!(CURVE_VERTEX_SHADER_UBO.contains("CommonUniforms"));
+        assert!(CURVE_VERTEX_SHADER_UBO.contains("layout(std140)"));
     }
 }

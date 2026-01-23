@@ -34,6 +34,8 @@ impl ActivePrimitives {
     pub const TEXT: u8 = 1 << 5;
     /// Texture array quads (file icons) are active.
     pub const TEXTURE_ARRAYS: u8 = 1 << 6;
+    /// Curves (GPU-tessellated splines) are active.
+    pub const CURVES: u8 = 1 << 7;
 
     /// Creates an empty set.
     #[inline]
@@ -110,6 +112,9 @@ pub struct FrameStats {
 
     /// Number of texture array instances (file icons) rendered.
     pub texture_array_instances: u32,
+
+    /// Number of curve instances (GPU-tessellated splines) rendered.
+    pub curve_instances: u32,
 
     /// Number of uniform calls made (legacy mode only).
     ///

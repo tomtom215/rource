@@ -62,6 +62,32 @@ pub const FULLSCREEN_QUAD: [f32; 8] = [
     1.0, 1.0, // Top-right
 ];
 
+/// Number of segments for curve tessellation.
+/// More segments = smoother curves but more vertices.
+pub const CURVE_SEGMENTS: usize = 8;
+
+/// Number of vertices in the curve strip.
+/// Each segment has 2 vertices (top and bottom), plus 1 pair for the final endpoint.
+pub const CURVE_STRIP_VERTEX_COUNT: u32 = ((CURVE_SEGMENTS + 1) * 2) as u32;
+
+/// Generates curve strip vertex data.
+///
+/// Creates a triangle strip with vertices along t (0 to 1)
+/// and perpendicular offset (-0.5 to 0.5).
+fn generate_curve_strip() -> Vec<f32> {
+    let mut vertices = Vec::with_capacity((CURVE_SEGMENTS + 1) * 4);
+    for i in 0..=CURVE_SEGMENTS {
+        let t = i as f32 / CURVE_SEGMENTS as f32;
+        // Bottom vertex (y = -0.5)
+        vertices.push(t);
+        vertices.push(-0.5);
+        // Top vertex (y = 0.5)
+        vertices.push(t);
+        vertices.push(0.5);
+    }
+    vertices
+}
+
 /// Minimum capacity threshold - buffers won't shrink below this.
 const MIN_BUFFER_CAPACITY: usize = 100;
 
@@ -330,8 +356,14 @@ pub struct VertexArrayManager {
     /// VAO for texture array (file icons) rendering
     pub texture_array_vao: Option<WebGlVertexArrayObject>,
 
+    /// VAO for curve (spline) rendering
+    pub curve_vao: Option<WebGlVertexArrayObject>,
+
     /// Shared vertex buffer for unit quads
     vertex_buffer: Option<WebGlBuffer>,
+
+    /// Vertex buffer for curve strip
+    curve_strip_buffer: Option<WebGlBuffer>,
 }
 
 impl VertexArrayManager {
@@ -346,7 +378,9 @@ impl VertexArrayManager {
             text_vao: None,
             fullscreen_vao: None,
             texture_array_vao: None,
+            curve_vao: None,
             vertex_buffer: None,
+            curve_strip_buffer: None,
         }
     }
 
@@ -888,6 +922,149 @@ impl VertexArrayManager {
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
     }
 
+    /// Creates the curve strip vertex buffer for GPU curve tessellation.
+    pub fn create_curve_strip_buffer(&mut self, gl: &WebGl2RenderingContext) {
+        if self.curve_strip_buffer.is_some() {
+            return;
+        }
+
+        let buffer = gl.create_buffer();
+        if buffer.is_none() {
+            return;
+        }
+
+        self.curve_strip_buffer = buffer;
+
+        gl.bind_buffer(
+            WebGl2RenderingContext::ARRAY_BUFFER,
+            self.curve_strip_buffer.as_ref(),
+        );
+
+        let curve_strip = generate_curve_strip();
+        let byte_data = float_slice_to_bytes(&curve_strip);
+        gl.buffer_data_with_u8_array(
+            WebGl2RenderingContext::ARRAY_BUFFER,
+            byte_data,
+            WebGl2RenderingContext::STATIC_DRAW,
+        );
+
+        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
+    }
+
+    /// Sets up VAO for curve (spline) rendering with instance buffer.
+    ///
+    /// Instance layout: `p0(2) + p1(2) + p2(2) + p3(2) + width(1) + color(4) = 13 floats`
+    pub fn setup_curve_vao(
+        &mut self,
+        gl: &WebGl2RenderingContext,
+        instance_buffer: &InstanceBuffer,
+    ) {
+        if self.curve_strip_buffer.is_none() {
+            self.create_curve_strip_buffer(gl);
+        }
+
+        let vao = gl.create_vertex_array();
+        if vao.is_none() {
+            return;
+        }
+
+        self.curve_vao = vao;
+        gl.bind_vertex_array(self.curve_vao.as_ref());
+
+        // Bind curve strip vertex buffer for position
+        gl.bind_buffer(
+            WebGl2RenderingContext::ARRAY_BUFFER,
+            self.curve_strip_buffer.as_ref(),
+        );
+
+        // Position attribute (location 0) - t and offset
+        gl.vertex_attrib_pointer_with_i32(0, 2, WebGl2RenderingContext::FLOAT, false, 0, 0);
+        gl.enable_vertex_attrib_array(0);
+
+        // Bind instance buffer for curve segment data
+        if let Some(inst_buf) = instance_buffer.buffer() {
+            gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(inst_buf));
+
+            // Instance attributes: p0(2), p1(2), p2(2), p3(2), width(1), color(4) = 13 floats
+            let stride = 13 * 4; // 13 floats * 4 bytes
+
+            // p0 (location 1) - control point before start
+            gl.vertex_attrib_pointer_with_i32(
+                1,
+                2,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                0,
+            );
+            gl.enable_vertex_attrib_array(1);
+            gl.vertex_attrib_divisor(1, 1);
+
+            // p1 (location 2) - start point
+            gl.vertex_attrib_pointer_with_i32(
+                2,
+                2,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                8,
+            );
+            gl.enable_vertex_attrib_array(2);
+            gl.vertex_attrib_divisor(2, 1);
+
+            // p2 (location 3) - end point
+            gl.vertex_attrib_pointer_with_i32(
+                3,
+                2,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                16,
+            );
+            gl.enable_vertex_attrib_array(3);
+            gl.vertex_attrib_divisor(3, 1);
+
+            // p3 (location 4) - control point after end
+            gl.vertex_attrib_pointer_with_i32(
+                4,
+                2,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                24,
+            );
+            gl.enable_vertex_attrib_array(4);
+            gl.vertex_attrib_divisor(4, 1);
+
+            // width (location 5)
+            gl.vertex_attrib_pointer_with_i32(
+                5,
+                1,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                32,
+            );
+            gl.enable_vertex_attrib_array(5);
+            gl.vertex_attrib_divisor(5, 1);
+
+            // color (location 6)
+            gl.vertex_attrib_pointer_with_i32(
+                6,
+                4,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                36,
+            );
+            gl.enable_vertex_attrib_array(6);
+            gl.vertex_attrib_divisor(6, 1);
+        }
+
+        gl.bind_vertex_array(None);
+        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
+    }
+
     /// Releases all WebGL resources.
     pub fn destroy(&mut self, gl: &WebGl2RenderingContext) {
         if let Some(vao) = self.circle_vao.take() {
@@ -914,7 +1091,13 @@ impl VertexArrayManager {
         if let Some(vao) = self.texture_array_vao.take() {
             gl.delete_vertex_array(Some(&vao));
         }
+        if let Some(vao) = self.curve_vao.take() {
+            gl.delete_vertex_array(Some(&vao));
+        }
         if let Some(buf) = self.vertex_buffer.take() {
+            gl.delete_buffer(Some(&buf));
+        }
+        if let Some(buf) = self.curve_strip_buffer.take() {
             gl.delete_buffer(Some(&buf));
         }
     }
@@ -1012,4 +1195,30 @@ mod tests {
         assert!(SHRINK_THRESHOLD > 0.0 && SHRINK_THRESHOLD < 1.0);
         assert!(SHRINK_STABILITY_FRAMES > 0);
     };
+
+    #[test]
+    fn test_curve_strip_generation() {
+        let strip = generate_curve_strip();
+        // Should have (CURVE_SEGMENTS + 1) * 4 floats (2 vertices per segment, 2 floats per vertex)
+        assert_eq!(strip.len(), (CURVE_SEGMENTS + 1) * 4);
+
+        // First vertex should be at t=0, y=-0.5
+        assert!((strip[0] - 0.0).abs() < 0.001); // t = 0
+        assert!((strip[1] - (-0.5)).abs() < 0.001); // y = -0.5
+
+        // Second vertex should be at t=0, y=0.5
+        assert!((strip[2] - 0.0).abs() < 0.001); // t = 0
+        assert!((strip[3] - 0.5).abs() < 0.001); // y = 0.5
+
+        // Last two vertices should be at t=1
+        let last_idx = strip.len() - 4;
+        assert!((strip[last_idx] - 1.0).abs() < 0.001); // t = 1
+        assert!((strip[last_idx + 2] - 1.0).abs() < 0.001); // t = 1
+    }
+
+    #[test]
+    fn test_curve_strip_vertex_count() {
+        // 8 segments = 9 pairs = 18 vertices
+        assert_eq!(CURVE_STRIP_VERTEX_COUNT, 18);
+    }
 }
