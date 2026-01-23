@@ -10,7 +10,7 @@ Be respectful and constructive in all interactions. We welcome contributors of a
 
 ### Prerequisites
 
-- **Rust 1.75+** - Install via [rustup](https://rustup.rs/)
+- **Rust 1.82+** - Install via [rustup](https://rustup.rs/)
 - **wasm-pack** - For WebAssembly builds (`cargo install wasm-pack`)
 - **Git** - For version control
 
@@ -82,7 +82,7 @@ Follow these guidelines:
 ### 3. Test Your Changes
 
 ```bash
-# Run all tests (856+ tests)
+# Run all tests (1,185+ tests)
 cargo test
 
 # Run tests for a specific crate
@@ -159,11 +159,12 @@ mod tests {
 
 | Crate | Test Count | Focus |
 |-------|------------|-------|
-| rource-math | 141 | Numerical accuracy, edge cases |
-| rource-vcs | 130 | Parser correctness, format edge cases |
-| rource-core | 236 | Scene graph, physics, camera |
-| rource-render | 99 | Rendering correctness |
-| rource-cli | 41 | CLI argument parsing, integration |
+| rource-math | 144 | Numerical accuracy, edge cases |
+| rource-vcs | 150 | Parser correctness, format edge cases |
+| rource-core | 286 | Scene graph, physics, camera |
+| rource-render | 373 | Rendering correctness, GPU backends |
+| rource-cli | 97 | CLI argument parsing, integration |
+| rource-wasm | 73 | WebAssembly bindings, JavaScript API |
 
 ### Integration Tests
 
@@ -288,7 +289,7 @@ cargo flamegraph -- --headless --output /tmp/frames .
    - `camera.rs`, `display.rs`, `playback.rs`, `visibility.rs`, `limits.rs`
    - `input.rs`, `export.rs`, `title.rs`, `directory.rs`, `layout.rs`
    - `overlay.rs`, `filter.rs`, or `mod.rs` for new setting categories
-2. Add CLI argument in `rource-cli/src/args.rs`
+2. Add CLI argument in `rource-cli/src/args/mod.rs`
 3. Add environment variable in `rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/lib.rs`
 5. Update README and help text

@@ -8,7 +8,7 @@ This document provides context and guidance for Claude (AI assistant) when worki
 
 ### Goals
 - **Portable**: Run on any CPU architecture without requiring a dedicated GPU
-- **Lightweight**: Minimal dependencies, small binary size (~3.8MB native, ~235KB WASM gzip)
+- **Lightweight**: Minimal dependencies, small binary size (~3.8MB native, ~1MB WASM gzip)
 - **Fast**: Leverage Rust's performance and modern rendering techniques
 - **User-friendly**: Better UI/UX than original Gource
 - **Feature-complete**: Maintain at minimum feature parity with Gource
@@ -57,11 +57,11 @@ rource/
 ├── crates/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [144 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [150 tests]
-│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [261 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [322 tests]
-├── rource-cli/           # Native CLI application (winit + softbuffer) [95 tests]
+│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [286 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [373 tests]
+├── rource-cli/           # Native CLI application (winit + softbuffer) [97 tests]
 └── rource-wasm/          # WebAssembly application [73 tests]
-                          # Plus 61 integration/doc tests = 1,106 total
+                          # Plus 62 integration/doc tests = 1,185 total
 ```
 
 ### Rendering Backends
