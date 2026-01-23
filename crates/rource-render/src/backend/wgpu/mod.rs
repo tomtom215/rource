@@ -137,6 +137,7 @@ use culling::VisibilityCullingPipeline;
 pub use bloom::BloomConfig;
 pub use compute::{ComputeEntity, ComputeStats, PhysicsConfig};
 pub use culling::{CullPrimitive, CullingStats};
+pub use effects_methods::VsyncMode;
 pub use error::WgpuError;
 pub use shadow::ShadowConfig;
 pub use stats::ActivePrimitives;
