@@ -226,6 +226,6 @@ mod tests {
             radius: 1.0,
         };
         let json = info.to_json();
-        assert!(json.contains(r#"\"#)); // Contains escaped quotes
+        assert!(json.contains('\\')); // Contains escaped quotes/backslashes
     }
 }
