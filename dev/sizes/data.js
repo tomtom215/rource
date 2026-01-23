@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769183827451,
+  "lastUpdate": 1769188153109,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1013,6 +1013,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1028020,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30ef8cc587dfce7982563b0e15e6248143057f74",
+          "message": "Merge pull request #136 from tomtom215/claude/add-license-headers-fWqPq\n\nAdd SPDX license headers to all source files",
+          "timestamp": "2026-01-23T18:05:17+01:00",
+          "tree_id": "9da98f91ce347fc51ef8f3b896d8d42e2e5e9a03",
+          "url": "https://github.com/tomtom215/rource/commit/30ef8cc587dfce7982563b0e15e6248143057f74"
+        },
+        "date": 1769188152578,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3898128,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2676008,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1030032,
             "unit": "bytes"
           }
         ]
