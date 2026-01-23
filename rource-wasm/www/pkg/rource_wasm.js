@@ -143,6 +143,28 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Releases GPU resources immediately.
+     *
+     * Call this method before the page unloads to prevent GPU resource
+     * contention when the page is refreshed quickly. This is especially
+     * important for WebGPU which may hold onto adapter resources.
+     *
+     * After calling `dispose()`, the Rource instance should not be used again.
+     *
+     * # Example
+     *
+     * ```javascript
+     * window.addEventListener('beforeunload', () => {
+     *     if (rource) {
+     *         rource.dispose();
+     *     }
+     * });
+     * ```
+     */
+    dispose() {
+        wasm.rource_dispose(this.__wbg_ptr);
+    }
+    /**
      * Forces a render without updating simulation.
      */
     forceRender() {
@@ -351,6 +373,51 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Gets information about the entity at the given screen coordinates.
+     *
+     * Returns a JSON string with entity information if an entity is found,
+     * or null if no entity is under the cursor.
+     *
+     * # Arguments
+     *
+     * * `x` - Screen X coordinate (canvas-relative)
+     * * `y` - Screen Y coordinate (canvas-relative)
+     *
+     * # Returns
+     *
+     * JSON string with format:
+     * ```json
+     * {
+     *   "entityType": "file" | "user" | "directory",
+     *   "name": "filename.rs",
+     *   "path": "src/lib.rs",
+     *   "extension": "rs",
+     *   "color": "#FF5500",
+     *   "radius": 5.0
+     * }
+     * ```
+     * Or `null` if no entity is under the cursor.
+     * @param {number} x
+     * @param {number} y
+     * @returns {string | undefined}
+     */
+    getEntityAtCursor(x, y) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getEntityAtCursor(retptr, this.__wbg_ptr, x, y);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the bounding box of all entities as JSON.
      *
      * Returns `{"minX", "minY", "maxX", "maxY", "width", "height"}` or null
@@ -533,6 +600,44 @@ export class Rource {
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
             wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Gets the current mouse position in screen coordinates.
+     *
+     * Returns an array `[x, y]` of the last known mouse position.
+     * @returns {Float32Array}
+     */
+    getMousePosition() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getMousePosition(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayF32FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export4(r0, r1 * 4, 4);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Gets the current mouse position in world coordinates.
+     *
+     * Returns an array `[x, y]` of the mouse position in world space.
+     * @returns {Float32Array}
+     */
+    getMouseWorldPosition() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getMouseWorldPosition(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayF32FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export4(r0, r1 * 4, 4);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
         }
     }
     /**
@@ -1916,6 +2021,9 @@ function __wbg_get_imports() {
         __wbg_drawElementsInstanced_d41fc920ae24717c: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).drawElementsInstanced(arg1 >>> 0, arg2, arg3 >>> 0, arg4, arg5);
         },
+        __wbg_drawIndirect_8bef8992f379d2b5: function(arg0, arg1, arg2) {
+            getObject(arg0).drawIndirect(getObject(arg1), arg2);
+        },
         __wbg_draw_e8c430e7254c6215: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).draw(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, arg4 >>> 0);
         },
@@ -2120,10 +2228,6 @@ function __wbg_get_imports() {
             const ret = getObject(arg0)[arg1 >>> 0];
             return addHeapObject(ret);
         },
-        __wbg_get_b3ed3ad4be2bc8ac: function() { return handleError(function (arg0, arg1) {
-            const ret = Reflect.get(getObject(arg0), getObject(arg1));
-            return addHeapObject(ret);
-        }, arguments); },
         __wbg_get_d8db2ad31d529ff8: function(arg0, arg1) {
             const ret = getObject(arg0)[arg1 >>> 0];
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -2188,16 +2292,6 @@ function __wbg_get_imports() {
             let result;
             try {
                 result = getObject(arg0) instanceof Navigator;
-            } catch (_) {
-                result = false;
-            }
-            const ret = result;
-            return ret;
-        },
-        __wbg_instanceof_Promise_0094681e3519d6ec: function(arg0) {
-            let result;
-            try {
-                result = getObject(arg0) instanceof Promise;
             } catch (_) {
                 result = false;
             }
@@ -2294,7 +2388,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6480(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6512(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -3262,8 +3356,8 @@ function __wbg_get_imports() {
             getObject(arg0).writeTexture(getObject(arg1), getObject(arg2), getObject(arg3), getObject(arg4));
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 1851, function: Function { arguments: [Externref], shim_idx: 1852, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6422, __wasm_bindgen_func_elem_6423);
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 669, function: Function { arguments: [Externref], shim_idx: 670, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2344, __wasm_bindgen_func_elem_2345);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -3325,12 +3419,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_6423(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_6423(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_2345(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_2345(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6480(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6480(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6512(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6512(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

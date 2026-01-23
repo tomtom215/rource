@@ -58,10 +58,10 @@ rource/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [144 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [150 tests]
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [286 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [373 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [379 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [97 tests]
-└── rource-wasm/          # WebAssembly application [73 tests]
-                          # Plus 62 integration/doc tests = 1,185 total
+└── rource-wasm/          # WebAssembly application [78 tests]
+                          # Plus 62 integration/doc tests = 1,196 total
 ```
 
 ### Rendering Backends
@@ -1710,17 +1710,28 @@ if self.should_use_gpu_culling() {
 
 Added procedural icon generation system for file extensions using GPU texture arrays.
 
+**STATUS: DISABLED BY DEFAULT** - After testing, colored discs were found to be more visually
+appealing and scale better at all zoom levels. The infrastructure remains in place for future
+use with high-quality icons (e.g., devicons integration). `draw_file_icon()` currently uses
+`draw_disc()` regardless of whether file icons are initialized.
+
 #### Overview
 
-Instead of requiring external icon assets, the system now generates visually distinct document-style
+Instead of requiring external icon assets, the system generates visually distinct document-style
 icons procedurally for each file extension. Icons are stored in a GPU texture array for efficient
 batched rendering with a single draw call per frame.
 
-**Benefits**:
+**Benefits** (when enabled):
 - No external asset dependencies
 - Smaller WASM bundle size (no icon images)
 - Consistent visual style across all file types
 - Easy to add new file extensions
+
+**Why Disabled**:
+- Colored discs look more modern and sleek
+- Better scaling at extreme zoom levels
+- Lower visual noise in large repositories
+- Matches the aesthetic of the original Gource
 
 #### Files Added/Modified
 
@@ -1825,7 +1836,182 @@ rource.registerFileIcon("myext", "#FF5500");
 | Memory layout | Scattered | Contiguous |
 | GPU cache | Poor locality | Excellent locality |
 
-**Test Count**: 1,178 tests passing (added 9 icon tests)
+#### WebGL2 File Icon Integration (2026-01-23)
+
+Extended the file icon infrastructure to the WebGL2 backend for feature parity.
+
+**Files Modified**:
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/backend/webgl2/buffers.rs` | Added `texture_array_vao` and setup method |
+| `crates/rource-render/src/backend/webgl2/mod.rs` | Added shader program, instance buffer, trait methods |
+| `crates/rource-render/src/backend/webgl2/flush_passes.rs` | Added `flush_texture_array()` pass |
+| `crates/rource-render/src/backend/webgl2/stats.rs` | Added `TEXTURE_ARRAYS` and `texture_array_instances` |
+
+**Instance Layout** (13 floats = 52 bytes per instance):
+
+| Attribute | Type | Location | Description |
+|-----------|------|----------|-------------|
+| `bounds` | vec4 | 1 | `min_x`, `min_y`, `max_x`, `max_y` |
+| `uv_bounds` | vec4 | 2 | `u_min`, `v_min`, `u_max`, `v_max` |
+| `color` | vec4 | 3 | RGBA tint color |
+| `layer` | float | 4 | Texture array layer index |
+
+**Shader Support**:
+- Both UBO and non-UBO shader variants compiled in `init_gl()`
+- Uses `TEXTURE_ARRAY_VERTEX_UBO` / `TEXTURE_ARRAY_FRAGMENT` from shaders.rs
+- Falls back to non-UBO shaders when UBO initialization fails
+
+**Fallback Behavior**:
+When file icons are not initialized, `draw_file_icon()` falls back to `draw_disc()`:
+```rust
+fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
+    if self.file_icon_array.is_some() {
+        // Queue texture array instance
+    } else {
+        self.draw_disc(center, size * 0.5, color);
+    }
+}
+```
+
+### Phase 19: WebGL2 GPU Curve Rendering (2026-01-23)
+
+Added GPU-tessellated Catmull-Rom curve rendering for the WebGL2 backend. This reduces draw calls for spline-based branch connections by computing curve geometry on the GPU.
+
+#### Overview
+
+Instead of drawing splines as multiple line segments (N draw calls for N-1 segments), all curve segments are now batched into a single instanced draw call. The vertex shader computes Catmull-Rom spline positions and tangents on the fly.
+
+**Performance Impact**:
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| 100 curves (8 segments each) | 700 line instances | 100 curve instances |
+| 1000 curves | 7000 line instances | 1000 curve instances |
+| Draw calls | Multiple | 1 per frame |
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/backend/webgl2/shaders.rs` | Added `CURVE_VERTEX_SHADER`, `CURVE_FRAGMENT_SHADER`, `CURVE_VERTEX_SHADER_UBO` |
+| `crates/rource-render/src/backend/webgl2/buffers.rs` | Added `CURVE_SEGMENTS`, `CURVE_STRIP_VERTEX_COUNT`, `generate_curve_strip()`, curve VAO setup |
+| `crates/rource-render/src/backend/webgl2/mod.rs` | Added `curve_program`, `curve_instances`, shader compilation, warmup |
+| `crates/rource-render/src/backend/webgl2/flush_passes.rs` | Added `flush_curves()` pass |
+| `crates/rource-render/src/backend/webgl2/stats.rs` | Added `CURVES` flag and `curve_instances` counter |
+
+#### Instance Layout (13 floats = 52 bytes per segment)
+
+| Attribute | Type | Location | Description |
+|-----------|------|----------|-------------|
+| `p0` | vec2 | 1 | Control point before segment start |
+| `p1` | vec2 | 2 | Segment start point |
+| `p2` | vec2 | 3 | Segment end point |
+| `p3` | vec2 | 4 | Control point after segment end |
+| `width` | float | 5 | Line width in pixels |
+| `color` | vec4 | 6 | RGBA color |
+
+#### GPU Tessellation
+
+The vertex shader implements Catmull-Rom spline interpolation:
+```glsl
+vec2 catmull_rom(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t) {
+    float t2 = t * t;
+    float t3 = t2 * t;
+    float c0 = -0.5 * t3 + t2 - 0.5 * t;
+    float c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+    float c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+    float c3 = 0.5 * t3 - 0.5 * t2;
+    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+}
+```
+
+The curve strip vertex buffer contains 18 vertices (8 segments + 1 endpoint, 2 vertices each) forming a triangle strip ribbon along the curve.
+
+#### Edge Control Point Handling
+
+When drawing splines, edge control points are mirrored:
+```rust
+// First segment: p0 = 2*p1 - p2 (mirror)
+let p0 = Vec2::new(2.0 * points[0].x - points[1].x, 2.0 * points[0].y - points[1].y);
+
+// Last segment: p3 = 2*p2 - p1 (mirror)
+let p3 = Vec2::new(2.0 * points[n].x - points[n-1].x, 2.0 * points[n].y - points[n-1].y);
+```
+
+**Test Count**: 1,191 tests passing (added 6 new tests)
+
+### Phase 20: Entity Hover Tooltips (2026-01-23)
+
+Implemented hover detection and tooltip display for files, users, and directories.
+
+#### Overview
+
+When users hover over entities (files, users, or directories) in the visualization,
+a tooltip now appears showing details about that entity. This fulfills the help screen
+promise of "Hover over files or users to see details."
+
+#### Files Added/Modified
+
+| File | Description |
+|------|-------------|
+| `rource-wasm/src/wasm_api/hover.rs` | WASM API for entity hover detection |
+| `rource-wasm/src/wasm_api/mod.rs` | Added hover module export |
+| `rource-wasm/www/js/features/hover-tooltip.js` | JavaScript hover handling |
+| `rource-wasm/www/js/main.js` | Integrated hover tooltip initialization |
+
+#### WASM API
+
+```javascript
+// Get entity info at cursor position (returns JSON string or null)
+const entityJson = rource.getEntityAtCursor(x, y);
+if (entityJson) {
+    const entity = JSON.parse(entityJson);
+    // entity.entityType: "file" | "user" | "directory"
+    // entity.name: filename/username/dirname
+    // entity.path: full path (files/dirs only)
+    // entity.extension: file extension (files only)
+    // entity.color: hex color string
+    // entity.radius: visual radius
+}
+```
+
+#### HoverInfo Structure
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `entityType` | string | "file", "user", or "directory" |
+| `name` | string | Entity name |
+| `path` | string | Full path (empty for users) |
+| `extension` | string | File extension (files only) |
+| `color` | string | Hex color (e.g., "#FF5500") |
+| `radius` | number | Visual radius in world units |
+
+#### JavaScript Implementation
+
+The tooltip handler (`hover-tooltip.js`) provides:
+- **Debounced hover detection** (50ms) to reduce WASM calls
+- **Automatic positioning** to keep tooltip on screen
+- **Entity-type specific formatting** for files/users/directories
+- **Drag-to-hide** behavior (tooltip hides when dragging)
+
+#### Existing Tooltip HTML
+
+The tooltip UI was already present in `index.html` with the following structure:
+```html
+<div id="commit-tooltip" class="commit-tooltip">
+    <div class="commit-tooltip-header">
+        <div id="tooltip-author-color"></div>
+        <span id="tooltip-author"></span>
+        <span id="tooltip-date"></span>
+    </div>
+    <div id="tooltip-file"></div>
+    <span id="tooltip-action"></span>
+</div>
+```
+
+**Test Count**: 1,196 tests passing (added 5 new tests)
 
 ### Scene Module Refactoring (2026-01-22)
 

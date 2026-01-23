@@ -69,10 +69,12 @@ use crate::{FontCache, FontId, Renderer, TextureId};
 use bloom::BloomPipeline;
 use buffers::{InstanceBuffer, VertexArrayManager};
 use shaders::{
-    CIRCLE_FRAGMENT_SHADER, CIRCLE_VERTEX_SHADER, CIRCLE_VERTEX_SHADER_UBO, LINE_FRAGMENT_SHADER,
-    LINE_VERTEX_SHADER, LINE_VERTEX_SHADER_UBO, QUAD_FRAGMENT_SHADER, QUAD_VERTEX_SHADER,
-    QUAD_VERTEX_SHADER_UBO, RING_FRAGMENT_SHADER, RING_VERTEX_SHADER, RING_VERTEX_SHADER_UBO,
+    CIRCLE_FRAGMENT_SHADER, CIRCLE_VERTEX_SHADER, CIRCLE_VERTEX_SHADER_UBO, CURVE_FRAGMENT_SHADER,
+    CURVE_VERTEX_SHADER, CURVE_VERTEX_SHADER_UBO, LINE_FRAGMENT_SHADER, LINE_VERTEX_SHADER,
+    LINE_VERTEX_SHADER_UBO, QUAD_FRAGMENT_SHADER, QUAD_VERTEX_SHADER, QUAD_VERTEX_SHADER_UBO,
+    RING_FRAGMENT_SHADER, RING_VERTEX_SHADER, RING_VERTEX_SHADER_UBO,
     TEXTURED_QUAD_FRAGMENT_SHADER, TEXTURED_QUAD_VERTEX_SHADER, TEXTURED_QUAD_VERTEX_SHADER_UBO,
+    TEXTURE_ARRAY_FRAGMENT_SHADER, TEXTURE_ARRAY_VERTEX_SHADER, TEXTURE_ARRAY_VERTEX_SHADER_UBO,
     TEXT_FRAGMENT_SHADER, TEXT_VERTEX_SHADER, TEXT_VERTEX_SHADER_UBO,
 };
 use shadow::ShadowPipeline;
@@ -142,6 +144,12 @@ pub struct WebGl2Renderer {
     /// Text shader program.
     text_program: Option<ShaderProgram>,
 
+    /// Texture array shader program (for file icons).
+    texture_array_program: Option<ShaderProgram>,
+
+    /// Curve shader program (GPU-tessellated splines).
+    curve_program: Option<ShaderProgram>,
+
     /// VAO manager.
     vao_manager: VertexArrayManager,
 
@@ -162,6 +170,12 @@ pub struct WebGl2Renderer {
 
     /// Instance buffer for text glyphs.
     text_instances: InstanceBuffer,
+
+    /// Instance buffer for file icons (texture array rendering).
+    file_icon_instances: InstanceBuffer,
+
+    /// Instance buffer for curves (GPU-tessellated splines).
+    curve_instances: InstanceBuffer,
 
     /// GPU bloom post-processing pipeline.
     bloom_pipeline: BloomPipeline,
@@ -239,6 +253,8 @@ impl WebGl2Renderer {
             quad_program: None,
             textured_quad_program: None,
             text_program: None,
+            texture_array_program: None,
+            curve_program: None,
             vao_manager: VertexArrayManager::new(),
             circle_instances: InstanceBuffer::new(7, 1000), // center(2) + radius(1) + color(4)
             ring_instances: InstanceBuffer::new(8, 500), // center(2) + radius(1) + width(1) + color(4)
@@ -246,6 +262,8 @@ impl WebGl2Renderer {
             quad_instances: InstanceBuffer::new(8, 500), // bounds(4) + color(4)
             textured_quad_instances: HashMap::new(),
             text_instances: InstanceBuffer::new(12, 2000), // bounds(4) + uv_bounds(4) + color(4)
+            file_icon_instances: InstanceBuffer::new(13, 1000), // bounds(4) + uv_bounds(4) + color(4) + layer(1)
+            curve_instances: InstanceBuffer::new(13, 500), // p0(2) + p1(2) + p2(2) + p3(2) + width(1) + color(4)
             bloom_pipeline: BloomPipeline::new(),
             shadow_pipeline: ShadowPipeline::new(),
             adaptive_quality: AdaptiveQuality::new(),
@@ -304,6 +322,12 @@ impl WebGl2Renderer {
             )?);
             self.text_program =
                 Some(self.compile_program(TEXT_VERTEX_SHADER_UBO, TEXT_FRAGMENT_SHADER)?);
+            self.texture_array_program = Some(self.compile_program(
+                TEXTURE_ARRAY_VERTEX_SHADER_UBO,
+                TEXTURE_ARRAY_FRAGMENT_SHADER,
+            )?);
+            self.curve_program =
+                Some(self.compile_program(CURVE_VERTEX_SHADER_UBO, CURVE_FRAGMENT_SHADER)?);
 
             // Bind each shader's uniform block to the UBO binding point
             // This is required in WebGL2/GLSL ES 3.0 since layout(binding = N) is not supported
@@ -325,6 +349,12 @@ impl WebGl2Renderer {
             if let Some(prog) = &self.text_program {
                 self.ubo_manager.bind_program(gl, &prog.program);
             }
+            if let Some(prog) = &self.texture_array_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
+            if let Some(prog) = &self.curve_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
         } else {
             // Fallback to legacy shaders with individual uniforms
             self.circle_program =
@@ -340,6 +370,11 @@ impl WebGl2Renderer {
             );
             self.text_program =
                 Some(self.compile_program(TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER)?);
+            self.texture_array_program = Some(
+                self.compile_program(TEXTURE_ARRAY_VERTEX_SHADER, TEXTURE_ARRAY_FRAGMENT_SHADER)?,
+            );
+            self.curve_program =
+                Some(self.compile_program(CURVE_VERTEX_SHADER, CURVE_FRAGMENT_SHADER)?);
         }
 
         // Create VAO manager vertex buffer
@@ -367,6 +402,7 @@ impl WebGl2Renderer {
     /// This technique is especially important for WebGL where shader compilation
     /// can be deferred until the first draw call, and GPU drivers may perform
     /// additional optimizations on first use.
+    #[allow(clippy::too_many_lines)]
     fn warmup_shaders(&mut self) {
         let gl = &self.gl;
 
@@ -412,6 +448,31 @@ impl WebGl2Renderer {
         // Move textured VAO to text VAO and recreate textured
         self.vao_manager.text_vao = self.vao_manager.textured_quad_vao.take();
         self.text_instances.clear();
+
+        // Setup file icon instance buffer (13 floats: bounds(4) + uv_bounds(4) + color(4) + layer(1))
+        self.file_icon_instances.push_raw(&[
+            0.0, 0.0, 1.0, 1.0, // bounds
+            0.0, 0.0, 1.0, 1.0, // uv_bounds
+            0.0, 0.0, 0.0, 0.0, // color
+            0.0, // layer
+        ]);
+        self.file_icon_instances.upload(gl);
+        self.vao_manager
+            .setup_texture_array_vao(gl, &self.file_icon_instances);
+        self.file_icon_instances.clear();
+
+        // Setup curve instance buffer (13 floats: p0(2) + p1(2) + p2(2) + p3(2) + width(1) + color(4))
+        self.curve_instances.push_raw(&[
+            0.0, 0.0, // p0
+            0.0, 0.0, // p1
+            1.0, 1.0, // p2
+            1.0, 1.0, // p3
+            1.0, // width
+            0.0, 0.0, 0.0, 0.0, // color
+        ]);
+        self.curve_instances.upload(gl);
+        self.vao_manager.setup_curve_vao(gl, &self.curve_instances);
+        self.curve_instances.clear();
 
         // Setup fullscreen VAO for bloom/shadow warmup
         self.vao_manager.setup_fullscreen_vao(gl);
@@ -480,6 +541,34 @@ impl WebGl2Renderer {
             }
             gl.bind_vertex_array(self.vao_manager.text_vao.as_ref());
             gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
+        }
+
+        // Warmup texture array shader (for file icons)
+        if let Some(program) = &self.texture_array_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            if let Some(loc) = &program.texture_loc {
+                gl.uniform1i(Some(loc), 0);
+            }
+            gl.bind_vertex_array(self.vao_manager.texture_array_vao.as_ref());
+            gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
+        }
+
+        // Warmup curve shader (GPU-tessellated splines)
+        if let Some(program) = &self.curve_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            gl.bind_vertex_array(self.vao_manager.curve_vao.as_ref());
+            gl.draw_arrays_instanced(
+                WebGl2RenderingContext::TRIANGLE_STRIP,
+                0,
+                buffers::CURVE_STRIP_VERTEX_COUNT as i32,
+                0,
+            );
         }
 
         // Cleanup warmup state
@@ -882,13 +971,52 @@ impl Renderer for WebGl2Renderer {
 
     #[inline]
     fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color) {
+        if self.context_lost || color.a < 0.001 {
+            return;
+        }
+
         if points.len() < 2 {
             return;
         }
 
-        // Draw as line segments
-        for window in points.windows(2) {
-            self.draw_line(window[0], window[1], width, color);
+        // Transform all points to screen space
+        let transformed: Vec<Vec2> = points.iter().map(|p| self.transform_point(*p)).collect();
+
+        // For each segment, queue a curve instance with 4 control points
+        // Using Catmull-Rom spline, the segment between p1 and p2 is interpolated
+        // using p0 and p3 as control points
+        for i in 0..(transformed.len() - 1) {
+            // Get the 4 control points (clamping at edges)
+            let p0 = if i == 0 {
+                // Mirror first point: p0 = 2*p1 - p2
+                Vec2::new(
+                    2.0 * transformed[0].x - transformed[1].x,
+                    2.0 * transformed[0].y - transformed[1].y,
+                )
+            } else {
+                transformed[i - 1]
+            };
+            let p1 = transformed[i];
+            let p2 = transformed[i + 1];
+            let p3 = if i + 2 >= transformed.len() {
+                // Mirror last point: p3 = 2*p2 - p1
+                Vec2::new(
+                    2.0 * transformed[i + 1].x - transformed[i].x,
+                    2.0 * transformed[i + 1].y - transformed[i].y,
+                )
+            } else {
+                transformed[i + 2]
+            };
+
+            // Queue curve segment instance: p0(2) + p1(2) + p2(2) + p3(2) + width(1) + color(4)
+            self.curve_instances.push_raw(&[
+                p0.x, p0.y, // p0
+                p1.x, p1.y, // p1
+                p2.x, p2.y, // p2
+                p3.x, p3.y,  // p3
+                width, // width
+                color.r, color.g, color.b, color.a,
+            ]);
         }
     }
 
@@ -1107,24 +1235,23 @@ impl Renderer for WebGl2Renderer {
     }
 
     // =========================================================================
-    // File Icon Methods (with fallback to colored discs)
+    // File Icon Methods (uses texture array when initialized)
     // =========================================================================
 
     fn init_file_icons(&mut self) -> bool {
-        // WebGL2 texture array rendering pipeline is not yet fully integrated.
-        // Return false to use the default disc-based fallback rendering.
-        false
+        // Delegate to the implementation in icons_methods.rs
+        Self::init_file_icons(self)
     }
 
     fn has_file_icons(&self) -> bool {
-        // WebGL2 does not have file icons initialized
-        false
+        // Delegate to the implementation in icons_methods.rs
+        Self::has_file_icons(self)
     }
 
-    fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
-        // WebGL2 texture array rendering pipeline is not yet fully integrated.
-        // Fall back to colored disc rendering (matches default trait behavior).
-        let _ = extension;
+    fn draw_file_icon(&mut self, center: Vec2, size: f32, _extension: &str, color: Color) {
+        // Use colored disc - cleaner, scales better, more modern look.
+        // File icon texture array infrastructure is retained for future use
+        // (e.g., high-quality devicons integration) but disabled by default.
         self.draw_disc(center, size * 0.5, color);
     }
 }
@@ -1144,6 +1271,8 @@ impl Drop for WebGl2Renderer {
             instances.destroy(&self.gl);
         }
         self.text_instances.destroy(&self.gl);
+        self.file_icon_instances.destroy(&self.gl);
+        self.curve_instances.destroy(&self.gl);
 
         // Clean up file icon texture array
         if let Some(mut array) = self.file_icon_array.take() {
@@ -1171,6 +1300,12 @@ impl Drop for WebGl2Renderer {
             self.gl.delete_program(Some(&prog.program));
         }
         if let Some(prog) = &self.text_program {
+            self.gl.delete_program(Some(&prog.program));
+        }
+        if let Some(prog) = &self.texture_array_program {
+            self.gl.delete_program(Some(&prog.program));
+        }
+        if let Some(prog) = &self.curve_program {
             self.gl.delete_program(Some(&prog.program));
         }
     }
