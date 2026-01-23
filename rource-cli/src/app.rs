@@ -14,6 +14,7 @@ use rource_core::camera::{Camera, Camera3D};
 use rource_core::config::{FilterSettings, WatermarkSettings};
 use rource_core::scene::Scene;
 use rource_core::{DirId, FileId, UserId};
+use rource_math::Vec2;
 use rource_render::effects::{BloomEffect, ShadowEffect};
 use rource_render::Renderer;
 use rource_render::{FontId, SoftwareRenderer, TextureId};
@@ -361,6 +362,10 @@ pub struct App {
 
     /// Reusable buffer for visible user IDs.
     pub visible_users_buffer: Vec<UserId>,
+
+    /// Reusable buffer for file label candidates (avoids per-frame allocation).
+    /// Stores: (`FileId`, `screen_pos`, radius, alpha, priority)
+    pub file_label_candidates_buffer: Vec<(FileId, Vec2, f32, f32, f32)>,
 }
 
 impl App {
@@ -488,6 +493,8 @@ impl App {
             visible_dirs_buffer: Vec::with_capacity(1000),
             visible_files_buffer: Vec::with_capacity(5000),
             visible_users_buffer: Vec::with_capacity(100),
+            // Pre-allocate label candidates buffer for file label collision detection
+            file_label_candidates_buffer: Vec::with_capacity(256),
         }
     }
 

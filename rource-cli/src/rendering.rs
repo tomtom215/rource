@@ -604,7 +604,7 @@ pub fn render_frame(app: &mut App) {
         app.dir_name_depth,
     );
 
-    // Render files
+    // Render files (uses reusable label candidates buffer to avoid per-frame allocations)
     render_files(
         renderer,
         &app.scene,
@@ -612,6 +612,7 @@ pub fn render_frame(app: &mut App) {
         &app.visible_files_buffer,
         &app.args,
         app.default_font,
+        &mut app.file_label_candidates_buffer,
     );
 
     // Render actions (beams)
@@ -776,8 +777,10 @@ fn render_directories(
     }
 }
 
-/// Render file entities with enhanced visuals.
 /// Render file entities with enhanced visuals and LOD optimization.
+///
+/// Uses a reusable buffer for label candidates to avoid per-frame allocations.
+/// The buffer stores (`FileId`, `screen_pos`, radius, alpha, priority) tuples.
 fn render_files(
     renderer: &mut SoftwareRenderer,
     scene: &Scene,
@@ -785,6 +788,7 @@ fn render_files(
     visible_ids: &[FileId],
     args: &Args,
     font_id: Option<FontId>,
+    label_candidates: &mut Vec<(FileId, Vec2, f32, f32, f32)>,
 ) {
     let show_filenames = !args.hide_filenames;
     let hide_tree = args.hide_tree;
@@ -797,8 +801,8 @@ fn render_files(
     // LOD: Pre-compute whether we should render file branches at this zoom level
     let render_branches = !hide_tree && camera_zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES;
 
-    // Collect label candidates for collision-aware rendering
-    let mut label_candidates: Vec<(Vec2, f32, f32, &str, f32)> = Vec::new();
+    // Clear and reuse the label candidates buffer (zero-allocation)
+    label_candidates.clear();
 
     for &file_id in visible_ids {
         let Some(file) = scene.get_file(file_id) else {
@@ -875,11 +879,12 @@ fn render_files(
             // Priority based on visibility and activity (higher = more important)
             let activity_bonus = if is_touched { 100.0 } else { 0.0 };
             let priority = file.radius() * file.alpha() * 10.0 + activity_bonus;
+            // Store FileId instead of &str to enable buffer reuse across frames
             label_candidates.push((
+                file_id,
                 screen_pos,
                 effective_radius,
                 file.alpha(),
-                file.name(),
                 priority,
             ));
         }
@@ -889,7 +894,8 @@ fn render_files(
     if let Some(fid) = font_id {
         render_file_labels(
             renderer,
-            &mut label_candidates,
+            scene,
+            label_candidates,
             camera_zoom,
             file_font_size,
             fid,
@@ -898,23 +904,33 @@ fn render_files(
 }
 
 /// Renders file labels with collision avoidance and adaptive visibility.
+///
+/// Uses `FileId` in candidates buffer to enable zero-allocation across frames.
+/// Looks up file names from the scene when rendering.
 fn render_file_labels(
     renderer: &mut SoftwareRenderer,
-    candidates: &mut [(Vec2, f32, f32, &str, f32)],
+    scene: &Scene,
+    candidates: &mut [(FileId, Vec2, f32, f32, f32)],
     camera_zoom: f32,
     font_size: f32,
     font_id: FontId,
 ) {
-    // Sort by priority (highest first)
+    // Sort by priority (highest first) - priority is the 5th element (index 4)
     candidates.sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
 
     // Create label placer with zoom-based limit
     let mut placer = LabelPlacer::new(camera_zoom);
 
-    for &(screen_pos, radius, alpha, name, _priority) in candidates.iter() {
+    for &(file_id, screen_pos, radius, alpha, _priority) in candidates.iter() {
         if !placer.can_place_more() {
             break;
         }
+
+        // Look up the file name from the scene
+        let Some(file) = scene.get_file(file_id) else {
+            continue;
+        };
+        let name = file.name();
 
         // Calculate label dimensions
         let text_width = estimate_text_width(name, font_size);
