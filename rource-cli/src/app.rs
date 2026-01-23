@@ -10,6 +10,7 @@ use std::time::Instant;
 use rource_core::camera::{Camera, Camera3D};
 use rource_core::config::FilterSettings;
 use rource_core::scene::Scene;
+use rource_core::{DirId, FileId, UserId};
 use rource_render::effects::{BloomEffect, ShadowEffect};
 use rource_render::Renderer;
 use rource_render::{FontId, SoftwareRenderer, TextureId};
@@ -179,6 +180,20 @@ pub struct App {
 
     /// Background image texture ID (loaded from `background_image_path`).
     pub background_texture: Option<TextureId>,
+
+    // ==========================================================================
+    // Zero-Allocation Visibility Buffers (Phase 8 Optimization)
+    // ==========================================================================
+    // These buffers are reused each frame to avoid allocations in visible_entities_into().
+    // At 60 FPS, this eliminates ~180 allocations/second.
+    /// Reusable buffer for visible directory IDs.
+    pub visible_dirs_buffer: Vec<DirId>,
+
+    /// Reusable buffer for visible file IDs.
+    pub visible_files_buffer: Vec<FileId>,
+
+    /// Reusable buffer for visible user IDs.
+    pub visible_users_buffer: Vec<UserId>,
 }
 
 impl App {
@@ -297,6 +312,11 @@ impl App {
             logo_texture: None,
             logo_dimensions: None,
             background_texture: None,
+            // Pre-allocate visibility buffers to avoid per-frame allocations
+            // Capacity of 1000 handles typical repository sizes; grows if needed
+            visible_dirs_buffer: Vec::with_capacity(1000),
+            visible_files_buffer: Vec::with_capacity(5000),
+            visible_users_buffer: Vec::with_capacity(100),
         }
     }
 

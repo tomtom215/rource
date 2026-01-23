@@ -94,16 +94,20 @@ pub fn render_frame(app: &mut App) {
     let visible_bounds = app.camera.visible_bounds();
     let culling_bounds = Scene::expand_bounds_for_visibility(&visible_bounds, 100.0);
 
-    // Query visible entities using spatial index
-    let (visible_dir_ids, visible_file_ids, visible_user_ids) =
-        app.scene.visible_entities(&culling_bounds);
+    // Query visible entities using spatial index (zero-allocation: reuses pre-allocated buffers)
+    app.scene.visible_entities_into(
+        &culling_bounds,
+        &mut app.visible_dirs_buffer,
+        &mut app.visible_files_buffer,
+        &mut app.visible_users_buffer,
+    );
 
     // Render directories
     render_directories(
         renderer,
         &app.scene,
         &app.camera,
-        &visible_dir_ids,
+        &app.visible_dirs_buffer,
         &app.args,
         app.default_font,
         app.dir_name_depth,
@@ -114,7 +118,7 @@ pub fn render_frame(app: &mut App) {
         renderer,
         &app.scene,
         &app.camera,
-        &visible_file_ids,
+        &app.visible_files_buffer,
         &app.args,
         app.default_font,
     );
@@ -127,7 +131,7 @@ pub fn render_frame(app: &mut App) {
         renderer,
         &app.scene,
         &app.camera,
-        &visible_user_ids,
+        &app.visible_users_buffer,
         &app.args,
         app.default_font,
         &app.avatar_registry,

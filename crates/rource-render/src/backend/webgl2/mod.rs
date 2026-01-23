@@ -830,6 +830,7 @@ impl Renderer for WebGl2Renderer {
         self.gl.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
     }
 
+    #[inline]
     fn draw_circle(&mut self, center: Vec2, radius: f32, width: f32, color: Color) {
         if self.context_lost || color.a < 0.001 {
             return;
@@ -843,6 +844,7 @@ impl Renderer for WebGl2Renderer {
         ]);
     }
 
+    #[inline]
     fn draw_disc(&mut self, center: Vec2, radius: f32, color: Color) {
         if self.context_lost || color.a < 0.001 || radius < 0.1 {
             return;
@@ -856,6 +858,7 @@ impl Renderer for WebGl2Renderer {
         ]);
     }
 
+    #[inline]
     fn draw_line(&mut self, start: Vec2, end: Vec2, width: f32, color: Color) {
         if self.context_lost || color.a < 0.001 {
             return;
@@ -870,6 +873,7 @@ impl Renderer for WebGl2Renderer {
         ]);
     }
 
+    #[inline]
     fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color) {
         if points.len() < 2 {
             return;
@@ -881,6 +885,7 @@ impl Renderer for WebGl2Renderer {
         }
     }
 
+    #[inline]
     fn draw_quad(&mut self, bounds: Bounds, texture: Option<TextureId>, color: Color) {
         if self.context_lost || color.a < 0.001 {
             return;
@@ -909,6 +914,7 @@ impl Renderer for WebGl2Renderer {
         }
     }
 
+    #[inline]
     fn draw_text(&mut self, text: &str, position: Vec2, font: FontId, size: f32, color: Color) {
         if self.context_lost || text.is_empty() || color.a < 0.001 {
             return;
