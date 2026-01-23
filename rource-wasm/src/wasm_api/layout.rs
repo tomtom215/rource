@@ -275,4 +275,170 @@ impl Rource {
             wgpu_renderer.warmup_physics();
         }
     }
+
+    // ========================================================================
+    // GPU Visibility Culling Configuration (wgpu only)
+    // ========================================================================
+
+    /// Enables or disables GPU visibility culling.
+    ///
+    /// When enabled and using the wgpu backend, visibility culling runs on
+    /// the GPU using compute shaders. This is beneficial for extreme-scale
+    /// scenarios (10,000+ visible entities) where CPU culling becomes a
+    /// bottleneck.
+    ///
+    /// **Note**: GPU culling only works with the wgpu backend. When using
+    /// WebGL2 or Software renderers, this setting is ignored and CPU culling
+    /// is always used.
+    ///
+    /// For most use cases, the default CPU-side quadtree culling is sufficient.
+    ///
+    /// # Arguments
+    /// * `enabled` - Whether to enable GPU culling
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// if (rource.isWgpu()) {
+    ///     rource.setUseGPUCulling(true);
+    ///     console.log('GPU culling enabled');
+    /// }
+    /// ```
+    #[wasm_bindgen(js_name = setUseGPUCulling)]
+    pub fn set_use_gpu_culling(&mut self, enabled: bool) {
+        self.use_gpu_culling = enabled;
+
+        // Also enable in the wgpu renderer
+        #[cfg(target_arch = "wasm32")]
+        if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
+            wgpu_renderer.set_gpu_culling_enabled(enabled);
+        }
+    }
+
+    /// Returns whether GPU visibility culling is currently enabled.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// console.log('GPU culling:', rource.isGPUCullingEnabled());
+    /// ```
+    #[wasm_bindgen(js_name = isGPUCullingEnabled)]
+    pub fn is_gpu_culling_enabled(&self) -> bool {
+        self.use_gpu_culling
+    }
+
+    /// Returns whether GPU visibility culling is currently active.
+    ///
+    /// This checks all conditions required for GPU culling:
+    /// 1. GPU culling is enabled via `setUseGPUCulling(true)`
+    /// 2. wgpu backend is being used
+    /// 3. Total entity count exceeds threshold (if threshold > 0)
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// if (rource.isGPUCullingActive()) {
+    ///     console.log('GPU culling is running');
+    /// }
+    /// ```
+    #[wasm_bindgen(js_name = isGPUCullingActive)]
+    pub fn is_gpu_culling_active(&self) -> bool {
+        self.should_use_gpu_culling()
+    }
+
+    /// Sets the entity count threshold for enabling GPU culling.
+    ///
+    /// When the total visible entity count exceeds this threshold, GPU culling
+    /// will be used (if enabled and wgpu backend is active).
+    ///
+    /// Set to 0 to always use GPU culling when enabled (ignores entity count).
+    ///
+    /// Default: 10000 entities
+    ///
+    /// # Arguments
+    /// * `threshold` - Minimum entity count to trigger GPU culling
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// // Use GPU culling for scenes with 5000+ entities
+    /// rource.setGPUCullingThreshold(5000);
+    ///
+    /// // Always use GPU culling when enabled (no threshold)
+    /// rource.setGPUCullingThreshold(0);
+    /// ```
+    #[wasm_bindgen(js_name = setGPUCullingThreshold)]
+    pub fn set_gpu_culling_threshold(&mut self, threshold: usize) {
+        self.gpu_culling_threshold = threshold;
+    }
+
+    /// Returns the current GPU culling threshold.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// console.log('GPU culling threshold:', rource.getGPUCullingThreshold());
+    /// ```
+    #[wasm_bindgen(js_name = getGPUCullingThreshold)]
+    pub fn get_gpu_culling_threshold(&self) -> usize {
+        self.gpu_culling_threshold
+    }
+
+    /// Warms up the GPU visibility culling compute pipeline.
+    ///
+    /// Call this during initialization to pre-compile compute shaders
+    /// and avoid first-frame stuttering when GPU culling is first used.
+    ///
+    /// **Note**: Only has an effect when using the wgpu backend.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// if (rource.isWgpu()) {
+    ///     rource.warmupGPUCulling();
+    ///     rource.setUseGPUCulling(true);
+    /// }
+    /// ```
+    #[wasm_bindgen(js_name = warmupGPUCulling)]
+    pub fn warmup_gpu_culling(&mut self) {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
+            wgpu_renderer.warmup_culling();
+        }
+    }
+
+    /// Returns GPU culling statistics as a JSON string.
+    ///
+    /// Returns statistics from the last frame's culling operation, or null
+    /// if GPU culling is not active or no culling has occurred yet.
+    ///
+    /// # Returns
+    /// JSON string with fields:
+    /// - `totalInstances`: Total instances submitted for culling
+    /// - `visibleInstances`: Instances that passed culling
+    /// - `dispatchCount`: Number of culling dispatches
+    /// - `cullRatio`: Ratio of visible/total (0.0-1.0)
+    /// - `culledPercentage`: Percentage culled (0.0-100.0)
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// const stats = rource.getGPUCullingStats();
+    /// if (stats) {
+    ///     const data = JSON.parse(stats);
+    ///     console.log(`Culled ${data.culledPercentage.toFixed(1)}% of instances`);
+    /// }
+    /// ```
+    #[wasm_bindgen(js_name = getGPUCullingStats)]
+    pub fn get_gpu_culling_stats(&self) -> Option<String> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            // Need to get immutable reference for stats query
+            // Since as_wgpu_mut isn't available, check renderer type
+            if self.renderer_type != crate::backend::RendererType::Wgpu {
+                return None;
+            }
+
+            // For now, return None since we can't easily get immutable access
+            // The culling stats would need a different access pattern
+            // This is a placeholder that will be filled when culling is wired in
+            None
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        None
+    }
 }

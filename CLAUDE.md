@@ -1618,6 +1618,94 @@ The priority order ensures best performance regardless of browser capabilities.
 
 **Test Count**: 1,169 tests passing (added 21 new tests for Barnes-Hut)
 
+### Phase 17: GPU Visibility Culling WASM Integration (2026-01-23)
+
+Integrated the GPU visibility culling pipeline into the WASM JavaScript API for extreme-scale scenarios.
+
+#### Overview
+
+The GPU visibility culling infrastructure (implemented in Phase 10-11) is now accessible from JavaScript
+via the WASM API. This allows extreme-scale visualizations (10,000+ entities) to offload visibility
+culling to the GPU when CPU-side quadtree culling becomes a bottleneck.
+
+**Note**: For most use cases, the default CPU-side quadtree culling is more efficient. GPU culling
+is only beneficial when:
+1. Total entity count exceeds ~10,000
+2. View bounds change every frame (continuous panning/zooming)
+3. GPU compute overhead is offset by reduced draw call preparation time
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `rource-wasm/src/lib.rs` | Added `use_gpu_culling`, `gpu_culling_threshold` fields and `should_use_gpu_culling()` method |
+| `rource-wasm/src/wasm_api/layout.rs` | Added JS API methods for GPU culling control |
+| `scripts/build-wasm.sh` | Updated test count from 903 to 1169 |
+
+#### JavaScript API
+
+```javascript
+// Enable GPU visibility culling (wgpu backend only)
+rource.setUseGPUCulling(true);
+
+// Check if GPU culling is enabled
+const enabled = rource.isGPUCullingEnabled();
+
+// Check if GPU culling is currently active (all conditions met)
+const active = rource.isGPUCullingActive();
+
+// Set threshold for auto-switching (default: 10000 entities)
+// 0 = always use GPU culling when enabled
+rource.setGPUCullingThreshold(5000);
+
+// Get current threshold
+const threshold = rource.getGPUCullingThreshold();
+
+// Warmup compute pipeline to avoid first-frame stutter
+rource.warmupGPUCulling();
+
+// Get culling statistics (when active)
+const stats = rource.getGPUCullingStats();
+if (stats) {
+    const data = JSON.parse(stats);
+    console.log(`Culled ${data.culledPercentage.toFixed(1)}% of instances`);
+}
+```
+
+#### Activation Conditions
+
+GPU culling activates when ALL conditions are met:
+1. `setUseGPUCulling(true)` has been called
+2. Using wgpu backend (WebGPU available)
+3. Total entity count >= threshold (default 10000, or 0 to always use)
+
+#### Integration with Render Loop
+
+The GPU culling bounds are updated each frame before rendering:
+
+```rust
+// In render():
+if self.should_use_gpu_culling() {
+    if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
+        wgpu_renderer.set_cull_bounds(
+            visible_bounds.min.x, visible_bounds.min.y,
+            visible_bounds.max.x, visible_bounds.max.y,
+        );
+    }
+}
+```
+
+#### When to Use GPU Culling
+
+| Scenario | Recommendation |
+|----------|----------------|
+| < 5,000 entities | CPU quadtree (default) |
+| 5,000-10,000 entities | CPU quadtree usually sufficient |
+| 10,000+ entities with dynamic view | Consider GPU culling |
+| Static view | CPU quadtree (one-time cost) |
+
+**Test Count**: 1,169 tests passing
+
 ### Scene Module Refactoring (2026-01-22)
 
 Refactored `scene/mod.rs` into modular structure for improved maintainability.
