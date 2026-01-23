@@ -1825,7 +1825,46 @@ rource.registerFileIcon("myext", "#FF5500");
 | Memory layout | Scattered | Contiguous |
 | GPU cache | Poor locality | Excellent locality |
 
-**Test Count**: 1,178 tests passing (added 9 icon tests)
+#### WebGL2 File Icon Integration (2026-01-23)
+
+Extended the file icon infrastructure to the WebGL2 backend for feature parity.
+
+**Files Modified**:
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/backend/webgl2/buffers.rs` | Added `texture_array_vao` and setup method |
+| `crates/rource-render/src/backend/webgl2/mod.rs` | Added shader program, instance buffer, trait methods |
+| `crates/rource-render/src/backend/webgl2/flush_passes.rs` | Added `flush_texture_array()` pass |
+| `crates/rource-render/src/backend/webgl2/stats.rs` | Added `TEXTURE_ARRAYS` and `texture_array_instances` |
+
+**Instance Layout** (13 floats = 52 bytes per instance):
+
+| Attribute | Type | Location | Description |
+|-----------|------|----------|-------------|
+| `bounds` | vec4 | 1 | `min_x`, `min_y`, `max_x`, `max_y` |
+| `uv_bounds` | vec4 | 2 | `u_min`, `v_min`, `u_max`, `v_max` |
+| `color` | vec4 | 3 | RGBA tint color |
+| `layer` | float | 4 | Texture array layer index |
+
+**Shader Support**:
+- Both UBO and non-UBO shader variants compiled in `init_gl()`
+- Uses `TEXTURE_ARRAY_VERTEX_UBO` / `TEXTURE_ARRAY_FRAGMENT` from shaders.rs
+- Falls back to non-UBO shaders when UBO initialization fails
+
+**Fallback Behavior**:
+When file icons are not initialized, `draw_file_icon()` falls back to `draw_disc()`:
+```rust
+fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
+    if self.file_icon_array.is_some() {
+        // Queue texture array instance
+    } else {
+        self.draw_disc(center, size * 0.5, color);
+    }
+}
+```
+
+**Test Count**: 1,185 tests passing
 
 ### Scene Module Refactoring (2026-01-22)
 
