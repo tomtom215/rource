@@ -301,6 +301,12 @@ impl Rource {
             );
         }
 
+        // Initialize file icons for GPU-accelerated rendering (wgpu only)
+        // Falls back to colored disc rendering if not supported
+        if backend.init_file_icons() {
+            web_sys::console::log_1(&"Rource: File icons initialized".into());
+        }
+
         let scene = Scene::new();
 
         let mut settings = Settings::default();

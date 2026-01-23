@@ -171,6 +171,54 @@ pub trait Renderer {
     ///
     /// Returns a font ID that can be used with `draw_text`.
     fn load_font(&mut self, data: &[u8]) -> Option<FontId>;
+
+    // =========================================================================
+    // File Icon Methods (opt-in, with default fallback implementations)
+    // =========================================================================
+
+    /// Initializes the file icon system.
+    ///
+    /// This pre-generates and caches icons for common file extensions.
+    /// Call once during initialization to enable file icon rendering.
+    ///
+    /// # Returns
+    ///
+    /// `true` if initialization succeeded, `false` otherwise.
+    ///
+    /// Default implementation returns `false` (icons not supported).
+    #[inline]
+    fn init_file_icons(&mut self) -> bool {
+        false
+    }
+
+    /// Returns whether file icons are available.
+    ///
+    /// Returns `true` if `init_file_icons()` was called successfully.
+    ///
+    /// Default implementation returns `false`.
+    #[inline]
+    fn has_file_icons(&self) -> bool {
+        false
+    }
+
+    /// Draws a file icon at the specified screen position.
+    ///
+    /// If file icons are not initialized, falls back to drawing a colored disc.
+    ///
+    /// # Arguments
+    ///
+    /// * `center` - Center position in screen coordinates
+    /// * `size` - Icon size in pixels
+    /// * `extension` - File extension (e.g., "rs", "js", "py")
+    /// * `color` - Tint color (for fallback disc, or to tint the icon)
+    ///
+    /// Default implementation draws a colored disc.
+    #[inline]
+    fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
+        // Default: draw a colored disc as fallback
+        let _ = extension; // Unused in default impl
+        self.draw_disc(center, size * 0.5, color);
+    }
 }
 
 #[cfg(test)]

@@ -1146,6 +1146,14 @@ impl Renderer for SoftwareRenderer {
     fn load_font(&mut self, data: &[u8]) -> Option<FontId> {
         self.font_cache.load(data)
     }
+
+    // =========================================================================
+    // File Icon Methods
+    // =========================================================================
+    // The SoftwareRenderer uses the default trait implementations which
+    // render colored discs as fallback. No GPU texture arrays available.
+    // init_file_icons() returns false, has_file_icons() returns false,
+    // and draw_file_icon() draws a colored disc.
 }
 
 #[cfg(test)]

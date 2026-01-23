@@ -1105,6 +1105,28 @@ impl Renderer for WebGl2Renderer {
     fn load_font(&mut self, data: &[u8]) -> Option<FontId> {
         self.font_cache.load(data)
     }
+
+    // =========================================================================
+    // File Icon Methods (with fallback to colored discs)
+    // =========================================================================
+
+    fn init_file_icons(&mut self) -> bool {
+        // WebGL2 texture array rendering pipeline is not yet fully integrated.
+        // Return false to use the default disc-based fallback rendering.
+        false
+    }
+
+    fn has_file_icons(&self) -> bool {
+        // WebGL2 does not have file icons initialized
+        false
+    }
+
+    fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
+        // WebGL2 texture array rendering pipeline is not yet fully integrated.
+        // Fall back to colored disc rendering (matches default trait behavior).
+        let _ = extension;
+        self.draw_disc(center, size * 0.5, color);
+    }
 }
 
 impl Drop for WebGl2Renderer {

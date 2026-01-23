@@ -1278,6 +1278,29 @@ impl Renderer for WgpuRenderer {
     fn load_font(&mut self, data: &[u8]) -> Option<FontId> {
         self.font_cache.load(data)
     }
+
+    // File icon methods - delegate to icons_methods.rs implementations
+
+    fn init_file_icons(&mut self) -> bool {
+        // Delegate to the implementation in icons_methods.rs
+        WgpuRenderer::init_file_icons(self)
+    }
+
+    fn has_file_icons(&self) -> bool {
+        // Delegate to the implementation in icons_methods.rs
+        WgpuRenderer::has_file_icons(self)
+    }
+
+    fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
+        // If file icons are initialized, use the texture array pipeline
+        if self.file_icon_array.is_some() {
+            // Delegate to the implementation in icons_methods.rs
+            WgpuRenderer::draw_file_icon(self, center.x, center.y, size, extension, Some(color));
+        } else {
+            // Fallback to colored disc
+            self.draw_disc(center, size * 0.5, color);
+        }
+    }
 }
 
 // ============================================================================
