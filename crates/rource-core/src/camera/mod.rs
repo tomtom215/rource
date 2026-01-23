@@ -996,17 +996,23 @@ mod tests {
 
     #[test]
     fn test_has_reached_target_position_at_target() {
-        assert!(has_reached_target_position(100.0, 100.0, 100.0, 100.0, 0.01));
+        assert!(has_reached_target_position(
+            100.0, 100.0, 100.0, 100.0, 0.01
+        ));
     }
 
     #[test]
     fn test_has_reached_target_position_within_threshold() {
-        assert!(has_reached_target_position(100.0, 100.0, 100.005, 100.005, 0.01));
+        assert!(has_reached_target_position(
+            100.0, 100.0, 100.005, 100.005, 0.01
+        ));
     }
 
     #[test]
     fn test_has_reached_target_position_outside_threshold() {
-        assert!(!has_reached_target_position(100.0, 100.0, 101.0, 101.0, 0.01));
+        assert!(!has_reached_target_position(
+            100.0, 100.0, 101.0, 101.0, 0.01
+        ));
     }
 
     #[test]
