@@ -470,13 +470,14 @@ impl Scene {
         file_id: FileId,
         action_type: ActionType,
     ) -> Option<ActionId> {
+        // Get file position first (needed for user positioning)
+        let file_pos = self.files.get(&file_id).map(|f| f.position());
+
         // Skip spawning if at capacity (prevents accumulation at fast playback)
         if self.actions.len() >= Self::MAX_ACTIONS {
             // Still update user target even if we skip the action
-            if let Some(file) = self.files.get(&file_id) {
-                if let Some(user) = self.users.get_mut(&user_id) {
-                    user.set_target(file.position());
-                }
+            if let (Some(file_pos), Some(user)) = (file_pos, self.users.get_mut(&user_id)) {
+                user.set_target(file_pos);
             }
             return None;
         }
@@ -488,24 +489,16 @@ impl Scene {
         self.actions.push(action);
         self.active_action_count += 1;
 
-        // Add action to user's active actions
+        // Single user lookup: add action and set target
         if let Some(user) = self.users.get_mut(&user_id) {
             user.add_action(id);
-        }
 
-        // Set user's target to file position
-        // If user is at origin (new user), teleport them near the file first
-        if let Some(file) = self.files.get(&file_id) {
-            if let Some(user) = self.users.get_mut(&user_id) {
-                let file_pos = file.position();
-
+            if let Some(file_pos) = file_pos {
                 // If user is still at origin (default position), place them near the file
                 if user.position().length() < 1.0 {
-                    // Position user slightly offset from file
                     let offset = Vec2::new(-50.0, -30.0);
                     user.set_position(file_pos + offset);
                 }
-
                 user.set_target(file_pos);
             }
         }
