@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769200453767,
+  "lastUpdate": 1769204435126,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1130,6 +1130,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1030023,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "47c884c58bee1a62a9dfc423aea0087f49d0ec82",
+          "message": "Merge pull request #139 from tomtom215/claude/review-rendering-compute-code-8DzYB\n\nOptimize rendering and shader performance with buffer reuse",
+          "timestamp": "2026-01-23T22:36:35+01:00",
+          "tree_id": "89aa44597a615d33aa3ee3592bdec5133ba9d562",
+          "url": "https://github.com/tomtom215/rource/commit/47c884c58bee1a62a9dfc423aea0087f49d0ec82"
+        },
+        "date": 1769204434687,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3898128,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2700909,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1035513,
             "unit": "bytes"
           }
         ]
