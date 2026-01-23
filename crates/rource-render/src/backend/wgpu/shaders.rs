@@ -116,7 +116,8 @@ struct RingVertexOutput {
     @location(0) local_pos: vec2<f32>,
     @location(1) radius: f32,
     @location(2) width: f32,
-    @location(3) color: vec4<f32>,
+    @location(3) outer_radius: f32, // Pre-computed in vertex shader to avoid recalculation
+    @location(4) color: vec4<f32>,
 };
 
 @vertex
@@ -128,7 +129,9 @@ fn vs_ring(vertex: CircleVertexInput, instance: RingInstance) -> RingVertexOutpu
     out.width = instance.width;
 
     // Expand quad to cover full ring including AA padding
+    // Pre-compute and pass to fragment shader to avoid per-fragment recalculation
     let outer_radius = instance.radius + instance.width * 0.5 + 1.0;
+    out.outer_radius = outer_radius;
     let world_pos = instance.center + vertex.position * outer_radius;
 
     let ndc = (world_pos / uniforms.resolution) * 2.0 - 1.0;
@@ -140,9 +143,8 @@ fn vs_ring(vertex: CircleVertexInput, instance: RingInstance) -> RingVertexOutpu
 
 @fragment
 fn fs_ring(in: RingVertexOutput) -> @location(0) vec4<f32> {
-    // Scale local position to world units
-    let outer_radius = in.radius + in.width * 0.5 + 1.0;
-    let world_dist = length(in.local_pos) * outer_radius;
+    // Scale local position to world units (outer_radius pre-computed in vertex shader)
+    let world_dist = length(in.local_pos) * in.outer_radius;
 
     // Distance from the ring centerline
     let inner_radius = in.radius - in.width * 0.5;
@@ -175,9 +177,10 @@ struct LineInstance {
 struct LineVertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) local_pos: vec2<f32>,
-    @location(1) width: f32,
-    @location(2) length: f32,
-    @location(3) color: vec4<f32>,
+    @location(1) half_width: f32,     // Pre-computed: width * 0.5 (without padding)
+    @location(2) half_width_padded: f32, // Pre-computed: width * 0.5 + 1.0 (with AA padding)
+    @location(3) length: f32,
+    @location(4) color: vec4<f32>,
 };
 
 @vertex
@@ -190,13 +193,14 @@ fn vs_line(vertex: LineVertexInput, instance: LineInstance) -> LineVertexOutput 
     let line_perp = vec2<f32>(-line_dir.y, line_dir.x);
 
     out.local_pos = vertex.position;
-    out.width = instance.width;
+    // Pre-compute both half-width values to avoid per-fragment recalculation
+    out.half_width = instance.width * 0.5;
+    out.half_width_padded = out.half_width + 1.0;
     out.length = line_length;
 
     // Expand quad along line direction with padding for AA
-    let half_width = (instance.width * 0.5) + 1.0;
     let along = mix(instance.start - line_dir * 1.0, instance.end + line_dir * 1.0, vertex.position.x);
-    let world_pos = along + line_perp * vertex.position.y * half_width * 2.0;
+    let world_pos = along + line_perp * vertex.position.y * out.half_width_padded * 2.0;
 
     let ndc = (world_pos / uniforms.resolution) * 2.0 - 1.0;
     out.clip_position = vec4<f32>(ndc.x, -ndc.y, 0.0, 1.0);
@@ -207,13 +211,12 @@ fn vs_line(vertex: LineVertexInput, instance: LineInstance) -> LineVertexOutput 
 
 @fragment
 fn fs_line(in: LineVertexOutput) -> @location(0) vec4<f32> {
-    // Distance from line centerline (perpendicular)
-    let perp_dist = abs(in.local_pos.y) * ((in.width * 0.5) + 1.0) * 2.0;
-    let half_width = in.width * 0.5;
+    // Distance from line centerline (perpendicular) - uses pre-computed half_width_padded
+    let perp_dist = abs(in.local_pos.y) * in.half_width_padded * 2.0;
 
-    // Anti-aliased edge
+    // Anti-aliased edge - uses pre-computed half_width (without padding)
     let aa_width = 1.0;
-    let alpha = 1.0 - smoothstep(half_width - aa_width, half_width + aa_width, perp_dist);
+    let alpha = 1.0 - smoothstep(in.half_width - aa_width, in.half_width + aa_width, perp_dist);
 
     // Fade at line ends
     let end_fade = smoothstep(-0.02, 0.02, in.local_pos.x) *
@@ -477,6 +480,10 @@ struct FullscreenVertexOutput {
     @location(0) uv: vec2<f32>,
 };
 
+// Module-level constant: 9-tap Gaussian blur weights (sigma ≈ 1.5)
+// Defined at module scope to avoid per-fragment array construction
+const BLUR_WEIGHTS: array<f32, 5> = array<f32, 5>(0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+
 @vertex
 fn vs_fullscreen(@location(0) position: vec2<f32>) -> FullscreenVertexOutput {
     var out: FullscreenVertexOutput;
@@ -491,15 +498,12 @@ fn fs_bloom_blur(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let texel_size = 1.0 / blur_uniforms.resolution;
     let direction = blur_uniforms.direction * texel_size;
 
-    // 9-tap Gaussian blur weights (sigma ≈ 1.5)
-    let weights = array<f32, 5>(0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
-
-    var result = textureSample(t_source, s_source, in.uv).rgb * weights[0];
+    var result = textureSample(t_source, s_source, in.uv).rgb * BLUR_WEIGHTS[0];
 
     for (var i = 1; i < 5; i++) {
         let offset = direction * f32(i);
-        result += textureSample(t_source, s_source, in.uv + offset).rgb * weights[i];
-        result += textureSample(t_source, s_source, in.uv - offset).rgb * weights[i];
+        result += textureSample(t_source, s_source, in.uv + offset).rgb * BLUR_WEIGHTS[i];
+        result += textureSample(t_source, s_source, in.uv - offset).rgb * BLUR_WEIGHTS[i];
     }
 
     return vec4<f32>(result, 1.0);
@@ -649,8 +653,29 @@ fn fs_shadow_composite(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
 /// Physics force calculation compute shader.
 ///
-/// Calculates forces between entities using spatial hashing for
-/// efficient neighbor queries.
+/// # Current Implementation
+///
+/// The force calculation currently uses O(N²) brute force iteration over all
+/// entity pairs. While a spatial hash grid is built (`cs_build_grid`), it only
+/// stores **counts** per cell (not entity indices), making neighbor queries
+/// impossible with the current data structure.
+///
+/// # Performance Note
+///
+/// For typical visualization workloads (< 500 directories), the O(N²) approach
+/// is fast enough on modern GPUs. For larger scenes, the CPU-side Barnes-Hut
+/// algorithm provides O(N log N) performance as a fallback.
+///
+/// # Future Optimization
+///
+/// To achieve true O(N) neighbor queries, the spatial hash would need:
+/// 1. A prefix sum pass to compute cell offsets
+/// 2. A compacted entity index list sorted by cell
+/// 3. Modified force calculation to query only neighboring cells
+///
+/// This is left as future work since the current approach is sufficient
+/// for the target use cases and the CPU Barnes-Hut fallback handles
+/// extreme-scale scenarios.
 pub const PHYSICS_FORCE_SHADER: &str = r#"
 struct PhysicsParams {
     entity_count: u32,
@@ -845,31 +870,35 @@ struct CurveVertexOutput {
     @location(2) color: vec4<f32>,
 };
 
-// Catmull-Rom spline interpolation
-fn catmull_rom(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p3: vec2<f32>, t: f32) -> vec2<f32> {
+// Result struct for combined position and tangent calculation
+struct CatmullRomResult {
+    position: vec2<f32>,
+    tangent: vec2<f32>,
+}
+
+// Combined Catmull-Rom position and tangent calculation
+// Computes both using shared t² to avoid redundant multiplication
+fn catmull_rom_pos_tangent(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p3: vec2<f32>, t: f32) -> CatmullRomResult {
+    // Shared computation - t² used by both position and tangent
     let t2 = t * t;
     let t3 = t2 * t;
 
-    // Catmull-Rom basis matrix coefficients
-    let c0 = -0.5 * t3 + t2 - 0.5 * t;
-    let c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
-    let c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
-    let c3 = 0.5 * t3 - 0.5 * t2;
+    // Position coefficients (Catmull-Rom basis matrix)
+    let pos_c0 = -0.5 * t3 + t2 - 0.5 * t;
+    let pos_c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+    let pos_c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+    let pos_c3 = 0.5 * t3 - 0.5 * t2;
 
-    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
-}
+    // Tangent coefficients (derivative of basis)
+    let tan_c0 = -1.5 * t2 + 2.0 * t - 0.5;
+    let tan_c1 = 4.5 * t2 - 5.0 * t;
+    let tan_c2 = -4.5 * t2 + 4.0 * t + 0.5;
+    let tan_c3 = 1.5 * t2 - t;
 
-// Catmull-Rom tangent (derivative)
-fn catmull_rom_tangent(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p3: vec2<f32>, t: f32) -> vec2<f32> {
-    let t2 = t * t;
-
-    // Derivative of Catmull-Rom basis
-    let c0 = -1.5 * t2 + 2.0 * t - 0.5;
-    let c1 = 4.5 * t2 - 5.0 * t;
-    let c2 = -4.5 * t2 + 4.0 * t + 0.5;
-    let c3 = 1.5 * t2 - t;
-
-    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+    var result: CatmullRomResult;
+    result.position = p0 * pos_c0 + p1 * pos_c1 + p2 * pos_c2 + p3 * pos_c3;
+    result.tangent = p0 * tan_c0 + p1 * tan_c1 + p2 * tan_c2 + p3 * tan_c3;
+    return result;
 }
 
 @vertex
@@ -885,9 +914,10 @@ fn vs_curve(
     // The quad's X position (0 to 1) maps to the curve parameter t
     let t = vertex.position.x;
 
-    // Calculate position and tangent on the curve
-    let curve_pos = catmull_rom(instance.p0, instance.p1, instance.p2, instance.p3, t);
-    let tangent = catmull_rom_tangent(instance.p0, instance.p1, instance.p2, instance.p3, t);
+    // Calculate position and tangent on the curve (combined to share t² computation)
+    let cr = catmull_rom_pos_tangent(instance.p0, instance.p1, instance.p2, instance.p3, t);
+    let curve_pos = cr.position;
+    let tangent = cr.tangent;
 
     // Normalize tangent and get perpendicular
     let tangent_len = length(tangent);
@@ -1354,8 +1384,9 @@ mod tests {
 
     #[test]
     fn test_curve_shader_has_catmull_rom() {
-        assert!(CURVE_SHADER.contains("catmull_rom"));
-        assert!(CURVE_SHADER.contains("catmull_rom_tangent"));
+        // Combined function computes both position and tangent to share t² calculation
+        assert!(CURVE_SHADER.contains("catmull_rom_pos_tangent"));
+        assert!(CURVE_SHADER.contains("CatmullRomResult"));
     }
 
     #[test]

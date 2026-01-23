@@ -385,6 +385,9 @@ impl WgpuRenderer {
     }
 
     /// Flushes textured quad draw calls within a render pass.
+    ///
+    /// Reuses `cached_texture_ids` populated by `upload_textured_quads()` to avoid
+    /// per-frame Vec allocation.
     pub(super) fn flush_textured_quads_pass(
         &mut self,
         render_pass: &mut wgpu::RenderPass<'_>,
@@ -394,15 +397,14 @@ impl WgpuRenderer {
             return;
         };
 
-        // Collect texture IDs that have instances to render
-        let tex_ids: Vec<TextureId> = self
-            .textured_quad_instances
-            .iter()
-            .filter(|(_, instances)| !instances.is_empty())
-            .map(|(id, _)| *id)
-            .collect();
+        // Check if any textured quads to render (quick scan of cached IDs)
+        let has_instances = self.cached_texture_ids.iter().any(|tex_id| {
+            self.textured_quad_instances
+                .get(tex_id)
+                .is_some_and(|b| !b.is_empty())
+        });
 
-        if tex_ids.is_empty() {
+        if !has_instances {
             return;
         }
 
@@ -419,11 +421,17 @@ impl WgpuRenderer {
 
         render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
 
-        // Render each texture group
-        for tex_id in tex_ids {
+        // Render each texture group using cached IDs (avoids per-frame allocation)
+        for i in 0..self.cached_texture_ids.len() {
+            let tex_id = self.cached_texture_ids[i];
             let Some(instances) = self.textured_quad_instances.get(&tex_id) else {
                 continue;
             };
+
+            // Skip empty buffers (filter during iteration, not pre-filtering)
+            if instances.is_empty() {
+                continue;
+            }
 
             // Set texture bind group
             if let Some(texture) = self.textures.get(&tex_id) {
