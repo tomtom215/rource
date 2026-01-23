@@ -34,7 +34,7 @@
 //! └─────────────────────────────────────────────────────────────────┘
 //! ```
 
-use super::shaders::{CURVE_SHADER, PRIMITIVE_SHADER};
+use super::shaders::{CURVE_SHADER, PRIMITIVE_SHADER, TEXTURE_ARRAY_SHADER};
 use super::state::PipelineId;
 
 // Re-export instance sizes at module level for convenience.
@@ -288,11 +288,17 @@ pub struct PipelineManager {
     /// Compiled shader module for curve rendering (separate for modularity).
     curve_shader_module: Option<wgpu::ShaderModule>,
 
+    /// Compiled shader module for texture array rendering (file icons).
+    texture_array_shader_module: Option<wgpu::ShaderModule>,
+
     /// Bind group layout for uniforms (group 0).
     uniform_layout: wgpu::BindGroupLayout,
 
     /// Bind group layout for textures (group 1).
     texture_layout: wgpu::BindGroupLayout,
+
+    /// Bind group layout for texture arrays (group 1, for file icons).
+    texture_array_layout: wgpu::BindGroupLayout,
 
     /// Cached render pipelines.
     pipelines: [Option<wgpu::RenderPipeline>; PipelineId::count()],
@@ -357,6 +363,30 @@ impl PipelineManager {
             ],
         });
 
+        // Create texture array bind group layout (group 1, for file icons)
+        let texture_array_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("texture_array_bind_group_layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2Array,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
         // Initialize pipeline cache with None
         const INIT: Option<wgpu::RenderPipeline> = None;
         let pipelines = [INIT; PipelineId::count()];
@@ -364,8 +394,10 @@ impl PipelineManager {
         Self {
             shader_module,
             curve_shader_module: None,
+            texture_array_shader_module: None,
             uniform_layout,
             texture_layout,
+            texture_array_layout,
             pipelines,
             surface_format,
         }
@@ -381,6 +413,12 @@ impl PipelineManager {
     #[inline]
     pub fn texture_layout(&self) -> &wgpu::BindGroupLayout {
         &self.texture_layout
+    }
+
+    /// Returns the texture array bind group layout (for file icons).
+    #[inline]
+    pub fn texture_array_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.texture_array_layout
     }
 
     /// Gets or creates a render pipeline for the given primitive type.
@@ -413,6 +451,7 @@ impl PipelineManager {
             PipelineId::TexturedQuad => self.create_textured_quad_pipeline(device),
             PipelineId::Text => self.create_text_pipeline(device),
             PipelineId::Curve => self.create_curve_pipeline(device),
+            PipelineId::TextureArray => self.create_texture_array_pipeline(device),
             _ => panic!("Pipeline {id:?} should be created through specific methods"),
         }
     }
@@ -812,6 +851,76 @@ impl PipelineManager {
         })
     }
 
+    /// Creates the texture array rendering pipeline (for file icons).
+    ///
+    /// This pipeline renders textured quads from a texture array, enabling
+    /// batched rendering of file icons with a single draw call.
+    fn create_texture_array_pipeline(&mut self, device: &wgpu::Device) -> wgpu::RenderPipeline {
+        // Compile texture array shader module if not already done
+        if self.texture_array_shader_module.is_none() {
+            self.texture_array_shader_module =
+                Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("texture_array_shader"),
+                    source: wgpu::ShaderSource::Wgsl(TEXTURE_ARRAY_SHADER.into()),
+                }));
+        }
+
+        let texture_array_shader = self.texture_array_shader_module.as_ref().unwrap();
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("texture_array_pipeline_layout"),
+            bind_group_layouts: &[&self.uniform_layout, &self.texture_array_layout],
+            push_constant_ranges: &[],
+        });
+
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("texture_array_pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: texture_array_shader,
+                entry_point: Some("vs_texture_array"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[
+                    // Vertex buffer (position)
+                    wgpu::VertexBufferLayout {
+                        array_stride: 8,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &vertex_layouts::POSITION,
+                    },
+                    // Instance buffer
+                    wgpu::VertexBufferLayout {
+                        array_stride: vertex_layouts::strides::TEXTURE_ARRAY,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &vertex_layouts::TEXTURE_ARRAY_INSTANCE,
+                    },
+                ],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: texture_array_shader,
+                entry_point: Some("fs_texture_array"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: self.surface_format,
+                    blend: Some(alpha_blend_state()),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleStrip,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None,
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        })
+    }
+
     /// Returns whether a pipeline is already cached.
     #[inline]
     pub fn has_pipeline(&self, id: PipelineId) -> bool {
@@ -983,5 +1092,34 @@ mod tests {
         // segments (u32) at offset 52, location 7
         assert_eq!(attrs[6].offset, 52);
         assert_eq!(attrs[6].shader_location, 7);
+    }
+
+    #[test]
+    fn test_texture_array_instance_layout() {
+        let attrs = &vertex_layouts::TEXTURE_ARRAY_INSTANCE;
+        assert_eq!(attrs.len(), 4);
+
+        // bounds (vec4) at offset 0, location 1
+        assert_eq!(attrs[0].offset, 0);
+        assert_eq!(attrs[0].shader_location, 1);
+
+        // uv_bounds (vec4) at offset 16, location 2
+        assert_eq!(attrs[1].offset, 16);
+        assert_eq!(attrs[1].shader_location, 2);
+
+        // color (vec4) at offset 32, location 3
+        assert_eq!(attrs[2].offset, 32);
+        assert_eq!(attrs[2].shader_location, 3);
+
+        // layer (u32) at offset 48, location 4
+        assert_eq!(attrs[3].offset, 48);
+        assert_eq!(attrs[3].shader_location, 4);
+    }
+
+    #[test]
+    fn test_texture_array_stride() {
+        use vertex_layouts::strides;
+        // 4*4 (bounds) + 4*4 (uv_bounds) + 4*4 (color) + 4 (layer u32) = 52 bytes
+        assert_eq!(strides::TEXTURE_ARRAY, 52);
     }
 }

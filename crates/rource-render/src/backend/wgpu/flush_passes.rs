@@ -45,6 +45,8 @@ impl WgpuRenderer {
             .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.text_instances
             .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.file_icon_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.upload_textured_quads();
 
         // Upload font atlas texture to GPU (critical for text rendering!)
@@ -79,6 +81,7 @@ impl WgpuRenderer {
             self.flush_curves_pass(&mut render_pass, format);
             self.flush_quads_pass(&mut render_pass, format);
             self.flush_textured_quads_pass(&mut render_pass, format);
+            self.flush_texture_array_pass(&mut render_pass, format);
             self.flush_text_pass(&mut render_pass, format);
         }
 
@@ -89,6 +92,7 @@ impl WgpuRenderer {
         self.curve_instances.clear();
         self.quad_instances.clear();
         self.text_instances.clear();
+        self.file_icon_instances.clear();
         self.clear_textured_quads();
     }
 
@@ -428,5 +432,58 @@ impl WgpuRenderer {
                 InstanceBuffer::new(&self.device, 12, 100, "textured_quad_instances")
                 // 12 floats = 48 bytes
             })
+    }
+
+    /// Flushes texture array (file icon) draw calls within a render pass.
+    ///
+    /// This method renders all queued file icons in a single instanced draw call,
+    /// using the texture array to batch different file types together.
+    pub(super) fn flush_texture_array_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.file_icon_instances.is_empty() {
+            return;
+        }
+
+        // Need file icon array to be initialized
+        let Some(ref file_icon_array) = self.file_icon_array else {
+            return;
+        };
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        // Get or create pipeline
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::TextureArray);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::TextureArray, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        // Set bind groups
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_bind_group(1, file_icon_array.bind_group(), &[]);
+
+        // Set vertex and instance buffers
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.file_icon_instances.buffer().slice(..));
+
+        // Draw all file icons in one instanced call
+        let instance_count = self.file_icon_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.texture_array_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::TEXTURE_ARRAYS);
     }
 }

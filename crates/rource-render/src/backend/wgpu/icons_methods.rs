@@ -155,6 +155,94 @@ impl WgpuRenderer {
     pub fn file_icon_bind_group(&self) -> Option<&wgpu::BindGroup> {
         self.file_icon_array.as_ref().map(TextureArray::bind_group)
     }
+
+    /// Draws a file icon at the specified screen position.
+    ///
+    /// This method queues a textured quad for rendering using the texture array
+    /// pipeline. Icons are batched and rendered in a single draw call at flush time.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - Screen X coordinate (center of icon)
+    /// * `y` - Screen Y coordinate (center of icon)
+    /// * `size` - Icon size in pixels (width and height)
+    /// * `extension` - File extension to determine which icon layer to use
+    /// * `tint` - Optional color tint (multiplied with icon color)
+    ///
+    /// # Returns
+    ///
+    /// `true` if the icon was queued, `false` if file icons are not initialized.
+    #[inline]
+    pub fn draw_file_icon(
+        &mut self,
+        x: f32,
+        y: f32,
+        size: f32,
+        extension: &str,
+        tint: Option<Color>,
+    ) -> bool {
+        // Get layer index for this extension
+        let Some(layer) = self.get_file_icon_layer(extension) else {
+            return false;
+        };
+
+        let half = size * 0.5;
+        let color = tint.unwrap_or(Color::WHITE);
+
+        // Calculate bounds (min_x, min_y, max_x, max_y)
+        let bounds = [x - half, y - half, x + half, y + half];
+
+        // UV bounds for the entire icon (0 to 1)
+        let uv_bounds = [0.0f32, 0.0, 1.0, 1.0];
+
+        // Push instance data:
+        // bounds (4 floats) + uv_bounds (4 floats) + color (4 floats) + layer (1 u32)
+        self.file_icon_instances.push_raw(&bounds);
+        self.file_icon_instances.push_raw(&uv_bounds);
+        self.file_icon_instances
+            .push_raw(&[color.r, color.g, color.b, color.a]);
+        // Push layer as bits of f32 (will be reinterpreted as u32 in shader)
+        self.file_icon_instances.push_raw(&[f32::from_bits(layer)]);
+
+        true
+    }
+
+    /// Draws a file icon with explicit layer index.
+    ///
+    /// This is a lower-level variant that skips extension lookup.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - Screen X coordinate (center of icon)
+    /// * `y` - Screen Y coordinate (center of icon)
+    /// * `size` - Icon size in pixels
+    /// * `layer` - Texture array layer index
+    /// * `tint` - Color tint (multiplied with icon color)
+    #[inline]
+    pub fn draw_file_icon_with_layer(
+        &mut self,
+        x: f32,
+        y: f32,
+        size: f32,
+        layer: u32,
+        tint: Color,
+    ) {
+        let half = size * 0.5;
+
+        // Calculate bounds (min_x, min_y, max_x, max_y)
+        let bounds = [x - half, y - half, x + half, y + half];
+
+        // UV bounds for the entire icon (0 to 1)
+        let uv_bounds = [0.0f32, 0.0, 1.0, 1.0];
+
+        // Push instance data
+        self.file_icon_instances.push_raw(&bounds);
+        self.file_icon_instances.push_raw(&uv_bounds);
+        self.file_icon_instances
+            .push_raw(&[tint.r, tint.g, tint.b, tint.a]);
+        // Push layer as bits of f32 (will be reinterpreted as u32 in shader)
+        self.file_icon_instances.push_raw(&[f32::from_bits(layer)]);
+    }
 }
 
 #[cfg(test)]
