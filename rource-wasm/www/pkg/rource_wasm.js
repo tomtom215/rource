@@ -428,6 +428,19 @@ export class Rource {
         }
     }
     /**
+     * Returns the current GPU physics threshold.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * console.log('GPU physics threshold:', rource.getGPUPhysicsThreshold());
+     * ```
+     * @returns {number}
+     */
+    getGPUPhysicsThreshold() {
+        const ret = wasm.rource_getGPUPhysicsThreshold(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Gets the current layout configuration as a JSON string.
      *
      * Returns a JSON object with all layout parameters.
@@ -620,6 +633,39 @@ export class Rource {
      */
     isGPUAccelerated() {
         const ret = wasm.rource_isGPUAccelerated(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Returns whether GPU physics is currently active.
+     *
+     * This checks all conditions required for GPU physics:
+     * 1. GPU physics is enabled via `setUseGPUPhysics(true)`
+     * 2. wgpu backend is being used
+     * 3. Directory count exceeds threshold (if threshold > 0)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isGPUPhysicsActive()) {
+     *     console.log('GPU physics is running');
+     * }
+     * ```
+     * @returns {boolean}
+     */
+    isGPUPhysicsActive() {
+        const ret = wasm.rource_isGPUPhysicsActive(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Returns whether GPU physics is currently enabled.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * console.log('GPU physics:', rource.isGPUPhysicsEnabled());
+     * ```
+     * @returns {boolean}
+     */
+    isGPUPhysicsEnabled() {
+        const ret = wasm.rource_isGPUPhysicsEnabled(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -948,6 +994,32 @@ export class Rource {
         wasm.rource_setFontSize(this.__wbg_ptr, size);
     }
     /**
+     * Sets the directory count threshold for enabling GPU physics.
+     *
+     * When the scene has more directories than this threshold, GPU physics
+     * will be used (if enabled and wgpu backend is active).
+     *
+     * Set to 0 to always use GPU physics when enabled (ignores directory count).
+     *
+     * Default: 500 directories
+     *
+     * # Arguments
+     * * `threshold` - Minimum directory count to trigger GPU physics
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * // Use GPU physics for repos with 1000+ directories
+     * rource.setGPUPhysicsThreshold(1000);
+     *
+     * // Always use GPU physics when enabled (no threshold)
+     * rource.setGPUPhysicsThreshold(0);
+     * ```
+     * @param {number} threshold
+     */
+    setGPUPhysicsThreshold(threshold) {
+        wasm.rource_setGPUPhysicsThreshold(this.__wbg_ptr, threshold);
+    }
+    /**
      * Sets the layout preset for different repository sizes.
      *
      * # Presets
@@ -1000,6 +1072,33 @@ export class Rource {
         wasm.rource_setSpeed(this.__wbg_ptr, seconds_per_day);
     }
     /**
+     * Enables or disables GPU physics simulation.
+     *
+     * When enabled and using the wgpu backend, the force-directed physics
+     * simulation runs on the GPU using compute shaders. This provides
+     * significant performance improvements for large repositories (500+
+     * directories) where CPU physics becomes the bottleneck.
+     *
+     * **Note**: GPU physics only works with the wgpu backend. When using
+     * WebGL2 or Software renderers, this setting is ignored and CPU physics
+     * is always used.
+     *
+     * # Arguments
+     * * `enabled` - Whether to enable GPU physics
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     rource.setUseGPUPhysics(true);
+     *     console.log('GPU physics enabled');
+     * }
+     * ```
+     * @param {boolean} enabled
+     */
+    setUseGPUPhysics(enabled) {
+        wasm.rource_setUseGPUPhysics(this.__wbg_ptr, enabled);
+    }
+    /**
      * Steps backward to the previous commit.
      */
     stepBackward() {
@@ -1016,6 +1115,25 @@ export class Rource {
      */
     togglePlay() {
         wasm.rource_togglePlay(this.__wbg_ptr);
+    }
+    /**
+     * Warms up the GPU physics compute pipeline.
+     *
+     * Call this during initialization to pre-compile compute shaders
+     * and avoid first-frame stuttering when GPU physics is first used.
+     *
+     * **Note**: Only has an effect when using the wgpu backend.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     rource.warmupGPUPhysics();
+     *     rource.setUseGPUPhysics(true);
+     * }
+     * ```
+     */
+    warmupGPUPhysics() {
+        wasm.rource_warmupGPUPhysics(this.__wbg_ptr);
     }
     /**
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
@@ -1118,6 +1236,10 @@ function __wbg_get_imports() {
         },
         __wbg_attachShader_b36058e5c9eeaf54: function(arg0, arg1, arg2) {
             getObject(arg0).attachShader(getObject(arg1), getObject(arg2));
+        },
+        __wbg_beginComputePass_2061bb5db1032a35: function(arg0, arg1) {
+            const ret = getObject(arg0).beginComputePass(getObject(arg1));
+            return addHeapObject(ret);
         },
         __wbg_beginQuery_0fdf154e1da0e73d: function(arg0, arg1, arg2) {
             getObject(arg0).beginQuery(arg1 >>> 0, getObject(arg2));
@@ -1311,6 +1433,9 @@ function __wbg_get_imports() {
         __wbg_copyBufferSubData_a4f9815861ff0ae9: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).copyBufferSubData(arg1 >>> 0, arg2 >>> 0, arg3, arg4, arg5);
         },
+        __wbg_copyBufferToBuffer_e5b6f95a75ade65d: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5) {
+            getObject(arg0).copyBufferToBuffer(getObject(arg1), arg2, getObject(arg3), arg4, arg5);
+        }, arguments); },
         __wbg_copyTexSubImage2D_417a65926e3d2490: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
             getObject(arg0).copyTexSubImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
         },
@@ -1342,6 +1467,10 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbg_createCommandEncoder_92b1c283a0372974: function(arg0, arg1) {
             const ret = getObject(arg0).createCommandEncoder(getObject(arg1));
+            return addHeapObject(ret);
+        },
+        __wbg_createComputePipeline_4cdc84e4d346bd71: function(arg0, arg1) {
+            const ret = getObject(arg0).createComputePipeline(getObject(arg1));
             return addHeapObject(ret);
         },
         __wbg_createFramebuffer_41512c38358a41c4: function(arg0) {
@@ -1511,6 +1640,9 @@ function __wbg_get_imports() {
         __wbg_disable_bd37bdcca1764aea: function(arg0, arg1) {
             getObject(arg0).disable(arg1 >>> 0);
         },
+        __wbg_dispatchWorkgroups_89c6778d0518442a: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).dispatchWorkgroups(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0);
+        },
         __wbg_document_ee35a3d3ae34ef6c: function(arg0) {
             const ret = getObject(arg0).document;
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -1556,6 +1688,9 @@ function __wbg_get_imports() {
         },
         __wbg_endQuery_54f0627d4c931318: function(arg0, arg1) {
             getObject(arg0).endQuery(arg1 >>> 0);
+        },
+        __wbg_end_56b2d6d0610f9131: function(arg0) {
+            getObject(arg0).end();
         },
         __wbg_end_7ad26f2083234d67: function(arg0) {
             getObject(arg0).end();
@@ -1875,6 +2010,10 @@ function __wbg_get_imports() {
         __wbg_log_6b5ca2e6124b2808: function(arg0) {
             console.log(getObject(arg0));
         },
+        __wbg_mapAsync_0d9cf9d11808b275: function(arg0, arg1, arg2, arg3) {
+            const ret = getObject(arg0).mapAsync(arg1 >>> 0, arg2, arg3);
+            return addHeapObject(ret);
+        },
         __wbg_navigator_43be698ba96fc088: function(arg0) {
             const ret = getObject(arg0).navigator;
             return addHeapObject(ret);
@@ -1906,7 +2045,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6247(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6438(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2033,11 +2172,23 @@ function __wbg_get_imports() {
         __wbg_setBindGroup_306b5f43159153da: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
             getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2), getArrayU32FromWasm0(arg3, arg4), arg5, arg6 >>> 0);
         }, arguments); },
+        __wbg_setBindGroup_43392eaf8ea524fa: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+            getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2), getArrayU32FromWasm0(arg3, arg4), arg5, arg6 >>> 0);
+        }, arguments); },
+        __wbg_setBindGroup_b90f6f79c7be4f96: function(arg0, arg1, arg2) {
+            getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2));
+        },
         __wbg_setBindGroup_d3cd0c65d5718e66: function(arg0, arg1, arg2) {
             getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2));
         },
+        __wbg_setPipeline_e7c896fa93c7f292: function(arg0, arg1) {
+            getObject(arg0).setPipeline(getObject(arg1));
+        },
         __wbg_setPipeline_f44bbc63b7455235: function(arg0, arg1) {
             getObject(arg0).setPipeline(getObject(arg1));
+        },
+        __wbg_setScissorRect_b3ae2865d79457e5: function(arg0, arg1, arg2, arg3, arg4) {
+            getObject(arg0).setScissorRect(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, arg4 >>> 0);
         },
         __wbg_setVertexBuffer_5e5ec203042c0564: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).setVertexBuffer(arg1 >>> 0, getObject(arg2), arg3, arg4);
@@ -2097,6 +2248,9 @@ function __wbg_get_imports() {
         __wbg_set_base_mip_level_ff05f0742029fbd7: function(arg0, arg1) {
             getObject(arg0).baseMipLevel = arg1 >>> 0;
         },
+        __wbg_set_beginning_of_pass_write_index_90fab5f12cddf335: function(arg0, arg1) {
+            getObject(arg0).beginningOfPassWriteIndex = arg1 >>> 0;
+        },
         __wbg_set_beginning_of_pass_write_index_ad07a73147217513: function(arg0, arg1) {
             getObject(arg0).beginningOfPassWriteIndex = arg1 >>> 0;
         },
@@ -2141,6 +2295,9 @@ function __wbg_get_imports() {
         },
         __wbg_set_compare_b6bd133fd1c7206a: function(arg0, arg1) {
             getObject(arg0).compare = __wbindgen_enum_GpuCompareFunction[arg1];
+        },
+        __wbg_set_compute_edb2d4dd43759577: function(arg0, arg1) {
+            getObject(arg0).compute = getObject(arg1);
         },
         __wbg_set_count_6b3574238f446a02: function(arg0, arg1) {
             getObject(arg0).count = arg1 >>> 0;
@@ -2202,11 +2359,17 @@ function __wbg_get_imports() {
         __wbg_set_end_of_pass_write_index_82a42f6ec7d55754: function(arg0, arg1) {
             getObject(arg0).endOfPassWriteIndex = arg1 >>> 0;
         },
+        __wbg_set_end_of_pass_write_index_bd98b6c885176c21: function(arg0, arg1) {
+            getObject(arg0).endOfPassWriteIndex = arg1 >>> 0;
+        },
         __wbg_set_entries_136baaaafb25087f: function(arg0, arg1) {
             getObject(arg0).entries = getObject(arg1);
         },
         __wbg_set_entries_7c41d594195ebe78: function(arg0, arg1) {
             getObject(arg0).entries = getObject(arg1);
+        },
+        __wbg_set_entry_point_6f3d3792022065f4: function(arg0, arg1, arg2) {
+            getObject(arg0).entryPoint = getStringFromWasm0(arg1, arg2);
         },
         __wbg_set_entry_point_913e091cc9a07667: function(arg0, arg1, arg2) {
             getObject(arg0).entryPoint = getStringFromWasm0(arg1, arg2);
@@ -2277,6 +2440,9 @@ function __wbg_get_imports() {
         __wbg_set_label_3f988ca8291e319f: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
+        __wbg_set_label_4e4cb7e7f8cc2b59: function(arg0, arg1, arg2) {
+            getObject(arg0).label = getStringFromWasm0(arg1, arg2);
+        },
         __wbg_set_label_73d706a16d13a23c: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
@@ -2284,6 +2450,9 @@ function __wbg_get_imports() {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
         __wbg_set_label_8f9ebe053f8da7a0: function(arg0, arg1, arg2) {
+            getObject(arg0).label = getStringFromWasm0(arg1, arg2);
+        },
+        __wbg_set_label_a96e4bdaec7882ee: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
         __wbg_set_label_bfbd23fc748f8f94: function(arg0, arg1, arg2) {
@@ -2302,6 +2471,9 @@ function __wbg_get_imports() {
             getObject(arg0).layout = getObject(arg1);
         },
         __wbg_set_layout_0e88cce0b3d76c31: function(arg0, arg1) {
+            getObject(arg0).layout = getObject(arg1);
+        },
+        __wbg_set_layout_640caab7a290275b: function(arg0, arg1) {
             getObject(arg0).layout = getObject(arg1);
         },
         __wbg_set_load_op_6725bf0c5b509ae7: function(arg0, arg1) {
@@ -2343,6 +2515,9 @@ function __wbg_get_imports() {
         __wbg_set_mipmap_filter_00493c30d94b571e: function(arg0, arg1) {
             getObject(arg0).mipmapFilter = __wbindgen_enum_GpuMipmapFilterMode[arg1];
         },
+        __wbg_set_module_3b5d2caf4d494fba: function(arg0, arg1) {
+            getObject(arg0).module = getObject(arg1);
+        },
         __wbg_set_module_882651860e912779: function(arg0, arg1) {
             getObject(arg0).module = getObject(arg1);
         },
@@ -2380,6 +2555,9 @@ function __wbg_get_imports() {
             getObject(arg0).primitive = getObject(arg1);
         },
         __wbg_set_query_set_8441106911a3af36: function(arg0, arg1) {
+            getObject(arg0).querySet = getObject(arg1);
+        },
+        __wbg_set_query_set_9921033bb33d882c: function(arg0, arg1) {
             getObject(arg0).querySet = getObject(arg1);
         },
         __wbg_set_r_08c1678b22216ee0: function(arg0, arg1) {
@@ -2467,6 +2645,9 @@ function __wbg_get_imports() {
             getObject(arg0).texture = getObject(arg1);
         },
         __wbg_set_timestamp_writes_736aa6c2c69ccaea: function(arg0, arg1) {
+            getObject(arg0).timestampWrites = getObject(arg1);
+        },
+        __wbg_set_timestamp_writes_be461aab39b4e744: function(arg0, arg1) {
             getObject(arg0).timestampWrites = getObject(arg1);
         },
         __wbg_set_topology_84962f44b37e8986: function(arg0, arg1) {
@@ -2829,8 +3010,8 @@ function __wbg_get_imports() {
             getObject(arg0).writeTexture(getObject(arg1), getObject(arg2), getObject(arg3), getObject(arg4));
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 1778, function: Function { arguments: [Externref], shim_idx: 1779, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6192, __wasm_bindgen_func_elem_6193);
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 1851, function: Function { arguments: [Externref], shim_idx: 1852, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6383, __wasm_bindgen_func_elem_6384);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -2892,12 +3073,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_6193(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_6193(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_6384(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_6384(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6247(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6247(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6438(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6438(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 
