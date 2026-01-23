@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769171304867,
+  "lastUpdate": 1769173788312,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -857,6 +857,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1020158,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f153b7826295255fa0ff3273382165d2403c731d",
+          "message": "Merge pull request #132 from tomtom215/claude/optimize-wasm-webgpu-kaV6N\n\nAdd file icon rendering with texture array batching",
+          "timestamp": "2026-01-23T14:05:55+01:00",
+          "tree_id": "668fc6dc4bf6f4ad6a3f24b3aa4e6efd0f16554a",
+          "url": "https://github.com/tomtom215/rource/commit/f153b7826295255fa0ff3273382165d2403c731d"
+        },
+        "date": 1769173787387,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3880704,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2651602,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1021842,
             "unit": "bytes"
           }
         ]
