@@ -50,6 +50,269 @@ use rource_math::{Bounds, Vec2};
 
 use crate::animation::{Easing, Tween};
 
+// ============================================================================
+// Helper Functions (testable without Camera instance)
+// ============================================================================
+
+#[allow(dead_code)]
+mod helpers {
+    /// Calculates the lerp factor for smooth camera interpolation.
+    ///
+    /// The formula `1.0 - smoothness.powf(dt * 60.0)` produces a frame-rate
+    /// independent lerp factor that converges toward the target.
+    ///
+    /// # Arguments
+    /// * `smoothness` - Smoothness value (0.0 = instant, higher = slower)
+    /// * `dt` - Delta time in seconds
+    ///
+    /// # Returns
+    /// Lerp factor between 0.0 and 1.0.
+    #[inline]
+    #[must_use]
+    pub fn calculate_lerp_factor(smoothness: f32, dt: f32) -> f32 {
+        1.0 - smoothness.powf(dt * 60.0)
+    }
+
+    /// Calculates the zoom level needed to fit content within a viewport.
+    ///
+    /// # Arguments
+    /// * `viewport_width` - Viewport width in pixels
+    /// * `viewport_height` - Viewport height in pixels
+    /// * `content_width` - Content width in world units
+    /// * `content_height` - Content height in world units
+    /// * `padding` - Padding to add around content
+    ///
+    /// # Returns
+    /// Zoom level that fits content (uses smaller of width/height fit).
+    #[inline]
+    #[must_use]
+    pub fn calculate_fit_zoom(
+        viewport_width: f32,
+        viewport_height: f32,
+        content_width: f32,
+        content_height: f32,
+        padding: f32,
+    ) -> f32 {
+        let zoom_x = viewport_width / (content_width + padding * 2.0);
+        let zoom_y = viewport_height / (content_height + padding * 2.0);
+        zoom_x.min(zoom_y)
+    }
+
+    /// Clamps a zoom value to the valid range.
+    ///
+    /// # Arguments
+    /// * `zoom` - Zoom value to clamp
+    /// * `min_zoom` - Minimum allowed zoom
+    /// * `max_zoom` - Maximum allowed zoom
+    ///
+    /// # Returns
+    /// Clamped zoom value.
+    #[inline]
+    #[must_use]
+    pub fn clamp_zoom(zoom: f32, min_zoom: f32, max_zoom: f32) -> f32 {
+        zoom.clamp(min_zoom, max_zoom)
+    }
+
+    /// Calculates the half-size of the visible area in world units.
+    ///
+    /// # Arguments
+    /// * `viewport_width` - Viewport width in pixels
+    /// * `viewport_height` - Viewport height in pixels
+    /// * `zoom` - Current zoom level
+    ///
+    /// # Returns
+    /// Tuple of (`half_width`, `half_height`) in world units.
+    #[inline]
+    #[must_use]
+    pub fn visible_half_size(viewport_width: f32, viewport_height: f32, zoom: f32) -> (f32, f32) {
+        (
+            viewport_width / (2.0 * zoom),
+            viewport_height / (2.0 * zoom),
+        )
+    }
+
+    /// Checks if a position has effectively reached its target.
+    ///
+    /// # Arguments
+    /// * `current` - Current position
+    /// * `target` - Target position
+    /// * `threshold` - Distance threshold (default: 0.01)
+    ///
+    /// # Returns
+    /// `true` if the positions are within threshold distance.
+    #[inline]
+    #[must_use]
+    pub fn has_reached_target_position(
+        current_x: f32,
+        current_y: f32,
+        target_x: f32,
+        target_y: f32,
+        threshold: f32,
+    ) -> bool {
+        let dx = target_x - current_x;
+        let dy = target_y - current_y;
+        dx.hypot(dy) <= threshold
+    }
+
+    /// Checks if a zoom value has effectively reached its target.
+    ///
+    /// # Arguments
+    /// * `current` - Current zoom
+    /// * `target` - Target zoom
+    /// * `threshold` - Difference threshold (default: 0.001)
+    ///
+    /// # Returns
+    /// `true` if the zoom values are within threshold.
+    #[inline]
+    #[must_use]
+    pub fn has_reached_target_zoom(current: f32, target: f32, threshold: f32) -> bool {
+        (target - current).abs() <= threshold
+    }
+
+    /// Calculates the new zoom level after zooming in by a factor.
+    ///
+    /// # Arguments
+    /// * `current_zoom` - Current zoom level
+    /// * `factor` - Zoom factor (positive = zoom in)
+    /// * `zoom_speed` - Speed multiplier
+    ///
+    /// # Returns
+    /// New zoom level (not clamped).
+    #[inline]
+    #[must_use]
+    pub fn calculate_zoom_in(current_zoom: f32, factor: f32, zoom_speed: f32) -> f32 {
+        current_zoom * (1.0 + factor * zoom_speed)
+    }
+
+    /// Calculates the new zoom level after zooming out by a factor.
+    ///
+    /// # Arguments
+    /// * `current_zoom` - Current zoom level
+    /// * `factor` - Zoom factor (positive = zoom out)
+    /// * `zoom_speed` - Speed multiplier
+    ///
+    /// # Returns
+    /// New zoom level (not clamped).
+    #[inline]
+    #[must_use]
+    pub fn calculate_zoom_out(current_zoom: f32, factor: f32, zoom_speed: f32) -> f32 {
+        current_zoom / (1.0 + factor * zoom_speed)
+    }
+
+    /// Converts screen coordinates to world coordinates.
+    ///
+    /// # Arguments
+    /// * `screen_x` - Screen X coordinate
+    /// * `screen_y` - Screen Y coordinate
+    /// * `camera_x` - Camera position X
+    /// * `camera_y` - Camera position Y
+    /// * `viewport_width` - Viewport width
+    /// * `viewport_height` - Viewport height
+    /// * `zoom` - Camera zoom level
+    ///
+    /// # Returns
+    /// Tuple of (`world_x`, `world_y`).
+    #[inline]
+    #[must_use]
+    pub fn screen_to_world_coords(
+        screen_x: f32,
+        screen_y: f32,
+        camera_x: f32,
+        camera_y: f32,
+        viewport_width: f32,
+        viewport_height: f32,
+        zoom: f32,
+    ) -> (f32, f32) {
+        let centered_x = screen_x - viewport_width / 2.0;
+        let centered_y = screen_y - viewport_height / 2.0;
+        let world_x = camera_x + centered_x / zoom;
+        let world_y = camera_y + centered_y / zoom;
+        (world_x, world_y)
+    }
+
+    /// Converts world coordinates to screen coordinates.
+    ///
+    /// # Arguments
+    /// * `world_x` - World X coordinate
+    /// * `world_y` - World Y coordinate
+    /// * `camera_x` - Camera position X
+    /// * `camera_y` - Camera position Y
+    /// * `viewport_width` - Viewport width
+    /// * `viewport_height` - Viewport height
+    /// * `zoom` - Camera zoom level
+    ///
+    /// # Returns
+    /// Tuple of (`screen_x`, `screen_y`).
+    #[inline]
+    #[must_use]
+    pub fn world_to_screen_coords(
+        world_x: f32,
+        world_y: f32,
+        camera_x: f32,
+        camera_y: f32,
+        viewport_width: f32,
+        viewport_height: f32,
+        zoom: f32,
+    ) -> (f32, f32) {
+        let offset_x = world_x - camera_x;
+        let offset_y = world_y - camera_y;
+        let screen_x = offset_x * zoom + viewport_width / 2.0;
+        let screen_y = offset_y * zoom + viewport_height / 2.0;
+        (screen_x, screen_y)
+    }
+
+    /// Calculates the optimal zoom for a tracker to fit all positions.
+    ///
+    /// # Arguments
+    /// * `bounds_width` - Width of bounds containing positions
+    /// * `bounds_height` - Height of bounds containing positions
+    /// * `viewport_width` - Viewport width
+    /// * `viewport_height` - Viewport height
+    ///
+    /// # Returns
+    /// Optimal zoom level.
+    #[inline]
+    #[must_use]
+    pub fn calculate_tracker_zoom(
+        bounds_width: f32,
+        bounds_height: f32,
+        viewport_width: f32,
+        viewport_height: f32,
+    ) -> f32 {
+        let zoom_x = viewport_width / bounds_width;
+        let zoom_y = viewport_height / bounds_height;
+        zoom_x.min(zoom_y)
+    }
+
+    /// Validates smoothness value and clamps to valid range.
+    ///
+    /// # Arguments
+    /// * `smoothness` - Input smoothness value
+    ///
+    /// # Returns
+    /// Clamped smoothness value between 0.0 and 0.99.
+    #[inline]
+    #[must_use]
+    pub fn clamp_smoothness(smoothness: f32) -> f32 {
+        smoothness.clamp(0.0, 0.99)
+    }
+
+    /// Calculates interpolation progress for transition.
+    ///
+    /// # Arguments
+    /// * `t` - Progress value (0.0 to 1.0)
+    /// * `start` - Start value
+    /// * `end` - End value
+    ///
+    /// # Returns
+    /// Interpolated value.
+    #[inline]
+    #[must_use]
+    pub fn lerp(t: f32, start: f32, end: f32) -> f32 {
+        start + (end - start) * t
+    }
+}
+
 /// Default camera zoom level.
 pub const DEFAULT_ZOOM: f32 = 1.0;
 
@@ -637,6 +900,7 @@ impl CameraTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use helpers::*;
 
     const EPSILON: f32 = 0.01;
 
@@ -647,6 +911,213 @@ mod tests {
     fn vec2_approx_eq(a: Vec2, b: Vec2) -> bool {
         approx_eq(a.x, b.x) && approx_eq(a.y, b.y)
     }
+
+    // ========================================================================
+    // Helper Function Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_lerp_factor_zero_smoothness() {
+        let factor = calculate_lerp_factor(0.0, 0.016);
+        // Zero smoothness = instant movement (factor = 1.0)
+        assert!(approx_eq(factor, 1.0));
+    }
+
+    #[test]
+    fn test_calculate_lerp_factor_high_smoothness() {
+        let factor = calculate_lerp_factor(0.9, 0.016);
+        // High smoothness = slow movement (small factor)
+        assert!(factor > 0.0 && factor < 1.0);
+    }
+
+    #[test]
+    fn test_calculate_lerp_factor_frame_rate_independence() {
+        // Two frames at 60fps should equal one at 30fps roughly
+        let factor_60fps = calculate_lerp_factor(0.5, 1.0 / 60.0);
+        let factor_30fps = calculate_lerp_factor(0.5, 1.0 / 30.0);
+        assert!(factor_30fps > factor_60fps);
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_square() {
+        let zoom = calculate_fit_zoom(800.0, 800.0, 400.0, 400.0, 0.0);
+        assert!(approx_eq(zoom, 2.0));
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_wide_content() {
+        let zoom = calculate_fit_zoom(800.0, 600.0, 1600.0, 600.0, 0.0);
+        // Width is limiting factor: 800/1600 = 0.5
+        assert!(approx_eq(zoom, 0.5));
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_tall_content() {
+        let zoom = calculate_fit_zoom(800.0, 600.0, 400.0, 1200.0, 0.0);
+        // Height is limiting factor: 600/1200 = 0.5
+        assert!(approx_eq(zoom, 0.5));
+    }
+
+    #[test]
+    fn test_calculate_fit_zoom_with_padding() {
+        let zoom = calculate_fit_zoom(800.0, 600.0, 700.0, 500.0, 50.0);
+        // With 50px padding: 800/(700+100)=1.0, 600/(500+100)=1.0
+        assert!(approx_eq(zoom, 1.0));
+    }
+
+    #[test]
+    fn test_clamp_zoom_within_range() {
+        assert!(approx_eq(clamp_zoom(1.0, 0.1, 10.0), 1.0));
+    }
+
+    #[test]
+    fn test_clamp_zoom_below_min() {
+        assert!(approx_eq(clamp_zoom(0.01, 0.1, 10.0), 0.1));
+    }
+
+    #[test]
+    fn test_clamp_zoom_above_max() {
+        assert!(approx_eq(clamp_zoom(100.0, 0.1, 10.0), 10.0));
+    }
+
+    #[test]
+    fn test_visible_half_size_zoom_1() {
+        let (hw, hh) = visible_half_size(800.0, 600.0, 1.0);
+        assert!(approx_eq(hw, 400.0));
+        assert!(approx_eq(hh, 300.0));
+    }
+
+    #[test]
+    fn test_visible_half_size_zoom_2() {
+        let (hw, hh) = visible_half_size(800.0, 600.0, 2.0);
+        assert!(approx_eq(hw, 200.0));
+        assert!(approx_eq(hh, 150.0));
+    }
+
+    #[test]
+    fn test_has_reached_target_position_at_target() {
+        assert!(has_reached_target_position(100.0, 100.0, 100.0, 100.0, 0.01));
+    }
+
+    #[test]
+    fn test_has_reached_target_position_within_threshold() {
+        assert!(has_reached_target_position(100.0, 100.0, 100.005, 100.005, 0.01));
+    }
+
+    #[test]
+    fn test_has_reached_target_position_outside_threshold() {
+        assert!(!has_reached_target_position(100.0, 100.0, 101.0, 101.0, 0.01));
+    }
+
+    #[test]
+    fn test_has_reached_target_zoom_at_target() {
+        assert!(has_reached_target_zoom(1.0, 1.0, 0.001));
+    }
+
+    #[test]
+    fn test_has_reached_target_zoom_within_threshold() {
+        assert!(has_reached_target_zoom(1.0, 1.0005, 0.001));
+    }
+
+    #[test]
+    fn test_has_reached_target_zoom_outside_threshold() {
+        assert!(!has_reached_target_zoom(1.0, 1.5, 0.001));
+    }
+
+    #[test]
+    fn test_calculate_zoom_in() {
+        let new_zoom = calculate_zoom_in(1.0, 1.0, 0.1);
+        assert!(approx_eq(new_zoom, 1.1));
+    }
+
+    #[test]
+    fn test_calculate_zoom_out() {
+        let new_zoom = calculate_zoom_out(1.0, 1.0, 0.1);
+        // 1.0 / 1.1 ≈ 0.909
+        assert!(new_zoom < 1.0);
+    }
+
+    #[test]
+    fn test_screen_to_world_coords_center() {
+        let (wx, wy) = screen_to_world_coords(400.0, 300.0, 0.0, 0.0, 800.0, 600.0, 1.0);
+        assert!(approx_eq(wx, 0.0));
+        assert!(approx_eq(wy, 0.0));
+    }
+
+    #[test]
+    fn test_screen_to_world_coords_top_left() {
+        let (wx, wy) = screen_to_world_coords(0.0, 0.0, 0.0, 0.0, 800.0, 600.0, 1.0);
+        assert!(approx_eq(wx, -400.0));
+        assert!(approx_eq(wy, -300.0));
+    }
+
+    #[test]
+    fn test_screen_to_world_coords_with_zoom() {
+        let (wx, wy) = screen_to_world_coords(400.0, 300.0, 0.0, 0.0, 800.0, 600.0, 2.0);
+        assert!(approx_eq(wx, 0.0));
+        assert!(approx_eq(wy, 0.0));
+    }
+
+    #[test]
+    fn test_world_to_screen_coords_origin() {
+        let (sx, sy) = world_to_screen_coords(0.0, 0.0, 0.0, 0.0, 800.0, 600.0, 1.0);
+        assert!(approx_eq(sx, 400.0));
+        assert!(approx_eq(sy, 300.0));
+    }
+
+    #[test]
+    fn test_world_to_screen_coords_offset() {
+        let (sx, sy) = world_to_screen_coords(100.0, 50.0, 0.0, 0.0, 800.0, 600.0, 1.0);
+        assert!(approx_eq(sx, 500.0));
+        assert!(approx_eq(sy, 350.0));
+    }
+
+    #[test]
+    fn test_calculate_tracker_zoom_square() {
+        let zoom = calculate_tracker_zoom(400.0, 400.0, 800.0, 800.0);
+        assert!(approx_eq(zoom, 2.0));
+    }
+
+    #[test]
+    fn test_calculate_tracker_zoom_rectangular() {
+        let zoom = calculate_tracker_zoom(1600.0, 600.0, 800.0, 600.0);
+        // Width is limiting: 800/1600 = 0.5
+        assert!(approx_eq(zoom, 0.5));
+    }
+
+    #[test]
+    fn test_clamp_smoothness_valid() {
+        assert!(approx_eq(clamp_smoothness(0.5), 0.5));
+    }
+
+    #[test]
+    fn test_clamp_smoothness_below_min() {
+        assert!(approx_eq(clamp_smoothness(-0.5), 0.0));
+    }
+
+    #[test]
+    fn test_clamp_smoothness_above_max() {
+        assert!(approx_eq(clamp_smoothness(1.5), 0.99));
+    }
+
+    #[test]
+    fn test_lerp_start() {
+        assert!(approx_eq(lerp(0.0, 10.0, 20.0), 10.0));
+    }
+
+    #[test]
+    fn test_lerp_end() {
+        assert!(approx_eq(lerp(1.0, 10.0, 20.0), 20.0));
+    }
+
+    #[test]
+    fn test_lerp_middle() {
+        assert!(approx_eq(lerp(0.5, 10.0, 20.0), 15.0));
+    }
+
+    // ========================================================================
+    // Camera Tests (existing)
+    // ========================================================================
 
     #[test]
     fn test_camera_new() {

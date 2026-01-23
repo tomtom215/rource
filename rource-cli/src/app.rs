@@ -25,6 +25,167 @@ use crate::avatar;
 use crate::export;
 use crate::input::MouseState;
 
+// ============================================================================
+// Helper Functions (testable without App instance)
+// ============================================================================
+
+#[allow(dead_code)]
+mod helpers {
+    /// Parses a comma-separated list of usernames into a vector.
+    ///
+    /// Trims whitespace from each entry and filters out empty strings.
+    ///
+    /// # Arguments
+    /// * `input` - Comma-separated list of usernames
+    ///
+    /// # Returns
+    /// Vector of trimmed, non-empty usernames.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let users = parse_highlight_users("alice, bob, charlie");
+    /// assert_eq!(users, vec!["alice", "bob", "charlie"]);
+    /// ```
+    #[must_use]
+    pub fn parse_highlight_users(input: &str) -> Vec<String> {
+        input
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect()
+    }
+
+    /// Determines whether 3D camera mode should be enabled.
+    ///
+    /// 3D mode is enabled when the `--3d` flag is set AND the `--2d` flag
+    /// is not set (2D takes precedence).
+    ///
+    /// # Arguments
+    /// * `camera_3d_flag` - Whether `--3d` flag was passed
+    /// * `camera_2d_flag` - Whether `--2d` flag was passed
+    ///
+    /// # Returns
+    /// `true` if 3D camera should be used.
+    #[inline]
+    #[must_use]
+    pub fn should_enable_3d_camera(camera_3d_flag: bool, camera_2d_flag: bool) -> bool {
+        camera_3d_flag && !camera_2d_flag
+    }
+
+    /// Checks if the visualization has completed processing all commits.
+    ///
+    /// The visualization is complete when:
+    /// 1. There are commits loaded
+    /// 2. The current commit index is at or past the last commit
+    /// 3. The last applied commit matches or exceeds the current commit
+    ///
+    /// # Arguments
+    /// * `commits_len` - Total number of commits
+    /// * `current_commit` - Current commit index
+    /// * `last_applied_commit` - Index of last applied commit
+    ///
+    /// # Returns
+    /// `true` if visualization is complete.
+    #[inline]
+    #[must_use]
+    pub fn is_visualization_complete(
+        commits_len: usize,
+        current_commit: usize,
+        last_applied_commit: usize,
+    ) -> bool {
+        commits_len > 0
+            && current_commit >= commits_len.saturating_sub(1)
+            && last_applied_commit >= current_commit
+    }
+
+    /// Validates that bloom effect should be enabled.
+    ///
+    /// # Arguments
+    /// * `no_bloom_flag` - Whether `--no-bloom` flag was passed
+    ///
+    /// # Returns
+    /// `true` if bloom should be enabled (i.e., not disabled).
+    #[inline]
+    #[must_use]
+    pub fn should_enable_bloom(no_bloom_flag: bool) -> bool {
+        !no_bloom_flag
+    }
+
+    /// Validates that shadow effect should be enabled.
+    ///
+    /// # Arguments
+    /// * `shadows_flag` - Whether `--shadows` flag was passed
+    ///
+    /// # Returns
+    /// `true` if shadows should be enabled.
+    #[inline]
+    #[must_use]
+    pub fn should_enable_shadows(shadows_flag: bool) -> bool {
+        shadows_flag
+    }
+
+    /// Determines if output should be piped to stdout.
+    ///
+    /// # Arguments
+    /// * `output_path` - The output path string
+    ///
+    /// # Returns
+    /// `true` if output path is "-" (stdout).
+    #[inline]
+    #[must_use]
+    pub fn is_stdout_output(output_path: &str) -> bool {
+        output_path == "-"
+    }
+
+    /// Calculates the initial visibility buffer capacity based on expected size.
+    ///
+    /// Provides reasonable defaults that handle typical repository sizes
+    /// without excessive initial allocation.
+    ///
+    /// # Arguments
+    /// * `buffer_type` - Type of buffer ("dirs", "files", or "users")
+    ///
+    /// # Returns
+    /// Initial capacity for the buffer.
+    #[inline]
+    #[must_use]
+    pub fn initial_buffer_capacity(buffer_type: &str) -> usize {
+        match buffer_type {
+            "dirs" => 1000,
+            "files" => 5000,
+            // Default capacity for users and any unknown type
+            _ => 100,
+        }
+    }
+
+    /// Validates a playback speed value.
+    ///
+    /// # Arguments
+    /// * `seconds_per_day` - Seconds of real time per day of commit history
+    ///
+    /// # Returns
+    /// `true` if the speed is valid (positive and finite).
+    #[inline]
+    #[must_use]
+    pub fn is_valid_playback_speed(seconds_per_day: f32) -> bool {
+        seconds_per_day.is_finite() && seconds_per_day > 0.0
+    }
+
+    /// Validates a time scale value.
+    ///
+    /// # Arguments
+    /// * `time_scale` - The time scale multiplier
+    ///
+    /// # Returns
+    /// `true` if the time scale is valid (positive and finite).
+    #[inline]
+    #[must_use]
+    pub fn is_valid_time_scale(time_scale: f32) -> bool {
+        time_scale.is_finite() && time_scale > 0.0
+    }
+}
+
 /// Playback state for the visualization.
 #[derive(Debug, Clone)]
 pub struct PlaybackState {
@@ -371,7 +532,224 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use helpers::*;
     use rource_math::Vec2;
+
+    // ========================================================================
+    // Parse Highlight Users Tests
+    // ========================================================================
+
+    #[test]
+    fn test_parse_highlight_users_basic() {
+        let users = parse_highlight_users("alice,bob,charlie");
+        assert_eq!(users, vec!["alice", "bob", "charlie"]);
+    }
+
+    #[test]
+    fn test_parse_highlight_users_with_spaces() {
+        let users = parse_highlight_users("alice, bob , charlie");
+        assert_eq!(users, vec!["alice", "bob", "charlie"]);
+    }
+
+    #[test]
+    fn test_parse_highlight_users_empty() {
+        let users = parse_highlight_users("");
+        assert!(users.is_empty());
+    }
+
+    #[test]
+    fn test_parse_highlight_users_single() {
+        let users = parse_highlight_users("alice");
+        assert_eq!(users, vec!["alice"]);
+    }
+
+    #[test]
+    fn test_parse_highlight_users_empty_entries() {
+        let users = parse_highlight_users("alice,,bob,");
+        assert_eq!(users, vec!["alice", "bob"]);
+    }
+
+    #[test]
+    fn test_parse_highlight_users_only_spaces() {
+        let users = parse_highlight_users("  ,  ,  ");
+        assert!(users.is_empty());
+    }
+
+    // ========================================================================
+    // 3D Camera Mode Tests
+    // ========================================================================
+
+    #[test]
+    fn test_should_enable_3d_camera_both_false() {
+        assert!(!should_enable_3d_camera(false, false));
+    }
+
+    #[test]
+    fn test_should_enable_3d_camera_3d_only() {
+        assert!(should_enable_3d_camera(true, false));
+    }
+
+    #[test]
+    fn test_should_enable_3d_camera_2d_only() {
+        assert!(!should_enable_3d_camera(false, true));
+    }
+
+    #[test]
+    fn test_should_enable_3d_camera_both_true() {
+        // 2D takes precedence
+        assert!(!should_enable_3d_camera(true, true));
+    }
+
+    // ========================================================================
+    // Visualization Complete Tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_visualization_complete_empty() {
+        assert!(!is_visualization_complete(0, 0, 0));
+    }
+
+    #[test]
+    fn test_is_visualization_complete_single_commit() {
+        assert!(is_visualization_complete(1, 0, 0));
+    }
+
+    #[test]
+    fn test_is_visualization_complete_in_progress() {
+        assert!(!is_visualization_complete(10, 5, 5));
+    }
+
+    #[test]
+    fn test_is_visualization_complete_at_end() {
+        assert!(is_visualization_complete(10, 9, 9));
+    }
+
+    #[test]
+    fn test_is_visualization_complete_last_not_applied() {
+        assert!(!is_visualization_complete(10, 9, 8));
+    }
+
+    // ========================================================================
+    // Effect Enable Tests
+    // ========================================================================
+
+    #[test]
+    fn test_should_enable_bloom_default() {
+        assert!(should_enable_bloom(false));
+    }
+
+    #[test]
+    fn test_should_enable_bloom_disabled() {
+        assert!(!should_enable_bloom(true));
+    }
+
+    #[test]
+    fn test_should_enable_shadows_default() {
+        assert!(!should_enable_shadows(false));
+    }
+
+    #[test]
+    fn test_should_enable_shadows_enabled() {
+        assert!(should_enable_shadows(true));
+    }
+
+    // ========================================================================
+    // Stdout Output Tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_stdout_output_dash() {
+        assert!(is_stdout_output("-"));
+    }
+
+    #[test]
+    fn test_is_stdout_output_path() {
+        assert!(!is_stdout_output("/tmp/output"));
+    }
+
+    #[test]
+    fn test_is_stdout_output_relative() {
+        assert!(!is_stdout_output("output"));
+    }
+
+    // ========================================================================
+    // Buffer Capacity Tests
+    // ========================================================================
+
+    #[test]
+    fn test_initial_buffer_capacity_dirs() {
+        assert_eq!(initial_buffer_capacity("dirs"), 1000);
+    }
+
+    #[test]
+    fn test_initial_buffer_capacity_files() {
+        assert_eq!(initial_buffer_capacity("files"), 5000);
+    }
+
+    #[test]
+    fn test_initial_buffer_capacity_default() {
+        // Users and unknown types use default capacity
+        assert_eq!(initial_buffer_capacity("users"), 100);
+        assert_eq!(initial_buffer_capacity("unknown"), 100);
+        assert_eq!(initial_buffer_capacity(""), 100);
+    }
+
+    // ========================================================================
+    // Playback Speed Validation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_valid_playback_speed_positive() {
+        assert!(is_valid_playback_speed(10.0));
+    }
+
+    #[test]
+    fn test_is_valid_playback_speed_zero() {
+        assert!(!is_valid_playback_speed(0.0));
+    }
+
+    #[test]
+    fn test_is_valid_playback_speed_negative() {
+        assert!(!is_valid_playback_speed(-5.0));
+    }
+
+    #[test]
+    fn test_is_valid_playback_speed_infinity() {
+        assert!(!is_valid_playback_speed(f32::INFINITY));
+    }
+
+    #[test]
+    fn test_is_valid_playback_speed_nan() {
+        assert!(!is_valid_playback_speed(f32::NAN));
+    }
+
+    // ========================================================================
+    // Time Scale Validation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_valid_time_scale_positive() {
+        assert!(is_valid_time_scale(1.0));
+    }
+
+    #[test]
+    fn test_is_valid_time_scale_zero() {
+        assert!(!is_valid_time_scale(0.0));
+    }
+
+    #[test]
+    fn test_is_valid_time_scale_negative() {
+        assert!(!is_valid_time_scale(-1.0));
+    }
+
+    #[test]
+    fn test_is_valid_time_scale_large() {
+        assert!(is_valid_time_scale(100.0));
+    }
+
+    // ========================================================================
+    // PlaybackState and App Tests (existing)
+    // ========================================================================
 
     #[test]
     fn test_playback_state_default() {
