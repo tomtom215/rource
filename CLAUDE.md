@@ -2162,7 +2162,7 @@ pub fn clamp_branch_depth_fade(fade: f32) -> f32       // [0.0, 1.0]
 4. **Documentation**: Helper functions serve as self-documenting specification
 5. **Reusability**: Helper functions can be used by both WASM and native code
 
-**Test Count**: 1,340 tests passing (213 in rource-wasm alone)
+**Test Count**: 1,545 tests passing (359 in rource-wasm alone)
 
 ### Scene Module Refactoring (2026-01-22)
 
@@ -3101,4 +3101,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-23 (Refactored render_phases.rs with pure functions, 59 new tests - 1,399 tests total)*
+*Last updated: 2026-01-23 (Extended pure function extraction to CLI rendering, WASM lib, and interaction modules - 1,545 tests total)*

@@ -114,6 +114,192 @@ use render_phases::{
 };
 
 // ============================================================================
+// Pure Helper Functions (testable without Rource instance)
+// ============================================================================
+
+// ---- Frame Timing Helpers ----
+
+/// Computes the frame delta time from timestamps (in seconds).
+///
+/// Returns a reasonable default (1/60s) if last_frame_time is 0.
+#[inline]
+#[must_use]
+pub fn compute_frame_dt(timestamp: f64, last_frame_time: f64) -> f32 {
+    if last_frame_time > 0.0 {
+        ((timestamp - last_frame_time) / 1000.0) as f32
+    } else {
+        1.0 / 60.0
+    }
+}
+
+/// Clamps delta time to avoid huge jumps (e.g., after tab switch).
+#[inline]
+#[must_use]
+pub fn clamp_dt(dt: f32, max_dt: f32) -> f32 {
+    dt.min(max_dt)
+}
+
+/// Default maximum delta time (100ms = 10 FPS minimum).
+pub const MAX_FRAME_DT: f32 = 0.1;
+
+// ---- Auto-Fit Camera Helpers ----
+
+/// Padding factor for bounds when fitting camera (1.2 = 20% padding).
+pub const AUTO_FIT_PADDING: f32 = 1.2;
+
+/// Threshold for zoom adjustment (5% = only zoom out if needed by more than 5%).
+pub const ZOOM_ADJUSTMENT_THRESHOLD: f32 = 0.95;
+
+/// Threshold distance for panning (in world units).
+pub const PAN_THRESHOLD: f32 = 10.0;
+
+/// Rate of smooth zoom adjustment per second.
+pub const ZOOM_RATE: f32 = 2.0;
+
+/// Rate of smooth pan adjustment per second.
+pub const PAN_RATE: f32 = 2.0;
+
+/// Maximum interpolation factor per frame (caps adjustment speed).
+pub const MAX_INTERPOLATION_FACTOR: f32 = 0.15;
+
+/// Computes the target zoom to fit bounds within screen.
+///
+/// Returns the minimum of x and y zoom ratios, clamped to the specified range.
+#[inline]
+#[must_use]
+pub fn compute_target_zoom(
+    bounds_width: f32,
+    bounds_height: f32,
+    screen_width: f32,
+    screen_height: f32,
+    min_zoom: f32,
+    max_zoom: f32,
+) -> f32 {
+    if bounds_width <= 0.0 || bounds_height <= 0.0 {
+        return min_zoom;
+    }
+    let zoom_x = screen_width / bounds_width;
+    let zoom_y = screen_height / bounds_height;
+    zoom_x.min(zoom_y).clamp(min_zoom, max_zoom)
+}
+
+/// Determines if zooming out is needed (only zoom out, never auto zoom in).
+#[inline]
+#[must_use]
+pub fn is_zoom_out_needed(target_zoom: f32, current_zoom: f32, threshold: f32) -> bool {
+    target_zoom < current_zoom * threshold
+}
+
+/// Computes the interpolation factor for smooth animation.
+#[inline]
+#[must_use]
+pub fn compute_interpolation_factor(rate: f32, dt: f32, max_t: f32) -> f32 {
+    (rate * dt).min(max_t)
+}
+
+/// Computes a smoothly interpolated zoom value.
+#[inline]
+#[must_use]
+pub fn compute_smooth_zoom(current: f32, target: f32, rate: f32, dt: f32, max_t: f32) -> f32 {
+    let t = compute_interpolation_factor(rate, dt, max_t);
+    current + (target - current) * t
+}
+
+/// Determines if panning is needed (distance exceeds threshold).
+#[inline]
+#[must_use]
+pub fn is_pan_needed(distance: f32, threshold: f32) -> bool {
+    distance > threshold
+}
+
+/// Computes a smoothly interpolated position.
+#[inline]
+#[must_use]
+pub fn compute_smooth_position(current: Vec2, target: Vec2, rate: f32, dt: f32, max_t: f32) -> Vec2 {
+    let t = compute_interpolation_factor(rate, dt, max_t);
+    current + (target - current) * t
+}
+
+/// Computes padded bounds dimensions.
+#[inline]
+#[must_use]
+pub fn compute_padded_dimensions(width: f32, height: f32, padding: f32) -> (f32, f32) {
+    (width * padding, height * padding)
+}
+
+// ---- GPU Feature Decision Helpers ----
+
+/// Determines if GPU physics should be used based on configuration and scene size.
+///
+/// Returns true if:
+/// 1. GPU physics is enabled
+/// 2. The renderer type supports compute (wgpu only)
+/// 3. Directory count meets or exceeds the threshold (0 = always use)
+#[inline]
+#[must_use]
+pub fn should_enable_gpu_physics(
+    enabled: bool,
+    is_wgpu: bool,
+    directory_count: usize,
+    threshold: usize,
+) -> bool {
+    if !enabled || !is_wgpu {
+        return false;
+    }
+    threshold == 0 || directory_count >= threshold
+}
+
+/// Determines if GPU culling should be used based on configuration and entity count.
+///
+/// Returns true if:
+/// 1. GPU culling is enabled
+/// 2. The renderer type supports compute (wgpu only)
+/// 3. Entity count meets or exceeds the threshold (0 = always use)
+#[inline]
+#[must_use]
+pub fn should_enable_gpu_culling(
+    enabled: bool,
+    is_wgpu: bool,
+    entity_count: usize,
+    threshold: usize,
+) -> bool {
+    if !enabled || !is_wgpu {
+        return false;
+    }
+    threshold == 0 || entity_count >= threshold
+}
+
+/// Computes the total entity count for GPU culling threshold check.
+#[inline]
+#[must_use]
+pub fn compute_total_entity_count(file_count: usize, user_count: usize, dir_count: usize) -> usize {
+    file_count + user_count + dir_count
+}
+
+// ---- Playback Helpers ----
+
+/// Determines if playback has more frames to process.
+#[inline]
+#[must_use]
+pub fn has_more_frames(is_playing: bool, current_commit: usize, total_commits: usize) -> bool {
+    is_playing || current_commit < total_commits
+}
+
+/// Determines if a commit should be applied (handles initial commit case).
+#[inline]
+#[must_use]
+pub fn should_apply_commit(current_commit: usize, last_applied: usize) -> bool {
+    current_commit > last_applied || (last_applied == 0 && current_commit == 0)
+}
+
+/// Determines if playback should stop (reached end).
+#[inline]
+#[must_use]
+pub fn should_stop_playback(current_commit: usize, total_commits: usize) -> bool {
+    current_commit >= total_commits
+}
+
+// ============================================================================
 // WASM Initialization
 // ============================================================================
 
@@ -969,7 +1155,12 @@ impl Rource {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use rource_math::Color;
+
+    // ========================================================================
+    // Existing Color Tests
+    // ========================================================================
 
     #[test]
     fn test_color_from_hex() {
@@ -1001,5 +1192,310 @@ mod tests {
         assert!((color.r - 1.0).abs() < 0.01);
         assert!((color.g - 1.0).abs() < 0.01);
         assert!((color.b - 1.0).abs() < 0.01);
+    }
+
+    // ========================================================================
+    // Frame Timing Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_frame_dt_normal() {
+        // 16.67ms between frames = 60 FPS
+        let dt = compute_frame_dt(1016.67, 1000.0);
+        assert!((dt - 0.01667).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_frame_dt_first_frame() {
+        // First frame (last_frame_time = 0) should return default 1/60
+        let dt = compute_frame_dt(1000.0, 0.0);
+        assert!((dt - 1.0 / 60.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_frame_dt_slow() {
+        // 100ms between frames = 10 FPS
+        let dt = compute_frame_dt(1100.0, 1000.0);
+        assert!((dt - 0.1).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_dt_normal() {
+        assert!((clamp_dt(0.016, 0.1) - 0.016).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_dt_clamped() {
+        assert!((clamp_dt(0.5, 0.1) - 0.1).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_max_frame_dt_constant() {
+        assert!((MAX_FRAME_DT - 0.1).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Auto-Fit Camera Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compute_target_zoom_fit_width() {
+        // Bounds: 1000x500, Screen: 800x600
+        // zoom_x = 800/1000 = 0.8, zoom_y = 600/500 = 1.2
+        // Should use min (0.8)
+        let zoom = compute_target_zoom(1000.0, 500.0, 800.0, 600.0, 0.01, 10.0);
+        assert!((zoom - 0.8).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_target_zoom_fit_height() {
+        // Bounds: 500x1000, Screen: 800x600
+        // zoom_x = 800/500 = 1.6, zoom_y = 600/1000 = 0.6
+        // Should use min (0.6)
+        let zoom = compute_target_zoom(500.0, 1000.0, 800.0, 600.0, 0.01, 10.0);
+        assert!((zoom - 0.6).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_target_zoom_clamped_min() {
+        // Very large bounds, zoom would be very small
+        let zoom = compute_target_zoom(100000.0, 100000.0, 800.0, 600.0, 0.01, 10.0);
+        assert!((zoom - 0.01).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_target_zoom_clamped_max() {
+        // Very small bounds, zoom would be very large
+        let zoom = compute_target_zoom(1.0, 1.0, 800.0, 600.0, 0.01, 10.0);
+        assert!((zoom - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_target_zoom_zero_bounds() {
+        // Invalid bounds should return min_zoom
+        let zoom = compute_target_zoom(0.0, 0.0, 800.0, 600.0, 0.03, 10.0);
+        assert!((zoom - 0.03).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_is_zoom_out_needed_yes() {
+        // Target 0.5, current 1.0, threshold 0.95
+        // 0.5 < 1.0 * 0.95 = 0.95 -> true
+        assert!(is_zoom_out_needed(0.5, 1.0, 0.95));
+    }
+
+    #[test]
+    fn test_is_zoom_out_needed_no() {
+        // Target 0.96, current 1.0, threshold 0.95
+        // 0.96 < 1.0 * 0.95 = 0.95 -> false
+        assert!(!is_zoom_out_needed(0.96, 1.0, 0.95));
+    }
+
+    #[test]
+    fn test_is_zoom_out_needed_equal() {
+        // Target equals threshold boundary
+        assert!(!is_zoom_out_needed(0.95, 1.0, 0.95));
+    }
+
+    #[test]
+    fn test_compute_interpolation_factor_normal() {
+        let t = compute_interpolation_factor(2.0, 0.016, 0.15);
+        assert!((t - 0.032).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_interpolation_factor_capped() {
+        let t = compute_interpolation_factor(2.0, 0.5, 0.15);
+        assert!((t - 0.15).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_smooth_zoom() {
+        // current=1.0, target=0.5, interpolating toward target
+        let new_zoom = compute_smooth_zoom(1.0, 0.5, 2.0, 0.016, 0.15);
+        // t = 0.032, new = 1.0 + (0.5 - 1.0) * 0.032 = 1.0 - 0.016 = 0.984
+        assert!((new_zoom - 0.984).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_is_pan_needed_yes() {
+        assert!(is_pan_needed(15.0, 10.0));
+    }
+
+    #[test]
+    fn test_is_pan_needed_no() {
+        assert!(!is_pan_needed(5.0, 10.0));
+    }
+
+    #[test]
+    fn test_is_pan_needed_boundary() {
+        assert!(!is_pan_needed(10.0, 10.0));
+    }
+
+    #[test]
+    fn test_compute_smooth_position() {
+        let current = Vec2::new(100.0, 100.0);
+        let target = Vec2::new(200.0, 150.0);
+        let new_pos = compute_smooth_position(current, target, 2.0, 0.016, 0.15);
+        // t = 0.032
+        // new_x = 100 + (200-100) * 0.032 = 103.2
+        // new_y = 100 + (150-100) * 0.032 = 101.6
+        assert!((new_pos.x - 103.2).abs() < 0.1);
+        assert!((new_pos.y - 101.6).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_compute_padded_dimensions() {
+        let (w, h) = compute_padded_dimensions(100.0, 50.0, 1.2);
+        assert!((w - 120.0).abs() < 0.001);
+        assert!((h - 60.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_auto_fit_padding_constant() {
+        assert!((AUTO_FIT_PADDING - 1.2).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_zoom_adjustment_threshold_constant() {
+        assert!((ZOOM_ADJUSTMENT_THRESHOLD - 0.95).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_pan_threshold_constant() {
+        assert!((PAN_THRESHOLD - 10.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // GPU Feature Decision Tests
+    // ========================================================================
+
+    #[test]
+    fn test_should_enable_gpu_physics_disabled() {
+        assert!(!should_enable_gpu_physics(false, true, 1000, 500));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_physics_not_wgpu() {
+        assert!(!should_enable_gpu_physics(true, false, 1000, 500));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_physics_below_threshold() {
+        assert!(!should_enable_gpu_physics(true, true, 100, 500));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_physics_at_threshold() {
+        assert!(should_enable_gpu_physics(true, true, 500, 500));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_physics_above_threshold() {
+        assert!(should_enable_gpu_physics(true, true, 1000, 500));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_physics_zero_threshold() {
+        // Zero threshold means always use when enabled
+        assert!(should_enable_gpu_physics(true, true, 1, 0));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_culling_disabled() {
+        assert!(!should_enable_gpu_culling(false, true, 15000, 10000));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_culling_not_wgpu() {
+        assert!(!should_enable_gpu_culling(true, false, 15000, 10000));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_culling_below_threshold() {
+        assert!(!should_enable_gpu_culling(true, true, 5000, 10000));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_culling_at_threshold() {
+        assert!(should_enable_gpu_culling(true, true, 10000, 10000));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_culling_above_threshold() {
+        assert!(should_enable_gpu_culling(true, true, 15000, 10000));
+    }
+
+    #[test]
+    fn test_should_enable_gpu_culling_zero_threshold() {
+        assert!(should_enable_gpu_culling(true, true, 1, 0));
+    }
+
+    #[test]
+    fn test_compute_total_entity_count() {
+        let total = compute_total_entity_count(1000, 50, 200);
+        assert_eq!(total, 1250);
+    }
+
+    #[test]
+    fn test_compute_total_entity_count_zero() {
+        let total = compute_total_entity_count(0, 0, 0);
+        assert_eq!(total, 0);
+    }
+
+    // ========================================================================
+    // Playback Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_has_more_frames_playing() {
+        assert!(has_more_frames(true, 0, 100));
+    }
+
+    #[test]
+    fn test_has_more_frames_not_playing_more_commits() {
+        assert!(has_more_frames(false, 50, 100));
+    }
+
+    #[test]
+    fn test_has_more_frames_done() {
+        assert!(!has_more_frames(false, 100, 100));
+    }
+
+    #[test]
+    fn test_should_apply_commit_first() {
+        // First commit (both 0)
+        assert!(should_apply_commit(0, 0));
+    }
+
+    #[test]
+    fn test_should_apply_commit_new() {
+        assert!(should_apply_commit(5, 4));
+    }
+
+    #[test]
+    fn test_should_apply_commit_already_applied() {
+        assert!(!should_apply_commit(5, 5));
+    }
+
+    #[test]
+    fn test_should_apply_commit_earlier() {
+        // Current is before last_applied (e.g., seeking backward)
+        assert!(!should_apply_commit(3, 5));
+    }
+
+    #[test]
+    fn test_should_stop_playback_end() {
+        assert!(should_stop_playback(100, 100));
+    }
+
+    #[test]
+    fn test_should_stop_playback_past_end() {
+        assert!(should_stop_playback(150, 100));
+    }
+
+    #[test]
+    fn test_should_stop_playback_not_yet() {
+        assert!(!should_stop_playback(50, 100));
     }
 }
