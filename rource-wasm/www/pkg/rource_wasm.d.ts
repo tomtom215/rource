@@ -758,9 +758,9 @@ export interface InitOutput {
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_6383: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6438: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6384: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_6377: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6435: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6378: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
