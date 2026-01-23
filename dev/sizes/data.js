@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769127063093,
+  "lastUpdate": 1769128619973,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -623,6 +623,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 974854,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f78ea0c6003b8dd87d9db728b82f8c10a222ac18",
+          "message": "Merge pull request #126 from tomtom215/claude/wasm-webgpu-optimization-phase2-JY5ZB\n\nEliminate texture cloning in software renderer using split borrows",
+          "timestamp": "2026-01-23T01:33:17+01:00",
+          "tree_id": "39674ed6bf97ed2bf08e80f257a0062d756e3a5b",
+          "url": "https://github.com/tomtom215/rource/commit/f78ea0c6003b8dd87d9db728b82f8c10a222ac18"
+        },
+        "date": 1769128619551,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3877984,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2524485,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 974983,
             "unit": "bytes"
           }
         ]
