@@ -57,11 +57,11 @@ rource/
 ├── crates/
 │   ├── rource-math/      # Math types (Vec2, Vec3, Vec4, Mat3, Mat4, Color, etc.) [144 tests]
 │   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom format, compact storage) [150 tests]
-│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [295 tests]
-│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [379 tests]
-├── rource-cli/           # Native CLI application (winit + softbuffer) [97 tests]
-└── rource-wasm/          # WebAssembly application [272 tests]
-                          # Plus 62 integration/doc tests = 1,399 total
+│   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [328 tests]
+│   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [425 tests]
+├── rource-cli/           # Native CLI application (winit + softbuffer) [325 tests]
+└── rource-wasm/          # WebAssembly application [375 tests]
+                          # Plus 74 integration/doc tests = 1,821 total
 ```
 
 ### Rendering Backends
@@ -2811,6 +2811,73 @@ Successfully implemented headless rendering mode for batch video export. Key lea
 - **Scene Bounds vs Entity Bounds**: `scene.bounds()` returns the spatial index bounds, not entity bounds. Use `scene.compute_entity_bounds()` for actual entity positions.
 - **Camera Smoothing**: Camera uses lerp interpolation by default. For immediate positioning, use `jump_to()` + `set_zoom()` instead of `fit_to_bounds()`.
 
+### Benchmark Mode and Timing Precision (2026-01-23)
+
+Added `--benchmark` flag for auditable nanosecond-precision performance measurement.
+
+#### CLI Benchmark Mode
+
+The CLI provides true nanosecond precision using `std::time::Instant`:
+
+```bash
+# Run benchmark with JSON output
+./target/release/rource --headless --benchmark --output /tmp/frames --seconds-per-day 0.1 .
+
+# Output example (JSON to stdout):
+{"frames":600,"total_ns":5234567890,"avg_frame_ns":8724279,"min_frame_ns":7123456,
+"max_frame_ns":15234567,"p50_frame_ns":8456789,"p95_frame_ns":12345678,
+"p99_frame_ns":14567890,"phases":{"commit_apply_ns":123456789,"scene_update_ns":234567890,
+"render_ns":345678901,"effects_ns":456789012,"export_ns":567890123},
+"commits_applied":50,"scene":{"files":200,"users":10,"directories":25}}
+```
+
+**Benchmark Output Fields:**
+
+| Field | Description |
+|-------|-------------|
+| `frames` | Total frames rendered |
+| `total_ns` | Total rendering time (nanoseconds) |
+| `avg_frame_ns` | Average frame time (nanoseconds) |
+| `min_frame_ns` | Minimum frame time |
+| `max_frame_ns` | Maximum frame time |
+| `p50_frame_ns` | 50th percentile (median) frame time |
+| `p95_frame_ns` | 95th percentile frame time |
+| `p99_frame_ns` | 99th percentile frame time |
+| `phases.*` | Per-phase timing breakdown |
+| `scene.*` | Scene statistics |
+
+**Precision Characteristics:**
+
+| Platform | Timer | Precision | Source |
+|----------|-------|-----------|--------|
+| Native CLI | `std::time::Instant` | ~nanosecond | OS monotonic clock |
+| WASM (Chrome) | `performance.now()` | ~5µs | Spectre mitigation |
+| WASM (Firefox) | `performance.now()` | ~20µs | Spectre mitigation |
+| WASM (Safari) | `performance.now()` | ~100µs | `WebKit` security |
+
+**Important Notes:**
+- WASM cannot achieve true nanosecond precision due to browser security mitigations
+- For auditable benchmarks, always use the native CLI with `--benchmark`
+- The CLI uses deterministic fixed time step (`dt = 1.0 / framerate`) for reproducibility
+- Progress output is suppressed in benchmark mode for clean JSON output
+
+#### WASM Performance Display
+
+The WASM demo displays frame time with adaptive precision:
+
+| Frame Time | Display Format |
+|------------|----------------|
+| < 1ms | `XXXµs` (e.g., "789µs") |
+| 1-10ms | `X.XXXms` (e.g., "2.345ms") |
+| ≥ 10ms | `XX.XXms` (e.g., "16.67ms") |
+
+**CRITICAL**: WASM frame timing separates measurement from simulation:
+- `raw_dt`: Actual measured frame time (used for performance display)
+- `dt`: Clamped frame time (max 100ms, used for physics simulation)
+
+This ensures performance displays are honest and show actual stutters, while physics
+remains stable even during frame drops.
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3273,4 +3340,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-23 (Phase 22: O(N) GPU spatial hash physics with Blelloch prefix sum - 1,814 tests total)*
+*Last updated: 2026-01-23 (Phase 23: CLI Benchmark Mode with nanosecond timing precision - 1,821 tests total)*
