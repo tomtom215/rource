@@ -11,7 +11,7 @@ import { getElement, getAllElements } from '../dom.js';
 import { showToast } from '../toast.js';
 import { CONFIG } from '../config.js';
 import { loadLogData, loadRourceData, detectLogFormat } from '../data-loader.js';
-import { fetchGitHubWithProgress, parseGitHubUrl } from '../github-fetch.js';
+import { fetchGitHubWithProgress, parseGitHubUrl, getRateLimitStatus } from '../github-fetch.js';
 import { ROURCE_STATS, setAdditionalCommits } from '../cached-data.js';
 import { formatBytes } from '../utils.js';
 
@@ -198,6 +198,50 @@ function initLoadFileButton() {
 }
 
 /**
+ * Updates the rate limit status display in the UI.
+ */
+function updateRateLimitStatusUI() {
+    const elements = getAllElements();
+    const statusEl = elements.rateLimitStatus;
+    if (!statusEl) return;
+
+    const status = getRateLimitStatus();
+
+    // Remove all status classes
+    statusEl.classList.remove('ok', 'low', 'exhausted', 'hidden');
+
+    if (status.isExhausted) {
+        statusEl.className = 'rate-limit-status exhausted';
+        statusEl.innerHTML = `
+            <svg class="rate-limit-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span>Rate limit exhausted. Resets at ${status.resetTime?.toLocaleTimeString() || 'soon'}.</span>
+        `;
+    } else if (status.isLow) {
+        statusEl.className = 'rate-limit-status low';
+        statusEl.innerHTML = `
+            <svg class="rate-limit-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+            </svg>
+            <span>Low API quota: ${status.remaining}/${status.limit} requests remaining.</span>
+        `;
+    } else if (status.remaining < status.limit) {
+        // Show status if we've made some requests
+        statusEl.className = 'rate-limit-status ok';
+        statusEl.innerHTML = `
+            <svg class="rate-limit-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span>API quota: ${status.remaining}/${status.limit} requests remaining.</span>
+        `;
+    } else {
+        // Full quota - hide the status
+        statusEl.classList.add('hidden');
+    }
+}
+
+/**
  * Initializes GitHub fetch functionality.
  */
 function initGitHubFetch() {
@@ -242,6 +286,8 @@ function initGitHubFetch() {
             if (elements.fetchStatus) {
                 elements.fetchStatus.classList.remove('visible', 'loading');
             }
+            // Update rate limit status after fetch attempt
+            updateRateLimitStatusUI();
         }
     });
 
@@ -265,6 +311,14 @@ function initRepoChips() {
 
     chips.forEach(chip => {
         addManagedEventListener(chip, 'click', () => {
+            // Check rate limit before allowing click
+            const status = getRateLimitStatus();
+            if (status.isExhausted) {
+                showToast(`Rate limit exhausted. Try again after ${status.resetTime?.toLocaleTimeString() || 'some time'}.`, 'error', 5000);
+                updateRateLimitStatusUI();
+                return;
+            }
+
             const repo = chip.dataset.repo;
             if (githubUrlInput) {
                 githubUrlInput.value = `https://github.com/${repo}`;
@@ -481,6 +535,8 @@ function initRefreshRource() {
             showToast('Failed to fetch updates: ' + error.message, 'error');
         } finally {
             btnRefreshRource.classList.remove('loading');
+            // Update rate limit status after refresh attempt
+            updateRateLimitStatusUI();
         }
     });
 }

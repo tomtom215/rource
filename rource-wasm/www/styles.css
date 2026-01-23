@@ -1529,6 +1529,52 @@ header h1 {
     transition: width 0.3s;
 }
 
+/* Rate limit status */
+.rate-limit-note {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.rate-limit-status {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rate-limit-status.hidden {
+    display: none;
+}
+
+.rate-limit-status.ok {
+    background: rgba(63, 185, 80, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(63, 185, 80, 0.2);
+}
+
+.rate-limit-status.low {
+    background: rgba(210, 153, 34, 0.1);
+    color: var(--warning);
+    border: 1px solid rgba(210, 153, 34, 0.2);
+}
+
+.rate-limit-status.exhausted {
+    background: rgba(248, 81, 73, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(248, 81, 73, 0.2);
+}
+
+.rate-limit-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
 /* Tab navigation */
 .tab-nav {
     display: flex;

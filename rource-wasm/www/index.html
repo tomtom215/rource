@@ -563,23 +563,23 @@
                         </button>
                     </div>
                     <div class="popular-repos">
-                        <span class="popular-repos-label">Try a popular repository:</span>
+                        <span class="popular-repos-label">Try a repository (50 most recent commits):</span>
                         <div class="repo-chips">
                             <button type="button" class="repo-chip" data-repo="facebook/react">
                                 <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
                                 react
                             </button>
-                            <button type="button" class="repo-chip" data-repo="microsoft/vscode">
+                            <button type="button" class="repo-chip" data-repo="vuejs/vue">
                                 <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
-                                vscode
+                                vue
                             </button>
-                            <button type="button" class="repo-chip" data-repo="rust-lang/rust">
+                            <button type="button" class="repo-chip" data-repo="sveltejs/svelte">
                                 <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
-                                rust
+                                svelte
                             </button>
-                            <button type="button" class="repo-chip" data-repo="torvalds/linux">
+                            <button type="button" class="repo-chip" data-repo="denoland/deno">
                                 <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
-                                linux
+                                deno
                             </button>
                         </div>
                     </div>
@@ -590,9 +590,10 @@
                         </div>
                     </div>
                     <p class="help-text" style="margin-top: 0.75rem;">
-                        Fetches up to 100 recent commits from any public GitHub repository using the GitHub API.
-                        All data is processed locally in your browser.
+                        Fetches up to 50 recent commits from public GitHub repositories.
+                        <span class="rate-limit-note">GitHub API limit: 60 requests/hour without auth.</span>
                     </p>
+                    <div id="rate-limit-status" class="rate-limit-status hidden"></div>
                 </div>
             </div>
 

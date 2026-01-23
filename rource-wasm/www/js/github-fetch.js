@@ -3,6 +3,12 @@
  *
  * Fetches commit history from public GitHub repositories using the GitHub API.
  * Converts commit data into the Rource custom log format for visualization.
+ *
+ * IMPORTANT: GitHub's unauthenticated API rate limit is 60 requests/hour.
+ * This module is designed to work within that constraint by:
+ * 1. Limiting the number of commits fetched (default: 50)
+ * 2. Tracking and respecting rate limits before making requests
+ * 3. Using commit list endpoints that include file stats when possible
  */
 
 import { CONFIG } from './config.js';
@@ -11,6 +17,82 @@ import { debugLog } from './telemetry.js';
 
 // Cache for fetched repository data
 const repoCache = new Map();
+
+// Rate limit tracking (persists across fetches)
+let rateLimitState = {
+    remaining: 60,  // Conservative default
+    reset: 0,       // Unix timestamp when limit resets
+    limit: 60,      // Total limit
+    lastChecked: 0, // When we last checked
+};
+
+/**
+ * Updates rate limit state from response headers.
+ * @param {Response} response - Fetch response
+ */
+function updateRateLimitFromResponse(response) {
+    const remaining = response.headers.get('X-RateLimit-Remaining');
+    const reset = response.headers.get('X-RateLimit-Reset');
+    const limit = response.headers.get('X-RateLimit-Limit');
+
+    if (remaining !== null) {
+        rateLimitState.remaining = parseInt(remaining, 10);
+    }
+    if (reset !== null) {
+        rateLimitState.reset = parseInt(reset, 10);
+    }
+    if (limit !== null) {
+        rateLimitState.limit = parseInt(limit, 10);
+    }
+    rateLimitState.lastChecked = Date.now();
+
+    debugLog('github', `Rate limit: ${rateLimitState.remaining}/${rateLimitState.limit}, resets at ${new Date(rateLimitState.reset * 1000).toLocaleTimeString()}`);
+}
+
+/**
+ * Gets the current rate limit status.
+ * @returns {Object} Rate limit info
+ */
+export function getRateLimitStatus() {
+    const now = Math.floor(Date.now() / 1000);
+    const resetTime = rateLimitState.reset > now
+        ? new Date(rateLimitState.reset * 1000)
+        : null;
+
+    return {
+        remaining: rateLimitState.remaining,
+        limit: rateLimitState.limit,
+        resetTime,
+        isLow: rateLimitState.remaining <= CONFIG.GITHUB_RATE_LIMIT_BUFFER,
+        isExhausted: rateLimitState.remaining === 0 && (rateLimitState.reset > now),
+    };
+}
+
+/**
+ * Checks if we have enough rate limit budget for an operation.
+ * @param {number} requestsNeeded - Number of API requests needed
+ * @returns {Object} { canProceed, message }
+ */
+function checkRateLimitBudget(requestsNeeded) {
+    const status = getRateLimitStatus();
+
+    if (status.isExhausted) {
+        return {
+            canProceed: false,
+            message: `GitHub API rate limit exhausted. Try again after ${status.resetTime?.toLocaleTimeString() || 'some time'}.`,
+        };
+    }
+
+    if (status.remaining < requestsNeeded) {
+        return {
+            canProceed: false,
+            message: `Not enough API requests remaining (${status.remaining} available, ~${requestsNeeded} needed). ` +
+                `Rate limit resets at ${status.resetTime?.toLocaleTimeString() || 'soon'}.`,
+        };
+    }
+
+    return { canProceed: true, message: null };
+}
 
 /**
  * Parses a GitHub URL to extract owner and repo.
@@ -87,7 +169,7 @@ function setCachedData(owner, repo, data) {
  * @param {string} repo - Repository name
  * @param {number} page - Page number (1-indexed)
  * @param {number} perPage - Items per page (max 100)
- * @returns {Promise<Object>} { commits, hasMore, rateLimit }
+ * @returns {Promise<Object>} { commits, hasMore }
  */
 async function fetchCommitPage(owner, repo, page, perPage = 100) {
     const url = `https://api.github.com/repos/${owner}/${repo}/commits?page=${page}&per_page=${perPage}`;
@@ -99,15 +181,11 @@ async function fetchCommitPage(owner, repo, page, perPage = 100) {
         },
     });
 
-    // Extract rate limit info
-    const rateLimit = {
-        remaining: parseInt(response.headers.get('X-RateLimit-Remaining') || '60', 10),
-        reset: parseInt(response.headers.get('X-RateLimit-Reset') || '0', 10),
-        limit: parseInt(response.headers.get('X-RateLimit-Limit') || '60', 10),
-    };
+    // Always update rate limit tracking
+    updateRateLimitFromResponse(response);
 
-    if (response.status === 403 && rateLimit.remaining === 0) {
-        const resetTime = new Date(rateLimit.reset * 1000);
+    if (response.status === 403 && rateLimitState.remaining === 0) {
+        const resetTime = new Date(rateLimitState.reset * 1000);
         throw new Error(
             `GitHub API rate limit exceeded. Try again after ${resetTime.toLocaleTimeString()}.`
         );
@@ -126,7 +204,7 @@ async function fetchCommitPage(owner, repo, page, perPage = 100) {
     // Check if there are more pages (GitHub returns empty array at the end)
     const hasMore = commits.length === perPage;
 
-    return { commits, hasMore, rateLimit };
+    return { commits, hasMore };
 }
 
 /**
@@ -137,6 +215,12 @@ async function fetchCommitPage(owner, repo, page, perPage = 100) {
  * @returns {Promise<Array>} Array of file changes { filename, status }
  */
 async function fetchCommitFiles(owner, repo, sha) {
+    // Check rate limit before making the request
+    if (rateLimitState.remaining <= CONFIG.GITHUB_RATE_LIMIT_BUFFER) {
+        debugLog('github', `Skipping commit ${sha} due to low rate limit (${rateLimitState.remaining} remaining)`);
+        return [];
+    }
+
     const url = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}`;
 
     const response = await fetch(url, {
@@ -144,6 +228,15 @@ async function fetchCommitFiles(owner, repo, sha) {
             Accept: 'application/vnd.github.v3+json',
         },
     });
+
+    // Always update rate limit tracking
+    updateRateLimitFromResponse(response);
+
+    if (response.status === 403 && rateLimitState.remaining === 0) {
+        // Rate limit hit during fetch - stop gracefully
+        debugLog('github', 'Rate limit hit during commit file fetch');
+        return [];
+    }
 
     if (!response.ok) {
         // If we can't get files, return empty - non-fatal
@@ -184,54 +277,76 @@ function commitToLogLines(commit, files) {
 /**
  * Fetches commit history from a GitHub repository.
  *
+ * RATE LIMIT AWARE: This function carefully manages API calls to stay within
+ * GitHub's unauthenticated rate limit (60 requests/hour).
+ *
+ * API calls needed: 1 (commit list) + N (file details for each commit)
+ * For 50 commits = ~51 API calls (leaves buffer for other operations)
+ *
  * @param {string} owner - Repository owner
  * @param {string} repo - Repository name
  * @param {Object} options - Options
- * @param {number} options.maxCommits - Maximum commits to fetch (default: 500)
- * @param {Function} options.onProgress - Progress callback (loaded, total)
+ * @param {number} options.maxCommits - Maximum commits to fetch (default: 50, max: 100)
+ * @param {Function} options.onProgress - Progress callback (phase, current, total, message)
  * @returns {Promise<string>} Log data in Rource custom format
  */
 export async function fetchGitHubCommits(owner, repo, options = {}) {
-    const { maxCommits = 500, onProgress = null } = options;
+    // IMPORTANT: Keep maxCommits low to avoid rate limit exhaustion
+    // 50 commits = ~51 API calls, leaving headroom for other operations
+    const { maxCommits = 50, onProgress = null } = options;
+
+    // Clamp to reasonable maximum (100 commits = 101 API calls)
+    const effectiveMax = Math.min(maxCommits, 100);
 
     // Check cache first
     const cached = getCachedData(owner, repo);
     if (cached) {
+        debugLog('github', `Cache hit for ${owner}/${repo}`);
         return cached;
     }
 
-    debugLog('github', `Fetching commits for ${owner}/${repo}`);
+    // Calculate API budget needed: 1 page of commits + N commit detail calls
+    const estimatedCalls = 1 + effectiveMax;
 
-    const allCommits = [];
-    let page = 1;
-    let hasMore = true;
+    // Check if we have enough rate limit budget BEFORE starting
+    const budgetCheck = checkRateLimitBudget(estimatedCalls);
+    if (!budgetCheck.canProceed) {
+        throw new Error(budgetCheck.message);
+    }
 
-    // Fetch commit list (without file details for speed)
-    while (hasMore && allCommits.length < maxCommits) {
-        const { commits, hasMore: more, rateLimit } = await fetchCommitPage(owner, repo, page);
+    debugLog('github', `Fetching up to ${effectiveMax} commits for ${owner}/${repo} (estimated ${estimatedCalls} API calls)`);
 
-        allCommits.push(...commits);
-        hasMore = more;
-        page++;
+    if (onProgress) {
+        onProgress('init', 0, effectiveMax, 'Checking repository...');
+    }
 
-        // Check rate limit
-        if (rateLimit.remaining <= CONFIG.GITHUB_RATE_LIMIT_BUFFER) {
-            debugLog('github', `Rate limit low (${rateLimit.remaining}), stopping pagination`);
+    // Fetch just one page of commits (up to effectiveMax)
+    const { commits, hasMore } = await fetchCommitPage(owner, repo, 1, effectiveMax);
+
+    if (commits.length === 0) {
+        throw new Error('No commits found in this repository.');
+    }
+
+    debugLog('github', `Fetched ${commits.length} commits, rate limit remaining: ${rateLimitState.remaining}`);
+
+    if (onProgress) {
+        onProgress('commits', commits.length, commits.length, `Found ${commits.length} commits`);
+    }
+
+    // Fetch file details for each commit
+    // This is the expensive part - one API call per commit
+    const logLines = [];
+    let processed = 0;
+    let skippedDueToRateLimit = 0;
+
+    for (const commit of commits) {
+        // Check rate limit before each request
+        if (rateLimitState.remaining <= CONFIG.GITHUB_RATE_LIMIT_BUFFER) {
+            debugLog('github', `Stopping early: rate limit low (${rateLimitState.remaining} remaining)`);
+            skippedDueToRateLimit = commits.length - processed;
             break;
         }
 
-        if (onProgress) {
-            onProgress(allCommits.length, Math.min(allCommits.length + 100, maxCommits));
-        }
-    }
-
-    debugLog('github', `Fetched ${allCommits.length} commits, now fetching file details...`);
-
-    // Fetch file details for each commit (this is slower but necessary)
-    const logLines = [];
-    let processed = 0;
-
-    for (const commit of allCommits.slice(0, maxCommits)) {
         try {
             const files = await fetchCommitFiles(owner, repo, commit.sha);
             const lines = commitToLogLines(commit, files);
@@ -242,14 +357,23 @@ export async function fetchGitHubCommits(owner, repo, options = {}) {
         }
 
         processed++;
-        if (onProgress && processed % 10 === 0) {
-            onProgress(processed, allCommits.length);
+
+        if (onProgress) {
+            onProgress('files', processed, commits.length, `Fetching file details... ${processed}/${commits.length}`);
         }
 
-        // Small delay to avoid hitting rate limits
-        if (processed % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+        // Small delay between requests to be nice to the API
+        if (processed % 10 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
+    }
+
+    if (skippedDueToRateLimit > 0) {
+        debugLog('github', `Skipped ${skippedDueToRateLimit} commits due to rate limit`);
+    }
+
+    if (logLines.length === 0) {
+        throw new Error('No file changes found. The repository may be empty or rate limit was exceeded.');
     }
 
     // Sort by timestamp (oldest first for visualization)
@@ -264,7 +388,7 @@ export async function fetchGitHubCommits(owner, repo, options = {}) {
     // Cache the result
     setCachedData(owner, repo, logData);
 
-    debugLog('github', `Generated ${logLines.length} log lines for ${owner}/${repo}`);
+    debugLog('github', `Generated ${logLines.length} log lines for ${owner}/${repo}, rate limit remaining: ${rateLimitState.remaining}`);
 
     return logData;
 }
@@ -286,16 +410,32 @@ export async function fetchGitHubWithProgress(input, elements = {}) {
 
     const { owner, repo } = parsed;
 
+    // Check rate limit status before starting
+    const status = getRateLimitStatus();
+    if (status.isExhausted) {
+        const msg = `GitHub API rate limit exhausted. Try again after ${status.resetTime?.toLocaleTimeString() || 'some time'}.`;
+        showToast(msg, 'error', 8000);
+        if (elements.statusEl) {
+            elements.statusEl.textContent = msg;
+        }
+        return null;
+    }
+
+    if (status.remaining < 10) {
+        // Warn user but still try
+        showToast(`Low API quota (${status.remaining} requests left). Fetching may be incomplete.`, 'warning', 5000);
+    }
+
     if (elements.statusEl) {
-        elements.statusEl.textContent = `Fetching ${owner}/${repo}...`;
+        elements.statusEl.textContent = `Checking ${owner}/${repo}...`;
     }
 
     try {
         const logData = await fetchGitHubCommits(owner, repo, {
-            maxCommits: 300, // Limit for reasonable load time
-            onProgress: (loaded, total) => {
+            maxCommits: 50, // Conservative default to stay within rate limits
+            onProgress: (phase, current, total, message) => {
                 if (elements.statusEl) {
-                    elements.statusEl.textContent = `Fetching file details... ${loaded}/${total}`;
+                    elements.statusEl.textContent = message;
                 }
             },
         });
@@ -305,18 +445,28 @@ export async function fetchGitHubWithProgress(input, elements = {}) {
             return null;
         }
 
+        // Show remaining rate limit after successful fetch
+        const afterStatus = getRateLimitStatus();
+        debugLog('github', `Fetch complete. Rate limit remaining: ${afterStatus.remaining}/${afterStatus.limit}`);
+
         return logData;
 
     } catch (e) {
-
         // Provide user-friendly error messages
         let message = e.message || 'Failed to fetch repository';
+
         if (message.includes('rate limit')) {
             showToast(message, 'error', 8000);
         } else if (message.includes('not found')) {
             showToast(message, 'error');
+        } else if (message.includes('No commits') || message.includes('No file changes')) {
+            showToast(message, 'error');
         } else {
             showToast(`Error: ${message}`, 'error');
+        }
+
+        if (elements.statusEl) {
+            elements.statusEl.textContent = message;
         }
 
         debugLog('github', 'Fetch error', e);

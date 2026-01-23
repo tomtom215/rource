@@ -67,6 +67,7 @@ export function initDomElements() {
     elements.fetchStatus = document.getElementById('fetch-status');
     elements.fetchStatusText = document.getElementById('fetch-status-text');
     elements.fetchProgressBar = document.getElementById('fetch-progress-bar');
+    elements.rateLimitStatus = document.getElementById('rate-limit-status');
 
     // Timeline
     elements.timelineSlider = document.getElementById('timeline-slider');
