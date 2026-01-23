@@ -751,6 +751,28 @@ header h1 {
     text-align: right;
 }
 
+/* Peak/Avg FPS row - shown only in uncapped mode */
+.perf-peak-avg-row {
+    transition: opacity 0.2s ease, max-height 0.2s ease;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+}
+
+.perf-peak-avg-row:not(.hidden) {
+    max-height: 2rem;
+    opacity: 1;
+}
+
+.perf-peak-avg-value {
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.perf-peak-avg-value span:first-child {
+    color: var(--success);
+}
+
 /* Backend indicator with color coding - deterministic from WASM */
 .perf-backend {
     font-weight: 600;

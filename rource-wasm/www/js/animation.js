@@ -16,6 +16,16 @@ let perfUpdateCounter = 0;
 // UI update callback (set by main module)
 let uiUpdateCallback = null;
 
+// Uncapped FPS tracking for peak/average display
+let uncappedFpsStats = {
+    maxFps: 0,
+    fpsSum: 0,
+    frameCount: 0,
+    // EMA (Exponential Moving Average) for smoother average
+    emaFps: 0,
+    emaAlpha: 0.1, // Smoothing factor (lower = smoother)
+};
+
 // Cached state to avoid redundant DOM updates (memory leak prevention)
 const playbackUICache = {
     playing: null,
@@ -92,6 +102,23 @@ export function animate(timestamp, generation = animationGeneration) {
     if (rource) {
         safeWasmCall('frame', () => rource.frame(timestamp), undefined);
 
+        // Track FPS statistics in uncapped mode
+        if (isUncapped) {
+            const fps = safeWasmCall('getFps', () => rource.getFps(), 0);
+            if (fps > 0) {
+                uncappedFpsStats.maxFps = Math.max(uncappedFpsStats.maxFps, fps);
+                uncappedFpsStats.fpsSum += fps;
+                uncappedFpsStats.frameCount++;
+                // Update EMA for smoother average display
+                if (uncappedFpsStats.emaFps === 0) {
+                    uncappedFpsStats.emaFps = fps;
+                } else {
+                    uncappedFpsStats.emaFps = uncappedFpsStats.emaAlpha * fps +
+                        (1 - uncappedFpsStats.emaAlpha) * uncappedFpsStats.emaFps;
+                }
+            }
+        }
+
         // Call UI update callback if set
         if (uiUpdateCallback) {
             uiUpdateCallback();
@@ -123,11 +150,42 @@ export function animate(timestamp, generation = animationGeneration) {
 
 /**
  * Restarts the animation loop (used when switching between capped/uncapped modes).
+ * @param {boolean} [resetStats=true] - Whether to reset FPS tracking stats
  */
-export function restartAnimation() {
+export function restartAnimation(resetStats = true) {
     // stopAnimation() increments generation, which invalidates any currently executing animate() calls
     stopAnimation();
+    if (resetStats) {
+        resetUncappedFpsStats();
+    }
     startAnimation();
+}
+
+/**
+ * Resets the uncapped FPS tracking statistics.
+ * Call when entering uncapped mode or restarting playback.
+ */
+export function resetUncappedFpsStats() {
+    uncappedFpsStats.maxFps = 0;
+    uncappedFpsStats.fpsSum = 0;
+    uncappedFpsStats.frameCount = 0;
+    uncappedFpsStats.emaFps = 0;
+}
+
+/**
+ * Gets the current uncapped FPS statistics.
+ * @returns {{maxFps: number, avgFps: number, emaFps: number, frameCount: number}}
+ */
+export function getUncappedFpsStats() {
+    const avgFps = uncappedFpsStats.frameCount > 0
+        ? uncappedFpsStats.fpsSum / uncappedFpsStats.frameCount
+        : 0;
+    return {
+        maxFps: uncappedFpsStats.maxFps,
+        avgFps: avgFps,
+        emaFps: uncappedFpsStats.emaFps,
+        frameCount: uncappedFpsStats.frameCount,
+    };
 }
 
 /**
@@ -194,7 +252,8 @@ export function updatePerfMetrics() {
     if (!rource || !hasData()) return;
 
     const elements = getAllElements();
-    const { perfFps, perfFrameTime, perfEntities, perfVisible, perfDraws, perfResolution } = elements;
+    const { perfFps, perfFrameTime, perfEntities, perfVisible, perfDraws, perfResolution,
+            perfPeakAvgRow, perfPeakFps, perfAvgFps } = elements;
 
     if (!perfFps) return;
 
@@ -235,6 +294,20 @@ export function updatePerfMetrics() {
             perfFps.className = 'perf-fps ' + (fpsRounded >= 55 ? 'good' : fpsRounded >= 30 ? 'ok' : 'bad');
         }
 
+        // Update Peak/Avg row visibility and values
+        if (perfPeakAvgRow) {
+            if (isUncapped && isPlaying) {
+                // Show peak/avg row in uncapped mode while playing
+                perfPeakAvgRow.classList.remove('hidden');
+                const stats = getUncappedFpsStats();
+                if (perfPeakFps) perfPeakFps.textContent = Math.round(stats.maxFps);
+                if (perfAvgFps) perfAvgFps.textContent = Math.round(stats.emaFps);
+            } else {
+                // Hide when not in uncapped mode or not playing
+                perfPeakAvgRow.classList.add('hidden');
+            }
+        }
+
         // Update other metrics
         if (perfFrameTime) perfFrameTime.textContent = `${frameTimeMs.toFixed(1)}ms`;
         if (perfEntities) perfEntities.textContent = totalEntities.toLocaleString();
@@ -252,6 +325,7 @@ export function updatePerfMetrics() {
         if (perfEntities) perfEntities.textContent = '--';
         if (perfVisible) perfVisible.textContent = '--';
         if (perfDraws) perfDraws.textContent = '--';
+        if (perfPeakAvgRow) perfPeakAvgRow.classList.add('hidden');
     }
 }
 

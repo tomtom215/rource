@@ -374,6 +374,20 @@ export class Rource {
         }
     }
     /**
+     * Returns the number of registered file icon types.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * const count = rource.getFileIconCount();
+     * console.log(`${count} file types registered`);
+     * ```
+     * @returns {number}
+     */
+    getFileIconCount() {
+        const ret = wasm.rource_getFileIconCount(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Gets the current font size for labels.
      * @returns {number}
      */
@@ -426,6 +440,59 @@ export class Rource {
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
+    }
+    /**
+     * Returns GPU culling statistics as a JSON string.
+     *
+     * Returns statistics from the last frame's culling operation, or null
+     * if GPU culling is not active or no culling has occurred yet.
+     *
+     * # Returns
+     * JSON string with fields:
+     * - `totalInstances`: Total instances submitted for culling
+     * - `visibleInstances`: Instances that passed culling
+     * - `dispatchCount`: Number of culling dispatches
+     * - `cullRatio`: Ratio of visible/total (0.0-1.0)
+     * - `culledPercentage`: Percentage culled (0.0-100.0)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * const stats = rource.getGPUCullingStats();
+     * if (stats) {
+     *     const data = JSON.parse(stats);
+     *     console.log(`Culled ${data.culledPercentage.toFixed(1)}% of instances`);
+     * }
+     * ```
+     * @returns {string | undefined}
+     */
+    getGPUCullingStats() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getGPUCullingStats(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns the current GPU culling threshold.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * console.log('GPU culling threshold:', rource.getGPUCullingThreshold());
+     * ```
+     * @returns {number}
+     */
+    getGPUCullingThreshold() {
+        const ret = wasm.rource_getGPUCullingThreshold(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Returns the current GPU physics threshold.
@@ -612,6 +679,46 @@ export class Rource {
         }
     }
     /**
+     * Returns whether file icons are initialized.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.hasFileIcons()) {
+     *     console.log('File icons ready');
+     * }
+     * ```
+     * @returns {boolean}
+     */
+    hasFileIcons() {
+        const ret = wasm.rource_hasFileIcons(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Initializes the file icon system.
+     *
+     * This pre-generates icons for common file extensions (rs, js, py, etc.)
+     * and stores them in a GPU texture array for efficient batched rendering.
+     *
+     * **Note**: Only has an effect when using the wgpu backend.
+     *
+     * # Returns
+     *
+     * `true` if initialization succeeded, `false` otherwise.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     const success = rource.initFileIcons();
+     *     console.log('File icons initialized:', success);
+     * }
+     * ```
+     * @returns {boolean}
+     */
+    initFileIcons() {
+        const ret = wasm.rource_initFileIcons(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Returns whether auto-fit mode is currently enabled.
      * @returns {boolean}
      */
@@ -633,6 +740,39 @@ export class Rource {
      */
     isGPUAccelerated() {
         const ret = wasm.rource_isGPUAccelerated(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Returns whether GPU visibility culling is currently active.
+     *
+     * This checks all conditions required for GPU culling:
+     * 1. GPU culling is enabled via `setUseGPUCulling(true)`
+     * 2. wgpu backend is being used
+     * 3. Total entity count exceeds threshold (if threshold > 0)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isGPUCullingActive()) {
+     *     console.log('GPU culling is running');
+     * }
+     * ```
+     * @returns {boolean}
+     */
+    isGPUCullingActive() {
+        const ret = wasm.rource_isGPUCullingActive(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Returns whether GPU visibility culling is currently enabled.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * console.log('GPU culling:', rource.isGPUCullingEnabled());
+     * ```
+     * @returns {boolean}
+     */
+    isGPUCullingEnabled() {
+        const ret = wasm.rource_isGPUCullingEnabled(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -853,6 +993,38 @@ export class Rource {
         return ret !== 0;
     }
     /**
+     * Registers a custom icon color for a file extension.
+     *
+     * If the extension is already registered, this does nothing.
+     * If file icons are not initialized, returns `false`.
+     *
+     * # Arguments
+     *
+     * * `extension` - File extension without dot (e.g., "custom", "myext")
+     * * `hex_color` - Color as hex string (e.g., "#FF5500" or "FF5500")
+     *
+     * # Returns
+     *
+     * `true` if the icon was registered, `false` otherwise.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * // Register a custom file extension with orange color
+     * rource.registerFileIcon("myext", "#FF5500");
+     * ```
+     * @param {string} extension
+     * @param {string} hex_color
+     * @returns {boolean}
+     */
+    registerFileIcon(extension, hex_color) {
+        const ptr0 = passStringToWasm0(extension, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(hex_color, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.rource_registerFileIcon(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret !== 0;
+    }
+    /**
      * Resets the camera to fit all content.
      */
     resetCamera() {
@@ -994,6 +1166,32 @@ export class Rource {
         wasm.rource_setFontSize(this.__wbg_ptr, size);
     }
     /**
+     * Sets the entity count threshold for enabling GPU culling.
+     *
+     * When the total visible entity count exceeds this threshold, GPU culling
+     * will be used (if enabled and wgpu backend is active).
+     *
+     * Set to 0 to always use GPU culling when enabled (ignores entity count).
+     *
+     * Default: 10000 entities
+     *
+     * # Arguments
+     * * `threshold` - Minimum entity count to trigger GPU culling
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * // Use GPU culling for scenes with 5000+ entities
+     * rource.setGPUCullingThreshold(5000);
+     *
+     * // Always use GPU culling when enabled (no threshold)
+     * rource.setGPUCullingThreshold(0);
+     * ```
+     * @param {number} threshold
+     */
+    setGPUCullingThreshold(threshold) {
+        wasm.rource_setGPUCullingThreshold(this.__wbg_ptr, threshold);
+    }
+    /**
      * Sets the directory count threshold for enabling GPU physics.
      *
      * When the scene has more directories than this threshold, GPU physics
@@ -1072,6 +1270,35 @@ export class Rource {
         wasm.rource_setSpeed(this.__wbg_ptr, seconds_per_day);
     }
     /**
+     * Enables or disables GPU visibility culling.
+     *
+     * When enabled and using the wgpu backend, visibility culling runs on
+     * the GPU using compute shaders. This is beneficial for extreme-scale
+     * scenarios (10,000+ visible entities) where CPU culling becomes a
+     * bottleneck.
+     *
+     * **Note**: GPU culling only works with the wgpu backend. When using
+     * WebGL2 or Software renderers, this setting is ignored and CPU culling
+     * is always used.
+     *
+     * For most use cases, the default CPU-side quadtree culling is sufficient.
+     *
+     * # Arguments
+     * * `enabled` - Whether to enable GPU culling
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     rource.setUseGPUCulling(true);
+     *     console.log('GPU culling enabled');
+     * }
+     * ```
+     * @param {boolean} enabled
+     */
+    setUseGPUCulling(enabled) {
+        wasm.rource_setUseGPUCulling(this.__wbg_ptr, enabled);
+    }
+    /**
      * Enables or disables GPU physics simulation.
      *
      * When enabled and using the wgpu backend, the force-directed physics
@@ -1115,6 +1342,25 @@ export class Rource {
      */
     togglePlay() {
         wasm.rource_togglePlay(this.__wbg_ptr);
+    }
+    /**
+     * Warms up the GPU visibility culling compute pipeline.
+     *
+     * Call this during initialization to pre-compile compute shaders
+     * and avoid first-frame stuttering when GPU culling is first used.
+     *
+     * **Note**: Only has an effect when using the wgpu backend.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     rource.warmupGPUCulling();
+     *     rource.setUseGPUCulling(true);
+     * }
+     * ```
+     */
+    warmupGPUCulling() {
+        wasm.rource_warmupGPUCulling(this.__wbg_ptr);
     }
     /**
      * Warms up the GPU physics compute pipeline.
@@ -2045,7 +2291,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6435(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6463(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -3010,8 +3256,8 @@ function __wbg_get_imports() {
             getObject(arg0).writeTexture(getObject(arg1), getObject(arg2), getObject(arg3), getObject(arg4));
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 1850, function: Function { arguments: [Externref], shim_idx: 1851, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6377, __wasm_bindgen_func_elem_6378);
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 1851, function: Function { arguments: [Externref], shim_idx: 1852, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6405, __wasm_bindgen_func_elem_6406);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -3073,12 +3319,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_6378(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_6378(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_6406(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_6406(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6435(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6435(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6463(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6463(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

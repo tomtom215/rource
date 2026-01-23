@@ -104,6 +104,9 @@ export function initDomElements() {
     elements.perfResolution = document.getElementById('perf-resolution');
     elements.perfBackend = document.getElementById('perf-backend');
     elements.perfUncapped = document.getElementById('perf-uncapped');
+    elements.perfPeakAvgRow = document.getElementById('perf-peak-avg-row');
+    elements.perfPeakFps = document.getElementById('perf-peak-fps');
+    elements.perfAvgFps = document.getElementById('perf-avg-fps');
 
     // Showcase panel (Rource repo)
     elements.btnVisualizeRource = document.getElementById('btn-visualize-rource');

@@ -5,10 +5,10 @@
  * Single responsibility: playback state and timeline interaction.
  */
 
-import { getRource, hasData, addManagedEventListener } from '../state.js';
+import { getRource, hasData, addManagedEventListener, get } from '../state.js';
 import { safeWasmCall } from '../wasm-api.js';
 import { getElement } from '../dom.js';
-import { updatePlaybackUI, isAtEnd } from '../animation.js';
+import { updatePlaybackUI, isAtEnd, resetUncappedFpsStats } from '../animation.js';
 import { updatePreference } from '../preferences.js';
 import { updateUrlState } from '../url-state.js';
 import { validateSpeed } from '../telemetry.js';
@@ -23,6 +23,10 @@ function handlePlayPause() {
     // If at end and paused, restart from beginning
     if (isAtEnd() && !safeWasmCall('isPlaying', () => rource.isPlaying(), false)) {
         safeWasmCall('seek', () => rource.seek(0), undefined);
+        // Reset FPS tracking stats when restarting playback in uncapped mode
+        if (get('uncappedFps')) {
+            resetUncappedFpsStats();
+        }
     }
 
     safeWasmCall('togglePlay', () => rource.togglePlay(), undefined);
@@ -56,6 +60,10 @@ function handleReset() {
     const rource = getRource();
     if (!rource || !hasData()) return;
     safeWasmCall('seek', () => rource.seek(0), undefined);
+    // Reset FPS tracking stats when resetting timeline in uncapped mode
+    if (get('uncappedFps')) {
+        resetUncappedFpsStats();
+    }
     updatePlaybackUI();
 }
 

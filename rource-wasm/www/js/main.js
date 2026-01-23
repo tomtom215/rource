@@ -152,6 +152,30 @@ async function main() {
             elements.perfBackend.setAttribute('data-gpu-accelerated', String(isGPU));
         }
 
+        // Enable GPU-specific optimizations when WebGPU is available
+        if (rource.isWgpu()) {
+            console.group('WebGPU Optimizations');
+
+            // Warmup GPU compute pipelines to avoid first-frame stutter
+            rource.warmupGPUPhysics();
+            console.log('GPU physics pipeline warmed up');
+
+            // Enable GPU physics for large repositories (500+ directories)
+            rource.setUseGPUPhysics(true);
+            rource.setGPUPhysicsThreshold(500);
+            console.log('GPU physics enabled (threshold: 500 directories)');
+
+            // Initialize procedural file icons
+            if (rource.initFileIcons()) {
+                console.log(`File icons initialized (${rource.getFileIconCount()} types)`);
+            }
+
+            // GPU culling is for extreme-scale (10k+ entities), leave at default threshold
+            // Users can enable via console: rource.setUseGPUCulling(true)
+
+            console.groupEnd();
+        }
+
         // Initialize core modules
         initToast();
         initAnimation();

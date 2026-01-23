@@ -188,6 +188,16 @@ export class Rource {
      */
     getEntityBounds(): string | undefined;
     /**
+     * Returns the number of registered file icon types.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * const count = rource.getFileIconCount();
+     * console.log(`${count} file types registered`);
+     * ```
+     */
+    getFileIconCount(): number;
+    /**
      * Gets the current font size for labels.
      */
     getFontSize(): number;
@@ -212,6 +222,39 @@ export class Rource {
      * JSON object: `{"width", "height", "zoom", "centerX", "centerY"}` or null
      */
     getFullMapDimensions(min_label_font_size: number): string | undefined;
+    /**
+     * Returns GPU culling statistics as a JSON string.
+     *
+     * Returns statistics from the last frame's culling operation, or null
+     * if GPU culling is not active or no culling has occurred yet.
+     *
+     * # Returns
+     * JSON string with fields:
+     * - `totalInstances`: Total instances submitted for culling
+     * - `visibleInstances`: Instances that passed culling
+     * - `dispatchCount`: Number of culling dispatches
+     * - `cullRatio`: Ratio of visible/total (0.0-1.0)
+     * - `culledPercentage`: Percentage culled (0.0-100.0)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * const stats = rource.getGPUCullingStats();
+     * if (stats) {
+     *     const data = JSON.parse(stats);
+     *     console.log(`Culled ${data.culledPercentage.toFixed(1)}% of instances`);
+     * }
+     * ```
+     */
+    getGPUCullingStats(): string | undefined;
+    /**
+     * Returns the current GPU culling threshold.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * console.log('GPU culling threshold:', rource.getGPUCullingThreshold());
+     * ```
+     */
+    getGPUCullingThreshold(): number;
     /**
      * Returns the current GPU physics threshold.
      *
@@ -297,6 +340,38 @@ export class Rource {
      */
     getZoomDebugInfo(): string;
     /**
+     * Returns whether file icons are initialized.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.hasFileIcons()) {
+     *     console.log('File icons ready');
+     * }
+     * ```
+     */
+    hasFileIcons(): boolean;
+    /**
+     * Initializes the file icon system.
+     *
+     * This pre-generates icons for common file extensions (rs, js, py, etc.)
+     * and stores them in a GPU texture array for efficient batched rendering.
+     *
+     * **Note**: Only has an effect when using the wgpu backend.
+     *
+     * # Returns
+     *
+     * `true` if initialization succeeded, `false` otherwise.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     const success = rource.initFileIcons();
+     *     console.log('File icons initialized:', success);
+     * }
+     * ```
+     */
+    initFileIcons(): boolean;
+    /**
      * Returns whether auto-fit mode is currently enabled.
      */
     isAutoFit(): boolean;
@@ -308,6 +383,31 @@ export class Rource {
      * Returns true if using a GPU-accelerated renderer (wgpu or WebGL2).
      */
     isGPUAccelerated(): boolean;
+    /**
+     * Returns whether GPU visibility culling is currently active.
+     *
+     * This checks all conditions required for GPU culling:
+     * 1. GPU culling is enabled via `setUseGPUCulling(true)`
+     * 2. wgpu backend is being used
+     * 3. Total entity count exceeds threshold (if threshold > 0)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isGPUCullingActive()) {
+     *     console.log('GPU culling is running');
+     * }
+     * ```
+     */
+    isGPUCullingActive(): boolean;
+    /**
+     * Returns whether GPU visibility culling is currently enabled.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * console.log('GPU culling:', rource.isGPUCullingEnabled());
+     * ```
+     */
+    isGPUCullingEnabled(): boolean;
     /**
      * Returns whether GPU physics is currently active.
      *
@@ -431,6 +531,28 @@ export class Rource {
      */
     recoverContext(): boolean;
     /**
+     * Registers a custom icon color for a file extension.
+     *
+     * If the extension is already registered, this does nothing.
+     * If file icons are not initialized, returns `false`.
+     *
+     * # Arguments
+     *
+     * * `extension` - File extension without dot (e.g., "custom", "myext")
+     * * `hex_color` - Color as hex string (e.g., "#FF5500" or "FF5500")
+     *
+     * # Returns
+     *
+     * `true` if the icon was registered, `false` otherwise.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * // Register a custom file extension with orange color
+     * rource.registerFileIcon("myext", "#FF5500");
+     * ```
+     */
+    registerFileIcon(extension: string, hex_color: string): boolean;
+    /**
      * Resets the camera to fit all content.
      */
     resetCamera(): void;
@@ -531,6 +653,29 @@ export class Rource {
      */
     setFontSize(size: number): void;
     /**
+     * Sets the entity count threshold for enabling GPU culling.
+     *
+     * When the total visible entity count exceeds this threshold, GPU culling
+     * will be used (if enabled and wgpu backend is active).
+     *
+     * Set to 0 to always use GPU culling when enabled (ignores entity count).
+     *
+     * Default: 10000 entities
+     *
+     * # Arguments
+     * * `threshold` - Minimum entity count to trigger GPU culling
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * // Use GPU culling for scenes with 5000+ entities
+     * rource.setGPUCullingThreshold(5000);
+     *
+     * // Always use GPU culling when enabled (no threshold)
+     * rource.setGPUCullingThreshold(0);
+     * ```
+     */
+    setGPUCullingThreshold(threshold: number): void;
+    /**
      * Sets the directory count threshold for enabling GPU physics.
      *
      * When the scene has more directories than this threshold, GPU physics
@@ -592,6 +737,32 @@ export class Rource {
      */
     setSpeed(seconds_per_day: number): void;
     /**
+     * Enables or disables GPU visibility culling.
+     *
+     * When enabled and using the wgpu backend, visibility culling runs on
+     * the GPU using compute shaders. This is beneficial for extreme-scale
+     * scenarios (10,000+ visible entities) where CPU culling becomes a
+     * bottleneck.
+     *
+     * **Note**: GPU culling only works with the wgpu backend. When using
+     * WebGL2 or Software renderers, this setting is ignored and CPU culling
+     * is always used.
+     *
+     * For most use cases, the default CPU-side quadtree culling is sufficient.
+     *
+     * # Arguments
+     * * `enabled` - Whether to enable GPU culling
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     rource.setUseGPUCulling(true);
+     *     console.log('GPU culling enabled');
+     * }
+     * ```
+     */
+    setUseGPUCulling(enabled: boolean): void;
+    /**
      * Enables or disables GPU physics simulation.
      *
      * When enabled and using the wgpu backend, the force-directed physics
@@ -627,6 +798,23 @@ export class Rource {
      * Toggles play/pause state.
      */
     togglePlay(): void;
+    /**
+     * Warms up the GPU visibility culling compute pipeline.
+     *
+     * Call this during initialization to pre-compile compute shaders
+     * and avoid first-frame stuttering when GPU culling is first used.
+     *
+     * **Note**: Only has an effect when using the wgpu backend.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWgpu()) {
+     *     rource.warmupGPUCulling();
+     *     rource.setUseGPUCulling(true);
+     * }
+     * ```
+     */
+    warmupGPUCulling(): void;
     /**
      * Warms up the GPU physics compute pipeline.
      *
@@ -693,10 +881,13 @@ export interface InitOutput {
     readonly rource_getDateRange: (a: number, b: number) => void;
     readonly rource_getDrawCalls: (a: number) => number;
     readonly rource_getEntityBounds: (a: number, b: number) => void;
+    readonly rource_getFileIconCount: (a: number) => number;
     readonly rource_getFontSize: (a: number) => number;
     readonly rource_getFps: (a: number) => number;
     readonly rource_getFrameTimeMs: (a: number) => number;
     readonly rource_getFullMapDimensions: (a: number, b: number, c: number) => void;
+    readonly rource_getGPUCullingStats: (a: number, b: number) => void;
+    readonly rource_getGPUCullingThreshold: (a: number) => number;
     readonly rource_getGPUPhysicsThreshold: (a: number) => number;
     readonly rource_getLayoutConfig: (a: number, b: number) => void;
     readonly rource_getRendererType: (a: number, b: number) => void;
@@ -713,9 +904,13 @@ export interface InitOutput {
     readonly rource_getVisibleUsers: (a: number) => number;
     readonly rource_getZoom: (a: number) => number;
     readonly rource_getZoomDebugInfo: (a: number, b: number) => void;
+    readonly rource_hasFileIcons: (a: number) => number;
+    readonly rource_initFileIcons: (a: number) => number;
     readonly rource_isAutoFit: (a: number) => number;
     readonly rource_isContextLost: (a: number) => number;
     readonly rource_isGPUAccelerated: (a: number) => number;
+    readonly rource_isGPUCullingActive: (a: number) => number;
+    readonly rource_isGPUCullingEnabled: (a: number) => number;
     readonly rource_isGPUPhysicsActive: (a: number) => number;
     readonly rource_isGPUPhysicsEnabled: (a: number) => number;
     readonly rource_isPlaying: (a: number) => number;
@@ -733,6 +928,7 @@ export interface InitOutput {
     readonly rource_play: (a: number) => void;
     readonly rource_prepareFullMapExport: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly rource_recoverContext: (a: number) => number;
+    readonly rource_registerFileIcon: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly rource_resetCamera: (a: number) => void;
     readonly rource_resize: (a: number, b: number, c: number) => void;
     readonly rource_restoreAfterExport: (a: number, b: number, c: number) => void;
@@ -745,22 +941,25 @@ export interface InitOutput {
     readonly rource_setBranchOpacityMax: (a: number, b: number) => void;
     readonly rource_setDepthDistanceExponent: (a: number, b: number) => void;
     readonly rource_setFontSize: (a: number, b: number) => void;
+    readonly rource_setGPUCullingThreshold: (a: number, b: number) => void;
     readonly rource_setGPUPhysicsThreshold: (a: number, b: number) => void;
     readonly rource_setLayoutPreset: (a: number, b: number, c: number) => void;
     readonly rource_setRadialDistanceScale: (a: number, b: number) => void;
     readonly rource_setShowLabels: (a: number, b: number) => void;
     readonly rource_setSpeed: (a: number, b: number) => void;
+    readonly rource_setUseGPUCulling: (a: number, b: number) => void;
     readonly rource_setUseGPUPhysics: (a: number, b: number) => void;
     readonly rource_stepBackward: (a: number) => void;
     readonly rource_stepForward: (a: number) => void;
     readonly rource_togglePlay: (a: number) => void;
+    readonly rource_warmupGPUCulling: (a: number) => void;
     readonly rource_warmupGPUPhysics: (a: number) => void;
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_6377: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6435: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6378: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_6405: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6463: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6406: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

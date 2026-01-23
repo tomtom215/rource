@@ -241,6 +241,16 @@ pub struct Rource {
     /// Reusable buffer for GPU physics entities (wasm32 only).
     #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
     compute_entities_buf: Vec<ComputeEntity>,
+
+    // ---- GPU Visibility Culling (wgpu only) ----
+    /// Whether to use GPU visibility culling.
+    /// When enabled, instances are culled on the GPU using compute shaders.
+    /// This is beneficial for extreme-scale scenarios (10,000+ instances).
+    use_gpu_culling: bool,
+
+    /// Threshold for auto-enabling GPU culling (total visible entity count).
+    /// Set to 0 to always use GPU culling when enabled.
+    gpu_culling_threshold: usize,
 }
 
 // ============================================================================
@@ -334,6 +344,9 @@ impl Rource {
             use_gpu_physics: false,
             gpu_physics_threshold: 500,
             compute_entities_buf: Vec::with_capacity(1024),
+            // GPU culling (wgpu only) - default threshold 10000 entities
+            use_gpu_culling: false,
+            gpu_culling_threshold: 10000,
         })
     }
 
@@ -633,10 +646,39 @@ impl Rource {
         true
     }
 
+    /// Returns whether GPU culling should be used for the current scene.
+    ///
+    /// Conditions:
+    /// 1. `use_gpu_culling` is enabled
+    /// 2. wgpu backend is active
+    /// 3. Entity count exceeds threshold (auto mode)
+    #[inline]
+    fn should_use_gpu_culling(&self) -> bool {
+        if !self.use_gpu_culling {
+            return false;
+        }
+
+        // Only wgpu supports compute shaders
+        if self.renderer_type != RendererType::Wgpu {
+            return false;
+        }
+
+        // Calculate total entity count
+        let total_entities =
+            self.scene.file_count() + self.scene.user_count() + self.scene.directories().len();
+
+        // Check threshold (0 = always use GPU culling when enabled)
+        if self.gpu_culling_threshold > 0 && total_entities < self.gpu_culling_threshold {
+            return false;
+        }
+
+        true
+    }
+
     /// Updates physics simulation using the GPU compute pipeline.
     ///
     /// This method:
-    /// 1. Collects directory data into ComputeEntity format
+    /// 1. Collects directory data into `ComputeEntity` format
     /// 2. Dispatches GPU physics simulation
     /// 3. Applies results back to scene directories
     /// 4. Updates file and user animations (CPU, same as normal update)
@@ -768,11 +810,24 @@ impl Rource {
             return;
         }
 
+        let visible_bounds = self.camera.visible_bounds();
+
+        // Update GPU culling bounds if enabled (wgpu only)
+        #[cfg(target_arch = "wasm32")]
+        if self.should_use_gpu_culling() {
+            if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
+                wgpu_renderer.set_cull_bounds(
+                    visible_bounds.min.x,
+                    visible_bounds.min.y,
+                    visible_bounds.max.x,
+                    visible_bounds.max.y,
+                );
+            }
+        }
+
         let renderer = self.backend.as_renderer_mut();
         renderer.begin_frame();
         renderer.clear(self.settings.display.background_color);
-
-        let visible_bounds = self.camera.visible_bounds();
         let camera_zoom = self.camera.zoom();
 
         // Populate visibility buffers with ALL entities - no spatial culling.

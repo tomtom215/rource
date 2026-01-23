@@ -4,7 +4,7 @@
  * Centralized keyboard event handling.
  */
 
-import { getRource, hasData, isContextLost } from '../state.js';
+import { getRource, hasData, isContextLost, get } from '../state.js';
 import { safeWasmCall } from '../wasm-api.js';
 import { getElement, getAllElements } from '../dom.js';
 import { toggleFullscreen } from './fullscreen.js';
@@ -14,7 +14,7 @@ import { showHelp, hideHelp } from './help.js';
 import { exportFullMap } from './full-map-export.js';
 import { increaseFontSize, decreaseFontSize } from './font-size.js';
 import { toggleRecording, isRecordingSupported } from './video-recording.js';
-import { isAtEnd, updatePlaybackUI } from '../animation.js';
+import { isAtEnd, updatePlaybackUI, resetUncappedFpsStats } from '../animation.js';
 import { updatePreference } from '../preferences.js';
 import { updateUrlState } from '../url-state.js';
 import { validateSpeed } from '../telemetry.js';
@@ -29,6 +29,10 @@ function handlePlayPause() {
     // If at end and paused, restart from beginning
     if (isAtEnd() && !safeWasmCall('isPlaying', () => rource.isPlaying(), false)) {
         safeWasmCall('seek', () => rource.seek(0), undefined);
+        // Reset FPS tracking stats when restarting playback in uncapped mode
+        if (get('uncappedFps')) {
+            resetUncappedFpsStats();
+        }
     }
 
     safeWasmCall('togglePlay', () => rource.togglePlay(), undefined);
@@ -111,6 +115,10 @@ function restart() {
     const rource = getRource();
     if (!rource || !hasData()) return;
     safeWasmCall('seek', () => rource.seek(0), undefined);
+    // Reset FPS tracking stats when restarting in uncapped mode
+    if (get('uncappedFps')) {
+        resetUncappedFpsStats();
+    }
     updatePlaybackUI();
 }
 
