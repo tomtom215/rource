@@ -184,8 +184,7 @@ impl PrimitiveCullingBuffers {
         };
 
         // Input buffer: STORAGE only (read by compute shader)
-        let input_buffer =
-            StorageBuffer::new(device, buffer_size, "culling_input_buffer", false);
+        let input_buffer = StorageBuffer::new(device, buffer_size, "culling_input_buffer", false);
 
         // Output buffer: STORAGE | VERTEX (written by compute, read as vertex buffer)
         let output_buffer =
