@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769162004878,
+  "lastUpdate": 1769164520434,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -725,6 +725,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/267aabf48b4cca2f7cfe06c69fdac2dd37bcdc03"
         },
         "date": 1769162004590,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3880672,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2620268,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1013123,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f271f800c3114e24aa9ce569650c956cba4e843e",
+          "message": "Merge pull request #129 from tomtom215/claude/fix-wasm-github-fetch-iUjcd\n\nImplement GitHub API rate limit awareness and UI feedback",
+          "timestamp": "2026-01-23T11:31:37+01:00",
+          "tree_id": "d98e8af2c17e7dd898cfda9743db9d86e2cc775d",
+          "url": "https://github.com/tomtom215/rource/commit/f271f800c3114e24aa9ce569650c956cba4e843e"
+        },
+        "date": 1769164520018,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
