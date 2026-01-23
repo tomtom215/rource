@@ -20,6 +20,7 @@
 //! constants below for configuration.
 
 use rource_core::camera::Camera;
+use rource_core::config::{WatermarkPosition, WatermarkSettings};
 use rource_core::scene::{FileNode, Scene};
 use rource_core::{DirId, FileId, UserId};
 use rource_math::{Bounds, Color, Vec2};
@@ -152,6 +153,7 @@ pub fn render_frame(app: &mut App) {
         app.logo_texture,
         app.logo_dimensions,
         app.logo_offset,
+        &app.watermark,
     );
 
     renderer.end_frame();
@@ -604,7 +606,7 @@ fn render_users(
     }
 }
 
-/// Render UI overlays (progress bar, stats, legend, etc.).
+/// Render UI overlays (progress bar, stats, legend, watermark, etc.).
 #[allow(clippy::too_many_arguments)]
 fn render_overlays(
     renderer: &mut SoftwareRenderer,
@@ -617,6 +619,7 @@ fn render_overlays(
     logo_texture: Option<TextureId>,
     logo_dimensions: Option<(u32, u32)>,
     logo_offset: (i32, i32),
+    watermark: &WatermarkSettings,
 ) {
     let width = renderer.width() as f32;
     let height = renderer.height() as f32;
@@ -668,6 +671,9 @@ fn render_overlays(
     if let (Some(logo_tex), Some((logo_w, logo_h))) = (logo_texture, logo_dimensions) {
         render_logo(renderer, logo_tex, logo_w, logo_h, logo_offset, width);
     }
+
+    // Draw watermark (rendered last to appear on top)
+    render_watermark(renderer, watermark, font_id, width, height);
 }
 
 /// Render progress bar at bottom of screen.
@@ -963,6 +969,78 @@ fn render_logo(
         Vec2::new(logo_x + logo_width as f32, logo_y + logo_height as f32),
     );
     renderer.draw_quad(logo_bounds, Some(texture), Color::WHITE);
+}
+
+/// Render watermark overlay.
+///
+/// The watermark is positioned in one of the four corners with configurable
+/// margin, and renders primary text with optional secondary text below.
+fn render_watermark(
+    renderer: &mut SoftwareRenderer,
+    watermark: &WatermarkSettings,
+    font_id: Option<FontId>,
+    width: f32,
+    height: f32,
+) {
+    // Skip if disabled or no font
+    if !watermark.enabled || !watermark.has_text() {
+        return;
+    }
+    let Some(fid) = font_id else {
+        return;
+    };
+
+    let text_color = watermark.effective_color();
+    let subtext_color = text_color.with_alpha(text_color.a * 0.8);
+    let font_size = watermark.font_size;
+    let margin = watermark.margin;
+
+    // Estimate text widths
+    let text_width = estimate_text_width(&watermark.text, font_size);
+    let subtext_width = watermark
+        .subtext
+        .as_ref()
+        .map_or(0.0, |s| estimate_text_width(s, font_size * 0.85));
+    let max_width = text_width.max(subtext_width);
+
+    // Line height and total block height
+    let line_height = font_size * 1.2;
+    let total_height = if watermark.subtext.is_some() {
+        line_height * 2.0
+    } else {
+        line_height
+    };
+
+    // Calculate position based on corner
+    let (x, y) = match watermark.position {
+        WatermarkPosition::TopLeft => (margin, margin),
+        WatermarkPosition::TopRight => (width - max_width - margin, margin),
+        WatermarkPosition::BottomLeft => (margin, height - total_height - margin),
+        WatermarkPosition::BottomRight => {
+            (width - max_width - margin, height - total_height - margin)
+        }
+    };
+
+    // Draw primary text
+    renderer.draw_text(&watermark.text, Vec2::new(x, y), fid, font_size, text_color);
+
+    // Draw secondary text (subtext) if present
+    if let Some(ref subtext) = watermark.subtext {
+        let subtext_x = match watermark.position {
+            WatermarkPosition::TopLeft | WatermarkPosition::BottomLeft => x,
+            WatermarkPosition::TopRight | WatermarkPosition::BottomRight => {
+                // Right-align the subtext
+                x + (max_width - subtext_width)
+            }
+        };
+        renderer.draw_text(
+            subtext,
+            Vec2::new(subtext_x, y + line_height),
+            fid,
+            font_size * 0.85,
+            subtext_color,
+        );
+    }
 }
 
 /// Apply post-processing effects.

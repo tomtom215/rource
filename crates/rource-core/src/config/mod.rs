@@ -73,7 +73,8 @@ pub use config_env::{env_var_names, load_env, merge_env};
 pub use settings::{
     CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
     FilterSettings, InputSettings, LayoutSettings, LimitSettings, OverlaySettings,
-    PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
+    PlaybackSettings, Settings, TitleSettings, VisibilitySettings, WatermarkPosition,
+    WatermarkSettings,
 };
 
 #[cfg(feature = "config-file")]

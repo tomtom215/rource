@@ -24,7 +24,8 @@ use clap::Parser;
 use rource_core::config::{
     CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
     FilterSettings, InputSettings, LayoutSettings, LimitSettings, OverlaySettings,
-    PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
+    PlaybackSettings, Settings, TitleSettings, VisibilitySettings, WatermarkPosition,
+    WatermarkSettings,
 };
 use std::path::PathBuf;
 
@@ -266,6 +267,49 @@ pub struct Args {
     #[arg(long, value_name = "FILE")]
     pub background_image: Option<PathBuf>,
 
+    // =========================================================================
+    // Watermark Settings
+    // =========================================================================
+    /// Enable watermark overlay.
+    ///
+    /// Displays text in a corner of the visualization (useful for branding).
+    #[arg(long)]
+    pub watermark: bool,
+
+    /// Watermark primary text.
+    ///
+    /// The main text to display (e.g., project name).
+    #[arg(long, value_name = "TEXT")]
+    pub watermark_text: Option<String>,
+
+    /// Watermark secondary text (subtext).
+    ///
+    /// Displayed below the primary text (e.g., copyright notice).
+    #[arg(long, value_name = "TEXT")]
+    pub watermark_subtext: Option<String>,
+
+    /// Watermark position on screen.
+    ///
+    /// Options: top-left, top-right, bottom-left, bottom-right (default: bottom-right)
+    #[arg(long, value_name = "POSITION", default_value = "bottom-right")]
+    pub watermark_position: String,
+
+    /// Watermark font size.
+    #[arg(long, value_name = "SIZE", default_value_t = 14.0)]
+    pub watermark_font_size: f32,
+
+    /// Watermark opacity (0.0-1.0).
+    #[arg(long, value_name = "OPACITY", default_value_t = 0.5)]
+    pub watermark_opacity: f32,
+
+    /// Watermark text color (hex, e.g., "FFFFFF").
+    #[arg(long, value_name = "COLOR", default_value = "FFFFFF")]
+    pub watermark_color: String,
+
+    /// Watermark margin from screen edge in pixels.
+    #[arg(long, value_name = "PIXELS", default_value_t = 15.0)]
+    pub watermark_margin: f32,
+
     /// Save current configuration to a TOML file and exit.
     #[arg(long, value_name = "FILE")]
     pub save_config: Option<PathBuf>,
@@ -389,6 +433,27 @@ impl Args {
         parse_offset(&self.logo_offset).unwrap_or((0, 0))
     }
 
+    /// Build watermark settings from CLI arguments.
+    #[must_use]
+    pub fn build_watermark_settings(&self) -> WatermarkSettings {
+        // Parse color, defaulting to white
+        let color = parse_hex_color(&self.watermark_color).unwrap_or(rource_math::Color::WHITE);
+
+        // Parse position
+        let position = WatermarkPosition::from_str(&self.watermark_position).unwrap_or_default();
+
+        WatermarkSettings {
+            enabled: self.watermark || self.watermark_text.is_some(),
+            text: self.watermark_text.clone().unwrap_or_default(),
+            subtext: self.watermark_subtext.clone(),
+            position,
+            font_size: self.watermark_font_size,
+            opacity: self.watermark_opacity.clamp(0.0, 1.0),
+            color,
+            margin: self.watermark_margin,
+        }
+    }
+
     /// Convert CLI arguments to a Settings struct.
     ///
     /// This is used for --save-config to export current settings.
@@ -482,6 +547,7 @@ impl Args {
                 .background_image
                 .as_ref()
                 .map(|p| p.display().to_string()),
+            watermark: self.build_watermark_settings(),
         };
 
         let mut filter = FilterSettings::new();

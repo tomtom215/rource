@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use rource_core::camera::{Camera, Camera3D};
-use rource_core::config::FilterSettings;
+use rource_core::config::{FilterSettings, WatermarkSettings};
 use rource_core::scene::Scene;
 use rource_core::{DirId, FileId, UserId};
 use rource_render::effects::{BloomEffect, ShadowEffect};
@@ -184,6 +184,9 @@ pub struct App {
     /// Background image texture ID (loaded from `background_image_path`).
     pub background_texture: Option<TextureId>,
 
+    /// Watermark configuration.
+    pub watermark: WatermarkSettings,
+
     // ==========================================================================
     // Zero-Allocation Visibility Buffers (Phase 8 Optimization)
     // ==========================================================================
@@ -276,6 +279,9 @@ impl App {
 
         let playback = PlaybackState::from_args(&args);
 
+        // Build watermark settings before moving args
+        let watermark = args.build_watermark_settings();
+
         Self {
             args,
             window: None,
@@ -315,6 +321,7 @@ impl App {
             logo_texture: None,
             logo_dimensions: None,
             background_texture: None,
+            watermark,
             // Pre-allocate visibility buffers to avoid per-frame allocations
             // Capacity of 1000 handles typical repository sizes; grows if needed
             visible_dirs_buffer: Vec::with_capacity(1000),

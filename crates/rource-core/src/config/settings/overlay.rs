@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tom F <https://github.com/tomtom215>
 
-//! Logo and background overlay settings.
+//! Logo, background, and watermark overlay settings.
 
-/// Overlay settings for logo and background images.
+use super::WatermarkSettings;
+
+/// Overlay settings for logo, background images, and watermark.
 #[derive(Debug, Clone, Default)]
 pub struct OverlaySettings {
     /// Path to logo image file.
@@ -12,6 +14,8 @@ pub struct OverlaySettings {
     pub logo_offset: (i32, i32),
     /// Path to background image file.
     pub background_image: Option<String>,
+    /// Watermark configuration.
+    pub watermark: WatermarkSettings,
 }
 
 #[cfg(test)]

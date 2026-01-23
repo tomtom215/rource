@@ -110,7 +110,7 @@ use metrics::{PerformanceMetrics, RenderStats};
 use playback::{apply_vcs_commit, calculate_seconds_per_commit, prewarm_scene, PlaybackState};
 use render_phases::{
     render_actions, render_directories, render_directory_labels, render_file_labels, render_files,
-    render_user_labels, render_users, RenderContext, AUTO_FIT_MIN_ZOOM,
+    render_user_labels, render_users, render_watermark, RenderContext, AUTO_FIT_MIN_ZOOM,
 };
 
 // ============================================================================
@@ -872,6 +872,10 @@ impl Rource {
             }
         }
 
+        // Get dimensions before borrowing renderer mutably (for watermark)
+        let screen_width = self.backend.width() as f32;
+        let screen_height = self.backend.height() as f32;
+
         let renderer = self.backend.as_renderer_mut();
         renderer.begin_frame();
         renderer.clear(self.settings.display.background_color);
@@ -944,6 +948,15 @@ impl Rource {
         render_users(renderer, &ctx, &self.scene, &self.camera);
         render_user_labels(renderer, &ctx, &self.scene, &self.camera);
         render_file_labels(renderer, &ctx, &self.scene, &self.camera);
+
+        // Render watermark overlay (screen-space, rendered last to be on top)
+        render_watermark(
+            renderer,
+            &self.settings.overlay.watermark,
+            self.font_id,
+            screen_width,
+            screen_height,
+        );
 
         renderer.end_frame();
         self.backend.present();

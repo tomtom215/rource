@@ -252,6 +252,11 @@ async function main() {
             console.groupEnd();
         }
 
+        // Enable Rource brand watermark for the demo
+        // This shows "Rource" and "© Tom F" in the bottom-right corner
+        rource.enableRourceWatermark();
+        console.log('Rource watermark enabled');
+
         // Initialize core modules
         initToast();
         initAnimation();
