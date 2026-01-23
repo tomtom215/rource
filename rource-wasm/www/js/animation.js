@@ -856,10 +856,14 @@ export function updatePerfMetrics() {
         // Frame time display precision depends on mode:
         // - Uncapped mode: show microsecond precision (3 decimals = 0.001ms = 1µs)
         // - Capped mode: show 1 decimal place (sufficient for vsync'd 16.7ms frames)
+        //
+        // NOTE: Actual timer resolution is limited by browser Spectre mitigations:
+        // - Chrome: ~5µs, Firefox: ~20µs, Safari: ~100µs
+        // True nanosecond precision is not achievable from JavaScript.
         if (perfFrameTime) {
             if (isUncapped) {
-                // Microsecond precision for performance tuning
-                // Show in µs for sub-ms times, ms for larger values
+                // Microsecond display for performance analysis
+                // (limited by browser timer resolution, not display format)
                 if (frameTimeMs < 1.0) {
                     perfFrameTime.textContent = `${(frameTimeMs * 1000).toFixed(0)}µs`;
                 } else if (frameTimeMs < 10.0) {

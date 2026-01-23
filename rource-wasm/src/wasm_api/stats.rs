@@ -122,8 +122,20 @@ impl Rource {
     /// This batches 12+ individual getter calls into one, reducing per-frame
     /// overhead by approximately 90% when updating the performance metrics UI.
     ///
-    /// Frame time is returned with 4 decimal places (0.1µs precision) to enable
-    /// precise performance profiling when eliminating individual clock cycles.
+    /// # Timing Precision
+    ///
+    /// Frame time is returned with 4 decimal places (0.1µs display resolution).
+    /// Actual measurement precision is limited by browser security mitigations
+    /// against timing attacks (Spectre/Meltdown):
+    ///
+    /// | Browser | Resolution | Source |
+    /// |---------|------------|--------|
+    /// | Chrome  | ~5µs       | [Chrome Security Blog](https://security.googleblog.com) |
+    /// | Firefox | ~20µs      | [MDN Spectre mitigations](https://developer.mozilla.org) |
+    /// | Safari  | ~100µs     | WebKit security notes |
+    ///
+    /// Nanosecond precision is not achievable from JavaScript's `performance.now()`.
+    /// The 4 decimal places display the full resolution available from the browser.
     ///
     /// Returns a JSON string with the following structure:
     /// ```json

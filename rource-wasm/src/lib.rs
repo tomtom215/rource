@@ -701,19 +701,22 @@ impl Rource {
             self.perf_metrics.set_start_time(timestamp);
         }
 
-        // Calculate delta time
-        let dt = if self.playback.last_frame_time() > 0.0 {
+        // Calculate delta time (raw measurement)
+        let raw_dt = if self.playback.last_frame_time() > 0.0 {
             ((timestamp - self.playback.last_frame_time()) / 1000.0) as f32
         } else {
             1.0 / 60.0
         };
         self.playback.set_last_frame_time(timestamp);
 
-        // Clamp dt to avoid huge jumps
-        let dt = dt.min(0.1);
+        // Record UNCLAMPED frame time for accurate performance measurement
+        // This is critical: we must display the actual frame time, not a clamped value.
+        // Clamping would hide stutters and make performance claims dishonest.
+        self.perf_metrics.record_frame(raw_dt);
 
-        // Record frame time for FPS calculation
-        self.perf_metrics.record_frame(dt);
+        // Clamp dt for SIMULATION ONLY to avoid physics instability
+        // (e.g., when tab is backgrounded, we don't want entities to fly off screen)
+        let dt = raw_dt.min(0.1);
 
         // Update simulation if playing
         if self.playback.is_playing() && !self.commits.is_empty() {
