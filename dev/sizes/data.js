@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769123804505,
+  "lastUpdate": 1769127063093,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -584,6 +584,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 974859,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a6ae35f82e3ee07b100e87a72ec3c6b57b0c889",
+          "message": "Merge pull request #125 from tomtom215/claude/optimize-wasm-performance-z47ZD\n\nOptimize performance with zero-allocation buffers and inline hints",
+          "timestamp": "2026-01-23T01:07:03+01:00",
+          "tree_id": "5a8863182a7f7cba7b0f7f7097282f172c21ed9c",
+          "url": "https://github.com/tomtom215/rource/commit/3a6ae35f82e3ee07b100e87a72ec3c6b57b0c889"
+        },
+        "date": 1769127062208,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3878400,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2524622,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 974854,
             "unit": "bytes"
           }
         ]
