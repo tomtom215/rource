@@ -516,7 +516,8 @@ impl Scene {
     /// Applies a VCS commit to the scene.
     ///
     /// This creates/modifies/deletes files and spawns appropriate actions.
-    pub fn apply_commit(&mut self, author: &str, files: &[(std::path::PathBuf, ActionType)]) {
+    /// Takes path references to avoid cloning paths from commit data.
+    pub fn apply_commit(&mut self, author: &str, files: &[(&Path, ActionType)]) {
         let user_id = self.get_or_create_user(author);
 
         for (path, action_type) in files {
@@ -531,7 +532,7 @@ impl Scene {
                     }
                 }
                 ActionType::Modify => {
-                    if let Some(&file_id) = self.file_by_path.get(path) {
+                    if let Some(&file_id) = self.file_by_path.get(*path) {
                         self.spawn_action(user_id, file_id, ActionType::Modify);
 
                         // Touch the file with modify color
@@ -549,7 +550,7 @@ impl Scene {
                     }
                 }
                 ActionType::Delete => {
-                    if let Some(&file_id) = self.file_by_path.get(path) {
+                    if let Some(&file_id) = self.file_by_path.get(*path) {
                         self.spawn_action(user_id, file_id, ActionType::Delete);
 
                         // Mark file for removal
@@ -961,9 +962,9 @@ mod tests {
     fn test_scene_apply_commit() {
         let mut scene = Scene::new();
 
-        let files = vec![
-            (std::path::PathBuf::from("src/new.rs"), ActionType::Create),
-            (std::path::PathBuf::from("src/mod.rs"), ActionType::Create),
+        let files: Vec<(&Path, ActionType)> = vec![
+            (Path::new("src/new.rs"), ActionType::Create),
+            (Path::new("src/mod.rs"), ActionType::Create),
         ];
 
         scene.apply_commit("Alice", &files);
@@ -980,7 +981,7 @@ mod tests {
         // First create a file
         scene.create_file(Path::new("src/lib.rs"));
 
-        let files = vec![(std::path::PathBuf::from("src/lib.rs"), ActionType::Modify)];
+        let files: Vec<(&Path, ActionType)> = vec![(Path::new("src/lib.rs"), ActionType::Modify)];
 
         scene.apply_commit("Bob", &files);
 
@@ -998,7 +999,7 @@ mod tests {
         // First create a file
         scene.create_file(Path::new("old.rs"));
 
-        let files = vec![(std::path::PathBuf::from("old.rs"), ActionType::Delete)];
+        let files: Vec<(&Path, ActionType)> = vec![(Path::new("old.rs"), ActionType::Delete)];
 
         scene.apply_commit("Charlie", &files);
 

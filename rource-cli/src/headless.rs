@@ -591,11 +591,12 @@ pub fn run_headless(args: &Args) -> Result<()> {
     if !commits.is_empty() {
         let commit = &commits[0];
         if filter.should_include_user(&commit.author) {
-            let files: Vec<(std::path::PathBuf, ActionType)> = commit
+            // Use references instead of cloning paths
+            let files: Vec<(&std::path::Path, ActionType)> = commit
                 .files
                 .iter()
                 .filter(|f| filter.should_include_file(&f.path))
-                .map(|f| (f.path.clone(), file_action_to_action_type(f.action)))
+                .map(|f| (f.path.as_path(), file_action_to_action_type(f.action)))
                 .collect();
             if !files.is_empty() {
                 scene.apply_commit(&commit.author, &files);
@@ -678,11 +679,12 @@ pub fn run_headless(args: &Args) -> Result<()> {
             };
 
             if filter.should_include_user(&commit.author) {
-                let files: Vec<(std::path::PathBuf, ActionType)> = commit
+                // Use references instead of cloning paths
+                let files: Vec<(&std::path::Path, ActionType)> = commit
                     .files
                     .iter()
                     .filter(|f| filter.should_include_file(&f.path))
-                    .map(|f| (f.path.clone(), file_action_to_action_type(f.action)))
+                    .map(|f| (f.path.as_path(), file_action_to_action_type(f.action)))
                     .collect();
 
                 if !files.is_empty() {
@@ -1402,13 +1404,14 @@ pub fn run_screenshot(args: &Args, screenshot_path: &Path) -> Result<()> {
             continue;
         }
 
-        let files: Vec<(std::path::PathBuf, ActionType)> = commit
+        // Use references instead of cloning paths
+        let files: Vec<(&std::path::Path, ActionType)> = commit
             .files
             .iter()
             .filter(|f| filter.should_include_file(&f.path))
             .map(|f| {
                 (
-                    f.path.clone(),
+                    f.path.as_path(),
                     match f.action {
                         FileAction::Create => ActionType::Create,
                         FileAction::Modify => ActionType::Modify,
