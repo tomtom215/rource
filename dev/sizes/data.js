@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769195537863,
+  "lastUpdate": 1769200453767,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1091,6 +1091,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1030024,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f70631958c36013eebe13bc6b0720e4f8e946544",
+          "message": "Merge pull request #138 from tomtom215/claude/codebase-review-handoff-fyaLb\n\nAdd testable validation helpers for effects and config parameters",
+          "timestamp": "2026-01-23T21:30:26+01:00",
+          "tree_id": "20a945a982dffcea6ffe2e0067105f1e8d17a284",
+          "url": "https://github.com/tomtom215/rource/commit/f70631958c36013eebe13bc6b0720e4f8e946544"
+        },
+        "date": 1769200453326,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3898128,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2675982,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1030023,
             "unit": "bytes"
           }
         ]
