@@ -11,7 +11,7 @@ import { getElement, getAllElements } from '../dom.js';
 import { showToast } from '../toast.js';
 import { CONFIG } from '../config.js';
 import { loadLogData, loadRourceData, detectLogFormat } from '../data-loader.js';
-import { fetchGitHubWithProgress, parseGitHubUrl, getRateLimitStatus } from '../github-fetch.js';
+import { fetchGitHubWithProgress, parseGitHubUrl, getRateLimitStatus, updateRateLimitFromResponse } from '../github-fetch.js';
 import { ROURCE_STATS, setAdditionalCommits } from '../cached-data.js';
 import { formatBytes } from '../utils.js';
 
@@ -198,7 +198,26 @@ function initLoadFileButton() {
 }
 
 /**
+ * Creates an SVG icon element safely (no innerHTML).
+ * @param {string} pathD - SVG path d attribute
+ * @returns {SVGElement} SVG element
+ */
+function createRateLimitIcon(pathD) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'rate-limit-icon');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'currentColor');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathD);
+    svg.appendChild(path);
+
+    return svg;
+}
+
+/**
  * Updates the rate limit status display in the UI.
+ * Uses textContent instead of innerHTML to prevent XSS.
  */
 function updateRateLimitStatusUI() {
     const elements = getAllElements();
@@ -207,34 +226,33 @@ function updateRateLimitStatusUI() {
 
     const status = getRateLimitStatus();
 
-    // Remove all status classes
-    statusEl.classList.remove('ok', 'low', 'exhausted', 'hidden');
+    // Clear existing content safely
+    statusEl.textContent = '';
+    statusEl.className = 'rate-limit-status';
+
+    // Icon paths
+    const checkIconPath = 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z';
+    const warningIconPath = 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z';
 
     if (status.isExhausted) {
-        statusEl.className = 'rate-limit-status exhausted';
-        statusEl.innerHTML = `
-            <svg class="rate-limit-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            <span>Rate limit exhausted. Resets at ${status.resetTime?.toLocaleTimeString() || 'soon'}.</span>
-        `;
+        statusEl.classList.add('exhausted');
+        statusEl.appendChild(createRateLimitIcon(checkIconPath));
+        const span = document.createElement('span');
+        span.textContent = `Rate limit exhausted. Resets at ${status.resetTime?.toLocaleTimeString() || 'soon'}.`;
+        statusEl.appendChild(span);
     } else if (status.isLow) {
-        statusEl.className = 'rate-limit-status low';
-        statusEl.innerHTML = `
-            <svg class="rate-limit-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-            </svg>
-            <span>Low API quota: ${status.remaining}/${status.limit} requests remaining.</span>
-        `;
+        statusEl.classList.add('low');
+        statusEl.appendChild(createRateLimitIcon(warningIconPath));
+        const span = document.createElement('span');
+        span.textContent = `Low API quota: ${status.remaining}/${status.limit} requests remaining.`;
+        statusEl.appendChild(span);
     } else if (status.remaining < status.limit) {
         // Show status if we've made some requests
-        statusEl.className = 'rate-limit-status ok';
-        statusEl.innerHTML = `
-            <svg class="rate-limit-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            <span>API quota: ${status.remaining}/${status.limit} requests remaining.</span>
-        `;
+        statusEl.classList.add('ok');
+        statusEl.appendChild(createRateLimitIcon(checkIconPath));
+        const span = document.createElement('span');
+        span.textContent = `API quota: ${status.remaining}/${status.limit} requests remaining.`;
+        statusEl.appendChild(span);
     } else {
         // Full quota - hide the status
         statusEl.classList.add('hidden');
@@ -432,6 +450,12 @@ function initRefreshRource() {
         }
 
         try {
+            // Check rate limit before starting
+            const rateLimitStatus = getRateLimitStatus();
+            if (rateLimitStatus.isExhausted) {
+                throw new Error(`GitHub API rate limit exhausted. Try again after ${rateLimitStatus.resetTime?.toLocaleTimeString() || 'some time'}.`);
+            }
+
             // Fetch commits since the cached timestamp
             const sinceDate = new Date(ROURCE_STATS.lastTimestamp * 1000).toISOString();
             const response = await fetch(
@@ -439,17 +463,13 @@ function initRefreshRource() {
                 { headers: { 'Accept': 'application/vnd.github.v3+json' } }
             );
 
-            if (!response.ok) {
-                // Check for rate limiting
-                const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
-                const rateLimitReset = response.headers.get('X-RateLimit-Reset');
+            // Update shared rate limit state
+            updateRateLimitFromResponse(response);
 
-                if (response.status === 403 && rateLimitRemaining === '0') {
-                    const resetTime = rateLimitReset ? new Date(parseInt(rateLimitReset) * 1000) : null;
-                    const waitMsg = resetTime
-                        ? ` Try again after ${resetTime.toLocaleTimeString()}.`
-                        : ' Please wait a few minutes.';
-                    throw new Error(`GitHub API rate limit exceeded.${waitMsg}`);
+            if (!response.ok) {
+                if (response.status === 403 && getRateLimitStatus().remaining === 0) {
+                    const status = getRateLimitStatus();
+                    throw new Error(`GitHub API rate limit exceeded. Try again after ${status.resetTime?.toLocaleTimeString() || 'some time'}.`);
                 }
                 throw new Error(`GitHub API error: ${response.status}`);
             }
@@ -467,20 +487,30 @@ function initRefreshRource() {
                 // Fetch files for each new commit (skip the first which is our cached one)
                 let newEntries = [];
                 for (const commit of commits.slice(1)) {
+                    // Check rate limit before each request
+                    if (getRateLimitStatus().remaining <= CONFIG.GITHUB_RATE_LIMIT_BUFFER) {
+                        console.warn('Stopping refresh early: rate limit low');
+                        break;
+                    }
+
                     const timestamp = Math.floor(new Date(commit.commit.author.date).getTime() / 1000);
-                    const author = commit.commit.author.name || 'Unknown';
+                    const author = (commit.commit.author.name || 'Unknown').replace(/\|/g, '_');
 
                     // Fetch commit details for files
                     const detailResponse = await fetch(commit.url, {
                         headers: { 'Accept': 'application/vnd.github.v3+json' }
                     });
 
+                    // Update shared rate limit state
+                    updateRateLimitFromResponse(detailResponse);
+
                     if (detailResponse.ok) {
                         const detail = await detailResponse.json();
                         for (const file of (detail.files || [])) {
                             const action = file.status === 'added' ? 'A'
                                 : file.status === 'removed' ? 'D' : 'M';
-                            newEntries.push(`${timestamp}|${author}|${action}|${file.filename}`);
+                            const filename = file.filename.replace(/\|/g, '_');
+                            newEntries.push(`${timestamp}|${author}|${action}|${filename}`);
                         }
                     }
                 }
