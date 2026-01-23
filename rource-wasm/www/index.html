@@ -362,6 +362,13 @@
                             <span class="perf-label">Resolution</span>
                             <span class="perf-value" id="perf-resolution">--</span>
                         </div>
+                        <div class="perf-row perf-backend-row">
+                            <span class="perf-label">Backend</span>
+                            <span class="perf-value perf-backend" id="perf-backend"
+                                  data-backend="unknown"
+                                  data-gpu-accelerated="false"
+                                  title="Rendering backend (from WASM)">--</span>
+                        </div>
                         <div class="perf-row perf-toggle-row">
                             <span class="perf-label" id="perf-uncapped-label">Uncapped</span>
                             <span class="perf-switch">
@@ -712,11 +719,13 @@
                         <div class="tech-item-label">WASM Gzipped</div>
                     </div>
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-renderer">WebGL2</div>
+                        <div class="tech-item-value" id="tech-renderer"
+                             data-backend="unknown"
+                             data-gpu-accelerated="false">--</div>
                         <div class="tech-item-label">Renderer</div>
                     </div>
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-tests">1094</div>
+                        <div class="tech-item-value" id="tech-tests">1169</div>
                         <div class="tech-item-label">Unit Tests</div>
                     </div>
                     <div class="tech-item">

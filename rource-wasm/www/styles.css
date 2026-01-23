@@ -751,6 +751,34 @@ header h1 {
     text-align: right;
 }
 
+/* Backend indicator with color coding - deterministic from WASM */
+.perf-backend {
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* GPU-accelerated backends (green) */
+.perf-backend[data-gpu-accelerated="true"] {
+    background: rgba(63, 185, 80, 0.2);
+    color: var(--success);
+}
+
+/* CPU/Software backend (amber) */
+.perf-backend[data-gpu-accelerated="false"]:not([data-backend="unknown"]) {
+    background: rgba(210, 153, 34, 0.2);
+    color: var(--warning);
+}
+
+/* Unknown state (muted) */
+.perf-backend[data-backend="unknown"] {
+    background: rgba(132, 141, 151, 0.2);
+    color: var(--text-muted);
+}
+
 /* Technical info panel */
 .tech-info-panel {
     background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(233, 69, 96, 0.08) 100%);
