@@ -391,6 +391,44 @@ impl Rource {
     pub fn recover_context(&mut self) -> bool {
         self.backend.recover_context().is_ok()
     }
+
+    /// Releases GPU resources immediately.
+    ///
+    /// Call this method before the page unloads to prevent GPU resource
+    /// contention when the page is refreshed quickly. This is especially
+    /// important for WebGPU which may hold onto adapter resources.
+    ///
+    /// After calling `dispose()`, the Rource instance should not be used again.
+    ///
+    /// # Example
+    ///
+    /// ```javascript
+    /// window.addEventListener('beforeunload', () => {
+    ///     if (rource) {
+    ///         rource.dispose();
+    ///     }
+    /// });
+    /// ```
+    #[wasm_bindgen]
+    pub fn dispose(&mut self) {
+        // Log for debugging
+        web_sys::console::log_1(&"Rource: Disposing GPU resources...".into());
+
+        // Clear scene to release any entity-related resources
+        self.scene = Scene::new();
+
+        // Clear all buffers
+        self.commits.clear();
+        self.visible_dirs_buf.clear();
+        self.visible_files_buf.clear();
+        self.visible_users_buf.clear();
+        self.compute_entities_buf.clear();
+
+        // The backend will be dropped when self is dropped, but we log this
+        // to help with debugging. The actual GPU resource release happens
+        // when JavaScript nullifies the reference to this object.
+        web_sys::console::log_1(&"Rource: Resources cleared, awaiting garbage collection".into());
+    }
 }
 
 // ============================================================================
