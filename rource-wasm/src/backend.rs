@@ -83,6 +83,179 @@ fn is_webgl2_available() -> bool {
 }
 
 // ============================================================================
+// Helper Functions (testable without browser context)
+// ============================================================================
+
+#[allow(dead_code)]
+mod helpers {
+    /// Extract the red component from an ARGB pixel.
+    ///
+    /// # Arguments
+    /// * `pixel` - ARGB pixel value (0xAARRGGBB)
+    ///
+    /// # Returns
+    /// Red component as u8 (0-255)
+    #[inline]
+    #[must_use]
+    pub fn argb_red(pixel: u32) -> u8 {
+        ((pixel >> 16) & 0xFF) as u8
+    }
+
+    /// Extract the green component from an ARGB pixel.
+    ///
+    /// # Arguments
+    /// * `pixel` - ARGB pixel value (0xAARRGGBB)
+    ///
+    /// # Returns
+    /// Green component as u8 (0-255)
+    #[inline]
+    #[must_use]
+    pub fn argb_green(pixel: u32) -> u8 {
+        ((pixel >> 8) & 0xFF) as u8
+    }
+
+    /// Extract the blue component from an ARGB pixel.
+    ///
+    /// # Arguments
+    /// * `pixel` - ARGB pixel value (0xAARRGGBB)
+    ///
+    /// # Returns
+    /// Blue component as u8 (0-255)
+    #[inline]
+    #[must_use]
+    pub fn argb_blue(pixel: u32) -> u8 {
+        (pixel & 0xFF) as u8
+    }
+
+    /// Extract the alpha component from an ARGB pixel.
+    ///
+    /// # Arguments
+    /// * `pixel` - ARGB pixel value (0xAARRGGBB)
+    ///
+    /// # Returns
+    /// Alpha component as u8 (0-255)
+    #[inline]
+    #[must_use]
+    pub fn argb_alpha(pixel: u32) -> u8 {
+        ((pixel >> 24) & 0xFF) as u8
+    }
+
+    /// Convert an ARGB pixel to RGBA byte array.
+    ///
+    /// Used for converting software renderer output to `ImageData` format.
+    ///
+    /// # Arguments
+    /// * `pixel` - ARGB pixel value (0xAARRGGBB)
+    ///
+    /// # Returns
+    /// [R, G, B, A] byte array
+    #[inline]
+    #[must_use]
+    pub fn argb_to_rgba(pixel: u32) -> [u8; 4] {
+        [
+            argb_red(pixel),
+            argb_green(pixel),
+            argb_blue(pixel),
+            argb_alpha(pixel),
+        ]
+    }
+
+    /// Create an ARGB pixel from individual components.
+    ///
+    /// # Arguments
+    /// * `r` - Red component (0-255)
+    /// * `g` - Green component (0-255)
+    /// * `b` - Blue component (0-255)
+    /// * `a` - Alpha component (0-255)
+    ///
+    /// # Returns
+    /// ARGB pixel value (0xAARRGGBB)
+    #[inline]
+    #[must_use]
+    pub fn rgba_to_argb(r: u8, g: u8, b: u8, a: u8) -> u32 {
+        (u32::from(a) << 24) | (u32::from(r) << 16) | (u32::from(g) << 8) | u32::from(b)
+    }
+
+    /// Convert a buffer of ARGB pixels to RGBA format.
+    ///
+    /// This is the format required by HTML5 Canvas `ImageData`.
+    ///
+    /// # Arguments
+    /// * `argb_pixels` - Slice of ARGB pixels
+    ///
+    /// # Returns
+    /// Vec of RGBA bytes (4 bytes per pixel)
+    #[must_use]
+    pub fn convert_argb_buffer_to_rgba(argb_pixels: &[u32]) -> Vec<u8> {
+        let mut rgba = Vec::with_capacity(argb_pixels.len() * 4);
+        for &pixel in argb_pixels {
+            let [r, g, b, a] = argb_to_rgba(pixel);
+            rgba.push(r);
+            rgba.push(g);
+            rgba.push(b);
+            rgba.push(a);
+        }
+        rgba
+    }
+
+    /// Calculate the byte offset for a pixel at (x, y) in an RGBA buffer.
+    ///
+    /// # Arguments
+    /// * `x` - X coordinate
+    /// * `y` - Y coordinate
+    /// * `width` - Width of the image
+    ///
+    /// # Returns
+    /// Byte offset into the RGBA buffer
+    #[inline]
+    #[must_use]
+    pub fn rgba_pixel_offset(x: u32, y: u32, width: u32) -> usize {
+        ((y * width + x) * 4) as usize
+    }
+
+    /// Check if dimensions are valid for rendering.
+    ///
+    /// # Arguments
+    /// * `width` - Width in pixels
+    /// * `height` - Height in pixels
+    ///
+    /// # Returns
+    /// `true` if both dimensions are positive
+    #[inline]
+    #[must_use]
+    pub fn are_dimensions_valid(width: u32, height: u32) -> bool {
+        width > 0 && height > 0
+    }
+
+    /// Calculate buffer size for an RGBA image.
+    ///
+    /// # Arguments
+    /// * `width` - Width in pixels
+    /// * `height` - Height in pixels
+    ///
+    /// # Returns
+    /// Size in bytes (width * height * 4)
+    #[inline]
+    #[must_use]
+    pub fn rgba_buffer_size(width: u32, height: u32) -> usize {
+        (width as usize) * (height as usize) * 4
+    }
+
+    /// Check if a renderer type string is valid.
+    ///
+    /// # Arguments
+    /// * `type_str` - Renderer type string
+    ///
+    /// # Returns
+    /// `true` if the string represents a valid renderer type
+    #[inline]
+    #[must_use]
+    pub fn is_valid_renderer_type(type_str: &str) -> bool {
+        matches!(type_str, "wgpu" | "webgl2" | "software")
+    }
+}
+
+// ============================================================================
 // Renderer Type
 // ============================================================================
 
@@ -579,8 +752,14 @@ impl RendererBackend {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unreadable_literal)]
 mod tests {
+    use super::helpers::*;
     use super::*;
+
+    // ========================================================================
+    // RendererType Tests
+    // ========================================================================
 
     #[test]
     fn test_renderer_type_as_str() {
@@ -619,5 +798,157 @@ mod tests {
         assert!(RendererType::Wgpu.is_gpu_accelerated());
         assert!(RendererType::WebGl2.is_gpu_accelerated());
         assert!(!RendererType::Software.is_gpu_accelerated());
+    }
+
+    // ========================================================================
+    // Pixel Conversion Helper Tests
+    // ========================================================================
+
+    #[test]
+    fn test_argb_red() {
+        // Red pixel: 0xFF FF 00 00 (A=255, R=255, G=0, B=0)
+        let red_pixel = 0xFFFF0000;
+        assert_eq!(argb_red(red_pixel), 255);
+        assert_eq!(argb_green(red_pixel), 0);
+        assert_eq!(argb_blue(red_pixel), 0);
+    }
+
+    #[test]
+    fn test_argb_green() {
+        // Green pixel: 0xFF 00 FF 00 (A=255, R=0, G=255, B=0)
+        let green_pixel = 0xFF00FF00;
+        assert_eq!(argb_red(green_pixel), 0);
+        assert_eq!(argb_green(green_pixel), 255);
+        assert_eq!(argb_blue(green_pixel), 0);
+    }
+
+    #[test]
+    fn test_argb_blue() {
+        // Blue pixel: 0xFF 00 00 FF (A=255, R=0, G=0, B=255)
+        let blue_pixel = 0xFF0000FF;
+        assert_eq!(argb_red(blue_pixel), 0);
+        assert_eq!(argb_green(blue_pixel), 0);
+        assert_eq!(argb_blue(blue_pixel), 255);
+    }
+
+    #[test]
+    fn test_argb_alpha() {
+        // Full alpha
+        assert_eq!(argb_alpha(0xFFFFFFFF), 255);
+        // Half alpha
+        assert_eq!(argb_alpha(0x80000000), 128);
+        // Zero alpha
+        assert_eq!(argb_alpha(0x00FFFFFF), 0);
+    }
+
+    #[test]
+    fn test_argb_to_rgba_white() {
+        // White pixel: 0xFF FF FF FF
+        let white = 0xFFFFFFFF;
+        let rgba = argb_to_rgba(white);
+        assert_eq!(rgba, [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn test_argb_to_rgba_black() {
+        // Black pixel (opaque): 0xFF 00 00 00
+        let black = 0xFF000000;
+        let rgba = argb_to_rgba(black);
+        assert_eq!(rgba, [0, 0, 0, 255]);
+    }
+
+    #[test]
+    fn test_argb_to_rgba_transparent() {
+        // Transparent pixel: 0x00 00 00 00
+        let transparent = 0x00000000;
+        let rgba = argb_to_rgba(transparent);
+        assert_eq!(rgba, [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_argb_to_rgba_mixed() {
+        // Orange with 50% alpha: 0x80 FF 55 00
+        let orange = 0x80FF5500;
+        let rgba = argb_to_rgba(orange);
+        assert_eq!(rgba, [255, 85, 0, 128]);
+    }
+
+    #[test]
+    fn test_rgba_to_argb_roundtrip() {
+        // Test that conversion is reversible
+        let original = 0xABCD1234;
+        let rgba = argb_to_rgba(original);
+        let back = rgba_to_argb(rgba[0], rgba[1], rgba[2], rgba[3]);
+        assert_eq!(back, original);
+    }
+
+    #[test]
+    fn test_convert_argb_buffer_to_rgba_empty() {
+        let empty: Vec<u32> = vec![];
+        let rgba = convert_argb_buffer_to_rgba(&empty);
+        assert!(rgba.is_empty());
+    }
+
+    #[test]
+    fn test_convert_argb_buffer_to_rgba_single() {
+        let pixels = vec![0xFF112233];
+        let rgba = convert_argb_buffer_to_rgba(&pixels);
+        assert_eq!(rgba, vec![0x11, 0x22, 0x33, 0xFF]);
+    }
+
+    #[test]
+    fn test_convert_argb_buffer_to_rgba_multiple() {
+        let pixels = vec![0xFFFF0000, 0xFF00FF00]; // Red, Green
+        let rgba = convert_argb_buffer_to_rgba(&pixels);
+        assert_eq!(
+            rgba,
+            vec![
+                255, 0, 0, 255, // Red
+                0, 255, 0, 255, // Green
+            ]
+        );
+    }
+
+    // ========================================================================
+    // Buffer Utility Tests
+    // ========================================================================
+
+    #[test]
+    fn test_rgba_pixel_offset() {
+        // First pixel
+        assert_eq!(rgba_pixel_offset(0, 0, 100), 0);
+        // Second pixel in first row
+        assert_eq!(rgba_pixel_offset(1, 0, 100), 4);
+        // First pixel in second row (width=100)
+        assert_eq!(rgba_pixel_offset(0, 1, 100), 400);
+        // Arbitrary position
+        assert_eq!(rgba_pixel_offset(10, 5, 100), 2040); // (5*100 + 10) * 4
+    }
+
+    #[test]
+    fn test_are_dimensions_valid() {
+        assert!(are_dimensions_valid(800, 600));
+        assert!(are_dimensions_valid(1, 1));
+        assert!(!are_dimensions_valid(0, 600));
+        assert!(!are_dimensions_valid(800, 0));
+        assert!(!are_dimensions_valid(0, 0));
+    }
+
+    #[test]
+    fn test_rgba_buffer_size() {
+        assert_eq!(rgba_buffer_size(100, 100), 40000); // 100*100*4
+        assert_eq!(rgba_buffer_size(1920, 1080), 8294400); // 1920*1080*4
+        assert_eq!(rgba_buffer_size(1, 1), 4);
+        assert_eq!(rgba_buffer_size(0, 100), 0);
+    }
+
+    #[test]
+    fn test_is_valid_renderer_type() {
+        assert!(is_valid_renderer_type("wgpu"));
+        assert!(is_valid_renderer_type("webgl2"));
+        assert!(is_valid_renderer_type("software"));
+        assert!(!is_valid_renderer_type("opengl"));
+        assert!(!is_valid_renderer_type(""));
+        assert!(!is_valid_renderer_type("WebGL2")); // Case sensitive
     }
 }

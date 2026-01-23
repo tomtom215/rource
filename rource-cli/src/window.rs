@@ -33,6 +33,245 @@ use crate::input::{
 };
 use crate::rendering::{present_frame, render_frame};
 
+// ============================================================================
+// Helper Functions (testable without window/event loop)
+// ============================================================================
+
+#[allow(dead_code)]
+mod helpers {
+    /// Seconds in a day.
+    pub const SECONDS_PER_DAY_F64: f64 = 86400.0;
+
+    /// Default FPS target for frame limiting.
+    pub const DEFAULT_FPS_TARGET: u32 = 60;
+
+    /// Calculate days per second based on realtime mode or `seconds_per_day` setting.
+    ///
+    /// # Arguments
+    /// * `realtime` - If true, returns 1/86400 (real-time playback)
+    /// * `seconds_per_day` - Seconds it takes to display one day of commits
+    ///
+    /// # Returns
+    /// Days elapsed per second of playback
+    #[inline]
+    #[must_use]
+    pub fn calculate_days_per_second(realtime: bool, seconds_per_day: f32) -> f64 {
+        if realtime {
+            1.0 / SECONDS_PER_DAY_F64
+        } else {
+            1.0 / f64::from(seconds_per_day)
+        }
+    }
+
+    /// Calculate days elapsed from accumulated time and days per second.
+    ///
+    /// # Arguments
+    /// * `accumulated_time` - Total accumulated playback time in seconds
+    /// * `days_per_second` - Days that pass per second (from `calculate_days_per_second`)
+    ///
+    /// # Returns
+    /// Total days elapsed
+    #[inline]
+    #[must_use]
+    pub fn calculate_days_elapsed(accumulated_time: f64, days_per_second: f64) -> f64 {
+        accumulated_time * days_per_second
+    }
+
+    /// Calculate the target timestamp for commit selection.
+    ///
+    /// # Arguments
+    /// * `first_timestamp` - Unix timestamp of the first commit
+    /// * `days_elapsed` - Number of days elapsed in playback
+    ///
+    /// # Returns
+    /// Target Unix timestamp
+    #[inline]
+    #[must_use]
+    pub fn calculate_target_timestamp(first_timestamp: i64, days_elapsed: f64) -> i64 {
+        first_timestamp + (days_elapsed * SECONDS_PER_DAY_F64) as i64
+    }
+
+    /// Calculate accumulated time from timestamps and speed settings.
+    ///
+    /// Used when seeking to recalculate where we are in playback.
+    ///
+    /// # Arguments
+    /// * `first_timestamp` - Unix timestamp of the first commit
+    /// * `target_timestamp` - Unix timestamp of the target commit
+    /// * `seconds_per_day` - Playback speed in seconds per day
+    ///
+    /// # Returns
+    /// Accumulated time in seconds
+    #[inline]
+    #[must_use]
+    pub fn calculate_accumulated_time(
+        first_timestamp: i64,
+        target_timestamp: i64,
+        seconds_per_day: f32,
+    ) -> f64 {
+        let days = (target_timestamp - first_timestamp) as f64 / SECONDS_PER_DAY_F64;
+        days * f64::from(seconds_per_day)
+    }
+
+    /// Determine if a user should be highlighted based on settings.
+    ///
+    /// # Arguments
+    /// * `user_name` - The name of the user to check
+    /// * `highlight_all` - If true, all users are highlighted
+    /// * `highlight_list` - List of specific usernames to highlight
+    ///
+    /// # Returns
+    /// `true` if the user should be highlighted
+    #[inline]
+    #[must_use]
+    pub fn should_highlight_user(
+        user_name: &str,
+        highlight_all: bool,
+        highlight_list: &[String],
+    ) -> bool {
+        if highlight_all {
+            true
+        } else if !highlight_list.is_empty() {
+            highlight_list.iter().any(|name| name == user_name)
+        } else {
+            false
+        }
+    }
+
+    /// Check if a window size is valid for rendering.
+    ///
+    /// # Arguments
+    /// * `width` - Window width
+    /// * `height` - Window height
+    ///
+    /// # Returns
+    /// `true` if the size is valid (both dimensions non-zero)
+    #[inline]
+    #[must_use]
+    pub fn is_valid_size(width: u32, height: u32) -> bool {
+        width > 0 && height > 0
+    }
+
+    /// Clamp a seek target to valid commit bounds.
+    ///
+    /// # Arguments
+    /// * `target` - Requested commit index
+    /// * `commit_count` - Total number of commits
+    ///
+    /// # Returns
+    /// Clamped commit index
+    #[inline]
+    #[must_use]
+    pub fn clamp_seek_target(target: usize, commit_count: usize) -> usize {
+        target.min(commit_count)
+    }
+
+    /// Check if playback should loop back to the beginning.
+    ///
+    /// # Arguments
+    /// * `current_commit` - Current commit index
+    /// * `commit_count` - Total number of commits
+    ///
+    /// # Returns
+    /// `true` if at end of commits and should loop
+    #[inline]
+    #[must_use]
+    pub fn should_loop_playback(current_commit: usize, commit_count: usize) -> bool {
+        commit_count > 0 && current_commit >= commit_count.saturating_sub(1)
+    }
+
+    /// Calculate frame duration in milliseconds for a target FPS.
+    ///
+    /// # Arguments
+    /// * `fps` - Target frames per second
+    ///
+    /// # Returns
+    /// Duration per frame in milliseconds
+    #[inline]
+    #[must_use]
+    pub fn calculate_frame_duration_ms(fps: u32) -> u64 {
+        if fps == 0 {
+            return 1000 / u64::from(DEFAULT_FPS_TARGET);
+        }
+        1000 / u64::from(fps)
+    }
+
+    /// Calculate effective playback speed with time scale applied.
+    ///
+    /// # Arguments
+    /// * `base_speed` - Base playback speed
+    /// * `time_scale` - Time scale multiplier
+    ///
+    /// # Returns
+    /// Effective speed (`base_speed` * `time_scale`)
+    #[inline]
+    #[must_use]
+    pub fn calculate_effective_speed(base_speed: f32, time_scale: f32) -> f32 {
+        base_speed * time_scale
+    }
+
+    /// Check if playback has reached the stop time.
+    ///
+    /// # Arguments
+    /// * `elapsed_time` - Current elapsed time in seconds
+    /// * `stop_at_time` - Optional stop time in seconds
+    ///
+    /// # Returns
+    /// `true` if stop time has been reached
+    #[inline]
+    #[must_use]
+    pub fn has_reached_stop_time(elapsed_time: f32, stop_at_time: Option<f32>) -> bool {
+        stop_at_time.is_some_and(|stop_time| elapsed_time >= stop_time)
+    }
+
+    /// Check if a commit timestamp is within the target time.
+    ///
+    /// Used to determine which commits to advance to.
+    ///
+    /// # Arguments
+    /// * `commit_timestamp` - Unix timestamp of the commit
+    /// * `target_timestamp` - Target timestamp we're seeking to
+    ///
+    /// # Returns
+    /// `true` if commit is before or at target time
+    #[inline]
+    #[must_use]
+    pub fn is_commit_before_target(commit_timestamp: i64, target_timestamp: i64) -> bool {
+        commit_timestamp <= target_timestamp
+    }
+
+    /// Calculate commit index progress as a percentage.
+    ///
+    /// # Arguments
+    /// * `current_commit` - Current commit index
+    /// * `total_commits` - Total number of commits
+    ///
+    /// # Returns
+    /// Progress percentage (0.0 to 100.0)
+    #[inline]
+    #[must_use]
+    pub fn calculate_commit_progress(current_commit: usize, total_commits: usize) -> f64 {
+        if total_commits == 0 {
+            return 0.0;
+        }
+        (current_commit as f64 / total_commits as f64) * 100.0
+    }
+
+    /// Format a timestamp difference as days.
+    ///
+    /// # Arguments
+    /// * `start_timestamp` - Start Unix timestamp
+    /// * `end_timestamp` - End Unix timestamp
+    ///
+    /// # Returns
+    /// Number of days between timestamps
+    #[inline]
+    #[must_use]
+    pub fn timestamp_to_days(start_timestamp: i64, end_timestamp: i64) -> f64 {
+        (end_timestamp - start_timestamp) as f64 / SECONDS_PER_DAY_F64
+    }
+}
+
 /// Load commits from the repository or log file.
 pub fn load_commits(args: &Args) -> Result<Vec<Commit>> {
     use std::process::Command;
@@ -618,10 +857,207 @@ pub fn run_windowed(args: Args) -> Result<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unreadable_literal)]
 mod tests {
+    use super::helpers::*;
     use super::*;
     use rource_math::Vec2;
     use winit::event::{ElementState, MouseButton, MouseScrollDelta};
+
+    // ========================================================================
+    // Helper Function Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_days_per_second_realtime() {
+        // Realtime mode: 1 second = 1 second (1/86400 days)
+        let dps = calculate_days_per_second(true, 10.0);
+        assert!((dps - 1.0 / 86400.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_calculate_days_per_second_normal() {
+        // 10 seconds per day = 0.1 days per second
+        let dps = calculate_days_per_second(false, 10.0);
+        assert!((dps - 0.1).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_calculate_days_per_second_fast() {
+        // 1 second per day = 1.0 days per second
+        let dps = calculate_days_per_second(false, 1.0);
+        assert!((dps - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_calculate_days_elapsed() {
+        // 10 seconds at 0.1 days/second = 1 day
+        let elapsed = calculate_days_elapsed(10.0, 0.1);
+        assert!((elapsed - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_calculate_days_elapsed_zero() {
+        let elapsed = calculate_days_elapsed(0.0, 0.1);
+        assert!((elapsed - 0.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_calculate_target_timestamp() {
+        let first = 1000000;
+        // 1 day elapsed = 86400 seconds
+        let target = calculate_target_timestamp(first, 1.0);
+        assert_eq!(target, first + 86400);
+    }
+
+    #[test]
+    fn test_calculate_target_timestamp_half_day() {
+        let first = 1000000;
+        // 0.5 days elapsed = 43200 seconds
+        let target = calculate_target_timestamp(first, 0.5);
+        assert_eq!(target, first + 43200);
+    }
+
+    #[test]
+    fn test_calculate_accumulated_time() {
+        // 1 day span at 10 seconds per day = 10 seconds accumulated
+        let first = 1000000;
+        let target = first + 86400; // +1 day
+        let accumulated = calculate_accumulated_time(first, target, 10.0);
+        assert!((accumulated - 10.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_calculate_accumulated_time_two_days() {
+        let first = 1000000;
+        let target = first + 86400 * 2; // +2 days
+        let accumulated = calculate_accumulated_time(first, target, 5.0);
+        assert!((accumulated - 10.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_should_highlight_user_all() {
+        assert!(should_highlight_user("alice", true, &[]));
+        assert!(should_highlight_user("bob", true, &["charlie".to_string()]));
+    }
+
+    #[test]
+    fn test_should_highlight_user_list() {
+        let list = vec!["alice".to_string(), "bob".to_string()];
+        assert!(should_highlight_user("alice", false, &list));
+        assert!(should_highlight_user("bob", false, &list));
+        assert!(!should_highlight_user("charlie", false, &list));
+    }
+
+    #[test]
+    fn test_should_highlight_user_none() {
+        assert!(!should_highlight_user("alice", false, &[]));
+        assert!(!should_highlight_user("bob", false, &[]));
+    }
+
+    #[test]
+    fn test_is_valid_size() {
+        assert!(is_valid_size(800, 600));
+        assert!(is_valid_size(1, 1));
+        assert!(!is_valid_size(0, 600));
+        assert!(!is_valid_size(800, 0));
+        assert!(!is_valid_size(0, 0));
+    }
+
+    #[test]
+    fn test_clamp_seek_target() {
+        assert_eq!(clamp_seek_target(50, 100), 50);
+        assert_eq!(clamp_seek_target(150, 100), 100);
+        assert_eq!(clamp_seek_target(0, 100), 0);
+        assert_eq!(clamp_seek_target(100, 100), 100);
+    }
+
+    #[test]
+    fn test_clamp_seek_target_empty() {
+        assert_eq!(clamp_seek_target(50, 0), 0);
+    }
+
+    #[test]
+    fn test_should_loop_playback() {
+        // At last commit
+        assert!(should_loop_playback(99, 100));
+        // Past last commit
+        assert!(should_loop_playback(100, 100));
+        // Not at end
+        assert!(!should_loop_playback(50, 100));
+        assert!(!should_loop_playback(0, 100));
+    }
+
+    #[test]
+    fn test_should_loop_playback_empty() {
+        assert!(!should_loop_playback(0, 0));
+    }
+
+    #[test]
+    fn test_calculate_frame_duration_ms() {
+        assert_eq!(calculate_frame_duration_ms(60), 16); // ~16.67ms
+        assert_eq!(calculate_frame_duration_ms(30), 33); // ~33.33ms
+        assert_eq!(calculate_frame_duration_ms(1), 1000);
+    }
+
+    #[test]
+    fn test_calculate_frame_duration_ms_zero() {
+        // Zero FPS should default to 60 FPS
+        assert_eq!(calculate_frame_duration_ms(0), 16);
+    }
+
+    #[test]
+    fn test_calculate_effective_speed() {
+        assert!((calculate_effective_speed(1.0, 1.0) - 1.0).abs() < 1e-6);
+        assert!((calculate_effective_speed(1.0, 2.0) - 2.0).abs() < 1e-6);
+        assert!((calculate_effective_speed(0.5, 2.0) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_has_reached_stop_time() {
+        assert!(has_reached_stop_time(10.0, Some(10.0)));
+        assert!(has_reached_stop_time(15.0, Some(10.0)));
+        assert!(!has_reached_stop_time(5.0, Some(10.0)));
+        assert!(!has_reached_stop_time(10.0, None));
+    }
+
+    #[test]
+    fn test_is_commit_before_target() {
+        assert!(is_commit_before_target(1000, 1000));
+        assert!(is_commit_before_target(900, 1000));
+        assert!(!is_commit_before_target(1100, 1000));
+    }
+
+    #[test]
+    fn test_calculate_commit_progress() {
+        assert!((calculate_commit_progress(50, 100) - 50.0).abs() < 1e-6);
+        assert!((calculate_commit_progress(0, 100) - 0.0).abs() < 1e-6);
+        assert!((calculate_commit_progress(100, 100) - 100.0).abs() < 1e-6);
+        assert!((calculate_commit_progress(25, 200) - 12.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_calculate_commit_progress_empty() {
+        assert!((calculate_commit_progress(0, 0) - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_timestamp_to_days() {
+        // 86400 seconds = 1 day
+        assert!((timestamp_to_days(0, 86400) - 1.0).abs() < 1e-10);
+        // 43200 seconds = 0.5 days
+        assert!((timestamp_to_days(0, 43200) - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_timestamp_to_days_negative() {
+        // Going backwards in time
+        assert!((timestamp_to_days(86400, 0) - (-1.0)).abs() < 1e-10);
+    }
+
+    // ========================================================================
+    // Integration Tests (require App instance)
+    // ========================================================================
 
     #[test]
     fn test_app_mouse_state() {
