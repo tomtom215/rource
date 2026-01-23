@@ -143,3 +143,142 @@ impl Rource {
         self.auto_fit
     }
 }
+
+// ============================================================================
+// Zoom Calculation Helpers
+// ============================================================================
+
+/// Calculates the new zoom level after applying a zoom factor.
+///
+/// The result is clamped to the valid zoom range [AUTO_FIT_MIN_ZOOM, 1000.0].
+///
+/// # Arguments
+///
+/// * `current_zoom` - The current zoom level
+/// * `factor` - The zoom factor (> 1 zooms in, < 1 zooms out)
+///
+/// # Returns
+///
+/// The new zoom level, clamped to valid range.
+#[inline]
+#[must_use]
+pub fn calculate_zoom(current_zoom: f32, factor: f32) -> f32 {
+    (current_zoom * factor).clamp(AUTO_FIT_MIN_ZOOM, 1000.0)
+}
+
+/// Calculates the world-space delta from a screen-space delta.
+///
+/// # Arguments
+///
+/// * `screen_delta` - The screen-space delta in pixels
+/// * `zoom` - The current zoom level
+///
+/// # Returns
+///
+/// The world-space delta.
+#[inline]
+#[must_use]
+pub fn screen_to_world_delta(screen_delta: Vec2, zoom: f32) -> Vec2 {
+    screen_delta / zoom
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Zoom Calculation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_zoom_within_range() {
+        // Normal zoom operations
+        assert!((calculate_zoom(1.0, 1.0) - 1.0).abs() < 0.001);
+        assert!((calculate_zoom(1.0, 2.0) - 2.0).abs() < 0.001);
+        assert!((calculate_zoom(1.0, 0.5) - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_zoom_clamp_minimum() {
+        // Zooming out too far should clamp to AUTO_FIT_MIN_ZOOM (0.05)
+        assert!((calculate_zoom(1.0, 0.01) - AUTO_FIT_MIN_ZOOM).abs() < 0.001);
+        assert!((calculate_zoom(0.1, 0.1) - AUTO_FIT_MIN_ZOOM).abs() < 0.001);
+        assert!((calculate_zoom(AUTO_FIT_MIN_ZOOM, 0.5) - AUTO_FIT_MIN_ZOOM).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_zoom_clamp_maximum() {
+        // Zooming in too far should clamp to 1000.0
+        assert!((calculate_zoom(500.0, 3.0) - 1000.0).abs() < 0.001);
+        assert!((calculate_zoom(1000.0, 2.0) - 1000.0).abs() < 0.001);
+        assert!((calculate_zoom(100.0, 100.0) - 1000.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_zoom_edge_values() {
+        // At minimum zoom
+        let at_min = calculate_zoom(AUTO_FIT_MIN_ZOOM, 1.0);
+        assert!((at_min - AUTO_FIT_MIN_ZOOM).abs() < 0.001);
+
+        // At maximum zoom
+        let at_max = calculate_zoom(1000.0, 1.0);
+        assert!((at_max - 1000.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_zoom_zero_factor() {
+        // Zero factor should clamp to minimum
+        assert!((calculate_zoom(1.0, 0.0) - AUTO_FIT_MIN_ZOOM).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_zoom_negative_factor() {
+        // Negative factor should clamp to minimum (negative * positive = negative)
+        assert!((calculate_zoom(1.0, -1.0) - AUTO_FIT_MIN_ZOOM).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Screen to World Delta Tests
+    // ========================================================================
+
+    #[test]
+    fn test_screen_to_world_delta_identity() {
+        let delta = screen_to_world_delta(Vec2::new(100.0, 100.0), 1.0);
+        assert!((delta.x - 100.0).abs() < 0.001);
+        assert!((delta.y - 100.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_screen_to_world_delta_zoomed_in() {
+        // When zoomed in (zoom > 1), world delta is smaller
+        let delta = screen_to_world_delta(Vec2::new(100.0, 100.0), 2.0);
+        assert!((delta.x - 50.0).abs() < 0.001);
+        assert!((delta.y - 50.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_screen_to_world_delta_zoomed_out() {
+        // When zoomed out (zoom < 1), world delta is larger
+        let delta = screen_to_world_delta(Vec2::new(100.0, 100.0), 0.5);
+        assert!((delta.x - 200.0).abs() < 0.001);
+        assert!((delta.y - 200.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_screen_to_world_delta_zero() {
+        let delta = screen_to_world_delta(Vec2::ZERO, 1.0);
+        assert!(delta.x.abs() < 0.001);
+        assert!(delta.y.abs() < 0.001);
+    }
+
+    #[test]
+    fn test_screen_to_world_delta_negative() {
+        let delta = screen_to_world_delta(Vec2::new(-100.0, -50.0), 2.0);
+        assert!((delta.x - (-50.0)).abs() < 0.001);
+        assert!((delta.y - (-25.0)).abs() < 0.001);
+    }
+}

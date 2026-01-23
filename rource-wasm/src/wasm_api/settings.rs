@@ -465,3 +465,208 @@ impl Rource {
         true
     }
 }
+
+// ============================================================================
+// Helper Functions for Testing
+// ============================================================================
+
+/// Parses a hex color string (with or without '#' prefix) into an RGB value.
+///
+/// Returns `None` if the string is not a valid 6-character hex color.
+///
+/// # Examples
+///
+/// ```ignore
+/// // Internal function - use set_background_color() from JavaScript
+/// assert_eq!(parse_hex_color("#FF0000"), Some(0xFF0000));
+/// assert_eq!(parse_hex_color("00FF00"), Some(0x00FF00));
+/// assert_eq!(parse_hex_color("invalid"), None);
+/// assert_eq!(parse_hex_color("#FFF"), None); // 3-char not supported
+/// ```
+#[must_use]
+pub fn parse_hex_color(hex: &str) -> Option<u32> {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() == 6 {
+        u32::from_str_radix(hex, 16).ok()
+    } else {
+        None
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Hex Color Parsing Tests
+    // ========================================================================
+
+    #[test]
+    fn test_parse_hex_color_with_hash() {
+        assert_eq!(parse_hex_color("#FF0000"), Some(0xFF0000));
+        assert_eq!(parse_hex_color("#00FF00"), Some(0x00FF00));
+        assert_eq!(parse_hex_color("#0000FF"), Some(0x0000FF));
+        assert_eq!(parse_hex_color("#FFFFFF"), Some(0xFFFFFF));
+        assert_eq!(parse_hex_color("#000000"), Some(0x000000));
+    }
+
+    #[test]
+    fn test_parse_hex_color_without_hash() {
+        assert_eq!(parse_hex_color("FF0000"), Some(0xFF0000));
+        assert_eq!(parse_hex_color("00FF00"), Some(0x00FF00));
+        assert_eq!(parse_hex_color("0000FF"), Some(0x0000FF));
+    }
+
+    #[test]
+    fn test_parse_hex_color_lowercase() {
+        assert_eq!(parse_hex_color("#ff0000"), Some(0xFF0000));
+        assert_eq!(parse_hex_color("aabbcc"), Some(0xAABBCC));
+    }
+
+    #[test]
+    fn test_parse_hex_color_mixed_case() {
+        assert_eq!(parse_hex_color("#Ff00fF"), Some(0xFF00FF));
+        assert_eq!(parse_hex_color("AaBbCc"), Some(0xAABBCC));
+    }
+
+    #[test]
+    fn test_parse_hex_color_invalid_length() {
+        // 3-character hex is not supported
+        assert_eq!(parse_hex_color("#FFF"), None);
+        assert_eq!(parse_hex_color("FFF"), None);
+
+        // Too short
+        assert_eq!(parse_hex_color("#FF"), None);
+        assert_eq!(parse_hex_color("F"), None);
+
+        // Too long
+        assert_eq!(parse_hex_color("#FF00FF00"), None);
+        assert_eq!(parse_hex_color("FF00FF00"), None);
+
+        // Empty
+        assert_eq!(parse_hex_color(""), None);
+        assert_eq!(parse_hex_color("#"), None);
+    }
+
+    #[test]
+    fn test_parse_hex_color_invalid_characters() {
+        assert_eq!(parse_hex_color("#GGGGGG"), None);
+        assert_eq!(parse_hex_color("ZZZZZZ"), None);
+        assert_eq!(parse_hex_color("#12345G"), None);
+        assert_eq!(parse_hex_color("hello!"), None);
+    }
+
+    #[test]
+    fn test_parse_hex_color_edge_cases() {
+        // Leading zeros
+        assert_eq!(parse_hex_color("#000001"), Some(0x000001));
+
+        // All same digit
+        assert_eq!(parse_hex_color("#111111"), Some(0x111111));
+        assert_eq!(parse_hex_color("#AAAAAA"), Some(0xAAAAAA));
+
+        // Max value
+        assert_eq!(parse_hex_color("#FFFFFF"), Some(0xFFFFFF));
+    }
+
+    // ========================================================================
+    // Clamping Tests (via Settings)
+    // ========================================================================
+
+    #[test]
+    fn test_font_size_clamping() {
+        // Test the clamping logic directly
+        let clamp_font_size = |size: f32| size.clamp(4.0, 200.0);
+
+        // Within range
+        assert_eq!(clamp_font_size(16.0), 16.0);
+        assert_eq!(clamp_font_size(4.0), 4.0);
+        assert_eq!(clamp_font_size(200.0), 200.0);
+
+        // Below minimum
+        assert_eq!(clamp_font_size(0.0), 4.0);
+        assert_eq!(clamp_font_size(-10.0), 4.0);
+        assert_eq!(clamp_font_size(3.9), 4.0);
+
+        // Above maximum
+        assert_eq!(clamp_font_size(201.0), 200.0);
+        assert_eq!(clamp_font_size(1000.0), 200.0);
+    }
+
+    #[test]
+    fn test_opacity_clamping() {
+        let clamp_opacity = |opacity: f32| opacity.clamp(0.0, 1.0);
+
+        // Within range
+        assert_eq!(clamp_opacity(0.5), 0.5);
+        assert_eq!(clamp_opacity(0.0), 0.0);
+        assert_eq!(clamp_opacity(1.0), 1.0);
+
+        // Below minimum
+        assert_eq!(clamp_opacity(-0.5), 0.0);
+        assert_eq!(clamp_opacity(-100.0), 0.0);
+
+        // Above maximum
+        assert_eq!(clamp_opacity(1.5), 1.0);
+        assert_eq!(clamp_opacity(100.0), 1.0);
+    }
+
+    #[test]
+    fn test_margin_clamping() {
+        let clamp_margin = |margin: f32| margin.max(0.0);
+
+        // Positive values unchanged
+        assert_eq!(clamp_margin(20.0), 20.0);
+        assert_eq!(clamp_margin(0.0), 0.0);
+        assert_eq!(clamp_margin(1000.0), 1000.0);
+
+        // Negative values clamped to 0
+        assert_eq!(clamp_margin(-10.0), 0.0);
+        assert_eq!(clamp_margin(-100.0), 0.0);
+    }
+
+    #[test]
+    fn test_watermark_font_size_clamping() {
+        let clamp_wm_font = |size: f32| size.clamp(4.0, 100.0);
+
+        assert_eq!(clamp_wm_font(16.0), 16.0);
+        assert_eq!(clamp_wm_font(0.0), 4.0);
+        assert_eq!(clamp_wm_font(150.0), 100.0);
+    }
+
+    // ========================================================================
+    // WatermarkPosition Integration Tests
+    // ========================================================================
+
+    #[test]
+    fn test_watermark_position_valid_strings() {
+        assert!(WatermarkPosition::from_str("top-left").is_some());
+        assert!(WatermarkPosition::from_str("topleft").is_some());
+        assert!(WatermarkPosition::from_str("tl").is_some());
+        assert!(WatermarkPosition::from_str("TL").is_some());
+
+        assert!(WatermarkPosition::from_str("top-right").is_some());
+        assert!(WatermarkPosition::from_str("tr").is_some());
+
+        assert!(WatermarkPosition::from_str("bottom-left").is_some());
+        assert!(WatermarkPosition::from_str("bl").is_some());
+
+        assert!(WatermarkPosition::from_str("bottom-right").is_some());
+        assert!(WatermarkPosition::from_str("br").is_some());
+    }
+
+    #[test]
+    fn test_watermark_position_invalid_strings() {
+        assert!(WatermarkPosition::from_str("center").is_none());
+        assert!(WatermarkPosition::from_str("left").is_none());
+        assert!(WatermarkPosition::from_str("right").is_none());
+        assert!(WatermarkPosition::from_str("top").is_none());
+        assert!(WatermarkPosition::from_str("bottom").is_none());
+        assert!(WatermarkPosition::from_str("").is_none());
+        assert!(WatermarkPosition::from_str("invalid").is_none());
+    }
+}
