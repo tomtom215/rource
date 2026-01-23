@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769164520434,
+  "lastUpdate": 1769168421536,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -779,6 +779,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1013123,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "80cd81d5ca0bbac4d31f8ec7a6e610d766b89f05",
+          "message": "Merge pull request #130 from tomtom215/claude/optimize-wasm-webgpu-SHwNg\n\nAdd GPU visibility culling and procedural file icons",
+          "timestamp": "2026-01-23T12:36:33+01:00",
+          "tree_id": "65a3745103ae160ee55817b96b12479f1cfd138a",
+          "url": "https://github.com/tomtom215/rource/commit/80cd81d5ca0bbac4d31f8ec7a6e610d766b89f05"
+        },
+        "date": 1769168421261,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3880672,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2642465,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1019685,
             "unit": "bytes"
           }
         ]
