@@ -60,8 +60,8 @@ rource/
 │   ├── rource-core/      # Core engine (scene, physics, animation, camera, config) [295 tests]
 │   └── rource-render/    # Rendering (software rasterizer, WebGL2, wgpu, bloom, shadows) [379 tests]
 ├── rource-cli/           # Native CLI application (winit + softbuffer) [97 tests]
-└── rource-wasm/          # WebAssembly application [213 tests]
-                          # Plus 62 integration/doc tests = 1,340 total
+└── rource-wasm/          # WebAssembly application [272 tests]
+                          # Plus 62 integration/doc tests = 1,399 total
 ```
 
 ### Rendering Backends
@@ -3101,4 +3101,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-23 (Added 155 wasm_api tests via extracted helper functions - 1,340 tests)*
+*Last updated: 2026-01-23 (Refactored render_phases.rs with pure functions, 59 new tests - 1,399 tests total)*

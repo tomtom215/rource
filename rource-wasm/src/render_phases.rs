@@ -31,6 +31,411 @@ use rource_render::{FontId, Renderer};
 use crate::rendering::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
 
 // =============================================================================
+// Pure Computation Functions (100% testable without renderer)
+// =============================================================================
+// These functions encapsulate all rendering logic as pure computations.
+// They take input data and return computed values without side effects.
+
+/// Computes the depth factor used for depth-based styling.
+///
+/// The depth factor is normalized to [0.0, 1.0] where 0 is root and 1.0 is
+/// a directory at depth 6 or greater.
+///
+/// # Arguments
+/// * `depth` - Directory depth (0 = root)
+///
+/// # Returns
+/// Normalized depth factor in range [0.0, 1.0].
+#[inline]
+#[must_use]
+pub fn compute_depth_factor(depth: u32) -> f32 {
+    (depth as f32 / 6.0).min(1.0)
+}
+
+/// Computes directory color based on depth.
+///
+/// Deeper directories are rendered with lower brightness to create
+/// visual hierarchy and reduce clutter.
+///
+/// # Arguments
+/// * `depth` - Directory depth (0 = root)
+///
+/// # Returns
+/// Color for the directory node.
+#[inline]
+#[must_use]
+pub fn compute_directory_color(depth: u32) -> Color {
+    let depth_factor = compute_depth_factor(depth);
+    let base_brightness = 0.25 + 0.1 * (1.0 - depth_factor);
+    Color::new(
+        base_brightness * 0.9,
+        base_brightness,
+        base_brightness * 1.1 + 0.05,
+        0.55,
+    )
+}
+
+/// Computes branch line width based on directory depth.
+///
+/// Deeper directories have thinner branches to reduce visual noise.
+///
+/// # Arguments
+/// * `depth` - Directory depth (0 = root)
+///
+/// # Returns
+/// Branch width in pixels.
+#[inline]
+#[must_use]
+pub fn compute_branch_width(depth: u32) -> f32 {
+    let depth_factor = compute_depth_factor(depth);
+    (1.5 - depth_factor * 0.5).max(0.8)
+}
+
+/// Computes branch opacity with depth-based fade.
+///
+/// Deeper branches fade to reduce visual clutter while maintaining
+/// structure visibility.
+///
+/// # Arguments
+/// * `depth` - Directory depth (0 = root)
+/// * `max_opacity` - Maximum opacity for branches (0.0-1.0)
+/// * `fade_rate` - How quickly opacity fades with depth (0.0-1.0)
+///
+/// # Returns
+/// Branch opacity in range [0.05, max_opacity].
+#[inline]
+#[must_use]
+pub fn compute_branch_opacity(depth: u32, max_opacity: f32, fade_rate: f32) -> f32 {
+    let depth_factor = compute_depth_factor(depth);
+    max_opacity * (1.0 - depth_factor * fade_rate).max(0.05)
+}
+
+/// Computes branch color from directory color with opacity adjustment.
+///
+/// # Arguments
+/// * `dir_color` - Base directory color
+/// * `opacity` - Computed branch opacity
+///
+/// # Returns
+/// Branch color with slight brightness boost and specified opacity.
+#[inline]
+#[must_use]
+pub fn compute_branch_color(dir_color: Color, opacity: f32) -> Color {
+    Color::new(
+        dir_color.r * 1.1,
+        dir_color.g * 1.1,
+        dir_color.b * 1.2,
+        opacity,
+    )
+}
+
+/// Determines if a directory should be rendered based on LOD.
+///
+/// Root directory (depth 0) is always rendered as it's the anchor point.
+/// Other directories are culled when their screen radius is below threshold.
+///
+/// # Arguments
+/// * `screen_radius` - Radius in screen pixels
+/// * `depth` - Directory depth (0 = root)
+///
+/// # Returns
+/// `true` if the directory should be rendered.
+#[inline]
+#[must_use]
+pub fn should_render_directory(screen_radius: f32, depth: u32) -> bool {
+    depth == 0 || screen_radius >= LOD_MIN_DIR_RADIUS
+}
+
+/// Determines if a file should be rendered based on LOD.
+///
+/// # Arguments
+/// * `screen_radius` - Radius in screen pixels
+/// * `alpha` - File alpha (0.0-1.0)
+///
+/// # Returns
+/// `true` if the file should be rendered.
+#[inline]
+#[must_use]
+pub fn should_render_file(screen_radius: f32, alpha: f32) -> bool {
+    alpha >= 0.01 && screen_radius >= LOD_MIN_FILE_RADIUS
+}
+
+/// Determines if a user should be rendered based on LOD.
+///
+/// # Arguments
+/// * `screen_radius` - Radius in screen pixels
+/// * `alpha` - User alpha (0.0-1.0)
+///
+/// # Returns
+/// `true` if the user should be rendered.
+#[inline]
+#[must_use]
+pub fn should_render_user(screen_radius: f32, alpha: f32) -> bool {
+    alpha >= 0.01 && screen_radius >= LOD_MIN_USER_RADIUS
+}
+
+/// Determines if a directory label should be rendered based on LOD.
+///
+/// # Arguments
+/// * `screen_radius` - Radius in screen pixels
+/// * `depth` - Directory depth
+///
+/// # Returns
+/// `true` if the label should be rendered.
+#[inline]
+#[must_use]
+pub fn should_render_directory_label(screen_radius: f32, depth: u32) -> bool {
+    depth <= 2 && screen_radius >= LOD_MIN_DIR_LABEL_RADIUS
+}
+
+/// Determines if a file label should be rendered based on LOD.
+///
+/// # Arguments
+/// * `screen_radius` - Radius in screen pixels
+/// * `alpha` - File alpha
+/// * `camera_zoom` - Current camera zoom level
+///
+/// # Returns
+/// `true` if the label should be rendered.
+#[inline]
+#[must_use]
+pub fn should_render_file_label(screen_radius: f32, alpha: f32, camera_zoom: f32) -> bool {
+    alpha >= 0.3 && camera_zoom > 0.15 && screen_radius >= LOD_MIN_FILE_LABEL_RADIUS
+}
+
+/// Determines if a user label should be rendered based on LOD.
+///
+/// # Arguments
+/// * `screen_radius` - Radius in screen pixels
+/// * `alpha` - User alpha
+///
+/// # Returns
+/// `true` if the label should be rendered.
+#[inline]
+#[must_use]
+pub fn should_render_user_label(screen_radius: f32, alpha: f32) -> bool {
+    alpha >= 0.01 && screen_radius >= LOD_MIN_USER_LABEL_RADIUS
+}
+
+/// Determines if directory-to-parent branches should be rendered.
+///
+/// # Arguments
+/// * `camera_zoom` - Current camera zoom level
+///
+/// # Returns
+/// `true` if branches should be rendered.
+#[inline]
+#[must_use]
+pub fn should_render_directory_branches(camera_zoom: f32) -> bool {
+    camera_zoom >= LOD_MIN_ZOOM_FOR_DIR_BRANCHES
+}
+
+/// Determines if file-to-directory branches should be rendered.
+///
+/// # Arguments
+/// * `camera_zoom` - Current camera zoom level
+///
+/// # Returns
+/// `true` if branches should be rendered.
+#[inline]
+#[must_use]
+pub fn should_render_file_branches(camera_zoom: f32) -> bool {
+    camera_zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES
+}
+
+/// Computes the effective render radius for a file.
+///
+/// Files have a minimum render size to remain visible.
+///
+/// # Arguments
+/// * `screen_radius` - Raw screen radius
+///
+/// # Returns
+/// Effective radius (at least 2.0 pixels).
+#[inline]
+#[must_use]
+pub fn compute_file_effective_radius(screen_radius: f32) -> f32 {
+    screen_radius.max(2.0)
+}
+
+/// Computes the effective render radius for a user.
+///
+/// Users have a minimum render size to remain visible.
+///
+/// # Arguments
+/// * `screen_radius` - Raw screen radius
+///
+/// # Returns
+/// Effective radius (at least 5.0 pixels).
+#[inline]
+#[must_use]
+pub fn compute_user_effective_radius(screen_radius: f32) -> f32 {
+    screen_radius.max(5.0)
+}
+
+/// Computes file glow intensity based on touch state.
+///
+/// Recently touched files have a brighter glow.
+///
+/// # Arguments
+/// * `is_touched` - Whether the file was recently modified
+///
+/// # Returns
+/// Glow intensity multiplier.
+#[inline]
+#[must_use]
+pub fn compute_file_glow_intensity(is_touched: bool) -> f32 {
+    if is_touched { 0.25 } else { 0.08 }
+}
+
+/// Computes file border color from main color.
+///
+/// Border is a darker version of the main color.
+///
+/// # Arguments
+/// * `color` - Main file color
+///
+/// # Returns
+/// Border color (60% brightness of main).
+#[inline]
+#[must_use]
+pub fn compute_file_border_color(color: Color) -> Color {
+    Color::new(color.r * 0.6, color.g * 0.6, color.b * 0.6, color.a)
+}
+
+/// Computes file branch color with depth-based opacity.
+///
+/// # Arguments
+/// * `color` - File color
+/// * `alpha` - File alpha
+/// * `depth` - Parent directory depth
+/// * `branch_depth_fade` - Fade rate for depth
+///
+/// # Returns
+/// Branch color with computed opacity.
+#[inline]
+#[must_use]
+pub fn compute_file_branch_color(color: Color, alpha: f32, depth: u32, branch_depth_fade: f32) -> Color {
+    let depth_factor = compute_depth_factor(depth);
+    let depth_opacity = (1.0 - depth_factor * branch_depth_fade).max(0.05);
+    Color::new(
+        color.r * 0.7,
+        color.g * 0.7,
+        color.b * 0.7,
+        0.25 * alpha * depth_opacity,
+    )
+}
+
+/// Computes label position relative to an entity.
+///
+/// # Arguments
+/// * `screen_pos` - Entity screen position
+/// * `radius` - Entity screen radius
+/// * `font_size` - Label font size
+/// * `offset_x` - Horizontal offset from entity edge
+///
+/// # Returns
+/// Label position.
+#[inline]
+#[must_use]
+pub fn compute_label_position(screen_pos: Vec2, radius: f32, font_size: f32, offset_x: f32) -> Vec2 {
+    Vec2::new(
+        screen_pos.x + radius + offset_x,
+        screen_pos.y - font_size * 0.3,
+    )
+}
+
+/// Computes file label priority for sorting.
+///
+/// Higher priority labels are rendered first in collision avoidance.
+///
+/// # Arguments
+/// * `radius` - File world radius
+/// * `alpha` - File alpha
+/// * `is_touched` - Whether file was recently modified
+///
+/// # Returns
+/// Priority score (higher = more important).
+#[inline]
+#[must_use]
+pub fn compute_file_label_priority(radius: f32, alpha: f32, is_touched: bool) -> f32 {
+    let activity_bonus = if is_touched { 100.0 } else { 0.0 };
+    radius * alpha * 10.0 + activity_bonus
+}
+
+/// Computes adaptive max labels based on zoom level.
+///
+/// At higher zoom, more labels can be displayed without clutter.
+///
+/// # Arguments
+/// * `camera_zoom` - Current camera zoom level
+///
+/// # Returns
+/// Maximum number of labels to render.
+#[inline]
+#[must_use]
+pub fn compute_max_labels(camera_zoom: f32) -> usize {
+    if camera_zoom > 1.0 {
+        200
+    } else if camera_zoom > 0.5 {
+        100
+    } else {
+        50
+    }
+}
+
+/// Computes watermark base position based on corner placement.
+///
+/// # Arguments
+/// * `position` - Watermark corner position
+/// * `margin` - Margin from screen edge
+/// * `text_width` - Maximum text width
+/// * `total_height` - Total height of watermark text
+/// * `screen_width` - Screen width
+/// * `screen_height` - Screen height
+///
+/// # Returns
+/// (x, y) base position for the watermark.
+#[inline]
+#[must_use]
+pub fn compute_watermark_position(
+    position: WatermarkPosition,
+    margin: f32,
+    text_width: f32,
+    total_height: f32,
+    screen_width: f32,
+    screen_height: f32,
+) -> (f32, f32) {
+    match position {
+        WatermarkPosition::TopLeft => (margin, margin),
+        WatermarkPosition::TopRight => (screen_width - text_width - margin, margin),
+        WatermarkPosition::BottomLeft => (margin, screen_height - total_height - margin),
+        WatermarkPosition::BottomRight => (
+            screen_width - text_width - margin,
+            screen_height - total_height - margin,
+        ),
+    }
+}
+
+/// Computes watermark total height based on whether subtext is present.
+///
+/// # Arguments
+/// * `font_size` - Primary text font size
+/// * `has_subtext` - Whether there is subtext
+///
+/// # Returns
+/// Total height of watermark.
+#[inline]
+#[must_use]
+pub fn compute_watermark_height(font_size: f32, has_subtext: bool) -> f32 {
+    if has_subtext {
+        font_size * 1.2 + font_size * 0.85
+    } else {
+        font_size
+    }
+}
+
+// =============================================================================
 // Level-of-Detail (LOD) Constants
 // =============================================================================
 // These thresholds control when entities are skipped for performance.
@@ -146,7 +551,7 @@ pub fn render_directories<R: Renderer + ?Sized>(
     camera: &rource_core::Camera,
 ) {
     // Pre-compute whether we should render directory branches at this zoom level
-    let render_branches = ctx.camera_zoom >= LOD_MIN_ZOOM_FOR_DIR_BRANCHES;
+    let render_branches = should_render_directory_branches(ctx.camera_zoom);
 
     for dir_id in ctx.visible_dirs {
         if let Some(dir) = scene.directories().get(*dir_id) {
@@ -156,58 +561,40 @@ pub fn render_directories<R: Renderer + ?Sized>(
 
             let screen_pos = camera.world_to_screen(dir.position());
             let radius = dir.radius() * ctx.camera_zoom;
+            let depth = dir.depth();
 
             // LOD: Skip directories that are too small to be visible
-            // Root directory (depth 0) is always rendered as it's the anchor point
-            if radius < LOD_MIN_DIR_RADIUS && dir.depth() > 0 {
+            if !should_render_directory(radius, depth) {
                 continue;
             }
 
-            // Enhanced directory styling based on depth
-            let depth = dir.depth() as f32;
-            let depth_factor = (depth / 6.0).min(1.0);
-
-            // Gradient color with depth
-            let base_brightness = 0.25 + 0.1 * (1.0 - depth_factor);
-            let dir_color = Color::new(
-                base_brightness * 0.9,
-                base_brightness,
-                base_brightness * 1.1 + 0.05,
-                0.55,
-            );
+            // Compute colors using pure functions
+            let dir_color = compute_directory_color(depth);
+            let glow_color = dir_color.with_alpha(0.1);
+            let center_color = dir_color.with_alpha(0.4);
 
             // Draw soft glow behind directory node
-            let glow_color = dir_color.with_alpha(0.1);
             renderer.draw_disc(screen_pos, radius * 1.5, glow_color);
 
             // Draw directory as a hollow circle
             renderer.draw_circle(screen_pos, radius, 1.5, dir_color);
 
             // Small filled center dot
-            let center_color = dir_color.with_alpha(0.4);
             renderer.draw_disc(screen_pos, radius * 0.25, center_color);
 
             // Draw connection to parent with curved branches
-            // LOD: Skip branches at very low zoom levels
             if render_branches {
                 if let Some(parent_pos) = dir.parent_position() {
                     let parent_screen = camera.world_to_screen(parent_pos);
 
-                    // Branch width based on depth (thinner for deeper nodes)
-                    let branch_width = (1.5 - depth_factor * 0.5).max(0.8);
-
-                    // Depth-based opacity: fades deeper branches to reduce visual noise
-                    // opacity = max_opacity * (1.0 - depth_factor * fade_rate)
-                    let depth_opacity = ctx.branch_opacity_max
-                        * (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
-
-                    // Branch color with depth-based opacity
-                    let branch_color = Color::new(
-                        dir_color.r * 1.1,
-                        dir_color.g * 1.1,
-                        dir_color.b * 1.2,
-                        depth_opacity,
+                    // Compute branch properties using pure functions
+                    let branch_width = compute_branch_width(depth);
+                    let depth_opacity = compute_branch_opacity(
+                        depth,
+                        ctx.branch_opacity_max,
+                        ctx.branch_depth_fade,
                     );
+                    let branch_color = compute_branch_color(dir_color, depth_opacity);
 
                     draw_curved_branch(
                         renderer,
@@ -303,44 +690,31 @@ pub fn render_files<R: Renderer + ?Sized>(
     camera: &rource_core::Camera,
 ) {
     // Pre-compute whether we should render file branches at this zoom level
-    let render_branches = ctx.camera_zoom >= LOD_MIN_ZOOM_FOR_FILE_BRANCHES;
+    let render_branches = should_render_file_branches(ctx.camera_zoom);
 
     for file_id in ctx.visible_files {
         if let Some(file) = scene.get_file(*file_id) {
-            if file.alpha() < 0.01 {
-                continue;
-            }
-
+            let alpha = file.alpha();
             let screen_pos = camera.world_to_screen(file.position());
             let radius = file.radius() * ctx.camera_zoom;
 
-            // LOD: Skip files that are too small to be visible on screen
-            // This provides significant performance gains for large repos at low zoom
-            if radius < LOD_MIN_FILE_RADIUS {
+            // LOD: Skip files that are too small or invisible
+            if !should_render_file(radius, alpha) {
                 continue;
             }
 
-            let color = file.current_color().with_alpha(file.alpha());
-            let effective_radius = radius.max(2.0);
+            let color = file.current_color().with_alpha(alpha);
+            let effective_radius = compute_file_effective_radius(radius);
 
             // Draw connection to parent directory first (behind file)
-            // LOD: Skip branches at very low zoom levels where they create visual noise
             if render_branches {
                 if let Some(dir) = scene.directories().get(file.directory()) {
                     let dir_screen = camera.world_to_screen(dir.position());
-
-                    // Depth-based opacity for file branches
-                    let dir_depth = dir.depth();
-                    let depth_factor = (dir_depth as f32 / 6.0).min(1.0);
-                    let depth_opacity = (1.0 - depth_factor * ctx.branch_depth_fade).max(0.05);
-
-                    // Branch color matches file color for visual cohesion
-                    // Combine file alpha, base opacity, and depth fade
-                    let branch_color = Color::new(
-                        color.r * 0.7,
-                        color.g * 0.7,
-                        color.b * 0.7,
-                        0.25 * file.alpha() * depth_opacity,
+                    let branch_color = compute_file_branch_color(
+                        color,
+                        alpha,
+                        dir.depth(),
+                        ctx.branch_depth_fade,
                     );
 
                     draw_curved_branch(
@@ -356,27 +730,25 @@ pub fn render_files<R: Renderer + ?Sized>(
 
             // Draw soft glow behind file
             let is_touched = file.touch_time() > 0.0;
-            let glow_intensity = if is_touched { 0.25 } else { 0.08 };
-            let glow_color = color.with_alpha(glow_intensity * file.alpha());
+            let glow_intensity = compute_file_glow_intensity(is_touched);
+            let glow_color = color.with_alpha(glow_intensity * alpha);
             renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
 
             // Outer ring (darker border)
-            let border_color = Color::new(color.r * 0.6, color.g * 0.6, color.b * 0.6, color.a);
+            let border_color = compute_file_border_color(color);
             renderer.draw_disc(screen_pos, effective_radius + 0.5, border_color);
 
             // Main file icon/disc - use file icons if available, otherwise colored disc
-            // The icon size should be the diameter (2x radius)
             let icon_size = effective_radius * 2.0;
             if let Some(ext) = file.extension() {
                 renderer.draw_file_icon(screen_pos, icon_size, ext, color);
             } else {
-                // No extension - draw as colored disc
                 renderer.draw_disc(screen_pos, effective_radius, color);
             }
 
             // Bright highlight for active/touched files
             if is_touched {
-                let highlight = Color::new(1.0, 1.0, 1.0, 0.3 * file.alpha());
+                let highlight = Color::new(1.0, 1.0, 1.0, 0.3 * alpha);
                 renderer.draw_disc(screen_pos, effective_radius * 0.5, highlight);
             }
         }
@@ -430,20 +802,16 @@ pub fn render_users<R: Renderer + ?Sized>(
 ) {
     for user_id in ctx.visible_users {
         if let Some(user) = scene.get_user(*user_id) {
-            if user.alpha() < 0.01 {
-                continue;
-            }
-
+            let alpha = user.alpha();
             let screen_pos = camera.world_to_screen(user.position());
             let raw_radius = user.radius() * ctx.camera_zoom;
 
-            // LOD: Skip users that are too small on screen
-            // Users are important visual elements, so we use a low threshold
-            if raw_radius < LOD_MIN_USER_RADIUS {
+            // LOD: Skip users that are too small or invisible
+            if !should_render_user(raw_radius, alpha) {
                 continue;
             }
 
-            let radius = raw_radius.max(5.0);
+            let radius = compute_user_effective_radius(raw_radius);
             let color = user.display_color();
 
             draw_avatar_shape(
@@ -452,7 +820,7 @@ pub fn render_users<R: Renderer + ?Sized>(
                 radius,
                 color,
                 user.is_active(),
-                user.alpha(),
+                alpha,
             );
         }
     }
@@ -477,24 +845,17 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
 
     for user_id in ctx.visible_users {
         if let Some(user) = scene.get_user(*user_id) {
-            if user.alpha() < 0.01 {
-                continue;
-            }
-
+            let alpha = user.alpha();
             let screen_pos = camera.world_to_screen(user.position());
             let raw_radius = user.radius() * ctx.camera_zoom;
 
-            // LOD: Skip labels for users that are too small on screen
-            if raw_radius < LOD_MIN_USER_LABEL_RADIUS {
+            // LOD: Skip labels for users that are too small or invisible
+            if !should_render_user_label(raw_radius, alpha) {
                 continue;
             }
 
-            let radius = raw_radius.max(5.0);
-            let label_pos = Vec2::new(
-                screen_pos.x + radius + 5.0,
-                screen_pos.y - ctx.font_size * 0.3,
-            );
-            let alpha = user.alpha();
+            let radius = compute_user_effective_radius(raw_radius);
+            let label_pos = compute_label_position(screen_pos, radius, ctx.font_size, 5.0);
 
             // Shadow for better readability
             let shadow_color = Color::new(0.0, 0.0, 0.0, 0.5 * alpha);
@@ -527,14 +888,7 @@ pub struct LabelPlacer {
 impl LabelPlacer {
     /// Creates a new label placer.
     pub fn new(camera_zoom: f32) -> Self {
-        // Adaptive max labels based on zoom
-        let max_labels = if camera_zoom > 1.0 {
-            200
-        } else if camera_zoom > 0.5 {
-            100
-        } else {
-            50
-        };
+        let max_labels = compute_max_labels(camera_zoom);
         Self {
             placed_labels: Vec::with_capacity(max_labels),
             max_labels,
@@ -725,25 +1079,21 @@ pub fn render_watermark<R: Renderer + ?Sized>(
         .map_or(0.0, |s| estimate_text_width(s, font_size * 0.85));
     let max_text_width = text_width.max(subtext_width);
 
-    // Calculate line heights
+    // Calculate total height using pure function
+    let has_subtext = watermark.subtext.is_some();
+    let total_height = compute_watermark_height(font_size, has_subtext);
     let line_height = font_size * 1.2;
     let subtext_size = font_size * 0.85;
-    let total_height = if watermark.subtext.is_some() {
-        line_height + subtext_size
-    } else {
-        font_size
-    };
 
-    // Calculate base position based on corner
-    let (base_x, base_y) = match watermark.position {
-        WatermarkPosition::TopLeft => (margin, margin),
-        WatermarkPosition::TopRight => (width - max_text_width - margin, margin),
-        WatermarkPosition::BottomLeft => (margin, height - total_height - margin),
-        WatermarkPosition::BottomRight => (
-            width - max_text_width - margin,
-            height - total_height - margin,
-        ),
-    };
+    // Calculate base position using pure function
+    let (base_x, base_y) = compute_watermark_position(
+        watermark.position,
+        margin,
+        max_text_width,
+        total_height,
+        width,
+        height,
+    );
 
     // Draw shadow for better readability
     let shadow_color = Color::new(0.0, 0.0, 0.0, color.a * 0.5);
@@ -790,6 +1140,479 @@ pub fn render_watermark<R: Renderer + ?Sized>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // =========================================================================
+    // Pure Computation Function Tests
+    // =========================================================================
+
+    // -------------------------------------------------------------------------
+    // Depth Factor Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_depth_factor_root() {
+        let factor = compute_depth_factor(0);
+        assert!((factor - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_depth_factor_mid() {
+        let factor = compute_depth_factor(3);
+        assert!((factor - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_depth_factor_deep() {
+        let factor = compute_depth_factor(6);
+        assert!((factor - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_depth_factor_capped_at_1() {
+        let factor = compute_depth_factor(12);
+        assert!((factor - 1.0).abs() < 0.001);
+    }
+
+    // -------------------------------------------------------------------------
+    // Directory Color Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_directory_color_root_brightest() {
+        let root_color = compute_directory_color(0);
+        let deep_color = compute_directory_color(6);
+        // Root should be brighter than deep
+        assert!(root_color.r > deep_color.r);
+        assert!(root_color.g > deep_color.g);
+    }
+
+    #[test]
+    fn test_compute_directory_color_has_valid_alpha() {
+        let color = compute_directory_color(0);
+        assert!((color.a - 0.55).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_directory_color_blue_tint() {
+        // Color should have slight blue tint (b > g)
+        let color = compute_directory_color(0);
+        assert!(color.b > color.g);
+    }
+
+    // -------------------------------------------------------------------------
+    // Branch Width Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_branch_width_root() {
+        let width = compute_branch_width(0);
+        assert!((width - 1.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_branch_width_deep() {
+        let width = compute_branch_width(6);
+        assert!((width - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_branch_width_minimum() {
+        let width = compute_branch_width(100);
+        assert!(width >= 0.8);
+    }
+
+    #[test]
+    fn test_compute_branch_width_decreases_with_depth() {
+        let shallow = compute_branch_width(1);
+        let deep = compute_branch_width(5);
+        assert!(shallow > deep);
+    }
+
+    // -------------------------------------------------------------------------
+    // Branch Opacity Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_branch_opacity_root_full() {
+        let opacity = compute_branch_opacity(0, 0.35, 0.3);
+        assert!((opacity - 0.35).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_branch_opacity_fades_with_depth() {
+        let shallow = compute_branch_opacity(0, 0.35, 0.3);
+        let deep = compute_branch_opacity(6, 0.35, 0.3);
+        assert!(shallow > deep);
+    }
+
+    #[test]
+    fn test_compute_branch_opacity_minimum() {
+        let opacity = compute_branch_opacity(100, 0.35, 1.0);
+        assert!(opacity >= 0.05 * 0.35);
+    }
+
+    #[test]
+    fn test_compute_branch_opacity_respects_max() {
+        let opacity = compute_branch_opacity(0, 0.5, 0.3);
+        assert!((opacity - 0.5).abs() < 0.001);
+    }
+
+    // -------------------------------------------------------------------------
+    // Branch Color Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_branch_color_brightens() {
+        let dir_color = Color::new(0.5, 0.5, 0.5, 0.5);
+        let branch_color = compute_branch_color(dir_color, 0.3);
+        assert!(branch_color.r > dir_color.r);
+        assert!(branch_color.g > dir_color.g);
+        assert!(branch_color.b > dir_color.b);
+    }
+
+    #[test]
+    fn test_compute_branch_color_uses_opacity() {
+        let dir_color = Color::new(0.5, 0.5, 0.5, 0.5);
+        let branch_color = compute_branch_color(dir_color, 0.25);
+        assert!((branch_color.a - 0.25).abs() < 0.001);
+    }
+
+    // -------------------------------------------------------------------------
+    // LOD Decision Tests - Directories
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_should_render_directory_root_always() {
+        // Root should always render even at tiny size
+        assert!(should_render_directory(0.001, 0));
+        assert!(should_render_directory(0.0, 0));
+    }
+
+    #[test]
+    fn test_should_render_directory_non_root_threshold() {
+        assert!(!should_render_directory(0.01, 1));
+        assert!(should_render_directory(0.1, 1));
+    }
+
+    // -------------------------------------------------------------------------
+    // LOD Decision Tests - Files
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_should_render_file_visible() {
+        assert!(should_render_file(1.0, 1.0));
+    }
+
+    #[test]
+    fn test_should_render_file_too_small() {
+        assert!(!should_render_file(0.05, 1.0));
+    }
+
+    #[test]
+    fn test_should_render_file_invisible() {
+        assert!(!should_render_file(1.0, 0.005));
+    }
+
+    // -------------------------------------------------------------------------
+    // LOD Decision Tests - Users
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_should_render_user_visible() {
+        assert!(should_render_user(5.0, 1.0));
+    }
+
+    #[test]
+    fn test_should_render_user_too_small() {
+        assert!(!should_render_user(0.1, 1.0));
+    }
+
+    #[test]
+    fn test_should_render_user_invisible() {
+        assert!(!should_render_user(5.0, 0.005));
+    }
+
+    // -------------------------------------------------------------------------
+    // LOD Decision Tests - Labels
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_should_render_directory_label_shallow() {
+        assert!(should_render_directory_label(5.0, 0));
+        assert!(should_render_directory_label(5.0, 1));
+        assert!(should_render_directory_label(5.0, 2));
+    }
+
+    #[test]
+    fn test_should_render_directory_label_deep() {
+        assert!(!should_render_directory_label(5.0, 3));
+        assert!(!should_render_directory_label(5.0, 10));
+    }
+
+    #[test]
+    fn test_should_render_directory_label_too_small() {
+        assert!(!should_render_directory_label(3.0, 0));
+    }
+
+    #[test]
+    fn test_should_render_file_label_visible() {
+        assert!(should_render_file_label(5.0, 0.5, 0.5));
+    }
+
+    #[test]
+    fn test_should_render_file_label_low_zoom() {
+        assert!(!should_render_file_label(5.0, 0.5, 0.1));
+    }
+
+    #[test]
+    fn test_should_render_file_label_low_alpha() {
+        assert!(!should_render_file_label(5.0, 0.2, 0.5));
+    }
+
+    #[test]
+    fn test_should_render_file_label_small_radius() {
+        assert!(!should_render_file_label(2.0, 0.5, 0.5));
+    }
+
+    #[test]
+    fn test_should_render_user_label_visible() {
+        assert!(should_render_user_label(10.0, 0.5));
+    }
+
+    #[test]
+    fn test_should_render_user_label_too_small() {
+        assert!(!should_render_user_label(3.0, 0.5));
+    }
+
+    // -------------------------------------------------------------------------
+    // LOD Decision Tests - Branches
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_should_render_directory_branches_normal_zoom() {
+        assert!(should_render_directory_branches(1.0));
+        assert!(should_render_directory_branches(0.5));
+    }
+
+    #[test]
+    fn test_should_render_directory_branches_low_zoom() {
+        assert!(!should_render_directory_branches(0.005));
+    }
+
+    #[test]
+    fn test_should_render_file_branches_normal_zoom() {
+        assert!(should_render_file_branches(1.0));
+        assert!(should_render_file_branches(0.1));
+    }
+
+    #[test]
+    fn test_should_render_file_branches_low_zoom() {
+        assert!(!should_render_file_branches(0.01));
+    }
+
+    // -------------------------------------------------------------------------
+    // Effective Radius Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_file_effective_radius_small() {
+        assert!((compute_file_effective_radius(0.5) - 2.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_file_effective_radius_large() {
+        assert!((compute_file_effective_radius(5.0) - 5.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_user_effective_radius_small() {
+        assert!((compute_user_effective_radius(2.0) - 5.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_user_effective_radius_large() {
+        assert!((compute_user_effective_radius(10.0) - 10.0).abs() < 0.001);
+    }
+
+    // -------------------------------------------------------------------------
+    // File Glow Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_file_glow_intensity_touched() {
+        let glow = compute_file_glow_intensity(true);
+        assert!((glow - 0.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_file_glow_intensity_normal() {
+        let glow = compute_file_glow_intensity(false);
+        assert!((glow - 0.08).abs() < 0.001);
+    }
+
+    // -------------------------------------------------------------------------
+    // File Border Color Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_file_border_color_darker() {
+        let color = Color::new(1.0, 1.0, 1.0, 1.0);
+        let border = compute_file_border_color(color);
+        assert!((border.r - 0.6).abs() < 0.001);
+        assert!((border.g - 0.6).abs() < 0.001);
+        assert!((border.b - 0.6).abs() < 0.001);
+        assert!((border.a - 1.0).abs() < 0.001);
+    }
+
+    // -------------------------------------------------------------------------
+    // File Branch Color Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_file_branch_color_uses_depth_fade() {
+        let color = Color::new(1.0, 0.5, 0.0, 1.0);
+        let shallow = compute_file_branch_color(color, 1.0, 0, 0.3);
+        let deep = compute_file_branch_color(color, 1.0, 6, 0.3);
+        assert!(shallow.a > deep.a);
+    }
+
+    #[test]
+    fn test_compute_file_branch_color_uses_alpha() {
+        let color = Color::new(1.0, 0.5, 0.0, 1.0);
+        let full = compute_file_branch_color(color, 1.0, 0, 0.3);
+        let half = compute_file_branch_color(color, 0.5, 0, 0.3);
+        assert!(full.a > half.a);
+    }
+
+    // -------------------------------------------------------------------------
+    // Label Position Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_label_position_offset() {
+        let pos = compute_label_position(Vec2::new(100.0, 100.0), 10.0, 12.0, 5.0);
+        assert!((pos.x - 115.0).abs() < 0.001); // 100 + 10 + 5
+        assert!((pos.y - 96.4).abs() < 0.001); // 100 - 12 * 0.3
+    }
+
+    // -------------------------------------------------------------------------
+    // Label Priority Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_file_label_priority_touched_bonus() {
+        let normal = compute_file_label_priority(5.0, 1.0, false);
+        let touched = compute_file_label_priority(5.0, 1.0, true);
+        assert!(touched > normal);
+        assert!((touched - normal - 100.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_file_label_priority_larger_files() {
+        let small = compute_file_label_priority(2.0, 1.0, false);
+        let large = compute_file_label_priority(10.0, 1.0, false);
+        assert!(large > small);
+    }
+
+    // -------------------------------------------------------------------------
+    // Max Labels Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_max_labels_high_zoom() {
+        assert_eq!(compute_max_labels(2.0), 200);
+    }
+
+    #[test]
+    fn test_compute_max_labels_medium_zoom() {
+        assert_eq!(compute_max_labels(0.75), 100);
+    }
+
+    #[test]
+    fn test_compute_max_labels_low_zoom() {
+        assert_eq!(compute_max_labels(0.25), 50);
+    }
+
+    // -------------------------------------------------------------------------
+    // Watermark Position Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_watermark_position_top_left() {
+        let (x, y) = compute_watermark_position(
+            WatermarkPosition::TopLeft,
+            10.0,  // margin
+            100.0, // text_width
+            20.0,  // total_height
+            800.0, // screen_width
+            600.0, // screen_height
+        );
+        assert!((x - 10.0).abs() < 0.001);
+        assert!((y - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_watermark_position_top_right() {
+        let (x, y) = compute_watermark_position(
+            WatermarkPosition::TopRight,
+            10.0,
+            100.0,
+            20.0,
+            800.0,
+            600.0,
+        );
+        assert!((x - 690.0).abs() < 0.001); // 800 - 100 - 10
+        assert!((y - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_watermark_position_bottom_left() {
+        let (x, y) = compute_watermark_position(
+            WatermarkPosition::BottomLeft,
+            10.0,
+            100.0,
+            20.0,
+            800.0,
+            600.0,
+        );
+        assert!((x - 10.0).abs() < 0.001);
+        assert!((y - 570.0).abs() < 0.001); // 600 - 20 - 10
+    }
+
+    #[test]
+    fn test_compute_watermark_position_bottom_right() {
+        let (x, y) = compute_watermark_position(
+            WatermarkPosition::BottomRight,
+            10.0,
+            100.0,
+            20.0,
+            800.0,
+            600.0,
+        );
+        assert!((x - 690.0).abs() < 0.001); // 800 - 100 - 10
+        assert!((y - 570.0).abs() < 0.001); // 600 - 20 - 10
+    }
+
+    // -------------------------------------------------------------------------
+    // Watermark Height Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_watermark_height_no_subtext() {
+        let height = compute_watermark_height(12.0, false);
+        assert!((height - 12.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_watermark_height_with_subtext() {
+        let height = compute_watermark_height(12.0, true);
+        // 12.0 * 1.2 + 12.0 * 0.85 = 14.4 + 10.2 = 24.6
+        assert!((height - 24.6).abs() < 0.001);
+    }
+
+    // =========================================================================
+    // Existing Tests (Label Placer, LOD Constants, etc.)
+    // =========================================================================
 
     #[test]
     fn test_label_placer_basic() {
