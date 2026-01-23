@@ -14,6 +14,7 @@ impl WebGl2Renderer {
         self.flush_lines();
         self.flush_quads();
         self.flush_textured_quads();
+        self.flush_texture_array();
         self.flush_text();
     }
 
@@ -368,6 +369,93 @@ impl WebGl2Renderer {
                 .active_primitives
                 .set(ActivePrimitives::TEXTURED_QUADS);
         }
+    }
+
+    /// Flushes texture array (file icon) draw calls.
+    ///
+    /// This method renders all queued file icons in a single instanced draw call,
+    /// using the texture array to batch different file types together.
+    pub(super) fn flush_texture_array(&mut self) {
+        if self.file_icon_instances.instance_count() == 0 {
+            return;
+        }
+
+        // Need file icon array and texture array program to be initialized
+        if self.file_icon_array.is_none() {
+            // File icons not initialized - clear instances and skip
+            self.file_icon_instances.clear();
+            return;
+        }
+
+        let Some(program) = &self.texture_array_program else {
+            self.file_icon_instances.clear();
+            return;
+        };
+
+        let gl = &self.gl;
+
+        // Upload instance data
+        self.file_icon_instances.upload(gl);
+
+        // Setup VAO if needed
+        if self.vao_manager.texture_array_vao.is_none() {
+            self.vao_manager
+                .setup_texture_array_vao(gl, &self.file_icon_instances);
+        }
+
+        // Use program (state cache avoids redundant bind)
+        let program_changed = self.state_cache.use_program(gl, &program.program);
+        if program_changed {
+            self.frame_stats.program_switches += 1;
+        } else {
+            self.frame_stats.skipped_program_binds += 1;
+        }
+
+        // Bind VAO (state cache avoids redundant bind)
+        let vao_changed = self
+            .state_cache
+            .bind_vao(gl, self.vao_manager.texture_array_vao.as_ref());
+        if vao_changed {
+            self.frame_stats.vao_switches += 1;
+        } else {
+            self.frame_stats.skipped_vao_binds += 1;
+        }
+
+        // Set uniforms only if program changed (legacy mode only)
+        if program_changed {
+            if let Some(loc) = &program.resolution_loc {
+                let (w, h) = self.state_cache.resolution();
+                gl.uniform2f(Some(loc), w, h);
+                self.frame_stats.uniform_calls += 1;
+            }
+
+            if let Some(loc) = &program.texture_loc {
+                gl.uniform1i(Some(loc), 0); // Texture unit 0
+            }
+        }
+
+        // Bind file icon texture array
+        self.bind_file_icons(0);
+        self.frame_stats.texture_binds += 1;
+
+        // Draw instanced
+        let instance_count = self.file_icon_instances.instance_count();
+        gl.draw_arrays_instanced(
+            WebGl2RenderingContext::TRIANGLE_STRIP,
+            0,
+            4,
+            instance_count as i32,
+        );
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.texture_array_instances += instance_count as u32;
+        self.frame_stats.total_instances += instance_count as u32;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::TEXTURE_ARRAYS);
+
+        self.file_icon_instances.clear();
     }
 
     /// Flushes text draw calls.

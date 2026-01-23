@@ -73,6 +73,7 @@ use shaders::{
     LINE_VERTEX_SHADER, LINE_VERTEX_SHADER_UBO, QUAD_FRAGMENT_SHADER, QUAD_VERTEX_SHADER,
     QUAD_VERTEX_SHADER_UBO, RING_FRAGMENT_SHADER, RING_VERTEX_SHADER, RING_VERTEX_SHADER_UBO,
     TEXTURED_QUAD_FRAGMENT_SHADER, TEXTURED_QUAD_VERTEX_SHADER, TEXTURED_QUAD_VERTEX_SHADER_UBO,
+    TEXTURE_ARRAY_FRAGMENT_SHADER, TEXTURE_ARRAY_VERTEX_SHADER, TEXTURE_ARRAY_VERTEX_SHADER_UBO,
     TEXT_FRAGMENT_SHADER, TEXT_VERTEX_SHADER, TEXT_VERTEX_SHADER_UBO,
 };
 use shadow::ShadowPipeline;
@@ -142,6 +143,9 @@ pub struct WebGl2Renderer {
     /// Text shader program.
     text_program: Option<ShaderProgram>,
 
+    /// Texture array shader program (for file icons).
+    texture_array_program: Option<ShaderProgram>,
+
     /// VAO manager.
     vao_manager: VertexArrayManager,
 
@@ -162,6 +166,9 @@ pub struct WebGl2Renderer {
 
     /// Instance buffer for text glyphs.
     text_instances: InstanceBuffer,
+
+    /// Instance buffer for file icons (texture array rendering).
+    file_icon_instances: InstanceBuffer,
 
     /// GPU bloom post-processing pipeline.
     bloom_pipeline: BloomPipeline,
@@ -239,6 +246,7 @@ impl WebGl2Renderer {
             quad_program: None,
             textured_quad_program: None,
             text_program: None,
+            texture_array_program: None,
             vao_manager: VertexArrayManager::new(),
             circle_instances: InstanceBuffer::new(7, 1000), // center(2) + radius(1) + color(4)
             ring_instances: InstanceBuffer::new(8, 500), // center(2) + radius(1) + width(1) + color(4)
@@ -246,6 +254,7 @@ impl WebGl2Renderer {
             quad_instances: InstanceBuffer::new(8, 500), // bounds(4) + color(4)
             textured_quad_instances: HashMap::new(),
             text_instances: InstanceBuffer::new(12, 2000), // bounds(4) + uv_bounds(4) + color(4)
+            file_icon_instances: InstanceBuffer::new(13, 1000), // bounds(4) + uv_bounds(4) + color(4) + layer(1)
             bloom_pipeline: BloomPipeline::new(),
             shadow_pipeline: ShadowPipeline::new(),
             adaptive_quality: AdaptiveQuality::new(),
@@ -304,6 +313,10 @@ impl WebGl2Renderer {
             )?);
             self.text_program =
                 Some(self.compile_program(TEXT_VERTEX_SHADER_UBO, TEXT_FRAGMENT_SHADER)?);
+            self.texture_array_program = Some(self.compile_program(
+                TEXTURE_ARRAY_VERTEX_SHADER_UBO,
+                TEXTURE_ARRAY_FRAGMENT_SHADER,
+            )?);
 
             // Bind each shader's uniform block to the UBO binding point
             // This is required in WebGL2/GLSL ES 3.0 since layout(binding = N) is not supported
@@ -325,6 +338,9 @@ impl WebGl2Renderer {
             if let Some(prog) = &self.text_program {
                 self.ubo_manager.bind_program(gl, &prog.program);
             }
+            if let Some(prog) = &self.texture_array_program {
+                self.ubo_manager.bind_program(gl, &prog.program);
+            }
         } else {
             // Fallback to legacy shaders with individual uniforms
             self.circle_program =
@@ -340,6 +356,9 @@ impl WebGl2Renderer {
             );
             self.text_program =
                 Some(self.compile_program(TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER)?);
+            self.texture_array_program = Some(
+                self.compile_program(TEXTURE_ARRAY_VERTEX_SHADER, TEXTURE_ARRAY_FRAGMENT_SHADER)?,
+            );
         }
 
         // Create VAO manager vertex buffer
@@ -367,6 +386,7 @@ impl WebGl2Renderer {
     /// This technique is especially important for WebGL where shader compilation
     /// can be deferred until the first draw call, and GPU drivers may perform
     /// additional optimizations on first use.
+    #[allow(clippy::too_many_lines)]
     fn warmup_shaders(&mut self) {
         let gl = &self.gl;
 
@@ -412,6 +432,18 @@ impl WebGl2Renderer {
         // Move textured VAO to text VAO and recreate textured
         self.vao_manager.text_vao = self.vao_manager.textured_quad_vao.take();
         self.text_instances.clear();
+
+        // Setup file icon instance buffer (13 floats: bounds(4) + uv_bounds(4) + color(4) + layer(1))
+        self.file_icon_instances.push_raw(&[
+            0.0, 0.0, 1.0, 1.0, // bounds
+            0.0, 0.0, 1.0, 1.0, // uv_bounds
+            0.0, 0.0, 0.0, 0.0, // color
+            0.0, // layer
+        ]);
+        self.file_icon_instances.upload(gl);
+        self.vao_manager
+            .setup_texture_array_vao(gl, &self.file_icon_instances);
+        self.file_icon_instances.clear();
 
         // Setup fullscreen VAO for bloom/shadow warmup
         self.vao_manager.setup_fullscreen_vao(gl);
@@ -479,6 +511,19 @@ impl WebGl2Renderer {
                 gl.uniform1i(Some(loc), 0);
             }
             gl.bind_vertex_array(self.vao_manager.text_vao.as_ref());
+            gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
+        }
+
+        // Warmup texture array shader (for file icons)
+        if let Some(program) = &self.texture_array_program {
+            gl.use_program(Some(&program.program));
+            if let Some(loc) = &program.resolution_loc {
+                gl.uniform2f(Some(loc), warmup_width, warmup_height);
+            }
+            if let Some(loc) = &program.texture_loc {
+                gl.uniform1i(Some(loc), 0);
+            }
+            gl.bind_vertex_array(self.vao_manager.texture_array_vao.as_ref());
             gl.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4, 0);
         }
 
@@ -1107,25 +1152,52 @@ impl Renderer for WebGl2Renderer {
     }
 
     // =========================================================================
-    // File Icon Methods (with fallback to colored discs)
+    // File Icon Methods (uses texture array when initialized)
     // =========================================================================
 
     fn init_file_icons(&mut self) -> bool {
-        // WebGL2 texture array rendering pipeline is not yet fully integrated.
-        // Return false to use the default disc-based fallback rendering.
-        false
+        // Delegate to the implementation in icons_methods.rs
+        Self::init_file_icons(self)
     }
 
     fn has_file_icons(&self) -> bool {
-        // WebGL2 does not have file icons initialized
-        false
+        // Delegate to the implementation in icons_methods.rs
+        Self::has_file_icons(self)
     }
 
     fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color) {
-        // WebGL2 texture array rendering pipeline is not yet fully integrated.
-        // Fall back to colored disc rendering (matches default trait behavior).
-        let _ = extension;
-        self.draw_disc(center, size * 0.5, color);
+        // If file icons are initialized, use the texture array pipeline
+        if self.file_icon_array.is_some() {
+            // Queue the file icon instance for rendering
+            let layer = self.get_file_icon_layer(extension).unwrap_or(0);
+
+            // Calculate bounds (centered quad)
+            let half_size = size * 0.5;
+            let min_x = center.x - half_size;
+            let min_y = center.y - half_size;
+            let max_x = center.x + half_size;
+            let max_y = center.y + half_size;
+
+            // Instance data: bounds(4) + uv_bounds(4) + color(4) + layer(1) = 13 floats
+            self.file_icon_instances.push_raw(&[
+                min_x,
+                min_y,
+                max_x,
+                max_y, // bounds
+                0.0,
+                0.0,
+                1.0,
+                1.0, // uv_bounds (full texture)
+                color.r,
+                color.g,
+                color.b,
+                color.a,      // color tint
+                layer as f32, // layer index
+            ]);
+        } else {
+            // Fallback to colored disc
+            self.draw_disc(center, size * 0.5, color);
+        }
     }
 }
 
@@ -1144,6 +1216,7 @@ impl Drop for WebGl2Renderer {
             instances.destroy(&self.gl);
         }
         self.text_instances.destroy(&self.gl);
+        self.file_icon_instances.destroy(&self.gl);
 
         // Clean up file icon texture array
         if let Some(mut array) = self.file_icon_array.take() {
@@ -1171,6 +1244,9 @@ impl Drop for WebGl2Renderer {
             self.gl.delete_program(Some(&prog.program));
         }
         if let Some(prog) = &self.text_program {
+            self.gl.delete_program(Some(&prog.program));
+        }
+        if let Some(prog) = &self.texture_array_program {
             self.gl.delete_program(Some(&prog.program));
         }
     }

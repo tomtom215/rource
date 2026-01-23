@@ -327,6 +327,9 @@ pub struct VertexArrayManager {
     /// VAO for fullscreen effects
     pub fullscreen_vao: Option<WebGlVertexArrayObject>,
 
+    /// VAO for texture array (file icons) rendering
+    pub texture_array_vao: Option<WebGlVertexArrayObject>,
+
     /// Shared vertex buffer for unit quads
     vertex_buffer: Option<WebGlBuffer>,
 }
@@ -342,6 +345,7 @@ impl VertexArrayManager {
             textured_quad_vao: None,
             text_vao: None,
             fullscreen_vao: None,
+            texture_array_vao: None,
             vertex_buffer: None,
         }
     }
@@ -796,6 +800,94 @@ impl VertexArrayManager {
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
     }
 
+    /// Sets up VAO for texture array (file icons) rendering with instance buffer.
+    ///
+    /// Instance layout: `bounds(4) + uv_bounds(4) + color(4) + layer(1) = 13 floats`
+    pub fn setup_texture_array_vao(
+        &mut self,
+        gl: &WebGl2RenderingContext,
+        instance_buffer: &InstanceBuffer,
+    ) {
+        if self.vertex_buffer.is_none() {
+            self.create_vertex_buffer(gl);
+        }
+
+        let vao = gl.create_vertex_array();
+        if vao.is_none() {
+            return;
+        }
+
+        self.texture_array_vao = vao;
+        gl.bind_vertex_array(self.texture_array_vao.as_ref());
+
+        gl.bind_buffer(
+            WebGl2RenderingContext::ARRAY_BUFFER,
+            self.vertex_buffer.as_ref(),
+        );
+
+        // Position attribute (location 0) - offset 16*4 for standard quad
+        gl.vertex_attrib_pointer_with_i32(0, 2, WebGl2RenderingContext::FLOAT, false, 0, 64);
+        gl.enable_vertex_attrib_array(0);
+
+        if let Some(inst_buf) = instance_buffer.buffer() {
+            gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(inst_buf));
+
+            // Instance attributes: bounds (vec4), uv_bounds (vec4), color (vec4), layer (float)
+            let stride = 13 * 4; // 13 floats * 4 bytes
+
+            // Bounds (location 1)
+            gl.vertex_attrib_pointer_with_i32(
+                1,
+                4,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                0,
+            );
+            gl.enable_vertex_attrib_array(1);
+            gl.vertex_attrib_divisor(1, 1);
+
+            // UV bounds (location 2)
+            gl.vertex_attrib_pointer_with_i32(
+                2,
+                4,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                16,
+            );
+            gl.enable_vertex_attrib_array(2);
+            gl.vertex_attrib_divisor(2, 1);
+
+            // Color (location 3)
+            gl.vertex_attrib_pointer_with_i32(
+                3,
+                4,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                32,
+            );
+            gl.enable_vertex_attrib_array(3);
+            gl.vertex_attrib_divisor(3, 1);
+
+            // Layer (location 4)
+            gl.vertex_attrib_pointer_with_i32(
+                4,
+                1,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                stride,
+                48,
+            );
+            gl.enable_vertex_attrib_array(4);
+            gl.vertex_attrib_divisor(4, 1);
+        }
+
+        gl.bind_vertex_array(None);
+        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
+    }
+
     /// Releases all WebGL resources.
     pub fn destroy(&mut self, gl: &WebGl2RenderingContext) {
         if let Some(vao) = self.circle_vao.take() {
@@ -817,6 +909,9 @@ impl VertexArrayManager {
             gl.delete_vertex_array(Some(&vao));
         }
         if let Some(vao) = self.fullscreen_vao.take() {
+            gl.delete_vertex_array(Some(&vao));
+        }
+        if let Some(vao) = self.texture_array_vao.take() {
             gl.delete_vertex_array(Some(&vao));
         }
         if let Some(buf) = self.vertex_buffer.take() {

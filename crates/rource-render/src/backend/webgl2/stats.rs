@@ -32,6 +32,8 @@ impl ActivePrimitives {
     pub const TEXTURED_QUADS: u8 = 1 << 4;
     /// Text glyphs are active.
     pub const TEXT: u8 = 1 << 5;
+    /// Texture array quads (file icons) are active.
+    pub const TEXTURE_ARRAYS: u8 = 1 << 6;
 
     /// Creates an empty set.
     #[inline]
@@ -105,6 +107,9 @@ pub struct FrameStats {
 
     /// Number of text glyph instances rendered.
     pub text_instances: u32,
+
+    /// Number of texture array instances (file icons) rendered.
+    pub texture_array_instances: u32,
 
     /// Number of uniform calls made (legacy mode only).
     ///
