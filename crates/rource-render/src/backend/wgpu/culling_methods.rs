@@ -1,6 +1,63 @@
 //! GPU visibility culling methods for the wgpu renderer.
 //!
 //! This module contains methods for GPU-based visibility culling.
+//!
+//! ## Current Status
+//!
+//! The GPU visibility culling infrastructure is **complete** but **not integrated**
+//! into the rendering pipeline. This is intentional for the following reasons:
+//!
+//! 1. **CPU quadtree culling is efficient for typical use cases** - The scene graph's
+//!    quadtree provides O(log n) visibility queries that work well for < 10,000 entities.
+//!
+//! 2. **Integration requires buffer layout changes** - The `InstanceBuffer` uses VERTEX
+//!    usage while the culling pipeline outputs to STORAGE buffers. Integrating requires
+//!    either buffer copying or creating output buffers with both VERTEX and STORAGE usage.
+//!
+//! 3. **Indirect draw adds complexity** - Using `draw_indirect()` instead of `draw()`
+//!    requires careful synchronization between compute and render passes.
+//!
+//! ## When to Consider GPU Culling Integration
+//!
+//! GPU culling becomes beneficial when:
+//! - Scene has 10,000+ instances
+//! - View bounds change every frame (continuous panning/zooming)
+//! - CPU is already saturated with other work
+//! - GPU compute overhead is offset by reduced draw call preparation
+//!
+//! ## Integration Steps (Future Work)
+//!
+//! To integrate GPU culling into the render pipeline:
+//!
+//! 1. **Modify `StorageBuffer` in `culling.rs`**:
+//!    - Add VERTEX usage flag to output buffers
+//!    - Create output buffers with: `STORAGE | VERTEX | COPY_DST`
+//!
+//! 2. **Add culling dispatch to `flush()`**:
+//!    ```ignore
+//!    // Before render pass, dispatch culling compute
+//!    if self.gpu_culling_enabled {
+//!        self.dispatch_culling(encoder);
+//!    }
+//!    ```
+//!
+//! 3. **Modify flush passes to use indirect draw**:
+//!    ```ignore
+//!    if let Some(culling) = &self.culling_pipeline {
+//!        // Use culling output buffer as vertex buffer
+//!        render_pass.set_vertex_buffer(1, culling.output_buffer().slice(..));
+//!        // Use indirect draw for GPU-determined instance count
+//!        render_pass.draw_indirect(culling.indirect_buffer(), 0);
+//!    } else {
+//!        // Normal path
+//!        render_pass.set_vertex_buffer(1, self.circle_instances.buffer().slice(..));
+//!        render_pass.draw(0..4, 0..instance_count);
+//!    }
+//!    ```
+//!
+//! 4. **Add synchronization barrier** between compute and render passes
+//!
+//! 5. **Track visible instance count** for statistics (requires readback or query)
 
 use super::{
     culling::{CullingStats, VisibilityCullingPipeline},

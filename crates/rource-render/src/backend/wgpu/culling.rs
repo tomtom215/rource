@@ -4,6 +4,19 @@
 //! The culling pipeline filters instance data based on view bounds, outputting
 //! only visible instances to a compacted buffer for efficient rendering.
 //!
+//! ## Integration Status
+//!
+//! **Infrastructure: COMPLETE** | **Render Integration: NOT YET**
+//!
+//! The culling pipeline is fully implemented with compute shaders for circles,
+//! lines, and quads. However, it is not yet wired into the render loop because:
+//!
+//! 1. CPU quadtree culling is efficient for typical use cases (< 10,000 entities)
+//! 2. Integration requires buffer layout changes (STORAGE → VERTEX+STORAGE)
+//! 3. Indirect draw adds synchronization complexity
+//!
+//! See `culling_methods.rs` for detailed integration steps when needed.
+//!
 //! ## Architecture
 //!
 //! ```text
