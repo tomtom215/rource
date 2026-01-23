@@ -653,13 +653,12 @@ impl SpatialHashPipeline {
         }
     }
 
-    /// Downloads entities from the GPU (async).
+    /// Downloads entities from the GPU (sync, WASM compatible).
+    ///
+    /// This method uses device polling to synchronously wait for buffer mapping.
+    /// Suitable for use in synchronous frame loops like `requestAnimationFrame`.
     #[cfg(target_arch = "wasm32")]
-    pub async fn download_entities(
-        &mut self,
-        device: &Device,
-        queue: &Queue,
-    ) -> Vec<ComputeEntity> {
+    pub fn download_entities_sync(&mut self, device: &Device, queue: &Queue) -> Vec<ComputeEntity> {
         if self.entity_count == 0 {
             return Vec::new();
         }
@@ -685,14 +684,10 @@ impl SpatialHashPipeline {
         encoder.copy_buffer_to_buffer(&self.entity_buffer, 0, staging, 0, buffer_size as u64);
         queue.submit(Some(encoder.finish()));
 
-        // Map and read
+        // Map and read using polling (sync)
         let slice = staging.slice(0..buffer_size as u64);
-        let (tx, rx) = futures_channel::oneshot::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
-        });
+        slice.map_async(wgpu::MapMode::Read, |_| {});
         device.poll(wgpu::Maintain::Wait);
-        rx.await.unwrap().unwrap();
 
         let data = slice.get_mapped_range();
         let entities: Vec<ComputeEntity> = bytemuck::cast_slice(&data).to_vec();
