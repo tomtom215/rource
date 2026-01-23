@@ -1864,7 +1864,72 @@ fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Co
 }
 ```
 
-**Test Count**: 1,185 tests passing
+### Phase 19: WebGL2 GPU Curve Rendering (2026-01-23)
+
+Added GPU-tessellated Catmull-Rom curve rendering for the WebGL2 backend. This reduces draw calls for spline-based branch connections by computing curve geometry on the GPU.
+
+#### Overview
+
+Instead of drawing splines as multiple line segments (N draw calls for N-1 segments), all curve segments are now batched into a single instanced draw call. The vertex shader computes Catmull-Rom spline positions and tangents on the fly.
+
+**Performance Impact**:
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| 100 curves (8 segments each) | 700 line instances | 100 curve instances |
+| 1000 curves | 7000 line instances | 1000 curve instances |
+| Draw calls | Multiple | 1 per frame |
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/backend/webgl2/shaders.rs` | Added `CURVE_VERTEX_SHADER`, `CURVE_FRAGMENT_SHADER`, `CURVE_VERTEX_SHADER_UBO` |
+| `crates/rource-render/src/backend/webgl2/buffers.rs` | Added `CURVE_SEGMENTS`, `CURVE_STRIP_VERTEX_COUNT`, `generate_curve_strip()`, curve VAO setup |
+| `crates/rource-render/src/backend/webgl2/mod.rs` | Added `curve_program`, `curve_instances`, shader compilation, warmup |
+| `crates/rource-render/src/backend/webgl2/flush_passes.rs` | Added `flush_curves()` pass |
+| `crates/rource-render/src/backend/webgl2/stats.rs` | Added `CURVES` flag and `curve_instances` counter |
+
+#### Instance Layout (13 floats = 52 bytes per segment)
+
+| Attribute | Type | Location | Description |
+|-----------|------|----------|-------------|
+| `p0` | vec2 | 1 | Control point before segment start |
+| `p1` | vec2 | 2 | Segment start point |
+| `p2` | vec2 | 3 | Segment end point |
+| `p3` | vec2 | 4 | Control point after segment end |
+| `width` | float | 5 | Line width in pixels |
+| `color` | vec4 | 6 | RGBA color |
+
+#### GPU Tessellation
+
+The vertex shader implements Catmull-Rom spline interpolation:
+```glsl
+vec2 catmull_rom(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t) {
+    float t2 = t * t;
+    float t3 = t2 * t;
+    float c0 = -0.5 * t3 + t2 - 0.5 * t;
+    float c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+    float c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+    float c3 = 0.5 * t3 - 0.5 * t2;
+    return p0 * c0 + p1 * c1 + p2 * c2 + p3 * c3;
+}
+```
+
+The curve strip vertex buffer contains 18 vertices (8 segments + 1 endpoint, 2 vertices each) forming a triangle strip ribbon along the curve.
+
+#### Edge Control Point Handling
+
+When drawing splines, edge control points are mirrored:
+```rust
+// First segment: p0 = 2*p1 - p2 (mirror)
+let p0 = Vec2::new(2.0 * points[0].x - points[1].x, 2.0 * points[0].y - points[1].y);
+
+// Last segment: p3 = 2*p2 - p1 (mirror)
+let p3 = Vec2::new(2.0 * points[n].x - points[n-1].x, 2.0 * points[n].y - points[n-1].y);
+```
+
+**Test Count**: 1,191 tests passing (added 6 new tests)
 
 ### Scene Module Refactoring (2026-01-22)
 
