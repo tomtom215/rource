@@ -104,7 +104,7 @@ fn plot_premultiplied_inner(
 ///
 /// This avoids cloning the glyph bitmap by accepting pixels and the glyph reference
 /// as separate parameters, allowing the borrow checker to see they are disjoint from
-/// the font_cache borrow.
+/// the `font_cache` borrow.
 #[inline]
 #[allow(clippy::too_many_arguments)] // Explicit parameters needed for split borrow pattern
 fn draw_glyph_inner(
@@ -134,6 +134,7 @@ fn draw_glyph_inner(
 
 /// Plots a pixel with coverage blending (free function for split borrow pattern).
 #[inline]
+#[allow(clippy::too_many_arguments)] // Explicit parameters needed for split borrow pattern
 fn plot_inner(
     pixels: &mut [u32],
     width: u32,
@@ -277,8 +278,8 @@ pub struct SoftwareRenderer {
     /// Next texture ID
     next_texture_id: u32,
 
-    /// Reusable buffer for text glyph positioning (avoids per-draw_text allocation and glyph cloning).
-    /// Stores (x, y, char, font_id, size_key) tuples for each character in a text string.
+    /// Reusable buffer for text glyph positioning (avoids per-`draw_text` allocation and glyph cloning).
+    /// Stores `(x, y, char, font_id, size_key)` tuples for each character in a text string.
     /// Glyphs are looked up again during drawing to avoid cloning bitmap data.
     glyph_buffer: Vec<(i32, i32, char, FontId, u32)>,
 
@@ -1037,18 +1038,22 @@ impl SoftwareRenderer {
             None
         };
 
-        if let Some(ext_lower) = ext_lower {
-            self.file_icon_textures
-                .get(ext_lower)
-                .copied()
-                .or_else(|| self.file_icon_textures.get("_default").copied())
-        } else {
+        ext_lower.map_or_else(
             // Fallback for rare long/non-ASCII extensions (heap allocates)
-            self.file_icon_textures
-                .get(&extension.to_lowercase())
-                .copied()
-                .or_else(|| self.file_icon_textures.get("_default").copied())
-        }
+            || {
+                self.file_icon_textures
+                    .get(&extension.to_lowercase())
+                    .copied()
+                    .or_else(|| self.file_icon_textures.get("_default").copied())
+            },
+            // Fast path: stack-allocated lowercase (zero heap allocation)
+            |ext| {
+                self.file_icon_textures
+                    .get(ext)
+                    .copied()
+                    .or_else(|| self.file_icon_textures.get("_default").copied())
+            },
+        )
     }
 
     /// Registers a custom icon for a file extension.
