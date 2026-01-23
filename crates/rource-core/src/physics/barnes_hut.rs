@@ -365,7 +365,12 @@ impl BarnesHutTree {
     /// # Returns
     /// The net repulsive force vector.
     #[must_use]
-    pub fn calculate_force(&self, body: &Body, repulsion_constant: f32, min_distance_sq: f32) -> Vec2 {
+    pub fn calculate_force(
+        &self,
+        body: &Body,
+        repulsion_constant: f32,
+        min_distance_sq: f32,
+    ) -> Vec2 {
         self.root
             .calculate_force(body, self.theta, repulsion_constant, min_distance_sq)
     }
@@ -383,7 +388,10 @@ mod tests {
     use super::*;
 
     fn create_test_tree() -> BarnesHutTree {
-        BarnesHutTree::new(Bounds::new(Vec2::new(-100.0, -100.0), Vec2::new(100.0, 100.0)))
+        BarnesHutTree::new(Bounds::new(
+            Vec2::new(-100.0, -100.0),
+            Vec2::new(100.0, 100.0),
+        ))
     }
 
     #[test]

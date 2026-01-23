@@ -221,9 +221,9 @@ impl Scene {
             let body = Body::new(pos);
 
             // Get repulsive force from all other bodies (approximated by tree)
-            let force = self
-                .barnes_hut_tree
-                .calculate_force(&body, FORCE_REPULSION, FORCE_MIN_DISTANCE_SQ);
+            let force =
+                self.barnes_hut_tree
+                    .calculate_force(&body, FORCE_REPULSION, FORCE_MIN_DISTANCE_SQ);
 
             if force.length_squared() > 0.001 {
                 *self.forces_buffer.entry(id).or_insert(Vec2::ZERO) += force;
