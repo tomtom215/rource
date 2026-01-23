@@ -973,12 +973,18 @@ fn rects_intersect(a: &Rect, b: &Rect) -> bool {
 /// - Labels are skipped when camera zoom is too low (< 0.15)
 /// - Labels are skipped for files with screen radius < `LOD_MIN_FILE_LABEL_RADIUS`
 /// - Label collision avoidance limits total labels rendered
+///
+/// # Arguments
+///
+/// * `label_candidates` - Reusable buffer for label candidates (avoids per-frame allocation).
+///   Will be cleared and repopulated each frame.
 #[inline(never)]
 pub fn render_file_labels<R: Renderer + ?Sized>(
     renderer: &mut R,
     ctx: &RenderContext,
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
+    label_candidates: &mut Vec<(FileId, Vec2, f32, f32, f32)>,
 ) {
     if !ctx.show_labels || ctx.camera_zoom <= 0.15 {
         return;
@@ -988,9 +994,9 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
 
     let file_font_size = ctx.font_size * 0.8;
 
-    // Collect label candidates with priority
+    // Collect label candidates with priority (reuses buffer to avoid per-frame allocation)
     // LOD: Only consider files large enough on screen for readable labels
-    let mut label_candidates: Vec<(Vec2, f32, f32, &str, f32)> = Vec::new();
+    label_candidates.clear();
     for file_id in ctx.visible_files {
         if let Some(file) = scene.get_file(*file_id) {
             if file.alpha() < 0.3 {
@@ -1013,7 +1019,8 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
             let activity_bonus = if is_touched { 100.0 } else { 0.0 };
             let priority = file.radius() * file.alpha() * 10.0 + activity_bonus;
 
-            label_candidates.push((screen_pos, radius, file.alpha(), file.name(), priority));
+            // Store FileId instead of &str to allow buffer reuse across frames
+            label_candidates.push((*file_id, screen_pos, radius, file.alpha(), priority));
         }
     }
 
@@ -1023,10 +1030,16 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
     // Use label placer for collision avoidance
     let mut placer = LabelPlacer::new(ctx.camera_zoom);
 
-    for (screen_pos, radius, alpha, name, _priority) in &label_candidates {
+    for (file_id, screen_pos, radius, alpha, _priority) in label_candidates.iter() {
         if !placer.can_place_more() {
             break;
         }
+
+        // Look up file name (O(1) HashMap lookup - trade-off for avoiding per-frame Vec allocation)
+        let Some(file) = scene.get_file(*file_id) else {
+            continue;
+        };
+        let name = file.name();
 
         // Calculate label dimensions
         let text_width = estimate_text_width(name, file_font_size);

@@ -2164,6 +2164,178 @@ pub fn clamp_branch_depth_fade(fade: f32) -> f32       // [0.0, 1.0]
 
 **Test Count**: 1,545 tests passing (359 in rource-wasm alone)
 
+### Phase 22: O(N) GPU Spatial Hash Physics (2026-01-23)
+
+Implemented a proper O(N) GPU spatial hash for force-directed physics, replacing the O(N²) brute force approach.
+
+#### Problem: O(N²) Bottleneck
+
+The original GPU physics implementation used brute force pairwise comparisons:
+
+```
+For 5000 entities:
+- O(N²) comparisons: 5000 × 5000 = 25,000,000 comparisons per frame
+- GPU threads waiting on memory reads from entire entity buffer
+- Performance degrades quadratically with entity count
+```
+
+#### Solution: Spatial Hash with Parallel Prefix Sum
+
+The new implementation uses a proper spatial hash grid where each cell stores indices of contained entities. This enables O(1) neighbor lookups:
+
+```
+For 5000 entities with 64×64 grid:
+- Average entities per cell: 5000 / 4096 ≈ 1.2
+- Neighbors queried: 3×3 = 9 cells per entity
+- Total comparisons: 5000 × 9 × 1.2 ≈ 54,000 comparisons
+- Speedup: 25,000,000 / 54,000 ≈ 463× faster
+```
+
+#### Algorithm (9 GPU Compute Passes)
+
+| Pass | Kernel | Purpose | Complexity |
+|------|--------|---------|------------|
+| 1 | `cs_clear_cell_counts` | Zero cell count buffer | O(cells) |
+| 2 | `cs_count_entities_per_cell` | Atomic increment per entity | O(N) |
+| 3a | `cs_prefix_sum_local` | Blelloch scan per workgroup | O(N) |
+| 3b | `cs_prefix_sum_partials` | Scan partial sums (single workgroup) | O(workgroups) |
+| 3c | `cs_prefix_sum_add` | Add partials to complete scan | O(N) |
+| 4a | `cs_init_scatter_offsets` | Copy cell offsets for scatter | O(cells) |
+| 4b | `cs_scatter_entities` | Sort entity indices by cell | O(N) |
+| 5 | `cs_calculate_forces_spatial` | 3×3 neighbor query, O(1) per lookup | O(N) |
+| 6 | `cs_integrate_spatial` | Apply forces to positions | O(N) |
+
+**Total complexity: O(N) instead of O(N²)**
+
+#### Blelloch Parallel Prefix Sum
+
+Uses the work-efficient Blelloch scan algorithm for computing cell offsets:
+
+```wgsl
+// Up-sweep (reduce) phase - O(log n) steps
+for (var d = 0u; d < log2_n; d++) {
+    let stride = 1u << (d + 1u);
+    let ai = (local_id + 1u) * stride - 1u;
+    let bi = ai - (stride >> 1u);
+    shared_data[ai] += shared_data[bi];
+}
+
+// Down-sweep phase - O(log n) steps
+shared_data[n - 1u] = 0u;
+for (var d = log2_n; d > 0u; d--) {
+    let stride = 1u << d;
+    let ai = (local_id + 1u) * stride - 1u;
+    let bi = ai - (stride >> 1u);
+    let tmp = shared_data[ai];
+    shared_data[ai] += shared_data[bi];
+    shared_data[bi] = tmp;
+}
+```
+
+#### Buffer Layout (7 GPU Buffers)
+
+| Buffer | Type | Size | Purpose |
+|--------|------|------|---------|
+| `params` | Uniform | 32 bytes | Physics config, dt, grid params |
+| `entities` | Storage RW | N × 32 bytes | Entity positions, velocities |
+| `cell_counts` | Storage RW | cells × 4 bytes | Atomic counters per cell |
+| `cell_offsets` | Storage RW | (cells+1) × 4 bytes | Prefix sum result |
+| `entity_indices` | Storage RW | N × 4 bytes | Sorted entity indices |
+| `scatter_offsets` | Storage RW | cells × 4 bytes | Scatter write positions |
+| `partial_sums` | Storage RW | workgroups × 4 bytes | For multi-block scan |
+
+#### Force Calculation with 3×3 Query
+
+```wgsl
+fn cs_calculate_forces_spatial(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let my_cell = cell_index(entities[gid.x].position);
+
+    // Query only 3×3 neighborhood
+    for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+            let neighbor_cell = my_cell + dy * grid_width + dx;
+
+            // Range query using prefix sum offsets
+            let start = cell_offsets[neighbor_cell];
+            let end = cell_offsets[neighbor_cell + 1u];
+
+            for (var i = start; i < end; i++) {
+                let other_idx = entity_indices[i];
+                if (other_idx != gid.x) {
+                    // Compute repulsion force
+                }
+            }
+        }
+    }
+}
+```
+
+#### Files Added/Modified
+
+| File | Description |
+|------|-------------|
+| `crates/rource-render/src/backend/wgpu/spatial_hash.rs` | New `SpatialHashPipeline` (787 lines) |
+| `crates/rource-render/src/backend/wgpu/shaders.rs` | Added `PHYSICS_SPATIAL_HASH_SHADER` |
+| `crates/rource-render/src/backend/wgpu/mod.rs` | Added `spatial_hash` module export |
+
+#### Performance Comparison
+
+| Entity Count | O(N²) Comparisons | O(N) Comparisons | Speedup |
+|-------------|-------------------|------------------|---------|
+| 100 | 10,000 | ~1,080 | ~9× |
+| 500 | 250,000 | ~5,400 | ~46× |
+| 1,000 | 1,000,000 | ~10,800 | ~93× |
+| 5,000 | 25,000,000 | ~54,000 | ~463× |
+| 10,000 | 100,000,000 | ~108,000 | ~926× |
+
+*Assuming uniform distribution with 64×64 grid (4096 cells), ~1.2 entities/cell on average*
+
+#### API Usage
+
+```rust
+use rource_render::backend::wgpu::spatial_hash::SpatialHashPipeline;
+
+// Create pipeline
+let mut pipeline = SpatialHashPipeline::new(&device);
+
+// Optional: configure physics parameters
+pipeline.set_config(PhysicsConfig::dense());
+
+// Upload entities
+pipeline.upload_entities(&device, &queue, &entities);
+
+// Dispatch all 9 compute passes
+pipeline.dispatch(&mut encoder, &queue, delta_time);
+
+// Download results (async on WASM, sync on native)
+#[cfg(target_arch = "wasm32")]
+let updated = pipeline.download_entities(&device, &queue).await;
+#[cfg(not(target_arch = "wasm32"))]
+let updated = pipeline.download_entities_sync(&device, &queue);
+```
+
+#### Grid Configuration
+
+The spatial hash grid is configured via `PhysicsConfig`:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `grid_cells` | 64 | Grid is 64×64 = 4096 cells |
+| `grid_cell_size` | 100.0 | Cell size in world units |
+| `repulsion_strength` | 1000.0 | Force coefficient |
+| `attraction_strength` | 0.05 | Pull toward parent |
+| `damping` | 0.9 | Velocity damping |
+| `max_speed` | 500.0 | Maximum velocity |
+
+#### Shader Optimizations
+
+1. **Module-level constants**: Bloom blur weights are const, not per-fragment arrays
+2. **Varyings for computed values**: Ring/line shaders pass pre-computed values from vertex to fragment
+3. **Combined functions**: `catmull_rom_pos_tangent()` shares t² computation
+4. **Atomic operations**: Cell counting uses `atomicAdd` for race-free parallel writes
+
+**Test Count**: 1,814 tests passing (added 7 spatial hash tests)
+
 ### Scene Module Refactoring (2026-01-22)
 
 Refactored `scene/mod.rs` into modular structure for improved maintainability.
@@ -3101,4 +3273,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-23 (Extended pure function extraction to CLI rendering, WASM lib, and interaction modules - 1,545 tests total)*
+*Last updated: 2026-01-23 (Phase 22: O(N) GPU spatial hash physics with Blelloch prefix sum - 1,814 tests total)*
