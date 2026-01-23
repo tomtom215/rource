@@ -16,8 +16,9 @@ mod stats_methods;
 pub mod tree;
 pub mod user;
 
-use std::collections::HashMap;
 use std::path::Path;
+
+use rustc_hash::FxHashMap as HashMap;
 
 use rource_math::{Bounds, Vec2};
 
@@ -84,6 +85,10 @@ pub struct Scene {
 
     /// Active actions.
     actions: Vec<Action>,
+
+    /// Count of non-completed actions (O(1) access instead of O(n) filtering).
+    /// Incremented when actions are spawned, decremented when they complete.
+    active_action_count: usize,
 
     /// ID allocator for files.
     file_id_allocator: IdAllocator,
@@ -177,11 +182,12 @@ impl Scene {
 
         Self {
             directories: DirTree::new(),
-            files: HashMap::new(),
-            file_by_path: HashMap::new(),
-            users: HashMap::new(),
-            user_by_name: HashMap::new(),
+            files: HashMap::default(),
+            file_by_path: HashMap::default(),
+            users: HashMap::default(),
+            user_by_name: HashMap::default(),
             actions: Vec::new(),
+            active_action_count: 0,
             file_id_allocator: IdAllocator::new(),
             user_id_allocator: IdAllocator::new(),
             action_id_allocator: IdAllocator::new(),
@@ -195,7 +201,7 @@ impl Scene {
             // Pre-allocate reusable buffers with reasonable initial capacity
             completed_actions_buffer: Vec::with_capacity(64),
             files_to_remove_buffer: Vec::with_capacity(32),
-            forces_buffer: HashMap::with_capacity(128),
+            forces_buffer: HashMap::default(),
             dir_data_buffer: Vec::with_capacity(128),
             // Barnes-Hut tree for O(n log n) force calculations
             barnes_hut_tree: BarnesHutTree::new(bounds),
@@ -480,6 +486,7 @@ impl Scene {
 
         let action = Action::new(id, user_id, file_id, action_type);
         self.actions.push(action);
+        self.active_action_count += 1;
 
         // Add action to user's active actions
         if let Some(user) = self.users.get_mut(&user_id) {
@@ -594,6 +601,10 @@ impl Scene {
                 user.remove_action(action_id);
             }
         }
+        // Decrement active count by number of completed actions (O(1) update)
+        self.active_action_count = self
+            .active_action_count
+            .saturating_sub(self.completed_actions_buffer.len());
         self.actions.retain(|a| !a.is_complete());
 
         // Update users
@@ -694,6 +705,10 @@ impl Scene {
                 user.remove_action(action_id);
             }
         }
+        // Decrement active count by number of completed actions (O(1) update)
+        self.active_action_count = self
+            .active_action_count
+            .saturating_sub(self.completed_actions_buffer.len());
         self.actions.retain(|a| !a.is_complete());
 
         // Update users
@@ -843,10 +858,19 @@ impl Scene {
         self.directories.len()
     }
 
-    /// Returns the number of active actions.
+    /// Returns the total number of actions (including completed ones pending removal).
     #[must_use]
     pub fn action_count(&self) -> usize {
         self.actions.len()
+    }
+
+    /// Returns the count of non-completed actions (O(1) lookup).
+    ///
+    /// This is more efficient than filtering actions manually each frame.
+    #[inline]
+    #[must_use]
+    pub fn active_action_count(&self) -> usize {
+        self.active_action_count
     }
 
     // Extension stats methods are in stats_methods.rs

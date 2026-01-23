@@ -18,6 +18,7 @@ config-file = ["dep:serde", "dep:toml"]
 [dependencies]
 rource-math = { path = "../rource-math" }
 regex-lite = "0.1"
+rustc-hash = { workspace = true }
 
 # Optional dependencies for config file support
 serde = { workspace = true, optional = true }
