@@ -2,65 +2,46 @@
 //!
 //! This module contains methods for GPU-based visibility culling.
 //!
-//! ## Current Status
+//! ## Integration Status
 //!
-//! The GPU visibility culling infrastructure is **complete** but **not integrated**
-//! into the rendering pipeline. This is intentional for the following reasons:
+//! GPU visibility culling is **fully integrated** into the rendering pipeline.
+//! When enabled, the renderer will:
 //!
-//! 1. **CPU quadtree culling is efficient for typical use cases** - The scene graph's
-//!    quadtree provides O(log n) visibility queries that work well for < 10,000 entities.
+//! 1. Dispatch compute shaders to cull instances based on view bounds
+//! 2. Use the culled output buffers with indirect draw commands
+//! 3. Automatically fall back to normal rendering when culling is disabled
 //!
-//! 2. **Integration requires buffer layout changes** - The `InstanceBuffer` uses VERTEX
-//!    usage while the culling pipeline outputs to STORAGE buffers. Integrating requires
-//!    either buffer copying or creating output buffers with both VERTEX and STORAGE usage.
+//! ## Usage
 //!
-//! 3. **Indirect draw adds complexity** - Using `draw_indirect()` instead of `draw()`
-//!    requires careful synchronization between compute and render passes.
+//! ```ignore
+//! // Enable GPU culling (recommended for 10,000+ instances)
+//! renderer.set_gpu_culling_enabled(true);
 //!
-//! ## When to Consider GPU Culling Integration
+//! // Set view bounds (typically from camera's visible area)
+//! renderer.set_cull_bounds(min_x, min_y, max_x, max_y);
 //!
-//! GPU culling becomes beneficial when:
+//! // Optional: warmup to avoid first-frame stutter
+//! renderer.warmup_culling();
+//!
+//! // Rendering happens automatically with culling when enabled
+//! renderer.begin_frame();
+//! // ... draw calls ...
+//! renderer.end_frame();
+//! ```
+//!
+//! ## Performance Characteristics
+//!
+//! GPU culling is beneficial when:
 //! - Scene has 10,000+ instances
 //! - View bounds change every frame (continuous panning/zooming)
 //! - CPU is already saturated with other work
-//! - GPU compute overhead is offset by reduced draw call preparation
 //!
-//! ## Integration Steps (Future Work)
-//!
-//! To integrate GPU culling into the render pipeline:
-//!
-//! 1. **Modify `StorageBuffer` in `culling.rs`**:
-//!    - Add VERTEX usage flag to output buffers
-//!    - Create output buffers with: `STORAGE | VERTEX | COPY_DST`
-//!
-//! 2. **Add culling dispatch to `flush()`**:
-//!    ```ignore
-//!    // Before render pass, dispatch culling compute
-//!    if self.gpu_culling_enabled {
-//!        self.dispatch_culling(encoder);
-//!    }
-//!    ```
-//!
-//! 3. **Modify flush passes to use indirect draw**:
-//!    ```ignore
-//!    if let Some(culling) = &self.culling_pipeline {
-//!        // Use culling output buffer as vertex buffer
-//!        render_pass.set_vertex_buffer(1, culling.output_buffer().slice(..));
-//!        // Use indirect draw for GPU-determined instance count
-//!        render_pass.draw_indirect(culling.indirect_buffer(), 0);
-//!    } else {
-//!        // Normal path
-//!        render_pass.set_vertex_buffer(1, self.circle_instances.buffer().slice(..));
-//!        render_pass.draw(0..4, 0..instance_count);
-//!    }
-//!    ```
-//!
-//! 4. **Add synchronization barrier** between compute and render passes
-//!
-//! 5. **Track visible instance count** for statistics (requires readback or query)
+//! For smaller scenes (< 10,000 instances), CPU quadtree culling may be faster
+//! due to reduced compute dispatch overhead.
 
 use super::{
-    culling::{CullingStats, VisibilityCullingPipeline},
+    buffers::InstanceBuffer,
+    culling::{CullPrimitive, CullingStats, PrimitiveCullingBuffers, VisibilityCullingPipeline},
     WgpuRenderer,
 };
 
@@ -71,8 +52,6 @@ impl WgpuRenderer {
     /// based on the current cull bounds before rendering. This is beneficial for
     /// extreme-scale scenarios (10,000+ instances) where CPU culling becomes a
     /// bottleneck.
-    ///
-    /// For most use cases, the default CPU-side quadtree culling is more efficient.
     ///
     /// # Arguments
     ///
@@ -133,6 +112,111 @@ impl WgpuRenderer {
             .as_ref()
             .map(VisibilityCullingPipeline::stats)
     }
+
+    /// Dispatches GPU culling for all non-empty primitive types.
+    ///
+    /// This method extracts raw instance data from instance buffers and dispatches
+    /// culling compute shaders for each primitive type that has instances.
+    ///
+    /// # Arguments
+    ///
+    /// * `encoder` - Command encoder to record compute commands to
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if any culling was dispatched.
+    pub(super) fn dispatch_culling(&mut self, encoder: &mut wgpu::CommandEncoder) -> bool {
+        let Some(ref mut pipeline) = self.culling_pipeline else {
+            return false;
+        };
+
+        // Reset dispatched flags for this frame
+        pipeline.begin_frame();
+
+        let mut any_dispatched = false;
+
+        // Dispatch culling for circles
+        if !self.circle_instances.is_empty() {
+            let raw_data = extract_instance_data(&self.circle_instances);
+            if pipeline.dispatch(
+                &self.device,
+                &self.queue,
+                encoder,
+                raw_data,
+                CullPrimitive::Circles,
+            ) {
+                any_dispatched = true;
+            }
+        }
+
+        // Dispatch culling for lines
+        if !self.line_instances.is_empty() {
+            let raw_data = extract_instance_data(&self.line_instances);
+            if pipeline.dispatch(
+                &self.device,
+                &self.queue,
+                encoder,
+                raw_data,
+                CullPrimitive::Lines,
+            ) {
+                any_dispatched = true;
+            }
+        }
+
+        // Dispatch culling for quads
+        if !self.quad_instances.is_empty() {
+            let raw_data = extract_instance_data(&self.quad_instances);
+            if pipeline.dispatch(
+                &self.device,
+                &self.queue,
+                encoder,
+                raw_data,
+                CullPrimitive::Quads,
+            ) {
+                any_dispatched = true;
+            }
+        }
+
+        any_dispatched
+    }
+
+    /// Returns the culled circle buffers if GPU culling is enabled and dispatched.
+    #[inline]
+    pub(super) fn culled_circles(&self) -> Option<&PrimitiveCullingBuffers> {
+        if self.gpu_culling_enabled {
+            self.culling_pipeline.as_ref().and_then(|p| p.circles())
+        } else {
+            None
+        }
+    }
+
+    /// Returns the culled line buffers if GPU culling is enabled and dispatched.
+    #[inline]
+    pub(super) fn culled_lines(&self) -> Option<&PrimitiveCullingBuffers> {
+        if self.gpu_culling_enabled {
+            self.culling_pipeline.as_ref().and_then(|p| p.lines())
+        } else {
+            None
+        }
+    }
+
+    /// Returns the culled quad buffers if GPU culling is enabled and dispatched.
+    #[inline]
+    pub(super) fn culled_quads(&self) -> Option<&PrimitiveCullingBuffers> {
+        if self.gpu_culling_enabled {
+            self.culling_pipeline.as_ref().and_then(|p| p.quads())
+        } else {
+            None
+        }
+    }
+}
+
+/// Extracts raw float data from an instance buffer.
+///
+/// Returns the raw instance data slice for use with GPU culling.
+#[inline]
+fn extract_instance_data(buffer: &InstanceBuffer) -> &[f32] {
+    buffer.raw_data()
 }
 
 #[cfg(test)]
@@ -141,7 +225,6 @@ mod tests {
 
     #[test]
     fn test_cull_primitive_types() {
-        use super::super::culling::CullPrimitive;
         // Verify primitive types have correct instance sizes
         assert_eq!(CullPrimitive::Circles.floats_per_instance(), 7);
         assert_eq!(CullPrimitive::Lines.floats_per_instance(), 9);
