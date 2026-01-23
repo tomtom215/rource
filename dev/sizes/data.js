@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769188153109,
+  "lastUpdate": 1769195537863,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1052,6 +1052,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1030032,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f8ea08bf21de21a928cd86081e451575e45f6a9",
+          "message": "Merge pull request #137 from tomtom215/claude/codebase-review-analysis-N57fY\n\nAdd comprehensive unit tests to WASM API modules via helper functions",
+          "timestamp": "2026-01-23T20:08:19+01:00",
+          "tree_id": "85ade406794924028f4a45b3fcab6ae952ee2072",
+          "url": "https://github.com/tomtom215/rource/commit/4f8ea08bf21de21a928cd86081e451575e45f6a9"
+        },
+        "date": 1769195537279,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3898128,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2675982,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1030024,
             "unit": "bytes"
           }
         ]
