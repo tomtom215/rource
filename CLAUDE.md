@@ -1710,17 +1710,28 @@ if self.should_use_gpu_culling() {
 
 Added procedural icon generation system for file extensions using GPU texture arrays.
 
+**STATUS: DISABLED BY DEFAULT** - After testing, colored discs were found to be more visually
+appealing and scale better at all zoom levels. The infrastructure remains in place for future
+use with high-quality icons (e.g., devicons integration). `draw_file_icon()` currently uses
+`draw_disc()` regardless of whether file icons are initialized.
+
 #### Overview
 
-Instead of requiring external icon assets, the system now generates visually distinct document-style
+Instead of requiring external icon assets, the system generates visually distinct document-style
 icons procedurally for each file extension. Icons are stored in a GPU texture array for efficient
 batched rendering with a single draw call per frame.
 
-**Benefits**:
+**Benefits** (when enabled):
 - No external asset dependencies
 - Smaller WASM bundle size (no icon images)
 - Consistent visual style across all file types
 - Easy to add new file extensions
+
+**Why Disabled**:
+- Colored discs look more modern and sleek
+- Better scaling at extreme zoom levels
+- Lower visual noise in large repositories
+- Matches the aesthetic of the original Gource
 
 #### Files Added/Modified
 
