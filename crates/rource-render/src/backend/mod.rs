@@ -43,6 +43,7 @@
 //! type PreferredRenderer = rource_render::backend::software::SoftwareRenderer;
 //! ```
 
+pub mod icons;
 pub mod software;
 
 #[cfg(feature = "webgl2")]

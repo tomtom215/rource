@@ -202,6 +202,10 @@ pub struct SoftwareRenderer {
     /// Reusable buffer for text glyph data (avoids per-draw_text allocation).
     /// Stores (x, y, glyph) tuples for each character in a text string.
     glyph_buffer: Vec<(i32, i32, crate::font::CachedGlyph)>,
+
+    /// File icon extension to texture ID mapping.
+    /// Used for file icon rendering in CPU software mode.
+    file_icon_textures: HashMap<String, TextureId>,
 }
 
 impl SoftwareRenderer {
@@ -231,6 +235,7 @@ impl SoftwareRenderer {
             next_texture_id: 1,
             // Pre-allocate glyph buffer with capacity for typical text lengths
             glyph_buffer: Vec::with_capacity(256),
+            file_icon_textures: HashMap::new(),
         }
     }
 
@@ -868,6 +873,106 @@ impl SoftwareRenderer {
                 }
             }
         }
+    }
+
+    // ========================================================================
+    // File Icon Methods
+    // ========================================================================
+
+    /// Initializes file icons for common extensions.
+    ///
+    /// This pre-generates icons for common file extensions and stores them
+    /// as CPU textures for software rendering.
+    ///
+    /// # Returns
+    ///
+    /// `true` if initialization succeeded (always succeeds for software renderer).
+    pub fn init_file_icons(&mut self) -> bool {
+        use crate::backend::icons::{
+            common_extensions, generate_default_icon, generate_icon, ICON_SIZE,
+        };
+
+        // Register common file extensions
+        for (ext, color) in common_extensions() {
+            let icon_data = generate_icon(color);
+            let texture = Texture::new(ICON_SIZE as u32, ICON_SIZE as u32, icon_data);
+            let tex_id = TextureId::new(self.next_texture_id);
+            self.next_texture_id += 1;
+            self.textures.insert(tex_id, texture);
+            self.file_icon_textures.insert(ext.to_lowercase(), tex_id);
+        }
+
+        // Register default icon for unknown extensions
+        let default_icon = generate_default_icon();
+        let texture = Texture::new(ICON_SIZE as u32, ICON_SIZE as u32, default_icon);
+        let tex_id = TextureId::new(self.next_texture_id);
+        self.next_texture_id += 1;
+        self.textures.insert(tex_id, texture);
+        self.file_icon_textures
+            .insert("_default".to_string(), tex_id);
+
+        true
+    }
+
+    /// Returns whether file icons are initialized.
+    #[inline]
+    pub fn has_file_icons(&self) -> bool {
+        !self.file_icon_textures.is_empty()
+    }
+
+    /// Returns the number of registered file icon types.
+    #[inline]
+    pub fn file_icon_count(&self) -> u32 {
+        self.file_icon_textures.len() as u32
+    }
+
+    /// Returns the texture ID for a file extension.
+    ///
+    /// If the extension is not registered, returns the default icon.
+    /// If file icons are not initialized, returns `None`.
+    pub fn get_file_icon_texture(&self, extension: &str) -> Option<TextureId> {
+        if self.file_icon_textures.is_empty() {
+            return None;
+        }
+
+        self.file_icon_textures
+            .get(&extension.to_lowercase())
+            .copied()
+            .or_else(|| self.file_icon_textures.get("_default").copied())
+    }
+
+    /// Registers a custom icon for a file extension.
+    ///
+    /// If the extension is already registered, this does nothing.
+    /// If file icons are not initialized, this initializes them first.
+    ///
+    /// # Arguments
+    ///
+    /// * `extension` - File extension (e.g., "custom")
+    /// * `color` - Color for the icon
+    ///
+    /// # Returns
+    ///
+    /// `true` if the icon was registered.
+    pub fn register_file_icon(&mut self, extension: &str, color: rource_math::Color) -> bool {
+        use crate::backend::icons::{generate_icon, ICON_SIZE};
+
+        let ext_lower = extension.to_lowercase();
+
+        // Check if already registered
+        if self.file_icon_textures.contains_key(&ext_lower) {
+            return true;
+        }
+
+        // Generate and register icon
+        let icon_data = generate_icon(color);
+        let texture = Texture::new(ICON_SIZE as u32, ICON_SIZE as u32, icon_data);
+        let tex_id = TextureId::new(self.next_texture_id);
+        self.next_texture_id += 1;
+        self.textures.insert(tex_id, texture);
+        self.file_icon_textures.insert(ext_lower, tex_id);
+
+        true
     }
 }
 

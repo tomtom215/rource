@@ -47,12 +47,14 @@ pub mod shaders;
 pub mod shadow;
 pub mod state;
 pub mod stats;
+pub mod texture_array;
 pub mod textures;
 pub mod ubo;
 
 // Internal implementation modules (methods on WebGl2Renderer)
 mod effects_methods;
 mod flush_passes;
+mod icons_methods;
 
 use std::collections::HashMap;
 
@@ -75,6 +77,7 @@ use shaders::{
 };
 use shadow::ShadowPipeline;
 use state::GlStateCache;
+use texture_array::TextureArray;
 use textures::{FontAtlas, GlyphKey, TextureManager};
 use ubo::UniformBufferManager;
 
@@ -186,6 +189,9 @@ pub struct WebGl2Renderer {
 
     /// Reusable buffer for texture IDs (avoids per-frame allocation in `flush_textured_quads`).
     cached_texture_ids: Vec<TextureId>,
+
+    /// File icon texture array (optional, initialized via `init_file_icons`).
+    file_icon_array: Option<TextureArray>,
 }
 
 impl WebGl2Renderer {
@@ -249,6 +255,7 @@ impl WebGl2Renderer {
             frame_stats: FrameStats::new(),
             context_lost: false,
             cached_texture_ids: Vec::with_capacity(16),
+            file_icon_array: None,
         };
 
         renderer.init_gl()?;
@@ -1115,6 +1122,11 @@ impl Drop for WebGl2Renderer {
             instances.destroy(&self.gl);
         }
         self.text_instances.destroy(&self.gl);
+
+        // Clean up file icon texture array
+        if let Some(mut array) = self.file_icon_array.take() {
+            array.destroy(&self.gl);
+        }
 
         // Clean up post-processing pipelines (FBOs, textures, shader programs)
         self.bloom_pipeline.destroy(&self.gl);

@@ -697,9 +697,10 @@ export class Rource {
      * Initializes the file icon system.
      *
      * This pre-generates icons for common file extensions (rs, js, py, etc.)
-     * and stores them in a GPU texture array for efficient batched rendering.
-     *
-     * **Note**: Only has an effect when using the wgpu backend.
+     * and stores them for efficient rendering:
+     * - **wgpu**: Uses GPU texture arrays for batched rendering
+     * - **WebGL2**: Uses GPU texture arrays (WebGL2 supports `TEXTURE_2D_ARRAY`)
+     * - **Software**: Uses CPU textures
      *
      * # Returns
      *
@@ -707,10 +708,8 @@ export class Rource {
      *
      * # Example (JavaScript)
      * ```javascript
-     * if (rource.isWgpu()) {
-     *     const success = rource.initFileIcons();
-     *     console.log('File icons initialized:', success);
-     * }
+     * const success = rource.initFileIcons();
+     * console.log('File icons initialized:', success);
      * ```
      * @returns {boolean}
      */
@@ -2017,6 +2016,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getCurrentTexture();
             return addHeapObject(ret);
         }, arguments); },
+        __wbg_getError_bba8594facbfd5e1: function(arg0) {
+            const ret = getObject(arg0).getError();
+            return ret;
+        },
         __wbg_getExtension_3c0cb5ae01bb4b17: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = getObject(arg0).getExtension(getStringFromWasm0(arg1, arg2));
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -2291,7 +2294,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6463(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6480(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -3075,6 +3078,9 @@ function __wbg_get_imports() {
         __wbg_texSubImage2D_edf5bd70fda3feaf: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
             getObject(arg0).texSubImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7 >>> 0, arg8 >>> 0, arg9);
         }, arguments); },
+        __wbg_texSubImage3D_0e069c6759e299b8: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12) {
+            getObject(arg0).texSubImage3D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 >>> 0, arg10 >>> 0, arg11 === 0 ? undefined : getArrayU8FromWasm0(arg11, arg12));
+        }, arguments); },
         __wbg_texSubImage3D_1102c12a20bf56d5: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) {
             getObject(arg0).texSubImage3D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 >>> 0, arg10 >>> 0, getObject(arg11));
         }, arguments); },
@@ -3257,7 +3263,7 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { dtor_idx: 1851, function: Function { arguments: [Externref], shim_idx: 1852, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6405, __wasm_bindgen_func_elem_6406);
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_6422, __wasm_bindgen_func_elem_6423);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -3319,12 +3325,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_6406(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_6406(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_6423(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_6423(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6463(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6463(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6480(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6480(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

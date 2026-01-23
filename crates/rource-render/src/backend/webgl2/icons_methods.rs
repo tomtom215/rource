@@ -1,32 +1,14 @@
-//! File icon methods for the wgpu renderer.
+//! File icon methods for the WebGL2 renderer.
 //!
 //! This module contains methods for managing file extension icons using
-//! the texture array infrastructure.
+//! the texture array infrastructure. WebGL2 supports `TEXTURE_2D_ARRAY`
+//! via the ES 3.0 specification.
 
-use super::{textures::TextureArray, WgpuRenderer};
+use super::{texture_array::TextureArray, WebGl2Renderer};
 use crate::backend::icons::{common_extensions, generate_default_icon, generate_icon, ICON_SIZE};
 use rource_math::Color;
 
-/// Configuration for file icon rendering.
-#[derive(Debug, Clone)]
-#[allow(dead_code)] // Future API for configurable file icons
-pub struct FileIconConfig {
-    /// Whether file icons are enabled.
-    pub enabled: bool,
-    /// Maximum number of unique file types to track.
-    pub max_types: u32,
-}
-
-impl Default for FileIconConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            max_types: 64,
-        }
-    }
-}
-
-impl WgpuRenderer {
+impl WebGl2Renderer {
     /// Initializes the file icon texture array.
     ///
     /// This pre-registers icons for common file extensions. Call this once
@@ -36,35 +18,13 @@ impl WgpuRenderer {
     ///
     /// `true` if initialization succeeded, `false` otherwise.
     pub fn init_file_icons(&mut self) -> bool {
-        // Create texture array layout if it doesn't exist
-        let layout = self
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("file_icon_texture_array_layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2Array,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            });
+        if self.context_lost {
+            return false;
+        }
 
         // Create texture array
         let Some(mut array) = TextureArray::new(
-            &self.device,
-            &layout,
+            &self.gl,
             ICON_SIZE as u32,
             ICON_SIZE as u32,
             64, // Max 64 file types
@@ -75,12 +35,12 @@ impl WgpuRenderer {
         // Register common file extensions
         for (ext, color) in common_extensions() {
             let icon_data = generate_icon(color);
-            array.register_extension(&self.queue, ext, &icon_data);
+            array.register_extension(&self.gl, ext, &icon_data);
         }
 
         // Register default icon for unknown extensions
         let default_icon = generate_default_icon();
-        array.register_extension(&self.queue, "_default", &default_icon);
+        array.register_extension(&self.gl, "_default", &default_icon);
 
         self.file_icon_array = Some(array);
         true
@@ -120,6 +80,10 @@ impl WgpuRenderer {
     ///
     /// `true` if the icon was registered, `false` otherwise.
     pub fn register_file_icon(&mut self, extension: &str, color: Color) -> bool {
+        if self.context_lost {
+            return false;
+        }
+
         let Some(array) = self.file_icon_array.as_mut() else {
             return false;
         };
@@ -132,7 +96,7 @@ impl WgpuRenderer {
         // Generate and register icon
         let icon_data = generate_icon(color);
         array
-            .register_extension(&self.queue, extension, &icon_data)
+            .register_extension(&self.gl, extension, &icon_data)
             .is_some()
     }
 
@@ -149,22 +113,28 @@ impl WgpuRenderer {
             .map_or(0, TextureArray::layer_count)
     }
 
-    /// Returns the file icon texture array bind group.
+    /// Binds the file icon texture array to a texture unit.
     ///
-    /// Returns `None` if file icons are not initialized.
-    pub fn file_icon_bind_group(&self) -> Option<&wgpu::BindGroup> {
-        self.file_icon_array.as_ref().map(TextureArray::bind_group)
+    /// # Arguments
+    ///
+    /// * `unit` - Texture unit (0, 1, 2, etc.)
+    ///
+    /// # Returns
+    ///
+    /// `true` if the texture was bound, `false` if icons are not initialized.
+    pub fn bind_file_icons(&self, unit: u32) -> bool {
+        self.file_icon_array.as_ref().is_some_and(|array| {
+            array.bind(&self.gl, unit);
+            true
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
-    fn test_file_icon_config_default() {
-        let config = FileIconConfig::default();
-        assert!(!config.enabled);
-        assert_eq!(config.max_types, 64);
+    fn test_icon_size_constant() {
+        // Verify ICON_SIZE is accessible and correct
+        assert_eq!(super::ICON_SIZE, 32);
     }
 }

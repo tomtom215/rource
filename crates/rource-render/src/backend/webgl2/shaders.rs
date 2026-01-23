@@ -729,6 +729,106 @@ void main() {
 }
 "#;
 
+// ============================================================================
+// Texture Array Shaders (for file icons)
+// ============================================================================
+//
+// These shaders sample from a 2D texture array (TEXTURE_2D_ARRAY) for efficient
+// batched rendering of file icons. Each layer in the array represents a different
+// file extension icon.
+
+/// Vertex shader for drawing textured quads from a texture array.
+///
+/// Instance data includes the texture layer index for looking up the correct icon.
+pub const TEXTURE_ARRAY_VERTEX_SHADER: &str = r#"#version 300 es
+precision highp float;
+
+// Per-vertex attributes (unit quad: 0 to 1)
+layout(location = 0) in vec2 a_position;
+
+// Per-instance attributes
+layout(location = 1) in vec4 a_bounds;      // (min_x, min_y, max_x, max_y)
+layout(location = 2) in vec4 a_uv_bounds;   // (u_min, v_min, u_max, v_max)
+layout(location = 3) in vec4 a_color;       // Tint color
+layout(location = 4) in float a_layer;      // Texture array layer index
+
+// Uniforms
+uniform vec2 u_resolution;
+
+// Outputs
+out vec2 v_uv;
+out vec4 v_color;
+out float v_layer;
+
+void main() {
+    vec2 pos = mix(a_bounds.xy, a_bounds.zw, a_position);
+
+    vec2 clip_pos = (pos / u_resolution) * 2.0 - 1.0;
+    clip_pos.y = -clip_pos.y;
+
+    gl_Position = vec4(clip_pos, 0.0, 1.0);
+    v_uv = mix(a_uv_bounds.xy, a_uv_bounds.zw, a_position);
+    v_color = a_color;
+    v_layer = a_layer;
+}
+"#;
+
+/// Fragment shader for drawing textured quads from a texture array.
+///
+/// Samples the texture at the specified layer and multiplies by the tint color.
+pub const TEXTURE_ARRAY_FRAGMENT_SHADER: &str = r#"#version 300 es
+precision highp float;
+
+uniform highp sampler2DArray u_texture_array;
+
+in vec2 v_uv;
+in vec4 v_color;
+in float v_layer;
+
+out vec4 fragColor;
+
+void main() {
+    vec4 tex_color = texture(u_texture_array, vec3(v_uv, v_layer));
+    fragColor = tex_color * v_color;
+}
+"#;
+
+/// UBO-enabled vertex shader for drawing textured quads from a texture array.
+pub const TEXTURE_ARRAY_VERTEX_SHADER_UBO: &str = r#"#version 300 es
+precision highp float;
+
+layout(std140) uniform CommonUniforms {
+    vec2 u_resolution;
+    vec2 _padding;
+};
+
+// Per-vertex attributes (unit quad: 0 to 1)
+layout(location = 0) in vec2 a_position;
+
+// Per-instance attributes
+layout(location = 1) in vec4 a_bounds;      // (min_x, min_y, max_x, max_y)
+layout(location = 2) in vec4 a_uv_bounds;   // (u_min, v_min, u_max, v_max)
+layout(location = 3) in vec4 a_color;       // Tint color
+layout(location = 4) in float a_layer;      // Texture array layer index
+
+// Outputs
+out vec2 v_uv;
+out vec4 v_color;
+out float v_layer;
+
+void main() {
+    vec2 pos = mix(a_bounds.xy, a_bounds.zw, a_position);
+
+    vec2 clip_pos = (pos / u_resolution) * 2.0 - 1.0;
+    clip_pos.y = -clip_pos.y;
+
+    gl_Position = vec4(clip_pos, 0.0, 1.0);
+    v_uv = mix(a_uv_bounds.xy, a_uv_bounds.zw, a_position);
+    v_color = a_color;
+    v_layer = a_layer;
+}
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -803,6 +903,7 @@ mod tests {
         assert!(QUAD_VERTEX_SHADER_UBO.contains("CommonUniforms"));
         assert!(TEXTURED_QUAD_VERTEX_SHADER_UBO.contains("CommonUniforms"));
         assert!(TEXT_VERTEX_SHADER_UBO.contains("CommonUniforms"));
+        assert!(TEXTURE_ARRAY_VERTEX_SHADER_UBO.contains("CommonUniforms"));
 
         // All should use std140 layout (binding is done programmatically in WebGL2)
         assert!(CIRCLE_VERTEX_SHADER_UBO.contains("layout(std140)"));
@@ -811,6 +912,7 @@ mod tests {
         assert!(QUAD_VERTEX_SHADER_UBO.contains("layout(std140)"));
         assert!(TEXTURED_QUAD_VERTEX_SHADER_UBO.contains("layout(std140)"));
         assert!(TEXT_VERTEX_SHADER_UBO.contains("layout(std140)"));
+        assert!(TEXTURE_ARRAY_VERTEX_SHADER_UBO.contains("layout(std140)"));
     }
 
     #[test]
@@ -818,5 +920,23 @@ mod tests {
         assert!(COMMON_UNIFORMS_BLOCK.contains("std140"));
         assert!(COMMON_UNIFORMS_BLOCK.contains("u_resolution"));
         assert!(COMMON_UNIFORMS_BLOCK.contains("CommonUniforms"));
+    }
+
+    #[test]
+    fn test_texture_array_shaders_not_empty() {
+        assert!(!TEXTURE_ARRAY_VERTEX_SHADER.is_empty());
+        assert!(!TEXTURE_ARRAY_FRAGMENT_SHADER.is_empty());
+        assert!(!TEXTURE_ARRAY_VERTEX_SHADER_UBO.is_empty());
+    }
+
+    #[test]
+    fn test_texture_array_shaders_have_required_attributes() {
+        // Both should have layer attribute
+        assert!(TEXTURE_ARRAY_VERTEX_SHADER.contains("a_layer"));
+        assert!(TEXTURE_ARRAY_VERTEX_SHADER_UBO.contains("a_layer"));
+
+        // Fragment shader should sample from texture array
+        assert!(TEXTURE_ARRAY_FRAGMENT_SHADER.contains("sampler2DArray"));
+        assert!(TEXTURE_ARRAY_FRAGMENT_SHADER.contains("v_layer"));
     }
 }

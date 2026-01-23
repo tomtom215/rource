@@ -354,9 +354,10 @@ export class Rource {
      * Initializes the file icon system.
      *
      * This pre-generates icons for common file extensions (rs, js, py, etc.)
-     * and stores them in a GPU texture array for efficient batched rendering.
-     *
-     * **Note**: Only has an effect when using the wgpu backend.
+     * and stores them for efficient rendering:
+     * - **wgpu**: Uses GPU texture arrays for batched rendering
+     * - **WebGL2**: Uses GPU texture arrays (WebGL2 supports `TEXTURE_2D_ARRAY`)
+     * - **Software**: Uses CPU textures
      *
      * # Returns
      *
@@ -364,10 +365,8 @@ export class Rource {
      *
      * # Example (JavaScript)
      * ```javascript
-     * if (rource.isWgpu()) {
-     *     const success = rource.initFileIcons();
-     *     console.log('File icons initialized:', success);
-     * }
+     * const success = rource.initFileIcons();
+     * console.log('File icons initialized:', success);
      * ```
      */
     initFileIcons(): boolean;
@@ -957,9 +956,9 @@ export interface InitOutput {
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_6405: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6463: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6406: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_6422: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6480: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6423: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
