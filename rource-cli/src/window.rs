@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Window management and event handling for Rource CLI.
 //!
 //! This module provides the `ApplicationHandler` implementation for winit,

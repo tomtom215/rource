@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! User avatar loading and management.
 //!
 //! This module handles loading user avatars from image files.

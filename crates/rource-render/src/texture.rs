@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Texture management for the renderer.
 //!
 //! Textures are stored as RGBA8 pixel data and can be used for

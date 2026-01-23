@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Streaming commit parsing for large repositories.
 //!
 //! This module provides streaming parsers that process commits one at a time

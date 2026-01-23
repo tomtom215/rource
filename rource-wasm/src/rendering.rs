@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Enhanced visual rendering helpers for Rource WASM.
 //!
 //! This module re-exports shared rendering utilities from `rource_render::visual`

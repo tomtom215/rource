@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! GLSL shader sources for WebGL2 rendering.
 //!
 //! All shaders are written in GLSL ES 3.0 (WebGL2).

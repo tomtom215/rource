@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Rource CLI - Native application entry point.
 //!
 //! This is the main entry point for the native Rource application.

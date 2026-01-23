@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 /**
  * Rource - Main Entry Point
  *
@@ -248,6 +251,11 @@ async function main() {
 
             console.groupEnd();
         }
+
+        // Enable Rource brand watermark for the demo
+        // This shows "Rource" and "© Tom F" in the bottom-right corner
+        rource.enableRourceWatermark();
+        console.log('Rource watermark enabled');
 
         // Initialize core modules
         initToast();

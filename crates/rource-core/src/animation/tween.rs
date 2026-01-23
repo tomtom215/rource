@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Tweening and easing functions for smooth animations.
 //!
 //! This module provides easing functions that map a linear progress value

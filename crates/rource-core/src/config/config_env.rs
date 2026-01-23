@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Environment variable configuration for Rource.
 //!
 //! This module allows configuring Rource via environment variables with the `ROURCE_` prefix.
@@ -97,7 +100,7 @@
 use crate::config::{
     CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
     InputSettings, LayoutSettings, LimitSettings, OverlaySettings, PlaybackSettings, Settings,
-    TitleSettings, VisibilitySettings,
+    TitleSettings, VisibilitySettings, WatermarkPosition, WatermarkSettings,
 };
 use rource_math::Color;
 use std::env;
@@ -394,6 +397,30 @@ pub fn merge_env(base: Settings) -> Settings {
             .unwrap_or(base.directory.name_position),
     };
 
+    // Watermark settings
+    let watermark = WatermarkSettings {
+        enabled: read_env("WATERMARK_ENABLED")
+            .and_then(|v| parse_bool(&v))
+            .unwrap_or(base.overlay.watermark.enabled),
+        text: read_env("WATERMARK_TEXT").unwrap_or_else(|| base.overlay.watermark.text.clone()),
+        subtext: read_env("WATERMARK_SUBTEXT").or_else(|| base.overlay.watermark.subtext.clone()),
+        position: read_env("WATERMARK_POSITION")
+            .and_then(|v| WatermarkPosition::from_str(&v))
+            .unwrap_or(base.overlay.watermark.position),
+        font_size: read_env("WATERMARK_FONT_SIZE")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.overlay.watermark.font_size),
+        opacity: read_env("WATERMARK_OPACITY")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.overlay.watermark.opacity),
+        color: read_env("WATERMARK_COLOR")
+            .and_then(|v| parse_hex_color(&v))
+            .unwrap_or(base.overlay.watermark.color),
+        margin: read_env("WATERMARK_MARGIN")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.overlay.watermark.margin),
+    };
+
     // Overlay settings
     let overlay = OverlaySettings {
         logo_path: read_env("LOGO").or(base.overlay.logo_path),
@@ -401,6 +428,7 @@ pub fn merge_env(base: Settings) -> Settings {
             .and_then(|v| parse_offset(&v))
             .unwrap_or(base.overlay.logo_offset),
         background_image: read_env("BACKGROUND_IMAGE").or(base.overlay.background_image),
+        watermark,
     };
 
     // Filter settings

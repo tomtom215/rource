@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Font rendering using fontdue.
 //!
 //! This module provides font loading, glyph rasterization, and caching

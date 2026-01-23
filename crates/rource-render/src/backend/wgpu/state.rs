@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! GPU state caching for wgpu renderer.
 //!
 //! This module provides state tracking to minimize redundant GPU API calls.

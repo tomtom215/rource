@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! VCS log format parsers.
 //!
 //! This module provides parsers for various version control system log formats:

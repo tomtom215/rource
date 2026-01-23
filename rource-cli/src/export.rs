@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Video and image export utilities for Rource.
 //!
 //! This module provides functionality for exporting frames as PPM and PNG images.

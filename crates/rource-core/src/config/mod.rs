@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Configuration module for Rource.
 //!
 //! This module provides:
@@ -70,7 +73,8 @@ pub use config_env::{env_var_names, load_env, merge_env};
 pub use settings::{
     CameraModeSetting, CameraSettings, DirectorySettings, DisplaySettings, ExportSettings,
     FilterSettings, InputSettings, LayoutSettings, LimitSettings, OverlaySettings,
-    PlaybackSettings, Settings, TitleSettings, VisibilitySettings,
+    PlaybackSettings, Settings, TitleSettings, VisibilitySettings, WatermarkPosition,
+    WatermarkSettings,
 };
 
 #[cfg(feature = "config-file")]

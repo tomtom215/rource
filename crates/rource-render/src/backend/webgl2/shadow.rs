@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! GPU shadow effect implementation for WebGL2.
 //!
 //! This module provides a GPU-based drop shadow effect that creates soft shadows

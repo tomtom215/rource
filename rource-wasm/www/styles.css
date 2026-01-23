@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
 /**
  * Rource - Software Version Control Visualization
  * https://github.com/tomtom215/rource
@@ -1214,6 +1217,8 @@ header h1 {
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-size: 0.75rem;
+    position: relative;
+    z-index: 1001; /* Above toast (1000) to ensure dropdown options are clickable */
 }
 
 /* Sidebar Wrapper - Container for sidebar panel and scroll indicator */

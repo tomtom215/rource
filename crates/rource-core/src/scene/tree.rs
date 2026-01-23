@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Directory tree structure for the visualization.
 //!
 //! The directory tree is the backbone of the scene graph, representing

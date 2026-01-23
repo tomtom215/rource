@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Procedural file icon generator (re-exports from shared module).
 //!
 //! This module re-exports the shared icon generation functions from

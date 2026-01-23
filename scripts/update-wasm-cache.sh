@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 # ==============================================================================
 # update-wasm-cache.sh - Update WASM demo cached commit data
 # ==============================================================================

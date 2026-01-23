@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Settings for the Rource visualization.
 //!
 //! This module provides a unified configuration structure that can be used
@@ -15,6 +18,7 @@ mod overlay;
 mod playback;
 mod title;
 mod visibility;
+mod watermark;
 
 pub use camera::{CameraModeSetting, CameraSettings};
 pub use directory::DirectorySettings;
@@ -28,6 +32,7 @@ pub use overlay::OverlaySettings;
 pub use playback::PlaybackSettings;
 pub use title::TitleSettings;
 pub use visibility::VisibilitySettings;
+pub use watermark::{WatermarkPosition, WatermarkSettings};
 
 use rource_math::Color;
 
@@ -174,6 +179,20 @@ impl Settings {
     #[must_use]
     pub fn with_hide_files(mut self, pattern: impl Into<String>) -> Self {
         self.filter = self.filter.with_hide_files(pattern);
+        self
+    }
+
+    /// Sets the watermark settings.
+    #[must_use]
+    pub fn with_watermark(mut self, watermark: WatermarkSettings) -> Self {
+        self.overlay.watermark = watermark;
+        self
+    }
+
+    /// Enables the Rource brand watermark.
+    #[must_use]
+    pub fn with_rource_watermark(mut self) -> Self {
+        self.overlay.watermark = WatermarkSettings::rource_brand();
         self
     }
 
@@ -355,6 +374,45 @@ impl Settings {
         if let Some(ref path) = self.overlay.background_image {
             config.push_str(&format!("background_image = \"{}\"\n", path));
         }
+        config.push('\n');
+
+        // Watermark settings
+        config.push_str("# Watermark settings\n");
+        config.push_str(&format!(
+            "watermark_enabled = {}\n",
+            self.overlay.watermark.enabled
+        ));
+        if !self.overlay.watermark.text.is_empty() {
+            config.push_str(&format!(
+                "watermark_text = \"{}\"\n",
+                self.overlay.watermark.text
+            ));
+        }
+        if let Some(ref subtext) = self.overlay.watermark.subtext {
+            config.push_str(&format!("watermark_subtext = \"{}\"\n", subtext));
+        }
+        config.push_str(&format!(
+            "watermark_position = \"{}\"\n",
+            self.overlay.watermark.position.as_str()
+        ));
+        config.push_str(&format!(
+            "watermark_font_size = {:.1}\n",
+            self.overlay.watermark.font_size
+        ));
+        config.push_str(&format!(
+            "watermark_opacity = {:.2}\n",
+            self.overlay.watermark.opacity
+        ));
+        config.push_str(&format!(
+            "watermark_color = \"{:02X}{:02X}{:02X}\"\n",
+            (self.overlay.watermark.color.r * 255.0) as u8,
+            (self.overlay.watermark.color.g * 255.0) as u8,
+            (self.overlay.watermark.color.b * 255.0) as u8
+        ));
+        config.push_str(&format!(
+            "watermark_margin = {:.1}\n",
+            self.overlay.watermark.margin
+        ));
         config.push('\n');
 
         // Limit settings

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Flush pass methods for the wgpu renderer.
 //!
 //! This module contains methods for flushing batched draw calls to the GPU.

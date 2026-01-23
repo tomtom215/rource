@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 /**
  * Rource - Data Loading & Parsing
  *
@@ -187,6 +190,29 @@ export function loadLogData(content, format = 'custom', options = {}) {
                 authors: stats.authors
             },
         });
+
+        // Warn about very large repositories that may cause performance issues
+        const LARGE_FILE_THRESHOLD = 30000;
+        const LARGE_DIR_THRESHOLD = 3000;
+        const LARGE_COMMIT_THRESHOLD = 50000;
+
+        const warnings = [];
+        if (stats.files > LARGE_FILE_THRESHOLD) {
+            warnings.push(`${stats.files.toLocaleString()} files`);
+        }
+        if (dirCount > LARGE_DIR_THRESHOLD) {
+            warnings.push(`${dirCount.toLocaleString()} directories`);
+        }
+        if (displayCommits > LARGE_COMMIT_THRESHOLD) {
+            warnings.push(`${displayCommits.toLocaleString()} commits`);
+        }
+
+        if (warnings.length > 0) {
+            const warningMsg = `Large repository (${warnings.join(', ')}). ` +
+                'Performance may be impacted. Consider using a smaller date range or filtering by path.';
+            showToast(warningMsg, 'warning', 8000);
+            console.warn('Rource: Large repository warning -', warningMsg);
+        }
 
         // Update UI visibility
         if (elements.emptyState) elements.emptyState.classList.add('hidden');

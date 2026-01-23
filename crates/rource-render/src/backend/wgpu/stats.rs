@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Frame statistics for wgpu renderer debugging and profiling.
 //!
 //! This module provides statistics tracking for draw calls, instance counts,

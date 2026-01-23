@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Spatial partitioning for efficient entity queries.
 //!
 //! This module provides a quadtree data structure for efficient

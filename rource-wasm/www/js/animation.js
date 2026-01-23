@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 /**
  * Rource - Animation Loop & Canvas Management
  *
@@ -405,6 +408,25 @@ let uncappedFpsStats = {
 };
 
 /**
+ * Frame time threshold in milliseconds above which we yield to the browser.
+ * When frames take longer than this, we use setTimeout to let the browser
+ * process other events, preventing the UI from becoming unresponsive.
+ */
+const YIELD_THRESHOLD_MS = 50;
+
+/**
+ * Counter for yielding every N frames even when frame times are low.
+ * This ensures the browser can process events periodically.
+ */
+let yieldCounter = 0;
+
+/**
+ * How often to yield (in frames) when frame times are below threshold.
+ * Every 100 frames at 60fps = ~1.7 seconds between yields.
+ */
+const YIELD_INTERVAL_FRAMES = 100;
+
+/**
  * Cached state to avoid redundant DOM updates.
  * Prevents memory churn from unnecessary innerHTML assignments.
  */
@@ -555,10 +577,29 @@ export function animate(timestamp, generation = animationGeneration) {
 
     // Schedule the next frame based on mode
     if (isUncapped) {
-        // Uncapped mode: use MessageChannel for minimal scheduling overhead
-        // This enables significantly higher FPS than setTimeout(0)'s ~4ms minimum
-        const scheduler = getFrameScheduler();
-        scheduler.schedule(() => animate(performance.now(), generation));
+        // Get frame time to decide whether to yield to browser
+        const frameTimeMs = rource ? safeWasmCall('getFrameTimeMs', () => rource.getFrameTimeMs(), 0) : 0;
+        yieldCounter++;
+
+        // Yield to browser when:
+        // 1. Frame time exceeds threshold (prevents UI freeze on slow frames)
+        // 2. Periodically every N frames (ensures browser can process events)
+        const shouldYield = frameTimeMs > YIELD_THRESHOLD_MS || yieldCounter >= YIELD_INTERVAL_FRAMES;
+
+        if (shouldYield) {
+            yieldCounter = 0;
+            // Use setTimeout(0) to yield to browser's event loop
+            // This allows UI events, garbage collection, and other tasks to run
+            legacyTimeoutId = setTimeout(() => {
+                legacyTimeoutId = null;
+                animate(performance.now(), generation);
+            }, 0);
+        } else {
+            // Uncapped mode: use MessageChannel for minimal scheduling overhead
+            // This enables significantly higher FPS than setTimeout(0)'s ~4ms minimum
+            const scheduler = getFrameScheduler();
+            scheduler.schedule(() => animate(performance.now(), generation));
+        }
 
         // Set a non-null animation ID to indicate animation is running
         // The actual value doesn't matter for MessageChannel mode

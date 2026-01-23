@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
 //! Spline interpolation for smooth curves.
 //!
 //! This module provides Catmull-Rom spline interpolation for creating
