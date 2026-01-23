@@ -16,6 +16,100 @@ use rource_core::scene::LayoutConfig;
 use crate::Rource;
 
 // ============================================================================
+// Helper Functions (testable without Rource instance)
+// ============================================================================
+
+/// Parses a layout preset name and returns whether it's valid.
+///
+/// # Arguments
+/// * `preset` - The preset name (case-insensitive)
+///
+/// # Returns
+/// `true` if the preset is recognized.
+#[inline]
+#[must_use]
+pub fn is_valid_preset(preset: &str) -> bool {
+    matches!(
+        preset.to_lowercase().as_str(),
+        "small" | "medium" | "large" | "massive"
+    )
+}
+
+/// Clamps a radial distance scale to valid range.
+///
+/// # Arguments
+/// * `scale` - The scale value to clamp
+///
+/// # Returns
+/// Clamped value in range [40.0, 500.0].
+#[inline]
+#[must_use]
+pub fn clamp_radial_distance_scale(scale: f32) -> f32 {
+    scale.clamp(40.0, 500.0)
+}
+
+/// Clamps a depth distance exponent to valid range.
+///
+/// # Arguments
+/// * `exponent` - The exponent value to clamp
+///
+/// # Returns
+/// Clamped value in range [0.5, 2.0].
+#[inline]
+#[must_use]
+pub fn clamp_depth_distance_exponent(exponent: f32) -> f32 {
+    exponent.clamp(0.5, 2.0)
+}
+
+/// Clamps a branch depth fade value to valid range.
+///
+/// # Arguments
+/// * `fade` - The fade value to clamp
+///
+/// # Returns
+/// Clamped value in range [0.0, 1.0].
+#[inline]
+#[must_use]
+pub fn clamp_branch_depth_fade(fade: f32) -> f32 {
+    fade.clamp(0.0, 1.0)
+}
+
+/// Clamps a branch opacity max value to valid range.
+///
+/// # Arguments
+/// * `opacity` - The opacity value to clamp
+///
+/// # Returns
+/// Clamped value in range [0.0, 1.0].
+#[inline]
+#[must_use]
+pub fn clamp_branch_opacity_max(opacity: f32) -> f32 {
+    opacity.clamp(0.0, 1.0)
+}
+
+/// Formats layout settings as a JSON string.
+///
+/// # Arguments
+/// * `settings` - The layout settings to format
+///
+/// # Returns
+/// JSON string representation.
+#[must_use]
+pub fn format_layout_config(settings: &LayoutSettings) -> String {
+    format!(
+        r#"{{"radial_distance_scale":{},"min_angular_span":{},"depth_distance_exponent":{},"sibling_spacing_multiplier":{},"branch_depth_fade":{},"branch_opacity_max":{},"auto_scale":{},"large_repo_threshold":{}}}"#,
+        settings.radial_distance_scale,
+        settings.min_angular_span,
+        settings.depth_distance_exponent,
+        settings.sibling_spacing_multiplier,
+        settings.branch_depth_fade,
+        settings.branch_opacity_max,
+        settings.auto_scale,
+        settings.large_repo_threshold
+    )
+}
+
+// ============================================================================
 // Layout Configuration
 // ============================================================================
 
@@ -443,5 +537,170 @@ impl Rource {
 
         #[cfg(not(target_arch = "wasm32"))]
         None
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Preset Validation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_valid_preset_known_presets() {
+        assert!(is_valid_preset("small"));
+        assert!(is_valid_preset("medium"));
+        assert!(is_valid_preset("large"));
+        assert!(is_valid_preset("massive"));
+    }
+
+    #[test]
+    fn test_is_valid_preset_case_insensitive() {
+        assert!(is_valid_preset("SMALL"));
+        assert!(is_valid_preset("Medium"));
+        assert!(is_valid_preset("LARGE"));
+        assert!(is_valid_preset("MaSSiVe"));
+    }
+
+    #[test]
+    fn test_is_valid_preset_unknown() {
+        assert!(!is_valid_preset("tiny"));
+        assert!(!is_valid_preset("huge"));
+        assert!(!is_valid_preset("default"));
+        assert!(!is_valid_preset(""));
+        assert!(!is_valid_preset("extra-large"));
+    }
+
+    // ========================================================================
+    // Radial Distance Scale Clamping Tests
+    // ========================================================================
+
+    #[test]
+    fn test_clamp_radial_distance_scale_within_range() {
+        assert!((clamp_radial_distance_scale(80.0) - 80.0).abs() < 0.001);
+        assert!((clamp_radial_distance_scale(100.0) - 100.0).abs() < 0.001);
+        assert!((clamp_radial_distance_scale(250.0) - 250.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_radial_distance_scale_minimum() {
+        assert!((clamp_radial_distance_scale(40.0) - 40.0).abs() < 0.001);
+        assert!((clamp_radial_distance_scale(20.0) - 40.0).abs() < 0.001);
+        assert!((clamp_radial_distance_scale(0.0) - 40.0).abs() < 0.001);
+        assert!((clamp_radial_distance_scale(-10.0) - 40.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_radial_distance_scale_maximum() {
+        assert!((clamp_radial_distance_scale(500.0) - 500.0).abs() < 0.001);
+        assert!((clamp_radial_distance_scale(600.0) - 500.0).abs() < 0.001);
+        assert!((clamp_radial_distance_scale(1000.0) - 500.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Depth Distance Exponent Clamping Tests
+    // ========================================================================
+
+    #[test]
+    fn test_clamp_depth_distance_exponent_within_range() {
+        assert!((clamp_depth_distance_exponent(1.0) - 1.0).abs() < 0.001);
+        assert!((clamp_depth_distance_exponent(1.5) - 1.5).abs() < 0.001);
+        assert!((clamp_depth_distance_exponent(0.7) - 0.7).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_depth_distance_exponent_minimum() {
+        assert!((clamp_depth_distance_exponent(0.5) - 0.5).abs() < 0.001);
+        assert!((clamp_depth_distance_exponent(0.3) - 0.5).abs() < 0.001);
+        assert!((clamp_depth_distance_exponent(0.0) - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_depth_distance_exponent_maximum() {
+        assert!((clamp_depth_distance_exponent(2.0) - 2.0).abs() < 0.001);
+        assert!((clamp_depth_distance_exponent(2.5) - 2.0).abs() < 0.001);
+        assert!((clamp_depth_distance_exponent(5.0) - 2.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Branch Depth Fade Clamping Tests
+    // ========================================================================
+
+    #[test]
+    fn test_clamp_branch_depth_fade_within_range() {
+        assert!((clamp_branch_depth_fade(0.3) - 0.3).abs() < 0.001);
+        assert!((clamp_branch_depth_fade(0.5) - 0.5).abs() < 0.001);
+        assert!((clamp_branch_depth_fade(0.0) - 0.0).abs() < 0.001);
+        assert!((clamp_branch_depth_fade(1.0) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_branch_depth_fade_minimum() {
+        assert!((clamp_branch_depth_fade(-0.1) - 0.0).abs() < 0.001);
+        assert!((clamp_branch_depth_fade(-1.0) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_branch_depth_fade_maximum() {
+        assert!((clamp_branch_depth_fade(1.1) - 1.0).abs() < 0.001);
+        assert!((clamp_branch_depth_fade(2.0) - 1.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Branch Opacity Clamping Tests
+    // ========================================================================
+
+    #[test]
+    fn test_clamp_branch_opacity_max_within_range() {
+        assert!((clamp_branch_opacity_max(0.35) - 0.35).abs() < 0.001);
+        assert!((clamp_branch_opacity_max(0.5) - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_clamp_branch_opacity_max_bounds() {
+        assert!((clamp_branch_opacity_max(-0.5) - 0.0).abs() < 0.001);
+        assert!((clamp_branch_opacity_max(1.5) - 1.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Layout Config Formatting Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_layout_config_default() {
+        let settings = LayoutSettings::default();
+        let json = format_layout_config(&settings);
+        assert!(json.starts_with('{'));
+        assert!(json.ends_with('}'));
+        assert!(json.contains("radial_distance_scale"));
+        assert!(json.contains("min_angular_span"));
+        assert!(json.contains("depth_distance_exponent"));
+        assert!(json.contains("sibling_spacing_multiplier"));
+        assert!(json.contains("branch_depth_fade"));
+        assert!(json.contains("branch_opacity_max"));
+        assert!(json.contains("auto_scale"));
+        assert!(json.contains("large_repo_threshold"));
+    }
+
+    #[test]
+    fn test_format_layout_config_presets() {
+        let small = format_layout_config(&LayoutSettings::small_repo());
+        let large = format_layout_config(&LayoutSettings::large_repo());
+        let massive = format_layout_config(&LayoutSettings::massive_repo());
+
+        // All should be valid JSON objects
+        assert!(small.starts_with('{'));
+        assert!(large.starts_with('{'));
+        assert!(massive.starts_with('{'));
+
+        // Different presets should have different values
+        assert_ne!(small, large);
+        assert_ne!(large, massive);
     }
 }

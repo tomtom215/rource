@@ -16,6 +16,45 @@ use crate::playback::{apply_vcs_commit, get_date_range, prewarm_scene};
 use crate::Rource;
 
 // ============================================================================
+// Helper Functions (testable without Rource instance)
+// ============================================================================
+
+/// Validates and clamps a playback speed value.
+///
+/// Returns a valid speed in the range [0.01, 1000.0], or the default (10.0)
+/// for invalid inputs like NaN, infinity, or non-positive values.
+///
+/// # Arguments
+/// * `seconds_per_day` - The requested playback speed
+///
+/// # Returns
+/// A valid, clamped speed value.
+#[inline]
+#[must_use]
+pub fn validate_speed(seconds_per_day: f32) -> f32 {
+    let speed = if seconds_per_day.is_finite() && seconds_per_day > 0.0 {
+        seconds_per_day
+    } else {
+        10.0
+    };
+    speed.clamp(0.01, 1000.0)
+}
+
+/// Formats a date range as a JSON string.
+///
+/// # Arguments
+/// * `start` - Start timestamp in seconds since Unix epoch
+/// * `end` - End timestamp in seconds since Unix epoch
+///
+/// # Returns
+/// JSON string with `startTimestamp` and `endTimestamp` fields.
+#[inline]
+#[must_use]
+pub fn format_date_range(start: i64, end: i64) -> String {
+    format!(r#"{{"startTimestamp":{start},"endTimestamp":{end}}}"#)
+}
+
+// ============================================================================
 // Playback Control
 // ============================================================================
 
@@ -144,5 +183,117 @@ impl Rource {
         if current > 0 {
             self.seek(current - 1);
         }
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Speed Validation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_validate_speed_normal_values() {
+        assert!((validate_speed(10.0) - 10.0).abs() < 0.001);
+        assert!((validate_speed(1.0) - 1.0).abs() < 0.001);
+        assert!((validate_speed(100.0) - 100.0).abs() < 0.001);
+        assert!((validate_speed(0.5) - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_validate_speed_clamp_minimum() {
+        assert!((validate_speed(0.005) - 0.01).abs() < 0.001);
+        assert!((validate_speed(0.001) - 0.01).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_validate_speed_clamp_maximum() {
+        assert!((validate_speed(1001.0) - 1000.0).abs() < 0.001);
+        assert!((validate_speed(5000.0) - 1000.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_validate_speed_invalid_nan() {
+        // NaN should return default (10.0)
+        let result = validate_speed(f32::NAN);
+        assert!((result - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_validate_speed_invalid_infinity() {
+        // Positive infinity should return default
+        let result = validate_speed(f32::INFINITY);
+        assert!((result - 10.0).abs() < 0.001);
+
+        // Negative infinity should return default
+        let result = validate_speed(f32::NEG_INFINITY);
+        assert!((result - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_validate_speed_invalid_negative() {
+        // Negative values should return default
+        assert!((validate_speed(-1.0) - 10.0).abs() < 0.001);
+        assert!((validate_speed(-100.0) - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_validate_speed_invalid_zero() {
+        // Zero should return default
+        assert!((validate_speed(0.0) - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_validate_speed_edge_values() {
+        // Exactly at minimum
+        assert!((validate_speed(0.01) - 0.01).abs() < 0.001);
+
+        // Exactly at maximum
+        assert!((validate_speed(1000.0) - 1000.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Date Range Formatting Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_date_range_basic() {
+        let result = format_date_range(1000, 2000);
+        assert_eq!(result, r#"{"startTimestamp":1000,"endTimestamp":2000}"#);
+    }
+
+    #[test]
+    fn test_format_date_range_same_values() {
+        let result = format_date_range(1500, 1500);
+        assert_eq!(result, r#"{"startTimestamp":1500,"endTimestamp":1500}"#);
+    }
+
+    #[test]
+    fn test_format_date_range_large_timestamps() {
+        // Unix timestamp for 2026-01-23
+        let result = format_date_range(1769212800, 1769299200);
+        assert_eq!(
+            result,
+            r#"{"startTimestamp":1769212800,"endTimestamp":1769299200}"#
+        );
+    }
+
+    #[test]
+    fn test_format_date_range_zero_values() {
+        let result = format_date_range(0, 0);
+        assert_eq!(result, r#"{"startTimestamp":0,"endTimestamp":0}"#);
+    }
+
+    #[test]
+    fn test_format_date_range_negative_values() {
+        // Timestamps before Unix epoch
+        let result = format_date_range(-86400, 0);
+        assert_eq!(result, r#"{"startTimestamp":-86400,"endTimestamp":0}"#);
     }
 }

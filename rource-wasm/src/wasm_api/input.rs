@@ -20,6 +20,102 @@ use crate::interaction::{
 use crate::Rource;
 
 // ============================================================================
+// Helper Functions (testable without Rource instance)
+// ============================================================================
+
+/// Normalizes mouse wheel delta to a consistent range.
+///
+/// Different browsers report different delta values. This normalizes
+/// by dividing by 100 and clamping to [-2, 2].
+///
+/// # Arguments
+/// * `delta_y` - Raw delta_y from wheel event
+///
+/// # Returns
+/// Normalized delta in range [-2, 2].
+#[inline]
+#[must_use]
+pub fn normalize_wheel_delta(delta_y: f32) -> f32 {
+    (delta_y / 100.0).clamp(-2.0, 2.0)
+}
+
+/// Calculates the zoom factor from normalized wheel delta.
+///
+/// # Arguments
+/// * `normalized_delta` - Normalized delta from `normalize_wheel_delta`
+///
+/// # Returns
+/// Zoom factor (> 1 for zoom in, < 1 for zoom out).
+#[inline]
+#[must_use]
+pub fn calculate_wheel_zoom_factor(normalized_delta: f32) -> f32 {
+    1.0 - (normalized_delta * 0.08)
+}
+
+/// Calculates the hit test radius adjusted for current zoom level.
+///
+/// # Arguments
+/// * `base_radius` - The base hit test radius in screen pixels
+/// * `zoom` - Current camera zoom level
+///
+/// # Returns
+/// Hit radius in world coordinates.
+#[inline]
+#[must_use]
+pub fn calculate_hit_radius(base_radius: f32, zoom: f32) -> f32 {
+    base_radius / zoom
+}
+
+/// Calculates world delta from screen delta.
+///
+/// # Arguments
+/// * `screen_delta` - Delta in screen pixels
+/// * `zoom` - Current camera zoom level
+///
+/// # Returns
+/// Delta in world coordinates.
+#[inline]
+#[must_use]
+pub fn screen_to_world_delta(screen_delta: Vec2, zoom: f32) -> Vec2 {
+    screen_delta / zoom
+}
+
+/// Checks if a keyboard key is a recognized shortcut.
+///
+/// # Arguments
+/// * `key` - The key string from the keyboard event
+///
+/// # Returns
+/// `true` if the key is a recognized shortcut.
+#[must_use]
+pub fn is_recognized_shortcut(key: &str) -> bool {
+    matches!(
+        key,
+        " " | "Space"
+            | "+"
+            | "="
+            | "-"
+            | "_"
+            | "ArrowUp"
+            | "ArrowDown"
+            | "ArrowLeft"
+            | "ArrowRight"
+            | "r"
+            | "R"
+            | "l"
+            | "L"
+            | "["
+            | "]"
+            | ","
+            | "<"
+            | "."
+            | ">"
+            | "Home"
+            | "End"
+    )
+}
+
+// ============================================================================
 // Input Handling
 // ============================================================================
 
@@ -212,5 +308,229 @@ impl Rource {
             }
             _ => {}
         }
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Wheel Delta Normalization Tests
+    // ========================================================================
+
+    #[test]
+    fn test_normalize_wheel_delta_small_positive() {
+        let delta = normalize_wheel_delta(100.0);
+        assert!((delta - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_normalize_wheel_delta_small_negative() {
+        let delta = normalize_wheel_delta(-100.0);
+        assert!((delta - (-1.0)).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_normalize_wheel_delta_zero() {
+        let delta = normalize_wheel_delta(0.0);
+        assert!((delta - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_normalize_wheel_delta_clamp_max() {
+        // Large positive values should clamp to 2.0
+        let delta = normalize_wheel_delta(500.0);
+        assert!((delta - 2.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_normalize_wheel_delta_clamp_min() {
+        // Large negative values should clamp to -2.0
+        let delta = normalize_wheel_delta(-500.0);
+        assert!((delta - (-2.0)).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_normalize_wheel_delta_fractional() {
+        let delta = normalize_wheel_delta(50.0);
+        assert!((delta - 0.5).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Zoom Factor Calculation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_wheel_zoom_factor_zero_delta() {
+        // Zero delta should result in no zoom (factor = 1.0)
+        let factor = calculate_wheel_zoom_factor(0.0);
+        assert!((factor - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_wheel_zoom_factor_positive_delta() {
+        // Positive delta (scroll down) should zoom out (factor < 1.0)
+        let factor = calculate_wheel_zoom_factor(1.0);
+        assert!((factor - 0.92).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_wheel_zoom_factor_negative_delta() {
+        // Negative delta (scroll up) should zoom in (factor > 1.0)
+        let factor = calculate_wheel_zoom_factor(-1.0);
+        assert!((factor - 1.08).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_wheel_zoom_factor_max_delta() {
+        let factor = calculate_wheel_zoom_factor(2.0);
+        assert!((factor - 0.84).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_wheel_zoom_factor_min_delta() {
+        let factor = calculate_wheel_zoom_factor(-2.0);
+        assert!((factor - 1.16).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Hit Radius Calculation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_hit_radius_zoom_1() {
+        let radius = calculate_hit_radius(10.0, 1.0);
+        assert!((radius - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_hit_radius_zoom_2() {
+        // At 2x zoom, hit radius should be halved in world units
+        let radius = calculate_hit_radius(10.0, 2.0);
+        assert!((radius - 5.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_hit_radius_zoom_half() {
+        // At 0.5x zoom, hit radius should be doubled in world units
+        let radius = calculate_hit_radius(10.0, 0.5);
+        assert!((radius - 20.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_hit_radius_small_zoom() {
+        // At very low zoom, hit radius should be large
+        let radius = calculate_hit_radius(10.0, 0.1);
+        assert!((radius - 100.0).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Screen to World Delta Tests
+    // ========================================================================
+
+    #[test]
+    fn test_screen_to_world_delta_zoom_1() {
+        let delta = screen_to_world_delta(Vec2::new(100.0, 50.0), 1.0);
+        assert!((delta.x - 100.0).abs() < 0.001);
+        assert!((delta.y - 50.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_screen_to_world_delta_zoom_2() {
+        // At 2x zoom, screen delta is halved in world units
+        let delta = screen_to_world_delta(Vec2::new(100.0, 50.0), 2.0);
+        assert!((delta.x - 50.0).abs() < 0.001);
+        assert!((delta.y - 25.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_screen_to_world_delta_zoom_half() {
+        // At 0.5x zoom, screen delta is doubled in world units
+        let delta = screen_to_world_delta(Vec2::new(100.0, 50.0), 0.5);
+        assert!((delta.x - 200.0).abs() < 0.001);
+        assert!((delta.y - 100.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_screen_to_world_delta_zero() {
+        let delta = screen_to_world_delta(Vec2::ZERO, 1.0);
+        assert!((delta.x - 0.0).abs() < 0.001);
+        assert!((delta.y - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_screen_to_world_delta_negative() {
+        let delta = screen_to_world_delta(Vec2::new(-50.0, -25.0), 1.0);
+        assert!((delta.x - (-50.0)).abs() < 0.001);
+        assert!((delta.y - (-25.0)).abs() < 0.001);
+    }
+
+    // ========================================================================
+    // Keyboard Shortcut Recognition Tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_recognized_shortcut_space() {
+        assert!(is_recognized_shortcut(" "));
+        assert!(is_recognized_shortcut("Space"));
+    }
+
+    #[test]
+    fn test_is_recognized_shortcut_zoom() {
+        assert!(is_recognized_shortcut("+"));
+        assert!(is_recognized_shortcut("="));
+        assert!(is_recognized_shortcut("-"));
+        assert!(is_recognized_shortcut("_"));
+    }
+
+    #[test]
+    fn test_is_recognized_shortcut_arrows() {
+        assert!(is_recognized_shortcut("ArrowUp"));
+        assert!(is_recognized_shortcut("ArrowDown"));
+        assert!(is_recognized_shortcut("ArrowLeft"));
+        assert!(is_recognized_shortcut("ArrowRight"));
+    }
+
+    #[test]
+    fn test_is_recognized_shortcut_reset_labels() {
+        assert!(is_recognized_shortcut("r"));
+        assert!(is_recognized_shortcut("R"));
+        assert!(is_recognized_shortcut("l"));
+        assert!(is_recognized_shortcut("L"));
+    }
+
+    #[test]
+    fn test_is_recognized_shortcut_speed() {
+        assert!(is_recognized_shortcut("["));
+        assert!(is_recognized_shortcut("]"));
+    }
+
+    #[test]
+    fn test_is_recognized_shortcut_step() {
+        assert!(is_recognized_shortcut(","));
+        assert!(is_recognized_shortcut("<"));
+        assert!(is_recognized_shortcut("."));
+        assert!(is_recognized_shortcut(">"));
+    }
+
+    #[test]
+    fn test_is_recognized_shortcut_navigation() {
+        assert!(is_recognized_shortcut("Home"));
+        assert!(is_recognized_shortcut("End"));
+    }
+
+    #[test]
+    fn test_is_recognized_shortcut_unrecognized() {
+        assert!(!is_recognized_shortcut("a"));
+        assert!(!is_recognized_shortcut("Enter"));
+        assert!(!is_recognized_shortcut("Escape"));
+        assert!(!is_recognized_shortcut("Tab"));
+        assert!(!is_recognized_shortcut("F1"));
+        assert!(!is_recognized_shortcut(""));
     }
 }
