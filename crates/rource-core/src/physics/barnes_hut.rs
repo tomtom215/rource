@@ -122,6 +122,22 @@ impl BarnesHutNode {
         self.body.is_some() && self.children.is_none()
     }
 
+    /// Resets this node's data without deallocating the tree structure.
+    ///
+    /// This clears body data, mass, and center-of-mass but preserves
+    /// any existing children nodes, allowing tree structure reuse between frames.
+    fn reset(&mut self) {
+        self.body = None;
+        self.total_mass = 0.0;
+        self.center_of_mass = Vec2::ZERO;
+
+        if let Some(ref mut children) = self.children {
+            for child in children.iter_mut() {
+                child.reset();
+            }
+        }
+    }
+
     /// Inserts a body into this node.
     fn insert(&mut self, body: Body) {
         // Don't insert bodies outside bounds
@@ -347,10 +363,12 @@ impl BarnesHutTree {
         &self.root.bounds
     }
 
-    /// Clears all bodies from the tree.
+    /// Clears all bodies from the tree while preserving structure.
+    ///
+    /// This resets body data without deallocating the tree structure,
+    /// reducing allocations when the tree is rebuilt each frame.
     pub fn clear(&mut self) {
-        let bounds = self.root.bounds;
-        self.root = BarnesHutNode::new(bounds, 0);
+        self.root.reset();
     }
 
     /// Inserts a body into the tree.
@@ -494,6 +512,35 @@ mod tests {
         tree.clear();
 
         assert_eq!(tree.total_mass(), 0.0);
+    }
+
+    #[test]
+    fn test_barnes_hut_clear_preserves_structure() {
+        let mut tree = create_test_tree();
+
+        // Insert bodies that force tree subdivision
+        tree.insert(Body::new(Vec2::new(-50.0, -50.0))); // NW quadrant
+        tree.insert(Body::new(Vec2::new(50.0, 50.0))); // SE quadrant
+        tree.insert(Body::new(Vec2::new(-50.0, 50.0))); // SW quadrant
+        tree.insert(Body::new(Vec2::new(50.0, -50.0))); // NE quadrant
+
+        assert!((tree.total_mass() - 4.0).abs() < 0.001);
+
+        // Clear preserves tree structure (no reallocation)
+        tree.clear();
+        assert_eq!(tree.total_mass(), 0.0);
+
+        // Re-inserting should still work correctly
+        tree.insert(Body::new(Vec2::new(-50.0, -50.0)));
+        tree.insert(Body::new(Vec2::new(50.0, 50.0)));
+
+        assert!((tree.total_mass() - 2.0).abs() < 0.001);
+
+        // Force calculation should still work
+        let body = Body::new(Vec2::ZERO);
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+        // Forces from opposite quadrants should mostly cancel
+        assert!(force.length() < 10.0, "Symmetric forces should mostly cancel");
     }
 
     #[test]
