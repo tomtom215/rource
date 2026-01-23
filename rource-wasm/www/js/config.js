@@ -17,8 +17,12 @@ export const CONFIG = {
     TOOLTIP_HEIGHT: 150,             // Tooltip height in pixels
 
     // GitHub API
+    // IMPORTANT: Unauthenticated rate limit is 60 requests/hour
+    // Each commit needs 1 API call for file details, so we must be conservative
     GITHUB_CACHE_EXPIRY_MS: 24 * 60 * 60 * 1000,  // 24 hours
     GITHUB_RATE_LIMIT_BUFFER: 5,     // Stop fetching when this many requests remain
+    GITHUB_MAX_COMMITS: 50,          // Max commits to fetch (50 commits = ~51 API calls)
+    GITHUB_WARN_LOW_LIMIT: 10,       // Warn user when rate limit is below this
 
     // Animation & Timing
     TOAST_DURATION_MS: 3000,         // Default toast duration
