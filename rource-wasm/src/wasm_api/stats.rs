@@ -132,7 +132,7 @@ impl Rource {
     /// |---------|------------|--------|
     /// | Chrome  | ~5µs       | [Chrome Security Blog](https://security.googleblog.com) |
     /// | Firefox | ~20µs      | [MDN Spectre mitigations](https://developer.mozilla.org) |
-    /// | Safari  | ~100µs     | WebKit security notes |
+    /// | Safari  | ~100µs     | `WebKit` security notes |
     ///
     /// Nanosecond precision is not achievable from JavaScript's `performance.now()`.
     /// The 4 decimal places display the full resolution available from the browser.
