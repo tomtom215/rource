@@ -278,17 +278,20 @@ impl Scene {
     }
 
     /// Returns a file by ID.
+    #[inline]
     #[must_use]
     pub fn get_file(&self, id: FileId) -> Option<&FileNode> {
         self.files.get(&id)
     }
 
     /// Returns a mutable file by ID.
+    #[inline]
     pub fn get_file_mut(&mut self, id: FileId) -> Option<&mut FileNode> {
         self.files.get_mut(&id)
     }
 
     /// Returns a file by path.
+    #[inline]
     #[must_use]
     pub fn get_file_by_path(&self, path: &Path) -> Option<&FileNode> {
         self.file_by_path
@@ -304,17 +307,20 @@ impl Scene {
     }
 
     /// Returns a user by ID.
+    #[inline]
     #[must_use]
     pub fn get_user(&self, id: UserId) -> Option<&User> {
         self.users.get(&id)
     }
 
     /// Returns a mutable user by ID.
+    #[inline]
     pub fn get_user_mut(&mut self, id: UserId) -> Option<&mut User> {
         self.users.get_mut(&id)
     }
 
     /// Returns a user by name.
+    #[inline]
     #[must_use]
     pub fn get_user_by_name(&self, name: &str) -> Option<&User> {
         self.user_by_name
@@ -835,12 +841,14 @@ impl Scene {
     // Spatial index methods are in spatial_methods.rs
 
     /// Returns the number of files in the scene.
+    #[inline]
     #[must_use]
     pub fn file_count(&self) -> usize {
         self.files.len()
     }
 
     /// Returns the number of users in the scene.
+    #[inline]
     #[must_use]
     pub fn user_count(&self) -> usize {
         self.users.len()

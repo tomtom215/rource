@@ -126,6 +126,7 @@ impl LabelPlacer {
     }
 
     /// Resets the placer for a new frame.
+    #[inline]
     pub fn reset(&mut self, zoom: f32) {
         self.occupied.clear();
         self.count = 0;

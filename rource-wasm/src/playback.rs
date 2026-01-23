@@ -5,8 +5,6 @@
 //!
 //! This module handles commit playback timing, seeking, and timeline navigation.
 
-use std::path::PathBuf;
-
 use rource_core::scene::{ActionType, Scene};
 use rource_vcs::{Commit, FileAction};
 
@@ -430,6 +428,8 @@ mod tests {
     }
 
     // Commit Application Tests
+
+    use std::path::PathBuf;
 
     use rource_vcs::FileChange;
 
