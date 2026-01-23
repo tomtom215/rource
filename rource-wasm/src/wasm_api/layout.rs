@@ -158,4 +158,121 @@ impl Rource {
             layout.large_repo_threshold
         )
     }
+
+    // ========================================================================
+    // GPU Physics Configuration (wgpu only)
+    // ========================================================================
+
+    /// Enables or disables GPU physics simulation.
+    ///
+    /// When enabled and using the wgpu backend, the force-directed physics
+    /// simulation runs on the GPU using compute shaders. This provides
+    /// significant performance improvements for large repositories (500+
+    /// directories) where CPU physics becomes the bottleneck.
+    ///
+    /// **Note**: GPU physics only works with the wgpu backend. When using
+    /// WebGL2 or Software renderers, this setting is ignored and CPU physics
+    /// is always used.
+    ///
+    /// # Arguments
+    /// * `enabled` - Whether to enable GPU physics
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// if (rource.isWgpu()) {
+    ///     rource.setUseGPUPhysics(true);
+    ///     console.log('GPU physics enabled');
+    /// }
+    /// ```
+    #[wasm_bindgen(js_name = setUseGPUPhysics)]
+    pub fn set_use_gpu_physics(&mut self, enabled: bool) {
+        self.use_gpu_physics = enabled;
+    }
+
+    /// Returns whether GPU physics is currently enabled.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// console.log('GPU physics:', rource.isGPUPhysicsEnabled());
+    /// ```
+    #[wasm_bindgen(js_name = isGPUPhysicsEnabled)]
+    pub fn is_gpu_physics_enabled(&self) -> bool {
+        self.use_gpu_physics
+    }
+
+    /// Returns whether GPU physics is currently active.
+    ///
+    /// This checks all conditions required for GPU physics:
+    /// 1. GPU physics is enabled via `setUseGPUPhysics(true)`
+    /// 2. wgpu backend is being used
+    /// 3. Directory count exceeds threshold (if threshold > 0)
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// if (rource.isGPUPhysicsActive()) {
+    ///     console.log('GPU physics is running');
+    /// }
+    /// ```
+    #[wasm_bindgen(js_name = isGPUPhysicsActive)]
+    pub fn is_gpu_physics_active(&self) -> bool {
+        self.should_use_gpu_physics()
+    }
+
+    /// Sets the directory count threshold for enabling GPU physics.
+    ///
+    /// When the scene has more directories than this threshold, GPU physics
+    /// will be used (if enabled and wgpu backend is active).
+    ///
+    /// Set to 0 to always use GPU physics when enabled (ignores directory count).
+    ///
+    /// Default: 500 directories
+    ///
+    /// # Arguments
+    /// * `threshold` - Minimum directory count to trigger GPU physics
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// // Use GPU physics for repos with 1000+ directories
+    /// rource.setGPUPhysicsThreshold(1000);
+    ///
+    /// // Always use GPU physics when enabled (no threshold)
+    /// rource.setGPUPhysicsThreshold(0);
+    /// ```
+    #[wasm_bindgen(js_name = setGPUPhysicsThreshold)]
+    pub fn set_gpu_physics_threshold(&mut self, threshold: usize) {
+        self.gpu_physics_threshold = threshold;
+    }
+
+    /// Returns the current GPU physics threshold.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// console.log('GPU physics threshold:', rource.getGPUPhysicsThreshold());
+    /// ```
+    #[wasm_bindgen(js_name = getGPUPhysicsThreshold)]
+    pub fn get_gpu_physics_threshold(&self) -> usize {
+        self.gpu_physics_threshold
+    }
+
+    /// Warms up the GPU physics compute pipeline.
+    ///
+    /// Call this during initialization to pre-compile compute shaders
+    /// and avoid first-frame stuttering when GPU physics is first used.
+    ///
+    /// **Note**: Only has an effect when using the wgpu backend.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// if (rource.isWgpu()) {
+    ///     rource.warmupGPUPhysics();
+    ///     rource.setUseGPUPhysics(true);
+    /// }
+    /// ```
+    #[wasm_bindgen(js_name = warmupGPUPhysics)]
+    pub fn warmup_gpu_physics(&mut self) {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
+            wgpu_renderer.warmup_physics();
+        }
+    }
 }

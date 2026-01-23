@@ -642,6 +642,104 @@ impl Scene {
         }
     }
 
+    /// Updates all animations except directory physics.
+    ///
+    /// This method is used when GPU physics is handling directory positions,
+    /// but we still need to update:
+    /// - Actions (progress animation)
+    /// - Users (movement, fade)
+    /// - Files (fade, touch effects)
+    /// - Radial layout recomputation
+    /// - Spatial index (throttled)
+    ///
+    /// Call this instead of `update()` when using GPU physics for directories.
+    pub fn update_animations(&mut self, dt: f32) {
+        self.time += dt;
+        self.update_count = self.update_count.wrapping_add(1);
+
+        // Update actions and collect completed ones (reusing buffer)
+        self.completed_actions_buffer.clear();
+        for action in &mut self.actions {
+            if !action.update(dt) {
+                self.completed_actions_buffer
+                    .push((action.id(), action.user()));
+            }
+        }
+
+        // Remove completed actions and update users
+        for i in 0..self.completed_actions_buffer.len() {
+            let (action_id, user_id) = self.completed_actions_buffer[i];
+            if let Some(user) = self.users.get_mut(&user_id) {
+                user.remove_action(action_id);
+            }
+        }
+        self.actions.retain(|a| !a.is_complete());
+
+        // Update users
+        for user in self.users.values_mut() {
+            user.update(dt);
+        }
+
+        // Update files and collect ones to remove (reusing buffer)
+        self.files_to_remove_buffer.clear();
+        for (id, file) in &mut self.files {
+            file.update(dt);
+            if file.should_remove() {
+                self.files_to_remove_buffer.push(*id);
+            }
+        }
+
+        // Remove deleted files
+        let files_removed = !self.files_to_remove_buffer.is_empty();
+        for i in 0..self.files_to_remove_buffer.len() {
+            let id = self.files_to_remove_buffer[i];
+            if let Some(file) = self.files.remove(&id) {
+                self.file_by_path.remove(file.path());
+
+                // Remove from parent directory
+                let dir_id = file.directory();
+                if let Some(dir) = self.directories.get_mut(dir_id) {
+                    dir.remove_file(id);
+                }
+
+                // Free the ID
+                self.file_id_allocator
+                    .free(crate::entity::RawEntityId::new(id.index(), id.generation()));
+            }
+        }
+
+        // Update radial layout if tree structure changed
+        if self.layout_dirty {
+            self.directories
+                .compute_radial_layout_with_config(&self.layout_config);
+            self.layout_dirty = false;
+
+            // Update file positions to match new directory positions
+            self.update_file_positions_for_layout();
+        }
+
+        // Update parent positions for force calculation
+        // (GPU physics may still need this for parent-child relationships)
+        self.directories.update_parent_positions();
+
+        // Skip force-directed layout - GPU physics handles this
+
+        // Invalidate bounds cache since entities may have moved
+        if self.update_count % Self::SPATIAL_REBUILD_INTERVAL == 0 || files_removed {
+            self.bounds_dirty = true;
+        }
+
+        // Invalidate extension stats cache when files are removed
+        if files_removed {
+            self.extension_stats_dirty = true;
+        }
+
+        // Rebuild spatial index periodically
+        if self.update_count % Self::SPATIAL_REBUILD_INTERVAL == 0 || files_removed {
+            self.rebuild_spatial_index();
+        }
+    }
+
     /// Updates file positions to match their directory's new radial position.
     ///
     /// Called after recomputing the radial layout to ensure files move with

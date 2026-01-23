@@ -246,6 +246,66 @@ impl WgpuRenderer {
         pipeline.download_entities_async(&self.device).await
     }
 
+    /// Runs GPU physics simulation synchronously (WASM frame loop compatible).
+    ///
+    /// This is a synchronous version that uses device polling instead of async/await.
+    /// Suitable for use in synchronous frame loops like `requestAnimationFrame` callbacks.
+    ///
+    /// # Arguments
+    ///
+    /// * `entities` - Slice of entities to simulate
+    /// * `delta_time` - Time step in seconds
+    ///
+    /// # Returns
+    ///
+    /// Vector of updated entities with new positions and velocities.
+    ///
+    /// # Note
+    ///
+    /// This method blocks until the GPU completes. For most frame budgets (16ms @ 60fps),
+    /// this is acceptable since GPU physics computation is typically fast (<1ms for 1000 entities).
+    #[cfg(target_arch = "wasm32")]
+    pub fn dispatch_physics_sync(
+        &mut self,
+        entities: &[ComputeEntity],
+        delta_time: f32,
+    ) -> Vec<ComputeEntity> {
+        if entities.is_empty() {
+            return Vec::new();
+        }
+
+        // Initialize compute pipeline if needed
+        if self.compute_pipeline.is_none() {
+            self.compute_pipeline = Some(ComputePipeline::new(&self.device));
+        }
+
+        let Some(ref mut pipeline) = self.compute_pipeline else {
+            return entities.to_vec();
+        };
+
+        // Upload entities
+        pipeline.upload_entities(&self.device, &self.queue, entities);
+
+        // Create command encoder
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Physics Compute Encoder"),
+            });
+
+        // Dispatch physics passes
+        pipeline.dispatch(&mut encoder, &self.queue, delta_time);
+
+        // Prepare readback
+        pipeline.prepare_readback(&self.device, &mut encoder);
+
+        // Submit
+        self.queue.submit(Some(encoder.finish()));
+
+        // Download results synchronously using polling
+        pipeline.download_entities_sync(&self.device)
+    }
+
     /// Sets the GPU physics configuration.
     ///
     /// # Arguments
