@@ -100,6 +100,81 @@ fn plot_premultiplied_inner(
     pixels[idx] = 0xFF00_0000 | (new_r << 16) | (new_g << 8) | new_b;
 }
 
+/// Draws a single glyph using explicit split borrows (free function).
+///
+/// This avoids cloning the glyph bitmap by accepting pixels and the glyph reference
+/// as separate parameters, allowing the borrow checker to see they are disjoint from
+/// the font_cache borrow.
+#[inline]
+#[allow(clippy::too_many_arguments)] // Explicit parameters needed for split borrow pattern
+fn draw_glyph_inner(
+    pixels: &mut [u32],
+    width: u32,
+    height: u32,
+    clips: &[Bounds],
+    x: i32,
+    y: i32,
+    glyph: &crate::font::CachedGlyph,
+    color: Color,
+) {
+    let glyph_width = glyph.metrics.width;
+    let glyph_height = glyph.metrics.height;
+
+    for gy in 0..glyph_height {
+        for gx in 0..glyph_width {
+            let coverage = glyph.bitmap[gy * glyph_width + gx] as f32 / 255.0;
+            if coverage > 0.0 {
+                let px = x + gx as i32;
+                let py = y + gy as i32;
+                plot_inner(pixels, width, height, clips, px, py, coverage, color);
+            }
+        }
+    }
+}
+
+/// Plots a pixel with coverage blending (free function for split borrow pattern).
+#[inline]
+fn plot_inner(
+    pixels: &mut [u32],
+    width: u32,
+    height: u32,
+    clips: &[Bounds],
+    x: i32,
+    y: i32,
+    brightness: f32,
+    color: Color,
+) {
+    if is_clipped_inner(x, y, width, height, clips) {
+        return;
+    }
+
+    let Some(idx) = pixel_index_inner(x, y, width, height) else {
+        return;
+    };
+
+    let existing = pixels[idx];
+
+    // Calculate effective alpha
+    let alpha = color.a * brightness;
+    if alpha < 0.001 {
+        return;
+    }
+
+    let inv_alpha = 1.0 - alpha;
+
+    // Extract existing RGB
+    let dst_r = ((existing >> 16) & 0xFF) as f32;
+    let dst_g = ((existing >> 8) & 0xFF) as f32;
+    let dst_b = (existing & 0xFF) as f32;
+
+    // Blend colors
+    let new_r = ((color.r * 255.0 * alpha + dst_r * inv_alpha) as u32).min(255);
+    let new_g = ((color.g * 255.0 * alpha + dst_g * inv_alpha) as u32).min(255);
+    let new_b = ((color.b * 255.0 * alpha + dst_b * inv_alpha) as u32).min(255);
+
+    pixels[idx] = 0xFF00_0000 | (new_r << 16) | (new_g << 8) | new_b;
+}
+
 /// Draws a textured quad using explicit split borrows (free function).
 ///
 /// This avoids the need to clone the entire texture by accepting pixels and textures
@@ -202,9 +277,10 @@ pub struct SoftwareRenderer {
     /// Next texture ID
     next_texture_id: u32,
 
-    /// Reusable buffer for text glyph data (avoids per-draw_text allocation).
-    /// Stores (x, y, glyph) tuples for each character in a text string.
-    glyph_buffer: Vec<(i32, i32, crate::font::CachedGlyph)>,
+    /// Reusable buffer for text glyph positioning (avoids per-draw_text allocation and glyph cloning).
+    /// Stores (x, y, char, font_id, size_key) tuples for each character in a text string.
+    /// Glyphs are looked up again during drawing to avoid cloning bitmap data.
+    glyph_buffer: Vec<(i32, i32, char, FontId, u32)>,
 
     /// File icon extension to texture ID mapping.
     /// Used for file icon rendering in CPU software mode.
@@ -492,6 +568,11 @@ impl SoftwareRenderer {
         let min_y = min_y.max(0);
         let max_y = max_y.min(self.height as i32 - 1);
 
+        // Pre-compute squared thresholds to avoid sqrt in the inner loop
+        let outer_threshold_sq = (half_width + 1.0) * (half_width + 1.0);
+        let inner_threshold_sq = (half_width - 0.5) * (half_width - 0.5);
+        let outer_edge_sq = (half_width + 0.5) * (half_width + 0.5);
+
         for py_int in min_y..=max_y {
             for px_int in min_x..=max_x {
                 let point_x = px_int as f32 + 0.5;
@@ -508,20 +589,25 @@ impl SoftwareRenderer {
 
                 let dist_x = point_x - closest_x;
                 let dist_y = point_y - closest_y;
-                let dist = dist_x.hypot(dist_y);
+                // Use squared distance to avoid sqrt in most cases
+                let dist_sq = dist_x * dist_x + dist_y * dist_y;
 
-                if dist <= half_width + 1.0 {
+                if dist_sq <= outer_threshold_sq {
                     // Perform depth test
                     if !self.depth_test(px_int as u32, py_int as u32, depth) {
                         continue;
                     }
 
-                    // Anti-aliased edge
-                    let alpha = if dist <= half_width - 0.5 {
+                    // Anti-aliased edge using squared comparisons for inner region
+                    let alpha = if dist_sq <= inner_threshold_sq {
+                        // Inner region: full opacity, no sqrt needed
                         color.a
-                    } else if dist >= half_width + 0.5 {
+                    } else if dist_sq >= outer_edge_sq {
+                        // Outside edge: skip, no sqrt needed
                         continue;
                     } else {
+                        // Edge region: need actual distance for smooth blending
+                        let dist = dist_sq.sqrt();
                         let edge_t = (half_width + 0.5 - dist) / 1.0;
                         color.a * edge_t
                     };
@@ -812,11 +898,23 @@ impl SoftwareRenderer {
         let min_y = (cy - outer_radius - 1.0).floor() as i32;
         let max_y = (cy + outer_radius + 1.0).ceil() as i32;
 
+        // Pre-compute squared thresholds to avoid sqrt in most cases
+        let inner_test_sq = (inner_radius - 0.5) * (inner_radius - 0.5);
+        let outer_test_sq = (outer_radius + 0.5) * (outer_radius + 0.5);
+
         for y in min_y..=max_y {
             for x in min_x..=max_x {
                 let dx = x as f32 - cx;
                 let dy = y as f32 - cy;
-                let dist = dx.hypot(dy);
+                let dist_sq = dx * dx + dy * dy;
+
+                // Quick rejection using squared distance (no sqrt)
+                if dist_sq < inner_test_sq || dist_sq > outer_test_sq {
+                    continue;
+                }
+
+                // Only compute sqrt for pixels that might be in the ring
+                let dist = dist_sq.sqrt();
 
                 // Check if in ring
                 if dist >= inner_radius - 0.5 && dist <= outer_radius + 0.5 {
@@ -861,22 +959,8 @@ impl SoftwareRenderer {
         }
     }
 
-    /// Draws a single character glyph.
-    fn draw_glyph(&mut self, x: i32, y: i32, glyph: &crate::font::CachedGlyph, color: Color) {
-        let glyph_width = glyph.metrics.width;
-        let glyph_height = glyph.metrics.height;
-
-        for gy in 0..glyph_height {
-            for gx in 0..glyph_width {
-                let coverage = glyph.bitmap[gy * glyph_width + gx] as f32 / 255.0;
-                if coverage > 0.0 {
-                    let px = x + gx as i32;
-                    let py = y + gy as i32;
-                    self.plot(px, py, coverage, color);
-                }
-            }
-        }
-    }
+    // Note: draw_glyph has been replaced by draw_glyph_inner free function
+    // to enable split borrow pattern (avoid cloning glyph bitmap data).
 
     // ========================================================================
     // File Icon Methods
@@ -933,15 +1017,38 @@ impl SoftwareRenderer {
     ///
     /// If the extension is not registered, returns the default icon.
     /// If file icons are not initialized, returns `None`.
+    ///
+    /// Note: Uses stack-allocated buffer for ASCII lowercase to avoid heap allocation.
     pub fn get_file_icon_texture(&self, extension: &str) -> Option<TextureId> {
         if self.file_icon_textures.is_empty() {
             return None;
         }
 
-        self.file_icon_textures
-            .get(&extension.to_lowercase())
-            .copied()
-            .or_else(|| self.file_icon_textures.get("_default").copied())
+        // Fast path: Use stack buffer for common short extensions (< 16 chars)
+        // This avoids heap allocation for `to_lowercase()` on every lookup
+        let mut stack_buf = [0u8; 16];
+        let ext_lower: Option<&str> = if extension.len() <= 16 && extension.is_ascii() {
+            for (i, b) in extension.bytes().enumerate() {
+                stack_buf[i] = b.to_ascii_lowercase();
+            }
+            // Safe: ASCII bytes are always valid UTF-8
+            std::str::from_utf8(&stack_buf[..extension.len()]).ok()
+        } else {
+            None
+        };
+
+        if let Some(ext_lower) = ext_lower {
+            self.file_icon_textures
+                .get(ext_lower)
+                .copied()
+                .or_else(|| self.file_icon_textures.get("_default").copied())
+        } else {
+            // Fallback for rare long/non-ASCII extensions (heap allocates)
+            self.file_icon_textures
+                .get(&extension.to_lowercase())
+                .copied()
+                .or_else(|| self.file_icon_textures.get("_default").copied())
+        }
     }
 
     /// Registers a custom icon for a file extension.
@@ -1069,8 +1176,11 @@ impl Renderer for SoftwareRenderer {
 
         let mut x = position.x as i32;
         let y = position.y as i32;
+        let size_key = (size * 10.0) as u32;
 
         // Clear and reuse pre-allocated glyph buffer (zero-allocation hot path)
+        // First pass: compute positions, store only (x, y, char, font_id, size_key)
+        // This avoids cloning glyph bitmap data for every character
         self.glyph_buffer.clear();
 
         for ch in text.chars() {
@@ -1078,20 +1188,35 @@ impl Renderer for SoftwareRenderer {
                 let gx = x + glyph.metrics.xmin;
                 let gy = y - glyph.metrics.ymin - glyph.metrics.height as i32 + (size * 0.8) as i32; // Baseline adjustment
 
-                self.glyph_buffer.push((gx, gy, glyph.clone()));
+                // Store only positioning info, no glyph clone
+                self.glyph_buffer.push((gx, gy, ch, font, size_key));
                 x += glyph.metrics.advance_width as i32;
             }
         }
 
-        // Draw all glyphs
+        // Draw all glyphs using split borrow pattern
+        // Second pass: look up glyphs again (just HashMap lookup since cached) and draw
         // We swap the buffer out temporarily to avoid borrow conflicts while drawing
-        let mut glyphs = std::mem::take(&mut self.glyph_buffer);
-        for (gx, gy, glyph) in &glyphs {
-            self.draw_glyph(*gx, *gy, glyph, color);
+        let mut glyph_positions = std::mem::take(&mut self.glyph_buffer);
+        for &(gx, gy, ch, font_id, sz_key) in &glyph_positions {
+            // Glyph is already cached, this is just a HashMap lookup (no re-rasterization)
+            if let Some(glyph) = self.font_cache.rasterize(font_id, ch, sz_key as f32 / 10.0) {
+                // Use split borrow pattern: separate borrows of font_cache and pixels
+                draw_glyph_inner(
+                    &mut self.pixels,
+                    self.width,
+                    self.height,
+                    &self.clips,
+                    gx,
+                    gy,
+                    glyph,
+                    color,
+                );
+            }
         }
         // Put the buffer back (preserves capacity for next call)
-        glyphs.clear();
-        self.glyph_buffer = glyphs;
+        glyph_positions.clear();
+        self.glyph_buffer = glyph_positions;
     }
 
     fn set_transform(&mut self, transform: Mat4) {

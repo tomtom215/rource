@@ -207,6 +207,9 @@ pub struct WebGl2Renderer {
     /// Reusable buffer for texture IDs (avoids per-frame allocation in `flush_textured_quads`).
     cached_texture_ids: Vec<TextureId>,
 
+    /// Reusable buffer for transformed spline points (avoids per-draw_spline allocation).
+    spline_points_buf: Vec<Vec2>,
+
     /// File icon texture array (optional, initialized via `init_file_icons`).
     file_icon_array: Option<TextureArray>,
 }
@@ -276,6 +279,8 @@ impl WebGl2Renderer {
             frame_stats: FrameStats::new(),
             context_lost: false,
             cached_texture_ids: Vec::with_capacity(16),
+            // Pre-allocate spline buffer for typical curve complexity (16 control points)
+            spline_points_buf: Vec::with_capacity(16),
             file_icon_array: None,
         };
 
@@ -982,12 +987,16 @@ impl Renderer for WebGl2Renderer {
             return;
         }
 
-        // Transform all points to screen space
-        let transformed: Vec<Vec2> = points.iter().map(|p| self.transform_point(*p)).collect();
+        // Transform all points to screen space using reusable buffer (avoids heap allocation)
+        self.spline_points_buf.clear();
+        for p in points {
+            self.spline_points_buf.push(self.transform_point(*p));
+        }
 
         // For each segment, queue a curve instance with 4 control points
         // Using Catmull-Rom spline, the segment between p1 and p2 is interpolated
         // using p0 and p3 as control points
+        let transformed = &self.spline_points_buf;
         for i in 0..(transformed.len() - 1) {
             // Get the 4 control points (clamping at edges)
             let p0 = if i == 0 {

@@ -318,7 +318,8 @@ impl<T: Clone> QuadTree<T> {
         // Check children
         if let Some(ref children) = self.children {
             // Visit children in order of distance to their center
-            let mut child_indices: Vec<usize> = (0..4).collect();
+            // Use fixed-size array instead of Vec to avoid heap allocation
+            let mut child_indices: [usize; 4] = [0, 1, 2, 3];
             child_indices.sort_by(|&a, &b| {
                 let dist_a = (children[a].bounds.center() - position).length_squared();
                 let dist_b = (children[b].bounds.center() - position).length_squared();

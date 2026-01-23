@@ -428,6 +428,9 @@ pub struct Rource {
     /// Stores (`FileId`, `screen_pos`, `radius`, `alpha`, `priority`) tuples.
     file_label_candidates_buf: Vec<(FileId, Vec2, f32, f32, f32)>,
 
+    /// Reusable label placer for collision avoidance (avoids per-frame Vec allocation).
+    label_placer: render_phases::LabelPlacer,
+
     // ---- GPU Physics (wgpu only) ----
     /// Whether to use GPU physics (only available with wgpu backend).
     /// When enabled and directory count exceeds the threshold, physics
@@ -546,6 +549,8 @@ impl Rource {
             visible_files_buf: Vec::with_capacity(4096),
             visible_users_buf: Vec::with_capacity(256),
             file_label_candidates_buf: Vec::with_capacity(256),
+            // Reusable label placer (avoids per-frame Vec allocation)
+            label_placer: render_phases::LabelPlacer::new(1.0),
             // GPU physics (wgpu only) - default threshold 500 directories
             use_gpu_physics: false,
             gpu_physics_threshold: 500,
@@ -1150,6 +1155,7 @@ impl Rource {
             &self.scene,
             &self.camera,
             &mut self.file_label_candidates_buf,
+            &mut self.label_placer,
         );
 
         // Render watermark overlay (screen-space, rendered last to be on top)
