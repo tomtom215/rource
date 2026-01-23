@@ -152,6 +152,7 @@ impl Rource {
     /// rource.registerFileIcon("myext", "#FF5500");
     /// ```
     #[wasm_bindgen(js_name = registerFileIcon)]
+    #[allow(unused_variables)]
     pub fn register_file_icon(&mut self, extension: &str, hex_color: &str) -> bool {
         let hex = hex_color.trim_start_matches('#');
         let color = if hex.len() == 6 {
