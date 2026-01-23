@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769128619973,
+  "lastUpdate": 1769159327981,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -662,6 +662,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 974983,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "75d4e559b7d1cbe006747d7f7771aa6ff825af4c",
+          "message": "Merge pull request #127 from tomtom215/claude/wasm-webgpu-optimization-phase3-IE8uR\n\nPhase 15: GPU Physics Integration for Large Repository Support",
+          "timestamp": "2026-01-23T10:05:11+01:00",
+          "tree_id": "0faf7506c377395cae58800ec8ff55ae36549529",
+          "url": "https://github.com/tomtom215/rource/commit/75d4e559b7d1cbe006747d7f7771aa6ff825af4c"
+        },
+        "date": 1769159327689,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3877984,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2617787,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1012026,
             "unit": "bytes"
           }
         ]
