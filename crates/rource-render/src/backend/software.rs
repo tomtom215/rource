@@ -888,7 +888,9 @@ impl SoftwareRenderer {
     ///
     /// `true` if initialization succeeded (always succeeds for software renderer).
     pub fn init_file_icons(&mut self) -> bool {
-        use crate::backend::icons::{common_extensions, generate_default_icon, generate_icon, ICON_SIZE};
+        use crate::backend::icons::{
+            common_extensions, generate_default_icon, generate_icon, ICON_SIZE,
+        };
 
         // Register common file extensions
         for (ext, color) in common_extensions() {
@@ -906,7 +908,8 @@ impl SoftwareRenderer {
         let tex_id = TextureId::new(self.next_texture_id);
         self.next_texture_id += 1;
         self.textures.insert(tex_id, texture);
-        self.file_icon_textures.insert("_default".to_string(), tex_id);
+        self.file_icon_textures
+            .insert("_default".to_string(), tex_id);
 
         true
     }

@@ -163,13 +163,13 @@ impl TextureArray {
         if gl
             .tex_sub_image_3d_with_opt_u8_array(
                 WebGl2RenderingContext::TEXTURE_2D_ARRAY,
-                0,                    // mip level
-                0,                    // x offset
-                0,                    // y offset
-                layer as i32,         // z offset (layer)
-                self.width as i32,    // width
-                self.height as i32,   // height
-                1,                    // depth (1 layer)
+                0,                  // mip level
+                0,                  // x offset
+                0,                  // y offset
+                layer as i32,       // z offset (layer)
+                self.width as i32,  // width
+                self.height as i32, // height
+                1,                  // depth (1 layer)
                 WebGl2RenderingContext::RGBA,
                 WebGl2RenderingContext::UNSIGNED_BYTE,
                 Some(data),
@@ -262,7 +262,10 @@ impl TextureArray {
             height: self.height,
             layer_count: self.layer_count,
             max_layers: self.max_layers,
-            memory_bytes: u64::from(self.width) * u64::from(self.height) * 4 * u64::from(self.layer_count),
+            memory_bytes: u64::from(self.width)
+                * u64::from(self.height)
+                * 4
+                * u64::from(self.layer_count),
         }
     }
 
