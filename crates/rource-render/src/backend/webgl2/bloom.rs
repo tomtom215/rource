@@ -460,7 +460,8 @@ impl BloomPipeline {
                     threshold_loc: None,
                     intensity_loc: None,
                     direction_loc: gl.get_uniform_location(&program, "u_direction"),
-                    resolution_loc: gl.get_uniform_location(&program, "u_resolution"),
+                    // Use u_texel_size instead of u_resolution to avoid per-fragment division
+                    resolution_loc: gl.get_uniform_location(&program, "u_texel_size"),
                     scene_loc: None,
                     bloom_loc: None,
                     program,
@@ -623,8 +624,13 @@ impl BloomPipeline {
         if let Some(program) = &self.blur_program {
             gl.use_program(Some(&program.program));
 
+            // Pass pre-computed texel size (1/resolution) to avoid per-fragment division
             if let Some(loc) = &program.resolution_loc {
-                gl.uniform2f(Some(loc), bloom_width as f32, bloom_height as f32);
+                gl.uniform2f(
+                    Some(loc),
+                    1.0 / bloom_width as f32,
+                    1.0 / bloom_height as f32,
+                );
             }
 
             for _ in 0..self.config.passes {

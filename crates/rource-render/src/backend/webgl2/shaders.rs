@@ -479,21 +479,20 @@ precision highp float;
 
 uniform sampler2D u_texture;
 uniform vec2 u_direction;  // (1,0) for horizontal, (0,1) for vertical
-uniform vec2 u_resolution;
+uniform vec2 u_texel_size; // Pre-computed 1.0 / resolution (avoids per-fragment division)
 
 in vec2 v_uv;
 
 out vec4 fragColor;
 
-// 9-tap Gaussian blur
+// 9-tap Gaussian blur weights (compile-time constant)
 const float weights[5] = float[](0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
 
 void main() {
-    vec2 texel_size = 1.0 / u_resolution;
     vec3 result = texture(u_texture, v_uv).rgb * weights[0];
 
     for (int i = 1; i < 5; i++) {
-        vec2 offset = u_direction * texel_size * float(i);
+        vec2 offset = u_direction * u_texel_size * float(i);
         result += texture(u_texture, v_uv + offset).rgb * weights[i];
         result += texture(u_texture, v_uv - offset).rgb * weights[i];
     }
@@ -918,7 +917,8 @@ void main() {
 
     gl_Position = vec4(clip_pos, 0.0, 1.0);
     v_local_pos = vec2(0.0, offset * 2.0);  // -1 to 1 for edge distance
-    v_width = a_width;
+    // Pre-compute AA width in vertex shader to avoid per-fragment division
+    v_width = 1.5 / max(a_width, 1.0);
     v_color = a_color;
 }
 "#;
@@ -930,7 +930,7 @@ pub const CURVE_FRAGMENT_SHADER: &str = r#"#version 300 es
 precision highp float;
 
 in vec2 v_local_pos;
-in float v_width;
+in float v_width;  // Actually aa_width, pre-computed in vertex shader
 in vec4 v_color;
 
 out vec4 fragColor;
@@ -939,9 +939,8 @@ void main() {
     // Distance from center line (0 at center, 1 at edge)
     float dist = abs(v_local_pos.y);
 
-    // Anti-aliased edge
-    float aa_width = 1.5 / max(v_width, 1.0);
-    float alpha = 1.0 - smoothstep(1.0 - aa_width, 1.0, dist);
+    // AA width is pre-computed in vertex shader to avoid per-fragment division
+    float alpha = 1.0 - smoothstep(1.0 - v_width, 1.0, dist);
 
     if (alpha < 0.001) {
         discard;
@@ -1024,7 +1023,8 @@ void main() {
 
     gl_Position = vec4(clip_pos, 0.0, 1.0);
     v_local_pos = vec2(0.0, offset * 2.0);
-    v_width = a_width;
+    // Pre-compute AA width in vertex shader to avoid per-fragment division
+    v_width = 1.5 / max(a_width, 1.0);
     v_color = a_color;
 }
 "#;
@@ -1075,9 +1075,9 @@ mod tests {
         assert!(BLOOM_BRIGHT_FRAGMENT_SHADER.contains("u_intensity"));
         assert!(BLOOM_BRIGHT_FRAGMENT_SHADER.contains("u_texture"));
 
-        // Blur pass needs direction and resolution
+        // Blur pass needs direction and texel_size (pre-computed 1/resolution)
         assert!(BLOOM_BLUR_FRAGMENT_SHADER.contains("u_direction"));
-        assert!(BLOOM_BLUR_FRAGMENT_SHADER.contains("u_resolution"));
+        assert!(BLOOM_BLUR_FRAGMENT_SHADER.contains("u_texel_size"));
         assert!(BLOOM_BLUR_FRAGMENT_SHADER.contains("u_texture"));
 
         // Composite needs scene, bloom textures and intensity
