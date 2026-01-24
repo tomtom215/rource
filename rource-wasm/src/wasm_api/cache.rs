@@ -207,8 +207,7 @@ impl Rource {
     /// ```
     #[wasm_bindgen(js_name = importCacheBytes)]
     pub fn import_cache_bytes(&mut self, bytes: &[u8]) -> usize {
-        VisualizationCache::from_bytes(bytes)
-            .map_or(0, |cache| self.import_cache_store(cache))
+        VisualizationCache::from_bytes(bytes).map_or(0, |cache| self.import_cache_store(cache))
     }
 
     /// Imports commits from a binary cache, validating the repository identifier.
