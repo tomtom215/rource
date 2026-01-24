@@ -128,6 +128,8 @@ impl MercurialParser {
     }
 
     /// Parses template format: timestamp|author|action|file
+    ///
+    /// Uses iterator-based parsing to avoid Vec allocation on each line.
     fn parse_template(&self, input: &str) -> ParseResult<Vec<Commit>> {
         let mut commits: HashMap<(i64, String), Vec<FileChange>> = HashMap::new();
         let mut order: Vec<(i64, String)> = Vec::new();
@@ -138,37 +140,52 @@ impl MercurialParser {
                 continue;
             }
 
-            let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() < 4 {
-                if self.options.skip_invalid_lines {
-                    continue;
-                }
-                return Err(ParseError::InvalidLine {
-                    line_number: line_num + 1,
-                    line: line.to_string(),
-                    expected: "timestamp|author|action|filepath",
-                });
+            // Use iterator to avoid Vec allocation
+            let mut parts = line.split('|');
+
+            // Helper macro to handle missing parts consistently
+            macro_rules! next_part {
+                ($iter:expr) => {
+                    match $iter.next() {
+                        Some(s) => s,
+                        None => {
+                            if self.options.skip_invalid_lines {
+                                continue;
+                            }
+                            return Err(ParseError::InvalidLine {
+                                line_number: line_num + 1,
+                                line: line.to_string(),
+                                expected: "timestamp|author|action|filepath",
+                            });
+                        }
+                    }
+                };
             }
 
+            let timestamp_str = next_part!(parts);
+            let author_str = next_part!(parts);
+            let action_str = next_part!(parts);
+            let filepath_str = next_part!(parts);
+
             // Parse timestamp - hgdate format is "unix_timestamp timezone_offset"
-            let timestamp = parts[0]
+            let timestamp = timestamp_str
                 .split_whitespace()
                 .next()
                 .unwrap_or("")
                 .parse::<i64>()
                 .map_err(|_| ParseError::InvalidTimestamp {
                     line_number: line_num + 1,
-                    value: parts[0].to_string(),
+                    value: timestamp_str.to_string(),
                 })?;
 
             if !self.options.timestamp_in_range(timestamp) {
                 continue;
             }
 
-            let author = extract_author_name(parts[1].trim()).to_string();
-            let action = FileAction::from_char(parts[2].trim().chars().next().unwrap_or('M'))
+            let author = extract_author_name(author_str.trim()).to_string();
+            let action = FileAction::from_char(action_str.trim().chars().next().unwrap_or('M'))
                 .unwrap_or(FileAction::Modify);
-            let file_path = PathBuf::from(parts[3].trim());
+            let file_path = PathBuf::from(filepath_str.trim());
 
             let key = (timestamp, author.clone());
             if !commits.contains_key(&key) {
@@ -229,16 +246,19 @@ impl Parser for MercurialParser {
         // Check for template format with hgdate (timestamp|author|action|file)
         // Mercurial hgdate format includes timezone offset: "timestamp offset"
         // This distinguishes it from Custom format which uses plain timestamps
-        let parts: Vec<&str> = first_line.split('|').collect();
-        if parts.len() >= 4 {
-            let timestamp_field = parts[0].trim();
-            // hgdate format has a space: "1234567890 -18000"
-            // Custom format has no space: "1234567890"
-            let whitespace_parts: Vec<&str> = timestamp_field.split_whitespace().collect();
-            if whitespace_parts.len() >= 2 {
-                // Must have at least two parts (timestamp and offset)
-                if whitespace_parts[0].parse::<i64>().is_ok() {
-                    return true;
+        let mut parts = first_line.split('|');
+        if let Some(timestamp_field) = parts.next() {
+            // Check we have at least 4 parts total
+            if parts.next().is_some() && parts.next().is_some() && parts.next().is_some() {
+                let timestamp_field = timestamp_field.trim();
+                // hgdate format has a space: "1234567890 -18000"
+                // Custom format has no space: "1234567890"
+                let mut whitespace_parts = timestamp_field.split_whitespace();
+                if let Some(ts_str) = whitespace_parts.next() {
+                    // Must have at least two parts (timestamp and offset)
+                    if whitespace_parts.next().is_some() && ts_str.parse::<i64>().is_ok() {
+                        return true;
+                    }
                 }
             }
         }
@@ -328,13 +348,10 @@ fn parse_verbose_date(date_str: &str) -> Option<i64> {
     };
 
     // Parse time (HH:MM:SS)
-    let time_parts: Vec<&str> = time_str.split(':').collect();
-    if time_parts.len() < 3 {
-        return None;
-    }
-    let hour: u32 = time_parts[0].parse().ok()?;
-    let min: u32 = time_parts[1].parse().ok()?;
-    let sec: u32 = time_parts[2].parse().ok()?;
+    let mut time_parts = time_str.split(':');
+    let hour: u32 = time_parts.next()?.parse().ok()?;
+    let min: u32 = time_parts.next()?.parse().ok()?;
+    let sec: u32 = time_parts.next()?.parse().ok()?;
 
     // Parse month
     let month = parse_month(month_str)?;

@@ -384,23 +384,21 @@ fn parse_bzr_date(date_str: &str) -> Option<i64> {
 
     // Try YYYY-MM-DD format first
     if is_date_format(parts[0]) {
-        let date_parts: Vec<&str> = parts[0].split('-').collect();
-        if date_parts.len() >= 3 {
-            let year: i32 = date_parts[0].parse().ok()?;
-            let month: u32 = date_parts[1].parse().ok()?;
-            let day: u32 = date_parts[2].parse().ok()?;
+        let mut date_parts = parts[0].split('-');
+        let year: i32 = date_parts.next()?.parse().ok()?;
+        let month: u32 = date_parts.next()?.parse().ok()?;
+        let day: u32 = date_parts.next()?.parse().ok()?;
 
-            let mut timestamp = i64::from(days_since_unix_epoch(year, month, day)?) * 86400;
+        let mut timestamp = i64::from(days_since_unix_epoch(year, month, day)?) * 86400;
 
-            // Parse time if present
-            if parts.len() >= 2 {
-                if let Some((h, m, s)) = parse_time(parts[1]) {
-                    timestamp += i64::from(h) * 3600 + i64::from(m) * 60 + i64::from(s);
-                }
+        // Parse time if present
+        if parts.len() >= 2 {
+            if let Some((h, m, s)) = parse_time(parts[1]) {
+                timestamp += i64::from(h) * 3600 + i64::from(m) * 60 + i64::from(s);
             }
-
-            return Some(timestamp);
         }
+
+        return Some(timestamp);
     }
 
     // Try "Jan 01 12:00:00 2024" format
@@ -422,14 +420,11 @@ fn parse_bzr_date(date_str: &str) -> Option<i64> {
 
 /// Parse time string "HH:MM:SS"
 fn parse_time(s: &str) -> Option<(u32, u32, u32)> {
-    let parts: Vec<&str> = s.split(':').collect();
-    if parts.len() >= 3 {
-        let h: u32 = parts[0].parse().ok()?;
-        let m: u32 = parts[1].parse().ok()?;
-        let s: u32 = parts[2].parse().ok()?;
-        return Some((h, m, s));
-    }
-    None
+    let mut parts = s.split(':');
+    let h: u32 = parts.next()?.parse().ok()?;
+    let m: u32 = parts.next()?.parse().ok()?;
+    let s: u32 = parts.next()?.parse().ok()?;
+    Some((h, m, s))
 }
 
 /// Parse file path from bzr log output.
@@ -448,29 +443,37 @@ fn parse_bzr_file_path(line: &str) -> &str {
 
 /// Check if a string looks like YYYY-MM-DD date
 fn is_date_format(s: &str) -> bool {
-    let parts: Vec<&str> = s.split('-').collect();
-    if parts.len() == 3 {
-        if let (Ok(y), Ok(m), Ok(d)) = (
-            parts[0].parse::<i32>(),
-            parts[1].parse::<u32>(),
-            parts[2].parse::<u32>(),
-        ) {
-            return (1970..=2100).contains(&y) && (1..=12).contains(&m) && (1..=31).contains(&d);
-        }
+    let mut parts = s.split('-');
+    let Some(y_str) = parts.next() else {
+        return false;
+    };
+    let Some(m_str) = parts.next() else {
+        return false;
+    };
+    let Some(d_str) = parts.next() else {
+        return false;
+    };
+    // Ensure exactly 3 parts (no trailing segments)
+    if parts.next().is_some() {
+        return false;
+    }
+    if let (Ok(y), Ok(m), Ok(d)) = (
+        y_str.parse::<i32>(),
+        m_str.parse::<u32>(),
+        d_str.parse::<u32>(),
+    ) {
+        return (1970..=2100).contains(&y) && (1..=12).contains(&m) && (1..=31).contains(&d);
     }
     false
 }
 
 /// Parse YYYY-MM-DD to timestamp at midnight
 fn parse_date_only(s: &str) -> Option<i64> {
-    let parts: Vec<&str> = s.split('-').collect();
-    if parts.len() >= 3 {
-        let year: i32 = parts[0].parse().ok()?;
-        let month: u32 = parts[1].parse().ok()?;
-        let day: u32 = parts[2].parse().ok()?;
-        return Some(i64::from(days_since_unix_epoch(year, month, day)?) * 86400);
-    }
-    None
+    let mut parts = s.split('-');
+    let year: i32 = parts.next()?.parse().ok()?;
+    let month: u32 = parts.next()?.parse().ok()?;
+    let day: u32 = parts.next()?.parse().ok()?;
+    Some(i64::from(days_since_unix_epoch(year, month, day)?) * 86400)
 }
 
 /// Skips the day name prefix from a date string.

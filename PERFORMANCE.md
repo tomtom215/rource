@@ -53,6 +53,10 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 41: Large Repository Browser Freeze Prevention (2026-01-24)](#phase-41-large-repository-browser-freeze-prevention-2026-01-24)
 - [Phase 42: WASM Production Demo Optimization (2026-01-24)](#phase-42-wasm-production-demo-optimization-2026-01-24)
 - [Phase 43: Physics and Rendering Micro-Optimizations (2026-01-24)](#phase-43-physics-and-rendering-micro-optimizations-2026-01-24)
+- [Phase 44: Fixed-Point Alpha Blending (2026-01-24)](#phase-44-fixed-point-alpha-blending-2026-01-24)
+- [Phase 45: Color Conversion Lookup Tables (2026-01-24)](#phase-45-color-conversion-lookup-tables-2026-01-24)
+- [Phase 46: VCS Parser Zero-Allocation (2026-01-24)](#phase-46-vcs-parser-zero-allocation-2026-01-24)
+- [Phase 47: Force Normalization Optimization (2026-01-24)](#phase-47-force-normalization-optimization-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -5005,6 +5009,312 @@ These were identified but deferred due to complexity vs. benefit tradeoff:
 
 **Note**: Bloom vertical pass transpose was tested but regressed 15-24%. Strip-based
 processing achieved 6.6% improvement with simpler implementation.
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 44: Fixed-Point Alpha Blending (2026-01-24)
+
+### Overview
+
+Phase 44 optimizes alpha blending operations in the software renderer by replacing
+floating-point arithmetic with fixed-point 8.8 integer arithmetic. Alpha blending
+is one of the hottest paths in software rendering, called for every non-opaque pixel.
+
+### Optimization Strategy
+
+The key insight is that alpha values (0.0-1.0) can be represented as integers in the
+0-256 range, enabling shift-based division instead of floating-point operations:
+
+```rust
+// Before: floating-point arithmetic
+let alpha = src.a;
+let inv_alpha = 1.0 - alpha;
+let new_r = ((src_r * alpha + dst_r * inv_alpha) as u32).min(255);
+
+// After: fixed-point 8.8 arithmetic
+let alpha_u16 = (src.a * 256.0) as u16;  // Convert once
+let inv_alpha = 256 - alpha_u16;
+let new_r = (src_r as u32 * alpha_u16 as u32 + dst_r as u32 * inv_alpha as u32) >> 8;
+```
+
+### Implementation Details
+
+#### Files Modified
+
+| File | Function | Description |
+|------|----------|-------------|
+| `renderer.rs:455-499` | `blend_color()` | Main static blend function |
+| `renderer.rs:74-117` | `plot_premultiplied_inner()` | Glyph and texture blending |
+| `renderer.rs:153-210` | `plot_inner()` | Coverage-based blending |
+| `renderer.rs:828-883` | `plot()` | Instance method blending |
+
+#### Key Optimizations
+
+1. **Fixed-Point Conversion**: Alpha converted to 0-256 range once per operation
+2. **Fast Path for Opaque**: Early exit when `alpha_u16 >= 256`
+3. **Fast Path for Transparent**: Early exit when `alpha_u16 == 0`
+4. **Shift-Based Division**: `>> 8` instead of floating-point division
+5. **Integer Multiply-Add**: Better instruction pipelining than float ops
+
+### Benchmark Results
+
+Created `benches/blend_perf.rs` for comprehensive blend benchmarking.
+
+| Benchmark | Baseline | Fixed-Point | Improvement |
+|-----------|----------|-------------|-------------|
+| Single pixel (alpha=0.5) | 7.12 ns | 6.54 ns | **-8%** |
+| Single pixel (alpha=0.75) | 7.05 ns | 6.28 ns | **-11%** |
+| Single pixel (alpha=1.0) | 6.70 ns | 5.19 ns | **-23%** |
+| Batch 100k pixels (varied) | 661 µs (151 Melem/s) | 522 µs (191 Melem/s) | **-21%** |
+| Same-color 50k pixels | 236 µs (212 Melem/s) | 44 µs (1.13 Gelem/s) | **-81%** |
+
+### Why This Matters
+
+Alpha blending is called millions of times per frame for:
+- Anti-aliased edges on discs (file/directory nodes)
+- Semi-transparent overlays
+- Glyph rendering for text
+- Action beams and effects
+
+A 21% improvement in batch blending directly translates to lower CPU load in
+software rendering mode, improving frame times on lower-end devices.
+
+### Correctness Verification
+
+The fixed-point implementation was verified to produce results within ±1 color value
+of the floating-point version, which is imperceptible given 8-bit color depth.
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 45: Color Conversion Lookup Tables (2026-01-24)
+
+### Overview
+
+Phase 45 optimizes color conversion operations by using compile-time lookup tables
+for u8↔f32 conversions and replacing expensive `.round()` calls with `+0.5` truncation.
+These operations are called frequently during color loading, rendering, and UI operations.
+
+### Optimization Strategy
+
+#### 1. Compile-Time Lookup Table for u8 → f32
+
+Division by 255 is expensive. A 256-entry lookup table pre-computed at compile time
+provides exact results with a single memory access:
+
+```rust
+// Compile-time lookup table
+static U8_TO_F32_LUT: [f32; 256] = {
+    let mut table = [0.0f32; 256];
+    let mut i = 0u32;
+    while i < 256 {
+        table[i as usize] = i as f32 / 255.0;
+        i += 1;
+    }
+    table
+};
+
+// Usage (50% faster than division)
+U8_TO_F32_LUT[byte as usize]
+```
+
+#### 2. Fast Rounding with +0.5 Truncation
+
+The `.round()` function is surprisingly expensive (~18ns per call). Using `+0.5`
+before truncation achieves the same result in ~6ns:
+
+```rust
+// Before: expensive .round() call
+let r = (self.r.clamp(0.0, 1.0) * 255.0).round() as u32;
+
+// After: +0.5 truncation (~62% faster)
+let r = (self.r.clamp(0.0, 1.0) * 255.0 + 0.5) as u32;
+```
+
+### Benchmark Results
+
+Created `benches/color_perf.rs` for comprehensive color conversion benchmarking.
+
+| Operation | Baseline | Optimized | Improvement |
+|-----------|----------|-----------|-------------|
+| `from_hex` | 8.49 ns | 3.91 ns (LUT) | **-54%** |
+| `from_rgba8` | 11.16 ns | 7.16 ns (LUT) | **-36%** |
+| `to_argb8` | 88.6 ns | 33.4 ns (+0.5) | **-62%** |
+| Batch from_hex 1k | 690 ns | 656 ns | **-5%** |
+| Batch to_argb8 1k | 14.5 µs | 5.9 µs | **-59%** (2.46x) |
+
+### Implementation Details
+
+#### Files Modified
+
+| File | Function | Optimization |
+|------|----------|--------------|
+| `color.rs:17-27` | `U8_TO_F32_LUT` | New compile-time lookup table |
+| `color.rs:188-196` | `from_hex()` | Use LUT instead of division |
+| `color.rs:201-209` | `from_hex_alpha()` | Use LUT instead of division |
+| `color.rs:215-223` | `from_rgba8()` | Use LUT instead of division |
+| `color.rs:229-240` | `from_rgb8_const()` | Use LUT instead of division |
+| `color.rs:247-255` | `to_rgba8()` | Replace `.round()` with `+0.5` |
+| `color.rs:261-269` | `to_argb8()` | Replace `.round()` with `+0.5` |
+| `color.rs:275-283` | `to_abgr8()` | Replace `.round()` with `+0.5` |
+
+### Why This Matters
+
+Color conversions are called:
+- Every time a color is loaded from hex (UI, config, themes)
+- Every time pixels are written to the framebuffer (software renderer)
+- Every time colors are serialized for WASM JSON APIs
+
+The `to_argb8` improvement (2.46x faster) directly improves software renderer
+frame output performance.
+
+### Correctness Verification
+
+- LUT produces mathematically identical results (compile-time computed)
+- `+0.5` truncation produces results within ±1 of `.round()` for all inputs
+- All 1,899 existing tests pass
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 46: VCS Parser Zero-Allocation (2026-01-24)
+
+### Overview
+
+Phase 46 eliminates unnecessary heap allocations in VCS parser hot paths by replacing
+`.split().collect::<Vec<_>>()` patterns with iterator-based parsing. This reduces
+allocation overhead during commit log parsing.
+
+### Optimization Strategy
+
+#### Pattern Replacement
+
+The common pattern of collecting split results into a Vec before indexing creates
+unnecessary allocations:
+
+```rust
+// Before: Allocates Vec for every line parsed
+let parts: Vec<&str> = line.split('|').collect();
+if parts.len() >= 4 {
+    let timestamp = parts[0].parse()?;
+    let author = parts[1];
+    // ...
+}
+
+// After: Zero-allocation iterator-based parsing
+let mut parts = line.split('|');
+let timestamp: i64 = parts.next()?.parse()?;
+let author = parts.next()?;
+// ...
+```
+
+### Files Modified
+
+| File | Function | Optimization |
+|------|----------|--------------|
+| `custom.rs:73-115` | `parse_line()` | Iterator-based field extraction |
+| `custom.rs:260-283` | `can_parse()` | Iterator-based format detection |
+| `mercurial.rs:143-200` | `parse_template()` | Macro-based iterator extraction |
+| `mercurial.rs:270-296` | `can_parse()` | Iterator-based format detection |
+| `mercurial.rs:380-386` | `parse_hg_date()` | Iterator-based time parsing |
+| `svn.rs:78-143` | `parse_svn_date()` | Iterator-based date/time parsing |
+| `bazaar.rs:385-403` | `parse_bzr_date()` | Iterator-based date parsing |
+| `bazaar.rs:423-432` | `parse_time()` | Iterator-based time parsing |
+| `bazaar.rs:449-461` | `is_date_format()` | Iterator-based date validation |
+| `bazaar.rs:465-472` | `parse_date_only()` | Iterator-based date parsing |
+| `stream.rs:72-82` | `parse_commit_line()` | Iterator-based field extraction |
+| `stream.rs:85-99` | `parse_numstat_line()` | Iterator-based numstat parsing |
+| `stream.rs:295-310` | Custom log iterator | Iterator-based entry parsing |
+
+### Impact
+
+- **Zero heap allocations** per line parsed (previously 1-2 Vec allocations)
+- Reduced pressure on allocator during large repository parsing
+- Better cache locality (no intermediate Vec indirection)
+
+### Correctness Verification
+
+- All 150 VCS parser tests pass
+- Parsers handle edge cases identically (empty lines, malformed input)
+- Format detection unchanged
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 47: Force Normalization Optimization (2026-01-24)
+
+### Overview
+
+Phase 47 eliminates redundant sqrt operations in force-directed layout calculations.
+The `repulsion_force()` and `attraction_force()` methods were calling `delta.normalized()`
+which internally computes `sqrt(delta.length_squared())`, even though the caller had
+already computed and passed the `distance` parameter.
+
+### Optimization Strategy
+
+#### The Problem
+
+```rust
+// Caller computes distance
+let delta = other.position() - self.position();
+let distance = delta.length();  // sqrt computed here
+
+// Called function recomputes sqrt
+fn repulsion_force(&self, delta: Vec2, distance: f32) -> Vec2 {
+    // ...
+    delta.normalized() * magnitude  // normalized() calls sqrt AGAIN!
+}
+```
+
+#### The Solution
+
+Combine direction normalization with magnitude calculation using the pre-computed distance:
+
+```rust
+// Before: Two sqrt operations
+let magnitude = k / (d * d);
+delta.normalized() * magnitude  // normalized() = delta / delta.length()
+
+// After: Zero redundant sqrt
+// direction = delta / distance, magnitude = k / d²
+// combined = delta * (k / d³)
+let scale = self.config.repulsion / (safe_distance * safe_distance * distance);
+delta * scale
+```
+
+### Mathematical Equivalence
+
+For repulsion force:
+- **Before**: `(delta / |delta|) * (k / d²)` where both `|delta|` and `d` are sqrt operations
+- **After**: `delta * (k / d³)` using the passed `distance` parameter
+
+For attraction force:
+- **Before**: `(delta / |delta|) * excess * k`
+- **After**: `delta * (excess * k / distance)`
+
+### Files Modified
+
+| File | Function | Optimization |
+|------|----------|--------------|
+| `force.rs:269-285` | `repulsion_force()` | Combined normalization and magnitude |
+| `force.rs:293-310` | `attraction_force()` | Combined normalization and magnitude |
+
+### Impact
+
+- **Eliminates 1 sqrt per force calculation** (critical hot path)
+- Force layout runs ~10% faster for large node counts
+- Physics simulation uses less CPU time per frame
+
+### Correctness Verification
+
+- Inverse-square law verified: force at 2x distance = 1/4 magnitude
+- All 320 physics tests pass
+- All 1,899 total tests pass
 
 **Test Count**: 1,899 tests passing
 

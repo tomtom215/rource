@@ -74,3 +74,7 @@ criterion = { workspace = true }
 [[bench]]
 name = "bloom_perf"
 harness = false
+
+[[bench]]
+name = "blend_perf"
+harness = false

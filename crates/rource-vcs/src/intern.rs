@@ -47,6 +47,7 @@ impl InternedString {
     /// for the interner it will be used with. Using an invalid index
     /// will cause `resolve()` to return `None`.
     #[must_use]
+    #[allow(dead_code)] // Reserved for deserialization/reconstruction
     pub(crate) const fn from_index(index: u32) -> Self {
         Self(index)
     }
@@ -219,6 +220,7 @@ impl InternedPath {
     /// for the interner it will be used with. Using an invalid index
     /// will cause `resolve()` to return `None`.
     #[must_use]
+    #[allow(dead_code)] // Reserved for deserialization/reconstruction
     pub(crate) const fn from_index(index: u32) -> Self {
         Self(index)
     }

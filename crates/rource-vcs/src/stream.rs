@@ -71,32 +71,26 @@ impl<R: Read> GitLogStream<R> {
 
     fn parse_commit_line(line: &str) -> Option<(String, i64, String)> {
         // Expected format: "timestamp|author|hash"
-        let parts: Vec<&str> = line.split('|').collect();
-        if parts.len() >= 3 {
-            let timestamp = parts[0].parse().ok()?;
-            let author = parts[1].to_string();
-            let hash = parts[2].to_string();
-            Some((hash, timestamp, author))
-        } else {
-            None
-        }
+        let mut parts = line.split('|');
+        let timestamp: i64 = parts.next()?.parse().ok()?;
+        let author = parts.next()?.to_string();
+        let hash = parts.next()?.to_string();
+        Some((hash, timestamp, author))
     }
 
     fn parse_numstat_line(line: &str) -> Option<FileChange> {
         // Format: "added\tremoved\tpath" or "-\t-\tpath" for binary
-        let parts: Vec<&str> = line.split('\t').collect();
-        if parts.len() >= 3 {
-            let path = parts[2];
-            // Determine action based on added/removed counts
-            let action = match (parts[0], parts[1]) {
-                ("0", _) if parts[1] != "0" => FileAction::Delete,
-                (_, "0") if parts[0] != "0" => FileAction::Create,
-                _ => FileAction::Modify, // Binary files ("-", "-") and others
-            };
-            Some(FileChange::new(path, action))
-        } else {
-            None
-        }
+        let mut parts = line.split('\t');
+        let added = parts.next()?;
+        let removed = parts.next()?;
+        let path = parts.next()?;
+        // Determine action based on added/removed counts
+        let action = match (added, removed) {
+            ("0", r) if r != "0" => FileAction::Delete,
+            (a, "0") if a != "0" => FileAction::Create,
+            _ => FileAction::Modify, // Binary files ("-", "-") and others
+        };
+        Some(FileChange::new(path, action))
     }
 
     fn finalize_current(&mut self) -> Option<Commit> {
@@ -293,20 +287,32 @@ impl<R: Read> Iterator for CustomLogStream<R> {
             }
 
             // Parse: timestamp|author|action|path
-            let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() >= 4 {
-                let timestamp = parts[0].parse().ok()?;
-                let author = parts[1].to_string();
-                let action = FileAction::from_char(parts[2].chars().next()?)?;
-                let path = parts[3].to_string();
+            let mut parts = line.split('|');
+            let Some(ts_str) = parts.next() else {
+                continue;
+            };
+            let Some(author_str) = parts.next() else {
+                continue;
+            };
+            let Some(action_str) = parts.next() else {
+                continue;
+            };
+            let Some(path_str) = parts.next() else {
+                continue;
+            };
+            let Ok(timestamp) = ts_str.parse() else {
+                continue;
+            };
+            let Some(action) = FileAction::from_char(action_str.chars().next()?) else {
+                continue;
+            };
 
-                return Some(CustomLogEntry {
-                    timestamp,
-                    author,
-                    path,
-                    action,
-                });
-            }
+            return Some(CustomLogEntry {
+                timestamp,
+                author: author_str.to_string(),
+                path: path_str.to_string(),
+                action,
+            });
         }
     }
 }
