@@ -5935,3 +5935,453 @@ h2.h3-style {
         font-size: 0.8125rem;
     }
 }
+
+/* ============================================================================
+   MOBILE UI REDESIGN - iOS/Material Design Inspired
+   Comprehensive mobile-first layout for portfolio quality
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    /* ----------------------------------------
+       HEADER - Minimal on Mobile
+       Only show logo and essential controls
+       ---------------------------------------- */
+    header {
+        padding: 10px 12px;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .header-brand {
+        flex-shrink: 0;
+    }
+
+    .header-brand h1 {
+        font-size: 1.125rem;
+    }
+
+    .logo-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Hide all control groups in header on mobile */
+    .has-bottom-sheet header .controls {
+        display: none !important;
+    }
+
+    /* Show only theme toggle in header via mobile toolbar */
+    .has-bottom-sheet .header-links {
+        display: none !important;
+    }
+
+    /* ----------------------------------------
+       MOBILE TOOLBAR - Quick Actions
+       Floating toolbar above the canvas
+       ---------------------------------------- */
+    .mobile-toolbar {
+        display: none; /* Hidden on desktop */
+    }
+
+    .has-bottom-sheet .mobile-toolbar {
+        display: flex;
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 50;
+        background: rgba(22, 27, 34, 0.9);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 20px;
+        padding: 6px 8px;
+        gap: 4px;
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .mobile-toolbar-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: transparent;
+        border: none;
+        border-radius: 12px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-toolbar-btn:active {
+        background: var(--bg-tertiary);
+        transform: scale(0.95);
+    }
+
+    .mobile-toolbar-btn.active {
+        color: var(--accent);
+        background: rgba(233, 69, 96, 0.15);
+    }
+
+    .mobile-toolbar-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .mobile-toolbar-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Theme button icon visibility - dark mode default */
+    .mobile-toolbar-btn .sun-icon {
+        display: none;
+    }
+
+    .mobile-toolbar-btn .moon-icon {
+        display: block;
+    }
+
+    .light-theme .mobile-toolbar-btn .sun-icon {
+        display: block;
+    }
+
+    .light-theme .mobile-toolbar-btn .moon-icon {
+        display: none;
+    }
+
+    .mobile-toolbar-divider {
+        width: 1px;
+        height: 24px;
+        background: var(--border);
+        margin: 0 2px;
+        align-self: center;
+    }
+
+    /* ----------------------------------------
+       FAB - Repositioned for Mobile
+       Above timeline, not overlapping content
+       ---------------------------------------- */
+    .has-bottom-sheet .bottom-sheet-fab {
+        /* Position in bottom-right corner, above timeline but with clearance */
+        bottom: max(170px, calc(170px + env(safe-area-inset-bottom)));
+        right: 12px;
+        width: 48px;
+        height: 48px;
+        z-index: 200;
+    }
+
+    /* ----------------------------------------
+       TIMELINE - Compact Mobile Design
+       Clean, touch-friendly playback area
+       ---------------------------------------- */
+    .has-bottom-sheet .timeline-container {
+        background: var(--bg-secondary);
+        border: none;
+        border-radius: 0;
+        padding: 10px 16px;
+        padding-bottom: max(10px, calc(env(safe-area-inset-bottom) + 6px));
+        min-height: auto;
+        gap: 8px;
+    }
+
+    /* Date row - single line, compact */
+    .has-bottom-sheet .timeline-date-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .has-bottom-sheet .timeline-date {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .has-bottom-sheet .timeline-commit-info {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-align: right;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 60%;
+    }
+
+    /* Controls row - centered, clean */
+    .has-bottom-sheet .timeline-controls-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: nowrap;
+    }
+
+    .has-bottom-sheet .playback-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        order: 0;
+        width: auto;
+    }
+
+    /* Play button - prominent */
+    .has-bottom-sheet .play-btn-main {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 2px 8px rgba(233, 69, 96, 0.4);
+    }
+
+    .has-bottom-sheet .play-btn-main svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Step buttons - minimal */
+    .has-bottom-sheet .timeline-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+    }
+
+    .has-bottom-sheet .reset-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+    }
+
+    /* Timeline info - compact, beside controls */
+    .has-bottom-sheet .timeline-info {
+        order: 1;
+        width: auto;
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin: 0;
+        min-width: 70px;
+    }
+
+    .has-bottom-sheet .timeline-info-label {
+        display: none; /* Hide "Commit" label on mobile */
+    }
+
+    /* Hide speed controls and right controls on mobile */
+    .has-bottom-sheet .timeline-right-controls,
+    .has-bottom-sheet .speed-control {
+        display: none !important;
+    }
+
+    /* Hide slider row on mobile - commit info is enough */
+    .has-bottom-sheet .timeline-slider-row {
+        display: none;
+    }
+
+    /* ----------------------------------------
+       STATS OVERLAY - Bottom of canvas
+       Non-obstructive, minimal
+       ---------------------------------------- */
+    .has-bottom-sheet .stats-overlay {
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        top: auto;
+        right: auto;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: none;
+        border-radius: 16px;
+        padding: 6px 14px;
+        gap: 10px;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-item {
+        flex-direction: row;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-value {
+        font-size: 0.8125rem;
+        font-weight: 600;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-label {
+        font-size: 0.625rem;
+        text-transform: none;
+    }
+
+    /* ----------------------------------------
+       FPS OVERLAY - Minimal top-left
+       ---------------------------------------- */
+    .has-bottom-sheet .perf-overlay {
+        top: 8px;
+        left: 8px;
+        padding: 4px 8px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: none;
+        min-width: auto;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-details {
+        display: none;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-toggle {
+        display: none;
+    }
+
+    /* ----------------------------------------
+       BOTTOM SHEET - Refined
+       ---------------------------------------- */
+    .has-bottom-sheet .bottom-sheet {
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+        background: var(--bg-primary);
+    }
+
+    .has-bottom-sheet .bottom-sheet-handle {
+        width: 36px;
+        height: 4px;
+        background: var(--border-light);
+        margin-bottom: 10px;
+    }
+
+    .has-bottom-sheet .bottom-sheet-title {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    /* ----------------------------------------
+       CANVAS CONTAINER - Maximize space
+       ---------------------------------------- */
+    .has-bottom-sheet #canvas-container {
+        border-radius: 0;
+        border: none;
+        min-height: 180px;
+    }
+
+    .has-bottom-sheet .viz-panel {
+        gap: 0;
+    }
+
+    .has-bottom-sheet .app-container {
+        padding: 0;
+        gap: 0;
+    }
+}
+
+/* ============================================================================
+   Landscape Mode - Mobile
+   ============================================================================ */
+@media (max-width: 768px) and (orientation: landscape) {
+    .has-bottom-sheet .mobile-toolbar {
+        top: 4px;
+        padding: 4px 6px;
+    }
+
+    .has-bottom-sheet .mobile-toolbar-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .has-bottom-sheet .mobile-toolbar-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .has-bottom-sheet .bottom-sheet-fab {
+        bottom: max(100px, calc(100px + env(safe-area-inset-bottom)));
+        width: 44px;
+        height: 44px;
+    }
+
+    .has-bottom-sheet .timeline-container {
+        padding: 6px 16px;
+    }
+
+    .has-bottom-sheet .play-btn-main {
+        width: 40px;
+        height: 40px;
+    }
+
+    .has-bottom-sheet .timeline-btn,
+    .has-bottom-sheet .reset-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .has-bottom-sheet .stats-overlay {
+        bottom: 4px;
+        padding: 4px 10px;
+    }
+}
+
+/* ============================================================================
+   Small Screens (iPhone SE, etc.)
+   ============================================================================ */
+@media (max-width: 375px) {
+    .has-bottom-sheet .mobile-toolbar {
+        padding: 4px 6px;
+        gap: 2px;
+    }
+
+    .has-bottom-sheet .mobile-toolbar-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .has-bottom-sheet .timeline-date {
+        font-size: 0.8125rem;
+    }
+
+    .has-bottom-sheet .timeline-commit-info {
+        font-size: 0.6875rem;
+        max-width: 50%;
+    }
+
+    .has-bottom-sheet .play-btn-main {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+/* ============================================================================
+   Light Theme Mobile Adjustments
+   ============================================================================ */
+.light-theme.has-bottom-sheet .mobile-toolbar {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--border);
+}
+
+.light-theme.has-bottom-sheet .stats-overlay {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.light-theme.has-bottom-sheet .perf-overlay {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.light-theme.has-bottom-sheet .timeline-container {
+    background: var(--bg-secondary);
+}
