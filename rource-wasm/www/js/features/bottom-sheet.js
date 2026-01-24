@@ -23,29 +23,29 @@ import { addManagedEventListener } from '../state.js';
 /** Snap point positions as viewport height percentages (from bottom) */
 const SNAP_POINTS = {
     HIDDEN: 0,      // Fully hidden
-    PEEK: 15,       // Just the header visible (~15vh)
-    HALF: 50,       // Half screen
-    FULL: 92,       // Nearly full screen (leave room for status bar)
+    PEEK: 20,       // Just quick actions visible (~20vh) - more useful peek
+    HALF: 55,       // Slightly more than half - shows most content
+    FULL: 90,       // Nearly full screen (leave room for status bar)
 };
 
-/** Minimum velocity (px/ms) to trigger momentum-based snap */
-const VELOCITY_THRESHOLD = 0.5;
+/** Minimum velocity (px/ms) to trigger momentum-based snap - lower = more sensitive */
+const VELOCITY_THRESHOLD = 0.3;
 
 /** Friction for momentum calculation */
 const MOMENTUM_FRICTION = 0.92;
 
 /** Spring animation parameters (iOS-like) */
 const SPRING = {
-    tension: 300,
-    friction: 30,
+    tension: 280,   // Slightly softer for more natural feel
+    friction: 26,
     mass: 1,
 };
 
 /** Touch detection thresholds */
 const TOUCH = {
-    minSwipeDistance: 10,    // Minimum distance to consider a swipe
-    maxTapDuration: 200,     // Max duration for a tap (ms)
-    dragThreshold: 5,        // Pixels before drag starts
+    minSwipeDistance: 8,     // Lower threshold for more responsive swipes
+    maxTapDuration: 250,     // Slightly longer tap window
+    dragThreshold: 3,        // Start drag earlier for responsiveness
 };
 
 // ============================================================================
@@ -95,6 +95,7 @@ function getCurrentTranslate() {
 
 /**
  * Calculates the nearest snap point based on position and velocity.
+ * Uses iOS-style behavior: fast swipes go to extremes, slow drags snap to nearest.
  * @param {number} position - Current position (vh from bottom)
  * @param {number} velocity - Current velocity (positive = dragging down)
  * @returns {string} Snap point name
@@ -103,21 +104,34 @@ function calculateSnapPoint(position, velocity) {
     const vh = window.innerHeight;
     const positionVh = (position / vh) * 100;
 
-    // If velocity is significant, use momentum-based decision
-    if (Math.abs(velocity) > VELOCITY_THRESHOLD) {
+    // Fast swipe detection - go to extremes
+    const fastSwipeThreshold = 0.6;
+    if (Math.abs(velocity) > fastSwipeThreshold) {
         if (velocity > 0) {
-            // Dragging down (dismissing)
-            if (positionVh > SNAP_POINTS.HALF) return 'HALF';
-            if (positionVh > SNAP_POINTS.PEEK) return 'PEEK';
+            // Fast swipe down - dismiss completely
             return 'HIDDEN';
         } else {
-            // Dragging up (expanding)
-            if (positionVh < SNAP_POINTS.HALF) return 'HALF';
+            // Fast swipe up - expand fully
             return 'FULL';
         }
     }
 
-    // Position-based decision (find nearest)
+    // Medium velocity - step to next snap point in direction of swipe
+    if (Math.abs(velocity) > VELOCITY_THRESHOLD) {
+        if (velocity > 0) {
+            // Dragging down (dismissing) - step down one level
+            if (positionVh > SNAP_POINTS.HALF + 10) return 'HALF';
+            if (positionVh > SNAP_POINTS.PEEK + 5) return 'PEEK';
+            return 'HIDDEN';
+        } else {
+            // Dragging up (expanding) - step up one level
+            if (positionVh < SNAP_POINTS.PEEK + 10) return 'PEEK';
+            if (positionVh < SNAP_POINTS.HALF + 15) return 'HALF';
+            return 'FULL';
+        }
+    }
+
+    // Slow drag or release - find nearest snap point
     const snapValues = Object.entries(SNAP_POINTS);
     let nearest = 'HIDDEN';
     let minDistance = Infinity;
@@ -396,6 +410,12 @@ export function initBottomSheet() {
         addManagedEventListener(backdrop, 'click', handleBackdropTap);
     }
 
+    // Close button
+    const closeBtn = document.getElementById('bottom-sheet-close');
+    if (closeBtn) {
+        addManagedEventListener(closeBtn, 'click', () => snapTo('HIDDEN'));
+    }
+
     // Handle resize
     addManagedEventListener(window, 'resize', () => {
         // Re-snap to current position on resize
@@ -448,4 +468,126 @@ export function getCurrentSnap() {
  */
 export function isBottomSheetOpen() {
     return currentSnap !== 'HIDDEN';
+}
+
+// ============================================================================
+// Bottom Sheet Legends Population
+// ============================================================================
+
+/**
+ * Updates the file types legend in the bottom sheet.
+ * Called when legend data changes.
+ * @param {Array<{extension: string, color: string, count: number}>} fileTypes
+ */
+export function updateBottomSheetFileTypes(fileTypes) {
+    const container = document.getElementById('bs-file-types-items');
+    const section = document.getElementById('bs-legends-section');
+
+    if (!container) return;
+
+    // Show the legends section if we have data
+    if (fileTypes && fileTypes.length > 0 && section) {
+        section.classList.remove('hidden');
+    }
+
+    // Clear existing items
+    container.innerHTML = '';
+
+    if (!fileTypes || fileTypes.length === 0) {
+        container.innerHTML = '<span class="bottom-sheet-legend-empty">No files yet</span>';
+        return;
+    }
+
+    // Add legend items (limit to top 10 for mobile)
+    const topTypes = fileTypes.slice(0, 10);
+    for (const item of topTypes) {
+        const el = document.createElement('div');
+        el.className = 'bottom-sheet-legend-item';
+        el.innerHTML = `
+            <span class="bottom-sheet-legend-color" style="background: ${item.color}"></span>
+            <span class="bottom-sheet-legend-ext">.${item.extension}</span>
+            <span class="bottom-sheet-legend-count">${item.count}</span>
+        `;
+        container.appendChild(el);
+    }
+
+    // Show "and X more" if truncated
+    if (fileTypes.length > 10) {
+        const more = document.createElement('span');
+        more.className = 'bottom-sheet-legend-more';
+        more.textContent = `+${fileTypes.length - 10} more`;
+        more.style.cssText = 'font-size: 0.6875rem; color: var(--text-muted); padding: 4px 8px;';
+        container.appendChild(more);
+    }
+}
+
+/**
+ * Updates the authors legend in the bottom sheet.
+ * Called when authors data changes.
+ * @param {Array<{name: string, color: string, commits: number}>} authors
+ */
+export function updateBottomSheetAuthors(authors) {
+    const container = document.getElementById('bs-authors-items');
+    const section = document.getElementById('bs-legends-section');
+
+    if (!container) return;
+
+    // Show the legends section if we have data
+    if (authors && authors.length > 0 && section) {
+        section.classList.remove('hidden');
+    }
+
+    // Clear existing items
+    container.innerHTML = '';
+
+    if (!authors || authors.length === 0) {
+        container.innerHTML = '<span class="bottom-sheet-legend-empty">No authors yet</span>';
+        return;
+    }
+
+    // Add author items (limit to top 8 for mobile)
+    const topAuthors = authors.slice(0, 8);
+    for (const author of topAuthors) {
+        const el = document.createElement('div');
+        el.className = 'bottom-sheet-author-item';
+        el.innerHTML = `
+            <span class="bottom-sheet-author-color" style="background: ${author.color}"></span>
+            <span class="bottom-sheet-author-name">${escapeHtml(author.name)}</span>
+            <span class="bottom-sheet-author-commits">${author.commits}</span>
+        `;
+        container.appendChild(el);
+    }
+
+    // Show "and X more" if truncated
+    if (authors.length > 8) {
+        const more = document.createElement('span');
+        more.className = 'bottom-sheet-legend-more';
+        more.textContent = `+${authors.length - 8} more`;
+        more.style.cssText = 'font-size: 0.6875rem; color: var(--text-muted); padding: 6px 10px;';
+        container.appendChild(more);
+    }
+}
+
+/**
+ * Clears the bottom sheet legends (when resetting).
+ */
+export function clearBottomSheetLegends() {
+    const fileTypesContainer = document.getElementById('bs-file-types-items');
+    const authorsContainer = document.getElementById('bs-authors-items');
+    const section = document.getElementById('bs-legends-section');
+
+    if (fileTypesContainer) fileTypesContainer.innerHTML = '';
+    if (authorsContainer) authorsContainer.innerHTML = '';
+    if (section) section.classList.add('hidden');
+}
+
+/**
+ * Simple HTML escape for user content.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 }
