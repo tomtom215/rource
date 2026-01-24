@@ -174,7 +174,7 @@ fn benchmark_easing_batch(c: &mut Criterion) {
                     sum += ease(black_box(t), easing);
                 }
                 sum
-            })
+            });
         });
     }
 
@@ -203,7 +203,7 @@ fn benchmark_production_animation(c: &mut Criterion) {
                 sum += ease(black_box(t), Easing::QuadOut);
             }
             sum
-        })
+        });
     });
 
     group.bench_function("CubicInOut_production", |b| {
@@ -213,7 +213,7 @@ fn benchmark_production_animation(c: &mut Criterion) {
                 sum += ease(black_box(t), Easing::CubicInOut);
             }
             sum
-        })
+        });
     });
 
     group.finish();

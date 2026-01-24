@@ -113,7 +113,7 @@ fn benchmark_perpendicular(c: &mut Criterion) {
             |b, &(dir, length, tension)| {
                 b.iter(|| {
                     perpendicular_normalized(black_box(dir), black_box(length), black_box(tension))
-                })
+                });
             },
         );
 
@@ -123,7 +123,7 @@ fn benchmark_perpendicular(c: &mut Criterion) {
             |b, &(dir, length, tension)| {
                 b.iter(|| {
                     perpendicular_optimized(black_box(dir), black_box(length), black_box(tension))
-                })
+                });
             },
         );
     }
@@ -158,7 +158,7 @@ fn benchmark_branch_curve(c: &mut Criterion) {
                         black_box(end),
                         black_box(tension),
                     )
-                })
+                });
             },
         );
 
@@ -172,7 +172,7 @@ fn benchmark_branch_curve(c: &mut Criterion) {
                         black_box(end),
                         black_box(tension),
                     )
-                })
+                });
             },
         );
     }
@@ -202,7 +202,7 @@ fn benchmark_batch_curves(c: &mut Criterion) {
             for (start, end) in &branches {
                 black_box(create_branch_curve_baseline(*start, *end, tension));
             }
-        })
+        });
     });
 
     group.bench_function("optimized_1000", |b| {
@@ -210,7 +210,7 @@ fn benchmark_batch_curves(c: &mut Criterion) {
             for (start, end) in &branches {
                 black_box(create_branch_curve_optimized(*start, *end, tension));
             }
-        })
+        });
     });
 
     group.finish();
