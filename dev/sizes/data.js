@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769273741645,
+  "lastUpdate": 1769276370990,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1715,6 +1715,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1066668,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a695286cf7f88f5f254cf6ea381098ce10f4cac",
+          "message": "Merge pull request #154 from tomtom215/claude/rource-performance-optimization-kmZkx\n\nFix O(f·c) algorithmic complexity in cache serialization",
+          "timestamp": "2026-01-24T18:37:41+01:00",
+          "tree_id": "53ccc59029d849eb27e0f163e391aa7a5de956c3",
+          "url": "https://github.com/tomtom215/rource/commit/3a695286cf7f88f5f254cf6ea381098ce10f4cac"
+        },
+        "date": 1769276370569,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3910800,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2768309,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1068318,
             "unit": "bytes"
           }
         ]
