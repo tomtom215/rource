@@ -43,6 +43,9 @@ use crate::rendering::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
 mod helpers {
     use super::*;
 
+    /// Precomputed reciprocal for depth factor calculation (1.0 / 6.0).
+    const INV_DEPTH_MAX: f32 = 1.0 / 6.0;
+
     /// Computes the depth factor used for depth-based styling.
     ///
     /// The depth factor is normalized to [0.0, 1.0] where 0 is root and 1.0 is
@@ -56,7 +59,7 @@ mod helpers {
     #[inline]
     #[must_use]
     pub fn compute_depth_factor(depth: u32) -> f32 {
-        (depth as f32 / 6.0).min(1.0)
+        (depth as f32 * INV_DEPTH_MAX).min(1.0)
     }
 
     /// Computes directory color based on depth.
