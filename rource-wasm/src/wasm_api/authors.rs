@@ -28,6 +28,7 @@ mod helpers {
     /// Escapes a string for use in JSON.
     ///
     /// Escapes backslashes and double quotes.
+    /// Uses single-pass algorithm to avoid multiple intermediate String allocations.
     ///
     /// # Arguments
     /// * `s` - The string to escape
@@ -37,7 +38,20 @@ mod helpers {
     #[inline]
     #[must_use]
     pub fn escape_json_string(s: &str) -> String {
-        s.replace('\\', "\\\\").replace('"', "\\\"")
+        // Fast path: if no escaping needed, return as-is
+        if !s.bytes().any(|b| b == b'\\' || b == b'"') {
+            return s.to_string();
+        }
+        // Single-pass escape
+        let mut result = String::with_capacity(s.len() + 4);
+        for c in s.chars() {
+            match c {
+                '\\' => result.push_str("\\\\"),
+                '"' => result.push_str("\\\""),
+                _ => result.push(c),
+            }
+        }
+        result
     }
 
     /// Formats a Color as a hex string.
@@ -102,7 +116,8 @@ impl Rource {
         use std::collections::HashMap;
 
         // Count commits per author from ALL commits
-        let mut author_counts: HashMap<&str, usize> = HashMap::new();
+        // Pre-allocate with estimated capacity (typical repos have 5-50 unique authors)
+        let mut author_counts: HashMap<&str, usize> = HashMap::with_capacity(32);
         for commit in &self.commits {
             *author_counts.entry(commit.author.as_str()).or_insert(0) += 1;
         }
@@ -119,19 +134,27 @@ impl Rource {
         // Sort by commit count descending - use unstable sort for performance
         authors.sort_unstable_by(|a, b| b.2.cmp(&a.2));
 
-        // Build JSON array
-        let mut json = String::from("[");
+        // Build JSON array with pre-estimated capacity
+        // Estimate: ~60 bytes per author (name + color + JSON overhead)
+        let mut json = String::with_capacity(2 + authors.len() * 60);
+        json.push('[');
         for (i, (name, color, commits)) in authors.iter().enumerate() {
             if i > 0 {
                 json.push(',');
             }
-            let r = (color.r * 255.0) as u8;
-            let g = (color.g * 255.0) as u8;
-            let b = (color.b * 255.0) as u8;
-            // Escape special characters in names for valid JSON
-            let escaped_name = name.replace('\\', "\\\\").replace('"', "\\\"");
-            // Note: We build the hex color separately to avoid format_args escaping issues
-            let hex_color = format!("#{r:02x}{g:02x}{b:02x}");
+            // Use single-pass escaping instead of double .replace()
+            let escaped_name = escape_json_string(name);
+            // Build hex color with pre-sized buffer
+            let mut hex_color = String::with_capacity(7);
+            let _ = FmtWrite::write_fmt(
+                &mut hex_color,
+                format_args!(
+                    "#{:02x}{:02x}{:02x}",
+                    (color.r * 255.0) as u8,
+                    (color.g * 255.0) as u8,
+                    (color.b * 255.0) as u8
+                ),
+            );
             let _ = FmtWrite::write_fmt(
                 &mut json,
                 format_args!(

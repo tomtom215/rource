@@ -25,6 +25,10 @@ pub const MIN_SIGNIFICANT_DELTA: f32 = 0.1;
 /// Minimum coupling value to apply movement (below this, skip the update).
 pub const MIN_COUPLING_THRESHOLD: f32 = 0.01;
 
+/// Precomputed reciprocal of distance threshold for faster coupling calculation.
+/// Using multiplication instead of division: `distance * INV_DISTANCE_THRESHOLD`
+const INV_DRAG_COUPLING_DISTANCE_THRESHOLD: f32 = 1.0 / DRAG_COUPLING_DISTANCE_THRESHOLD;
+
 // =============================================================================
 // Pure Helper Functions (testable without Scene)
 // =============================================================================
@@ -39,6 +43,8 @@ mod helpers {
     /// Computes the distance-based coupling factor (0.0 to 1.0).
     ///
     /// Returns 1.0 when distance is 0, decreasing linearly to 0.0 at the threshold.
+    /// NOTE: The main code uses a precomputed reciprocal for performance.
+    /// This helper uses division for flexibility with arbitrary thresholds.
     #[inline]
     #[must_use]
     pub fn compute_distance_factor(distance: f32, threshold: f32) -> f32 {
@@ -291,9 +297,10 @@ pub fn move_connected_entities_for_file(
 
         if let Some(sibling) = scene.get_file_mut(sibling_id) {
             // Calculate distance-based coupling (closer = stronger)
+            // Uses precomputed reciprocal to avoid division
             let distance = (sibling.position() - dragged_pos).length();
             let distance_factor =
-                (1.0 - distance / DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+                (1.0 - distance * INV_DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
             let coupling = DRAG_COUPLING_STRENGTH * distance_factor;
 
             if coupling > 0.01 {
@@ -308,7 +315,8 @@ pub fn move_connected_entities_for_file(
     // Also zero velocity so physics doesn't fight the drag
     if let Some(dir) = scene.directories_mut().get_mut(dir_id) {
         let distance = (dir.position() - dragged_pos).length();
-        let distance_factor = (1.0 - distance / DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+        let distance_factor =
+            (1.0 - distance * INV_DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
         let coupling = DRAG_COUPLING_STRENGTH * 0.5 * distance_factor;
 
         if coupling > 0.01 {
@@ -344,10 +352,10 @@ pub fn move_connected_entities_for_user(scene: &mut Scene, user_id: UserId, delt
     // Move connected files and update their targets so they don't snap back
     for file_id in connected_file_ids {
         if let Some(file) = scene.get_file_mut(file_id) {
-            // Calculate distance-based coupling
+            // Calculate distance-based coupling (uses precomputed reciprocal)
             let distance = (file.position() - dragged_pos).length();
             let distance_factor =
-                (1.0 - distance / DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+                (1.0 - distance * INV_DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
             let coupling = DRAG_COUPLING_STRENGTH * distance_factor;
 
             if coupling > 0.01 {
@@ -429,7 +437,7 @@ pub fn move_connected_entities_for_directory(scene: &mut Scene, dir_id: DirId, d
             if let Some(sibling) = scene.directories_mut().get_mut(sibling_id) {
                 let distance = (sibling.position() - dragged_pos).length();
                 let distance_factor =
-                    (1.0 - distance / DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+                    (1.0 - distance * INV_DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
                 let coupling = DRAG_COUPLING_STRENGTH * 0.3 * distance_factor;
 
                 if coupling > 0.01 {

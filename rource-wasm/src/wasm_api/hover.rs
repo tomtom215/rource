@@ -36,8 +36,20 @@ pub struct HoverInfo {
 
 impl HoverInfo {
     /// Converts to JSON string for JavaScript consumption.
+    /// Uses pre-sized buffer to minimize allocation overhead.
     pub fn to_json(&self) -> String {
-        format!(
+        use std::fmt::Write;
+        // Estimate capacity: fixed JSON overhead (~70 bytes) + field lengths
+        let capacity = 70
+            + self.entity_type.len()
+            + self.name.len()
+            + self.path.len()
+            + self.extension.len()
+            + self.color.len()
+            + 10;
+        let mut json = String::with_capacity(capacity);
+        let _ = write!(
+            json,
             r#"{{"entityType":"{}","name":"{}","path":"{}","extension":"{}","color":"{}","radius":{}}}"#,
             escape_json(&self.entity_type),
             escape_json(&self.name),
@@ -45,27 +57,51 @@ impl HoverInfo {
             escape_json(&self.extension),
             escape_json(&self.color),
             self.radius
-        )
+        );
+        json
     }
 }
 
 /// Escapes a string for safe JSON inclusion.
+/// Single-pass implementation to avoid multiple intermediate String allocations.
 fn escape_json(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t")
+    // Fast path: if no escaping needed, return as-is (no allocation beyond to_string)
+    if !s
+        .bytes()
+        .any(|b| b == b'\\' || b == b'"' || b == b'\n' || b == b'\r' || b == b'\t')
+    {
+        return s.to_string();
+    }
+
+    // Slow path: build escaped string in single pass
+    let mut result = String::with_capacity(s.len() + 8);
+    for c in s.chars() {
+        match c {
+            '\\' => result.push_str("\\\\"),
+            '"' => result.push_str("\\\""),
+            '\n' => result.push_str("\\n"),
+            '\r' => result.push_str("\\r"),
+            '\t' => result.push_str("\\t"),
+            _ => result.push(c),
+        }
+    }
+    result
 }
 
 /// Converts a Color to a hex string.
+/// Uses pre-sized buffer to minimize allocation overhead.
 fn color_to_hex(color: rource_math::Color) -> String {
-    format!(
+    use std::fmt::Write;
+    // Pre-allocate exact size: "#RRGGBB" = 7 bytes
+    let mut result = String::with_capacity(7);
+    let _ = write!(
+        result,
         "#{:02X}{:02X}{:02X}",
         (color.r * 255.0) as u8,
         (color.g * 255.0) as u8,
         (color.b * 255.0) as u8
-    )
+    );
+    result
 }
 
 #[wasm_bindgen]

@@ -56,6 +56,26 @@ pub const BEAM_GLOW_INTENSITY: f32 = 0.4;
 /// Number of glow layers for beams.
 pub const BEAM_GLOW_LAYERS: usize = 3;
 
+// Precomputed multipliers for avatar glow (avoids i as f32 in loop)
+// glow_radius = radius * (1.4 + i * 0.15), glow_alpha = 0.12 * (1.0 - i * 0.2)
+const AVATAR_GLOW_RADIUS_MULTS: [f32; 4] = [1.4, 1.55, 1.70, 1.85];
+const AVATAR_GLOW_ALPHA_MULTS: [f32; 4] = [0.12, 0.096, 0.072, 0.048];
+
+// Precomputed t values and taper for avatar body (avoids division in loop)
+// t = i / 6, taper = 1.0 - |t - 0.5| * 0.3
+const AVATAR_BODY_T: [f32; 7] = [0.0, 0.16667, 0.33333, 0.5, 0.66667, 0.83333, 1.0];
+const AVATAR_BODY_TAPER: [f32; 7] = [0.85, 0.90, 0.95, 1.0, 0.95, 0.90, 0.85];
+
+// Precomputed beam glow values (avoids i as f32 in loop)
+// width_base = 2 + i * 2, alpha_mult = BEAM_GLOW_INTENSITY * (1.0 - i * 0.25)
+const BEAM_GLOW_WIDTH_BASE: [f32; 3] = [2.0, 4.0, 6.0];
+const BEAM_GLOW_ALPHA_MULT: [f32; 3] = [0.4, 0.3, 0.2];
+
+// Precomputed beam head glow values
+// radius_mult = 1.5 + i * 0.5, alpha_mult = 0.3 * (1.0 - i * 0.3)
+const BEAM_HEAD_GLOW_RADIUS: [f32; 2] = [1.5, 2.0];
+const BEAM_HEAD_GLOW_ALPHA: [f32; 2] = [0.3, 0.21];
+
 // ============================================================================
 // Spline Interpolation
 // ============================================================================
@@ -104,6 +124,8 @@ pub fn catmull_rom_spline(points: &[Vec2], segments_per_span: usize) -> Vec<Vec2
 
     // For Catmull-Rom, we need 4 control points for each span
     // Duplicate first and last points to handle edges
+    // Precompute reciprocal to avoid division in inner loop (perf: ~1000 divisions/frame saved)
+    let inv_segments = 1.0 / segments_per_span as f32;
     for i in 0..points.len() - 1 {
         let p0 = if i == 0 { points[0] } else { points[i - 1] };
         let p1 = points[i];
@@ -116,7 +138,7 @@ pub fn catmull_rom_spline(points: &[Vec2], segments_per_span: usize) -> Vec<Vec2
 
         // Generate points along this span
         for j in 0..segments_per_span {
-            let t = j as f32 / segments_per_span as f32;
+            let t = j as f32 * inv_segments;
             result.push(catmull_rom_interpolate(p0, p1, p2, p3, t));
         }
     }
@@ -241,11 +263,11 @@ pub fn draw_avatar_shape<R: Renderer + ?Sized>(
     let head_center = Vec2::new(center.x, center.y - radius * 0.28);
     let body_center = Vec2::new(center.x, center.y + radius * 0.32);
 
-    // Draw outer glow for active users
+    // Draw outer glow for active users (uses precomputed multipliers)
     if is_active {
         for i in 0..4 {
-            let glow_radius = radius * (1.4 + i as f32 * 0.15);
-            let glow_alpha = effective_alpha * 0.12 * (1.0 - i as f32 * 0.2);
+            let glow_radius = radius * AVATAR_GLOW_RADIUS_MULTS[i];
+            let glow_alpha = effective_alpha * AVATAR_GLOW_ALPHA_MULTS[i];
             let glow_color = color.with_alpha(glow_alpha);
             renderer.draw_disc(center, glow_radius, glow_color);
         }
@@ -268,16 +290,13 @@ pub fn draw_avatar_shape<R: Renderer + ?Sized>(
         effective_alpha,
     );
 
-    // Body: stack of discs forming a pill shape
+    // Body: stack of discs forming a pill shape (uses precomputed t and taper)
     let body_top = body_center.y - body_height * 0.4;
     let body_bottom = body_center.y + body_height * 0.4;
-    let steps = 6;
-    for i in 0..=steps {
-        let t = i as f32 / steps as f32;
-        let y = body_top + t * (body_bottom - body_top);
-        // Taper the body slightly at top and bottom
-        let taper = 1.0 - (t - 0.5).abs() * 0.3;
-        let w = body_width * taper * 0.5;
+    let body_range = body_bottom - body_top;
+    for i in 0..7 {
+        let y = body_top + AVATAR_BODY_T[i] * body_range;
+        let w = body_width * AVATAR_BODY_TAPER[i] * 0.5;
         renderer.draw_disc(Vec2::new(center.x, y), w, body_color);
     }
 
@@ -329,11 +348,11 @@ pub fn draw_action_beam<R: Renderer + ?Sized>(
 ) {
     let beam_end = start.lerp(end, progress);
 
-    // Draw glow layers (wider, more transparent)
+    // Draw glow layers (uses precomputed width and alpha multipliers)
+    let zoom_factor = zoom.max(0.5);
     for i in 0..BEAM_GLOW_LAYERS {
-        let layer = i as f32;
-        let width = (2.0 + layer * 2.0) * zoom.max(0.5);
-        let alpha = color.a * BEAM_GLOW_INTENSITY * (1.0 - layer * 0.25);
+        let width = BEAM_GLOW_WIDTH_BASE[i] * zoom_factor;
+        let alpha = color.a * BEAM_GLOW_ALPHA_MULT[i];
         let glow_color = color.with_alpha(alpha);
         renderer.draw_line(start, beam_end, width, glow_color);
     }
@@ -350,10 +369,10 @@ pub fn draw_action_beam<R: Renderer + ?Sized>(
     // Draw beam head with glow
     let head_radius = (4.0 * zoom).max(2.5);
 
-    // Head glow
+    // Head glow (uses precomputed radius and alpha multipliers)
     for i in 0..2 {
-        let glow_r = head_radius * (1.5 + i as f32 * 0.5);
-        let glow_a = color.a * 0.3 * (1.0 - i as f32 * 0.3);
+        let glow_r = head_radius * BEAM_HEAD_GLOW_RADIUS[i];
+        let glow_a = color.a * BEAM_HEAD_GLOW_ALPHA[i];
         renderer.draw_disc(beam_end, glow_r, color.with_alpha(glow_a));
     }
 
