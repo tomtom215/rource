@@ -86,9 +86,7 @@ impl FileNode {
             .unwrap_or_default();
         // Store extension in lowercase for consistent color mapping and icon lookup
         // This eliminates per-frame to_lowercase() calls in rendering
-        let extension = path
-            .extension()
-            .map(|s| s.to_string_lossy().to_lowercase());
+        let extension = path.extension().map(|s| s.to_string_lossy().to_lowercase());
 
         let color = extension
             .as_ref()

@@ -12,7 +12,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_core::scene::{ActionType, Scene};
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Creates a scene with the specified number of files distributed across directories.
 fn create_test_scene(file_count: usize, dir_depth: usize) -> Scene {
@@ -209,7 +209,8 @@ fn bench_apply_commit(c: &mut Criterion) {
 
                 let mut commit_num = 0;
                 b.iter(|| {
-                    let files: Vec<_> = (0..size)
+                    // Create PathBufs first
+                    let path_bufs: Vec<_> = (0..size)
                         .map(|i| {
                             let path = if i % 3 == 0 {
                                 // Modify existing
@@ -226,6 +227,10 @@ fn bench_apply_commit(c: &mut Criterion) {
                             (path, action)
                         })
                         .collect();
+
+                    // Convert to slice of references for apply_commit
+                    let files: Vec<(&Path, ActionType)> =
+                        path_bufs.iter().map(|(p, a)| (p.as_path(), *a)).collect();
 
                     scene.apply_commit(black_box(&format!("author_{}", commit_num % 50)), &files);
                     commit_num += 1;

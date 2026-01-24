@@ -477,7 +477,7 @@ impl Scene {
         action_type: ActionType,
     ) -> Option<ActionId> {
         // Get file position first (needed for user positioning)
-        let file_pos = self.files.get(&file_id).map(|f| f.position());
+        let file_pos = self.files.get(&file_id).map(file::FileNode::position);
 
         // Skip spawning if at capacity (prevents accumulation at fast playback)
         if self.actions.len() >= Self::MAX_ACTIONS {

@@ -534,10 +534,9 @@ mod tests {
 
         // Use query_for_each (zero-allocation visitor pattern)
         let mut collected = Vec::new();
-        tree.query_for_each(
-            &Bounds::new(Vec2::ZERO, Vec2::new(50.0, 50.0)),
-            |item| collected.push(*item),
-        );
+        tree.query_for_each(&Bounds::new(Vec2::ZERO, Vec2::new(50.0, 50.0)), |item| {
+            collected.push(*item);
+        });
 
         assert_eq!(collected.len(), 2); // Items 1 and 3
         assert!(collected.contains(&1));

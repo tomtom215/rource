@@ -540,7 +540,10 @@ mod tests {
         let body = Body::new(Vec2::ZERO);
         let force = tree.calculate_force(&body, 800.0, 25.0);
         // Forces from opposite quadrants should mostly cancel
-        assert!(force.length() < 10.0, "Symmetric forces should mostly cancel");
+        assert!(
+            force.length() < 10.0,
+            "Symmetric forces should mostly cancel"
+        );
     }
 
     #[test]
