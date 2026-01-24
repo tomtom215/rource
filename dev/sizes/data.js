@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769222799887,
+  "lastUpdate": 1769224136980,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1388,6 +1388,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/3b4e7e0fe190e83ede784b07d33edb4a9972fedd"
         },
         "date": 1769222799053,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3901768,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2693042,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1035331,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ddef597ef3500998c9c547c5d03679d5fc90acd",
+          "message": "Merge pull request #146 from tomtom215/claude/redesign-mobile-ui-rBjA4\n\nAdd mobile-optimized UI with floating toolbar and bottom sheet",
+          "timestamp": "2026-01-24T04:06:56+01:00",
+          "tree_id": "0c691ff7dfe3441f7a72014a7450b94e6969a95f",
+          "url": "https://github.com/tomtom215/rource/commit/5ddef597ef3500998c9c547c5d03679d5fc90acd"
+        },
+        "date": 1769224136104,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
