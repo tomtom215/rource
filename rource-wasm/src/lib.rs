@@ -853,10 +853,10 @@ impl Rource {
     /// console.log(`WASM heap: ${(stats.wasmHeapBytes / 1024 / 1024).toFixed(1)}MB`);
     /// ```
     ///
-    /// ## Chrome DevTools Integration
+    /// ## Chrome `DevTools` Integration
     ///
     /// When the `profiling` feature is enabled, Performance marks are added
-    /// that show up in Chrome DevTools Performance tab:
+    /// that show up in Chrome `DevTools` Performance tab:
     /// - `rource:frame_start` / `rource:frame_end`
     /// - `rource:scene_update_start` / `rource:scene_update_end`
     /// - `rource:render_start` / `rource:render_end`
@@ -885,7 +885,7 @@ impl Rource {
 
     /// Returns true if the `profiling` feature is enabled.
     ///
-    /// When true, Performance API marks are added to frames for Chrome DevTools.
+    /// When true, Performance API marks are added to frames for Chrome `DevTools`.
     #[wasm_bindgen(js_name = isProfilingEnabled)]
     pub fn is_profiling_enabled(&self) -> bool {
         cfg!(feature = "profiling")

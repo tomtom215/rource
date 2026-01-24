@@ -13,6 +13,7 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use rource_vcs::parser::{CustomParser, GitParser, Parser};
 use rource_vcs::stream::StreamingCommitLoader;
 use rource_vcs::{detect_format, parse_auto, StringInterner};
+use std::fmt::Write;
 use std::io::{BufReader, Cursor};
 
 // ============================================================================
@@ -26,7 +27,7 @@ fn generate_custom_log(num_commits: usize, files_per_commit: usize) -> String {
     let actions = ["A", "M", "D"];
     let extensions = ["rs", "ts", "py", "go", "java", "cpp", "js"];
 
-    let mut timestamp = 1609459200i64; // 2021-01-01
+    let mut timestamp = 1_609_459_200_i64; // 2021-01-01
 
     for commit_idx in 0..num_commits {
         let author = authors[commit_idx % authors.len()];
@@ -39,11 +40,11 @@ fn generate_custom_log(num_commits: usize, files_per_commit: usize) -> String {
             // Build path with varying depth
             let mut path = String::new();
             for d in 0..dir_depth {
-                path.push_str(&format!("dir{}/", (commit_idx + d) % 50));
+                let _ = write!(path, "dir{}/", (commit_idx + d) % 50);
             }
-            path.push_str(&format!("file_{file_idx}.{ext}"));
+            let _ = write!(path, "file_{file_idx}.{ext}");
 
-            log.push_str(&format!("{timestamp}|{author}|{action}|{path}\n"));
+            let _ = writeln!(log, "{timestamp}|{author}|{action}|{path}");
         }
 
         timestamp += 3600; // 1 hour between commits
@@ -62,15 +63,17 @@ fn generate_git_log(num_commits: usize, files_per_commit: usize) -> String {
     ];
     let extensions = ["rs", "ts", "py", "go"];
 
-    let mut timestamp = 1609459200i64;
+    let mut timestamp = 1_609_459_200_i64;
 
     for commit_idx in 0..num_commits {
         let (author_name, author_email) = authors[commit_idx % authors.len()];
-        let hash = format!("{:07x}{:07x}{:06x}", commit_idx, timestamp, commit_idx);
 
-        log.push_str(&format!("commit {hash}\n"));
-        log.push_str(&format!("Author: {author_name} <{author_email}>\n"));
-        log.push_str(&format!("Date:   {timestamp}\n"));
+        let _ = writeln!(
+            log,
+            "commit {commit_idx:07x}{timestamp:07x}{commit_idx:06x}"
+        );
+        let _ = writeln!(log, "Author: {author_name} <{author_email}>");
+        let _ = writeln!(log, "Date:   {timestamp}");
         log.push_str("\n    Commit message for commit\n\n");
 
         for file_idx in 0..files_per_commit {
@@ -83,8 +86,11 @@ fn generate_git_log(num_commits: usize, files_per_commit: usize) -> String {
                 "D"
             };
 
-            let path = format!("src/module{}/file_{file_idx}.{ext}", commit_idx % 20);
-            log.push_str(&format!("{action}\t{path}\n"));
+            let _ = writeln!(
+                log,
+                "{action}\tsrc/module{}/file_{file_idx}.{ext}",
+                commit_idx % 20
+            );
         }
 
         log.push('\n');

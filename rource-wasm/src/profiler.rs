@@ -4,7 +4,7 @@
 //! WASM-specific profiling infrastructure.
 //!
 //! This module provides browser-native profiling capabilities that integrate with
-//! Chrome DevTools and other browser developer tools.
+//! Chrome `DevTools` and other browser developer tools.
 //!
 //! ## Features
 //!
@@ -14,16 +14,16 @@
 //! - `getDetailedFrameStats()`: JavaScript API for profiling data
 //!
 //! ### With `--features profiling`
-//! - Performance marks visible in Chrome DevTools Performance tab
-//! - Detailed phase breakdown (scene_update, render, gpu_wait, etc.)
+//! - Performance marks visible in Chrome `DevTools` Performance tab
+//! - Detailed phase breakdown (`scene_update`, `render`, `gpu_wait`, etc.)
 //!
 //! ### With `--features tracing`
 //! - Rust tracing spans routed to browser console
 //! - Function-level timing with call hierarchy
 //!
-//! ## Usage in Chrome DevTools
+//! ## Usage in Chrome `DevTools`
 //!
-//! 1. Open DevTools (F12)
+//! 1. Open `DevTools` (F12)
 //! 2. Go to Performance tab
 //! 3. Click Record, interact with visualization, click Stop
 //! 4. Look for "rource:*" markers in the timeline
@@ -61,10 +61,10 @@ fn get_performance() -> Option<Performance> {
 /// High-precision timestamp in milliseconds.
 #[inline]
 pub fn now_ms() -> f64 {
-    get_performance().map(|p| p.now()).unwrap_or(0.0)
+    get_performance().map_or(0.0, |p| p.now())
 }
 
-/// Creates a Performance mark (shows up in DevTools Performance timeline).
+/// Creates a Performance mark (shows up in `DevTools` Performance timeline).
 ///
 /// Only active when `profiling` feature is enabled.
 #[inline]
@@ -97,8 +97,8 @@ pub fn measure(name: &str, start_mark: &str, end_mark: &str) {
 pub fn clear_marks() {
     #[cfg(feature = "profiling")]
     if let Some(perf) = get_performance() {
-        let _ = perf.clear_marks();
-        let _ = perf.clear_measures();
+        perf.clear_marks();
+        perf.clear_measures();
     }
 }
 
@@ -108,6 +108,7 @@ pub fn clear_marks() {
 
 /// Phase timings for a single frame.
 #[derive(Debug, Clone, Default)]
+#[allow(clippy::struct_field_names)]
 pub struct FrameTimings {
     /// Time spent applying commits and updating scene state (ms).
     pub scene_update_ms: f32,
@@ -290,6 +291,7 @@ pub struct WasmMemoryStats {
     /// Total WASM heap size in bytes.
     pub heap_bytes: usize,
     /// Estimated used heap in bytes (if available).
+    #[allow(dead_code)]
     pub used_bytes: usize,
 }
 

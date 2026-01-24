@@ -7,7 +7,7 @@
 //! across runs (unlike wall-clock time). This makes them ideal for CI regression
 //! detection where timing variance would cause false positives.
 //!
-//! Run with: cargo bench --bench iai_scene
+//! Run with: `cargo bench --bench iai_scene`
 //! Requires: valgrind installed (Linux only)
 
 // Suppress warnings from macro-generated code
