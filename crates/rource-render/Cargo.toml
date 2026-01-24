@@ -18,6 +18,8 @@ webgl2 = ["wasm-bindgen", "web-sys", "js-sys"]
 # wgpu backend for WebGPU (primary GPU path, native + WASM)
 # Provides modern GPU rendering via wgpu-rs with automatic fallback to WebGL
 wgpu = ["dep:wgpu", "dep:raw-window-handle", "dep:bytemuck", "dep:pollster"]
+# Tracy tracing instrumentation for GPU/render profiling
+tracy = ["dep:tracing", "dep:tracing-subscriber"]
 
 [dependencies]
 rource-math = { path = "../rource-math" }
@@ -41,6 +43,10 @@ wgpu = { version = "24", optional = true }
 raw-window-handle = { version = "0.6", optional = true }
 bytemuck = { version = "1.14", features = ["derive"], optional = true }
 pollster = { version = "0.4", optional = true }
+
+# Tracing for profiling instrumentation (optional)
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
 
 [dependencies.web-sys]
 version = "0.3"

@@ -14,6 +14,10 @@ ignore = [
     # paste is unmaintained but not a security issue - transitive dep from wgpu via metal
     # https://rustsec.org/advisories/RUSTSEC-2024-0436
     "RUSTSEC-2024-0436",
+    # bincode is unmaintained - transitive dev dep from iai-callgrind
+    # Not a security issue, just unmaintained. Only used in benchmarks.
+    # https://rustsec.org/advisories/RUSTSEC-2025-0141
+    "RUSTSEC-2025-0141",
 ]
 
 [licenses]

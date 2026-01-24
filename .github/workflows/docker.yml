@@ -106,21 +106,66 @@ jobs:
     needs: build
     if: github.event_name != 'pull_request'
     permissions:
+      contents: read
       security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}'
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image tag
+        id: image-tag
+        run: |
+          # For tags (releases), use the tag name; for branches, use 'latest' for main or branch name
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref_name }}"
+          elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+            TAG="latest"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Scanning image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+
+      - name: Pull image for scanning
+        run: |
+          docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}"
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          # Ignore unfixed vulnerabilities in base image packages
+          ignore-unfixed: true
+          # Exit code 0 even if vulnerabilities found (we want to upload results)
+          exit-code: '0'
 
-      - name: Upload Trivy scan results
+      - name: Display scan summary
+        if: always()
+        run: |
+          echo "=== Trivy Scan Results Summary ==="
+          if [ -f trivy-results.sarif ]; then
+            # Count vulnerabilities from SARIF
+            VULN_COUNT=$(jq '.runs[0].results | length' trivy-results.sarif 2>/dev/null || echo "0")
+            echo "Total findings: ${VULN_COUNT}"
+            # Show first few findings
+            jq -r '.runs[0].results[:5][] | "- \(.ruleId): \(.message.text | split("\n")[0])"' trivy-results.sarif 2>/dev/null || true
+          else
+            echo "No SARIF file generated"
+          fi
+
+      - name: Upload Trivy scan results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+          category: 'trivy-container'

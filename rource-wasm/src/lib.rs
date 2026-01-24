@@ -80,6 +80,7 @@ mod interaction;
 mod metrics;
 mod playback;
 mod png;
+mod profiler;
 mod render_phases;
 mod rendering;
 
@@ -411,6 +412,9 @@ pub struct Rource {
     /// Performance metrics (FPS tracking, frame timing).
     perf_metrics: PerformanceMetrics,
 
+    /// Frame profiler for phase-level timing (Performance API integration).
+    frame_profiler: profiler::FrameProfiler,
+
     /// Render statistics for the current frame.
     render_stats: RenderStats,
 
@@ -543,6 +547,7 @@ impl Rource {
             show_labels: true,
             auto_fit: true, // Auto-zoom to fit all content (MIN_ZOOM=0.05 prevents LOD culling)
             perf_metrics: PerformanceMetrics::new(),
+            frame_profiler: profiler::FrameProfiler::new(),
             render_stats: RenderStats::default(),
             // Pre-allocate visibility buffers for zero-allocation rendering
             visible_dirs_buf: Vec::with_capacity(1024),
@@ -696,9 +701,14 @@ impl Rource {
     ///
     /// Returns true if there are more frames to render.
     pub fn frame(&mut self, timestamp: f64) -> bool {
+        // Begin frame profiling (Performance API marks)
+        self.frame_profiler.begin_frame();
+
         // Initialize start time on first frame
         if self.perf_metrics.start_time() == 0.0 {
             self.perf_metrics.set_start_time(timestamp);
+            // Initialize tracing if enabled
+            profiler::init_tracing();
         }
 
         // Calculate delta time (raw measurement)
@@ -717,6 +727,9 @@ impl Rource {
         // Clamp dt for SIMULATION ONLY to avoid physics instability
         // (e.g., when tab is backgrounded, we don't want entities to fly off screen)
         let dt = raw_dt.min(0.1);
+
+        // ---- Scene Update Phase ----
+        self.frame_profiler.begin_phase("scene_update");
 
         // Update simulation if playing
         if self.playback.is_playing() && !self.commits.is_empty() {
@@ -761,8 +774,15 @@ impl Rource {
         // Update camera
         self.camera.update(dt);
 
-        // Render the frame
+        self.frame_profiler.end_phase("scene_update");
+
+        // ---- Render Phase ----
+        self.frame_profiler.begin_phase("render");
         self.render();
+        self.frame_profiler.end_phase("render");
+
+        // End frame profiling
+        self.frame_profiler.end_frame();
 
         // Return true if there's more to show
         self.playback.is_playing() || self.playback.current_commit() < self.commits.len()
@@ -811,6 +831,72 @@ impl Rource {
     #[wasm_bindgen(js_name = getUptime)]
     pub fn get_uptime(&self) -> f64 {
         self.perf_metrics.uptime(self.playback.last_frame_time())
+    }
+
+    /// Returns detailed frame profiling statistics as JSON.
+    ///
+    /// This provides phase-level timing breakdown for identifying bottlenecks:
+    /// - `sceneUpdateMs`: Time spent applying commits and updating physics
+    /// - `renderMs`: Time spent in render passes
+    /// - `gpuWaitMs`: Time waiting for GPU (WebGPU only)
+    /// - `effectsMs`: Time in post-processing (bloom, shadows)
+    /// - `totalMs`: Total frame time
+    ///
+    /// Rolling averages (`avg*`) are calculated over the last 60 frames.
+    ///
+    /// ## Usage
+    ///
+    /// ```javascript
+    /// const stats = JSON.parse(rource.getDetailedFrameStats());
+    /// console.log(`Scene: ${stats.sceneUpdateMs.toFixed(2)}ms`);
+    /// console.log(`Render: ${stats.renderMs.toFixed(2)}ms`);
+    /// console.log(`WASM heap: ${(stats.wasmHeapBytes / 1024 / 1024).toFixed(1)}MB`);
+    /// ```
+    ///
+    /// ## Chrome `DevTools` Integration
+    ///
+    /// When the `profiling` feature is enabled, Performance marks are added
+    /// that show up in Chrome `DevTools` Performance tab:
+    /// - `rource:frame_start` / `rource:frame_end`
+    /// - `rource:scene_update_start` / `rource:scene_update_end`
+    /// - `rource:render_start` / `rource:render_end`
+    #[wasm_bindgen(js_name = getDetailedFrameStats)]
+    pub fn get_detailed_frame_stats(&self) -> String {
+        let current = self.frame_profiler.current();
+        let averages = self.frame_profiler.averages();
+        let memory = profiler::WasmMemoryStats::capture();
+
+        profiler::DetailedFrameStats {
+            scene_update_ms: current.scene_update_ms,
+            render_ms: current.render_ms,
+            gpu_wait_ms: current.gpu_wait_ms,
+            effects_ms: current.effects_ms,
+            total_ms: current.total_ms,
+            avg_scene_update_ms: averages.scene_update_ms,
+            avg_render_ms: averages.render_ms,
+            avg_gpu_wait_ms: averages.gpu_wait_ms,
+            avg_effects_ms: averages.effects_ms,
+            avg_total_ms: averages.total_ms,
+            wasm_heap_bytes: memory.heap_bytes,
+            frame_count: self.frame_profiler.frame_count(),
+        }
+        .to_json()
+    }
+
+    /// Returns true if the `profiling` feature is enabled.
+    ///
+    /// When true, Performance API marks are added to frames for Chrome `DevTools`.
+    #[wasm_bindgen(js_name = isProfilingEnabled)]
+    pub fn is_profiling_enabled(&self) -> bool {
+        cfg!(feature = "profiling")
+    }
+
+    /// Returns true if the `tracing` feature is enabled.
+    ///
+    /// When true, Rust tracing spans are routed to browser console.
+    #[wasm_bindgen(js_name = isTracingEnabled)]
+    pub fn is_tracing_enabled(&self) -> bool {
+        cfg!(feature = "tracing")
     }
 }
 
