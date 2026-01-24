@@ -6,7 +6,7 @@
 //! This module provides font loading, glyph rasterization, and caching
 //! for efficient text rendering.
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 use fontdue::{Font, FontSettings, Metrics};
 
@@ -35,7 +35,7 @@ struct GlyphCache {
 impl GlyphCache {
     fn new() -> Self {
         Self {
-            glyphs: HashMap::new(),
+            glyphs: HashMap::default(),
         }
     }
 

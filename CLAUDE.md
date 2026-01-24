@@ -3016,6 +3016,64 @@ Rource: Using WebGL2 renderer
 
 **Test Count**: 1,836 tests passing (no change)
 
+### Phase 26: FxHashMap and Sort Optimizations (2026-01-24)
+
+Applied performance optimizations for faster HashMap operations and reduced allocation overhead.
+
+#### FxHashMap Replacement
+
+Replaced `std::collections::HashMap` with `rustc_hash::FxHashMap` in the rource-render crate.
+FxHashMap uses a faster hash function (FxHash from rustc) that benefits small keys like entity IDs
+and string extensions.
+
+**Files Updated** (7 total):
+
+| File | HashMap Usages |
+|------|----------------|
+| `font.rs` | Glyph cache |
+| `software.rs` | Texture storage, file icon lookup |
+| `webgl2/mod.rs` | Textured quad instances |
+| `webgl2/textures.rs` | Glyph regions, glyph bitmaps, texture store |
+| `webgl2/texture_array.rs` | Extension to layer mapping |
+| `wgpu/mod.rs` | Textures, textured quad instances |
+| `wgpu/textures.rs` | Glyph regions, extension mapping |
+
+**Note**: `HashMap::new()` was replaced with `HashMap::default()` since FxHashMap requires
+the hasher to be constructed via Default.
+
+#### sort_unstable_by Replacement
+
+Replaced `sort_by` with `sort_unstable_by` in 5 locations where stability isn't needed:
+
+| Location | Purpose | Benefit |
+|----------|---------|---------|
+| `physics/spatial.rs:384` | Quadtree child traversal (4-element array) | Zero allocation |
+| `scene/tree.rs:403` | Node depth sorting for layout | Avoid temp allocation |
+| `scene/stats_methods.rs:59` | Extension statistics sorting | Called every 30 frames |
+| `wgpu/textures.rs:454` | Glyph height sorting for defrag | Cold path but still faster |
+| `webgl2/textures.rs:463` | Glyph sorting for defrag | Cold path but still faster |
+
+**Rationale**: `sort_unstable_by` is faster than `sort_by` because it doesn't preserve the
+relative order of equal elements, allowing in-place operations without temporary allocation.
+
+#### Inline Annotation
+
+Added `#[inline]` to `LabelPlacer::try_place_with_fallback()` in render_phases.rs since it's
+called frequently per label candidate in the render loop.
+
+#### Audit Findings (Verified as Non-Issues)
+
+Several audit items were investigated and found to be either already fixed or acceptable:
+
+| Audit # | Issue | Finding |
+|---------|-------|---------|
+| Critical #2 | `to_lowercase()` in file icon lookup | Already has stack-based optimization; file icons disabled by default |
+| Medium #21 | HashMap allocation in `update_file_positions` | Only runs when `layout_dirty=true` (cold path) |
+| Medium #22 | Double user lookup in `spawn_action` | Lookups are mutually exclusive (early return vs normal path) |
+| Medium #24-25 | Redundant entity lookups in render phases | Intentional for proper layering (nodes before labels) |
+
+**Test Count**: 1,836 tests passing (no change)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3478,4 +3536,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-24 (Phase 25: Mobile Safari WebGPU Crash Fix - 1,836 tests total)*
+*Last updated: 2026-01-24 (Phase 26: FxHashMap and Sort Optimizations - 1,836 tests total)*

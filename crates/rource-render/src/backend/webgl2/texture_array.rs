@@ -18,7 +18,7 @@
 //! - Single draw call per frame for all file icons
 //! - No texture switching overhead
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 use web_sys::{WebGl2RenderingContext, WebGlTexture};
 
@@ -132,7 +132,7 @@ impl TextureArray {
             height,
             max_layers,
             layer_count: 0,
-            extension_map: HashMap::new(),
+            extension_map: HashMap::default(),
             initialized: true,
         })
     }

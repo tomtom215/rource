@@ -56,7 +56,7 @@ impl Scene {
         self.extension_stats_cache.clear();
         self.extension_stats_cache.extend(stats);
         self.extension_stats_cache
-            .sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+            .sort_unstable_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     }
 
     /// Returns file extension statistics without updating the cache.

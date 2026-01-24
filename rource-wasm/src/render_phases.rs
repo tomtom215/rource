@@ -943,6 +943,7 @@ impl LabelPlacer {
     }
 
     /// Tries to place with fallback positions.
+    #[inline]
     pub fn try_place_with_fallback(
         &mut self,
         primary_pos: Vec2,

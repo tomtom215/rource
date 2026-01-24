@@ -119,7 +119,7 @@ mod flush_passes;
 mod icons_methods;
 mod physics_methods;
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 use std::sync::Arc;
 
 use rource_math::{Bounds, Color, Mat4, Vec2};
@@ -613,7 +613,7 @@ impl WgpuRenderer {
             clips: Vec::new(),
             font_cache: FontCache::new(),
             font_atlas,
-            textures: HashMap::new(),
+            textures: HashMap::default(),
             next_texture_id: 1,
             uniform_buffer,
             uniform_bind_group,
@@ -626,7 +626,7 @@ impl WgpuRenderer {
             line_instances,
             curve_instances,
             quad_instances,
-            textured_quad_instances: HashMap::new(),
+            textured_quad_instances: HashMap::default(),
             text_instances,
             file_icon_instances,
             bloom_pipeline: None,
@@ -844,6 +844,9 @@ impl WgpuRenderer {
 
         let mut result = Vec::with_capacity(points.len() * segments_per_span);
 
+        // Pre-compute reciprocal to avoid per-segment division
+        let inv_segments = 1.0 / segments_per_span as f32;
+
         for i in 0..points.len() - 1 {
             let p0 = points[i.saturating_sub(1)];
             let p1 = points[i];
@@ -851,7 +854,7 @@ impl WgpuRenderer {
             let p3 = points[(i + 2).min(points.len() - 1)];
 
             for j in 0..segments_per_span {
-                let t = j as f32 / segments_per_span as f32;
+                let t = j as f32 * inv_segments;
                 let t2 = t * t;
                 let t3 = t2 * t;
 
