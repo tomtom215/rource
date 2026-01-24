@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769215742402,
+  "lastUpdate": 1769217791085,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1286,6 +1286,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1037332,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe5c824cef2c6adf560f455bf552ec8184ef5f13",
+          "message": "Merge pull request #143 from tomtom215/claude/resource-performance-optimization-XMEss\n\nOptimize HashMap and sorting operations for better performance",
+          "timestamp": "2026-01-24T02:21:19+01:00",
+          "tree_id": "2ded8d1aa9ee804e7229b9a9bc238334268be629",
+          "url": "https://github.com/tomtom215/rource/commit/fe5c824cef2c6adf560f455bf552ec8184ef5f13"
+        },
+        "date": 1769217790803,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3900800,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2693042,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1035331,
             "unit": "bytes"
           }
         ]
