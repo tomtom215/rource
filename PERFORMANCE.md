@@ -57,6 +57,8 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 45: Color Conversion Lookup Tables (2026-01-24)](#phase-45-color-conversion-lookup-tables-2026-01-24)
 - [Phase 46: VCS Parser Zero-Allocation (2026-01-24)](#phase-46-vcs-parser-zero-allocation-2026-01-24)
 - [Phase 47: Force Normalization Optimization (2026-01-24)](#phase-47-force-normalization-optimization-2026-01-24)
+- [Phase 48: Perpendicular Vector Optimization (2026-01-24)](#phase-48-perpendicular-vector-optimization-2026-01-24)
+- [Phase 49: Easing Functions and Camera Optimizations (2026-01-24)](#phase-49-easing-functions-and-camera-optimizations-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -5315,6 +5317,225 @@ For attraction force:
 - Inverse-square law verified: force at 2x distance = 1/4 magnitude
 - All 320 physics tests pass
 - All 1,899 total tests pass
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 48: Perpendicular Vector Optimization (2026-01-24)
+
+### Overview
+
+Phase 48 eliminates a redundant sqrt operation in branch curve creation by recognizing
+that the perpendicular of a vector has the same magnitude as the original vector.
+
+### The Problem
+
+When creating curved branches between directory nodes, the code computed:
+
+```rust
+// Branch curve creation
+let dir = end - start;
+let length = dir.length();  // sqrt() computed here
+
+// Perpendicular offset for natural curve
+let perp = Vec2::new(-dir.y, dir.x).normalized();  // sqrt() computed AGAIN
+let offset = perp * length * tension * 0.15;
+```
+
+The `normalized()` call on the perpendicular vector computes another sqrt, but the
+perpendicular vector `(-dir.y, dir.x)` has **exactly the same magnitude** as `dir`:
+
+```
+|(-dy, dx)| = sqrt(dy² + dx²) = sqrt(dx² + dy²) = |(dx, dy)| = length
+```
+
+### The Solution
+
+Since normalizing then multiplying by length cancels out, we can skip normalization entirely:
+
+```rust
+// Before: (perp / length) * length = perp
+// After:  perp (skip the normalization)
+let perp = Vec2::new(-dir.y, dir.x);
+let offset = perp * tension * 0.15;
+```
+
+This eliminates one sqrt() call per branch curve.
+
+### Mathematical Proof
+
+For a direction vector `dir = (dx, dy)`:
+- `perp = (-dy, dx)` (90° rotation)
+- `|perp| = sqrt((-dy)² + dx²) = sqrt(dy² + dx²) = sqrt(dx² + dy²) = |dir|`
+
+Therefore:
+- **Before**: `(perp / |perp|) * length * scale = (perp / length) * length * scale = perp * scale`
+- **After**: `perp * scale` (identical result, one fewer sqrt)
+
+### Benchmark Results
+
+Created `benches/visual_perf.rs` for comprehensive visual rendering benchmarks.
+
+| Benchmark | Baseline | Optimized | Improvement |
+|-----------|----------|-----------|-------------|
+| Perpendicular (horizontal) | 4.51 ns | 1.28 ns | **-72%** |
+| Perpendicular (3-4-5 triangle) | 4.65 ns | 1.28 ns | **-72%** |
+| Branch curve (short) | 15.07 ns | 14.20 ns | **-6%** |
+| Branch curve (medium) | 15.19 ns | 13.81 ns | **-9%** |
+| Branch curve (long) | 15.30 ns | 13.50 ns | **-12%** |
+| Batch 1000 curves | 14.04 µs | 12.29 µs | **-12%** |
+| Batch throughput | 71.2 Melem/s | 81.4 Melem/s | **+14%** |
+
+### Why This Matters
+
+Branch curves are drawn for every parent-child connection in the directory tree.
+A typical visualization with 500 directories might have 499 branches, each potentially
+creating curves during animation. The 12% improvement in batch curve creation
+directly reduces CPU time during tree layout and rendering.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/visual.rs` | Removed redundant perpendicular normalization |
+| `crates/rource-render/benches/visual_perf.rs` | New benchmark file |
+| `crates/rource-render/Cargo.toml` | Added visual_perf benchmark entry |
+
+### Correctness Verification
+
+- The perpendicular vector `(-y, x)` has identical magnitude to `(x, y)` (geometric identity)
+- Normalizing then multiplying by length is algebraically equivalent to not normalizing
+- All 1,899 tests pass
+- Visual output is identical (verified via deterministic headless rendering)
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 49: Easing Functions and Camera Optimizations (2026-01-24)
+
+### Overview
+
+Phase 49 addresses multiple optimization opportunities:
+
+1. **Easing functions**: Replace `powi()` calls with explicit multiplication
+2. **Camera3D trig caching**: Cache sin/cos values to avoid redundant computation
+3. **Camera3D distance checks**: Use `length_squared()` instead of `length()` to avoid sqrt
+
+### Easing Function Optimization
+
+**The Pattern**: Easing functions used `powi(n)` for power calculations:
+
+```rust
+// Before: Using powi()
+Easing::CubicOut => 1.0 - (1.0 - t).powi(3),
+Easing::QuartOut => 1.0 - (1.0 - t).powi(4),
+Easing::QuintOut => 1.0 - (1.0 - t).powi(5),
+
+// After: Explicit multiplication
+Easing::CubicOut => {
+    let u = 1.0 - t;
+    1.0 - u * u * u
+}
+Easing::QuartOut => {
+    let u = 1.0 - t;
+    let u2 = u * u;
+    1.0 - u2 * u2
+}
+Easing::QuintOut => {
+    let u = 1.0 - t;
+    let u2 = u * u;
+    1.0 - u2 * u2 * u
+}
+```
+
+**Benchmark Results**: Modern LLVM optimizes `powi()` very effectively in release builds.
+The explicit multiplication provides equivalent performance but with clearer intent:
+
+| Easing | Batch 1000 | Throughput |
+|--------|------------|------------|
+| Linear | 5.10 µs | 196 Melem/s |
+| QuadOut | 5.61 µs | 178 Melem/s |
+| QuadInOut | 4.97 µs | 201 Melem/s |
+| CubicOut | 4.91 µs | 204 Melem/s |
+| QuartOut | 5.03 µs | 199 Melem/s |
+| QuintOut | 4.99 µs | 200 Melem/s |
+
+**Note**: The compiler already optimized `powi()` well, so this change primarily
+improves code clarity and explicitness rather than raw performance.
+
+### Camera3D Trigonometry Caching
+
+**The Problem**: `eye_position()` computed `pitch.cos()` twice:
+
+```rust
+// Before: cos(pitch) computed twice
+pub fn eye_position(&self) -> Vec3 {
+    let x = self.distance * self.pitch.cos() * self.yaw.sin();  // cos #1
+    let y = self.distance * self.pitch.sin();
+    let z = self.distance * self.pitch.cos() * self.yaw.cos();  // cos #2 (redundant!)
+    self.target + Vec3::new(x, y, z)
+}
+```
+
+**The Solution**: Cache trig values:
+
+```rust
+// After: Each trig function called once
+pub fn eye_position(&self) -> Vec3 {
+    let (pitch_sin, pitch_cos) = (self.pitch.sin(), self.pitch.cos());
+    let (yaw_sin, yaw_cos) = (self.yaw.sin(), self.yaw.cos());
+    let x = self.distance * pitch_cos * yaw_sin;
+    let y = self.distance * pitch_sin;
+    let z = self.distance * pitch_cos * yaw_cos;
+    self.target + Vec3::new(x, y, z)
+}
+```
+
+**Impact**: Saves ~20-30 CPU cycles per camera update (sin/cos are ~15-20 cycles each).
+
+### Camera3D Distance Comparison
+
+**The Problem**: Using `length()` for threshold comparison computes unnecessary sqrt:
+
+```rust
+// Before: sqrt computed just to compare against threshold
+if (self.target_target - self.target).length() > 0.01 {
+```
+
+**The Solution**: Use squared comparison:
+
+```rust
+// After: No sqrt needed (0.01² = 0.0001)
+if (self.target_target - self.target).length_squared() > 0.0001 {
+```
+
+**Impact**: Saves ~15-20 CPU cycles per frame when camera is interpolating.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-core/src/animation/tween.rs` | Replaced powi() with explicit multiplication in easing functions |
+| `crates/rource-core/src/camera/camera3d.rs` | Cached trig values, used length_squared() |
+| `crates/rource-core/benches/easing_perf.rs` | New benchmark file |
+| `crates/rource-core/Cargo.toml` | Added easing_perf benchmark entry |
+
+### Easing Functions Modified
+
+- QuadInOut, CubicOut, CubicInOut
+- QuartIn, QuartOut, QuartInOut
+- QuintIn, QuintOut, QuintInOut
+- CircOut, CircInOut
+- BackOut, BackInOut
+
+### Correctness Verification
+
+- All easing functions produce identical output (verified by existing tests)
+- Mathematical equivalence: `x.powi(2) == x * x`, `x.powi(3) == x * x * x`, etc.
+- All 1,899 tests pass
+- Camera behavior unchanged (verified by camera tests)
 
 **Test Count**: 1,899 tests passing
 

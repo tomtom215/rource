@@ -207,8 +207,11 @@ pub fn create_branch_curve(start: Vec2, end: Vec2, tension: f32) -> Vec<Vec2> {
     }
 
     // Perpendicular offset for natural curve
-    let perp = Vec2::new(-dir.y, dir.x).normalized();
-    let offset = perp * length * tension * 0.15;
+    // Optimization: The perpendicular vector (-dir.y, dir.x) has the same magnitude as dir.
+    // Since we multiply by length afterward, normalization and multiplication cancel out:
+    // (perp / length) * length = perp. This saves one sqrt() call.
+    let perp = Vec2::new(-dir.y, dir.x);
+    let offset = perp * tension * 0.15;
 
     // Create control points with slight S-curve
     let ctrl1 = start.lerp(mid, 0.33) + offset * 0.5;

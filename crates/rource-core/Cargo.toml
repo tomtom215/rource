@@ -32,6 +32,10 @@ iai-callgrind = { workspace = true }
 name = "scene_perf"
 harness = false
 
+[[bench]]
+name = "easing_perf"
+harness = false
+
 # iai-callgrind benchmarks for deterministic instruction-count measurements
 # These are ideal for CI as they don't suffer from timing variance
 [[bench]]
