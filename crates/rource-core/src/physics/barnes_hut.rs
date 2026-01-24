@@ -276,12 +276,16 @@ impl BarnesHutNode {
 
             // Clamp to minimum distance
             let clamped_dist_sq = distance_sq.max(min_distance_sq);
+
+            // Optimized force calculation: combine direction normalization and magnitude
+            // Force = -(delta/d) * (k*m/d²) = -delta * (k*m) / (d * d²) = -delta * (k*m) / (d³)
+            // Using d³ = d² * d = clamped_dist_sq * sqrt(distance_sq)
+            // This saves one division by combining: direction = delta/d, magnitude = k*m/d²
             let distance = distance_sq.sqrt();
-            let force_magnitude = repulsion_constant * self.total_mass / clamped_dist_sq;
-            let direction = delta / distance;
+            let force_scale = repulsion_constant * self.total_mass / (distance * clamped_dist_sq);
 
             // Force points from body toward center of mass (repulsion, so negate)
-            -direction * force_magnitude
+            -delta * force_scale
         } else {
             // Recurse into children
             let mut total_force = Vec2::ZERO;

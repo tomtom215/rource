@@ -290,19 +290,20 @@ impl Scene {
                 dir.add_velocity(force * dt);
 
                 // Clamp velocity to prevent instability (use squared comparison)
-                let vel = dir.velocity();
+                let mut vel = dir.velocity();
                 let speed_sq = vel.length_squared();
                 if speed_sq > FORCE_MAX_VELOCITY_SQ {
                     // Only compute sqrt when actually needed for clamping
                     let speed = speed_sq.sqrt();
-                    dir.set_velocity(vel * (FORCE_MAX_VELOCITY / speed));
+                    vel *= FORCE_MAX_VELOCITY / speed;
                 }
 
-                // Apply damping
-                dir.set_velocity(dir.velocity() * FORCE_DAMPING);
+                // Apply damping and cache final velocity (saves one velocity() call)
+                let damped_vel = vel * FORCE_DAMPING;
+                dir.set_velocity(damped_vel);
 
-                // Integrate position
-                let new_pos = dir.position() + dir.velocity() * dt;
+                // Integrate position using cached velocity
+                let new_pos = dir.position() + damped_vel * dt;
                 dir.set_position(new_pos);
             } else {
                 // No force but still apply damping and integration for existing velocity
