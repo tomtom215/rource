@@ -69,3 +69,8 @@ features = [
 ]
 
 [dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "bloom_perf"
+harness = false

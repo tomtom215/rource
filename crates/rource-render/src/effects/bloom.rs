@@ -413,6 +413,12 @@ impl BloomEffect {
     /// Uses O(n) sliding window algorithm instead of O(n × radius) naive approach.
     /// With radius=2 and 180×320 buffer, this reduces iterations from ~1.8M to ~115K.
     ///
+    /// # Cache Optimization
+    ///
+    /// The vertical pass processes columns in strips to improve cache locality.
+    /// By processing 8 columns together, we amortize the cache miss cost across
+    /// multiple column states, reducing effective misses per pixel.
+    ///
     /// Uses integer-only arithmetic with 10-bit fixed-point reciprocal to avoid
     /// f32 conversions in the hot loop.
     #[allow(clippy::cast_possible_wrap)] // Dimensions will never overflow i32
@@ -483,54 +489,133 @@ impl BloomEffect {
             }
         }
 
-        // Vertical pass: blur_temp -> small_buffer (O(n) sliding window)
-        for x in 0..width {
-            // Initialize window sum for y=0
-            let mut sum_r = 0u32;
-            let mut sum_g = 0u32;
-            let mut sum_b = 0u32;
+        // Vertical pass: blur_temp -> small_buffer
+        // Process in column strips for better cache utilization
+        Self::vertical_blur_striped(
+            &self.blur_temp,
+            &mut self.small_buffer,
+            width,
+            height,
+            r,
+            inv_diameter_fixed,
+        );
+    }
 
-            // Add pixels in range [0, r] (or height-1 if smaller)
-            for i in 0..=r.min(height - 1) {
-                let p = self.blur_temp[i * width + x];
-                sum_r += (p >> 16) & 0xFF;
-                sum_g += (p >> 8) & 0xFF;
-                sum_b += p & 0xFF;
-            }
-            // Add repeated edge pixel for clamped top positions
-            let p0 = self.blur_temp[x];
-            sum_r += ((p0 >> 16) & 0xFF) * r as u32;
-            sum_g += ((p0 >> 8) & 0xFF) * r as u32;
-            sum_b += (p0 & 0xFF) * r as u32;
-            // Handle bottom edge clamping if height <= r
-            if height <= r {
-                let pn = self.blur_temp[(height - 1) * width + x];
-                let extra = r - height + 1;
-                sum_r += ((pn >> 16) & 0xFF) * extra as u32;
-                sum_g += ((pn >> 8) & 0xFF) * extra as u32;
-                sum_b += (pn & 0xFF) * extra as u32;
-            }
+    /// Performs vertical blur pass with strip-based processing for improved cache locality.
+    ///
+    /// Instead of processing one column at a time (poor cache utilization), this processes
+    /// multiple columns together in strips. This amortizes cache line loads across multiple
+    /// column states, reducing effective cache misses.
+    ///
+    /// Strip width of 8 columns chosen to:
+    /// - Fit 8 column states (24 u32s for sums) in registers
+    /// - Maximize reuse of each loaded cache line (64 bytes = 16 pixels)
+    #[inline]
+    fn vertical_blur_striped(
+        src: &[u32],
+        dst: &mut [u32],
+        width: usize,
+        height: usize,
+        r: usize,
+        inv_diameter_fixed: usize,
+    ) {
+        // Process 8 columns at a time to amortize cache miss cost
+        const STRIP_WIDTH: usize = 8;
 
-            for y in 0..height {
-                // Store result using integer-only fixed-point multiplication
-                let avg_r = ((sum_r * inv_diameter_fixed as u32) >> 10).min(255);
-                let avg_g = ((sum_g * inv_diameter_fixed as u32) >> 10).min(255);
-                let avg_b = ((sum_b * inv_diameter_fixed as u32) >> 10).min(255);
-                self.small_buffer[y * width + x] =
-                    0xFF00_0000 | (avg_r << 16) | (avg_g << 8) | avg_b;
+        // Process full strips
+        let full_strips = width / STRIP_WIDTH;
+        for strip in 0..full_strips {
+            let x_start = strip * STRIP_WIDTH;
+            Self::process_column_strip(src, dst, width, height, r, inv_diameter_fixed, x_start, STRIP_WIDTH);
+        }
+
+        // Process remaining columns (if width not divisible by STRIP_WIDTH)
+        let remaining = width % STRIP_WIDTH;
+        if remaining > 0 {
+            let x_start = full_strips * STRIP_WIDTH;
+            Self::process_column_strip(src, dst, width, height, r, inv_diameter_fixed, x_start, remaining);
+        }
+    }
+
+    /// Processes a strip of columns together for the vertical blur.
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    fn process_column_strip(
+        src: &[u32],
+        dst: &mut [u32],
+        width: usize,
+        height: usize,
+        r: usize,
+        inv_diameter_fixed: usize,
+        x_start: usize,
+        strip_width: usize,
+    ) {
+        // Initialize sums for each column in the strip
+        // Using arrays for up to 8 columns (fits in registers)
+        let mut sums_r = [0u32; 8];
+        let mut sums_g = [0u32; 8];
+        let mut sums_b = [0u32; 8];
+
+        // Initialize window sums for y=0
+        for i in 0..=r.min(height - 1) {
+            let row_offset = i * width;
+            for col in 0..strip_width {
+                let x = x_start + col;
+                let p = src[row_offset + x];
+                sums_r[col] += (p >> 16) & 0xFF;
+                sums_g[col] += (p >> 8) & 0xFF;
+                sums_b[col] += p & 0xFF;
+            }
+        }
+
+        // Add repeated edge pixel for clamped top positions
+        for col in 0..strip_width {
+            let x = x_start + col;
+            let p0 = src[x];
+            sums_r[col] += ((p0 >> 16) & 0xFF) * r as u32;
+            sums_g[col] += ((p0 >> 8) & 0xFF) * r as u32;
+            sums_b[col] += (p0 & 0xFF) * r as u32;
+        }
+
+        // Handle bottom edge clamping if height <= r
+        if height <= r {
+            let extra = r - height + 1;
+            let last_row = (height - 1) * width;
+            for col in 0..strip_width {
+                let x = x_start + col;
+                let pn = src[last_row + x];
+                sums_r[col] += ((pn >> 16) & 0xFF) * extra as u32;
+                sums_g[col] += ((pn >> 8) & 0xFF) * extra as u32;
+                sums_b[col] += (pn & 0xFF) * extra as u32;
+            }
+        }
+
+        // Process each row
+        for y in 0..height {
+            let row_offset = y * width;
+            let leave_row = y.saturating_sub(r) * width;
+            let enter_row = (y + r + 1).min(height - 1) * width;
+
+            // Process all columns in the strip together
+            for col in 0..strip_width {
+                let x = x_start + col;
+
+                // Store result
+                let avg_r = ((sums_r[col] * inv_diameter_fixed as u32) >> 10).min(255);
+                let avg_g = ((sums_g[col] * inv_diameter_fixed as u32) >> 10).min(255);
+                let avg_b = ((sums_b[col] * inv_diameter_fixed as u32) >> 10).min(255);
+                dst[row_offset + x] = 0xFF00_0000 | (avg_r << 16) | (avg_g << 8) | avg_b;
 
                 // Slide window
-                let leave_idx = y.saturating_sub(r);
-                let leave = self.blur_temp[leave_idx * width + x];
-                sum_r -= (leave >> 16) & 0xFF;
-                sum_g -= (leave >> 8) & 0xFF;
-                sum_b -= leave & 0xFF;
+                let leave = src[leave_row + x];
+                sums_r[col] -= (leave >> 16) & 0xFF;
+                sums_g[col] -= (leave >> 8) & 0xFF;
+                sums_b[col] -= leave & 0xFF;
 
-                let enter_idx = (y + r + 1).min(height - 1);
-                let enter = self.blur_temp[enter_idx * width + x];
-                sum_r += (enter >> 16) & 0xFF;
-                sum_g += (enter >> 8) & 0xFF;
-                sum_b += enter & 0xFF;
+                let enter = src[enter_row + x];
+                sums_r[col] += (enter >> 16) & 0xFF;
+                sums_g[col] += (enter >> 8) & 0xFF;
+                sums_b[col] += enter & 0xFF;
             }
         }
     }
