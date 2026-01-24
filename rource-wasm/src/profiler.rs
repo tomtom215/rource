@@ -38,7 +38,6 @@
 //! console.log(`WASM heap: ${(stats.wasm_heap_bytes / 1024 / 1024).toFixed(1)}MB`);
 //! ```
 
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::Performance;
 
@@ -378,14 +377,14 @@ pub fn init_tracing() {
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
 
+    // Use tracing-web's console writer for WASM
+    // MakeWebConsoleWriter provides better formatting than MakeConsoleWriter
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_ansi(false)
-        .without_time();
+        .without_time()
+        .with_writer(tracing_web::MakeWebConsoleWriter::default());
 
-    tracing_subscriber::registry()
-        .with(fmt_layer)
-        .with(tracing_web::MakeConsoleWriter::default())
-        .init();
+    tracing_subscriber::registry().with(fmt_layer).init();
 
     web_sys::console::log_1(&"Rource: tracing initialized - spans will appear in console".into());
 }

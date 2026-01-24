@@ -52,7 +52,10 @@ fn generate_custom_log(num_commits: usize, files_per_commit: usize) -> String {
 
 fn generate_git_log(num_commits: usize, files_per_commit: usize) -> String {
     let mut log = String::with_capacity(num_commits * files_per_commit * 80);
-    let authors = [("Alice Smith", "alice@example.com"), ("Bob Jones", "bob@example.com")];
+    let authors = [
+        ("Alice Smith", "alice@example.com"),
+        ("Bob Jones", "bob@example.com"),
+    ];
     let extensions = ["rs", "ts", "py"];
 
     let mut timestamp = 1609459200i64;
@@ -68,7 +71,11 @@ fn generate_git_log(num_commits: usize, files_per_commit: usize) -> String {
 
         for file_idx in 0..files_per_commit {
             let ext = extensions[(commit_idx + file_idx) % extensions.len()];
-            let action = if (commit_idx + file_idx) % 2 == 0 { "A" } else { "M" };
+            let action = if (commit_idx + file_idx) % 2 == 0 {
+                "A"
+            } else {
+                "M"
+            };
             let path = format!("src/module{}/file_{file_idx}.{ext}", commit_idx % 10);
             log.push_str(&format!("{action}\t{path}\n"));
         }
