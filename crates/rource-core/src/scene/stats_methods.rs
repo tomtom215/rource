@@ -38,6 +38,11 @@ impl Scene {
     }
 
     /// Recomputes extension statistics and updates the cache.
+    ///
+    /// # Performance
+    ///
+    /// Uses `get_mut` + `insert` pattern to avoid String allocation when
+    /// the extension already exists in the map.
     pub(super) fn recompute_extension_stats(&mut self) {
         use rustc_hash::FxHashMap;
 
@@ -48,8 +53,14 @@ impl Scene {
                 continue;
             }
             // Extensions are stored in lowercase in FileNode, so no conversion needed
-            let ext = file.extension().unwrap_or("other").to_string();
-            *stats.entry(ext).or_insert(0) += 1;
+            let ext = file.extension().unwrap_or("other");
+
+            // Avoid allocation: only create String if this is a new extension
+            if let Some(count) = stats.get_mut(ext) {
+                *count += 1;
+            } else {
+                stats.insert(ext.to_string(), 1);
+            }
         }
 
         // Sort by count descending, then by extension name

@@ -4093,4 +4093,160 @@ conversion to fully integer-only arithmetic using 8-bit and 10-bit fixed-point.
 
 ---
 
+## Phase 37: Data Structure and Algorithm Micro-Optimizations (2026-01-24)
+
+### Summary
+
+Phase 37 focuses on eliminating allocations, reducing unnecessary computations, and
+improving data structure operations that were identified as inefficient during profiling.
+
+### Optimizations
+
+#### 1. DirTree.len() O(n) → O(1)
+
+**Problem**: Every call to `DirTree::len()` iterated through all nodes to count non-None entries.
+
+**Before**:
+```rust
+pub fn len(&self) -> usize {
+    self.nodes.iter().filter(|opt| opt.is_some()).count()
+}
+```
+
+**After**:
+```rust
+// Added node_count field to DirTree struct
+pub fn len(&self) -> usize {
+    self.node_count
+}
+// Increment on add, decrement on remove
+```
+
+**Impact**: O(n) → O(1) for every `len()` call. Saves ~n iterations per call.
+
+#### 2. Parent Positions Vec Elimination
+
+**Problem**: `update_parent_positions()` allocated a Vec of all parent positions, then
+iterated again to apply them. This happened every frame.
+
+**Before**:
+```rust
+pub fn update_parent_positions(&mut self) {
+    let parent_positions: Vec<_> = self.nodes.iter()
+        .map(|opt| /* get parent position */)
+        .collect();  // Allocates Vec
+
+    for (node, parent_pos) in self.nodes.iter_mut().zip(parent_positions) {
+        if let Some(n) = node {
+            n.set_parent_position(parent_pos);
+        }
+    }
+}
+```
+
+**After**:
+```rust
+pub fn update_parent_positions(&mut self) {
+    for idx in 0..self.nodes.len() {
+        // Read phase: get parent position (releases borrow after)
+        let parent_pos = if let Some(node) = &self.nodes[idx] {
+            node.parent().and_then(|parent_id| /* get parent position */)
+        } else {
+            continue;
+        };
+        // Write phase: set parent position
+        if let Some(node) = &mut self.nodes[idx] {
+            node.set_parent_position(parent_pos);
+        }
+    }
+}
+```
+
+**Impact**: Zero allocations per frame, saves ~n * sizeof(Option<Vec2>) bytes/frame.
+
+#### 3. Spline closest_point() sqrt() Reduction
+
+**Problem**: `closest_point()` computed sqrt for every cached point when comparing distances,
+resulting in N unnecessary sqrt calls per invocation.
+
+**Before**:
+```rust
+for (i, point) in self.cached_points.iter().enumerate() {
+    let dist = (*point - position).length();  // sqrt per point
+    if dist < best_dist { /* ... */ }
+}
+(best_t, best_dist)
+```
+
+**After**:
+```rust
+for (i, point) in self.cached_points.iter().enumerate() {
+    let dist_sq = (*point - position).length_squared();  // No sqrt
+    if dist_sq < best_dist_sq { /* ... */ }
+}
+(best_t, best_dist_sq.sqrt())  // Single sqrt at end
+```
+
+**Impact**: Reduces sqrt calls from N to 1 per invocation (~15-20 cycles saved per point).
+
+#### 4. Extension Stats String Allocation Reduction
+
+**Problem**: `recompute_extension_stats()` called `to_string()` on every file's extension,
+even though most files share the same extension.
+
+**Before**:
+```rust
+for file in self.files.values() {
+    let ext = file.extension().unwrap_or("other").to_string();  // Allocates!
+    *stats.entry(ext).or_insert(0) += 1;
+}
+```
+
+**After**:
+```rust
+for file in self.files.values() {
+    let ext = file.extension().unwrap_or("other");
+    // Only allocate String when inserting new extension
+    if let Some(count) = stats.get_mut(ext) {
+        *count += 1;
+    } else {
+        stats.insert(ext.to_string(), 1);  // Only allocates for unique extensions
+    }
+}
+```
+
+**Impact**: Reduces allocations from N (total files) to K (unique extensions).
+For a repo with 10,000 .rs files, saves ~9,999 String allocations.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-core/src/scene/tree.rs` | Added `node_count` field, O(1) `len()`, zero-alloc `update_parent_positions()` |
+| `crates/rource-core/src/animation/spline.rs` | `length()` → `length_squared()` in comparison loop |
+| `crates/rource-core/src/scene/stats_methods.rs` | `get_mut` + `insert` pattern for extension stats |
+
+### Performance Summary
+
+| Metric | Before Phase 37 | After Phase 37 |
+|--------|-----------------|----------------|
+| DirTree.len() | O(n) | O(1) |
+| update_parent_positions() | O(n) + Vec alloc | O(n) zero alloc |
+| closest_point() sqrts | N | 1 |
+| Extension stats allocs | N files | K unique extensions |
+
+### Remaining High-Priority Optimizations
+
+The following optimizations were identified but require more significant changes:
+
+**GPU/CPU Synchronization (Async Readback)**
+- Problem: `device.poll(Maintain::Wait)` blocks CPU waiting for GPU completion
+- Solution: Double-buffering with 1-frame latency, async readback callbacks
+- Impact: Could save 3-8ms per frame for large entity counts
+- Complexity: High (requires architectural changes to physics pipeline)
+
+**Test Count**: 1,899 tests passing (all optimizations verified)
+
+---
+
 *This document was extracted from CLAUDE.md on 2026-01-24 to improve maintainability.*

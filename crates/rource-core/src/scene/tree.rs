@@ -128,6 +128,10 @@ pub struct DirTree {
     /// Maps `(parent_id_index, child_name) -> child_id`.
     /// This eliminates O(c) linear scans in `get_or_create_path`.
     children_by_name: HashMap<(u32, String), DirId>,
+
+    /// Cached count of nodes for O(1) `len()`.
+    /// Incremented on add, decremented on remove.
+    node_count: usize,
 }
 
 /// A simple allocator for `DirId`s that matches the entity allocator pattern.
@@ -181,6 +185,7 @@ impl DirTree {
             id_allocator: allocator,
             root_id,
             children_by_name: HashMap::new(),
+            node_count: 1, // Root node
         }
     }
 
@@ -276,6 +281,7 @@ impl DirTree {
                 self.nodes.resize(idx + 1, None);
             }
             self.nodes[idx] = Some(child);
+            self.node_count += 1;
 
             // Add to parent's children
             if let Some(parent) = self.get_mut(current_id) {
@@ -303,9 +309,12 @@ impl DirTree {
     }
 
     /// Returns the number of directories in the tree.
+    ///
+    /// This is O(1) using a cached count.
+    #[inline]
     #[must_use]
     pub fn len(&self) -> usize {
-        self.nodes.iter().filter(|opt| opt.is_some()).count()
+        self.node_count
     }
 
     /// Returns true if the tree only contains the root.
@@ -370,6 +379,7 @@ impl DirTree {
             {
                 *slot = None;
                 self.id_allocator.free(id);
+                self.node_count = self.node_count.saturating_sub(1);
                 removed.push(id);
             }
         }
@@ -611,28 +621,29 @@ impl DirTree {
     }
 
     /// Updates parent positions cache for physics simulation.
+    ///
+    /// Uses index-based iteration to avoid intermediate Vec allocation.
     pub fn update_parent_positions(&mut self) {
-        // Collect parent positions
-        let parent_positions: Vec<_> = self
-            .nodes
-            .iter()
-            .map(|opt| {
-                opt.as_ref().and_then(|node| {
-                    node.parent().and_then(|parent_id| {
-                        self.nodes
-                            .get(parent_id.index_usize())
-                            .and_then(|p| p.as_ref())
-                            .filter(|p| p.id().generation() == parent_id.generation())
-                            .map(DirNode::position)
-                    })
+        // Index-based iteration: release borrows between read and write
+        for idx in 0..self.nodes.len() {
+            // Read phase: get parent position if this node exists and has a parent
+            let parent_pos = if let Some(node) = &self.nodes[idx] {
+                node.parent().and_then(|parent_id| {
+                    let parent_idx = parent_id.index_usize();
+                    self.nodes
+                        .get(parent_idx)
+                        .and_then(|p| p.as_ref())
+                        .filter(|p| p.id().generation() == parent_id.generation())
+                        .map(DirNode::position)
                 })
-            })
-            .collect();
+            } else {
+                continue;
+            };
+            // Borrow is now released
 
-        // Apply to nodes
-        for (node, parent_pos) in self.nodes.iter_mut().zip(parent_positions) {
-            if let Some(n) = node {
-                n.set_parent_position(parent_pos);
+            // Write phase: set parent position
+            if let Some(node) = &mut self.nodes[idx] {
+                node.set_parent_position(parent_pos);
             }
         }
     }
