@@ -94,6 +94,15 @@ export class Rource {
      */
     currentCommit(): number;
     /**
+     * Disables the watermark.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.disableWatermark();
+     * ```
+     */
+    disableWatermark(): void;
+    /**
      * Releases GPU resources immediately.
      *
      * Call this method before the page unloads to prevent GPU resource
@@ -113,6 +122,18 @@ export class Rource {
      * ```
      */
     dispose(): void;
+    /**
+     * Enables the Rource brand watermark preset.
+     *
+     * This shows "Rource" with "© Tom F" in the bottom-right corner
+     * with subtle opacity for non-intrusive branding.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.enableRourceWatermark();
+     * ```
+     */
+    enableRourceWatermark(): void;
     /**
      * Forces a render without updating simulation.
      */
@@ -258,11 +279,26 @@ export class Rource {
      * This batches 12+ individual getter calls into one, reducing per-frame
      * overhead by approximately 90% when updating the performance metrics UI.
      *
+     * # Timing Precision
+     *
+     * Frame time is returned with 4 decimal places (0.1µs display resolution).
+     * Actual measurement precision is limited by browser security mitigations
+     * against timing attacks (Spectre/Meltdown):
+     *
+     * | Browser | Resolution | Source |
+     * |---------|------------|--------|
+     * | Chrome  | ~5µs       | [Chrome Security Blog](https://security.googleblog.com) |
+     * | Firefox | ~20µs      | [MDN Spectre mitigations](https://developer.mozilla.org) |
+     * | Safari  | ~100µs     | `WebKit` security notes |
+     *
+     * Nanosecond precision is not achievable from JavaScript's `performance.now()`.
+     * The 4 decimal places display the full resolution available from the browser.
+     *
      * Returns a JSON string with the following structure:
      * ```json
      * {
      *   "fps": 60.0,
-     *   "frameTimeMs": 16.67,
+     *   "frameTimeMs": 16.6700,
      *   "totalEntities": 1500,
      *   "visibleFiles": 200,
      *   "visibleUsers": 5,
@@ -417,6 +453,10 @@ export class Rource {
      */
     getVisibleUsers(): number;
     /**
+     * Gets the current watermark opacity.
+     */
+    getWatermarkOpacity(): number;
+    /**
      * Returns the current zoom level.
      */
     getZoom(): number;
@@ -538,6 +578,17 @@ export class Rource {
      * ```
      */
     isVsyncEnabled(): boolean;
+    /**
+     * Returns whether the watermark is enabled.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWatermarkEnabled()) {
+     *     console.log('Watermark is visible');
+     * }
+     * ```
+     */
+    isWatermarkEnabled(): boolean;
     /**
      * Returns true if using WebGL2 renderer.
      */
@@ -736,6 +787,17 @@ export class Rource {
      */
     setBranchOpacityMax(opacity: number): void;
     /**
+     * Sets a custom watermark with both primary and secondary text.
+     *
+     * This is a convenience method that enables the watermark and sets both text values.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setCustomWatermark("My Project", "© 2026 My Company");
+     * ```
+     */
+    setCustomWatermark(text: string, subtext: string): void;
+    /**
      * Sets the depth distance exponent for non-linear depth scaling.
      *
      * Values > 1.0 add extra spacing at deeper levels.
@@ -911,6 +973,86 @@ export class Rource {
      */
     setVsync(enabled: boolean): void;
     /**
+     * Sets the watermark text color (hex string like "#FFFFFF" or "FFFFFF").
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkColor("#FFFFFF");
+     * ```
+     */
+    setWatermarkColor(hex: string): void;
+    /**
+     * Sets whether the watermark is enabled.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkEnabled(true);
+     * ```
+     */
+    setWatermarkEnabled(enabled: boolean): void;
+    /**
+     * Sets the watermark font size.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkFontSize(16);
+     * ```
+     */
+    setWatermarkFontSize(size: number): void;
+    /**
+     * Sets the watermark margin from the screen edge in pixels.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkMargin(20);
+     * ```
+     */
+    setWatermarkMargin(margin: number): void;
+    /**
+     * Sets the watermark opacity (0.0 = invisible, 1.0 = fully opaque).
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkOpacity(0.5);
+     * ```
+     */
+    setWatermarkOpacity(opacity: number): void;
+    /**
+     * Sets the watermark position.
+     *
+     * Valid positions:
+     * - "top-left" or "tl"
+     * - "top-right" or "tr"
+     * - "bottom-left" or "bl"
+     * - "bottom-right" or "br" (default)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkPosition("bottom-left");
+     * ```
+     */
+    setWatermarkPosition(position: string): void;
+    /**
+     * Sets the secondary watermark text (displayed below the primary text).
+     *
+     * Pass an empty string to clear the subtext.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkSubtext("© 2026 My Company");
+     * ```
+     */
+    setWatermarkSubtext(text: string): void;
+    /**
+     * Sets the primary watermark text.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkText("My Project");
+     * ```
+     */
+    setWatermarkText(text: string): void;
+    /**
      * Steps backward to the previous commit.
      */
     stepBackward(): void;
@@ -990,7 +1132,9 @@ export interface InitOutput {
     readonly rource_configureLayoutForRepo: (a: number, b: number, c: number, d: number) => void;
     readonly rource_create: (a: number) => number;
     readonly rource_currentCommit: (a: number) => number;
+    readonly rource_disableWatermark: (a: number) => void;
     readonly rource_dispose: (a: number) => void;
+    readonly rource_enableRourceWatermark: (a: number) => void;
     readonly rource_forceRender: (a: number) => void;
     readonly rource_frame: (a: number, b: number) => number;
     readonly rource_getActiveActions: (a: number) => number;
@@ -1031,6 +1175,7 @@ export interface InitOutput {
     readonly rource_getVisibleDirectories: (a: number) => number;
     readonly rource_getVisibleFiles: (a: number) => number;
     readonly rource_getVisibleUsers: (a: number) => number;
+    readonly rource_getWatermarkOpacity: (a: number) => number;
     readonly rource_getZoom: (a: number) => number;
     readonly rource_getZoomDebugInfo: (a: number, b: number) => void;
     readonly rource_hasFileIcons: (a: number) => number;
@@ -1044,6 +1189,7 @@ export interface InitOutput {
     readonly rource_isGPUPhysicsEnabled: (a: number) => number;
     readonly rource_isPlaying: (a: number) => number;
     readonly rource_isVsyncEnabled: (a: number) => number;
+    readonly rource_isWatermarkEnabled: (a: number) => number;
     readonly rource_isWebGL2: (a: number) => number;
     readonly rource_isWgpu: (a: number) => number;
     readonly rource_loadCustomLog: (a: number, b: number, c: number, d: number) => void;
@@ -1069,6 +1215,7 @@ export interface InitOutput {
     readonly rource_setBloom: (a: number, b: number) => void;
     readonly rource_setBranchDepthFade: (a: number, b: number) => void;
     readonly rource_setBranchOpacityMax: (a: number, b: number) => void;
+    readonly rource_setCustomWatermark: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly rource_setDepthDistanceExponent: (a: number, b: number) => void;
     readonly rource_setFontSize: (a: number, b: number) => void;
     readonly rource_setGPUCullingThreshold: (a: number, b: number) => void;
@@ -1080,6 +1227,14 @@ export interface InitOutput {
     readonly rource_setUseGPUCulling: (a: number, b: number) => void;
     readonly rource_setUseGPUPhysics: (a: number, b: number) => void;
     readonly rource_setVsync: (a: number, b: number) => void;
+    readonly rource_setWatermarkColor: (a: number, b: number, c: number) => void;
+    readonly rource_setWatermarkEnabled: (a: number, b: number) => void;
+    readonly rource_setWatermarkFontSize: (a: number, b: number) => void;
+    readonly rource_setWatermarkMargin: (a: number, b: number) => void;
+    readonly rource_setWatermarkOpacity: (a: number, b: number) => void;
+    readonly rource_setWatermarkPosition: (a: number, b: number, c: number) => void;
+    readonly rource_setWatermarkSubtext: (a: number, b: number, c: number) => void;
+    readonly rource_setWatermarkText: (a: number, b: number, c: number) => void;
     readonly rource_stepBackward: (a: number) => void;
     readonly rource_stepForward: (a: number) => void;
     readonly rource_togglePlay: (a: number) => void;
@@ -1088,9 +1243,9 @@ export interface InitOutput {
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_2349: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6517: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2350: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_2370: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6538: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2371: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

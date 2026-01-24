@@ -2930,6 +2930,92 @@ Verified that the following high-severity items from the performance audit were 
 
 **Test Count**: 1,836 tests passing (12 new HudCache tests added)
 
+### Phase 25: Mobile Safari WebGPU Crash Fix (2026-01-24)
+
+Fixed a crash that occurred on mobile Safari (iOS) when loading the WASM demo. The error
+`wasm.__wasm_bindgen_func_elem_6517 is not a function` was caused by attempting to use
+WebGPU on browsers where the API exists but isn't fully functional.
+
+#### Root Cause Analysis
+
+The crash occurred because:
+
+1. **Incomplete WebGPU detection**: The original `is_webgpu_available()` function only checked
+   if `navigator.gpu` exists, not if WebGPU is actually usable.
+
+2. **Safari WebGPU support**: Safari only enabled WebGPU in Safari 26+ (June 2025). On older
+   Safari versions, `navigator.gpu` may exist but adapter requests fail unpredictably.
+
+3. **wasm-bindgen function table corruption**: When WebGPU initialization fails in certain
+   ways on Safari, it can corrupt the WASM function table, causing `func_elem` errors.
+
+#### Solution Implemented
+
+**Files Modified**:
+- `rource-wasm/src/backend.rs` - Added async WebGPU availability check
+
+**Key Changes**:
+
+1. Renamed `is_webgpu_available()` → `is_webgpu_api_present()` (synchronous, only checks API existence)
+
+2. Added new `can_use_webgpu()` async function that:
+   - Checks if the WebGPU API is present
+   - Actually requests an adapter using JavaScript interop
+   - Returns `false` if adapter request fails (catches Safari issues)
+   - Logs warnings for debugging
+
+3. Updated `RendererBackend::new_async()` to use `can_use_webgpu().await` instead of
+   the synchronous check, ensuring proper fallback to WebGL2 on unsupported browsers.
+
+**Implementation**:
+
+```rust
+/// Asynchronously checks if WebGPU can actually be used (adapter available).
+#[cfg(target_arch = "wasm32")]
+async fn can_use_webgpu() -> bool {
+    // First check if the API is even present
+    if !is_webgpu_api_present() {
+        return false;
+    }
+
+    // Get navigator.gpu using Reflect (avoids unstable web-sys features)
+    let gpu_value = js_sys::Reflect::get(&navigator, &JsValue::from_str("gpu"))?;
+
+    // Call requestAdapter() and await the Promise
+    // This actually tests if WebGPU works, not just if the API exists
+    let adapter_promise = js_sys::Reflect::apply(
+        request_adapter_fn.unchecked_ref(),
+        &gpu_value,
+        &js_sys::Array::new(),
+    )?;
+
+    // Check if we got a valid adapter
+    match JsFuture::from(promise).await {
+        Ok(result) => !result.is_null() && !result.is_undefined(),
+        Err(_) => false, // WebGPU not usable
+    }
+}
+```
+
+**Console Output on Mobile Safari**:
+
+```
+Rource: WebGPU API present but no adapter available, trying WebGL2...
+Rource: Using WebGL2 renderer
+```
+
+#### Browser Compatibility
+
+| Browser | WebGPU Support | Fallback |
+|---------|---------------|----------|
+| Chrome 113+ | ✅ Full | - |
+| Firefox 128+ | ✅ Behind flag | WebGL2 |
+| Safari 26+ | ✅ Full | - |
+| Safari < 26 | ❌ API exists but broken | WebGL2 |
+| iOS Safari < 26 | ❌ API exists but broken | WebGL2 |
+
+**Test Count**: 1,836 tests passing (no change)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3392,4 +3478,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-24 (Phase 24: HUD String Caching & Performance Audit Verification - 1,836 tests total)*
+*Last updated: 2026-01-24 (Phase 25: Mobile Safari WebGPU Crash Fix - 1,836 tests total)*
