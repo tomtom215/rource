@@ -1,0 +1,34 @@
+Rource - Software version control visualization
+Repository: /tmp/benchmark/ha_custom.log
+Resolution: 1920x1080
+Running in headless mode
+Output: /tmp/benchmark/frames
+[PERF] Sorting: 0.001s
+Loaded 86742 commits (524869 file changes)
+Estimated duration: 4.5 seconds (270 frames)
+Rendering frames...
+
+[RENDER PROFILE] Frame 0:
+  Culling:     0.00ms (vis: 6 dirs, 30 files, 1 users)
+  Directories: 0.22ms (6 rendered)
+  Files:       0.52ms (30 rendered, 0.017ms/file)
+  Actions:     0.21ms (100 rendered)
+  Users:       0.08ms (1 rendered)
+  Zoom:        1.7447
+
+[RENDER PROFILE] Frame 100:
+  Culling:     0.02ms (vis: 305 dirs, 2321 files, 1050 users)
+  Directories: 2.79ms (305 rendered)
+  Files:       11.05ms (2318 rendered, 0.005ms/file)
+  Actions:     12.90ms (4704 rendered)
+  Users:       11.58ms (1050 rendered)
+  Zoom:        0.6681
+
+[RENDER PROFILE] Frame 200:
+  Culling:     0.12ms (vis: 3285 dirs, 35459 files, 3271 users)
+  Directories: 33.37ms (3285 rendered)
+  Files:       168.95ms (35441 rendered, 0.005ms/file)
+  Actions:     36.21ms (4965 rendered)
+  Users:       38.31ms (3271 rendered)
+  Zoom:        0.8291
+{"frames":271,"total_ns":52314647483,"avg_frame_ns":193042979,"min_frame_ns":51836367,"max_frame_ns":374538835,"p50_frame_ns":162985388,"p95_frame_ns":352531263,"p99_frame_ns":363419150,"phases":{"commit_apply_ns":626671466,"scene_update_ns":2217355936,"render_ns":35646406434,"effects_ns":11148472767,"export_ns":2674588150},"commits_applied":86740,"scene":{"files":31575,"users":4786,"directories":4836}}
