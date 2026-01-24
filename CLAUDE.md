@@ -42,6 +42,7 @@ This document provides context and guidance for Claude (AI assistant) when worki
 | `README.md`        | Project overview and usage instructions |
 | `CONTRIBUTING.md`  | Development guidelines and code style  |
 | `PERFORMANCE.md`   | Performance optimization changelog     |
+| `docs/ALGORITHMIC_COMPLEXITY.md` | Big-O analysis of all functions |
 | `LICENSE`          | GPL-3.0 license (same as original Gource) |
 
 ---
