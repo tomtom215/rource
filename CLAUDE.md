@@ -10,14 +10,15 @@ This document provides context and guidance for Claude (AI assistant) when worki
 2. [Quick Start](#quick-start)
 3. [Architecture](#architecture)
 4. [Development Guidelines](#development-guidelines)
-5. [Common Tasks](#common-tasks)
-6. [Testing & Validation](#testing--validation)
-7. [CI/CD Pipeline](#cicd-pipeline)
-8. [Debugging](#debugging)
-9. [Dependencies Philosophy](#dependencies-philosophy)
-10. [Git Workflow](#git-workflow)
-11. [Troubleshooting](#troubleshooting)
-12. [Reference Links](#reference-links)
+5. [Performance Optimization Standards](#performance-optimization-standards)
+6. [Common Tasks](#common-tasks)
+7. [Testing & Validation](#testing--validation)
+8. [CI/CD Pipeline](#cicd-pipeline)
+9. [Debugging](#debugging)
+10. [Dependencies Philosophy](#dependencies-philosophy)
+11. [Git Workflow](#git-workflow)
+12. [Troubleshooting](#troubleshooting)
+13. [Reference Links](#reference-links)
 
 ---
 
@@ -232,7 +233,7 @@ cargo test -- --nocapture
 cargo test -p rource-core
 ```
 
-### Performance Considerations
+### General Performance Guidelines
 
 - Use spatial hashing/quadtree for entity queries
 - Batch rendering calls (instanced rendering)
@@ -240,7 +241,139 @@ cargo test -p rource-core
 - Stream commits for large repositories
 - Use arena allocation for entities
 
-For detailed optimization history, see [PERFORMANCE.md](./PERFORMANCE.md).
+---
+
+## Performance Optimization Standards
+
+**This project serves as the center showpiece of a professional portfolio and a publicly deployed WASM demo.** As such, we aim for **mathematical perfection** in all performance optimizations—measured, repeatable, verifiable, auditable, and documented improvements.
+
+### Quality Bar
+
+Every optimization must meet these standards:
+
+| Criterion | Requirement |
+|-----------|-------------|
+| **Measurable** | Backed by criterion benchmarks with statistical significance |
+| **Documented** | Added to `PERFORMANCE.md` with before/after measurements |
+| **Correct** | All 1,899+ tests must pass |
+| **Clean** | Clippy and rustfmt compliant |
+| **Verifiable** | Benchmarks can be re-run to reproduce results |
+
+### Optimization Philosophy
+
+We pursue optimizations at the **nanosecond level** and **CPU cycle level**:
+
+| Level | Examples |
+|-------|----------|
+| **Algorithmic** | O(n²) → O(n log n) via Barnes-Hut, spatial indexing |
+| **Arithmetic** | Division → multiplication by reciprocal, sqrt elimination |
+| **Memory** | Zero-allocation hot paths, arena allocation, buffer reuse |
+| **Compile-time** | Lookup tables, const evaluation, precomputed constants |
+| **Instruction** | Fixed-point arithmetic, bit shifts instead of division |
+
+### Optimization Patterns
+
+**Replace expensive operations with cheaper equivalents:**
+```rust
+// Before: expensive
+let normalized = delta.normalized();  // sqrt + division
+
+// After: reuse known length
+let normalized = delta / known_length;  // division only
+```
+
+**Eliminate redundant calculations:**
+```rust
+// Before: sqrt computed twice
+let length = dir.length();
+let perp = Vec2::new(-dir.y, dir.x).normalized();  // same magnitude!
+
+// After: perpendicular has same length, skip normalization
+let perp = Vec2::new(-dir.y, dir.x);
+```
+
+**Use compile-time lookup tables:**
+```rust
+// Before: runtime division
+let f = byte as f32 / 255.0;
+
+// After: LUT access
+static U8_TO_F32_LUT: [f32; 256] = { /* compile-time computed */ };
+let f = U8_TO_F32_LUT[byte as usize];
+```
+
+**Replace allocations with iterators:**
+```rust
+// Before: allocates Vec
+let parts: Vec<&str> = line.split('|').collect();
+
+// After: zero allocation
+let mut parts = line.split('|');
+let first = parts.next()?;
+```
+
+### Optimization Methodology
+
+Every optimization follows this rigorous process:
+
+1. **Identify** - Profile, grep for patterns, analyze algorithmic complexity
+2. **Benchmark** - Create criterion benchmarks measuring baseline performance
+3. **Implement** - Make targeted changes with clear before/after comments
+4. **Verify** - Run all tests, clippy, rustfmt
+5. **Document** - Update `PERFORMANCE.md` with measurements and rationale
+6. **Commit** - Clear commit message referencing phase number
+
+### Benchmark Requirements
+
+All benchmarks must:
+
+- Use `criterion` for statistical rigor
+- Test multiple input sizes/scenarios
+- Report throughput (elements/second) where applicable
+- Include both micro-benchmarks (isolated operation) and macro-benchmarks (realistic workload)
+- Be reproducible across runs
+
+Example benchmark structure:
+```rust
+fn benchmark_operation(c: &mut Criterion) {
+    let mut group = c.benchmark_group("operation_name");
+    group.throughput(Throughput::Elements(1000));
+
+    group.bench_function("baseline", |b| {
+        b.iter(|| baseline_implementation(black_box(input)))
+    });
+
+    group.bench_function("optimized", |b| {
+        b.iter(|| optimized_implementation(black_box(input)))
+    });
+
+    group.finish();
+}
+```
+
+### Documentation Format
+
+Each optimization phase in `PERFORMANCE.md` must include:
+
+1. **Overview** - What was optimized and why
+2. **The Problem** - Code showing the inefficiency
+3. **The Solution** - Optimized code with explanation
+4. **Mathematical Proof** (if applicable) - Why the optimization is correct
+5. **Benchmark Results** - Table with before/after measurements
+6. **Files Modified** - What changed and where
+7. **Correctness Verification** - How correctness was validated
+
+### Current Optimization Phases
+
+See [PERFORMANCE.md](./PERFORMANCE.md) for the complete optimization history (48+ phases), including:
+
+- Fixed-point alpha blending (-21% batch, -81% same-color)
+- Color conversion LUTs (-54% from_hex, -62% to_argb8)
+- VCS parser zero-allocation (iterator-based parsing)
+- Force normalization (eliminated redundant sqrt)
+- Perpendicular vector optimization (-72% operation, +14% throughput)
+- Barnes-Hut O(n log n) force layout
+- And many more...
 
 ---
 
