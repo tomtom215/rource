@@ -1,0 +1,2 @@
+mkdir: invalid option -- 'r'
+Try 'mkdir --help' for more information.

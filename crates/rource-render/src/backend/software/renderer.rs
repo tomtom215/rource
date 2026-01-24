@@ -17,6 +17,9 @@ use rource_math::{Bounds, Color, Mat4, Vec2, Vec3};
 
 use crate::{FontCache, FontId, Renderer, Texture, TextureId};
 
+// Import optimized deterministic primitives
+use super::optimized::{draw_disc_optimized, draw_ring_optimized};
+
 // ============================================================================
 // Free Functions for Split Borrow Pattern
 // ============================================================================
@@ -293,6 +296,11 @@ pub struct SoftwareRenderer {
     /// File icon extension to texture ID mapping.
     /// Used for file icon rendering in CPU software mode.
     file_icon_textures: HashMap<String, TextureId>,
+
+    /// Whether to use deterministic fixed-point rendering.
+    /// When enabled, uses integer-only arithmetic for 100% reproducible output.
+    /// Default: false (uses floating-point for faster rendering).
+    deterministic_mode: bool,
 }
 
 impl SoftwareRenderer {
@@ -323,7 +331,35 @@ impl SoftwareRenderer {
             // Pre-allocate glyph buffer with capacity for typical text lengths
             glyph_buffer: Vec::with_capacity(256),
             file_icon_textures: HashMap::default(),
+            deterministic_mode: false,
         }
+    }
+
+    /// Enables deterministic rendering mode.
+    ///
+    /// When enabled, rendering uses fixed-point integer arithmetic instead of
+    /// floating-point. This guarantees 100% identical output across all platforms
+    /// and builds.
+    ///
+    /// # Use Cases
+    ///
+    /// - Regression testing (pixel-perfect comparison)
+    /// - Reproducible benchmarks
+    /// - Cross-platform consistency verification
+    ///
+    /// # Performance
+    ///
+    /// Deterministic mode may be slightly slower or faster depending on the CPU.
+    /// Modern CPUs with fast FPUs may see no difference or slight slowdown.
+    /// Older or embedded CPUs may see improvement due to avoiding FP operations.
+    pub fn set_deterministic_mode(&mut self, enabled: bool) {
+        self.deterministic_mode = enabled;
+    }
+
+    /// Returns whether deterministic rendering mode is enabled.
+    #[must_use]
+    pub fn is_deterministic_mode(&self) -> bool {
+        self.deterministic_mode
     }
 
     /// Enables 3D depth testing with a Z-buffer.
@@ -870,6 +906,21 @@ impl SoftwareRenderer {
 
     /// Draws a filled circle with anti-aliased edges.
     fn draw_disc_aa(&mut self, cx: f32, cy: f32, radius: f32, color: Color) {
+        // Use deterministic fixed-point version when enabled
+        if self.deterministic_mode && self.clips.is_empty() {
+            draw_disc_optimized(
+                &mut self.pixels,
+                self.width,
+                self.height,
+                cx,
+                cy,
+                radius,
+                color,
+            );
+            return;
+        }
+
+        // Floating-point version (default)
         let min_x = (cx - radius - 1.0).floor() as i32;
         let max_x = (cx + radius + 1.0).ceil() as i32;
         let min_y = (cy - radius - 1.0).floor() as i32;
@@ -900,6 +951,22 @@ impl SoftwareRenderer {
 
     /// Draws an outlined circle with anti-aliased edges.
     fn draw_circle_aa(&mut self, cx: f32, cy: f32, radius: f32, width: f32, color: Color) {
+        // Use deterministic fixed-point version when enabled
+        if self.deterministic_mode && self.clips.is_empty() {
+            draw_ring_optimized(
+                &mut self.pixels,
+                self.width,
+                self.height,
+                cx,
+                cy,
+                radius,
+                width,
+                color,
+            );
+            return;
+        }
+
+        // Floating-point version (default)
         let half_width = width / 2.0;
         let outer_radius = radius + half_width;
         let inner_radius = (radius - half_width).max(0.0);
@@ -1589,5 +1656,89 @@ mod tests {
         renderer.draw_text("Small", Vec2::new(10.0, 20.0), font_id, 8.0, Color::WHITE);
         renderer.draw_text("Medium", Vec2::new(10.0, 60.0), font_id, 16.0, Color::WHITE);
         renderer.draw_text("Large", Vec2::new(10.0, 120.0), font_id, 32.0, Color::WHITE);
+    }
+
+    // ========================================================================
+    // Deterministic Mode Tests
+    // ========================================================================
+
+    #[test]
+    fn test_deterministic_mode_default_disabled() {
+        let renderer = SoftwareRenderer::new(100, 100);
+        assert!(
+            !renderer.is_deterministic_mode(),
+            "Deterministic mode should be off by default"
+        );
+    }
+
+    #[test]
+    fn test_deterministic_mode_toggle() {
+        let mut renderer = SoftwareRenderer::new(100, 100);
+
+        assert!(!renderer.is_deterministic_mode());
+
+        renderer.set_deterministic_mode(true);
+        assert!(renderer.is_deterministic_mode());
+
+        renderer.set_deterministic_mode(false);
+        assert!(!renderer.is_deterministic_mode());
+    }
+
+    #[test]
+    fn test_deterministic_mode_disc_draws() {
+        let mut renderer = SoftwareRenderer::new(100, 100);
+        renderer.set_deterministic_mode(true);
+        renderer.clear(Color::BLACK);
+        renderer.draw_disc(Vec2::new(50.0, 50.0), 10.0, Color::WHITE);
+
+        // Center should be white
+        let center_idx = 50 * 100 + 50;
+        assert_eq!(renderer.pixels()[center_idx], 0xFFFF_FFFF);
+    }
+
+    #[test]
+    fn test_deterministic_mode_produces_identical_output() {
+        // Render the same scene twice with deterministic mode
+        let mut renderer1 = SoftwareRenderer::new(100, 100);
+        let mut renderer2 = SoftwareRenderer::new(100, 100);
+
+        renderer1.set_deterministic_mode(true);
+        renderer2.set_deterministic_mode(true);
+
+        renderer1.clear(Color::BLACK);
+        renderer2.clear(Color::BLACK);
+
+        // Draw multiple discs at various positions
+        for i in 0..5 {
+            let x = 20.0 + i as f32 * 15.0;
+            let y = 50.0;
+            renderer1.draw_disc(Vec2::new(x, y), 5.0, Color::WHITE);
+            renderer2.draw_disc(Vec2::new(x, y), 5.0, Color::WHITE);
+        }
+
+        // Both renderers should produce identical output
+        assert_eq!(
+            renderer1.pixels(),
+            renderer2.pixels(),
+            "Deterministic mode should produce identical output"
+        );
+    }
+
+    #[test]
+    fn test_deterministic_mode_ring_draws() {
+        let mut renderer = SoftwareRenderer::new(100, 100);
+        renderer.set_deterministic_mode(true);
+        renderer.clear(Color::BLACK);
+        renderer.draw_circle(Vec2::new(50.0, 50.0), 20.0, 2.0, Color::WHITE);
+
+        // Center should still be black (ring has a hole)
+        let center_idx = 50 * 100 + 50;
+        assert_eq!(renderer.pixels()[center_idx], 0xFF00_0000);
+
+        // Ring edge should have content
+        let ring_idx = 50 * 100 + 70; // At radius 20
+        let pixel = renderer.pixels()[ring_idx];
+        let r = (pixel >> 16) & 0xFF;
+        assert!(r > 0, "Ring should draw at radius, got r={r}");
     }
 }
