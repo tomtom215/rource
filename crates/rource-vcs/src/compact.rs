@@ -74,6 +74,17 @@ pub struct CompactCommit {
 pub struct CommitId(u32);
 
 impl CommitId {
+    /// Creates a `CommitId` from a raw index.
+    ///
+    /// # Safety
+    ///
+    /// This does not validate that the index corresponds to a valid commit.
+    /// Use [`CommitStore::get_commit()`] to check validity.
+    #[must_use]
+    pub const fn from_index(index: u32) -> Self {
+        Self(index)
+    }
+
     /// Returns the raw index.
     #[must_use]
     pub const fn index(self) -> u32 {

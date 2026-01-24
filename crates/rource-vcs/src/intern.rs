@@ -38,6 +38,18 @@ impl InternedString {
     pub const fn index(self) -> u32 {
         self.0
     }
+
+    /// Creates an `InternedString` from a raw index.
+    ///
+    /// # Safety
+    ///
+    /// This is safe but the caller must ensure the index is valid
+    /// for the interner it will be used with. Using an invalid index
+    /// will cause `resolve()` to return `None`.
+    #[must_use]
+    pub(crate) const fn from_index(index: u32) -> Self {
+        Self(index)
+    }
 }
 
 /// A string interner that stores unique strings and returns handles.
@@ -194,6 +206,18 @@ impl InternedPath {
     #[must_use]
     pub const fn index(self) -> u32 {
         self.0
+    }
+
+    /// Creates an `InternedPath` from a raw index.
+    ///
+    /// # Safety
+    ///
+    /// This is safe but the caller must ensure the index is valid
+    /// for the interner it will be used with. Using an invalid index
+    /// will cause `resolve()` to return `None`.
+    #[must_use]
+    pub(crate) const fn from_index(index: u32) -> Self {
+        Self(index)
     }
 }
 

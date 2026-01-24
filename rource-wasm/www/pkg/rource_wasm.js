@@ -190,6 +190,78 @@ export class Rource {
         wasm.rource_enableRourceWatermark(this.__wbg_ptr);
     }
     /**
+     * Exports the current commits as a binary cache.
+     *
+     * Returns `null` if no commits are loaded.
+     *
+     * The returned bytes can be stored in IndexedDB for fast subsequent loads.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const bytes = rource.exportCacheBytes();
+     * if (bytes) {
+     *     await idb.put('cache', repoHash, bytes);
+     * }
+     * ```
+     * @returns {Uint8Array | undefined}
+     */
+    exportCacheBytes() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_exportCacheBytes(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getArrayU8FromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Exports the current commits as a binary cache with a repository identifier.
+     *
+     * The repository hash is used to validate the cache when loading.
+     *
+     * # Arguments
+     *
+     * * `repo_id` - A unique identifier for the repository (URL, path, etc.).
+     *
+     * # Returns
+     *
+     * The serialized cache bytes, or `null` if no commits are loaded.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const bytes = rource.exportCacheBytesWithRepoId('https://github.com/owner/repo.git');
+     * ```
+     * @param {string} repo_id
+     * @returns {Uint8Array | undefined}
+     */
+    exportCacheBytesWithRepoId(repo_id) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(repo_id, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.rource_exportCacheBytesWithRepoId(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v2;
+            if (r0 !== 0) {
+                v2 = getArrayU8FromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v2;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Forces a render without updating simulation.
      */
     forceRender() {
@@ -276,6 +348,56 @@ export class Rource {
             wasm.__wbindgen_add_to_stack_pointer(16);
             wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Returns statistics about the current cache state.
+     *
+     * Returns a JSON object with cache information, or `null` if
+     * no commits are loaded.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const stats = rource.getCacheStats();
+     * if (stats) {
+     *     const info = JSON.parse(stats);
+     *     console.log(`${info.commits} commits, ${info.sizeBytes} bytes`);
+     * }
+     * ```
+     * @returns {string | undefined}
+     */
+    getCacheStats() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCacheStats(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns the current cache format version.
+     *
+     * Use this to check compatibility before loading a cache.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const version = Rource.getCacheVersion();
+     * console.log('Cache version:', version);
+     * ```
+     * @returns {number}
+     */
+    static getCacheVersion() {
+        const ret = wasm.rource_getCacheVersion();
+        return ret;
     }
     /**
      * Returns the current camera state as JSON.
@@ -387,6 +509,52 @@ export class Rource {
             return v1;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns detailed frame profiling statistics as JSON.
+     *
+     * This provides phase-level timing breakdown for identifying bottlenecks:
+     * - `sceneUpdateMs`: Time spent applying commits and updating physics
+     * - `renderMs`: Time spent in render passes
+     * - `gpuWaitMs`: Time waiting for GPU (WebGPU only)
+     * - `effectsMs`: Time in post-processing (bloom, shadows)
+     * - `totalMs`: Total frame time
+     *
+     * Rolling averages (`avg*`) are calculated over the last 60 frames.
+     *
+     * ## Usage
+     *
+     * ```javascript
+     * const stats = JSON.parse(rource.getDetailedFrameStats());
+     * console.log(`Scene: ${stats.sceneUpdateMs.toFixed(2)}ms`);
+     * console.log(`Render: ${stats.renderMs.toFixed(2)}ms`);
+     * console.log(`WASM heap: ${(stats.wasmHeapBytes / 1024 / 1024).toFixed(1)}MB`);
+     * ```
+     *
+     * ## Chrome `DevTools` Integration
+     *
+     * When the `profiling` feature is enabled, Performance marks are added
+     * that show up in Chrome `DevTools` Performance tab:
+     * - `rource:frame_start` / `rource:frame_end`
+     * - `rource:scene_update_start` / `rource:scene_update_end`
+     * - `rource:render_start` / `rource:render_end`
+     * @returns {string}
+     */
+    getDetailedFrameStats() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getDetailedFrameStats(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
         }
     }
     /**
@@ -892,6 +1060,131 @@ export class Rource {
         return ret !== 0;
     }
     /**
+     * Checks if cache data has a valid magic header.
+     *
+     * This is a quick check that doesn't fully validate the cache.
+     * Use before attempting to import to provide fast feedback.
+     *
+     * # Arguments
+     *
+     * * `bytes` - The cache bytes to check.
+     *
+     * # Returns
+     *
+     * `true` if the data starts with the "RSVC" magic bytes.
+     * @param {Uint8Array} bytes
+     * @returns {boolean}
+     */
+    static hasValidCacheMagic(bytes) {
+        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.rource_hasValidCacheMagic(ptr0, len0);
+        return ret !== 0;
+    }
+    /**
+     * Computes a stable hash for a repository identifier.
+     *
+     * Use this to create cache keys for IndexedDB storage.
+     *
+     * # Arguments
+     *
+     * * `repo_id` - A unique identifier for the repository (URL, path, etc.).
+     *
+     * # Returns
+     *
+     * A 64-bit hash as a hex string (16 characters).
+     *
+     * # Example
+     *
+     * ```javascript
+     * const hash = Rource.hashRepoId('https://github.com/owner/repo.git');
+     * // Use hash as IndexedDB key
+     * await idb.put('cache', hash, cacheBytes);
+     * ```
+     * @param {string} repo_id
+     * @returns {string}
+     */
+    static hashRepoId(repo_id) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(repo_id, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.rource_hashRepoId(retptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred2_0 = r0;
+            deferred2_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export4(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * Imports commits from a binary cache.
+     *
+     * Returns the number of commits loaded, or 0 if the cache is invalid.
+     *
+     * # Arguments
+     *
+     * * `bytes` - The cache bytes previously exported with `exportCacheBytes()`.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const bytes = await idb.get('cache', repoHash);
+     * if (bytes) {
+     *     const count = rource.importCacheBytes(bytes);
+     *     if (count > 0) {
+     *         console.log(`Loaded ${count} commits from cache`);
+     *     }
+     * }
+     * ```
+     * @param {Uint8Array} bytes
+     * @returns {number}
+     */
+    importCacheBytes(bytes) {
+        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.rource_importCacheBytes(this.__wbg_ptr, ptr0, len0);
+        return ret >>> 0;
+    }
+    /**
+     * Imports commits from a binary cache, validating the repository identifier.
+     *
+     * Returns the number of commits loaded, or 0 if:
+     * - The cache is invalid
+     * - The repository hash doesn't match
+     *
+     * # Arguments
+     *
+     * * `bytes` - The cache bytes.
+     * * `repo_id` - The expected repository identifier.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const bytes = await idb.get('cache', repoHash);
+     * const count = rource.importCacheBytesWithRepoId(bytes, repoUrl);
+     * if (count === 0) {
+     *     // Cache miss or mismatch - fallback to parsing
+     * }
+     * ```
+     * @param {Uint8Array} bytes
+     * @param {string} repo_id
+     * @returns {number}
+     */
+    importCacheBytesWithRepoId(bytes, repo_id) {
+        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(repo_id, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.rource_importCacheBytesWithRepoId(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret >>> 0;
+    }
+    /**
      * Initializes the file icon system.
      *
      * This pre-generates icons for common file extensions (rs, js, py, etc.)
@@ -1011,6 +1304,26 @@ export class Rource {
      */
     isPlaying() {
         const ret = wasm.rource_isPlaying(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Returns true if the `profiling` feature is enabled.
+     *
+     * When true, Performance API marks are added to frames for Chrome `DevTools`.
+     * @returns {boolean}
+     */
+    isProfilingEnabled() {
+        const ret = wasm.rource_isProfilingEnabled(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Returns true if the `tracing` feature is enabled.
+     *
+     * When true, Rust tracing spans are routed to browser console.
+     * @returns {boolean}
+     */
+    isTracingEnabled() {
+        const ret = wasm.rource_isProfilingEnabled(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -1838,6 +2151,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0) === undefined;
             return ret;
         },
+        __wbg___wbindgen_memory_bd1fbcf21fbef3c8: function() {
+            const ret = wasm.memory;
+            return addHeapObject(ret);
+        },
         __wbg___wbindgen_number_get_8ff4255516ccad3e: function(arg0, arg1) {
             const obj = getObject(arg1);
             const ret = typeof(obj) === 'number' ? obj : undefined;
@@ -1990,6 +2307,14 @@ function __wbg_get_imports() {
         __wbg_buffer_26d0910f3a5bc899: function(arg0) {
             const ret = getObject(arg0).buffer;
             return addHeapObject(ret);
+        },
+        __wbg_buffer_7b5f53e46557d8f1: function(arg0) {
+            const ret = getObject(arg0).buffer;
+            return addHeapObject(ret);
+        },
+        __wbg_byteLength_7b03c17ff1e4037f: function(arg0) {
+            const ret = getObject(arg0).byteLength;
+            return ret;
         },
         __wbg_call_389efe28435a9388: function() { return handleError(function (arg0, arg1) {
             const ret = getObject(arg0).call(getObject(arg1));
@@ -2539,6 +2864,16 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).includes(getObject(arg1), arg2);
             return ret;
         },
+        __wbg_instanceof_ArrayBuffer_c367199e2fa2aa04: function(arg0) {
+            let result;
+            try {
+                result = getObject(arg0) instanceof ArrayBuffer;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
+            return ret;
+        },
         __wbg_instanceof_CanvasRenderingContext2d_4bb052fd1c3d134d: function(arg0) {
             let result;
             try {
@@ -2573,6 +2908,16 @@ function __wbg_get_imports() {
             let result;
             try {
                 result = getObject(arg0) instanceof HTMLCanvasElement;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
+            return ret;
+        },
+        __wbg_instanceof_Memory_dc8c61e3f831ee37: function(arg0) {
+            let result;
+            try {
+                result = getObject(arg0) instanceof WebAssembly.Memory;
             } catch (_) {
                 result = false;
             }
@@ -2689,7 +3034,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6530(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6680(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2716,9 +3061,17 @@ function __wbg_get_imports() {
             const ret = new ImageData(getClampedArrayU8FromWasm0(arg0, arg1), arg2 >>> 0, arg3 >>> 0);
             return addHeapObject(ret);
         }, arguments); },
+        __wbg_now_ebffdf7e580f210d: function(arg0) {
+            const ret = getObject(arg0).now();
+            return ret;
+        },
         __wbg_of_f915f7cd925b21a5: function(arg0) {
             const ret = Array.of(getObject(arg0));
             return addHeapObject(ret);
+        },
+        __wbg_performance_06f12ba62483475d: function(arg0) {
+            const ret = getObject(arg0).performance;
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
         __wbg_pixelStorei_2a65936c11b710fe: function(arg0, arg1, arg2) {
             getObject(arg0).pixelStorei(arg1 >>> 0, arg2);
@@ -3657,8 +4010,8 @@ function __wbg_get_imports() {
             getObject(arg0).writeTexture(getObject(arg1), getObject(arg2), getObject(arg3), getObject(arg4));
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 669, function: Function { arguments: [Externref], shim_idx: 670, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2362, __wasm_bindgen_func_elem_2363);
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 688, function: Function { arguments: [Externref], shim_idx: 689, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2506, __wasm_bindgen_func_elem_2507);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -3720,12 +4073,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_2363(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_2363(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_2507(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_2507(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6530(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6530(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6680(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6680(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 
@@ -4052,6 +4405,13 @@ function makeMutClosure(arg0, arg1, dtor, f) {
     };
     CLOSURE_DTORS.register(real, state, state);
     return real;
+}
+
+function passArray8ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
 }
 
 function passStringToWasm0(arg, malloc, realloc) {

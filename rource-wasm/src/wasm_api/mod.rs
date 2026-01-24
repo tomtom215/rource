@@ -21,6 +21,8 @@
 //! | `hover` | Hover detection and entity info for tooltips |
 
 mod authors;
+#[cfg(feature = "cache")]
+mod cache;
 mod camera;
 mod export;
 mod hover;
