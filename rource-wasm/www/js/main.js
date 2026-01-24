@@ -56,9 +56,122 @@ import {
     isRecordingSupported
 } from './features/video-recording.js';
 import { animate } from './animation.js';
+import { initBottomSheet, openBottomSheet, closeBottomSheet } from './features/bottom-sheet.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
+
+/**
+ * Initializes bottom sheet button actions.
+ * Connects bottom sheet UI to existing functionality.
+ */
+function initBottomSheetActions() {
+    const bsVisualizeBtn = document.getElementById('bs-visualize-rource');
+    const bsFetchRepoBtn = document.getElementById('bs-fetch-repo');
+    const bsGithubUrl = document.getElementById('bs-github-url');
+    const bsFetchBtn = document.getElementById('bs-fetch-btn');
+    const bsFab = document.getElementById('bottom-sheet-fab');
+
+    // Enable visualize button when WASM is ready
+    if (bsVisualizeBtn) {
+        bsVisualizeBtn.disabled = false;
+        bsVisualizeBtn.addEventListener('click', () => {
+            loadRourceData();
+            closeBottomSheet();
+        });
+    }
+
+    // Fetch repo button opens bottom sheet to the input
+    if (bsFetchRepoBtn) {
+        bsFetchRepoBtn.addEventListener('click', () => {
+            // Scroll to input and focus
+            if (bsGithubUrl) {
+                bsGithubUrl.focus();
+                bsGithubUrl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    }
+
+    // Enable fetch button when input has content
+    if (bsGithubUrl && bsFetchBtn) {
+        bsFetchBtn.disabled = false;
+        bsGithubUrl.addEventListener('input', () => {
+            bsFetchBtn.disabled = !bsGithubUrl.value.trim();
+        });
+
+        // Handle fetch action
+        bsFetchBtn.addEventListener('click', async () => {
+            const input = bsGithubUrl.value.trim();
+            if (!input) return;
+
+            // Parse repo from input (could be full URL or owner/repo)
+            let repo = input;
+            const urlMatch = input.match(/github\.com\/([^\/]+\/[^\/]+)/);
+            if (urlMatch) {
+                repo = urlMatch[1];
+            }
+
+            // Disable button while fetching
+            bsFetchBtn.disabled = true;
+            bsGithubUrl.disabled = true;
+
+            try {
+                const logData = await fetchGitHubWithProgress(repo, {
+                    statusEl: null, // No status element in bottom sheet
+                });
+
+                if (logData) {
+                    loadLogData(logData, 'custom');
+                    closeBottomSheet();
+                    showToast(`Loaded ${repo}`, 'success');
+                } else {
+                    showToast('Failed to fetch repository', 'error');
+                }
+            } catch (error) {
+                showToast('Error fetching repository: ' + error.message, 'error');
+            } finally {
+                bsFetchBtn.disabled = false;
+                bsGithubUrl.disabled = false;
+            }
+        });
+
+        // Handle enter key
+        bsGithubUrl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !bsFetchBtn.disabled) {
+                bsFetchBtn.click();
+            }
+        });
+    }
+
+    // FAB opens bottom sheet
+    if (bsFab) {
+        bsFab.addEventListener('click', () => {
+            openBottomSheet('HALF');
+        });
+    }
+
+    // Update bottom sheet tech specs when available
+    updateBottomSheetTechSpecs();
+}
+
+/**
+ * Updates bottom sheet technical specifications.
+ */
+function updateBottomSheetTechSpecs() {
+    const rource = getRource();
+    if (!rource) return;
+
+    const bsRenderer = document.getElementById('bs-tech-renderer');
+    if (bsRenderer) {
+        const rendererType = rource.getRendererType();
+        const displayNames = {
+            'wgpu': 'WebGPU',
+            'webgl2': 'WebGL2',
+            'software': 'CPU'
+        };
+        bsRenderer.textContent = displayNames[rendererType] || rendererType;
+    }
+}
 
 /**
  * Cleanup handler for page unload.
@@ -276,6 +389,10 @@ async function main() {
         initFullMapExport();
         initFontSizeControl();
         initVideoRecording();
+        initBottomSheet();
+
+        // Wire up bottom sheet actions
+        initBottomSheetActions();
 
         // Set up animation callbacks for features that need them
         setAnimateCallback(animate);

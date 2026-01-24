@@ -4785,3 +4785,628 @@ h2.h3-style {
         pointer-events: auto;
     }
 }
+
+/* ========================================
+   iOS-STYLE BOTTOM SHEET
+   Native-feeling bottom sheet for mobile
+   ======================================== */
+
+/* Bottom sheet backdrop (dimmed background) */
+.bottom-sheet-backdrop {
+    display: none; /* Hidden on desktop */
+}
+
+/* Bottom sheet container */
+.bottom-sheet {
+    display: none; /* Hidden on desktop */
+}
+
+/* Mobile: Enable bottom sheet */
+@media (max-width: 768px) {
+    /* Hide the old sidebar toggle on mobile when bottom sheet is active */
+    .has-bottom-sheet .sidebar-toggle {
+        display: none !important;
+    }
+
+    /* Hide the old sidebar panel on mobile when bottom sheet is active */
+    .has-bottom-sheet .sidebar-panel {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .sidebar-wrapper {
+        display: none !important;
+    }
+
+    /* Bottom sheet backdrop */
+    .bottom-sheet-backdrop {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 299;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        pointer-events: none;
+    }
+
+    .bottom-sheet-backdrop.visible {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    /* Bottom sheet container */
+    .bottom-sheet {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        /* Height: nearly full screen */
+        height: 92vh;
+        max-height: calc(100vh - env(safe-area-inset-top) - 20px);
+        background: var(--bg-primary);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        z-index: 300;
+        /* Start hidden (translated down by full height) */
+        transform: translateY(100%);
+        /* iOS-style spring transition */
+        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        /* Prevent content from overflowing rounded corners */
+        overflow: hidden;
+        /* Safe area padding */
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Drag handle area - the grabbable top section */
+    .bottom-sheet-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 16px 8px;
+        cursor: grab;
+        /* Prevent text selection while dragging */
+        user-select: none;
+        -webkit-user-select: none;
+        /* Visual feedback */
+        touch-action: none;
+    }
+
+    .bottom-sheet-header:active {
+        cursor: grabbing;
+    }
+
+    /* The pill-shaped drag handle */
+    .bottom-sheet-handle {
+        width: 36px;
+        height: 5px;
+        background: var(--border-light);
+        border-radius: 2.5px;
+        margin-bottom: 12px;
+        /* Subtle animation on hover/active */
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .bottom-sheet-header:active .bottom-sheet-handle {
+        background: var(--text-muted);
+        transform: scaleX(1.1);
+    }
+
+    /* Sheet title */
+    .bottom-sheet-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        text-align: center;
+    }
+
+    /* Scrollable content area */
+    .bottom-sheet-content {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 0 16px 16px;
+    }
+
+    /* Customize scrollbar for bottom sheet */
+    .bottom-sheet-content::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+    }
+
+    /* Bottom sheet floating action button (menu button) */
+    .bottom-sheet-fab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+        right: 16px;
+        width: 56px;
+        height: 56px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4),
+                    0 2px 4px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        z-index: 250;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .bottom-sheet-fab:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(233, 69, 96, 0.5),
+                    0 3px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .bottom-sheet-fab:active {
+        transform: scale(0.95);
+    }
+
+    .bottom-sheet-fab svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Compact panels inside bottom sheet */
+    .bottom-sheet .showcase-panel {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .bottom-sheet .showcase-panel h2 {
+        font-size: 1rem;
+    }
+
+    .bottom-sheet .showcase-panel p {
+        font-size: 0.85rem;
+    }
+
+    .bottom-sheet .showcase-stats {
+        gap: 0.5rem;
+    }
+
+    .bottom-sheet .showcase-stat-value {
+        font-size: 1.25rem;
+    }
+
+    .bottom-sheet .panel {
+        margin-bottom: 0.75rem;
+    }
+
+    .bottom-sheet .panel-header h2 {
+        font-size: 0.95rem;
+    }
+
+    /* Collapsible sections more compact */
+    .bottom-sheet .panel.collapsible .panel-body {
+        padding: 0.75rem;
+    }
+
+    .bottom-sheet .docs-section {
+        padding: 0.5rem 0;
+    }
+
+    .bottom-sheet .docs-section h3 {
+        font-size: 0.9rem;
+    }
+
+    .bottom-sheet .docs-section p,
+    .bottom-sheet .docs-section li {
+        font-size: 0.85rem;
+    }
+
+    /* Tabs compact */
+    .bottom-sheet .tab-nav {
+        gap: 0.25rem;
+    }
+
+    .bottom-sheet .tab-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    /* About banner compact */
+    .bottom-sheet .about-banner {
+        padding: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .bottom-sheet .about-banner h2 {
+        font-size: 1rem;
+    }
+
+    /* Quick access buttons at top of sheet */
+    .bottom-sheet-quick-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0 16px 12px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 12px;
+    }
+
+    .bottom-sheet-quick-action {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.75rem 0.5rem;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .bottom-sheet-quick-action:hover {
+        background: var(--border);
+    }
+
+    .bottom-sheet-quick-action:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .bottom-sheet-quick-action svg {
+        width: 20px;
+        height: 20px;
+        color: var(--accent);
+    }
+
+    /* Section headers in bottom sheet */
+    .bottom-sheet-section {
+        margin-bottom: 1rem;
+    }
+
+    .bottom-sheet-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .bottom-sheet-section-header svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+/* Landscape adjustments for bottom sheet */
+@media (max-width: 768px) and (orientation: landscape) {
+    .bottom-sheet {
+        /* Shorter in landscape */
+        height: 80vh;
+        max-height: calc(100vh - 20px);
+    }
+
+    .bottom-sheet-header {
+        padding: 8px 16px 4px;
+    }
+
+    .bottom-sheet-handle {
+        margin-bottom: 8px;
+    }
+
+    .bottom-sheet-fab {
+        bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
+        width: 48px;
+        height: 48px;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 375px) {
+    .bottom-sheet-fab {
+        width: 52px;
+        height: 52px;
+        right: 12px;
+    }
+
+    .bottom-sheet-content {
+        padding: 0 12px 12px;
+    }
+
+    .bottom-sheet-quick-actions {
+        padding: 0 12px 10px;
+    }
+}
+
+/* ============================================================================
+   Bottom Sheet Components (mobile only)
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    /* Quick Actions Section */
+    .bottom-sheet-quick-actions {
+        display: flex;
+        gap: 12px;
+        padding: 0 16px 16px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+    }
+
+    .bottom-sheet-action-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-action-btn:active {
+        transform: scale(0.97);
+        background: var(--border);
+    }
+
+    .bottom-sheet-action-btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+    }
+
+    .bottom-sheet-action-btn.primary:active {
+        background: var(--accent-hover);
+    }
+
+    .bottom-sheet-action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .bottom-sheet-action-btn svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Section styling */
+    .bottom-sheet-section {
+        padding: 0 16px;
+        margin-bottom: 16px;
+    }
+
+    .bottom-sheet-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    /* Input group */
+    .bottom-sheet-input-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .bottom-sheet-input {
+        flex: 1;
+        padding: 12px 14px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+        -webkit-appearance: none;
+    }
+
+    .bottom-sheet-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
+    }
+
+    .bottom-sheet-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .bottom-sheet-fetch-btn {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-fetch-btn:active {
+        background: var(--accent-hover);
+    }
+
+    .bottom-sheet-fetch-btn:disabled {
+        background: var(--bg-tertiary);
+        color: var(--text-muted);
+        cursor: not-allowed;
+    }
+
+    .bottom-sheet-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 8px;
+    }
+
+    /* Collapsible details */
+    .bottom-sheet-details {
+        margin: 0 16px 8px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .bottom-sheet-summary {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        cursor: pointer;
+        list-style: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .bottom-sheet-summary::after {
+        content: '';
+        margin-left: auto;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid var(--text-muted);
+        transition: transform 0.2s ease;
+    }
+
+    .bottom-sheet-details[open] .bottom-sheet-summary::after {
+        transform: rotate(180deg);
+    }
+
+    .bottom-sheet-summary svg {
+        width: 18px;
+        height: 18px;
+        color: var(--accent);
+        flex-shrink: 0;
+    }
+
+    .bottom-sheet-details-content {
+        padding: 0 16px 16px;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    .bottom-sheet-details-content p {
+        margin: 0 0 8px;
+    }
+
+    .bottom-sheet-details-content ul {
+        margin: 8px 0;
+        padding-left: 20px;
+    }
+
+    .bottom-sheet-details-content li {
+        margin-bottom: 4px;
+    }
+
+    /* Tech grid in bottom sheet */
+    .bottom-sheet-tech-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .bottom-sheet-tech-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+    }
+
+    .bottom-sheet-tech-value {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .bottom-sheet-tech-label {
+        font-size: 0.6875rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+    }
+
+    /* Badges */
+    .bottom-sheet-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .bottom-sheet-badge {
+        padding: 4px 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        font-size: 0.6875rem;
+        color: var(--text-secondary);
+    }
+
+    /* Footer links */
+    .bottom-sheet-footer {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        padding: 16px;
+        margin-top: auto;
+        border-top: 1px solid var(--border);
+    }
+
+    .bottom-sheet-link {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8125rem;
+        color: var(--accent-blue);
+        text-decoration: none;
+    }
+
+    .bottom-sheet-link svg {
+        width: 14px;
+        height: 14px;
+    }
+}
