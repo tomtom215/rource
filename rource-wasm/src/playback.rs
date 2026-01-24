@@ -195,19 +195,22 @@ impl PlaybackState {
 /// Applies a VCS commit to the scene.
 ///
 /// This converts the commit's file changes into scene actions and applies them.
+/// Uses iterator to avoid per-call Vec allocation (100+ calls/frame at high speed).
 ///
 /// # Arguments
 ///
 /// * `scene` - The scene to apply the commit to
 /// * `commit` - The commit to apply
+#[inline]
 pub fn apply_vcs_commit(scene: &mut Scene, commit: &Commit) {
-    let files: Vec<(&std::path::Path, ActionType)> = commit
-        .files
-        .iter()
-        .map(|fc| (fc.path.as_path(), file_action_to_action_type(fc.action)))
-        .collect();
-
-    scene.apply_commit(&commit.author, &files);
+    // Pass iterator directly to avoid allocating a Vec per commit
+    scene.apply_commit(
+        &commit.author,
+        commit
+            .files
+            .iter()
+            .map(|fc| (fc.path.as_path(), file_action_to_action_type(fc.action))),
+    );
 }
 
 /// Pre-warms the scene by running update cycles.
@@ -254,7 +257,8 @@ pub fn get_date_range(commits: &[Commit]) -> Option<(i64, i64)> {
 /// Time in seconds between commits
 #[inline]
 pub fn calculate_seconds_per_commit(seconds_per_day: f32) -> f32 {
-    seconds_per_day / 10.0
+    // Use multiplication by reciprocal instead of division (1 cycle vs ~15 cycles)
+    seconds_per_day * 0.1
 }
 
 // ============================================================================

@@ -163,7 +163,7 @@ fn bench_apply_commit_10() -> usize {
         })
         .collect();
     let files: Vec<(&Path, ActionType)> = paths.iter().map(|(p, a)| (p.as_path(), *a)).collect();
-    scene.apply_commit(black_box("author_0"), &files);
+    scene.apply_commit(black_box("author_0"), files.iter().copied());
     scene.file_count()
 }
 
@@ -187,7 +187,7 @@ fn bench_apply_commit_50() -> usize {
         })
         .collect();
     let files: Vec<(&Path, ActionType)> = paths.iter().map(|(p, a)| (p.as_path(), *a)).collect();
-    scene.apply_commit(black_box("author_0"), &files);
+    scene.apply_commit(black_box("author_0"), files.iter().copied());
     scene.file_count()
 }
 
@@ -211,7 +211,7 @@ fn bench_apply_commit_100() -> usize {
         })
         .collect();
     let files: Vec<(&Path, ActionType)> = paths.iter().map(|(p, a)| (p.as_path(), *a)).collect();
-    scene.apply_commit(black_box("author_0"), &files);
+    scene.apply_commit(black_box("author_0"), files.iter().copied());
     scene.file_count()
 }
 

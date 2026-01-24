@@ -40,7 +40,7 @@ This project was developed with AI-assisted programming using [Claude](https://w
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 1,821 tests | - |
+| **Test Coverage** | 1,899 tests | - |
 | **Rendering** | CPU + WebGL2 + wgpu | OpenGL only |
 
 ### Performance Highlights
@@ -55,14 +55,14 @@ This project was developed with AI-assisted programming using [Claude](https://w
 rource/
 ├── crates/
 │   ├── rource-math/    144 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/     150 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/    328 tests   Scene graph, physics, camera, Barnes-Hut
-│   └── rource-render/  425 tests   Software + WebGL2 + wgpu rendering
-├── rource-cli/         325 tests   Native application (winit + softbuffer)
-└── rource-wasm/        375 tests   WebAssembly (browser)
+│   ├── rource-vcs/     165 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/    331 tests   Scene graph, physics, camera, Barnes-Hut
+│   └── rource-render/  458 tests   Software + WebGL2 + wgpu rendering
+├── rource-cli/         337 tests   Native application (winit + softbuffer)
+└── rource-wasm/        390 tests   WebAssembly (browser)
                        + 74 integration/doc tests
                       ─────
-                      1,545 total
+                      1,899 total
 ```
 
 ## Installation
@@ -328,7 +328,7 @@ const canvas = document.getElementById('canvas');
 const rource = new Rource(canvas);
 
 // Check which renderer is being used
-console.log('Renderer:', rource.getRendererType()); // "webgl2" or "software"
+console.log('Renderer:', rource.getRendererType()); // "wgpu", "webgl2", or "software"
 
 // Load data
 rource.loadCustomLog("1234567890|John|A|src/main.rs");

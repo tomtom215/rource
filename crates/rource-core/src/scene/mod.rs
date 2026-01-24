@@ -27,7 +27,7 @@ pub use file::FileNode;
 pub use tree::{DirNode, DirTree, LayoutConfig};
 pub use user::User;
 
-use crate::entity::{ActionId, DirId, FileId, IdAllocator, UserId};
+use crate::entity::{ActionId, FileId, IdAllocator, UserId};
 use crate::physics::{BarnesHutTree, QuadTree};
 
 /// Default bounds for the scene's spatial index.
@@ -132,8 +132,9 @@ pub struct Scene {
     files_to_remove_buffer: Vec<FileId>,
 
     /// Reusable buffer for force-directed layout forces.
-    /// Cleared and reused each frame to avoid `HashMap` allocation overhead.
-    forces_buffer: HashMap<DirId, Vec2>,
+    /// Vec indexed by directory position in `dir_data_buffer` for cache-efficient O(1) access.
+    /// Cleared and resized each frame to match directory count.
+    forces_buffer: Vec<Vec2>,
 
     /// Reusable buffer for directory data in force calculations.
     /// Cleared and reused each frame to avoid Vec allocation overhead.
@@ -201,7 +202,7 @@ impl Scene {
             // Pre-allocate reusable buffers with reasonable initial capacity
             completed_actions_buffer: Vec::with_capacity(64),
             files_to_remove_buffer: Vec::with_capacity(32),
-            forces_buffer: HashMap::default(),
+            forces_buffer: Vec::with_capacity(128),
             dir_data_buffer: Vec::with_capacity(128),
             // Barnes-Hut tree for O(n log n) force calculations
             barnes_hut_tree: BarnesHutTree::new(bounds),
@@ -516,8 +517,11 @@ impl Scene {
     /// Applies a VCS commit to the scene.
     ///
     /// This creates/modifies/deletes files and spawns appropriate actions.
-    /// Takes path references to avoid cloning paths from commit data.
-    pub fn apply_commit(&mut self, author: &str, files: &[(&Path, ActionType)]) {
+    /// Accepts any iterator to avoid allocation overhead from collecting into Vec.
+    pub fn apply_commit<'a, I>(&mut self, author: &str, files: I)
+    where
+        I: IntoIterator<Item = (&'a Path, ActionType)>,
+    {
         let user_id = self.get_or_create_user(author);
 
         for (path, action_type) in files {
@@ -532,7 +536,7 @@ impl Scene {
                     }
                 }
                 ActionType::Modify => {
-                    if let Some(&file_id) = self.file_by_path.get(*path) {
+                    if let Some(&file_id) = self.file_by_path.get(path) {
                         self.spawn_action(user_id, file_id, ActionType::Modify);
 
                         // Touch the file with modify color
@@ -550,7 +554,7 @@ impl Scene {
                     }
                 }
                 ActionType::Delete => {
-                    if let Some(&file_id) = self.file_by_path.get(*path) {
+                    if let Some(&file_id) = self.file_by_path.get(path) {
                         self.spawn_action(user_id, file_id, ActionType::Delete);
 
                         // Mark file for removal
@@ -969,7 +973,7 @@ mod tests {
             (Path::new("src/mod.rs"), ActionType::Create),
         ];
 
-        scene.apply_commit("Alice", &files);
+        scene.apply_commit("Alice", files.iter().copied());
 
         assert_eq!(scene.file_count(), 2);
         assert_eq!(scene.user_count(), 1);
@@ -985,7 +989,7 @@ mod tests {
 
         let files: Vec<(&Path, ActionType)> = vec![(Path::new("src/lib.rs"), ActionType::Modify)];
 
-        scene.apply_commit("Bob", &files);
+        scene.apply_commit("Bob", files.iter().copied());
 
         assert_eq!(scene.file_count(), 1);
         assert_eq!(scene.action_count(), 1);
@@ -1003,7 +1007,7 @@ mod tests {
 
         let files: Vec<(&Path, ActionType)> = vec![(Path::new("old.rs"), ActionType::Delete)];
 
-        scene.apply_commit("Charlie", &files);
+        scene.apply_commit("Charlie", files.iter().copied());
 
         // File still exists but is marked for removal
         let file = scene.get_file_by_path(Path::new("old.rs")).unwrap();
