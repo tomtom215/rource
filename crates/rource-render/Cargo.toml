@@ -78,3 +78,7 @@ harness = false
 [[bench]]
 name = "blend_perf"
 harness = false
+
+[[bench]]
+name = "visual_perf"
+harness = false

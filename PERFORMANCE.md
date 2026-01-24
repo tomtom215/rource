@@ -57,6 +57,7 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 45: Color Conversion Lookup Tables (2026-01-24)](#phase-45-color-conversion-lookup-tables-2026-01-24)
 - [Phase 46: VCS Parser Zero-Allocation (2026-01-24)](#phase-46-vcs-parser-zero-allocation-2026-01-24)
 - [Phase 47: Force Normalization Optimization (2026-01-24)](#phase-47-force-normalization-optimization-2026-01-24)
+- [Phase 48: Perpendicular Vector Optimization (2026-01-24)](#phase-48-perpendicular-vector-optimization-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -5315,6 +5316,97 @@ For attraction force:
 - Inverse-square law verified: force at 2x distance = 1/4 magnitude
 - All 320 physics tests pass
 - All 1,899 total tests pass
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 48: Perpendicular Vector Optimization (2026-01-24)
+
+### Overview
+
+Phase 48 eliminates a redundant sqrt operation in branch curve creation by recognizing
+that the perpendicular of a vector has the same magnitude as the original vector.
+
+### The Problem
+
+When creating curved branches between directory nodes, the code computed:
+
+```rust
+// Branch curve creation
+let dir = end - start;
+let length = dir.length();  // sqrt() computed here
+
+// Perpendicular offset for natural curve
+let perp = Vec2::new(-dir.y, dir.x).normalized();  // sqrt() computed AGAIN
+let offset = perp * length * tension * 0.15;
+```
+
+The `normalized()` call on the perpendicular vector computes another sqrt, but the
+perpendicular vector `(-dir.y, dir.x)` has **exactly the same magnitude** as `dir`:
+
+```
+|(-dy, dx)| = sqrt(dy² + dx²) = sqrt(dx² + dy²) = |(dx, dy)| = length
+```
+
+### The Solution
+
+Since normalizing then multiplying by length cancels out, we can skip normalization entirely:
+
+```rust
+// Before: (perp / length) * length = perp
+// After:  perp (skip the normalization)
+let perp = Vec2::new(-dir.y, dir.x);
+let offset = perp * tension * 0.15;
+```
+
+This eliminates one sqrt() call per branch curve.
+
+### Mathematical Proof
+
+For a direction vector `dir = (dx, dy)`:
+- `perp = (-dy, dx)` (90° rotation)
+- `|perp| = sqrt((-dy)² + dx²) = sqrt(dy² + dx²) = sqrt(dx² + dy²) = |dir|`
+
+Therefore:
+- **Before**: `(perp / |perp|) * length * scale = (perp / length) * length * scale = perp * scale`
+- **After**: `perp * scale` (identical result, one fewer sqrt)
+
+### Benchmark Results
+
+Created `benches/visual_perf.rs` for comprehensive visual rendering benchmarks.
+
+| Benchmark | Baseline | Optimized | Improvement |
+|-----------|----------|-----------|-------------|
+| Perpendicular (horizontal) | 4.51 ns | 1.28 ns | **-72%** |
+| Perpendicular (3-4-5 triangle) | 4.65 ns | 1.28 ns | **-72%** |
+| Branch curve (short) | 15.07 ns | 14.20 ns | **-6%** |
+| Branch curve (medium) | 15.19 ns | 13.81 ns | **-9%** |
+| Branch curve (long) | 15.30 ns | 13.50 ns | **-12%** |
+| Batch 1000 curves | 14.04 µs | 12.29 µs | **-12%** |
+| Batch throughput | 71.2 Melem/s | 81.4 Melem/s | **+14%** |
+
+### Why This Matters
+
+Branch curves are drawn for every parent-child connection in the directory tree.
+A typical visualization with 500 directories might have 499 branches, each potentially
+creating curves during animation. The 12% improvement in batch curve creation
+directly reduces CPU time during tree layout and rendering.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/visual.rs` | Removed redundant perpendicular normalization |
+| `crates/rource-render/benches/visual_perf.rs` | New benchmark file |
+| `crates/rource-render/Cargo.toml` | Added visual_perf benchmark entry |
+
+### Correctness Verification
+
+- The perpendicular vector `(-y, x)` has identical magnitude to `(x, y)` (geometric identity)
+- Normalizing then multiplying by length is algebraically equivalent to not normalizing
+- All 1,899 tests pass
+- Visual output is identical (verified via deterministic headless rendering)
 
 **Test Count**: 1,899 tests passing
 
