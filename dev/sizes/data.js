@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769276370990,
+  "lastUpdate": 1769284483772,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1754,6 +1754,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1068318,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "69e991a5d9948f3db01537f76c1d2df43e4f2bda",
+          "message": "Merge pull request #155 from tomtom215/claude/audit-algorithmic-complexity-lV4Bn\n\nAdd comprehensive algorithmic complexity audit documentation",
+          "timestamp": "2026-01-24T20:52:48+01:00",
+          "tree_id": "7fc1463b9cf47aea17cf548e07e447aa50876383",
+          "url": "https://github.com/tomtom215/rource/commit/69e991a5d9948f3db01537f76c1d2df43e4f2bda"
+        },
+        "date": 1769284483491,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3908056,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2765907,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1067795,
             "unit": "bytes"
           }
         ]
