@@ -195,19 +195,22 @@ impl PlaybackState {
 /// Applies a VCS commit to the scene.
 ///
 /// This converts the commit's file changes into scene actions and applies them.
+/// Uses iterator to avoid per-call Vec allocation (100+ calls/frame at high speed).
 ///
 /// # Arguments
 ///
 /// * `scene` - The scene to apply the commit to
 /// * `commit` - The commit to apply
+#[inline]
 pub fn apply_vcs_commit(scene: &mut Scene, commit: &Commit) {
-    let files: Vec<(&std::path::Path, ActionType)> = commit
-        .files
-        .iter()
-        .map(|fc| (fc.path.as_path(), file_action_to_action_type(fc.action)))
-        .collect();
-
-    scene.apply_commit(&commit.author, &files);
+    // Pass iterator directly to avoid allocating a Vec per commit
+    scene.apply_commit(
+        &commit.author,
+        commit
+            .files
+            .iter()
+            .map(|fc| (fc.path.as_path(), file_action_to_action_type(fc.action))),
+    );
 }
 
 /// Pre-warms the scene by running update cycles.

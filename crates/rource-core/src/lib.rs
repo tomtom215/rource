@@ -33,11 +33,12 @@
 //! // Create a new scene
 //! let mut scene = Scene::new();
 //!
-//! // Apply a commit
-//! scene.apply_commit("Alice", &[
+//! // Apply a commit (using iterator to avoid allocation)
+//! let files = [
 //!     (Path::new("src/main.rs"), ActionType::Create),
 //!     (Path::new("src/lib.rs"), ActionType::Modify),
-//! ]);
+//! ];
+//! scene.apply_commit("Alice", files.iter().copied());
 //!
 //! // Update the scene
 //! scene.update(0.016); // 60 FPS

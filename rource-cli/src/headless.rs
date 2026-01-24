@@ -599,7 +599,7 @@ pub fn run_headless(args: &Args) -> Result<()> {
                 .map(|f| (f.path.as_path(), file_action_to_action_type(f.action)))
                 .collect();
             if !files.is_empty() {
-                scene.apply_commit(&commit.author, &files);
+                scene.apply_commit(&commit.author, files.iter().copied());
             }
         }
         last_applied_commit = 1;
@@ -688,7 +688,7 @@ pub fn run_headless(args: &Args) -> Result<()> {
                     .collect();
 
                 if !files.is_empty() {
-                    scene.apply_commit(&commit.author, &files);
+                    scene.apply_commit(&commit.author, files.iter().copied());
                     commits_applied += 1;
                 }
             }
@@ -1422,7 +1422,7 @@ pub fn run_screenshot(args: &Args, screenshot_path: &Path) -> Result<()> {
             .collect();
 
         if !files.is_empty() {
-            scene.apply_commit(&commit.author, &files);
+            scene.apply_commit(&commit.author, files.iter().copied());
         }
     }
 

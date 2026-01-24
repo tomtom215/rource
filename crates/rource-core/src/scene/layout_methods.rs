@@ -143,9 +143,10 @@ impl Scene {
         }
 
         // Calculate forces for each directory (reusing buffer)
-        self.forces_buffer.clear();
-
+        // Use Vec indexing for O(1) cache-efficient access instead of HashMap
         let dir_count = self.dir_data_buffer.len();
+        self.forces_buffer.clear();
+        self.forces_buffer.resize(dir_count, Vec2::ZERO);
 
         // Select algorithm based on directory count and configuration
         if self.use_barnes_hut && dir_count >= self.barnes_hut_threshold {
@@ -164,11 +165,12 @@ impl Scene {
     /// Calculates repulsion forces using O(n²) pairwise algorithm.
     ///
     /// Best for small scenes (< 100 directories) where overhead is low.
+    /// Uses Vec indexing for cache-efficient O(1) force accumulation.
     fn calculate_repulsion_pairwise(&mut self, dir_count: usize) {
         for i in 0..dir_count {
-            let (id_i, pos_i, depth_i, parent_i, _, _) = self.dir_data_buffer[i];
+            let (_, pos_i, depth_i, parent_i, _, _) = self.dir_data_buffer[i];
             for j in (i + 1)..dir_count {
-                let (id_j, pos_j, depth_j, parent_j, _, _) = self.dir_data_buffer[j];
+                let (_, pos_j, depth_j, parent_j, _, _) = self.dir_data_buffer[j];
 
                 // Repel if:
                 // 1. Siblings (same parent)
@@ -192,8 +194,8 @@ impl Scene {
                 if distance_sq < 0.001 {
                     // Push apart randomly based on indices
                     let offset = Vec2::new((i as f32).sin() * 5.0, (j as f32).cos() * 5.0);
-                    *self.forces_buffer.entry(id_i).or_insert(Vec2::ZERO) -= offset;
-                    *self.forces_buffer.entry(id_j).or_insert(Vec2::ZERO) += offset;
+                    self.forces_buffer[i] -= offset;
+                    self.forces_buffer[j] += offset;
                     continue;
                 }
 
@@ -207,9 +209,9 @@ impl Scene {
                 let direction = delta / distance; // Equivalent to delta.normalized()
                 let force = direction * force_magnitude;
 
-                // Apply equal and opposite forces
-                *self.forces_buffer.entry(id_i).or_insert(Vec2::ZERO) -= force;
-                *self.forces_buffer.entry(id_j).or_insert(Vec2::ZERO) += force;
+                // Apply equal and opposite forces using Vec indexing (O(1) vs HashMap O(1) amortized)
+                self.forces_buffer[i] -= force;
+                self.forces_buffer[j] += force;
             }
         }
     }
@@ -218,6 +220,7 @@ impl Scene {
     ///
     /// Uses a quadtree to approximate distant clusters as single bodies,
     /// dramatically reducing computation for large scenes.
+    /// Uses Vec indexing for cache-efficient O(1) force accumulation.
     fn calculate_repulsion_barnes_hut(&mut self, dir_count: usize) {
         // Build Barnes-Hut tree from current directory positions
         self.barnes_hut_tree.clear();
@@ -229,7 +232,7 @@ impl Scene {
 
         // Calculate forces for each directory using Barnes-Hut approximation
         for i in 0..dir_count {
-            let (id, pos, _, _, _, _) = self.dir_data_buffer[i];
+            let (_, pos, _, _, _, _) = self.dir_data_buffer[i];
             let body = Body::new(pos);
 
             // Get repulsive force from all other bodies (approximated by tree)
@@ -238,15 +241,16 @@ impl Scene {
                     .calculate_force(&body, FORCE_REPULSION, FORCE_MIN_DISTANCE_SQ);
 
             if force.length_squared() > 0.001 {
-                *self.forces_buffer.entry(id).or_insert(Vec2::ZERO) += force;
+                self.forces_buffer[i] += force;
             }
         }
     }
 
     /// Calculates attraction forces to parent directories (always O(n)).
+    /// Uses Vec indexing for cache-efficient O(1) force accumulation.
     fn calculate_attraction_forces(&mut self, dir_count: usize) {
         for i in 0..dir_count {
-            let (id, pos, _depth, _parent_id, parent_pos, target_dist) = self.dir_data_buffer[i];
+            let (_, pos, _depth, _parent_id, parent_pos, target_dist) = self.dir_data_buffer[i];
             if let Some(parent_pos) = parent_pos {
                 let delta = parent_pos - pos;
                 let distance_sq = delta.length_squared();
@@ -259,21 +263,26 @@ impl Scene {
                     let excess = distance - target_dist;
                     let direction = delta / distance; // Equivalent to delta.normalized()
                     let force = direction * excess * FORCE_ATTRACTION;
-                    *self.forces_buffer.entry(id).or_insert(Vec2::ZERO) += force;
+                    self.forces_buffer[i] += force;
                 }
             }
         }
     }
 
     /// Applies computed forces to directories and integrates physics.
+    /// Uses enumerate to correlate with forces_buffer Vec indices.
     fn apply_forces_to_directories(&mut self, dt: f32) {
-        for dir in self.directories.iter_mut() {
+        for (i, dir) in self.directories.iter_mut().enumerate() {
             // Skip root (anchor it in place)
             if dir.is_root() {
                 continue;
             }
 
-            if let Some(&force) = self.forces_buffer.get(&dir.id()) {
+            // Access force by index (O(1) Vec access vs O(1) amortized HashMap)
+            // Note: forces_buffer is guaranteed to have same length as dir_data_buffer
+            // which matches the iteration order of directories
+            let force = self.forces_buffer[i];
+            if force.length_squared() > 0.001 {
                 // Apply force as acceleration (assuming unit mass)
                 dir.add_velocity(force * dt);
 

@@ -228,11 +228,11 @@ fn bench_apply_commit(c: &mut Criterion) {
                         })
                         .collect();
 
-                    // Convert to slice of references for apply_commit
+                    // Convert to iterator of references for apply_commit (avoids allocation)
                     let files: Vec<(&Path, ActionType)> =
                         path_bufs.iter().map(|(p, a)| (p.as_path(), *a)).collect();
 
-                    scene.apply_commit(black_box(&format!("author_{}", commit_num % 50)), &files);
+                    scene.apply_commit(black_box(&format!("author_{}", commit_num % 50)), files.iter().copied());
                     commit_num += 1;
                 });
             },
