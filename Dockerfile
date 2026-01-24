@@ -74,8 +74,8 @@ CMD ["--help"]
 # =============================================================================
 # Alternative runtime stage - With git support (for repository analysis)
 # =============================================================================
-# Use this stage when you need git to analyze local repositories
-FROM debian:bookworm-slim AS runtime-with-git
+# Use Debian 13 Trixie (released August 2025, LTS until 2030)
+FROM debian:trixie-slim AS runtime-with-git
 
 # Security: Apply all available security updates
 # Install only essential runtime dependencies with --no-install-recommends
@@ -119,5 +119,5 @@ LABEL org.opencontainers.image.url="https://github.com/tomtom215/rource"
 LABEL org.opencontainers.image.source="https://github.com/tomtom215/rource"
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 LABEL org.opencontainers.image.authors="Rource Contributors"
-LABEL org.opencontainers.image.base.name="debian:bookworm-slim"
+LABEL org.opencontainers.image.base.name="debian:trixie-slim"
 LABEL org.opencontainers.image.version="0.1.0"
