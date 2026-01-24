@@ -4927,6 +4927,47 @@ for py_int in min_y..=max_y {
 }
 ```
 
+#### 6. Bloom Vertical Blur Strip-Based Processing
+
+**File**: `crates/rource-render/src/effects/bloom.rs:486-575`
+
+Replace single-column vertical blur with strip-based processing that handles
+8 columns together, improving cache utilization:
+
+```rust
+// Before: poor cache locality (stride = width per pixel)
+for x in 0..width {
+    for y in 0..height {
+        // Each y iteration jumps by width bytes in memory
+        let p = src[y * width + x];
+        // ...
+    }
+}
+
+// After: strip-based processing (8 columns together)
+const STRIP_WIDTH: usize = 8;
+for strip in 0..(width / STRIP_WIDTH) {
+    let x_start = strip * STRIP_WIDTH;
+    // Process 8 columns together - amortizes cache line loads
+    let mut sums_r = [0u32; 8];  // Fits in registers
+    let mut sums_g = [0u32; 8];
+    let mut sums_b = [0u32; 8];
+    for y in 0..height {
+        // Single cache line serves multiple column updates
+        for col in 0..STRIP_WIDTH {
+            // ...
+        }
+    }
+}
+```
+
+**Note on Transpose Approach**: A transpose-blur-transpose strategy was tested
+but showed ~15-24% regression. The overhead of two O(n) transpose passes
+exceeded the cache benefit. The strip-based approach achieves cache improvement
+without that overhead.
+
+**Impact**: 6.6% improvement on bloom blur operation.
+
 ### Benchmark Results
 
 All benchmarks run with `--sample-size 50` for statistical significance:
@@ -4936,6 +4977,7 @@ All benchmarks run with `--sample-size 50` for statistical significance:
 | `force_layout/directories/100` | 118.8 µs | 114.4 µs | **-3.7%** | p < 0.05 ✓ |
 | `force_layout/directories/50` | 11.8 µs | 11.4 µs | **-3.2%** | p = 0.03 |
 | `scene_update/files/500` | 200.5 µs | 195.3 µs | **-2.6%** | p < 0.05 ✓ |
+| `bloom_blur/passes/480x270` | 3.49 ms | 3.26 ms | **-6.6%** | p < 0.05 ✓ |
 
 ### Audit Findings: Already Optimized
 
@@ -4958,8 +5000,11 @@ These were identified but deferred due to complexity vs. benefit tradeoff:
 | Optimization | Potential Gain | Complexity | Status |
 |--------------|----------------|------------|--------|
 | WASM SIMD alpha blending | 2-4x on blend ops | Medium | Requires `std::arch::wasm32` |
-| Bloom vertical pass transpose | 10-15% on blur | High | Requires restructuring |
+| Bloom vertical pass | 6.6% achieved | Low | ✅ Implemented via strip processing |
 | Texture array atlas packing | Reduced draw calls | High | WebGL compatibility tradeoff |
+
+**Note**: Bloom vertical pass transpose was tested but regressed 15-24%. Strip-based
+processing achieved 6.6% improvement with simpler implementation.
 
 **Test Count**: 1,899 tests passing
 
