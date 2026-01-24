@@ -3074,6 +3074,126 @@ Several audit items were investigated and found to be either already fixed or ac
 
 **Test Count**: 1,836 tests passing (no change)
 
+### Phase 27: CPU Bloom/Shadow Effect Optimizations (2026-01-24)
+
+Major performance improvements to the CPU-based bloom and shadow effects used by the software renderer.
+
+#### Performance Results
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Bloom overhead per frame | 42.6 ms | 18.4 ms | **2.3× faster** |
+| Total frame time (with bloom) | 50.2 ms | 26.7 ms | **1.9× faster** |
+| Effects phase total | 3,154 ms | 1,363 ms | **2.3× faster** |
+
+#### Optimizations Applied
+
+**1. O(n) Sliding Window Box Blur**
+
+Replaced O(n × radius) naive box blur with O(n) sliding window algorithm:
+
+```rust
+// Before: O(n × radius) - re-sums kernel for each pixel
+for x in 0..width {
+    for dx in -radius..=radius {
+        sum += pixel[clamp(x + dx)];
+    }
+    result[x] = sum / diameter;
+}
+
+// After: O(n) - maintains running sum
+let mut sum = initial_window_sum();
+for x in 0..width {
+    result[x] = sum / diameter;
+    sum -= pixel[clamp(x - radius)];     // Remove leaving
+    sum += pixel[clamp(x + radius + 1)]; // Add entering
+}
+```
+
+For radius=2 on 320×180 buffer: **5× fewer iterations** (1.15M → 230K)
+
+**2. Precomputed Coordinate Tables for Upscale**
+
+Replaced per-pixel float coordinate calculation with precomputed integer tables:
+
+```rust
+// Before: float math per pixel (921,600 pixels × 2 muls + floor + fract)
+for dy in 0..dst_h {
+    for dx in 0..dst_w {
+        let sx = dx as f32 * scale_x;  // float mul
+        let x0 = sx.floor();           // float floor
+        let fx = sx.fract();           // float fract
+    }
+}
+
+// After: precomputed tables, integer lerp
+let x_table: Vec<(x0, x1, fx_fixed)> = precompute();
+for (dy, &(y0, y1, fy)) in y_table.iter().enumerate() {
+    for (dx, &(x0, x1, fx)) in x_table.iter().enumerate() {
+        // Integer lerp: (a * (256 - t) + b * t) >> 8
+    }
+}
+```
+
+**3. Precomputed Coordinate Ranges for Downscale**
+
+Replaced float-based coordinate calculation with integer range precomputation:
+
+```rust
+// Before: float division per destination pixel
+let sx_start = (dx as f32 * scale_x) as usize;
+let sx_end = ((dx + 1) as f32 * scale_x) as usize;
+
+// After: integer division, precomputed once
+let x_ranges: Vec<(start, end)> = (0..dst_w)
+    .map(|dx| (dx * src_w / dst_w, (dx + 1) * src_w / dst_w))
+    .collect();
+```
+
+**4. Integer Brightness Calculation**
+
+Replaced float-based ITU-R BT.601 brightness with fixed-point integer math:
+
+```rust
+// Before: 3 divisions + 3 multiplications per pixel
+let r = ((p >> 16) & 0xFF) as f32 / 255.0;
+let brightness = r * 0.299 + g * 0.587 + b * 0.114;
+
+// After: integer multiply and shift
+let brightness = (77 * r + 150 * g + 29 * b) >> 8;
+```
+
+**5. Reciprocal Multiplication for Divisions**
+
+Pre-computed reciprocals to replace divisions with multiplications:
+
+```rust
+// Before: division per pixel
+let avg = sum / count;
+
+// After: reciprocal multiplication
+let inv_count = 1.0 / count as f32;  // Computed once
+let avg = (sum as f32 * inv_count) as u32;
+```
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `effects/bloom.rs` | Sliding window blur, precomputed upscale/downscale, integer brightness |
+| `effects/shadow.rs` | Sliding window blur |
+
+#### When This Matters
+
+These optimizations primarily benefit:
+- **Software renderer** (CPU-only mode, no GPU)
+- **WASM Canvas2D fallback** (when WebGL2/WebGPU unavailable)
+- **Headless batch rendering** (video export)
+
+GPU renderers (wgpu, WebGL2) use GPU-based bloom which is already fast.
+
+**Test Count**: 1,836 tests passing (no change)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3536,4 +3656,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-24 (Phase 26: FxHashMap and Sort Optimizations - 1,836 tests total)*
+*Last updated: 2026-01-24 (Phase 27: CPU Bloom/Shadow Effect Optimizations - 1,836 tests total)*

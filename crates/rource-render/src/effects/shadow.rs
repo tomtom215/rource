@@ -265,43 +265,78 @@ impl ShadowEffect {
 
     /// Applies a separable box blur in-place using `offset_buffer` and `blur_temp`.
     /// After this call, result is in `offset_buffer`.
+    ///
+    /// Uses O(n) sliding window algorithm instead of O(n × radius) naive approach.
     #[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
     fn box_blur_in_place(&mut self, width: usize, height: usize) {
         if width == 0 || height == 0 || self.blur_radius == 0 {
             return;
         }
 
-        let radius = self.blur_radius;
+        let r = self.blur_radius as usize;
+        let diameter = 2 * r + 1;
+        // Pre-compute reciprocal for faster division
+        let inv_diameter = 1.0 / diameter as f32;
 
-        // Horizontal pass: offset_buffer -> blur_temp
+        // Horizontal pass: offset_buffer -> blur_temp (O(n) sliding window)
         for y in 0..height {
+            let row = y * width;
+
+            // Initialize window sum for x=0
+            let mut sum = 0u32;
+
+            // Add pixels in range [0, r] (or width-1 if smaller)
+            for i in 0..=r.min(width - 1) {
+                sum += self.offset_buffer[row + i] as u32;
+            }
+            // Add repeated edge pixel for clamped left positions [-r, -1]
+            sum += self.offset_buffer[row] as u32 * r as u32;
+            // Handle right edge clamping if width <= r
+            if width <= r {
+                let extra = r - width + 1;
+                sum += self.offset_buffer[row + width - 1] as u32 * extra as u32;
+            }
+
             for x in 0..width {
-                let mut sum = 0u32;
-                let mut count = 0u32;
+                // Store result using reciprocal multiplication
+                self.blur_temp[row + x] = (sum as f32 * inv_diameter).min(255.0) as u8;
 
-                for dx in -radius..=radius {
-                    let nx = (x as i32 + dx).clamp(0, width as i32 - 1) as usize;
-                    sum += self.offset_buffer[y * width + nx] as u32;
-                    count += 1;
-                }
+                // Slide window
+                let leave_idx = x.saturating_sub(r);
+                sum -= self.offset_buffer[row + leave_idx] as u32;
 
-                self.blur_temp[y * width + x] = (sum / count) as u8;
+                let enter_idx = (x + r + 1).min(width - 1);
+                sum += self.offset_buffer[row + enter_idx] as u32;
             }
         }
 
-        // Vertical pass: blur_temp -> offset_buffer
-        for y in 0..height {
-            for x in 0..width {
-                let mut sum = 0u32;
-                let mut count = 0u32;
+        // Vertical pass: blur_temp -> offset_buffer (O(n) sliding window)
+        for x in 0..width {
+            // Initialize window sum for y=0
+            let mut sum = 0u32;
 
-                for dy in -radius..=radius {
-                    let ny = (y as i32 + dy).clamp(0, height as i32 - 1) as usize;
-                    sum += self.blur_temp[ny * width + x] as u32;
-                    count += 1;
-                }
+            // Add pixels in range [0, r] (or height-1 if smaller)
+            for i in 0..=r.min(height - 1) {
+                sum += self.blur_temp[i * width + x] as u32;
+            }
+            // Add repeated edge pixel for clamped top positions
+            sum += self.blur_temp[x] as u32 * r as u32;
+            // Handle bottom edge clamping if height <= r
+            if height <= r {
+                let extra = r - height + 1;
+                sum += self.blur_temp[(height - 1) * width + x] as u32 * extra as u32;
+            }
 
-                self.offset_buffer[y * width + x] = (sum / count) as u8;
+            for y in 0..height {
+                // Store result
+                self.offset_buffer[y * width + x] = (sum as f32 * inv_diameter).min(255.0) as u8;
+
+                // Slide window
+                let leave_idx = y.saturating_sub(r);
+                sum -= self.blur_temp[leave_idx * width + x] as u32;
+
+                let enter_idx = (y + r + 1).min(height - 1);
+                sum += self.blur_temp[enter_idx * width + x] as u32;
             }
         }
     }
