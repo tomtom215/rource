@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769266420226,
+  "lastUpdate": 1769271019114,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1637,6 +1637,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1068376,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5be9ff8a9e68b8c8772914640379cd8a705e9e1",
+          "message": "Merge pull request #152 from tomtom215/claude/continue-resource-optimization-fEweM\n\nOptimize bloom effects and convert divisions to multiplications",
+          "timestamp": "2026-01-24T17:08:19+01:00",
+          "tree_id": "cbb2130fc99b3cf552f28ae3060980b0596f3309",
+          "url": "https://github.com/tomtom215/rource/commit/c5be9ff8a9e68b8c8772914640379cd8a705e9e1"
+        },
+        "date": 1769271018251,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3909312,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2767549,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1068316,
             "unit": "bytes"
           }
         ]
