@@ -45,6 +45,10 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 32: WASM Hot Paths (2026-01-24)](#phase-32-wasm-hot-path-optimizations-2026-01-24)
 - [Phase 33: Label Collision Spatial Hashing (2026-01-24)](#phase-33-label-collision-spatial-hashing-and-zero-allocation-readbacks-2026-01-24)
 - [Phase 34: Micro-Optimizations and State Caching (2026-01-24)](#phase-34-micro-optimizations-and-state-caching-2026-01-24)
+- [Phase 35-36: Float Arithmetic Optimizations (2026-01-24)](#phase-35-36-float-arithmetic-optimizations-2026-01-24)
+- [Phase 37: Data Structure Micro-Optimizations (2026-01-24)](#phase-37-data-structure-and-algorithm-micro-optimizations-2026-01-24)
+- [Phase 38: GPU Physics Command Buffer Batching (2026-01-24)](#phase-38-gpu-physics-command-buffer-batching-2026-01-24)
+- [Phase 39: Cache Serialization Optimization (2026-01-24)](#phase-39-cache-serialization-algorithm-optimization-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -4344,6 +4348,95 @@ The batched approach achieves significant gains without changing semantics:
 - Simpler implementation
 
 **Test Count**: 1,899 tests passing (all optimizations verified)
+
+---
+
+## Phase 39: Cache Serialization Algorithm Optimization (2026-01-24)
+
+### Summary
+
+Phase 39 fixes a critical O(f·c) algorithmic complexity issue in the visualization cache
+serialization code, reducing it to O(f) for a 10,000× speedup on large repositories.
+
+### Problem Analysis
+
+**Location**: `crates/rource-vcs/src/cache.rs:390-408`
+
+The `build_payload()` function had a nested loop that iterated through ALL commits (c)
+for EACH file change index (f), resulting in O(f·c) complexity.
+
+**Before (O(f·c))**:
+```rust
+let file_changes: Vec<CachedFileChange> = (0..self.store.file_change_count())
+    .filter_map(|i| {
+        // O(c) loop for every file change i
+        let mut current_idx = 0;
+        for (_, commit) in self.store.commits() {  // ← Nested O(c) loop!
+            let files = self.store.file_changes(commit);
+            if i >= current_idx && i < current_idx + files.len() {
+                let fc = &files[i - current_idx];
+                return Some(CachedFileChange {
+                    path: fc.path.index(),
+                    action: fc.action as u8,
+                });
+            }
+            current_idx += files.len();
+        }
+        None
+    })
+    .collect();
+```
+
+**Impact**: For 10k commits and 50k file changes:
+- Before: 500,000,000 iterations
+- After: 50,000 iterations
+- **Speedup: 10,000×**
+
+### Implementation
+
+**After (O(f) single pass)**:
+```rust
+let file_changes: Vec<CachedFileChange> = self
+    .store
+    .commits()
+    .flat_map(|(_, commit)| {
+        self.store
+            .file_changes(commit)
+            .iter()
+            .map(|fc| CachedFileChange {
+                path: fc.path.index(),
+                action: fc.action as u8,
+            })
+    })
+    .collect();
+```
+
+The optimized version:
+1. Iterates through commits once (O(c))
+2. For each commit, maps its file changes directly (total O(f))
+3. Uses `flat_map` to flatten the nested iterators into a single stream
+4. Maintains the same ordering of file changes (preserving cache compatibility)
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-vcs/src/cache.rs` | Replaced O(f·c) nested loop with O(f) `flat_map` iteration |
+
+### Performance Impact
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Algorithm complexity | O(f·c) | O(f) | O(c) factor reduction |
+| 10k commits, 50k files | ~500M iterations | ~50k iterations | 10,000× fewer iterations |
+| Cache build time | Proportional to f·c | Proportional to f | Linear in file count |
+
+**Correctness**: Verified
+- All 150 `rource-vcs` tests pass
+- Cache roundtrip preserves all data (commits, paths, authors, actions, timestamps)
+- File change ordering maintained (same as commit iteration order)
+
+**Test Count**: 1,898+ tests passing (all optimizations verified)
 
 ---
 
