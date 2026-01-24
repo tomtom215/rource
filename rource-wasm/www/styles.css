@@ -4735,3 +4735,53 @@ h2.h3-style {
         z-index: 200;
     }
 }
+
+/* ========================================
+   MOBILE SIDEBAR FIXES
+   Override .hidden class for sidebar components
+   ======================================== */
+@media (max-width: 1200px) {
+    /* Close button must be visible on mobile even with .hidden class */
+    .sidebar-close.hidden {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Ensure sidebar toggle is above other elements */
+    .sidebar-toggle {
+        z-index: 200;
+    }
+
+    /* Ensure sidebar panel is scrollable */
+    .sidebar-panel {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    /* When sidebar is open, show close button prominently */
+    .sidebar-panel.open .sidebar-close {
+        display: flex !important;
+    }
+}
+
+/* Mobile-specific: Ensure sidebar toggle not blocked by timeline */
+@media (max-width: 768px) {
+    .sidebar-toggle {
+        /* Position above timeline */
+        z-index: 250;
+        /* Ensure it's not hidden behind overlays */
+        pointer-events: auto;
+    }
+
+    /* Larger touch target for mobile menu button */
+    .sidebar-toggle {
+        width: 52px;
+        height: 52px;
+    }
+
+    /* Ensure sidebar overlay captures all clicks */
+    .sidebar-overlay.visible {
+        pointer-events: auto;
+    }
+}
