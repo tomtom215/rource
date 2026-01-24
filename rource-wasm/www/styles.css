@@ -4490,6 +4490,12 @@ h2.h3-style {
         height: 20px;
     }
 
+    /* Adjust marker container offset to match mobile thumb (10px = half of 20px) */
+    .timeline-slider-container .timeline-markers {
+        left: 10px;
+        right: 10px;
+    }
+
     /* Controls row - centered, larger buttons */
     .timeline-controls-row {
         flex-direction: column;
@@ -4900,13 +4906,54 @@ h2.h3-style {
         transform: scaleX(1.1);
     }
 
+    /* Header row with title and close button */
+    .bottom-sheet-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0 4px;
+    }
+
     /* Sheet title */
     .bottom-sheet-title {
         font-size: 1.1rem;
         font-weight: 600;
         color: var(--text-primary);
         margin: 0;
+        flex: 1;
         text-align: center;
+        padding-left: 36px; /* Balance the close button width */
+    }
+
+    /* Close button (iOS style) */
+    .bottom-sheet-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: var(--bg-tertiary);
+        border: none;
+        border-radius: 50%;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .bottom-sheet-close:hover {
+        background: var(--border);
+        color: var(--text-primary);
+    }
+
+    .bottom-sheet-close:active {
+        background: var(--border-light);
+        transform: scale(0.95);
+    }
+
+    .bottom-sheet-close svg {
+        width: 18px;
+        height: 18px;
     }
 
     /* Scrollable content area */
@@ -5408,5 +5455,483 @@ h2.h3-style {
     .bottom-sheet-link svg {
         width: 14px;
         height: 14px;
+    }
+}
+
+/* ============================================================================
+   Mobile UX Overhaul - Portfolio Quality
+   Apple Human Interface Guidelines inspired
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    /* ----------------------------------------
+       CRITICAL: Hide floating overlays that block the visualization
+       Move them to bottom sheet for cleaner canvas
+       ---------------------------------------- */
+
+    /* Hide floating legend and authors panels on mobile canvas */
+    .legend-panel,
+    .authors-panel {
+        display: none !important;
+    }
+
+    /* Simplified FPS overlay - just the number, top-left corner */
+    .perf-overlay {
+        top: 12px;
+        left: 12px;
+        padding: 6px 10px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: none;
+        min-width: auto;
+        max-width: none;
+    }
+
+    .perf-overlay .perf-header {
+        margin: 0;
+    }
+
+    .perf-overlay .perf-fps {
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    /* Hide details by default on mobile - tap to expand */
+    .perf-overlay.collapsed .perf-details {
+        display: none;
+    }
+
+    .perf-overlay .perf-toggle {
+        display: none; /* Hide toggle arrow on mobile */
+    }
+
+    /* Stats bar - positioned at bottom, centered, non-obstructive */
+    .stats-overlay {
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        top: auto;
+        right: auto;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: none;
+        border-radius: 20px;
+        padding: 8px 16px;
+        gap: 12px;
+    }
+
+    .stats-overlay .stat-item {
+        flex-direction: row;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .stats-overlay .stat-value {
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .stats-overlay .stat-label {
+        font-size: 0.6875rem;
+        text-transform: none;
+    }
+
+    /* ----------------------------------------
+       FAB - Redesigned as hamburger menu (more intuitive)
+       ---------------------------------------- */
+    .bottom-sheet-fab {
+        /* Position: bottom-right, above the timeline */
+        bottom: max(160px, calc(160px + env(safe-area-inset-bottom)));
+        right: 16px;
+        width: 52px;
+        height: 52px;
+        /* Apple-style shadow */
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3),
+                    0 4px 16px rgba(233, 69, 96, 0.3);
+    }
+
+    /* Larger touch target but visually same size */
+    .bottom-sheet-fab::before {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        right: -8px;
+        bottom: -8px;
+    }
+
+    /* ----------------------------------------
+       Bottom Sheet - iOS Native Feel
+       ---------------------------------------- */
+    .bottom-sheet {
+        /* More pronounced rounded corners */
+        border-radius: 20px 20px 0 0;
+        /* Stronger shadow */
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+        /* Background with subtle blur */
+        background: rgba(22, 27, 34, 0.98);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+
+    /* Larger, more visible drag handle */
+    .bottom-sheet-handle {
+        width: 40px;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.3);
+        margin-bottom: 8px;
+    }
+
+    .bottom-sheet-header:active .bottom-sheet-handle {
+        background: rgba(255, 255, 255, 0.5);
+        width: 44px;
+    }
+
+    /* Title styling */
+    .bottom-sheet-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+    }
+
+    /* Quick actions - larger touch targets */
+    .bottom-sheet-action-btn {
+        min-height: 60px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .bottom-sheet-action-btn svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .bottom-sheet-action-btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+
+    /* Input fields - larger touch target */
+    .bottom-sheet-input {
+        height: 48px;
+        font-size: 1rem;
+        border-radius: 12px;
+    }
+
+    .bottom-sheet-fetch-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+    }
+
+    /* Collapsible details - better visual hierarchy */
+    .bottom-sheet-details {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .bottom-sheet-summary {
+        padding: 14px 16px;
+        font-weight: 500;
+    }
+
+    .bottom-sheet-details-content {
+        padding: 12px 16px 16px;
+    }
+
+    /* ----------------------------------------
+       Timeline - Cleaner, Touch-Optimized
+       ---------------------------------------- */
+    .timeline-container {
+        background: var(--bg-secondary);
+        border: none;
+        border-radius: 16px 16px 0 0;
+        padding: 12px 16px;
+        padding-bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
+    }
+
+    .timeline-date {
+        font-size: 0.9375rem;
+        font-weight: 600;
+    }
+
+    .timeline-commit-info {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    /* Larger slider thumb for touch */
+    .timeline-slider::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+        margin-top: -9px;
+    }
+
+    .timeline-slider::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Adjust marker container offset to match larger thumb (12px = half of 24px) */
+    .timeline-slider-container .timeline-markers {
+        left: 12px;
+        right: 12px;
+    }
+
+    /* Play button - prominent, centered */
+    .play-btn-main {
+        width: 56px;
+        height: 56px;
+        box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+    }
+
+    .play-btn-main svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Step buttons - adequate touch target */
+    .timeline-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+
+    .reset-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+
+    /* Speed control - hidden by default, accessible via bottom sheet */
+    .speed-control {
+        display: none;
+    }
+
+    /* Commit counter - centered below controls */
+    .timeline-info {
+        order: 1;
+        width: 100%;
+        text-align: center;
+        font-size: 0.75rem;
+        margin-top: 4px;
+    }
+
+    .timeline-controls-row {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .playback-controls {
+        order: 0;
+    }
+
+    .timeline-right-controls {
+        display: none;
+    }
+
+    /* ----------------------------------------
+       Close Button for Fullscreen - Clear and Accessible
+       ---------------------------------------- */
+    .exit-fullscreen-btn {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 44px;
+        height: 44px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        cursor: pointer;
+        z-index: 200;
+        display: none;
+    }
+
+    .pseudo-fullscreen .exit-fullscreen-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* In fullscreen, hide all overlays except exit button */
+    .pseudo-fullscreen .perf-overlay,
+    .pseudo-fullscreen .stats-overlay {
+        opacity: 0.3;
+        transition: opacity 0.2s ease;
+    }
+
+    .pseudo-fullscreen .perf-overlay:hover,
+    .pseudo-fullscreen .stats-overlay:hover {
+        opacity: 1;
+    }
+}
+
+/* ============================================================================
+   Bottom Sheet Legends Section (Mobile Only)
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    /* File types legend in bottom sheet */
+    .bottom-sheet-legends {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .bottom-sheet-legend-section {
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .bottom-sheet-legend-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .bottom-sheet-legend-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .bottom-sheet-legend-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .bottom-sheet-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        font-size: 0.75rem;
+    }
+
+    .bottom-sheet-legend-color {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .bottom-sheet-legend-count {
+        color: var(--text-muted);
+        font-size: 0.6875rem;
+    }
+
+    /* Author items in bottom sheet */
+    .bottom-sheet-author-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+    }
+
+    .bottom-sheet-author-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .bottom-sheet-author-name {
+        flex: 1;
+        font-size: 0.8125rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .bottom-sheet-author-commits {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+}
+
+/* ============================================================================
+   Landscape Mode Adjustments
+   ============================================================================ */
+
+@media (max-width: 768px) and (orientation: landscape) {
+    /* Even more compact in landscape */
+    .bottom-sheet-fab {
+        bottom: max(100px, calc(100px + env(safe-area-inset-bottom)));
+        width: 44px;
+        height: 44px;
+    }
+
+    .timeline-container {
+        padding: 8px 16px;
+        min-height: auto;
+    }
+
+    .play-btn-main {
+        width: 44px;
+        height: 44px;
+    }
+
+    .timeline-btn,
+    .reset-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .timeline-controls-row {
+        gap: 8px;
+    }
+
+    .stats-overlay {
+        bottom: 8px;
+        padding: 6px 12px;
+    }
+}
+
+/* ============================================================================
+   Small Screen Adjustments (iPhone SE, etc.)
+   ============================================================================ */
+
+@media (max-width: 375px) {
+    .bottom-sheet-action-btn {
+        min-height: 52px;
+        font-size: 0.8125rem;
+    }
+
+    .timeline-date {
+        font-size: 0.875rem;
+    }
+
+    .play-btn-main {
+        width: 48px;
+        height: 48px;
+    }
+
+    .stats-overlay {
+        gap: 8px;
+        padding: 6px 12px;
+    }
+
+    .stats-overlay .stat-value {
+        font-size: 0.8125rem;
     }
 }

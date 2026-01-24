@@ -56,7 +56,10 @@ import {
     isRecordingSupported
 } from './features/video-recording.js';
 import { animate } from './animation.js';
-import { initBottomSheet, openBottomSheet, closeBottomSheet } from './features/bottom-sheet.js';
+import {
+    initBottomSheet, openBottomSheet, closeBottomSheet,
+    updateBottomSheetFileTypes, updateBottomSheetAuthors, clearBottomSheetLegends
+} from './features/bottom-sheet.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -660,6 +663,14 @@ function updateLegend(content, format = 'custom') {
 
     legendItems.innerHTML = html;
     legendItems.setAttribute('role', 'list');
+
+    // Also update bottom sheet legends for mobile
+    const bsFileTypes = sortedExts.map(([ext, count]) => ({
+        extension: ext,
+        color: getExtensionColor(ext),
+        count: count
+    }));
+    updateBottomSheetFileTypes(bsFileTypes);
 }
 
 /**
@@ -716,6 +727,14 @@ function updateAuthorsLegend() {
         if (html) {
             authorsItems.setAttribute('role', 'list');
         }
+
+        // Also update bottom sheet legends for mobile
+        const bsAuthors = topAuthors.map(author => ({
+            name: author.name || 'Unknown',
+            color: author.color || '#888888',
+            commits: author.commits || 0
+        }));
+        updateBottomSheetAuthors(bsAuthors);
     } catch (error) {
         // Log the error for debugging
         console.error('[Rource] updateAuthorsLegend error:', error);
