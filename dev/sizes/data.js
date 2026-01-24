@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769257060765,
+  "lastUpdate": 1769262101819,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1559,6 +1559,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1065514,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d6da38232ee7050d7d078e6339587ea960233e9",
+          "message": "Merge pull request #150 from tomtom215/claude/optimize-rource-profiler-dC4jy\n\nOptimize profiler and update string formatting",
+          "timestamp": "2026-01-24T14:39:51+01:00",
+          "tree_id": "c3ec170d4fb41789609f5c0fc10c731b90f13f3b",
+          "url": "https://github.com/tomtom215/rource/commit/8d6da38232ee7050d7d078e6339587ea960233e9"
+        },
+        "date": 1769262101378,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3907064,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2763013,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1065761,
             "unit": "bytes"
           }
         ]
