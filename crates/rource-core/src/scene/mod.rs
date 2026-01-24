@@ -16,8 +16,9 @@ mod stats_methods;
 pub mod tree;
 pub mod user;
 
-use std::collections::HashMap;
 use std::path::Path;
+
+use rustc_hash::FxHashMap as HashMap;
 
 use rource_math::{Bounds, Vec2};
 
@@ -84,6 +85,10 @@ pub struct Scene {
 
     /// Active actions.
     actions: Vec<Action>,
+
+    /// Count of non-completed actions (O(1) access instead of O(n) filtering).
+    /// Incremented when actions are spawned, decremented when they complete.
+    active_action_count: usize,
 
     /// ID allocator for files.
     file_id_allocator: IdAllocator,
@@ -177,11 +182,12 @@ impl Scene {
 
         Self {
             directories: DirTree::new(),
-            files: HashMap::new(),
-            file_by_path: HashMap::new(),
-            users: HashMap::new(),
-            user_by_name: HashMap::new(),
+            files: HashMap::default(),
+            file_by_path: HashMap::default(),
+            users: HashMap::default(),
+            user_by_name: HashMap::default(),
             actions: Vec::new(),
+            active_action_count: 0,
             file_id_allocator: IdAllocator::new(),
             user_id_allocator: IdAllocator::new(),
             action_id_allocator: IdAllocator::new(),
@@ -195,7 +201,7 @@ impl Scene {
             // Pre-allocate reusable buffers with reasonable initial capacity
             completed_actions_buffer: Vec::with_capacity(64),
             files_to_remove_buffer: Vec::with_capacity(32),
-            forces_buffer: HashMap::with_capacity(128),
+            forces_buffer: HashMap::default(),
             dir_data_buffer: Vec::with_capacity(128),
             // Barnes-Hut tree for O(n log n) force calculations
             barnes_hut_tree: BarnesHutTree::new(bounds),
@@ -272,17 +278,20 @@ impl Scene {
     }
 
     /// Returns a file by ID.
+    #[inline]
     #[must_use]
     pub fn get_file(&self, id: FileId) -> Option<&FileNode> {
         self.files.get(&id)
     }
 
     /// Returns a mutable file by ID.
+    #[inline]
     pub fn get_file_mut(&mut self, id: FileId) -> Option<&mut FileNode> {
         self.files.get_mut(&id)
     }
 
     /// Returns a file by path.
+    #[inline]
     #[must_use]
     pub fn get_file_by_path(&self, path: &Path) -> Option<&FileNode> {
         self.file_by_path
@@ -298,17 +307,20 @@ impl Scene {
     }
 
     /// Returns a user by ID.
+    #[inline]
     #[must_use]
     pub fn get_user(&self, id: UserId) -> Option<&User> {
         self.users.get(&id)
     }
 
     /// Returns a mutable user by ID.
+    #[inline]
     pub fn get_user_mut(&mut self, id: UserId) -> Option<&mut User> {
         self.users.get_mut(&id)
     }
 
     /// Returns a user by name.
+    #[inline]
     #[must_use]
     pub fn get_user_by_name(&self, name: &str) -> Option<&User> {
         self.user_by_name
@@ -464,13 +476,14 @@ impl Scene {
         file_id: FileId,
         action_type: ActionType,
     ) -> Option<ActionId> {
+        // Get file position first (needed for user positioning)
+        let file_pos = self.files.get(&file_id).map(file::FileNode::position);
+
         // Skip spawning if at capacity (prevents accumulation at fast playback)
         if self.actions.len() >= Self::MAX_ACTIONS {
             // Still update user target even if we skip the action
-            if let Some(file) = self.files.get(&file_id) {
-                if let Some(user) = self.users.get_mut(&user_id) {
-                    user.set_target(file.position());
-                }
+            if let (Some(file_pos), Some(user)) = (file_pos, self.users.get_mut(&user_id)) {
+                user.set_target(file_pos);
             }
             return None;
         }
@@ -480,25 +493,18 @@ impl Scene {
 
         let action = Action::new(id, user_id, file_id, action_type);
         self.actions.push(action);
+        self.active_action_count += 1;
 
-        // Add action to user's active actions
+        // Single user lookup: add action and set target
         if let Some(user) = self.users.get_mut(&user_id) {
             user.add_action(id);
-        }
 
-        // Set user's target to file position
-        // If user is at origin (new user), teleport them near the file first
-        if let Some(file) = self.files.get(&file_id) {
-            if let Some(user) = self.users.get_mut(&user_id) {
-                let file_pos = file.position();
-
+            if let Some(file_pos) = file_pos {
                 // If user is still at origin (default position), place them near the file
                 if user.position().length() < 1.0 {
-                    // Position user slightly offset from file
                     let offset = Vec2::new(-50.0, -30.0);
                     user.set_position(file_pos + offset);
                 }
-
                 user.set_target(file_pos);
             }
         }
@@ -509,7 +515,8 @@ impl Scene {
     /// Applies a VCS commit to the scene.
     ///
     /// This creates/modifies/deletes files and spawns appropriate actions.
-    pub fn apply_commit(&mut self, author: &str, files: &[(std::path::PathBuf, ActionType)]) {
+    /// Takes path references to avoid cloning paths from commit data.
+    pub fn apply_commit(&mut self, author: &str, files: &[(&Path, ActionType)]) {
         let user_id = self.get_or_create_user(author);
 
         for (path, action_type) in files {
@@ -524,7 +531,7 @@ impl Scene {
                     }
                 }
                 ActionType::Modify => {
-                    if let Some(&file_id) = self.file_by_path.get(path) {
+                    if let Some(&file_id) = self.file_by_path.get(*path) {
                         self.spawn_action(user_id, file_id, ActionType::Modify);
 
                         // Touch the file with modify color
@@ -542,7 +549,7 @@ impl Scene {
                     }
                 }
                 ActionType::Delete => {
-                    if let Some(&file_id) = self.file_by_path.get(path) {
+                    if let Some(&file_id) = self.file_by_path.get(*path) {
                         self.spawn_action(user_id, file_id, ActionType::Delete);
 
                         // Mark file for removal
@@ -594,6 +601,10 @@ impl Scene {
                 user.remove_action(action_id);
             }
         }
+        // Decrement active count by number of completed actions (O(1) update)
+        self.active_action_count = self
+            .active_action_count
+            .saturating_sub(self.completed_actions_buffer.len());
         self.actions.retain(|a| !a.is_complete());
 
         // Update users
@@ -694,6 +705,10 @@ impl Scene {
                 user.remove_action(action_id);
             }
         }
+        // Decrement active count by number of completed actions (O(1) update)
+        self.active_action_count = self
+            .active_action_count
+            .saturating_sub(self.completed_actions_buffer.len());
         self.actions.retain(|a| !a.is_complete());
 
         // Update users
@@ -826,12 +841,14 @@ impl Scene {
     // Spatial index methods are in spatial_methods.rs
 
     /// Returns the number of files in the scene.
+    #[inline]
     #[must_use]
     pub fn file_count(&self) -> usize {
         self.files.len()
     }
 
     /// Returns the number of users in the scene.
+    #[inline]
     #[must_use]
     pub fn user_count(&self) -> usize {
         self.users.len()
@@ -843,10 +860,19 @@ impl Scene {
         self.directories.len()
     }
 
-    /// Returns the number of active actions.
+    /// Returns the total number of actions (including completed ones pending removal).
     #[must_use]
     pub fn action_count(&self) -> usize {
         self.actions.len()
+    }
+
+    /// Returns the count of non-completed actions (O(1) lookup).
+    ///
+    /// This is more efficient than filtering actions manually each frame.
+    #[inline]
+    #[must_use]
+    pub fn active_action_count(&self) -> usize {
+        self.active_action_count
     }
 
     // Extension stats methods are in stats_methods.rs
@@ -937,9 +963,9 @@ mod tests {
     fn test_scene_apply_commit() {
         let mut scene = Scene::new();
 
-        let files = vec![
-            (std::path::PathBuf::from("src/new.rs"), ActionType::Create),
-            (std::path::PathBuf::from("src/mod.rs"), ActionType::Create),
+        let files: Vec<(&Path, ActionType)> = vec![
+            (Path::new("src/new.rs"), ActionType::Create),
+            (Path::new("src/mod.rs"), ActionType::Create),
         ];
 
         scene.apply_commit("Alice", &files);
@@ -956,7 +982,7 @@ mod tests {
         // First create a file
         scene.create_file(Path::new("src/lib.rs"));
 
-        let files = vec![(std::path::PathBuf::from("src/lib.rs"), ActionType::Modify)];
+        let files: Vec<(&Path, ActionType)> = vec![(Path::new("src/lib.rs"), ActionType::Modify)];
 
         scene.apply_commit("Bob", &files);
 
@@ -974,7 +1000,7 @@ mod tests {
         // First create a file
         scene.create_file(Path::new("old.rs"));
 
-        let files = vec![(std::path::PathBuf::from("old.rs"), ActionType::Delete)];
+        let files: Vec<(&Path, ActionType)> = vec![(Path::new("old.rs"), ActionType::Delete)];
 
         scene.apply_commit("Charlie", &files);
 

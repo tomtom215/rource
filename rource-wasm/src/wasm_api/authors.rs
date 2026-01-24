@@ -116,8 +116,8 @@ impl Rource {
             })
             .collect();
 
-        // Sort by commit count descending
-        authors.sort_by(|a, b| b.2.cmp(&a.2));
+        // Sort by commit count descending - use unstable sort for performance
+        authors.sort_unstable_by(|a, b| b.2.cmp(&a.2));
 
         // Build JSON array
         let mut json = String::from("[");

@@ -166,6 +166,7 @@ impl InstanceBuffer {
     }
 
     /// Pushes raw float data for an instance.
+    #[inline]
     pub fn push_raw(&mut self, data: &[f32]) {
         debug_assert_eq!(data.len(), self.floats_per_instance);
         self.data.extend_from_slice(data);

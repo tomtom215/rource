@@ -921,11 +921,13 @@ impl LabelPlacer {
     }
 
     /// Checks if more labels can be placed.
+    #[inline]
     pub fn can_place_more(&self) -> bool {
         self.placed_labels.len() < self.max_labels
     }
 
     /// Tries to place a label, checking for collisions.
+    #[inline]
     pub fn try_place(&mut self, pos: Vec2, width: f32, height: f32) -> bool {
         let rect = Rect::new(pos.x, pos.y, width, height);
 
@@ -1037,8 +1039,9 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
         }
     }
 
-    // Sort by priority (highest first)
-    label_candidates.sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
+    // Sort by priority (highest first) - use unstable sort for performance
+    label_candidates
+        .sort_unstable_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
 
     // Reset label placer for this frame (reuses internal Vec allocation)
     label_placer.reset(ctx.camera_zoom);

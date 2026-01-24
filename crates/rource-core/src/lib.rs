@@ -28,15 +28,15 @@
 //!
 //! ```
 //! use rource_core::scene::{Scene, ActionType};
-//! use std::path::PathBuf;
+//! use std::path::Path;
 //!
 //! // Create a new scene
 //! let mut scene = Scene::new();
 //!
 //! // Apply a commit
 //! scene.apply_commit("Alice", &[
-//!     (PathBuf::from("src/main.rs"), ActionType::Create),
-//!     (PathBuf::from("src/lib.rs"), ActionType::Modify),
+//!     (Path::new("src/main.rs"), ActionType::Create),
+//!     (Path::new("src/lib.rs"), ActionType::Modify),
 //! ]);
 //!
 //! // Update the scene

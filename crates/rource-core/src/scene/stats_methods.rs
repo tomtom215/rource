@@ -39,17 +39,16 @@ impl Scene {
 
     /// Recomputes extension statistics and updates the cache.
     pub(super) fn recompute_extension_stats(&mut self) {
-        use std::collections::HashMap;
+        use rustc_hash::FxHashMap;
 
-        let mut stats: HashMap<String, usize> = HashMap::new();
+        let mut stats: FxHashMap<String, usize> = FxHashMap::default();
 
         for file in self.files.values() {
             if file.alpha() < 0.1 {
                 continue;
             }
-            let ext = file
-                .extension()
-                .map_or_else(|| "other".to_string(), str::to_lowercase);
+            // Extensions are stored in lowercase in FileNode, so no conversion needed
+            let ext = file.extension().unwrap_or("other").to_string();
             *stats.entry(ext).or_insert(0) += 1;
         }
 

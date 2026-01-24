@@ -160,13 +160,12 @@ impl Scene {
         files.clear();
         users.clear();
 
-        for entity in self.spatial.query(bounds) {
-            match entity {
-                EntityType::Directory(id) => dirs.push(*id),
-                EntityType::File(id) => files.push(*id),
-                EntityType::User(id) => users.push(*id),
-            }
-        }
+        // Use zero-allocation visitor pattern - no intermediate Vec allocation
+        self.spatial.query_for_each(bounds, |entity| match entity {
+            EntityType::Directory(id) => dirs.push(*id),
+            EntityType::File(id) => files.push(*id),
+            EntityType::User(id) => users.push(*id),
+        });
     }
 
     /// Returns the expanded bounds for visibility queries.

@@ -1836,6 +1836,7 @@ dependencies = [
  "criterion",
  "regex-lite",
  "rource-math",
+ "rustc-hash",
  "serde",
  "toml",
 ]

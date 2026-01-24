@@ -352,11 +352,12 @@ pub fn apply_pending_commits(app: &mut App) {
         }
 
         // Convert commit files to scene format, filtering out hidden files
-        let files: Vec<(std::path::PathBuf, ActionType)> = commit
+        // Use references instead of cloning paths
+        let files: Vec<(&std::path::Path, ActionType)> = commit
             .files
             .iter()
             .filter(|f| app.filter.should_include_file(&f.path))
-            .map(|f| (f.path.clone(), file_action_to_action_type(f.action)))
+            .map(|f| (f.path.as_path(), file_action_to_action_type(f.action)))
             .collect();
 
         // Only apply commit if there are files left after filtering
@@ -381,11 +382,12 @@ pub fn seek_to_commit(app: &mut App, target: usize) {
         app.accumulated_time = 0.0;
 
         // Apply commits up to target
+        // Use references instead of cloning paths
         for (i, commit) in app.commits.iter().take(target).enumerate() {
-            let files: Vec<(std::path::PathBuf, ActionType)> = commit
+            let files: Vec<(&std::path::Path, ActionType)> = commit
                 .files
                 .iter()
-                .map(|f| (f.path.clone(), file_action_to_action_type(f.action)))
+                .map(|f| (f.path.as_path(), file_action_to_action_type(f.action)))
                 .collect();
 
             app.scene.apply_commit(&commit.author, &files);

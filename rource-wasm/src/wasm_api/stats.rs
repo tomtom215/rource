@@ -306,7 +306,7 @@ impl Rource {
             .take(10)
             .map(rource_core::scene::FileNode::radius)
             .collect();
-        file_radii.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        file_radii.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut dir_radii: Vec<f32> = self
             .scene
@@ -315,7 +315,7 @@ impl Rource {
             .take(10)
             .map(rource_core::scene::DirNode::radius)
             .collect();
-        dir_radii.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        dir_radii.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut user_radii: Vec<f32> = self
             .scene
@@ -324,7 +324,7 @@ impl Rource {
             .take(10)
             .map(rource_core::scene::User::radius)
             .collect();
-        user_radii.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        user_radii.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         // Calculate minimum screen radii
         let min_file_radius = file_radii.first().copied().unwrap_or(5.0);

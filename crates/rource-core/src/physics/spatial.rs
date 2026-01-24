@@ -213,6 +213,67 @@ impl<T: Clone> QuadTree<T> {
         results
     }
 
+    /// Queries items within the given bounds, reusing the provided buffer.
+    ///
+    /// This is the zero-allocation version of `query()`. The results buffer
+    /// is cleared before populating with matching items.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let mut buffer = Vec::new();
+    /// // Each frame - zero allocations after initial capacity
+    /// tree.query_into(&bounds, &mut buffer);
+    /// for item in &buffer {
+    ///     // process item
+    /// }
+    /// ```
+    #[inline]
+    pub fn query_into<'a>(&'a self, bounds: &Bounds, results: &mut Vec<&'a T>) {
+        results.clear();
+        self.query_recursive(bounds, results);
+    }
+
+    /// Queries items and calls a closure for each match (zero-allocation visitor pattern).
+    ///
+    /// This completely avoids any Vec allocation by processing items inline.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// tree.query_for_each(&bounds, |item| {
+    ///     match item {
+    ///         EntityType::File(id) => files.push(*id),
+    ///         // ...
+    ///     }
+    /// });
+    /// ```
+    #[inline]
+    pub fn query_for_each(&self, bounds: &Bounds, mut visitor: impl FnMut(&T)) {
+        self.query_for_each_recursive(bounds, &mut visitor);
+    }
+
+    /// Recursive visitor implementation.
+    fn query_for_each_recursive(&self, bounds: &Bounds, visitor: &mut impl FnMut(&T)) {
+        if !self.bounds.intersects(*bounds) {
+            return;
+        }
+
+        // Check items at this node
+        for (pos, item) in &self.items {
+            if bounds.contains(*pos) {
+                visitor(item);
+            }
+        }
+
+        // Check children
+        if let Some(ref children) = self.children {
+            for child in children.iter() {
+                child.query_for_each_recursive(bounds, visitor);
+            }
+        }
+    }
+
     /// Recursive query implementation.
     fn query_recursive<'a>(&'a self, bounds: &Bounds, results: &mut Vec<&'a T>) {
         if !self.bounds.intersects(*bounds) {
@@ -461,6 +522,54 @@ mod tests {
         // Query area with no items
         let results = tree.query(&Bounds::new(Vec2::new(80.0, 80.0), Vec2::new(100.0, 100.0)));
         assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_quadtree_query_for_each() {
+        let mut tree = create_test_tree();
+
+        tree.insert(Vec2::new(10.0, 10.0), 1);
+        tree.insert(Vec2::new(90.0, 90.0), 2);
+        tree.insert(Vec2::new(50.0, 50.0), 3);
+
+        // Use query_for_each (zero-allocation visitor pattern)
+        let mut collected = Vec::new();
+        tree.query_for_each(&Bounds::new(Vec2::ZERO, Vec2::new(50.0, 50.0)), |item| {
+            collected.push(*item);
+        });
+
+        assert_eq!(collected.len(), 2); // Items 1 and 3
+        assert!(collected.contains(&1));
+        assert!(collected.contains(&3));
+
+        // Verify it matches query() results
+        let query_results = tree.query(&Bounds::new(Vec2::ZERO, Vec2::new(50.0, 50.0)));
+        assert_eq!(collected.len(), query_results.len());
+    }
+
+    #[test]
+    fn test_quadtree_query_into() {
+        let mut tree = create_test_tree();
+
+        tree.insert(Vec2::new(10.0, 10.0), 1);
+        tree.insert(Vec2::new(90.0, 90.0), 2);
+        tree.insert(Vec2::new(50.0, 50.0), 3);
+
+        // Test query_into with reusable buffer
+        let mut buffer = Vec::with_capacity(10);
+        tree.query_into(&Bounds::new(Vec2::ZERO, Vec2::new(50.0, 50.0)), &mut buffer);
+
+        assert_eq!(buffer.len(), 2);
+        assert!(buffer.contains(&&1));
+        assert!(buffer.contains(&&3));
+
+        // Verify buffer is cleared on subsequent calls
+        tree.query_into(
+            &Bounds::new(Vec2::new(80.0, 80.0), Vec2::new(100.0, 100.0)),
+            &mut buffer,
+        );
+        assert_eq!(buffer.len(), 1);
+        assert!(buffer.contains(&&2));
     }
 
     #[test]

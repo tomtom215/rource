@@ -5,8 +5,6 @@
 //!
 //! This module handles commit playback timing, seeking, and timeline navigation.
 
-use std::path::PathBuf;
-
 use rource_core::scene::{ActionType, Scene};
 use rource_vcs::{Commit, FileAction};
 
@@ -192,10 +190,10 @@ impl PlaybackState {
 /// * `scene` - The scene to apply the commit to
 /// * `commit` - The commit to apply
 pub fn apply_vcs_commit(scene: &mut Scene, commit: &Commit) {
-    let files: Vec<(PathBuf, ActionType)> = commit
+    let files: Vec<(&std::path::Path, ActionType)> = commit
         .files
         .iter()
-        .map(|fc| (fc.path.clone(), file_action_to_action_type(fc.action)))
+        .map(|fc| (fc.path.as_path(), file_action_to_action_type(fc.action)))
         .collect();
 
     scene.apply_commit(&commit.author, &files);
@@ -430,6 +428,8 @@ mod tests {
     }
 
     // Commit Application Tests
+
+    use std::path::PathBuf;
 
     use rource_vcs::FileChange;
 
