@@ -26,7 +26,14 @@ toml = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+iai-callgrind = { workspace = true }
 
 [[bench]]
 name = "scene_perf"
+harness = false
+
+# iai-callgrind benchmarks for deterministic instruction-count measurements
+# These are ideal for CI as they don't suffer from timing variance
+[[bench]]
+name = "iai_scene"
 harness = false

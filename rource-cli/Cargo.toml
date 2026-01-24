@@ -15,6 +15,22 @@ path = "src/main.rs"
 [lints]
 workspace = true
 
+[features]
+default = []
+# DHAT heap profiling - enables allocation tracking
+# Usage: cargo build --profile dhat --features dhat
+# Then run and check dhat-heap.json
+dhat = ["dep:dhat"]
+# Tracy real-time profiling - enables Tracy instrumentation
+# Usage: cargo build --profile profiling --features tracy
+# Then connect with Tracy profiler
+tracy = ["dep:tracing", "dep:tracing-subscriber", "dep:tracing-tracy"]
+# jemalloc with profiling (Linux only)
+# Usage: MALLOC_CONF="prof:true" cargo run --features jemalloc
+jemalloc = ["dep:tikv-jemallocator"]
+# Combined profiling features for comprehensive analysis
+profiling = ["tracy"]
+
 [dependencies]
 rource-core = { path = "../crates/rource-core", features = ["config-file"] }
 rource-render = { path = "../crates/rource-render" }
@@ -27,3 +43,10 @@ softbuffer = "0.4"
 anyhow = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 toml = { version = "0.9", default-features = false, features = ["parse"] }
+
+# Profiling dependencies (optional)
+dhat = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, optional = true }
+tracing-tracy = { workspace = true, optional = true }
+tikv-jemallocator = { workspace = true, optional = true }

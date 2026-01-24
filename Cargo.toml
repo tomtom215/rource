@@ -61,6 +61,17 @@ toml = "0.9"
 rustc-hash = "1.1"
 # Benchmarking
 criterion = { version = "0.5", default-features = false }
+# iai-callgrind for deterministic instruction-count benchmarks (Valgrind-based)
+iai-callgrind = "0.14"
+# DHAT for heap profiling (allocation tracking)
+dhat = "0.3"
+# Tracing infrastructure for Tracy and other profilers
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Tracy client for real-time profiling (optional)
+tracing-tracy = "0.11"
+# jemalloc with profiling support (optional, Linux only)
+tikv-jemallocator = { version = "0.6", features = ["profiling", "stats"] }
 
 [profile.release]
 # Maximum optimization for performance (explicit for documentation)
@@ -83,3 +94,24 @@ opt-level = 1
 [profile.bench]
 lto = true
 codegen-units = 1
+
+# Profiling profile: release optimizations with debug symbols for profilers
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = false
+
+# Flamegraph-optimized profile: good balance for cargo-flamegraph
+[profile.flamegraph]
+inherits = "release"
+debug = 2
+strip = false
+# Keep frame pointers for better stack traces
+# Note: this is set via RUSTFLAGS in the profiling script
+
+# DHAT profiling profile
+[profile.dhat]
+inherits = "release"
+debug = true
+strip = false
+opt-level = 2  # Slightly lower opt for better attribution

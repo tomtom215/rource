@@ -18,6 +18,29 @@
 //! - `input`: Keyboard and mouse input handling
 //! - `rendering`: Frame rendering for windowed mode
 //! - `window`: Window management and event handling
+//!
+//! # Profiling Features
+//!
+//! This crate supports several profiling features:
+//!
+//! - `dhat`: DHAT heap profiler - tracks all allocations
+//!   ```bash
+//!   cargo build --profile dhat --features dhat
+//!   ./target/dhat/rource --headless --output /tmp/frames .
+//!   # Check dhat-heap.json for results
+//!   ```
+//!
+//! - `tracy`: Tracy real-time profiler integration
+//!   ```bash
+//!   cargo build --profile profiling --features tracy
+//!   # Run Tracy capture, then run the binary
+//!   ```
+//!
+//! - `jemalloc`: jemalloc with profiling (Linux only)
+//!   ```bash
+//!   cargo build --release --features jemalloc
+//!   MALLOC_CONF="prof:true,prof_prefix:jeprof.out" ./target/release/rource ...
+//!   ```
 
 // Allow multiple versions of dependencies from winit/softbuffer ecosystem
 #![allow(clippy::multiple_crate_versions)]
@@ -38,7 +61,35 @@ use args::Args;
 use headless::{run_headless, run_screenshot};
 use window::run_windowed;
 
+// DHAT heap profiler - enabled with `--features dhat`
+// This tracks all heap allocations and produces dhat-heap.json on exit
+#[cfg(feature = "dhat")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
+// jemalloc with profiling - enabled with `--features jemalloc`
+// Use MALLOC_CONF="prof:true" to enable profiling at runtime
+#[cfg(all(feature = "jemalloc", not(feature = "dhat")))]
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 fn main() -> Result<()> {
+    // Initialize DHAT profiler if enabled
+    #[cfg(feature = "dhat")]
+    let _profiler = dhat::Profiler::new_heap();
+
+    // Initialize Tracy tracing if enabled
+    #[cfg(feature = "tracy")]
+    {
+        use tracing_subscriber::layer::SubscriberExt;
+        use tracing_subscriber::util::SubscriberInitExt;
+
+        tracing_subscriber::registry()
+            .with(tracing_tracy::TracyLayer::default())
+            .init();
+
+        eprintln!("Tracy profiling enabled - connect with Tracy profiler");
+    }
     let mut args = Args::parse_args();
 
     // Handle --sample-config
