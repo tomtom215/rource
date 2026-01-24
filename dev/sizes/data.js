@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769291967145,
+  "lastUpdate": 1769296463791,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1871,6 +1871,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1069882,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e2f1345b2f8ce659f72153516f7173fff1e9a875",
+          "message": "Merge pull request #158 from tomtom215/claude/optimize-rource-performance-DM3IT\n\nOptimize perpendicular vector calculation in branch curves",
+          "timestamp": "2026-01-25T00:12:23+01:00",
+          "tree_id": "24945191405a5e14914214e03d9b5bf2d236de96",
+          "url": "https://github.com/tomtom215/rource/commit/e2f1345b2f8ce659f72153516f7173fff1e9a875"
+        },
+        "date": 1769296462976,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3911576,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2769980,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1069735,
             "unit": "bytes"
           }
         ]
