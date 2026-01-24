@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769284483772,
+  "lastUpdate": 1769289234769,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1793,6 +1793,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1067795,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eb639d5c7aa27898dd3d6b7d01b33e3e8ff54e37",
+          "message": "Merge pull request #156 from tomtom215/claude/performance-micro-optimizations-exEDZ\n\nPhase 43: Physics and Rendering Micro-Optimizations",
+          "timestamp": "2026-01-24T22:11:46+01:00",
+          "tree_id": "23d1def73be11cfb8db9c8d00652a5f0f0de29f0",
+          "url": "https://github.com/tomtom215/rource/commit/eb639d5c7aa27898dd3d6b7d01b33e3e8ff54e37"
+        },
+        "date": 1769289233933,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3910808,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2765902,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1067786,
             "unit": "bytes"
           }
         ]
