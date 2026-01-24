@@ -9,7 +9,7 @@ use crate::TextureId;
 
 use super::{
     buffers::{self, InstanceBuffer, Uniforms},
-    state::PipelineId,
+    state::{BindGroupId, PipelineId},
     stats::ActivePrimitives,
     WgpuRenderer,
 };
@@ -136,8 +136,13 @@ impl WgpuRenderer {
             render_pass.set_pipeline(pipeline);
         }
 
-        // Set bind groups
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        // Set bind groups (with state caching)
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
 
         // Set vertex buffer (unit quad)
         render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
@@ -193,7 +198,12 @@ impl WgpuRenderer {
             render_pass.set_pipeline(pipeline);
         }
 
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
         render_pass.set_vertex_buffer(0, self.vertex_buffers.circle_quad.slice(..));
         render_pass.set_vertex_buffer(1, self.ring_instances.buffer().slice(..));
 
@@ -238,7 +248,12 @@ impl WgpuRenderer {
             render_pass.set_pipeline(pipeline);
         }
 
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
         render_pass.set_vertex_buffer(0, self.vertex_buffers.line_quad.slice(..));
 
         // Use culled buffer or standard buffer
@@ -291,7 +306,12 @@ impl WgpuRenderer {
             render_pass.set_pipeline(pipeline);
         }
 
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
         render_pass.set_vertex_buffer(0, self.vertex_buffers.curve_strip.slice(..));
         render_pass.set_vertex_buffer(1, self.curve_instances.buffer().slice(..));
 
@@ -336,7 +356,12 @@ impl WgpuRenderer {
             render_pass.set_pipeline(pipeline);
         }
 
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
         render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
 
         // Use culled buffer or standard buffer
@@ -419,7 +444,12 @@ impl WgpuRenderer {
             render_pass.set_pipeline(pipeline);
         }
 
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
 
         // Render each texture group using cached IDs (avoids per-frame allocation)
         for i in 0..self.cached_texture_ids.len() {
@@ -484,8 +514,18 @@ impl WgpuRenderer {
             render_pass.set_pipeline(pipeline);
         }
 
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_bind_group(1, self.font_atlas.bind_group(), &[]);
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
+        if self
+            .render_state
+            .set_bind_group(1, BindGroupId::FontAtlas, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(1, self.font_atlas.bind_group(), &[]);
+        }
         render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
         render_pass.set_vertex_buffer(1, self.text_instances.buffer().slice(..));
 
@@ -545,9 +585,19 @@ impl WgpuRenderer {
             render_pass.set_pipeline(pipeline);
         }
 
-        // Set bind groups
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_bind_group(1, file_icon_array.bind_group(), &[]);
+        // Set bind groups (with state caching)
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
+        if self
+            .render_state
+            .set_bind_group(1, BindGroupId::FileIconArray, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(1, file_icon_array.bind_group(), &[]);
+        }
 
         // Set vertex and instance buffers
         render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));

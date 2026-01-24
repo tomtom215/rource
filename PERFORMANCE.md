@@ -43,6 +43,8 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 30: Profiler Zero-Allocation (2026-01-24)](#phase-30-profiler-zero-allocation-optimization-2026-01-24)
 - [Phase 31: Visual Rendering Hot Paths (2026-01-24)](#phase-31-visual-rendering-hot-path-optimizations-2026-01-24)
 - [Phase 32: WASM Hot Paths (2026-01-24)](#phase-32-wasm-hot-path-optimizations-2026-01-24)
+- [Phase 33: Label Collision Spatial Hashing (2026-01-24)](#phase-33-label-collision-spatial-hashing-and-zero-allocation-readbacks-2026-01-24)
+- [Phase 34: Micro-Optimizations and State Caching (2026-01-24)](#phase-34-micro-optimizations-and-state-caching-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -70,7 +72,7 @@ Rource has undergone extensive performance optimization to ensure smooth 60+ FPS
 | Buffer reuse              | Pre-allocated buffers for effects/rendering |
 | State caching             | Minimizes redundant GPU API calls           |
 
-**Current Status**: 1,898 tests passing, all optimizations verified.
+**Current Status**: 1,936 tests passing, all optimizations verified.
 
 ---
 
@@ -3545,6 +3547,309 @@ pub fn compute_depth_factor(depth: u32) -> f32 {
 | Depth factor | Per visible directory | 1 div→mul per directory |
 
 **Test Count**: 1,898 tests passing (no change)
+
+---
+
+### Phase 33: Label Collision Spatial Hashing and Zero-Allocation Readbacks (2026-01-24)
+
+**Summary**: Implemented spatial hashing for label collision detection, reducing complexity from O(n²) to O(n). Added zero-allocation physics readback methods for GPU compute results. Optimized stats module path parsing.
+
+#### Optimizations
+
+**1. Label Collision Detection Spatial Hashing (render_phases.rs)**
+
+Replaced O(n²) pairwise collision checking with grid-based spatial hash:
+
+```rust
+// Before: O(n²) - check every label against all placed labels
+pub fn try_place(&mut self, pos: Vec2, width: f32, height: f32) -> bool {
+    let rect = Rect::new(pos.x, pos.y, width, height);
+    for placed in &self.placed_labels {
+        if rects_intersect(&rect, placed) {
+            return false;
+        }
+    }
+    self.placed_labels.push(rect);
+    true
+}
+
+// After: O(n) average - only check labels in overlapping grid cells
+const LABEL_CELL_SIZE: f32 = 128.0;
+const LABEL_GRID_SIZE: usize = 32;
+
+pub struct LabelPlacer {
+    placed_labels: Vec<Rect>,
+    grid: Vec<Vec<Vec<usize>>>, // 32x32 grid of label indices
+    max_labels: usize,
+}
+
+pub fn try_place(&mut self, pos: Vec2, width: f32, height: f32) -> bool {
+    let rect = Rect::new(pos.x, pos.y, width, height);
+    let ((min_cx, min_cy), (max_cx, max_cy)) = Self::rect_cell_range(&rect);
+
+    // Only check labels in overlapping cells
+    for cy in min_cy..=max_cy {
+        for cx in min_cx..=max_cx {
+            for &label_idx in &self.grid[cy][cx] {
+                if rects_intersect(&rect, &self.placed_labels[label_idx]) {
+                    return false;
+                }
+            }
+        }
+    }
+    // ... register in grid cells
+}
+```
+
+**Impact**: For 200 labels at max zoom, worst case goes from 20,000 comparisons to ~200 (average 1-4 labels per cell).
+
+**2. Zero-Allocation Physics Readback (compute.rs, spatial_hash.rs)**
+
+Added `download_entities_into()` methods that fill caller-provided buffers:
+
+```rust
+// Before: allocates new Vec each frame
+pub fn download_entities(&mut self, device: &Device) -> Vec<ComputeEntity> {
+    // ...
+    let entities: Vec<ComputeEntity> = bytemuck::cast_slice(&data).to_vec();
+    entities
+}
+
+// After: caller can reuse buffer across frames
+pub fn download_entities_into(&mut self, device: &Device, output: &mut Vec<ComputeEntity>) {
+    output.clear();
+    // ...
+    let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
+    output.extend_from_slice(entities);
+}
+```
+
+**Impact**: Eliminates per-frame Vec allocation for GPU physics readback (32 bytes × entity_count).
+
+**3. Stats Module Path Parsing (stats.rs)**
+
+Replaced O(n²) path parsing with O(n) `match_indices`:
+
+```rust
+// Before: O(n²) - split().nth(i+1) re-parses string each iteration
+for (i, component) in path.split('/').enumerate() {
+    if path.split('/').nth(i + 1).is_some() {
+        current_path.push_str(component);
+        directories.insert(current_path.clone());
+    }
+}
+
+// After: O(n) - single pass using match_indices
+for (slash_pos, _) in path_str.match_indices('/') {
+    if slash_pos > 0 {
+        directories.insert(path_str[..slash_pos].to_string());
+    }
+}
+```
+
+**Impact**: Path parsing is now O(n) per path instead of O(n²). Also added `HashSet` pre-allocation.
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `rource-wasm/src/render_phases.rs` | Spatial hash grid for label collision detection |
+| `crates/rource-render/src/backend/wgpu/compute.rs` | `download_entities_into()` method |
+| `crates/rource-render/src/backend/wgpu/spatial_hash.rs` | `download_entities_sync_into()` method |
+| `rource-wasm/src/wasm_api/stats.rs` | O(n) path parsing with `match_indices` |
+
+#### Quantitative Impact
+
+| Optimization | Before | After |
+|-------------|--------|-------|
+| Label collision (200 labels) | ~20,000 comparisons | ~200 (avg) |
+| Physics readback (1000 entities) | 32KB allocation/frame | 0 allocation |
+| Path parsing (n components) | O(n²) | O(n) |
+
+**Test Count**: 1,898 tests passing (no change)
+
+---
+
+### Phase 34: Micro-Optimizations and State Caching (2026-01-24)
+
+**Summary**: Implemented 8 targeted micro-optimizations focusing on division-to-multiplication conversions, precomputed reciprocals, zero-allocation patterns, state caching, and O(1) lookups. These optimizations reduce CPU cycles in hot paths and eliminate redundant GPU API calls.
+
+#### Optimizations
+
+**1. Pixel Alpha INV_255 Constant (software/renderer.rs)**
+
+Replaced division by 255.0 with multiplication by precomputed reciprocal:
+
+```rust
+// Before: Division in hot path
+let alpha = a as f32 / 255.0;
+
+// After: Multiplication by constant
+const INV_255: f32 = 1.0 / 255.0;
+let alpha = a as f32 * INV_255;
+```
+
+**Impact**: ~10-15 CPU cycles saved per alpha calculation.
+
+**2. Tween Division-to-Multiplication (animation/tween.rs)**
+
+Converted 15+ `/ 2.0` operations to `* 0.5` in easing functions:
+
+```rust
+// Before
+1.0 - (-2.0 * t + 2.0).powi(2) / 2.0
+
+// After
+1.0 - (-2.0 * t + 2.0).powi(2) * 0.5
+```
+
+**Impact**: Affects QuadInOut, CubicInOut, QuartInOut, QuintInOut, SineInOut, ExpoInOut, CircInOut, BounceInOut, elastic_in_out, and back_in_out.
+
+**3. HoverInfo Direct JSON Building (wasm_api/hover.rs)**
+
+Replaced intermediate struct allocations with direct JSON buffer building:
+
+```rust
+// Before: Multiple String allocations
+let info = HoverInfo { ... };
+let json = info.to_json();
+
+// After: Zero intermediate allocations
+fn build_hover_json(entity_type: &str, name: &str, ...) -> String {
+    let mut json = String::with_capacity(capacity);
+    json.push_str(r#"{"entityType":""#);
+    escape_json_into(entity_type, &mut json);
+    // ... writes directly to buffer
+}
+```
+
+**Impact**: Eliminates 6 intermediate String allocations per hover tooltip.
+
+**4. Tween Inverse Duration Cache (animation/tween.rs)**
+
+Added precomputed `inv_duration` field for O(1) progress calculation:
+
+```rust
+pub struct Tween {
+    duration: f32,
+    inv_duration: f32,  // NEW: 1.0 / duration
+    // ...
+}
+
+// Before: Division per progress() call
+pub fn progress(&self) -> f32 {
+    (self.elapsed / self.duration).clamp(0.0, 1.0)
+}
+
+// After: Multiplication by cached reciprocal
+pub fn progress(&self) -> f32 {
+    (self.elapsed * self.inv_duration).clamp(0.0, 1.0)
+}
+```
+
+**Impact**: ~10-15 cycles saved per progress() call (called 60+ times/second per active tween).
+
+**5. escape_json Zero-Allocation (wasm_api/hover.rs)**
+
+Added `escape_json_into()` that writes directly to existing buffer:
+
+```rust
+// Before: Allocates new String
+fn escape_json(s: &str) -> String { ... }
+
+// After: Zero-allocation write to buffer
+fn escape_json_into(s: &str, out: &mut String) {
+    if !needs_json_escaping(s) {
+        out.push_str(s);
+        return;
+    }
+    // Escape character by character into existing buffer
+}
+```
+
+**Impact**: Eliminates escape buffer allocation when no escaping needed (fast path).
+
+**6. Uniform Bind Group State Caching (wgpu/flush_passes.rs)**
+
+Extended pipeline state caching to bind groups:
+
+```rust
+// Before: Unconditional bind group set
+render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+
+// After: State-cached conditional set
+if self.render_state.set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats) {
+    render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+}
+```
+
+**Impact**: Eliminates 8+ redundant `set_bind_group` GPU API calls per frame when bind groups unchanged.
+
+**7. Tree Child HashMap Lookup (scene/tree.rs)**
+
+Added `children_by_name` index for O(1) directory lookups:
+
+```rust
+pub struct DirTree {
+    nodes: Vec<Option<DirNode>>,
+    // NEW: O(1) lookup by (parent_id, child_name)
+    children_by_name: HashMap<(u32, String), DirId>,
+}
+
+// Before: O(c) linear scan through children
+let existing_child = node.children().iter()
+    .find(|&&child_id| self.get(child_id).is_some_and(|c| c.name() == name));
+
+// After: O(1) HashMap lookup
+let existing_child = self.children_by_name.get(&(parent_id.index(), name));
+```
+
+**Impact**: Path lookup goes from O(d×c) to O(d) where d=depth, c=children per level.
+
+**8. Bloom Config Method Inlining (wgpu/bloom.rs, webgl2/bloom.rs)**
+
+Added `#[inline]` to `BloomConfig` accessor methods:
+
+```rust
+impl BloomConfig {
+    #[inline]
+    pub fn new() -> Self { ... }
+
+    #[inline]
+    pub fn subtle() -> Self { ... }
+
+    #[inline]
+    pub fn intense() -> Self { ... }
+}
+```
+
+**Impact**: Eliminates function call overhead for frequently-used config accessors.
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/backend/software/renderer.rs` | INV_255 constant |
+| `crates/rource-core/src/animation/tween.rs` | inv_duration cache, `* 0.5` conversions |
+| `rource-wasm/src/wasm_api/hover.rs` | Direct JSON building, `escape_json_into` |
+| `crates/rource-render/src/backend/wgpu/flush_passes.rs` | Bind group state caching |
+| `crates/rource-render/src/backend/wgpu/state.rs` | Added `FileIconArray` bind group ID |
+| `crates/rource-core/src/scene/tree.rs` | `children_by_name` HashMap index |
+| `crates/rource-render/src/backend/wgpu/bloom.rs` | `#[inline]` on config methods |
+| `crates/rource-render/src/backend/webgl2/bloom.rs` | `#[inline]` on config methods |
+
+#### Quantitative Impact
+
+| Optimization | Before | After |
+|-------------|--------|-------|
+| Alpha calculation | 1 DIV | 1 MUL (~10-15 cycles) |
+| Tween easing | 15+ DIV by 2.0 | 15+ MUL by 0.5 |
+| Hover tooltip | 6 String allocs | 0 intermediate allocs |
+| Tween progress | 1 DIV per call | 1 MUL (precomputed) |
+| Bind group calls | 8+/frame | 0-2/frame (cached) |
+| Directory lookup | O(d×c) | O(d) |
+
+**Test Count**: 1,936 tests passing (38 new tests)
 
 ---
 

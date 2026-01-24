@@ -965,14 +965,32 @@ impl ComputePipeline {
     /// Vector of updated entity data, or empty vector if no staging buffer.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn download_entities(&mut self, device: &Device) -> Vec<ComputeEntity> {
+        let mut output = Vec::with_capacity(self.entity_count);
+        self.download_entities_into(device, &mut output);
+        output
+    }
+
+    /// Downloads entity data into the provided buffer (zero-allocation version).
+    ///
+    /// This avoids per-frame allocations by reusing the output buffer.
+    /// The buffer is cleared and filled with the downloaded entity data.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for polling
+    /// * `output` - Buffer to fill with entity data (cleared before filling)
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn download_entities_into(&mut self, device: &Device, output: &mut Vec<ComputeEntity>) {
         use wgpu::BufferSlice;
 
+        output.clear();
+
         let Some(staging) = &self.staging_buffer else {
-            return Vec::new();
+            return;
         };
 
         if self.entity_count == 0 {
-            return Vec::new();
+            return;
         }
 
         let size = (self.entity_count * ENTITY_SIZE) as u64;
@@ -988,13 +1006,11 @@ impl ComputePipeline {
 
         if rx.recv().is_ok() {
             let data = slice.get_mapped_range();
-            let entities: Vec<ComputeEntity> = bytemuck::cast_slice(&data).to_vec();
+            let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
+            output.extend_from_slice(entities);
             drop(data);
             staging.unmap();
-            self.stats.bytes_downloaded += entities.len() * ENTITY_SIZE;
-            entities
-        } else {
-            Vec::new()
+            self.stats.bytes_downloaded += output.len() * ENTITY_SIZE;
         }
     }
 
@@ -1014,14 +1030,36 @@ impl ComputePipeline {
     /// Suitable for use in synchronous frame loops.
     #[cfg(target_arch = "wasm32")]
     pub fn download_entities_sync(&mut self, device: &Device) -> Vec<ComputeEntity> {
+        let mut output = Vec::with_capacity(self.entity_count);
+        self.download_entities_sync_into(device, &mut output);
+        output
+    }
+
+    /// Downloads entity data into the provided buffer (WASM, zero-allocation version).
+    ///
+    /// This avoids per-frame allocations by reusing the output buffer.
+    /// The buffer is cleared and filled with the downloaded entity data.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for polling
+    /// * `output` - Buffer to fill with entity data (cleared before filling)
+    #[cfg(target_arch = "wasm32")]
+    pub fn download_entities_sync_into(
+        &mut self,
+        device: &Device,
+        output: &mut Vec<ComputeEntity>,
+    ) {
         use wgpu::BufferSlice;
 
+        output.clear();
+
         let Some(staging) = &self.staging_buffer else {
-            return Vec::new();
+            return;
         };
 
         if self.entity_count == 0 {
-            return Vec::new();
+            return;
         }
 
         let size = (self.entity_count * ENTITY_SIZE) as u64;
@@ -1032,11 +1070,11 @@ impl ComputePipeline {
         device.poll(wgpu::Maintain::Wait);
 
         let data = slice.get_mapped_range();
-        let entities: Vec<ComputeEntity> = bytemuck::cast_slice(&data).to_vec();
+        let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
+        output.extend_from_slice(entities);
         drop(data);
         staging.unmap();
-        self.stats.bytes_downloaded += entities.len() * ENTITY_SIZE;
-        entities
+        self.stats.bytes_downloaded += output.len() * ENTITY_SIZE;
     }
 
     /// Applies compute statistics to frame stats.

@@ -18,6 +18,7 @@ pub use dir_node_mod::{
     DirNode, DEFAULT_DIR_RADIUS, MIN_ANGULAR_SPAN, MIN_DIR_RADIUS, RADIAL_DISTANCE_SCALE,
 };
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use rource_math::Vec2;
@@ -122,6 +123,11 @@ pub struct DirTree {
 
     /// The root directory ID.
     root_id: DirId,
+
+    /// Index for O(1) child lookup by name.
+    /// Maps `(parent_id_index, child_name) -> child_id`.
+    /// This eliminates O(c) linear scans in `get_or_create_path`.
+    children_by_name: HashMap<(u32, String), DirId>,
 }
 
 /// A simple allocator for `DirId`s that matches the entity allocator pattern.
@@ -174,6 +180,7 @@ impl DirTree {
             nodes: vec![Some(root)],
             id_allocator: allocator,
             root_id,
+            children_by_name: HashMap::new(),
         }
     }
 
@@ -216,59 +223,65 @@ impl DirTree {
     /// Gets or creates a directory for the given path.
     ///
     /// Creates all intermediate directories as needed.
+    /// Uses O(1) `HashMap` lookup for existing children instead of O(n) linear scan.
     pub fn get_or_create_path(&mut self, path: &Path) -> DirId {
         let mut current_id = self.root_id;
 
         for component in path.components() {
             let name = component.as_os_str().to_string_lossy();
 
-            // Look for existing child with this name
-            let existing_child = self.get(current_id).and_then(|node| {
-                node.children()
-                    .iter()
-                    .find(|&&child_id| self.get(child_id).is_some_and(|child| child.name() == name))
-            });
-
-            if let Some(&child_id) = existing_child {
-                current_id = child_id;
-            } else {
-                // Create new child directory
-                let parent_path = self.get(current_id).map(|n| n.path().to_path_buf());
-                let parent_depth = self.get(current_id).map_or(0, DirNode::depth);
-                let parent_pos = self.get(current_id).map_or(Vec2::ZERO, DirNode::position);
-
-                let child_id = self.id_allocator.allocate();
-                let mut child = DirNode::new(
-                    child_id,
-                    name.to_string(),
-                    current_id,
-                    &parent_path.unwrap_or_default(),
-                );
-                child.set_depth(parent_depth + 1);
-
-                // Position new node near parent with some random offset
-                // Using deterministic offset based on name hash
-                let hash = name.bytes().fold(0u32, |acc, b| {
-                    acc.wrapping_mul(31).wrapping_add(u32::from(b))
-                });
-                let angle = (hash % 360) as f32 * std::f32::consts::PI / 180.0;
-                let offset = Vec2::new(angle.cos(), angle.sin()) * DEFAULT_DIR_RADIUS * 2.0;
-                child.set_position(parent_pos + offset);
-
-                // Ensure storage capacity
-                let idx = child_id.index_usize();
-                if idx >= self.nodes.len() {
-                    self.nodes.resize(idx + 1, None);
+            // O(1) HashMap lookup for existing child with this name
+            let lookup_key = (current_id.index(), name.to_string());
+            if let Some(&child_id) = self.children_by_name.get(&lookup_key) {
+                // Verify the child still exists with correct generation
+                if self.get(child_id).is_some() {
+                    current_id = child_id;
+                    continue;
                 }
-                self.nodes[idx] = Some(child);
-
-                // Add to parent's children
-                if let Some(parent) = self.get_mut(current_id) {
-                    parent.add_child(child_id);
-                }
-
-                current_id = child_id;
+                // Child was removed, fall through to create new one
             }
+
+            // Create new child directory
+            let parent_path = self.get(current_id).map(|n| n.path().to_path_buf());
+            let parent_depth = self.get(current_id).map_or(0, DirNode::depth);
+            let parent_pos = self.get(current_id).map_or(Vec2::ZERO, DirNode::position);
+
+            let child_id = self.id_allocator.allocate();
+            let child_name = name.to_string();
+            let mut child = DirNode::new(
+                child_id,
+                child_name.clone(),
+                current_id,
+                &parent_path.unwrap_or_default(),
+            );
+            child.set_depth(parent_depth + 1);
+
+            // Position new node near parent with some random offset
+            // Using deterministic offset based on name hash
+            let hash = name.bytes().fold(0u32, |acc, b| {
+                acc.wrapping_mul(31).wrapping_add(u32::from(b))
+            });
+            let angle = (hash % 360) as f32 * std::f32::consts::PI / 180.0;
+            let offset = Vec2::new(angle.cos(), angle.sin()) * DEFAULT_DIR_RADIUS * 2.0;
+            child.set_position(parent_pos + offset);
+
+            // Ensure storage capacity
+            let idx = child_id.index_usize();
+            if idx >= self.nodes.len() {
+                self.nodes.resize(idx + 1, None);
+            }
+            self.nodes[idx] = Some(child);
+
+            // Add to parent's children
+            if let Some(parent) = self.get_mut(current_id) {
+                parent.add_child(child_id);
+            }
+
+            // Add to children_by_name index for O(1) future lookups
+            self.children_by_name
+                .insert((current_id.index(), child_name), child_id);
+
+            current_id = child_id;
         }
 
         current_id
@@ -299,34 +312,49 @@ impl DirTree {
     /// Removes a directory and all its descendants.
     ///
     /// Returns the IDs of all removed directories.
+    /// Also cleans up the `children_by_name` index.
     pub fn remove(&mut self, id: DirId) -> Vec<DirId> {
         if id == self.root_id {
             return Vec::new(); // Cannot remove root
         }
 
+        // Get parent and name before removal for index cleanup
+        let parent_and_name = self.get(id).map(|n| (n.parent(), n.name().to_string()));
+
         let mut removed = Vec::new();
         self.remove_recursive(id, &mut removed);
 
-        // Remove from parent's children list
-        if let Some(parent_id) = self.get(id).and_then(DirNode::parent) {
+        // Remove from parent's children list and children_by_name index
+        if let Some((Some(parent_id), name)) = parent_and_name {
             if let Some(parent) = self.get_mut(parent_id) {
                 parent.remove_child(id);
             }
+            // Clean up children_by_name index
+            self.children_by_name.remove(&(parent_id.index(), name));
         }
 
         removed
     }
 
     fn remove_recursive(&mut self, id: DirId, removed: &mut Vec<DirId>) {
-        // First, get children to remove
-        let children: Vec<DirId> = self
+        // First, get children and their names for index cleanup
+        let children_with_names: Vec<(DirId, String)> = self
             .get(id)
-            .map(|n| n.children().to_vec())
+            .map(|node| {
+                node.children()
+                    .iter()
+                    .filter_map(|&child_id| {
+                        self.get(child_id).map(|c| (child_id, c.name().to_string()))
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
 
         // Recursively remove children
-        for child_id in children {
+        for (child_id, child_name) in children_with_names {
             self.remove_recursive(child_id, removed);
+            // Clean up children_by_name index for this child
+            self.children_by_name.remove(&(id.index(), child_name));
         }
 
         // Now remove this node
