@@ -14,6 +14,7 @@ import { safeWasmCall } from './wasm-api.js';
 import { debugLog } from './telemetry.js';
 import { parseUrlParams } from './url-state.js';
 import { ROURCE_CACHED_DATA, DEMO_DATA, ROURCE_STATS, getFullCachedData } from './cached-data.js';
+import { applyPanelPreferences } from './preferences.js';
 
 // Callbacks for UI updates
 let onDataLoadedCallback = null;
@@ -218,6 +219,9 @@ export function loadLogData(content, format = 'custom', options = {}) {
         if (elements.emptyState) elements.emptyState.classList.add('hidden');
         if (elements.statsOverlay) elements.statsOverlay.classList.remove('hidden');
         if (elements.perfOverlay) elements.perfOverlay.classList.remove('hidden');
+
+        // Apply mobile-specific panel states (collapsed by default on mobile)
+        applyPanelPreferences();
 
         // Enable controls
         if (elements.btnPrev) {

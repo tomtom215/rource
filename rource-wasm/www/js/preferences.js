@@ -168,6 +168,27 @@ export function applyPanelPreferences() {
     if (legendPanel) {
         legendPanel.classList.toggle('collapsed', states.legend !== false);
     }
+
+    // Performance overlay - collapsed by default, especially on mobile
+    const perfOverlay = document.getElementById('perf-overlay');
+    if (perfOverlay) {
+        // On mobile (< 768px), always start collapsed for cleaner UI
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        const shouldCollapse = isMobile || states.perf !== false;
+        perfOverlay.classList.toggle('collapsed', shouldCollapse);
+        const perfToggle = document.getElementById('perf-toggle');
+        if (perfToggle) {
+            perfToggle.setAttribute('aria-expanded', (!shouldCollapse).toString());
+        }
+    }
+
+    // Authors panel - collapsed by default on mobile
+    const authorsPanel = document.getElementById('authors-panel');
+    if (authorsPanel) {
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        const shouldCollapse = isMobile || states.authors !== false;
+        authorsPanel.classList.toggle('collapsed', shouldCollapse);
+    }
 }
 
 /**

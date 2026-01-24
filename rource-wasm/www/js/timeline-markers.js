@@ -347,22 +347,28 @@ function calculatePosition(timestamp, startTimestamp, endTimestamp) {
 }
 
 /**
- * Finds the commit index closest to a given timestamp using binary search.
+ * Finds the first commit index ON OR AFTER a given timestamp using binary search.
  * The slider is positioned by commit index, not timestamp, so tick marks
  * must be positioned by commit index to align properly.
+ *
+ * Returns -1 if no commit exists on or after the target timestamp.
  *
  * @param {Object} rource - Rource WASM instance
  * @param {number} targetTimestamp - Target timestamp in seconds
  * @param {number} totalCommits - Total number of commits
- * @returns {number} Commit index closest to the target timestamp
+ * @returns {number} First commit index on or after the target timestamp, or -1 if none
  */
-function findCommitIndexByTimestamp(rource, targetTimestamp, totalCommits) {
-    if (totalCommits <= 1) return 0;
+function findFirstCommitOnOrAfter(rource, targetTimestamp, totalCommits) {
+    if (totalCommits === 0) return -1;
+    if (totalCommits === 1) {
+        const ts = safeWasmCall('getCommitTimestamp', () => rource.getCommitTimestamp(0), 0);
+        return ts >= targetTimestamp ? 0 : -1;
+    }
 
     let low = 0;
     let high = totalCommits - 1;
 
-    // Binary search for the closest commit
+    // Binary search for first commit >= target
     while (low < high) {
         const mid = Math.floor((low + high) / 2);
         const midTimestamp = safeWasmCall(
@@ -378,22 +384,15 @@ function findCommitIndexByTimestamp(rource, targetTimestamp, totalCommits) {
         }
     }
 
-    // Check if we should use low-1 (if it's closer to target)
-    if (low > 0) {
-        const lowTimestamp = safeWasmCall(
-            'getCommitTimestamp',
-            () => rource.getCommitTimestamp(low),
-            0
-        );
-        const prevTimestamp = safeWasmCall(
-            'getCommitTimestamp',
-            () => rource.getCommitTimestamp(low - 1),
-            0
-        );
+    // Verify the commit at 'low' is actually >= target
+    const lowTimestamp = safeWasmCall(
+        'getCommitTimestamp',
+        () => rource.getCommitTimestamp(low),
+        0
+    );
 
-        if (Math.abs(prevTimestamp - targetTimestamp) < Math.abs(lowTimestamp - targetTimestamp)) {
-            return low - 1;
-        }
+    if (lowTimestamp < targetTimestamp) {
+        return -1; // No commit on or after this boundary
     }
 
     return low;
@@ -428,7 +427,7 @@ function formatFullDateLabel(date) {
 
 /**
  * Creates a tick marker DOM element.
- * @param {Object} boundary - Boundary object with date, label, isMajor
+ * @param {Object} boundary - Boundary object with date, label, isMajor, actualDate
  * @param {number} position - Position percentage
  * @param {Object} config - Interval configuration
  * @param {boolean} showLabel - Whether to show an inline label
@@ -443,10 +442,13 @@ function createTickElement(boundary, position, config, showLabel = false) {
     }
 
     tick.style.left = `${position}%`;
-    tick.setAttribute('data-date', boundary.date.toISOString());
-    // Use data-label for CSS ::after tooltip content
-    tick.setAttribute('data-label', formatFullDateLabel(boundary.date));
-    tick.setAttribute('title', boundary.label);
+    // Use actual commit date for accurate data attributes
+    const displayDate = boundary.actualDate || boundary.date;
+    tick.setAttribute('data-date', displayDate.toISOString());
+    // Use data-label for CSS ::after tooltip content - shows actual commit date
+    tick.setAttribute('data-label', formatFullDateLabel(displayDate));
+    // Title shows the period label (e.g., "Feb '24") for quick reference
+    tick.setAttribute('title', `${boundary.label} (${formatFullDateLabel(displayDate)})`);
     // Use role="img" to allow aria-label on a div (visual timeline marker)
     tick.setAttribute('role', 'img');
     tick.setAttribute('aria-label', `Timeline marker: ${boundary.label}`);
@@ -626,16 +628,37 @@ function renderTicks(boundaries, config, startTimestamp, endTimestamp, container
     // and calculate positions based on COMMIT INDEX (not timestamp)
     // This is critical: the slider is positioned by commit index, so tick marks
     // must use commit-index-based positions to align correctly.
-    const filteredBoundaries = boundaries
+    const mappedBoundaries = boundaries
         .map(boundary => {
             const timestampSecs = boundary.date.getTime() / 1000;
-            // Find the commit index closest to this boundary date
-            const commitIndex = findCommitIndexByTimestamp(rource, timestampSecs, totalCommits);
+            // Find the FIRST commit on or after this boundary date
+            // This ensures "February" tick points to the first February commit,
+            // not the last January commit (which might be closer in time)
+            const commitIndex = findFirstCommitOnOrAfter(rource, timestampSecs, totalCommits);
+            if (commitIndex < 0) return null; // No commit on or after this boundary
+            // Get the actual commit timestamp for accurate tooltip
+            const actualTimestamp = safeWasmCall(
+                'getCommitTimestamp',
+                () => rource.getCommitTimestamp(commitIndex),
+                0
+            );
+            const actualDate = new Date(actualTimestamp * 1000);
             // Calculate position based on commit index, not timestamp
             const position = calculatePositionByCommitIndex(commitIndex, totalCommits);
-            return { ...boundary, position, commitIndex };
+            return { ...boundary, position, commitIndex, actualDate };
         })
-        .filter(boundary => boundary.position > 2 && boundary.position < 98);
+        .filter(boundary => boundary !== null && boundary.position > 2 && boundary.position < 98);
+
+    // Dedupe boundaries that map to the same commit index
+    // (e.g., if no commits for 2 months, both month ticks would point to same commit)
+    const seenCommitIndices = new Set();
+    const filteredBoundaries = mappedBoundaries.filter(boundary => {
+        if (seenCommitIndices.has(boundary.commitIndex)) {
+            return false;
+        }
+        seenCommitIndices.add(boundary.commitIndex);
+        return true;
+    });
 
     // Determine which ticks get inline labels
     const labeledIndices = selectLabeledTicks(filteredBoundaries);
