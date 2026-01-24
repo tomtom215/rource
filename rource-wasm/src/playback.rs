@@ -257,7 +257,8 @@ pub fn get_date_range(commits: &[Commit]) -> Option<(i64, i64)> {
 /// Time in seconds between commits
 #[inline]
 pub fn calculate_seconds_per_commit(seconds_per_day: f32) -> f32 {
-    seconds_per_day / 10.0
+    // Use multiplication by reciprocal instead of division (1 cycle vs ~15 cycles)
+    seconds_per_day * 0.1
 }
 
 // ============================================================================

@@ -202,12 +202,13 @@ impl Scene {
                 // Use squared distance for inverse-square repulsion: F = k / d²
                 // Clamp to minimum squared distance to prevent extreme forces
                 let clamped_dist_sq = distance_sq.max(FORCE_MIN_DISTANCE_SQ);
-                let force_magnitude = FORCE_REPULSION / clamped_dist_sq;
 
-                // Compute direction only when needed (requires sqrt via length)
-                let distance = distance_sq.sqrt();
-                let direction = delta / distance; // Equivalent to delta.normalized()
-                let force = direction * force_magnitude;
+                // Optimized force calculation: combine direction and magnitude
+                // Force = (delta/d) * (k/d²) = delta * k / d³
+                // Using one division instead of three: saves ~20 cycles per pair
+                let distance = clamped_dist_sq.sqrt();
+                let force_scale = FORCE_REPULSION / (distance * clamped_dist_sq);
+                let force = delta * force_scale;
 
                 // Apply equal and opposite forces using Vec indexing (O(1) vs HashMap O(1) amortized)
                 self.forces_buffer[i] -= force;
@@ -258,11 +259,13 @@ impl Scene {
 
                 // Only attract if beyond target distance (compare squared to avoid sqrt)
                 if distance_sq > target_dist_sq && distance_sq > 0.001 {
-                    // Now compute actual distance since we need it for the force
+                    // Optimized: compute distance and combine direction with magnitude
+                    // Force = (delta/d) * (d - target) * k = delta * (1 - target/d) * k
                     let distance = distance_sq.sqrt();
+                    let inv_distance = 1.0 / distance;
                     let excess = distance - target_dist;
-                    let direction = delta / distance; // Equivalent to delta.normalized()
-                    let force = direction * excess * FORCE_ATTRACTION;
+                    // Combine: direction * excess * k = (delta * inv_distance) * excess * k
+                    let force = delta * (inv_distance * excess * FORCE_ATTRACTION);
                     self.forces_buffer[i] += force;
                 }
             }

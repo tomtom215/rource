@@ -27,7 +27,7 @@ pub use file::FileNode;
 pub use tree::{DirNode, DirTree, LayoutConfig};
 pub use user::User;
 
-use crate::entity::{ActionId, DirId, FileId, IdAllocator, UserId};
+use crate::entity::{ActionId, FileId, IdAllocator, UserId};
 use crate::physics::{BarnesHutTree, QuadTree};
 
 /// Default bounds for the scene's spatial index.

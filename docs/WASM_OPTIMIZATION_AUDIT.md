@@ -86,7 +86,17 @@
 ### 4. extract_directories() Path Handling
 **Status**: Deferred - function is dead code (only used in tests)
 
-### 5-8. Micro-optimizations
+### 5. getRendererType() Static String Return
+**Status**: Not applicable - `wasm_bindgen` does not support lifetime parameters in function
+signatures. The function is not in a hot path (called once at initialization), and the
+string is only 8 characters, so the allocation cost is negligible.
+
+### 6. Profiling Format Strings
+**Status**: Already optimized - the format! allocations in `profiler.rs` are behind the
+`#[cfg(feature = "profiling")]` feature flag, which is NOT in default features. Production
+builds have zero profiling allocations.
+
+### 7-8. Other Micro-optimizations
 **Status**: Deferred - negligible impact based on profiling data
 
 ---
