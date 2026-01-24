@@ -143,6 +143,15 @@ pub fn clamp_dt(dt: f32, max_dt: f32) -> f32 {
 /// Default maximum delta time (100ms = 10 FPS minimum).
 pub const MAX_FRAME_DT: f32 = 0.1;
 
+/// Maximum number of commits to process per frame.
+///
+/// This prevents the browser from freezing when playing at high speed
+/// or when catching up after a slow frame. Processing more than this
+/// many commits in a single frame would cause unacceptable lag.
+///
+/// At 60fps, 100 commits/frame = 6000 commits/second max throughput.
+pub const MAX_COMMITS_PER_FRAME: usize = 100;
+
 // ---- Auto-Fit Camera Helpers ----
 
 /// Padding factor for bounds when fitting camera (1.2 = 20% padding).
@@ -738,8 +747,11 @@ impl Rource {
             let seconds_per_commit =
                 calculate_seconds_per_commit(self.settings.playback.seconds_per_day);
 
+            // Limit commits processed per frame to prevent browser freeze
+            let mut commits_this_frame = 0;
             while self.playback.accumulated_time() >= seconds_per_commit
                 && self.playback.current_commit() < self.commits.len()
+                && commits_this_frame < MAX_COMMITS_PER_FRAME
             {
                 let current = self.playback.current_commit();
                 let last_applied = self.playback.last_applied_commit();
@@ -750,6 +762,13 @@ impl Rource {
                 }
                 self.playback.subtract_time(seconds_per_commit);
                 self.playback.advance_commit();
+                commits_this_frame += 1;
+            }
+
+            // If we hit the limit, clamp accumulated time to prevent unbounded growth
+            if commits_this_frame >= MAX_COMMITS_PER_FRAME {
+                self.playback
+                    .clamp_accumulated_time(seconds_per_commit * 2.0);
             }
 
             // Check if we're done

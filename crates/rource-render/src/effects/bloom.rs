@@ -223,7 +223,14 @@ impl BloomEffect {
     ///
     /// For each destination pixel, samples the source block, applies brightness
     /// thresholding, and averages the bright contributions.
-    fn extract_and_downscale_into(&mut self, pixels: &[u32], src_w: usize, src_h: usize, dst_w: usize, dst_h: usize) {
+    fn extract_and_downscale_into(
+        &mut self,
+        pixels: &[u32],
+        src_w: usize,
+        src_h: usize,
+        dst_w: usize,
+        dst_h: usize,
+    ) {
         if dst_w == 0 || dst_h == 0 {
             return;
         }
