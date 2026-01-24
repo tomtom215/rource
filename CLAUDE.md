@@ -3383,6 +3383,58 @@ cargo build -p rource-wasm --no-default-features
 
 **Test Count**: 1,898 tests passing (+62 tests: 15 cache unit tests, 47 other improvements)
 
+### Phase 30: Profiler Zero-Allocation Optimization (2026-01-24)
+
+Eliminated unnecessary per-frame string allocations in the WASM profiler for non-profiling builds.
+
+#### Problem
+
+The `FrameProfiler` methods `begin_phase()` and `end_phase()` were calling `format!` to create
+Performance API mark strings even when the `profiling` feature was disabled:
+
+```rust
+// Before: format! always executes, string discarded when profiling disabled
+pub fn begin_phase(&mut self, name: &str) {
+    self.phase_start = now_ms();
+    mark(&format!("rource:{name}_start"));  // allocates even when no-op!
+}
+```
+
+This caused 5 `format!` allocations per phase × 2 phases = 10 allocations per frame,
+or ~600 allocations per second at 60fps.
+
+#### Solution
+
+Wrapped the `format!` calls with `#[cfg(feature = "profiling")]` guards:
+
+```rust
+// After: zero allocations when profiling is disabled
+pub fn begin_phase(&mut self, name: &str) {
+    self.phase_start = now_ms();
+    #[cfg(feature = "profiling")]
+    mark(&format!("rource:{name}_start"));
+    #[cfg(not(feature = "profiling"))]
+    let _ = name;
+}
+```
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `rource-wasm/src/profiler.rs` | Added cfg guards around format!/mark/measure calls |
+| `rource-wasm/src/backend.rs` | Fixed clippy warnings (future_not_send, uninlined_format_args) |
+
+#### Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| format! calls per frame | 10 | 0 (without profiling feature) |
+| Allocations at 60fps | ~600/sec | 0 |
+| WASM bundle size | Unchanged | Unchanged |
+
+**Test Count**: 1,898 tests passing (no change)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3845,4 +3897,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-24 (Phase 29: Visualization Cache - 1,898 tests total)*
+*Last updated: 2026-01-24 (Phase 30: Profiler Zero-Allocation Optimization - 1,898 tests total)*
