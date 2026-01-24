@@ -382,6 +382,14 @@ function handleBackdropTap(e) {
 // ============================================================================
 
 /**
+ * Checks if the device should use the bottom sheet (mobile/tablet).
+ * @returns {boolean}
+ */
+function isMobileDevice() {
+    return window.innerWidth <= 768;
+}
+
+/**
  * Initializes the bottom sheet with gesture handling.
  * Call this after DOM is ready.
  */
@@ -395,6 +403,11 @@ export function initBottomSheet() {
         console.warn('Bottom sheet element not found');
         return;
     }
+
+    // Add has-bottom-sheet class to body on mobile to enable CSS rules
+    // that hide the old sidebar toggle and show the bottom sheet
+    updateBottomSheetMode();
+    window.addEventListener('resize', updateBottomSheetMode);
 
     // Set initial state
     snapTo('HIDDEN', true);
@@ -423,6 +436,18 @@ export function initBottomSheet() {
     });
 
     console.log('Bottom sheet initialized');
+}
+
+/**
+ * Updates the bottom sheet mode based on screen size.
+ * Adds/removes has-bottom-sheet class on body.
+ */
+function updateBottomSheetMode() {
+    if (isMobileDevice()) {
+        document.body.classList.add('has-bottom-sheet');
+    } else {
+        document.body.classList.remove('has-bottom-sheet');
+    }
 }
 
 /**

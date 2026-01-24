@@ -43,9 +43,9 @@ import { initPanels } from './features/panels.js';
 import { initDataInput } from './features/data-input.js';
 import { initWindowEvents } from './features/window-events.js';
 import { initScreenshot, setAnimateCallback, captureScreenshot } from './features/screenshot.js';
-import { initFullscreen } from './features/fullscreen.js';
-import { initTheme } from './features/theme.js';
-import { initHelp, maybeShowFirstTimeHelp } from './features/help.js';
+import { initFullscreen, toggleFullscreen } from './features/fullscreen.js';
+import { initTheme, toggleTheme } from './features/theme.js';
+import { initHelp, maybeShowFirstTimeHelp, showHelp } from './features/help.js';
 import { initKeyboard } from './features/keyboard.js';
 import { initFullMapExport, setFullMapAnimateCallback } from './features/full-map-export.js';
 import { initFontSizeControl, enableFontSizeControls, updateFontSizeUI } from './features/font-size.js';
@@ -60,6 +60,7 @@ import {
     initBottomSheet, openBottomSheet, closeBottomSheet,
     updateBottomSheetFileTypes, updateBottomSheetAuthors, clearBottomSheetLegends
 } from './features/bottom-sheet.js';
+import { initMobileToolbar } from './features/mobile-toolbar.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -396,6 +397,17 @@ async function main() {
 
         // Wire up bottom sheet actions
         initBottomSheetActions();
+
+        // Initialize mobile toolbar
+        initMobileToolbar({
+            captureScreenshot,
+            toggleTheme,
+            toggleFullscreen,
+            showHelp,
+            toggleLabels: () => {
+                // This is handled inside mobile-toolbar.js using rource.setLabelsEnabled
+            }
+        });
 
         // Set up animation callbacks for features that need them
         setAnimateCallback(animate);
