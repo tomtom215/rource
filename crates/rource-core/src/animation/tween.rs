@@ -138,7 +138,7 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
             if t < 0.5 {
                 2.0 * t * t
             } else {
-                1.0 - (-2.0 * t + 2.0).powi(2) / 2.0
+                1.0 - (-2.0 * t + 2.0).powi(2) * 0.5
             }
         }
 
@@ -149,7 +149,7 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
             if t < 0.5 {
                 4.0 * t * t * t
             } else {
-                1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
+                1.0 - (-2.0 * t + 2.0).powi(3) * 0.5
             }
         }
 
@@ -160,7 +160,7 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
             if t < 0.5 {
                 8.0 * t.powi(4)
             } else {
-                1.0 - (-2.0 * t + 2.0).powi(4) / 2.0
+                1.0 - (-2.0 * t + 2.0).powi(4) * 0.5
             }
         }
 
@@ -171,14 +171,14 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
             if t < 0.5 {
                 16.0 * t.powi(5)
             } else {
-                1.0 - (-2.0 * t + 2.0).powi(5) / 2.0
+                1.0 - (-2.0 * t + 2.0).powi(5) * 0.5
             }
         }
 
         // Sine
         Easing::SineIn => 1.0 - (t * PI / 2.0).cos(),
         Easing::SineOut => (t * PI / 2.0).sin(),
-        Easing::SineInOut => (1.0 - (t * PI).cos()) / 2.0,
+        Easing::SineInOut => (1.0 - (t * PI).cos()) * 0.5,
 
         // Exponential
         Easing::ExpoIn => {
@@ -201,9 +201,9 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
             } else if t == 1.0 {
                 1.0
             } else if t < 0.5 {
-                2.0_f32.powf(20.0 * t - 10.0) / 2.0
+                2.0_f32.powf(20.0 * t - 10.0) * 0.5
             } else {
-                (2.0 - 2.0_f32.powf(-20.0 * t + 10.0)) / 2.0
+                (2.0 - 2.0_f32.powf(-20.0 * t + 10.0)) * 0.5
             }
         }
 
@@ -212,9 +212,9 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
         Easing::CircOut => (1.0 - (t - 1.0).powi(2)).sqrt(),
         Easing::CircInOut => {
             if t < 0.5 {
-                (1.0 - (1.0 - (2.0 * t).powi(2)).sqrt()) / 2.0
+                (1.0 - (1.0 - (2.0 * t).powi(2)).sqrt()) * 0.5
             } else {
-                ((1.0 - (-2.0 * t + 2.0).powi(2)).sqrt() + 1.0) / 2.0
+                ((1.0 - (-2.0 * t + 2.0).powi(2)).sqrt() + 1.0) * 0.5
             }
         }
 
@@ -233,9 +233,9 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
         Easing::BounceOut => bounce_out(t),
         Easing::BounceInOut => {
             if t < 0.5 {
-                (1.0 - bounce_out(1.0 - 2.0 * t)) / 2.0
+                (1.0 - bounce_out(1.0 - 2.0 * t)) * 0.5
             } else {
-                (1.0 + bounce_out(2.0 * t - 1.0)) / 2.0
+                (1.0 + bounce_out(2.0 * t - 1.0)) * 0.5
             }
         }
     }
@@ -271,9 +271,9 @@ fn elastic_in_out(t: f32) -> f32 {
     } else if t == 1.0 {
         1.0
     } else if t < 0.5 {
-        -(2.0_f32.powf(20.0 * t - 10.0) * ((20.0 * t - 11.125) * ELASTIC_C5).sin()) / 2.0
+        -(2.0_f32.powf(20.0 * t - 10.0) * ((20.0 * t - 11.125) * ELASTIC_C5).sin()) * 0.5
     } else {
-        (2.0_f32.powf(-20.0 * t + 10.0) * ((20.0 * t - 11.125) * ELASTIC_C5).sin()) / 2.0 + 1.0
+        (2.0_f32.powf(-20.0 * t + 10.0) * ((20.0 * t - 11.125) * ELASTIC_C5).sin()) * 0.5 + 1.0
     }
 }
 
@@ -292,9 +292,9 @@ fn back_out(t: f32) -> f32 {
 
 fn back_in_out(t: f32) -> f32 {
     if t < 0.5 {
-        ((2.0 * t).powi(2) * ((BACK_C2 + 1.0) * 2.0 * t - BACK_C2)) / 2.0
+        ((2.0 * t).powi(2) * ((BACK_C2 + 1.0) * 2.0 * t - BACK_C2)) * 0.5
     } else {
-        ((2.0 * t - 2.0).powi(2) * ((BACK_C2 + 1.0) * (t * 2.0 - 2.0) + BACK_C2) + 2.0) / 2.0
+        ((2.0 * t - 2.0).powi(2) * ((BACK_C2 + 1.0) * (t * 2.0 - 2.0) + BACK_C2) + 2.0) * 0.5
     }
 }
 
@@ -348,6 +348,11 @@ pub struct Tween {
     /// Duration in seconds.
     duration: f32,
 
+    /// Precomputed reciprocal of duration for fast progress calculation.
+    /// Using multiplication (`elapsed * inv_duration`) instead of division
+    /// (`elapsed / duration`) saves ~10-15 CPU cycles per call.
+    inv_duration: f32,
+
     /// Current elapsed time.
     elapsed: f32,
 
@@ -368,11 +373,15 @@ impl Tween {
     /// * `duration` - Duration in seconds
     /// * `easing` - Easing function to use
     #[must_use]
-    pub const fn new(start: f32, end: f32, duration: f32, easing: Easing) -> Self {
+    pub fn new(start: f32, end: f32, duration: f32, easing: Easing) -> Self {
+        // Precompute inverse duration for fast progress calculation.
+        // If duration is zero or negative, use 0.0 (progress() handles this case).
+        let inv_duration = if duration > 0.0 { 1.0 / duration } else { 0.0 };
         Self {
             start,
             end,
             duration,
+            inv_duration,
             elapsed: 0.0,
             easing,
             complete: false,
@@ -381,19 +390,19 @@ impl Tween {
 
     /// Creates a linear tween.
     #[must_use]
-    pub const fn linear(start: f32, end: f32, duration: f32) -> Self {
+    pub fn linear(start: f32, end: f32, duration: f32) -> Self {
         Self::new(start, end, duration, Easing::Linear)
     }
 
     /// Creates an ease-out tween (good for most UI animations).
     #[must_use]
-    pub const fn ease_out(start: f32, end: f32, duration: f32) -> Self {
+    pub fn ease_out(start: f32, end: f32, duration: f32) -> Self {
         Self::new(start, end, duration, Easing::QuadOut)
     }
 
     /// Creates an ease-in-out tween (smooth start and end).
     #[must_use]
-    pub const fn ease_in_out(start: f32, end: f32, duration: f32) -> Self {
+    pub fn ease_in_out(start: f32, end: f32, duration: f32) -> Self {
         Self::new(start, end, duration, Easing::QuadInOut)
     }
 
@@ -440,12 +449,17 @@ impl Tween {
     }
 
     /// Returns the linear progress (0.0 to 1.0).
+    ///
+    /// Uses precomputed `inv_duration` for O(1) multiplication instead of division.
+    #[inline]
     #[must_use]
     pub fn progress(&self) -> f32 {
-        if self.duration <= 0.0 {
+        if self.inv_duration == 0.0 {
+            // Duration was zero or negative - return complete
             1.0
         } else {
-            (self.elapsed / self.duration).clamp(0.0, 1.0)
+            // Fast path: multiplication instead of division
+            (self.elapsed * self.inv_duration).clamp(0.0, 1.0)
         }
     }
 

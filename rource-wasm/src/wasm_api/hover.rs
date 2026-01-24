@@ -18,6 +18,10 @@ use crate::Rource;
 // ============================================================================
 
 /// Information about an entity under the cursor.
+///
+/// Note: This struct is kept for backward compatibility and tests.
+/// Production code uses `build_hover_json` for zero-allocation.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct HoverInfo {
     /// Entity type: "file", "user", or "directory".
@@ -37,6 +41,7 @@ pub struct HoverInfo {
 impl HoverInfo {
     /// Converts to JSON string for JavaScript consumption.
     /// Uses pre-sized buffer to minimize allocation overhead.
+    #[allow(dead_code)]
     pub fn to_json(&self) -> String {
         use std::fmt::Write;
         // Estimate capacity: fixed JSON overhead (~70 bytes) + field lengths
@@ -62,34 +67,61 @@ impl HoverInfo {
     }
 }
 
-/// Escapes a string for safe JSON inclusion.
+/// Escapes a string for safe JSON inclusion (allocating version).
 /// Single-pass implementation to avoid multiple intermediate String allocations.
+///
+/// Note: This function is kept for backward compatibility and tests.
+/// Production code uses `escape_json_into` for zero-allocation.
+#[allow(dead_code)]
 fn escape_json(s: &str) -> String {
     // Fast path: if no escaping needed, return as-is (no allocation beyond to_string)
-    if !s
-        .bytes()
-        .any(|b| b == b'\\' || b == b'"' || b == b'\n' || b == b'\r' || b == b'\t')
-    {
+    if !needs_json_escaping(s) {
         return s.to_string();
     }
 
     // Slow path: build escaped string in single pass
     let mut result = String::with_capacity(s.len() + 8);
+    escape_json_into(s, &mut result);
+    result
+}
+
+/// Checks if a string needs JSON escaping.
+#[inline]
+fn needs_json_escaping(s: &str) -> bool {
+    s.bytes()
+        .any(|b| b == b'\\' || b == b'"' || b == b'\n' || b == b'\r' || b == b'\t')
+}
+
+/// Escapes a string for safe JSON inclusion into an existing buffer.
+///
+/// Zero-allocation version: writes directly to the provided buffer.
+/// Fast path: if no escaping needed, uses `push_str` directly.
+#[inline]
+fn escape_json_into(s: &str, out: &mut String) {
+    if !needs_json_escaping(s) {
+        out.push_str(s);
+        return;
+    }
+
+    // Slow path: escape character by character
     for c in s.chars() {
         match c {
-            '\\' => result.push_str("\\\\"),
-            '"' => result.push_str("\\\""),
-            '\n' => result.push_str("\\n"),
-            '\r' => result.push_str("\\r"),
-            '\t' => result.push_str("\\t"),
-            _ => result.push(c),
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            _ => out.push(c),
         }
     }
-    result
 }
 
 /// Converts a Color to a hex string.
 /// Uses pre-sized buffer to minimize allocation overhead.
+///
+/// Note: This function is kept for backward compatibility and tests.
+/// Production code uses `write_color_hex_into` for zero-allocation.
+#[allow(dead_code)]
 fn color_to_hex(color: rource_math::Color) -> String {
     use std::fmt::Write;
     // Pre-allocate exact size: "#RRGGBB" = 7 bytes
@@ -102,6 +134,68 @@ fn color_to_hex(color: rource_math::Color) -> String {
         (color.b * 255.0) as u8
     );
     result
+}
+
+/// Writes a color as hex directly into a buffer (zero-allocation).
+#[inline]
+fn write_color_hex_into(color: rource_math::Color, out: &mut String) {
+    use std::fmt::Write;
+    let _ = write!(
+        out,
+        "#{:02X}{:02X}{:02X}",
+        (color.r * 255.0) as u8,
+        (color.g * 255.0) as u8,
+        (color.b * 255.0) as u8
+    );
+}
+
+/// Builds hover JSON directly without intermediate allocations.
+///
+/// This is the zero-allocation version that writes all fields directly
+/// to a single pre-sized buffer, avoiding the `HoverInfo` struct and
+/// multiple intermediate `String` allocations.
+///
+/// # Arguments
+///
+/// * `entity_type` - "file", "user", or "directory"
+/// * `name` - Entity name
+/// * `path` - File/directory path (empty for users)
+/// * `extension` - File extension (empty for non-files)
+/// * `color` - Entity color
+/// * `radius` - Entity radius
+///
+/// # Returns
+///
+/// JSON string ready for JavaScript consumption.
+fn build_hover_json(
+    entity_type: &str,
+    name: &str,
+    path: &str,
+    extension: &str,
+    color: rource_math::Color,
+    radius: f32,
+) -> String {
+    use std::fmt::Write;
+
+    // Estimate capacity: fixed JSON overhead (~80 bytes) + field lengths + escaping margin
+    let capacity = 100 + entity_type.len() + name.len() + path.len() + extension.len();
+    let mut json = String::with_capacity(capacity);
+
+    // Build JSON in single pass
+    json.push_str(r#"{"entityType":""#);
+    escape_json_into(entity_type, &mut json);
+    json.push_str(r#"","name":""#);
+    escape_json_into(name, &mut json);
+    json.push_str(r#"","path":""#);
+    escape_json_into(path, &mut json);
+    json.push_str(r#"","extension":""#);
+    escape_json_into(extension, &mut json);
+    json.push_str(r#"","color":""#);
+    write_color_hex_into(color, &mut json);
+    json.push_str(r#"","radius":"#);
+    let _ = write!(json, "{radius}}}");
+
+    json
 }
 
 #[wasm_bindgen]
@@ -141,30 +235,31 @@ impl Rource {
         // Check users first (highest visual priority)
         if let Some(DragTarget::User(user_id)) = hit_test_user(&self.scene, world_pos, hit_radius) {
             if let Some(user) = self.scene.get_user(user_id) {
-                let info = HoverInfo {
-                    entity_type: "user".to_string(),
-                    name: user.name().to_string(),
-                    path: String::new(),
-                    extension: String::new(),
-                    color: color_to_hex(user.color()),
-                    radius: user.radius(),
-                };
-                return Some(info.to_json());
+                // Build JSON directly without intermediate allocations
+                return Some(build_hover_json(
+                    "user",
+                    user.name(),
+                    "",
+                    "",
+                    user.color(),
+                    user.radius(),
+                ));
             }
         }
 
         // Check files
         if let Some(DragTarget::File(file_id)) = hit_test_file(&self.scene, world_pos, hit_radius) {
             if let Some(file) = self.scene.get_file(file_id) {
-                let info = HoverInfo {
-                    entity_type: "file".to_string(),
-                    name: file.name().to_string(),
-                    path: file.path().to_string_lossy().to_string(),
-                    extension: file.extension().unwrap_or("").to_string(),
-                    color: color_to_hex(file.color()),
-                    radius: file.radius(),
-                };
-                return Some(info.to_json());
+                // Build JSON directly without intermediate allocations
+                let path_str = file.path().to_string_lossy();
+                return Some(build_hover_json(
+                    "file",
+                    file.name(),
+                    &path_str,
+                    file.extension().unwrap_or(""),
+                    file.color(),
+                    file.radius(),
+                ));
             }
         }
 
@@ -175,15 +270,16 @@ impl Rource {
             if let Some(dir) = self.scene.directories().get(dir_id) {
                 // Directories use a static color (brownish tone like tree bark)
                 let dir_color = rource_math::Color::new(0.6, 0.45, 0.3, 1.0);
-                let info = HoverInfo {
-                    entity_type: "directory".to_string(),
-                    name: dir.name().to_string(),
-                    path: dir.path().to_string_lossy().to_string(),
-                    extension: String::new(),
-                    color: color_to_hex(dir_color),
-                    radius: dir.radius(),
-                };
-                return Some(info.to_json());
+                let path_str = dir.path().to_string_lossy();
+                // Build JSON directly without intermediate allocations
+                return Some(build_hover_json(
+                    "directory",
+                    dir.name(),
+                    &path_str,
+                    "",
+                    dir_color,
+                    dir.radius(),
+                ));
             }
         }
 

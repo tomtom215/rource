@@ -21,6 +21,18 @@ use crate::{FontCache, FontId, Renderer, Texture, TextureId};
 use super::optimized::{draw_disc_optimized, draw_ring_optimized};
 
 // ============================================================================
+// Performance Constants
+// ============================================================================
+
+/// Precomputed reciprocal of 255 for fast alpha/coverage conversion.
+///
+/// Using multiplication by reciprocal instead of division:
+/// `a as f32 * INV_255` is faster than `a as f32 / 255.0`
+///
+/// This is in the hot path for every pixel with alpha blending.
+const INV_255: f32 = 1.0 / 255.0;
+
+// ============================================================================
 // Free Functions for Split Borrow Pattern
 // ============================================================================
 //
@@ -89,7 +101,7 @@ fn plot_premultiplied_inner(
         return;
     }
 
-    let alpha = a as f32 / 255.0;
+    let alpha = a as f32 * INV_255;
     let inv_alpha = 1.0 - alpha;
 
     let dst_r = ((existing >> 16) & 0xFF) as f32;
@@ -125,7 +137,7 @@ fn draw_glyph_inner(
 
     for gy in 0..glyph_height {
         for gx in 0..glyph_width {
-            let coverage = glyph.bitmap[gy * glyph_width + gx] as f32 / 255.0;
+            let coverage = glyph.bitmap[gy * glyph_width + gx] as f32 * INV_255;
             if coverage > 0.0 {
                 let px = x + gx as i32;
                 let py = y + gy as i32;

@@ -70,12 +70,14 @@ impl Default for BloomConfig {
 
 impl BloomConfig {
     /// Creates a new bloom configuration with default values.
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Creates a subtle bloom configuration.
+    #[inline]
     #[must_use]
     pub fn subtle() -> Self {
         Self {
@@ -88,6 +90,7 @@ impl BloomConfig {
     }
 
     /// Creates an intense bloom configuration.
+    #[inline]
     #[must_use]
     pub fn intense() -> Self {
         Self {
@@ -606,6 +609,7 @@ impl BloomPipeline {
     }
 
     /// Returns the scene render target view for rendering the scene.
+    #[inline]
     pub fn scene_view(&self) -> Option<&wgpu::TextureView> {
         self.scene_target.as_ref().map(RenderTarget::view)
     }
