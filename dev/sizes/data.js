@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769289234769,
+  "lastUpdate": 1769291967145,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1832,6 +1832,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1067786,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3066d21c4d2a2f0457639f9d2f1ae90511c7db82",
+          "message": "Merge pull request #157 from tomtom215/claude/optimize-force-layout-K7zZf\n\nOptimize alpha blending with fixed-point 8.8 arithmetic",
+          "timestamp": "2026-01-24T22:57:39+01:00",
+          "tree_id": "824896acd599f570659e98cc4cfa0c986988121a",
+          "url": "https://github.com/tomtom215/rource/commit/3066d21c4d2a2f0457639f9d2f1ae90511c7db82"
+        },
+        "date": 1769291966853,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3911688,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2769942,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1069882,
             "unit": "bytes"
           }
         ]
