@@ -29,6 +29,15 @@ wasm-opt = false
 [lints]
 workspace = true
 
+[features]
+default = []
+# Enable detailed performance profiling with Performance API marks/measures
+# These show up in browser DevTools Performance tab
+profiling = []
+# Enable Rust tracing integration - routes tracing spans to browser console
+# Useful for function-level timing and call hierarchy
+tracing = ["dep:tracing", "dep:tracing-subscriber", "dep:tracing-web"]
+
 [dependencies]
 rource-core = { path = "../crates/rource-core" }
 rource-render = { path = "../crates/rource-render", features = ["webgl2", "wgpu"] }
@@ -47,6 +56,11 @@ console_error_panic_hook = "0.1"
 # webgpu: Enable WebGPU backend for WASM
 # webgl: Enable WebGL fallback for browsers without WebGPU
 wgpu = { version = "24", features = ["webgpu", "webgl"] }
+
+# Profiling dependencies (optional, enabled with --features profiling or --features tracing)
+tracing = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, optional = true }
+tracing-web = { version = "0.1", optional = true }
 
 # Web APIs
 [dependencies.web-sys]
@@ -87,4 +101,8 @@ features = [
     "GpuTexture",
     "GpuTextureView",
     "Navigator",
+    # Performance API for profiling
+    "PerformanceMark",
+    "PerformanceMeasure",
+    "PerformanceEntry",
 ]

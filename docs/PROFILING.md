@@ -17,6 +17,8 @@ cargo bench --workspace -- --noplot
 
 ## Profiling Tool Matrix
 
+### Native Profiling
+
 | Tool | Type | Overhead | Precision | Best For | Platform |
 |------|------|----------|-----------|----------|----------|
 | perf | CPU | Low | High | General CPU profiling | Linux |
@@ -29,7 +31,18 @@ cargo bench --workspace -- --noplot
 | iai-callgrind | Instructions | Medium | Very High | CI benchmarking | Linux |
 | Hotspot | CPU (GUI) | Low | High | perf data visualization | Linux |
 | Coz | CPU | Low | Medium | Causal profiling | Linux |
-| Chrome DevTools | WASM | Low | ~5μs | Browser WASM profiling | All |
+
+### WASM Profiling
+
+| Tool | Type | Overhead | Precision | Best For | Platform |
+|------|------|----------|-----------|----------|----------|
+| Chrome DevTools | Multi | Low | ~5μs | General WASM profiling | All |
+| Firefox Profiler | CPU | Low | ~5μs | WASM stack analysis | All |
+| `--features profiling` | Phase | Minimal | ~5μs | Performance marks in DevTools | All |
+| `--features tracing` | Tracing | Low | ~5μs | Console span logging | All |
+| `getDetailedFrameStats()` | Stats | None | ~5μs | Phase breakdown, memory | All |
+| Lighthouse | Web | Medium | N/A | Overall web performance | All |
+| wasmtime jitdump | CPU | Low | High | Standalone WASM profiling | Linux |
 
 ## CPU Profiling
 
@@ -261,41 +274,178 @@ fn expensive_operation(&mut self) {
 
 ## WASM Profiling
 
-### Chrome DevTools
+The WASM demo is the primary production artifact. Profiling it requires different tools than native profiling.
 
-Primary method for WASM profiling in browsers.
+### Built-in Profiling Features
 
-**Performance Tab:**
-1. Build WASM: `./scripts/build-wasm.sh`
+The WASM build includes profiling infrastructure that integrates with browser DevTools.
+
+**Feature Flags:**
+- `profiling` - Adds Performance API marks/measures (shows in DevTools Performance tab)
+- `tracing` - Routes Rust tracing spans to browser console
+
+```bash
+# Build WASM with profiling features
+cd rource-wasm
+wasm-pack build --target web --release --features profiling
+
+# Build with tracing (more verbose, for debugging)
+wasm-pack build --target web --release --features tracing
+
+# Build with both
+wasm-pack build --target web --release --features "profiling,tracing"
+```
+
+**Note:** Profiling features add ~5-10KB to WASM size but are invaluable for optimization.
+
+### JavaScript Profiling API
+
+The WASM module exposes detailed profiling statistics via JavaScript:
+
+```javascript
+// Check if profiling features are enabled
+console.log('Profiling:', rource.isProfilingEnabled());
+console.log('Tracing:', rource.isTracingEnabled());
+
+// Get detailed frame statistics (JSON)
+const stats = JSON.parse(rource.getDetailedFrameStats());
+
+// Phase breakdown (current frame, in milliseconds)
+console.log(`Scene Update: ${stats.sceneUpdateMs.toFixed(2)}ms`);
+console.log(`Render: ${stats.renderMs.toFixed(2)}ms`);
+console.log(`GPU Wait: ${stats.gpuWaitMs.toFixed(2)}ms`);
+console.log(`Effects: ${stats.effectsMs.toFixed(2)}ms`);
+console.log(`Total: ${stats.totalMs.toFixed(2)}ms`);
+
+// Rolling averages (60-frame window)
+console.log(`Avg Scene Update: ${stats.avgSceneUpdateMs.toFixed(2)}ms`);
+console.log(`Avg Render: ${stats.avgRenderMs.toFixed(2)}ms`);
+console.log(`Avg Total: ${stats.avgTotalMs.toFixed(2)}ms`);
+
+// Memory usage
+console.log(`WASM Heap: ${(stats.wasmHeapBytes / 1024 / 1024).toFixed(1)}MB`);
+console.log(`Frame Count: ${stats.frameCount}`);
+```
+
+**Creating a Performance Monitor:**
+```javascript
+function logPerformance() {
+    const stats = JSON.parse(rource.getDetailedFrameStats());
+
+    // Identify bottleneck
+    const phases = [
+        { name: 'Scene', time: stats.avgSceneUpdateMs },
+        { name: 'Render', time: stats.avgRenderMs },
+        { name: 'GPU Wait', time: stats.avgGpuWaitMs },
+        { name: 'Effects', time: stats.avgEffectsMs }
+    ];
+
+    const bottleneck = phases.reduce((a, b) => a.time > b.time ? a : b);
+    console.log(`Bottleneck: ${bottleneck.name} (${bottleneck.time.toFixed(2)}ms)`);
+
+    // Frame budget (16.67ms for 60fps)
+    const budget = 16.67;
+    const usage = (stats.avgTotalMs / budget * 100).toFixed(1);
+    console.log(`Frame budget usage: ${usage}%`);
+}
+
+// Call periodically
+setInterval(logPerformance, 5000);
+```
+
+### Chrome DevTools Performance Tab
+
+When built with `--features profiling`, Performance marks appear in DevTools:
+
+**Using Performance Marks:**
+1. Build with `--features profiling`
 2. Open demo in Chrome
 3. Open DevTools (F12) → Performance tab
 4. Click Record, interact with demo, Stop
-5. Analyze flame chart
+5. Look for "rource:*" markers in the timeline:
+   - `rource:frame` - Total frame time
+   - `rource:scene_update` - Physics and commit processing
+   - `rource:render` - Draw calls
 
-**Memory Tab:**
-1. Take heap snapshot before/after operations
-2. Compare snapshots for memory growth
-3. Look for detached DOM trees
+**Reading the Timeline:**
+- Wide marks = slow phases (optimization targets)
+- Consistent width = stable performance
+- Growing width = regression or memory leak
 
-**Lighthouse:**
-```bash
-# Run Lighthouse audit
-npx lighthouse http://localhost:8080 --output html --output-path lighthouse.html
-```
+**Zoom Levels:**
+- 100ms view: Frame-level patterns
+- 1ms view: Phase-level detail
+- 0.1ms view: Individual operations
+
+### Chrome DevTools Memory Tab
+
+For WASM memory analysis:
+
+1. Go to Memory tab
+2. Select "Heap snapshot"
+3. Take snapshot before/after operations
+4. Compare snapshots for growth
+
+**WASM Memory Patterns to Watch:**
+- Growing ArrayBuffer allocations (texture uploads)
+- Detached DOM references (canvas recreation)
+- Unreleased typed arrays (render buffers)
 
 ### Firefox Profiler
 
-Alternative with better WASM support.
+Better WASM stack support than Chrome:
 
-1. Open about:profiling
+1. Open `about:profiling`
 2. Set preset to "Web Developer"
 3. Enable "Stack walk native frames"
 4. Start recording, use demo, stop
-5. Analyze in Firefox Profiler UI
+5. Analyze - WASM function names are preserved
 
-### wasmtime Profiling
+### Browser Performance APIs
 
-For standalone WASM profiling outside browser:
+For custom instrumentation:
+
+```javascript
+// Using Performance API directly
+performance.mark('my-operation-start');
+// ... operation ...
+performance.mark('my-operation-end');
+performance.measure('my-operation', 'my-operation-start', 'my-operation-end');
+
+// Get all measures
+const measures = performance.getEntriesByType('measure');
+console.log(measures.map(m => `${m.name}: ${m.duration.toFixed(2)}ms`));
+
+// Long Animation Frame API (Chrome 123+)
+new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+        if (entry.duration > 50) {
+            console.warn('Long frame:', entry.duration);
+        }
+    }
+}).observe({ type: 'long-animation-frame', buffered: true });
+```
+
+### WebGPU Profiling
+
+When using the wgpu backend (WebGPU):
+
+**Chrome DevTools:**
+1. Go to `chrome://flags`
+2. Enable "WebGPU Developer Features"
+3. DevTools → More Tools → WebGPU Inspector (experimental)
+
+**GPU Timing Queries:**
+```javascript
+// Check if timestamp queries are supported
+const adapter = await navigator.gpu.requestAdapter();
+const features = adapter.features;
+console.log('Timestamp queries:', features.has('timestamp-query'));
+```
+
+### wasmtime Profiling (Standalone)
+
+For profiling WASM outside the browser:
 
 ```bash
 # Install wasmtime
@@ -307,6 +457,56 @@ wasmtime run --profile=perfmap ./target/wasm32-unknown-unknown/release/rource_wa
 # Then use perf as normal
 perf record -g wasmtime run ...
 perf report
+```
+
+### Lighthouse Audit
+
+For overall web performance:
+
+```bash
+# Install and run
+npx lighthouse http://localhost:8080 --output html --output-path lighthouse.html
+
+# Key metrics for WASM apps:
+# - First Contentful Paint: Time to first frame
+# - Time to Interactive: Time until responsive
+# - Total Blocking Time: Main thread blocking
+# - Largest Contentful Paint: Full render time
+```
+
+### Network Profiling
+
+WASM download and initialization:
+
+```javascript
+// Measure WASM load time
+const startTime = performance.now();
+const rource = await Rource.create(canvas);
+const loadTime = performance.now() - startTime;
+console.log(`WASM load time: ${loadTime.toFixed(0)}ms`);
+```
+
+**Network Tab Analysis:**
+1. Open DevTools → Network tab
+2. Reload page
+3. Look for `.wasm` file
+4. Check:
+   - Transfer size (gzipped)
+   - Content size (uncompressed)
+   - Time to download
+   - Time to compile (look for "Compile" in waterfall)
+
+### WASM Profiling Checklist
+
+```markdown
+- [ ] Build with `--features profiling` for detailed marks
+- [ ] Check `getDetailedFrameStats()` for phase breakdown
+- [ ] Record Performance timeline during stress test
+- [ ] Identify bottleneck phase (scene_update vs render)
+- [ ] Check WASM heap size for memory leaks
+- [ ] Run Lighthouse for overall web metrics
+- [ ] Test with large repository (Home Assistant Core)
+- [ ] Compare WebGPU vs WebGL2 vs Software renderer performance
 ```
 
 ## GPU Profiling
