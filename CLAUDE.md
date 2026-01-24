@@ -111,7 +111,7 @@ rource/
 └── rource-wasm/           # WebAssembly application
 ```
 
-**Test Count**: 1,898 tests total across all crates.
+**Test Count**: 1,899 tests total across all crates.
 
 ### Rendering Backends
 
