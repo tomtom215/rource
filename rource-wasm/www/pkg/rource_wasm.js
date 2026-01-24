@@ -143,6 +143,17 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Disables the watermark.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.disableWatermark();
+     * ```
+     */
+    disableWatermark() {
+        wasm.rource_disableWatermark(this.__wbg_ptr);
+    }
+    /**
      * Releases GPU resources immediately.
      *
      * Call this method before the page unloads to prevent GPU resource
@@ -163,6 +174,20 @@ export class Rource {
      */
     dispose() {
         wasm.rource_dispose(this.__wbg_ptr);
+    }
+    /**
+     * Enables the Rource brand watermark preset.
+     *
+     * This shows "Rource" with "© Tom F" in the bottom-right corner
+     * with subtle opacity for non-intrusive branding.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.enableRourceWatermark();
+     * ```
+     */
+    enableRourceWatermark() {
+        wasm.rource_enableRourceWatermark(this.__wbg_ptr);
     }
     /**
      * Forces a render without updating simulation.
@@ -476,11 +501,26 @@ export class Rource {
      * This batches 12+ individual getter calls into one, reducing per-frame
      * overhead by approximately 90% when updating the performance metrics UI.
      *
+     * # Timing Precision
+     *
+     * Frame time is returned with 4 decimal places (0.1µs display resolution).
+     * Actual measurement precision is limited by browser security mitigations
+     * against timing attacks (Spectre/Meltdown):
+     *
+     * | Browser | Resolution | Source |
+     * |---------|------------|--------|
+     * | Chrome  | ~5µs       | [Chrome Security Blog](https://security.googleblog.com) |
+     * | Firefox | ~20µs      | [MDN Spectre mitigations](https://developer.mozilla.org) |
+     * | Safari  | ~100µs     | `WebKit` security notes |
+     *
+     * Nanosecond precision is not achievable from JavaScript's `performance.now()`.
+     * The 4 decimal places display the full resolution available from the browser.
+     *
      * Returns a JSON string with the following structure:
      * ```json
      * {
      *   "fps": 60.0,
-     *   "frameTimeMs": 16.67,
+     *   "frameTimeMs": 16.6700,
      *   "totalEntities": 1500,
      *   "visibleFiles": 200,
      *   "visibleUsers": 5,
@@ -798,6 +838,14 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Gets the current watermark opacity.
+     * @returns {number}
+     */
+    getWatermarkOpacity() {
+        const ret = wasm.rource_getWatermarkOpacity(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Returns the current zoom level.
      * @returns {number}
      */
@@ -981,6 +1029,21 @@ export class Rource {
      */
     isVsyncEnabled() {
         const ret = wasm.rource_isVsyncEnabled(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Returns whether the watermark is enabled.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * if (rource.isWatermarkEnabled()) {
+     *     console.log('Watermark is visible');
+     * }
+     * ```
+     * @returns {boolean}
+     */
+    isWatermarkEnabled() {
+        const ret = wasm.rource_isWatermarkEnabled(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -1309,6 +1372,25 @@ export class Rource {
         wasm.rource_setBranchOpacityMax(this.__wbg_ptr, opacity);
     }
     /**
+     * Sets a custom watermark with both primary and secondary text.
+     *
+     * This is a convenience method that enables the watermark and sets both text values.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setCustomWatermark("My Project", "© 2026 My Company");
+     * ```
+     * @param {string} text
+     * @param {string} subtext
+     */
+    setCustomWatermark(text, subtext) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(subtext, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.rource_setCustomWatermark(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+    }
+    /**
      * Sets the depth distance exponent for non-linear depth scaling.
      *
      * Values > 1.0 add extra spacing at deeper levels.
@@ -1519,6 +1601,118 @@ export class Rource {
         wasm.rource_setVsync(this.__wbg_ptr, enabled);
     }
     /**
+     * Sets the watermark text color (hex string like "#FFFFFF" or "FFFFFF").
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkColor("#FFFFFF");
+     * ```
+     * @param {string} hex
+     */
+    setWatermarkColor(hex) {
+        const ptr0 = passStringToWasm0(hex, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.rource_setWatermarkColor(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Sets whether the watermark is enabled.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkEnabled(true);
+     * ```
+     * @param {boolean} enabled
+     */
+    setWatermarkEnabled(enabled) {
+        wasm.rource_setWatermarkEnabled(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Sets the watermark font size.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkFontSize(16);
+     * ```
+     * @param {number} size
+     */
+    setWatermarkFontSize(size) {
+        wasm.rource_setWatermarkFontSize(this.__wbg_ptr, size);
+    }
+    /**
+     * Sets the watermark margin from the screen edge in pixels.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkMargin(20);
+     * ```
+     * @param {number} margin
+     */
+    setWatermarkMargin(margin) {
+        wasm.rource_setWatermarkMargin(this.__wbg_ptr, margin);
+    }
+    /**
+     * Sets the watermark opacity (0.0 = invisible, 1.0 = fully opaque).
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkOpacity(0.5);
+     * ```
+     * @param {number} opacity
+     */
+    setWatermarkOpacity(opacity) {
+        wasm.rource_setWatermarkOpacity(this.__wbg_ptr, opacity);
+    }
+    /**
+     * Sets the watermark position.
+     *
+     * Valid positions:
+     * - "top-left" or "tl"
+     * - "top-right" or "tr"
+     * - "bottom-left" or "bl"
+     * - "bottom-right" or "br" (default)
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkPosition("bottom-left");
+     * ```
+     * @param {string} position
+     */
+    setWatermarkPosition(position) {
+        const ptr0 = passStringToWasm0(position, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.rource_setWatermarkPosition(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Sets the secondary watermark text (displayed below the primary text).
+     *
+     * Pass an empty string to clear the subtext.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkSubtext("© 2026 My Company");
+     * ```
+     * @param {string} text
+     */
+    setWatermarkSubtext(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.rource_setWatermarkSubtext(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Sets the primary watermark text.
+     *
+     * # Example (JavaScript)
+     * ```javascript
+     * rource.setWatermarkText("My Project");
+     * ```
+     * @param {string} text
+     */
+    setWatermarkText(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.rource_setWatermarkText(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Steps backward to the previous commit.
      */
     stepBackward() {
@@ -1670,6 +1864,10 @@ function __wbg_get_imports() {
         __wbg_activeTexture_7e39cb8fdf4b6d5a: function(arg0, arg1) {
             getObject(arg0).activeTexture(arg1 >>> 0);
         },
+        __wbg_apply_2e22c45cb4f12415: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = Reflect.apply(getObject(arg0), getObject(arg1), getObject(arg2));
+            return addHeapObject(ret);
+        }, arguments); },
         __wbg_attachShader_32114efcf2744eb6: function(arg0, arg1, arg2) {
             getObject(arg0).attachShader(getObject(arg1), getObject(arg2));
         },
@@ -2317,6 +2515,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0)[arg1 >>> 0];
             return addHeapObject(ret);
         },
+        __wbg_get_b3ed3ad4be2bc8ac: function() { return handleError(function (arg0, arg1) {
+            const ret = Reflect.get(getObject(arg0), getObject(arg1));
+            return addHeapObject(ret);
+        }, arguments); },
         __wbg_get_d8db2ad31d529ff8: function(arg0, arg1) {
             const ret = getObject(arg0)[arg1 >>> 0];
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -2381,6 +2583,16 @@ function __wbg_get_imports() {
             let result;
             try {
                 result = getObject(arg0) instanceof Navigator;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
+            return ret;
+        },
+        __wbg_instanceof_Promise_0094681e3519d6ec: function(arg0) {
+            let result;
+            try {
+                result = getObject(arg0) instanceof Promise;
             } catch (_) {
                 result = false;
             }
@@ -2477,7 +2689,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6517(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6538(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -3446,7 +3658,7 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { dtor_idx: 669, function: Function { arguments: [Externref], shim_idx: 670, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2349, __wasm_bindgen_func_elem_2350);
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2370, __wasm_bindgen_func_elem_2371);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -3508,12 +3720,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_2350(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_2350(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_2371(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_2371(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6517(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6517(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6538(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6538(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

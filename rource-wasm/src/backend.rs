@@ -25,15 +25,19 @@ use rource_render::{FontId, Renderer, SoftwareRenderer, WebGl2Renderer};
 #[cfg(target_arch = "wasm32")]
 use rource_render::WgpuRenderer;
 
-/// Checks if WebGPU is available in the browser.
+/// Checks if WebGPU API is present in the browser (synchronous check).
 ///
 /// WebGPU is a modern graphics API that provides lower overhead and better
 /// performance than WebGL. It's supported in Chrome 113+, Edge 113+, and
-/// Firefox 128+ (behind flag).
+/// Firefox 128+ (behind flag). Safari 26+ also supports WebGPU.
 ///
-/// Returns `true` if `navigator.gpu` exists and is available.
+/// **Important**: This only checks if `navigator.gpu` exists. The API may still
+/// fail to provide an adapter on some browsers (e.g., Safari < 26, or when GPU
+/// is blocklisted). Use [`can_use_webgpu()`] for a complete async check.
+///
+/// Returns `true` if `navigator.gpu` exists.
 #[cfg(target_arch = "wasm32")]
-fn is_webgpu_available() -> bool {
+fn is_webgpu_api_present() -> bool {
     let Some(window) = web_sys::window() else {
         return false;
     };
@@ -48,11 +52,81 @@ fn is_webgpu_available() -> bool {
 
 /// Asynchronously checks if WebGPU can actually be used (adapter available).
 ///
-/// This goes beyond `is_webgpu_available()` by actually requesting an adapter,
-/// which may fail even if `navigator.gpu` exists (e.g., no compatible GPU).
+/// This goes beyond `is_webgpu_api_present()` by actually requesting an adapter,
+/// which may fail even if `navigator.gpu` exists (e.g., Safari < 26, no compatible
+/// GPU, or GPU blocklisted).
 ///
-/// # Note on Send
+/// This function catches JavaScript exceptions that can occur when WebGPU is
+/// partially supported, preventing crashes like the `func_elem` error on mobile Safari.
 ///
+/// Returns `true` only if an adapter was successfully obtained.
+#[cfg(target_arch = "wasm32")]
+async fn can_use_webgpu() -> bool {
+    use wasm_bindgen_futures::JsFuture;
+
+    // First check if the API is even present
+    if !is_webgpu_api_present() {
+        return false;
+    }
+
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+
+    let Some(navigator) = window.navigator().dyn_into::<web_sys::Navigator>().ok() else {
+        return false;
+    };
+
+    // Get the GPU object using Reflect (avoids needing unstable web-sys features)
+    let gpu_value = match js_sys::Reflect::get(&navigator, &JsValue::from_str("gpu")) {
+        Ok(v) if !v.is_undefined() && !v.is_null() => v,
+        _ => return false,
+    };
+
+    // Call requestAdapter() using Reflect to avoid type issues
+    // This is more portable than using the Gpu type directly
+    let request_adapter_fn =
+        match js_sys::Reflect::get(&gpu_value, &JsValue::from_str("requestAdapter")) {
+            Ok(f) if f.is_function() => f,
+            _ => return false,
+        };
+
+    // Call requestAdapter() - it returns a Promise
+    let adapter_promise = match js_sys::Reflect::apply(
+        request_adapter_fn.unchecked_ref(),
+        &gpu_value,
+        &js_sys::Array::new(),
+    ) {
+        Ok(p) => p,
+        Err(e) => {
+            web_sys::console::warn_1(
+                &format!("Rource: WebGPU requestAdapter call failed: {:?}", e).into(),
+            );
+            return false;
+        }
+    };
+
+    // Convert to Promise and await
+    let promise: js_sys::Promise = match adapter_promise.dyn_into() {
+        Ok(p) => p,
+        Err(_) => return false,
+    };
+
+    match JsFuture::from(promise).await {
+        Ok(result) => {
+            // Check if we got a valid adapter (not null/undefined)
+            !result.is_null() && !result.is_undefined()
+        }
+        Err(e) => {
+            // Log the error for debugging
+            web_sys::console::warn_1(
+                &format!("Rource: WebGPU adapter request failed: {:?}", e).into(),
+            );
+            false
+        }
+    }
+}
+
 /// Checks if WebGL2 is available by testing on an offscreen canvas.
 ///
 /// This is important because once you call `getContext()` on a canvas with one
@@ -363,12 +437,15 @@ impl RendererBackend {
         let height = canvas.height();
 
         // Try wgpu (WebGPU) first - best performance (only available on wasm32)
-        // We skip the can_use_webgpu() pre-check to avoid double adapter requests which
-        // can fail intermittently due to browser GPU resource contention on page load.
+        // We use can_use_webgpu() to do a proper async check that actually requests
+        // an adapter. This prevents crashes on browsers where navigator.gpu exists
+        // but WebGPU isn't fully functional (e.g., mobile Safari before version 26).
         #[cfg(target_arch = "wasm32")]
         {
-            if is_webgpu_available() {
-                web_sys::console::log_1(&"Rource: WebGPU API detected, initializing...".into());
+            if can_use_webgpu().await {
+                web_sys::console::log_1(
+                    &"Rource: WebGPU adapter available, initializing wgpu...".into(),
+                );
 
                 match WgpuRenderer::new_from_canvas(canvas).await {
                     Ok(wgpu) => {
@@ -383,6 +460,11 @@ impl RendererBackend {
                         // uses WebGPU API, not getContext. Fall through to WebGL2.
                     }
                 }
+            } else if is_webgpu_api_present() {
+                // API exists but adapter not available - log for debugging
+                web_sys::console::log_1(
+                    &"Rource: WebGPU API present but no adapter available, trying WebGL2...".into(),
+                );
             }
         }
 

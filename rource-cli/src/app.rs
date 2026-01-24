@@ -27,6 +27,105 @@ use crate::export;
 use crate::input::MouseState;
 
 // ============================================================================
+// HUD String Cache (Phase 14 Optimization)
+// ============================================================================
+// Caches formatted HUD strings to avoid per-frame format! allocations.
+// At 60 FPS with 3 format! calls, this eliminates ~180 allocations/second.
+
+/// Cached HUD text strings.
+///
+/// Stores pre-formatted strings and the values used to generate them.
+/// Strings are only regenerated when the underlying values change.
+#[derive(Debug, Default)]
+pub struct HudCache {
+    // Cached strings
+    files_text: String,
+    speed_text: String,
+    stats_text: String,
+
+    // Values used to generate cached strings (for change detection)
+    cached_files_count: usize,
+    cached_speed: u32, // Speed * 10 to allow comparison without float equality issues
+    cached_current_commit: usize,
+    cached_total_commits: usize,
+    cached_file_count: usize,
+    cached_user_count: usize,
+}
+
+impl HudCache {
+    /// Creates a new empty HUD cache.
+    #[inline]
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Returns the cached files text (e.g., "42 files").
+    ///
+    /// Regenerates the string if the file count has changed or on first access.
+    #[inline]
+    pub fn files_text(&mut self, files_count: usize) -> &str {
+        use std::fmt::Write;
+        // Also check is_empty() to handle initial state (default values = 0)
+        if self.cached_files_count != files_count || self.files_text.is_empty() {
+            self.cached_files_count = files_count;
+            self.files_text.clear();
+            let _ = write!(self.files_text, "{files_count} files");
+        }
+        &self.files_text
+    }
+
+    /// Returns the cached speed text (e.g., "2.0x").
+    ///
+    /// Regenerates the string if the speed has changed or on first access.
+    /// Speed is multiplied by 10 and truncated to avoid float comparison issues.
+    #[inline]
+    pub fn speed_text(&mut self, speed: f32) -> &str {
+        use std::fmt::Write;
+        let speed_key = (speed * 10.0) as u32;
+        // Also check is_empty() to handle initial state (default values = 0)
+        if self.cached_speed != speed_key || self.speed_text.is_empty() {
+            self.cached_speed = speed_key;
+            self.speed_text.clear();
+            let _ = write!(self.speed_text, "{speed:.1}x");
+        }
+        &self.speed_text
+    }
+
+    /// Returns the cached stats text (e.g., "50/100 commits | 200 files | 10 users").
+    ///
+    /// Regenerates the string if any of the counts have changed or on first access.
+    #[inline]
+    pub fn stats_text(
+        &mut self,
+        current_commit: usize,
+        total_commits: usize,
+        file_count: usize,
+        user_count: usize,
+    ) -> &str {
+        use std::fmt::Write;
+        // Also check is_empty() to handle initial state (default values = 0)
+        if self.cached_current_commit != current_commit
+            || self.cached_total_commits != total_commits
+            || self.cached_file_count != file_count
+            || self.cached_user_count != user_count
+            || self.stats_text.is_empty()
+        {
+            self.cached_current_commit = current_commit;
+            self.cached_total_commits = total_commits;
+            self.cached_file_count = file_count;
+            self.cached_user_count = user_count;
+            self.stats_text.clear();
+            let _ = write!(
+                self.stats_text,
+                "{current_commit}/{total_commits} commits | {file_count} files | {user_count} users"
+            );
+        }
+        &self.stats_text
+    }
+}
+
+// ============================================================================
 // Helper Functions (testable without App instance)
 // ============================================================================
 
@@ -366,6 +465,14 @@ pub struct App {
     /// Reusable buffer for file label candidates (avoids per-frame allocation).
     /// Stores: (`FileId`, `screen_pos`, radius, alpha, priority)
     pub file_label_candidates_buffer: Vec<(FileId, Vec2, f32, f32, f32)>,
+
+    // ==========================================================================
+    // HUD String Cache (Phase 14 Optimization)
+    // ==========================================================================
+    // Caches formatted HUD strings to avoid per-frame format! allocations.
+    // At 60 FPS with 3 format! calls, this eliminates ~180 allocations/second.
+    /// Cached HUD strings (files count, speed, stats).
+    pub hud_cache: HudCache,
 }
 
 impl App {
@@ -495,6 +602,8 @@ impl App {
             visible_users_buffer: Vec::with_capacity(100),
             // Pre-allocate label candidates buffer for file label collision detection
             file_label_candidates_buffer: Vec::with_capacity(256),
+            // HUD string cache (zero-allocation after first format)
+            hud_cache: HudCache::new(),
         }
     }
 
@@ -798,5 +907,106 @@ mod tests {
         let args = Args::default();
         let app = App::new(args);
         assert!(!app.is_complete()); // Empty commits means not complete
+    }
+
+    // ========================================================================
+    // HudCache Tests
+    // ========================================================================
+
+    #[test]
+    fn test_hud_cache_new() {
+        let cache = HudCache::new();
+        assert_eq!(cache.cached_files_count, 0);
+        assert_eq!(cache.cached_speed, 0);
+        assert_eq!(cache.cached_current_commit, 0);
+    }
+
+    #[test]
+    fn test_hud_cache_files_text_initial() {
+        let mut cache = HudCache::new();
+        let text = cache.files_text(42);
+        assert_eq!(text, "42 files");
+    }
+
+    #[test]
+    fn test_hud_cache_files_text_cached() {
+        let mut cache = HudCache::new();
+        let _ = cache.files_text(42);
+        // Second call should return same cached value without regeneration
+        let text = cache.files_text(42);
+        assert_eq!(text, "42 files");
+    }
+
+    #[test]
+    fn test_hud_cache_files_text_changed() {
+        let mut cache = HudCache::new();
+        let _ = cache.files_text(42);
+        // Value changed, should regenerate
+        let text = cache.files_text(100);
+        assert_eq!(text, "100 files");
+    }
+
+    #[test]
+    fn test_hud_cache_speed_text_initial() {
+        let mut cache = HudCache::new();
+        let text = cache.speed_text(2.0);
+        assert_eq!(text, "2.0x");
+    }
+
+    #[test]
+    fn test_hud_cache_speed_text_cached() {
+        let mut cache = HudCache::new();
+        let _ = cache.speed_text(2.0);
+        let text = cache.speed_text(2.0);
+        assert_eq!(text, "2.0x");
+    }
+
+    #[test]
+    fn test_hud_cache_speed_text_changed() {
+        let mut cache = HudCache::new();
+        let _ = cache.speed_text(2.0);
+        let text = cache.speed_text(0.5);
+        assert_eq!(text, "0.5x");
+    }
+
+    #[test]
+    fn test_hud_cache_stats_text_initial() {
+        let mut cache = HudCache::new();
+        let text = cache.stats_text(50, 100, 200, 10);
+        assert_eq!(text, "50/100 commits | 200 files | 10 users");
+    }
+
+    #[test]
+    fn test_hud_cache_stats_text_cached() {
+        let mut cache = HudCache::new();
+        let _ = cache.stats_text(50, 100, 200, 10);
+        let text = cache.stats_text(50, 100, 200, 10);
+        assert_eq!(text, "50/100 commits | 200 files | 10 users");
+    }
+
+    #[test]
+    fn test_hud_cache_stats_text_commit_changed() {
+        let mut cache = HudCache::new();
+        let _ = cache.stats_text(50, 100, 200, 10);
+        let text = cache.stats_text(51, 100, 200, 10);
+        assert_eq!(text, "51/100 commits | 200 files | 10 users");
+    }
+
+    #[test]
+    fn test_hud_cache_stats_text_files_changed() {
+        let mut cache = HudCache::new();
+        let _ = cache.stats_text(50, 100, 200, 10);
+        let text = cache.stats_text(50, 100, 201, 10);
+        assert_eq!(text, "50/100 commits | 201 files | 10 users");
+    }
+
+    #[test]
+    fn test_hud_cache_zero_values() {
+        let mut cache = HudCache::new();
+        assert_eq!(cache.files_text(0), "0 files");
+        assert_eq!(
+            cache.stats_text(0, 0, 0, 0),
+            "0/0 commits | 0 files | 0 users"
+        );
     }
 }

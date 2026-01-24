@@ -31,7 +31,7 @@ use rource_render::{
 };
 use rource_vcs::Commit;
 
-use crate::app::{App, PlaybackState};
+use crate::app::{App, HudCache, PlaybackState};
 use crate::args::Args;
 use crate::avatar::AvatarRegistry;
 use crate::helpers::get_initials;
@@ -642,6 +642,7 @@ pub fn render_frame(app: &mut App) {
         app.logo_dimensions,
         app.logo_offset,
         &app.watermark,
+        &mut app.hud_cache,
     );
 
     renderer.end_frame();
@@ -1123,6 +1124,7 @@ fn render_overlays(
     logo_dimensions: Option<(u32, u32)>,
     logo_offset: (i32, i32),
     watermark: &WatermarkSettings,
+    hud_cache: &mut HudCache,
 ) {
     let width = renderer.width() as f32;
     let height = renderer.height() as f32;
@@ -1160,6 +1162,7 @@ fn render_overlays(
             commits,
             current_commit,
             scene,
+            hud_cache,
         );
     }
 
@@ -1266,6 +1269,8 @@ fn render_stats_indicators(
 }
 
 /// Render text overlays (title, date, stats).
+///
+/// Uses `HudCache` to avoid per-frame string allocations for formatted text.
 #[allow(clippy::too_many_arguments)]
 fn render_text_overlays(
     renderer: &mut SoftwareRenderer,
@@ -1275,6 +1280,7 @@ fn render_text_overlays(
     commits: &[Commit],
     current_commit: usize,
     scene: &Scene,
+    hud_cache: &mut HudCache,
 ) {
     let font_size = args.font_size;
     let text_color = Color::new(1.0, 1.0, 1.0, 0.9);
@@ -1320,10 +1326,10 @@ fn render_text_overlays(
                 text_color.with_alpha(0.8),
             );
 
-            // File count in commit
-            let files_text = format!("{} files", commit.files.len());
+            // File count in commit (cached to avoid per-frame allocation)
+            let files_text = hud_cache.files_text(commit.files.len());
             renderer.draw_text(
-                &files_text,
+                files_text,
                 Vec2::new(10.0, height - 70.0),
                 font_id,
                 font_size * 0.9,
@@ -1334,9 +1340,10 @@ fn render_text_overlays(
 
     // Speed indicator (top-right, only if not 1.0x)
     if (playback.speed - 1.0).abs() > 0.01 {
-        let speed_text = format!("{:.1}x", playback.speed);
+        // Cached to avoid per-frame allocation
+        let speed_text = hud_cache.speed_text(playback.speed);
         renderer.draw_text(
-            &speed_text,
+            speed_text,
             Vec2::new(width - 60.0, 20.0),
             font_id,
             font_size,
@@ -1355,15 +1362,13 @@ fn render_text_overlays(
         );
     }
 
-    // Stats text
+    // Stats text (cached to avoid per-frame allocation)
     let file_count = scene.file_count();
     let user_count = scene.user_count();
     let total_commits = commits.len();
-    let stats_text = format!(
-        "{current_commit}/{total_commits} commits | {file_count} files | {user_count} users"
-    );
+    let stats_text = hud_cache.stats_text(current_commit, total_commits, file_count, user_count);
     renderer.draw_text(
-        &stats_text,
+        stats_text,
         Vec2::new(120.0, 54.0),
         font_id,
         font_size * 0.8,

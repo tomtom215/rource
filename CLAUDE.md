@@ -2878,6 +2878,144 @@ The WASM demo displays frame time with adaptive precision:
 This ensures performance displays are honest and show actual stutters, while physics
 remains stable even during frame drops.
 
+### Phase 24: HUD String Caching & Performance Audit Verification (2026-01-24)
+
+Implemented HUD string caching to eliminate per-frame format! allocations and verified that many performance audit items were already addressed in previous phases.
+
+#### HUD String Caching (High #13)
+
+Added `HudCache` struct to the CLI application that caches formatted HUD strings and only regenerates them when underlying values change.
+
+**Files Modified:**
+- `rource-cli/src/app.rs` - Added `HudCache` struct with caching methods
+- `rource-cli/src/rendering.rs` - Updated `render_text_overlays` to use cached strings
+
+**Cached Strings:**
+
+| String | Example | Regeneration Trigger |
+|--------|---------|----------------------|
+| `files_text` | "42 files" | File count changes |
+| `speed_text` | "2.0x" | Playback speed changes |
+| `stats_text` | "50/100 commits \| 200 files \| 10 users" | Any count changes |
+
+**Implementation Details:**
+- Uses `std::fmt::Write` to write directly to existing String buffer
+- Clears and reuses String allocation instead of creating new one
+- Change detection via cached values (usize for counts, u32 for speed * 10)
+- `is_empty()` check handles initial state where all cached values = 0
+
+**Performance Impact:**
+- At 60 FPS: Eliminates ~180 allocations/second (3 format! × 60 frames)
+- Zero allocation after initial formatting when values unchanged
+
+#### Performance Audit Verification
+
+Verified that the following high-severity items from the performance audit were already fixed in previous phases:
+
+| Audit # | Issue | Status | Evidence |
+|---------|-------|--------|----------|
+| Critical NEW | Visibility buffers not using visible_entities_into() | ✓ FIXED | lib.rs:1094 uses visible_entities_into() |
+| Critical #5 | Vec allocation in quadtree query | ✓ FIXED | spatial_methods.rs:164 uses query_for_each() |
+| High #14 | path.clone() in commit loops | ✓ FIXED | headless.rs uses .as_path() (line 599, 687) |
+| High #16-17 | Active action count O(n) filtering | ✓ FIXED | active_action_count tracked incrementally (scene/mod.rs:91) |
+| High #19 | Barnes-Hut tree rebuilt every frame | ✓ FIXED | clear() preserves children (barnes_hut.rs:370) |
+| High #20 | Per-fragment division in blur shaders | ✓ FIXED | u_texel_size pre-computed (shaders.rs:482) |
+| High #29 | Per-fragment division in curve AA | ✓ FIXED | v_width pre-computed in vertex shader (shaders.rs:942) |
+
+**Key Findings:**
+- Most critical performance issues were addressed in Phase 8-22 optimizations
+- Zero-allocation patterns (visibility buffers, query_for_each, path references) already in place
+- GPU shaders already pre-compute expensive operations in vertex shader
+- Barnes-Hut tree reuses allocated node structure between frames
+
+**Test Count**: 1,836 tests passing (12 new HudCache tests added)
+
+### Phase 25: Mobile Safari WebGPU Crash Fix (2026-01-24)
+
+Fixed a crash that occurred on mobile Safari (iOS) when loading the WASM demo. The error
+`wasm.__wasm_bindgen_func_elem_6517 is not a function` was caused by attempting to use
+WebGPU on browsers where the API exists but isn't fully functional.
+
+#### Root Cause Analysis
+
+The crash occurred because:
+
+1. **Incomplete WebGPU detection**: The original `is_webgpu_available()` function only checked
+   if `navigator.gpu` exists, not if WebGPU is actually usable.
+
+2. **Safari WebGPU support**: Safari only enabled WebGPU in Safari 26+ (June 2025). On older
+   Safari versions, `navigator.gpu` may exist but adapter requests fail unpredictably.
+
+3. **wasm-bindgen function table corruption**: When WebGPU initialization fails in certain
+   ways on Safari, it can corrupt the WASM function table, causing `func_elem` errors.
+
+#### Solution Implemented
+
+**Files Modified**:
+- `rource-wasm/src/backend.rs` - Added async WebGPU availability check
+
+**Key Changes**:
+
+1. Renamed `is_webgpu_available()` → `is_webgpu_api_present()` (synchronous, only checks API existence)
+
+2. Added new `can_use_webgpu()` async function that:
+   - Checks if the WebGPU API is present
+   - Actually requests an adapter using JavaScript interop
+   - Returns `false` if adapter request fails (catches Safari issues)
+   - Logs warnings for debugging
+
+3. Updated `RendererBackend::new_async()` to use `can_use_webgpu().await` instead of
+   the synchronous check, ensuring proper fallback to WebGL2 on unsupported browsers.
+
+**Implementation**:
+
+```rust
+/// Asynchronously checks if WebGPU can actually be used (adapter available).
+#[cfg(target_arch = "wasm32")]
+async fn can_use_webgpu() -> bool {
+    // First check if the API is even present
+    if !is_webgpu_api_present() {
+        return false;
+    }
+
+    // Get navigator.gpu using Reflect (avoids unstable web-sys features)
+    let gpu_value = js_sys::Reflect::get(&navigator, &JsValue::from_str("gpu"))?;
+
+    // Call requestAdapter() and await the Promise
+    // This actually tests if WebGPU works, not just if the API exists
+    let adapter_promise = js_sys::Reflect::apply(
+        request_adapter_fn.unchecked_ref(),
+        &gpu_value,
+        &js_sys::Array::new(),
+    )?;
+
+    // Check if we got a valid adapter
+    match JsFuture::from(promise).await {
+        Ok(result) => !result.is_null() && !result.is_undefined(),
+        Err(_) => false, // WebGPU not usable
+    }
+}
+```
+
+**Console Output on Mobile Safari**:
+
+```
+Rource: WebGPU API present but no adapter available, trying WebGL2...
+Rource: Using WebGL2 renderer
+```
+
+#### Browser Compatibility
+
+| Browser | WebGPU Support | Fallback |
+|---------|---------------|----------|
+| Chrome 113+ | ✅ Full | - |
+| Firefox 128+ | ✅ Behind flag | WebGL2 |
+| Safari 26+ | ✅ Full | - |
+| Safari < 26 | ❌ API exists but broken | WebGL2 |
+| iOS Safari < 26 | ❌ API exists but broken | WebGL2 |
+
+**Test Count**: 1,836 tests passing (no change)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3340,4 +3478,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-23 (Phase 23: CLI Benchmark Mode with nanosecond timing precision - 1,821 tests total)*
+*Last updated: 2026-01-24 (Phase 25: Mobile Safari WebGPU Crash Fix - 1,836 tests total)*
