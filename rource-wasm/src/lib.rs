@@ -152,6 +152,23 @@ pub const MAX_FRAME_DT: f32 = 0.1;
 /// At 60fps, 100 commits/frame = 6000 commits/second max throughput.
 pub const MAX_COMMITS_PER_FRAME: usize = 100;
 
+/// Default maximum number of commits to load.
+///
+/// Repositories with more commits will be truncated to this limit.
+/// This prevents browser freeze/crash with extremely large repositories.
+/// Can be overridden via `setMaxCommits()` before loading.
+pub const DEFAULT_MAX_COMMITS: usize = 100_000;
+
+/// Minimum prewarm cycles for any repository.
+pub const MIN_PREWARM_CYCLES: usize = 5;
+
+/// Maximum prewarm cycles for small repositories.
+pub const MAX_PREWARM_CYCLES: usize = 30;
+
+/// File count threshold above which prewarm is reduced.
+/// Repos with more files use scaled-down prewarm.
+pub const PREWARM_REDUCTION_THRESHOLD: usize = 10_000;
+
 // ---- Auto-Fit Camera Helpers ----
 
 /// Padding factor for bounds when fitting camera (1.2 = 20% padding).
@@ -466,6 +483,18 @@ pub struct Rource {
     /// Threshold for auto-enabling GPU culling (total visible entity count).
     /// Set to 0 to always use GPU culling when enabled.
     gpu_culling_threshold: usize,
+
+    // ---- Large Repository Protection ----
+    /// Maximum number of commits to load.
+    /// Repositories with more commits will be truncated.
+    max_commits: usize,
+
+    /// Whether commits were truncated during loading.
+    /// True if the loaded repository exceeded `max_commits`.
+    commits_truncated: bool,
+
+    /// Original commit count before truncation (for reporting).
+    original_commit_count: usize,
 }
 
 // ============================================================================
@@ -572,6 +601,10 @@ impl Rource {
             // GPU culling (wgpu only) - default threshold 10000 entities
             use_gpu_culling: false,
             gpu_culling_threshold: 10000,
+            // Large repository protection
+            max_commits: DEFAULT_MAX_COMMITS,
+            commits_truncated: false,
+            original_commit_count: 0,
         })
     }
 
@@ -662,6 +695,12 @@ impl Rource {
     ///
     /// Uses lenient parsing by default to skip invalid lines (e.g., lines with
     /// pipe characters in author names or unsupported git statuses).
+    ///
+    /// # Commit Limit
+    ///
+    /// If the log contains more commits than `maxCommits` (default 100,000),
+    /// only the first `maxCommits` commits are loaded. Check `wasCommitsTruncated()`
+    /// to detect if truncation occurred.
     #[wasm_bindgen(js_name = loadCustomLog)]
     pub fn load_custom_log(&mut self, log: &str) -> Result<usize, JsValue> {
         // Use lenient parsing to handle malformed lines gracefully
@@ -670,15 +709,18 @@ impl Rource {
             .parse_str(log)
             .map_err(|e| JsValue::from_str(&format!("Parse error: {e}")))?;
 
-        let count = commits.len();
-        self.commits = commits;
-        self.reset_playback();
-        Ok(count)
+        Ok(self.load_commits_internal(commits))
     }
 
     /// Loads commits from git log format.
     ///
     /// Uses lenient parsing to handle malformed lines gracefully.
+    ///
+    /// # Commit Limit
+    ///
+    /// If the log contains more commits than `maxCommits` (default 100,000),
+    /// only the first `maxCommits` commits are loaded. Check `wasCommitsTruncated()`
+    /// to detect if truncation occurred.
     #[wasm_bindgen(js_name = loadGitLog)]
     pub fn load_git_log(&mut self, log: &str) -> Result<usize, JsValue> {
         // Use lenient parsing to handle malformed lines gracefully
@@ -687,16 +729,81 @@ impl Rource {
             .parse_str(log)
             .map_err(|e| JsValue::from_str(&format!("Parse error: {e}")))?;
 
+        Ok(self.load_commits_internal(commits))
+    }
+
+    /// Internal method to load commits with truncation and adaptive prewarm.
+    fn load_commits_internal(&mut self, mut commits: Vec<Commit>) -> usize {
+        // Track original count for reporting
+        self.original_commit_count = commits.len();
+
+        // Apply commit limit to prevent browser freeze
+        if commits.len() > self.max_commits {
+            #[cfg(target_arch = "wasm32")]
+            web_sys::console::warn_1(
+                &format!(
+                    "Rource: Truncating {} commits to {} (use setMaxCommits() to adjust)",
+                    commits.len(),
+                    self.max_commits
+                )
+                .into(),
+            );
+            commits.truncate(self.max_commits);
+            self.commits_truncated = true;
+        } else {
+            self.commits_truncated = false;
+        }
+
         let count = commits.len();
         self.commits = commits;
-        self.reset_playback();
-        Ok(count)
+        self.reset_playback_adaptive();
+        count
     }
 
     /// Returns the number of loaded commits.
     #[wasm_bindgen(js_name = commitCount)]
     pub fn commit_count(&self) -> usize {
         self.commits.len()
+    }
+
+    /// Sets the maximum number of commits to load.
+    ///
+    /// Call this before `loadGitLog()` or `loadCustomLog()` to change the limit.
+    /// Default is 100,000 commits.
+    ///
+    /// # Arguments
+    ///
+    /// * `max` - Maximum commits to load (0 = unlimited, use with caution)
+    #[wasm_bindgen(js_name = setMaxCommits)]
+    pub fn set_max_commits(&mut self, max: usize) {
+        self.max_commits = if max == 0 { usize::MAX } else { max };
+    }
+
+    /// Returns the current maximum commits limit.
+    #[wasm_bindgen(js_name = getMaxCommits)]
+    pub fn get_max_commits(&self) -> usize {
+        if self.max_commits == usize::MAX {
+            0
+        } else {
+            self.max_commits
+        }
+    }
+
+    /// Returns true if commits were truncated during the last load.
+    ///
+    /// When true, only the first `maxCommits` commits were loaded.
+    /// Use `getOriginalCommitCount()` to see the full count.
+    #[wasm_bindgen(js_name = wasCommitsTruncated)]
+    pub fn was_commits_truncated(&self) -> bool {
+        self.commits_truncated
+    }
+
+    /// Returns the original commit count before any truncation.
+    ///
+    /// This is useful for displaying "Showing X of Y commits" in the UI.
+    #[wasm_bindgen(js_name = getOriginalCommitCount)]
+    pub fn get_original_commit_count(&self) -> usize {
+        self.original_commit_count
     }
 }
 
@@ -1070,18 +1177,94 @@ impl Rource {
         self.scene.update(dt);
     }
 
-    /// Resets playback to the beginning.
+    /// Resets playback to the beginning (fixed 30 cycles, for backward compat).
+    ///
+    /// Kept for potential future use. Use `reset_playback_adaptive()` for normal loading.
+    #[allow(dead_code)]
     fn reset_playback(&mut self) {
+        self.reset_playback_with_prewarm(MAX_PREWARM_CYCLES);
+    }
+
+    /// Resets playback with adaptive prewarm based on repository size.
+    ///
+    /// For large repositories (>10k files in first commit), reduces prewarm
+    /// cycles to prevent browser freeze during initial load.
+    fn reset_playback_adaptive(&mut self) {
         self.scene = Scene::new();
         self.playback.reset();
 
-        if !self.commits.is_empty() {
-            apply_vcs_commit(&mut self.scene, &self.commits[0]);
-            self.playback.set_last_applied_commit(0);
-
-            prewarm_scene(&mut self.scene, 30, 1.0 / 60.0);
-            self.fit_camera_to_content();
+        if self.commits.is_empty() {
+            return;
         }
+
+        // Count files in first commit to estimate initial load
+        let first_commit_files = self.commits[0].files.len();
+
+        // Calculate adaptive prewarm cycles:
+        // - Small repos (<1k files): 30 cycles (full prewarm)
+        // - Medium repos (1k-10k): 15-30 cycles (scaled)
+        // - Large repos (10k-50k): 5-15 cycles (reduced)
+        // - Massive repos (>50k): 5 cycles (minimum)
+        let prewarm_cycles = if first_commit_files < 1_000 {
+            MAX_PREWARM_CYCLES
+        } else if first_commit_files < PREWARM_REDUCTION_THRESHOLD {
+            // Linear interpolation from 30 to 15
+            let t = (first_commit_files - 1_000) as f32 / 9_000.0;
+            (MAX_PREWARM_CYCLES as f32 - t * 15.0) as usize
+        } else if first_commit_files < 50_000 {
+            // Linear interpolation from 15 to 5
+            let t = (first_commit_files - PREWARM_REDUCTION_THRESHOLD) as f32 / 40_000.0;
+            (15.0 - t * 10.0).max(MIN_PREWARM_CYCLES as f32) as usize
+        } else {
+            MIN_PREWARM_CYCLES
+        };
+
+        #[cfg(target_arch = "wasm32")]
+        if first_commit_files > 1_000 {
+            web_sys::console::log_1(
+                &format!(
+                    "Rource: Large initial commit ({} files), using {} prewarm cycles",
+                    first_commit_files, prewarm_cycles
+                )
+                .into(),
+            );
+        }
+
+        // Configure layout for large repos before applying commits
+        if first_commit_files > 10_000 {
+            self.scene
+                .set_layout_config(rource_core::scene::LayoutConfig::massive_repo());
+        } else if first_commit_files > 1_000 {
+            self.scene
+                .set_layout_config(rource_core::scene::LayoutConfig::large_repo());
+        }
+
+        self.reset_playback_with_prewarm(prewarm_cycles);
+    }
+
+    /// Resets playback with a specific number of prewarm cycles.
+    fn reset_playback_with_prewarm(&mut self, prewarm_cycles: usize) {
+        // Scene should already be created by caller, but ensure it exists
+        if self.commits.is_empty() {
+            self.scene = Scene::new();
+            self.playback.reset();
+            return;
+        }
+
+        // For adaptive reset, scene is already created
+        // For regular reset (backward compat), create fresh scene
+        if self.scene.file_count() == 0 && self.scene.user_count() == 0 {
+            self.scene = Scene::new();
+        }
+        self.playback.reset();
+
+        apply_vcs_commit(&mut self.scene, &self.commits[0]);
+        self.playback.set_last_applied_commit(0);
+
+        if prewarm_cycles > 0 {
+            prewarm_scene(&mut self.scene, prewarm_cycles, 1.0 / 60.0);
+        }
+        self.fit_camera_to_content();
     }
 
     /// Fits the camera to show all content.
