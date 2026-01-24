@@ -192,24 +192,39 @@ impl FrameProfiler {
     }
 
     /// Marks the start of a phase.
+    ///
+    /// Only creates Performance marks when the `profiling` feature is enabled.
+    /// Without profiling, this just records the start timestamp with no allocations.
     #[inline]
     pub fn begin_phase(&mut self, name: &str) {
         self.phase_start = now_ms();
+        // Only format and mark when profiling is enabled to avoid per-frame allocations
+        #[cfg(feature = "profiling")]
         mark(&format!("rource:{name}_start"));
+        #[cfg(not(feature = "profiling"))]
+        let _ = name;
     }
 
     /// Marks the end of a phase and records its duration.
+    ///
+    /// Only creates Performance marks/measures when the `profiling` feature is enabled.
+    /// Without profiling, this just records the duration with no allocations.
     #[inline]
     pub fn end_phase(&mut self, name: &str) {
         let end_time = now_ms();
         let duration = (end_time - self.phase_start) as f32;
 
-        mark(&format!("rource:{name}_end"));
-        measure(
-            &format!("rource:{name}"),
-            &format!("rource:{name}_start"),
-            &format!("rource:{name}_end"),
-        );
+        // Only format and mark/measure when profiling is enabled to avoid per-frame allocations
+        // (5 format! calls × 2 phases = 10 allocations per frame = 600/sec at 60fps)
+        #[cfg(feature = "profiling")]
+        {
+            mark(&format!("rource:{name}_end"));
+            measure(
+                &format!("rource:{name}"),
+                &format!("rource:{name}_start"),
+                &format!("rource:{name}_end"),
+            );
+        }
 
         match name {
             "scene_update" => self.current.scene_update_ms = duration,

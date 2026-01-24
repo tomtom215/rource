@@ -61,6 +61,7 @@ fn is_webgpu_api_present() -> bool {
 ///
 /// Returns `true` only if an adapter was successfully obtained.
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::future_not_send)] // Expected: WASM is single-threaded, JsFuture is not Send
 async fn can_use_webgpu() -> bool {
     use wasm_bindgen_futures::JsFuture;
 
@@ -100,7 +101,7 @@ async fn can_use_webgpu() -> bool {
         Ok(p) => p,
         Err(e) => {
             web_sys::console::warn_1(
-                &format!("Rource: WebGPU requestAdapter call failed: {:?}", e).into(),
+                &format!("Rource: WebGPU requestAdapter call failed: {e:?}").into(),
             );
             return false;
         }
@@ -120,7 +121,7 @@ async fn can_use_webgpu() -> bool {
         Err(e) => {
             // Log the error for debugging
             web_sys::console::warn_1(
-                &format!("Rource: WebGPU adapter request failed: {:?}", e).into(),
+                &format!("Rource: WebGPU adapter request failed: {e:?}").into(),
             );
             false
         }
