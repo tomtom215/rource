@@ -405,7 +405,7 @@ impl Scene {
         // Position file using radial layout around its parent directory
         if let Some(dir) = self.directories.get(dir_id) {
             // Calculate position within the directory's angular sector
-            let file_count = dir.files().len();
+            let file_count = dir.files_len();
 
             // Get the directory's angular sector
             let start_angle = dir.start_angle();

@@ -168,6 +168,70 @@ impl Scene {
         });
     }
 
+    /// Zero-allocation version of `query_entities` that reuses an existing buffer.
+    ///
+    /// Preferred for hot paths where allocations should be avoided.
+    #[inline]
+    pub fn query_entities_into(&self, bounds: &Bounds, output: &mut Vec<EntityType>) {
+        output.clear();
+        self.spatial
+            .query_for_each(bounds, |entity| output.push(*entity));
+    }
+
+    /// Zero-allocation version of `query_entities_circle` that reuses an existing buffer.
+    ///
+    /// Preferred for hot paths where allocations should be avoided.
+    #[inline]
+    pub fn query_entities_circle_into(
+        &self,
+        center: Vec2,
+        radius: f32,
+        output: &mut Vec<EntityType>,
+    ) {
+        output.clear();
+        self.spatial
+            .query_circle_for_each(center, radius, |_, entity| output.push(*entity));
+    }
+
+    /// Zero-allocation version of `visible_file_ids` that reuses an existing buffer.
+    ///
+    /// Preferred for hot paths where allocations should be avoided.
+    #[inline]
+    pub fn visible_file_ids_into(&self, bounds: &Bounds, output: &mut Vec<FileId>) {
+        output.clear();
+        self.spatial.query_for_each(bounds, |entity| {
+            if let EntityType::File(id) = entity {
+                output.push(*id);
+            }
+        });
+    }
+
+    /// Zero-allocation version of `visible_user_ids` that reuses an existing buffer.
+    ///
+    /// Preferred for hot paths where allocations should be avoided.
+    #[inline]
+    pub fn visible_user_ids_into(&self, bounds: &Bounds, output: &mut Vec<UserId>) {
+        output.clear();
+        self.spatial.query_for_each(bounds, |entity| {
+            if let EntityType::User(id) = entity {
+                output.push(*id);
+            }
+        });
+    }
+
+    /// Zero-allocation version of `visible_directory_ids` that reuses an existing buffer.
+    ///
+    /// Preferred for hot paths where allocations should be avoided.
+    #[inline]
+    pub fn visible_directory_ids_into(&self, bounds: &Bounds, output: &mut Vec<DirId>) {
+        output.clear();
+        self.spatial.query_for_each(bounds, |entity| {
+            if let EntityType::Directory(id) = entity {
+                output.push(*id);
+            }
+        });
+    }
+
     /// Returns the expanded bounds for visibility queries.
     ///
     /// This adds a margin to account for entity radii and ensures

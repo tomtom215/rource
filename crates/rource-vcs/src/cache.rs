@@ -386,24 +386,19 @@ impl VisualizationCache {
             })
             .collect();
 
-        // Extract file changes
-        let file_changes: Vec<CachedFileChange> = (0..self.store.file_change_count())
-            .filter_map(|i| {
-                // Get file change by iterating through all commits
-                // This is a bit inefficient but maintains correctness
-                let mut current_idx = 0;
-                for (_, commit) in self.store.commits() {
-                    let files = self.store.file_changes(commit);
-                    if i >= current_idx && i < current_idx + files.len() {
-                        let fc = &files[i - current_idx];
-                        return Some(CachedFileChange {
-                            path: fc.path.index(),
-                            action: fc.action as u8,
-                        });
-                    }
-                    current_idx += files.len();
-                }
-                None
+        // Extract file changes - O(f) single pass through all commits
+        // Phase 39: Optimized from O(f·c) nested loop to O(f) flat_map
+        let file_changes: Vec<CachedFileChange> = self
+            .store
+            .commits()
+            .flat_map(|(_, commit)| {
+                self.store
+                    .file_changes(commit)
+                    .iter()
+                    .map(|fc| CachedFileChange {
+                        path: fc.path.index(),
+                        action: fc.action as u8,
+                    })
             })
             .collect();
 
@@ -459,15 +454,22 @@ impl VisualizationCache {
                 .resolve_path(InternedPath::from_index(i))
                 .unwrap_or_default();
 
+            // Phase 40: Single allocation per new segment - check existence first
             let segments: Vec<u32> = path_str
                 .split('/')
                 .filter(|s| !s.is_empty())
                 .map(|seg| {
-                    *segment_lookup.entry(seg.to_string()).or_insert_with(|| {
-                        let idx = all_segments.len() as u32;
-                        all_segments.push(seg.to_string());
+                    // Check if segment exists without allocating
+                    if let Some(&idx) = segment_lookup.get(seg) {
                         idx
-                    })
+                    } else {
+                        // Only allocate once for new segments
+                        let owned = seg.to_string();
+                        let idx = all_segments.len() as u32;
+                        all_segments.push(owned.clone());
+                        segment_lookup.insert(owned, idx);
+                        idx
+                    }
                 })
                 .collect();
 

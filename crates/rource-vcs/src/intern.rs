@@ -95,10 +95,12 @@ impl StringInterner {
             return InternedString(idx);
         }
 
+        // Phase 40: Single allocation - owned string is cloned once for the two containers
         let idx = u32::try_from(self.strings.len())
             .expect("string interner capacity exceeded (>4 billion unique strings)");
-        self.strings.push(s.to_owned());
-        self.lookup.insert(s.to_owned(), idx);
+        let owned = s.to_owned();
+        self.lookup.insert(owned.clone(), idx);
+        self.strings.push(owned);
         InternedString(idx)
     }
 
@@ -112,6 +114,7 @@ impl StringInterner {
             return InternedString(idx);
         }
 
+        // Phase 40: Clone for lookup, move original to storage
         let idx = u32::try_from(self.strings.len())
             .expect("string interner capacity exceeded (>4 billion unique strings)");
         self.lookup.insert(s.clone(), idx);

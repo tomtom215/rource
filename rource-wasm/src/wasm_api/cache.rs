@@ -207,32 +207,7 @@ impl Rource {
     /// ```
     #[wasm_bindgen(js_name = importCacheBytes)]
     pub fn import_cache_bytes(&mut self, bytes: &[u8]) -> usize {
-        match VisualizationCache::from_bytes(bytes) {
-            Ok(cache) => {
-                let store = cache.into_store();
-                let commit_count = store.commit_count();
-
-                // Convert CommitStore back to Vec<Commit>
-                let commits: Vec<_> = (0..commit_count)
-                    .filter_map(|i| {
-                        let id = rource_vcs::CommitId::from_index(i as u32);
-                        store.to_standard_commit(id)
-                    })
-                    .collect();
-
-                if commits.is_empty() {
-                    return 0;
-                }
-
-                // Reset scene and apply commits
-                self.scene = rource_core::scene::Scene::new();
-                self.commits = commits;
-                self.playback.reset();
-
-                commit_count
-            }
-            Err(_) => 0,
-        }
+        VisualizationCache::from_bytes(bytes).map_or(0, |cache| self.import_cache_store(cache))
     }
 
     /// Imports commits from a binary cache, validating the repository identifier.
@@ -258,33 +233,57 @@ impl Rource {
     #[wasm_bindgen(js_name = importCacheBytesWithRepoId)]
     pub fn import_cache_bytes_with_repo_id(&mut self, bytes: &[u8], repo_id: &str) -> usize {
         let expected_hash = hash_repo_id(repo_id);
+        VisualizationCache::from_bytes_with_repo_check(bytes, Some(expected_hash))
+            .map_or(0, |cache| self.import_cache_store(cache))
+    }
 
-        match VisualizationCache::from_bytes_with_repo_check(bytes, Some(expected_hash)) {
-            Ok(cache) => {
-                let store = cache.into_store();
-                let commit_count = store.commit_count();
+    /// Internal helper to import commits from a cache with protections.
+    ///
+    /// Applies the same commit limit and adaptive prewarm as text loading.
+    fn import_cache_store(&mut self, cache: VisualizationCache) -> usize {
+        let store = cache.into_store();
+        let commit_count = store.commit_count();
 
-                // Convert CommitStore back to Vec<Commit>
-                let commits: Vec<_> = (0..commit_count)
-                    .filter_map(|i| {
-                        let id = rource_vcs::CommitId::from_index(i as u32);
-                        store.to_standard_commit(id)
-                    })
-                    .collect();
+        // Track original count before any truncation
+        self.original_commit_count = commit_count;
 
-                if commits.is_empty() {
-                    return 0;
-                }
+        // Convert CommitStore back to Vec<Commit>, respecting max_commits limit
+        let limit = self.max_commits.min(commit_count);
+        let mut commits: Vec<_> = (0..limit)
+            .filter_map(|i| {
+                let id = rource_vcs::CommitId::from_index(i as u32);
+                store.to_standard_commit(id)
+            })
+            .collect();
 
-                // Reset scene and apply commits
-                self.scene = rource_core::scene::Scene::new();
-                self.commits = commits;
-                self.playback.reset();
-
-                commit_count
-            }
-            Err(_) => 0,
+        if commits.is_empty() {
+            self.commits_truncated = false;
+            return 0;
         }
+
+        // Track truncation
+        if commit_count > self.max_commits {
+            #[cfg(target_arch = "wasm32")]
+            web_sys::console::warn_1(
+                &format!(
+                    "Rource: Truncating cached {} commits to {} (use setMaxCommits() to adjust)",
+                    commit_count, self.max_commits
+                )
+                .into(),
+            );
+            commits.truncate(self.max_commits);
+            self.commits_truncated = true;
+        } else {
+            self.commits_truncated = false;
+        }
+
+        let loaded_count = commits.len();
+        self.commits = commits;
+
+        // Use adaptive prewarm based on repo size
+        self.reset_playback_adaptive();
+
+        loaded_count
     }
 
     /// Checks if cache data has a valid magic header.

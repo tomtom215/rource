@@ -323,6 +323,46 @@ impl<T: Clone> QuadTree<T> {
             .collect()
     }
 
+    /// Zero-allocation version of `query_circle_with_pos` that uses a visitor callback.
+    ///
+    /// Preferred for hot paths where allocations should be avoided.
+    #[inline]
+    pub fn query_circle_for_each(
+        &self,
+        center: Vec2,
+        radius: f32,
+        mut visitor: impl FnMut(Vec2, &T),
+    ) {
+        let query_bounds = Bounds::new(center - Vec2::splat(radius), center + Vec2::splat(radius));
+        let radius_sq = radius * radius;
+        self.query_circle_for_each_recursive(&query_bounds, center, radius_sq, &mut visitor);
+    }
+
+    /// Recursive zero-allocation circle query implementation.
+    fn query_circle_for_each_recursive(
+        &self,
+        bounds: &Bounds,
+        center: Vec2,
+        radius_sq: f32,
+        visitor: &mut impl FnMut(Vec2, &T),
+    ) {
+        if !self.bounds.intersects(*bounds) {
+            return;
+        }
+
+        for (pos, item) in &self.items {
+            if bounds.contains(*pos) && (*pos - center).length_squared() <= radius_sq {
+                visitor(*pos, item);
+            }
+        }
+
+        if let Some(ref children) = self.children {
+            for child in children.iter() {
+                child.query_circle_for_each_recursive(bounds, center, radius_sq, visitor);
+            }
+        }
+    }
+
     /// Recursive query implementation that includes positions.
     fn query_with_pos_recursive<'a>(&'a self, bounds: &Bounds, results: &mut Vec<(Vec2, &'a T)>) {
         if !self.bounds.intersects(*bounds) {

@@ -9,6 +9,7 @@
 use std::path::{Path, PathBuf};
 
 use rource_math::Vec2;
+use rustc_hash::FxHashSet;
 
 use crate::entity::{DirId, FileId};
 
@@ -43,11 +44,11 @@ pub struct DirNode {
     /// Parent directory (None for root).
     parent: Option<DirId>,
 
-    /// Child directories.
-    children: Vec<DirId>,
+    /// Child directories (`FxHashSet` for O(1) contains/insert/remove).
+    children: FxHashSet<DirId>,
 
-    /// Files directly in this directory.
-    files: Vec<FileId>,
+    /// Files directly in this directory (`FxHashSet` for O(1) contains/insert/remove).
+    files: FxHashSet<FileId>,
 
     /// Position in 2D space.
     position: Vec2,
@@ -89,8 +90,8 @@ impl DirNode {
             name: String::new(),
             path: PathBuf::new(),
             parent: None,
-            children: Vec::new(),
-            files: Vec::new(),
+            children: FxHashSet::default(),
+            files: FxHashSet::default(),
             position: Vec2::ZERO,
             velocity: Vec2::ZERO,
             radius: DEFAULT_DIR_RADIUS,
@@ -114,8 +115,8 @@ impl DirNode {
             name,
             path,
             parent: Some(parent),
-            children: Vec::new(),
-            files: Vec::new(),
+            children: FxHashSet::default(),
+            files: FxHashSet::default(),
             position: Vec2::ZERO,
             velocity: Vec2::ZERO,
             radius: DEFAULT_DIR_RADIUS,
@@ -157,18 +158,44 @@ impl DirNode {
         self.parent
     }
 
-    /// Returns the child directory IDs.
+    /// Returns an iterator over child directory IDs.
     #[inline]
-    #[must_use]
-    pub fn children(&self) -> &[DirId] {
-        &self.children
+    pub fn children(&self) -> impl Iterator<Item = DirId> + '_ {
+        self.children.iter().copied()
     }
 
-    /// Returns the file IDs in this directory.
+    /// Returns true if this directory contains the given child.
     #[inline]
     #[must_use]
-    pub fn files(&self) -> &[FileId] {
-        &self.files
+    pub fn has_child(&self, child_id: DirId) -> bool {
+        self.children.contains(&child_id)
+    }
+
+    /// Returns the number of child directories.
+    #[inline]
+    #[must_use]
+    pub fn children_len(&self) -> usize {
+        self.children.len()
+    }
+
+    /// Returns an iterator over file IDs in this directory.
+    #[inline]
+    pub fn files(&self) -> impl Iterator<Item = FileId> + '_ {
+        self.files.iter().copied()
+    }
+
+    /// Returns true if this directory contains the given file.
+    #[inline]
+    #[must_use]
+    pub fn has_file(&self, file_id: FileId) -> bool {
+        self.files.contains(&file_id)
+    }
+
+    /// Returns the number of files in this directory.
+    #[inline]
+    #[must_use]
+    pub fn files_len(&self) -> usize {
+        self.files.len()
     }
 
     /// Returns the current position.
@@ -403,28 +430,28 @@ impl DirNode {
             .collect()
     }
 
-    /// Adds a child directory.
+    /// Adds a child directory. O(1) amortized.
+    #[inline]
     pub fn add_child(&mut self, child_id: DirId) {
-        if !self.children.contains(&child_id) {
-            self.children.push(child_id);
-        }
+        self.children.insert(child_id);
     }
 
-    /// Removes a child directory.
+    /// Removes a child directory. O(1).
+    #[inline]
     pub fn remove_child(&mut self, child_id: DirId) {
-        self.children.retain(|&id| id != child_id);
+        self.children.remove(&child_id);
     }
 
-    /// Adds a file to this directory.
+    /// Adds a file to this directory. O(1) amortized.
+    #[inline]
     pub fn add_file(&mut self, file_id: FileId) {
-        if !self.files.contains(&file_id) {
-            self.files.push(file_id);
-        }
+        self.files.insert(file_id);
     }
 
-    /// Removes a file from this directory.
+    /// Removes a file from this directory. O(1).
+    #[inline]
     pub fn remove_file(&mut self, file_id: FileId) {
-        self.files.retain(|&id| id != file_id);
+        self.files.remove(&file_id);
     }
 
     /// Returns true if this is the root directory.
@@ -435,12 +462,14 @@ impl DirNode {
     }
 
     /// Returns the number of direct children (files + subdirectories).
+    #[inline]
     #[must_use]
     pub fn child_count(&self) -> usize {
-        self.children.len() + self.files.len()
+        self.children_len() + self.files_len()
     }
 
     /// Returns true if this directory is empty.
+    #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.children.is_empty() && self.files.is_empty()
@@ -552,15 +581,15 @@ mod tests {
 
         node.add_child(child1);
         node.add_child(child2);
-        node.add_child(child1); // Duplicate should be ignored
+        node.add_child(child1); // Duplicate should be ignored (HashSet)
 
-        assert_eq!(node.children().len(), 2);
-        assert!(node.children().contains(&child1));
-        assert!(node.children().contains(&child2));
+        assert_eq!(node.children_len(), 2);
+        assert!(node.has_child(child1));
+        assert!(node.has_child(child2));
 
         node.remove_child(child1);
-        assert_eq!(node.children().len(), 1);
-        assert!(!node.children().contains(&child1));
+        assert_eq!(node.children_len(), 1);
+        assert!(!node.has_child(child1));
     }
 
     #[test]
@@ -574,12 +603,12 @@ mod tests {
         node.add_file(file1);
         node.add_file(file2);
 
-        assert_eq!(node.files().len(), 2);
+        assert_eq!(node.files_len(), 2);
         assert_eq!(node.child_count(), 2);
         assert!(!node.is_empty());
 
         node.remove_file(file1);
-        assert_eq!(node.files().len(), 1);
+        assert_eq!(node.files_len(), 1);
     }
 
     #[test]
