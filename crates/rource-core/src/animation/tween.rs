@@ -27,7 +27,7 @@
 //! let value = 0.0 + (100.0 - 0.0) * eased_t;
 //! ```
 
-use std::f32::consts::PI;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 /// Easing function types.
 ///
@@ -176,8 +176,8 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
         }
 
         // Sine
-        Easing::SineIn => 1.0 - (t * PI / 2.0).cos(),
-        Easing::SineOut => (t * PI / 2.0).sin(),
+        Easing::SineIn => 1.0 - (t * FRAC_PI_2).cos(),
+        Easing::SineOut => (t * FRAC_PI_2).sin(),
         Easing::SineInOut => (1.0 - (t * PI).cos()) * 0.5,
 
         // Exponential

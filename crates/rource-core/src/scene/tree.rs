@@ -229,9 +229,13 @@ impl DirTree {
 
         for component in path.components() {
             let name = component.as_os_str().to_string_lossy();
+            // Allocate name string once and reuse for both lookup and child creation
+            // Previously: name.to_string() was called twice (lookup + child_name)
+            let name_string = name.into_owned();
 
             // O(1) HashMap lookup for existing child with this name
-            let lookup_key = (current_id.index(), name.to_string());
+            // Use clone for lookup key since we may need name_string for child creation
+            let lookup_key = (current_id.index(), name_string.clone());
             if let Some(&child_id) = self.children_by_name.get(&lookup_key) {
                 // Verify the child still exists with correct generation
                 if self.get(child_id).is_some() {
@@ -247,7 +251,8 @@ impl DirTree {
             let parent_pos = self.get(current_id).map_or(Vec2::ZERO, DirNode::position);
 
             let child_id = self.id_allocator.allocate();
-            let child_name = name.to_string();
+            // Reuse name_string instead of calling to_string() again
+            let child_name = name_string;
             let mut child = DirNode::new(
                 child_id,
                 child_name.clone(),
@@ -258,7 +263,7 @@ impl DirTree {
 
             // Position new node near parent with some random offset
             // Using deterministic offset based on name hash
-            let hash = name.bytes().fold(0u32, |acc, b| {
+            let hash = child_name.bytes().fold(0u32, |acc, b| {
                 acc.wrapping_mul(31).wrapping_add(u32::from(b))
             });
             let angle = (hash % 360) as f32 * std::f32::consts::PI / 180.0;
@@ -501,7 +506,7 @@ impl DirTree {
 
         // Apply sibling spacing multiplier to increase angular separation
         let effective_span = span * config.sibling_spacing_multiplier.min(1.0);
-        let padding = (span - effective_span) / 2.0;
+        let padding = (span - effective_span) * 0.5;
         let mut current_angle = start_angle + padding;
 
         for (child_id, weight) in children.iter().zip(child_weights.iter()) {

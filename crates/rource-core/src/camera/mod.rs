@@ -223,8 +223,8 @@ mod helpers {
         viewport_height: f32,
         zoom: f32,
     ) -> (f32, f32) {
-        let centered_x = screen_x - viewport_width / 2.0;
-        let centered_y = screen_y - viewport_height / 2.0;
+        let centered_x = screen_x - viewport_width * 0.5;
+        let centered_y = screen_y - viewport_height * 0.5;
         let world_x = camera_x + centered_x / zoom;
         let world_y = camera_y + centered_y / zoom;
         (world_x, world_y)
@@ -256,8 +256,8 @@ mod helpers {
     ) -> (f32, f32) {
         let offset_x = world_x - camera_x;
         let offset_y = world_y - camera_y;
-        let screen_x = offset_x * zoom + viewport_width / 2.0;
-        let screen_y = offset_y * zoom + viewport_height / 2.0;
+        let screen_x = offset_x * zoom + viewport_width * 0.5;
+        let screen_y = offset_y * zoom + viewport_height * 0.5;
         (screen_x, screen_y)
     }
 
@@ -601,7 +601,7 @@ impl Camera {
     #[must_use]
     pub fn screen_to_world(&self, screen_pos: Vec2) -> Vec2 {
         let centered =
-            screen_pos - Vec2::new(self.viewport_width / 2.0, self.viewport_height / 2.0);
+            screen_pos - Vec2::new(self.viewport_width * 0.5, self.viewport_height * 0.5);
         let scaled = centered / self.zoom;
         self.position + scaled
     }
@@ -611,7 +611,7 @@ impl Camera {
     pub fn world_to_screen(&self, world_pos: Vec2) -> Vec2 {
         let offset = world_pos - self.position;
         let scaled = offset * self.zoom;
-        scaled + Vec2::new(self.viewport_width / 2.0, self.viewport_height / 2.0)
+        scaled + Vec2::new(self.viewport_width * 0.5, self.viewport_height * 0.5)
     }
 
     /// Returns true if the world position is visible.

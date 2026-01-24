@@ -174,7 +174,7 @@ impl Scene {
     /// Creates a new empty scene.
     #[must_use]
     pub fn new() -> Self {
-        let half_size = DEFAULT_SCENE_SIZE / 2.0;
+        let half_size = DEFAULT_SCENE_SIZE * 0.5;
         let bounds = Bounds::new(
             Vec2::new(-half_size, -half_size),
             Vec2::new(half_size, half_size),
