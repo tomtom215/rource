@@ -788,6 +788,151 @@ impl SpatialHashPipeline {
         self.stats.bytes_downloaded += buffer_size;
     }
 
+    /// Prepares the staging buffer and adds a copy command to the encoder.
+    ///
+    /// This should be called after `dispatch()` but before submitting the command buffer.
+    /// It enables batching compute and copy into a single command buffer submission,
+    /// reducing CPU overhead compared to separate submissions.
+    ///
+    /// After calling this and submitting the encoder, use `download_entities_mapped()`
+    /// to read the results.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for buffer creation
+    /// * `encoder` - Command encoder to add the copy command to
+    pub fn prepare_readback(&mut self, device: &Device, encoder: &mut CommandEncoder) {
+        if self.entity_count == 0 {
+            return;
+        }
+
+        let buffer_size = self.entity_count * ENTITY_SIZE;
+
+        // Create or resize staging buffer if needed
+        if self.staging_buffer.is_none()
+            || self
+                .staging_buffer
+                .as_ref()
+                .is_some_and(|b| b.size() < buffer_size as u64)
+        {
+            self.staging_buffer = Some(device.create_buffer(&BufferDescriptor {
+                label: Some("Entity Staging Buffer"),
+                size: (self.entity_capacity * ENTITY_SIZE) as u64,
+                usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }));
+        }
+
+        // Add copy command to the encoder
+        encoder.copy_buffer_to_buffer(
+            &self.entity_buffer,
+            0,
+            self.staging_buffer.as_ref().unwrap(),
+            0,
+            buffer_size as u64,
+        );
+    }
+
+    /// Downloads entities from a staging buffer that was prepared with `prepare_readback()`.
+    ///
+    /// This method assumes the command buffer containing the copy has already been submitted.
+    /// It performs only the map operation and poll, avoiding a second command buffer submission.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for polling
+    ///
+    /// # Returns
+    ///
+    /// Vector of entity data, or empty if no staging buffer or no entities.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn download_entities_mapped(&mut self, device: &Device) -> Vec<ComputeEntity> {
+        let mut output = Vec::with_capacity(self.entity_count);
+        self.download_entities_mapped_into(device, &mut output);
+        output
+    }
+
+    /// Downloads entities into the provided buffer from a prepared staging buffer.
+    ///
+    /// Zero-allocation version of `download_entities_mapped()`.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for polling
+    /// * `output` - Buffer to fill with entity data (cleared before filling)
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn download_entities_mapped_into(
+        &mut self,
+        device: &Device,
+        output: &mut Vec<ComputeEntity>,
+    ) {
+        output.clear();
+
+        if self.entity_count == 0 {
+            return;
+        }
+
+        let Some(staging) = &self.staging_buffer else {
+            return;
+        };
+
+        let buffer_size = self.entity_count * ENTITY_SIZE;
+
+        // Map and read (copy was already submitted via prepare_readback)
+        let slice = staging.slice(0..buffer_size as u64);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        device.poll(wgpu::Maintain::Wait);
+
+        let data = slice.get_mapped_range();
+        let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
+        output.extend_from_slice(entities);
+        drop(data);
+        staging.unmap();
+
+        self.stats.bytes_downloaded += buffer_size;
+    }
+
+    /// Downloads entities from a staging buffer that was prepared with `prepare_readback()` (WASM).
+    #[cfg(target_arch = "wasm32")]
+    pub fn download_entities_mapped(&mut self, device: &Device) -> Vec<ComputeEntity> {
+        let mut output = Vec::with_capacity(self.entity_count);
+        self.download_entities_mapped_into(device, &mut output);
+        output
+    }
+
+    /// Downloads entities into the provided buffer from a prepared staging buffer (WASM).
+    #[cfg(target_arch = "wasm32")]
+    pub fn download_entities_mapped_into(
+        &mut self,
+        device: &Device,
+        output: &mut Vec<ComputeEntity>,
+    ) {
+        output.clear();
+
+        if self.entity_count == 0 {
+            return;
+        }
+
+        let Some(staging) = &self.staging_buffer else {
+            return;
+        };
+
+        let buffer_size = self.entity_count * ENTITY_SIZE;
+
+        // Map and read (copy was already submitted via prepare_readback)
+        let slice = staging.slice(0..buffer_size as u64);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        device.poll(wgpu::Maintain::Wait);
+
+        let data = slice.get_mapped_range();
+        let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
+        output.extend_from_slice(entities);
+        drop(data);
+        staging.unmap();
+
+        self.stats.bytes_downloaded += buffer_size;
+    }
+
     /// Warms up all compute pipelines by running zero-sized dispatches.
     pub fn warmup(&mut self, device: &Device, queue: &Queue) {
         // Create a temporary bind group if needed

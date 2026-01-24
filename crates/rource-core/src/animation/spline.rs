@@ -415,6 +415,11 @@ impl CatmullRomSpline {
     ///
     /// Returns (t, distance) where t is the parameter and distance
     /// is the distance to the closest point.
+    ///
+    /// # Performance
+    ///
+    /// Uses squared distance for comparisons, only computing sqrt once
+    /// at the end. Avoids N-1 unnecessary sqrt calls per invocation.
     #[must_use]
     pub fn closest_point(&mut self, position: Vec2) -> (f32, f32) {
         self.ensure_cache();
@@ -424,17 +429,19 @@ impl CatmullRomSpline {
         }
 
         let mut best_t = 0.0;
-        let mut best_dist = f32::INFINITY;
+        let mut best_dist_sq = f32::INFINITY;
 
         for (i, point) in self.cached_points.iter().enumerate() {
-            let dist = (*point - position).length();
-            if dist < best_dist {
-                best_dist = dist;
+            // Use squared distance for comparison to avoid sqrt per iteration
+            let dist_sq = (*point - position).length_squared();
+            if dist_sq < best_dist_sq {
+                best_dist_sq = dist_sq;
                 best_t = i as f32 / (self.cached_points.len() - 1).max(1) as f32;
             }
         }
 
-        (best_t, best_dist)
+        // Only compute sqrt once for the final result
+        (best_t, best_dist_sq.sqrt())
     }
 }
 

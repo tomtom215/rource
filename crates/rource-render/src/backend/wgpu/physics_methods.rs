@@ -179,12 +179,15 @@ impl WgpuRenderer {
         // Dispatch all 9 compute passes
         pipeline.dispatch(&mut encoder, &self.queue, delta_time);
 
-        // Submit and wait for completion
-        self.queue.submit(Some(encoder.finish()));
-        self.device.poll(wgpu::Maintain::Wait);
+        // Add copy command to the same encoder (batched submission)
+        // This avoids a second command buffer submission for the copy.
+        pipeline.prepare_readback(&self.device, &mut encoder);
 
-        // Download results synchronously
-        pipeline.download_entities_sync(&self.device, &self.queue)
+        // Submit both compute and copy in one command buffer
+        self.queue.submit(Some(encoder.finish()));
+
+        // Download results (just map + poll, copy was already submitted)
+        pipeline.download_entities_mapped(&self.device)
     }
 
     /// Dispatches physics using O(N²) brute force algorithm.
@@ -431,12 +434,15 @@ impl WgpuRenderer {
         // Dispatch all 9 compute passes
         pipeline.dispatch(&mut encoder, &self.queue, delta_time);
 
-        // Submit and wait for completion
-        self.queue.submit(Some(encoder.finish()));
-        self.device.poll(wgpu::Maintain::Wait);
+        // Add copy command to the same encoder (batched submission)
+        // This avoids a second command buffer submission for the copy.
+        pipeline.prepare_readback(&self.device, &mut encoder);
 
-        // Download results synchronously
-        pipeline.download_entities_sync(&self.device, &self.queue)
+        // Submit both compute and copy in one command buffer
+        self.queue.submit(Some(encoder.finish()));
+
+        // Download results (just map + poll, copy was already submitted)
+        pipeline.download_entities_mapped(&self.device)
     }
 
     /// Dispatches physics synchronously using O(N²) brute force algorithm (WASM).

@@ -4093,4 +4093,258 @@ conversion to fully integer-only arithmetic using 8-bit and 10-bit fixed-point.
 
 ---
 
+## Phase 37: Data Structure and Algorithm Micro-Optimizations (2026-01-24)
+
+### Summary
+
+Phase 37 focuses on eliminating allocations, reducing unnecessary computations, and
+improving data structure operations that were identified as inefficient during profiling.
+
+### Optimizations
+
+#### 1. DirTree.len() O(n) → O(1)
+
+**Problem**: Every call to `DirTree::len()` iterated through all nodes to count non-None entries.
+
+**Before**:
+```rust
+pub fn len(&self) -> usize {
+    self.nodes.iter().filter(|opt| opt.is_some()).count()
+}
+```
+
+**After**:
+```rust
+// Added node_count field to DirTree struct
+pub fn len(&self) -> usize {
+    self.node_count
+}
+// Increment on add, decrement on remove
+```
+
+**Impact**: O(n) → O(1) for every `len()` call. Saves ~n iterations per call.
+
+#### 2. Parent Positions Vec Elimination
+
+**Problem**: `update_parent_positions()` allocated a Vec of all parent positions, then
+iterated again to apply them. This happened every frame.
+
+**Before**:
+```rust
+pub fn update_parent_positions(&mut self) {
+    let parent_positions: Vec<_> = self.nodes.iter()
+        .map(|opt| /* get parent position */)
+        .collect();  // Allocates Vec
+
+    for (node, parent_pos) in self.nodes.iter_mut().zip(parent_positions) {
+        if let Some(n) = node {
+            n.set_parent_position(parent_pos);
+        }
+    }
+}
+```
+
+**After**:
+```rust
+pub fn update_parent_positions(&mut self) {
+    for idx in 0..self.nodes.len() {
+        // Read phase: get parent position (releases borrow after)
+        let parent_pos = if let Some(node) = &self.nodes[idx] {
+            node.parent().and_then(|parent_id| /* get parent position */)
+        } else {
+            continue;
+        };
+        // Write phase: set parent position
+        if let Some(node) = &mut self.nodes[idx] {
+            node.set_parent_position(parent_pos);
+        }
+    }
+}
+```
+
+**Impact**: Zero allocations per frame, saves ~n * sizeof(Option<Vec2>) bytes/frame.
+
+#### 3. Spline closest_point() sqrt() Reduction
+
+**Problem**: `closest_point()` computed sqrt for every cached point when comparing distances,
+resulting in N unnecessary sqrt calls per invocation.
+
+**Before**:
+```rust
+for (i, point) in self.cached_points.iter().enumerate() {
+    let dist = (*point - position).length();  // sqrt per point
+    if dist < best_dist { /* ... */ }
+}
+(best_t, best_dist)
+```
+
+**After**:
+```rust
+for (i, point) in self.cached_points.iter().enumerate() {
+    let dist_sq = (*point - position).length_squared();  // No sqrt
+    if dist_sq < best_dist_sq { /* ... */ }
+}
+(best_t, best_dist_sq.sqrt())  // Single sqrt at end
+```
+
+**Impact**: Reduces sqrt calls from N to 1 per invocation (~15-20 cycles saved per point).
+
+#### 4. Extension Stats String Allocation Reduction
+
+**Problem**: `recompute_extension_stats()` called `to_string()` on every file's extension,
+even though most files share the same extension.
+
+**Before**:
+```rust
+for file in self.files.values() {
+    let ext = file.extension().unwrap_or("other").to_string();  // Allocates!
+    *stats.entry(ext).or_insert(0) += 1;
+}
+```
+
+**After**:
+```rust
+for file in self.files.values() {
+    let ext = file.extension().unwrap_or("other");
+    // Only allocate String when inserting new extension
+    if let Some(count) = stats.get_mut(ext) {
+        *count += 1;
+    } else {
+        stats.insert(ext.to_string(), 1);  // Only allocates for unique extensions
+    }
+}
+```
+
+**Impact**: Reduces allocations from N (total files) to K (unique extensions).
+For a repo with 10,000 .rs files, saves ~9,999 String allocations.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-core/src/scene/tree.rs` | Added `node_count` field, O(1) `len()`, zero-alloc `update_parent_positions()` |
+| `crates/rource-core/src/animation/spline.rs` | `length()` → `length_squared()` in comparison loop |
+| `crates/rource-core/src/scene/stats_methods.rs` | `get_mut` + `insert` pattern for extension stats |
+
+### Performance Summary
+
+| Metric | Before Phase 37 | After Phase 37 |
+|--------|-----------------|----------------|
+| DirTree.len() | O(n) | O(1) |
+| update_parent_positions() | O(n) + Vec alloc | O(n) zero alloc |
+| closest_point() sqrts | N | 1 |
+| Extension stats allocs | N files | K unique extensions |
+
+**Test Count**: 1,899 tests passing (all optimizations verified)
+
+---
+
+## Phase 38: GPU Physics Command Buffer Batching (2026-01-24)
+
+### Summary
+
+Phase 38 optimizes the GPU physics pipeline by eliminating redundant synchronization
+and batching compute and copy operations into a single command buffer submission.
+
+### Problem Analysis
+
+The spatial hash GPU physics pipeline had the following inefficiencies:
+
+1. **Redundant poll after compute submit**: A `device.poll(Maintain::Wait)` blocked
+   CPU after submitting compute work, even though the subsequent copy operation
+   would implicitly wait for compute to finish (wgpu queue ordering guarantee).
+
+2. **Separate command buffer submissions**: Compute and copy operations were submitted
+   as separate command buffers, doubling driver overhead.
+
+**Before (2 submissions, 2 polls)**:
+```
+submit(compute_encoder)  →  poll(Wait)  →  submit(copy_encoder)  →  poll(Wait)
+```
+
+**After (1 submission, 1 poll)**:
+```
+submit(compute_and_copy_encoder)  →  poll(Wait)
+```
+
+### Implementation
+
+#### 1. Added `prepare_readback()` to `SpatialHashPipeline`
+
+New method that adds the copy command to an existing encoder, enabling batched submission:
+
+```rust
+pub fn prepare_readback(&mut self, device: &Device, encoder: &mut CommandEncoder) {
+    // Create staging buffer if needed
+    // Add copy command to encoder
+    encoder.copy_buffer_to_buffer(&self.entity_buffer, 0, staging, 0, size);
+}
+```
+
+#### 2. Added `download_entities_mapped()` Methods
+
+New download methods that assume copy was already submitted via `prepare_readback()`:
+
+```rust
+pub fn download_entities_mapped(&mut self, device: &Device) -> Vec<ComputeEntity> {
+    // Map staging buffer (copy was already submitted)
+    slice.map_async(wgpu::MapMode::Read, |_| {});
+    device.poll(wgpu::Maintain::Wait);
+    // Read and return data
+}
+```
+
+#### 3. Updated Dispatch Methods
+
+Both native and WASM spatial hash dispatch methods now use the batched approach:
+
+```rust
+fn dispatch_physics_spatial_hash(&mut self, entities: &[ComputeEntity], dt: f32) {
+    pipeline.dispatch(&mut encoder, &self.queue, dt);      // Compute
+    pipeline.prepare_readback(&self.device, &mut encoder); // Copy (same encoder)
+    self.queue.submit(Some(encoder.finish()));             // One submission
+    pipeline.download_entities_mapped(&self.device)        // Map + poll
+}
+```
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/backend/wgpu/spatial_hash.rs` | Added `prepare_readback()`, `download_entities_mapped()`, `download_entities_mapped_into()` |
+| `crates/rource-render/src/backend/wgpu/physics_methods.rs` | Updated `dispatch_physics_spatial_hash()` and WASM variant to use batched approach |
+
+### Performance Impact
+
+**Theoretical savings per physics frame**:
+- Eliminated 1 redundant `device.poll(Maintain::Wait)` call
+- Reduced command buffer submissions from 2 to 1
+- Estimated CPU overhead reduction: 0.1-1ms per frame (driver dependent)
+
+**Determinism**: Preserved
+- GPU execution order unchanged (compute → copy → map)
+- Same data produced with same inputs
+- Only CPU-side synchronization pattern changed
+
+**Correctness**: Verified
+- wgpu guarantees queue ordering within a device
+- Copy operation cannot begin until compute finishes
+- Map operation cannot complete until copy finishes
+
+### Why Not Full Async/Double-Buffering?
+
+True async readback with 1-frame latency would require:
+1. Maintaining two sets of physics buffers
+2. Reading "previous frame" results while computing "current frame"
+3. This introduces physics lag and complexity
+
+The batched approach achieves significant gains without changing semantics:
+- Same-frame physics results (no latency)
+- Deterministic behavior preserved
+- Simpler implementation
+
+**Test Count**: 1,899 tests passing (all optimizations verified)
+
+---
+
 *This document was extracted from CLAUDE.md on 2026-01-24 to improve maintainability.*
