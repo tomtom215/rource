@@ -315,7 +315,8 @@ pub fn move_connected_entities_for_file(
     // Also zero velocity so physics doesn't fight the drag
     if let Some(dir) = scene.directories_mut().get_mut(dir_id) {
         let distance = (dir.position() - dragged_pos).length();
-        let distance_factor = (1.0 - distance * INV_DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+        let distance_factor =
+            (1.0 - distance * INV_DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
         let coupling = DRAG_COUPLING_STRENGTH * 0.5 * distance_factor;
 
         if coupling > 0.01 {

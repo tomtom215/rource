@@ -40,8 +40,13 @@ impl HoverInfo {
     pub fn to_json(&self) -> String {
         use std::fmt::Write;
         // Estimate capacity: fixed JSON overhead (~70 bytes) + field lengths
-        let capacity = 70 + self.entity_type.len() + self.name.len()
-            + self.path.len() + self.extension.len() + self.color.len() + 10;
+        let capacity = 70
+            + self.entity_type.len()
+            + self.name.len()
+            + self.path.len()
+            + self.extension.len()
+            + self.color.len()
+            + 10;
         let mut json = String::with_capacity(capacity);
         let _ = write!(
             json,
@@ -61,7 +66,10 @@ impl HoverInfo {
 /// Single-pass implementation to avoid multiple intermediate String allocations.
 fn escape_json(s: &str) -> String {
     // Fast path: if no escaping needed, return as-is (no allocation beyond to_string)
-    if !s.bytes().any(|b| b == b'\\' || b == b'"' || b == b'\n' || b == b'\r' || b == b'\t') {
+    if !s
+        .bytes()
+        .any(|b| b == b'\\' || b == b'"' || b == b'\n' || b == b'\r' || b == b'\t')
+    {
         return s.to_string();
     }
 
