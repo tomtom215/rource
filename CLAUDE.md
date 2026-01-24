@@ -66,7 +66,7 @@ This script will:
 
 | Tool      | Version | Purpose            |
 |-----------|---------|-------------------|
-| Rust      | 1.76+   | Core language      |
+| Rust      | 1.82+   | Core language      |
 | Cargo     | Latest  | Package manager    |
 | wasm-pack | 0.12+   | WASM bundling      |
 | rustup    | Latest  | Toolchain management |
