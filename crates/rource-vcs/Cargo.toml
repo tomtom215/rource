@@ -11,7 +11,15 @@ authors.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = []
+# Enable binary cache for 100x faster repeat loads of large repositories
+cache = ["dep:bitcode"]
+
 [dependencies]
+# Binary serialization for visualization cache (optional)
+# Adds ~11KB gzipped to WASM bundle, enables 100x faster repeat loads
+bitcode = { version = "0.6", optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

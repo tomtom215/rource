@@ -58,6 +58,8 @@
 
 // Lints are configured in workspace Cargo.toml
 
+#[cfg(feature = "cache")]
+pub mod cache;
 pub mod commit;
 pub mod compact;
 pub mod detect;
@@ -74,3 +76,9 @@ pub use error::{ParseError, ParseResult};
 pub use intern::{InternedPath, InternedString, PathInterner, StringInterner};
 pub use parser::{CustomParser, GitParser, ParseOptions, Parser};
 pub use stream::{CustomLogGrouper, CustomLogStream, GitLogStream, StreamingCommitLoader};
+
+#[cfg(feature = "cache")]
+pub use cache::{
+    cache_min_version, cache_version, hash_repo_id, CacheError, CacheResult, VisualizationCache,
+    CACHE_MAGIC, CACHE_MIN_VERSION, CACHE_VERSION,
+};

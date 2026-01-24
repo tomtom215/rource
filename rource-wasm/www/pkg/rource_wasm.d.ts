@@ -135,6 +135,43 @@ export class Rource {
      */
     enableRourceWatermark(): void;
     /**
+     * Exports the current commits as a binary cache.
+     *
+     * Returns `null` if no commits are loaded.
+     *
+     * The returned bytes can be stored in IndexedDB for fast subsequent loads.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const bytes = rource.exportCacheBytes();
+     * if (bytes) {
+     *     await idb.put('cache', repoHash, bytes);
+     * }
+     * ```
+     */
+    exportCacheBytes(): Uint8Array | undefined;
+    /**
+     * Exports the current commits as a binary cache with a repository identifier.
+     *
+     * The repository hash is used to validate the cache when loading.
+     *
+     * # Arguments
+     *
+     * * `repo_id` - A unique identifier for the repository (URL, path, etc.).
+     *
+     * # Returns
+     *
+     * The serialized cache bytes, or `null` if no commits are loaded.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const bytes = rource.exportCacheBytesWithRepoId('https://github.com/owner/repo.git');
+     * ```
+     */
+    exportCacheBytesWithRepoId(repo_id: string): Uint8Array | undefined;
+    /**
      * Forces a render without updating simulation.
      */
     forceRender(): void;
@@ -177,6 +214,36 @@ export class Rource {
      */
     getAuthors(): string;
     /**
+     * Returns statistics about the current cache state.
+     *
+     * Returns a JSON object with cache information, or `null` if
+     * no commits are loaded.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const stats = rource.getCacheStats();
+     * if (stats) {
+     *     const info = JSON.parse(stats);
+     *     console.log(`${info.commits} commits, ${info.sizeBytes} bytes`);
+     * }
+     * ```
+     */
+    getCacheStats(): string | undefined;
+    /**
+     * Returns the current cache format version.
+     *
+     * Use this to check compatibility before loading a cache.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const version = Rource.getCacheVersion();
+     * console.log('Cache version:', version);
+     * ```
+     */
+    static getCacheVersion(): number;
+    /**
      * Returns the current camera state as JSON.
      *
      * Returns `{"x": <f32>, "y": <f32>, "zoom": <f32>}`
@@ -217,6 +284,36 @@ export class Rource {
      * if no commits are loaded.
      */
     getDateRange(): string | undefined;
+    /**
+     * Returns detailed frame profiling statistics as JSON.
+     *
+     * This provides phase-level timing breakdown for identifying bottlenecks:
+     * - `sceneUpdateMs`: Time spent applying commits and updating physics
+     * - `renderMs`: Time spent in render passes
+     * - `gpuWaitMs`: Time waiting for GPU (WebGPU only)
+     * - `effectsMs`: Time in post-processing (bloom, shadows)
+     * - `totalMs`: Total frame time
+     *
+     * Rolling averages (`avg*`) are calculated over the last 60 frames.
+     *
+     * ## Usage
+     *
+     * ```javascript
+     * const stats = JSON.parse(rource.getDetailedFrameStats());
+     * console.log(`Scene: ${stats.sceneUpdateMs.toFixed(2)}ms`);
+     * console.log(`Render: ${stats.renderMs.toFixed(2)}ms`);
+     * console.log(`WASM heap: ${(stats.wasmHeapBytes / 1024 / 1024).toFixed(1)}MB`);
+     * ```
+     *
+     * ## Chrome `DevTools` Integration
+     *
+     * When the `profiling` feature is enabled, Performance marks are added
+     * that show up in Chrome `DevTools` Performance tab:
+     * - `rource:frame_start` / `rource:frame_end`
+     * - `rource:scene_update_start` / `rource:scene_update_end`
+     * - `rource:render_start` / `rource:render_end`
+     */
+    getDetailedFrameStats(): string;
     /**
      * Returns the estimated draw call count for the current frame.
      */
@@ -479,6 +576,88 @@ export class Rource {
      */
     hasFileIcons(): boolean;
     /**
+     * Checks if cache data has a valid magic header.
+     *
+     * This is a quick check that doesn't fully validate the cache.
+     * Use before attempting to import to provide fast feedback.
+     *
+     * # Arguments
+     *
+     * * `bytes` - The cache bytes to check.
+     *
+     * # Returns
+     *
+     * `true` if the data starts with the "RSVC" magic bytes.
+     */
+    static hasValidCacheMagic(bytes: Uint8Array): boolean;
+    /**
+     * Computes a stable hash for a repository identifier.
+     *
+     * Use this to create cache keys for IndexedDB storage.
+     *
+     * # Arguments
+     *
+     * * `repo_id` - A unique identifier for the repository (URL, path, etc.).
+     *
+     * # Returns
+     *
+     * A 64-bit hash as a hex string (16 characters).
+     *
+     * # Example
+     *
+     * ```javascript
+     * const hash = Rource.hashRepoId('https://github.com/owner/repo.git');
+     * // Use hash as IndexedDB key
+     * await idb.put('cache', hash, cacheBytes);
+     * ```
+     */
+    static hashRepoId(repo_id: string): string;
+    /**
+     * Imports commits from a binary cache.
+     *
+     * Returns the number of commits loaded, or 0 if the cache is invalid.
+     *
+     * # Arguments
+     *
+     * * `bytes` - The cache bytes previously exported with `exportCacheBytes()`.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const bytes = await idb.get('cache', repoHash);
+     * if (bytes) {
+     *     const count = rource.importCacheBytes(bytes);
+     *     if (count > 0) {
+     *         console.log(`Loaded ${count} commits from cache`);
+     *     }
+     * }
+     * ```
+     */
+    importCacheBytes(bytes: Uint8Array): number;
+    /**
+     * Imports commits from a binary cache, validating the repository identifier.
+     *
+     * Returns the number of commits loaded, or 0 if:
+     * - The cache is invalid
+     * - The repository hash doesn't match
+     *
+     * # Arguments
+     *
+     * * `bytes` - The cache bytes.
+     * * `repo_id` - The expected repository identifier.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const bytes = await idb.get('cache', repoHash);
+     * const count = rource.importCacheBytesWithRepoId(bytes, repoUrl);
+     * if (count === 0) {
+     *     // Cache miss or mismatch - fallback to parsing
+     * }
+     * ```
+     */
+    importCacheBytesWithRepoId(bytes: Uint8Array, repo_id: string): number;
+    /**
      * Initializes the file icon system.
      *
      * This pre-generates icons for common file extensions (rs, js, py, etc.)
@@ -564,6 +743,18 @@ export class Rource {
      * Returns whether playback is active.
      */
     isPlaying(): boolean;
+    /**
+     * Returns true if the `profiling` feature is enabled.
+     *
+     * When true, Performance API marks are added to frames for Chrome `DevTools`.
+     */
+    isProfilingEnabled(): boolean;
+    /**
+     * Returns true if the `tracing` feature is enabled.
+     *
+     * When true, Rust tracing spans are routed to browser console.
+     */
+    isTracingEnabled(): boolean;
     /**
      * Returns whether vsync is currently enabled.
      *
@@ -1135,11 +1326,15 @@ export interface InitOutput {
     readonly rource_disableWatermark: (a: number) => void;
     readonly rource_dispose: (a: number) => void;
     readonly rource_enableRourceWatermark: (a: number) => void;
+    readonly rource_exportCacheBytes: (a: number, b: number) => void;
+    readonly rource_exportCacheBytesWithRepoId: (a: number, b: number, c: number, d: number) => void;
     readonly rource_forceRender: (a: number) => void;
     readonly rource_frame: (a: number, b: number) => number;
     readonly rource_getActiveActions: (a: number) => number;
     readonly rource_getAuthorColor: (a: number, b: number, c: number, d: number) => void;
     readonly rource_getAuthors: (a: number, b: number) => void;
+    readonly rource_getCacheStats: (a: number, b: number) => void;
+    readonly rource_getCacheVersion: () => number;
     readonly rource_getCameraState: (a: number, b: number) => void;
     readonly rource_getCanvasHeight: (a: number) => number;
     readonly rource_getCanvasWidth: (a: number) => number;
@@ -1148,6 +1343,7 @@ export interface InitOutput {
     readonly rource_getCommitFileCount: (a: number, b: number) => number;
     readonly rource_getCommitTimestamp: (a: number, b: number) => number;
     readonly rource_getDateRange: (a: number, b: number) => void;
+    readonly rource_getDetailedFrameStats: (a: number, b: number) => void;
     readonly rource_getDrawCalls: (a: number) => number;
     readonly rource_getEntityAtCursor: (a: number, b: number, c: number, d: number) => void;
     readonly rource_getEntityBounds: (a: number, b: number) => void;
@@ -1179,6 +1375,10 @@ export interface InitOutput {
     readonly rource_getZoom: (a: number) => number;
     readonly rource_getZoomDebugInfo: (a: number, b: number) => void;
     readonly rource_hasFileIcons: (a: number) => number;
+    readonly rource_hasValidCacheMagic: (a: number, b: number) => number;
+    readonly rource_hashRepoId: (a: number, b: number, c: number) => void;
+    readonly rource_importCacheBytes: (a: number, b: number, c: number) => number;
+    readonly rource_importCacheBytesWithRepoId: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly rource_initFileIcons: (a: number) => number;
     readonly rource_isAutoFit: (a: number) => number;
     readonly rource_isContextLost: (a: number) => number;
@@ -1188,6 +1388,7 @@ export interface InitOutput {
     readonly rource_isGPUPhysicsActive: (a: number) => number;
     readonly rource_isGPUPhysicsEnabled: (a: number) => number;
     readonly rource_isPlaying: (a: number) => number;
+    readonly rource_isProfilingEnabled: (a: number) => number;
     readonly rource_isVsyncEnabled: (a: number) => number;
     readonly rource_isWatermarkEnabled: (a: number) => number;
     readonly rource_isWebGL2: (a: number) => number;
@@ -1243,9 +1444,10 @@ export interface InitOutput {
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
-    readonly __wasm_bindgen_func_elem_2362: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6530: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2363: (a: number, b: number, c: number) => void;
+    readonly rource_isTracingEnabled: (a: number) => number;
+    readonly __wasm_bindgen_func_elem_2506: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6680: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2507: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

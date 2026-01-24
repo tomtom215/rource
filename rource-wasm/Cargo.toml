@@ -30,7 +30,9 @@ wasm-opt = false
 workspace = true
 
 [features]
-default = []
+default = ["cache"]
+# Enable binary cache for 100x faster repeat loads (adds ~11KB gzipped)
+cache = ["rource-vcs/cache"]
 # Enable detailed performance profiling with Performance API marks/measures
 # These show up in browser DevTools Performance tab
 profiling = []
