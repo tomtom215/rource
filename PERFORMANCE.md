@@ -58,6 +58,7 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 46: VCS Parser Zero-Allocation (2026-01-24)](#phase-46-vcs-parser-zero-allocation-2026-01-24)
 - [Phase 47: Force Normalization Optimization (2026-01-24)](#phase-47-force-normalization-optimization-2026-01-24)
 - [Phase 48: Perpendicular Vector Optimization (2026-01-24)](#phase-48-perpendicular-vector-optimization-2026-01-24)
+- [Phase 49: Easing Functions and Camera Optimizations (2026-01-24)](#phase-49-easing-functions-and-camera-optimizations-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -5407,6 +5408,134 @@ directly reduces CPU time during tree layout and rendering.
 - Normalizing then multiplying by length is algebraically equivalent to not normalizing
 - All 1,899 tests pass
 - Visual output is identical (verified via deterministic headless rendering)
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 49: Easing Functions and Camera Optimizations (2026-01-24)
+
+### Overview
+
+Phase 49 addresses multiple optimization opportunities:
+
+1. **Easing functions**: Replace `powi()` calls with explicit multiplication
+2. **Camera3D trig caching**: Cache sin/cos values to avoid redundant computation
+3. **Camera3D distance checks**: Use `length_squared()` instead of `length()` to avoid sqrt
+
+### Easing Function Optimization
+
+**The Pattern**: Easing functions used `powi(n)` for power calculations:
+
+```rust
+// Before: Using powi()
+Easing::CubicOut => 1.0 - (1.0 - t).powi(3),
+Easing::QuartOut => 1.0 - (1.0 - t).powi(4),
+Easing::QuintOut => 1.0 - (1.0 - t).powi(5),
+
+// After: Explicit multiplication
+Easing::CubicOut => {
+    let u = 1.0 - t;
+    1.0 - u * u * u
+}
+Easing::QuartOut => {
+    let u = 1.0 - t;
+    let u2 = u * u;
+    1.0 - u2 * u2
+}
+Easing::QuintOut => {
+    let u = 1.0 - t;
+    let u2 = u * u;
+    1.0 - u2 * u2 * u
+}
+```
+
+**Benchmark Results**: Modern LLVM optimizes `powi()` very effectively in release builds.
+The explicit multiplication provides equivalent performance but with clearer intent:
+
+| Easing | Batch 1000 | Throughput |
+|--------|------------|------------|
+| Linear | 5.10 µs | 196 Melem/s |
+| QuadOut | 5.61 µs | 178 Melem/s |
+| QuadInOut | 4.97 µs | 201 Melem/s |
+| CubicOut | 4.91 µs | 204 Melem/s |
+| QuartOut | 5.03 µs | 199 Melem/s |
+| QuintOut | 4.99 µs | 200 Melem/s |
+
+**Note**: The compiler already optimized `powi()` well, so this change primarily
+improves code clarity and explicitness rather than raw performance.
+
+### Camera3D Trigonometry Caching
+
+**The Problem**: `eye_position()` computed `pitch.cos()` twice:
+
+```rust
+// Before: cos(pitch) computed twice
+pub fn eye_position(&self) -> Vec3 {
+    let x = self.distance * self.pitch.cos() * self.yaw.sin();  // cos #1
+    let y = self.distance * self.pitch.sin();
+    let z = self.distance * self.pitch.cos() * self.yaw.cos();  // cos #2 (redundant!)
+    self.target + Vec3::new(x, y, z)
+}
+```
+
+**The Solution**: Cache trig values:
+
+```rust
+// After: Each trig function called once
+pub fn eye_position(&self) -> Vec3 {
+    let (pitch_sin, pitch_cos) = (self.pitch.sin(), self.pitch.cos());
+    let (yaw_sin, yaw_cos) = (self.yaw.sin(), self.yaw.cos());
+    let x = self.distance * pitch_cos * yaw_sin;
+    let y = self.distance * pitch_sin;
+    let z = self.distance * pitch_cos * yaw_cos;
+    self.target + Vec3::new(x, y, z)
+}
+```
+
+**Impact**: Saves ~20-30 CPU cycles per camera update (sin/cos are ~15-20 cycles each).
+
+### Camera3D Distance Comparison
+
+**The Problem**: Using `length()` for threshold comparison computes unnecessary sqrt:
+
+```rust
+// Before: sqrt computed just to compare against threshold
+if (self.target_target - self.target).length() > 0.01 {
+```
+
+**The Solution**: Use squared comparison:
+
+```rust
+// After: No sqrt needed (0.01² = 0.0001)
+if (self.target_target - self.target).length_squared() > 0.0001 {
+```
+
+**Impact**: Saves ~15-20 CPU cycles per frame when camera is interpolating.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-core/src/animation/tween.rs` | Replaced powi() with explicit multiplication in easing functions |
+| `crates/rource-core/src/camera/camera3d.rs` | Cached trig values, used length_squared() |
+| `crates/rource-core/benches/easing_perf.rs` | New benchmark file |
+| `crates/rource-core/Cargo.toml` | Added easing_perf benchmark entry |
+
+### Easing Functions Modified
+
+- QuadInOut, CubicOut, CubicInOut
+- QuartIn, QuartOut, QuartInOut
+- QuintIn, QuintOut, QuintInOut
+- CircOut, CircInOut
+- BackOut, BackInOut
+
+### Correctness Verification
+
+- All easing functions produce identical output (verified by existing tests)
+- Mathematical equivalence: `x.powi(2) == x * x`, `x.powi(3) == x * x * x`, etc.
+- All 1,899 tests pass
+- Camera behavior unchanged (verified by camera tests)
 
 **Test Count**: 1,899 tests passing
 
