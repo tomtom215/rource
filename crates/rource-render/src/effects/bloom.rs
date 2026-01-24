@@ -230,8 +230,10 @@ impl BloomEffect {
 
         // Pre-compute threshold in 0-255 range for integer comparison
         let threshold_u8 = (self.threshold * 255.0) as u32;
-        // Pre-compute intensity factor
-        let intensity_scale = self.intensity / 255.0;
+        // Pre-compute intensity as 8-bit fixed-point (intensity * 256)
+        // This allows: factor_fixed = (brightness - threshold) * intensity_fixed
+        // And: channel_contribution = (channel * factor_fixed) >> 8
+        let intensity_fixed = (self.intensity * 256.0) as u32;
 
         // Precompute coordinate ranges
         let x_ranges: Vec<(usize, usize)> = (0..dst_w)
@@ -250,10 +252,11 @@ impl BloomEffect {
             })
             .collect();
 
-        // Precompute reciprocal for typical block size
+        // Precompute 10-bit fixed-point reciprocal for typical block size
+        // inv_count_fixed = (1024 + count/2) / count for proper rounding
         let downscale = self.downscale;
-        let typical_count = (downscale * downscale) as f32;
-        let inv_count = 1.0 / typical_count;
+        let typical_count = downscale * downscale;
+        let inv_count_fixed = (1024 + typical_count / 2) / typical_count;
 
         for (dy, &(sy_start, sy_end)) in y_ranges.iter().enumerate() {
             let dst_row = dy * dst_w;
@@ -262,7 +265,6 @@ impl BloomEffect {
                 let mut r_sum = 0u32;
                 let mut g_sum = 0u32;
                 let mut b_sum = 0u32;
-                let mut bright_count = 0u32;
 
                 // Process each pixel in the source block
                 for sy in sy_start..sy_end {
@@ -277,32 +279,40 @@ impl BloomEffect {
                         let brightness = (77 * r + 150 * g + 29 * b) >> 8;
 
                         if brightness > threshold_u8 {
-                            // Apply intensity scaling to bright pixels
-                            let factor = (brightness - threshold_u8) as f32 * intensity_scale;
-                            r_sum += (r as f32 * factor) as u32;
-                            g_sum += (g as f32 * factor) as u32;
-                            b_sum += (b as f32 * factor) as u32;
-                            bright_count += 1;
+                            // Integer-only intensity scaling:
+                            // factor_fixed = (brightness - threshold) * intensity_fixed / 255
+                            // Using >> 8 instead of / 255 (close enough, avoids division)
+                            let excess = brightness - threshold_u8;
+                            let factor_fixed = (excess * intensity_fixed) >> 8;
+
+                            // Accumulate: channel * factor_fixed >> 8 to get final contribution
+                            // But we defer the >> 8 to the averaging step for precision
+                            r_sum += r * factor_fixed;
+                            g_sum += g * factor_fixed;
+                            b_sum += b * factor_fixed;
                         }
                     }
                 }
 
-                // Average the bright contributions
+                // Average the contributions using integer-only arithmetic
+                // r_sum has an extra << 8 factor from factor_fixed, so we need >> 8 here
                 let count = (sy_end - sy_start) * (sx_end - sx_start);
-                let (r, g, b) = if bright_count > 0 {
-                    if count == downscale * downscale {
+                let (r, g, b) = if r_sum > 0 || g_sum > 0 || b_sum > 0 {
+                    if count == typical_count {
                         // Common case: use precomputed reciprocal
-                        let r = (r_sum as f32 * inv_count) as u32;
-                        let g = (g_sum as f32 * inv_count) as u32;
-                        let b = (b_sum as f32 * inv_count) as u32;
-                        (r.min(255), g.min(255), b.min(255))
+                        // Result = (sum >> 8) * inv_count_fixed >> 10
+                        // Reorder: (sum * inv_count_fixed) >> 18
+                        let r = ((r_sum * inv_count_fixed as u32) >> 18).min(255);
+                        let g = ((g_sum * inv_count_fixed as u32) >> 18).min(255);
+                        let b = ((b_sum * inv_count_fixed as u32) >> 18).min(255);
+                        (r, g, b)
                     } else if count > 0 {
                         // Edge case: compute reciprocal
-                        let inv = 1.0 / count as f32;
-                        let r = (r_sum as f32 * inv) as u32;
-                        let g = (g_sum as f32 * inv) as u32;
-                        let b = (b_sum as f32 * inv) as u32;
-                        (r.min(255), g.min(255), b.min(255))
+                        let inv_fixed = (1024 + count / 2) / count;
+                        let r = ((r_sum * inv_fixed as u32) >> 18).min(255);
+                        let g = ((g_sum * inv_fixed as u32) >> 18).min(255);
+                        let b = ((b_sum * inv_fixed as u32) >> 18).min(255);
+                        (r, g, b)
                     } else {
                         (0, 0, 0)
                     }

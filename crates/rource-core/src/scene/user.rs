@@ -237,12 +237,16 @@ impl User {
         // Move towards target
         if let Some(target) = self.target {
             let direction = target - self.position;
-            let distance = direction.length();
+            // Use length_squared() for threshold check to avoid sqrt when unnecessary
+            let distance_sq = direction.length_squared();
 
-            if distance > 1.0 {
+            if distance_sq > 1.0 {
+                // Only compute sqrt when we actually need the distance value
+                let distance = distance_sq.sqrt();
                 // Move towards target, speed capped by USER_SPEED
                 let speed = USER_SPEED.min(distance * 2.0);
-                self.velocity = direction.normalized() * speed;
+                // Normalize using precomputed distance to avoid second sqrt
+                self.velocity = direction * (speed / distance);
             } else {
                 // Close enough, clear target
                 self.target = None;
@@ -251,7 +255,8 @@ impl User {
         } else {
             // No target, slow down
             self.velocity *= 0.9;
-            if self.velocity.length() < 0.1 {
+            // Use length_squared() to avoid sqrt (0.1² = 0.01)
+            if self.velocity.length_squared() < 0.01 {
                 self.velocity = Vec2::ZERO;
             }
         }

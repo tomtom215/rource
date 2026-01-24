@@ -52,6 +52,10 @@ pub(super) const FORCE_MIN_DISTANCE: f32 = 5.0;
 /// Squared minimum distance for optimized comparisons (avoids sqrt).
 pub(super) const FORCE_MIN_DISTANCE_SQ: f32 = FORCE_MIN_DISTANCE * FORCE_MIN_DISTANCE;
 
+/// Maximum distance beyond which repulsion forces are negligible.
+/// At d=100, force = `FORCE_REPULSION` / d² = 800 / 10000 = 0.08 (negligible).
+pub(super) const FORCE_MAX_DISTANCE_SQ: f32 = 10000.0;
+
 /// Directory data for force-directed layout calculation.
 pub(super) type DirForceData = (DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32);
 
@@ -178,6 +182,11 @@ impl Scene {
 
                 let delta = pos_j - pos_i;
                 let distance_sq = delta.length_squared();
+
+                // Distance culling: skip pairs too far apart (force is negligible)
+                if distance_sq > FORCE_MAX_DISTANCE_SQ {
+                    continue;
+                }
 
                 // Guard against zero-length delta (check squared distance)
                 if distance_sq < 0.001 {
