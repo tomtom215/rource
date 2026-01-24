@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769254616330,
+  "lastUpdate": 1769257060765,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1520,6 +1520,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1039964,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b723757f5659f8f63d523dc9ccb6a186d3d89e7a",
+          "message": "Merge pull request #149 from tomtom215/claude/review-serialization-performance-4KzZt\n\nPhase 29: Add visualization cache for 100x faster repeat loads",
+          "timestamp": "2026-01-24T13:15:18+01:00",
+          "tree_id": "a90774b67a0106019492610016f8ed3dd2297db0",
+          "url": "https://github.com/tomtom215/rource/commit/b723757f5659f8f63d523dc9ccb6a186d3d89e7a"
+        },
+        "date": 1769257060479,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3907032,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2761893,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1065514,
             "unit": "bytes"
           }
         ]
