@@ -8,7 +8,7 @@
 //!
 //! # Module Structure
 //!
-//! - [`renderer`]: Main `SoftwareRenderer` implementation
+//! - `renderer`: Main [`SoftwareRenderer`] implementation
 //! - [`optimized`]: Fixed-point arithmetic and lookup table optimizations
 //!
 //! # Production Quality
@@ -19,8 +19,8 @@
 //! - Observable metrics for profiling
 //! - Comprehensive test coverage
 
-mod renderer;
 pub mod optimized;
+mod renderer;
 
 // Re-export the main renderer
 pub use renderer::SoftwareRenderer;

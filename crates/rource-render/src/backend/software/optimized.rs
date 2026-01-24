@@ -106,7 +106,11 @@ const fn const_sqrt(x: f64) -> f64 {
         // 20 iterations for high precision
         let next = 0.5 * (guess + x / guess);
         // Manual abs for const fn compatibility
-        let diff = if next > guess { next - guess } else { guess - next };
+        let diff = if next > guess {
+            next - guess
+        } else {
+            guess - next
+        };
         if diff < 1e-15 {
             return next;
         }
@@ -118,7 +122,7 @@ const fn const_sqrt(x: f64) -> f64 {
 
 /// Pre-computed inverse table for fast division by small integers.
 /// Maps n -> (65536 / n) for n in 1..256.
-/// Division by n becomes: (x * INV_TABLE[n]) >> 16
+/// Division by n becomes: `(x * INV_TABLE\[n\]) >> 16`
 pub static INV_TABLE: [u32; 256] = {
     let mut table = [0u32; 256];
     table[0] = 0; // Division by zero -> 0 (safe default)
@@ -730,9 +734,9 @@ mod tests {
 
     #[test]
     fn test_inv_table_accuracy() {
-        for n in 1..256 {
+        for (n, &inv_val) in INV_TABLE.iter().enumerate().skip(1) {
             let expected = 65536.0 / n as f64;
-            let actual = INV_TABLE[n] as f64;
+            let actual = inv_val as f64;
             let error = (expected - actual).abs() / expected;
             assert!(
                 error < 0.01,
@@ -751,18 +755,18 @@ mod tests {
         // Input format: dist² * 256 (8.16 fixed-point)
         // Output format: sqrt(dist) * 256 (8.8 fixed-point)
         let cases = [
-            (0, 0),           // sqrt(0) = 0
-            (1 * 256, 256),   // sqrt(1) = 1 -> 256 in 8.8
-            (4 * 256, 512),   // sqrt(4) = 2 -> 512 in 8.8
-            (9 * 256, 768),   // sqrt(9) = 3 -> 768 in 8.8
-            (16 * 256, 1024), // sqrt(16) = 4 -> 1024 in 8.8
+            (0, 0),            // sqrt(0) = 0
+            (256, 256),        // sqrt(1) = 1 -> 256 in 8.8
+            (4 * 256, 512),    // sqrt(4) = 2 -> 512 in 8.8
+            (9 * 256, 768),    // sqrt(9) = 3 -> 768 in 8.8
+            (16 * 256, 1024),  // sqrt(16) = 4 -> 1024 in 8.8
             (100 * 256, 2560), // sqrt(100) = 10 -> 2560 in 8.8
             (400 * 256, 5120), // sqrt(400) = 20 -> 5120 in 8.8
         ];
 
         for (input, expected) in cases {
             let result = fast_sqrt_fixed(input);
-            let error = (result as i32 - expected as i32).abs();
+            let error = (result as i32 - expected).abs();
             assert!(
                 error < 15,
                 "fast_sqrt({input}): expected {expected}, got {result}"
@@ -794,18 +798,9 @@ mod tests {
         let b = result & 0xFF;
 
         // 50% blend of white (255) with black (0) should be ~127
-        assert!(
-            (125..=131).contains(&r),
-            "R should be ~128, got {r}"
-        );
-        assert!(
-            (125..=131).contains(&g),
-            "G should be ~128, got {g}"
-        );
-        assert!(
-            (125..=131).contains(&b),
-            "B should be ~128, got {b}"
-        );
+        assert!((125..=131).contains(&r), "R should be ~128, got {r}");
+        assert!((125..=131).contains(&g), "G should be ~128, got {g}");
+        assert!((125..=131).contains(&b), "B should be ~128, got {b}");
     }
 
     #[test]
@@ -930,7 +925,10 @@ mod tests {
 
         // Center should still be black (ring has a hole)
         let center_idx = 50 * 100 + 50;
-        assert_eq!(pixels[center_idx], 0xFF00_0000, "Ring center should be empty");
+        assert_eq!(
+            pixels[center_idx], 0xFF00_0000,
+            "Ring center should be empty"
+        );
     }
 
     #[test]
@@ -975,7 +973,10 @@ mod tests {
         metrics.disc_pixels_processed = 1000;
 
         let summary = metrics.summary();
-        assert!(summary.contains("Discs: 10"), "Summary should mention disc count");
+        assert!(
+            summary.contains("Discs: 10"),
+            "Summary should mention disc count"
+        );
     }
 
     // ========================================================================

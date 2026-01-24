@@ -1665,7 +1665,10 @@ mod tests {
     #[test]
     fn test_deterministic_mode_default_disabled() {
         let renderer = SoftwareRenderer::new(100, 100);
-        assert!(!renderer.is_deterministic_mode(), "Deterministic mode should be off by default");
+        assert!(
+            !renderer.is_deterministic_mode(),
+            "Deterministic mode should be off by default"
+        );
     }
 
     #[test]
