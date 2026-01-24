@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769213654737,
+  "lastUpdate": 1769215742402,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1247,6 +1247,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1036484,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e29ca64aa7dd2a415085c0d01bd6cf80b9432cff",
+          "message": "Merge pull request #142 from tomtom215/claude/rource-performance-optimization-J88bx\n\nImplement HUD string caching to eliminate per-frame allocations",
+          "timestamp": "2026-01-24T01:46:59+01:00",
+          "tree_id": "9eb72e231e92c08a506f2356a9cab8b57fa6f4d6",
+          "url": "https://github.com/tomtom215/rource/commit/e29ca64aa7dd2a415085c0d01bd6cf80b9432cff"
+        },
+        "date": 1769215741569,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3905360,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2696567,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1037332,
             "unit": "bytes"
           }
         ]
