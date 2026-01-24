@@ -64,7 +64,8 @@ impl GlyphKey {
     /// Returns the font size in points.
     #[inline]
     pub fn size(&self) -> f32 {
-        self.size_tenths as f32 / 10.0
+        // Use multiplication instead of division (0.1 = 1/10)
+        self.size_tenths as f32 * 0.1
     }
 }
 

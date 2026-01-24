@@ -122,6 +122,17 @@ impl PlaybackState {
         self.accumulated_time = 0.0;
     }
 
+    /// Clamps accumulated time to a maximum value.
+    ///
+    /// Used to prevent unbounded growth when the per-frame commit limit is hit.
+    /// This ensures we don't build up a massive backlog that would freeze the browser.
+    #[inline]
+    pub fn clamp_accumulated_time(&mut self, max: f32) {
+        if self.accumulated_time > max {
+            self.accumulated_time = max;
+        }
+    }
+
     /// Returns whether playback is active.
     #[inline]
     pub fn is_playing(&self) -> bool {
@@ -347,6 +358,21 @@ mod tests {
 
         state.reset_accumulated_time();
         assert_eq!(state.accumulated_time(), 0.0);
+    }
+
+    #[test]
+    fn test_playback_state_clamp_accumulated_time() {
+        let mut state = PlaybackState::new();
+        state.add_time(10.0);
+        assert_eq!(state.accumulated_time(), 10.0);
+
+        // Clamp to 5.0
+        state.clamp_accumulated_time(5.0);
+        assert_eq!(state.accumulated_time(), 5.0);
+
+        // Clamping to higher value should not change it
+        state.clamp_accumulated_time(100.0);
+        assert_eq!(state.accumulated_time(), 5.0);
     }
 
     #[test]

@@ -174,7 +174,7 @@ impl Scene {
     /// Creates a new empty scene.
     #[must_use]
     pub fn new() -> Self {
-        let half_size = DEFAULT_SCENE_SIZE / 2.0;
+        let half_size = DEFAULT_SCENE_SIZE * 0.5;
         let bounds = Bounds::new(
             Vec2::new(-half_size, -half_size),
             Vec2::new(half_size, half_size),
@@ -501,7 +501,8 @@ impl Scene {
 
             if let Some(file_pos) = file_pos {
                 // If user is still at origin (default position), place them near the file
-                if user.position().length() < 1.0 {
+                // Use length_squared() to avoid sqrt (1.0² = 1.0)
+                if user.position().length_squared() < 1.0 {
                     let offset = Vec2::new(-50.0, -30.0);
                     user.set_position(file_pos + offset);
                 }

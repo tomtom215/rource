@@ -1294,7 +1294,8 @@ impl Renderer for SoftwareRenderer {
         let mut glyph_positions = std::mem::take(&mut self.glyph_buffer);
         for &(gx, gy, ch, font_id, sz_key) in &glyph_positions {
             // Glyph is already cached, this is just a HashMap lookup (no re-rasterization)
-            if let Some(glyph) = self.font_cache.rasterize(font_id, ch, sz_key as f32 / 10.0) {
+            // Use multiplication instead of division (0.1 = 1/10)
+            if let Some(glyph) = self.font_cache.rasterize(font_id, ch, sz_key as f32 * 0.1) {
                 // Use split borrow pattern: separate borrows of font_cache and pixels
                 draw_glyph_inner(
                     &mut self.pixels,

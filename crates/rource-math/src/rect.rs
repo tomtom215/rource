@@ -93,8 +93,8 @@ impl Rect {
     #[must_use]
     pub fn from_center_size(center: Vec2, size: Vec2) -> Self {
         Self {
-            x: center.x - size.x / 2.0,
-            y: center.y - size.y / 2.0,
+            x: center.x - size.x * 0.5,
+            y: center.y - size.y * 0.5,
             width: size.x,
             height: size.y,
         }
@@ -125,8 +125,8 @@ impl Rect {
     #[must_use]
     pub fn center(self) -> Vec2 {
         Vec2 {
-            x: self.x + self.width / 2.0,
-            y: self.y + self.height / 2.0,
+            x: self.x + self.width * 0.5,
+            y: self.y + self.height * 0.5,
         }
     }
 
@@ -309,8 +309,8 @@ impl Rect {
         let new_width = self.width * factor;
         let new_height = self.height * factor;
         Self {
-            x: center.x - new_width / 2.0,
-            y: center.y - new_height / 2.0,
+            x: center.x - new_width * 0.5,
+            y: center.y - new_height * 0.5,
             width: new_width,
             height: new_height,
         }

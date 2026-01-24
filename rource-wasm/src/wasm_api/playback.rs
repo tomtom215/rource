@@ -92,8 +92,27 @@ impl Rource {
     ///
     /// This rebuilds the scene state by replaying all commits up to the
     /// specified index, then pre-warms the physics simulation.
+    ///
+    /// # Performance Warning
+    ///
+    /// For large repositories, seeking to a distant commit (e.g., commit 50,000
+    /// in a 100K commit repo) will apply all previous commits synchronously,
+    /// which may cause brief UI freezing. Consider using incremental playback
+    /// for very large repositories.
     pub fn seek(&mut self, commit_index: usize) {
         if commit_index < self.commits.len() {
+            // Log warning for large seeks
+            #[cfg(target_arch = "wasm32")]
+            if commit_index > 10000 {
+                web_sys::console::warn_1(
+                    &format!(
+                        "Seeking to commit {} may take a moment (replaying {} commits)",
+                        commit_index, commit_index
+                    )
+                    .into(),
+                );
+            }
+
             // Reset scene and replay commits up to the target
             self.scene = rource_core::scene::Scene::new();
             self.playback.set_current_commit(0);

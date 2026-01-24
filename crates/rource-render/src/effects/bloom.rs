@@ -176,21 +176,19 @@ impl BloomEffect {
         // Ensure buffers are properly sized (only reallocates when dimensions change)
         self.ensure_buffers(width, height, small_w, small_h);
 
-        // 1. Extract bright pixels into pre-allocated buffer
-        self.extract_bright_into(pixels);
+        // 1. Extract bright pixels AND downscale in single pass
+        // This saves ~16MB memory bandwidth at 1920x1080 (8.3MB write + 8.3MB read)
+        self.extract_and_downscale_into(pixels, width, height, small_w, small_h);
 
-        // 2. Downscale for faster blur
-        self.downscale_into(width, height, small_w, small_h);
-
-        // 3. Apply box blur multiple times (ping-pong between small_buffer and blur_temp)
+        // 2. Apply box blur multiple times (ping-pong between small_buffer and blur_temp)
         for _ in 0..self.passes {
             self.box_blur_in_place(small_w, small_h);
         }
 
-        // 4. Upscale into bloom_buffer
+        // 3. Upscale into bloom_buffer
         self.upscale_into(small_w, small_h, width, height);
 
-        // 5. Additive blend
+        // 4. Additive blend
         for (pixel, bloom_pixel) in pixels.iter_mut().zip(self.bloom_buffer.iter()) {
             *pixel = Self::additive_blend(*pixel, *bloom_pixel);
         }
@@ -207,8 +205,9 @@ impl BloomEffect {
             self.cached_width = width;
             self.cached_height = height;
 
-            // Resize full-resolution buffers
-            self.bright_buffer.resize(full_size, 0xFF00_0000);
+            // Note: bright_buffer is no longer used (combined with downscale)
+            // Keep it sized for backwards compatibility if needed, but it's unused
+            self.bright_buffer.resize(small_size, 0xFF00_0000);
             self.bloom_buffer.resize(full_size, 0xFF00_0000);
 
             // Resize downscaled buffers
@@ -217,49 +216,33 @@ impl BloomEffect {
         }
     }
 
-    /// Extracts bright pixels above the threshold into `bright_buffer`.
+    /// Extracts bright pixels and downscales in a single pass.
     ///
-    /// Uses integer math for brightness calculation (ITU-R BT.601 coefficients).
-    /// Fixed-point: brightness = (77*R + 150*G + 29*B) / 256
-    fn extract_bright_into(&mut self, pixels: &[u32]) {
-        // Pre-compute threshold in 0-255 range for integer comparison
-        let threshold_u8 = (self.threshold * 255.0) as u32;
-        // Pre-compute intensity factor (1/255 built in for output scaling)
-        let intensity_scale = self.intensity / 255.0;
-
-        for (dst, &p) in self.bright_buffer.iter_mut().zip(pixels.iter()) {
-            let r = (p >> 16) & 0xFF;
-            let g = (p >> 8) & 0xFF;
-            let b = p & 0xFF;
-
-            // Calculate perceived brightness using fixed-point integer math
-            // ITU-R BT.601: 0.299*R + 0.587*G + 0.114*B
-            // Scaled: (77*R + 150*G + 29*B) / 256 (coefficients sum to 256)
-            let brightness = (77 * r + 150 * g + 29 * b) >> 8;
-
-            *dst = if brightness > threshold_u8 {
-                // Factor scaled by intensity for output color
-                let factor = (brightness - threshold_u8) as f32 * intensity_scale;
-                let nr = ((r as f32 * factor) as u32).min(255);
-                let ng = ((g as f32 * factor) as u32).min(255);
-                let nb = ((b as f32 * factor) as u32).min(255);
-                0xFF00_0000 | (nr << 16) | (ng << 8) | nb
-            } else {
-                0xFF00_0000 // Black with full alpha
-            };
-        }
-    }
-
-    /// Downscales `bright_buffer` into `small_buffer` using box filtering.
+    /// This combined operation eliminates the full-resolution `bright_buffer`,
+    /// saving ~8.3MB of memory bandwidth per frame at 1920x1080.
     ///
-    /// Optimized with precomputed coordinate ranges for each destination pixel.
-    fn downscale_into(&mut self, src_w: usize, src_h: usize, dst_w: usize, dst_h: usize) {
+    /// For each destination pixel, samples the source block, applies brightness
+    /// thresholding, and averages the bright contributions.
+    fn extract_and_downscale_into(
+        &mut self,
+        pixels: &[u32],
+        src_w: usize,
+        src_h: usize,
+        dst_w: usize,
+        dst_h: usize,
+    ) {
         if dst_w == 0 || dst_h == 0 {
             return;
         }
 
-        // Precompute X ranges for each destination column
-        // For dst pixel dx, compute (sx_start, sx_end) in source
+        // Pre-compute threshold in 0-255 range for integer comparison
+        let threshold_u8 = (self.threshold * 255.0) as u32;
+        // Pre-compute intensity as 8-bit fixed-point (intensity * 256)
+        // This allows: factor_fixed = (brightness - threshold) * intensity_fixed
+        // And: channel_contribution = (channel * factor_fixed) >> 8
+        let intensity_fixed = (self.intensity * 256.0) as u32;
+
+        // Precompute coordinate ranges
         let x_ranges: Vec<(usize, usize)> = (0..dst_w)
             .map(|dx| {
                 let sx_start = dx * src_w / dst_w;
@@ -268,7 +251,6 @@ impl BloomEffect {
             })
             .collect();
 
-        // Precompute Y ranges for each destination row
         let y_ranges: Vec<(usize, usize)> = (0..dst_h)
             .map(|dy| {
                 let sy_start = dy * src_h / dst_h;
@@ -277,11 +259,11 @@ impl BloomEffect {
             })
             .collect();
 
-        // Precompute inverse count for each block size (for reciprocal multiplication)
-        // The block size is typically downscale × downscale = 16 for downscale=4
+        // Precompute 10-bit fixed-point reciprocal for typical block size
+        // inv_count_fixed = (1024 + count/2) / count for proper rounding
         let downscale = self.downscale;
-        let typical_count = (downscale * downscale) as f32;
-        let inv_count = 1.0 / typical_count;
+        let typical_count = downscale * downscale;
+        let inv_count_fixed = (1024 + typical_count / 2) / typical_count;
 
         for (dy, &(sy_start, sy_end)) in y_ranges.iter().enumerate() {
             let dst_row = dy * dst_w;
@@ -291,32 +273,56 @@ impl BloomEffect {
                 let mut g_sum = 0u32;
                 let mut b_sum = 0u32;
 
-                // Sum all pixels in the source block
+                // Process each pixel in the source block
                 for sy in sy_start..sy_end {
                     let src_row = sy * src_w;
                     for sx in sx_start..sx_end {
-                        let pixel = self.bright_buffer[src_row + sx];
-                        r_sum += (pixel >> 16) & 0xFF;
-                        g_sum += (pixel >> 8) & 0xFF;
-                        b_sum += pixel & 0xFF;
+                        let p = pixels[src_row + sx];
+                        let r = (p >> 16) & 0xFF;
+                        let g = (p >> 8) & 0xFF;
+                        let b = p & 0xFF;
+
+                        // Calculate brightness using ITU-R BT.601
+                        let brightness = (77 * r + 150 * g + 29 * b) >> 8;
+
+                        if brightness > threshold_u8 {
+                            // Integer-only intensity scaling:
+                            // factor_fixed = (brightness - threshold) * intensity_fixed / 255
+                            // Using >> 8 instead of / 255 (close enough, avoids division)
+                            let excess = brightness - threshold_u8;
+                            let factor_fixed = (excess * intensity_fixed) >> 8;
+
+                            // Accumulate: channel * factor_fixed >> 8 to get final contribution
+                            // But we defer the >> 8 to the averaging step for precision
+                            r_sum += r * factor_fixed;
+                            g_sum += g * factor_fixed;
+                            b_sum += b * factor_fixed;
+                        }
                     }
                 }
 
-                // Compute average using reciprocal multiplication for typical case
+                // Average the contributions using integer-only arithmetic
+                // r_sum has an extra << 8 factor from factor_fixed, so we need >> 8 here
                 let count = (sy_end - sy_start) * (sx_end - sx_start);
-                let (r, g, b) = if count == downscale * downscale {
-                    // Common case: use precomputed reciprocal
-                    let r = (r_sum as f32 * inv_count) as u32;
-                    let g = (g_sum as f32 * inv_count) as u32;
-                    let b = (b_sum as f32 * inv_count) as u32;
-                    (r.min(255), g.min(255), b.min(255))
-                } else if count > 0 {
-                    // Edge case: compute reciprocal
-                    let inv = 1.0 / count as f32;
-                    let r = (r_sum as f32 * inv) as u32;
-                    let g = (g_sum as f32 * inv) as u32;
-                    let b = (b_sum as f32 * inv) as u32;
-                    (r.min(255), g.min(255), b.min(255))
+                let (r, g, b) = if r_sum > 0 || g_sum > 0 || b_sum > 0 {
+                    if count == typical_count {
+                        // Common case: use precomputed reciprocal
+                        // Result = (sum >> 8) * inv_count_fixed >> 10
+                        // Reorder: (sum * inv_count_fixed) >> 18
+                        let r = ((r_sum * inv_count_fixed as u32) >> 18).min(255);
+                        let g = ((g_sum * inv_count_fixed as u32) >> 18).min(255);
+                        let b = ((b_sum * inv_count_fixed as u32) >> 18).min(255);
+                        (r, g, b)
+                    } else if count > 0 {
+                        // Edge case: compute reciprocal
+                        let inv_fixed = (1024 + count / 2) / count;
+                        let r = ((r_sum * inv_fixed as u32) >> 18).min(255);
+                        let g = ((g_sum * inv_fixed as u32) >> 18).min(255);
+                        let b = ((b_sum * inv_fixed as u32) >> 18).min(255);
+                        (r, g, b)
+                    } else {
+                        (0, 0, 0)
+                    }
                 } else {
                     (0, 0, 0)
                 };
@@ -406,6 +412,9 @@ impl BloomEffect {
     ///
     /// Uses O(n) sliding window algorithm instead of O(n × radius) naive approach.
     /// With radius=2 and 180×320 buffer, this reduces iterations from ~1.8M to ~115K.
+    ///
+    /// Uses integer-only arithmetic with 10-bit fixed-point reciprocal to avoid
+    /// f32 conversions in the hot loop.
     #[allow(clippy::cast_possible_wrap)] // Dimensions will never overflow i32
     fn box_blur_in_place(&mut self, width: usize, height: usize) {
         if width == 0 || height == 0 {
@@ -414,8 +423,9 @@ impl BloomEffect {
 
         let r = self.radius as usize;
         let diameter = 2 * r + 1;
-        // Pre-compute reciprocal for faster division (multiply by reciprocal)
-        let inv_diameter = 1.0 / diameter as f32;
+        // 10-bit fixed-point reciprocal: (1024 + diameter/2) / diameter for rounding
+        // This avoids f32 conversions in the hot loop
+        let inv_diameter_fixed = (1024 + diameter / 2) / diameter;
 
         // Horizontal pass: small_buffer -> blur_temp (O(n) sliding window)
         for y in 0..height {
@@ -449,10 +459,11 @@ impl BloomEffect {
             }
 
             for x in 0..width {
-                // Store result using reciprocal multiplication
-                let avg_r = ((sum_r as f32 * inv_diameter) as u32).min(255);
-                let avg_g = ((sum_g as f32 * inv_diameter) as u32).min(255);
-                let avg_b = ((sum_b as f32 * inv_diameter) as u32).min(255);
+                // Store result using integer-only fixed-point multiplication
+                // avg = (sum * inv_diameter_fixed) >> 10
+                let avg_r = ((sum_r * inv_diameter_fixed as u32) >> 10).min(255);
+                let avg_g = ((sum_g * inv_diameter_fixed as u32) >> 10).min(255);
+                let avg_b = ((sum_b * inv_diameter_fixed as u32) >> 10).min(255);
                 self.blur_temp[row + x] = 0xFF00_0000 | (avg_r << 16) | (avg_g << 8) | avg_b;
 
                 // Slide window: remove leaving pixel, add entering pixel
@@ -501,10 +512,10 @@ impl BloomEffect {
             }
 
             for y in 0..height {
-                // Store result
-                let avg_r = ((sum_r as f32 * inv_diameter) as u32).min(255);
-                let avg_g = ((sum_g as f32 * inv_diameter) as u32).min(255);
-                let avg_b = ((sum_b as f32 * inv_diameter) as u32).min(255);
+                // Store result using integer-only fixed-point multiplication
+                let avg_r = ((sum_r * inv_diameter_fixed as u32) >> 10).min(255);
+                let avg_g = ((sum_g * inv_diameter_fixed as u32) >> 10).min(255);
+                let avg_b = ((sum_b * inv_diameter_fixed as u32) >> 10).min(255);
                 self.small_buffer[y * width + x] =
                     0xFF00_0000 | (avg_r << 16) | (avg_g << 8) | avg_b;
 
@@ -678,8 +689,10 @@ mod tests {
         bloom.apply(&mut pixels2, 32, 32);
         assert_eq!(bloom.cached_width, 32);
         assert_eq!(bloom.cached_height, 32);
-        assert_eq!(bloom.bright_buffer.len(), 32 * 32);
+        // bloom_buffer is full resolution, small_buffer is downscaled
+        // With downscale=4: 32x32 -> 8x8 = 64 pixels for small buffers
         assert_eq!(bloom.bloom_buffer.len(), 32 * 32);
+        assert_eq!(bloom.small_buffer.len(), 8 * 8);
     }
 
     #[test]

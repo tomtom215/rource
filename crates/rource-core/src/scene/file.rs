@@ -383,8 +383,8 @@ impl FileNode {
 
         // Move towards target
         let delta = self.target - self.position;
-        let distance = delta.length();
-        if distance > 0.1 {
+        // Use length_squared() to avoid sqrt (0.1² = 0.01)
+        if delta.length_squared() > 0.01 {
             // Smooth interpolation (lerp towards target)
             let t = (dt * 5.0).min(1.0);
             self.position = self.position.lerp(self.target, t);
