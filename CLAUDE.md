@@ -3551,6 +3551,115 @@ const BEAM_HEAD_GLOW_ALPHA: [f32; 2] = [0.3, 0.21];
 
 **Test Count**: 1,898 tests passing (no change)
 
+### Phase 32: WASM Hot Path Optimizations (2026-01-24)
+
+Applied additional performance optimizations to WASM-specific hot paths in interaction.rs, authors.rs, and render_phases.rs.
+
+#### Optimizations Applied
+
+**1. Drag Coupling Distance Precomputed Reciprocal (interaction.rs)**
+
+Replaced 4 division operations in entity drag handling with precomputed reciprocal:
+
+```rust
+// Before: division per drag coupling calculation
+const DRAG_COUPLING_DISTANCE_THRESHOLD: f32 = 200.0;
+let distance_factor = (1.0 - distance / DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+
+// After: precomputed reciprocal, multiplication only
+const INV_DRAG_COUPLING_DISTANCE_THRESHOLD: f32 = 1.0 / DRAG_COUPLING_DISTANCE_THRESHOLD;
+let distance_factor = (1.0 - distance * INV_DRAG_COUPLING_DISTANCE_THRESHOLD).clamp(0.0, 1.0);
+```
+
+**Impact**: Eliminates 4 divisions per drag event (file, user, directory, and multi-entity drag).
+
+**2. Single-Pass JSON Escaping (authors.rs)**
+
+Replaced double `.replace()` chain with fast-path single-pass escaping:
+
+```rust
+// Before: 2 intermediate String allocations
+fn escape_name(name: &str) -> String {
+    name.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+// After: fast path + single-pass with pre-sized buffer
+pub fn escape_json_string(s: &str) -> String {
+    // Fast path: if no escaping needed, return as-is
+    if !s.bytes().any(|b| b == b'\\' || b == b'"') {
+        return s.to_string();
+    }
+    // Slow path: single-pass escape
+    let mut result = String::with_capacity(s.len() + 4);
+    for c in s.chars() {
+        match c {
+            '\\' => result.push_str("\\\\"),
+            '"' => result.push_str("\\\""),
+            _ => result.push(c),
+        }
+    }
+    result
+}
+```
+
+**Impact**: Most author names hit fast path (1 allocation instead of 3).
+
+**3. Pre-Sized HashMap and String Buffers (authors.rs)**
+
+Added capacity hints to avoid reallocations in `get_authors()`:
+
+```rust
+// HashMap for author counts
+let mut author_counts: HashMap<&str, usize> = HashMap::with_capacity(32);
+
+// JSON output string
+let mut json = String::with_capacity(2 + authors.len() * 60);
+
+// Hex color string
+let mut hex_color = String::with_capacity(7);
+```
+
+**Impact**: Eliminates HashMap resizing and String reallocations for typical repositories.
+
+**4. Depth Factor Precomputed Reciprocal (render_phases.rs)**
+
+Replaced per-directory division with precomputed reciprocal:
+
+```rust
+// Before: division per visible directory
+const DEPTH_MAX: f32 = 6.0;
+pub fn compute_depth_factor(depth: u32) -> f32 {
+    (depth as f32 / DEPTH_MAX).min(1.0)
+}
+
+// After: precomputed reciprocal
+const INV_DEPTH_MAX: f32 = 1.0 / 6.0;
+pub fn compute_depth_factor(depth: u32) -> f32 {
+    (depth as f32 * INV_DEPTH_MAX).min(1.0)
+}
+```
+
+**Impact**: Eliminates 1 division per visible directory per frame.
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `rource-wasm/src/interaction.rs` | `INV_DRAG_COUPLING_DISTANCE_THRESHOLD` constant, 4 div→mul conversions |
+| `rource-wasm/src/wasm_api/authors.rs` | Single-pass escaping, pre-sized buffers, HashMap capacity |
+| `rource-wasm/src/render_phases.rs` | `INV_DEPTH_MAX` constant |
+
+#### Quantitative Impact
+
+| Optimization | Trigger | Savings |
+|-------------|---------|---------|
+| Drag coupling | Per drag event | 4 div→mul |
+| Author JSON escape | Per getAuthors() call | 2 fewer allocations typical |
+| HashMap capacity | Per getAuthors() call | 0-3 HashMap resizes avoided |
+| Depth factor | Per visible directory | 1 div→mul per directory |
+
+**Test Count**: 1,898 tests passing (no change)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -4013,4 +4122,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-24 (Phase 31: Visual Rendering Hot Path Optimizations - 1,898 tests total)*
+*Last updated: 2026-01-24 (Phase 32: WASM Hot Path Optimizations - 1,898 tests total)*
