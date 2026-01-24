@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769209648637,
+  "lastUpdate": 1769213654737,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1208,6 +1208,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1035003,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c46aa3b49e7473a17846bbb80d3f108eb3e0d6f9",
+          "message": "Merge pull request #141 from tomtom215/claude/performance-audit-report-CqtfQ\n\nPerformance: Add zero-allocation query APIs and optimize HashMaps",
+          "timestamp": "2026-01-24T01:10:32+01:00",
+          "tree_id": "76ca32931e0d6d045817e8aa6451a6c45736f8ce",
+          "url": "https://github.com/tomtom215/rource/commit/c46aa3b49e7473a17846bbb80d3f108eb3e0d6f9"
+        },
+        "date": 1769213654451,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3905264,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2694562,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1036484,
             "unit": "bytes"
           }
         ]
