@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769271019114,
+  "lastUpdate": 1769273741645,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1676,6 +1676,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1068316,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1b626d0b0345a77769292eb9b7853035b92ff1b4",
+          "message": "Merge pull request #153 from tomtom215/claude/rource-performance-optimization-2ZQFz\n\nPhase 37: Micro-optimize data structures and algorithms",
+          "timestamp": "2026-01-24T17:53:49+01:00",
+          "tree_id": "c248477febcb65f65e343ad71c47d58154943907",
+          "url": "https://github.com/tomtom215/rource/commit/1b626d0b0345a77769292eb9b7853035b92ff1b4"
+        },
+        "date": 1769273741330,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3908864,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2766067,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1066668,
             "unit": "bytes"
           }
         ]
