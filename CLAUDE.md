@@ -3194,6 +3194,59 @@ GPU renderers (wgpu, WebGL2) use GPU-based bloom which is already fast.
 
 **Test Count**: 1,836 tests passing (no change)
 
+### Phase 28: Timeline Tick Alignment Fix (2026-01-24)
+
+Fixed timeline date ticks in the WASM demo to correctly align with commit dates.
+
+#### The Problem
+
+Timeline ticks (month/year markers on the timeline slider) were "skewed" - they didn't
+correctly point to where you'd expect to find commits from that time period.
+
+**Root Cause**: The `findCommitIndexByTimestamp()` function found the **closest** commit
+to a boundary date, but should find the **first commit on or after** that date.
+
+**Example**:
+- Boundary: February 1, 00:00
+- Commit 89: January 31, 23:59 (1 minute before)
+- Commit 90: February 2, 08:00 (32 hours after)
+
+The old code picked commit 89 (closer), so the "February" tick pointed to a January commit.
+
+#### The Fix
+
+Changed `findCommitIndexByTimestamp()` to `findFirstCommitOnOrAfter()`:
+
+```javascript
+// Before: returned closest commit (could be before boundary)
+if (Math.abs(prevTimestamp - targetTimestamp) < Math.abs(lowTimestamp - targetTimestamp)) {
+    return low - 1;  // Bug: returns January commit for February boundary
+}
+
+// After: returns first commit >= boundary date
+if (lowTimestamp < targetTimestamp) {
+    return -1;  // No commit on or after this boundary
+}
+return low;  // Correctly returns February commit
+```
+
+#### Additional Improvements
+
+1. **Deduplication**: Multiple boundaries can't point to the same commit. If no commits
+   exist between two boundaries, only the first boundary is shown.
+
+2. **Accurate Tooltips**: Tick tooltips now show the actual commit date, not the boundary
+   date. When you hover over a "February" tick, it shows "Sat, Feb 3, 2024" (the actual
+   first February commit).
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `timeline-markers.js` | `findFirstCommitOnOrAfter()`, deduplication, actual commit dates |
+
+**Test Count**: 1,836 tests passing (no change)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3656,4 +3709,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-24 (Phase 27: CPU Bloom/Shadow Effect Optimizations - 1,836 tests total)*
+*Last updated: 2026-01-24 (Phase 28: Timeline Tick Alignment Fix - 1,836 tests total)*
