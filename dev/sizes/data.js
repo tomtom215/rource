@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769262101819,
+  "lastUpdate": 1769266420226,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1598,6 +1598,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1065761,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6e32d72d10dc342a2175d4b74c27b48688df2ca0",
+          "message": "Merge pull request #151 from tomtom215/claude/continue-resource-optimization-XHmcn\n\nOptimize label collision detection and GPU readbacks with spatial hashing",
+          "timestamp": "2026-01-24T15:51:45+01:00",
+          "tree_id": "be131a77932b793aa83c443603e397ec27a7f997",
+          "url": "https://github.com/tomtom215/rource/commit/6e32d72d10dc342a2175d4b74c27b48688df2ca0"
+        },
+        "date": 1769266419357,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3910472,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2767309,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1068376,
             "unit": "bytes"
           }
         ]
