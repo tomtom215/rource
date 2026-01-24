@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769249999510,
+  "lastUpdate": 1769254616330,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1481,6 +1481,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1039376,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "63fe6af9139e321d5f6de37e24153008caebab7a",
+          "message": "Merge pull request #148 from tomtom215/claude/setup-profilers-OIbHR\n\nAdd comprehensive profiling and benchmarking infrastructure",
+          "timestamp": "2026-01-24T12:33:15+01:00",
+          "tree_id": "97794b4a5d7cf7ed1535e1b6e6be781c43a14884",
+          "url": "https://github.com/tomtom215/rource/commit/63fe6af9139e321d5f6de37e24153008caebab7a"
+        },
+        "date": 1769254615834,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3906712,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2701027,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1039964,
             "unit": "bytes"
           }
         ]
