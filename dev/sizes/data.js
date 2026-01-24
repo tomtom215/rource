@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769217791085,
+  "lastUpdate": 1769221234211,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1315,6 +1315,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "Native Binary",
             "value": 3900800,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2693042,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1035331,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ccd9fdab464329ddc6d6b44a992f13454b92ded",
+          "message": "Merge pull request #144 from tomtom215/claude/profiler-optimization-continuation-F0kWV\n\nOptimize CPU bloom/shadow effects with O(n) blur and integer math",
+          "timestamp": "2026-01-24T03:18:39+01:00",
+          "tree_id": "ef995d71477c20dcdffd27f2dd3aca08684036ee",
+          "url": "https://github.com/tomtom215/rource/commit/5ccd9fdab464329ddc6d6b44a992f13454b92ded"
+        },
+        "date": 1769221233797,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3901768,
             "unit": "bytes"
           },
           {
