@@ -75,30 +75,35 @@ impl SvnParser {
         let date_str = date_str.trim();
 
         // Split at 'T' to get date and time parts
-        let parts: Vec<&str> = date_str.split('T').collect();
-        if parts.len() != 2 {
-            return Err(ParseError::InvalidTimestamp {
+        let mut parts = date_str.split('T');
+        let date_part = parts.next().ok_or_else(|| ParseError::InvalidTimestamp {
+            line_number,
+            value: date_str.to_string(),
+        })?;
+        let time_part = parts.next().ok_or_else(|| ParseError::InvalidTimestamp {
+            line_number,
+            value: date_str.to_string(),
+        })?;
+
+        let mut date_parts = date_part.split('-');
+        let year: i64 = date_parts
+            .next()
+            .ok_or_else(|| ParseError::InvalidTimestamp {
                 line_number,
                 value: date_str.to_string(),
-            });
-        }
-
-        let date_parts: Vec<&str> = parts[0].split('-').collect();
-        if date_parts.len() != 3 {
-            return Err(ParseError::InvalidTimestamp {
-                line_number,
-                value: date_str.to_string(),
-            });
-        }
-
-        let year: i64 = date_parts[0]
+            })?
             .parse()
             .map_err(|_| ParseError::InvalidTimestamp {
                 line_number,
                 value: date_str.to_string(),
             })?;
 
-        let month: i64 = date_parts[1]
+        let month: i64 = date_parts
+            .next()
+            .ok_or_else(|| ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            })?
             .parse()
             .map_err(|_| ParseError::InvalidTimestamp {
                 line_number,
@@ -113,7 +118,12 @@ impl SvnParser {
             });
         }
 
-        let day: i64 = date_parts[2]
+        let day: i64 = date_parts
+            .next()
+            .ok_or_else(|| ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            })?
             .parse()
             .map_err(|_| ParseError::InvalidTimestamp {
                 line_number,
@@ -129,17 +139,15 @@ impl SvnParser {
         }
 
         // Parse time (ignore fractional seconds and timezone for simplicity)
-        let time_str = parts[1].split('.').next().unwrap_or(parts[1]);
+        let time_str = time_part.split('.').next().unwrap_or(time_part);
         let time_str = time_str.trim_end_matches('Z');
-        let time_parts: Vec<&str> = time_str.split(':').collect();
+        let mut time_parts = time_str.split(':');
 
-        let (hour, minute, second) = if time_parts.len() >= 3 {
-            let h: i64 = time_parts[0].parse().unwrap_or(0);
-            let m: i64 = time_parts[1].parse().unwrap_or(0);
-            let s: i64 = time_parts[2].parse().unwrap_or(0);
+        let (hour, minute, second) = {
+            let h: i64 = time_parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+            let m: i64 = time_parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+            let s: i64 = time_parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
             (h, m, s)
-        } else {
-            (0, 0, 0)
         };
 
         // Simple Unix timestamp calculation

@@ -262,18 +262,25 @@ impl ForceSimulation {
     ///
     /// # Safety
     ///
-    /// Returns `Vec2::ZERO` if `delta` has near-zero length to prevent
-    /// invalid normalized vectors. Callers should check `distance > 0.001`
-    /// before calling for meaningful results.
+    /// Returns `Vec2::ZERO` if distance is near-zero to prevent division by zero.
+    /// Callers should check `distance > 0.001` before calling for meaningful results.
+    ///
+    /// # Performance
+    ///
+    /// Uses the pre-computed `distance` parameter to normalize the direction,
+    /// avoiding a redundant sqrt call that `delta.normalized()` would perform.
     #[must_use]
     fn repulsion_force(&self, delta: Vec2, distance: f32) -> Vec2 {
-        // Guard against zero-length delta which would produce zero normalized vector
-        if delta.length_squared() < 0.000_001 {
+        // Guard against zero-length delta
+        if distance < 0.001 {
             return Vec2::ZERO;
         }
         let safe_distance = distance.max(self.config.min_distance);
-        let magnitude = self.config.repulsion / (safe_distance * safe_distance);
-        delta.normalized() * magnitude
+        // Combine direction normalization and magnitude calculation:
+        // direction = delta / distance, magnitude = k / distance²
+        // result = (delta / distance) * (k / distance²) = delta * (k / distance³)
+        let scale = self.config.repulsion / (safe_distance * safe_distance * distance);
+        delta * scale
     }
 
     /// Calculates the attraction force toward a parent.
@@ -282,17 +289,21 @@ impl ForceSimulation {
     ///
     /// # Safety
     ///
-    /// Returns `Vec2::ZERO` if `delta` has near-zero length or if
-    /// distance is within target distance.
+    /// Returns `Vec2::ZERO` if distance is near-zero or within target distance.
+    ///
+    /// # Performance
+    ///
+    /// Uses the pre-computed `distance` parameter to normalize the direction,
+    /// avoiding a redundant sqrt call that `delta.normalized()` would perform.
     #[must_use]
     fn attraction_force(&self, delta: Vec2, distance: f32, target_distance: f32) -> Vec2 {
-        if distance > target_distance {
-            // Guard against zero-length delta which would produce zero normalized vector
-            if delta.length_squared() < 0.000_001 {
-                return Vec2::ZERO;
-            }
+        if distance > target_distance && distance > 0.001 {
             let excess = distance - target_distance;
-            delta.normalized() * excess * self.config.attraction
+            // Combine direction normalization and magnitude:
+            // direction = delta / distance, magnitude = excess * k
+            // result = (delta / distance) * excess * k = delta * (excess * k / distance)
+            let scale = excess * self.config.attraction / distance;
+            delta * scale
         } else {
             Vec2::ZERO
         }
@@ -657,13 +668,19 @@ mod tests {
     fn test_repulsion_force_inverse_square() {
         let sim = ForceSimulation::new();
 
-        let delta = Vec2::new(1.0, 0.0);
-        let force_near = sim.repulsion_force(delta, 10.0);
-        let force_far = sim.repulsion_force(delta, 20.0);
+        // Use consistent delta/distance values (distance = delta.length())
+        // This reflects real usage where distance is computed from delta
+        let delta_near = Vec2::new(10.0, 0.0);
+        let delta_far = Vec2::new(20.0, 0.0);
+        let force_near = sim.repulsion_force(delta_near, delta_near.length());
+        let force_far = sim.repulsion_force(delta_far, delta_far.length());
 
-        // Force at twice the distance should be 1/4 the magnitude
+        // Force at twice the distance should be 1/4 the magnitude (inverse square law)
         let ratio = force_near.length() / force_far.length();
-        assert!((ratio - 4.0).abs() < 0.1);
+        assert!(
+            (ratio - 4.0).abs() < 0.1,
+            "Expected ratio ~4.0 (inverse square), got {ratio}"
+        );
     }
 
     #[test]

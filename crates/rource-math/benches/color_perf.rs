@@ -7,6 +7,9 @@
 //! which are called frequently during rendering and UI operations.
 
 #![allow(missing_docs)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::doc_markdown)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_math::Color;
@@ -215,7 +218,8 @@ fn bench_from_rgba8(c: &mut Criterion) {
         b.iter(|| {
             let mut sum = 0.0f32;
             for &(r, g, b_val, a) in &test_values {
-                let color = from_rgba8_baseline(black_box(r), black_box(g), black_box(b_val), black_box(a));
+                let color =
+                    from_rgba8_baseline(black_box(r), black_box(g), black_box(b_val), black_box(a));
                 sum += color.r + color.g + color.b + color.a;
             }
             black_box(sum)
@@ -226,7 +230,8 @@ fn bench_from_rgba8(c: &mut Criterion) {
         b.iter(|| {
             let mut sum = 0.0f32;
             for &(r, g, b_val, a) in &test_values {
-                let color = from_rgba8_lut(black_box(r), black_box(g), black_box(b_val), black_box(a));
+                let color =
+                    from_rgba8_lut(black_box(r), black_box(g), black_box(b_val), black_box(a));
                 sum += color.r + color.g + color.b + color.a;
             }
             black_box(sum)
@@ -237,7 +242,12 @@ fn bench_from_rgba8(c: &mut Criterion) {
         b.iter(|| {
             let mut sum = 0.0f32;
             for &(r, g, b_val, a) in &test_values {
-                let color = from_rgba8_reciprocal(black_box(r), black_box(g), black_box(b_val), black_box(a));
+                let color = from_rgba8_reciprocal(
+                    black_box(r),
+                    black_box(g),
+                    black_box(b_val),
+                    black_box(a),
+                );
                 sum += color.r + color.g + color.b + color.a;
             }
             black_box(sum)
@@ -299,21 +309,25 @@ fn bench_batch_conversion(c: &mut Criterion) {
     group.throughput(Throughput::Elements(count as u64));
 
     // Generate test data
-    let hex_colors: Vec<u32> = (0..count).map(|i| {
-        let r = ((i * 17) % 256) as u32;
-        let g = ((i * 31) % 256) as u32;
-        let b = ((i * 47) % 256) as u32;
-        (r << 16) | (g << 8) | b
-    }).collect();
+    let hex_colors: Vec<u32> = (0..count)
+        .map(|i| {
+            let r = ((i * 17) % 256) as u32;
+            let g = ((i * 31) % 256) as u32;
+            let b = ((i * 47) % 256) as u32;
+            (r << 16) | (g << 8) | b
+        })
+        .collect();
 
-    let float_colors: Vec<Color> = (0..count).map(|i| {
-        Color::new(
-            ((i * 17) % 256) as f32 / 255.0,
-            ((i * 31) % 256) as f32 / 255.0,
-            ((i * 47) % 256) as f32 / 255.0,
-            1.0,
-        )
-    }).collect();
+    let float_colors: Vec<Color> = (0..count)
+        .map(|i| {
+            Color::new(
+                ((i * 17) % 256) as f32 / 255.0,
+                ((i * 31) % 256) as f32 / 255.0,
+                ((i * 47) % 256) as f32 / 255.0,
+                1.0,
+            )
+        })
+        .collect();
 
     // from_hex batch
     group.bench_with_input(
@@ -331,20 +345,16 @@ fn bench_batch_conversion(c: &mut Criterion) {
         },
     );
 
-    group.bench_with_input(
-        BenchmarkId::new("from_hex_lut", count),
-        &count,
-        |b, _| {
-            b.iter(|| {
-                let mut sum = 0.0f32;
-                for &hex in &hex_colors {
-                    let c = from_hex_lut(hex);
-                    sum += c.r;
-                }
-                black_box(sum)
-            });
-        },
-    );
+    group.bench_with_input(BenchmarkId::new("from_hex_lut", count), &count, |b, _| {
+        b.iter(|| {
+            let mut sum = 0.0f32;
+            for &hex in &hex_colors {
+                let c = from_hex_lut(hex);
+                sum += c.r;
+            }
+            black_box(sum)
+        });
+    });
 
     group.bench_with_input(
         BenchmarkId::new("from_hex_reciprocal", count),
@@ -396,7 +406,14 @@ fn bench_batch_conversion(c: &mut Criterion) {
 /// Verify correctness of optimized implementations.
 #[test]
 fn test_from_hex_correctness() {
-    let test_cases = [0x000000u32, 0xFF0000, 0x00FF00, 0x0000FF, 0xFFFFFF, 0x808080];
+    let test_cases = [
+        0x000000u32,
+        0xFF0000,
+        0x00FF00,
+        0x0000FF,
+        0xFFFFFF,
+        0x808080,
+    ];
 
     for hex in test_cases {
         let baseline = from_hex_baseline(hex);
@@ -404,14 +421,32 @@ fn test_from_hex_correctness() {
         let recip = from_hex_reciprocal(hex);
 
         // LUT should be exact
-        assert!((baseline.r - lut.r).abs() < 0.0001, "LUT r mismatch for {hex:#08X}");
-        assert!((baseline.g - lut.g).abs() < 0.0001, "LUT g mismatch for {hex:#08X}");
-        assert!((baseline.b - lut.b).abs() < 0.0001, "LUT b mismatch for {hex:#08X}");
+        assert!(
+            (baseline.r - lut.r).abs() < 0.0001,
+            "LUT r mismatch for {hex:#08X}"
+        );
+        assert!(
+            (baseline.g - lut.g).abs() < 0.0001,
+            "LUT g mismatch for {hex:#08X}"
+        );
+        assert!(
+            (baseline.b - lut.b).abs() < 0.0001,
+            "LUT b mismatch for {hex:#08X}"
+        );
 
         // Reciprocal should be very close
-        assert!((baseline.r - recip.r).abs() < 0.0001, "Recip r mismatch for {hex:#08X}");
-        assert!((baseline.g - recip.g).abs() < 0.0001, "Recip g mismatch for {hex:#08X}");
-        assert!((baseline.b - recip.b).abs() < 0.0001, "Recip b mismatch for {hex:#08X}");
+        assert!(
+            (baseline.r - recip.r).abs() < 0.0001,
+            "Recip r mismatch for {hex:#08X}"
+        );
+        assert!(
+            (baseline.g - recip.g).abs() < 0.0001,
+            "Recip g mismatch for {hex:#08X}"
+        );
+        assert!(
+            (baseline.b - recip.b).abs() < 0.0001,
+            "Recip b mismatch for {hex:#08X}"
+        );
     }
 }
 

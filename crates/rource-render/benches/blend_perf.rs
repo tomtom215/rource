@@ -7,6 +7,10 @@
 //! which are called for every non-opaque pixel during rendering.
 
 #![allow(missing_docs)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::unnecessary_cast)]
+#![allow(clippy::doc_markdown)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_math::Color;
