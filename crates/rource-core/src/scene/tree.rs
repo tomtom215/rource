@@ -356,8 +356,7 @@ impl DirTree {
             .get(id)
             .map(|node| {
                 node.children()
-                    .iter()
-                    .filter_map(|&child_id| {
+                    .filter_map(|child_id| {
                         self.get(child_id).map(|c| (child_id, c.name().to_string()))
                     })
                     .collect()
@@ -448,10 +447,9 @@ impl DirTree {
         for (idx, _depth) in nodes_by_depth {
             if let Some(node) = &self.nodes[idx] {
                 // Base weight: 1 for files + accumulated children weights
-                let file_weight = node.files().len() as f32;
+                let file_weight = node.files_len() as f32;
                 let child_weight: f32 = node
                     .children()
-                    .iter()
                     .filter_map(|cid| weights.get(cid.index_usize()))
                     .sum();
 
@@ -493,7 +491,7 @@ impl DirTree {
         // Get children and their weights
         let children: Vec<DirId> = self
             .get(dir_id)
-            .map(|n| n.children().to_vec())
+            .map(|n| n.children().collect())
             .unwrap_or_default();
 
         let child_weights: Vec<f32> = children
@@ -577,7 +575,7 @@ impl DirTree {
         let mut branch_root = dir_id;
         while let Some(parent_id) = self.get(branch_root).and_then(DirNode::parent) {
             if let Some(parent) = self.get(parent_id) {
-                if parent.children().len() > 1 || parent.is_root() {
+                if parent.children_len() > 1 || parent.is_root() {
                     branch_root = parent_id;
                     break;
                 }
@@ -602,7 +600,7 @@ impl DirTree {
     fn apply_positions_recursive(&mut self, dir_id: DirId) {
         let children: Vec<DirId> = self
             .get(dir_id)
-            .map(|n| n.children().to_vec())
+            .map(|n| n.children().collect())
             .unwrap_or_default();
 
         // Update this node's position
@@ -684,9 +682,9 @@ mod tests {
         // src should be parent of lib and main
         let src = tree.get(src_id).unwrap();
         assert_eq!(src.name(), "src");
-        assert_eq!(src.children().len(), 2);
-        assert!(src.children().contains(&lib_id));
-        assert!(src.children().contains(&main_id));
+        assert_eq!(src.children_len(), 2);
+        assert!(src.has_child(lib_id));
+        assert!(src.has_child(main_id));
 
         let lib = tree.get(lib_id).unwrap();
         assert_eq!(lib.name(), "lib");

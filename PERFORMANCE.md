@@ -49,6 +49,7 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 37: Data Structure Micro-Optimizations (2026-01-24)](#phase-37-data-structure-and-algorithm-micro-optimizations-2026-01-24)
 - [Phase 38: GPU Physics Command Buffer Batching (2026-01-24)](#phase-38-gpu-physics-command-buffer-batching-2026-01-24)
 - [Phase 39: Cache Serialization Optimization (2026-01-24)](#phase-39-cache-serialization-algorithm-optimization-2026-01-24)
+- [Phase 40: Data Structure and Algorithm Perfection (2026-01-24)](#phase-40-data-structure-and-algorithm-perfection-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -4437,6 +4438,123 @@ The optimized version:
 - File change ordering maintained (same as commit iteration order)
 
 **Test Count**: 1,898+ tests passing (all optimizations verified)
+
+---
+
+## Phase 40: Data Structure and Algorithm Perfection (2026-01-24)
+
+### Summary
+
+Phase 40 systematically improves algorithmic complexity and eliminates unnecessary allocations
+across the codebase, pursuing mathematical perfection in every component regardless of whether
+it's in a hot path.
+
+### Optimizations Implemented
+
+#### 1. DirNode Children/Files: O(n) → O(1)
+
+**Location**: `crates/rource-core/src/scene/dir_node.rs`
+
+Replaced `Vec<DirId>` and `Vec<FileId>` with `FxHashSet<DirId>` and `FxHashSet<FileId>`:
+
+| Operation | Before | After |
+|-----------|--------|-------|
+| `add_child()` | O(n) contains + O(1) push | O(1) amortized |
+| `add_file()` | O(n) contains + O(1) push | O(1) amortized |
+| `remove_child()` | O(n) retain | O(1) |
+| `remove_file()` | O(n) retain | O(1) |
+| `has_child()` | O(n) contains | O(1) |
+| `has_file()` | O(n) contains | O(1) |
+
+New methods added:
+- `has_child(DirId) -> bool` - O(1) membership test
+- `has_file(FileId) -> bool` - O(1) membership test
+- `children_len() -> usize` - O(1) count
+- `files_len() -> usize` - O(1) count
+
+#### 2. ForceSimulation: O(n²) → O(n log n)
+
+**Location**: `crates/rource-core/src/physics/force.rs`
+
+Added Barnes-Hut algorithm support to `ForceSimulation` for all directory counts:
+
+```rust
+pub struct ForceConfig {
+    // ...
+    pub use_barnes_hut: bool,      // Default: true
+    pub barnes_hut_theta: f32,      // Default: 0.8
+}
+```
+
+**Behavior**:
+- Barnes-Hut enabled by default for all simulations
+- Theta parameter controls accuracy/speed tradeoff (0.5-1.0 typical)
+- Zero-allocation force buffer reused between frames
+- Falls back to O(n²) pairwise only when explicitly configured
+
+**Methods added**:
+- `calculate_repulsion_barnes_hut()` - O(n log n) repulsion
+- `calculate_repulsion_pairwise()` - O(n²) exact (for comparison/testing)
+- `ForceConfig::pairwise()` - preset for exact calculation
+
+#### 3. Spatial Query Zero-Allocation Methods
+
+**Location**: `crates/rource-core/src/scene/spatial_methods.rs`
+
+Added zero-allocation versions for all spatial query functions:
+
+| Allocating | Zero-Allocation |
+|------------|-----------------|
+| `query_entities()` | `query_entities_into()` |
+| `query_entities_circle()` | `query_entities_circle_into()` |
+| `visible_file_ids()` | `visible_file_ids_into()` |
+| `visible_user_ids()` | `visible_user_ids_into()` |
+| `visible_directory_ids()` | `visible_directory_ids_into()` |
+
+**QuadTree addition** (`crates/rource-core/src/physics/spatial.rs`):
+- `query_circle_for_each()` - zero-allocation circle query with visitor pattern
+
+#### 4. String Interning Optimization
+
+**Location**: `crates/rource-vcs/src/intern.rs`
+
+Reduced double allocation in `intern()` method:
+- Before: `s.to_owned()` called twice (once for Vec, once for HashMap)
+- After: Single `to_owned()` + one `clone()` (required for two-owner storage)
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-core/src/scene/dir_node.rs` | `Vec` → `FxHashSet` for children/files, new O(1) methods |
+| `crates/rource-core/src/scene/tree.rs` | Updated to use new `children_len()`, `has_child()` API |
+| `crates/rource-core/src/scene/mod.rs` | Updated to use `files_len()` |
+| `crates/rource-core/src/physics/force.rs` | Added Barnes-Hut support, zero-alloc buffer |
+| `crates/rource-core/src/physics/spatial.rs` | Added `query_circle_for_each()` |
+| `crates/rource-core/src/scene/spatial_methods.rs` | Added zero-allocation query variants |
+| `crates/rource-vcs/src/intern.rs` | Reduced allocation in `intern()` |
+| `crates/rource-vcs/src/cache.rs` | Optimized segment lookup pattern |
+
+### Performance Impact
+
+| Component | Before | After | Improvement |
+|-----------|--------|-------|-------------|
+| DirNode membership | O(n) | O(1) | n× faster |
+| ForceSimulation repulsion | O(n²) | O(n log n) | n/log(n)× faster |
+| Spatial queries (hot path) | Allocating | Zero-allocation | 0 allocations |
+| String interning | 2 allocations | 1 alloc + 1 clone | Reduced allocation pressure |
+
+**Complexity Summary for Core Operations**:
+
+| Module | Operation | Complexity |
+|--------|-----------|------------|
+| DirNode | add/remove/has child/file | O(1) |
+| ForceSimulation | apply_to_slice (Barnes-Hut) | O(n log n) |
+| QuadTree | query/insert | O(log n) |
+| Scene layout | force-directed (Barnes-Hut) | O(n log n) |
+| Spatial visibility | query_into variants | O(k) where k = result count |
+
+**Test Count**: 320 rource-core + 150 rource-vcs tests passing
 
 ---
 

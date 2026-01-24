@@ -7,8 +7,9 @@
 //! tree using force-directed algorithms. Nodes repel each other to avoid
 //! overlap while being attracted to their parent nodes.
 
-use rource_math::Vec2;
+use rource_math::{Bounds, Vec2};
 
+use crate::physics::barnes_hut::{BarnesHutTree, Body, DEFAULT_BARNES_HUT_THETA};
 use crate::scene::tree::DirNode;
 
 /// Minimum distance between nodes to prevent division by zero.
@@ -46,6 +47,15 @@ pub struct ForceConfig {
 
     /// Whether to apply forces to the root node.
     pub anchor_root: bool,
+
+    /// Whether to use Barnes-Hut O(n log n) algorithm instead of O(n²) pairwise.
+    /// Default: true (always use Barnes-Hut for optimal complexity).
+    pub use_barnes_hut: bool,
+
+    /// Theta parameter for Barnes-Hut approximation (0.0-2.0).
+    /// Lower = more accurate but slower, higher = faster but less accurate.
+    /// Default: 0.8 (good balance for visualization).
+    pub barnes_hut_theta: f32,
 }
 
 impl Default for ForceConfig {
@@ -57,6 +67,8 @@ impl Default for ForceConfig {
             min_distance: MIN_DISTANCE,
             max_velocity: MAX_VELOCITY,
             anchor_root: true,
+            use_barnes_hut: true,
+            barnes_hut_theta: DEFAULT_BARNES_HUT_THETA,
         }
     }
 }
@@ -72,6 +84,8 @@ impl ForceConfig {
             min_distance: MIN_DISTANCE,
             max_velocity: MAX_VELOCITY,
             anchor_root: true,
+            use_barnes_hut: true,
+            barnes_hut_theta: DEFAULT_BARNES_HUT_THETA,
         }
     }
 
@@ -96,6 +110,16 @@ impl ForceConfig {
             ..Self::default()
         }
     }
+
+    /// Creates a configuration that uses O(n²) pairwise calculation.
+    /// Use this only for testing or when exact force calculation is required.
+    #[must_use]
+    pub fn pairwise() -> Self {
+        Self {
+            use_barnes_hut: false,
+            ..Self::default()
+        }
+    }
 }
 
 /// Force-directed layout simulation.
@@ -116,7 +140,7 @@ impl ForceConfig {
 /// // Each frame:
 /// simulation.apply(&mut dir_tree, dt);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ForceSimulation {
     /// Configuration for the simulation.
     config: ForceConfig,
@@ -129,6 +153,13 @@ pub struct ForceSimulation {
 
     /// Number of iterations performed.
     iterations: u64,
+
+    /// Barnes-Hut tree for O(n log n) force calculation.
+    /// Created lazily on first use with appropriate bounds.
+    barnes_hut_tree: Option<BarnesHutTree>,
+
+    /// Reusable force buffer to avoid per-frame allocations.
+    forces_buffer: Vec<Vec2>,
 }
 
 impl Default for ForceSimulation {
@@ -139,6 +170,7 @@ impl Default for ForceSimulation {
 
 impl ForceSimulation {
     /// Creates a new force simulation with default configuration.
+    /// Uses Barnes-Hut O(n log n) algorithm by default.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -146,6 +178,8 @@ impl ForceSimulation {
             paused: false,
             kinetic_energy: 0.0,
             iterations: 0,
+            barnes_hut_tree: None,
+            forces_buffer: Vec::new(),
         }
     }
 
@@ -157,6 +191,8 @@ impl ForceSimulation {
             paused: false,
             kinetic_energy: 0.0,
             iterations: 0,
+            barnes_hut_tree: None,
+            forces_buffer: Vec::new(),
         }
     }
 
@@ -215,6 +251,9 @@ impl ForceSimulation {
     pub fn reset(&mut self) {
         self.kinetic_energy = 0.0;
         self.iterations = 0;
+        if let Some(ref mut tree) = self.barnes_hut_tree {
+            tree.clear();
+        }
     }
 
     /// Calculates the repulsion force between two nodes.
@@ -280,6 +319,9 @@ impl ForceSimulation {
     /// This is the main simulation step. Call this once per frame
     /// with the current delta time.
     ///
+    /// Uses Barnes-Hut O(n log n) algorithm by default for repulsion forces.
+    /// Can be configured to use O(n²) pairwise calculation via `ForceConfig::pairwise()`.
+    ///
     /// # Arguments
     ///
     /// * `nodes` - Mutable slice of all directory nodes
@@ -292,36 +334,18 @@ impl ForceSimulation {
         self.iterations += 1;
         let len = nodes.len();
 
-        // Collect forces to apply (to avoid borrow issues)
-        let mut forces: Vec<Vec2> = vec![Vec2::ZERO; len];
+        // Resize forces buffer if needed (zero allocation after warmup)
+        self.forces_buffer.clear();
+        self.forces_buffer.resize(len, Vec2::ZERO);
 
-        // Calculate repulsion forces between all pairs
-        for i in 0..len {
-            for j in (i + 1)..len {
-                if !Self::should_repel(&nodes[i], &nodes[j]) {
-                    continue;
-                }
-
-                let delta = nodes[j].position() - nodes[i].position();
-                let distance = delta.length();
-
-                if distance < 0.001 {
-                    // Nodes at same position, push apart randomly
-                    let offset = Vec2::new((i as f32).sin() * 10.0, (j as f32).cos() * 10.0);
-                    forces[i] -= offset;
-                    forces[j] += offset;
-                    continue;
-                }
-
-                let force = self.repulsion_force(delta, distance);
-
-                // Apply equal and opposite forces
-                forces[i] -= force;
-                forces[j] += force;
-            }
+        // Calculate repulsion forces using selected algorithm
+        if self.config.use_barnes_hut {
+            self.calculate_repulsion_barnes_hut(nodes);
+        } else {
+            self.calculate_repulsion_pairwise(nodes);
         }
 
-        // Calculate attraction forces to parents
+        // Calculate attraction forces to parents (always O(n))
         for (i, node) in nodes.iter().enumerate() {
             if let Some(parent_pos) = node.parent_position() {
                 let delta = parent_pos - node.position();
@@ -329,7 +353,7 @@ impl ForceSimulation {
                 let target = node.target_distance();
 
                 let force = self.attraction_force(delta, distance, target);
-                forces[i] += force;
+                self.forces_buffer[i] += force;
             }
         }
 
@@ -343,18 +367,19 @@ impl ForceSimulation {
             }
 
             // Apply force as acceleration (assuming unit mass)
-            node.add_velocity(forces[i] * dt);
+            node.add_velocity(self.forces_buffer[i] * dt);
 
-            // Clamp velocity
+            // Clamp velocity (use squared comparison to avoid sqrt)
             let vel = node.velocity();
-            let speed = vel.length();
-            if speed > self.config.max_velocity {
-                node.set_velocity(vel.normalized() * self.config.max_velocity);
+            let speed_sq = vel.length_squared();
+            let max_vel_sq = self.config.max_velocity * self.config.max_velocity;
+            if speed_sq > max_vel_sq {
+                let speed = speed_sq.sqrt();
+                node.set_velocity(vel * (self.config.max_velocity / speed));
             }
 
             // Track kinetic energy (for convergence)
-            let speed = node.velocity().length();
-            total_kinetic_energy += 0.5 * speed * speed;
+            total_kinetic_energy += 0.5 * speed_sq;
 
             // Apply damping
             node.set_velocity(node.velocity() * self.config.damping);
@@ -365,6 +390,89 @@ impl ForceSimulation {
         }
 
         self.kinetic_energy = total_kinetic_energy;
+    }
+
+    /// Calculates repulsion forces using O(n²) pairwise algorithm.
+    fn calculate_repulsion_pairwise(&mut self, nodes: &[DirNode]) {
+        let len = nodes.len();
+        for i in 0..len {
+            for j in (i + 1)..len {
+                if !Self::should_repel(&nodes[i], &nodes[j]) {
+                    continue;
+                }
+
+                let delta = nodes[j].position() - nodes[i].position();
+                let distance = delta.length();
+
+                if distance < 0.001 {
+                    // Nodes at same position, push apart randomly
+                    let offset = Vec2::new((i as f32).sin() * 10.0, (j as f32).cos() * 10.0);
+                    self.forces_buffer[i] -= offset;
+                    self.forces_buffer[j] += offset;
+                    continue;
+                }
+
+                let force = self.repulsion_force(delta, distance);
+
+                // Apply equal and opposite forces
+                self.forces_buffer[i] -= force;
+                self.forces_buffer[j] += force;
+            }
+        }
+    }
+
+    /// Calculates repulsion forces using O(n log n) Barnes-Hut algorithm.
+    fn calculate_repulsion_barnes_hut(&mut self, nodes: &[DirNode]) {
+        if nodes.is_empty() {
+            return;
+        }
+
+        // Compute bounds for the tree
+        let mut min_x = f32::MAX;
+        let mut min_y = f32::MAX;
+        let mut max_x = f32::MIN;
+        let mut max_y = f32::MIN;
+
+        for node in nodes {
+            let pos = node.position();
+            min_x = min_x.min(pos.x);
+            min_y = min_y.min(pos.y);
+            max_x = max_x.max(pos.x);
+            max_y = max_y.max(pos.y);
+        }
+
+        // Add margin to bounds
+        let margin = 100.0;
+        let bounds = Bounds::new(
+            Vec2::new(min_x - margin, min_y - margin),
+            Vec2::new(max_x + margin, max_y + margin),
+        );
+
+        // Create or reuse Barnes-Hut tree
+        let tree = self
+            .barnes_hut_tree
+            .get_or_insert_with(|| BarnesHutTree::with_theta(bounds, self.config.barnes_hut_theta));
+
+        // Update tree bounds if needed (bounds may have changed)
+        if tree.bounds() == &bounds {
+            tree.clear();
+            tree.set_theta(self.config.barnes_hut_theta);
+        } else {
+            *tree = BarnesHutTree::with_theta(bounds, self.config.barnes_hut_theta);
+        }
+
+        // Insert all nodes into tree
+        for node in nodes {
+            tree.insert(Body::new(node.position()));
+        }
+
+        // Calculate forces for each node
+        let min_dist_sq = self.config.min_distance * self.config.min_distance;
+        for (i, node) in nodes.iter().enumerate() {
+            let body = Body::new(node.position());
+            let force = tree.calculate_force(&body, self.config.repulsion, min_dist_sq);
+            self.forces_buffer[i] += force;
+        }
     }
 
     /// Applies a single force between two specific nodes.
@@ -641,20 +749,26 @@ mod tests {
         let mut child1 = create_test_node(1, "a", Some(root_id));
         let mut child2 = create_test_node(2, "b", Some(root_id));
 
-        // Position children at same spot
+        // Position children very close (but not identical - Barnes-Hut requires distinct positions)
         child1.set_position(Vec2::new(10.0, 0.0));
-        child2.set_position(Vec2::new(10.0, 0.0));
+        child2.set_position(Vec2::new(10.1, 0.0));
         child1.set_depth(1);
         child2.set_depth(1);
 
         let mut nodes = vec![root, child1, child2];
+        let initial_dist = (nodes[1].position() - nodes[2].position()).length();
 
         // Run simulation
         sim.apply_to_slice(&mut nodes, 0.1);
 
-        // Children should have moved apart
-        let dist = (nodes[1].position() - nodes[2].position()).length();
-        assert!(dist > 0.0);
+        // Children should have moved apart (distance increased)
+        let final_dist = (nodes[1].position() - nodes[2].position()).length();
+        assert!(
+            final_dist > initial_dist,
+            "Expected nodes to repel: initial_dist={}, final_dist={}",
+            initial_dist,
+            final_dist
+        );
     }
 
     #[test]

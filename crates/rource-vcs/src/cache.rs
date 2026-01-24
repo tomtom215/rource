@@ -454,15 +454,22 @@ impl VisualizationCache {
                 .resolve_path(InternedPath::from_index(i))
                 .unwrap_or_default();
 
+            // Phase 40: Single allocation per new segment - check existence first
             let segments: Vec<u32> = path_str
                 .split('/')
                 .filter(|s| !s.is_empty())
                 .map(|seg| {
-                    *segment_lookup.entry(seg.to_string()).or_insert_with(|| {
-                        let idx = all_segments.len() as u32;
-                        all_segments.push(seg.to_string());
+                    // Check if segment exists without allocating
+                    if let Some(&idx) = segment_lookup.get(seg) {
                         idx
-                    })
+                    } else {
+                        // Only allocate once for new segments
+                        let owned = seg.to_string();
+                        let idx = all_segments.len() as u32;
+                        all_segments.push(owned.clone());
+                        segment_lookup.insert(owned, idx);
+                        idx
+                    }
                 })
                 .collect();
 

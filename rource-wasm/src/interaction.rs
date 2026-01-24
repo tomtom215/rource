@@ -287,7 +287,7 @@ pub fn move_connected_entities_for_file(
     let sibling_ids: Vec<FileId> = scene
         .directories()
         .get(dir_id)
-        .map(|dir| dir.files().to_vec())
+        .map(|dir| dir.files().collect())
         .unwrap_or_default();
 
     for sibling_id in sibling_ids {
@@ -389,7 +389,7 @@ pub fn move_connected_entities_for_directory(scene: &mut Scene, dir_id: DirId, d
     let child_dir_ids: Vec<DirId> = scene
         .directories()
         .get(dir_id)
-        .map(|d| d.children().to_vec())
+        .map(|d| d.children().collect())
         .unwrap_or_default();
 
     // Move child directories with full coupling (they move with parent)
@@ -405,7 +405,7 @@ pub fn move_connected_entities_for_directory(scene: &mut Scene, dir_id: DirId, d
     let file_ids: Vec<FileId> = scene
         .directories()
         .get(dir_id)
-        .map(|d| d.files().to_vec())
+        .map(|d| d.files().collect())
         .unwrap_or_default();
 
     // Move files in this directory with full coupling
@@ -426,7 +426,7 @@ pub fn move_connected_entities_for_directory(scene: &mut Scene, dir_id: DirId, d
         let sibling_ids: Vec<DirId> = scene
             .directories()
             .get(parent_id)
-            .map(|d| d.children().to_vec())
+            .map(|d| d.children().collect())
             .unwrap_or_default();
 
         for sibling_id in sibling_ids {
