@@ -3435,6 +3435,122 @@ pub fn begin_phase(&mut self, name: &str) {
 
 **Test Count**: 1,898 tests passing (no change)
 
+### Phase 31: Visual Rendering Hot Path Optimizations (2026-01-24)
+
+Applied deterministic, measurable optimizations to the visual rendering hot path in `visual.rs` and `hover.rs`.
+
+#### Optimizations Applied
+
+**1. Division-to-Multiplication Conversion (visual.rs:119)**
+
+Replaced per-iteration division with precomputed reciprocal in spline interpolation:
+
+```rust
+// Before: division in inner loop (~1000+ times per frame)
+for j in 0..segments_per_span {
+    let t = j as f32 / segments_per_span as f32;  // Division per iteration
+    result.push(catmull_rom_interpolate(p0, p1, p2, p3, t));
+}
+
+// After: precomputed reciprocal, multiplication only
+let inv_segments = 1.0 / segments_per_span as f32;  // Computed once
+for j in 0..segments_per_span {
+    let t = j as f32 * inv_segments;  // Multiplication per iteration
+    result.push(catmull_rom_interpolate(p0, p1, p2, p3, t));
+}
+```
+
+**Impact**: ~1000 divisions per frame eliminated (splines are used for branch curves).
+
+**2. Precomputed Loop Constants (visual.rs)**
+
+Replaced `i as f32` conversions and inline computations with precomputed const arrays:
+
+| Loop | Before | After |
+|------|--------|-------|
+| Avatar glow (4 iterations) | `i as f32 * 0.15`, `i as f32 * 0.2` | `AVATAR_GLOW_RADIUS_MULTS[i]`, `AVATAR_GLOW_ALPHA_MULTS[i]` |
+| Avatar body (7 iterations) | `i as f32 / 6.0`, `abs(t - 0.5) * 0.3` | `AVATAR_BODY_T[i]`, `AVATAR_BODY_TAPER[i]` |
+| Beam glow (3 iterations) | `i as f32 * 2.0`, `i as f32 * 0.25` | `BEAM_GLOW_WIDTH_BASE[i]`, `BEAM_GLOW_ALPHA_MULT[i]` |
+| Beam head (2 iterations) | `i as f32 * 0.5`, `i as f32 * 0.3` | `BEAM_HEAD_GLOW_RADIUS[i]`, `BEAM_HEAD_GLOW_ALPHA[i]` |
+
+**Impact**: Eliminates ~16 `i as f32` conversions per avatar, ~9 per action beam.
+
+**3. Single-Pass JSON Escaping (hover.rs)**
+
+Replaced chained `.replace()` calls with single-pass character iteration:
+
+```rust
+// Before: 5 intermediate String allocations
+fn escape_json(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")  // Each replace allocates new String
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
+}
+
+// After: fast path + single-pass for edge cases
+fn escape_json(s: &str) -> String {
+    // Fast path: no escaping needed
+    if !s.bytes().any(|b| b == b'\\' || b == b'"' || b == b'\n' || b == b'\r' || b == b'\t') {
+        return s.to_string();  // Single allocation
+    }
+    // Slow path: single-pass with pre-sized buffer
+    let mut result = String::with_capacity(s.len() + 8);
+    for c in s.chars() { ... }
+    result
+}
+```
+
+**Impact**: Most strings (filenames, paths) hit fast path with 1 allocation instead of 5.
+
+**4. Pre-Sized String Buffers (hover.rs)**
+
+Used `String::with_capacity()` and `write!` instead of `format!`:
+
+| Function | Capacity | Savings |
+|----------|----------|---------|
+| `color_to_hex()` | 7 bytes exact | No reallocation |
+| `HoverInfo::to_json()` | Estimated from field lengths | Minimal reallocation |
+
+#### Module-Level Constants Added
+
+```rust
+// Avatar glow (4 layers)
+const AVATAR_GLOW_RADIUS_MULTS: [f32; 4] = [1.4, 1.55, 1.70, 1.85];
+const AVATAR_GLOW_ALPHA_MULTS: [f32; 4] = [0.12, 0.096, 0.072, 0.048];
+
+// Avatar body (7 discs)
+const AVATAR_BODY_T: [f32; 7] = [0.0, 0.16667, 0.33333, 0.5, 0.66667, 0.83333, 1.0];
+const AVATAR_BODY_TAPER: [f32; 7] = [0.85, 0.90, 0.95, 1.0, 0.95, 0.90, 0.85];
+
+// Beam glow (3 layers)
+const BEAM_GLOW_WIDTH_BASE: [f32; 3] = [2.0, 4.0, 6.0];
+const BEAM_GLOW_ALPHA_MULT: [f32; 3] = [0.4, 0.3, 0.2];
+
+// Beam head glow (2 layers)
+const BEAM_HEAD_GLOW_RADIUS: [f32; 2] = [1.5, 2.0];
+const BEAM_HEAD_GLOW_ALPHA: [f32; 2] = [0.3, 0.21];
+```
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/rource-render/src/visual.rs` | Precomputed constants, reciprocal multiplication |
+| `rource-wasm/src/wasm_api/hover.rs` | Single-pass escaping, pre-sized buffers |
+
+#### Quantitative Impact
+
+| Optimization | Per-Frame Savings | At 60 FPS |
+|-------------|-------------------|-----------|
+| Spline divisions | ~1000 div→mul | 60K ops/sec faster |
+| Avatar glow i as f32 | ~16 per avatar | ~960/sec (10 users) |
+| Beam glow i as f32 | ~9 per beam | ~540/sec (10 beams) |
+| Hover escape fast path | 4 fewer allocations | ~80/sec (20 hovers/sec) |
+
+**Test Count**: 1,898 tests passing (no change)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3897,4 +4013,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-24 (Phase 30: Profiler Zero-Allocation Optimization - 1,898 tests total)*
+*Last updated: 2026-01-24 (Phase 31: Visual Rendering Hot Path Optimizations - 1,898 tests total)*
