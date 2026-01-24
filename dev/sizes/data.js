@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769224136980,
+  "lastUpdate": 1769249999510,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1442,6 +1442,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1035331,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "077085c8d963252a0c04c36a6fd171fa49829dc5",
+          "message": "Merge pull request #147 from tomtom215/claude/install-profilers-benchmark-gvkl0\n\nAdd comprehensive performance benchmark report for rource",
+          "timestamp": "2026-01-24T11:18:07+01:00",
+          "tree_id": "586e77b63c88199fee81474fb646de7f74a4f2f5",
+          "url": "https://github.com/tomtom215/rource/commit/077085c8d963252a0c04c36a6fd171fa49829dc5"
+        },
+        "date": 1769249999105,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3906696,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2696952,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1039376,
             "unit": "bytes"
           }
         ]
