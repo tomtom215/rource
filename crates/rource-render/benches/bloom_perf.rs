@@ -6,6 +6,8 @@
 //! These benchmarks measure the performance of the bloom effect at various
 //! resolutions to verify optimization effectiveness.
 
+#![allow(missing_docs)]
+
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_render::effects::BloomEffect;
 
@@ -33,12 +35,12 @@ fn bench_bloom_full(c: &mut Criterion) {
     let mut group = c.benchmark_group("bloom_full");
 
     // Test at different resolutions (downscaled buffer sizes)
-    // Default downscale=4, so 1920x1080 → 480x270
+    // Default downscale=4, so 1920x1080 -> 480x270
     let resolutions = [
-        (320, 180, "320x180"),   // Small (e.g., 1280x720 / 4)
-        (480, 270, "480x270"),   // Medium (1920x1080 / 4)
-        (640, 360, "640x360"),   // Large (2560x1440 / 4)
-        (960, 540, "960x540"),   // XL (3840x2160 / 4)
+        (320, 180, "320x180"), // Small (e.g., 1280x720 / 4)
+        (480, 270, "480x270"), // Medium (1920x1080 / 4)
+        (640, 360, "640x360"), // Large (2560x1440 / 4)
+        (960, 540, "960x540"), // XL (3840x2160 / 4)
     ];
 
     for (width, height, label) in resolutions {
@@ -72,10 +74,10 @@ fn bench_bloom_blur_only(c: &mut Criterion) {
 
     // Test blur at downscaled buffer sizes
     let sizes = [
-        (120, 68, "120x68"),     // 480x270 / 4
-        (240, 135, "240x135"),   // 960x540 / 4
-        (480, 270, "480x270"),   // Direct
-        (960, 540, "960x540"),   // Large
+        (120, 68, "120x68"),   // 480x270 / 4
+        (240, 135, "240x135"), // 960x540 / 4
+        (480, 270, "480x270"), // Direct
+        (960, 540, "960x540"), // Large
     ];
 
     for (width, height, label) in sizes {
@@ -117,21 +119,22 @@ fn bench_bloom_passes(c: &mut Criterion) {
         // Warm up
         bloom.apply(&mut pixels, width, height);
 
-        group.bench_with_input(
-            BenchmarkId::new("count", passes),
-            &passes,
-            |b, _| {
-                b.iter(|| {
-                    let mut test_pixels = create_test_buffer(width, height);
-                    bloom.apply(black_box(&mut test_pixels), width, height);
-                    black_box(test_pixels)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("count", passes), &passes, |b, _| {
+            b.iter(|| {
+                let mut test_pixels = create_test_buffer(width, height);
+                bloom.apply(black_box(&mut test_pixels), width, height);
+                black_box(test_pixels)
+            });
+        });
     }
 
     group.finish();
 }
 
-criterion_group!(benches, bench_bloom_full, bench_bloom_blur_only, bench_bloom_passes);
+criterion_group!(
+    benches,
+    bench_bloom_full,
+    bench_bloom_blur_only,
+    bench_bloom_passes
+);
 criterion_main!(benches);

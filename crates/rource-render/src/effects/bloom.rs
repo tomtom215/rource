@@ -526,14 +526,32 @@ impl BloomEffect {
         let full_strips = width / STRIP_WIDTH;
         for strip in 0..full_strips {
             let x_start = strip * STRIP_WIDTH;
-            Self::process_column_strip(src, dst, width, height, r, inv_diameter_fixed, x_start, STRIP_WIDTH);
+            Self::process_column_strip(
+                src,
+                dst,
+                width,
+                height,
+                r,
+                inv_diameter_fixed,
+                x_start,
+                STRIP_WIDTH,
+            );
         }
 
         // Process remaining columns (if width not divisible by STRIP_WIDTH)
         let remaining = width % STRIP_WIDTH;
         if remaining > 0 {
             let x_start = full_strips * STRIP_WIDTH;
-            Self::process_column_strip(src, dst, width, height, r, inv_diameter_fixed, x_start, remaining);
+            Self::process_column_strip(
+                src,
+                dst,
+                width,
+                height,
+                r,
+                inv_diameter_fixed,
+                x_start,
+                remaining,
+            );
         }
     }
 
