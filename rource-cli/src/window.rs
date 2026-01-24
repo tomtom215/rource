@@ -362,7 +362,8 @@ pub fn apply_pending_commits(app: &mut App) {
 
         // Only apply commit if there are files left after filtering
         if !files.is_empty() {
-            app.scene.apply_commit(&commit.author, files.iter().copied());
+            app.scene
+                .apply_commit(&commit.author, files.iter().copied());
         }
 
         app.last_applied_commit += 1;
@@ -390,7 +391,8 @@ pub fn seek_to_commit(app: &mut App, target: usize) {
                 .map(|f| (f.path.as_path(), file_action_to_action_type(f.action)))
                 .collect();
 
-            app.scene.apply_commit(&commit.author, files.iter().copied());
+            app.scene
+                .apply_commit(&commit.author, files.iter().copied());
             app.last_applied_commit = i + 1;
         }
 

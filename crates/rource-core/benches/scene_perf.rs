@@ -232,7 +232,10 @@ fn bench_apply_commit(c: &mut Criterion) {
                     let files: Vec<(&Path, ActionType)> =
                         path_bufs.iter().map(|(p, a)| (p.as_path(), *a)).collect();
 
-                    scene.apply_commit(black_box(&format!("author_{}", commit_num % 50)), files.iter().copied());
+                    scene.apply_commit(
+                        black_box(&format!("author_{}", commit_num % 50)),
+                        files.iter().copied(),
+                    );
                     commit_num += 1;
                 });
             },

@@ -273,7 +273,7 @@ impl Scene {
     }
 
     /// Applies computed forces to directories and integrates physics.
-    /// Uses enumerate to correlate with forces_buffer Vec indices.
+    /// Uses enumerate to correlate with `forces_buffer` Vec indices.
     fn apply_forces_to_directories(&mut self, dt: f32) {
         for (i, dir) in self.directories.iter_mut().enumerate() {
             // Skip root (anchor it in place)
