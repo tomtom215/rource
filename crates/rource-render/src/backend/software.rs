@@ -214,17 +214,24 @@ fn draw_textured_quad_with_textures(
         return;
     }
 
+    // Pre-compute reciprocals to avoid per-pixel division
+    let inv_w = 1.0 / w;
+    let inv_h = 1.0 / h;
+
     for y in min_y..max_y {
         for x in min_x..max_x {
-            let u = (x as f32 - bounds.min.x) / w;
-            let v = (y as f32 - bounds.min.y) / h;
+            // Use multiplication by reciprocal instead of division
+            let u = (x as f32 - bounds.min.x) * inv_w;
+            let v = (y as f32 - bounds.min.y) * inv_h;
 
             let (tr, tg, tb, ta) = texture.sample(u, v);
 
-            let r = ((tr as f32 / 255.0) * tint.r * 255.0) as u8;
-            let g = ((tg as f32 / 255.0) * tint.g * 255.0) as u8;
-            let b = ((tb as f32 / 255.0) * tint.b * 255.0) as u8;
-            let a = ((ta as f32 / 255.0) * tint.a * 255.0) as u8;
+            // Simplified: (tr / 255.0) * tint.r * 255.0 = tr * tint.r
+            // (the /255.0 and *255.0 cancel out)
+            let r = (tr as f32 * tint.r) as u8;
+            let g = (tg as f32 * tint.g) as u8;
+            let b = (tb as f32 * tint.b) as u8;
+            let a = (ta as f32 * tint.a) as u8;
 
             plot_premultiplied_inner(pixels, x, y, width, height, clips, r, g, b, a);
         }
@@ -609,7 +616,7 @@ impl SoftwareRenderer {
                     } else {
                         // Edge region: need actual distance for smooth blending
                         let dist = dist_sq.sqrt();
-                        let edge_t = (half_width + 0.5 - dist) / 1.0;
+                        let edge_t = half_width + 0.5 - dist;
                         color.a * edge_t
                     };
 
@@ -837,11 +844,14 @@ impl SoftwareRenderer {
         let perp = Vec2::new(-dir.y, dir.x);
 
         // Draw multiple parallel lines
-        let half_width = width / 2.0;
+        let half_width = width * 0.5;
         let steps = (width.ceil() as i32).max(1);
+        // Pre-compute division results outside loop
+        let step_width = width / steps as f32;
+        let center_offset = (steps - 1) as f32 * 0.5;
 
         for i in 0..steps {
-            let offset = (i as f32 - (steps - 1) as f32 / 2.0) * (width / steps as f32);
+            let offset = (i as f32 - center_offset) * step_width;
             let p = perp * offset;
 
             // Calculate coverage for edge lines

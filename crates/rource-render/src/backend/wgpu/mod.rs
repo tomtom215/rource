@@ -844,6 +844,9 @@ impl WgpuRenderer {
 
         let mut result = Vec::with_capacity(points.len() * segments_per_span);
 
+        // Pre-compute reciprocal to avoid per-segment division
+        let inv_segments = 1.0 / segments_per_span as f32;
+
         for i in 0..points.len() - 1 {
             let p0 = points[i.saturating_sub(1)];
             let p1 = points[i];
@@ -851,7 +854,7 @@ impl WgpuRenderer {
             let p3 = points[(i + 2).min(points.len() - 1)];
 
             for j in 0..segments_per_span {
-                let t = j as f32 / segments_per_span as f32;
+                let t = j as f32 * inv_segments;
                 let t2 = t * t;
                 let t3 = t2 * t;
 
