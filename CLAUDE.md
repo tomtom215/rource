@@ -2878,6 +2878,58 @@ The WASM demo displays frame time with adaptive precision:
 This ensures performance displays are honest and show actual stutters, while physics
 remains stable even during frame drops.
 
+### Phase 24: HUD String Caching & Performance Audit Verification (2026-01-24)
+
+Implemented HUD string caching to eliminate per-frame format! allocations and verified that many performance audit items were already addressed in previous phases.
+
+#### HUD String Caching (High #13)
+
+Added `HudCache` struct to the CLI application that caches formatted HUD strings and only regenerates them when underlying values change.
+
+**Files Modified:**
+- `rource-cli/src/app.rs` - Added `HudCache` struct with caching methods
+- `rource-cli/src/rendering.rs` - Updated `render_text_overlays` to use cached strings
+
+**Cached Strings:**
+
+| String | Example | Regeneration Trigger |
+|--------|---------|----------------------|
+| `files_text` | "42 files" | File count changes |
+| `speed_text` | "2.0x" | Playback speed changes |
+| `stats_text` | "50/100 commits \| 200 files \| 10 users" | Any count changes |
+
+**Implementation Details:**
+- Uses `std::fmt::Write` to write directly to existing String buffer
+- Clears and reuses String allocation instead of creating new one
+- Change detection via cached values (usize for counts, u32 for speed * 10)
+- `is_empty()` check handles initial state where all cached values = 0
+
+**Performance Impact:**
+- At 60 FPS: Eliminates ~180 allocations/second (3 format! × 60 frames)
+- Zero allocation after initial formatting when values unchanged
+
+#### Performance Audit Verification
+
+Verified that the following high-severity items from the performance audit were already fixed in previous phases:
+
+| Audit # | Issue | Status | Evidence |
+|---------|-------|--------|----------|
+| Critical NEW | Visibility buffers not using visible_entities_into() | ✓ FIXED | lib.rs:1094 uses visible_entities_into() |
+| Critical #5 | Vec allocation in quadtree query | ✓ FIXED | spatial_methods.rs:164 uses query_for_each() |
+| High #14 | path.clone() in commit loops | ✓ FIXED | headless.rs uses .as_path() (line 599, 687) |
+| High #16-17 | Active action count O(n) filtering | ✓ FIXED | active_action_count tracked incrementally (scene/mod.rs:91) |
+| High #19 | Barnes-Hut tree rebuilt every frame | ✓ FIXED | clear() preserves children (barnes_hut.rs:370) |
+| High #20 | Per-fragment division in blur shaders | ✓ FIXED | u_texel_size pre-computed (shaders.rs:482) |
+| High #29 | Per-fragment division in curve AA | ✓ FIXED | v_width pre-computed in vertex shader (shaders.rs:942) |
+
+**Key Findings:**
+- Most critical performance issues were addressed in Phase 8-22 optimizations
+- Zero-allocation patterns (visibility buffers, query_for_each, path references) already in place
+- GPU shaders already pre-compute expensive operations in vertex shader
+- Barnes-Hut tree reuses allocated node structure between frames
+
+**Test Count**: 1,836 tests passing (12 new HudCache tests added)
+
 ### Coordinate System
 
 - **World Space**: Entities live in world coordinates centered around (0,0)
@@ -3340,4 +3392,4 @@ This project uses Claude (AI assistant) for development assistance. When working
 
 ---
 
-*Last updated: 2026-01-23 (Phase 23: CLI Benchmark Mode with nanosecond timing precision - 1,821 tests total)*
+*Last updated: 2026-01-24 (Phase 24: HUD String Caching & Performance Audit Verification - 1,836 tests total)*
