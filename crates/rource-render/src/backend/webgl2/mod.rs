@@ -59,7 +59,7 @@ mod effects_methods;
 mod flush_passes;
 mod icons_methods;
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
@@ -266,7 +266,7 @@ impl WebGl2Renderer {
             ring_instances: InstanceBuffer::new(8, 500), // center(2) + radius(1) + width(1) + color(4)
             line_instances: InstanceBuffer::new(9, 1000), // start(2) + end(2) + width(1) + color(4)
             quad_instances: InstanceBuffer::new(8, 500), // bounds(4) + color(4)
-            textured_quad_instances: HashMap::new(),
+            textured_quad_instances: HashMap::default(),
             text_instances: InstanceBuffer::new(12, 2000), // bounds(4) + uv_bounds(4) + color(4)
             file_icon_instances: InstanceBuffer::new(13, 1000), // bounds(4) + uv_bounds(4) + color(4) + layer(1)
             curve_instances: InstanceBuffer::new(13, 500), // p0(2) + p1(2) + p2(2) + p3(2) + width(1) + color(4)

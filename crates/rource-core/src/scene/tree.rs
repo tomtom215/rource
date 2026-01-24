@@ -400,7 +400,7 @@ impl DirTree {
             .filter_map(|(i, opt)| opt.as_ref().map(|n| (i, n.depth())))
             .collect();
 
-        nodes_by_depth.sort_by(|a, b| b.1.cmp(&a.1)); // Descending depth
+        nodes_by_depth.sort_unstable_by(|a, b| b.1.cmp(&a.1)); // Descending depth
 
         for (idx, _depth) in nodes_by_depth {
             if let Some(node) = &self.nodes[idx] {

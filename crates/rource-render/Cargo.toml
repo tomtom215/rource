@@ -25,6 +25,9 @@ rource-math = { path = "../rource-math" }
 # Font rendering (pure Rust, no system dependencies)
 fontdue = "0.9"
 
+# Fast hash map (FxHash from rustc)
+rustc-hash = "2"
+
 # PNG image loading (minimal, pure Rust decoder)
 png = "0.18"
 

@@ -28,7 +28,7 @@
 //! - Atlas grows dynamically from 512px to 2048px max
 //! - Defragmentation reclaims wasted space when needed
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 /// Initial font atlas size in pixels.
 const INITIAL_ATLAS_SIZE: u32 = 512;
@@ -289,7 +289,7 @@ impl FontAtlas {
             view,
             sampler,
             bind_group,
-            regions: HashMap::new(),
+            regions: HashMap::default(),
             packer: RowPacker::new(size),
             size,
             data,
@@ -451,7 +451,8 @@ impl FontAtlas {
     /// Defragments the atlas by repacking all glyphs.
     fn defragment(&mut self, device: &wgpu::Device, texture_layout: &wgpu::BindGroupLayout) {
         // Sort glyphs by height (tallest first) for better packing
-        self.cached_glyphs.sort_by(|a, b| b.height.cmp(&a.height));
+        self.cached_glyphs
+            .sort_unstable_by(|a, b| b.height.cmp(&a.height));
 
         // Reset packer and data
         self.packer.reset();
@@ -874,7 +875,7 @@ impl TextureArray {
             height,
             max_layers,
             layer_count: 0,
-            extension_map: HashMap::new(),
+            extension_map: HashMap::default(),
         })
     }
 

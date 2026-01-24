@@ -19,7 +19,7 @@
 //!
 //! When fragmentation exceeds 50%, call `defragment()` to compact the atlas.
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 use web_sys::{WebGl2RenderingContext, WebGlTexture};
 
@@ -207,8 +207,8 @@ impl FontAtlas {
             size,
             data: vec![0u8; (size * size) as usize],
             packer: RowPacker::new(size),
-            glyphs: HashMap::new(),
-            glyph_bitmaps: HashMap::new(),
+            glyphs: HashMap::default(),
+            glyph_bitmaps: HashMap::default(),
             dirty: false,
             resized: false,
             used_pixels: 0,
@@ -460,7 +460,7 @@ impl FontAtlas {
             .collect();
 
         // Sort by height descending, then width descending for better packing
-        glyph_entries.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| b.1.cmp(&a.1)));
+        glyph_entries.sort_unstable_by(|a, b| b.2.cmp(&a.2).then_with(|| b.1.cmp(&a.1)));
 
         // Clear atlas data and reset packer
         self.data.fill(0);
@@ -534,8 +534,8 @@ impl TextureManager {
     /// Creates a new texture manager.
     pub fn new() -> Self {
         Self {
-            textures: HashMap::new(),
-            dimensions: HashMap::new(),
+            textures: HashMap::default(),
+            dimensions: HashMap::default(),
             next_id: 1,
         }
     }

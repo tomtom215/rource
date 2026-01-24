@@ -11,7 +11,7 @@
 // Allow lossless casts written as `as` for brevity in numeric code
 #![allow(clippy::cast_lossless)]
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 use rource_math::{Bounds, Color, Mat4, Vec2, Vec3};
 
@@ -311,11 +311,11 @@ impl SoftwareRenderer {
             transform: Mat4::IDENTITY,
             clips: Vec::new(),
             font_cache: FontCache::new(),
-            textures: HashMap::new(),
+            textures: HashMap::default(),
             next_texture_id: 1,
             // Pre-allocate glyph buffer with capacity for typical text lengths
             glyph_buffer: Vec::with_capacity(256),
-            file_icon_textures: HashMap::new(),
+            file_icon_textures: HashMap::default(),
         }
     }
 

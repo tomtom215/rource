@@ -119,7 +119,7 @@ mod flush_passes;
 mod icons_methods;
 mod physics_methods;
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 use std::sync::Arc;
 
 use rource_math::{Bounds, Color, Mat4, Vec2};
@@ -613,7 +613,7 @@ impl WgpuRenderer {
             clips: Vec::new(),
             font_cache: FontCache::new(),
             font_atlas,
-            textures: HashMap::new(),
+            textures: HashMap::default(),
             next_texture_id: 1,
             uniform_buffer,
             uniform_bind_group,
@@ -626,7 +626,7 @@ impl WgpuRenderer {
             line_instances,
             curve_instances,
             quad_instances,
-            textured_quad_instances: HashMap::new(),
+            textured_quad_instances: HashMap::default(),
             text_instances,
             file_icon_instances,
             bloom_pipeline: None,
