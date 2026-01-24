@@ -53,6 +53,7 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 41: Large Repository Browser Freeze Prevention (2026-01-24)](#phase-41-large-repository-browser-freeze-prevention-2026-01-24)
 - [Phase 42: WASM Production Demo Optimization (2026-01-24)](#phase-42-wasm-production-demo-optimization-2026-01-24)
 - [Phase 43: Physics and Rendering Micro-Optimizations (2026-01-24)](#phase-43-physics-and-rendering-micro-optimizations-2026-01-24)
+- [Phase 44: Fixed-Point Alpha Blending (2026-01-24)](#phase-44-fixed-point-alpha-blending-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -5005,6 +5006,82 @@ These were identified but deferred due to complexity vs. benefit tradeoff:
 
 **Note**: Bloom vertical pass transpose was tested but regressed 15-24%. Strip-based
 processing achieved 6.6% improvement with simpler implementation.
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 44: Fixed-Point Alpha Blending (2026-01-24)
+
+### Overview
+
+Phase 44 optimizes alpha blending operations in the software renderer by replacing
+floating-point arithmetic with fixed-point 8.8 integer arithmetic. Alpha blending
+is one of the hottest paths in software rendering, called for every non-opaque pixel.
+
+### Optimization Strategy
+
+The key insight is that alpha values (0.0-1.0) can be represented as integers in the
+0-256 range, enabling shift-based division instead of floating-point operations:
+
+```rust
+// Before: floating-point arithmetic
+let alpha = src.a;
+let inv_alpha = 1.0 - alpha;
+let new_r = ((src_r * alpha + dst_r * inv_alpha) as u32).min(255);
+
+// After: fixed-point 8.8 arithmetic
+let alpha_u16 = (src.a * 256.0) as u16;  // Convert once
+let inv_alpha = 256 - alpha_u16;
+let new_r = (src_r as u32 * alpha_u16 as u32 + dst_r as u32 * inv_alpha as u32) >> 8;
+```
+
+### Implementation Details
+
+#### Files Modified
+
+| File | Function | Description |
+|------|----------|-------------|
+| `renderer.rs:455-499` | `blend_color()` | Main static blend function |
+| `renderer.rs:74-117` | `plot_premultiplied_inner()` | Glyph and texture blending |
+| `renderer.rs:153-210` | `plot_inner()` | Coverage-based blending |
+| `renderer.rs:828-883` | `plot()` | Instance method blending |
+
+#### Key Optimizations
+
+1. **Fixed-Point Conversion**: Alpha converted to 0-256 range once per operation
+2. **Fast Path for Opaque**: Early exit when `alpha_u16 >= 256`
+3. **Fast Path for Transparent**: Early exit when `alpha_u16 == 0`
+4. **Shift-Based Division**: `>> 8` instead of floating-point division
+5. **Integer Multiply-Add**: Better instruction pipelining than float ops
+
+### Benchmark Results
+
+Created `benches/blend_perf.rs` for comprehensive blend benchmarking.
+
+| Benchmark | Baseline | Fixed-Point | Improvement |
+|-----------|----------|-------------|-------------|
+| Single pixel (alpha=0.5) | 7.12 ns | 6.54 ns | **-8%** |
+| Single pixel (alpha=0.75) | 7.05 ns | 6.28 ns | **-11%** |
+| Single pixel (alpha=1.0) | 6.70 ns | 5.19 ns | **-23%** |
+| Batch 100k pixels (varied) | 661 µs (151 Melem/s) | 522 µs (191 Melem/s) | **-21%** |
+| Same-color 50k pixels | 236 µs (212 Melem/s) | 44 µs (1.13 Gelem/s) | **-81%** |
+
+### Why This Matters
+
+Alpha blending is called millions of times per frame for:
+- Anti-aliased edges on discs (file/directory nodes)
+- Semi-transparent overlays
+- Glyph rendering for text
+- Action beams and effects
+
+A 21% improvement in batch blending directly translates to lower CPU load in
+software rendering mode, improving frame times on lower-end devices.
+
+### Correctness Verification
+
+The fixed-point implementation was verified to produce results within ±1 color value
+of the floating-point version, which is imperceptible given 8-bit color depth.
 
 **Test Count**: 1,899 tests passing
 
