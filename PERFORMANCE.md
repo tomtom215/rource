@@ -43,6 +43,7 @@ For project development guidelines and architecture overview, see [CLAUDE.md](./
 - [Phase 30: Profiler Zero-Allocation (2026-01-24)](#phase-30-profiler-zero-allocation-optimization-2026-01-24)
 - [Phase 31: Visual Rendering Hot Paths (2026-01-24)](#phase-31-visual-rendering-hot-path-optimizations-2026-01-24)
 - [Phase 32: WASM Hot Paths (2026-01-24)](#phase-32-wasm-hot-path-optimizations-2026-01-24)
+- [Phase 33: Label Collision Spatial Hashing (2026-01-24)](#phase-33-label-collision-spatial-hashing-and-zero-allocation-readbacks-2026-01-24)
 - [Architecture Refactoring](#architecture-refactoring)
   - [Scene Module Refactoring](#scene-module-refactoring-2026-01-22)
   - [GPU Bloom Effect for WebGL2](#gpu-bloom-effect-for-webgl2-2026-01-21)
@@ -3543,6 +3544,126 @@ pub fn compute_depth_factor(depth: u32) -> f32 {
 | Author JSON escape | Per getAuthors() call | 2 fewer allocations typical |
 | HashMap capacity | Per getAuthors() call | 0-3 HashMap resizes avoided |
 | Depth factor | Per visible directory | 1 div→mul per directory |
+
+**Test Count**: 1,898 tests passing (no change)
+
+---
+
+### Phase 33: Label Collision Spatial Hashing and Zero-Allocation Readbacks (2026-01-24)
+
+**Summary**: Implemented spatial hashing for label collision detection, reducing complexity from O(n²) to O(n). Added zero-allocation physics readback methods for GPU compute results. Optimized stats module path parsing.
+
+#### Optimizations
+
+**1. Label Collision Detection Spatial Hashing (render_phases.rs)**
+
+Replaced O(n²) pairwise collision checking with grid-based spatial hash:
+
+```rust
+// Before: O(n²) - check every label against all placed labels
+pub fn try_place(&mut self, pos: Vec2, width: f32, height: f32) -> bool {
+    let rect = Rect::new(pos.x, pos.y, width, height);
+    for placed in &self.placed_labels {
+        if rects_intersect(&rect, placed) {
+            return false;
+        }
+    }
+    self.placed_labels.push(rect);
+    true
+}
+
+// After: O(n) average - only check labels in overlapping grid cells
+const LABEL_CELL_SIZE: f32 = 128.0;
+const LABEL_GRID_SIZE: usize = 32;
+
+pub struct LabelPlacer {
+    placed_labels: Vec<Rect>,
+    grid: Vec<Vec<Vec<usize>>>, // 32x32 grid of label indices
+    max_labels: usize,
+}
+
+pub fn try_place(&mut self, pos: Vec2, width: f32, height: f32) -> bool {
+    let rect = Rect::new(pos.x, pos.y, width, height);
+    let ((min_cx, min_cy), (max_cx, max_cy)) = Self::rect_cell_range(&rect);
+
+    // Only check labels in overlapping cells
+    for cy in min_cy..=max_cy {
+        for cx in min_cx..=max_cx {
+            for &label_idx in &self.grid[cy][cx] {
+                if rects_intersect(&rect, &self.placed_labels[label_idx]) {
+                    return false;
+                }
+            }
+        }
+    }
+    // ... register in grid cells
+}
+```
+
+**Impact**: For 200 labels at max zoom, worst case goes from 20,000 comparisons to ~200 (average 1-4 labels per cell).
+
+**2. Zero-Allocation Physics Readback (compute.rs, spatial_hash.rs)**
+
+Added `download_entities_into()` methods that fill caller-provided buffers:
+
+```rust
+// Before: allocates new Vec each frame
+pub fn download_entities(&mut self, device: &Device) -> Vec<ComputeEntity> {
+    // ...
+    let entities: Vec<ComputeEntity> = bytemuck::cast_slice(&data).to_vec();
+    entities
+}
+
+// After: caller can reuse buffer across frames
+pub fn download_entities_into(&mut self, device: &Device, output: &mut Vec<ComputeEntity>) {
+    output.clear();
+    // ...
+    let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
+    output.extend_from_slice(entities);
+}
+```
+
+**Impact**: Eliminates per-frame Vec allocation for GPU physics readback (32 bytes × entity_count).
+
+**3. Stats Module Path Parsing (stats.rs)**
+
+Replaced O(n²) path parsing with O(n) `match_indices`:
+
+```rust
+// Before: O(n²) - split().nth(i+1) re-parses string each iteration
+for (i, component) in path.split('/').enumerate() {
+    if path.split('/').nth(i + 1).is_some() {
+        current_path.push_str(component);
+        directories.insert(current_path.clone());
+    }
+}
+
+// After: O(n) - single pass using match_indices
+for (slash_pos, _) in path_str.match_indices('/') {
+    if slash_pos > 0 {
+        directories.insert(path_str[..slash_pos].to_string());
+    }
+}
+```
+
+**Impact**: Path parsing is now O(n) per path instead of O(n²). Also added `HashSet` pre-allocation.
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `rource-wasm/src/render_phases.rs` | Spatial hash grid for label collision detection |
+| `crates/rource-render/src/backend/wgpu/compute.rs` | `download_entities_into()` method |
+| `crates/rource-render/src/backend/wgpu/spatial_hash.rs` | `download_entities_sync_into()` method |
+| `rource-wasm/src/wasm_api/stats.rs` | O(n) path parsing with `match_indices` |
+
+#### Quantitative Impact
+
+| Optimization | Before | After |
+|-------------|--------|-------|
+| Label collision (200 labels) | ~20,000 comparisons | ~200 (avg) |
+| Physics readback (1000 entities) | 32KB allocation/frame | 0 allocation |
+| Path parsing (n components) | O(n²) | O(n) |
 
 **Test Count**: 1,898 tests passing (no change)
 

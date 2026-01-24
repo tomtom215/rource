@@ -659,8 +659,32 @@ impl SpatialHashPipeline {
     /// Suitable for use in synchronous frame loops like `requestAnimationFrame`.
     #[cfg(target_arch = "wasm32")]
     pub fn download_entities_sync(&mut self, device: &Device, queue: &Queue) -> Vec<ComputeEntity> {
+        let mut output = Vec::with_capacity(self.entity_count);
+        self.download_entities_sync_into(device, queue, &mut output);
+        output
+    }
+
+    /// Downloads entities into the provided buffer (WASM, zero-allocation version).
+    ///
+    /// This avoids per-frame allocations by reusing the output buffer.
+    /// The buffer is cleared and filled with the downloaded entity data.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for polling
+    /// * `queue` - wgpu queue for submitting commands
+    /// * `output` - Buffer to fill with entity data (cleared before filling)
+    #[cfg(target_arch = "wasm32")]
+    pub fn download_entities_sync_into(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        output: &mut Vec<ComputeEntity>,
+    ) {
+        output.clear();
+
         if self.entity_count == 0 {
-            return Vec::new();
+            return;
         }
 
         let buffer_size = self.entity_count * ENTITY_SIZE;
@@ -690,19 +714,43 @@ impl SpatialHashPipeline {
         device.poll(wgpu::Maintain::Wait);
 
         let data = slice.get_mapped_range();
-        let entities: Vec<ComputeEntity> = bytemuck::cast_slice(&data).to_vec();
+        let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
+        output.extend_from_slice(entities);
         drop(data);
         staging.unmap();
 
         self.stats.bytes_downloaded += buffer_size;
-        entities
     }
 
     /// Downloads entities from the GPU (sync, native only).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn download_entities_sync(&mut self, device: &Device, queue: &Queue) -> Vec<ComputeEntity> {
+        let mut output = Vec::with_capacity(self.entity_count);
+        self.download_entities_sync_into(device, queue, &mut output);
+        output
+    }
+
+    /// Downloads entities into the provided buffer (native, zero-allocation version).
+    ///
+    /// This avoids per-frame allocations by reusing the output buffer.
+    /// The buffer is cleared and filled with the downloaded entity data.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for polling
+    /// * `queue` - wgpu queue for submitting commands
+    /// * `output` - Buffer to fill with entity data (cleared before filling)
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn download_entities_sync_into(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        output: &mut Vec<ComputeEntity>,
+    ) {
+        output.clear();
+
         if self.entity_count == 0 {
-            return Vec::new();
+            return;
         }
 
         let buffer_size = self.entity_count * ENTITY_SIZE;
@@ -732,12 +780,12 @@ impl SpatialHashPipeline {
         device.poll(wgpu::Maintain::Wait);
 
         let data = slice.get_mapped_range();
-        let entities: Vec<ComputeEntity> = bytemuck::cast_slice(&data).to_vec();
+        let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
+        output.extend_from_slice(entities);
         drop(data);
         staging.unmap();
 
         self.stats.bytes_downloaded += buffer_size;
-        entities
     }
 
     /// Warms up all compute pipelines by running zero-sized dispatches.

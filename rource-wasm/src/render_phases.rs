@@ -897,29 +897,88 @@ fn estimate_text_width(text: &str, font_size: f32) -> f32 {
     text.len() as f32 * font_size * 0.6
 }
 
-/// Label placement helper for collision avoidance.
+/// Spatial hash cell size for label collision detection (pixels).
+///
+/// Chosen to balance granularity vs. overhead:
+/// - Typical labels are 50-200 pixels wide, 20 pixels tall
+/// - 128px cells mean most labels span 1-2 cells horizontally, 1 cell vertically
+/// - Larger cells = fewer cells but more labels per cell
+/// - Smaller cells = more cells but fewer collision checks per label
+const LABEL_CELL_SIZE: f32 = 128.0;
+
+/// Precomputed reciprocal of cell size for fast division.
+const INV_LABEL_CELL_SIZE: f32 = 1.0 / LABEL_CELL_SIZE;
+
+/// Grid dimensions for spatial hash (covers 4K screen with margin).
+/// 4096 / 128 = 32 cells per axis.
+const LABEL_GRID_SIZE: usize = 32;
+
+/// Maximum grid index for clamping (`LABEL_GRID_SIZE - 1`).
+/// Using isize to allow safe clamping from negative float→int conversions.
+#[allow(clippy::cast_possible_wrap)]
+const LABEL_GRID_MAX_IDX: isize = (LABEL_GRID_SIZE - 1) as isize;
+
+/// Label placement helper for collision avoidance using spatial hashing.
+///
+/// Uses a grid-based spatial hash to achieve O(n) average-case collision detection
+/// instead of O(n²) for the naive pairwise approach.
+///
+/// # Algorithm
+///
+/// - Screen is divided into 128×128 pixel cells (configurable via `LABEL_CELL_SIZE`)
+/// - Each placed label is registered in all cells it overlaps
+/// - When checking collision, only labels in overlapping cells are tested
+/// - Average case: O(1) collision checks per label (labels spread across cells)
+/// - Worst case: O(n) if all labels cluster in same cell (degrades gracefully)
+///
+/// # Memory Layout
+///
+/// - `placed_labels`: Stores actual label rectangles
+/// - `grid`: 32×32 array of Vecs containing indices into `placed_labels`
+/// - Total overhead: ~32KB for grid structure (reused across frames)
 pub struct LabelPlacer {
+    /// All placed label rectangles.
     placed_labels: Vec<Rect>,
+    /// Spatial hash grid: each cell contains indices of labels overlapping it.
+    /// Indexed as `grid[cy][cx]`.
+    grid: Vec<Vec<Vec<usize>>>,
+    /// Maximum number of labels to place.
     max_labels: usize,
 }
 
 impl LabelPlacer {
-    /// Creates a new label placer.
+    /// Creates a new label placer with spatial hash grid.
     pub fn new(camera_zoom: f32) -> Self {
         let max_labels = compute_max_labels(camera_zoom);
+        let mut grid = Vec::with_capacity(LABEL_GRID_SIZE);
+        for _ in 0..LABEL_GRID_SIZE {
+            let mut row = Vec::with_capacity(LABEL_GRID_SIZE);
+            for _ in 0..LABEL_GRID_SIZE {
+                row.push(Vec::with_capacity(4)); // Expect ~4 labels per cell
+            }
+            grid.push(row);
+        }
         Self {
             placed_labels: Vec::with_capacity(max_labels),
+            grid,
             max_labels,
         }
     }
 
-    /// Resets the placer for a new frame (reuses internal Vec allocation).
+    /// Resets the placer for a new frame (reuses internal allocations).
     ///
     /// This is more efficient than creating a new `LabelPlacer` each frame
-    /// because it preserves the `Vec` capacity.
+    /// because it preserves both the `placed_labels` Vec capacity and the
+    /// grid cell Vec capacities.
     #[inline]
     pub fn reset(&mut self, camera_zoom: f32) {
         self.placed_labels.clear();
+        // Clear grid cells but preserve their capacity
+        for row in &mut self.grid {
+            for cell in row {
+                cell.clear();
+            }
+        }
         self.max_labels = compute_max_labels(camera_zoom);
     }
 
@@ -929,19 +988,53 @@ impl LabelPlacer {
         self.placed_labels.len() < self.max_labels
     }
 
-    /// Tries to place a label, checking for collisions.
+    /// Converts screen position to grid cell coordinates.
+    #[inline]
+    fn pos_to_cell(x: f32, y: f32) -> (usize, usize) {
+        // Handle negative coordinates by clamping to 0
+        let cx = ((x * INV_LABEL_CELL_SIZE).floor() as isize).clamp(0, LABEL_GRID_MAX_IDX) as usize;
+        let cy = ((y * INV_LABEL_CELL_SIZE).floor() as isize).clamp(0, LABEL_GRID_MAX_IDX) as usize;
+        (cx, cy)
+    }
+
+    /// Returns the range of cells a rectangle overlaps.
+    #[inline]
+    fn rect_cell_range(rect: &Rect) -> ((usize, usize), (usize, usize)) {
+        let (min_cx, min_cy) = Self::pos_to_cell(rect.x, rect.y);
+        let (max_cx, max_cy) = Self::pos_to_cell(rect.x + rect.width, rect.y + rect.height);
+        ((min_cx, min_cy), (max_cx, max_cy))
+    }
+
+    /// Tries to place a label, checking for collisions using spatial hash.
+    ///
+    /// Time complexity: O(k) where k is the number of labels in overlapping cells.
+    /// For uniformly distributed labels, k ≈ constant → O(1) average.
     #[inline]
     pub fn try_place(&mut self, pos: Vec2, width: f32, height: f32) -> bool {
         let rect = Rect::new(pos.x, pos.y, width, height);
+        let ((min_cx, min_cy), (max_cx, max_cy)) = Self::rect_cell_range(&rect);
 
-        // Check for collisions
-        for placed in &self.placed_labels {
-            if rects_intersect(&rect, placed) {
-                return false;
+        // Check for collisions only with labels in overlapping cells
+        for cy in min_cy..=max_cy {
+            for cx in min_cx..=max_cx {
+                for &label_idx in &self.grid[cy][cx] {
+                    if rects_intersect(&rect, &self.placed_labels[label_idx]) {
+                        return false;
+                    }
+                }
             }
         }
 
+        // No collision - add to placed_labels and register in grid cells
+        let label_idx = self.placed_labels.len();
         self.placed_labels.push(rect);
+
+        for cy in min_cy..=max_cy {
+            for cx in min_cx..=max_cx {
+                self.grid[cy][cx].push(label_idx);
+            }
+        }
+
         true
     }
 

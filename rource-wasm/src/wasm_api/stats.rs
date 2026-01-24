@@ -247,36 +247,43 @@ impl Rource {
     /// This calculates directory count from file paths, independent of
     /// playback state. Useful for displaying total stats before playback
     /// reaches the end.
+    ///
+    /// # Optimization Notes
+    ///
+    /// - Uses `match_indices('/')` for O(n) path parsing instead of O(n²) split+nth
+    /// - Stores owned Strings to handle `Cow<str>` from `to_string_lossy()`
+    /// - Pre-allocates `HashSet` capacity based on estimated directory count
     #[wasm_bindgen(js_name = getCommitDirectoryCount)]
     pub fn get_commit_directory_count(&self) -> usize {
         use std::collections::HashSet;
 
-        let mut directories: HashSet<String> = HashSet::new();
+        // Estimate: ~5 directories per file on average
+        let estimated_dirs = self.commits.iter().map(|c| c.files.len()).sum::<usize>() * 5;
+        let mut directories: HashSet<String> = HashSet::with_capacity(estimated_dirs.min(10000));
+        let mut has_files = false;
 
         for commit in &self.commits {
             for file in &commit.files {
-                // Extract parent directories from each file path
+                has_files = true;
                 let path = file.path.to_string_lossy();
-                let mut current_path = String::new();
+                let path_str: &str = path.as_ref();
 
-                for (i, component) in path.split('/').enumerate() {
-                    if i > 0 {
-                        current_path.push('/');
-                    }
-                    // Check if this is the file (last component) or a directory
-                    // by checking if there are more components after this one
-                    if path.split('/').nth(i + 1).is_some() {
-                        // This is a directory component (not the file name)
-                        current_path.push_str(component);
-                        directories.insert(current_path.clone());
+                // Extract all directory prefixes efficiently using match_indices
+                // For "src/core/main.rs", this finds "/" at indices 3 and 8
+                // producing prefixes "src" and "src/core"
+                for (slash_pos, _) in path_str.match_indices('/') {
+                    if slash_pos > 0 {
+                        directories.insert(path_str[..slash_pos].to_string());
                     }
                 }
             }
         }
 
-        // Add 1 for root directory if there are any directories
-        if directories.is_empty() && !self.commits.is_empty() {
+        // Add 1 for root directory if there are any files
+        if directories.is_empty() && has_files {
             1 // Just root
+        } else if directories.is_empty() {
+            0 // No files at all
         } else {
             directories.len() + 1 // +1 for root
         }
