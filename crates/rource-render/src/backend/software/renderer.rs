@@ -499,14 +499,18 @@ impl SoftwareRenderer {
         let outer_radius = radius + aa_width;
         let outer_sq = outer_radius * outer_radius;
 
-        // Pre-compute inverse for anti-aliasing interpolation
-        let aa_range = 2.0 * aa_width;
+        // Pre-compute reciprocal for anti-aliasing interpolation (avoids division per pixel)
+        let inv_aa_range = 1.0 / (2.0 * aa_width);
 
         for py in min_y..=max_y {
+            // Pre-compute row offset and dy component outside inner loop
+            let row_offset = py as usize * self.width as usize;
+            let dy = py as f32 + 0.5 - cy;
+            let dy_sq = dy * dy;
+
             for px in min_x..=max_x {
                 let dx = px as f32 + 0.5 - cx;
-                let dy = py as f32 + 0.5 - cy;
-                let dist2 = dx * dx + dy * dy;
+                let dist2 = dx * dx + dy_sq;
 
                 // Early exit: pixel is outside the outer radius
                 if dist2 > outer_sq {
@@ -526,11 +530,13 @@ impl SoftwareRenderer {
                     // Edge region: anti-aliased, sqrt needed for smooth gradient
                     // This branch is taken for ~18% of pixels in a typical disc
                     let dist = dist2.sqrt();
-                    let t = (outer_radius - dist) / aa_range;
+                    // Use pre-computed reciprocal instead of division
+                    let t = (outer_radius - dist) * inv_aa_range;
                     color.a * t
                 };
 
-                let idx = (py as u32 * self.width + px as u32) as usize;
+                // Use pre-computed row offset (saves one multiplication per pixel)
+                let idx = row_offset + px as usize;
                 if idx < self.pixels.len() {
                     let src = Color::new(color.r, color.g, color.b, alpha);
                     self.pixels[idx] = Self::blend_color(self.pixels[idx], src);
@@ -630,13 +636,17 @@ impl SoftwareRenderer {
         let outer_edge_sq = (half_width + 0.5) * (half_width + 0.5);
 
         for py_int in min_y..=max_y {
+            // Pre-compute row offset outside inner loop to avoid multiplication per pixel
+            let row_offset = py_int as usize * self.width as usize;
+            let point_y = py_int as f32 + 0.5;
+            // Pre-compute y component of distance to start point
+            let to_start_y = point_y - start.y;
+
             for px_int in min_x..=max_x {
                 let point_x = px_int as f32 + 0.5;
-                let point_y = py_int as f32 + 0.5;
 
                 // Distance from point to line segment
                 let to_start_x = point_x - start.x;
-                let to_start_y = point_y - start.y;
 
                 let t = ((to_start_x * dx + to_start_y * dy) / length_sq).clamp(0.0, 1.0);
 
@@ -668,7 +678,8 @@ impl SoftwareRenderer {
                         color.a * edge_t
                     };
 
-                    let idx = (py_int as u32 * self.width + px_int as u32) as usize;
+                    // Use pre-computed row offset (saves one multiplication per pixel)
+                    let idx = row_offset + px_int as usize;
                     if idx < self.pixels.len() {
                         let src = Color::new(color.r, color.g, color.b, alpha);
                         self.pixels[idx] = Self::blend_color(self.pixels[idx], src);
