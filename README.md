@@ -1,18 +1,22 @@
-# Rource
+<p align="center">
+  <img src="docs/images/logo.svg" alt="Rource Logo" width="100" height="100">
+</p>
+
+<h1 align="center">Rource</h1>
 
 <!-- CI/CD Status Badges -->
-[![CI](https://github.com/tomtom215/rource/actions/workflows/ci.yml/badge.svg)](https://github.com/tomtom215/rource/actions/workflows/ci.yml)
-[![Security Audit](https://github.com/tomtom215/rource/actions/workflows/security.yml/badge.svg)](https://github.com/tomtom215/rource/actions/workflows/security.yml)
-[![codecov](https://codecov.io/gh/tomtom215/rource/graph/badge.svg)](https://codecov.io/gh/tomtom215/rource)
+[![CI](https://img.shields.io/github/actions/workflow/status/tomtom215/rource/ci.yml?branch=main&logo=github&label=CI)](https://github.com/tomtom215/rource/actions/workflows/ci.yml)
+[![Security](https://img.shields.io/github/actions/workflow/status/tomtom215/rource/security.yml?branch=main&logo=github&label=Security)](https://github.com/tomtom215/rource/actions/workflows/security.yml)
+[![codecov](https://img.shields.io/codecov/c/github/tomtom215/rource?logo=codecov)](https://codecov.io/gh/tomtom215/rource)
 
 <!-- Package Info Badges -->
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Rust: 1.82+](https://img.shields.io/badge/MSRV-1.82+-orange.svg)](https://www.rust-lang.org/)
-[![GitHub Release](https://img.shields.io/github/v/release/tomtom215/rource?include_prereleases)](https://github.com/tomtom215/rource/releases)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg?logo=gnu)](https://www.gnu.org/licenses/gpl-3.0)
+[![Rust: 1.93+](https://img.shields.io/badge/MSRV-1.93+-orange.svg?logo=rust)](https://www.rust-lang.org/)
+[![GitHub Release](https://img.shields.io/github/v/release/tomtom215/rource?include_prereleases&logo=github)](https://github.com/tomtom215/rource/releases)
 
 <!-- Live Demo Badge -->
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://tomtom215.github.io/rource/)
-[![Docker](https://img.shields.io/badge/docker-available-blue.svg)](https://github.com/tomtom215/rource/pkgs/container/rource)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen.svg?logo=github-pages)](https://tomtom215.github.io/rource/)
+[![Docker](https://img.shields.io/badge/docker-available-blue.svg?logo=docker)](https://github.com/tomtom215/rource/pkgs/container/rource)
 
 **Rource** (Rust + Gource) is a software version control visualization tool - a complete rewrite of [Gource](https://github.com/acaudwell/Gource) in Rust with WebAssembly support.
 
@@ -82,7 +86,7 @@ cargo build --release
 
 ### Requirements
 
-- Rust 1.82+ (install via [rustup](https://rustup.rs/))
+- Rust 1.93+ (install via [rustup](https://rustup.rs/))
 - For WASM: `wasm-pack` (`cargo install wasm-pack`)
 
 ## Quick Start

@@ -62,7 +62,7 @@ import {
     updateBottomSheetFileTypes, updateBottomSheetAuthors, clearBottomSheetLegends
 } from './features/bottom-sheet.js';
 import { initMobileToolbar } from './features/mobile-toolbar.js';
-import { initMobileControls, onPlaybackStateChange } from './features/mobile-controls.js';
+import { initMobileControls, onPlaybackStateChange, showControls } from './features/mobile-controls.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -149,10 +149,16 @@ function initBottomSheetActions() {
         });
     }
 
-    // FAB opens bottom sheet
+    // FAB opens bottom sheet (or shows controls if hidden)
     if (bsFab) {
         bsFab.addEventListener('click', () => {
-            openBottomSheet('HALF');
+            // If controls are hidden, show them first instead of opening sheet
+            const controlsHidden = document.body.classList.contains('controls-hidden');
+            if (controlsHidden) {
+                showControls();
+            } else {
+                openBottomSheet('HALF');
+            }
         });
     }
 
