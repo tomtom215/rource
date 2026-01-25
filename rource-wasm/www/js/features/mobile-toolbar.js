@@ -181,10 +181,10 @@ function handleHelp() {
     if (showHelpFn) {
         showHelpFn();
     } else {
-        // Fallback: show help overlay
+        // Fallback: show help overlay using visibility class pattern
         const helpOverlay = document.querySelector('.help-overlay');
         if (helpOverlay) {
-            helpOverlay.style.display = 'flex';
+            helpOverlay.classList.add('visible');
         }
     }
 }

@@ -52,6 +52,9 @@
     border: 1px solid var(--border);
     position: relative;
     animation: modalSlideIn 0.2s ease-out;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
 @keyframes modalSlideIn {
@@ -256,6 +259,13 @@
     background: var(--accent);
     border-radius: 50%;
     cursor: pointer;
+    border: none;
+}
+
+.export-slider-group input[type="range"]::-moz-range-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
     border: none;
 }
 
