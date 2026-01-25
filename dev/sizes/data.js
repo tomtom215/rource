@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769301354324,
+  "lastUpdate": 1769303656442,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1934,6 +1934,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/52e65b5004ea7101f85c3a2a13ba02349cf4c881"
         },
         "date": 1769301353465,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3911576,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2769980,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1069735,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8194e04a420b31009161042609b44eb85c7e34a6",
+          "message": "Merge pull request #160 from tomtom215/claude/rource-algorithmic-exploration-HHVsE\n\ndocs: Phase 51 - Algorithmic Excellence Exploration analysis",
+          "timestamp": "2026-01-25T02:12:06+01:00",
+          "tree_id": "9ffb72d7088c2b98b2d735a3207ea39251ab8a13",
+          "url": "https://github.com/tomtom215/rource/commit/8194e04a420b31009161042609b44eb85c7e34a6"
+        },
+        "date": 1769303655485,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
