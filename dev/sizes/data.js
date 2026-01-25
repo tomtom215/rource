@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769359976615,
+  "lastUpdate": 1769362562935,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2246,6 +2246,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/8a7ad619f77a0e8c039fe9434c8ffe78258b435c"
         },
         "date": 1769359976166,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772041,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070591,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1896ab680a64f3a7071f359fd8ae3e4926ea6331",
+          "message": "Merge pull request #168 from tomtom215/claude/fix-wasm-modal-blocking-FGhnE\n\nRefactor help overlay visibility logic to use positive class state",
+          "timestamp": "2026-01-25T18:33:48+01:00",
+          "tree_id": "b476b56045d8a4a08d36aaa6727b0630228f2071",
+          "url": "https://github.com/tomtom215/rource/commit/1896ab680a64f3a7071f359fd8ae3e4926ea6331"
+        },
+        "date": 1769362561822,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
