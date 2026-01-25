@@ -147,6 +147,8 @@ pub use error::WgpuError;
 pub use shadow::ShadowConfig;
 pub use stats::ActivePrimitives;
 
+// GpuInfo is defined at the end of this file, accessible via `use crate::backend::wgpu::GpuInfo`
+
 /// wgpu renderer implementing the Renderer trait.
 ///
 /// This renderer uses wgpu for GPU-accelerated rendering across native and web platforms.
@@ -697,6 +699,60 @@ impl WgpuRenderer {
     pub fn frame_stats(&self) -> &FrameStats {
         &self.frame_stats
     }
+
+    /// Returns GPU adapter information for diagnostics.
+    ///
+    /// This provides hardware details useful for:
+    /// - Debugging rendering issues
+    /// - Feature capability detection
+    /// - Performance profiling and optimization decisions
+    #[must_use]
+    pub fn get_gpu_info(&self) -> GpuInfo {
+        let info = self.adapter.get_info();
+        let limits = self.adapter.limits();
+
+        GpuInfo {
+            name: info.name.clone(),
+            vendor: info.vendor,
+            device: info.device,
+            device_type: format!("{:?}", info.device_type),
+            backend: format!("{:?}", info.backend),
+            // Key limits for production diagnostics
+            max_texture_dimension_2d: limits.max_texture_dimension_2d,
+            max_buffer_size: limits.max_buffer_size,
+            max_storage_buffer_binding_size: limits.max_storage_buffer_binding_size,
+            max_compute_workgroup_size_x: limits.max_compute_workgroup_size_x,
+            max_compute_invocations_per_workgroup: limits.max_compute_invocations_per_workgroup,
+        }
+    }
+}
+
+/// GPU adapter information for diagnostics and capability detection.
+///
+/// Contains hardware details and key limits useful for debugging,
+/// performance profiling, and feature capability detection.
+#[derive(Debug, Clone)]
+pub struct GpuInfo {
+    /// Human-readable name of the GPU adapter.
+    pub name: String,
+    /// Vendor ID (PCI vendor code).
+    pub vendor: u32,
+    /// Device ID (PCI device code).
+    pub device: u32,
+    /// Device type (e.g., `DiscreteGpu`, `IntegratedGpu`, `Cpu`).
+    pub device_type: String,
+    /// Graphics backend (e.g., `Vulkan`, `Metal`, `Dx12`, `BrowserWebGpu`).
+    pub backend: String,
+    /// Maximum 2D texture dimension (width/height).
+    pub max_texture_dimension_2d: u32,
+    /// Maximum buffer size in bytes.
+    pub max_buffer_size: u64,
+    /// Maximum storage buffer binding size in bytes.
+    pub max_storage_buffer_binding_size: u32,
+    /// Maximum compute workgroup size in X dimension.
+    pub max_compute_workgroup_size_x: u32,
+    /// Maximum compute invocations per workgroup.
+    pub max_compute_invocations_per_workgroup: u32,
 }
 
 // ============================================================================

@@ -20,17 +20,28 @@ let lastTouchX = 0;
 let lastTouchY = 0;
 
 /**
- * Converts client coordinates to canvas-relative coordinates.
+ * Converts client coordinates to canvas pixel coordinates.
+ *
+ * IMPORTANT: The canvas internal buffer is scaled by devicePixelRatio (DPR),
+ * but getBoundingClientRect() returns CSS dimensions. We must multiply by DPR
+ * to convert CSS coordinates to actual pixel coordinates that WASM expects.
+ *
+ * Example: On a 2x Retina display with canvas CSS size 1280x720:
+ * - Canvas internal buffer: 2560x1440 pixels
+ * - User clicks at CSS position (640, 360)
+ * - Must convert to pixel position (1280, 720) for WASM
+ *
  * @param {HTMLCanvasElement} canvas - The canvas element
  * @param {number} clientX - Client X coordinate
  * @param {number} clientY - Client Y coordinate
- * @returns {{x: number, y: number}} Canvas-relative coordinates
+ * @returns {{x: number, y: number}} Canvas pixel coordinates
  */
 function getCanvasCoords(canvas, clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
     return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
+        x: (clientX - rect.left) * dpr,
+        y: (clientY - rect.top) * dpr
     };
 }
 
@@ -44,6 +55,17 @@ function handleMouseDown(e, canvas) {
     if (!rource) return;
 
     const { x, y } = getCanvasCoords(canvas, e.clientX, e.clientY);
+
+    // Debug: log hit test info on click (can be removed after debugging)
+    if (typeof rource.debugHitTest === 'function') {
+        try {
+            const debugInfo = JSON.parse(rource.debugHitTest(x, y));
+            console.debug('Click hit test:', debugInfo);
+        } catch (e) {
+            // Ignore parsing errors
+        }
+    }
+
     safeWasmVoid('onMouseDown', () => rource.onMouseDown(x, y));
     canvas.style.cursor = 'grabbing';
 }

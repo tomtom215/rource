@@ -13,7 +13,8 @@ Organized by optimization category with implementation details and code location
 4. [Compile-Time Optimizations](#compile-time-optimizations)
 5. [Parser Optimizations](#parser-optimizations)
 6. [WASM Optimizations](#wasm-optimizations)
-7. [Compiler Optimizations](#compiler-optimizations)
+7. [Browser-Specific Optimizations](#browser-specific-optimizations)
+8. [Compiler Optimizations](#compiler-optimizations)
 
 ---
 
@@ -473,6 +474,63 @@ for strip in 0..(width / STRIP_WIDTH) {
 
 ---
 
+## Browser-Specific Optimizations
+
+### Firefox GPU Physics Workaround
+
+**Phase**: 60
+**Location**: `rource-wasm/www/js/main.js`
+**Impact**: 5-10x performance improvement on Firefox WebGPU
+
+Firefox's WebGPU implementation has significant compute shader overhead compared to
+Chrome/Edge. Investigation revealed fundamental differences in how Firefox handles
+GPU synchronization and buffer operations.
+
+**Root Cause Analysis**:
+
+| Operation | Chrome/Edge | Firefox |
+|-----------|-------------|---------|
+| `device.poll(Maintain::Wait)` | Returns quickly | Thread yield/sleep overhead |
+| Compute pass submission | Efficient batching | Higher latency per pass |
+| Buffer synchronization | Optimized via ANGLE+D3D | Additional memory barriers |
+| Staging buffer copies | Pipelined efficiently | Stalls more frequently |
+| Atomic shader operations | Fast path | Slower synchronization |
+
+**GPU Physics Pipeline** (9 sequential compute passes):
+1. Clear Counts → 2. Count Entities → 3-5. Prefix Sum → 6. Init Scatter →
+7. Scatter Entities → 8. Calculate Forces → 9. Integrate
+
+Each pass requires GPU→CPU synchronization, compounding Firefox's overhead.
+
+**Solution**:
+```javascript
+// Detect Firefox and disable GPU physics (use CPU physics instead)
+const isFirefox = navigator.userAgent.includes('Firefox');
+
+if (!isFirefox) {
+    rource.warmupGPUPhysics();
+    rource.setUseGPUPhysics(true);
+    rource.setGPUPhysicsThreshold(500);
+} else {
+    console.log('Firefox detected: using CPU physics');
+}
+```
+
+**Key Insight**: GPU rendering (draw calls) remains enabled on Firefox—only compute
+shader physics is disabled. Rendering uses different synchronization patterns that
+Firefox handles well.
+
+**Performance Impact**:
+
+| Browser | Before | After | Improvement |
+|---------|--------|-------|-------------|
+| Firefox (WebGPU) | ~6 FPS | ~40 FPS | ~6-7x |
+| Chrome (WebGPU) | ~60 FPS | ~60 FPS | Unchanged |
+
+**Future**: May be re-enabled when Firefox WebGPU compute performance improves.
+
+---
+
 ## Compiler Optimizations
 
 ### Rust 1.93.0 Upgrade
@@ -538,6 +596,7 @@ wasm-opt \
 
 | Optimization           | Phase | Improvement |
 |------------------------|-------|-------------|
+| Firefox GPU workaround | 60    | 6-7x        |
 | to_argb8 conversion    | 45    | 2.46x       |
 | GPU spatial hash       | 22    | 2,200x      |
 | DirNode membership     | 40    | O(n) to O(1)|

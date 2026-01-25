@@ -238,6 +238,9 @@
         /* Scroll snap for section-based navigation (proximity = gentle snapping) */
         scroll-snap-type: y proximity;
         scroll-padding-top: 8px;
+        /* Firefox scrollbar styling */
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
     }
 
     .bottom-sheet-content::-webkit-scrollbar {

@@ -8,7 +8,7 @@
  * Single responsibility: show entity details on hover.
  */
 
-import { getRource } from '../state.js';
+import { getRource, addManagedEventListener } from '../state.js';
 import { safeWasmCall } from '../wasm-api.js';
 import { getElement } from '../dom.js';
 import { CONFIG } from '../config.js';
@@ -141,18 +141,26 @@ function checkHover(x, y, clientX, clientY) {
  */
 export function handleHover(e, canvas) {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const dpr = window.devicePixelRatio || 1;
 
-    // Skip if position hasn't changed significantly
-    const dx = Math.abs(x - lastHoverX);
-    const dy = Math.abs(y - lastHoverY);
+    // CSS coordinates (for debounce and tooltip positioning)
+    const cssX = e.clientX - rect.left;
+    const cssY = e.clientY - rect.top;
+
+    // Pixel coordinates (for WASM hit-testing)
+    // Canvas internal buffer is scaled by DPR, so we must scale coordinates too
+    const pixelX = cssX * dpr;
+    const pixelY = cssY * dpr;
+
+    // Skip if position hasn't changed significantly (use CSS coords for debounce)
+    const dx = Math.abs(cssX - lastHoverX);
+    const dy = Math.abs(cssY - lastHoverY);
     if (dx < 2 && dy < 2 && tooltipVisible) {
         return;
     }
 
-    lastHoverX = x;
-    lastHoverY = y;
+    lastHoverX = cssX;
+    lastHoverY = cssY;
 
     // Debounce hover check
     if (hoverTimeout) {
@@ -160,7 +168,8 @@ export function handleHover(e, canvas) {
     }
 
     hoverTimeout = setTimeout(() => {
-        checkHover(x, y, e.clientX, e.clientY);
+        // Pass pixel coords to WASM, screen coords for tooltip positioning
+        checkHover(pixelX, pixelY, e.clientX, e.clientY);
     }, 50); // 50ms debounce for smooth hover
 }
 
@@ -186,17 +195,18 @@ export function initHoverTooltip() {
     if (!canvas) return;
 
     // Track hover on mousemove
-    canvas.addEventListener('mousemove', (e) => {
+    // passive: true signals to browser this won't block scrolling (no preventDefault)
+    addManagedEventListener(canvas, 'mousemove', (e) => {
         handleHover(e, canvas);
-    });
+    }, { passive: true });
 
     // Hide tooltip on mouse leave
-    canvas.addEventListener('mouseleave', handleMouseLeaveTooltip);
+    addManagedEventListener(canvas, 'mouseleave', handleMouseLeaveTooltip, { passive: true });
 
     // Hide tooltip when starting a drag
-    canvas.addEventListener('mousedown', () => {
+    addManagedEventListener(canvas, 'mousedown', () => {
         hideTooltip();
-    });
+    }, { passive: true });
 }
 
 /**

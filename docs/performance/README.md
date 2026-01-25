@@ -11,7 +11,7 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 | Document                                                              | Purpose                                          |
 |-----------------------------------------------------------------------|--------------------------------------------------|
 | [OVERVIEW.md](./OVERVIEW.md)                                          | Executive summary and optimization philosophy    |
-| [CHRONOLOGY.md](./CHRONOLOGY.md)                                      | Complete timeline of all 59 optimization phases  |
+| [CHRONOLOGY.md](./CHRONOLOGY.md)                                      | Complete timeline of all 60 optimization phases  |
 | [BENCHMARKS.md](./BENCHMARKS.md)                                      | All benchmark data with methodology              |
 | [SUCCESSFUL_OPTIMIZATIONS.md](./SUCCESSFUL_OPTIMIZATIONS.md)          | Implemented optimizations with measured gains    |
 | [NOT_APPLICABLE.md](./NOT_APPLICABLE.md)                              | Analyzed but not applicable optimizations        |
@@ -45,12 +45,15 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 - Large repository protection (Phase 41)
 - HashMap to Vec forces buffer (Phase 42) - 10.1% faster
 
+**Browser-Specific Optimizations**
+- Firefox GPU physics workaround (Phase 60) - 6-7x improvement
+
 ### By Improvement Magnitude
 
 | Improvement     | Phases                                                     |
 |-----------------|------------------------------------------------------------|
 | 10x or greater  | 58 (LUT directions 13.9x), 44 (same-color blend 5.3x)      |
-| 2-10x           | 45 (to_argb8 2.46x), 40 (DirNode O(1))                     |
+| 2-10x           | 60 (Firefox workaround 6-7x), 45 (to_argb8 2.46x), 40 (DirNode O(1)) |
 | 30-99%          | 42 (apply_commit 35%), 50 (blend_batch 43%)                |
 | 10-29%          | 42 (force_layout 10.1%), 50 (apply_commit 17%)             |
 
@@ -103,7 +106,7 @@ cargo bench -- --verbose
 
 | Metric                | Value               |
 |-----------------------|---------------------|
-| Total phases          | 59                  |
+| Total phases          | 60                  |
 | Test count            | 1,899               |
 | Last updated          | 2026-01-25          |
 | Rust version          | 1.93.0              |
@@ -111,5 +114,5 @@ cargo bench -- --verbose
 
 ---
 
-*This documentation represents the culmination of 59 optimization phases, demonstrating
+*This documentation represents the culmination of 60 optimization phases, demonstrating
 portfolio-grade attention to performance at the nanosecond and CPU cycle level.*

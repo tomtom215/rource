@@ -450,7 +450,24 @@ impl RendererBackend {
 
                 match WgpuRenderer::new_from_canvas(canvas).await {
                     Ok(wgpu) => {
-                        web_sys::console::log_1(&"Rource: Using wgpu (WebGPU) renderer".into());
+                        // Log GPU info for diagnostics
+                        let info = wgpu.get_gpu_info();
+                        web_sys::console::log_1(
+                            &format!(
+                                "Rource: Using wgpu (WebGPU) - {} ({}, {})",
+                                info.name, info.device_type, info.backend
+                            )
+                            .into(),
+                        );
+                        web_sys::console::log_1(
+                            &format!(
+                                "Rource: GPU limits - max texture: {}px, max buffer: {}MB, compute workgroup: {}",
+                                info.max_texture_dimension_2d,
+                                info.max_buffer_size / (1024 * 1024),
+                                info.max_compute_workgroup_size_x
+                            )
+                            .into(),
+                        );
                         return Ok((Self::Wgpu(wgpu), RendererType::Wgpu));
                     }
                     Err(e) => {
@@ -644,6 +661,29 @@ impl RendererBackend {
             Self::WebGl2(r) => r.is_context_lost(),
             Self::Software { .. } => false,
         }
+    }
+
+    /// Returns GPU adapter information for diagnostics (WebGPU only).
+    ///
+    /// This provides hardware details useful for debugging and performance profiling.
+    /// Returns `None` for non-wgpu renderers.
+    #[cfg(target_arch = "wasm32")]
+    #[must_use]
+    pub fn get_gpu_info(&self) -> Option<rource_render::GpuInfo> {
+        match self {
+            Self::Wgpu(r) => Some(r.get_gpu_info()),
+            Self::WebGl2(_) | Self::Software { .. } => None,
+        }
+    }
+
+    /// Returns GPU adapter information for diagnostics (stub for non-WASM).
+    ///
+    /// Always returns `None` on non-WASM targets since WebGPU is only available in browsers.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[must_use]
+    #[allow(clippy::unused_self)]
+    pub fn get_gpu_info(&self) -> Option<rource_render::GpuInfo> {
+        None
     }
 
     /// Attempts to recover from a lost GPU context.

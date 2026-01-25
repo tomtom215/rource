@@ -18,7 +18,7 @@ philosophy, and current state.
 
 ## Executive Summary
 
-Rource has undergone **59 documented optimization phases** from initial development through
+Rource has undergone **60 documented optimization phases** from initial development through
 2026-01-25. These optimizations span every layer of the application:
 
 | Layer                | Optimization Count | Key Improvements                               |
@@ -28,6 +28,7 @@ Rource has undergone **59 documented optimization phases** from initial developm
 | VCS Parsers          | 4                 | Iterator-based zero-allocation parsing         |
 | WASM Runtime         | 8                 | Commit limits, adaptive prewarm, buffer reuse  |
 | Data Structures      | 10                | HashSet membership, Vec over HashMap           |
+| Browser Compatibility| 1                 | Firefox WebGPU compute shader workaround       |
 | Compiler/Build       | 3                 | Rust 1.93, wasm-opt -O3, LTO                   |
 | Theoretical Analysis | 6                 | Algorithm applicability assessment             |
 

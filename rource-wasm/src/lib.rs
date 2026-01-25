@@ -632,6 +632,40 @@ impl Rource {
         self.renderer_type == RendererType::WebGl2
     }
 
+    /// Returns GPU adapter information for diagnostics (WebGPU only).
+    ///
+    /// Returns a JSON string with hardware details:
+    /// - `name`: GPU adapter name
+    /// - `vendor`: Vendor ID
+    /// - `device`: Device ID
+    /// - `deviceType`: Type (`DiscreteGpu`, `IntegratedGpu`)
+    /// - `backend`: Graphics backend (`BrowserWebGpu`)
+    /// - `maxTextureDimension2d`: Maximum 2D texture size
+    /// - `maxBufferSize`: Maximum buffer size in bytes
+    /// - `maxStorageBufferBindingSize`: Maximum storage buffer binding size
+    /// - `maxComputeWorkgroupSizeX`: Maximum compute workgroup X size
+    /// - `maxComputeInvocationsPerWorkgroup`: Maximum compute invocations per workgroup
+    ///
+    /// Returns `null` for non-WebGPU renderers.
+    #[wasm_bindgen(js_name = getGPUInfo)]
+    pub fn get_gpu_info(&self) -> Option<String> {
+        self.backend.get_gpu_info().map(|info| {
+            format!(
+                r#"{{"name":"{}","vendor":{},"device":{},"deviceType":"{}","backend":"{}","maxTextureDimension2d":{},"maxBufferSize":{},"maxStorageBufferBindingSize":{},"maxComputeWorkgroupSizeX":{},"maxComputeInvocationsPerWorkgroup":{}}}"#,
+                info.name.replace('"', "\\\""),
+                info.vendor,
+                info.device,
+                info.device_type,
+                info.backend,
+                info.max_texture_dimension_2d,
+                info.max_buffer_size,
+                info.max_storage_buffer_binding_size,
+                info.max_compute_workgroup_size_x,
+                info.max_compute_invocations_per_workgroup,
+            )
+        })
+    }
+
     /// Returns true if the GPU context is lost.
     #[wasm_bindgen(js_name = isContextLost)]
     pub fn is_context_lost(&self) -> bool {
@@ -1223,8 +1257,7 @@ impl Rource {
         if first_commit_files > 1_000 {
             web_sys::console::log_1(
                 &format!(
-                    "Rource: Large initial commit ({} files), using {} prewarm cycles",
-                    first_commit_files, prewarm_cycles
+                    "Rource: Large initial commit ({first_commit_files} files), using {prewarm_cycles} prewarm cycles"
                 )
                 .into(),
             );

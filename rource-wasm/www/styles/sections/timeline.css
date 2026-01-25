@@ -119,6 +119,8 @@
     border-radius: 50%;
     cursor: pointer;
     transition: transform 0.2s;
+    /* Hint to browser that transform will change - improves hover animation perf */
+    will-change: transform;
 }
 
 .timeline-slider::-webkit-slider-thumb:hover {
@@ -132,6 +134,8 @@
     border-radius: 50%;
     cursor: pointer;
     border: none;
+    /* Hint to browser that transform will change - improves hover animation perf */
+    will-change: transform;
 }
 
 .timeline-slider:disabled {

@@ -130,8 +130,12 @@ export function resizeCanvas() {
         canvas.width = renderWidth;
         canvas.height = renderHeight;
 
-        // The CSS keeps the canvas at display size (already 100% via CSS)
-        // No need to set canvas.style.width/height as CSS handles it
+        // CRITICAL for Safari: explicitly set CSS dimensions to match container.
+        // Safari may not properly scale the canvas buffer to CSS dimensions
+        // when using just `width: 100%; height: 100%`. Setting explicit pixel
+        // values ensures 1:1 mapping between CSS and buffer dimensions.
+        canvas.style.width = `${displayWidth}px`;
+        canvas.style.height = `${displayHeight}px`;
 
         const rource = getRource();
         if (rource) {
