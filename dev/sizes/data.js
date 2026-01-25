@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769371734468,
+  "lastUpdate": 1769375265120,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2402,6 +2402,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/43dc987e467146781a0c63e9e87c353f35e844be"
         },
         "date": 1769371734146,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772041,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070591,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cafb03239cdcd516329470ad6386e31a776250f6",
+          "message": "Merge pull request #172 from tomtom215/claude/chaos-testing-suite-PGM6u\n\nAdd comprehensive chaos testing suite for WASM and UI stability",
+          "timestamp": "2026-01-25T22:05:39+01:00",
+          "tree_id": "a36d13a3da715dc62484cb941741053fd8615ecf",
+          "url": "https://github.com/tomtom215/rource/commit/cafb03239cdcd516329470ad6386e31a776250f6"
+        },
+        "date": 1769375264607,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
