@@ -35,9 +35,16 @@
     border-radius: 50%;
     cursor: pointer;
     z-index: var(--z-sticky);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent);
+    /* Fallback for browsers without color-mix() */
+    box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
     /* Use composited properties only for better performance */
     transition: opacity 0.3s, transform 0.3s;
+}
+
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+    .sidebar-toggle {
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
 }
 
 .sidebar-toggle:hover {
@@ -310,7 +317,8 @@
     /* Active state - orange glow like "turbo/boost" in games */
     .mobile-toolbar-btn.uncapped-toggle.active {
         color: var(--accent-orange);
-        background: color-mix(in srgb, var(--accent-orange) 20%, transparent);
+        /* Fallback for browsers without color-mix() */
+        background: rgba(255, 107, 53, 0.2);
     }
 
     .mobile-toolbar-btn.uncapped-toggle.active::before {
@@ -318,9 +326,20 @@
         position: absolute;
         inset: -2px;
         border-radius: 14px;
-        background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
+        /* Fallback for browsers without color-mix() */
+        background: rgba(255, 107, 53, 0.15);
         animation: uncapped-pulse 2s ease-in-out infinite;
         z-index: -1;
+    }
+
+    @supports (background: color-mix(in srgb, red 50%, blue)) {
+        .mobile-toolbar-btn.uncapped-toggle.active {
+            background: color-mix(in srgb, var(--accent-orange) 20%, transparent);
+        }
+
+        .mobile-toolbar-btn.uncapped-toggle.active::before {
+            background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
+        }
     }
 
     @keyframes uncapped-pulse {
@@ -1059,4 +1078,91 @@
 .gesture-indicator-zoom svg {
     width: 20px;
     height: 20px;
+}
+
+/* =============================================================================
+   Touch Target Accessibility (WCAG 2.5.5 Target Size)
+   =============================================================================
+
+   Minimum touch targets: 44×44px (Apple HIG) / 48×48px (Material Design 3)
+   These overrides ensure interactive elements meet accessibility guidelines
+   on touch devices while preserving compact desktop styling.
+
+   References:
+   - WCAG 2.5.5: https://www.w3.org/WAI/WCAG21/Understanding/target-size.html
+   - Apple HIG: https://developer.apple.com/design/human-interface-guidelines/
+   - Material Design: https://m3.material.io/foundations/accessible-design
+*/
+
+@media (max-width: 768px), (pointer: coarse) {
+    /* Theme toggle - increase touch target with padding */
+    .theme-toggle {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Modal close button */
+    .modal-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Help panel close button */
+    .help-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Fullscreen exit button */
+    .fullscreen-exit-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Bottom sheet close button */
+    .bottom-sheet-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Sidebar close button */
+    .sidebar-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Timeline control buttons */
+    .timeline-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Reset view button */
+    .reset-view-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Collapsible panel headers - expand touch target */
+    .collapsible-header {
+        min-height: 48px;
+    }
+
+    /* Legend and overlay toggle areas */
+    .legend-header,
+    .authors-header,
+    .perf-header {
+        min-height: 44px;
+        padding: 8px 0;
+    }
+
+    /* Tab buttons */
+    .tab-btn {
+        min-height: 44px;
+    }
+
+    /* Bottom sheet tabs */
+    .bottom-sheet-tab {
+        min-height: 44px;
+    }
 }

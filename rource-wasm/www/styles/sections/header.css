@@ -112,15 +112,28 @@ header h1 {
     padding: 0.5rem 0.85rem;
     border-radius: 6px;
     border: 1px solid var(--accent-gold);
-    background: color-mix(in srgb, var(--accent-gold) 10%, transparent);
+    /* Fallback for browsers without color-mix() */
+    background: rgba(212, 167, 44, 0.1);
     /* Use composited properties only for better performance */
     transition: opacity 0.2s, transform 0.2s;
+}
+
+/* Modern browsers: use color-mix for theme-aware backgrounds */
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+    .github-link {
+        background: color-mix(in srgb, var(--accent-gold) 10%, transparent);
+    }
+
+    .github-link:hover {
+        background: color-mix(in srgb, var(--accent-gold) 25%, transparent);
+    }
 }
 
 .github-link:hover {
     color: var(--text-on-accent);
     border-color: var(--accent-gold-hover);
-    background: color-mix(in srgb, var(--accent-gold) 25%, transparent);
+    /* Fallback for browsers without color-mix() */
+    background: rgba(212, 167, 44, 0.25);
     text-decoration: none;
 }
 

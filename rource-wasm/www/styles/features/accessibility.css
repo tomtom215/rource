@@ -122,16 +122,44 @@ h2.h3-style {
 
 @media (prefers-color-scheme: light) {
     :root:not(.theme-manual) {
+        /* Background Colors */
         --bg-primary: #ffffff;
         --bg-secondary: #f6f8fa;
         --bg-tertiary: #eaeef2;
         --bg-canvas: #f0f3f6;
+
+        /* Text Colors */
         --text-primary: #1f2328;
         --text-secondary: #4d5561;
         --text-muted: #656d76;
+        --text-on-accent: #ffffff;
+
+        /* Border Colors */
         --border: #d0d7de;
         --border-light: #afb8c1;
+
+        /* Shadows & Overlays */
         --shadow: rgba(31, 35, 40, 0.12);
+        --backdrop: rgba(31, 35, 40, 0.3);
+        --backdrop-blur: rgba(31, 35, 40, 0.7);
+
+        /* Accent Colors - adjusted for light backgrounds */
+        --accent: #d6335a;
+        --accent-hover: #c42952;
+        --accent-light: #ff9a9e;
+        --accent-secondary: #1a7f37;
+        --accent-secondary-hover: #238636;
+        --accent-blue: #0969da;
+        --accent-blue-light: #218bff;
+        --accent-purple: #8250df;
+        --accent-orange: #d1650a;
+        --accent-gold: #9a6700;
+        --accent-gold-hover: #bf8700;
+
+        /* Semantic Colors */
+        --success: #1a7f37;
+        --error: #cf222e;
+        --warning: #9a6700;
     }
 
     :root:not(.theme-manual) .legend-panel,
@@ -192,6 +220,162 @@ h2.h3-style {
     .light-theme .perf-overlay,
     .light-theme .stats-overlay {
         background: rgba(246, 248, 250, 0.98);
+    }
+}
+
+/* =============================================================================
+   High Contrast Mode (prefers-contrast: more)
+   ============================================================================= */
+
+/**
+ * Enhanced contrast for users who prefer higher contrast.
+ * Increases border visibility and text contrast.
+ */
+
+@media (prefers-contrast: more) {
+    :root {
+        --border: #6e7681;
+        --border-light: #8b949e;
+        --text-secondary: #c9d1d9;
+        --text-muted: #8b949e;
+    }
+
+    :root.light-theme {
+        --border: #57606a;
+        --border-light: #424a53;
+        --text-secondary: #24292f;
+        --text-muted: #424a53;
+    }
+
+    /* Increase border width for better visibility */
+    .panel,
+    .modal-content,
+    .bottom-sheet,
+    .legend-panel,
+    .stats-overlay,
+    .perf-overlay,
+    .authors-panel,
+    #canvas-container {
+        border-width: 2px;
+    }
+
+    /* Ensure focus indicators are more visible */
+    :focus-visible {
+        outline-width: 3px;
+        outline-offset: 3px;
+    }
+
+    /* Increase button contrast */
+    .btn {
+        border: 2px solid currentColor;
+    }
+
+    .btn:disabled {
+        border-color: var(--border);
+    }
+}
+
+/* =============================================================================
+   Windows High Contrast Mode (forced-colors)
+   ============================================================================= */
+
+/**
+ * Support for Windows High Contrast mode.
+ * Uses system colors and removes custom styling that might interfere.
+ */
+
+@media (forced-colors: active) {
+    /* Reset backgrounds to system colors */
+    body,
+    header,
+    .panel,
+    .modal-content,
+    .bottom-sheet,
+    .sidebar-panel {
+        background: Canvas;
+        color: CanvasText;
+    }
+
+    /* Ensure links are visible */
+    a {
+        color: LinkText;
+    }
+
+    /* Buttons use system button styling */
+    .btn,
+    .theme-toggle,
+    .sidebar-toggle,
+    .bottom-sheet-fab,
+    .mobile-toolbar-btn {
+        background: ButtonFace;
+        color: ButtonText;
+        border: 2px solid ButtonText;
+        forced-color-adjust: none;
+    }
+
+    .btn:hover,
+    .theme-toggle:hover,
+    .sidebar-toggle:hover {
+        background: Highlight;
+        color: HighlightText;
+        border-color: Highlight;
+    }
+
+    /* Focus indicators use system highlight */
+    :focus-visible {
+        outline: 3px solid Highlight;
+        outline-offset: 2px;
+    }
+
+    /* Ensure form controls are visible */
+    input,
+    select,
+    textarea {
+        background: Field;
+        color: FieldText;
+        border: 2px solid ButtonText;
+    }
+
+    /* Checkboxes and switches */
+    input[type="checkbox"],
+    input[type="radio"],
+    .perf-switch input {
+        forced-color-adjust: none;
+    }
+
+    /* Disabled states */
+    .btn:disabled,
+    input:disabled {
+        color: GrayText;
+        border-color: GrayText;
+    }
+
+    /* Remove decorative shadows and gradients */
+    * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    /* Ensure SVG icons use current color */
+    svg {
+        fill: currentColor;
+        stroke: currentColor;
+    }
+
+    /* Timeline slider track */
+    .timeline-slider::-webkit-slider-runnable-track {
+        background: ButtonFace;
+        border: 1px solid ButtonText;
+    }
+
+    .timeline-slider::-moz-range-track {
+        background: ButtonFace;
+        border: 1px solid ButtonText;
+    }
+
+    /* Progress indicators */
+    .timeline-progress {
+        background: Highlight;
     }
 }
 

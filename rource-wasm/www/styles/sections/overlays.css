@@ -282,7 +282,14 @@
 }
 
 .perf-switch input:focus-visible + .perf-slider {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-orange) 30%, transparent);
+    /* Fallback for browsers without color-mix() */
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.3);
+}
+
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+    .perf-switch input:focus-visible + .perf-slider {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-orange) 30%, transparent);
+    }
 }
 
 .perf-toggle {

@@ -226,11 +226,19 @@
         color: var(--text-on-accent);
         border: none;
         border-radius: 50%;
-        box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent),
+        /* Fallback for browsers without color-mix() */
+        box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4),
                     0 2px 4px var(--shadow);
         cursor: pointer;
         z-index: var(--z-fab);
         transition: transform 0.2s ease;
+    }
+
+    @supports (background: color-mix(in srgb, red 50%, blue)) {
+        .bottom-sheet-fab {
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent),
+                        0 2px 4px var(--shadow);
+        }
     }
 
     .bottom-sheet-fab:hover {

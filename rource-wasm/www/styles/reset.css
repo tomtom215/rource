@@ -89,13 +89,26 @@ a:hover {
    ============================================================================= */
 
 ::selection {
-    background: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+    /* Fallback for browsers without color-mix() support */
+    background: rgba(88, 166, 255, 0.3);
     color: var(--text-primary);
 }
 
 ::-moz-selection {
-    background: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+    /* Fallback for browsers without color-mix() support */
+    background: rgba(88, 166, 255, 0.3);
     color: var(--text-primary);
+}
+
+/* Modern browsers: use color-mix for theme-aware selection */
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+    ::selection {
+        background: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+    }
+
+    ::-moz-selection {
+        background: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+    }
 }
 
 /* =============================================================================
