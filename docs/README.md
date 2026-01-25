@@ -23,6 +23,7 @@ Complete technical documentation for the Rource project.
 |----------|-------------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture and crate structure |
 | [RENDERING.md](./RENDERING.md) | Rendering backends and pipeline details |
+| [GOURCE_COMPARISON.md](./GOURCE_COMPARISON.md) | Feature parity and benchmark comparison with Gource |
 
 ### Performance
 
@@ -70,9 +71,9 @@ Complete technical documentation for the Rource project.
 
 | Metric | Value |
 |--------|-------|
-| Total documentation files | 13 |
+| Total documentation files | 14 |
 | Performance documents | 11 |
-| Architecture documents | 2 |
+| Architecture documents | 3 |
 
 ---
 
