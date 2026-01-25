@@ -7,7 +7,7 @@ respective domains but may not have direct applicability to Rource's current arc
 **Philosophy**: Even when an algorithm doesn't directly apply, understanding its techniques can inspire
 optimization strategies and inform architectural decisions.
 
-**Last Updated**: 2026-01-25 (Phase 55 added)
+**Last Updated**: 2026-01-25 (Phase 56 added)
 
 ---
 
@@ -17,8 +17,9 @@ optimization strategies and inform architectural decisions.
 2. [Graph Coloring Algorithms](#graph-coloring-algorithms)
 3. [2025 Mathematical Breakthroughs](#2025-mathematical-breakthroughs)
 4. [Targeted Optimization Algorithms (Phase 55)](#targeted-optimization-algorithms-phase-55)
-5. [Applicability Framework](#applicability-framework)
-6. [Future Exploration Queue](#future-exploration-queue)
+5. [Quantum Algorithms for Classical Simulation (Phase 56)](#quantum-algorithms-for-classical-simulation-phase-56)
+6. [Applicability Framework](#applicability-framework)
+7. [Future Exploration Queue](#future-exploration-queue)
 
 ---
 
@@ -1117,6 +1118,283 @@ Principles and Practice of Parallel Programming
 
 ---
 
+## Quantum Algorithms for Classical Simulation (Phase 56)
+
+### Overview
+
+This section documents quantum algorithms implemented in Rust that can run on classical computers
+via simulation. While these algorithms promise speedups on actual quantum hardware, their utility
+on classical simulators is limited by exponential state-space growth.
+
+### Rust Quantum Libraries
+
+#### LogosQ
+
+**Citation**:
+```
+An, S.; Wang, J.; Slavakis, K. (2025)
+"LogosQ: A High-Performance and Type-Safe Quantum Computing Library in Rust"
+arXiv:2512.23183, December 2025
+Georgia Institute of Technology, Institute of Science Tokyo
+```
+
+**Key Features**:
+- Type-safe quantum circuits via Rust's static analysis
+- Direct state-vector manipulation
+- FFT-optimized Quantum Fourier Transform
+- Adaptive parallel processing
+
+**Performance Benchmarks**:
+| Comparison | Speedup |
+|------------|---------|
+| vs Qiskit (Python) | 2-5× |
+| vs Yao.jl (Julia) | 6-22× |
+| vs Q# | Competitive |
+| State preparation | Up to 900× |
+
+**Crate**: `logosq` v0.2.5+
+
+#### QuantRS2
+
+**Features**:
+- Multi-backend simulation (state-vector, tensor-network)
+- Built-in QAOA, Grover, QFT, QPE, simplified Shor
+- GPU acceleration, SIMD optimization
+- Hardware integration (IBM, Azure, D-Wave)
+
+**Architecture**:
+- `quantrs2-core`: Types, traits, abstractions
+- `quantrs2-circuit`: Circuit DSL, gate definitions
+- `quantrs2-sim`: Simulators (30+ qubit capacity)
+- `quantrs2-anneal`: Quantum annealing, classical annealing
+
+**Crate**: `quantrs2` v0.1.0-rc.1
+
+---
+
+### VQE (Variational Quantum Eigensolver)
+
+**Problem Class**: Ground-state energy of quantum Hamiltonians (chemistry).
+
+**Algorithm Structure**:
+```
+1. Initialize parameterized quantum circuit U(θ)
+2. Prepare trial state |ψ(θ)⟩ = U(θ)|0⟩
+3. Measure expectation value ⟨H⟩ = ⟨ψ(θ)|H|ψ(θ)⟩
+4. Classical optimizer updates θ to minimize ⟨H⟩
+5. Repeat until convergence
+```
+
+**Complexity**:
+- Quantum: O(poly(n)) per measurement
+- Classical optimizer: Problem-dependent (typically gradient-based)
+
+**Applications**:
+- Molecular ground states (H₂, LiH, H₂O)
+- Condensed matter (Heisenberg models)
+- Drug discovery (molecular interactions)
+
+**Rource Applicability**: **NOT APPLICABLE**
+- VQE solves quantum chemistry problems
+- Rource has no chemistry computation requirements
+
+---
+
+### QAOA (Quantum Approximate Optimization Algorithm)
+
+**Problem Class**: Combinatorial optimization encoded as QUBO/Ising.
+
+**QUBO Formulation**:
+```
+Minimize: f(x) = x^T Q x
+where x ∈ {0,1}^n (binary vector)
+      Q = n×n real symmetric matrix
+```
+
+**Ising Formulation**:
+```
+Minimize: H = Σᵢⱼ Jᵢⱼ σᵢ σⱼ + Σᵢ hᵢ σᵢ
+where σᵢ ∈ {-1, +1}
+```
+
+**Algorithm Structure**:
+```
+1. Encode objective as problem Hamiltonian Hₚ
+2. Define mixer Hamiltonian Hₘ (typically Σᵢ Xᵢ)
+3. Prepare initial state |+⟩⊗n
+4. Apply p layers: U(β,γ) = ∏ₖ e^{-iβₖHₘ} e^{-iγₖHₚ}
+5. Measure and decode solution
+6. Classical optimizer tunes (β,γ)
+```
+
+**2025 Results**:
+- 156-qubit IBM: Outperformed CPLEX, simulated annealing
+- Graph decomposition: 100-vertex MaxCut reduced to ~10 vertices
+- Approximation ratio: 0.96 average
+
+**Theoretical Connection to Force-Directed Layout**:
+
+Force layout energy:
+```
+E = Σ_{edges} k·(d - d₀)² + Σ_{pairs} C/d²
+```
+
+This resembles quadratic optimization, BUT:
+- Force layout uses continuous variables (x,y ∈ ℝ)
+- QAOA requires binary variables (z ∈ {0,1})
+
+**QUBO Encoding** (theoretical, impractical):
+```
+1. Discretize space: G×G grid cells
+2. Variables: xᵢₖ = 1 if entity i in cell k
+3. Problem size: n·G² binary variables
+4. 10K entities × 100² grid = 100M variables
+```
+
+**Rource Applicability**: **NOT APPLICABLE**
+- Scale: Classical simulation limited to ~30 qubits
+- Variable type: QAOA needs discrete; layout is continuous
+- Current algorithm: O(n) GPU spatial hash is optimal
+
+---
+
+### Grover's Algorithm
+
+**Problem Class**: Unstructured database search.
+
+**Speedup**: O(√n) vs O(n) classical.
+
+**Algorithm Structure**:
+```
+1. Initialize uniform superposition |s⟩ = H⊗n|0⟩
+2. Apply Grover iteration O(√n) times:
+   a. Oracle: |x⟩ → -|x⟩ if f(x)=1
+   b. Diffusion: 2|s⟩⟨s| - I
+3. Measure to obtain marked item
+```
+
+**Optimal Iterations**: π√n/4
+
+**Rource Search Operations**:
+
+| Operation | Current | Complexity | vs Grover O(√n) |
+|-----------|---------|------------|-----------------|
+| File by path | FxHashMap | O(1) | O(1) << O(√n) |
+| File by ID | FxHashMap | O(1) | O(1) << O(√n) |
+| Spatial query | QuadTree | O(log n) | O(log n) < O(√n) |
+| Range search | QuadTree | O(log n + k) | Comparable for small k |
+
+**Rource Applicability**: **NOT APPLICABLE**
+- Structured data: Hash tables and spatial indices beat O(√n)
+- Grover only helps when NO structure is exploitable
+
+---
+
+### Quantum Fourier Transform (QFT)
+
+**Definition**: Quantum analog of Discrete Fourier Transform.
+
+```
+|j⟩ → (1/√N) Σₖ e^{2πijk/N} |k⟩
+```
+
+**Gate Complexity**: O(n²) for n qubits (O(n log n) with approximation).
+
+**Applications**:
+- Phase estimation
+- Shor's algorithm (period finding)
+- Quantum signal processing
+
+**LogosQ Optimization**: FFT-based classical preprocessing achieves 900× speedup.
+
+**Potential Rource Application**: Convolution for blur effects.
+
+**Bloom Effect Analysis**:
+```
+Current: Sliding window O(n) for kernel size k
+FFT:     O(n log n) regardless of k
+```
+
+| Method | k=7 | k=15 | k=64 | k=256 |
+|--------|-----|------|------|-------|
+| Direct O(n·k) | 7n | 15n | 64n | 256n |
+| Sliding O(n) | n | n | n | n |
+| FFT O(n log n) | n·log n | n·log n | n·log n | n·log n |
+
+For small kernels (k < 64), sliding window wins.
+
+**Rource Applicability**: **NOT APPLICABLE**
+- Bloom uses small kernels (7-15 pixels)
+- Sliding window O(n) is already optimal
+- QFT simulation overhead negates theoretical advantage
+
+---
+
+### Quantum Annealing
+
+**Problem Class**: QUBO/Ising minimization via simulated quantum tunneling.
+
+**QuantRS2-Anneal Backends**:
+- Classical simulated annealing
+- Path integral Monte Carlo
+- Coherent Ising machine simulation
+
+**Hardware**: D-Wave systems (2000+ qubits, but sparse connectivity).
+
+**Force Layout as Ising** (theoretical):
+
+```
+Standard force energy: E = Σ springs + Σ repulsions
+
+Discretized Ising: σᵢₖ = 1 if entity i at grid cell k
+                   E = ΣΣ J(i,j,k,l) σᵢₖ σⱼₗ
+```
+
+**Challenges**:
+- Variable explosion: n × G² binary variables
+- Connectivity constraints: D-Wave graph is sparse
+- Embedding overhead: Logical → physical qubit mapping
+- Precision loss: Continuous → discrete
+
+**Rource Applicability**: **NOT APPLICABLE**
+- Current O(n) GPU hash is asymptotically optimal
+- Continuous gradient descent is natural for layout
+- Simulated annealing (classical) available if needed
+
+---
+
+### Qubit Simulation Limits
+
+**State Vector Growth**:
+
+| Qubits | States | Memory (complex128) |
+|--------|--------|---------------------|
+| 20 | 2²⁰ ≈ 1M | 16 MB |
+| 25 | 2²⁵ ≈ 33M | 512 MB |
+| 30 | 2³⁰ ≈ 1B | 16 GB |
+| 35 | 2³⁵ ≈ 34B | 512 GB |
+| 40 | 2⁴⁰ ≈ 1T | 16 TB |
+
+**Practical Limit**: ~30 qubits for general circuits on standard hardware.
+
+**Tensor Network Extension**: 50+ qubits for low-entanglement circuits.
+
+**Implication**: At most ~30 "decision variables" per quantum subroutine,
+far below Rource's 10K-100K+ entity requirements.
+
+---
+
+### Phase 56 References
+
+- [LogosQ Paper](https://arxiv.org/abs/2512.23183)
+- [LogosQ crates.io](https://crates.io/crates/logosq)
+- [QuantRS2 GitHub](https://github.com/cool-japan/quantrs)
+- [QuantRS2 Documentation](https://docs.rs/quantrs2)
+- [QAOA Nature Paper](https://www.nature.com/articles/s41534-025-01082-1)
+- [Spring Embedders Survey](https://arxiv.org/abs/1201.3011)
+
+---
+
 ## Applicability Framework
 
 When evaluating theoretical algorithms for Rource, assess:
@@ -1164,6 +1442,16 @@ Algorithms to explore for potential future applicability:
 | Grandchildren-WB Trees | Rource uses n-ary trees, not BSTs |
 | UFO Trees | Requires WASM threads (limited support) |
 
+**Quantum Algorithms Evaluated** (from Phase 56):
+
+| Algorithm | Reason Not Applicable |
+|-----------|----------------------|
+| VQE | Domain mismatch (chemistry, not visualization) |
+| QAOA | Variable type (discrete vs continuous positions) |
+| Grover | O(√n) worse than O(1) hash, O(log n) tree |
+| QFT | Small kernel blur already O(n) optimal |
+| Quantum Annealing | Scale limit (~30 qubits vs 10K+ entities) |
+
 ---
 
 ## References
@@ -1194,6 +1482,17 @@ Algorithms to explore for potential future applicability:
    - Status: Analyzed (Phase 55)
    - Finding: GPU pipeline already optimal; succinct structures potentially applicable
    - Future candidates: Loose QuadTree, Grid-based CPU index, succinctly BitVec
+
+5. Quantum Algorithms Research Document (2026)
+   - "Production-Ready Quantum Algorithms in Rust (2025)"
+   - Algorithms: VQE, QAOA, Grover, QFT, Quantum Annealing
+   - Libraries: LogosQ v0.2.5, QuantRS2 v0.1.0-rc.1
+   - Status: Analyzed (Phase 56)
+   - Finding: All algorithms NOT APPLICABLE due to:
+     - Scale mismatch (~30 qubit limit vs 10K+ entities)
+     - Variable type mismatch (discrete vs continuous)
+     - Superior classical alternatives (O(1) hash, O(n) spatial hash)
+   - Conceptual insights preserved for energy minimization framing
 
 ### Related Rource Documentation
 

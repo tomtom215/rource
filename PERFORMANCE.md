@@ -6750,4 +6750,296 @@ Detailed algorithm descriptions, complexity analyses, and implementation notes a
 
 ---
 
+## Phase 56: Quantum Algorithm Analysis for Classical Simulation (2026-01-25)
+
+### Overview
+
+This phase evaluates production-ready quantum algorithms implemented in Rust (LogosQ, QuantRS2) for
+potential applicability to Rource's workload. Quantum algorithms running on classical simulators
+can provide computational advantages for specific problem classes, particularly optimization and
+search problems.
+
+**Research Source**: "Production-Ready Quantum Algorithms in Rust (2025)"
+
+### Quantum Libraries Evaluated
+
+| Library | Version | Status | Key Features |
+|---------|---------|--------|--------------|
+| LogosQ | 0.2.5 | Production | VQE, QFT, type-safe circuits, 900× speedup |
+| LogosQ-Algorithms | 0.1.0 | Production | VQE, QAOA implementations |
+| QuantRS2 | 0.1.0-rc.1 | Release Candidate | QAOA, Grover, QFT, QPE, multi-backend |
+
+### Critical Constraint: Qubit Simulation Limits
+
+**Classical simulation of quantum algorithms is exponentially bounded.**
+
+| Qubits | State Vector Size | Practical Limit |
+|--------|-------------------|-----------------|
+| 20 | 2²⁰ = 1M states | Fast |
+| 30 | 2³⁰ = 1B states | Borderline |
+| 40 | 2⁴⁰ = 1T states | Impractical |
+| 50+ | — | Specialized circuits only |
+
+**Implication for Rource**: With n files requiring log₂(n) qubits minimum:
+- 20 qubits → ~1M files addressable (theoretical only)
+- In practice, QAOA/VQE encode problem structure, not file indices
+- Practical limit: ~20-30 "decision variables" per quantum subroutine
+
+---
+
+### Algorithm Analysis
+
+#### 1. Variational Quantum Eigensolver (VQE)
+
+**Purpose**: Find ground-state energies of quantum Hamiltonians (molecular simulation).
+
+**LogosQ Performance**:
+- 4× speedup over Qiskit for H₂ molecule
+- Achieves chemical accuracy in edge cases
+- Validated on hydrogen, lithium hydride, water molecules
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+| Criterion | VQE | Rource Need |
+|-----------|-----|-------------|
+| Domain | Quantum chemistry | Graph visualization |
+| Problem type | Hamiltonian eigenvalues | Layout optimization |
+| Output | Energy values | Node positions |
+
+VQE solves quantum chemistry problems (molecular orbitals, electron correlations).
+Rource has no chemistry computation requirements.
+
+---
+
+#### 2. Quantum Approximate Optimization Algorithm (QAOA)
+
+**Purpose**: Solve combinatorial optimization via parameterized quantum circuits.
+
+**Problem Formulation**: Encodes objective as Hamiltonian over binary variables (QUBO).
+
+```
+Minimize: H = Σᵢⱼ Jᵢⱼ zᵢ zⱼ + Σᵢ hᵢ zᵢ
+where zᵢ ∈ {-1, +1} (Ising) or {0, 1} (QUBO)
+```
+
+**Published Results**:
+- 2025 Kipu Quantum/IBM: QAOA on 156-qubit processor outperformed classical solvers
+- MaxCut approximation ratio: 0.96 on decomposed graphs
+- Scaling advantage demonstrated vs simulated annealing, Tabu search
+
+**Theoretical Connection to Force-Directed Layout**:
+
+Force-directed layout minimizes an energy function:
+
+```
+E = Σ(edges) spring_energy(dᵢⱼ) + Σ(pairs) repulsion_energy(dᵢⱼ)
+```
+
+This is structurally similar to QAOA's Ising Hamiltonian. However:
+
+| Aspect | QAOA | Force-Directed Layout |
+|--------|------|----------------------|
+| Variables | Binary zᵢ ∈ {0,1} | Continuous (x,y) ∈ ℝ² |
+| Optimization | Discrete combinatorial | Continuous gradient |
+| Scale | ~100 variables practical | 10K-100K+ entities |
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+1. **Variable type mismatch**: QAOA requires binary variables; layout uses continuous positions
+2. **Scale mismatch**: Classical simulation limited to ~30 qubits; Rource needs 10K+ entities
+3. **Current algorithm is optimal**: O(n) GPU spatial hash beats any approach requiring O(n²) interactions
+4. **Discretization loses precision**: Converting positions to binary would degrade layout quality
+
+**Theoretical Interest**: Force-directed layout *could* be reformulated as QUBO by discretizing
+positions into grid cells, then solving cell assignment as combinatorial optimization. However,
+current continuous methods (gradient descent, Barnes-Hut) are both faster and more precise.
+
+---
+
+#### 3. Grover's Algorithm
+
+**Purpose**: Quadratic speedup O(√n) for unstructured database search.
+
+**Complexity**:
+- Classical unstructured search: O(n)
+- Grover's algorithm: O(√n)
+
+**Current Rource Search Operations**:
+
+| Operation | Current Implementation | Complexity |
+|-----------|----------------------|------------|
+| File lookup by path | FxHashMap | O(1) average |
+| File lookup by ID | FxHashMap | O(1) average |
+| Spatial query | QuadTree | O(log n + k) |
+| Nearest neighbor | QuadTree + pruning | O(log n) average |
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+Grover's O(√n) is worse than existing structured search:
+- Hash tables: O(1) beats O(√n) for all n > 1
+- QuadTree: O(log n) beats O(√n) for all n > 4
+
+**When Grover Would Help**: Only for genuinely unstructured search where no indexing is possible.
+Rource's data has inherent structure (file paths, spatial positions) that enables better-than-√n
+classical algorithms.
+
+---
+
+#### 4. Quantum Fourier Transform (QFT)
+
+**Purpose**: Quantum analog of FFT; enables phase estimation, period finding.
+
+**LogosQ Performance**:
+- 5× faster than Qiskit
+- 22× faster than Julia (Yao.jl)
+- FFT-optimized implementation
+
+**Potential Application**: Convolution for blur effects (bloom, shadows).
+
+**Current Rource Bloom Implementation**:
+```rust
+// Sliding window blur - O(n) per row/column
+// Kernel size: typically 7-15 pixels
+for each row:
+    window_sum = initial_sum
+    for x in 0..width:
+        output[x] = window_sum / kernel_size
+        window_sum += input[x + radius] - input[x - radius]
+```
+
+**Complexity Comparison**:
+
+| Method | Complexity | Best For |
+|--------|------------|----------|
+| Direct convolution | O(n × k) | Very small k |
+| Sliding window | O(n) | Small k (current) |
+| FFT convolution | O(n log n) | Large k |
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+1. **Kernel size is small**: Bloom uses ~7-15 pixel kernels
+2. **Sliding window is O(n)**: Already optimal for small kernels
+3. **FFT overhead**: O(n log n) > O(n) for small kernel convolution
+4. **QFT on classical hardware**: Simulation overhead negates any theoretical advantage
+
+**When QFT Would Help**: Large-kernel convolution (k > 64) where FFT's O(n log n) beats
+direct O(n × k). Rource's bloom effect doesn't require large kernels.
+
+---
+
+#### 5. Quantum Annealing (QUBO/Ising)
+
+**Purpose**: Find global minimum of energy landscape via quantum tunneling simulation.
+
+**QuantRS2 Support**: Classical annealing, path integral Monte Carlo, coherent Ising machine simulators.
+
+**Theoretical Connection to Force-Directed Layout**:
+
+Both force-directed layout and quantum annealing minimize energy functions:
+
+```
+Force-directed: E = Σ springs + Σ repulsions
+Ising model:    E = Σᵢⱼ Jᵢⱼ σᵢ σⱼ + Σᵢ hᵢ σᵢ
+```
+
+**QUBO Reformulation** (theoretical):
+
+To encode force layout as QUBO:
+1. Discretize position space into G × G grid
+2. Binary variable xᵢₖ = 1 if entity i occupies cell k
+3. Constraint: Σₖ xᵢₖ = 1 (each entity in exactly one cell)
+4. Energy: E = Σᵢⱼ Σₖₗ Jᵢⱼₖₗ xᵢₖ xⱼₗ
+
+**Problems with this approach**:
+
+| Issue | Impact |
+|-------|--------|
+| Variable explosion | n entities × G² cells = n×G² binary variables |
+| Constraint overhead | n equality constraints require ancilla variables |
+| Precision loss | Continuous → discrete loses sub-cell positioning |
+| Connectivity | D-Wave hardware graph limits interaction patterns |
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+1. **Scale infeasible**: 10K files × 100² grid = 100M binary variables
+2. **Current method is O(n)**: GPU spatial hash is asymptotically optimal
+3. **Continuous optimization is natural fit**: Gradient descent handles continuous positions directly
+4. **Simulated annealing already available**: Classical SA achieves similar exploration without QUBO overhead
+
+---
+
+### Summary: Quantum Algorithm Applicability
+
+| Algorithm | Domain | Rource Need | Match | Status |
+|-----------|--------|-------------|-------|--------|
+| VQE | Quantum chemistry | None | ✗ | NOT APPLICABLE |
+| QAOA | Discrete optimization | Continuous layout | ✗ | NOT APPLICABLE |
+| Grover | Unstructured search | Structured (hash, tree) | ✗ | NOT APPLICABLE |
+| QFT | Signal processing | Small-kernel blur | ✗ | NOT APPLICABLE |
+| Annealing | Energy minimization | Continuous positions | ✗ | NOT APPLICABLE |
+
+### Key Findings
+
+1. **Scale mismatch**: Classical quantum simulation limited to ~30 qubits; Rource needs 10K-100K+ entities
+
+2. **Variable type mismatch**: Quantum optimization (QAOA, annealing) requires binary/discrete variables;
+   force-directed layout uses continuous positions
+
+3. **Current algorithms are superior**: O(n) GPU spatial hash and O(1) hash lookups beat quantum alternatives
+
+4. **Structured beats unstructured**: Grover's O(√n) only helps for unstructured search; Rource's data
+   is inherently structured (paths, positions)
+
+5. **Classical improvements outpacing quantum**: Per the research document, "classical algorithms continue
+   improving faster than quantum advantages materialize"
+
+### Conceptual Insights Preserved
+
+Despite non-applicability, quantum algorithm analysis yields valuable perspectives:
+
+1. **Energy minimization framing**: Force-directed layout as Hamiltonian minimization is a useful
+   conceptual model, even if not implemented quantumly
+
+2. **Hybrid algorithm patterns**: VQE/QAOA's classical-quantum loop (optimize → measure → update)
+   mirrors classical optimizer patterns (evaluate → gradient → step)
+
+3. **Problem decomposition**: QAOA graph decomposition techniques (reducing 100-vertex to 10-vertex
+   subproblems) could inspire hierarchical layout approaches
+
+4. **Type-safe circuit design**: LogosQ's compile-time circuit validation is analogous to Rust's
+   ownership model—preventing invalid operations at compile time
+
+### Recommendation
+
+**No implementation required.**
+
+Quantum algorithms on classical simulators do not provide advantages for Rource's workload:
+- Search operations: Hash tables and spatial indices are faster
+- Layout optimization: Continuous gradient methods are more appropriate
+- Scale requirements: Classical simulation cannot handle Rource's entity counts
+
+**Future Monitoring**: When fault-tolerant quantum computers reach 1000+ logical qubits with
+low error rates, quantum optimization for truly combinatorial problems (scheduling, routing)
+may become practical. This does not apply to Rource's current architecture.
+
+### Documentation Updates
+
+Detailed algorithm analysis and theoretical connections preserved in:
+`docs/THEORETICAL_ALGORITHMS.md`
+
+### Sources
+
+- [LogosQ Paper (arXiv:2512.23183)](https://arxiv.org/abs/2512.23183)
+- [LogosQ crates.io](https://crates.io/crates/logosq)
+- [QuantRS2 GitHub](https://github.com/cool-japan/quantrs)
+- [QuantRS2 Documentation](https://docs.rs/quantrs2)
+- [QAOA Linear-Ramp Protocol (Nature)](https://www.nature.com/articles/s41534-025-01082-1)
+- [QAOA Graph Decomposition (Springer)](https://link.springer.com/article/10.1007/s11128-025-04675-z)
+- [Spring Embedders Survey (arXiv:1201.3011)](https://arxiv.org/abs/1201.3011)
+- [Quantum Annealing Minor Embedding (Springer)](https://link.springer.com/article/10.1007/s11128-020-02681-x)
+
+**Test Count**: 1,899 tests passing
+
+---
+
 *Last updated: 2026-01-25*
