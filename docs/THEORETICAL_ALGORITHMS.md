@@ -7,15 +7,16 @@ respective domains but may not have direct applicability to Rource's current arc
 **Philosophy**: Even when an algorithm doesn't directly apply, understanding its techniques can inspire
 optimization strategies and inform architectural decisions.
 
-**Last Updated**: 2026-01-25
+**Last Updated**: 2026-01-25 (Phase 53 added)
 
 ---
 
 ## Table of Contents
 
 1. [SSSP: Breaking the Sorting Barrier](#sssp-breaking-the-sorting-barrier)
-2. [Applicability Framework](#applicability-framework)
-3. [Future Exploration Queue](#future-exploration-queue)
+2. [Graph Coloring Algorithms](#graph-coloring-algorithms)
+3. [Applicability Framework](#applicability-framework)
+4. [Future Exploration Queue](#future-exploration-queue)
 
 ---
 
@@ -273,6 +274,254 @@ Even though this algorithm doesn't apply, its techniques offer insights:
 
 ---
 
+## Graph Coloring Algorithms
+
+### Citation
+
+```
+Kakatkar, C. (2025).
+"Graph Coloring for Data Science: A Comprehensive Guide"
+Towards Data Science, August 2025
+
+Additional references:
+- Welsh, D.J.A.; Powell, M.B. (1967). "An upper bound for the chromatic number"
+- Brélaz, D. (1979). "New methods to color the vertices of a graph"
+```
+
+### Problem Definition
+
+**Graph Coloring**: Assign colors to vertices of a graph G = (V, E) such that no two adjacent
+vertices share the same color, while minimizing the number of colors used.
+
+| Metric | Definition |
+|--------|------------|
+| **Chromatic Number χ(G)** | Minimum colors needed for proper coloring |
+| **k-colorable** | Graph can be properly colored with ≤ k colors |
+| **Chromatic Polynomial P(G, k)** | Number of proper k-colorings of G |
+
+**Complexity**: Determining χ(G) is NP-hard. Even determining if χ(G) ≤ 3 is NP-complete.
+
+### Algorithm 1: Greedy Coloring
+
+```
+GREEDY-COLOR(G, ordering):
+    for each vertex v in ordering:
+        color[v] ← smallest color not used by N(v)
+    return color[]
+```
+
+| Property | Value |
+|----------|-------|
+| Time | O(n + m) with adjacency list |
+| Space | O(n) for color array |
+| Colors Used | ≤ Δ(G) + 1 where Δ = max degree |
+| Optimal? | Order-dependent; worst case uses Grundy number |
+
+**Key Insight**: The greedy bound χ(G) ≤ Δ(G) + 1 is tight only for complete graphs and odd cycles.
+
+### Algorithm 2: Welsh-Powell (1967)
+
+```
+WELSH-POWELL(G):
+    L ← vertices sorted by degree (descending)
+    c ← 0
+    while uncolored vertices exist:
+        c ← c + 1
+        for each uncolored v in L:
+            if no neighbor of v has color c:
+                color[v] ← c
+    return color[]
+```
+
+| Property | Value |
+|----------|-------|
+| Time | O(n²) |
+| Space | O(n) |
+| Colors Used | ≤ max{min(d(vᵢ) + 1, i)} over degree ordering |
+| Optimal? | Heuristic; good for sparse graphs |
+
+**Key Insight**: Processing high-degree vertices first tends to use fewer colors because they
+have more constraints early, when more colors are available.
+
+### Algorithm 3: DSatur (Brélaz, 1979)
+
+```
+DSATUR(G):
+    saturation[v] ← 0 for all v
+    Q ← priority queue ordered by (saturation, degree)
+
+    while Q not empty:
+        v ← Q.extractMax()
+        color[v] ← smallest color not in N(v)'s colors
+        for each uncolored neighbor u of v:
+            saturation[u] ← |{color[w] : w ∈ N(u), w colored}|
+            Q.updateKey(u)
+
+    return color[]
+```
+
+| Property | Value |
+|----------|-------|
+| Time | O((n + m) log n) with red-black tree |
+| Space | O(n + m) |
+| Exactness | Exact for bipartite, cycle, wheel graphs |
+| Best For | Dense graphs; quality over speed |
+
+**Efficient Implementation**: Use two-level bucket queues:
+- Level 1: Priority queue keyed by saturation degree
+- Level 2: For each saturation bucket, secondary queue by degree in uncolored subgraph
+
+### Algorithm 4: Chromatic Polynomial for Cycles
+
+For cycle graph Cₙ, the chromatic polynomial is:
+
+```
+P(Cₙ, k) = (k-1)ⁿ + (-1)ⁿ(k-1)
+```
+
+**Derivation via Deletion-Contraction**:
+
+```
+Recurrence: P(n, k) = k(k-1)^(n-1) - P(n-1, k)
+
+Base cases:
+  P(1, k) = k                    (single vertex)
+  P(2, k) = k(k-1)               (single edge)
+  P(3, k) = k(k-1)(k-2)          (triangle)
+
+Homogeneous solution: Pₕ(n) = C(-1)ⁿ
+Particular solution: Pₚ(n) = (k-1)ⁿ
+General solution: P(n, k) = (k-1)ⁿ + C(-1)ⁿ
+
+Using P(3, k) = k(k-1)(k-2):
+  (k-1)³ - C = k(k-1)(k-2)
+  C = (k-1)³ - k(k-1)(k-2) = (k-1)[(k-1)² - k(k-2)]
+  C = (k-1)[k² - 2k + 1 - k² + 2k] = (k-1)
+
+Final: P(n, k) = (k-1)ⁿ + (-1)ⁿ(k-1)
+```
+
+| n (vertices) | k=3 colors | k=4 colors |
+|--------------|------------|------------|
+| 3 | 6 | 24 |
+| 4 | 18 | 84 |
+| 5 | 30 | 240 |
+| 6 | 66 | 732 |
+
+**Python Implementation**:
+
+```python
+def chromatic_polynomial_cycle(n: int, k: int) -> int:
+    """O(1) closed-form evaluation."""
+    return (k - 1)**n + ((-1)**n) * (k - 1)
+```
+
+### Application Domains
+
+#### 1. Scheduling and Timetabling
+
+**Conflict Graph Model**:
+- Vertices = tasks/events
+- Edges = conflicts (cannot occur simultaneously)
+- Colors = time slots
+
+**Example**: Exam scheduling where students taking multiple exams create conflicts.
+
+#### 2. Register Allocation (Compilers)
+
+**Interference Graph Model**:
+- Vertices = live ranges (variables)
+- Edges = overlapping lifetimes
+- Colors = CPU registers
+- Spilling = when χ(G) > available registers
+
+**Complexity**: Chaitin proved optimal register allocation is NP-complete.
+
+#### 3. Frequency Assignment (Wireless Networks)
+
+**Interference Graph Model**:
+- Vertices = transmitters
+- Edges = potential interference
+- Colors = frequency channels
+
+#### 4. Feature Selection (Machine Learning)
+
+**Correlation Graph Model**:
+- Vertices = features
+- Edges = high correlation
+- Colors = feature groups
+- Select one representative per color
+
+### Rource Applicability Analysis
+
+**Status**: NOT DIRECTLY APPLICABLE
+
+**Structural Analysis**:
+
+| Rource Structure | Graph Type | Chromatic Properties |
+|-----------------|------------|---------------------|
+| Directory Tree | Tree | χ = 2 (bipartite) |
+| QuadTree | 4-ary tree | Implicit 4-coloring by quadrant |
+| Commit History | DAG | χ ≤ longest path + 1 |
+| Spatial Index | Grid/Tree | Bounded chromatic number |
+
+**Why Graph Coloring Doesn't Apply**:
+
+1. **Trees are 2-colorable**: All trees are bipartite, trivially colored in O(n)
+2. **QuadTree has inherent coloring**: NW=0, NE=1, SW=2, SE=3 is automatic 4-coloring
+3. **No general graphs**: Rource doesn't process arbitrary graphs with cycles
+4. **No scheduling conflicts**: No concurrent resource contention requiring coloring
+5. **No register allocation**: Rource is not a compiler
+
+**Existing "Coloring" in Rource**:
+
+| Component | Type | Implementation |
+|-----------|------|----------------|
+| File extensions | Visual assignment | 50+ hardcoded + hash fallback |
+| Draw command batching | Conflict grouping | Sort-key ordering |
+| Physics repulsion | Conflict detection | `should_repel()` predicate |
+
+These implement the *concept* of conflict detection without requiring explicit graph coloring algorithms.
+
+### Key Takeaways for Optimization
+
+1. **Closed-Form > Recurrence**: The chromatic polynomial example shows O(1) beats O(n)
+   - Already applied in Rource: LUT optimizations (Phase 45)
+
+2. **Implicit Coloring**: Spatial structures inherently provide coloring
+   - QuadTree quadrants are a natural 4-coloring
+   - Tree levels provide 2-coloring
+
+3. **Conflict Detection Patterns**: The concept of "no two adjacent items share property X"
+   appears throughout Rource:
+   - Physics: siblings repel
+   - Rendering: same-texture batches
+   - Sorting: group by blend mode
+
+4. **When to Use DSatur**: If Rource ever needed to color a general graph:
+   - Use DSatur for quality (exact on many graph classes)
+   - Use Welsh-Powell for speed on sparse graphs
+   - O((n+m) log n) is acceptable for preprocessing
+
+### Performance Comparison
+
+| Algorithm | Time | Colors (avg) | Best Use Case |
+|-----------|------|--------------|---------------|
+| Greedy | O(n + m) | Variable | Any, order matters |
+| Welsh-Powell | O(n²) | Good | Sparse graphs, speed |
+| DSatur | O((n+m) log n) | Best | Dense graphs, quality |
+| Branch-and-Bound DSatur | Exponential | Optimal | Small graphs, exact |
+
+### References
+
+- Welsh, D.J.A.; Powell, M.B. (1967). "An upper bound for the chromatic number of a graph"
+- Brélaz, D. (1979). "New methods to color the vertices of a graph"
+- San Segundo, P. (2012). "A new DSATUR-based algorithm for exact vertex coloring"
+- Geeksforgeeks: [DSatur Algorithm](https://www.geeksforgeeks.org/dsa/dsatur-algorithm-for-graph-coloring/)
+- Geeksforgeeks: [Welsh-Powell Algorithm](https://www.geeksforgeeks.org/dsa/welsh-powell-graph-colouring-algorithm/)
+
+---
+
 ## Applicability Framework
 
 When evaluating theoretical algorithms for Rource, assess:
@@ -316,7 +565,13 @@ Algorithms to explore for potential future applicability:
 
 1. Duan et al. (2025) - "Breaking the Sorting Barrier for Directed Single-Source Shortest Paths"
    - arXiv:2504.17033v2
-   - Status: Analyzed, not applicable
+   - Status: Analyzed, not applicable (Phase 52)
+
+2. Kakatkar (2025) - "Graph Coloring for Data Science: A Comprehensive Guide"
+   - Towards Data Science, August 2025
+   - Algorithms: Greedy, Welsh-Powell, DSatur, Chromatic Polynomials
+   - Status: Analyzed, not applicable (Phase 53)
+   - Key algorithms preserved for reference
 
 ### Related Rource Documentation
 
