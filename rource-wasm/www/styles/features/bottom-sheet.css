@@ -370,6 +370,12 @@
         height: 24px;
     }
 
+    /* Better focus states for accessibility */
+    .bottom-sheet-action-btn:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
     /* -------------------------------------------------------------------------
        Sections and Labels
        ------------------------------------------------------------------------- */
@@ -379,14 +385,19 @@
         margin-bottom: 16px;
     }
 
+    /* Remove extra padding when section is inside quick-actions */
+    .bottom-sheet-section:has(.bottom-sheet-quick-actions) {
+        padding: 0;
+    }
+
     .bottom-sheet-label {
         display: block;
-        font-size: 0.75rem;
-        font-weight: 600;
+        font-size: 0.7rem;
+        font-weight: 700;
         color: var(--text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        letter-spacing: 0.75px;
+        margin-bottom: 10px;
     }
 
     .bottom-sheet-section-header {
@@ -407,23 +418,25 @@
     }
 
     /* -------------------------------------------------------------------------
-       Input Group
+       Input Group - Enhanced for Mobile
        ------------------------------------------------------------------------- */
 
     .bottom-sheet-input-group {
         display: flex;
-        gap: 8px;
+        gap: 10px;
     }
 
     .bottom-sheet-input {
         flex: 1;
-        padding: 12px 14px;
+        padding: 14px 16px;
         background: var(--bg-tertiary);
         border: 1px solid var(--border);
-        border-radius: 10px;
+        border-radius: 12px;
         color: var(--text-primary);
-        font-size: 0.9375rem;
+        font-size: 1rem;
         -webkit-appearance: none;
+        /* Prevent iOS zoom on focus */
+        font-size: 16px;
     }
 
     .bottom-sheet-input:focus {
@@ -434,26 +447,28 @@
 
     .bottom-sheet-input::placeholder {
         color: var(--text-muted);
+        font-size: 0.9375rem;
     }
 
     .bottom-sheet-fetch-btn {
-        width: 48px;
-        height: 48px;
+        width: 52px;
+        height: 52px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: var(--accent);
         border: none;
-        border-radius: 10px;
+        border-radius: 12px;
         color: var(--text-on-accent);
         cursor: pointer;
         flex-shrink: 0;
-        transition: background 0.2s ease;
+        transition: background 0.2s ease, transform 0.15s ease;
         -webkit-tap-highlight-color: transparent;
     }
 
     .bottom-sheet-fetch-btn:active {
         background: var(--accent-hover);
+        transform: scale(0.95);
     }
 
     .bottom-sheet-fetch-btn:disabled {
@@ -462,35 +477,53 @@
         cursor: not-allowed;
     }
 
+    .bottom-sheet-fetch-btn:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
+    .bottom-sheet-fetch-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
     .bottom-sheet-hint {
         font-size: 0.75rem;
         color: var(--text-muted);
-        margin-top: 8px;
+        margin-top: 10px;
+        padding-left: 2px;
     }
 
     /* -------------------------------------------------------------------------
-       Collapsible Details
+       Collapsible Details - Mobile Optimized
        ------------------------------------------------------------------------- */
 
     .bottom-sheet-details {
-        margin: 0 16px 8px;
+        margin: 0 16px 10px;
         background: var(--bg-secondary);
         border: 1px solid var(--border);
-        border-radius: 10px;
+        border-radius: 12px;
         overflow: hidden;
     }
 
     .bottom-sheet-summary {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        /* Min 48px touch target */
+        min-height: 52px;
         padding: 14px 16px;
         font-size: 0.9375rem;
-        font-weight: 500;
+        font-weight: 600;
         color: var(--text-primary);
         cursor: pointer;
         list-style: none;
         -webkit-tap-highlight-color: transparent;
+        transition: background 0.15s ease;
+    }
+
+    .bottom-sheet-summary:active {
+        background: var(--bg-tertiary);
     }
 
     .bottom-sheet-summary::-webkit-details-marker {
@@ -502,14 +535,18 @@
         margin-left: auto;
         width: 0;
         height: 0;
-        border-left: 5px solid transparent;
-        border-right: 5px solid transparent;
-        border-top: 5px solid var(--text-muted);
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid var(--text-muted);
         transition: transform 0.2s ease;
     }
 
     .bottom-sheet-details[open] .bottom-sheet-summary::after {
         transform: rotate(180deg);
+    }
+
+    .bottom-sheet-details[open] .bottom-sheet-summary {
+        border-bottom: 1px solid var(--border);
     }
 
     .bottom-sheet-summary svg {
@@ -520,71 +557,139 @@
     }
 
     .bottom-sheet-details-content {
-        padding: 0 16px 16px;
+        padding: 14px 16px 16px;
         font-size: 0.875rem;
         color: var(--text-secondary);
         line-height: 1.6;
     }
 
     .bottom-sheet-details-content p {
-        margin: 0 0 8px;
+        margin: 0 0 10px;
     }
 
     .bottom-sheet-details-content ul {
-        margin: 8px 0;
+        margin: 10px 0;
         padding-left: 20px;
     }
 
     .bottom-sheet-details-content li {
-        margin-bottom: 4px;
+        margin-bottom: 6px;
+    }
+
+    .bottom-sheet-details-content strong {
+        color: var(--text-primary);
+    }
+
+    /* Tech Grid in Details */
+    .bottom-sheet-tech-grid {
+        display: flex;
+        justify-content: space-around;
+        gap: 12px;
+        padding: 10px 0;
+        margin-bottom: 12px;
+    }
+
+    .bottom-sheet-tech-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .bottom-sheet-tech-value {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .bottom-sheet-tech-label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Tech Badges */
+    .bottom-sheet-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+    }
+
+    .bottom-sheet-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-secondary);
     }
 
     /* -------------------------------------------------------------------------
-       Legend Section
+       Legend Section - Improved Visual Hierarchy
        ------------------------------------------------------------------------- */
 
     .bottom-sheet-legends {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
         margin-bottom: 16px;
+        padding: 0 16px;
+    }
+
+    /* Show legends section when visible (JS removes hidden class) */
+    .bottom-sheet-legends:not(.hidden) {
+        display: flex;
     }
 
     .bottom-sheet-legend-section {
         background: var(--bg-tertiary);
         border-radius: 12px;
-        padding: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
     }
 
     .bottom-sheet-legend-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
     }
 
     .bottom-sheet-legend-title {
-        font-size: 0.75rem;
-        font-weight: 600;
+        font-size: 0.7rem;
+        font-weight: 700;
         color: var(--text-secondary);
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.75px;
     }
 
     .bottom-sheet-legend-items {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 6px 8px;
     }
 
     .bottom-sheet-legend-item {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 4px 8px;
+        padding: 5px 10px;
         background: var(--bg-secondary);
-        border-radius: 8px;
+        border-radius: 16px;
         font-size: 0.75rem;
+        white-space: nowrap;
+        transition: background 0.15s ease;
+    }
+
+    /* Subtle hover feedback */
+    .bottom-sheet-legend-item:active {
+        background: var(--border);
     }
 
     .bottom-sheet-legend-color {
@@ -592,24 +697,48 @@
         height: 10px;
         border-radius: 50%;
         flex-shrink: 0;
+        /* Add subtle shadow for depth */
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .bottom-sheet-legend-name {
+        color: var(--text-primary);
+        font-weight: 500;
     }
 
     .bottom-sheet-legend-count {
         color: var(--text-muted);
         font-size: 0.6875rem;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* "More" indicator for overflow */
+    .bottom-sheet-legend-more {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 10px;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-weight: 500;
     }
 
     /* -------------------------------------------------------------------------
-       Author Items
+       Author Items - Enhanced for Mobile
        ------------------------------------------------------------------------- */
 
     .bottom-sheet-author-item {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 10px;
+        padding: 6px 12px;
         background: var(--bg-secondary);
-        border-radius: 8px;
+        border-radius: 16px;
+        transition: background 0.15s ease;
+    }
+
+    .bottom-sheet-author-item:active {
+        background: var(--border);
     }
 
     .bottom-sheet-author-color {
@@ -618,19 +747,24 @@
         border-radius: 50%;
         flex-shrink: 0;
         border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
     .bottom-sheet-author-name {
-        flex: 1;
         font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--text-primary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        max-width: 120px;
     }
 
     .bottom-sheet-author-commits {
         font-size: 0.75rem;
+        font-weight: 500;
         color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
     }
 
     /* -------------------------------------------------------------------------
