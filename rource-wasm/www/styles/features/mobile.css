@@ -231,26 +231,31 @@
     .has-bottom-sheet .mobile-toolbar {
         display: flex;
         position: absolute;
-        /* FIXED: Move from top to bottom for thumb accessibility */
+        /* CENTER the toolbar at the bottom for balanced layout */
         bottom: 8px;
-        left: 8px;
+        left: 50%;
+        transform: translateX(-50%);
         z-index: var(--z-canvas-overlays);
         background: rgba(22, 27, 34, 0.92);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border-radius: 24px;
-        padding: 6px 10px;
-        gap: 6px;
+        padding: 6px 12px;
+        gap: 4px;
         border: 1px solid var(--border);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
         /* Auto-hide support */
         transition: opacity 0.3s ease, transform 0.3s ease;
+        /* Center buttons within toolbar */
+        align-items: center;
+        justify-content: center;
     }
 
     /* Auto-hide when playing - more visible and animated like FAB */
     .has-bottom-sheet.controls-hidden .mobile-toolbar {
         opacity: 0.3;
-        transform: translateY(8px);
+        /* Maintain center position while animating down */
+        transform: translateX(-50%) translateY(8px);
         /* Keep pointer-events: auto so user can tap to show controls */
         pointer-events: auto;
         /* Match FAB pulse animation for consistency */
@@ -265,6 +270,13 @@
     .has-bottom-sheet.controls-hidden .mobile-toolbar:active {
         opacity: 0.6;
         animation: none;
+        transform: translateX(-50%) translateY(8px);
+    }
+
+    /* Also hide stats overlay when controls are hidden for cleaner view */
+    .has-bottom-sheet.controls-hidden .stats-overlay {
+        opacity: 0.2;
+        transition: opacity 0.3s ease;
     }
 
     .mobile-toolbar-btn {
@@ -518,47 +530,54 @@
     }
 
     /* -------------------------------------------------------------------------
-       Stats Overlay - Mobile Compact Layout
+       Stats Overlay - Mobile HUD Layout
        -------------------------------------------------------------------------
-       Shows commits/files/dirs/authors in a compact pill at BOTTOM-CENTER.
-       Positioned above timeline controls, between mobile toolbar and FAB.
-       This prevents overlap with bottom-left mobile toolbar.
+       Shows commits/files/dirs/authors as a compact HUD in TOP-LEFT corner.
+       This keeps it out of the way and doesn't cramp the canvas area.
+
+       Layout:
+       - Top-left: Stats overlay (secondary info)
+       - Top-right: Perf overlay (FPS/frame time)
+       - Bottom-center: Mobile toolbar (actions)
+       - Bottom-right: FAB (menu)
     */
 
     .has-bottom-sheet .stats-overlay {
-        /* Bottom-center positioning, above timeline */
-        bottom: max(118px, calc(118px + env(safe-area-inset-bottom)));
-        left: 50%;
+        /* Top-left HUD positioning */
+        top: max(8px, env(safe-area-inset-top));
+        left: max(8px, env(safe-area-inset-left));
+        bottom: auto;
         right: auto;
-        transform: translateX(-50%);
-        padding: 6px 14px;
-        border-radius: 20px;
-        background: rgba(0, 0, 0, 0.8);
+        transform: none;
+        padding: 6px 12px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.75);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-        gap: 14px;
-        font-size: 0.7rem;
-        /* Ensure it doesn't stretch too wide */
-        max-width: calc(100vw - 150px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        gap: 12px;
+        font-size: 0.65rem;
+        /* Compact width */
+        max-width: 200px;
     }
 
     .has-bottom-sheet .stats-overlay .stat-item {
         flex-direction: row;
-        gap: 4px;
+        gap: 3px;
         white-space: nowrap;
     }
 
     .has-bottom-sheet .stats-overlay .stat-value {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 700;
     }
 
     .has-bottom-sheet .stats-overlay .stat-label {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
         text-transform: uppercase;
         letter-spacing: 0.3px;
+        opacity: 0.8;
     }
 
     /* HUD-style container - compact pill in top-right */
@@ -1051,14 +1070,16 @@
     transform: translateX(16px);
 }
 
+/* Landscape stats overlay - also top-left for consistency */
 .landscape-mobile.has-bottom-sheet .stats-overlay {
-    bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
-    left: 50%;
+    top: max(6px, env(safe-area-inset-top));
+    left: max(6px, env(safe-area-inset-left));
+    bottom: auto;
     right: auto;
-    transform: translateX(-50%);
+    transform: none;
     padding: 4px 10px;
-    gap: 10px;
-    max-width: calc(100vw - 200px);
+    gap: 8px;
+    max-width: 180px;
 }
 
 .landscape-mobile.has-bottom-sheet .stats-overlay .stat-value {
@@ -1066,7 +1087,7 @@
 }
 
 .landscape-mobile.has-bottom-sheet .stats-overlay .stat-label {
-    font-size: 0.5rem;
+    font-size: 0.45rem;
 }
 
 /* =============================================================================
