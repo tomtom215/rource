@@ -25,6 +25,7 @@
 
 @import url('./variables.css');
 @import url('./reset.css');
+@import url('./features/animations.css');
 
 /* =============================================================================
    Components
@@ -57,9 +58,6 @@
 /* =============================================================================
    Features
    ============================================================================= */
-
-/* Animations must come before components that use them */
-@import url('./features/animations.css');
 
 /* Theme support (light theme variables and overrides) */
 @import url('./features/themes.css');

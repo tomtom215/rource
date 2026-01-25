@@ -22,7 +22,7 @@
     max-width: 180px;
     max-height: 280px;
     overflow-y: auto;
-    z-index: 50;
+    z-index: var(--z-canvas-overlays);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     font-size: 0.75rem;
@@ -139,7 +139,7 @@
     display: flex;
     gap: 1rem;
     font-size: 0.75rem;
-    z-index: 50; /* Ensure stats overlay is above canvas for tooltip hover */
+    z-index: var(--z-canvas-overlays); /* Ensure stats overlay is above canvas for tooltip hover */
 }
 
 .stat-item {
@@ -182,7 +182,7 @@
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-size: 0.7rem;
     min-width: 140px;
-    z-index: 60;
+    z-index: var(--z-canvas-perf);
 }
 
 .perf-overlay.collapsed {
@@ -391,7 +391,7 @@
     max-width: 180px;
     max-height: 220px;
     overflow-y: auto;
-    z-index: 50;
+    z-index: var(--z-canvas-overlays);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     font-size: 0.75rem;

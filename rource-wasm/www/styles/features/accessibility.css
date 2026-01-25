@@ -150,6 +150,52 @@ h2.h3-style {
 }
 
 /* =============================================================================
+   Backdrop Filter Fallbacks
+   ============================================================================= */
+
+/**
+ * Progressive enhancement for backdrop-filter.
+ * Older browsers (e.g., Firefox <103, older Safari) don't support backdrop-filter.
+ * We use @supports to provide fallback with more opaque backgrounds.
+ *
+ * Strategy: Set solid fallback backgrounds by default, then apply blur
+ * with transparent backgrounds when supported.
+ */
+
+/* Fallback: more opaque backgrounds when backdrop-filter is not supported */
+@supports not (backdrop-filter: blur(1px)) {
+    .legend-panel,
+    .authors-panel,
+    .stats-overlay {
+        background: rgba(22, 27, 34, 0.98);
+    }
+
+    .perf-overlay {
+        background: rgba(13, 17, 23, 0.98);
+    }
+
+    .modal-overlay,
+    .help-overlay {
+        background: rgba(0, 0, 0, 0.85);
+    }
+
+    .viz-panel:fullscreen .timeline-container,
+    .pseudo-fullscreen .timeline-container {
+        background: rgba(22, 27, 34, 0.98);
+    }
+}
+
+/* Light theme fallbacks */
+@supports not (backdrop-filter: blur(1px)) {
+    .light-theme .legend-panel,
+    .light-theme .authors-panel,
+    .light-theme .perf-overlay,
+    .light-theme .stats-overlay {
+        background: rgba(246, 248, 250, 0.98);
+    }
+}
+
+/* =============================================================================
    Utility Classes
    ============================================================================= */
 

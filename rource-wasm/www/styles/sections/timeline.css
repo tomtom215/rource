@@ -22,8 +22,8 @@
     border: 1px solid var(--border);
     /* Reserve space to prevent CLS during load */
     min-height: 90px;
-    /* Contain layout to prevent CLS propagation */
-    contain: content;
+    /* Contain layout to prevent CLS propagation (not 'content' which clips overflow) */
+    contain: layout style;
 }
 
 /* =============================================================================
@@ -331,7 +331,7 @@
     border-radius: 4px;
     font-size: 0.75rem;
     position: relative;
-    z-index: 1001; /* Above toast (1000) to ensure dropdown options are clickable */
+    z-index: var(--z-speed-select); /* Above toast to ensure dropdown options are clickable */
 }
 
 /* =============================================================================
@@ -473,9 +473,11 @@
     position: absolute;
     width: 2px;
     transform: translateX(-50%);
+    transform-origin: bottom center;
     bottom: 4px;
     opacity: 0;
-    transition: opacity 0.3s ease-out, height 0.2s ease-out;
+    /* Use transform instead of height for GPU-accelerated animation */
+    transition: opacity 0.3s ease-out, transform 0.2s ease-out;
     pointer-events: auto;
     cursor: pointer;
     border-radius: 1px;
@@ -485,9 +487,11 @@
     opacity: 1;
 }
 
-/* Height variants */
+/* Height variants - using CSS custom properties for transform-based hover */
 .timeline-tick.tick-minor {
-    height: 10px;
+    --tick-height: 10px;
+    --tick-hover-scale: 2;  /* 10px → 20px */
+    height: var(--tick-height);
     background: var(--text-muted);
     opacity: 0;
 }
@@ -497,7 +501,9 @@
 }
 
 .timeline-tick.tick-medium {
-    height: 14px;
+    --tick-height: 14px;
+    --tick-hover-scale: 1.43;  /* 14px → 20px */
+    height: var(--tick-height);
     background: var(--text-secondary);
     opacity: 0;
     width: 2px;
@@ -508,7 +514,9 @@
 }
 
 .timeline-tick.tick-major {
-    height: 18px;
+    --tick-height: 18px;
+    --tick-hover-scale: 1.11;  /* 18px → 20px */
+    height: var(--tick-height);
     background: var(--text-primary);
     width: 2px;
     border-radius: 1px;
@@ -548,12 +556,12 @@
     background: var(--warning);
 }
 
-/* Hover effect with tooltip enhancement */
+/* Hover effect with tooltip enhancement - uses GPU-accelerated transform */
 .timeline-tick:hover {
-    opacity: 1 !important;
-    height: 20px !important;
+    opacity: 1;
+    transform: translateX(-50%) scaleY(var(--tick-hover-scale, 1.5));
     z-index: 20;
-    background: var(--accent) !important;
+    background: var(--accent);
 }
 
 /* Custom tooltip via CSS pseudo-element */

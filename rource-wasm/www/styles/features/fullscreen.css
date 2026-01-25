@@ -228,7 +228,7 @@
     bottom: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 9999;
+    z-index: var(--z-fullscreen);
 }
 
 .pseudo-fullscreen header {
@@ -282,7 +282,7 @@
     border-bottom: none;
     background: rgba(22, 27, 34, 0.95);
     backdrop-filter: blur(8px);
-    z-index: 10000;
+    z-index: var(--z-fullscreen-timeline);
     opacity: 0.85;
     transition: opacity 0.3s;
 }
@@ -333,7 +333,7 @@
     background: rgba(0, 0, 0, 0.7);
     color: white;
     cursor: pointer;
-    z-index: 10002;
+    z-index: var(--z-fullscreen-exit);
     align-items: center;
     justify-content: center;
     transition: background 0.2s, transform 0.2s;

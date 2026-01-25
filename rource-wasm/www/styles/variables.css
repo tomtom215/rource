@@ -18,6 +18,7 @@
     --accent-hover: #ff6b6b;
     --accent-secondary: #238636;
     --accent-blue: #58a6ff;
+    --accent-purple: #a855f7;
     --text-primary: #f0f6fc;
     --text-secondary: #8b949e;
     --text-muted: #6e7681;
@@ -60,13 +61,20 @@
     --font-size-2xl: 1.5rem;
     --line-height: 1.5;
 
-    /* Z-index Scale */
+    /* Z-index Scale (organized by layer) */
+    --z-base: 1;
+    --z-canvas-overlays: 50;      /* Legend, stats, perf overlays on canvas */
+    --z-canvas-perf: 60;          /* Performance overlay (above other overlays) */
     --z-dropdown: 100;
     --z-sticky: 200;
     --z-modal: 300;
     --z-popover: 400;
     --z-overlay: 500;
     --z-toast: 600;
+    --z-speed-select: 1001;       /* Speed dropdown (above toast) */
+    --z-fullscreen: 9999;         /* Pseudo-fullscreen container */
+    --z-fullscreen-timeline: 10000;  /* Timeline in fullscreen mode */
+    --z-fullscreen-exit: 10002;   /* Exit fullscreen button (topmost) */
 
     /* Sidebar Dimensions */
     --sidebar-width: 380px;

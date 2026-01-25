@@ -98,7 +98,7 @@
 
 [data-theme="light"] .timeline-tick::after {
     background: var(--bg-primary);
-    border-color: var(--border-color);
+    border-color: var(--border);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
