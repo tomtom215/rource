@@ -5939,4 +5939,458 @@ Complete mathematical analysis and implementation notes documented in:
 
 ---
 
+## Phase 53: Graph Coloring Algorithm Analysis (2026-01-25)
+
+### Overview
+
+This phase documents an exhaustive analysis of graph coloring algorithms and their potential
+applicability to Rource's visualization engine. Graph coloring assigns labels ("colors") to graph
+vertices such that no adjacent vertices share the same color while minimizing total colors used.
+
+**Reference**: Kakatkar, C. - "Graph Coloring for Data Science: A Comprehensive Guide"
+(Towards Data Science, August 2025)
+
+### Algorithms Analyzed
+
+#### 1. Greedy Coloring
+
+```
+for each vertex v in order:
+    color[v] = first color not used by any neighbor of v
+```
+
+| Metric | Value |
+|--------|-------|
+| Time Complexity | O(n²) adjacency matrix, O(n+m) adjacency list |
+| Color Bound | ≤ Δ + 1 (maximum degree + 1) |
+| Optimality | Order-dependent, not guaranteed optimal |
+
+#### 2. Welsh-Powell Algorithm (1967)
+
+```
+1. Sort vertices by degree (descending)
+2. Color first uncolored vertex with new color c
+3. Color all non-adjacent uncolored vertices with c
+4. Repeat until all colored
+```
+
+| Metric | Value |
+|--------|-------|
+| Time Complexity | O(n²) |
+| Color Bound | ≤ max_i min{d(xᵢ) + 1, i} |
+| Best Use Case | Fast results, sparse graphs |
+
+#### 3. DSatur Algorithm (Brélaz, 1979)
+
+```
+saturation[v] = count of distinct colors in N(v)
+
+while uncolored vertices exist:
+    v = argmax(saturation[u]) among uncolored  // ties: max degree
+    color[v] = smallest available color
+    update saturation for neighbors of v
+```
+
+| Metric | Value |
+|--------|-------|
+| Time Complexity | O((n+m) log n) with priority queue |
+| Exactness | Exact for bipartite, cycle, and wheel graphs |
+| Best Use Case | Dense graphs, quality over speed |
+
+#### 4. Chromatic Polynomial for Cycles
+
+For cycle graphs Cₙ with k colors, the closed-form solution is:
+
+```
+P(n, k) = (k-1)ⁿ + (-1)ⁿ × (k-1)
+```
+
+**Derivation**: Via deletion-contraction with recurrence P(n,k) + P(n-1,k) = k(k-1)^(n-1)
+
+| n | k=4 | Formula |
+|---|-----|---------|
+| 3 | 24 | 4×3×2 |
+| 4 | 84 | 3⁴ + 3 = 84 |
+| 5 | 240 | 3⁵ - 3 = 240 |
+| 6 | 732 | 3⁶ + 3 = 732 |
+
+### Rource Codebase Analysis
+
+Comprehensive exploration identified 12 potential application areas:
+
+| Area | Current Implementation | Graph Coloring Benefit | Verdict |
+|------|----------------------|------------------------|---------|
+| Physics Force Calculation | Barnes-Hut O(n log n) | Already optimized | **NOT APPLICABLE** |
+| Draw Command Batching | Sort-key ordering | Already effective | **NOT APPLICABLE** |
+| Entity Update Scheduling | Sequential, simple deps | Low parallelism gain | **NOT APPLICABLE** |
+| File Extension Colors | 50+ hardcoded + hash | Visual, not algorithmic | **NOT APPLICABLE** |
+| QuadTree Leaves | 4-quadrant structure | Inherent 4-coloring | **INHERENT** |
+| Directory Tree Siblings | Tree structure | Bipartite (trivial) | **NOT APPLICABLE** |
+
+### Detailed Applicability Assessment
+
+#### Physics Force Calculation (force.rs:317-432)
+
+The `should_repel()` function creates an implicit conflict graph:
+
+```rust
+fn should_repel(a: &DirNode, b: &DirNode) -> bool {
+    // Siblings always repel
+    if a.parent() == b.parent() && a.parent().is_some() {
+        return true;
+    }
+    // Nodes close in depth repel
+    let depth_diff = a.depth().abs_diff(b.depth());
+    depth_diff <= 1
+}
+```
+
+**Assessment**: Barnes-Hut O(n log n) already provides optimal complexity for N-body approximation.
+Graph coloring for parallel scheduling would add O(n²) preprocessing to achieve O(k) parallel rounds,
+where k (chromatic number) is typically O(√n) for sparse graphs—net negative benefit.
+
+#### Draw Command Batching (command.rs:78-104)
+
+Current sort key system:
+
+```rust
+pub fn sort_key(&self) -> u64 {
+    let tex_id = texture.map_or(0, |t| u64::from(t.raw()));
+    let blend = if color.a < 1.0 { 1u64 << 32 } else { 0 };
+    tex_id | blend | (command_type << 48)
+}
+```
+
+**Assessment**: This is effectively a simplified graph coloring where:
+- Vertices = draw commands
+- Edges = different textures OR different blend modes
+- Colors = batches (defined by sort key)
+
+The current O(n log n) sort achieves the same result as DSatur with lower overhead.
+
+#### QuadTree Spatial Structure (barnes_hut.rs, spatial.rs)
+
+QuadTree inherently provides 4-coloring via quadrant indices (NW=0, NE=1, SW=2, SE=3).
+Sibling leaves automatically have different "colors" (quadrant positions).
+
+**Assessment**: Already optimal—no explicit graph coloring algorithm needed.
+
+### Application Domains (from article)
+
+| Domain | Rource Relevance | Assessment |
+|--------|------------------|------------|
+| Scheduling/Timetabling | No conflicting schedules | NOT APPLICABLE |
+| Register Allocation | Not a compiler | NOT APPLICABLE |
+| Clustering/Feature Selection | No ML operations | NOT APPLICABLE |
+| Exam Scheduling | No event conflicts | NOT APPLICABLE |
+
+### Key Insights for Future Development
+
+1. **Conflict Detection Patterns Already Exist**
+   - `should_repel()` in physics
+   - `needs_blend()` in rendering
+   - Sort key grouping in batching
+
+2. **Tree Structures Enable Trivial Coloring**
+   - Directory trees: 2-colorable (bipartite)
+   - QuadTrees: 4-colorable by construction
+   - No complex chromatic number computation needed
+
+3. **When Graph Coloring Would Apply**
+   - Cyclic dependency visualization (not current feature)
+   - Cross-repository navigation graphs
+   - General DAG coloring for parallel processing
+
+### Theoretical Contributions
+
+The article's chromatic polynomial derivation provides a useful template:
+
+```python
+def num_proper_colorings(n: int, k: int) -> int:
+    """O(1) closed-form for cycle graphs."""
+    if n == 1: return k
+    if n == 2: return k * (k - 1)
+    return (k - 1)**n + ((-1)**n) * (k - 1)
+```
+
+This O(1) solution demonstrates the value of closed-form derivations over O(n) recurrence—
+a principle already applied in Rource's LUT optimizations (Phase 45).
+
+### Recommendation
+
+**Do not implement graph coloring algorithms** for the following reasons:
+
+1. **No general graphs in hot paths** - Rource operates on trees and spatial structures
+2. **Existing optimizations are equivalent** - Sort-key batching achieves same result
+3. **Barnes-Hut dominates** - O(n log n) physics already optimal
+4. **Chromatic number ≤ 4** - Tree/spatial structures have bounded coloring
+5. **Preprocessing cost** - O(n²) Welsh-Powell or O((n+m) log n) DSatur exceeds benefit
+
+### Reference Documentation
+
+Complete algorithm pseudocode, complexity proofs, and applicability framework documented in:
+`docs/THEORETICAL_ALGORITHMS.md`
+
+### Sources
+
+- [GeeksforGeeks: DSatur Algorithm](https://www.geeksforgeeks.org/dsa/dsatur-algorithm-for-graph-coloring/)
+- [GeeksforGeeks: Welsh-Powell Algorithm](https://www.geeksforgeeks.org/dsa/welsh-powell-graph-colouring-algorithm/)
+- [Wikipedia: Greedy Coloring](https://en.wikipedia.org/wiki/Greedy_coloring)
+- [Towards Data Science: Graph Coloring Problem](https://towardsdatascience.com/the-graph-coloring-problem-exact-and-heuristic-solutions-169dce4d88ab/)
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 54: 2025 Mathematical Breakthroughs Analysis (2026-01-25)
+
+### Overview
+
+This phase documents an analysis of Scientific American's "10 Biggest Math Breakthroughs of 2025"
+to identify potential optimization techniques or algorithmic insights applicable to Rource.
+
+**Reference**: Scientific American - "The 10 Biggest Math Breakthroughs of 2025" (December 19, 2025)
+
+### Breakthroughs Analyzed
+
+| # | Breakthrough | Domain | Status |
+|---|--------------|--------|--------|
+| 1 | Moving Sofa Problem Solved | Geometry/Optimization | Analyzed |
+| 2 | Noperthedron Discovery | 3D Geometry | Analyzed |
+| 3 | Prime Distribution Patterns | Number Theory/Chaos | Analyzed |
+| 4 | Geometric Langlands Conjecture | Abstract Algebra | Analyzed |
+| 5 | Knot Complexity Disproved | Topology | Analyzed |
+| 6 | Fibonacci Pick-up Sticks | Probability | Analyzed |
+| 7 | Prime Detection via Partitions | Number Theory | Analyzed |
+| 8 | Hilbert's 6th Problem Progress | Mathematical Physics | Analyzed |
+| 9 | Triangle-to-Square Dissection | Computational Geometry | Analyzed |
+| 10 | Prime Counting Bounds | Number Theory | Analyzed |
+
+### Detailed Analysis
+
+#### 1. Moving Sofa Problem (Jineon Baek, November 2024)
+
+**The Problem**: Find the largest 2D shape that can navigate a right-angle corner in a unit-width corridor.
+
+**The Solution**: Gerver's sofa (1992) with 18 curve sections proven optimal.
+
+| Property | Value |
+|----------|-------|
+| Maximum Area | 2.2195316688... |
+| Boundary | 3 line segments + 15 analytic curves |
+| Proof Length | 119 pages |
+| Key Technique | Calculus of variations, Euler-Lagrange equations |
+
+**Key Constants**:
+```
+A = 0.094426560843653...
+B = 1.399203727333547...
+φ = 0.039177364790084...
+θ = 0.681301509382725...
+```
+
+**Rource Applicability**: NOT DIRECTLY APPLICABLE
+- Rource entities don't navigate physical corridors
+- However, variational calculus techniques could inform:
+  - Optimal camera path smoothing
+  - Spline curve optimization
+  - Shape-constrained animation paths
+
+#### 2. Noperthedron (Steininger & Yurkevich, August 2025)
+
+**The Discovery**: First convex polyhedron proven to lack Rupert's property.
+
+| Property | Value |
+|----------|-------|
+| Vertices | 90 |
+| Edges | 240 |
+| Faces | 152 (150 triangles + 2 regular 15-gons) |
+| Symmetry | Point-symmetric (C₃₀ group) |
+
+**Proof Method**: Exhaustive search of ~18 million orientation blocks combined with
+local/global theorem elimination.
+
+**Rource Applicability**: NOT APPLICABLE
+- Rource is 2D, not 3D
+- No collision/passage detection requirements
+
+#### 3. Prime Distribution Patterns (Harper, Xu, Soundararajan, 2025)
+
+**The Discovery**: Gaussian Multiplicative Chaos (GMC) measures govern prime distribution.
+
+**Key Insight**: Random fractal measures describe large prime collections, but smaller
+collections revert to unstructured randomness.
+
+**Rource Applicability**: NOT DIRECTLY APPLICABLE
+- No prime computation in hot paths
+- Hash functions already use simpler approaches
+- GMC theory too heavyweight for practical hashing
+
+#### 4. Geometric Langlands Conjecture (9 mathematicians, ~1000 pages)
+
+**The Achievement**: Proved connections between Riemann surface properties.
+
+**Rource Applicability**: NOT APPLICABLE
+- Abstract mathematical result with no computational implications
+
+#### 5. Knot Complexity (Disproved Additivity)
+
+**The Discovery**: Found a knot simpler than the sum of its component knots.
+
+**Rource Applicability**: NOT APPLICABLE
+- Rource doesn't process topological structures or knots
+
+#### 6. Fibonacci Pick-up Sticks (Treeby et al., 2025)
+
+**The Discovery**: For n random sticks with lengths in [0,1], the probability that
+no three form a triangle is:
+
+```
+P(no triangle) = 1 / ∏(i=1 to n) F_i = 1 / F_1 × F_2 × ... × F_n
+```
+
+Where F_i is the i-th Fibonacci number.
+
+| n | P(no triangle) |
+|---|----------------|
+| 3 | 1/2 = 0.5 |
+| 4 | 1/6 ≈ 0.167 |
+| 5 | 1/30 ≈ 0.033 |
+| 6 | 1/240 ≈ 0.004 |
+
+**Rource Applicability**: NOT DIRECTLY APPLICABLE
+- Interesting probability result
+- No triangle-formation probability computation in Rource
+- However, demonstrates unexpected closed-form solutions exist
+
+#### 7. Prime Detection via Partitions (Ken Ono et al., 2025)
+
+**The Discovery**: New primality test using integer partition properties.
+
+**Rource Applicability**: NOT APPLICABLE
+- No primality testing in Rource
+
+#### 8. Hilbert's 6th Problem Progress (Deng, Hani, Ma, March 2025)
+
+**The Achievement**: Rigorously derived fluid equations (Navier-Stokes, Euler) from
+Boltzmann kinetic theory, which itself derives from Newton's laws.
+
+**Hierarchy Unified**:
+```
+Microscopic (Newton's laws, discrete particles)
+    ↓ Boltzmann-Grad limit
+Mesoscopic (Boltzmann equation, statistical mechanics)
+    ↓ Hydrodynamic limit (Knudsen → 0)
+Macroscopic (Navier-Stokes/Euler PDEs, continuum)
+```
+
+**Key Innovations**:
+- "Long bonds" connecting temporally separated collisions
+- "Layered cluster forest structure"
+- Rigorous handling of arbitrary time horizons
+
+**Rource Applicability**: NOT DIRECTLY APPLICABLE
+- Rource uses discrete particle simulation (Barnes-Hut)
+- Not solving continuum fluid PDEs
+- However, the hierarchical modeling concept parallels:
+  - LOD (Level of Detail) rendering
+  - Barnes-Hut approximation (micro → macro aggregation)
+
+#### 9. Triangle-to-Square Dissection (Demaine, Kamata, Uehara, 2024-2025)
+
+**The Achievement**: Proved Dudeney's 1902 solution (4 pieces) is optimal.
+
+**Proof Technique**: Matching diagrams to rule out 2-piece and 3-piece dissections.
+
+**Rource Applicability**: NOT APPLICABLE
+- No geometric dissection/transformation operations
+
+#### 10. Prime Counting Bounds
+
+**The Achievement**: Improved sieve methods for estimating π(x) (prime counting function).
+
+**Rource Applicability**: NOT APPLICABLE
+- No prime counting in Rource
+
+### Applicability Summary
+
+| Breakthrough | Directly Applicable | Conceptually Useful |
+|--------------|---------------------|---------------------|
+| Moving Sofa | ✗ | ✓ Variational calculus |
+| Noperthedron | ✗ | ✗ |
+| Prime Patterns | ✗ | ✗ |
+| Langlands | ✗ | ✗ |
+| Knot Complexity | ✗ | ✗ |
+| Fibonacci Sticks | ✗ | ✓ Closed-form surprises |
+| Prime Partitions | ✗ | ✗ |
+| Hilbert's 6th | ✗ | ✓ Hierarchical modeling |
+| Dissection | ✗ | ✗ |
+| Prime Counting | ✗ | ✗ |
+
+### Conceptual Insights Worth Preserving
+
+#### 1. Variational Calculus for Optimization (Moving Sofa)
+
+The Euler-Lagrange approach of representing shapes in infinite-dimensional function spaces
+and finding extrema could apply to:
+- Optimal spline parameterization
+- Energy-minimizing camera paths
+- Constraint-satisfying animations
+
+#### 2. Hierarchical Physics Modeling (Hilbert's 6th)
+
+The micro → meso → macro hierarchy parallels existing Rource patterns:
+
+| Hilbert's Hierarchy | Rource Analog |
+|---------------------|---------------|
+| Particles → Boltzmann | Entities → Barnes-Hut nodes |
+| Boltzmann → Navier-Stokes | Barnes-Hut → aggregate forces |
+| Knudsen number → 0 | θ parameter in Barnes-Hut |
+
+The Barnes-Hut algorithm already implements this: individual particles are aggregated
+into center-of-mass representations at larger scales.
+
+#### 3. Exhaustive Search + Local Theorems (Noperthedron)
+
+The proof strategy of dividing parameter space into ~18 million blocks and testing
+each with local/global elimination theorems is relevant to:
+- Parameter space exploration for optimization
+- Configuration validation testing
+- Exhaustive correctness verification
+
+#### 4. Unexpected Closed Forms (Fibonacci Sticks)
+
+The discovery that Fibonacci numbers appear in triangle probability demonstrates
+that "obvious" iterative solutions may have elegant closed forms—a principle
+already applied in Rource (Phase 45 LUTs, Phase 53 chromatic polynomials).
+
+### Recommendation
+
+**No implementation required** for the following reasons:
+
+1. **Domain mismatch**: Most breakthroughs address problems Rource doesn't solve
+2. **2D vs 3D**: Rource is 2D; 3D geometry results (noperthedron) don't apply
+3. **Discrete vs continuous**: Rource uses discrete simulation, not continuum PDEs
+4. **No number theory**: No prime computation in rendering/physics hot paths
+
+### Reference Documentation
+
+Detailed mathematical descriptions of applicable concepts preserved in:
+`docs/THEORETICAL_ALGORITHMS.md`
+
+### Sources
+
+- [Scientific American: 10 Biggest Math Breakthroughs of 2025](https://www.scientificamerican.com/article/the-top-10-math-discoveries-of-2025/)
+- [arXiv:2411.19826 - Optimality of Gerver's Sofa](https://arxiv.org/abs/2411.19826)
+- [arXiv:2508.18475 - A Convex Polyhedron without Rupert's Property](https://arxiv.org/abs/2508.18475)
+- [arXiv:2503.01800 - Hilbert's Sixth Problem](https://arxiv.org/abs/2503.01800)
+- [arXiv:2504.19911 - Pick-up Sticks and Fibonacci Factorial](https://arxiv.org/abs/2504.19911)
+- [arXiv:2412.03865 - Dudeney's Dissection is Optimal](https://arxiv.org/abs/2412.03865)
+- [Quanta Magazine: Moving Sofa Problem](https://www.quantamagazine.org/the-largest-sofa-you-can-move-around-a-corner-20250214/)
+- [Quanta Magazine: Noperthedron](https://www.quantamagazine.org/first-shape-found-that-cant-pass-through-itself-20251024/)
+
+**Test Count**: 1,899 tests passing
+
+---
+
 *Last updated: 2026-01-25*
