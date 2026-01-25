@@ -73,4 +73,5 @@ export {
     updatePlaybackUI,
     resetTimelineDateLabels,
     isAtEnd,
+    setPlaybackStateCallback,
 } from './ui/playback-ui.js';
