@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769362562935,
+  "lastUpdate": 1769365397567,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2285,6 +2285,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/1896ab680a64f3a7071f359fd8ae3e4926ea6331"
         },
         "date": 1769362561822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772041,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070591,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "77ea398d8984efd87d77f405868b5017206059e0",
+          "message": "Merge pull request #169 from tomtom215/claude/improve-mobile-ux-cJgFk\n\nEnhance mobile responsiveness and accessibility across UI components",
+          "timestamp": "2026-01-25T19:21:12+01:00",
+          "tree_id": "11d57b94de82dbad83afb0295612ab20dee7b0fd",
+          "url": "https://github.com/tomtom215/rource/commit/77ea398d8984efd87d77f405868b5017206059e0"
+        },
+        "date": 1769365397253,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
