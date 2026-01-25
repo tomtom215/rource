@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769355153708,
+  "lastUpdate": 1769359976615,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2207,6 +2207,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/3ce4c41bdb6ace4180f8b7f9ca9b06f51696ec8f"
         },
         "date": 1769355153388,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772041,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070591,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8a7ad619f77a0e8c039fe9434c8ffe78258b435c",
+          "message": "Merge pull request #167 from tomtom215/claude/modularize-rource-css-BV3mf\n\nRefactor CSS into modular component-based architecture",
+          "timestamp": "2026-01-25T17:50:46+01:00",
+          "tree_id": "b00ab33aecfa79686a3edb8209bf413b9e096eeb",
+          "url": "https://github.com/tomtom215/rource/commit/8a7ad619f77a0e8c039fe9434c8ffe78258b435c"
+        },
+        "date": 1769359976166,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
