@@ -1,8 +1,8 @@
 # Algorithmic Complexity Audit - Rource Codebase
 
 **Audit Date**: January 2026
-**Last Updated**: 2026-01-24
-**Test Count**: 1,898+ tests passing
+**Last Updated**: 2026-01-25
+**Test Count**: 1,899 tests passing
 
 ---
 
@@ -329,7 +329,7 @@ Only 5 functions have O(n²) or worse complexity. All are either optional fallba
 
 ## Optimization History
 
-For detailed optimization history through 41 phases, see [PERFORMANCE.md](./PERFORMANCE.md).
+For detailed optimization history through 58 phases, see the [performance documentation](./performance/README.md).
 
 Key milestones:
 - **Phase 16**: Barnes-Hut O(n log n) physics
@@ -337,7 +337,10 @@ Key milestones:
 - **Phase 39**: O(f) cache serialization (was O(f·c))
 - **Phase 40**: O(1) DirNode children/files operations
 - **Phase 41**: Bounded frame processing with commit limits
+- **Phase 44-45**: Fixed-point blending and LUT color conversion
+- **Phase 58**: LUT-based random direction (13.9x faster)
 
 ---
 
 *Audit covers all 5 crates with 800+ functions analyzed. All complexities verified by code inspection.*
+*Last updated: 2026-01-25*
