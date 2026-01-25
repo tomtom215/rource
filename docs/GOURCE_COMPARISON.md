@@ -9,9 +9,10 @@ Rource is a complete Rust rewrite of [Gource](https://github.com/acaudwell/Gourc
 1. [Key Differences](#key-differences)
 2. [Feature Parity Status](#feature-parity-status)
 3. [Remaining Roadmap](#remaining-roadmap)
-4. [Performance Comparison](#performance-comparison)
-5. [CLI Compatibility](#cli-compatibility)
-6. [VCS Support](#vcs-support)
+4. [Benchmark Results](#benchmark-results)
+5. [Performance Comparison](#performance-comparison)
+6. [CLI Compatibility](#cli-compatibility)
+7. [VCS Support](#vcs-support)
 
 ---
 
@@ -84,27 +85,165 @@ Features needed for 100% Gource feature parity:
 
 ---
 
+## Benchmark Results
+
+### Test Environment
+
+| Component | Value |
+|-----------|-------|
+| Repository | [Home Assistant Core](https://github.com/home-assistant/core) |
+| Commits | 86,758 |
+| File Operations | 524,925 |
+| History Span | 13+ years (2013-2026) |
+| Test Date | 2026-01-25 |
+| Platform | x86_64-unknown-linux-gnu |
+| Rource Version | 0.1.0 |
+
+### Benchmark Parameters
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| Resolution | 1280×720 | Standard HD |
+| Bloom | Disabled | Isolate core rendering |
+| Seconds per day | 0.01 | Fast playback to process entire history |
+| Framerate | 60 | Standard video framerate |
+| Rendering | Software (CPU) | Maximum compatibility |
+| Input | Custom log (pipe-delimited) | 524,925 operations |
+
+### Rource Measured Results
+
+**Timing (nanosecond precision via `--benchmark` flag):**
+
+| Metric | Value |
+|--------|-------|
+| Wall clock time | 243.046 seconds |
+| Total frames | 2,708 |
+| Average frame time | 89.75 ms |
+| Min frame time | 4.45 ms |
+| Max frame time | 241.42 ms |
+| P50 frame time | 76.47 ms |
+| P95 frame time | 199.38 ms |
+| P99 frame time | 214.66 ms |
+
+**Phase Breakdown:**
+
+| Phase | Time | Percentage |
+|-------|------|------------|
+| Render | 212.021s | 87.2% |
+| Scene update | 17.719s | 7.3% |
+| PPM export | 12.710s | 5.2% |
+| Commit apply | 0.591s | 0.2% |
+| Effects | <0.001s | 0.0% |
+
+**Throughput:**
+
+| Metric | Value |
+|--------|-------|
+| Frame rate | 11.14 fps |
+| Commits/second | 357.0 |
+| File ops/second | 2,160 |
+
+**Final Scene Complexity:**
+
+| Metric | Value |
+|--------|-------|
+| Files rendered | 31,245 |
+| Users rendered | 4,786 |
+| Directories rendered | 4,836 |
+| Commits applied | 86,756 |
+
+### Output Verification
+
+| Check | Result |
+|-------|--------|
+| Frame count | 2,708 PPM files |
+| Frame size | 2,764,816 bytes each (1280×720×3 + header) |
+| Total output | 7.0 GB |
+| Content verification | 2.2% → 23.8% non-zero pixels (increasing) |
+
+### Reproducible Commands
+
+**Generate custom log from any Git repository:**
+
+```bash
+cd /path/to/repo
+git log --pretty=format:'%at|%aN' --name-status | awk '
+/^[0-9]+\|/ { timestamp_author=$0; next }
+/^[AMD]/ {
+  action = substr($0,1,1)
+  file = substr($0,3)
+  if (file != "") print timestamp_author "|" action "|" file
+}' > /tmp/custom.log
+
+# Filter to valid 4-field lines and sort chronologically
+awk -F'|' 'NF == 4' /tmp/custom.log | sort -t'|' -k1,1n > /tmp/valid.log
+```
+
+**Run Rource benchmark:**
+
+```bash
+rm -rf /tmp/rource_frames && mkdir -p /tmp/rource_frames
+/path/to/rource \
+  --headless --benchmark --custom-log \
+  -W 1280 -H 720 --no-bloom \
+  --seconds-per-day 0.01 --framerate 60 \
+  --output /tmp/rource_frames \
+  /tmp/valid.log 2>&1 | tee /tmp/rource_result.log
+```
+
+**Run Gource benchmark (for comparison):**
+
+```bash
+xvfb-run -a gource --log-format custom /tmp/valid.log \
+  -1280x720 --stop-at-end --disable-auto-rotate --disable-bloom \
+  --seconds-per-day 0.01 --output-framerate 60 \
+  -o /tmp/gource_output.ppm
+```
+
+**Verify output frames have content:**
+
+```bash
+python3 << 'EOF'
+with open('/tmp/rource_frames/frame_00000000.ppm', 'rb') as f:
+    for _ in range(3): f.readline()  # Skip header
+    data = f.read()
+    non_zero = sum(1 for b in data if b != 0)
+    pct = 100 * non_zero / len(data)
+    print(f'{non_zero} non-zero bytes ({pct:.1f}%)')
+EOF
+```
+
+---
+
 ## Performance Comparison
 
-> **Note**: These benchmarks require re-verification with current codebase. Last validated against Gource 0.54.
+### Architecture Differences
 
-### Frame Rate Comparison
+| Aspect | Gource | Rource |
+|--------|--------|--------|
+| Rendering | OpenGL (GPU) | Software rasterizer (CPU) |
+| Memory model | GPU VRAM + RAM | RAM only |
+| Parallelism | GPU shaders | Single-threaded CPU |
+| Bottleneck | GPU fill rate | CPU rendering |
 
-| Repository Size | Gource | Rource | Notes |
-|-----------------|--------|--------|-------|
-| Small (<1k commits) | 60+ fps | 60+ fps | Both smooth |
-| Medium (1k-10k commits) | 60+ fps | 60+ fps | Both smooth |
-| Large (10k-100k commits) | GPU-dependent | 30-60 fps | Rource uses CPU |
-| Very large (100k+) | May struggle | Works with filters | Use `--max-files` |
+### Expected Tradeoffs
+
+| Scenario | Gource Advantage | Rource Advantage |
+|----------|------------------|------------------|
+| Desktop with GPU | Faster rendering | N/A |
+| Headless server | Requires virtual framebuffer | Native headless |
+| Browser/WASM | Not supported | Native support |
+| ARM/embedded | May lack OpenGL | Works on any CPU |
+| CI/CD pipelines | Complex setup | Simple binary |
 
 ### Resource Usage
 
 | Metric | Gource | Rource |
 |--------|--------|--------|
-| GPU memory | Required | Optional |
+| GPU memory | Required | Not used |
 | CPU usage (idle) | Low | Low |
-| CPU usage (active) | Medium | Higher (software render) |
-| RAM (10k files) | ~200MB | ~150MB |
+| CPU usage (active) | Low-Medium | High (software render) |
+| RAM scaling | Linear with scene | Linear with scene |
 
 ### Optimization Tips for Large Repos
 
@@ -117,6 +256,9 @@ rource --max-files 1000 -s 0.5 .
 
 # Use faster playback
 rource --seconds-per-day 0.1 --auto-skip-seconds 1 .
+
+# Headless batch export (fastest)
+rource --headless --output /tmp/frames --seconds-per-day 0.01 .
 ```
 
 ---
@@ -227,4 +369,4 @@ Rource uses the same file extension color mapping as Gource for familiarity.
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-01-25* (benchmark results added)
