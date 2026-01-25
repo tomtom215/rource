@@ -2,6 +2,7 @@
 //!
 //! Comprehensive edge case and stress tests for the core library.
 
+use std::fmt::Write;
 use std::path::Path;
 
 use rource_core::camera::Camera;
@@ -51,7 +52,7 @@ fn chaos_parse_unicode() {
 
     for log in &unicode_logs {
         let result = parser.parse_str(log);
-        assert!(result.is_ok(), "Failed on unicode input: {}", log);
+        assert!(result.is_ok(), "Failed on unicode input: {log}");
     }
 }
 
@@ -85,12 +86,7 @@ fn chaos_parse_large_log() {
 
     let mut log = String::with_capacity(5_000_000);
     for i in 0..50_000 {
-        log.push_str(&format!(
-            "{}|Author{}|A|path/file{}.rs\n",
-            1000000000 + i,
-            i,
-            i
-        ));
+        let _ = writeln!(log, "{}|Author{i}|A|path/file{i}.rs", 1_000_000_000 + i);
     }
 
     let result = parser.parse_str(&log);
@@ -121,7 +117,7 @@ fn chaos_scene_large_file_count() {
     let mut scene = Scene::new();
 
     for i in 0..10_000 {
-        let path = format!("src/dir{}/file{}.rs", i / 100, i);
+        let path = format!("src/dir{}/file{i}.rs", i / 100);
         let author = format!("Author{}", i % 50);
         add_file(&mut scene, &path, &author);
     }
@@ -140,8 +136,11 @@ fn chaos_scene_deep_directories() {
     let mut scene = Scene::new();
 
     // 50-level deep path
-    let path: String =
-        (0..50).map(|d| format!("d{}", d)).collect::<Vec<_>>().join("/") + "/file.rs";
+    let path: String = (0..50)
+        .map(|d| format!("d{d}"))
+        .collect::<Vec<_>>()
+        .join("/")
+        + "/file.rs";
     add_file(&mut scene, &path, "Author");
 
     assert_eq!(scene.file_count(), 1);
@@ -156,7 +155,7 @@ fn chaos_scene_wide_directories() {
 
     // 1000 sibling directories
     for i in 0..1000 {
-        let path = format!("src/component{}/main.rs", i);
+        let path = format!("src/component{i}/main.rs");
         add_file(&mut scene, &path, "Author");
     }
 
@@ -199,7 +198,7 @@ fn chaos_camera_extreme_zoom() {
     for zoom in &zooms {
         camera.set_zoom(*zoom);
         let actual = camera.zoom();
-        assert!(actual.is_finite(), "Zoom became non-finite for {}", zoom);
+        assert!(actual.is_finite(), "Zoom became non-finite for {zoom}");
     }
 }
 
@@ -289,7 +288,7 @@ fn chaos_visibility_queries() {
     let mut scene = Scene::new();
 
     for i in 0..100 {
-        let path = format!("file{}.rs", i);
+        let path = format!("file{i}.rs");
         add_file(&mut scene, &path, "Author");
     }
     scene.update(0.016);
@@ -314,7 +313,7 @@ fn chaos_same_author_many_files() {
     let mut scene = Scene::new();
 
     for i in 0..1000 {
-        let path = format!("file{}.rs", i);
+        let path = format!("file{i}.rs");
         add_file(&mut scene, &path, "SameAuthor");
     }
 
@@ -327,8 +326,8 @@ fn chaos_many_authors() {
     let mut scene = Scene::new();
 
     for i in 0..100 {
-        let path = format!("file{}.rs", i);
-        let author = format!("Author{}", i);
+        let path = format!("file{i}.rs");
+        let author = format!("Author{i}");
         add_file(&mut scene, &path, &author);
     }
 
@@ -347,14 +346,11 @@ fn chaos_interleaved_operations() {
     let mut camera = Camera::new(800.0, 600.0);
 
     for i in 0..500 {
-        let log = format!("{}|Author{}|A|path{}.rs", 1000000000 + i, i, i);
+        let log = format!("{}|Author{i}|A|path{i}.rs", 1_000_000_000 + i);
         if let Ok(commits) = parser.parse_str(&log) {
             for commit in &commits {
                 for file in &commit.files {
-                    scene.apply_commit(
-                        &commit.author,
-                        [(file.path.as_path(), ActionType::Create)],
-                    );
+                    scene.apply_commit(&commit.author, [(file.path.as_path(), ActionType::Create)]);
                 }
             }
         }
@@ -379,7 +375,7 @@ fn chaos_memory_scene_recreation() {
     for _ in 0..100 {
         let mut scene = Scene::new();
         for i in 0..100 {
-            let path = format!("file{}.rs", i);
+            let path = format!("file{i}.rs");
             add_file(&mut scene, &path, "Author");
         }
         scene.update(0.016);
@@ -391,7 +387,7 @@ fn chaos_memory_scene_recreation() {
 fn chaos_memory_buffer_reuse() {
     let mut scene = Scene::new();
     for i in 0..100 {
-        let path = format!("file{}.rs", i);
+        let path = format!("file{i}.rs");
         add_file(&mut scene, &path, "Author");
     }
     scene.update(0.016);
