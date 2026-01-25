@@ -89,6 +89,37 @@ jobs:
             echo "Test output not available" >> $GITHUB_STEP_SUMMARY
           fi
 
+  # Chaos tests - edge cases and stress testing
+  chaos:
+    name: Chaos Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-chaos-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-chaos-
+      - name: Run chaos tests
+        run: cargo test -p rource-core chaos --no-fail-fast
+
+      - name: Generate chaos test summary
+        if: always()
+        run: |
+          echo "## Chaos Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Chaos tests verify robustness against:" >> $GITHUB_STEP_SUMMARY
+          echo "- Edge case inputs (empty, unicode, malformed)" >> $GITHUB_STEP_SUMMARY
+          echo "- Stress scenarios (10K files, deep paths)" >> $GITHUB_STEP_SUMMARY
+          echo "- Numeric boundaries (epsilon, MIN_POSITIVE)" >> $GITHUB_STEP_SUMMARY
+          echo "- Rapid state transitions" >> $GITHUB_STEP_SUMMARY
+
   # MSRV (Minimum Supported Rust Version) check
   msrv:
     name: MSRV (Rust ${{ matrix.rust }})
