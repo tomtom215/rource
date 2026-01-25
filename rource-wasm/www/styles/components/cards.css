@@ -1,0 +1,146 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Card Styles
+ *
+ * Card-based components including tech info panels with
+ * stat grids and badges. Includes collapsible card variants.
+ */
+
+/* =============================================================================
+   Technical Info Panel
+   ============================================================================= */
+
+.tech-info-panel {
+    background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(233, 69, 96, 0.08) 100%);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.875rem;
+    margin-bottom: 0.75rem;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.tech-info-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+
+.tech-info-header svg {
+    color: var(--accent-blue);
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+/* -----------------------------------------------------------------------------
+   Tech Grid
+   ----------------------------------------------------------------------------- */
+
+.tech-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+}
+
+.tech-item {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    padding: 0.4rem;
+    text-align: center;
+    min-width: 0;
+}
+
+.tech-item-value {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--accent-blue);
+    font-variant-numeric: tabular-nums;
+}
+
+.tech-item-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* -----------------------------------------------------------------------------
+   Tech Badges
+   ----------------------------------------------------------------------------- */
+
+.tech-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+}
+
+.tech-badge {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.tech-badge.highlight {
+    background: rgba(233, 69, 96, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* =============================================================================
+   Collapsible Tech Info Panel
+   ============================================================================= */
+
+.tech-info-panel.collapsible .tech-info-header {
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s;
+    margin-bottom: 0;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+.tech-info-panel.collapsible:not(.collapsed) .tech-info-header {
+    margin-bottom: 0.75rem;
+}
+
+.tech-info-panel.collapsible .tech-info-header:hover {
+    opacity: 0.8;
+}
+
+.tech-info-panel.collapsible .tech-info-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+.tech-info-panel.collapsible .panel-toggle {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.tech-info-panel.collapsible.collapsed .panel-toggle {
+    transform: rotate(-90deg);
+}
+
+.tech-info-panel.collapsible.collapsed .tech-grid,
+.tech-info-panel.collapsible.collapsed .tech-badges {
+    display: none;
+}

@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Tab Navigation Styles
+ *
+ * Tab navigation component with nav bar, tab buttons, and tab content panels.
+ */
+
+/* =============================================================================
+   Tab Navigation
+   ============================================================================= */
+
+.tab-nav {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    width: 100%;
+}
+
+/* -----------------------------------------------------------------------------
+   Tab Buttons
+   ----------------------------------------------------------------------------- */
+
+.tab-btn {
+    flex: 1 1 0;
+    padding: 0.5rem 0.4rem;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 500;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    text-align: center;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* -----------------------------------------------------------------------------
+   Tab Content
+   ----------------------------------------------------------------------------- */
+
+.tab-content {
+    display: none;
+    padding: 0.875rem;
+}
+
+.tab-content.active {
+    display: block;
+}

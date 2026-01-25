@@ -1,0 +1,129 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Header Styles
+ *
+ * App header containing logo, controls, and navigation links.
+ * Responsive breakpoints included for control dividers and mobile compact mode.
+ */
+
+/* =============================================================================
+   Header
+   ============================================================================= */
+
+header {
+    background: var(--bg-secondary);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    z-index: 100;
+}
+
+/* -----------------------------------------------------------------------------
+   Brand / Logo
+   ----------------------------------------------------------------------------- */
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.header-brand a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.header-brand a:hover {
+    text-decoration: none;
+}
+
+.logo-icon {
+    width: 28px;
+    height: 28px;
+}
+
+header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--accent) 0%, #ff9a9e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* -----------------------------------------------------------------------------
+   Controls
+   ----------------------------------------------------------------------------- */
+
+.controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.control-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 0.25rem;
+}
+
+/* Hide dividers on small screens when controls wrap */
+@media (max-width: 900px) {
+    .control-divider {
+        display: none;
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   Header Links
+   ----------------------------------------------------------------------------- */
+
+.header-links {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.github-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem 0.85rem;
+    border-radius: 6px;
+    border: 1px solid #d4a72c;
+    background: rgba(212, 167, 44, 0.1);
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.github-link:hover {
+    color: white;
+    border-color: #f0c142;
+    background: rgba(212, 167, 44, 0.25);
+    text-decoration: none;
+}
+
+.github-link svg {
+    fill: #f0c142;
+}
