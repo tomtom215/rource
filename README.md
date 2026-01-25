@@ -7,7 +7,7 @@
 <!-- CI/CD Status Badges -->
 [![CI](https://github.com/tomtom215/rource/actions/workflows/ci.yml/badge.svg)](https://github.com/tomtom215/rource/actions/workflows/ci.yml)
 [![Security Audit](https://github.com/tomtom215/rource/actions/workflows/security.yml/badge.svg)](https://github.com/tomtom215/rource/actions/workflows/security.yml)
-[![codecov](https://codecov.io/gh/tomtom215/rource/graph/badge.svg)](https://codecov.io/gh/tomtom215/rource)
+[![codecov](https://img.shields.io/codecov/c/github/tomtom215/rource?logo=codecov)](https://codecov.io/gh/tomtom215/rource)
 
 <!-- Package Info Badges -->
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
