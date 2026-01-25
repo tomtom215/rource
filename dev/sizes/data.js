@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769303656442,
+  "lastUpdate": 1769306200442,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1973,6 +1973,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/8194e04a420b31009161042609b44eb85c7e34a6"
         },
         "date": 1769303655485,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3911576,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2769980,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1069735,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "af453b3c15c61723bf642a01e7386ca5ea5c2cc1",
+          "message": "Merge pull request #161 from tomtom215/claude/rource-algorithmic-excellence-3RNPL\n\nPhase 53: Document graph coloring algorithm analysis and applicability",
+          "timestamp": "2026-01-25T02:54:40+01:00",
+          "tree_id": "79613ba27c7032ee6edcb5e3dc3c7adc8adc6858",
+          "url": "https://github.com/tomtom215/rource/commit/af453b3c15c61723bf642a01e7386ca5ea5c2cc1"
+        },
+        "date": 1769306199981,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
