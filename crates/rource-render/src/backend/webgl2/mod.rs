@@ -217,19 +217,63 @@ pub struct WebGl2Renderer {
 impl WebGl2Renderer {
     /// Creates a new WebGL2 renderer attached to a canvas.
     pub fn new(canvas: &HtmlCanvasElement) -> Result<Self, WebGl2Error> {
-        // Create context options with preserveDrawingBuffer: true
-        // This is required for screenshots (canvas.toBlob/toDataURL) to work correctly
+        // Create optimized WebGL2 context options
+        // Industry-standard settings for 2D rendering workloads
         let context_options = js_sys::Object::new();
+
+        // Required for screenshots (canvas.toBlob/toDataURL)
         js_sys::Reflect::set(
             &context_options,
             &JsValue::from_str("preserveDrawingBuffer"),
             &JsValue::from(true),
         )
         .ok();
-        // Also set alpha to true for proper transparency blending
+
+        // Required for proper transparency blending
         js_sys::Reflect::set(
             &context_options,
             &JsValue::from_str("alpha"),
+            &JsValue::from(true),
+        )
+        .ok();
+
+        // Disable depth buffer - not needed for 2D rendering (saves GPU memory)
+        js_sys::Reflect::set(
+            &context_options,
+            &JsValue::from_str("depth"),
+            &JsValue::from(false),
+        )
+        .ok();
+
+        // Disable stencil buffer - not used (saves GPU memory)
+        js_sys::Reflect::set(
+            &context_options,
+            &JsValue::from_str("stencil"),
+            &JsValue::from(false),
+        )
+        .ok();
+
+        // Disable built-in MSAA - we handle anti-aliasing in shaders (saves GPU memory)
+        js_sys::Reflect::set(
+            &context_options,
+            &JsValue::from_str("antialias"),
+            &JsValue::from(false),
+        )
+        .ok();
+
+        // Prefer high-performance GPU (discrete over integrated)
+        js_sys::Reflect::set(
+            &context_options,
+            &JsValue::from_str("powerPreference"),
+            &JsValue::from_str("high-performance"),
+        )
+        .ok();
+
+        // Enable desynchronized rendering (allows browser to skip composition synchronization)
+        // This can improve performance on some browsers by reducing latency
+        js_sys::Reflect::set(
+            &context_options,
+            &JsValue::from_str("desynchronized"),
             &JsValue::from(true),
         )
         .ok();

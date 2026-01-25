@@ -106,8 +106,7 @@ impl Rource {
             if commit_index > 10000 {
                 web_sys::console::warn_1(
                     &format!(
-                        "Seeking to commit {} may take a moment (replaying {} commits)",
-                        commit_index, commit_index
+                        "Seeking to commit {commit_index} may take a moment (replaying {commit_index} commits)"
                     )
                     .into(),
                 );
