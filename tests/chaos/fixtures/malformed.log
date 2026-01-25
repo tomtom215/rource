@@ -1,0 +1,19 @@
+
+|||
+|Author|A|path.rs
+1234567890||A|path.rs
+1234567890|Author||path.rs
+1234567890|Author|X|path.rs
+not_a_timestamp|Author|A|path.rs
+-1|Author|A|path.rs
+99999999999999999|Author|A|path.rs
+1234567890|Author|A|
+1234567890|Author|A|/
+incomplete line
+multiple|pipes|in|author|name|A|path.rs
+1234567890|Author|A|path with spaces.rs
+1234567890|Author|A|path	with	tabs.rs
+
+    leading whitespace
+trailing whitespace
+1234567890|Author|A|path.rs

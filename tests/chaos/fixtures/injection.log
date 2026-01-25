@@ -1,0 +1,16 @@
+1000000000|<script>alert('xss')</script>|A|src/main.rs
+1000000001|'; DROP TABLE commits; --|A|src/lib.rs
+1000000002|Author|A|../../../etc/passwd
+1000000003|Author|A|path"; rm -rf /; echo "
+1000000004|Author|A|path${{7*7}}
+1000000005|Author|A|{{constructor.constructor('return this')()}}
+1000000006|Author|A|path%00.rs
+1000000007|Author|A|javascript:alert(1)
+1000000008|<img src=x onerror=alert(1)>|A|src/test.rs
+1000000009|Author|A|<svg onload=alert(1)>
+1000000010|Author|A|data:text/html,<script>alert(1)</script>
+1000000011|Author|A|file:///etc/passwd
+1000000012|Author|A|\\\\server\\share
+1000000013|Author|A|C:\\Windows\\System32
+1000000014|Author|A|/dev/null
+1000000015|Normal Author|A|src/safe.rs
