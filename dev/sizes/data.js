@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769334226143,
+  "lastUpdate": 1769344725763,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2090,6 +2090,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/fd60357159c88bce26a7b200f2f766fa20785826"
         },
         "date": 1769334225700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913176,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772043,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070535,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3005a34bf2afcf4ee43dd1ffe29bc72ff3501b63",
+          "message": "Merge pull request #164 from tomtom215/claude/review-docs-Bz4b9\n\nReorganize documentation: consolidate performance docs and add Gource comparison",
+          "timestamp": "2026-01-25T13:36:43+01:00",
+          "tree_id": "96bf8237ca818c8412a52c8c3b540b724738106b",
+          "url": "https://github.com/tomtom215/rource/commit/3005a34bf2afcf4ee43dd1ffe29bc72ff3501b63"
+        },
+        "date": 1769344725311,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
