@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769344725763,
+  "lastUpdate": 1769351194396,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2144,6 +2144,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1070535,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "409b051c413461cd545e764184929386fcd204cb",
+          "message": "Merge pull request #165 from tomtom215/claude/rource-gource-benchmark-uA5xn\n\ndocs: Add comprehensive benchmark results and performance analysis",
+          "timestamp": "2026-01-25T15:24:26+01:00",
+          "tree_id": "3d3aa56657959d8ec7b73f6377340645313a408e",
+          "url": "https://github.com/tomtom215/rource/commit/409b051c413461cd545e764184929386fcd204cb"
+        },
+        "date": 1769351193488,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913528,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772041,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070592,
             "unit": "bytes"
           }
         ]
