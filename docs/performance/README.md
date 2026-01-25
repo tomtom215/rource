@@ -17,14 +17,9 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 | [NOT_APPLICABLE.md](./NOT_APPLICABLE.md)                              | Analyzed but not applicable optimizations        |
 | [UNSUCCESSFUL.md](./UNSUCCESSFUL.md)                                  | Tested optimizations that performed worse        |
 | [GUIDE.md](./GUIDE.md)                                                | General performance tips and configuration       |
-| [../THEORETICAL_ALGORITHMS.md](../THEORETICAL_ALGORITHMS.md)          | Advanced algorithmic research reference          |
-
-### Archives
-
-| Document                                                              | Purpose                                          |
-|-----------------------------------------------------------------------|--------------------------------------------------|
-| [archives/AUDIT_2026-01-23.md](./archives/AUDIT_2026-01-23.md)        | Closed performance audit (historical)            |
-| [archives/FPS_2026-01-21.md](./archives/FPS_2026-01-21.md)            | Early FPS optimization report (historical)       |
+| [PROFILING.md](./PROFILING.md)                                        | Profiling tools and techniques                   |
+| [ALGORITHMIC_COMPLEXITY.md](./ALGORITHMIC_COMPLEXITY.md)              | Big-O analysis of all functions                  |
+| [THEORETICAL_ALGORITHMS.md](./THEORETICAL_ALGORITHMS.md)              | Advanced algorithmic research reference          |
 
 ---
 

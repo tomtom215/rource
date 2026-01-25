@@ -36,23 +36,9 @@ Complete technical documentation for the Rource project.
 | [performance/NOT_APPLICABLE.md](./performance/NOT_APPLICABLE.md) | Analyzed but not applicable |
 | [performance/UNSUCCESSFUL.md](./performance/UNSUCCESSFUL.md) | Tested but performed worse |
 | [performance/GUIDE.md](./performance/GUIDE.md) | General performance guide |
-
-### Reference
-
-| Document | Description |
-|----------|-------------|
-| [ALGORITHMIC_COMPLEXITY.md](./ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of all functions |
-| [PROFILING.md](./PROFILING.md) | Profiling tools and techniques |
-| [THEORETICAL_ALGORITHMS.md](./THEORETICAL_ALGORITHMS.md) | Advanced algorithmic research |
-
-### Archives
-
-Historical documents preserved for reference:
-
-| Document | Description |
-|----------|-------------|
-| [performance/archives/AUDIT_2026-01-23.md](./performance/archives/AUDIT_2026-01-23.md) | Closed performance audit |
-| [performance/archives/FPS_2026-01-21.md](./performance/archives/FPS_2026-01-21.md) | Early FPS optimization report |
+| [performance/PROFILING.md](./performance/PROFILING.md) | Profiling tools and techniques |
+| [performance/ALGORITHMIC_COMPLEXITY.md](./performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of all functions |
+| [performance/THEORETICAL_ALGORITHMS.md](./performance/THEORETICAL_ALGORITHMS.md) | Advanced algorithmic research |
 
 ---
 
@@ -66,15 +52,15 @@ Historical documents preserved for reference:
 ### Understanding the Code
 1. [ARCHITECTURE.md](./ARCHITECTURE.md) - Crate structure and data flow
 2. [RENDERING.md](./RENDERING.md) - How rendering works
-3. [ALGORITHMIC_COMPLEXITY.md](./ALGORITHMIC_COMPLEXITY.md) - Performance characteristics
+3. [performance/ALGORITHMIC_COMPLEXITY.md](./performance/ALGORITHMIC_COMPLEXITY.md) - Performance characteristics
 
 ### Optimizing Performance
 1. [performance/GUIDE.md](./performance/GUIDE.md) - General performance tips
-2. [PROFILING.md](./PROFILING.md) - Finding bottlenecks
+2. [performance/PROFILING.md](./performance/PROFILING.md) - Finding bottlenecks
 3. [performance/BENCHMARKS.md](./performance/BENCHMARKS.md) - Benchmark methodology
 
 ### Advanced Topics
-1. [THEORETICAL_ALGORITHMS.md](./THEORETICAL_ALGORITHMS.md) - Cutting-edge algorithms
+1. [performance/THEORETICAL_ALGORITHMS.md](./performance/THEORETICAL_ALGORITHMS.md) - Cutting-edge algorithms
 2. [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) - Optimization history
 3. [../CLAUDE.md](../CLAUDE.md) - Development standards
 
@@ -84,11 +70,9 @@ Historical documents preserved for reference:
 
 | Metric | Value |
 |--------|-------|
-| Total documentation files | 15 |
-| Performance documents | 9 |
+| Total documentation files | 13 |
+| Performance documents | 11 |
 | Architecture documents | 2 |
-| Reference documents | 3 |
-| Archived documents | 2 |
 
 ---
 

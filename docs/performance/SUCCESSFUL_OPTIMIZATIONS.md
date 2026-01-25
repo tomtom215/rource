@@ -553,4 +553,80 @@ wasm-opt \
 
 ---
 
+## Phases 1-26 Audit Resolutions
+
+**Audit Date**: 2026-01-23 | **Closed**: 2026-01-24
+
+A comprehensive performance audit identified and resolved the following issues:
+
+### Critical Issues Resolved
+
+| Issue | Resolution |
+|-------|------------|
+| `to_lowercase()` per file icon lookup | **Non-Issue**: Stack-based optimization exists |
+| Vec allocation in quadtree query | **Fixed**: Uses `query_for_each()` visitor pattern |
+| Visibility buffers not using zero-alloc API | **Fixed**: lib.rs:1094 uses `visible_entities_into()` |
+
+### High Severity Issues Resolved
+
+| Issue | Resolution |
+|-------|------------|
+| `format!` in HUD every frame | **Fixed**: Phase 24 HudCache struct |
+| `path.clone()` in commit loops | **Fixed**: Uses `.as_path()` references |
+| `to_lowercase()` in stats recompute | **Non-Issue**: Extensions already stored lowercase |
+| Iterates ALL actions to count active | **Fixed**: `active_action_count` tracked incrementally |
+| Barnes-Hut tree rebuilt every frame | **Fixed**: `clear()` preserves structure |
+| Division per-fragment in WebGL blur | **Fixed**: `u_texel_size` pre-computed as uniform |
+
+### Medium Severity Issues Resolved
+
+| Issue | Resolution |
+|-------|------------|
+| HashMap allocation in `update_file_positions` | **Acceptable**: Cold path |
+| Double user lookup in `spawn_action` | **Non-Issue**: Mutually exclusive paths |
+| `sort_by` instead of `sort_unstable_by` | **Fixed**: Phase 26, 5 locations |
+| Redundant entity lookups across phases | **Acceptable**: Intentional layering |
+| Blocking GPU sync with channel | **Won't Fix**: Required for sync readback |
+| Per-frame bind group for scene texture | **Cannot Fix**: Parameter varies per call |
+| Division per-fragment in curve AA | **Fixed**: AA width in vertex shader |
+
+### Low Severity Items
+
+| Category | Resolution |
+|----------|------------|
+| HashMap optimization | **Fixed**: Phase 26, FxHashMap in 7 files |
+| Missing `#[inline]` | **Fixed**: Hot paths covered |
+| Math SIMD | **Future**: Needs profiling |
+
+### Optimizations Applied (Phases 1-26)
+
+**Memory/Allocation**:
+- Zero-allocation visibility queries (`visible_entities_into()`)
+- Zero-allocation bloom/shadow post-processing buffers
+- Zero-allocation spline interpolation
+- Reusable instance buffers with `clear()` + `extend()`
+- HUD string caching
+- Barnes-Hut tree structure preservation
+
+**Hash Table**: FxHashMap in rource-render and rource-core scene module
+
+**Sorting**: `sort_unstable_by` in 5 hot paths
+
+**GPU**:
+- Shader warmup/precompilation
+- Instance buffer sub-data updates (WebGL2)
+- Uniform Buffer Objects (WebGL2)
+- Cached bind groups for bloom pipeline
+- GPU visibility culling infrastructure
+- GPU spatial hash physics O(n)
+- GPU curve tessellation
+
+**Rendering**:
+- LOD culling at multiple levels
+- State caching (pipeline, VAO, texture binds)
+- Frustum culling via quadtree
+- `sqrt()` avoided for ~78% of disc pixels
+
+---
+
 *Last updated: 2026-01-25*

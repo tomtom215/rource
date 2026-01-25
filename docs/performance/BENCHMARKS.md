@@ -362,4 +362,58 @@ All measurements in elements per second.
 
 ---
 
+## Early FPS Benchmarks (2026-01-21)
+
+Historical benchmark data from the first FPS optimization report, superseded by Phases 40-58.
+
+**Test Count at Time**: 245 tests (now 1,899+)
+
+### Allocation Reuse for Hot Path Buffers
+
+**Location**: `rource-core/src/scene/mod.rs`
+
+Reusable buffers added: `completed_actions_buffer`, `files_to_remove_buffer`, `forces_buffer`, `dir_data_buffer`
+
+| Benchmark | Before | After | Change |
+|-----------|--------|-------|--------|
+| force_layout/10 dirs | 5.18 us | 4.41 us | **-14.5%** |
+| force_layout/50 dirs | 60.5 us | 57.9 us | **-4.3%** |
+| spatial_query/500 files | 4.53 us | 4.42 us | **-2.4%** |
+
+### Squared Distance Comparisons
+
+**Location**: `rource-core/src/scene/mod.rs`
+
+| Benchmark | Before | After | Change |
+|-----------|--------|-------|--------|
+| scene_update/1000 files | 437 us | 382 us | **-12.6%** |
+| scene_update/5000 files | 524 us | 471 us | **-10.1%** |
+| force_layout/100 dirs | 223 us | 199 us | **-10.8%** |
+
+### Extension Statistics Caching
+
+| Benchmark | Before | After | Change |
+|-----------|--------|-------|--------|
+| extension_stats/500 (cached) | 17.2 us | 549 ns | **-96.8%** |
+| extension_stats/2000 (cached) | 62.8 us | 2.0 us | **-96.8%** |
+
+### Cumulative Scene Update Results
+
+| File Count | Baseline | Optimized | Improvement |
+|------------|----------|-----------|-------------|
+| 100 | 22.2 us | 18.8 us | **-15.3%** |
+| 500 | 418 us | 386 us | **-7.7%** |
+| 1000 | 401 us | 392 us | **-2.2%** |
+| 5000 | 513 us | 487 us | **-5.1%** |
+
+### FPS Impact Analysis (at 60 FPS, 16.67ms frame budget)
+
+| Scene Size | Before | After | FPS Headroom |
+|------------|--------|-------|--------------|
+| 500 files | 418 us | 386 us | +32 us (~2% more budget) |
+| 5000 files | 513 us | 487 us | +26 us (~1.5% more budget) |
+| 10000 files | ~1 ms | ~0.9 ms | +100 us (~6% more budget) |
+
+---
+
 *Last updated: 2026-01-25*
