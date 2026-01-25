@@ -30,11 +30,14 @@
 
 pub mod backend;
 pub mod command;
+pub mod context;
 pub mod default_font;
 pub mod effects;
 pub mod font;
+pub mod helpers;
 pub mod image;
 pub mod label;
+pub mod lod;
 pub mod texture;
 pub mod visual;
 
