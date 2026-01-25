@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769365397567,
+  "lastUpdate": 1769369383625,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2324,6 +2324,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/77ea398d8984efd87d77f405868b5017206059e0"
         },
         "date": 1769365397253,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772041,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070591,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c492a26b80e3e884e91c0f401d388bfba2539799",
+          "message": "Merge pull request #170 from tomtom215/claude/improve-mobile-ux-YSXkx\n\nImprove mobile UX with expandable legends, better touch targets, and refined positioning",
+          "timestamp": "2026-01-25T20:27:37+01:00",
+          "tree_id": "42a75542334cbd179ffa4f7c850fdc353a72ab28",
+          "url": "https://github.com/tomtom215/rource/commit/c492a26b80e3e884e91c0f401d388bfba2539799"
+        },
+        "date": 1769369383348,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
