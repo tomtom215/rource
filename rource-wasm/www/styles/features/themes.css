@@ -1,0 +1,107 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Theme Styles
+ *
+ * Light theme support and theme toggle component.
+ * Dark theme is the default (defined in variables.css).
+ *
+ * Theme switching:
+ * - Automatic via prefers-color-scheme media query
+ * - Manual via .light-theme class on :root
+ */
+
+/* =============================================================================
+   Light Theme Variables
+   ============================================================================= */
+
+:root.light-theme {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #eaeef2;
+    --bg-canvas: #f0f3f6;
+    --text-primary: #1f2328;
+    --text-secondary: #4d5561; /* WCAG AA: 5.7:1 contrast on white */
+    --text-muted: #656d76; /* WCAG AA: 4.5:1 contrast on white */
+    --border: #d0d7de;
+    --border-light: #afb8c1;
+    --shadow: rgba(31, 35, 40, 0.12);
+}
+
+/* =============================================================================
+   Light Theme Component Overrides
+   ============================================================================= */
+
+.light-theme .legend-panel,
+.light-theme .authors-panel,
+.light-theme .perf-overlay,
+.light-theme .stats-overlay {
+    background: rgba(246, 248, 250, 0.95);
+}
+
+.light-theme #canvas-container {
+    background: #e8ecf0;
+}
+
+/* =============================================================================
+   Theme Toggle Button
+   ============================================================================= */
+
+.theme-toggle {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.theme-toggle:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+/* Icon visibility based on theme */
+.theme-toggle .sun-icon { display: none; }
+.theme-toggle .moon-icon { display: block; }
+
+.light-theme .theme-toggle .sun-icon { display: block; }
+.light-theme .theme-toggle .moon-icon { display: none; }
+
+/* =============================================================================
+   Light Theme Timeline Tick Adjustments
+   ============================================================================= */
+
+[data-theme="light"] .timeline-tick.tick-minor.visible {
+    opacity: 0.55;
+}
+
+[data-theme="light"] .timeline-tick.tick-medium.visible {
+    opacity: 0.7;
+}
+
+[data-theme="light"] .timeline-tick.tick-major.visible {
+    opacity: 0.9;
+}
+
+[data-theme="light"] .timeline-tick::after {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .timeline-tick-label {
+    color: var(--text-muted);
+}

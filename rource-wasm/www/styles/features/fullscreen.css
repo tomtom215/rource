@@ -1,0 +1,384 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Fullscreen Mode Styles
+ *
+ * Styles for fullscreen visualization including:
+ * - Fullscreen button
+ * - Native fullscreen mode (Fullscreen API)
+ * - Pseudo-fullscreen mode (iOS Safari fallback)
+ * - Exit fullscreen button
+ * - Viz-panel and canvas-container fullscreen states
+ */
+
+/* =============================================================================
+   Fullscreen Button
+   ============================================================================= */
+
+.fullscreen-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.fullscreen-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.fullscreen-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+.fullscreen-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* =============================================================================
+   Native Fullscreen Mode (Document-level)
+   ============================================================================= */
+
+:fullscreen .app-container,
+:-webkit-full-screen .app-container {
+    height: 100vh;
+}
+
+:fullscreen header,
+:-webkit-full-screen header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+:fullscreen header:hover,
+:-webkit-full-screen header:hover {
+    opacity: 1;
+}
+
+:fullscreen footer,
+:-webkit-full-screen footer {
+    display: none;
+}
+
+:fullscreen .sidebar-panel,
+:-webkit-full-screen .sidebar-panel {
+    display: none;
+}
+
+:fullscreen .viz-panel,
+:-webkit-full-screen .viz-panel {
+    grid-column: 1 / -1;
+}
+
+/* =============================================================================
+   Viz-Panel Fullscreen Mode
+   ============================================================================= */
+
+/* Includes both canvas and timeline controls */
+.viz-panel:fullscreen,
+.viz-panel:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+}
+
+.viz-panel:fullscreen #canvas-container,
+.viz-panel:-webkit-full-screen #canvas-container {
+    flex: 1;
+    min-height: 0;
+    border-radius: 0;
+    border: none;
+}
+
+.viz-panel:fullscreen #canvas,
+.viz-panel:-webkit-full-screen #canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.viz-panel:fullscreen .timeline-container,
+.viz-panel:-webkit-full-screen .timeline-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    background: rgba(22, 27, 34, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    opacity: 0.85;
+    transition: opacity 0.3s;
+}
+
+.viz-panel:fullscreen .timeline-container:hover,
+.viz-panel:-webkit-full-screen .timeline-container:hover {
+    opacity: 1;
+}
+
+/* Keep overlays visible in viz-panel fullscreen */
+.viz-panel:fullscreen .stats-overlay,
+.viz-panel:-webkit-full-screen .stats-overlay,
+.viz-panel:fullscreen .perf-overlay,
+.viz-panel:-webkit-full-screen .perf-overlay,
+.viz-panel:fullscreen .legend-panel,
+.viz-panel:-webkit-full-screen .legend-panel,
+.viz-panel:fullscreen .authors-panel,
+.viz-panel:-webkit-full-screen .authors-panel {
+    position: fixed;
+}
+
+/* Hide stats overlay in fullscreen - redundant with timeline info */
+.viz-panel:fullscreen .stats-overlay,
+.viz-panel:-webkit-full-screen .stats-overlay {
+    display: none;
+}
+
+/* Authors panel position in fullscreen - clear the timeline */
+.viz-panel:fullscreen .authors-panel,
+.viz-panel:-webkit-full-screen .authors-panel {
+    bottom: 100px;
+}
+
+/* Legend panel position in fullscreen - clear the exit button */
+.viz-panel:fullscreen .legend-panel,
+.viz-panel:-webkit-full-screen .legend-panel {
+    top: 50px;
+}
+
+/* Exit fullscreen button in viz-panel fullscreen */
+.viz-panel:fullscreen .exit-fullscreen-btn,
+.viz-panel:-webkit-full-screen .exit-fullscreen-btn {
+    display: flex;
+    position: fixed;
+}
+
+/* =============================================================================
+   Canvas-Container Fullscreen (Legacy fallback)
+   ============================================================================= */
+
+#canvas-container:fullscreen,
+#canvas-container:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-primary);
+}
+
+#canvas-container:fullscreen #canvas,
+#canvas-container:-webkit-full-screen #canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Keep overlays visible in canvas-container fullscreen */
+#canvas-container:fullscreen .stats-overlay,
+#canvas-container:-webkit-full-screen .stats-overlay,
+#canvas-container:fullscreen .perf-overlay,
+#canvas-container:-webkit-full-screen .perf-overlay,
+#canvas-container:fullscreen .legend-panel,
+#canvas-container:-webkit-full-screen .legend-panel,
+#canvas-container:fullscreen .authors-panel,
+#canvas-container:-webkit-full-screen .authors-panel {
+    position: fixed;
+}
+
+/* Also show exit button in native canvas fullscreen */
+#canvas-container:fullscreen .exit-fullscreen-btn,
+#canvas-container:-webkit-full-screen .exit-fullscreen-btn {
+    display: flex;
+}
+
+/* =============================================================================
+   Pseudo-Fullscreen Mode (iOS Safari fallback)
+   ============================================================================= */
+
+/* iOS Safari doesn't support Fullscreen API */
+.pseudo-fullscreen {
+    overflow: hidden;
+}
+
+.pseudo-fullscreen .app-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+}
+
+.pseudo-fullscreen header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.pseudo-fullscreen header:hover,
+.pseudo-fullscreen header:focus-within {
+    opacity: 1;
+}
+
+.pseudo-fullscreen footer {
+    display: none;
+}
+
+.pseudo-fullscreen .sidebar-panel {
+    display: none;
+}
+
+.pseudo-fullscreen .viz-panel {
+    grid-column: 1 / -1;
+    width: 100vw;
+    height: 100vh;
+}
+
+.pseudo-fullscreen #canvas-container {
+    width: 100vw;
+    height: 100vh;
+}
+
+.pseudo-fullscreen #canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Keep timeline controls visible in pseudo-fullscreen */
+.pseudo-fullscreen .timeline-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    background: rgba(22, 27, 34, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    opacity: 0.85;
+    transition: opacity 0.3s;
+}
+
+.pseudo-fullscreen .timeline-container:hover {
+    opacity: 1;
+}
+
+/* Hide overlays that shouldn't be visible in fullscreen */
+.pseudo-fullscreen .sidebar-overlay {
+    display: none;
+}
+
+/* Hide stats overlay in pseudo-fullscreen - info is in timeline */
+.pseudo-fullscreen .stats-overlay {
+    display: none;
+}
+
+/* Authors panel position in pseudo-fullscreen - clear the tall mobile timeline */
+.pseudo-fullscreen .authors-panel {
+    bottom: 180px;
+    position: fixed;
+}
+
+.pseudo-fullscreen .perf-overlay {
+    position: fixed;
+}
+
+.pseudo-fullscreen .legend-panel {
+    position: fixed;
+    top: 50px; /* Clear the exit button */
+}
+
+/* =============================================================================
+   Exit Fullscreen Button
+   ============================================================================= */
+
+/* Hidden by default, visible in pseudo-fullscreen and native fullscreen */
+.exit-fullscreen-btn {
+    display: none;
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    cursor: pointer;
+    z-index: 10002;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.exit-fullscreen-btn:hover,
+.exit-fullscreen-btn:focus {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+    outline: none;
+}
+
+.exit-fullscreen-btn:active {
+    transform: scale(0.95);
+}
+
+.exit-fullscreen-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Show exit button only in pseudo-fullscreen mode */
+.pseudo-fullscreen .exit-fullscreen-btn {
+    display: flex;
+}
+
+/* =============================================================================
+   Mobile Fullscreen Adjustments
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    .pseudo-fullscreen .timeline-container {
+        padding: 0.5rem 0.75rem;
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+
+    .pseudo-fullscreen .authors-panel {
+        bottom: 200px; /* More clearance for taller mobile timeline */
+        max-width: 140px;
+        font-size: 0.7rem;
+    }
+
+    .pseudo-fullscreen .legend-panel {
+        max-width: 150px;
+        font-size: 0.7rem;
+    }
+}

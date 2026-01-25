@@ -1,0 +1,94 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Animation Styles
+ *
+ * Keyframe animations used across the application.
+ * Component-specific animations may be defined in their respective modules:
+ * - bounce: sidebar.css (scroll indicator)
+ * - modalSlideIn: modals.css (modal entrance)
+ *
+ * This file contains shared/reusable animations.
+ */
+
+/* =============================================================================
+   Loading Animations
+   ============================================================================= */
+
+/* Spin animation for loading spinners */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Utility class for spin animation */
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Shimmer effect for skeleton loading */
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* =============================================================================
+   Pulse Animations
+   ============================================================================= */
+
+/* Generic pulse animation */
+@keyframes pulse {
+    0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* Beam pulse for skeleton visualization */
+@keyframes beam-pulse {
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: 0.4; }
+}
+
+/* =============================================================================
+   Recording Animations
+   ============================================================================= */
+
+/* Recording indicator pulse */
+@keyframes recordingPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Recording dot scale animation */
+@keyframes recordingDot {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+/* Preparing state pulse (faster) */
+@keyframes preparingPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* =============================================================================
+   Timeline Animations
+   ============================================================================= */
+
+/* Stagger animation for tick appearance */
+@keyframes tickFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) scaleY(0);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) scaleY(1);
+    }
+}
+
+/* Timeline tick visibility with animation */
+.timeline-tick.visible {
+    animation: tickFadeIn 0.25s ease-out forwards;
+    transform-origin: bottom center;
+}

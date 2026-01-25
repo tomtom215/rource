@@ -12,13 +12,13 @@
  * - reset.css: Normalize and base styles
  * - components/: Reusable UI components
  * - sections/: Page-specific sections
- * - features/: Feature-specific styles (to be extracted)
+ * - features/: Feature-specific styles
  *
- * Migration Status:
- * - Foundation: COMPLETE (variables.css, reset.css)
- * - Components: COMPLETE (buttons, panels, toast, tabs, inputs, cards, modals)
- * - Sections: COMPLETE (header, canvas, sidebar, timeline, overlays)
- * - Features: PENDING (mobile, fullscreen, themes, animations)
+ * Migration Status: COMPLETE
+ * - Foundation: variables.css, reset.css
+ * - Components: buttons, panels, toast, tabs, inputs, cards, modals
+ * - Sections: header, canvas, sidebar, timeline, overlays
+ * - Features: animations, themes, fullscreen, mobile
  *
  * Note: The monolithic styles.css is still the production file.
  * These modular files are for incremental refactoring and can be
@@ -55,12 +55,17 @@
 @import url('./sections/overlays.css');
 
 /* =============================================================================
-   Features (To Be Extracted from styles.css)
+   Features
    ============================================================================= */
 
-/* Feature-specific styles remaining to extract:
-   - fullscreen.css: Fullscreen mode adjustments
-   - mobile.css: Mobile-specific overrides
-   - themes.css: Light theme variants
-   - animations.css: Keyframe animations
-*/
+/* Animations must come before components that use them */
+@import url('./features/animations.css');
+
+/* Theme support (light theme variables and overrides) */
+@import url('./features/themes.css');
+
+/* Fullscreen mode adjustments */
+@import url('./features/fullscreen.css');
+
+/* Mobile responsive overrides (should be last to override other styles) */
+@import url('./features/mobile.css');
