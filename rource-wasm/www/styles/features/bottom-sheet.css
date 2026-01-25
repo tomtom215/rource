@@ -92,9 +92,7 @@
         padding-bottom: env(safe-area-inset-bottom);
     }
 
-    .bottom-sheet.open {
-        transform: translateY(0);
-    }
+    /* NOTE: .bottom-sheet.open class removed - JS uses inline transform directly */
 
     /* -------------------------------------------------------------------------
        Drag Handle Header
@@ -168,6 +166,11 @@
     .bottom-sheet-close:hover {
         background: var(--border);
         color: var(--text-primary);
+    }
+
+    .bottom-sheet-close:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
     }
 
     .bottom-sheet-close:active {

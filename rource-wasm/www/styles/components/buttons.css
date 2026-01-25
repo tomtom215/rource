@@ -37,6 +37,11 @@
     text-decoration: none;
 }
 
+.btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
 .btn:disabled {
     background: var(--bg-tertiary);
     color: var(--text-secondary);

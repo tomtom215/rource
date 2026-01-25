@@ -18,7 +18,7 @@
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.9);
-    z-index: var(--z-popover);
+    z-index: var(--z-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -178,6 +178,11 @@
 .help-close:hover {
     background: var(--border);
     color: var(--text-primary);
+}
+
+.help-close:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 /* =============================================================================
