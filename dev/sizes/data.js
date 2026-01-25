@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769369383625,
+  "lastUpdate": 1769371734468,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2363,6 +2363,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/c492a26b80e3e884e91c0f401d388bfba2539799"
         },
         "date": 1769369383348,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772041,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070591,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "43dc987e467146781a0c63e9e87c353f35e844be",
+          "message": "Merge pull request #171 from tomtom215/claude/fix-mobile-layout-issues-A1fGh\n\nImprove mobile landscape detection and controls visibility",
+          "timestamp": "2026-01-25T21:06:51+01:00",
+          "tree_id": "e319ff44d528e692df17f82c6d2065440a751b26",
+          "url": "https://github.com/tomtom215/rource/commit/43dc987e467146781a0c63e9e87c353f35e844be"
+        },
+        "date": 1769371734146,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
