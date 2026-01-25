@@ -189,11 +189,17 @@
 
     .bottom-sheet-content {
         flex: 1;
+        /* Enable vertical scrolling with proper min-height for flex item */
+        min-height: 0;
         overflow-y: auto;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         padding: 0 16px 16px;
+        /* Allow touch scrolling on the content area */
+        touch-action: pan-y;
+        /* Add padding at bottom for safe area and better UX */
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     }
 
     .bottom-sheet-content::-webkit-scrollbar {

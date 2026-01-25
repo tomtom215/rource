@@ -97,10 +97,16 @@ export function setUIUpdateCallback(callback) {
 // =============================================================================
 
 /**
- * Resizes the canvas to fit its container.
+ * Resizes the canvas to fit its container with high-DPI support.
  *
  * This is called on window resize and ensures the canvas dimensions
  * match the container, maintaining proper aspect ratio and resolution.
+ *
+ * For crisp rendering on high-DPI displays (mobile, Retina, etc.),
+ * we scale the canvas by devicePixelRatio while keeping the CSS
+ * display size at 100% of the container.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
  */
 export function resizeCanvas() {
     const canvas = getElement('canvas');
@@ -108,16 +114,35 @@ export function resizeCanvas() {
     if (!canvas || !container) return;
 
     const rect = container.getBoundingClientRect();
-    const width = Math.floor(rect.width);
-    const height = Math.floor(rect.height);
+    // Get device pixel ratio, clamped to reasonable range for performance
+    // Mobile devices often have DPR of 2-3, ultra-high-DPI can be 4+
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
 
-    if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
+    // Calculate the actual rendering resolution
+    const displayWidth = Math.floor(rect.width);
+    const displayHeight = Math.floor(rect.height);
+    const renderWidth = Math.floor(displayWidth * dpr);
+    const renderHeight = Math.floor(displayHeight * dpr);
+
+    // Only resize if dimensions have actually changed
+    if (canvas.width !== renderWidth || canvas.height !== renderHeight) {
+        // Set the canvas buffer size for high-DPI rendering
+        canvas.width = renderWidth;
+        canvas.height = renderHeight;
+
+        // The CSS keeps the canvas at display size (already 100% via CSS)
+        // No need to set canvas.style.width/height as CSS handles it
+
         const rource = getRource();
         if (rource) {
-            safeWasmCall('resize', () => rource.resize(width, height), undefined);
+            // Pass the high-resolution dimensions to WASM for sharp rendering
+            safeWasmCall('resize', () => rource.resize(renderWidth, renderHeight), undefined);
             safeWasmCall('forceRender', () => rource.forceRender(), undefined);
+        }
+
+        // Log DPR-aware resize for debugging (only when significant)
+        if (dpr > 1) {
+            console.debug(`Canvas resized: ${displayWidth}x${displayHeight} @ ${dpr}x DPR = ${renderWidth}x${renderHeight} render`);
         }
     }
 }

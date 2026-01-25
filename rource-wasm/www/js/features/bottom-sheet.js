@@ -66,6 +66,8 @@ let lastY = 0;
 let lastTime = 0;
 let velocity = 0;
 let animationFrame = null;
+let dragStartedInContent = false;
+let hasDraggedEnough = false;
 
 // ============================================================================
 // Utility Functions
@@ -262,21 +264,39 @@ function snapTo(snapName, instant = false) {
 // ============================================================================
 
 /**
- * Handles touch start on the drag handle or sheet header.
+ * Checks if the content is scrolled to the top.
+ * @returns {boolean} True if content is at the top
+ */
+function isContentAtTop() {
+    return !content || content.scrollTop <= 0;
+}
+
+/**
+ * Handles touch start on the drag handle, header, or content (when at top).
  * @param {TouchEvent} e
  */
 function handleTouchStart(e) {
     if (!sheet) return;
 
-    // Only respond to touches on the handle area
     const touch = e.touches[0];
     const target = e.target;
 
-    // Check if touch is on handle or header area
+    // Check if touch is on handle or header area (always draggable)
     const isHandle = handle && (target === handle || handle.contains(target));
     const isHeader = target.closest('.bottom-sheet-header');
 
-    if (!isHandle && !isHeader) return;
+    // Check if touch is on content area AND content is scrolled to top
+    // This allows swiping down to dismiss when at the top of content
+    const isContent = content && content.contains(target);
+    const canDragFromContent = isContent && isContentAtTop();
+
+    // Store whether we started in content area for move handling
+    dragStartedInContent = isContent && !isHandle && !isHeader;
+
+    if (!isHandle && !isHeader && !canDragFromContent) {
+        // Not on a draggable area - let content scroll normally
+        return;
+    }
 
     isDragging = true;
     startY = touch.clientY;
@@ -288,8 +308,11 @@ function handleTouchStart(e) {
     // Disable transition during drag
     sheet.style.transition = 'none';
 
-    // Prevent scrolling while dragging
-    e.preventDefault();
+    // Only prevent default on handle/header, not content
+    // This allows content scrolling to work until we confirm it's a drag
+    if (isHandle || isHeader) {
+        e.preventDefault();
+    }
 }
 
 /**
@@ -311,6 +334,31 @@ function handleTouchMove(e) {
 
     lastY = touch.clientY;
     lastTime = now;
+
+    // If drag started in content area, apply special handling
+    if (dragStartedInContent && !hasDraggedEnough) {
+        // Check if we've moved enough to determine intent
+        if (Math.abs(deltaY) < TOUCH.minSwipeDistance) {
+            // Not enough movement yet - don't prevent default, let content scroll
+            return;
+        }
+
+        // User is dragging UP (negative delta) - they want to scroll content, not move sheet
+        if (deltaY < 0) {
+            isDragging = false;
+            return;
+        }
+
+        // User is dragging DOWN (positive delta) - check if content is at top
+        if (!isContentAtTop()) {
+            // Content has scroll position - let it scroll
+            isDragging = false;
+            return;
+        }
+
+        // Content is at top and user is dragging down - take over the drag
+        hasDraggedEnough = true;
+    }
 
     // Calculate new position with bounds
     let newTranslate = startTranslate + deltaY;
@@ -352,6 +400,10 @@ function handleTouchMove(e) {
  * @param {TouchEvent} e
  */
 function handleTouchEnd(e) {
+    // Reset content drag tracking
+    dragStartedInContent = false;
+    hasDraggedEnough = false;
+
     if (!isDragging || !sheet) return;
 
     isDragging = false;
