@@ -6393,4 +6393,653 @@ Detailed mathematical descriptions of applicable concepts preserved in:
 
 ---
 
+## Phase 55: Targeted Algorithmic Research Analysis (2026-01-25)
+
+### Overview
+
+This phase documents a comprehensive analysis of production-ready algorithms and data structures
+specifically targeted at Rource's workload: force-directed layout, spatial indexing, WASM memory
+efficiency, and tree operations. Unlike previous phases analyzing general mathematical breakthroughs,
+this analysis focuses on algorithms with existing Rust implementations and clear applicability paths.
+
+**Research Document**: "Algorithmic Research for Rource: Targeted Optimizations"
+
+### Algorithms Evaluated
+
+| Category | Algorithm | Source | Status |
+|----------|-----------|--------|--------|
+| GPU Layout | GraphWaGu (WebGPU Barnes-Hut) | Eurographics 2022 | Already Implemented (spatial hash) |
+| GPU Layout | GPU ForceAtlas2 | ICPP 2017 | Already Implemented (spatial hash) |
+| Spatial Index | Loose QuadTree | Classic | Future Consideration |
+| Spatial Index | Geohash Grid | Classic | Future Consideration |
+| Spatial Index | KD-Tree | Classic | Not Needed |
+| Succinct DS | vers-vecs | crates.io | Not WASM-Compatible |
+| Succinct DS | succinctly | crates.io | Potentially Applicable |
+| Learned Index | PGM-Index | VLDB 2020 | Not Applicable |
+| Tree Balance | Grandchildren-WB | WADS 2025 | Not Applicable |
+| Tree Balance | UFO Trees | PPoPP 2026 | Not Applicable |
+
+### Detailed Analysis
+
+#### 1. GPU Force-Directed Layout (GraphWaGu, ForceAtlas2)
+
+**Research Claim**: GPU Barnes-Hut achieves 40-100x speedup for >50K nodes.
+
+**Current Rource Implementation**: Already has 9-pass GPU spatial hash compute pipeline.
+
+| Rource Component | Location | Algorithm |
+|------------------|----------|-----------|
+| GPU Spatial Hash | `rource-render/src/backend/wgpu/spatial_hash.rs` | O(n) grid-based |
+| GPU Compute | `rource-render/src/backend/wgpu/compute.rs` | 9-pass pipeline |
+| CPU Barnes-Hut | `rource-core/src/physics/barnes_hut.rs` | O(n log n) |
+| CPU QuadTree | `rource-core/src/physics/spatial.rs` | O(log n) queries |
+
+**GPU Pipeline Passes** (already implemented):
+1. Clear cell counts
+2. Count entities per cell
+3. Prefix sum (local)
+4. Prefix sum (partials)
+5. Prefix sum (add)
+6. Init scatter offsets
+7. Scatter entities
+8. Calculate forces (O(n) - 3×3 neighborhood only)
+9. Integrate positions
+
+**Complexity Comparison** (5000 entities, 64×64 grid):
+- O(n²): 25,000,000 comparisons
+- O(n) spatial hash: ~11,000 comparisons (2200× speedup)
+
+**Assessment**: **ALREADY IMPLEMENTED**
+
+Rource's GPU spatial hash pipeline achieves the same O(n) complexity as GraphWaGu's GPU Barnes-Hut
+through a different approach (grid-based vs tree-based). The spatial hash approach is actually
+better suited for Rource's uniform entity distribution since it avoids tree construction overhead.
+
+GraphWaGu's specific innovations (6×|V| buffer, GPU quadtree construction) could be considered
+for future enhancement if entity counts exceed 100K and tree-based approximation becomes
+preferable to grid-based exact computation.
+
+**Recommendation**: No action needed—current GPU pipeline is optimal for Rource's use case.
+
+---
+
+#### 2. Spatial Indexing Alternatives
+
+##### 2a. Loose QuadTree
+
+**Concept**: Each quadrant boundary overflows 50% into neighbors. Objects near boundaries fit
+in multiple valid quadrants without restructuring.
+
+**Current Rource QuadTree**:
+```rust
+// rource-core/src/physics/spatial.rs
+pub struct QuadTree<T: Clone> {
+    bounds: Bounds,
+    items: Vec<(Vec2, T)>,
+    children: Option<Box<[Self; 4]>>,
+    max_items: usize,  // 16
+    max_depth: usize,  // 8
+}
+```
+
+**Potential Benefit**: Reduced per-frame restructuring when entities move across boundaries.
+
+**Trade-off**: More objects checked during queries due to boundary overlap.
+
+**Assessment**: **FUTURE CONSIDERATION**
+
+Rource entities move each frame during layout. A loose quadtree could reduce restructuring
+cost. However, current implementation already uses `clear()` and rebuild pattern rather than
+incremental updates, mitigating the benefit.
+
+**Benchmark Required**: Compare restructure cost vs query overhead before implementing.
+
+##### 2b. Geohash Grid
+
+**Concept**: Fixed-depth spatial encoding via interleaved coordinate bits.
+
+```rust
+// O(1) cell lookup
+let cell = (y >> shift) * grid_width + (x >> shift);
+```
+
+**Comparison**:
+- QuadTree traversal: O(log n)
+- Geohash lookup: O(1)
+
+**Assessment**: **FUTURE CONSIDERATION**
+
+The GPU spatial hash pipeline already uses grid-based indexing with O(1) cell lookup.
+Applying the same pattern to CPU would unify the approaches.
+
+**Trade-off**: Works best with uniform entity density. Non-uniform distributions benefit
+more from adaptive QuadTree subdivision.
+
+##### 2c. KD-Tree
+
+**Assessment**: **NOT NEEDED**
+
+KD-Tree excels for non-uniform distributions with adaptive split planes. Rource's entity
+distribution is relatively uniform (file nodes spread across directory tree), making
+QuadTree's powers-of-two arithmetic preferable.
+
+**Recommendation**: Keep current QuadTree for CPU. Consider grid-based approach for future
+CPU optimization, benchmarking against current implementation.
+
+---
+
+#### 3. Succinct Data Structures
+
+##### 3a. vers-vecs
+
+**Crate**: `vers-vecs` (v1.1.0)
+
+**Features**:
+- RsVec: O(1) rank, O(log n) select
+- EliasFano: Constant-time predecessor queries on monotonic sequences
+- WaveletMatrix: O(k) rank/select for k-bit symbols
+- BpTree: O(log n) tree navigation
+
+**Performance**: "Among the fastest publicly available bit vector implementations"
+
+**WASM Compatibility**: **NOT COMPATIBLE**
+
+> "This crate uses compiler intrinsics for bit-manipulation. The intrinsics are supported
+> by all modern x86_64 CPUs, but not by other architectures. The crate will compile on
+> other architectures using fallback implementations, but the performance will be
+> significantly worse."
+
+**Assessment**: **NOT APPLICABLE FOR WASM**
+
+Rource requires WASM compatibility. The vers-vecs fallback implementations would negate
+any performance benefit and add dependency complexity.
+
+##### 3b. succinctly
+
+**Crate**: `succinctly`
+
+**Features**:
+- BitVec with O(1) rank, O(log n) select
+- Balanced parentheses for tree navigation
+- JSON/YAML semi-indexing
+- no_std compatible, WASM ready
+
+**Performance Characteristics**:
+- Rank: ~3ns (x86_64), ~21ns (ARM)
+- Select: ~50ns (x86_64), ~320ns (ARM)
+- Space overhead: ~3% for bit vectors
+
+**WASM Compatibility**: **COMPATIBLE**
+
+> "no_std compatible - Works in embedded and WASM environments"
+
+**Potential Applications**:
+
+| Use Case | Current | With Succinctly | Benefit |
+|----------|---------|-----------------|---------|
+| File visibility flags | `Vec<bool>` | BitVec | 8× memory reduction |
+| Entity selection state | FxHashSet | BitVec + rank | O(1) count queries |
+| Directory tree encoding | Pointer-based | BP tree | ~10× memory reduction |
+
+**Assessment**: **POTENTIALLY APPLICABLE**
+
+For very large repositories (>100K files), succinct structures could reduce memory pressure
+in WASM. However, current FxHashMap/FxHashSet approach is already fast with minimal overhead.
+
+**Break-even Analysis**:
+- FxHashSet: ~40 bytes per entry (pointer + hash + metadata)
+- BitVec: 1 bit per entry + ~3% overhead
+
+For 100K files:
+- FxHashSet: ~4 MB
+- BitVec: ~12.5 KB
+
+**Recommendation**: Low priority. Implement only if memory becomes a bottleneck for
+very large repositories. Would require benchmarking succinctly's WASM performance
+vs current FxHashSet.
+
+---
+
+#### 4. Learned Indexes (PGM-Index)
+
+**Crate**: `pgm_index`
+
+**Concept**: Replace B-tree with piecewise linear models predicting element position.
+
+**Performance Claims**:
+- 3-10× faster than binary search for large sorted datasets
+- O(log n / log ε) query time with O(n / ε) space
+- 1.7× faster than BTreeSet on 1M random keys
+
+**Current Rource File Lookup**:
+```rust
+// rource-core/src/scene/mod.rs
+files: FxHashMap<FileId, FileNode>,        // O(1) by ID
+file_by_path: FxHashMap<PathBuf, FileId>,  // O(1) by path
+```
+
+**Assessment**: **NOT APPLICABLE**
+
+| Criterion | PGM-Index | FxHashMap |
+|-----------|-----------|-----------|
+| Lookup complexity | O(log n / log ε) | O(1) average |
+| Requires sorted keys | Yes | No |
+| Best for | Range queries on sorted data | Point queries |
+| Path-based lookup | Hash → PGM lookup → verify | Hash → verify |
+
+Rource's file lookup is point-query dominated (find file by exact path), not range-query
+dominated. FxHashMap's O(1) average case is superior to any learned index for this workload.
+
+**When PGM-Index Would Help**:
+- Range queries ("all files modified after timestamp X")
+- Prefix queries ("all files in directory Y/*")
+
+These are not hot-path operations in Rource.
+
+**Recommendation**: No action. Current FxHashMap approach is optimal for Rource's access patterns.
+
+---
+
+#### 5. Tree Balancing Improvements
+
+##### 5a. Grandchildren-Weight-Balanced Trees (WADS 2025)
+
+**Paper**: arXiv:2410.08825
+
+**Innovation**: Strengthen balance invariant to grandchildren, achieving O(1) amortized rotations.
+
+**Current Rource Directory Tree**:
+```rust
+// rource-core/src/scene/tree.rs
+pub struct DirTree {
+    nodes: Vec<Option<DirNode>>,        // Slot-based storage
+    children_by_name: HashMap<...>,     // O(1) child lookup
+    // No self-balancing needed
+}
+```
+
+**Assessment**: **NOT APPLICABLE**
+
+Rource's directory tree is not a self-balancing binary search tree. It's a general n-ary
+tree representing the actual directory hierarchy, stored as a slot-based arena with HashMap
+index for child lookup.
+
+Tree modifications (add/remove directory) occur infrequently compared to physics/rendering
+hot paths. The current O(1) HashMap-based child lookup is already optimal.
+
+##### 5b. UFO Trees (PPoPP 2026)
+
+**Paper**: arXiv:2601.10706
+
+**Innovation**: Batch tree updates with O(min{k log(1+n/k), kD}) work complexity.
+
+**Requirement**: WASM threads (SharedArrayBuffer)
+
+**Assessment**: **NOT APPLICABLE**
+
+1. Requires WASM threads—not universally available in browsers
+2. Rource processes commits sequentially, not in batches
+3. Directory tree updates are not a bottleneck
+
+**Potential Future Use**: If Rource added "jump to date" feature processing many commits
+simultaneously, batch tree updates could help. Current sequential processing is adequate.
+
+**Recommendation**: No action for either tree algorithm.
+
+---
+
+### Implementation Priority Matrix
+
+| Algorithm | Applicable | WASM Compatible | Implementation Effort | Priority |
+|-----------|------------|-----------------|----------------------|----------|
+| GPU Barnes-Hut | Already done | ✓ | — | — |
+| Loose QuadTree | ✓ | ✓ | Medium | Low |
+| Geohash Grid | ✓ | ✓ | Medium | Low |
+| succinctly | ✓ | ✓ | High | Low |
+| vers-vecs | ✗ (x86 only) | ✗ | — | — |
+| PGM-Index | ✗ (wrong access pattern) | ✓ | — | — |
+| GC-WB Trees | ✗ (not BST) | ✓ | — | — |
+| UFO Trees | ✗ (needs threads) | ✗ | — | — |
+
+### Key Findings
+
+1. **GPU Layout Already Optimal**: Rource's 9-pass GPU spatial hash pipeline achieves O(n)
+   force calculation, matching or exceeding GraphWaGu's GPU Barnes-Hut approach.
+
+2. **Spatial Indexing is Adequate**: Current QuadTree implementation with zero-allocation
+   query methods is well-optimized. Loose QuadTree or Geohash could provide marginal
+   improvements but require benchmarking.
+
+3. **Succinct Structures are Premature**: For typical repository sizes (<50K files),
+   current FxHashMap/FxHashSet approach is efficient. Succinct structures would only
+   benefit very large repositories with memory pressure.
+
+4. **Learned Indexes Don't Fit**: PGM-Index optimizes range queries on sorted data.
+   Rource's file lookup is point-query dominated, where FxHashMap excels.
+
+5. **Tree Balancing is Irrelevant**: Rource uses n-ary directory trees with HashMap
+   indexes, not self-balancing BSTs.
+
+### Recommendations
+
+**Immediate**: No changes required. Current implementations are already well-optimized.
+
+**Future Benchmarking Candidates** (if performance issues arise):
+1. Loose QuadTree for reduced restructuring during layout
+2. Grid-based CPU spatial index (matching GPU approach)
+3. succinctly for memory-constrained WASM with >100K files
+
+### Documentation Updates
+
+Detailed algorithm descriptions, complexity analyses, and implementation notes added to:
+`docs/THEORETICAL_ALGORITHMS.md`
+
+### Sources
+
+- [GraphWaGu: GPU Powered Large Scale Graph Layout](https://www.willusher.io/publications/graphwagu/)
+- [GraphWaGu Paper (Eurographics 2022)](https://stevepetruzza.io/pubs/graphwagu-2022.pdf)
+- [GraphWaGu GitHub](https://github.com/harp-lab/GraphWaGu)
+- [vers-vecs Documentation](https://docs.rs/vers-vecs/latest/vers_vecs/)
+- [succinctly GitHub](https://github.com/rust-works/succinctly)
+- [PGM-Index (Rust)](https://docs.rs/pgm_index/latest/pgm_index/)
+- [PGM-Index Paper (VLDB 2020)](https://github.com/gvinciguerra/PGM-index)
+- [Grandchildren-WB Trees](https://arxiv.org/abs/2410.08825)
+- [UFO Trees](https://arxiv.org/abs/2601.10706)
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 56: Quantum Algorithm Analysis for Classical Simulation (2026-01-25)
+
+### Overview
+
+This phase evaluates production-ready quantum algorithms implemented in Rust (LogosQ, QuantRS2) for
+potential applicability to Rource's workload. Quantum algorithms running on classical simulators
+can provide computational advantages for specific problem classes, particularly optimization and
+search problems.
+
+**Research Source**: "Production-Ready Quantum Algorithms in Rust (2025)"
+
+### Quantum Libraries Evaluated
+
+| Library | Version | Status | Key Features |
+|---------|---------|--------|--------------|
+| LogosQ | 0.2.5 | Production | VQE, QFT, type-safe circuits, 900× speedup |
+| LogosQ-Algorithms | 0.1.0 | Production | VQE, QAOA implementations |
+| QuantRS2 | 0.1.0-rc.1 | Release Candidate | QAOA, Grover, QFT, QPE, multi-backend |
+
+### Critical Constraint: Qubit Simulation Limits
+
+**Classical simulation of quantum algorithms is exponentially bounded.**
+
+| Qubits | State Vector Size | Practical Limit |
+|--------|-------------------|-----------------|
+| 20 | 2²⁰ = 1M states | Fast |
+| 30 | 2³⁰ = 1B states | Borderline |
+| 40 | 2⁴⁰ = 1T states | Impractical |
+| 50+ | — | Specialized circuits only |
+
+**Implication for Rource**: With n files requiring log₂(n) qubits minimum:
+- 20 qubits → ~1M files addressable (theoretical only)
+- In practice, QAOA/VQE encode problem structure, not file indices
+- Practical limit: ~20-30 "decision variables" per quantum subroutine
+
+---
+
+### Algorithm Analysis
+
+#### 1. Variational Quantum Eigensolver (VQE)
+
+**Purpose**: Find ground-state energies of quantum Hamiltonians (molecular simulation).
+
+**LogosQ Performance**:
+- 4× speedup over Qiskit for H₂ molecule
+- Achieves chemical accuracy in edge cases
+- Validated on hydrogen, lithium hydride, water molecules
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+| Criterion | VQE | Rource Need |
+|-----------|-----|-------------|
+| Domain | Quantum chemistry | Graph visualization |
+| Problem type | Hamiltonian eigenvalues | Layout optimization |
+| Output | Energy values | Node positions |
+
+VQE solves quantum chemistry problems (molecular orbitals, electron correlations).
+Rource has no chemistry computation requirements.
+
+---
+
+#### 2. Quantum Approximate Optimization Algorithm (QAOA)
+
+**Purpose**: Solve combinatorial optimization via parameterized quantum circuits.
+
+**Problem Formulation**: Encodes objective as Hamiltonian over binary variables (QUBO).
+
+```
+Minimize: H = Σᵢⱼ Jᵢⱼ zᵢ zⱼ + Σᵢ hᵢ zᵢ
+where zᵢ ∈ {-1, +1} (Ising) or {0, 1} (QUBO)
+```
+
+**Published Results**:
+- 2025 Kipu Quantum/IBM: QAOA on 156-qubit processor outperformed classical solvers
+- MaxCut approximation ratio: 0.96 on decomposed graphs
+- Scaling advantage demonstrated vs simulated annealing, Tabu search
+
+**Theoretical Connection to Force-Directed Layout**:
+
+Force-directed layout minimizes an energy function:
+
+```
+E = Σ(edges) spring_energy(dᵢⱼ) + Σ(pairs) repulsion_energy(dᵢⱼ)
+```
+
+This is structurally similar to QAOA's Ising Hamiltonian. However:
+
+| Aspect | QAOA | Force-Directed Layout |
+|--------|------|----------------------|
+| Variables | Binary zᵢ ∈ {0,1} | Continuous (x,y) ∈ ℝ² |
+| Optimization | Discrete combinatorial | Continuous gradient |
+| Scale | ~100 variables practical | 10K-100K+ entities |
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+1. **Variable type mismatch**: QAOA requires binary variables; layout uses continuous positions
+2. **Scale mismatch**: Classical simulation limited to ~30 qubits; Rource needs 10K+ entities
+3. **Current algorithm is optimal**: O(n) GPU spatial hash beats any approach requiring O(n²) interactions
+4. **Discretization loses precision**: Converting positions to binary would degrade layout quality
+
+**Theoretical Interest**: Force-directed layout *could* be reformulated as QUBO by discretizing
+positions into grid cells, then solving cell assignment as combinatorial optimization. However,
+current continuous methods (gradient descent, Barnes-Hut) are both faster and more precise.
+
+---
+
+#### 3. Grover's Algorithm
+
+**Purpose**: Quadratic speedup O(√n) for unstructured database search.
+
+**Complexity**:
+- Classical unstructured search: O(n)
+- Grover's algorithm: O(√n)
+
+**Current Rource Search Operations**:
+
+| Operation | Current Implementation | Complexity |
+|-----------|----------------------|------------|
+| File lookup by path | FxHashMap | O(1) average |
+| File lookup by ID | FxHashMap | O(1) average |
+| Spatial query | QuadTree | O(log n + k) |
+| Nearest neighbor | QuadTree + pruning | O(log n) average |
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+Grover's O(√n) is worse than existing structured search:
+- Hash tables: O(1) beats O(√n) for all n > 1
+- QuadTree: O(log n) beats O(√n) for all n > 4
+
+**When Grover Would Help**: Only for genuinely unstructured search where no indexing is possible.
+Rource's data has inherent structure (file paths, spatial positions) that enables better-than-√n
+classical algorithms.
+
+---
+
+#### 4. Quantum Fourier Transform (QFT)
+
+**Purpose**: Quantum analog of FFT; enables phase estimation, period finding.
+
+**LogosQ Performance**:
+- 5× faster than Qiskit
+- 22× faster than Julia (Yao.jl)
+- FFT-optimized implementation
+
+**Potential Application**: Convolution for blur effects (bloom, shadows).
+
+**Current Rource Bloom Implementation**:
+```rust
+// Sliding window blur - O(n) per row/column
+// Kernel size: typically 7-15 pixels
+for each row:
+    window_sum = initial_sum
+    for x in 0..width:
+        output[x] = window_sum / kernel_size
+        window_sum += input[x + radius] - input[x - radius]
+```
+
+**Complexity Comparison**:
+
+| Method | Complexity | Best For |
+|--------|------------|----------|
+| Direct convolution | O(n × k) | Very small k |
+| Sliding window | O(n) | Small k (current) |
+| FFT convolution | O(n log n) | Large k |
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+1. **Kernel size is small**: Bloom uses ~7-15 pixel kernels
+2. **Sliding window is O(n)**: Already optimal for small kernels
+3. **FFT overhead**: O(n log n) > O(n) for small kernel convolution
+4. **QFT on classical hardware**: Simulation overhead negates any theoretical advantage
+
+**When QFT Would Help**: Large-kernel convolution (k > 64) where FFT's O(n log n) beats
+direct O(n × k). Rource's bloom effect doesn't require large kernels.
+
+---
+
+#### 5. Quantum Annealing (QUBO/Ising)
+
+**Purpose**: Find global minimum of energy landscape via quantum tunneling simulation.
+
+**QuantRS2 Support**: Classical annealing, path integral Monte Carlo, coherent Ising machine simulators.
+
+**Theoretical Connection to Force-Directed Layout**:
+
+Both force-directed layout and quantum annealing minimize energy functions:
+
+```
+Force-directed: E = Σ springs + Σ repulsions
+Ising model:    E = Σᵢⱼ Jᵢⱼ σᵢ σⱼ + Σᵢ hᵢ σᵢ
+```
+
+**QUBO Reformulation** (theoretical):
+
+To encode force layout as QUBO:
+1. Discretize position space into G × G grid
+2. Binary variable xᵢₖ = 1 if entity i occupies cell k
+3. Constraint: Σₖ xᵢₖ = 1 (each entity in exactly one cell)
+4. Energy: E = Σᵢⱼ Σₖₗ Jᵢⱼₖₗ xᵢₖ xⱼₗ
+
+**Problems with this approach**:
+
+| Issue | Impact |
+|-------|--------|
+| Variable explosion | n entities × G² cells = n×G² binary variables |
+| Constraint overhead | n equality constraints require ancilla variables |
+| Precision loss | Continuous → discrete loses sub-cell positioning |
+| Connectivity | D-Wave hardware graph limits interaction patterns |
+
+**Rource Applicability**: **NOT APPLICABLE**
+
+1. **Scale infeasible**: 10K files × 100² grid = 100M binary variables
+2. **Current method is O(n)**: GPU spatial hash is asymptotically optimal
+3. **Continuous optimization is natural fit**: Gradient descent handles continuous positions directly
+4. **Simulated annealing already available**: Classical SA achieves similar exploration without QUBO overhead
+
+---
+
+### Summary: Quantum Algorithm Applicability
+
+| Algorithm | Domain | Rource Need | Match | Status |
+|-----------|--------|-------------|-------|--------|
+| VQE | Quantum chemistry | None | ✗ | NOT APPLICABLE |
+| QAOA | Discrete optimization | Continuous layout | ✗ | NOT APPLICABLE |
+| Grover | Unstructured search | Structured (hash, tree) | ✗ | NOT APPLICABLE |
+| QFT | Signal processing | Small-kernel blur | ✗ | NOT APPLICABLE |
+| Annealing | Energy minimization | Continuous positions | ✗ | NOT APPLICABLE |
+
+### Key Findings
+
+1. **Scale mismatch**: Classical quantum simulation limited to ~30 qubits; Rource needs 10K-100K+ entities
+
+2. **Variable type mismatch**: Quantum optimization (QAOA, annealing) requires binary/discrete variables;
+   force-directed layout uses continuous positions
+
+3. **Current algorithms are superior**: O(n) GPU spatial hash and O(1) hash lookups beat quantum alternatives
+
+4. **Structured beats unstructured**: Grover's O(√n) only helps for unstructured search; Rource's data
+   is inherently structured (paths, positions)
+
+5. **Classical improvements outpacing quantum**: Per the research document, "classical algorithms continue
+   improving faster than quantum advantages materialize"
+
+### Conceptual Insights Preserved
+
+Despite non-applicability, quantum algorithm analysis yields valuable perspectives:
+
+1. **Energy minimization framing**: Force-directed layout as Hamiltonian minimization is a useful
+   conceptual model, even if not implemented quantumly
+
+2. **Hybrid algorithm patterns**: VQE/QAOA's classical-quantum loop (optimize → measure → update)
+   mirrors classical optimizer patterns (evaluate → gradient → step)
+
+3. **Problem decomposition**: QAOA graph decomposition techniques (reducing 100-vertex to 10-vertex
+   subproblems) could inspire hierarchical layout approaches
+
+4. **Type-safe circuit design**: LogosQ's compile-time circuit validation is analogous to Rust's
+   ownership model—preventing invalid operations at compile time
+
+### Recommendation
+
+**No implementation required.**
+
+Quantum algorithms on classical simulators do not provide advantages for Rource's workload:
+- Search operations: Hash tables and spatial indices are faster
+- Layout optimization: Continuous gradient methods are more appropriate
+- Scale requirements: Classical simulation cannot handle Rource's entity counts
+
+**Future Monitoring**: When fault-tolerant quantum computers reach 1000+ logical qubits with
+low error rates, quantum optimization for truly combinatorial problems (scheduling, routing)
+may become practical. This does not apply to Rource's current architecture.
+
+### Documentation Updates
+
+Detailed algorithm analysis and theoretical connections preserved in:
+`docs/THEORETICAL_ALGORITHMS.md`
+
+### Sources
+
+- [LogosQ Paper (arXiv:2512.23183)](https://arxiv.org/abs/2512.23183)
+- [LogosQ crates.io](https://crates.io/crates/logosq)
+- [QuantRS2 GitHub](https://github.com/cool-japan/quantrs)
+- [QuantRS2 Documentation](https://docs.rs/quantrs2)
+- [QAOA Linear-Ramp Protocol (Nature)](https://www.nature.com/articles/s41534-025-01082-1)
+- [QAOA Graph Decomposition (Springer)](https://link.springer.com/article/10.1007/s11128-025-04675-z)
+- [Spring Embedders Survey (arXiv:1201.3011)](https://arxiv.org/abs/1201.3011)
+- [Quantum Annealing Minor Embedding (Springer)](https://link.springer.com/article/10.1007/s11128-020-02681-x)
+
+**Test Count**: 1,899 tests passing
+
+---
+
 *Last updated: 2026-01-25*
