@@ -1,0 +1,85 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Toast Notification Styles
+ *
+ * Toast notifications for success/error messages.
+ * Positioned at bottom center of viewport with slide-up animation.
+ */
+
+/* =============================================================================
+   Toast Container
+   ============================================================================= */
+
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    box-shadow: 0 4px 20px var(--shadow);
+    z-index: 1000;
+    transition: transform var(--transition-slow) ease;
+    max-width: 90%;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    border: 1px solid var(--border);
+}
+
+/* =============================================================================
+   Toast States
+   ============================================================================= */
+
+.toast.visible {
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast.error {
+    border-left: 3px solid var(--error);
+}
+
+.toast.success {
+    border-left: 3px solid var(--success);
+}
+
+.toast.warning {
+    border-left: 3px solid var(--warning);
+}
+
+.toast.info {
+    border-left: 3px solid var(--accent-blue);
+}
+
+/* =============================================================================
+   Toast Content
+   ============================================================================= */
+
+.toast-message {
+    flex: 1;
+    font-size: 0.875rem;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1.25rem;
+    line-height: 1;
+    transition: color var(--transition-fast);
+}
+
+.toast-close:hover {
+    color: var(--text-primary);
+}
+
+.toast-close:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
