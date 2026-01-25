@@ -233,11 +233,16 @@
         transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    /* Auto-hide when playing (add .controls-hidden via JS) */
+    /* Auto-hide when playing - keep slightly visible and tappable */
     .has-bottom-sheet.controls-hidden .mobile-toolbar {
-        opacity: 0;
-        transform: translateY(20px);
-        pointer-events: none;
+        opacity: 0.15;
+        transform: translateY(10px);
+        /* Keep pointer-events: auto so user can tap to show controls */
+        pointer-events: auto;
+    }
+
+    .has-bottom-sheet.controls-hidden .mobile-toolbar:active {
+        opacity: 0.5;
     }
 
     .mobile-toolbar-btn {
@@ -410,11 +415,18 @@
         transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    /* Auto-hide FAB when playing */
+    /* Auto-hide FAB when playing - keep tappable to show controls */
     .has-bottom-sheet.controls-hidden .bottom-sheet-fab {
-        opacity: 0;
+        opacity: 0.15;
         transform: scale(0.8);
-        pointer-events: none;
+        /* Keep pointer-events: auto so user can tap to show controls */
+        pointer-events: auto;
+    }
+
+    /* Visual feedback when tapping hidden FAB */
+    .has-bottom-sheet.controls-hidden .bottom-sheet-fab:active {
+        opacity: 0.5;
+        transform: scale(0.75);
     }
 
     /* App container full width on mobile */
@@ -802,8 +814,12 @@
 
 /* =============================================================================
    Landscape Mode Adjustments
+   =============================================================================
+   Uses both media query AND .landscape-mobile class for reliability.
+   The class is added by JS when it detects landscape mobile orientation.
    ============================================================================= */
 
+/* Landscape styles - applied via media query OR JS-added class */
 @media (max-width: 768px) and (orientation: landscape) {
     .bottom-sheet {
         /* Dynamic viewport height for mobile browser address bar */
@@ -822,7 +838,9 @@
     }
 
     .bottom-sheet-fab {
-        bottom: max(70px, calc(70px + env(safe-area-inset-bottom)));
+        /* Position above timeline (min-height 85px) with some padding */
+        bottom: max(95px, calc(95px + env(safe-area-inset-bottom)));
+        right: max(12px, env(safe-area-inset-right));
         width: 48px;
         height: 48px;
     }
@@ -866,19 +884,76 @@
     .has-bottom-sheet .mobile-toolbar {
         gap: 2px;
     }
+}
+
+/* Landscape styles via JS-added class (catches phones with width > 768px in landscape) */
+.landscape-mobile .bottom-sheet {
+    height: 75vh;
+    height: 75dvh;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+}
+
+.landscape-mobile .bottom-sheet-header {
+    padding: 6px 16px 4px;
+}
+
+.landscape-mobile .bottom-sheet-handle {
+    margin-bottom: 6px;
+}
+
+.landscape-mobile .bottom-sheet-fab {
+    /* Position above timeline (min-height 85px) with some padding */
+    bottom: max(95px, calc(95px + env(safe-area-inset-bottom)));
+    right: max(12px, env(safe-area-inset-right));
+    width: 48px;
+    height: 48px;
+}
+
+.landscape-mobile.has-bottom-sheet .mobile-toolbar {
+    bottom: 6px;
+    left: max(6px, env(safe-area-inset-left));
+    gap: 2px;
+}
+
+.landscape-mobile.has-bottom-sheet .timeline-container {
+    padding: 0.35rem 0.75rem;
+    min-height: 85px;
+}
+
+.landscape-mobile .mobile-center-play {
+    width: 64px;
+    height: 64px;
+}
+
+.landscape-mobile .mobile-center-play svg {
+    width: 32px;
+    height: 32px;
+}
+
+.landscape-mobile.has-bottom-sheet .mobile-toolbar-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+}
+
+.landscape-mobile.has-bottom-sheet .mobile-toolbar-btn svg {
+    width: 18px;
+    height: 18px;
+}
 
     /* -------------------------------------------------------------------------
        Landscape Performance Overlay - Non-Blocking Corner Position
        -------------------------------------------------------------------------
 
-       In landscape mode, use left corner to avoid blocking visualization.
-       More compact layout to preserve vertical space.
+       In landscape mode, use top-right corner to avoid blocking visualization.
+       Moved from left corner to right to avoid conflict with mobile toolbar.
     */
 
     .has-bottom-sheet .perf-overlay {
         top: 6px;
-        right: auto;
-        left: max(6px, env(safe-area-inset-left));
+        right: max(6px, env(safe-area-inset-right));
+        left: auto;
         padding: 4px 8px;
         border-radius: 16px;
         font-size: 0.65rem;
@@ -936,19 +1011,19 @@
        Landscape Stats Overlay - Repositioned for Landscape Layout
        -------------------------------------------------------------------------
 
-       In landscape, vertical space is limited. Stats overlay moves to right-center
-       area to avoid overlapping the left-positioned toolbar.
+       In landscape, stats overlay stays centered above timeline.
+       Using center position avoids conflicts with left toolbar and right FAB.
     */
 
     .has-bottom-sheet .stats-overlay {
-        /* Move to right side, above timeline but avoiding FAB */
+        /* Stay centered but more compact */
         bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
-        left: auto;
-        right: max(70px, calc(70px + env(safe-area-inset-right)));
-        transform: none;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
         padding: 4px 10px;
         gap: 10px;
-        max-width: calc(50vw - 80px);
+        max-width: calc(100vw - 200px);
     }
 
     .has-bottom-sheet .stats-overlay .stat-value {
@@ -958,6 +1033,78 @@
     .has-bottom-sheet .stats-overlay .stat-label {
         font-size: 0.5rem;
     }
+}
+
+/* Landscape styles via JS-added class - Performance and Stats overlays */
+.landscape-mobile.has-bottom-sheet .perf-overlay {
+    top: 6px;
+    right: max(6px, env(safe-area-inset-right));
+    left: auto;
+    padding: 4px 8px;
+    border-radius: 16px;
+    font-size: 0.65rem;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-fps {
+    font-size: 0.85rem;
+    min-width: 60px;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-details {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-top: 4px;
+    margin-top: 4px;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-row {
+    font-size: 0.6rem;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-row:nth-child(n+3):not(.perf-toggle-row):not(.perf-peak-avg-row) {
+    display: none;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-toggle-row {
+    flex-basis: auto;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-switch {
+    width: 36px;
+    height: 20px;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-slider::before {
+    height: 14px;
+    width: 14px;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+    transform: translateX(16px);
+}
+
+.landscape-mobile.has-bottom-sheet .stats-overlay {
+    bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    gap: 10px;
+    max-width: calc(100vw - 200px);
+}
+
+.landscape-mobile.has-bottom-sheet .stats-overlay .stat-value {
+    font-size: 0.7rem;
+}
+
+.landscape-mobile.has-bottom-sheet .stats-overlay .stat-label {
+    font-size: 0.5rem;
 }
 
 /* =============================================================================

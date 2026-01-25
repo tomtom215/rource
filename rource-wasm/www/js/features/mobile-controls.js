@@ -223,11 +223,35 @@ function handleCanvasTap(e) {
 
 /**
  * Checks if we're in mobile mode (has-bottom-sheet).
+ * Detects mobile by checking:
+ * - has-bottom-sheet class is present
+ * - Portrait mode: width <= 768px
+ * - Landscape mode: height <= 500px (typical landscape phone height)
  * @returns {boolean} True if mobile mode is active
  */
 function checkMobileMode() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const isPortraitMobile = width <= MOBILE_BREAKPOINT;
+    const isLandscapeMobile = height <= 500 && width <= 1024;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
     return document.body.classList.contains('has-bottom-sheet') ||
-           window.innerWidth <= MOBILE_BREAKPOINT;
+           isPortraitMobile ||
+           (isLandscapeMobile && hasTouch);
+}
+
+/**
+ * Checks if the device is in landscape mobile mode.
+ * @returns {boolean}
+ */
+function isLandscapeMobile() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const isLandscape = width > height;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    return isLandscape && height <= 500 && width <= 1024 && hasTouch;
 }
 
 /**
@@ -236,6 +260,13 @@ function checkMobileMode() {
 function updateMobileMode() {
     const wasMobile = isMobileMode;
     isMobileMode = checkMobileMode();
+
+    // Update landscape class for CSS targeting
+    if (isLandscapeMobile()) {
+        document.body.classList.add('landscape-mobile');
+    } else {
+        document.body.classList.remove('landscape-mobile');
+    }
 
     // Clean up if switching from mobile to desktop
     if (wasMobile && !isMobileMode) {
@@ -298,6 +329,19 @@ export function initMobileControls(options = {}) {
 
     // Listen for resize to update mobile mode
     addManagedEventListener(window, 'resize', updateMobileMode);
+
+    // Handle orientation changes specifically (more reliable than resize on mobile)
+    if (window.screen && window.screen.orientation) {
+        addManagedEventListener(window.screen.orientation, 'change', () => {
+            // Small delay to let the viewport update
+            setTimeout(updateMobileMode, 100);
+        });
+    } else {
+        // Fallback for older browsers
+        addManagedEventListener(window, 'orientationchange', () => {
+            setTimeout(updateMobileMode, 100);
+        });
+    }
 
     // Reset hide timer on any user interaction with controls
     const controlElements = [

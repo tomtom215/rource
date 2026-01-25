@@ -446,10 +446,21 @@ function handleBackdropTap(e) {
 
 /**
  * Checks if the device should use the bottom sheet (mobile/tablet).
+ * Detects mobile by checking:
+ * - Portrait mode: width <= 768px
+ * - Landscape mode: height <= 500px (typical landscape phone height)
+ * - Touch capability as additional signal
  * @returns {boolean}
  */
 function isMobileDevice() {
-    return window.innerWidth <= 768;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const isPortraitMobile = width <= 768;
+    const isLandscapeMobile = height <= 500 && width <= 1024;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    // Mobile if portrait width is small OR landscape height is small (with touch)
+    return isPortraitMobile || (isLandscapeMobile && hasTouch);
 }
 
 /**
@@ -471,6 +482,19 @@ export function initBottomSheet() {
     // that hide the old sidebar toggle and show the bottom sheet
     updateBottomSheetMode();
     window.addEventListener('resize', updateBottomSheetMode);
+
+    // Handle orientation changes specifically (more reliable than resize on mobile)
+    if (window.screen && window.screen.orientation) {
+        window.screen.orientation.addEventListener('change', () => {
+            // Small delay to let the viewport update
+            setTimeout(updateBottomSheetMode, 100);
+        });
+    } else {
+        // Fallback for older browsers
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateBottomSheetMode, 100);
+        });
+    }
 
     // Set initial state
     snapTo('HIDDEN', true);
@@ -502,14 +526,43 @@ export function initBottomSheet() {
 }
 
 /**
+ * Checks if the device is in landscape mobile mode.
+ * @returns {boolean}
+ */
+function isLandscapeMobile() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const isLandscape = width > height;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    // Landscape mobile: landscape orientation, height <= 500px (typical phone landscape), touch capable
+    return isLandscape && height <= 500 && width <= 1024 && hasTouch;
+}
+
+/**
  * Updates the bottom sheet mode based on screen size.
- * Adds/removes has-bottom-sheet class on body.
+ * Adds/removes has-bottom-sheet and landscape classes on body.
  */
 function updateBottomSheetMode() {
-    if (isMobileDevice()) {
+    const isMobile = isMobileDevice();
+    const isLandscape = isLandscapeMobile();
+
+    if (isMobile) {
         document.body.classList.add('has-bottom-sheet');
     } else {
         document.body.classList.remove('has-bottom-sheet');
+    }
+
+    // Add/remove landscape class for CSS targeting
+    if (isLandscape) {
+        document.body.classList.add('landscape-mobile');
+    } else {
+        document.body.classList.remove('landscape-mobile');
+    }
+
+    // If we're open and orientation changed, re-snap to current position
+    if (sheet && currentSnap !== 'HIDDEN') {
+        snapTo(currentSnap, true);
     }
 }
 

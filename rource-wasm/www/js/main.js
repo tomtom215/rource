@@ -149,10 +149,19 @@ function initBottomSheetActions() {
         });
     }
 
-    // FAB opens bottom sheet
+    // FAB opens bottom sheet (or shows controls if hidden)
     if (bsFab) {
         bsFab.addEventListener('click', () => {
-            openBottomSheet('HALF');
+            // If controls are hidden, show them first instead of opening sheet
+            const controlsHidden = document.body.classList.contains('controls-hidden');
+            if (controlsHidden) {
+                // Import dynamically to avoid circular dependency
+                import('./features/mobile-controls.js').then(({ showControls }) => {
+                    showControls();
+                });
+            } else {
+                openBottomSheet('HALF');
+            }
         });
     }
 
