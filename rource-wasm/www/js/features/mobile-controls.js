@@ -293,6 +293,14 @@ export function initMobileControls(options = {}) {
     const centerPlay = document.getElementById('mobile-center-play');
     if (centerPlay) {
         addManagedEventListener(centerPlay, 'click', handleCenterPlayClick);
+
+        // CRITICAL: Set initial visibility state based on current playback
+        // Without this, the play button may be visible when it shouldn't be on page load
+        // (especially in Firefox where CSS media query timing can be inconsistent)
+        if (isMobileMode) {
+            const isCurrentlyPlaying = isPlayingFn ? isPlayingFn() : false;
+            updateCenterPlayButton(!isCurrentlyPlaying);
+        }
     }
 
     // Uncapped toggle button in mobile toolbar

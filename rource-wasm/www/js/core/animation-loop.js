@@ -282,6 +282,10 @@ export function animate(timestamp, generation = animationGeneration) {
  * Used when switching between capped/uncapped modes or when the
  * animation needs to be fully reset.
  *
+ * IMPORTANT: This function ensures clean state transitions by waiting for
+ * any in-flight callbacks to drain before starting the new loop. This is
+ * especially important for Firefox where scheduler timing can be inconsistent.
+ *
  * @param {boolean} [resetStats=true] - Whether to reset FPS tracking statistics
  */
 export function restartAnimation(resetStats = true) {
@@ -290,7 +294,17 @@ export function restartAnimation(resetStats = true) {
     if (resetStats) {
         resetUncappedFpsStats();
     }
-    startAnimation();
+
+    // Use a microtask to ensure any pending scheduler callbacks have been
+    // processed before starting the new animation loop. This prevents race
+    // conditions where old callbacks might interfere with the new loop,
+    // which was causing animation freezes on Firefox.
+    queueMicrotask(() => {
+        // Double-check we're still stopped (user might have triggered another action)
+        if (getAnimationId() === null) {
+            startAnimation();
+        }
+    });
 }
 
 /**
@@ -337,8 +351,12 @@ export function stopAnimation() {
     // This is the primary mechanism for preventing race conditions
     animationGeneration++;
 
-    // Reset re-entrancy guard
+    // Reset re-entrancy guard - do this AFTER incrementing generation so any
+    // in-flight frames that check frameInProgress will also fail generation check
     frameInProgress = false;
+
+    // Reset yield counter to ensure clean state on restart
+    yieldCounter = 0;
 
     const animationId = getAnimationId();
     if (animationId !== null) {
@@ -356,6 +374,11 @@ export function stopAnimation() {
         }
 
         setAnimationId(null);
+    } else {
+        // Even if no animation ID, still cancel scheduler in case there are
+        // pending callbacks from a previous uncapped session
+        const scheduler = getFrameScheduler();
+        scheduler.cancel();
     }
 }
 

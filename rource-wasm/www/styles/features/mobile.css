@@ -19,6 +19,20 @@
  */
 
 /* =============================================================================
+   Mobile Center Play Button - Base Styles (Hidden on Desktop)
+   ============================================================================= */
+
+/*
+ * CRITICAL: The mobile-center-play button must be hidden by default on ALL
+ * screen sizes. The @media query below provides mobile-specific styling,
+ * but we need base hidden state to prevent flash of unstyled content on
+ * page load (especially in Firefox where CSS parsing timing can vary).
+ */
+.mobile-center-play {
+    display: none;
+}
+
+/* =============================================================================
    Mobile Sidebar Toggle
    ============================================================================= */
 
@@ -771,6 +785,10 @@
     */
 
     .mobile-center-play {
+        /* Override base display: none for mobile */
+        display: flex;
+        align-items: center;
+        justify-content: center;
         position: absolute;
         top: 50%;
         left: 50%;
