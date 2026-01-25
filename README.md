@@ -385,7 +385,7 @@ rource --hide-dirs "node_modules|vendor|target" .
 
 ## Migrating from Gource
 
-See [MIGRATING.md](MIGRATING.md) for a detailed guide on transitioning from Gource.
+See [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) for a detailed comparison and migration guide.
 
 Quick comparison:
 | Gource | Rource |
