@@ -753,6 +753,11 @@
         transform: translate(-50%, -50%) scale(0.9);
     }
 
+    .mobile-center-play:focus-visible {
+        outline: 2px solid var(--text-on-accent);
+        outline-offset: 4px;
+    }
+
     .mobile-center-play svg {
         width: 40px;
         height: 40px;
@@ -1227,6 +1232,45 @@
 
     /* Bottom sheet tabs */
     .bottom-sheet-tab {
+        min-height: 44px;
+    }
+
+    /* Icon buttons - base class */
+    .btn-icon {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Fullscreen toggle button */
+    .fullscreen-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Share/export button */
+    .share-btn,
+    .export-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Font size adjustment buttons */
+    .font-size-btn,
+    .text-size-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Recording controls */
+    .record-btn,
+    .recording-control-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Mobile toolbar buttons - ensure proper size */
+    .mobile-toolbar-btn {
+        min-width: 44px;
         min-height: 44px;
     }
 }

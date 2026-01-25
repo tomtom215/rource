@@ -255,6 +255,12 @@
         transform: scale(0.95);
     }
 
+    /* Accessibility: Focus indicator for keyboard navigation */
+    .bottom-sheet-fab:focus-visible {
+        outline: 2px solid var(--text-on-accent);
+        outline-offset: 3px;
+    }
+
     .bottom-sheet-fab svg {
         width: 24px;
         height: 24px;
