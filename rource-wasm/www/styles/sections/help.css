@@ -22,16 +22,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 1;
-    visibility: visible;
+    /* Hidden by default - JS adds 'visible' class to show */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
     /* Use composited properties only for better performance */
     transition: opacity 0.2s, visibility 0.2s;
     backdrop-filter: blur(4px);
 }
 
-.help-overlay.hidden {
-    opacity: 0;
-    visibility: hidden;
+.help-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 /* =============================================================================
