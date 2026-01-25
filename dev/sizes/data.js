@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769306200442,
+  "lastUpdate": 1769307894895,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2012,6 +2012,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/af453b3c15c61723bf642a01e7386ca5ea5c2cc1"
         },
         "date": 1769306199981,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3911576,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2769980,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1069735,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ed3a67716578fbbadaadba84ac88f0fde6400702",
+          "message": "Merge pull request #162 from tomtom215/claude/rource-algorithmic-excellence-F9kxC\n\nPhase 55: Targeted Algorithmic Research Analysis for Rource",
+          "timestamp": "2026-01-25T03:22:39+01:00",
+          "tree_id": "aa4d63507571c82a551c47f7bf65800ef4dd2526",
+          "url": "https://github.com/tomtom215/rource/commit/ed3a67716578fbbadaadba84ac88f0fde6400702"
+        },
+        "date": 1769307894070,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
