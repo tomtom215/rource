@@ -80,6 +80,26 @@
     contain: strict; /* Full containment for canvas area */
 }
 
+/* -----------------------------------------------------------------------------
+   Short Viewport Optimizations (ultrawide monitors, resized windows)
+   ----------------------------------------------------------------------------- */
+
+/* When viewport height is very constrained on desktop, ensure canvas
+   still has a reasonable minimum size for usability */
+@media (min-width: 769px) and (max-height: 500px) {
+    #canvas-container {
+        min-height: 180px;
+    }
+}
+
+/* Even shorter viewports - prioritize canvas visibility */
+@media (min-width: 769px) and (max-height: 400px) {
+    #canvas-container {
+        min-height: 150px;
+        border-radius: 4px;
+    }
+}
+
 @media (max-width: 768px) {
     #canvas-container {
         min-height: 200px;
