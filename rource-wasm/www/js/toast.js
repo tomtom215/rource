@@ -10,6 +10,16 @@
 import { CONFIG } from './config.js';
 import { getElement } from './dom.js';
 
+/** Track current toast timeout to allow clearing on rapid re-trigger */
+let currentToastTimeout = null;
+
+/** Track last toast message to prevent duplicate spam */
+let lastToastMessage = null;
+let lastToastTime = 0;
+
+/** Minimum time between identical toasts (ms) */
+const TOAST_DEBOUNCE_MS = 1000;
+
 /**
  * Shows a toast notification.
  * @param {string} message - Message to display
@@ -19,6 +29,20 @@ import { getElement } from './dom.js';
 export function showToast(message, type = 'error', duration) {
     const toast = getElement('toast');
     if (!toast) return;
+
+    // Debounce identical messages to prevent spam (e.g., rapid uncapped toggles)
+    const now = Date.now();
+    if (message === lastToastMessage && (now - lastToastTime) < TOAST_DEBOUNCE_MS) {
+        return;
+    }
+    lastToastMessage = message;
+    lastToastTime = now;
+
+    // Clear any existing timeout to prevent race conditions
+    if (currentToastTimeout !== null) {
+        clearTimeout(currentToastTimeout);
+        currentToastTimeout = null;
+    }
 
     // Determine duration based on type if not provided
     if (duration === undefined) {
@@ -42,8 +66,9 @@ export function showToast(message, type = 'error', duration) {
     toast.className = `toast ${type} visible`;
 
     // Auto-hide after duration
-    setTimeout(() => {
+    currentToastTimeout = setTimeout(() => {
         toast.classList.remove('visible');
+        currentToastTimeout = null;
     }, duration);
 }
 

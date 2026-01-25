@@ -247,16 +247,24 @@
         transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    /* Auto-hide when playing - keep slightly visible and tappable */
+    /* Auto-hide when playing - more visible and animated like FAB */
     .has-bottom-sheet.controls-hidden .mobile-toolbar {
-        opacity: 0.15;
-        transform: translateY(10px);
+        opacity: 0.3;
+        transform: translateY(8px);
         /* Keep pointer-events: auto so user can tap to show controls */
         pointer-events: auto;
+        /* Match FAB pulse animation for consistency */
+        animation: toolbar-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes toolbar-pulse {
+        0%, 100% { opacity: 0.25; }
+        50% { opacity: 0.4; }
     }
 
     .has-bottom-sheet.controls-hidden .mobile-toolbar:active {
-        opacity: 0.5;
+        opacity: 0.6;
+        animation: none;
     }
 
     .mobile-toolbar-btn {
@@ -271,8 +279,17 @@
         border-radius: 12px;
         color: var(--text-secondary);
         cursor: pointer;
-        transition: background 0.15s ease, transform 0.15s ease;
+        transition: background 0.15s ease, transform 0.15s ease, color 0.15s ease;
         -webkit-tap-highlight-color: transparent;
+        /* Ensure buttons are clickable */
+        pointer-events: auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .mobile-toolbar-btn:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
     }
 
     .mobile-toolbar-btn:active {
@@ -280,19 +297,30 @@
         transform: scale(0.92);
     }
 
+    /* Labels toggle active state - clearer visual distinction */
     .mobile-toolbar-btn.active {
         color: var(--accent);
-        background: rgba(233, 69, 96, 0.15);
+        background: rgba(233, 69, 96, 0.18);
+        /* Add subtle border for better visibility */
+        box-shadow: inset 0 0 0 1.5px rgba(233, 69, 96, 0.3);
+    }
+
+    .mobile-toolbar-btn.active:active {
+        background: rgba(233, 69, 96, 0.25);
+        transform: scale(0.92);
     }
 
     .mobile-toolbar-btn:disabled {
         opacity: 0.4;
         cursor: not-allowed;
+        pointer-events: none;
     }
 
     .mobile-toolbar-btn svg {
         width: 20px;
         height: 20px;
+        /* Ensure SVG doesn't capture pointer events */
+        pointer-events: none;
     }
 
     /* Theme button icon visibility */
@@ -417,10 +445,11 @@
     }
 
     /* FAB repositioned for mobile - right corner, above timeline
-       FIXED: Move to right edge for thumb accessibility, clear of timeline */
+       FIXED: Move higher to avoid overlapping author info in timeline date row
+       Timeline is ~110-130px, but author info appears at top of timeline (~160px from bottom) */
     .has-bottom-sheet .bottom-sheet-fab {
-        bottom: max(130px, calc(130px + env(safe-area-inset-bottom)));
-        right: 8px;
+        bottom: max(175px, calc(175px + env(safe-area-inset-bottom)));
+        right: 12px;
         /* 56px is Material Design 3 standard FAB size */
         width: 56px;
         height: 56px;
@@ -429,18 +458,26 @@
         transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    /* Auto-hide FAB when playing - keep tappable to show controls */
+    /* Auto-hide FAB when playing - more visible and animated to hint tappability */
     .has-bottom-sheet.controls-hidden .bottom-sheet-fab {
-        opacity: 0.15;
-        transform: scale(0.8);
+        opacity: 0.4;
+        transform: scale(0.85);
         /* Keep pointer-events: auto so user can tap to show controls */
         pointer-events: auto;
+        /* Subtle pulse animation to hint that FAB can be tapped */
+        animation: fab-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes fab-pulse {
+        0%, 100% { opacity: 0.35; transform: scale(0.85); }
+        50% { opacity: 0.5; transform: scale(0.88); }
     }
 
     /* Visual feedback when tapping hidden FAB */
     .has-bottom-sheet.controls-hidden .bottom-sheet-fab:active {
-        opacity: 0.5;
-        transform: scale(0.75);
+        opacity: 0.7;
+        transform: scale(0.8);
+        animation: none;
     }
 
     /* App container full width on mobile */
