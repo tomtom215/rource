@@ -7573,4 +7573,184 @@ Detailed technique analysis added to:
 
 ---
 
+## Phase 58: Micro-Optimization Analysis - Particle Physics & Numerical Methods (2026-01-25)
+
+### Overview
+
+This phase explores nanosecond-level optimizations inspired by particle physics simulations
+and numerical methods. We investigate whether techniques like fast inverse sqrt (Quake III),
+octant-based length approximation, Verlet integration, and precomputed direction tables
+can improve physics hot paths.
+
+### Techniques Analyzed
+
+#### 1. Pseudo-Random Direction Generation
+
+**Problem**: When two nodes overlap (distance < 0.001), we push them apart using a
+"random" direction based on their indices. The original implementation used expensive
+sin/cos calls:
+
+```rust
+// Before: ~12 ns per call (sin/cos are expensive)
+let offset = Vec2::new((i as f32).sin() * 5.0, (j as f32).cos() * 5.0);
+```
+
+**Solutions Tested**:
+
+| Method | Time (1000 ops) | Throughput | Speedup |
+|--------|-----------------|------------|---------|
+| sin/cos (baseline) | 12.1 µs | 82 Melem/s | 1.0× |
+| Hash-based | 1.4 µs | 715 Melem/s | **8.7×** |
+| LUT-based | 0.87 µs | 1.13 Gelem/s | **13.9×** |
+
+**Implemented Solution**: Compile-time LUT with 256 precomputed unit directions:
+
+```rust
+// After: ~0.87 ns per call (table lookup + multiply)
+let offset = random_push_direction(i, j);  // 13.9× faster!
+```
+
+The LUT is computed at compile time using Taylor series, ensuring deterministic
+results across all platforms.
+
+#### 2. Fast Inverse Square Root (Quake III)
+
+**Problem**: Force calculations require `1.0 / sqrt(distance_sq)`. The famous
+Quake III "fast inverse sqrt" uses bit manipulation for an initial guess followed
+by Newton-Raphson refinement.
+
+**Results**:
+
+| Method | Time (1000 ops) | Throughput | Speedup |
+|--------|-----------------|------------|---------|
+| 1.0/sqrt(x) (baseline) | 1.05 µs | 948 Melem/s | 1.0× |
+| Quake 1-iteration | 0.79 µs | 1.27 Gelem/s | **1.33×** |
+| Quake 2-iteration | 1.92 µs | 519 Melem/s | 0.55× |
+
+**Finding**: One Newton-Raphson iteration gives 1.33× speedup with ~1-2% error.
+However, two iterations (for higher accuracy) is slower than standard sqrt!
+
+**Decision**: NOT IMPLEMENTED. Modern CPUs have hardware sqrt (SSE2 `sqrtss`)
+taking only ~10-15 cycles. The 1.33× speedup is marginal, and the accuracy
+trade-off isn't justified for a visualization application.
+
+#### 3. Octant-Based Length Approximation
+
+**Problem**: Computing vector length requires `sqrt(x² + y²)`. The "alpha-max-beta-min"
+approximation: `|v| ≈ 0.96 * max(|x|, |y|) + 0.397 * min(|x|, |y|)` avoids sqrt.
+
+**Results**:
+
+| Method | Time (1000 ops) | Throughput | Speedup |
+|--------|-----------------|------------|---------|
+| sqrt(x² + y²) | 1.10 µs | 909 Melem/s | 1.0× |
+| Octant basic | 1.10 µs | 911 Melem/s | **1.0×** |
+| Octant improved | 2.15 µs | 464 Melem/s | 0.51× |
+
+**Finding**: **NO BENEFIT**. Modern hardware sqrt is as fast as the approximation!
+The "improved" version with correction factor is actually 2× slower.
+
+#### 4. Combined Force Calculation
+
+Testing the cumulative effect of fast_inv_sqrt + octant_length in real force calculations:
+
+| Method | Time (1000 ops) | Throughput | Speedup |
+|--------|-----------------|------------|---------|
+| Standard | 3.05 µs | 328 Melem/s | 1.0× |
+| Fast inv_sqrt | 3.96 µs | 253 Melem/s | 0.77× |
+| Octant length | 3.19 µs | 311 Melem/s | 0.95× |
+
+**Finding**: Combined optimizations are **SLOWER** than standard implementation!
+The overhead of additional operations outweighs approximation savings.
+
+#### 5. Verlet vs Euler Integration
+
+**Problem**: Semi-implicit Euler is the current integrator. Verlet integration is
+popular in particle physics for better energy conservation.
+
+**Results**:
+
+| Method | Time (1000 particles) | Throughput | Speedup |
+|--------|----------------------|------------|---------|
+| Semi-implicit Euler | 2.62 µs | 381 Melem/s | 1.0× |
+| Verlet | 2.60 µs | 384 Melem/s | **1.01×** |
+| Velocity Verlet | 2.86 µs | 349 Melem/s | 0.92× |
+
+**Finding**: **NO PERFORMANCE BENEFIT**. Verlet and Euler have virtually identical
+performance. Velocity Verlet is slightly slower due to additional operations.
+
+**Decision**: NOT IMPLEMENTED. Switching to Verlet would require structural changes
+(storing previous positions) with no performance benefit.
+
+### Key Insights
+
+1. **Modern CPUs Have Fast sqrt**: The SSE2 `sqrtss` instruction takes ~10-15 cycles.
+   Approximation techniques from the Quake III era (1999) were valuable when sqrt
+   was software-implemented and took hundreds of cycles. Today, they offer minimal
+   benefit.
+
+2. **sin/cos Remain Expensive**: Unlike sqrt, sin/cos don't have dedicated hardware
+   in most CPUs. They require expensive FPU operations (~50-100 cycles). LUT-based
+   replacement offers genuine 13.9× improvement.
+
+3. **Approximation Overhead Can Negate Benefits**: In combined operations, the
+   overhead of bit manipulation, conditionals, and correction factors can exceed
+   the cost of hardware-accelerated exact computation.
+
+4. **Integration Method Doesn't Affect Performance**: The choice between Euler and
+   Verlet is about stability and accuracy, not speed. For visualization (not
+   simulation), Euler is sufficient.
+
+### Implementation Summary
+
+| Technique | Verdict | Action |
+|-----------|---------|--------|
+| LUT-based random direction | ✓ **13.9× faster** | Implemented |
+| Quake inverse sqrt | ≈ Marginal (1.33×) | Not implemented |
+| Octant length | ✗ No benefit | Not implemented |
+| Combined force optimization | ✗ Slower | Not implemented |
+| Verlet integration | ✗ Same speed | Not implemented |
+
+### Files Modified
+
+- `crates/rource-core/src/physics/optimized.rs` (NEW)
+  - `RANDOM_DIRECTION_LUT`: 256-entry compile-time direction table
+  - `random_push_direction()`: Fast pseudo-random direction function
+  - Taylor series const functions for compile-time sin/cos
+
+- `crates/rource-core/src/physics/mod.rs`
+  - Added `optimized` module export
+  - Re-exported `random_push_direction`
+
+- `crates/rource-core/src/scene/layout_methods.rs`
+  - Updated overlap handling to use `random_push_direction()`
+
+- `crates/rource-core/src/physics/force.rs`
+  - Updated overlap handling to use `random_push_direction()`
+
+- `crates/rource-core/benches/micro_opt_analysis.rs` (NEW)
+  - Comprehensive benchmarks for all techniques
+  - Accuracy tests for approximations
+
+### Benchmark Commands
+
+```bash
+# Run micro-optimization benchmarks
+cargo bench --bench micro_opt_analysis -- --noplot
+
+# Run accuracy tests
+cargo test --release -p rource-core --bench micro_opt_analysis
+```
+
+### References
+
+- [Quake III Fast Inverse Square Root](https://en.wikipedia.org/wiki/Fast_inverse_square_root)
+- [Alpha-Max Beta-Min Algorithm](https://en.wikipedia.org/wiki/Alpha_max_plus_beta_min_algorithm)
+- [Verlet Integration](https://en.wikipedia.org/wiki/Verlet_integration)
+- [Taylor Series for Trigonometric Functions](https://en.wikipedia.org/wiki/Taylor_series)
+
+**Test Count**: 1,899 tests passing (326 in rource-core including 7 new optimized.rs tests)
+
+---
+
 *Last updated: 2026-01-25*
