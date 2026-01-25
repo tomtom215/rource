@@ -7,7 +7,7 @@ respective domains but may not have direct applicability to Rource's current arc
 **Philosophy**: Even when an algorithm doesn't directly apply, understanding its techniques can inspire
 optimization strategies and inform architectural decisions.
 
-**Last Updated**: 2026-01-25 (Phase 53 added)
+**Last Updated**: 2026-01-25 (Phase 54 added)
 
 ---
 
@@ -15,8 +15,9 @@ optimization strategies and inform architectural decisions.
 
 1. [SSSP: Breaking the Sorting Barrier](#sssp-breaking-the-sorting-barrier)
 2. [Graph Coloring Algorithms](#graph-coloring-algorithms)
-3. [Applicability Framework](#applicability-framework)
-4. [Future Exploration Queue](#future-exploration-queue)
+3. [2025 Mathematical Breakthroughs](#2025-mathematical-breakthroughs)
+4. [Applicability Framework](#applicability-framework)
+5. [Future Exploration Queue](#future-exploration-queue)
 
 ---
 
@@ -522,6 +523,272 @@ These implement the *concept* of conflict detection without requiring explicit g
 
 ---
 
+## 2025 Mathematical Breakthroughs
+
+### Overview
+
+Analysis of Scientific American's "10 Biggest Math Breakthroughs of 2025" for algorithmic
+insights applicable to computational graphics and physics simulation.
+
+### Moving Sofa Problem (SOLVED)
+
+#### Citation
+
+```
+Baek, J. (2024).
+"Optimality of Gerver's Sofa"
+arXiv:2411.19826, November 2024
+
+Original construction:
+Gerver, J. L. (1992). "On Moving a Sofa Around a Corner"
+Geometriae Dedicata 42, 267-283
+```
+
+#### Problem Statement
+
+Find the largest 2D shape (measured by area) that can navigate a right-angle corner
+in an L-shaped corridor of unit width.
+
+#### Solution
+
+Gerver's sofa with 18 curve sections achieves the maximum area:
+
+```
+Area = 2.2195316688... (Moving Sofa Constant)
+```
+
+The boundary consists of:
+- 3 straight line segments
+- 15 analytic curves
+
+**Key Parameters** (from solving 4 coupled equations):
+```
+A = 0.094426560843653...  (curve transition parameter)
+B = 1.399203727333547...  (boundary scaling)
+φ = 0.039177364790084...  (initial angle)
+θ = 0.681301509382725...  (sweep angle)
+```
+
+#### Mathematical Framework
+
+**Radial function r(α)**: Distance from origin as function of angle, piecewise defined:
+
+```
+r(α) = ½                           for 0 ≤ α < φ
+r(α) = (linear interpolation)       for φ ≤ α < θ
+r(α) = A + α - φ                   for intermediate region
+r(α) = (parabolic decay)           for larger angles
+```
+
+**Area integral**: Sum of three terms over angle intervals, incorporating support functions
+and their derivatives via the calculus of variations.
+
+#### Proof Technique
+
+1. **Infinite-dimensional representation**: Each sofa shape as a point in function space
+2. **Custom Q function**: Defined with properties enabling optimality verification
+3. **Euler-Lagrange equations**: Characterize extremal shapes
+4. **No computer assistance**: Pure logical reasoning (unusual for such proofs)
+
+#### Rource Applicability
+
+**Status**: NOT DIRECTLY APPLICABLE
+
+Rource doesn't navigate physical corridors. However, variational calculus techniques
+could inform future work on:
+- Optimal spline interpolation (energy-minimizing curves)
+- Camera path smoothing with geometric constraints
+- Animation trajectory optimization
+
+### Noperthedron
+
+#### Citation
+
+```
+Steininger, J.; Yurkevich, S. (2025).
+"A Convex Polyhedron without Rupert's Property"
+arXiv:2508.18475, August 2025
+```
+
+#### Definition
+
+A 3D convex body has **Rupert's property** if a copy of itself can pass through a
+straight hole cut in the body. The noperthedron is the first convex polyhedron
+proven to lack this property.
+
+#### Structure
+
+| Property | Value |
+|----------|-------|
+| Vertices | 90 (3 × 30, point-symmetric) |
+| Edges | 240 |
+| Faces | 152 (150 triangles + 2 regular 15-gons) |
+| Symmetry | C₃₀ group (point-symmetric about origin) |
+
+#### Proof Method
+
+1. **Parameter space discretization**: Divided orientation space into ~18 million blocks
+2. **Center point testing**: Checked each block's center for Rupert passage
+3. **Local/global theorem application**: Ruled out entire blocks via geometric arguments
+4. **Exhaustive elimination**: All blocks ruled out ⟹ no Rupert passage exists
+
+#### Rource Applicability
+
+**Status**: NOT APPLICABLE
+
+Rource is 2D and has no collision/passage detection requirements.
+
+### Hilbert's 6th Problem Progress
+
+#### Citation
+
+```
+Deng, Y.; Hani, Z.; Ma, X. (2025).
+"Hilbert's Sixth Problem: Derivation of Fluid Equations via Boltzmann's Kinetic Theory"
+arXiv:2503.01800, March 2025
+```
+
+#### Achievement
+
+Rigorously derived macroscopic fluid equations (Navier-Stokes, compressible Euler)
+from Newtonian mechanics via Boltzmann kinetic theory.
+
+#### The Three-Level Hierarchy
+
+```
+Level 1: MICROSCOPIC (Newton's laws)
+    Individual particles with positions, velocities
+    Deterministic dynamics: F = ma
+    Scale: ~10²³ particles in physical systems
+                    ↓ Boltzmann-Grad limit
+Level 2: MESOSCOPIC (Boltzmann equation)
+    Distribution function f(x, v, t)
+    Statistical description of particle velocities
+    ∂f/∂t + v·∇f = Q(f,f)  (collision integral)
+                    ↓ Hydrodynamic limit (Knudsen → 0)
+Level 3: MACROSCOPIC (Navier-Stokes/Euler)
+    Continuum fields: density ρ, velocity u, pressure p
+    ∂ρ/∂t + ∇·(ρu) = 0     (continuity)
+    ρ(∂u/∂t + u·∇u) = -∇p + μΔu  (momentum)
+```
+
+#### Key Innovations
+
+- **Long bonds**: Mathematical construct connecting temporally separated collisions
+- **Layered cluster forest structure**: Hierarchical organization of collision events
+- **Arbitrary time horizons**: Previous proofs only worked on short timescales
+
+#### Rource Applicability
+
+**Status**: NOT DIRECTLY APPLICABLE (but conceptually parallel)
+
+Rource uses discrete particle simulation (Barnes-Hut), not continuum PDEs.
+However, the hierarchical modeling parallels Barnes-Hut:
+
+| Hilbert Concept | Barnes-Hut Analog |
+|-----------------|-------------------|
+| Particles | Directory nodes |
+| Boltzmann distribution | QuadTree node aggregates |
+| Navier-Stokes continuum | Center-of-mass approximation |
+| Knudsen number → 0 | θ parameter → 0 |
+
+### Fibonacci Pick-up Sticks Problem
+
+#### Citation
+
+```
+Sudbury, A.; Sun, A.; Treeby, D.; Wang, E. (2025).
+"Pick-up Sticks and the Fibonacci Factorial"
+arXiv:2504.19911, April 2025
+```
+
+#### The Problem
+
+Given n sticks with random lengths uniformly distributed in [0, 1], what is the
+probability that no three sticks can form a triangle?
+
+#### The Discovery
+
+The probability equals the reciprocal of the **Fibonorial** (product of Fibonacci numbers):
+
+```
+P(no triangle among n sticks) = 1 / ∏(i=1 to n) F_i
+
+where F_i is the i-th Fibonacci number: 1, 1, 2, 3, 5, 8, 13, 21, ...
+```
+
+**Examples**:
+```
+n = 3: P = 1/(1×1×2) = 1/2
+n = 4: P = 1/(1×1×2×3) = 1/6
+n = 5: P = 1/(1×1×2×3×5) = 1/30
+n = 6: P = 1/(1×1×2×3×5×8) = 1/240
+n = 7: P = 1/(1×1×2×3×5×8×13) = 1/3120
+```
+
+#### Significance
+
+The appearance of Fibonacci numbers was completely unexpected—demonstrating that
+problems with "obvious" iterative solutions may have elegant closed forms.
+
+#### Rource Applicability
+
+**Status**: NOT DIRECTLY APPLICABLE
+
+No triangle-formation probability in Rource. However, reinforces the principle
+that closed-form solutions should be sought (already applied in Phase 45 LUTs).
+
+### Dudeney's Dissection Optimality
+
+#### Citation
+
+```
+Demaine, E.; Kamata, T.; Uehara, R. (2024).
+"Dudeney's Dissection is Optimal"
+arXiv:2412.03865, December 2024
+```
+
+#### The Problem
+
+What is the minimum number of pieces needed to dissect an equilateral triangle
+and reassemble into a square of equal area?
+
+#### The Result
+
+**4 pieces is optimal** (Dudeney's 1902 solution cannot be improved).
+
+**Proof technique**: Matching diagrams to systematically rule out 2-piece and 3-piece
+dissections under the constraint that pieces cannot be flipped.
+
+#### Rource Applicability
+
+**Status**: NOT APPLICABLE
+
+No geometric dissection operations in Rource.
+
+### Conceptual Insights Summary
+
+| Breakthrough | Transferable Concept | Rource Connection |
+|--------------|---------------------|-------------------|
+| Moving Sofa | Variational calculus | Spline optimization |
+| Noperthedron | Exhaustive block elimination | Parameter space testing |
+| Hilbert's 6th | Hierarchical scale bridging | Barnes-Hut analogy |
+| Fibonacci Sticks | Unexpected closed forms | LUT philosophy |
+| Dissection | Matching diagram proofs | N/A |
+
+### References
+
+- [arXiv:2411.19826](https://arxiv.org/abs/2411.19826) - Optimality of Gerver's Sofa
+- [arXiv:2508.18475](https://arxiv.org/abs/2508.18475) - Noperthedron
+- [arXiv:2503.01800](https://arxiv.org/abs/2503.01800) - Hilbert's 6th Problem
+- [arXiv:2504.19911](https://arxiv.org/abs/2504.19911) - Fibonacci Pick-up Sticks
+- [arXiv:2412.03865](https://arxiv.org/abs/2412.03865) - Dudeney's Dissection
+- [Wolfram MathWorld: Gerver Sofa](https://mathworld.wolfram.com/GerverSofa.html)
+- [Quanta Magazine: Moving Sofa](https://www.quantamagazine.org/the-largest-sofa-you-can-move-around-a-corner-20250214/)
+- [Scientific American: 2025 Breakthroughs](https://www.scientificamerican.com/article/the-top-10-math-discoveries-of-2025/)
+
+---
+
 ## Applicability Framework
 
 When evaluating theoretical algorithms for Rource, assess:
@@ -572,6 +839,13 @@ Algorithms to explore for potential future applicability:
    - Algorithms: Greedy, Welsh-Powell, DSatur, Chromatic Polynomials
    - Status: Analyzed, not applicable (Phase 53)
    - Key algorithms preserved for reference
+
+3. Scientific American (2025) - "The 10 Biggest Math Breakthroughs of 2025"
+   - December 19, 2025
+   - Including: Moving Sofa (Baek), Noperthedron (Steininger/Yurkevich),
+     Hilbert's 6th (Deng/Hani/Ma), Fibonacci Sticks (Treeby et al.)
+   - Status: Analyzed, not directly applicable (Phase 54)
+   - Conceptual insights preserved
 
 ### Related Rource Documentation
 
