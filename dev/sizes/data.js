@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769351194396,
+  "lastUpdate": 1769355153708,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2183,6 +2183,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1070592,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ce4c41bdb6ace4180f8b7f9ca9b06f51696ec8f",
+          "message": "Merge pull request #166 from tomtom215/claude/codebase-audit-review-7aycG\n\nAdd comprehensive CHANGELOG and rendering scale benchmarks",
+          "timestamp": "2026-01-25T16:30:30+01:00",
+          "tree_id": "705a5fc6fde20644e4df924008c36ebc2d1662d9",
+          "url": "https://github.com/tomtom215/rource/commit/3ce4c41bdb6ace4180f8b7f9ca9b06f51696ec8f"
+        },
+        "date": 1769355153388,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772041,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070591,
             "unit": "bytes"
           }
         ]
