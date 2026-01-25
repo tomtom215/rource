@@ -42,6 +42,13 @@
     align-items: center;
     cursor: pointer;
     margin-bottom: 0.5rem;
+    border-radius: 4px;
+}
+
+/* Accessibility: Focus indicator for keyboard navigation */
+.legend-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .legend-header .legend-title {
@@ -199,6 +206,13 @@
     align-items: center;
     cursor: pointer;
     margin-bottom: 0.4rem;
+    border-radius: 4px;
+}
+
+/* Accessibility: Focus indicator for keyboard navigation */
+.perf-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .perf-overlay.collapsed .perf-header {
@@ -418,6 +432,13 @@
     align-items: center;
     cursor: pointer;
     margin-bottom: 0.5rem;
+    border-radius: 4px;
+}
+
+/* Accessibility: Focus indicator for keyboard navigation */
+.authors-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .authors-header .authors-title {

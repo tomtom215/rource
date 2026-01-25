@@ -433,11 +433,61 @@
        - High-score style metrics (FPS front-and-center)
        - Color-coded status (green/yellow/red/orange)
 
+       MOBILE LAYOUT:
+       - Perf overlay: top-right corner
+       - Legend panel: HIDDEN on mobile (shown in bottom sheet instead)
+       - Authors panel: HIDDEN on mobile (shown in bottom sheet instead)
+       - Stats overlay: bottom-left (commits/files/dirs/authors)
+
        References:
        - FPS games: minimal HUDs prioritizing essential info
        - High score displays: prominent primary metric + secondary stats
        - Steam FPS counter: small corner pill with bold number
     */
+
+    /* CRITICAL: Hide legend and authors panels on mobile - they're in bottom sheet */
+    .has-bottom-sheet .legend-panel {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .authors-panel {
+        display: none !important;
+    }
+
+    /* -------------------------------------------------------------------------
+       Stats Overlay - Mobile Compact Layout
+       -------------------------------------------------------------------------
+       Shows commits/files/dirs/authors in a compact pill at bottom-left.
+       Reduced from 4 items to horizontal compact display.
+    */
+
+    .has-bottom-sheet .stats-overlay {
+        bottom: 8px;
+        left: 8px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        background: rgba(0, 0, 0, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        gap: 12px;
+        font-size: 0.7rem;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-item {
+        flex-direction: row;
+        gap: 4px;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-value {
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-label {
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
 
     /* HUD-style container - compact pill in top-right */
     .has-bottom-sheet .perf-overlay {
@@ -703,6 +753,11 @@
         transform: translate(-50%, -50%) scale(0.9);
     }
 
+    .mobile-center-play:focus-visible {
+        outline: 2px solid var(--text-on-accent);
+        outline-offset: 4px;
+    }
+
     .mobile-center-play svg {
         width: 40px;
         height: 40px;
@@ -850,6 +905,20 @@
 
     .bottom-sheet-quick-actions {
         padding: 0 12px 10px;
+    }
+
+    /* Extra small stats overlay - even more compact */
+    .has-bottom-sheet .stats-overlay {
+        padding: 4px 10px;
+        gap: 8px;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-value {
+        font-size: 0.75rem;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-label {
+        font-size: 0.55rem;
     }
 
     /* -------------------------------------------------------------------------
@@ -1163,6 +1232,45 @@
 
     /* Bottom sheet tabs */
     .bottom-sheet-tab {
+        min-height: 44px;
+    }
+
+    /* Icon buttons - base class */
+    .btn-icon {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Fullscreen toggle button */
+    .fullscreen-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Share/export button */
+    .share-btn,
+    .export-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Font size adjustment buttons */
+    .font-size-btn,
+    .text-size-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Recording controls */
+    .record-btn,
+    .recording-control-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Mobile toolbar buttons - ensure proper size */
+    .mobile-toolbar-btn {
+        min-width: 44px;
         min-height: 44px;
     }
 }
