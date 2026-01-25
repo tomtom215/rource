@@ -55,9 +55,9 @@ a:hover {
     top: -40px;
     left: 0;
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
     padding: 8px 16px;
-    z-index: 1000;
+    z-index: var(--z-fullscreen);
     text-decoration: none;
     border-radius: 0 0 var(--radius-sm) 0;
 }
@@ -82,4 +82,96 @@ a:hover {
 /* Hidden utility */
 .hidden {
     display: none;
+}
+
+/* =============================================================================
+   Selection Styles
+   ============================================================================= */
+
+::selection {
+    /* Fallback for browsers without color-mix() support */
+    background: rgba(88, 166, 255, 0.3);
+    color: var(--text-primary);
+}
+
+::-moz-selection {
+    /* Fallback for browsers without color-mix() support */
+    background: rgba(88, 166, 255, 0.3);
+    color: var(--text-primary);
+}
+
+/* Modern browsers: use color-mix for theme-aware selection */
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+    ::selection {
+        background: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+    }
+
+    ::-moz-selection {
+        background: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+    }
+}
+
+/* =============================================================================
+   Smooth Scrolling (respects reduced-motion)
+   ============================================================================= */
+
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
+    }
+}
+
+/* =============================================================================
+   Print Styles
+   ============================================================================= */
+
+@media print {
+    /* Hide interactive elements */
+    header,
+    footer,
+    .sidebar-panel,
+    .sidebar-toggle,
+    .bottom-sheet,
+    .bottom-sheet-fab,
+    .mobile-toolbar,
+    .timeline-container,
+    .modal-overlay,
+    .help-overlay,
+    .toast,
+    .skip-link,
+    #loading {
+        display: none !important;
+    }
+
+    /* Reset background for printing */
+    body {
+        background: white;
+        color: black;
+    }
+
+    /* Canvas container takes full page */
+    .app-container {
+        display: block;
+    }
+
+    .viz-panel {
+        width: 100%;
+        height: auto;
+    }
+
+    #canvas-container {
+        border: 1px solid #ccc;
+    }
+
+    /* Ensure links show URLs */
+    a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.8em;
+        color: #666;
+    }
+
+    /* Page breaks */
+    .panel {
+        break-inside: avoid;
+    }
 }

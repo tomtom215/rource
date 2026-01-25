@@ -219,7 +219,7 @@
 .perf-fps.bad { color: var(--error); }
 .perf-fps.paused { color: var(--text-secondary); }
 .perf-fps.complete { color: var(--accent-blue); }
-.perf-fps.uncapped { color: #ff6b35; } /* Orange for uncapped mode */
+.perf-fps.uncapped { color: var(--accent-orange); } /* Orange for uncapped mode */
 
 /* -----------------------------------------------------------------------------
    Toggle Switch (for uncapped FPS)
@@ -273,16 +273,23 @@
 }
 
 .perf-switch input:checked + .perf-slider {
-    background-color: #ff6b35;
+    background-color: var(--accent-orange);
 }
 
 .perf-switch input:checked + .perf-slider::before {
     transform: translateX(14px);
-    background-color: white;
+    background-color: var(--text-on-accent);
 }
 
-.perf-switch input:focus + .perf-slider {
+.perf-switch input:focus-visible + .perf-slider {
+    /* Fallback for browsers without color-mix() */
     box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.3);
+}
+
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+    .perf-switch input:focus-visible + .perf-slider {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-orange) 30%, transparent);
+    }
 }
 
 .perf-toggle {

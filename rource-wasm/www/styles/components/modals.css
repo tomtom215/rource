@@ -32,6 +32,8 @@
 
 .modal-overlay.closing {
     opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 /* =============================================================================
@@ -89,6 +91,11 @@
 .modal-close:hover {
     background: var(--border);
     color: var(--text-primary);
+}
+
+.modal-close:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 /* -----------------------------------------------------------------------------
@@ -251,6 +258,11 @@
     border: none;
 }
 
+.export-slider-group input[type="range"]:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
 #export-font-value {
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -281,6 +293,11 @@
     height: 18px;
     accent-color: var(--accent);
     cursor: pointer;
+}
+
+.export-checkbox-option input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .export-checkbox-option span {

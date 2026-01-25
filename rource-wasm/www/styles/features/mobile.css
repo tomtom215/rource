@@ -28,16 +28,23 @@
     bottom: 20px;
     right: 20px;
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
     border: none;
     width: 48px;
     height: 48px;
     border-radius: 50%;
     cursor: pointer;
-    z-index: 200;
+    z-index: var(--z-sticky);
+    /* Fallback for browsers without color-mix() */
     box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
     /* Use composited properties only for better performance */
     transition: opacity 0.3s, transform 0.3s;
+}
+
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+    .sidebar-toggle {
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
 }
 
 .sidebar-toggle:hover {
@@ -74,7 +81,7 @@
         height: 100%;
         max-height: 100%;
         background: var(--bg-primary);
-        z-index: 150;
+        z-index: var(--z-sidebar-drawer);
         transform: translateX(100%);
         transition: transform 0.3s ease;
         padding: 1rem;
@@ -102,7 +109,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 10;
+        z-index: var(--z-base);
     }
 
     .sidebar-close:hover {
@@ -121,8 +128,8 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 140;
+        background: var(--backdrop);
+        z-index: var(--z-sidebar-overlay);
         opacity: 0;
         visibility: hidden;
         /* Use composited properties only for better performance */
@@ -140,7 +147,7 @@
         bottom: 0;
         right: 0;
         width: min(100%, 400px);
-        z-index: 151;
+        z-index: var(--z-sidebar-scroll);
         opacity: 0;
         visibility: hidden;
     }
@@ -178,355 +185,14 @@
 }
 
 /* =============================================================================
-   iOS-Style Bottom Sheet (768px)
+   Bottom Sheet Styles
    ============================================================================= */
 
-/* Hidden on desktop */
-.bottom-sheet-backdrop {
-    display: none;
-}
-
-.bottom-sheet {
-    display: none;
-}
-
-@media (max-width: 768px) {
-    /* Hide old sidebar when bottom sheet is active */
-    .has-bottom-sheet .sidebar-toggle {
-        display: none !important;
-    }
-
-    .has-bottom-sheet .sidebar-panel {
-        display: none !important;
-    }
-
-    .has-bottom-sheet .sidebar-wrapper {
-        display: none !important;
-    }
-
-    /* -----------------------------------------------------------------------------
-       Bottom Sheet Backdrop
-       ----------------------------------------------------------------------------- */
-
-    .bottom-sheet-backdrop {
-        display: block;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-        z-index: 299;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s ease, visibility 0.3s ease;
-        pointer-events: none;
-    }
-
-    .bottom-sheet-backdrop.visible {
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-    }
-
-    /* -----------------------------------------------------------------------------
-       Bottom Sheet Container
-       ----------------------------------------------------------------------------- */
-
-    .bottom-sheet {
-        display: flex;
-        flex-direction: column;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 92vh;
-        max-height: calc(100vh - env(safe-area-inset-top) - 20px);
-        background: var(--bg-primary);
-        border-radius: 16px 16px 0 0;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-        z-index: 300;
-        transform: translateY(100%);
-        /* iOS-style spring transition */
-        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        overflow: hidden;
-        padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    /* -----------------------------------------------------------------------------
-       Bottom Sheet Header (Drag Handle)
-       ----------------------------------------------------------------------------- */
-
-    .bottom-sheet-header {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 12px 16px 8px;
-        cursor: grab;
-        user-select: none;
-        -webkit-user-select: none;
-        touch-action: none;
-    }
-
-    .bottom-sheet-header:active {
-        cursor: grabbing;
-    }
-
-    /* Pill-shaped drag handle */
-    .bottom-sheet-handle {
-        width: 36px;
-        height: 5px;
-        background: var(--border-light);
-        border-radius: 2.5px;
-        margin-bottom: 12px;
-        transition: background 0.2s ease, transform 0.2s ease;
-    }
-
-    .bottom-sheet-header:active .bottom-sheet-handle {
-        background: var(--text-muted);
-        transform: scaleX(1.1);
-    }
-
-    /* Header row with title and close button */
-    .bottom-sheet-header-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        padding: 0 4px;
-    }
-
-    .bottom-sheet-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0;
-        flex: 1;
-        text-align: center;
-        padding-left: 36px; /* Balance the close button width */
-    }
-
-    /* Close button (iOS style) */
-    .bottom-sheet-close {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        background: var(--bg-tertiary);
-        border: none;
-        border-radius: 50%;
-        color: var(--text-secondary);
-        cursor: pointer;
-        transition: background 0.2s ease, color 0.2s ease;
-    }
-
-    .bottom-sheet-close:hover {
-        background: var(--border);
-        color: var(--text-primary);
-    }
-
-    .bottom-sheet-close:active {
-        background: var(--border-light);
-        transform: scale(0.95);
-    }
-
-    .bottom-sheet-close svg {
-        width: 18px;
-        height: 18px;
-    }
-
-    /* -----------------------------------------------------------------------------
-       Bottom Sheet Content
-       ----------------------------------------------------------------------------- */
-
-    .bottom-sheet-content {
-        flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
-        padding: 0 16px 16px;
-    }
-
-    .bottom-sheet-content::-webkit-scrollbar {
-        width: 4px;
-    }
-
-    .bottom-sheet-content::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .bottom-sheet-content::-webkit-scrollbar-thumb {
-        background: var(--border);
-        border-radius: 2px;
-    }
-
-    /* -----------------------------------------------------------------------------
-       Floating Action Button (FAB)
-       ----------------------------------------------------------------------------- */
-
-    .bottom-sheet-fab {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: fixed;
-        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
-        right: 16px;
-        width: 56px;
-        height: 56px;
-        background: var(--accent);
-        color: white;
-        border: none;
-        border-radius: 50%;
-        box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4),
-                    0 2px 4px rgba(0, 0, 0, 0.2);
-        cursor: pointer;
-        z-index: 250;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .bottom-sheet-fab:hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 16px rgba(233, 69, 96, 0.5),
-                    0 3px 6px rgba(0, 0, 0, 0.3);
-    }
-
-    .bottom-sheet-fab:active {
-        transform: scale(0.95);
-    }
-
-    .bottom-sheet-fab svg {
-        width: 24px;
-        height: 24px;
-    }
-
-    /* -----------------------------------------------------------------------------
-       Bottom Sheet Content Adjustments
-       ----------------------------------------------------------------------------- */
-
-    .bottom-sheet .showcase-panel {
-        padding: 1rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .bottom-sheet .showcase-panel h2 {
-        font-size: 1rem;
-    }
-
-    .bottom-sheet .showcase-panel p {
-        font-size: 0.85rem;
-    }
-
-    .bottom-sheet .showcase-stats {
-        gap: 0.5rem;
-    }
-
-    .bottom-sheet .showcase-stat-value {
-        font-size: 1.25rem;
-    }
-
-    .bottom-sheet .panel {
-        margin-bottom: 0.75rem;
-    }
-
-    .bottom-sheet .panel-header h2 {
-        font-size: 0.95rem;
-    }
-
-    .bottom-sheet .panel.collapsible .panel-body {
-        padding: 0.75rem;
-    }
-
-    .bottom-sheet .tab-nav {
-        gap: 0.25rem;
-    }
-
-    .bottom-sheet .tab-btn {
-        padding: 0.4rem 0.75rem;
-        font-size: 0.8rem;
-    }
-
-    /* -----------------------------------------------------------------------------
-       Quick Actions
-       ----------------------------------------------------------------------------- */
-
-    .bottom-sheet-quick-actions {
-        display: flex;
-        gap: 12px;
-        padding: 0 16px 16px;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 16px;
-    }
-
-    .bottom-sheet-action-btn {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 16px 12px;
-        background: var(--bg-tertiary);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        color: var(--text-primary);
-        font-size: 0.8125rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    .bottom-sheet-action-btn:active {
-        transform: scale(0.97);
-        background: var(--border);
-    }
-
-    .bottom-sheet-action-btn.primary {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: white;
-    }
-
-    .bottom-sheet-action-btn.primary:active {
-        background: var(--accent-hover);
-    }
-
-    .bottom-sheet-action-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .bottom-sheet-action-btn svg {
-        width: 24px;
-        height: 24px;
-    }
-
-    /* Section headers in bottom sheet */
-    .bottom-sheet-section {
-        margin-bottom: 1rem;
-    }
-
-    .bottom-sheet-section-header {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 0;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .bottom-sheet-section-header svg {
-        width: 14px;
-        height: 14px;
-    }
-}
+/*
+ * NOTE: Core bottom sheet styles are defined in bottom-sheet.css
+ * This file only contains mobile-specific OVERRIDES and additional features.
+ * See: features/bottom-sheet.css for base styles.
+ */
 
 /* =============================================================================
    Mobile Toolbar
@@ -650,7 +316,8 @@
 
     /* Active state - orange glow like "turbo/boost" in games */
     .mobile-toolbar-btn.uncapped-toggle.active {
-        color: #ff6b35;
+        color: var(--accent-orange);
+        /* Fallback for browsers without color-mix() */
         background: rgba(255, 107, 53, 0.2);
     }
 
@@ -659,9 +326,20 @@
         position: absolute;
         inset: -2px;
         border-radius: 14px;
+        /* Fallback for browsers without color-mix() */
         background: rgba(255, 107, 53, 0.15);
         animation: uncapped-pulse 2s ease-in-out infinite;
         z-index: -1;
+    }
+
+    @supports (background: color-mix(in srgb, red 50%, blue)) {
+        .mobile-toolbar-btn.uncapped-toggle.active {
+            background: color-mix(in srgb, var(--accent-orange) 20%, transparent);
+        }
+
+        .mobile-toolbar-btn.uncapped-toggle.active::before {
+            background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
+        }
     }
 
     @keyframes uncapped-pulse {
@@ -676,8 +354,8 @@
         margin-left: 4px;
         font-size: 0.5rem;
         font-weight: 700;
-        background: #ff6b35;
-        color: white;
+        background: var(--accent-orange);
+        color: var(--text-on-accent);
         padding: 2px 4px;
         border-radius: 4px;
         vertical-align: middle;
@@ -727,9 +405,9 @@
         /* 56px is Material Design 3 standard FAB size */
         width: 56px;
         height: 56px;
-        z-index: 200;
+        z-index: var(--z-fab);
         /* Auto-hide support */
-        transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s ease;
+        transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
     /* Auto-hide FAB when playing */
@@ -1006,7 +684,7 @@
         -webkit-backdrop-filter: blur(8px);
         border: none;
         border-radius: 50%;
-        color: white;
+        color: var(--text-on-accent);
         cursor: pointer;
         z-index: var(--z-canvas-overlays);
         opacity: 0;
@@ -1291,7 +969,7 @@
     background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    color: white;
+    color: var(--text-on-accent);
     padding: 12px 20px;
     border-radius: 12px;
     font-size: 0.875rem;
@@ -1329,7 +1007,7 @@
     background: rgba(255, 255, 255, 0.15);
     border: none;
     border-radius: 6px;
-    color: white;
+    color: var(--text-on-accent);
     font-size: 0.8125rem;
     cursor: pointer;
     pointer-events: auto;
@@ -1374,7 +1052,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     background: rgba(0, 0, 0, 0.7);
-    color: white;
+    color: var(--text-on-accent);
     padding: 12px 20px;
     border-radius: 8px;
     font-size: 0.875rem;
@@ -1400,4 +1078,91 @@
 .gesture-indicator-zoom svg {
     width: 20px;
     height: 20px;
+}
+
+/* =============================================================================
+   Touch Target Accessibility (WCAG 2.5.5 Target Size)
+   =============================================================================
+
+   Minimum touch targets: 44×44px (Apple HIG) / 48×48px (Material Design 3)
+   These overrides ensure interactive elements meet accessibility guidelines
+   on touch devices while preserving compact desktop styling.
+
+   References:
+   - WCAG 2.5.5: https://www.w3.org/WAI/WCAG21/Understanding/target-size.html
+   - Apple HIG: https://developer.apple.com/design/human-interface-guidelines/
+   - Material Design: https://m3.material.io/foundations/accessible-design
+*/
+
+@media (max-width: 768px), (pointer: coarse) {
+    /* Theme toggle - increase touch target with padding */
+    .theme-toggle {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Modal close button */
+    .modal-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Help panel close button */
+    .help-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Fullscreen exit button */
+    .fullscreen-exit-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Bottom sheet close button */
+    .bottom-sheet-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Sidebar close button */
+    .sidebar-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Timeline control buttons */
+    .timeline-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Reset view button */
+    .reset-view-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Collapsible panel headers - expand touch target */
+    .collapsible-header {
+        min-height: 48px;
+    }
+
+    /* Legend and overlay toggle areas */
+    .legend-header,
+    .authors-header,
+    .perf-header {
+        min-height: 44px;
+        padding: 8px 0;
+    }
+
+    /* Tab buttons */
+    .tab-btn {
+        min-height: 44px;
+    }
+
+    /* Bottom sheet tabs */
+    .bottom-sheet-tab {
+        min-height: 44px;
+    }
 }

@@ -14,7 +14,7 @@
 
 .btn {
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
     border: none;
     padding: 0.6rem var(--spacing-lg);
     border-radius: var(--radius-md);
@@ -35,6 +35,11 @@
 .btn:hover {
     background: var(--accent-hover);
     text-decoration: none;
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 .btn:disabled {
@@ -63,12 +68,12 @@
 .btn-secondary.active {
     background: var(--accent-secondary);
     border-color: var(--accent-secondary);
-    color: white;
+    color: var(--text-on-accent);
 }
 
 .btn-secondary.active:hover {
-    background: #2ea043;
-    border-color: #2ea043;
+    background: var(--accent-secondary-hover);
+    border-color: var(--accent-secondary-hover);
 }
 
 /* Success (green) button */
@@ -77,7 +82,7 @@
 }
 
 .btn-success:hover {
-    background: #2ea043;
+    background: var(--accent-secondary-hover);
 }
 
 /* Outline (ghost) button */
@@ -89,7 +94,7 @@
 
 .btn-outline:hover {
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
 }
 
 /* =============================================================================

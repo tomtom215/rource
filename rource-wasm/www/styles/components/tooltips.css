@@ -18,7 +18,7 @@
     border-radius: 8px;
     padding: 0.75rem 1rem;
     max-width: 320px;
-    z-index: 300;
+    z-index: var(--z-modal);
     pointer-events: none;
     opacity: 0;
     visibility: hidden;

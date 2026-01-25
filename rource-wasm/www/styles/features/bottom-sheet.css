@@ -53,10 +53,10 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
+        background: var(--backdrop);
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
-        z-index: 299;
+        z-index: var(--z-modal-backdrop);
         opacity: 0;
         visibility: hidden;
         transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -84,17 +84,15 @@
         max-height: calc(100vh - env(safe-area-inset-top) - 20px);
         background: var(--bg-primary);
         border-radius: 16px 16px 0 0;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-        z-index: 300;
+        box-shadow: 0 -4px 20px var(--shadow);
+        z-index: var(--z-modal);
         transform: translateY(100%);
         transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         overflow: hidden;
         padding-bottom: env(safe-area-inset-bottom);
     }
 
-    .bottom-sheet.open {
-        transform: translateY(0);
-    }
+    /* NOTE: .bottom-sheet.open class removed - JS uses inline transform directly */
 
     /* -------------------------------------------------------------------------
        Drag Handle Header
@@ -170,6 +168,11 @@
         color: var(--text-primary);
     }
 
+    .bottom-sheet-close:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
     .bottom-sheet-close:active {
         background: var(--border-light);
         transform: scale(0.95);
@@ -220,20 +223,26 @@
         width: 56px;
         height: 56px;
         background: var(--accent);
-        color: white;
+        color: var(--text-on-accent);
         border: none;
         border-radius: 50%;
+        /* Fallback for browsers without color-mix() */
         box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4),
-                    0 2px 4px rgba(0, 0, 0, 0.2);
+                    0 2px 4px var(--shadow);
         cursor: pointer;
-        z-index: 250;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        z-index: var(--z-fab);
+        transition: transform 0.2s ease;
+    }
+
+    @supports (background: color-mix(in srgb, red 50%, blue)) {
+        .bottom-sheet-fab {
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent),
+                        0 2px 4px var(--shadow);
+        }
     }
 
     .bottom-sheet-fab:hover {
         transform: scale(1.05);
-        box-shadow: 0 6px 16px rgba(233, 69, 96, 0.5),
-                    0 3px 6px rgba(0, 0, 0, 0.3);
     }
 
     .bottom-sheet-fab:active {
@@ -287,7 +296,7 @@
     .bottom-sheet-tab.active {
         background: var(--accent);
         border-color: var(--accent);
-        color: white;
+        color: var(--text-on-accent);
     }
 
     .bottom-sheet-tab svg {
@@ -344,7 +353,7 @@
     .bottom-sheet-action-btn.primary {
         background: var(--accent);
         border-color: var(--accent);
-        color: white;
+        color: var(--text-on-accent);
     }
 
     .bottom-sheet-action-btn.primary:active {
@@ -436,7 +445,7 @@
         background: var(--accent);
         border: none;
         border-radius: 10px;
-        color: white;
+        color: var(--text-on-accent);
         cursor: pointer;
         flex-shrink: 0;
         transition: background 0.2s ease;

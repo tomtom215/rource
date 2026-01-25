@@ -17,16 +17,45 @@
    ============================================================================= */
 
 :root.light-theme {
+    /* Background Colors */
     --bg-primary: #ffffff;
     --bg-secondary: #f6f8fa;
     --bg-tertiary: #eaeef2;
     --bg-canvas: #f0f3f6;
+
+    /* Text Colors */
     --text-primary: #1f2328;
     --text-secondary: #4d5561; /* WCAG AA: 5.7:1 contrast on white */
     --text-muted: #656d76; /* WCAG AA: 4.5:1 contrast on white */
+    --text-on-accent: #ffffff; /* Same as dark theme - white on accent */
+
+    /* Border Colors */
     --border: #d0d7de;
     --border-light: #afb8c1;
+
+    /* Shadows & Overlays - lighter for light theme */
     --shadow: rgba(31, 35, 40, 0.12);
+    --backdrop: rgba(31, 35, 40, 0.3);
+    --backdrop-blur: rgba(31, 35, 40, 0.7);
+
+    /* Accent Colors - adjusted for light backgrounds
+     * These maintain WCAG AA contrast on light backgrounds */
+    --accent: #d6335a; /* Slightly darker for contrast */
+    --accent-hover: #c42952;
+    --accent-light: #ff9a9e;
+    --accent-secondary: #1a7f37; /* Darker green for contrast */
+    --accent-secondary-hover: #238636;
+    --accent-blue: #0969da; /* Darker blue for light theme contrast */
+    --accent-blue-light: #218bff;
+    --accent-purple: #8250df;
+    --accent-orange: #d1650a; /* Darker orange for contrast */
+    --accent-gold: #9a6700; /* Darker gold for contrast */
+    --accent-gold-hover: #bf8700;
+
+    /* Semantic Colors - adjusted for light backgrounds */
+    --success: #1a7f37;
+    --error: #cf222e;
+    --warning: #9a6700;
 }
 
 /* =============================================================================
