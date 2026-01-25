@@ -753,11 +753,13 @@ pub fn render_files<R: Renderer + ?Sized>(
                 }
             }
 
-            // Draw soft glow behind file
+            // Draw soft glow behind file ONLY for touched files
+            // Optimization: Skip glow for inactive files (~97% of files)
             let is_touched = file.touch_time() > 0.0;
-            let glow_intensity = compute_file_glow_intensity(is_touched);
-            let glow_color = color.with_alpha(glow_intensity * alpha);
-            renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+            if is_touched {
+                let glow_color = color.with_alpha(0.25 * alpha);
+                renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+            }
 
             // Outer ring (darker border)
             let border_color = compute_file_border_color(color);

@@ -11,7 +11,7 @@ Complete technical documentation for the Rource project.
 | [../README.md](../README.md) | Project overview and usage |
 | [../CLAUDE.md](../CLAUDE.md) | Development guidelines |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution guide |
-| [../PERFORMANCE.md](../PERFORMANCE.md) | Performance summary |
+| [performance/README.md](./performance/README.md) | Performance documentation |
 
 ---
 
@@ -31,7 +31,7 @@ Complete technical documentation for the Rource project.
 |----------|-------------|
 | [performance/README.md](./performance/README.md) | Performance documentation index |
 | [performance/OVERVIEW.md](./performance/OVERVIEW.md) | Executive summary and philosophy |
-| [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) | Timeline of all 58 optimization phases |
+| [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) | Timeline of all 59 optimization phases |
 | [performance/BENCHMARKS.md](./performance/BENCHMARKS.md) | All benchmark data with methodology |
 | [performance/SUCCESSFUL_OPTIMIZATIONS.md](./performance/SUCCESSFUL_OPTIMIZATIONS.md) | Implemented optimizations |
 | [performance/NOT_APPLICABLE.md](./performance/NOT_APPLICABLE.md) | Analyzed but not applicable |

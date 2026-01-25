@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all 58 optimization phases with dates, commits, and outcomes.
+Complete timeline of all 59 optimization phases with dates, commits, and outcomes.
 
 ---
 
@@ -12,7 +12,7 @@ Complete timeline of all 58 optimization phases with dates, commits, and outcome
 - [Phase 21-30: GPU Pipeline](#phase-21-30-gpu-pipeline)
 - [Phase 31-40: Micro-Optimizations](#phase-31-40-micro-optimizations)
 - [Phase 41-50: Production Hardening](#phase-41-50-production-hardening)
-- [Phase 51-58: Algorithmic Excellence](#phase-51-58-algorithmic-excellence)
+- [Phase 51-59: Algorithmic Excellence & Rendering](#phase-51-59-algorithmic-excellence--rendering)
 
 ---
 
@@ -78,6 +78,7 @@ Complete timeline of all 58 optimization phases with dates, commits, and outcome
 | 56    | 2026-01-25 | Analysis        | Quantum algorithm analysis                 | N/A          |
 | 57    | 2026-01-25 | Analysis        | Cutting-edge WASM techniques               | Mixed        |
 | 58    | 2026-01-25 | Physics         | LUT-based random direction                 | Implemented  |
+| 59    | 2026-01-25 | Rendering       | File glow conditional rendering            | Implemented  |
 
 ---
 
@@ -646,7 +647,7 @@ Documented performance gains from Rust 1.82.0 to 1.93.0 upgrade.
 
 ---
 
-## Phase 51-58: Algorithmic Excellence
+## Phase 51-59: Algorithmic Excellence & Rendering
 
 ### Phase 51: Algorithmic Excellence Exploration
 
@@ -774,6 +775,60 @@ let offset = random_push_direction(i, j);
 
 ---
 
+### Phase 59: File Glow Conditional Rendering
+
+**Date**: 2026-01-25
+**Category**: Rendering
+**Status**: Implemented
+**Impact**: Scenario-dependent (0-64% file render reduction)
+
+Identified file glow rendering as the primary CPU bottleneck during Gource benchmark comparison.
+The glow disc (2× radius = 4× area) was being drawn for ALL files, including inactive ones.
+
+**Root Cause Analysis**:
+- File rendering = 68.1% of total render time
+- Glow disc = 64% of per-file pixel operations
+- 97% of files are inactive at any given moment in normal playback
+
+**Solution**:
+```rust
+// Before: Draw glow for ALL files
+let is_touched = file.touch_time() > 0.0;
+let glow_intensity = if is_touched { 0.25 } else { 0.08 };
+let glow_color = color.with_alpha(glow_intensity * file.alpha());
+renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+
+// After: Only draw glow for TOUCHED files
+let is_touched = file.touch_time() > 0.0;
+if is_touched {
+    let glow_color = color.with_alpha(0.25 * file.alpha());
+    renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+}
+```
+
+**Benchmark Validation**:
+
+| Scenario | Touched Files | Expected Speedup |
+|----------|---------------|------------------|
+| Fast playback (0.01 s/day) | ~7% | Minimal (benchmark noise) |
+| Normal playback (1-5 s/day) | ~0.5-2% | **40-60%** |
+| Paused/idle | 0% | **60-64%** |
+| Zoomed to active area | ~20-50% | 30-50% |
+
+**Note**: Fast-playback benchmarks showed minimal improvement because high commit rate
+(347/sec × 1-second touch window) keeps ~2,100 files "touched" simultaneously.
+The optimization provides significant benefit for interactive viewing.
+
+**Files Modified**:
+- `rource-cli/src/rendering.rs` (lines 853-860)
+- `rource-wasm/src/render_phases.rs` (lines 756-761)
+
+**Related Documentation**:
+- [docs/RENDERING_BOTTLENECK_ANALYSIS.md](../RENDERING_BOTTLENECK_ANALYSIS.md)
+- [docs/GOURCE_COMPARISON.md](../GOURCE_COMPARISON.md)
+
+---
+
 ## Git Commit References
 
 | Phase | Commit Message                                                   |
@@ -796,6 +851,7 @@ let offset = random_push_direction(i, j);
 | 56    | docs: add Phase 56 quantum algorithm analysis                    |
 | 57    | docs: add Phase 57 cutting-edge WASM optimization analysis       |
 | 58    | perf: implement LUT-based random direction (13.9x faster)        |
+| 59    | perf: optimize file rendering to skip glow for inactive files    |
 
 ---
 

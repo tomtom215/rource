@@ -309,10 +309,10 @@ When experiencing slowness:
 
 ## Related Documentation
 
-- [Performance Optimization History](./performance/README.md) - 58 optimization phases
+- [Performance Optimization History](./README.md) - 59 optimization phases
 - [Algorithmic Complexity](./ALGORITHMIC_COMPLEXITY.md) - Big-O analysis
 - [Profiling Guide](./PROFILING.md) - Detailed profiling tools
-- [Rendering Architecture](./RENDERING.md) - Backend details
+- [Rendering Architecture](../RENDERING.md) - Backend details
 
 ---
 

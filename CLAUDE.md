@@ -42,8 +42,8 @@ This document provides context and guidance for Claude (AI assistant) when worki
 |--------------------|----------------------------------------|
 | `README.md`        | Project overview and usage instructions |
 | `CONTRIBUTING.md`  | Development guidelines and code style  |
-| `PERFORMANCE.md`   | Performance optimization changelog     |
-| `docs/ALGORITHMIC_COMPLEXITY.md` | Big-O analysis of all functions |
+| `docs/performance/` | Performance optimization documentation (59 phases) |
+| `docs/performance/ALGORITHMIC_COMPLEXITY.md` | Big-O analysis of all functions |
 | `LICENSE`          | GPL-3.0 license (same as original Gource) |
 
 ---
@@ -254,7 +254,7 @@ Every optimization must meet these standards:
 | Criterion | Requirement |
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
-| **Documented** | Added to `PERFORMANCE.md` with before/after measurements |
+| **Documented** | Added to `docs/performance/` with before/after measurements |
 | **Correct** | All 1,899+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
@@ -320,7 +320,7 @@ Every optimization follows this rigorous process:
 2. **Benchmark** - Create criterion benchmarks measuring baseline performance
 3. **Implement** - Make targeted changes with clear before/after comments
 4. **Verify** - Run all tests, clippy, rustfmt
-5. **Document** - Update `PERFORMANCE.md` with measurements and rationale
+5. **Document** - Update `docs/performance/CHRONOLOGY.md` with measurements and rationale
 6. **Commit** - Clear commit message referencing phase number
 
 ### Benchmark Requirements
@@ -353,7 +353,7 @@ fn benchmark_operation(c: &mut Criterion) {
 
 ### Documentation Format
 
-Each optimization phase in `PERFORMANCE.md` must include:
+Each optimization phase in `docs/performance/CHRONOLOGY.md` must include:
 
 1. **Overview** - What was optimized and why
 2. **The Problem** - Code showing the inefficiency
@@ -365,7 +365,7 @@ Each optimization phase in `PERFORMANCE.md` must include:
 
 ### Current Optimization Phases
 
-See [PERFORMANCE.md](./PERFORMANCE.md) for the complete optimization history (48+ phases), including:
+See [docs/performance/](./docs/performance/) for the complete optimization history (59 phases), including:
 
 - Fixed-point alpha blending (-21% batch, -81% same-color)
 - Color conversion LUTs (-54% from_hex, -62% to_argb8)
@@ -373,6 +373,8 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for the complete optimization history (48
 - Force normalization (eliminated redundant sqrt)
 - Perpendicular vector optimization (-72% operation, +14% throughput)
 - Barnes-Hut O(n log n) force layout
+- LUT-based random direction (13.9x faster)
+- File glow conditional rendering (scenario-dependent improvement)
 - And many more...
 
 ---
@@ -702,8 +704,8 @@ This project uses Claude (AI assistant) for development assistance. When working
 1. Reference this document for project context
 2. Run `source scripts/session-setup.sh` at the start of each session
 3. Commit frequently with clear messages
-4. See [PERFORMANCE.md](./PERFORMANCE.md) for optimization history
+4. See [docs/performance/](./docs/performance/) for optimization history
 
 ---
 
-*Last updated: 2026-01-24*
+*Last updated: 2026-01-25*

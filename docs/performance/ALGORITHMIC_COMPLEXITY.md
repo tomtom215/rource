@@ -329,7 +329,7 @@ Only 5 functions have O(n²) or worse complexity. All are either optional fallba
 
 ## Optimization History
 
-For detailed optimization history through 58 phases, see the [performance documentation](./performance/README.md).
+For detailed optimization history through 59 phases, see the [performance documentation](./README.md).
 
 Key milestones:
 - **Phase 16**: Barnes-Hut O(n log n) physics
@@ -339,6 +339,7 @@ Key milestones:
 - **Phase 41**: Bounded frame processing with commit limits
 - **Phase 44-45**: Fixed-point blending and LUT color conversion
 - **Phase 58**: LUT-based random direction (13.9x faster)
+- **Phase 59**: File glow conditional rendering (scenario-dependent improvement)
 
 ---
 
