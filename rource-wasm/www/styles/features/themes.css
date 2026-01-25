@@ -17,11 +17,13 @@
    ============================================================================= */
 
 :root.light-theme {
-    /* Background Colors */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f6f8fa;
-    --bg-tertiary: #eaeef2;
-    --bg-canvas: #f0f3f6;
+    /* Background Colors - Slightly warmer/darker for better depth
+     * Using off-white and cream tones instead of pure white reduces
+     * eye strain and creates better visual hierarchy */
+    --bg-primary: #fafbfc;           /* Soft off-white instead of pure white */
+    --bg-secondary: #f0f2f5;         /* Warmer light gray */
+    --bg-tertiary: #e4e8ec;          /* Slightly darker for depth */
+    --bg-canvas: #dce0e5;            /* Darker canvas for visualization contrast */
 
     /* Text Colors */
     --text-primary: #1f2328;
@@ -29,14 +31,14 @@
     --text-muted: #656d76; /* WCAG AA: 4.5:1 contrast on white */
     --text-on-accent: #ffffff; /* Same as dark theme - white on accent */
 
-    /* Border Colors */
-    --border: #d0d7de;
-    --border-light: #afb8c1;
+    /* Border Colors - Slightly darker for definition */
+    --border: #c5cdd5;
+    --border-light: #9da5ae;
 
-    /* Shadows & Overlays - lighter for light theme */
-    --shadow: rgba(31, 35, 40, 0.12);
-    --backdrop: rgba(31, 35, 40, 0.3);
-    --backdrop-blur: rgba(31, 35, 40, 0.7);
+    /* Shadows & Overlays - More prominent for visual hierarchy */
+    --shadow: rgba(31, 35, 40, 0.18);
+    --backdrop: rgba(31, 35, 40, 0.35);
+    --backdrop-blur: rgba(31, 35, 40, 0.75);
 
     /* Accent Colors - adjusted for light backgrounds
      * These maintain WCAG AA contrast on light backgrounds */
@@ -62,15 +64,66 @@
    Light Theme Component Overrides
    ============================================================================= */
 
+/* Canvas overlays - use subtle paper-like backgrounds with soft shadows */
 .light-theme .legend-panel,
-.light-theme .authors-panel,
-.light-theme .perf-overlay,
-.light-theme .stats-overlay {
-    background: rgba(246, 248, 250, 0.95);
+.light-theme .authors-panel {
+    background: rgba(250, 251, 252, 0.97);
+    box-shadow: 0 2px 8px rgba(31, 35, 40, 0.1),
+                0 0 1px rgba(31, 35, 40, 0.15);
+    border: 1px solid var(--border);
 }
 
+.light-theme .perf-overlay {
+    background: rgba(250, 251, 252, 0.95);
+    box-shadow: 0 2px 12px rgba(31, 35, 40, 0.12);
+    border: 1px solid var(--border);
+}
+
+.light-theme .stats-overlay {
+    background: rgba(250, 251, 252, 0.95);
+    box-shadow: 0 2px 8px rgba(31, 35, 40, 0.1);
+    border: 1px solid var(--border);
+}
+
+/* Canvas container - warmer gray for better visualization contrast */
 .light-theme #canvas-container {
-    background: #e8ecf0;
+    background: #d5dae0;
+}
+
+/* Header and sidebar enhancements */
+.light-theme header {
+    background: rgba(250, 251, 252, 0.95);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(31, 35, 40, 0.08);
+}
+
+.light-theme .sidebar-panel {
+    background: var(--bg-primary);
+    box-shadow: -2px 0 8px rgba(31, 35, 40, 0.08);
+}
+
+/* Cards and panels - add subtle depth */
+.light-theme .showcase-card,
+.light-theme .featured-card,
+.light-theme .quick-guide-card {
+    box-shadow: 0 2px 8px rgba(31, 35, 40, 0.08),
+                0 0 1px rgba(31, 35, 40, 0.12);
+}
+
+/* Timeline - subtle depth */
+.light-theme .timeline-container {
+    background: rgba(250, 251, 252, 0.95);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 8px rgba(31, 35, 40, 0.06);
+}
+
+/* Buttons - enhanced depth */
+.light-theme .btn-primary {
+    box-shadow: 0 2px 4px rgba(214, 51, 90, 0.25);
+}
+
+.light-theme .btn-secondary {
+    box-shadow: 0 1px 3px rgba(31, 35, 40, 0.08);
 }
 
 /* =============================================================================
