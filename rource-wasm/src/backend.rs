@@ -681,6 +681,7 @@ impl RendererBackend {
     /// Always returns `None` on non-WASM targets since WebGPU is only available in browsers.
     #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
+    #[allow(clippy::unused_self)]
     pub fn get_gpu_info(&self) -> Option<rource_render::GpuInfo> {
         None
     }

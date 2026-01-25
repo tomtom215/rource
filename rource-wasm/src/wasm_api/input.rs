@@ -133,7 +133,7 @@ impl Rource {
     /// Returns debug information about hit testing at the given coordinates.
     ///
     /// Use this to diagnose why drag might not be working:
-    /// - Check if screen_to_world conversion is correct
+    /// - Check if `screen_to_world` conversion is correct
     /// - Check if entities are in the spatial index
     /// - Check if entities are within hit radius
     #[wasm_bindgen(js_name = debugHitTest)]
@@ -145,19 +145,19 @@ impl Rource {
         // Query the spatial index
         let entities = self.scene.query_entities_circle(world_pos, hit_radius);
 
-        // Get counts
-        let user_hits: Vec<_> = entities
+        // Count entities by type directly (avoid needless collect)
+        let user_count = entities
             .iter()
             .filter(|e| matches!(e, rource_core::scene::EntityType::User(_)))
-            .collect();
-        let file_hits: Vec<_> = entities
+            .count();
+        let file_count = entities
             .iter()
             .filter(|e| matches!(e, rource_core::scene::EntityType::File(_)))
-            .collect();
-        let dir_hits: Vec<_> = entities
+            .count();
+        let dir_count = entities
             .iter()
             .filter(|e| matches!(e, rource_core::scene::EntityType::Directory(_)))
-            .collect();
+            .count();
 
         format!(
             r#"{{"screenX":{},"screenY":{},"worldX":{:.2},"worldY":{:.2},"zoom":{:.4},"hitRadius":{:.2},"viewportWidth":{},"viewportHeight":{},"totalFiles":{},"totalUsers":{},"totalDirs":{},"spatialQueryCount":{},"usersInRadius":{},"filesInRadius":{},"dirsInRadius":{}}}"#,
@@ -173,9 +173,9 @@ impl Rource {
             self.scene.user_count(),
             self.scene.directory_count(),
             entities.len(),
-            user_hits.len(),
-            file_hits.len(),
-            dir_hits.len(),
+            user_count,
+            file_count,
+            dir_count,
         )
     }
 
