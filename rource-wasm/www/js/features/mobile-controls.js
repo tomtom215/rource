@@ -19,6 +19,7 @@
 import { getRource, addManagedEventListener, get, setState, subscribe } from '../state.js';
 import { safeWasmCall } from '../wasm-api.js';
 import { getElement } from '../dom.js';
+import { hapticLight, hapticMedium } from '../utils.js';
 
 // =============================================================================
 // Constants
@@ -138,6 +139,7 @@ function updateCenterPlayButton(visible) {
  * Handles center play button click.
  */
 function handleCenterPlayClick() {
+    hapticMedium(); // Confirmation feedback for play/pause
     if (togglePlayFn) {
         togglePlayFn();
     }
@@ -169,6 +171,7 @@ function updateUncappedButton(uncapped) {
  * Handles uncapped toggle button click.
  */
 function handleUncappedToggle() {
+    hapticMedium(); // Toggle feedback
     const currentState = get('uncappedFps');
     const newState = !currentState;
 
@@ -198,6 +201,9 @@ function handleCanvasTap(e) {
     if (e.type === 'touchend' && e.changedTouches.length > 1) {
         return;
     }
+
+    // Light haptic feedback for canvas tap
+    hapticLight();
 
     // Toggle controls visibility
     if (controlsVisible) {

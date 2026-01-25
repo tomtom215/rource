@@ -80,8 +80,11 @@
         left: 0;
         right: 0;
         bottom: 0;
+        /* Dynamic viewport height for mobile browser address bar changes */
         height: 92vh;
+        height: 92dvh; /* Modern browsers - accounts for collapsing address bar */
         max-height: calc(100vh - env(safe-area-inset-top) - 20px);
+        max-height: calc(100dvh - env(safe-area-inset-top) - 20px);
         background: var(--bg-primary);
         border-radius: 16px 16px 0 0;
         box-shadow: 0 -4px 20px var(--shadow);
@@ -232,6 +235,9 @@
         touch-action: pan-y;
         /* Add padding at bottom for safe area and better UX */
         padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        /* Scroll snap for section-based navigation (proximity = gentle snapping) */
+        scroll-snap-type: y proximity;
+        scroll-padding-top: 8px;
     }
 
     .bottom-sheet-content::-webkit-scrollbar {
@@ -427,6 +433,9 @@
     .bottom-sheet-section {
         padding: 0 16px;
         margin-bottom: 16px;
+        /* Scroll snap alignment for smooth section navigation */
+        scroll-snap-align: start;
+        scroll-margin-top: 8px;
     }
 
     /* Remove extra padding when section is inside quick-actions */

@@ -15,6 +15,7 @@
  */
 
 import { addManagedEventListener } from '../state.js';
+import { hapticLight, hapticMedium, HapticPattern, haptic } from '../utils.js';
 
 // ============================================================================
 // Constants
@@ -217,6 +218,16 @@ function snapTo(snapName, instant = false) {
     // When at FULL, translateY should be minimal
     // When at HIDDEN, translateY should be sheetHeight
     const targetTranslate = sheetHeight - targetHeight;
+
+    // Haptic feedback on snap (if position actually changed)
+    if (currentSnap !== snapName && !instant) {
+        // Stronger feedback for dismissal, lighter for expansion
+        if (snapName === 'HIDDEN') {
+            hapticMedium(); // Dismissal confirmation
+        } else {
+            hapticLight(); // Light snap feedback
+        }
+    }
 
     currentSnap = snapName;
 
@@ -524,6 +535,7 @@ export function closeBottomSheet() {
  * Toggles the bottom sheet between hidden and half.
  */
 export function toggleBottomSheet() {
+    hapticMedium(); // FAB tap feedback
     if (currentSnap === 'HIDDEN') {
         snapTo('HALF');
     } else {

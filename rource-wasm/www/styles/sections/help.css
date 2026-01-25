@@ -48,6 +48,7 @@
     max-width: 600px;
     width: 90%;
     max-height: 85vh;
+    max-height: 85dvh; /* Dynamic viewport for mobile */
     overflow-y: auto;
     border: 1px solid var(--border);
     position: relative;
@@ -215,6 +216,7 @@
     .help-content {
         padding: 1.5rem;
         max-height: 80vh;
+        max-height: 80dvh;
     }
 
     .help-content h2 {
