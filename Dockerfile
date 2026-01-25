@@ -4,7 +4,7 @@
 # =============================================================================
 # Build stage - Compile the Rust binary
 # =============================================================================
-FROM rust:1.93-slim-bookworm AS builder
+FROM rust:1.93-slim-trixie AS builder
 
 # Install build dependencies with security updates
 RUN apt-get update && \
