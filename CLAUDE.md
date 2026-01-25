@@ -68,7 +68,7 @@ This script will:
 
 | Tool      | Version | Purpose            |
 |-----------|---------|-------------------|
-| Rust      | 1.82+   | Core language      |
+| Rust      | 1.93+   | Core language      |
 | Cargo     | Latest  | Package manager    |
 | wasm-pack | 0.12+   | WASM bundling      |
 | rustup    | Latest  | Toolchain management |
@@ -516,7 +516,7 @@ The project uses GitHub Actions for CI/CD.
 | Format        | `cargo fmt --check`                      |
 | Clippy        | All lints with `-D warnings`             |
 | Test          | Multi-platform (Linux, macOS, Windows)   |
-| MSRV          | Minimum Supported Rust Version (1.82)    |
+| MSRV          | Minimum Supported Rust Version (1.93)    |
 | Build Native  | Release binary with size report          |
 | Build WASM    | WebAssembly with gzip size check         |
 | Documentation | Rustdoc with warning-as-error            |
