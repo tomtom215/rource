@@ -1,0 +1,240 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Documentation Panel Styles
+ *
+ * Documentation sections, shortcut grids, feature lists, and panel guides.
+ * Used for help content and feature documentation in the sidebar.
+ */
+
+/* =============================================================================
+   Documentation Panel
+   ============================================================================= */
+
+.docs-panel {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.docs-panel .panel-body {
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+.docs-section {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    min-width: 0;
+}
+
+.docs-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.docs-section h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-primary);
+}
+
+.docs-section h3 svg {
+    color: var(--accent);
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.docs-section p {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.docs-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.docs-section li {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding: 0.25rem 0;
+    padding-left: 1rem;
+    position: relative;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.docs-section li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+}
+
+/* =============================================================================
+   Documentation Heading (expandable)
+   ============================================================================= */
+
+.docs-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s;
+    width: 100%;
+    font: inherit;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    color: var(--text-primary);
+}
+
+.docs-heading:hover {
+    opacity: 0.8;
+}
+
+.docs-heading:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+.docs-heading .panel-toggle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.docs-section.collapsed .docs-heading .panel-toggle {
+    transform: rotate(-90deg);
+}
+
+.docs-section.collapsed > *:not(.docs-heading) {
+    display: none;
+}
+
+/* =============================================================================
+   Shortcut Grid
+   ============================================================================= */
+
+.shortcut-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+}
+
+.shortcut-key {
+    background: var(--bg-tertiary);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    text-align: center;
+    min-width: 1.5em;
+    white-space: nowrap;
+}
+
+.shortcut-desc {
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+}
+
+/* =============================================================================
+   Feature List
+   ============================================================================= */
+
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.feature-item svg {
+    color: var(--success);
+    flex-shrink: 0;
+    margin-top: 2px;
+    width: 12px;
+    height: 12px;
+}
+
+.feature-item span {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+}
+
+/* =============================================================================
+   Panel Guide (instructional text)
+   ============================================================================= */
+
+.panel-guide {
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+}
+
+.panel-guide h3 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.panel-guide .help-text {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+/* =============================================================================
+   Responsive Adjustments
+   ============================================================================= */
+
+@media (max-width: 1400px) {
+    .docs-section h3 {
+        font-size: 0.8rem;
+    }
+
+    .docs-section p,
+    .docs-section li {
+        font-size: 0.7rem;
+    }
+
+    .shortcut-grid {
+        font-size: 0.7rem;
+    }
+
+    .shortcut-key {
+        font-size: 0.65rem;
+    }
+}

@@ -22,8 +22,8 @@
     border: 1px solid var(--border);
     /* Reserve space to prevent CLS during load */
     min-height: 90px;
-    /* Contain layout to prevent CLS propagation */
-    contain: content;
+    /* Contain layout to prevent CLS propagation (not 'content' which clips overflow) */
+    contain: layout style;
 }
 
 /* =============================================================================
@@ -331,7 +331,7 @@
     border-radius: 4px;
     font-size: 0.75rem;
     position: relative;
-    z-index: 1001; /* Above toast (1000) to ensure dropdown options are clickable */
+    z-index: var(--z-speed-select); /* Above toast to ensure dropdown options are clickable */
 }
 
 /* =============================================================================
@@ -372,4 +372,246 @@
     .speed-control label {
         display: none;
     }
+
+    /* Adjust marker container offset for mobile thumb (10px = half of 20px) */
+    .timeline-slider-container .timeline-markers {
+        left: 10px;
+        right: 10px;
+    }
+}
+
+/* =============================================================================
+   Timeline Slider Container (with markers)
+   ============================================================================= */
+
+.timeline-slider-container {
+    position: relative;
+    flex: 1;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    overflow: visible;
+}
+
+.timeline-slider-container .timeline-slider {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+}
+
+.timeline-slider-container .timeline-markers {
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    right: 8px;
+    height: 24px;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 3;
+    overflow: visible;
+}
+
+/* =============================================================================
+   Timeline Markers
+   ============================================================================= */
+
+.timeline-markers {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+.timeline-marker {
+    position: absolute;
+    width: 2px;
+    height: 100%;
+    background: var(--accent);
+    opacity: 0.6;
+    transform: translateX(-50%);
+}
+
+.timeline-marker.merge {
+    background: var(--accent-blue);
+}
+
+.timeline-marker.large {
+    background: var(--warning);
+}
+
+.timeline-slider-container .timeline-marker {
+    position: absolute;
+    width: 3px;
+    height: 12px;
+    border-radius: 1px;
+    transform: translateX(-50%);
+    opacity: 0.7;
+}
+
+.timeline-marker.large-commit {
+    background: var(--warning);
+    height: 16px;
+}
+
+.timeline-marker.first-commit {
+    background: var(--success);
+    height: 14px;
+}
+
+.timeline-marker.recent-commit {
+    background: var(--accent-blue);
+    height: 14px;
+}
+
+/* =============================================================================
+   Timeline Date Ticks
+   ============================================================================= */
+
+.timeline-tick {
+    position: absolute;
+    width: 2px;
+    transform: translateX(-50%);
+    transform-origin: bottom center;
+    bottom: 4px;
+    opacity: 0;
+    /* Use transform instead of height for GPU-accelerated animation */
+    transition: opacity 0.3s ease-out, transform 0.2s ease-out;
+    pointer-events: auto;
+    cursor: pointer;
+    border-radius: 1px;
+}
+
+.timeline-tick.visible {
+    opacity: 1;
+}
+
+/* Height variants - using CSS custom properties for transform-based hover */
+.timeline-tick.tick-minor {
+    --tick-height: 10px;
+    --tick-hover-scale: 2;  /* 10px → 20px */
+    height: var(--tick-height);
+    background: var(--text-muted);
+    opacity: 0;
+}
+
+.timeline-tick.tick-minor.visible {
+    opacity: 0.5;
+}
+
+.timeline-tick.tick-medium {
+    --tick-height: 14px;
+    --tick-hover-scale: 1.43;  /* 14px → 20px */
+    height: var(--tick-height);
+    background: var(--text-secondary);
+    opacity: 0;
+    width: 2px;
+}
+
+.timeline-tick.tick-medium.visible {
+    opacity: 0.7;
+}
+
+.timeline-tick.tick-major {
+    --tick-height: 18px;
+    --tick-hover-scale: 1.11;  /* 18px → 20px */
+    height: var(--tick-height);
+    background: var(--text-primary);
+    width: 2px;
+    border-radius: 1px;
+    opacity: 0;
+}
+
+.timeline-tick.tick-major.visible {
+    opacity: 0.85;
+}
+
+/* Interval-specific colors */
+.timeline-tick.tick-day {
+    background: var(--accent-blue);
+}
+
+.timeline-tick.tick-week {
+    background: var(--accent-purple);
+}
+
+.timeline-tick.tick-month {
+    background: var(--accent);
+}
+
+.timeline-tick.tick-quarter {
+    background: var(--success);
+}
+
+.timeline-tick.tick-year {
+    background: var(--warning);
+}
+
+/* Major tick override for all types */
+.timeline-tick.tick-major.tick-day,
+.timeline-tick.tick-major.tick-week,
+.timeline-tick.tick-major.tick-month,
+.timeline-tick.tick-major.tick-quarter {
+    background: var(--warning);
+}
+
+/* Hover effect with tooltip enhancement - uses GPU-accelerated transform */
+.timeline-tick:hover {
+    opacity: 1;
+    transform: translateX(-50%) scaleY(var(--tick-hover-scale, 1.5));
+    z-index: 20;
+    background: var(--accent);
+}
+
+/* Custom tooltip via CSS pseudo-element */
+.timeline-tick::after {
+    content: attr(data-label);
+    position: absolute;
+    bottom: calc(100% + 18px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+}
+
+.timeline-tick:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+/* Date label above tick for major ticks */
+.timeline-tick-label {
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.55rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0.9;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Hide labels on hover so tooltip takes over */
+.timeline-tick:hover .timeline-tick-label {
+    opacity: 0;
+}
+
+/* Hide labels on minor ticks to avoid clutter */
+.timeline-tick.tick-minor .timeline-tick-label {
+    display: none;
 }

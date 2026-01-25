@@ -1,0 +1,303 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Skeleton Loading Styles
+ *
+ * Loading overlay, skeleton placeholders, and loading spinner.
+ * Used during initial load and data fetching states.
+ */
+
+/* =============================================================================
+   Loading Overlay
+   ============================================================================= */
+
+#loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.3s;
+}
+
+#loading.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* =============================================================================
+   Loading Skeleton Container
+   ============================================================================= */
+
+.loading-skeleton {
+    width: 100%;
+    max-width: 800px;
+    padding: 2rem;
+}
+
+.skeleton-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+.skeleton-logo {
+    width: 40px;
+    height: 40px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-title {
+    height: 24px;
+    width: 120px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* =============================================================================
+   Skeleton Canvas Placeholder
+   ============================================================================= */
+
+.skeleton-canvas {
+    width: 100%;
+    height: 350px;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.skeleton-canvas-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    z-index: 1;
+}
+
+/* =============================================================================
+   Skeleton Tree Visualization
+   ============================================================================= */
+
+/* Simulated tree structure in loading state */
+.skeleton-tree {
+    position: relative;
+    width: 200px;
+    height: 200px;
+}
+
+.skeleton-node {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--border);
+    border-radius: 50%;
+    opacity: 0.3;
+}
+
+/* Root node in center */
+.skeleton-node.root {
+    width: 24px;
+    height: 24px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.5;
+}
+
+/* Orbiting file nodes */
+.skeleton-node.file-1 { left: 20%; top: 30%; }
+.skeleton-node.file-2 { left: 70%; top: 25%; }
+.skeleton-node.file-3 { left: 80%; top: 60%; }
+.skeleton-node.file-4 { left: 30%; top: 70%; }
+.skeleton-node.file-5 { left: 50%; top: 15%; }
+.skeleton-node.file-6 { left: 15%; top: 55%; }
+
+/* Connecting beams */
+.skeleton-beam {
+    position: absolute;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.1;
+    transform-origin: left center;
+    animation: beam-pulse 2s ease-in-out infinite;
+}
+
+.skeleton-beam-1 {
+    width: 60px;
+    left: 50%;
+    top: 50%;
+    transform: rotate(-35deg);
+}
+
+.skeleton-beam-2 {
+    width: 70px;
+    left: 50%;
+    top: 50%;
+    transform: rotate(25deg);
+}
+
+.skeleton-beam-3 {
+    width: 55px;
+    left: 50%;
+    top: 50%;
+    transform: rotate(110deg);
+}
+
+.skeleton-beam-4 {
+    width: 65px;
+    left: 50%;
+    top: 50%;
+    transform: rotate(-120deg);
+}
+
+/* Pulsing animation for root */
+.skeleton-pulse {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 60px;
+    height: 60px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* =============================================================================
+   Skeleton Timeline Controls
+   ============================================================================= */
+
+.skeleton-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.skeleton-btn {
+    height: 32px;
+    width: 80px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-slider {
+    flex: 1;
+    max-width: 300px;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* =============================================================================
+   Shimmer Animation Effect
+   ============================================================================= */
+
+.skeleton-logo::after,
+.skeleton-title::after,
+.skeleton-canvas::after,
+.skeleton-btn::after,
+.skeleton-slider::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.08),
+        transparent
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+/* =============================================================================
+   Loading Spinner
+   ============================================================================= */
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--bg-tertiary);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Smaller spinner variant */
+.loading-spinner.small {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+}
+
+/* Inline spinner for buttons */
+.loading-spinner.inline {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+    margin-right: 0.5rem;
+}
+
+/* =============================================================================
+   Loading Text
+   ============================================================================= */
+
+.loading-text {
+    margin-top: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* =============================================================================
+   Responsive Adjustments
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    .loading-skeleton {
+        padding: 1rem;
+    }
+
+    .skeleton-canvas {
+        height: 250px;
+    }
+
+    .skeleton-tree {
+        width: 150px;
+        height: 150px;
+    }
+
+    .skeleton-node.root {
+        width: 18px;
+        height: 18px;
+    }
+
+    .skeleton-pulse {
+        width: 45px;
+        height: 45px;
+    }
+}

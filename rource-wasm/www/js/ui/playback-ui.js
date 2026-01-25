@@ -14,6 +14,18 @@ import { getAllElements } from '../dom.js';
 import { getRource } from '../state.js';
 import { safeWasmCall } from '../wasm-api.js';
 
+// Mobile controls callback (set via setPlaybackStateCallback)
+let playbackStateCallback = null;
+
+/**
+ * Sets the callback for playback state changes.
+ * Used by mobile controls to react to play/pause state.
+ * @param {Function} callback - Called with (isPlaying: boolean)
+ */
+export function setPlaybackStateCallback(callback) {
+    playbackStateCallback = callback;
+}
+
 // =============================================================================
 // Module Constants
 // =============================================================================
@@ -121,8 +133,14 @@ export function updatePlaybackUI() {
 
     // Only update play button if state changed (avoids innerHTML allocation)
     if (playing !== playbackUICache.playing || atEnd !== playbackUICache.atEnd) {
+        const wasPlaying = playbackUICache.playing;
         playbackUICache.playing = playing;
         playbackUICache.atEnd = atEnd;
+
+        // Notify mobile controls if play state changed
+        if (playbackStateCallback && playing !== wasPlaying) {
+            playbackStateCallback(playing);
+        }
 
         if (playing) {
             playIconMain.innerHTML = ICON_PAUSE;

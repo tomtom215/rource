@@ -30,7 +30,8 @@ import { ROURCE_STATS, getFullCachedData } from './cached-data.js';
 import { showToast, initToast } from './toast.js';
 import {
     initAnimation, startAnimation,
-    updatePlaybackUI, setUIUpdateCallback, resetTimelineDateLabels
+    updatePlaybackUI, setUIUpdateCallback, resetTimelineDateLabels,
+    setPlaybackStateCallback
 } from './animation.js';
 import { loadLogData, loadRourceData, parseCommits, setOnDataLoadedCallback } from './data-loader.js';
 import { generateTimelineTicks } from './timeline-markers.js';
@@ -61,6 +62,7 @@ import {
     updateBottomSheetFileTypes, updateBottomSheetAuthors, clearBottomSheetLegends
 } from './features/bottom-sheet.js';
 import { initMobileToolbar } from './features/mobile-toolbar.js';
+import { initMobileControls, onPlaybackStateChange } from './features/mobile-controls.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -408,6 +410,18 @@ async function main() {
                 // This is handled inside mobile-toolbar.js using rource.setLabelsEnabled
             }
         });
+
+        // Initialize mobile controls (auto-hide, center play button, uncapped toggle)
+        initMobileControls({
+            isPlaying: () => safeWasmCall('isPlaying', () => rource.isPlaying(), false),
+            togglePlay: () => {
+                safeWasmCall('togglePlay', () => rource.togglePlay(), undefined);
+                updatePlaybackUI();
+            }
+        });
+
+        // Connect playback state changes to mobile controls
+        setPlaybackStateCallback(onPlaybackStateChange);
 
         // Set up animation callbacks for features that need them
         setAnimateCallback(animate);

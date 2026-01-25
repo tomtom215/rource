@@ -1,0 +1,1403 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Mobile Styles
+ *
+ * Mobile-specific responsive overrides including:
+ * - Mobile sidebar toggle (slide-out panel)
+ * - iOS-style bottom sheet
+ * - Mobile toolbar (floating quick actions)
+ * - Touch-optimized controls
+ * - Safe area handling for notched devices
+ *
+ * Breakpoints:
+ * - 1200px: Sidebar becomes slide-out drawer
+ * - 768px: Bottom sheet replaces sidebar, mobile toolbar appears
+ * - 480px: Extra small screen adjustments
+ * - 375px: Smallest screens (iPhone SE)
+ */
+
+/* =============================================================================
+   Mobile Sidebar Toggle
+   ============================================================================= */
+
+.sidebar-toggle {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 200;
+    box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+    /* Use composited properties only for better performance */
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.sidebar-toggle:hover {
+    transform: scale(1.1);
+    background: var(--accent-hover);
+}
+
+.sidebar-toggle:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+.sidebar-toggle svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* =============================================================================
+   Tablet Breakpoint (1200px) - Sidebar Drawer
+   ============================================================================= */
+
+@media (max-width: 1200px) {
+    .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(100%, 400px);
+        height: 100%;
+        max-height: 100%;
+        background: var(--bg-primary);
+        z-index: 150;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        padding: 1rem;
+        padding-top: 60px;
+        box-shadow: -4px 0 20px var(--shadow);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .sidebar-panel.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+
+    .sidebar-close:hover {
+        background: var(--border);
+        color: var(--text-primary);
+    }
+
+    .sidebar-close:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 140;
+        opacity: 0;
+        visibility: hidden;
+        /* Use composited properties only for better performance */
+        transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .sidebar-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Sidebar scroll indicator - position inside fixed sidebar */
+    .sidebar-scroll-indicator {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        width: min(100%, 400px);
+        z-index: 151;
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    .sidebar-panel.open + .sidebar-scroll-indicator {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .sidebar-panel.open + .sidebar-scroll-indicator.hidden {
+        opacity: 0;
+    }
+
+    /* Main content takes full width when sidebar is closed */
+    .app-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr;
+    }
+}
+
+/* =============================================================================
+   Extra Small Screens (480px)
+   ============================================================================= */
+
+@media (max-width: 480px) {
+    .sidebar-panel {
+        width: 100%;
+        padding: 0.75rem;
+        padding-top: 50px;
+        /* Support for notched devices (iPhone X+, etc.) */
+        padding-left: max(0.75rem, env(safe-area-inset-left));
+        padding-right: max(0.75rem, env(safe-area-inset-right));
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* =============================================================================
+   iOS-Style Bottom Sheet (768px)
+   ============================================================================= */
+
+/* Hidden on desktop */
+.bottom-sheet-backdrop {
+    display: none;
+}
+
+.bottom-sheet {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    /* Hide old sidebar when bottom sheet is active */
+    .has-bottom-sheet .sidebar-toggle {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .sidebar-panel {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .sidebar-wrapper {
+        display: none !important;
+    }
+
+    /* -----------------------------------------------------------------------------
+       Bottom Sheet Backdrop
+       ----------------------------------------------------------------------------- */
+
+    .bottom-sheet-backdrop {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 299;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        pointer-events: none;
+    }
+
+    .bottom-sheet-backdrop.visible {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    /* -----------------------------------------------------------------------------
+       Bottom Sheet Container
+       ----------------------------------------------------------------------------- */
+
+    .bottom-sheet {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 92vh;
+        max-height: calc(100vh - env(safe-area-inset-top) - 20px);
+        background: var(--bg-primary);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        z-index: 300;
+        transform: translateY(100%);
+        /* iOS-style spring transition */
+        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        overflow: hidden;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* -----------------------------------------------------------------------------
+       Bottom Sheet Header (Drag Handle)
+       ----------------------------------------------------------------------------- */
+
+    .bottom-sheet-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 16px 8px;
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+    }
+
+    .bottom-sheet-header:active {
+        cursor: grabbing;
+    }
+
+    /* Pill-shaped drag handle */
+    .bottom-sheet-handle {
+        width: 36px;
+        height: 5px;
+        background: var(--border-light);
+        border-radius: 2.5px;
+        margin-bottom: 12px;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .bottom-sheet-header:active .bottom-sheet-handle {
+        background: var(--text-muted);
+        transform: scaleX(1.1);
+    }
+
+    /* Header row with title and close button */
+    .bottom-sheet-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0 4px;
+    }
+
+    .bottom-sheet-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        flex: 1;
+        text-align: center;
+        padding-left: 36px; /* Balance the close button width */
+    }
+
+    /* Close button (iOS style) */
+    .bottom-sheet-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: var(--bg-tertiary);
+        border: none;
+        border-radius: 50%;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .bottom-sheet-close:hover {
+        background: var(--border);
+        color: var(--text-primary);
+    }
+
+    .bottom-sheet-close:active {
+        background: var(--border-light);
+        transform: scale(0.95);
+    }
+
+    .bottom-sheet-close svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* -----------------------------------------------------------------------------
+       Bottom Sheet Content
+       ----------------------------------------------------------------------------- */
+
+    .bottom-sheet-content {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 0 16px 16px;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+    }
+
+    /* -----------------------------------------------------------------------------
+       Floating Action Button (FAB)
+       ----------------------------------------------------------------------------- */
+
+    .bottom-sheet-fab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+        right: 16px;
+        width: 56px;
+        height: 56px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4),
+                    0 2px 4px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        z-index: 250;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .bottom-sheet-fab:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(233, 69, 96, 0.5),
+                    0 3px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .bottom-sheet-fab:active {
+        transform: scale(0.95);
+    }
+
+    .bottom-sheet-fab svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* -----------------------------------------------------------------------------
+       Bottom Sheet Content Adjustments
+       ----------------------------------------------------------------------------- */
+
+    .bottom-sheet .showcase-panel {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .bottom-sheet .showcase-panel h2 {
+        font-size: 1rem;
+    }
+
+    .bottom-sheet .showcase-panel p {
+        font-size: 0.85rem;
+    }
+
+    .bottom-sheet .showcase-stats {
+        gap: 0.5rem;
+    }
+
+    .bottom-sheet .showcase-stat-value {
+        font-size: 1.25rem;
+    }
+
+    .bottom-sheet .panel {
+        margin-bottom: 0.75rem;
+    }
+
+    .bottom-sheet .panel-header h2 {
+        font-size: 0.95rem;
+    }
+
+    .bottom-sheet .panel.collapsible .panel-body {
+        padding: 0.75rem;
+    }
+
+    .bottom-sheet .tab-nav {
+        gap: 0.25rem;
+    }
+
+    .bottom-sheet .tab-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    /* -----------------------------------------------------------------------------
+       Quick Actions
+       ----------------------------------------------------------------------------- */
+
+    .bottom-sheet-quick-actions {
+        display: flex;
+        gap: 12px;
+        padding: 0 16px 16px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+    }
+
+    .bottom-sheet-action-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-action-btn:active {
+        transform: scale(0.97);
+        background: var(--border);
+    }
+
+    .bottom-sheet-action-btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+    }
+
+    .bottom-sheet-action-btn.primary:active {
+        background: var(--accent-hover);
+    }
+
+    .bottom-sheet-action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .bottom-sheet-action-btn svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Section headers in bottom sheet */
+    .bottom-sheet-section {
+        margin-bottom: 1rem;
+    }
+
+    .bottom-sheet-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .bottom-sheet-section-header svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+/* =============================================================================
+   Mobile Toolbar
+   =============================================================================
+
+   THUMB ZONE DESIGN:
+   - Positioned at BOTTOM of screen for easy one-handed reach
+   - Industry standard: bottom third is "easy to reach" zone
+   - Touch targets: minimum 44px (Apple HIG) / ideally 48-60px for games
+
+   References:
+   - NN/g: https://www.nngroup.com/articles/touch-target-size/
+   - Material Design 3: 48dp minimum touch target
+   - Apple HIG: 44pt minimum
+*/
+
+.mobile-toolbar {
+    display: none; /* Hidden on desktop */
+}
+
+@media (max-width: 768px) {
+    .has-bottom-sheet .mobile-toolbar {
+        display: flex;
+        position: absolute;
+        /* FIXED: Move from top to bottom for thumb accessibility */
+        bottom: 8px;
+        left: 8px;
+        z-index: var(--z-canvas-overlays);
+        background: rgba(22, 27, 34, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 24px;
+        padding: 6px 10px;
+        gap: 6px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        /* Auto-hide support */
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    /* Auto-hide when playing (add .controls-hidden via JS) */
+    .has-bottom-sheet.controls-hidden .mobile-toolbar {
+        opacity: 0;
+        transform: translateY(20px);
+        pointer-events: none;
+    }
+
+    .mobile-toolbar-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* FIXED: Increase to 44px minimum touch target */
+        width: 44px;
+        height: 44px;
+        background: transparent;
+        border: none;
+        border-radius: 12px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: background 0.15s ease, transform 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-toolbar-btn:active {
+        background: var(--bg-tertiary);
+        transform: scale(0.92);
+    }
+
+    .mobile-toolbar-btn.active {
+        color: var(--accent);
+        background: rgba(233, 69, 96, 0.15);
+    }
+
+    .mobile-toolbar-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .mobile-toolbar-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Theme button icon visibility */
+    .mobile-toolbar-btn .sun-icon {
+        display: none;
+    }
+
+    .mobile-toolbar-btn .moon-icon {
+        display: block;
+    }
+
+    .light-theme .mobile-toolbar-btn .sun-icon {
+        display: block;
+    }
+
+    .light-theme .mobile-toolbar-btn .moon-icon {
+        display: none;
+    }
+
+    .mobile-toolbar-divider {
+        width: 1px;
+        height: 28px;
+        background: var(--border);
+        margin: 0 4px;
+        align-self: center;
+    }
+
+    /* -------------------------------------------------------------------------
+       Quick-Access Uncapped FPS Toggle (Mobile Toolbar)
+       -------------------------------------------------------------------------
+
+       Prominently placed in mobile toolbar for easy discoverability.
+       Uses flame icon and orange accent when active (like "turbo" mode).
+       Follows video game "boost" UI patterns.
+    */
+
+    .mobile-toolbar-btn.uncapped-toggle {
+        position: relative;
+    }
+
+    /* Active state - orange glow like "turbo/boost" in games */
+    .mobile-toolbar-btn.uncapped-toggle.active {
+        color: #ff6b35;
+        background: rgba(255, 107, 53, 0.2);
+    }
+
+    .mobile-toolbar-btn.uncapped-toggle.active::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 14px;
+        background: rgba(255, 107, 53, 0.15);
+        animation: uncapped-pulse 2s ease-in-out infinite;
+        z-index: -1;
+    }
+
+    @keyframes uncapped-pulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    /* Uncapped indicator badge on FPS display */
+    .has-bottom-sheet .perf-overlay .perf-fps.uncapped::after {
+        content: 'MAX';
+        display: inline-block;
+        margin-left: 4px;
+        font-size: 0.5rem;
+        font-weight: 700;
+        background: #ff6b35;
+        color: white;
+        padding: 2px 4px;
+        border-radius: 4px;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+    }
+}
+
+/* =============================================================================
+   Mobile Header Adjustments
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    header {
+        padding: 10px 12px;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .header-brand {
+        flex-shrink: 0;
+    }
+
+    .header-brand h1 {
+        font-size: 1.125rem;
+    }
+
+    .logo-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Hide controls in header on mobile with bottom sheet */
+    .has-bottom-sheet header .controls {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .header-links {
+        display: none !important;
+    }
+
+    /* FAB repositioned for mobile - right corner, above timeline
+       FIXED: Move to right edge for thumb accessibility, clear of timeline */
+    .has-bottom-sheet .bottom-sheet-fab {
+        bottom: max(130px, calc(130px + env(safe-area-inset-bottom)));
+        right: 8px;
+        /* 56px is Material Design 3 standard FAB size */
+        width: 56px;
+        height: 56px;
+        z-index: 200;
+        /* Auto-hide support */
+        transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s ease;
+    }
+
+    /* Auto-hide FAB when playing */
+    .has-bottom-sheet.controls-hidden .bottom-sheet-fab {
+        opacity: 0;
+        transform: scale(0.8);
+        pointer-events: none;
+    }
+
+    /* App container full width on mobile */
+    .has-bottom-sheet .app-container {
+        padding: 0;
+        gap: 0;
+    }
+
+    /* =========================================================================
+       Video Game HUD Performance Overlay
+       =========================================================================
+
+       Redesigned for mobile with inspiration from video game FPS counters:
+       - Compact pill in top-right corner (non-blocking, like game HUDs)
+       - Prominent uncapped toggle (easily discoverable)
+       - High-score style metrics (FPS front-and-center)
+       - Color-coded status (green/yellow/red/orange)
+
+       References:
+       - FPS games: minimal HUDs prioritizing essential info
+       - High score displays: prominent primary metric + secondary stats
+       - Steam FPS counter: small corner pill with bold number
+    */
+
+    /* HUD-style container - compact pill in top-right */
+    .has-bottom-sheet .perf-overlay {
+        top: 8px;
+        right: 8px;
+        left: auto;
+        min-width: auto;
+        padding: 6px 10px;
+        border-radius: 20px;
+        background: rgba(0, 0, 0, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    /* HUD header - horizontal layout with FPS prominent */
+    .has-bottom-sheet .perf-overlay .perf-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0;
+    }
+
+    /* FPS as primary metric - video game style */
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 1rem;
+        font-weight: 700;
+        min-width: 70px;
+        text-align: center;
+        letter-spacing: -0.5px;
+    }
+
+    /* Hide default toggle arrow on mobile */
+    .has-bottom-sheet .perf-overlay .perf-toggle {
+        display: none;
+    }
+
+    /* Compact details row - inline layout */
+    .has-bottom-sheet .perf-overlay .perf-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Individual metric rows - horizontal compact style */
+    .has-bottom-sheet .perf-overlay .perf-row {
+        flex: none;
+        gap: 4px;
+        font-size: 0.65rem;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-label {
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        opacity: 0.7;
+    }
+
+    /* Uncapped toggle - PROMINENT button style for discoverability */
+    .has-bottom-sheet .perf-overlay .perf-toggle-row {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        flex-basis: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 6px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Uncapped label - more prominent */
+    .has-bottom-sheet .perf-overlay #perf-uncapped-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+    }
+
+    /* Larger toggle switch for touch - 44px tap zone */
+    .has-bottom-sheet .perf-overlay .perf-switch {
+        width: 44px;
+        height: 24px;
+        position: relative;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider {
+        border-radius: 24px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider::before {
+        height: 18px;
+        width: 18px;
+        bottom: 3px;
+        left: 3px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+        transform: translateX(20px);
+    }
+
+    /* Peak/Avg row - high-score style display */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-row:not(.hidden) {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        max-height: 2rem;
+        opacity: 1;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value {
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        gap: 4px;
+    }
+
+    /* Backend indicator - compact badge */
+    .has-bottom-sheet .perf-overlay .perf-backend {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        border-radius: 8px;
+    }
+
+    /* Collapsed state - ultra-compact FPS badge only */
+    .has-bottom-sheet .perf-overlay.collapsed {
+        padding: 4px 10px;
+        border-radius: 16px;
+    }
+
+    .has-bottom-sheet .perf-overlay.collapsed .perf-fps {
+        min-width: auto;
+        font-size: 0.85rem;
+    }
+
+    /* -------------------------------------------------------------------------
+       High-Score Style Metrics Display
+       -------------------------------------------------------------------------
+
+       Inspired by video game leaderboards and achievement displays:
+       - Peak FPS highlighted as "personal best"
+       - Color-coded frame time (green < 16.7ms, yellow < 33ms, red > 33ms)
+       - Compact "score" badges for key metrics
+    */
+
+    /* Frame time color coding (video game style) */
+    .has-bottom-sheet .perf-overlay .perf-value[data-metric="frame"] {
+        font-weight: 600;
+    }
+
+    /* Peak FPS - "high score" gold badge styling */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value span:first-child {
+        color: #ffd700;
+        font-weight: 700;
+        text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+    }
+
+    /* Avg FPS - silver styling */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value span:last-child {
+        color: #c0c0c0;
+    }
+
+    /* Expanded state - show all metrics with high-score layout */
+    .has-bottom-sheet .perf-overlay:not(.collapsed) .perf-header {
+        padding-bottom: 6px;
+        margin-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* FPS number glow effect when hitting high values */
+    .has-bottom-sheet .perf-overlay .perf-fps.good {
+        text-shadow: 0 0 8px rgba(63, 185, 80, 0.5);
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-fps.uncapped {
+        text-shadow: 0 0 8px rgba(255, 107, 53, 0.5);
+    }
+
+    /* Achievement-style backend badge */
+    .has-bottom-sheet .perf-overlay .perf-backend[data-gpu-accelerated="true"] {
+        background: linear-gradient(135deg, rgba(63, 185, 80, 0.3), rgba(63, 185, 80, 0.1));
+        border: 1px solid rgba(63, 185, 80, 0.3);
+    }
+
+    /* "New Record" animation for peak FPS updates */
+    @keyframes peak-flash {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); color: #ffd700; }
+        100% { transform: scale(1); }
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value.new-record span:first-child {
+        animation: peak-flash 0.5s ease-out;
+    }
+
+    /* -------------------------------------------------------------------------
+       Auto-Hide Timeline Controls (YouTube/Netflix Pattern)
+       -------------------------------------------------------------------------
+       Controls fade out after 3-5 seconds of playback.
+       Tap canvas to show controls, auto-hide resumes.
+    */
+
+    .has-bottom-sheet .timeline-container {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .has-bottom-sheet.controls-hidden .timeline-container {
+        opacity: 0;
+        transform: translateY(100%);
+        pointer-events: none;
+    }
+
+    /* Canvas overlays also auto-hide during playback */
+    .has-bottom-sheet.controls-hidden .stats-overlay,
+    .has-bottom-sheet.controls-hidden .perf-overlay,
+    .has-bottom-sheet.controls-hidden .legend-panel,
+    .has-bottom-sheet.controls-hidden .authors-panel {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    /* -------------------------------------------------------------------------
+       Tap-to-Show Overlay (Video Player Pattern)
+       -------------------------------------------------------------------------
+       Large center play button appears on tap when paused.
+       Follows YouTube's "cleaner and more immersive" player pattern.
+    */
+
+    .mobile-center-play {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        width: 80px;
+        height: 80px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        cursor: pointer;
+        z-index: var(--z-canvas-overlays);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-center-play.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    .mobile-center-play:active {
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+
+    .mobile-center-play svg {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/* =============================================================================
+   Landscape Mode Adjustments
+   ============================================================================= */
+
+@media (max-width: 768px) and (orientation: landscape) {
+    .bottom-sheet {
+        height: 75vh;
+        max-height: calc(100vh - 20px);
+    }
+
+    .bottom-sheet-header {
+        padding: 6px 16px 4px;
+    }
+
+    .bottom-sheet-handle {
+        margin-bottom: 6px;
+    }
+
+    .bottom-sheet-fab {
+        bottom: max(70px, calc(70px + env(safe-area-inset-bottom)));
+        width: 48px;
+        height: 48px;
+    }
+
+    /* Landscape: Move toolbar to left edge for left thumb */
+    .has-bottom-sheet .mobile-toolbar {
+        bottom: 6px;
+        left: max(6px, env(safe-area-inset-left));
+    }
+
+    /* Timeline more compact in landscape */
+    .has-bottom-sheet .timeline-container {
+        padding: 0.35rem 0.75rem;
+        min-height: 85px;
+    }
+
+    /* Center play button smaller in landscape */
+    .mobile-center-play {
+        width: 64px;
+        height: 64px;
+    }
+
+    .mobile-center-play svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Landscape toolbar: More compact */
+    .has-bottom-sheet .mobile-toolbar-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .has-bottom-sheet .mobile-toolbar-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Landscape Performance Overlay - Non-Blocking Corner Position
+       -------------------------------------------------------------------------
+
+       In landscape mode, use left corner to avoid blocking visualization.
+       More compact layout to preserve vertical space.
+    */
+
+    .has-bottom-sheet .perf-overlay {
+        top: 6px;
+        right: auto;
+        left: max(6px, env(safe-area-inset-left));
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 0.65rem;
+    }
+
+    /* Ultra-compact FPS in landscape */
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 0.85rem;
+        min-width: 60px;
+    }
+
+    /* Horizontal inline metrics in landscape */
+    .has-bottom-sheet .perf-overlay .perf-details {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+        padding-top: 4px;
+        margin-top: 4px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-row {
+        font-size: 0.6rem;
+    }
+
+    /* Hide less critical metrics in landscape to save space */
+    .has-bottom-sheet .perf-overlay .perf-row:nth-child(n+3):not(.perf-toggle-row):not(.perf-peak-avg-row) {
+        display: none;
+    }
+
+    /* Uncapped toggle more compact in landscape */
+    .has-bottom-sheet .perf-overlay .perf-toggle-row {
+        flex-basis: auto;
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        padding-left: 8px;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch {
+        width: 36px;
+        height: 20px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider::before {
+        height: 14px;
+        width: 14px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+        transform: translateX(16px);
+    }
+}
+
+/* =============================================================================
+   Extra Small Screens (375px)
+   ============================================================================= */
+
+@media (max-width: 375px) {
+    .bottom-sheet-fab {
+        width: 52px;
+        height: 52px;
+        right: 12px;
+    }
+
+    .bottom-sheet-content {
+        padding: 0 12px 12px;
+    }
+
+    .bottom-sheet-quick-actions {
+        padding: 0 12px 10px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Extra Small Performance Overlay - Minimal Footprint
+       -------------------------------------------------------------------------
+
+       On smallest screens (iPhone SE, etc.), use absolute minimum size
+       while maintaining readability. FPS + uncapped badge only in collapsed.
+    */
+
+    .has-bottom-sheet .perf-overlay {
+        padding: 4px 8px;
+        border-radius: 14px;
+        max-width: 140px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 0.8rem;
+        min-width: 55px;
+    }
+
+    /* Collapsed: FPS only, ultra-compact badge */
+    .has-bottom-sheet .perf-overlay.collapsed {
+        padding: 3px 8px;
+    }
+
+    .has-bottom-sheet .perf-overlay.collapsed .perf-fps {
+        font-size: 0.75rem;
+    }
+
+    /* Smaller switch on tiny screens */
+    .has-bottom-sheet .perf-overlay .perf-switch {
+        width: 38px;
+        height: 20px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider::before {
+        height: 14px;
+        width: 14px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+        transform: translateX(18px);
+    }
+
+    /* Details even more compact */
+    .has-bottom-sheet .perf-overlay .perf-details {
+        gap: 4px 8px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-row {
+        font-size: 0.6rem;
+    }
+
+    /* Uncapped toggle inline with label on tiny screens */
+    .has-bottom-sheet .perf-overlay .perf-toggle-row {
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding-top: 6px;
+        margin-top: 6px;
+    }
+
+    .has-bottom-sheet .perf-overlay #perf-uncapped-label {
+        font-size: 0.6rem;
+    }
+}
+
+/* =============================================================================
+   Light Theme Mobile Adjustments
+   ============================================================================= */
+
+.light-theme.has-bottom-sheet .mobile-toolbar {
+    background: rgba(246, 248, 250, 0.95);
+}
+
+.light-theme.has-bottom-sheet .stats-overlay {
+    background: rgba(246, 248, 250, 0.95);
+}
+
+.light-theme.has-bottom-sheet .perf-overlay {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Light theme HUD adjustments */
+.light-theme.has-bottom-sheet .perf-overlay .perf-details {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+.light-theme.has-bottom-sheet .perf-overlay .perf-toggle-row {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Uncapped mode active indicator - light theme */
+.light-theme .mobile-toolbar-btn.uncapped-toggle.active {
+    background: rgba(255, 107, 53, 0.15);
+}
+
+.light-theme.has-bottom-sheet .timeline-container {
+    background: var(--bg-secondary);
+}
+
+/* =============================================================================
+   First-Run Onboarding Hints
+   =============================================================================
+
+   Contextual tips for first-time users. Hidden after first interaction.
+   Based on Material Design coach marks and YouTube's gesture education.
+*/
+
+.mobile-onboarding-hint {
+    position: fixed;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    text-align: center;
+    z-index: 600;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+    pointer-events: none;
+    max-width: 280px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-onboarding-hint.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.mobile-onboarding-hint-icon {
+    display: block;
+    margin: 0 auto 8px;
+    width: 32px;
+    height: 32px;
+    opacity: 0.8;
+}
+
+.mobile-onboarding-hint-text {
+    line-height: 1.4;
+}
+
+.mobile-onboarding-hint-dismiss {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 6px 16px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-onboarding-hint-dismiss:active {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Swipe hint animation */
+@keyframes swipe-hint {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.mobile-onboarding-hint.swipe-hint .mobile-onboarding-hint-icon {
+    animation: swipe-hint 1.5s ease-in-out infinite;
+}
+
+/* Tap hint pulse */
+@keyframes tap-hint {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+}
+
+.mobile-onboarding-hint.tap-hint .mobile-onboarding-hint-icon {
+    animation: tap-hint 1.2s ease-in-out infinite;
+}
+
+/* =============================================================================
+   Gesture Feedback Indicators
+   =============================================================================
+
+   Visual feedback for gestures (pinch zoom, pan, etc.)
+   Provides immediate feedback for touch interactions.
+*/
+
+.gesture-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 550;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+.gesture-indicator.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.gesture-indicator-zoom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gesture-indicator-zoom svg {
+    width: 20px;
+    height: 20px;
+}

@@ -1,0 +1,466 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Overlay Styles
+ *
+ * Canvas overlays including legend panel, stats overlay,
+ * and performance overlay with FPS toggle switch.
+ */
+
+/* =============================================================================
+   Legend Panel
+   ============================================================================= */
+
+.legend-panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(22, 27, 34, 0.95);
+    border-radius: 8px;
+    padding: 0.75rem;
+    max-width: 180px;
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: var(--z-canvas-overlays);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.legend-panel.collapsed {
+    max-height: 32px;
+    overflow: hidden;
+}
+
+.legend-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+}
+
+.legend-header .legend-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.legend-toggle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.legend-panel.collapsed .legend-toggle {
+    transform: rotate(180deg);
+}
+
+.legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.legend-ext {
+    color: var(--text-secondary);
+    flex: 1;
+}
+
+.legend-count {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Legend Structure Section (directories explanation)
+   ----------------------------------------------------------------------------- */
+
+.legend-structure {
+    margin-top: 0.5rem;
+}
+
+.legend-divider {
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+.legend-item-structure {
+    cursor: help;
+}
+
+.legend-item-structure:hover {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    margin: -0.15rem;
+    padding: 0.15rem;
+}
+
+.legend-structure-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   Stats Overlay
+   ============================================================================= */
+
+.stats-overlay {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(22, 27, 34, 0.9);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    z-index: var(--z-canvas-overlays); /* Ensure stats overlay is above canvas for tooltip hover */
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Stats with tooltips should show help cursor */
+.stat-item[title] {
+    cursor: help;
+}
+
+.stat-value {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+/* =============================================================================
+   Performance Overlay (FPS, metrics)
+   ============================================================================= */
+
+.perf-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(13, 17, 23, 0.92);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 0.7rem;
+    min-width: 140px;
+    z-index: var(--z-canvas-perf);
+}
+
+.perf-overlay.collapsed {
+    min-width: auto;
+}
+
+.perf-overlay.collapsed .perf-details {
+    display: none;
+}
+
+.perf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 0.4rem;
+}
+
+.perf-overlay.collapsed .perf-header {
+    margin-bottom: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   FPS Display
+   ----------------------------------------------------------------------------- */
+
+.perf-fps {
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.perf-fps.good { color: var(--success); }
+.perf-fps.ok { color: var(--warning); }
+.perf-fps.bad { color: var(--error); }
+.perf-fps.paused { color: var(--text-secondary); }
+.perf-fps.complete { color: var(--accent-blue); }
+.perf-fps.uncapped { color: #ff6b35; } /* Orange for uncapped mode */
+
+/* -----------------------------------------------------------------------------
+   Toggle Switch (for uncapped FPS)
+   ----------------------------------------------------------------------------- */
+
+.perf-toggle-row {
+    margin-top: 0.3rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--border);
+}
+
+.perf-switch {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+}
+
+.perf-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.perf-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-tertiary);
+    border-radius: 18px;
+    transition: 0.2s;
+}
+
+.perf-slider::before {
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--text-muted);
+    border-radius: 50%;
+    transition: 0.2s;
+}
+
+.perf-switch input:checked + .perf-slider {
+    background-color: #ff6b35;
+}
+
+.perf-switch input:checked + .perf-slider::before {
+    transform: translateX(14px);
+    background-color: white;
+}
+
+.perf-switch input:focus + .perf-slider {
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.3);
+}
+
+.perf-toggle {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.perf-overlay.collapsed .perf-toggle {
+    transform: rotate(180deg);
+}
+
+/* -----------------------------------------------------------------------------
+   Performance Details
+   ----------------------------------------------------------------------------- */
+
+.perf-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.4rem;
+}
+
+.perf-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.perf-label {
+    color: var(--text-muted);
+}
+
+.perf-value {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+/* Peak/Avg FPS row - shown only in uncapped mode */
+.perf-peak-avg-row {
+    transition: opacity 0.2s ease, max-height 0.2s ease;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+}
+
+.perf-peak-avg-row:not(.hidden) {
+    max-height: 2rem;
+    opacity: 1;
+}
+
+.perf-peak-avg-value {
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.perf-peak-avg-value span:first-child {
+    color: var(--success);
+}
+
+/* -----------------------------------------------------------------------------
+   Backend Indicator
+   ----------------------------------------------------------------------------- */
+
+/* Color coding - deterministic from WASM */
+.perf-backend {
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* GPU-accelerated backends (green) */
+.perf-backend[data-gpu-accelerated="true"] {
+    background: rgba(63, 185, 80, 0.2);
+    color: var(--success);
+}
+
+/* CPU/Software backend (amber) */
+.perf-backend[data-gpu-accelerated="false"]:not([data-backend="unknown"]) {
+    background: rgba(210, 153, 34, 0.2);
+    color: var(--warning);
+}
+
+/* Unknown state (muted) */
+.perf-backend[data-backend="unknown"] {
+    background: rgba(132, 141, 151, 0.2);
+    color: var(--text-muted);
+}
+
+/* =============================================================================
+   Authors Panel
+   ============================================================================= */
+
+.authors-panel {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(22, 27, 34, 0.95);
+    border-radius: 8px;
+    padding: 0.75rem;
+    max-width: 180px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: var(--z-canvas-overlays);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.authors-panel.collapsed {
+    max-height: 32px;
+    overflow: hidden;
+}
+
+.authors-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+}
+
+.authors-header .authors-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.authors-toggle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.authors-panel.collapsed .authors-toggle {
+    transform: rotate(180deg);
+}
+
+.authors-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.author-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.author-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.author-name {
+    color: var(--text-secondary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.author-commits {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}

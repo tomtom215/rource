@@ -1,0 +1,333 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Input and Form Styles
+ *
+ * Form inputs, textareas, file upload areas, and related components.
+ * Includes GitHub URL input, repo chips, fetch status, and command boxes.
+ */
+
+/* =============================================================================
+   GitHub URL Input
+   ============================================================================= */
+
+.github-input-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    width: 100%;
+}
+
+.github-input-group input {
+    flex: 1 1 0;
+    min-width: 0; /* Allow shrinking below content size */
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: var(--spacing-sm) 0.6rem;
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    width: 100%;
+}
+
+.github-input-group input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+}
+
+.github-input-group input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.github-input-group .btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* =============================================================================
+   Popular Repos / Chips
+   ============================================================================= */
+
+.popular-repos {
+    margin-top: 0.75rem;
+}
+
+.popular-repos-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.repo-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.repo-chip {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 16px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.repo-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(233, 69, 96, 0.1);
+}
+
+.repo-chip svg {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   Fetch Status
+   ============================================================================= */
+
+.fetch-status {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    display: none;
+}
+
+.fetch-status.visible {
+    display: block;
+}
+
+.fetch-status.loading {
+    color: var(--accent-blue);
+}
+
+.fetch-status.error {
+    color: var(--error);
+    background: rgba(248, 81, 73, 0.1);
+    border: 1px solid rgba(248, 81, 73, 0.3);
+}
+
+.fetch-status.success {
+    color: var(--success);
+    background: rgba(63, 185, 80, 0.1);
+    border: 1px solid rgba(63, 185, 80, 0.3);
+}
+
+.fetch-progress {
+    margin-top: 0.5rem;
+    height: 4px;
+    background: var(--bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.fetch-progress-bar {
+    height: 100%;
+    background: var(--accent-blue);
+    width: 0%;
+    transition: width 0.3s;
+}
+
+/* =============================================================================
+   Rate Limit Status
+   ============================================================================= */
+
+.rate-limit-note {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.rate-limit-status {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rate-limit-status.hidden {
+    display: none;
+}
+
+.rate-limit-status.ok {
+    background: rgba(63, 185, 80, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(63, 185, 80, 0.2);
+}
+
+.rate-limit-status.low {
+    background: rgba(210, 153, 34, 0.1);
+    color: var(--warning);
+    border: 1px solid rgba(210, 153, 34, 0.2);
+}
+
+.rate-limit-status.exhausted {
+    background: rgba(248, 81, 73, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(248, 81, 73, 0.2);
+}
+
+.rate-limit-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   Textarea
+   ============================================================================= */
+
+textarea {
+    width: 100%;
+    height: 100px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    resize: vertical;
+    margin-bottom: 0.75rem;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* =============================================================================
+   File Upload
+   ============================================================================= */
+
+.file-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.file-upload-area:hover {
+    border-color: var(--accent);
+    background: rgba(233, 69, 96, 0.05);
+}
+
+.file-upload-area.dragover {
+    border-color: var(--accent);
+    background: rgba(233, 69, 96, 0.1);
+}
+
+.file-upload-area input[type="file"] {
+    display: none;
+}
+
+.file-upload-icon {
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+}
+
+.file-upload-icon svg {
+    width: 48px;
+    height: 48px;
+}
+
+.file-upload-area:hover .file-upload-icon {
+    color: var(--accent);
+}
+
+.file-upload-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.file-upload-text strong {
+    color: var(--accent);
+}
+
+.file-upload-privacy {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    opacity: 0.8;
+}
+
+.file-name {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    word-break: break-all;
+}
+
+/* =============================================================================
+   Command Box
+   ============================================================================= */
+
+.command-box {
+    background: var(--bg-tertiary);
+    padding: 0.6rem;
+    border-radius: 6px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.command-box code {
+    color: var(--text-primary);
+    white-space: nowrap;
+    display: block;
+    line-height: 1.4;
+}
+
+/* =============================================================================
+   Help Text
+   ============================================================================= */
+
+.help-text {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.help-text code {
+    background: var(--bg-tertiary);
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    word-break: break-all;
+}

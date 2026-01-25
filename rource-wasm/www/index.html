@@ -270,6 +270,13 @@
             <div id="canvas-container">
                 <canvas id="canvas" width="1280" height="720" aria-label="Rource visualization canvas"></canvas>
 
+                <!-- Mobile Center Play Button (YouTube pattern) -->
+                <button type="button" id="mobile-center-play" class="mobile-center-play" aria-label="Play">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+
                 <!-- Mobile Quick Action Toolbar -->
                 <div class="mobile-toolbar" role="toolbar" aria-label="Quick actions">
                     <button type="button" id="mobile-screenshot-btn" class="mobile-toolbar-btn" aria-label="Screenshot" title="Screenshot">
@@ -285,6 +292,11 @@
                             <line x1="4" y1="15" x2="20" y2="15"></line>
                             <line x1="10" y1="3" x2="8" y2="21"></line>
                             <line x1="16" y1="3" x2="14" y2="21"></line>
+                        </svg>
+                    </button>
+                    <button type="button" id="mobile-uncapped-btn" class="mobile-toolbar-btn uncapped-toggle" aria-label="Toggle uncapped FPS" aria-pressed="false" title="Uncapped FPS (turbo mode)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                         </svg>
                     </button>
                     <div class="mobile-toolbar-divider"></div>
