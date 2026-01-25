@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769296463791,
+  "lastUpdate": 1769301354324,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -1895,6 +1895,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/e2f1345b2f8ce659f72153516f7173fff1e9a875"
         },
         "date": 1769296462976,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3911576,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2769980,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1069735,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52e65b5004ea7101f85c3a2a13ba02349cf4c881",
+          "message": "Merge pull request #159 from tomtom215/claude/optimize-rource-performance-TJeDm\n\nDocument Rust 1.93.0 upgrade performance benchmark analysis",
+          "timestamp": "2026-01-25T01:33:50+01:00",
+          "tree_id": "9832a98c8949e29358c06cc76aae2c5b6f6bd1ae",
+          "url": "https://github.com/tomtom215/rource/commit/52e65b5004ea7101f85c3a2a13ba02349cf4c881"
+        },
+        "date": 1769301353465,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
