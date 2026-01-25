@@ -246,6 +246,64 @@
     }
 
     /* -------------------------------------------------------------------------
+       Segmented Tabs (Progressive Disclosure Pattern)
+       -------------------------------------------------------------------------
+       Tabs allow users to navigate between sections without scrolling.
+       Follows Material Design 3 "Segmented buttons" pattern.
+    */
+
+    .bottom-sheet-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 0 16px 12px;
+        background: var(--bg-primary);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .bottom-sheet-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-tab:active {
+        transform: scale(0.98);
+    }
+
+    .bottom-sheet-tab.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+    }
+
+    .bottom-sheet-tab svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .bottom-sheet-tab-content {
+        display: none;
+    }
+
+    .bottom-sheet-tab-content.active {
+        display: block;
+    }
+
+    /* -------------------------------------------------------------------------
        Quick Actions
        ------------------------------------------------------------------------- */
 
@@ -264,7 +322,9 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
-        padding: 16px 12px;
+        /* FIXED: Increase touch target to 48px minimum */
+        min-height: 72px;
+        padding: 14px 12px;
         background: var(--bg-tertiary);
         border: 1px solid var(--border);
         border-radius: 12px;

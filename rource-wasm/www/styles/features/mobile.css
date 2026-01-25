@@ -530,7 +530,18 @@
 
 /* =============================================================================
    Mobile Toolbar
-   ============================================================================= */
+   =============================================================================
+
+   THUMB ZONE DESIGN:
+   - Positioned at BOTTOM of screen for easy one-handed reach
+   - Industry standard: bottom third is "easy to reach" zone
+   - Touch targets: minimum 44px (Apple HIG) / ideally 48-60px for games
+
+   References:
+   - NN/g: https://www.nngroup.com/articles/touch-target-size/
+   - Material Design 3: 48dp minimum touch target
+   - Apple HIG: 44pt minimum
+*/
 
 .mobile-toolbar {
     display: none; /* Hidden on desktop */
@@ -540,38 +551,48 @@
     .has-bottom-sheet .mobile-toolbar {
         display: flex;
         position: absolute;
-        top: 8px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 50;
-        background: rgba(22, 27, 34, 0.9);
+        /* FIXED: Move from top to bottom for thumb accessibility */
+        bottom: 8px;
+        left: 8px;
+        z-index: var(--z-canvas-overlays);
+        background: rgba(22, 27, 34, 0.92);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border-radius: 20px;
-        padding: 6px 8px;
-        gap: 4px;
+        border-radius: 24px;
+        padding: 6px 10px;
+        gap: 6px;
         border: 1px solid var(--border);
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        /* Auto-hide support */
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    /* Auto-hide when playing (add .controls-hidden via JS) */
+    .has-bottom-sheet.controls-hidden .mobile-toolbar {
+        opacity: 0;
+        transform: translateY(20px);
+        pointer-events: none;
     }
 
     .mobile-toolbar-btn {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
+        /* FIXED: Increase to 44px minimum touch target */
+        width: 44px;
+        height: 44px;
         background: transparent;
         border: none;
         border-radius: 12px;
         color: var(--text-secondary);
         cursor: pointer;
-        transition: all 0.15s ease;
+        transition: background 0.15s ease, transform 0.15s ease;
         -webkit-tap-highlight-color: transparent;
     }
 
     .mobile-toolbar-btn:active {
         background: var(--bg-tertiary);
-        transform: scale(0.95);
+        transform: scale(0.92);
     }
 
     .mobile-toolbar-btn.active {
@@ -585,8 +606,8 @@
     }
 
     .mobile-toolbar-btn svg {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
     }
 
     /* Theme button icon visibility */
@@ -608,9 +629,9 @@
 
     .mobile-toolbar-divider {
         width: 1px;
-        height: 24px;
+        height: 28px;
         background: var(--border);
-        margin: 0 2px;
+        margin: 0 4px;
         align-self: center;
     }
 }
@@ -649,19 +670,100 @@
         display: none !important;
     }
 
-    /* FAB repositioned for mobile */
+    /* FAB repositioned for mobile - right corner, above timeline
+       FIXED: Move to right edge for thumb accessibility, clear of timeline */
     .has-bottom-sheet .bottom-sheet-fab {
-        bottom: max(170px, calc(170px + env(safe-area-inset-bottom)));
-        right: 12px;
-        width: 48px;
-        height: 48px;
+        bottom: max(130px, calc(130px + env(safe-area-inset-bottom)));
+        right: 8px;
+        /* 56px is Material Design 3 standard FAB size */
+        width: 56px;
+        height: 56px;
         z-index: 200;
+        /* Auto-hide support */
+        transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s ease;
+    }
+
+    /* Auto-hide FAB when playing */
+    .has-bottom-sheet.controls-hidden .bottom-sheet-fab {
+        opacity: 0;
+        transform: scale(0.8);
+        pointer-events: none;
     }
 
     /* App container full width on mobile */
     .has-bottom-sheet .app-container {
         padding: 0;
         gap: 0;
+    }
+
+    /* -------------------------------------------------------------------------
+       Auto-Hide Timeline Controls (YouTube/Netflix Pattern)
+       -------------------------------------------------------------------------
+       Controls fade out after 3-5 seconds of playback.
+       Tap canvas to show controls, auto-hide resumes.
+    */
+
+    .has-bottom-sheet .timeline-container {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .has-bottom-sheet.controls-hidden .timeline-container {
+        opacity: 0;
+        transform: translateY(100%);
+        pointer-events: none;
+    }
+
+    /* Canvas overlays also auto-hide during playback */
+    .has-bottom-sheet.controls-hidden .stats-overlay,
+    .has-bottom-sheet.controls-hidden .perf-overlay,
+    .has-bottom-sheet.controls-hidden .legend-panel,
+    .has-bottom-sheet.controls-hidden .authors-panel {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    /* -------------------------------------------------------------------------
+       Tap-to-Show Overlay (Video Player Pattern)
+       -------------------------------------------------------------------------
+       Large center play button appears on tap when paused.
+       Follows YouTube's "cleaner and more immersive" player pattern.
+    */
+
+    .mobile-center-play {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        width: 80px;
+        height: 80px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        cursor: pointer;
+        z-index: var(--z-canvas-overlays);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-center-play.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    .mobile-center-play:active {
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+
+    .mobile-center-play svg {
+        width: 40px;
+        height: 40px;
     }
 }
 
@@ -671,43 +773,56 @@
 
 @media (max-width: 768px) and (orientation: landscape) {
     .bottom-sheet {
-        height: 80vh;
+        height: 75vh;
         max-height: calc(100vh - 20px);
     }
 
     .bottom-sheet-header {
-        padding: 8px 16px 4px;
+        padding: 6px 16px 4px;
     }
 
     .bottom-sheet-handle {
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
     .bottom-sheet-fab {
-        bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
+        bottom: max(70px, calc(70px + env(safe-area-inset-bottom)));
         width: 48px;
         height: 48px;
     }
 
+    /* Landscape: Move toolbar to left edge for left thumb */
     .has-bottom-sheet .mobile-toolbar {
-        top: 4px;
-        padding: 4px 6px;
+        bottom: 6px;
+        left: max(6px, env(safe-area-inset-left));
     }
 
-    .has-bottom-sheet .mobile-toolbar-btn {
+    /* Timeline more compact in landscape */
+    .has-bottom-sheet .timeline-container {
+        padding: 0.35rem 0.75rem;
+        min-height: 85px;
+    }
+
+    /* Center play button smaller in landscape */
+    .mobile-center-play {
+        width: 64px;
+        height: 64px;
+    }
+
+    .mobile-center-play svg {
         width: 32px;
         height: 32px;
     }
 
-    .has-bottom-sheet .mobile-toolbar-btn svg {
-        width: 16px;
-        height: 16px;
+    /* Landscape toolbar: More compact */
+    .has-bottom-sheet .mobile-toolbar-btn {
+        width: 40px;
+        height: 40px;
     }
 
-    .has-bottom-sheet .bottom-sheet-fab {
-        bottom: max(100px, calc(100px + env(safe-area-inset-bottom)));
-        width: 44px;
-        height: 44px;
+    .has-bottom-sheet .mobile-toolbar-btn svg {
+        width: 18px;
+        height: 18px;
     }
 }
 
@@ -749,4 +864,131 @@
 
 .light-theme.has-bottom-sheet .timeline-container {
     background: var(--bg-secondary);
+}
+
+/* =============================================================================
+   First-Run Onboarding Hints
+   =============================================================================
+
+   Contextual tips for first-time users. Hidden after first interaction.
+   Based on Material Design coach marks and YouTube's gesture education.
+*/
+
+.mobile-onboarding-hint {
+    position: fixed;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    text-align: center;
+    z-index: 600;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+    pointer-events: none;
+    max-width: 280px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-onboarding-hint.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.mobile-onboarding-hint-icon {
+    display: block;
+    margin: 0 auto 8px;
+    width: 32px;
+    height: 32px;
+    opacity: 0.8;
+}
+
+.mobile-onboarding-hint-text {
+    line-height: 1.4;
+}
+
+.mobile-onboarding-hint-dismiss {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 6px 16px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-onboarding-hint-dismiss:active {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Swipe hint animation */
+@keyframes swipe-hint {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.mobile-onboarding-hint.swipe-hint .mobile-onboarding-hint-icon {
+    animation: swipe-hint 1.5s ease-in-out infinite;
+}
+
+/* Tap hint pulse */
+@keyframes tap-hint {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+}
+
+.mobile-onboarding-hint.tap-hint .mobile-onboarding-hint-icon {
+    animation: tap-hint 1.2s ease-in-out infinite;
+}
+
+/* =============================================================================
+   Gesture Feedback Indicators
+   =============================================================================
+
+   Visual feedback for gestures (pinch zoom, pan, etc.)
+   Provides immediate feedback for touch interactions.
+*/
+
+.gesture-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 550;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+.gesture-indicator.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.gesture-indicator-zoom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gesture-indicator-zoom svg {
+    width: 20px;
+    height: 20px;
 }
