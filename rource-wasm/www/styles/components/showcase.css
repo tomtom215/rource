@@ -41,7 +41,7 @@
     font-size: 0.55rem;
     padding: 0.15rem 0.4rem;
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
     border-radius: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -75,7 +75,7 @@
 
 .showcase-btn {
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
     border: none;
     padding: 0.6rem 1rem;
     border-radius: 8px;

@@ -45,19 +45,19 @@
 .btn-record.preparing {
     background: var(--warning);
     border-color: var(--warning);
-    color: white;
+    color: var(--text-on-accent);
     animation: preparingPulse 0.5s ease-in-out infinite;
 }
 
 .btn-record.recording {
     background: var(--error);
     border-color: var(--error);
-    color: white;
+    color: var(--text-on-accent);
 }
 
 .btn-record.recording:hover {
-    background: #ff6b6b;
-    border-color: #ff6b6b;
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
 }
 
 /* =============================================================================
@@ -82,7 +82,7 @@
 .share-btn:hover {
     background: var(--accent-blue);
     border-color: var(--accent-blue);
-    color: white;
+    color: var(--text-on-accent);
 }
 
 .share-btn:focus-visible {

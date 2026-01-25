@@ -55,7 +55,7 @@ header {
 header h1 {
     font-size: 1.25rem;
     font-weight: 600;
-    background: linear-gradient(135deg, var(--accent) 0%, #ff9a9e 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -111,19 +111,19 @@ header h1 {
     font-weight: 500;
     padding: 0.5rem 0.85rem;
     border-radius: 6px;
-    border: 1px solid #d4a72c;
-    background: rgba(212, 167, 44, 0.1);
+    border: 1px solid var(--accent-gold);
+    background: color-mix(in srgb, var(--accent-gold) 10%, transparent);
     /* Use composited properties only for better performance */
     transition: opacity 0.2s, transform 0.2s;
 }
 
 .github-link:hover {
-    color: white;
-    border-color: #f0c142;
-    background: rgba(212, 167, 44, 0.25);
+    color: var(--text-on-accent);
+    border-color: var(--accent-gold-hover);
+    background: color-mix(in srgb, var(--accent-gold) 25%, transparent);
     text-decoration: none;
 }
 
 .github-link svg {
-    fill: #f0c142;
+    fill: var(--accent-gold-hover);
 }

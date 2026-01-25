@@ -51,7 +51,7 @@
     font-size: 0.75rem;
     padding: 0.15rem 0.4rem;
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
     border-radius: 10px;
     font-weight: 500;
     flex-shrink: 0;

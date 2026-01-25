@@ -14,20 +14,39 @@
     --bg-secondary: #161b22;
     --bg-tertiary: #21262d;
     --bg-canvas: #010409;
+
+    /* Accent Colors */
     --accent: #e94560;
     --accent-hover: #ff6b6b;
+    --accent-light: #ff9a9e;              /* Gradient accent (pink) */
     --accent-secondary: #238636;
+    --accent-secondary-hover: #2ea043;    /* Success button hover */
     --accent-blue: #58a6ff;
+    --accent-blue-light: #4d9eff;         /* Timeline scrubbing state */
     --accent-purple: #a855f7;
+    --accent-orange: #ff6b35;             /* Uncapped FPS indicator */
+    --accent-gold: #d4a72c;               /* Special highlight (GitHub link) */
+    --accent-gold-hover: #f0c142;         /* Special highlight hover */
+
+    /* Text Colors */
     --text-primary: #f0f6fc;
     --text-secondary: #8b949e;
     --text-muted: #6e7681;
+    --text-on-accent: #ffffff;            /* White text on accent backgrounds */
+
+    /* Border Colors */
     --border: #30363d;
     --border-light: #484f58;
+
+    /* Semantic Colors */
     --success: #3fb950;
     --error: #f85149;
     --warning: #d29922;
+
+    /* Shadows & Overlays */
     --shadow: rgba(0, 0, 0, 0.4);
+    --backdrop: rgba(0, 0, 0, 0.4);       /* Modal/overlay backdrop */
+    --backdrop-blur: rgba(0, 0, 0, 0.85); /* Stronger backdrop for modals */
 
     /* Spacing Scale */
     --spacing-xs: 0.25rem;
@@ -61,16 +80,36 @@
     --font-size-2xl: 1.5rem;
     --line-height: 1.5;
 
-    /* Z-index Scale (organized by layer) */
+    /* Z-index Scale (organized by layer)
+     * ─────────────────────────────────
+     * Base layer:          1
+     * Canvas overlays:     50-60
+     * Dropdowns/headers:   100
+     * Sidebars/drawers:    140-151
+     * Sticky elements:     200-250
+     * Modals/sheets:       299-300
+     * Popovers:            400
+     * Overlays:            500-550
+     * Toasts:              600
+     * Speed select:        1001
+     * Fullscreen:          9999-10002
+     */
     --z-base: 1;
-    --z-canvas-overlays: 50;      /* Legend, stats, perf overlays on canvas */
+    --z-canvas-overlays: 50;      /* Legend, stats overlays on canvas */
     --z-canvas-perf: 60;          /* Performance overlay (above other overlays) */
     --z-dropdown: 100;
+    --z-sidebar-overlay: 140;     /* Sidebar backdrop (tablet breakpoint) */
+    --z-sidebar-drawer: 150;      /* Slide-out sidebar (tablet breakpoint) */
+    --z-sidebar-scroll: 151;      /* Scroll indicator in sidebar */
     --z-sticky: 200;
-    --z-modal: 300;
+    --z-fab: 250;                 /* Floating action buttons */
+    --z-modal-backdrop: 299;      /* Modal/sheet backdrop */
+    --z-modal: 300;               /* Modal dialogs, bottom sheets */
     --z-popover: 400;
-    --z-overlay: 500;
+    --z-overlay: 500;             /* Full-screen overlays (help, etc.) */
+    --z-gesture: 550;             /* Gesture indicators */
     --z-toast: 600;
+    --z-onboarding: 600;          /* Onboarding hints (same as toast) */
     --z-speed-select: 1001;       /* Speed dropdown (above toast) */
     --z-fullscreen: 9999;         /* Pseudo-fullscreen container */
     --z-fullscreen-timeline: 10000;  /* Timeline in fullscreen mode */
