@@ -72,6 +72,13 @@ footer .separator {
     }
 }
 
+/* Mobile landscape: Hide footer to maximize vertical canvas space */
+@media (max-width: 768px) and (orientation: landscape) {
+    footer {
+        display: none;
+    }
+}
+
 /* Hide footer in fullscreen */
 :fullscreen footer,
 :-webkit-full-screen footer,

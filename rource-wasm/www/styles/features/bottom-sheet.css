@@ -960,26 +960,9 @@
    Landscape Adjustments
    ============================================================================= */
 
-@media (max-width: 768px) and (orientation: landscape) {
-    .bottom-sheet {
-        height: 80vh;
-        max-height: calc(100vh - 20px);
-    }
-
-    .bottom-sheet-header {
-        padding: 8px 16px 4px;
-    }
-
-    .bottom-sheet-handle {
-        margin-bottom: 8px;
-    }
-
-    .bottom-sheet-fab {
-        bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
-        width: 48px;
-        height: 48px;
-    }
-}
+/* NOTE: Landscape-specific bottom sheet rules are consolidated in mobile.css
+   to avoid duplication and ensure consistent behavior with other mobile
+   landscape optimizations (toolbar, timeline, perf overlay, etc.) */
 
 /* =============================================================================
    Extra Small Screens (iPhone SE)

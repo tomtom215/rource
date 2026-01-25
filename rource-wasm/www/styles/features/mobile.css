@@ -847,15 +847,21 @@
         height: 32px;
     }
 
-    /* Landscape toolbar: More compact */
+    /* Landscape toolbar: Maintain 44px touch targets (WCAG 2.5.5) with smaller icons */
     .has-bottom-sheet .mobile-toolbar-btn {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
+        padding: 0;
     }
 
     .has-bottom-sheet .mobile-toolbar-btn svg {
         width: 18px;
         height: 18px;
+    }
+
+    /* Tighter toolbar spacing in landscape */
+    .has-bottom-sheet .mobile-toolbar {
+        gap: 2px;
     }
 
     /* -------------------------------------------------------------------------
@@ -921,6 +927,33 @@
 
     .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
         transform: translateX(16px);
+    }
+
+    /* -------------------------------------------------------------------------
+       Landscape Stats Overlay - Repositioned for Landscape Layout
+       -------------------------------------------------------------------------
+
+       In landscape, vertical space is limited. Stats overlay moves to right-center
+       area to avoid overlapping the left-positioned toolbar.
+    */
+
+    .has-bottom-sheet .stats-overlay {
+        /* Move to right side, above timeline but avoiding FAB */
+        bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
+        left: auto;
+        right: max(70px, calc(70px + env(safe-area-inset-right)));
+        transform: none;
+        padding: 4px 10px;
+        gap: 10px;
+        max-width: calc(50vw - 80px);
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-value {
+        font-size: 0.7rem;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-label {
+        font-size: 0.5rem;
     }
 }
 
