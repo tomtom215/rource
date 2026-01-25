@@ -7,7 +7,7 @@ respective domains but may not have direct applicability to Rource's current arc
 **Philosophy**: Even when an algorithm doesn't directly apply, understanding its techniques can inspire
 optimization strategies and inform architectural decisions.
 
-**Last Updated**: 2026-01-25 (Phase 56 added)
+**Last Updated**: 2026-01-25 (Phase 57 added)
 
 ---
 
@@ -18,8 +18,9 @@ optimization strategies and inform architectural decisions.
 3. [2025 Mathematical Breakthroughs](#2025-mathematical-breakthroughs)
 4. [Targeted Optimization Algorithms (Phase 55)](#targeted-optimization-algorithms-phase-55)
 5. [Quantum Algorithms for Classical Simulation (Phase 56)](#quantum-algorithms-for-classical-simulation-phase-56)
-6. [Applicability Framework](#applicability-framework)
-7. [Future Exploration Queue](#future-exploration-queue)
+6. [Cutting-Edge WASM Optimization Techniques (Phase 57)](#cutting-edge-wasm-optimization-techniques-phase-57)
+7. [Applicability Framework](#applicability-framework)
+8. [Future Exploration Queue](#future-exploration-queue)
 
 ---
 
@@ -1395,6 +1396,268 @@ far below Rource's 10K-100K+ entity requirements.
 
 ---
 
+## Cutting-Edge WASM Optimization Techniques (Phase 57)
+
+### Overview
+
+This section documents cutting-edge Rust + WebAssembly optimization techniques for 2025-2026,
+evaluating their applicability to Rource's deterministic rendering and physics simulation workloads.
+
+**Source**: "Cutting-edge Rust + WebAssembly optimization techniques for 2025-2026"
+
+### Techniques Evaluated
+
+| Technique | Category | Expected Gain | Rource Status |
+|-----------|----------|---------------|---------------|
+| Relaxed-SIMD | Instruction | 15-30% | NOT APPLICABLE (determinism) |
+| Morton-ordered structures | Spatial | 20-50% | MARGINALLY APPLICABLE |
+| Structure-of-Arrays (SoA) | Memory | 20-200% | LOW PRIORITY |
+| wasm-opt -O4 | Build | 10-40% | ALREADY EQUIVALENT |
+| WebGPU subgroups | GPU | 30-50% | NOT APPLICABLE (browser support) |
+| Dual Kawase blur | Rendering | 200-400% | NOT APPLICABLE (small kernel) |
+| Hierarchical Z-buffer | Rendering | 50-200% | NOT APPLICABLE (2D only) |
+
+---
+
+### Relaxed-SIMD (+relaxed-simd)
+
+**Specification**: WebAssembly Relaxed-SIMD (Phase 5, standardized)
+
+**New Instructions**:
+- `f32x4.relaxed_fma`: Fused multiply-add
+- `f32x4.relaxed_reciprocal_sqrt`: Hardware rsqrt (~12 bits precision)
+- `i8x16.relaxed_laneselect`: Branchless lane selection
+
+**Enable Flag**:
+```toml
+# .cargo/config.toml
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128,+relaxed-simd"]
+```
+
+**Critical Caveat**:
+
+> "Relaxed-SIMD introduces non-deterministic behavior—identical inputs may produce
+> slightly different outputs across hardware."
+
+**Rource Assessment**: **NOT APPLICABLE**
+
+Rource's software renderer requires 100% deterministic output:
+- Fixed-point arithmetic (8.8, 16.16 formats)
+- Compile-time lookup tables for sqrt, division
+- Explicit rounding modes
+
+Relaxed-SIMD would break the determinism guarantee that ensures reproducible
+visualization output across all platforms.
+
+---
+
+### Morton-Ordered Linear Structures
+
+**Concept**: Replace pointer-based trees with Morton-encoded sorted arrays.
+
+**Morton (Z-order) Encoding**:
+```rust
+pub fn morton_encode_2d(x: u16, y: u16) -> u32 {
+    fn spread(mut n: u32) -> u32 {
+        n = (n | (n << 8)) & 0x00FF00FF;
+        n = (n | (n << 4)) & 0x0F0F0F0F;
+        n = (n | (n << 2)) & 0x33333333;
+        (n | (n << 1)) & 0x55555555
+    }
+    spread(x as u32) | (spread(y as u32) << 1)
+}
+```
+
+**Benefits**:
+- Cache-friendly sequential access
+- ~2× bandwidth reduction vs pointer chasing
+- Simple binary search for queries
+
+**Complexity**:
+| Operation | QuadTree | Morton Linear |
+|-----------|----------|---------------|
+| Lookup | O(log n) | O(log n) |
+| Range query | O(log n + k) | O(log n + k) |
+| Insert | O(log n) | O(n) resort |
+| Cache | Pointer chasing | Sequential |
+
+**Rource Assessment**: **MARGINALLY APPLICABLE**
+
+Current QuadTree is already O(log n). GPU spatial hash uses grid-based indexing
+(conceptually similar to Morton). Marginal benefit for high refactoring cost.
+
+---
+
+### Structure-of-Arrays (SoA)
+
+**Concept**: Separate Vec per field instead of Vec of structs.
+
+**soa_derive Crate** (v0.14.0):
+```rust
+use soa_derive::StructOfArray;
+
+#[derive(StructOfArray)]
+pub struct Entity {
+    pub position: [f32; 2],
+    pub velocity: [f32; 2],
+    pub color: [u8; 4],
+    pub flags: u32,
+}
+
+// Physics only touches positions and velocities
+fn update(entities: &mut EntityVec) {
+    for (pos, vel) in soa_zip!(&mut entities, [mut position, velocity]) {
+        pos[0] += vel[0];
+        pos[1] += vel[1];
+    }
+}
+```
+
+**Benefits**:
+- Cache-friendly field-selective iteration
+- 1.2-4× speedup depending on access patterns
+- Automatic with `soa_derive`
+
+**Rource Assessment**: **LOW PRIORITY**
+
+- FileNode has 16 fields; SoA would require major refactoring
+- GPU physics already uses minimal `ComputeEntity` struct
+- CPU physics is fallback only
+
+---
+
+### wasm-opt Configuration
+
+**Research Recommendation**:
+```toml
+wasm-opt = ["-O4", "--flexible-inline-max-function-size", "4294967295"]
+```
+
+**Current Rource Configuration** (build-wasm.sh):
+```bash
+wasm-opt \
+    --enable-simd \
+    --enable-bulk-memory \
+    -O3 --converge --low-memory-unused \
+    -o output.wasm input.wasm
+```
+
+**Comparison**:
+| Setting | Recommended | Rource Current |
+|---------|-------------|----------------|
+| Level | -O4 | -O3 --converge |
+| Inlining | Unlimited | Default |
+| Features | Basic | 5 flags enabled |
+
+**Rource Assessment**: **ALREADY EQUIVALENT**
+
+`-O3 --converge` iterates optimization passes until no further improvement,
+achieving the same effect as `-O4`. Unlimited inlining would increase binary
+size beyond the ~1MB gzipped target.
+
+---
+
+### WebGPU Subgroups
+
+**Concept**: Intra-SIMD lane communication without shared memory barriers.
+
+**WGSL Example**:
+```wgsl
+enable subgroups;
+
+@compute @workgroup_size(64)
+fn reduce_sum() {
+    let sum = subgroupAdd(value);  // No barrier needed
+}
+```
+
+**Browser Support**:
+| Browser | subgroups | subgroupAdd |
+|---------|-----------|-------------|
+| Chrome 128+ | ✓ | Chrome 134+ |
+| Firefox | Development | No |
+| Safari | Development | No |
+
+**Rource Assessment**: **NOT APPLICABLE NOW**
+
+Limited to Chrome. Would require maintaining dual code paths (subgroups + fallback).
+Current Blelloch prefix sum with shared memory barriers works across all browsers.
+
+**Future**: Revisit when Firefox and Safari ship subgroup support (estimated 2026+).
+
+---
+
+### Dual Kawase Blur
+
+**Concept**: Pyramid-based blur with logarithmic pass scaling.
+
+**Algorithm**:
+1. Downsample with 5-tap Kawase filter (1 center + 4 corners)
+2. Repeat N times for pyramid
+3. Upsample with 9-tap tent filter
+4. Accumulate results
+
+**Complexity**:
+| Blur Radius | Box Blur | Gaussian | Kawase |
+|-------------|----------|----------|--------|
+| 7 | O(n) × 2 | O(n) × 7 | O(n) × 4 |
+| 35 | O(n) × 2 | O(n) × 35 | O(n) × 5 |
+| 64+ | O(n) × 2 | O(n) × 64 | O(n) × 6 |
+
+**Rource Assessment**: **NOT APPLICABLE**
+
+Current bloom uses `radius: 2` (5-tap kernel). Sliding window box blur is already
+O(n) independent of kernel size. Kawase advantage only manifests for large radii
+(35+ pixels).
+
+---
+
+### Hierarchical Z-Buffer
+
+**Concept**: Dual-layer depth tiles with coverage masks for occlusion culling.
+
+**Intel Masked Occlusion Culling**:
+```rust
+struct HiZTile {
+    z_max0: f32,  // Layer 0 furthest depth
+    z_max1: f32,  // Layer 1 furthest depth
+    mask: u32,    // Coverage mask
+}
+```
+
+**Rource Assessment**: **NOT APPLICABLE**
+
+Rource is a 2D visualization. No depth buffer, no Z-based occlusion.
+2D visibility uses camera frustum culling and painter's algorithm (draw order).
+
+---
+
+### Key Findings
+
+1. **Determinism Constraint**: Relaxed-SIMD's non-determinism conflicts with Rource's
+   reproducible output guarantee
+
+2. **Already Optimized**: wasm-opt, LTO, codegen-units, SIMD128 already at maximum
+
+3. **Wrong Scale**: Kawase blur benefits large kernels (35+ pixels); Rource uses radius=2
+
+4. **Wrong Dimension**: Hi-Z buffer is for 3D; Rource is 2D
+
+5. **Browser Support**: WebGPU subgroups require Chrome 128+, no Firefox/Safari
+
+### Phase 57 References
+
+- [WebAssembly Relaxed-SIMD Proposal](https://github.com/WebAssembly/relaxed-simd)
+- [Morton Codes (Z-order curve)](https://en.wikipedia.org/wiki/Z-order_curve)
+- [soa_derive crate](https://docs.rs/soa_derive/latest/soa_derive/)
+- [wasm-opt / Binaryen](https://github.com/WebAssembly/binaryen)
+- [WebGPU Subgroups Specification](https://www.w3.org/TR/webgpu/#subgroups)
+- [Dual Kawase Blur (Intel)](https://www.intel.com/content/www/us/en/developer/articles/technical/an-investigation-of-fast-real-time-gpu-based-image-blur-algorithms.html)
+- [Masked Occlusion Culling](https://github.com/GameTechDev/MaskedOcclusionCulling)
+
+---
+
 ## Applicability Framework
 
 When evaluating theoretical algorithms for Rource, assess:
@@ -1452,6 +1715,18 @@ Algorithms to explore for potential future applicability:
 | QFT | Small kernel blur already O(n) optimal |
 | Quantum Annealing | Scale limit (~30 qubits vs 10K+ entities) |
 
+**WASM Optimization Techniques Evaluated** (from Phase 57):
+
+| Technique | Reason Not Applicable |
+|-----------|----------------------|
+| Relaxed-SIMD | Non-deterministic (conflicts with reproducible output) |
+| Morton-ordered | Marginal benefit over existing QuadTree |
+| SoA layout | High refactoring effort, GPU already optimized |
+| wasm-opt -O4 | Already equivalent with -O3 --converge |
+| WebGPU subgroups | Limited browser support (Chrome-only) |
+| Kawase blur | Small kernel (radius=2) doesn't benefit |
+| Hi-Z buffer | 2D rendering only |
+
 ---
 
 ## References
@@ -1493,6 +1768,19 @@ Algorithms to explore for potential future applicability:
      - Variable type mismatch (discrete vs continuous)
      - Superior classical alternatives (O(1) hash, O(n) spatial hash)
    - Conceptual insights preserved for energy minimization framing
+
+6. WASM Optimization Research Document (2026)
+   - "Cutting-edge Rust + WebAssembly optimization techniques for 2025-2026"
+   - Techniques: Relaxed-SIMD, Morton ordering, SoA, wasm-opt -O4, WebGPU subgroups,
+     Kawase blur, Hierarchical Z-buffer
+   - Status: Analyzed (Phase 57)
+   - Finding: Most techniques NOT APPLICABLE due to:
+     - Determinism conflicts (Relaxed-SIMD)
+     - Already equivalent (wasm-opt configuration)
+     - Wrong scale (Kawase for small kernels)
+     - Wrong dimension (Hi-Z for 2D)
+     - Browser support (WebGPU subgroups)
+   - Marginally applicable: Morton ordering, SoA layout (low priority)
 
 ### Related Rource Documentation
 

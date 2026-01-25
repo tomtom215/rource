@@ -7042,4 +7042,715 @@ Detailed algorithm analysis and theoretical connections preserved in:
 
 ---
 
+## Phase 57: Cutting-Edge Rust + WASM Optimization Techniques Analysis (2026-01-25)
+
+### Overview
+
+This phase evaluates cutting-edge optimization techniques for Rust + WebAssembly targeting 2025-2026,
+sourced from a comprehensive research document analyzing relaxed-SIMD, Morton-ordered structures,
+SoA layouts, aggressive wasm-opt configurations, WebGPU subgroups, Kawase blur, and hierarchical
+Z-buffer techniques.
+
+**Research Source**: "Cutting-edge Rust + WebAssembly optimization techniques for 2025-2026"
+
+### Techniques Evaluated
+
+| Technique | Claimed Gain | Rource Applicability | Status |
+|-----------|--------------|---------------------|--------|
+| Relaxed-SIMD (FMA, rsqrt) | 15-30% | Conflicts with determinism | NOT APPLICABLE |
+| Morton-ordered spatial | 20-50% on queries | Already O(log n) QuadTree | MARGINALLY APPLICABLE |
+| Structure-of-Arrays (SoA) | 20-200% | High refactoring effort | LOW PRIORITY |
+| wasm-opt -O4 + inlining | 10-40% | Already using -O3 --converge | ALREADY EQUIVALENT |
+| WebGPU subgroups | 30-50% | Limited browser support | NOT APPLICABLE NOW |
+| Dual Kawase blur | 200-400% vs Gaussian | Small kernel (radius=2) | NOT APPLICABLE |
+| Hierarchical Z-buffer | 50-200% | 2D rendering only | NOT APPLICABLE |
+| Tail call optimization | — | Automatic in Rust/LLVM | AUTOMATIC |
+
+---
+
+### Detailed Analysis
+
+#### 1. Relaxed-SIMD (+relaxed-simd)
+
+**Proposal**: WebAssembly relaxed-SIMD (Phase 5, standardized) adds FMA (`f32x4.relaxed_fma`)
+and fast reciprocal sqrt (`f32x4.relaxed_reciprocal_sqrt`) instructions.
+
+**Claimed Performance**:
+- Fast rsqrt: 15-30% improvement in force calculations
+- FMA: Better precision and performance for multiply-add chains
+
+**Browser Support**:
+| Browser | Status |
+|---------|--------|
+| Chrome 113+ | Shipped |
+| Firefox 2025+ | Shipped |
+| Safari | Behind flag |
+
+**Rource Assessment**: **NOT APPLICABLE**
+
+The research document explicitly states:
+
+> "Critical caveat: Relaxed-SIMD introduces non-deterministic behavior—identical inputs may
+> produce slightly different outputs across hardware."
+
+This **directly conflicts** with Rource's determinism guarantee. From `optimized.rs`:
+
+```rust
+//! # Determinism Guarantee
+//!
+//! All operations use:
+//! - Fixed-point arithmetic (8.8 or 16.16 formats)
+//! - Lookup tables for transcendental functions
+//! - Explicit rounding modes (round-half-to-even)
+//! - No floating-point in hot paths
+```
+
+**Design Decision**: Rource uses deterministic fixed-point arithmetic and compile-time LUTs
+specifically to guarantee reproducible output across all platforms. Relaxed-SIMD would
+compromise this core design goal.
+
+**Current Implementation**:
+```rust
+// From optimized.rs - deterministic sqrt lookup
+pub static SQRT_LUT: [u16; SQRT_TABLE_SIZE + 1] = {
+    // Compile-time computed, identical on all platforms
+    let mut table = [0u16; SQRT_TABLE_SIZE + 1];
+    // ...
+};
+```
+
+---
+
+#### 2. Morton-Ordered Linear Structures
+
+**Concept**: Replace pointer-based QuadTree with sorted Morton codes + binary search.
+
+```rust
+// Morton encode: interleave x/y bits for 2D locality in 1D memory
+pub fn morton_encode_2d(x: u16, y: u16) -> u32 {
+    fn spread(mut n: u32) -> u32 {
+        n = (n | (n << 8)) & 0x00FF00FF;
+        n = (n | (n << 4)) & 0x0F0F0F0F;
+        n = (n | (n << 2)) & 0x33333333;
+        (n | (n << 1)) & 0x55555555
+    }
+    spread(x as u32) | (spread(y as u32) << 1)
+}
+```
+
+**Claimed Performance**:
+- ~2× bandwidth reduction vs pointer chasing
+- Better cache locality for spatial queries
+
+**Rource Assessment**: **MARGINALLY APPLICABLE**
+
+| Aspect | Current QuadTree | Morton Linear |
+|--------|-----------------|---------------|
+| Lookup | O(log n) tree traversal | O(log n) binary search |
+| Insert | O(log n) with possible rebalance | O(n) resort or insert |
+| Cache | Pointer chasing (poor) | Sequential (good) |
+| GPU | Uses spatial hash grid | Morton is similar concept |
+
+**Key Observations**:
+
+1. **GPU already uses spatial hash**: The 9-pass GPU pipeline uses a grid-based spatial hash,
+   which achieves O(1) cell lookup—similar to Morton's benefits.
+
+2. **QuadTree is rebuilt each frame**: Current implementation clears and rebuilds the QuadTree
+   each physics update, not incrementally updating. Morton would have similar overhead.
+
+3. **Marginal benefit for O(log n) vs O(log n)**: Both approaches have logarithmic lookup.
+   The primary benefit is cache locality, which matters more for very large datasets.
+
+**Recommendation**: Low priority. The GPU spatial hash already provides grid-based spatial
+indexing. Unifying CPU to match GPU approach (grid hash) would be more consistent than
+introducing Morton encoding.
+
+---
+
+#### 3. Structure-of-Arrays (SoA) with soa_derive
+
+**Concept**: Replace AoS (Array of Structures) with SoA for cache-friendly field-selective iteration.
+
+```rust
+// Current AoS layout (FileNode has 16 fields)
+pub struct FileNode {
+    id: FileId,
+    name: String,
+    path: PathBuf,
+    extension: Option<String>,
+    directory: DirId,
+    position: Vec2,      // <- Physics needs this
+    target: Vec2,        // <- Physics needs this
+    radius: f32,
+    color: Color,
+    touch_color: Option<Color>,
+    touch_time: f32,
+    alpha: f32,
+    removing: bool,
+    idle_time: f32,
+    pinned: bool,
+}
+
+// SoA layout would be:
+pub struct FileNodeVec {
+    ids: Vec<FileId>,
+    names: Vec<String>,
+    positions: Vec<Vec2>,    // <- Physics iterates only this
+    targets: Vec<Vec2>,
+    // ... separate Vec for each field
+}
+```
+
+**Claimed Performance**:
+- 1.2-4× speedup for field-selective iteration
+- Benefits scale with entity count
+
+**Rource Assessment**: **LOW PRIORITY (High Effort)**
+
+| Pro | Con |
+|-----|-----|
+| Physics only needs position/velocity | 16 fields to split |
+| Cache-friendly physics updates | Major refactoring of scene module |
+| soa_derive automates boilerplate | Adds dependency |
+| | GPU physics already runs on separate entity buffer |
+
+**Key Observation**: GPU physics uses `ComputeEntity` which is already a minimal struct:
+
+```rust
+// From compute.rs - already minimal for GPU
+#[repr(C)]
+pub struct ComputeEntity {
+    pub position: [f32; 2],
+    pub velocity: [f32; 2],
+    pub target: [f32; 2],
+    pub flags: u32,
+    pub _padding: u32,
+}
+```
+
+The GPU path already has an optimized entity layout. CPU physics (Barnes-Hut) could benefit
+from SoA, but this requires significant refactoring for moderate gains.
+
+**Recommendation**: Low priority. The GPU physics path is already optimized with minimal
+entity layout. CPU path is fallback only.
+
+---
+
+#### 4. Aggressive wasm-opt Configuration
+
+**Proposed Configuration**:
+```toml
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-O4", "--flexible-inline-max-function-size", "4294967295"]
+```
+
+**Current Configuration** (from `build-wasm.sh`):
+```bash
+wasm-opt \
+    --enable-simd \
+    --enable-bulk-memory \
+    --enable-sign-ext \
+    --enable-nontrapping-float-to-int \
+    --enable-mutable-globals \
+    -O3 --converge --low-memory-unused \
+    -o www/pkg/rource_wasm_bg_opt.wasm www/pkg/rource_wasm_bg.wasm
+```
+
+**Rource Assessment**: **ALREADY EQUIVALENT**
+
+| Setting | Research Recommended | Rource Current |
+|---------|---------------------|----------------|
+| Optimization level | -O4 | -O3 |
+| Iterate to convergence | (implicit in -O4) | --converge |
+| Feature flags | (not mentioned) | 5 feature flags enabled |
+| Low memory | (not mentioned) | --low-memory-unused |
+
+**Key Insight**: `-O4` is largely equivalent to `-O3` with additional passes. Our `--converge`
+flag already iterates optimization passes until no further improvement—achieving the same effect.
+
+**`--flexible-inline-max-function-size` Analysis**:
+- Removes inlining size limits
+- Results in larger binaries
+- May improve performance for hot paths
+
+**Trade-off**: Binary size increase vs potential performance gain. For a portfolio demo where
+binary size is monitored (currently ~1MB gzipped target), aggressive inlining would increase
+download time.
+
+**Recommendation**: No change needed. Current configuration is already comprehensive.
+
+**Cargo.toml Profile Analysis**:
+```toml
+[profile.release]
+opt-level = 3     # ✓ Maximum optimization
+lto = true        # ✓ Full link-time optimization (equivalent to "fat")
+codegen-units = 1 # ✓ Single codegen unit for whole-program optimization
+panic = "abort"   # ✓ Removes unwinding code
+strip = true      # ✓ Reduces binary size
+```
+
+All recommended settings are already in place.
+
+---
+
+#### 5. WebGPU Subgroups
+
+**Concept**: Intra-SIMD lane communication without shared memory barriers.
+
+```wgsl
+enable subgroups;
+
+@compute @workgroup_size(64)
+fn reduce_sum(@builtin(local_invocation_index) lid: u32) {
+    var value = load_data(lid);
+    let subgroup_sum = subgroupAdd(value);  // No barrier needed
+    // ...
+}
+```
+
+**Browser Support**:
+| Feature | Chrome | Firefox | Safari |
+|---------|--------|---------|--------|
+| Subgroups | 128+ (Aug 2024) | Development | Development |
+| subgroupAdd/Min/Max | 134+ | No | No |
+
+**Rource Assessment**: **NOT APPLICABLE NOW**
+
+1. **Limited browser support**: Only Chrome has full support
+2. **Requires fallback code**: Must maintain both paths
+3. **Current prefix sum works**: 3-pass Blelloch scan is efficient
+4. **Maintenance burden**: Dual code paths for marginal gain
+
+**Future Consideration**: When Firefox and Safari ship subgroup support (estimated 2026+),
+this could be revisited for the prefix sum and force reduction passes.
+
+---
+
+#### 6. Dual Kawase Blur
+
+**Concept**: Pyramid-based blur with logarithmic pass scaling.
+
+| Method | Blur Radius | Passes Required |
+|--------|-------------|-----------------|
+| Box blur | 7 | 2 (horizontal + vertical) |
+| Box blur | 35 | 2 (sliding window O(n)) |
+| Gaussian | 35 | 70+ taps or separable |
+| Kawase | 35 | 5 (downsample + upsample) |
+
+**Rource Assessment**: **NOT APPLICABLE**
+
+**Current Bloom Configuration** (from `bloom.rs`):
+```rust
+impl BloomEffect {
+    pub fn new() -> Self {
+        Self {
+            threshold: 0.7,
+            intensity: 1.0,
+            passes: 2,
+            downscale: 4,
+            radius: 2,  // <- Very small kernel
+            // ...
+        }
+    }
+}
+```
+
+With `radius: 2`, the box blur kernel is only 5 pixels wide. The current O(n) sliding window
+implementation is already optimal for small kernels:
+
+| Kernel Size | Sliding Window | Kawase Advantage |
+|-------------|----------------|------------------|
+| 5 (radius=2) | O(n), 2 passes | None |
+| 15 | O(n), 2 passes | Minimal |
+| 35 | O(n), 2 passes | 2-4× faster |
+| 64+ | O(n), 2 passes | Significant |
+
+Kawase's advantage comes from replacing direct convolution O(n×k) with O(n×log k).
+Since Rource already uses O(n) sliding window (independent of kernel size), and the
+kernel is very small, Kawase provides no benefit.
+
+---
+
+#### 7. Hierarchical Z-Buffer
+
+**Concept**: Dual-layer depth tiles with coverage masks for occlusion culling.
+
+**Rource Assessment**: **NOT APPLICABLE**
+
+Rource is a 2D visualization. There is no depth-based rendering or occlusion:
+
+| Rendering Property | Rource | Hi-Z Requirement |
+|--------------------|--------|------------------|
+| Dimensions | 2D | 3D |
+| Depth buffer | None | Required |
+| Occlusion | Draw order (painter's) | Depth test |
+
+2D visibility in Rource is handled by:
+1. Camera frustum culling (bounds check)
+2. Alpha blending (painter's algorithm)
+3. Draw order sorting
+
+---
+
+#### 8. Tail Call Optimization
+
+**WebAssembly Status**: Phase 5 (standardized), Chrome 112+, Firefox 129+, Safari 18+.
+
+**Rource Assessment**: **AUTOMATIC**
+
+Rust's LLVM backend automatically emits `return_call` instructions for tail-recursive
+functions when optimization is enabled. No explicit code changes needed.
+
+Example from QuadTree traversal:
+```rust
+fn traverse(&self, bounds: Rect, visitor: &mut impl FnMut(&Entity)) {
+    for entity in &self.data {
+        if bounds.contains(entity.position) {
+            visitor(entity);
+        }
+    }
+    for child in self.children.iter().flatten() {
+        child.traverse(bounds, visitor);  // Tail call
+    }
+}
+```
+
+The Rust compiler handles this optimization transparently.
+
+---
+
+### Summary: Why Most Techniques Don't Apply
+
+The research document provides excellent optimization techniques, but most conflict with
+Rource's design constraints or are already implemented:
+
+| Constraint | Conflicting Techniques |
+|------------|----------------------|
+| **Determinism guarantee** | Relaxed-SIMD (non-deterministic results) |
+| **Already optimized** | wasm-opt, LTO, codegen-units, SIMD128 |
+| **Wrong scale** | Kawase blur (benefits large kernels; Rource uses radius=2) |
+| **Wrong dimension** | Hi-Z buffer (3D technique; Rource is 2D) |
+| **Browser support** | WebGPU subgroups (Chrome-only) |
+
+### Current Optimization State
+
+Rource's 56 prior optimization phases have already addressed the most impactful areas:
+
+| Component | Current State | Further Optimization Potential |
+|-----------|--------------|-------------------------------|
+| GPU Physics | O(n) spatial hash, 9-pass pipeline | Subgroups (future) |
+| CPU Physics | O(n log n) Barnes-Hut | SoA layout (high effort) |
+| Bloom Effect | O(n) sliding window, strip-based | None (already optimal for small k) |
+| Alpha Blending | Fixed-point LUT, 1.14 Gelem/s | None (LUT + fixed-point is optimal) |
+| Spatial Queries | QuadTree O(log n) | Morton (marginal benefit) |
+| Build Config | LTO, codegen-units=1, -O3 | None (already maximum) |
+| WASM | SIMD128, wasm-opt -O3 --converge | Relaxed-SIMD (breaks determinism) |
+
+### Implementation Priority Matrix (Updated with Measurements)
+
+| Technique | Applicable | Effort | Measured Benefit | Priority |
+|-----------|------------|--------|------------------|----------|
+| Relaxed-SIMD | ✗ (determinism) | — | — | — |
+| Morton spatial | ✗ (query cost) | Medium | **-42 µs/frame** (worse) | NOT RECOMMENDED |
+| SoA layout | ✓ (for CPU) | High | ~5.5% frame time | LOW |
+| wasm-opt -O4 | ✗ (already equivalent) | — | — | — |
+| WebGPU subgroups | ✗ (browser support) | — | — | — |
+| Kawase blur | ✗ (small kernel) | — | — | — |
+| Hi-Z buffer | ✗ (2D only) | — | — | — |
+| Tail calls | ✓ (automatic) | None | — | — |
+
+### Empirical Validation (Measured Results)
+
+To validate the theoretical claims, benchmarks were run on the actual Rource codebase.
+These measurements replace the research document's claimed percentages with real data.
+
+#### SoA Layout - Actual Measurements
+
+**File Update Loop (entity iteration):**
+
+| Entity Count | HashMap AoS | Vec AoS | SoA | HashMap→SoA Speedup |
+|--------------|-------------|---------|-----|---------------------|
+| 500 | 1.20 µs | 0.90 µs | 0.75 µs | 1.6× (37% savings) |
+| 2000 | 5.16 µs | 3.66 µs | 2.80 µs | 1.84× (46% savings) |
+| 10000 | 33.5 µs | 19.3 µs | 14.9 µs | 2.25× (55% savings) |
+
+**Spatial Index Rebuild (positions only):**
+
+| Entity Count | HashMap Extract | SoA Array | Speedup |
+|--------------|-----------------|-----------|---------|
+| 500 | 29.4 µs | 27.3 µs | 8% |
+| 2000 | 111 µs | 91 µs | 22% |
+| 10000 | 557 µs | 453 µs | 23% |
+
+**Reality Check**: The 20-200% claim from the research applies to isolated field iteration.
+In Rource's context:
+- FileNode is 128 bytes; physics-only fields are 20 bytes
+- The file update loop touches 9 fields, not just position/target
+- File update is ~10% of total frame time (33.5 µs out of 335 µs for 5000 files)
+- **Actual frame-level savings: ~5.5%** (not 20-200%)
+
+#### Morton Ordering - Actual Measurements
+
+**Rebuild Performance:**
+
+| Entity Count | QuadTree | Morton | Speedup |
+|--------------|----------|--------|---------|
+| 500 | 22.8 µs | 7.7 µs | **3.0×** |
+| 2000 | 83.2 µs | 36.8 µs | **2.3×** |
+| 10000 | 422.6 µs | 195.8 µs | **2.2×** |
+
+**Query Performance:**
+
+| Entity Count | QuadTree | Morton | Comparison |
+|--------------|----------|--------|------------|
+| 500 | 35.7 ns | 945 ns | QuadTree is **26× faster** |
+| 2000 | 35.9 ns | 3.5 µs | QuadTree is **97× faster** |
+
+**Critical Trade-off Analysis:**
+- Rebuild: every 5 frames (`SPATIAL_REBUILD_INTERVAL = 5`)
+- Query: at least once per frame for `visible_entities()`
+- Hover detection: 3 queries per mouse event
+
+For 10000 entities:
+- Rebuild savings: (422.6 - 195.8) µs / 5 = **45.4 µs/frame** average
+- Query cost: 3.5 µs - 0.036 µs = **3.46 µs/frame**
+- **Net savings: ~42 µs/frame** (if only 1 query per frame)
+
+BUT with hover queries (3 per mouse move):
+- Additional cost: 3 × 3.46 µs = 10.4 µs per mouse event
+- At 60 FPS with mouse movement, this negates the rebuild savings
+
+**Conclusion**: Morton ordering is **NOT beneficial** for Rource's query-heavy workload.
+The research claim of "20-50% on queries" is actually inverted—QuadTree queries are
+26-97× faster than Morton binary search + filtering.
+
+### Key Findings
+
+1. **Determinism vs Performance Trade-off**: Rource prioritizes reproducible output over
+   maximum performance. This rules out relaxed-SIMD and any technique with platform-dependent
+   rounding.
+
+2. **Already Near-Optimal**: 56 optimization phases have addressed major inefficiencies.
+   Remaining gains are marginal (5-15%) with high implementation cost.
+
+3. **GPU Path Already Optimized**: The spatial hash GPU pipeline achieves O(n) complexity
+   with minimal per-entity overhead. Further GPU optimization requires browser-specific
+   features (subgroups).
+
+4. **Small Kernels Don't Benefit from FFT/Kawase**: With blur radius=2 (5-tap kernel),
+   sliding window O(n) is already optimal.
+
+5. **Build Configuration is Maximized**: LTO, single codegen unit, -O3, SIMD128 are all
+   enabled. No further Cargo/wasm-opt flags would help.
+
+### Recommendations
+
+**Immediate**: No changes required. Current optimizations are comprehensive.
+
+**Future Monitoring**:
+1. WebGPU subgroups: Revisit when Firefox/Safari ship support (2026+)
+2. Relaxed-SIMD: Consider for non-determinism-sensitive rendering paths (never for physics)
+3. SoA layout: Implement if profiling shows CPU physics as bottleneck in production
+
+### Documentation Updates
+
+Detailed technique analysis added to:
+- `PERFORMANCE.md` (this phase)
+- `docs/THEORETICAL_ALGORITHMS.md` (reference section)
+
+### Sources
+
+- Research Document: "Cutting-edge Rust + WebAssembly optimization techniques for 2025-2026"
+- [WebAssembly Relaxed-SIMD Proposal](https://github.com/WebAssembly/relaxed-simd)
+- [Morton Codes for Spatial Indexing](https://en.wikipedia.org/wiki/Z-order_curve)
+- [soa_derive crate](https://docs.rs/soa_derive/latest/soa_derive/)
+- [wasm-opt documentation](https://github.com/WebAssembly/binaryen)
+- [WebGPU Subgroups](https://www.w3.org/TR/webgpu/#subgroups)
+- [Kawase Blur](https://www.intel.com/content/www/us/en/developer/articles/technical/an-investigation-of-fast-real-time-gpu-based-image-blur-algorithms.html)
+
+**Test Count**: 1,899 tests passing
+
+---
+
+## Phase 58: Micro-Optimization Analysis - Particle Physics & Numerical Methods (2026-01-25)
+
+### Overview
+
+This phase explores nanosecond-level optimizations inspired by particle physics simulations
+and numerical methods. We investigate whether techniques like fast inverse sqrt (Quake III),
+octant-based length approximation, Verlet integration, and precomputed direction tables
+can improve physics hot paths.
+
+### Techniques Analyzed
+
+#### 1. Pseudo-Random Direction Generation
+
+**Problem**: When two nodes overlap (distance < 0.001), we push them apart using a
+"random" direction based on their indices. The original implementation used expensive
+sin/cos calls:
+
+```rust
+// Before: ~12 ns per call (sin/cos are expensive)
+let offset = Vec2::new((i as f32).sin() * 5.0, (j as f32).cos() * 5.0);
+```
+
+**Solutions Tested**:
+
+| Method | Time (1000 ops) | Throughput | Speedup |
+|--------|-----------------|------------|---------|
+| sin/cos (baseline) | 12.1 µs | 82 Melem/s | 1.0× |
+| Hash-based | 1.4 µs | 715 Melem/s | **8.7×** |
+| LUT-based | 0.87 µs | 1.13 Gelem/s | **13.9×** |
+
+**Implemented Solution**: Compile-time LUT with 256 precomputed unit directions:
+
+```rust
+// After: ~0.87 ns per call (table lookup + multiply)
+let offset = random_push_direction(i, j);  // 13.9× faster!
+```
+
+The LUT is computed at compile time using Taylor series, ensuring deterministic
+results across all platforms.
+
+#### 2. Fast Inverse Square Root (Quake III)
+
+**Problem**: Force calculations require `1.0 / sqrt(distance_sq)`. The famous
+Quake III "fast inverse sqrt" uses bit manipulation for an initial guess followed
+by Newton-Raphson refinement.
+
+**Results**:
+
+| Method | Time (1000 ops) | Throughput | Speedup |
+|--------|-----------------|------------|---------|
+| 1.0/sqrt(x) (baseline) | 1.05 µs | 948 Melem/s | 1.0× |
+| Quake 1-iteration | 0.79 µs | 1.27 Gelem/s | **1.33×** |
+| Quake 2-iteration | 1.92 µs | 519 Melem/s | 0.55× |
+
+**Finding**: One Newton-Raphson iteration gives 1.33× speedup with ~1-2% error.
+However, two iterations (for higher accuracy) is slower than standard sqrt!
+
+**Decision**: NOT IMPLEMENTED. Modern CPUs have hardware sqrt (SSE2 `sqrtss`)
+taking only ~10-15 cycles. The 1.33× speedup is marginal, and the accuracy
+trade-off isn't justified for a visualization application.
+
+#### 3. Octant-Based Length Approximation
+
+**Problem**: Computing vector length requires `sqrt(x² + y²)`. The "alpha-max-beta-min"
+approximation: `|v| ≈ 0.96 * max(|x|, |y|) + 0.397 * min(|x|, |y|)` avoids sqrt.
+
+**Results**:
+
+| Method | Time (1000 ops) | Throughput | Speedup |
+|--------|-----------------|------------|---------|
+| sqrt(x² + y²) | 1.10 µs | 909 Melem/s | 1.0× |
+| Octant basic | 1.10 µs | 911 Melem/s | **1.0×** |
+| Octant improved | 2.15 µs | 464 Melem/s | 0.51× |
+
+**Finding**: **NO BENEFIT**. Modern hardware sqrt is as fast as the approximation!
+The "improved" version with correction factor is actually 2× slower.
+
+#### 4. Combined Force Calculation
+
+Testing the cumulative effect of fast_inv_sqrt + octant_length in real force calculations:
+
+| Method | Time (1000 ops) | Throughput | Speedup |
+|--------|-----------------|------------|---------|
+| Standard | 3.05 µs | 328 Melem/s | 1.0× |
+| Fast inv_sqrt | 3.96 µs | 253 Melem/s | 0.77× |
+| Octant length | 3.19 µs | 311 Melem/s | 0.95× |
+
+**Finding**: Combined optimizations are **SLOWER** than standard implementation!
+The overhead of additional operations outweighs approximation savings.
+
+#### 5. Verlet vs Euler Integration
+
+**Problem**: Semi-implicit Euler is the current integrator. Verlet integration is
+popular in particle physics for better energy conservation.
+
+**Results**:
+
+| Method | Time (1000 particles) | Throughput | Speedup |
+|--------|----------------------|------------|---------|
+| Semi-implicit Euler | 2.62 µs | 381 Melem/s | 1.0× |
+| Verlet | 2.60 µs | 384 Melem/s | **1.01×** |
+| Velocity Verlet | 2.86 µs | 349 Melem/s | 0.92× |
+
+**Finding**: **NO PERFORMANCE BENEFIT**. Verlet and Euler have virtually identical
+performance. Velocity Verlet is slightly slower due to additional operations.
+
+**Decision**: NOT IMPLEMENTED. Switching to Verlet would require structural changes
+(storing previous positions) with no performance benefit.
+
+### Key Insights
+
+1. **Modern CPUs Have Fast sqrt**: The SSE2 `sqrtss` instruction takes ~10-15 cycles.
+   Approximation techniques from the Quake III era (1999) were valuable when sqrt
+   was software-implemented and took hundreds of cycles. Today, they offer minimal
+   benefit.
+
+2. **sin/cos Remain Expensive**: Unlike sqrt, sin/cos don't have dedicated hardware
+   in most CPUs. They require expensive FPU operations (~50-100 cycles). LUT-based
+   replacement offers genuine 13.9× improvement.
+
+3. **Approximation Overhead Can Negate Benefits**: In combined operations, the
+   overhead of bit manipulation, conditionals, and correction factors can exceed
+   the cost of hardware-accelerated exact computation.
+
+4. **Integration Method Doesn't Affect Performance**: The choice between Euler and
+   Verlet is about stability and accuracy, not speed. For visualization (not
+   simulation), Euler is sufficient.
+
+### Implementation Summary
+
+| Technique | Verdict | Action |
+|-----------|---------|--------|
+| LUT-based random direction | ✓ **13.9× faster** | Implemented |
+| Quake inverse sqrt | ≈ Marginal (1.33×) | Not implemented |
+| Octant length | ✗ No benefit | Not implemented |
+| Combined force optimization | ✗ Slower | Not implemented |
+| Verlet integration | ✗ Same speed | Not implemented |
+
+### Files Modified
+
+- `crates/rource-core/src/physics/optimized.rs` (NEW)
+  - `RANDOM_DIRECTION_LUT`: 256-entry compile-time direction table
+  - `random_push_direction()`: Fast pseudo-random direction function
+  - Taylor series const functions for compile-time sin/cos
+
+- `crates/rource-core/src/physics/mod.rs`
+  - Added `optimized` module export
+  - Re-exported `random_push_direction`
+
+- `crates/rource-core/src/scene/layout_methods.rs`
+  - Updated overlap handling to use `random_push_direction()`
+
+- `crates/rource-core/src/physics/force.rs`
+  - Updated overlap handling to use `random_push_direction()`
+
+- `crates/rource-core/benches/micro_opt_analysis.rs` (NEW)
+  - Comprehensive benchmarks for all techniques
+  - Accuracy tests for approximations
+
+### Benchmark Commands
+
+```bash
+# Run micro-optimization benchmarks
+cargo bench --bench micro_opt_analysis -- --noplot
+
+# Run accuracy tests
+cargo test --release -p rource-core --bench micro_opt_analysis
+```
+
+### References
+
+- [Quake III Fast Inverse Square Root](https://en.wikipedia.org/wiki/Fast_inverse_square_root)
+- [Alpha-Max Beta-Min Algorithm](https://en.wikipedia.org/wiki/Alpha_max_plus_beta_min_algorithm)
+- [Verlet Integration](https://en.wikipedia.org/wiki/Verlet_integration)
+- [Taylor Series for Trigonometric Functions](https://en.wikipedia.org/wiki/Taylor_series)
+
+**Test Count**: 1,899 tests passing (326 in rource-core including 7 new optimized.rs tests)
+
+---
+
 *Last updated: 2026-01-25*
