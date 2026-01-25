@@ -634,6 +634,55 @@
         margin: 0 4px;
         align-self: center;
     }
+
+    /* -------------------------------------------------------------------------
+       Quick-Access Uncapped FPS Toggle (Mobile Toolbar)
+       -------------------------------------------------------------------------
+
+       Prominently placed in mobile toolbar for easy discoverability.
+       Uses flame icon and orange accent when active (like "turbo" mode).
+       Follows video game "boost" UI patterns.
+    */
+
+    .mobile-toolbar-btn.uncapped-toggle {
+        position: relative;
+    }
+
+    /* Active state - orange glow like "turbo/boost" in games */
+    .mobile-toolbar-btn.uncapped-toggle.active {
+        color: #ff6b35;
+        background: rgba(255, 107, 53, 0.2);
+    }
+
+    .mobile-toolbar-btn.uncapped-toggle.active::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 14px;
+        background: rgba(255, 107, 53, 0.15);
+        animation: uncapped-pulse 2s ease-in-out infinite;
+        z-index: -1;
+    }
+
+    @keyframes uncapped-pulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    /* Uncapped indicator badge on FPS display */
+    .has-bottom-sheet .perf-overlay .perf-fps.uncapped::after {
+        content: 'MAX';
+        display: inline-block;
+        margin-left: 4px;
+        font-size: 0.5rem;
+        font-weight: 700;
+        background: #ff6b35;
+        color: white;
+        padding: 2px 4px;
+        border-radius: 4px;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+    }
 }
 
 /* =============================================================================
@@ -694,6 +743,221 @@
     .has-bottom-sheet .app-container {
         padding: 0;
         gap: 0;
+    }
+
+    /* =========================================================================
+       Video Game HUD Performance Overlay
+       =========================================================================
+
+       Redesigned for mobile with inspiration from video game FPS counters:
+       - Compact pill in top-right corner (non-blocking, like game HUDs)
+       - Prominent uncapped toggle (easily discoverable)
+       - High-score style metrics (FPS front-and-center)
+       - Color-coded status (green/yellow/red/orange)
+
+       References:
+       - FPS games: minimal HUDs prioritizing essential info
+       - High score displays: prominent primary metric + secondary stats
+       - Steam FPS counter: small corner pill with bold number
+    */
+
+    /* HUD-style container - compact pill in top-right */
+    .has-bottom-sheet .perf-overlay {
+        top: 8px;
+        right: 8px;
+        left: auto;
+        min-width: auto;
+        padding: 6px 10px;
+        border-radius: 20px;
+        background: rgba(0, 0, 0, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    /* HUD header - horizontal layout with FPS prominent */
+    .has-bottom-sheet .perf-overlay .perf-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0;
+    }
+
+    /* FPS as primary metric - video game style */
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 1rem;
+        font-weight: 700;
+        min-width: 70px;
+        text-align: center;
+        letter-spacing: -0.5px;
+    }
+
+    /* Hide default toggle arrow on mobile */
+    .has-bottom-sheet .perf-overlay .perf-toggle {
+        display: none;
+    }
+
+    /* Compact details row - inline layout */
+    .has-bottom-sheet .perf-overlay .perf-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Individual metric rows - horizontal compact style */
+    .has-bottom-sheet .perf-overlay .perf-row {
+        flex: none;
+        gap: 4px;
+        font-size: 0.65rem;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-label {
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        opacity: 0.7;
+    }
+
+    /* Uncapped toggle - PROMINENT button style for discoverability */
+    .has-bottom-sheet .perf-overlay .perf-toggle-row {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        flex-basis: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 6px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Uncapped label - more prominent */
+    .has-bottom-sheet .perf-overlay #perf-uncapped-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+    }
+
+    /* Larger toggle switch for touch - 44px tap zone */
+    .has-bottom-sheet .perf-overlay .perf-switch {
+        width: 44px;
+        height: 24px;
+        position: relative;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider {
+        border-radius: 24px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider::before {
+        height: 18px;
+        width: 18px;
+        bottom: 3px;
+        left: 3px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+        transform: translateX(20px);
+    }
+
+    /* Peak/Avg row - high-score style display */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-row:not(.hidden) {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        max-height: 2rem;
+        opacity: 1;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value {
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        gap: 4px;
+    }
+
+    /* Backend indicator - compact badge */
+    .has-bottom-sheet .perf-overlay .perf-backend {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        border-radius: 8px;
+    }
+
+    /* Collapsed state - ultra-compact FPS badge only */
+    .has-bottom-sheet .perf-overlay.collapsed {
+        padding: 4px 10px;
+        border-radius: 16px;
+    }
+
+    .has-bottom-sheet .perf-overlay.collapsed .perf-fps {
+        min-width: auto;
+        font-size: 0.85rem;
+    }
+
+    /* -------------------------------------------------------------------------
+       High-Score Style Metrics Display
+       -------------------------------------------------------------------------
+
+       Inspired by video game leaderboards and achievement displays:
+       - Peak FPS highlighted as "personal best"
+       - Color-coded frame time (green < 16.7ms, yellow < 33ms, red > 33ms)
+       - Compact "score" badges for key metrics
+    */
+
+    /* Frame time color coding (video game style) */
+    .has-bottom-sheet .perf-overlay .perf-value[data-metric="frame"] {
+        font-weight: 600;
+    }
+
+    /* Peak FPS - "high score" gold badge styling */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value span:first-child {
+        color: #ffd700;
+        font-weight: 700;
+        text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+    }
+
+    /* Avg FPS - silver styling */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value span:last-child {
+        color: #c0c0c0;
+    }
+
+    /* Expanded state - show all metrics with high-score layout */
+    .has-bottom-sheet .perf-overlay:not(.collapsed) .perf-header {
+        padding-bottom: 6px;
+        margin-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* FPS number glow effect when hitting high values */
+    .has-bottom-sheet .perf-overlay .perf-fps.good {
+        text-shadow: 0 0 8px rgba(63, 185, 80, 0.5);
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-fps.uncapped {
+        text-shadow: 0 0 8px rgba(255, 107, 53, 0.5);
+    }
+
+    /* Achievement-style backend badge */
+    .has-bottom-sheet .perf-overlay .perf-backend[data-gpu-accelerated="true"] {
+        background: linear-gradient(135deg, rgba(63, 185, 80, 0.3), rgba(63, 185, 80, 0.1));
+        border: 1px solid rgba(63, 185, 80, 0.3);
+    }
+
+    /* "New Record" animation for peak FPS updates */
+    @keyframes peak-flash {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); color: #ffd700; }
+        100% { transform: scale(1); }
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value.new-record span:first-child {
+        animation: peak-flash 0.5s ease-out;
     }
 
     /* -------------------------------------------------------------------------
@@ -824,6 +1088,71 @@
         width: 18px;
         height: 18px;
     }
+
+    /* -------------------------------------------------------------------------
+       Landscape Performance Overlay - Non-Blocking Corner Position
+       -------------------------------------------------------------------------
+
+       In landscape mode, use left corner to avoid blocking visualization.
+       More compact layout to preserve vertical space.
+    */
+
+    .has-bottom-sheet .perf-overlay {
+        top: 6px;
+        right: auto;
+        left: max(6px, env(safe-area-inset-left));
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 0.65rem;
+    }
+
+    /* Ultra-compact FPS in landscape */
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 0.85rem;
+        min-width: 60px;
+    }
+
+    /* Horizontal inline metrics in landscape */
+    .has-bottom-sheet .perf-overlay .perf-details {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+        padding-top: 4px;
+        margin-top: 4px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-row {
+        font-size: 0.6rem;
+    }
+
+    /* Hide less critical metrics in landscape to save space */
+    .has-bottom-sheet .perf-overlay .perf-row:nth-child(n+3):not(.perf-toggle-row):not(.perf-peak-avg-row) {
+        display: none;
+    }
+
+    /* Uncapped toggle more compact in landscape */
+    .has-bottom-sheet .perf-overlay .perf-toggle-row {
+        flex-basis: auto;
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        padding-left: 8px;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch {
+        width: 36px;
+        height: 20px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider::before {
+        height: 14px;
+        width: 14px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+        transform: translateX(16px);
+    }
 }
 
 /* =============================================================================
@@ -844,6 +1173,70 @@
     .bottom-sheet-quick-actions {
         padding: 0 12px 10px;
     }
+
+    /* -------------------------------------------------------------------------
+       Extra Small Performance Overlay - Minimal Footprint
+       -------------------------------------------------------------------------
+
+       On smallest screens (iPhone SE, etc.), use absolute minimum size
+       while maintaining readability. FPS + uncapped badge only in collapsed.
+    */
+
+    .has-bottom-sheet .perf-overlay {
+        padding: 4px 8px;
+        border-radius: 14px;
+        max-width: 140px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 0.8rem;
+        min-width: 55px;
+    }
+
+    /* Collapsed: FPS only, ultra-compact badge */
+    .has-bottom-sheet .perf-overlay.collapsed {
+        padding: 3px 8px;
+    }
+
+    .has-bottom-sheet .perf-overlay.collapsed .perf-fps {
+        font-size: 0.75rem;
+    }
+
+    /* Smaller switch on tiny screens */
+    .has-bottom-sheet .perf-overlay .perf-switch {
+        width: 38px;
+        height: 20px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider::before {
+        height: 14px;
+        width: 14px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+        transform: translateX(18px);
+    }
+
+    /* Details even more compact */
+    .has-bottom-sheet .perf-overlay .perf-details {
+        gap: 4px 8px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-row {
+        font-size: 0.6rem;
+    }
+
+    /* Uncapped toggle inline with label on tiny screens */
+    .has-bottom-sheet .perf-overlay .perf-toggle-row {
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding-top: 6px;
+        margin-top: 6px;
+    }
+
+    .has-bottom-sheet .perf-overlay #perf-uncapped-label {
+        font-size: 0.6rem;
+    }
 }
 
 /* =============================================================================
@@ -859,7 +1252,23 @@
 }
 
 .light-theme.has-bottom-sheet .perf-overlay {
-    background: rgba(246, 248, 250, 0.95);
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Light theme HUD adjustments */
+.light-theme.has-bottom-sheet .perf-overlay .perf-details {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+.light-theme.has-bottom-sheet .perf-overlay .perf-toggle-row {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Uncapped mode active indicator - light theme */
+.light-theme .mobile-toolbar-btn.uncapped-toggle.active {
+    background: rgba(255, 107, 53, 0.15);
 }
 
 .light-theme.has-bottom-sheet .timeline-container {
