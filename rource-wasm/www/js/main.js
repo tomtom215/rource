@@ -62,7 +62,7 @@ import {
     updateBottomSheetFileTypes, updateBottomSheetAuthors, clearBottomSheetLegends
 } from './features/bottom-sheet.js';
 import { initMobileToolbar } from './features/mobile-toolbar.js';
-import { initMobileControls, onPlaybackStateChange } from './features/mobile-controls.js';
+import { initMobileControls, onPlaybackStateChange, showControls } from './features/mobile-controls.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -155,10 +155,7 @@ function initBottomSheetActions() {
             // If controls are hidden, show them first instead of opening sheet
             const controlsHidden = document.body.classList.contains('controls-hidden');
             if (controlsHidden) {
-                // Import dynamically to avoid circular dependency
-                import('./features/mobile-controls.js').then(({ showControls }) => {
-                    showControls();
-                });
+                showControls();
             } else {
                 openBottomSheet('HALF');
             }

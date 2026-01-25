@@ -242,31 +242,12 @@ function checkMobileMode() {
 }
 
 /**
- * Checks if the device is in landscape mobile mode.
- * @returns {boolean}
- */
-function isLandscapeMobile() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const isLandscape = width > height;
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-    return isLandscape && height <= 500 && width <= 1024 && hasTouch;
-}
-
-/**
  * Updates mobile mode state.
+ * Note: landscape-mobile class is managed by bottom-sheet.js to avoid duplication.
  */
 function updateMobileMode() {
     const wasMobile = isMobileMode;
     isMobileMode = checkMobileMode();
-
-    // Update landscape class for CSS targeting
-    if (isLandscapeMobile()) {
-        document.body.classList.add('landscape-mobile');
-    } else {
-        document.body.classList.remove('landscape-mobile');
-    }
 
     // Clean up if switching from mobile to desktop
     if (wasMobile && !isMobileMode) {
