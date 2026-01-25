@@ -28,6 +28,15 @@ use rource_core::{FileId, UserId};
 use rource_math::{Bounds, Color, Rect, Vec2};
 use rource_render::{FontId, Renderer};
 
+// Import shared LOD constants from rource-render for visual parity with CLI
+use rource_render::lod::{
+    MIN_DIR_LABEL_RADIUS as LOD_MIN_DIR_LABEL_RADIUS, MIN_DIR_RADIUS as LOD_MIN_DIR_RADIUS,
+    MIN_FILE_LABEL_RADIUS as LOD_MIN_FILE_LABEL_RADIUS, MIN_FILE_RADIUS as LOD_MIN_FILE_RADIUS,
+    MIN_USER_LABEL_RADIUS as LOD_MIN_USER_LABEL_RADIUS, MIN_USER_RADIUS as LOD_MIN_USER_RADIUS,
+    MIN_ZOOM_FOR_DIR_BRANCHES as LOD_MIN_ZOOM_FOR_DIR_BRANCHES,
+    MIN_ZOOM_FOR_FILE_BRANCHES as LOD_MIN_ZOOM_FOR_FILE_BRANCHES,
+};
+
 use crate::rendering::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
 
 // =============================================================================
@@ -467,52 +476,12 @@ pub use helpers::*;
 // =============================================================================
 // Level-of-Detail (LOD) Constants
 // =============================================================================
-// These thresholds control when entities are skipped for performance.
-// Values are in screen pixels.
-
-/// Minimum screen radius for a file to be rendered at all.
-/// Files smaller than this are completely invisible and skipped.
-/// Set low (0.1px) because we enforce a minimum render size of 2px anyway.
-/// This allows files to remain visible at low zoom levels.
-pub const LOD_MIN_FILE_RADIUS: f32 = 0.1;
-
-/// Minimum screen radius for a directory node to be rendered.
-/// Directories are important landmarks, so we use a very low threshold.
-pub const LOD_MIN_DIR_RADIUS: f32 = 0.05;
-
-/// Minimum screen radius for file labels to be rendered.
-/// Labels are expensive (text rendering + shadow) so we skip them earlier.
-/// At 3.0 pixels radius, the entity is visible but labels would be unreadable.
-pub const LOD_MIN_FILE_LABEL_RADIUS: f32 = 3.0;
-
-/// Minimum screen radius for directory labels to be rendered.
-pub const LOD_MIN_DIR_LABEL_RADIUS: f32 = 4.0;
-
-/// Minimum screen radius for user avatars to be rendered.
-/// Set low (0.3px) because we enforce a minimum render size of 5px anyway.
-/// This allows users to remain visible at low zoom levels.
-pub const LOD_MIN_USER_RADIUS: f32 = 0.3;
-
-/// Minimum screen radius for user labels to be rendered.
-pub const LOD_MIN_USER_LABEL_RADIUS: f32 = 5.0;
-
-/// Minimum zoom level for rendering file-to-directory connections.
-/// Set low to keep branch structure visible during zoom out.
-pub const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.02;
-
-/// Minimum zoom level for rendering directory-to-parent connections.
-pub const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.01;
-
-/// Minimum zoom level for auto-fit to prevent LOD culling all entities.
-///
-/// This is calculated based on keeping entities above their LOD thresholds:
-/// - Files: `world_radius`=5.0, LOD=0.1 → `min_zoom` = 0.1/5.0 = 0.02
-/// - Users: `world_radius`=15.0, LOD=0.3 → `min_zoom` = 0.3/15.0 = 0.02
-///
-/// We use 0.05 to provide a comfortable margin above the thresholds,
-/// ensuring entities remain visible even at extreme zoom-out.
-/// At 0.05: file `screen_radius` = 5.0 * 0.05 = 0.25 > 0.1 threshold (150% margin)
-pub const AUTO_FIT_MIN_ZOOM: f32 = 0.05;
+// LOD constants are now imported from rource_render::lod at the top of this file
+// to ensure visual parity between CLI and WASM renderers. See that module for
+// detailed documentation on each threshold.
+//
+// Re-export AUTO_FIT_MIN_ZOOM for external use (used by camera auto-fit)
+pub use rource_render::lod::AUTO_FIT_MIN_ZOOM;
 
 /// Context shared between rendering phases.
 ///

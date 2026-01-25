@@ -13,34 +13,62 @@
  * - components/: Reusable UI components
  * - sections/: Page-specific sections
  * - features/: Feature-specific styles
- * - responsive.css: Media queries (consolidated)
  *
- * Note: Currently in transition - styles.css is still the main file.
- * This modular structure is for future incremental refactoring.
+ * Migration Status:
+ * - Foundation: COMPLETE (variables.css, reset.css)
+ * - Components: PARTIAL (buttons, panels, toast extracted)
+ * - Sections: PARTIAL (timeline extracted)
+ *
+ * Note: The monolithic styles.css is still the production file.
+ * These modular files are for incremental refactoring and can be
+ * used for development by importing this file instead.
  */
 
-/* Foundation */
+/* =============================================================================
+   Foundation
+   ============================================================================= */
+
 @import url('./variables.css');
 @import url('./reset.css');
 
-/* Components (to be extracted) */
-/* @import url('./components/buttons.css'); */
-/* @import url('./components/inputs.css'); */
-/* @import url('./components/panels.css'); */
-/* @import url('./components/cards.css'); */
-/* @import url('./components/tooltips.css'); */
+/* =============================================================================
+   Components (Extracted)
+   ============================================================================= */
 
-/* Sections (to be extracted) */
-/* @import url('./sections/header.css'); */
-/* @import url('./sections/sidebar.css'); */
-/* @import url('./sections/canvas.css'); */
-/* @import url('./sections/timeline.css'); */
-/* @import url('./sections/overlays.css'); */
+@import url('./components/buttons.css');
+@import url('./components/panels.css');
+@import url('./components/toast.css');
 
-/* Features (to be extracted) */
-/* @import url('./features/fullscreen.css'); */
-/* @import url('./features/themes.css'); */
-/* @import url('./features/animations.css'); */
+/* Components (To Be Extracted from styles.css)
+   - inputs.css: Form inputs, selects, checkboxes
+   - cards.css: Card layouts and variants
+   - tooltips.css: Tooltip and popover styles
+   - badges.css: Badge and tag styles
+   - modals.css: Modal overlay and content
+*/
 
-/* Responsive (to be consolidated) */
-/* @import url('./responsive.css'); */
+/* =============================================================================
+   Sections (Extracted)
+   ============================================================================= */
+
+@import url('./sections/timeline.css');
+
+/* Sections (To Be Extracted from styles.css)
+   - header.css: App header and navigation
+   - sidebar.css: Sidebar panel and scroll indicators
+   - canvas.css: Canvas container and overlays
+   - overlays.css: Legend, stats, performance overlays
+   - footer.css: App footer
+*/
+
+/* =============================================================================
+   Features (To Be Extracted from styles.css)
+   ============================================================================= */
+
+/* Feature-specific styles to extract:
+   - fullscreen.css: Fullscreen mode adjustments
+   - mobile.css: Mobile-specific overrides
+   - themes.css: Theme variants (if multiple themes)
+   - animations.css: Keyframe animations
+   - responsive.css: Consolidated media queries
+*/

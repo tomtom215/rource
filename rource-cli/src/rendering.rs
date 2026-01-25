@@ -37,37 +37,18 @@ use crate::avatar::AvatarRegistry;
 use crate::helpers::get_initials;
 
 // =============================================================================
-// Level-of-Detail (LOD) Constants
+// Level-of-Detail (LOD) Constants (imported from shared module)
 // =============================================================================
-// These thresholds control when entities are skipped for performance.
-// Values are in screen pixels. These match the WASM renderer for visual parity.
+// These are re-exported from rource_render::lod to ensure visual parity
+// between CLI and WASM renderers. See that module for documentation.
 
-/// Minimum screen radius for a file to be rendered at all.
-/// Set low (0.1px) because we enforce a minimum render size of 2px anyway.
-const LOD_MIN_FILE_RADIUS: f32 = 0.1;
-
-/// Minimum screen radius for a directory node to be rendered.
-/// Directories are important landmarks, so we use a very low threshold.
-const LOD_MIN_DIR_RADIUS: f32 = 0.05;
-
-/// Minimum screen radius for file labels to be rendered.
-const LOD_MIN_FILE_LABEL_RADIUS: f32 = 3.0;
-
-/// Minimum screen radius for directory labels to be rendered.
-const LOD_MIN_DIR_LABEL_RADIUS: f32 = 4.0;
-
-/// Minimum screen radius for user avatars to be rendered.
-/// Set low (0.3px) because we enforce a minimum render size of 5px anyway.
-const LOD_MIN_USER_RADIUS: f32 = 0.3;
-
-/// Minimum screen radius for user labels to be rendered.
-const LOD_MIN_USER_LABEL_RADIUS: f32 = 5.0;
-
-/// Minimum zoom level for rendering file-to-directory connections.
-const LOD_MIN_ZOOM_FOR_FILE_BRANCHES: f32 = 0.02;
-
-/// Minimum zoom level for rendering directory-to-parent connections.
-const LOD_MIN_ZOOM_FOR_DIR_BRANCHES: f32 = 0.01;
+use rource_render::lod::{
+    MIN_DIR_LABEL_RADIUS as LOD_MIN_DIR_LABEL_RADIUS, MIN_DIR_RADIUS as LOD_MIN_DIR_RADIUS,
+    MIN_FILE_LABEL_RADIUS as LOD_MIN_FILE_LABEL_RADIUS, MIN_FILE_RADIUS as LOD_MIN_FILE_RADIUS,
+    MIN_USER_LABEL_RADIUS as LOD_MIN_USER_LABEL_RADIUS, MIN_USER_RADIUS as LOD_MIN_USER_RADIUS,
+    MIN_ZOOM_FOR_DIR_BRANCHES as LOD_MIN_ZOOM_FOR_DIR_BRANCHES,
+    MIN_ZOOM_FOR_FILE_BRANCHES as LOD_MIN_ZOOM_FOR_FILE_BRANCHES,
+};
 
 // =============================================================================
 // Pure Helper Functions (testable without renderer)
@@ -1113,7 +1094,32 @@ fn render_users(
     }
 }
 
+/// Render pause indicator (two vertical bars).
+fn render_pause_indicator(renderer: &mut SoftwareRenderer) {
+    let pause_color = Color::new(1.0, 1.0, 1.0, 0.7);
+    renderer.draw_quad(
+        Bounds::new(Vec2::new(20.0, 20.0), Vec2::new(28.0, 40.0)),
+        None,
+        pause_color,
+    );
+    renderer.draw_quad(
+        Bounds::new(Vec2::new(34.0, 20.0), Vec2::new(42.0, 40.0)),
+        None,
+        pause_color,
+    );
+}
+
 /// Render UI overlays (progress bar, stats, legend, watermark, etc.).
+///
+/// This function orchestrates rendering of all HUD elements by delegating to
+/// focused sub-functions:
+/// - [`render_pause_indicator`]: Pause icon when playback is paused
+/// - [`render_progress_bar`]: Timeline progress at bottom of screen
+/// - [`render_stats_indicators`]: Commit/file/user count bars
+/// - [`render_text_overlays`]: Title, date, and stats text
+/// - [`render_legend`]: File extension color legend
+/// - [`render_logo`]: Optional logo overlay
+/// - [`render_watermark`]: Configurable watermark text
 #[allow(clippy::too_many_arguments)]
 fn render_overlays(
     renderer: &mut SoftwareRenderer,
@@ -1134,17 +1140,7 @@ fn render_overlays(
 
     // Draw pause indicator
     if playback.paused {
-        let pause_color = Color::new(1.0, 1.0, 1.0, 0.7);
-        renderer.draw_quad(
-            Bounds::new(Vec2::new(20.0, 20.0), Vec2::new(28.0, 40.0)),
-            None,
-            pause_color,
-        );
-        renderer.draw_quad(
-            Bounds::new(Vec2::new(34.0, 20.0), Vec2::new(42.0, 40.0)),
-            None,
-            pause_color,
-        );
+        render_pause_indicator(renderer);
     }
 
     // Draw progress bar

@@ -1,0 +1,131 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Panel Component Styles
+ *
+ * Panel containers with headers, bodies, badges, and collapsible behavior.
+ * Used for settings panels, info panels, and grouped content areas.
+ */
+
+/* =============================================================================
+   Base Panel
+   ============================================================================= */
+
+.panel {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    min-width: 0; /* Prevent flex/grid blowout */
+}
+
+/* =============================================================================
+   Panel Header
+   ============================================================================= */
+
+.panel-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-tertiary);
+    gap: 0.5rem;
+}
+
+.panel-header h2,
+.panel-header h3 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.panel-header .badge {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--accent);
+    color: white;
+    border-radius: 10px;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   Panel Body
+   ============================================================================= */
+
+.panel-body {
+    padding: 0.875rem;
+    min-width: 0; /* Prevent content overflow */
+    box-sizing: border-box;
+}
+
+/* =============================================================================
+   Collapsible Panel
+   ============================================================================= */
+
+.panel.collapsible .panel-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+}
+
+.panel.collapsible .panel-header h2,
+.panel.collapsible .panel-header h3 {
+    color: var(--text-primary);
+}
+
+.panel.collapsible .panel-header:hover {
+    background: var(--border);
+}
+
+.panel.collapsible .panel-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: -2px;
+}
+
+.panel.collapsible .panel-toggle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.panel.collapsible.collapsed .panel-toggle {
+    transform: rotate(-90deg);
+}
+
+.panel.collapsible.collapsed .panel-body {
+    display: none;
+}
+
+.panel.collapsible.collapsed .tab-nav,
+.panel.collapsible.collapsed .tab-content {
+    display: none;
+}
+
+/* =============================================================================
+   Responsive Adjustments
+   ============================================================================= */
+
+@media (max-width: 1400px) {
+    .panel-header {
+        padding: 0.6rem 0.75rem;
+    }
+
+    .panel-body {
+        padding: 0.75rem;
+    }
+}

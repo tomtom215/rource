@@ -301,7 +301,7 @@ impl Rource {
     /// diagnose visibility issues.
     #[wasm_bindgen(js_name = getZoomDebugInfo)]
     pub fn get_zoom_debug_info(&self) -> String {
-        use crate::render_phases::{LOD_MIN_DIR_RADIUS, LOD_MIN_FILE_RADIUS, LOD_MIN_USER_RADIUS};
+        use rource_render::lod::{MIN_DIR_RADIUS, MIN_FILE_RADIUS, MIN_USER_RADIUS};
 
         let zoom = self.camera.zoom();
 
@@ -343,17 +343,17 @@ impl Rource {
         let min_user_screen_radius = min_user_radius * zoom;
 
         // Check which entity types would pass LOD
-        let files_pass_lod = min_file_screen_radius >= LOD_MIN_FILE_RADIUS;
-        let dirs_pass_lod = min_dir_screen_radius >= LOD_MIN_DIR_RADIUS;
-        let users_pass_lod = min_user_screen_radius >= LOD_MIN_USER_RADIUS;
+        let files_pass_lod = min_file_screen_radius >= MIN_FILE_RADIUS;
+        let dirs_pass_lod = min_dir_screen_radius >= MIN_DIR_RADIUS;
+        let users_pass_lod = min_user_screen_radius >= MIN_USER_RADIUS;
 
         format!(
             r#"{{"zoom":{:.6},"minZoomLimit":{:.6},"lodThresholds":{{"file":{},"dir":{},"user":{}}},"minEntityRadii":{{"file":{},"dir":{},"user":{}}},"minScreenRadii":{{"file":{:.4},"dir":{:.4},"user":{:.4}}},"passLod":{{"file":{},"dir":{},"user":{}}}}}"#,
             zoom,
             crate::render_phases::AUTO_FIT_MIN_ZOOM,
-            LOD_MIN_FILE_RADIUS,
-            LOD_MIN_DIR_RADIUS,
-            LOD_MIN_USER_RADIUS,
+            MIN_FILE_RADIUS,
+            MIN_DIR_RADIUS,
+            MIN_USER_RADIUS,
             min_file_radius,
             min_dir_radius,
             min_user_radius,
