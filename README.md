@@ -1,4 +1,8 @@
-# Rource
+<p align="center">
+  <img src="docs/images/logo.svg" alt="Rource Logo" width="100" height="100">
+</p>
+
+<h1 align="center">Rource</h1>
 
 <!-- CI/CD Status Badges -->
 [![CI](https://github.com/tomtom215/rource/actions/workflows/ci.yml/badge.svg)](https://github.com/tomtom215/rource/actions/workflows/ci.yml)
