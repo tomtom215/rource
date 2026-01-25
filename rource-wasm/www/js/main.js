@@ -357,14 +357,28 @@ async function main() {
         if (rource.isWgpu()) {
             console.group('WebGPU Optimizations');
 
-            // Warmup GPU compute pipelines to avoid first-frame stutter
-            rource.warmupGPUPhysics();
-            console.log('GPU physics pipeline warmed up');
+            // Detect Firefox - WebGPU compute shaders have significant overhead in Firefox
+            // due to different GPU command submission, buffer synchronization, and
+            // shader compilation behavior compared to Chrome/Edge
+            const isFirefox = navigator.userAgent.includes('Firefox');
 
-            // Enable GPU physics for large repositories (500+ directories)
-            rource.setUseGPUPhysics(true);
-            rource.setGPUPhysicsThreshold(500);
-            console.log('GPU physics enabled (threshold: 500 directories)');
+            if (!isFirefox) {
+                // Warmup GPU compute pipelines to avoid first-frame stutter
+                rource.warmupGPUPhysics();
+                console.log('GPU physics pipeline warmed up');
+
+                // Enable GPU physics for large repositories (500+ directories)
+                rource.setUseGPUPhysics(true);
+                rource.setGPUPhysicsThreshold(500);
+                console.log('GPU physics enabled (threshold: 500 directories)');
+            } else {
+                // Firefox WebGPU has ~5-10x overhead for compute shaders due to:
+                // - Blocking device.poll() behaves differently
+                // - Multiple sequential compute passes have higher latency
+                // - Buffer synchronization is slower
+                // Keep GPU physics disabled (use CPU physics instead)
+                console.log('Firefox detected: using CPU physics (GPU compute has overhead)');
+            }
 
             // Initialize procedural file icons
             if (rource.initFileIcons()) {
