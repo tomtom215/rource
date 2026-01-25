@@ -97,6 +97,7 @@ Features needed for 100% Gource feature parity:
 | History Span | 13+ years (2013-2026) |
 | Test Date | 2026-01-25 |
 | Platform | x86_64-unknown-linux-gnu |
+| Gource Version | 0.55 (built from source) |
 | Rource Version | 0.1.0 |
 
 ### Benchmark Parameters
@@ -152,14 +153,64 @@ Features needed for 100% Gource feature parity:
 | Directories rendered | 4,836 |
 | Commits applied | 86,756 |
 
-### Output Verification
+### Gource Measured Results
+
+**Timing (via xvfb-run with wall clock measurement):**
+
+| Metric | Value |
+|--------|-------|
+| Wall clock time | 749.74 seconds |
+| Total frames | 3,717 |
+| Average frame time | 201.70 ms |
+| Frame rate | 4.96 fps |
+
+**Output:**
 
 | Check | Result |
 |-------|--------|
-| Frame count | 2,708 PPM files |
-| Frame size | 2,764,816 bytes each (1280×720×3 + header) |
-| Total output | 7.0 GB |
-| Content verification | 2.2% → 23.8% non-zero pixels (increasing) |
+| Output format | Single PPM stream |
+| Total output | 9.6 GB |
+| Frame size | 2,764,816 bytes each |
+
+### Head-to-Head Comparison
+
+| Metric | Gource 0.55 | Rource 0.1.0 | Difference |
+|--------|-------------|--------------|------------|
+| Wall clock time | 749.74s | 243.05s | **Rource 3.1× faster** |
+| Total frames | 3,717 | 2,708 | Gource +37% frames |
+| Frame rate | 4.96 fps | 11.14 fps | **Rource 2.25× faster** |
+| Avg frame time | 201.70 ms | 89.75 ms | **Rource 2.25× faster** |
+| Output size | 9.6 GB | 7.0 GB | Proportional to frames |
+| Commits processed | 86,758 | 86,756 | Equal |
+| Commits/second | 115.7 | 357.0 | **Rource 3.1× faster** |
+
+**Analysis:**
+
+- **Rource is 2.25× faster per frame** when comparing average frame times
+- **Rource is 3.1× faster overall** when comparing total wall clock time
+- Gource rendered 37% more frames due to different internal simulation timing
+- Both tools processed the same commit data (86,758 commits, 524,925 file operations)
+- Rource uses pure CPU software rendering; Gource uses OpenGL via xvfb virtual framebuffer
+
+**Important Notes:**
+
+1. Gource was run through `xvfb-run` which adds overhead for the virtual framebuffer
+2. Rource uses a deterministic fixed timestep in headless mode; Gource may use variable timing
+3. The frame count difference suggests different simulation speeds despite identical `--seconds-per-day` settings
+4. For true apples-to-apples comparison, normalize by commits processed: Rource processes 3.1× more commits per second
+
+### Output Verification
+
+| Tool | Check | Result |
+|------|-------|--------|
+| Rource | Frame count | 2,708 PPM files |
+| Rource | Frame size | 2,764,816 bytes each |
+| Rource | Total output | 7.0 GB |
+| Rource | Content | 2.2% → 23.8% non-zero pixels |
+| Gource | Frame count | 3,717 (concatenated stream) |
+| Gource | Frame size | 2,764,816 bytes each |
+| Gource | Total output | 9.6 GB |
+| Gource | Content | Verified non-zero |
 
 ### Reproducible Commands
 
