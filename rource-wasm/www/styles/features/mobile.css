@@ -457,25 +457,34 @@
     /* -------------------------------------------------------------------------
        Stats Overlay - Mobile Compact Layout
        -------------------------------------------------------------------------
-       Shows commits/files/dirs/authors in a compact pill at bottom-left.
-       Reduced from 4 items to horizontal compact display.
+       Shows commits/files/dirs/authors in a compact pill at BOTTOM-CENTER.
+       Positioned above timeline controls, between mobile toolbar and FAB.
+       This prevents overlap with bottom-left mobile toolbar.
     */
 
     .has-bottom-sheet .stats-overlay {
-        bottom: 8px;
-        left: 8px;
-        padding: 6px 12px;
+        /* Bottom-center positioning, above timeline */
+        bottom: max(118px, calc(118px + env(safe-area-inset-bottom)));
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        padding: 6px 14px;
         border-radius: 20px;
-        background: rgba(0, 0, 0, 0.75);
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-        gap: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+        gap: 14px;
         font-size: 0.7rem;
+        /* Ensure it doesn't stretch too wide */
+        max-width: calc(100vw - 150px);
     }
 
     .has-bottom-sheet .stats-overlay .stat-item {
         flex-direction: row;
         gap: 4px;
+        white-space: nowrap;
     }
 
     .has-bottom-sheet .stats-overlay .stat-value {
@@ -484,7 +493,7 @@
     }
 
     .has-bottom-sheet .stats-overlay .stat-label {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
         text-transform: uppercase;
         letter-spacing: 0.3px;
     }
@@ -495,11 +504,38 @@
         right: 8px;
         left: auto;
         min-width: auto;
-        padding: 6px 10px;
-        border-radius: 20px;
-        background: rgba(0, 0, 0, 0.75);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        padding: 8px 12px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        /* Touch-friendly tap area */
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Tap hint indicator */
+    .has-bottom-sheet .perf-overlay::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 6px;
+        height: 6px;
+        background: var(--text-muted);
+        border-radius: 50%;
+        opacity: 0.5;
+        transition: opacity 0.2s ease;
+    }
+
+    .has-bottom-sheet .perf-overlay:not(.collapsed)::after {
+        opacity: 0;
+    }
+
+    .has-bottom-sheet .perf-overlay:active {
+        transform: scale(0.98);
     }
 
     /* HUD header - horizontal layout with FPS prominent */
@@ -770,8 +806,11 @@
 
 @media (max-width: 768px) and (orientation: landscape) {
     .bottom-sheet {
+        /* Dynamic viewport height for mobile browser address bar */
         height: 75vh;
+        height: 75dvh;
         max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
     }
 
     .bottom-sheet-header {
@@ -811,15 +850,21 @@
         height: 32px;
     }
 
-    /* Landscape toolbar: More compact */
+    /* Landscape toolbar: Maintain 44px touch targets (WCAG 2.5.5) with smaller icons */
     .has-bottom-sheet .mobile-toolbar-btn {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
+        padding: 0;
     }
 
     .has-bottom-sheet .mobile-toolbar-btn svg {
         width: 18px;
         height: 18px;
+    }
+
+    /* Tighter toolbar spacing in landscape */
+    .has-bottom-sheet .mobile-toolbar {
+        gap: 2px;
     }
 
     /* -------------------------------------------------------------------------
@@ -886,6 +931,33 @@
     .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
         transform: translateX(16px);
     }
+
+    /* -------------------------------------------------------------------------
+       Landscape Stats Overlay - Repositioned for Landscape Layout
+       -------------------------------------------------------------------------
+
+       In landscape, vertical space is limited. Stats overlay moves to right-center
+       area to avoid overlapping the left-positioned toolbar.
+    */
+
+    .has-bottom-sheet .stats-overlay {
+        /* Move to right side, above timeline but avoiding FAB */
+        bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
+        left: auto;
+        right: max(70px, calc(70px + env(safe-area-inset-right)));
+        transform: none;
+        padding: 4px 10px;
+        gap: 10px;
+        max-width: calc(50vw - 80px);
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-value {
+        font-size: 0.7rem;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-label {
+        font-size: 0.5rem;
+    }
 }
 
 /* =============================================================================
@@ -909,16 +981,18 @@
 
     /* Extra small stats overlay - even more compact */
     .has-bottom-sheet .stats-overlay {
-        padding: 4px 10px;
-        gap: 8px;
+        bottom: max(112px, calc(112px + env(safe-area-inset-bottom)));
+        padding: 5px 10px;
+        gap: 10px;
+        max-width: calc(100vw - 120px);
     }
 
     .has-bottom-sheet .stats-overlay .stat-value {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
     }
 
     .has-bottom-sheet .stats-overlay .stat-label {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
     }
 
     /* -------------------------------------------------------------------------

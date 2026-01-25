@@ -15,6 +15,7 @@
  */
 
 import { addManagedEventListener } from '../state.js';
+import { hapticLight, hapticMedium, HapticPattern, haptic } from '../utils.js';
 
 // ============================================================================
 // Constants
@@ -217,6 +218,16 @@ function snapTo(snapName, instant = false) {
     // When at FULL, translateY should be minimal
     // When at HIDDEN, translateY should be sheetHeight
     const targetTranslate = sheetHeight - targetHeight;
+
+    // Haptic feedback on snap (if position actually changed)
+    if (currentSnap !== snapName && !instant) {
+        // Stronger feedback for dismissal, lighter for expansion
+        if (snapName === 'HIDDEN') {
+            hapticMedium(); // Dismissal confirmation
+        } else {
+            hapticLight(); // Light snap feedback
+        }
+    }
 
     currentSnap = snapName;
 
@@ -524,6 +535,7 @@ export function closeBottomSheet() {
  * Toggles the bottom sheet between hidden and half.
  */
 export function toggleBottomSheet() {
+    hapticMedium(); // FAB tap feedback
     if (currentSnap === 'HIDDEN') {
         snapTo('HALF');
     } else {
@@ -551,6 +563,16 @@ export function isBottomSheetOpen() {
 // Bottom Sheet Legends Population
 // ============================================================================
 
+/** Default collapsed limits for legends */
+const LEGEND_LIMITS = {
+    FILE_TYPES: 6,
+    AUTHORS: 5,
+};
+
+/** Expanded states for legends */
+let fileTypesExpanded = false;
+let authorsExpanded = false;
+
 /**
  * Updates the file types legend in the bottom sheet.
  * Called when legend data changes.
@@ -575,9 +597,16 @@ export function updateBottomSheetFileTypes(fileTypes) {
         return;
     }
 
-    // Add legend items (limit to top 10 for mobile)
-    const topTypes = fileTypes.slice(0, 10);
-    for (const item of topTypes) {
+    // Store full data for expansion toggle
+    container.dataset.fullCount = fileTypes.length.toString();
+
+    // Determine how many to show
+    const limit = fileTypesExpanded ? fileTypes.length : LEGEND_LIMITS.FILE_TYPES;
+    const visibleTypes = fileTypes.slice(0, limit);
+    const remaining = fileTypes.length - visibleTypes.length;
+
+    // Add legend items
+    for (const item of visibleTypes) {
         const el = document.createElement('div');
         el.className = 'bottom-sheet-legend-item';
         el.innerHTML = `
@@ -588,13 +617,35 @@ export function updateBottomSheetFileTypes(fileTypes) {
         container.appendChild(el);
     }
 
-    // Show "and X more" if truncated
-    if (fileTypes.length > 10) {
-        const more = document.createElement('span');
-        more.className = 'bottom-sheet-legend-more';
-        more.textContent = `+${fileTypes.length - 10} more`;
-        more.style.cssText = 'font-size: 0.6875rem; color: var(--text-muted); padding: 4px 8px;';
-        container.appendChild(more);
+    // Show expand/collapse button if there are more items
+    if (fileTypes.length > LEGEND_LIMITS.FILE_TYPES) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'bottom-sheet-legend-toggle';
+        toggleBtn.type = 'button';
+        toggleBtn.setAttribute('aria-expanded', fileTypesExpanded.toString());
+
+        if (fileTypesExpanded) {
+            toggleBtn.innerHTML = `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+                </svg>
+                Show less
+            `;
+        } else {
+            toggleBtn.innerHTML = `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+                </svg>
+                +${remaining} more
+            `;
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            fileTypesExpanded = !fileTypesExpanded;
+            updateBottomSheetFileTypes(fileTypes);
+        });
+
+        container.appendChild(toggleBtn);
     }
 }
 
@@ -622,9 +673,16 @@ export function updateBottomSheetAuthors(authors) {
         return;
     }
 
-    // Add author items (limit to top 8 for mobile)
-    const topAuthors = authors.slice(0, 8);
-    for (const author of topAuthors) {
+    // Store full data for expansion toggle
+    container.dataset.fullCount = authors.length.toString();
+
+    // Determine how many to show
+    const limit = authorsExpanded ? authors.length : LEGEND_LIMITS.AUTHORS;
+    const visibleAuthors = authors.slice(0, limit);
+    const remaining = authors.length - visibleAuthors.length;
+
+    // Add author items
+    for (const author of visibleAuthors) {
         const el = document.createElement('div');
         el.className = 'bottom-sheet-author-item';
         el.innerHTML = `
@@ -635,13 +693,35 @@ export function updateBottomSheetAuthors(authors) {
         container.appendChild(el);
     }
 
-    // Show "and X more" if truncated
-    if (authors.length > 8) {
-        const more = document.createElement('span');
-        more.className = 'bottom-sheet-legend-more';
-        more.textContent = `+${authors.length - 8} more`;
-        more.style.cssText = 'font-size: 0.6875rem; color: var(--text-muted); padding: 6px 10px;';
-        container.appendChild(more);
+    // Show expand/collapse button if there are more items
+    if (authors.length > LEGEND_LIMITS.AUTHORS) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'bottom-sheet-legend-toggle';
+        toggleBtn.type = 'button';
+        toggleBtn.setAttribute('aria-expanded', authorsExpanded.toString());
+
+        if (authorsExpanded) {
+            toggleBtn.innerHTML = `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+                </svg>
+                Show less
+            `;
+        } else {
+            toggleBtn.innerHTML = `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+                </svg>
+                +${remaining} more
+            `;
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            authorsExpanded = !authorsExpanded;
+            updateBottomSheetAuthors(authors);
+        });
+
+        container.appendChild(toggleBtn);
     }
 }
 

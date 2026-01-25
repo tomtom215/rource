@@ -80,8 +80,11 @@
         left: 0;
         right: 0;
         bottom: 0;
+        /* Dynamic viewport height for mobile browser address bar changes */
         height: 92vh;
+        height: 92dvh; /* Modern browsers - accounts for collapsing address bar */
         max-height: calc(100vh - env(safe-area-inset-top) - 20px);
+        max-height: calc(100dvh - env(safe-area-inset-top) - 20px);
         background: var(--bg-primary);
         border-radius: 16px 16px 0 0;
         box-shadow: 0 -4px 20px var(--shadow);
@@ -114,17 +117,49 @@
     }
 
     .bottom-sheet-handle {
-        width: 36px;
+        width: 40px;
         height: 5px;
-        background: var(--border-light);
+        /* More visible: lighter color with slight transparency */
+        background: rgba(255, 255, 255, 0.35);
         border-radius: 2.5px;
         margin-bottom: 12px;
-        transition: background 0.2s ease, transform 0.2s ease;
+        transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        /* Subtle glow to indicate interactivity */
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Pulsing animation to indicate draggability on first view */
+    @keyframes handle-pulse {
+        0%, 100% { opacity: 0.6; transform: scaleX(1); }
+        50% { opacity: 1; transform: scaleX(1.1); }
+    }
+
+    .bottom-sheet-handle.hint {
+        animation: handle-pulse 1.5s ease-in-out 2;
+    }
+
+    .bottom-sheet-header:hover .bottom-sheet-handle {
+        background: rgba(255, 255, 255, 0.5);
+        transform: scaleX(1.05);
     }
 
     .bottom-sheet-header:active .bottom-sheet-handle {
-        background: var(--text-muted);
-        transform: scaleX(1.1);
+        background: rgba(255, 255, 255, 0.65);
+        transform: scaleX(1.15);
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+    }
+
+    /* Light theme adjustments */
+    .light-theme .bottom-sheet-handle {
+        background: rgba(0, 0, 0, 0.25);
+    }
+
+    .light-theme .bottom-sheet-header:hover .bottom-sheet-handle {
+        background: rgba(0, 0, 0, 0.35);
+    }
+
+    .light-theme .bottom-sheet-header:active .bottom-sheet-handle {
+        background: rgba(0, 0, 0, 0.45);
     }
 
     .bottom-sheet-header-row {
@@ -200,6 +235,9 @@
         touch-action: pan-y;
         /* Add padding at bottom for safe area and better UX */
         padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        /* Scroll snap for section-based navigation (proximity = gentle snapping) */
+        scroll-snap-type: y proximity;
+        scroll-padding-top: 8px;
     }
 
     .bottom-sheet-content::-webkit-scrollbar {
@@ -395,6 +433,9 @@
     .bottom-sheet-section {
         padding: 0 16px;
         margin-bottom: 16px;
+        /* Scroll snap alignment for smooth section navigation */
+        scroll-snap-align: start;
+        scroll-margin-top: 8px;
     }
 
     /* Remove extra padding when section is inside quick-actions */
@@ -725,7 +766,7 @@
         font-variant-numeric: tabular-nums;
     }
 
-    /* "More" indicator for overflow */
+    /* "More" indicator for overflow - now a clickable button */
     .bottom-sheet-legend-more {
         display: inline-flex;
         align-items: center;
@@ -733,6 +774,55 @@
         color: var(--text-muted);
         font-size: 0.75rem;
         font-weight: 500;
+    }
+
+    /* Expand/Collapse toggle button for legends */
+    .bottom-sheet-legend-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        margin-top: 6px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        color: var(--accent-blue);
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+        /* Full width to make it easier to tap */
+        width: 100%;
+        justify-content: center;
+    }
+
+    .bottom-sheet-legend-toggle:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--accent-blue);
+    }
+
+    .bottom-sheet-legend-toggle:active {
+        transform: scale(0.98);
+        background: var(--border);
+    }
+
+    .bottom-sheet-legend-toggle:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
+    .bottom-sheet-legend-toggle svg {
+        flex-shrink: 0;
+    }
+
+    /* Light theme toggle button */
+    .light-theme .bottom-sheet-legend-toggle {
+        background: var(--bg-primary);
+    }
+
+    .light-theme .bottom-sheet-legend-toggle:hover {
+        background: var(--bg-secondary);
     }
 
     /* -------------------------------------------------------------------------
@@ -879,26 +969,9 @@
    Landscape Adjustments
    ============================================================================= */
 
-@media (max-width: 768px) and (orientation: landscape) {
-    .bottom-sheet {
-        height: 80vh;
-        max-height: calc(100vh - 20px);
-    }
-
-    .bottom-sheet-header {
-        padding: 8px 16px 4px;
-    }
-
-    .bottom-sheet-handle {
-        margin-bottom: 8px;
-    }
-
-    .bottom-sheet-fab {
-        bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
-        width: 48px;
-        height: 48px;
-    }
-}
+/* NOTE: Landscape-specific bottom sheet rules are consolidated in mobile.css
+   to avoid duplication and ensure consistent behavior with other mobile
+   landscape optimizations (toolbar, timeline, perf overlay, etc.) */
 
 /* =============================================================================
    Extra Small Screens (iPhone SE)

@@ -144,3 +144,89 @@ export function trapFocus(container, event) {
         }
     }
 }
+
+// =============================================================================
+// Haptic Feedback Utilities
+// =============================================================================
+
+/**
+ * Check if device supports haptic feedback via Vibration API.
+ * @returns {boolean} True if vibration is supported
+ */
+export function supportsHaptics() {
+    return 'vibrate' in navigator;
+}
+
+/**
+ * Haptic feedback patterns (duration in milliseconds).
+ * Subtle patterns that enhance UX without being intrusive.
+ */
+export const HapticPattern = {
+    /** Light tap - button press, selection (10ms) */
+    LIGHT: 10,
+    /** Medium tap - confirmation, toggle (15ms) */
+    MEDIUM: 15,
+    /** Heavy tap - important action, error (25ms) */
+    HEAVY: 25,
+    /** Success pattern - two quick taps */
+    SUCCESS: [10, 50, 10],
+    /** Error pattern - three quick taps */
+    ERROR: [15, 30, 15, 30, 15],
+    /** Selection changed - very subtle */
+    SELECTION: 5,
+};
+
+/**
+ * Trigger haptic feedback if supported and user hasn't disabled it.
+ * Respects prefers-reduced-motion media query.
+ *
+ * @param {number|number[]} pattern - Vibration pattern (ms) or array of [vibrate, pause, vibrate...]
+ * @returns {boolean} True if haptic was triggered
+ */
+export function haptic(pattern = HapticPattern.LIGHT) {
+    // Check if device supports vibration
+    if (!supportsHaptics()) {
+        return false;
+    }
+
+    // Respect reduced motion preference (haptics can be disorienting)
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return false;
+    }
+
+    try {
+        navigator.vibrate(pattern);
+        return true;
+    } catch {
+        // Vibration may fail silently on some devices
+        return false;
+    }
+}
+
+/**
+ * Convenience function for light haptic (button taps).
+ */
+export function hapticLight() {
+    return haptic(HapticPattern.LIGHT);
+}
+
+/**
+ * Convenience function for medium haptic (toggles, confirmations).
+ */
+export function hapticMedium() {
+    return haptic(HapticPattern.MEDIUM);
+}
+
+/**
+ * Convenience function for success haptic.
+ */
+export function hapticSuccess() {
+    return haptic(HapticPattern.SUCCESS);
+}
+
+/**
+ * Convenience function for error haptic.
+ */
+export function hapticError() {
+    return haptic(HapticPattern.ERROR);
+}

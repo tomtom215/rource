@@ -92,3 +92,88 @@
     animation: tickFadeIn 0.25s ease-out forwards;
     transform-origin: bottom center;
 }
+
+/* =============================================================================
+   Touch Feedback Animations (Haptic-like visual feedback)
+   ============================================================================= */
+
+/* Spring-based press feedback (iOS-like) */
+@keyframes touchPress {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+
+/* Ripple effect for button taps */
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* Bounce feedback after release (spring-like) */
+@keyframes touchBounce {
+    0% { transform: scale(0.92); }
+    40% { transform: scale(1.02); }
+    70% { transform: scale(0.98); }
+    100% { transform: scale(1); }
+}
+
+/* Success feedback pulse */
+@keyframes successPulse {
+    0% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(63, 185, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0); }
+}
+
+/* Error shake feedback */
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+/* Utility classes for touch feedback */
+.touch-press {
+    animation: touchPress 0.15s ease-out;
+}
+
+.touch-bounce {
+    animation: touchBounce 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.touch-success {
+    animation: successPulse 0.6s ease-out;
+}
+
+.touch-error {
+    animation: errorShake 0.4s ease-out;
+}
+
+/* Mobile-specific touch feedback enhancements */
+@media (max-width: 768px), (pointer: coarse) {
+    /* Enhance active states with spring-like behavior */
+    button:active:not(:disabled),
+    .btn:active:not(:disabled),
+    .bottom-sheet-action-btn:active:not(:disabled),
+    .mobile-toolbar-btn:active:not(:disabled) {
+        animation: touchPress 0.1s ease-out forwards;
+    }
+
+    /* Add subtle glow on touch for important buttons */
+    .play-btn-main:active {
+        box-shadow: 0 0 0 8px rgba(233, 69, 96, 0.2);
+    }
+
+    /* FAB touch feedback */
+    .bottom-sheet-fab:active {
+        box-shadow: 0 0 0 8px rgba(233, 69, 96, 0.2), 0 4px 12px rgba(233, 69, 96, 0.4);
+    }
+}
