@@ -121,6 +121,20 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+
+    /* Force GPU compositing layer for smoother animation and proper DPI scaling.
+       This is critical for Safari to properly handle high-DPI canvases. */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+
+    /* Prevent Safari from optimizing away the layer */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+
+    /* Use high-quality image rendering (default for most browsers).
+       Safari may need -webkit-optimize-contrast for crisp edges. */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: auto;
 }
 
 /* =============================================================================
