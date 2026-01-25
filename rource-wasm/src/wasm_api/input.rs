@@ -130,6 +130,55 @@ pub use helpers::*;
 
 #[wasm_bindgen]
 impl Rource {
+    /// Returns debug information about hit testing at the given coordinates.
+    ///
+    /// Use this to diagnose why drag might not be working:
+    /// - Check if screen_to_world conversion is correct
+    /// - Check if entities are in the spatial index
+    /// - Check if entities are within hit radius
+    #[wasm_bindgen(js_name = debugHitTest)]
+    pub fn debug_hit_test(&self, x: f32, y: f32) -> String {
+        let screen_pos = Vec2::new(x, y);
+        let world_pos = self.camera.screen_to_world(screen_pos);
+        let hit_radius = ENTITY_HIT_RADIUS / self.camera.zoom();
+
+        // Query the spatial index
+        let entities = self.scene.query_entities_circle(world_pos, hit_radius);
+
+        // Get counts
+        let user_hits: Vec<_> = entities
+            .iter()
+            .filter(|e| matches!(e, rource_core::scene::EntityType::User(_)))
+            .collect();
+        let file_hits: Vec<_> = entities
+            .iter()
+            .filter(|e| matches!(e, rource_core::scene::EntityType::File(_)))
+            .collect();
+        let dir_hits: Vec<_> = entities
+            .iter()
+            .filter(|e| matches!(e, rource_core::scene::EntityType::Directory(_)))
+            .collect();
+
+        format!(
+            r#"{{"screenX":{},"screenY":{},"worldX":{:.2},"worldY":{:.2},"zoom":{:.4},"hitRadius":{:.2},"viewportWidth":{},"viewportHeight":{},"totalFiles":{},"totalUsers":{},"totalDirs":{},"spatialQueryCount":{},"usersInRadius":{},"filesInRadius":{},"dirsInRadius":{}}}"#,
+            x,
+            y,
+            world_pos.x,
+            world_pos.y,
+            self.camera.zoom(),
+            hit_radius,
+            self.backend.width(),
+            self.backend.height(),
+            self.scene.file_count(),
+            self.scene.user_count(),
+            self.scene.directory_count(),
+            entities.len(),
+            user_hits.len(),
+            file_hits.len(),
+            dir_hits.len(),
+        )
+    }
+
     /// Handles mouse down events.
     ///
     /// Initiates entity dragging if an entity is clicked, otherwise starts

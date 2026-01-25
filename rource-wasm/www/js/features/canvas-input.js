@@ -55,6 +55,17 @@ function handleMouseDown(e, canvas) {
     if (!rource) return;
 
     const { x, y } = getCanvasCoords(canvas, e.clientX, e.clientY);
+
+    // Debug: log hit test info on click (can be removed after debugging)
+    if (typeof rource.debugHitTest === 'function') {
+        try {
+            const debugInfo = JSON.parse(rource.debugHitTest(x, y));
+            console.debug('Click hit test:', debugInfo);
+        } catch (e) {
+            // Ignore parsing errors
+        }
+    }
+
     safeWasmVoid('onMouseDown', () => rource.onMouseDown(x, y));
     canvas.style.cursor = 'grabbing';
 }
