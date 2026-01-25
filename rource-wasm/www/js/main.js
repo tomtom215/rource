@@ -15,7 +15,7 @@ import { CONFIG, getExtensionColor } from './config.js';
 import { telemetry, validateSpeed } from './telemetry.js';
 import { escapeHtml } from './utils.js';
 import {
-    setState, getRource, setRource, hasData
+    setState, getRource, setRource, hasData, addManagedEventListener
 } from './state.js';
 import { initDomElements, getElement, getAllElements } from './dom.js';
 import {
@@ -79,9 +79,10 @@ function initBottomSheetActions() {
     const bsFab = document.getElementById('bottom-sheet-fab');
 
     // Enable visualize button when WASM is ready
+    // Using addManagedEventListener ensures cleanup on reinitialize
     if (bsVisualizeBtn) {
         bsVisualizeBtn.disabled = false;
-        bsVisualizeBtn.addEventListener('click', () => {
+        addManagedEventListener(bsVisualizeBtn, 'click', () => {
             loadRourceData();
             closeBottomSheet();
         });
@@ -89,7 +90,7 @@ function initBottomSheetActions() {
 
     // Fetch repo button opens bottom sheet to the input
     if (bsFetchRepoBtn) {
-        bsFetchRepoBtn.addEventListener('click', () => {
+        addManagedEventListener(bsFetchRepoBtn, 'click', () => {
             // Scroll to input and focus
             if (bsGithubUrl) {
                 bsGithubUrl.focus();
@@ -101,12 +102,12 @@ function initBottomSheetActions() {
     // Enable fetch button when input has content
     if (bsGithubUrl && bsFetchBtn) {
         bsFetchBtn.disabled = false;
-        bsGithubUrl.addEventListener('input', () => {
+        addManagedEventListener(bsGithubUrl, 'input', () => {
             bsFetchBtn.disabled = !bsGithubUrl.value.trim();
         });
 
         // Handle fetch action
-        bsFetchBtn.addEventListener('click', async () => {
+        addManagedEventListener(bsFetchBtn, 'click', async () => {
             const input = bsGithubUrl.value.trim();
             if (!input) return;
 
@@ -142,7 +143,7 @@ function initBottomSheetActions() {
         });
 
         // Handle enter key
-        bsGithubUrl.addEventListener('keydown', (e) => {
+        addManagedEventListener(bsGithubUrl, 'keydown', (e) => {
             if (e.key === 'Enter' && !bsFetchBtn.disabled) {
                 bsFetchBtn.click();
             }
@@ -151,7 +152,7 @@ function initBottomSheetActions() {
 
     // FAB opens bottom sheet (or shows controls if hidden)
     if (bsFab) {
-        bsFab.addEventListener('click', () => {
+        addManagedEventListener(bsFab, 'click', () => {
             // If controls are hidden, show them first instead of opening sheet
             const controlsHidden = document.body.classList.contains('controls-hidden');
             if (controlsHidden) {

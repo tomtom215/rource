@@ -8,7 +8,7 @@
  * Single responsibility: show entity details on hover.
  */
 
-import { getRource } from '../state.js';
+import { getRource, addManagedEventListener } from '../state.js';
 import { safeWasmCall } from '../wasm-api.js';
 import { getElement } from '../dom.js';
 import { CONFIG } from '../config.js';
@@ -186,17 +186,18 @@ export function initHoverTooltip() {
     if (!canvas) return;
 
     // Track hover on mousemove
-    canvas.addEventListener('mousemove', (e) => {
+    // passive: true signals to browser this won't block scrolling (no preventDefault)
+    addManagedEventListener(canvas, 'mousemove', (e) => {
         handleHover(e, canvas);
-    });
+    }, { passive: true });
 
     // Hide tooltip on mouse leave
-    canvas.addEventListener('mouseleave', handleMouseLeaveTooltip);
+    addManagedEventListener(canvas, 'mouseleave', handleMouseLeaveTooltip, { passive: true });
 
     // Hide tooltip when starting a drag
-    canvas.addEventListener('mousedown', () => {
+    addManagedEventListener(canvas, 'mousedown', () => {
         hideTooltip();
-    });
+    }, { passive: true });
 }
 
 /**
