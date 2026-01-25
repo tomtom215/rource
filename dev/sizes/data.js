@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769375265120,
+  "lastUpdate": 1769382936846,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2456,6 +2456,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1070591,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ae5fe25d7cb2e9bbdccb761d86a5f3d3e39c551",
+          "message": "Merge pull request #173 from tomtom215/claude/fix-wasm-firefox-issues-whVD9\n\nImprove help overlay styling and add Firefox scrollbar support",
+          "timestamp": "2026-01-26T00:13:16+01:00",
+          "tree_id": "0c8d456499d7d68c9925a240285bc16f58473dd0",
+          "url": "https://github.com/tomtom215/rource/commit/0ae5fe25d7cb2e9bbdccb761d86a5f3d3e39c551"
+        },
+        "date": 1769382936013,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2779987,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1073782,
             "unit": "bytes"
           }
         ]
