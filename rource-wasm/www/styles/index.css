@@ -5,7 +5,7 @@
  * Rource - CSS Module Index
  *
  * This file imports all CSS modules in the correct order.
- * Import this file instead of styles.css for the modular architecture.
+ * This is the production entry point for all styles.
  *
  * Architecture:
  * - variables.css: Design tokens (colors, spacing, etc.)
@@ -15,14 +15,8 @@
  * - features/: Feature-specific styles
  *
  * Migration Status: COMPLETE
- * - Foundation: variables.css, reset.css
- * - Components: buttons, panels, toast, tabs, inputs, cards, modals
- * - Sections: header, canvas, sidebar, timeline, overlays
- * - Features: animations, themes, fullscreen, mobile
- *
- * Note: The monolithic styles.css is still the production file.
- * These modular files are for incremental refactoring and can be
- * used for development by importing this file instead.
+ * All styles have been extracted from the monolithic styles.css into
+ * this modular architecture for better maintainability.
  */
 
 /* =============================================================================
@@ -43,6 +37,10 @@
 @import url('./components/inputs.css');
 @import url('./components/cards.css');
 @import url('./components/modals.css');
+@import url('./components/showcase.css');
+@import url('./components/skeleton.css');
+@import url('./components/docs.css');
+@import url('./components/tooltips.css');
 
 /* =============================================================================
    Sections
@@ -53,6 +51,8 @@
 @import url('./sections/sidebar.css');
 @import url('./sections/timeline.css');
 @import url('./sections/overlays.css');
+@import url('./sections/help.css');
+@import url('./sections/footer.css');
 
 /* =============================================================================
    Features
@@ -66,6 +66,15 @@
 
 /* Fullscreen mode adjustments */
 @import url('./features/fullscreen.css');
+
+/* Video recording and controls */
+@import url('./features/recording.css');
+
+/* Accessibility (contrast, reduced motion, auto color scheme) */
+@import url('./features/accessibility.css');
+
+/* iOS-style bottom sheet for mobile */
+@import url('./features/bottom-sheet.css');
 
 /* Mobile responsive overrides (should be last to override other styles) */
 @import url('./features/mobile.css');

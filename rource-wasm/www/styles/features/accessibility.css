@@ -1,0 +1,215 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Accessibility Styles
+ *
+ * WCAG compliance improvements, reduced motion support, and auto color scheme.
+ */
+
+/* =============================================================================
+   Contrast Improvements (WCAG AA)
+   ============================================================================= */
+
+/**
+ * Improve contrast ratios to meet WCAG AA requirements (4.5:1 for normal text).
+ * Dark theme: #8b949e on #21262d = 3.86:1 (fails), #a8b2bd on #21262d = 4.7:1 (passes)
+ */
+
+/* Disabled buttons need higher contrast text */
+.showcase-btn:disabled,
+.btn:disabled,
+.btn-secondary:disabled {
+    color: #a8b2bd; /* WCAG AA: 4.7:1 contrast on #21262d */
+}
+
+/* Links should be distinguishable without relying solely on color */
+.docs-panel a,
+.panel-body a,
+.help-text a,
+.about-banner a:not(.btn) {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+.docs-panel a:hover,
+.panel-body a:hover,
+.help-text a:hover,
+.about-banner a:not(.btn):hover {
+    text-decoration-thickness: 2px;
+}
+
+/* Improve muted text contrast for informational content */
+.panel-guide .help-text,
+.docs-section p {
+    color: #9ca3af; /* WCAG AA: 4.5:1 on dark backgrounds */
+}
+
+/* Maintain h3 visual styling when using h2 for proper heading hierarchy */
+h2.h3-style {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+}
+
+/* =============================================================================
+   Composited Animations (GPU Acceleration)
+   ============================================================================= */
+
+/**
+ * Ensure animations use compositor-friendly properties (transform, opacity)
+ * and add will-change hint for GPU acceleration.
+ */
+
+.sidebar-scroll-indicator svg {
+    will-change: transform;
+}
+
+.loading-spinner {
+    will-change: transform;
+}
+
+.btn-record.recording .record-indicator {
+    will-change: transform, opacity;
+}
+
+/* =============================================================================
+   Reduced Motion Support
+   ============================================================================= */
+
+/**
+ * Disable animations and transitions for users who prefer reduced motion.
+ * This respects the prefers-reduced-motion media query for accessibility.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    /* Allow subtle hover effects but remove transitions */
+    .control-btn,
+    .collapsible-header,
+    .timeline-slider,
+    .theme-toggle,
+    .sidebar-toggle,
+    .btn,
+    .input-group input {
+        transition: none !important;
+    }
+
+    /* Disable parallax or sliding effects */
+    .sidebar-panel {
+        scroll-behavior: auto !important;
+    }
+}
+
+/* =============================================================================
+   Auto Color Scheme (System Preference)
+   ============================================================================= */
+
+/**
+ * Automatically apply light theme for users with light system preference.
+ * This can be overridden by the manual theme toggle (JS adds/removes .light-theme class).
+ * The :not(.theme-manual) check prevents auto-switching when user has manually toggled.
+ */
+
+@media (prefers-color-scheme: light) {
+    :root:not(.theme-manual) {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f6f8fa;
+        --bg-tertiary: #eaeef2;
+        --bg-canvas: #f0f3f6;
+        --text-primary: #1f2328;
+        --text-secondary: #4d5561;
+        --text-muted: #656d76;
+        --border: #d0d7de;
+        --border-light: #afb8c1;
+        --shadow: rgba(31, 35, 40, 0.12);
+    }
+
+    :root:not(.theme-manual) .legend-panel,
+    :root:not(.theme-manual) .authors-panel,
+    :root:not(.theme-manual) .perf-overlay,
+    :root:not(.theme-manual) .stats-overlay {
+        background: rgba(246, 248, 250, 0.95);
+    }
+
+    :root:not(.theme-manual) #canvas-container {
+        background: #e8ecf0;
+    }
+
+    :root:not(.theme-manual) .theme-toggle .sun-icon { display: block; }
+    :root:not(.theme-manual) .theme-toggle .moon-icon { display: none; }
+}
+
+/* =============================================================================
+   Utility Classes
+   ============================================================================= */
+
+/* Visually hidden but accessible to screen readers */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Hidden from everyone including screen readers */
+.hidden {
+    display: none !important;
+}
+
+/* =============================================================================
+   Author Filter (Interactive)
+   ============================================================================= */
+
+.author-item {
+    cursor: pointer;
+    padding: 0.25rem;
+    margin: -0.25rem;
+    border-radius: 4px;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.15s, transform 0.15s;
+}
+
+.author-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.author-item.filtered {
+    opacity: 0.4;
+}
+
+.author-item.active {
+    background: rgba(233, 69, 96, 0.15);
+    border: 1px solid var(--accent);
+    margin: calc(-0.25rem - 1px);
+    padding: calc(0.25rem - 1px);
+}
+
+.author-filter-clear {
+    font-size: 0.75rem;
+    color: var(--accent);
+    cursor: pointer;
+    margin-left: auto;
+    padding: 0.2rem 0.4rem;
+    background: rgba(233, 69, 96, 0.1);
+    border-radius: 4px;
+    display: none;
+}
+
+.author-filter-clear.visible {
+    display: block;
+}

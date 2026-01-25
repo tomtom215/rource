@@ -1,0 +1,382 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Showcase Component Styles
+ *
+ * Showcase panel, about banner, and tech info panel.
+ * These are prominent display components used in the sidebar.
+ */
+
+/* =============================================================================
+   Showcase Panel (prominent Rource visualization)
+   ============================================================================= */
+
+.showcase-panel {
+    background: linear-gradient(135deg, rgba(233, 69, 96, 0.15) 0%, rgba(88, 166, 255, 0.15) 100%);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.showcase-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-blue), var(--accent));
+}
+
+.showcase-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 0.55rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--accent);
+    color: white;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.showcase-icon {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 0.5rem;
+}
+
+.showcase-panel h2,
+.showcase-panel h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.showcase-panel p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+/* -----------------------------------------------------------------------------
+   Showcase Buttons
+   ----------------------------------------------------------------------------- */
+
+.showcase-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s, opacity 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.showcase-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.showcase-btn:disabled {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.showcase-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    width: 100%;
+}
+
+.showcase-btn-secondary {
+    flex: 0 0 auto;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    white-space: nowrap;
+}
+
+.showcase-btn-secondary:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.showcase-btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.showcase-btn-secondary.loading {
+    pointer-events: none;
+}
+
+.showcase-btn-secondary.loading svg {
+    animation: spin 1s linear infinite;
+}
+
+/* -----------------------------------------------------------------------------
+   Refresh Status
+   ----------------------------------------------------------------------------- */
+
+.refresh-status {
+    margin-top: 0.5rem;
+    font-size: clamp(0.6rem, 1.5vw, 0.7rem);
+    text-align: center;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+}
+
+.refresh-status.success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.refresh-status.error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.refresh-status.loading {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+/* -----------------------------------------------------------------------------
+   Showcase Stats
+   ----------------------------------------------------------------------------- */
+
+.showcase-stats {
+    display: flex;
+    justify-content: space-around;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.showcase-stat {
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Stats with tooltips should show help cursor */
+.showcase-stat[title] {
+    cursor: help;
+}
+
+.showcase-stat-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+}
+
+.showcase-stat-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* =============================================================================
+   About Banner
+   ============================================================================= */
+
+.about-banner {
+    background: linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(88, 166, 255, 0.1) 100%);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.875rem;
+    text-align: center;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.about-banner h2,
+.about-banner h3 {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+.about-banner p {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.about-links {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.about-links .btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
+}
+
+/* =============================================================================
+   Tech Info Panel
+   ============================================================================= */
+
+.tech-info-panel {
+    background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(233, 69, 96, 0.08) 100%);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.875rem;
+    margin-bottom: 0.75rem;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.tech-info-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+
+.tech-info-header svg {
+    color: var(--accent-blue);
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.tech-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+}
+
+.tech-item {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    padding: 0.4rem;
+    text-align: center;
+    min-width: 0;
+}
+
+.tech-item-value {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--accent-blue);
+    font-variant-numeric: tabular-nums;
+}
+
+.tech-item-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tech-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+}
+
+.tech-badge {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.tech-badge.highlight {
+    background: rgba(233, 69, 96, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* -----------------------------------------------------------------------------
+   Collapsible Tech Info Panel
+   ----------------------------------------------------------------------------- */
+
+.tech-info-panel.collapsible .tech-info-header {
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s;
+    margin-bottom: 0;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+.tech-info-panel.collapsible:not(.collapsed) .tech-info-header {
+    margin-bottom: 0.75rem;
+}
+
+.tech-info-panel.collapsible .tech-info-header:hover {
+    opacity: 0.8;
+}
+
+.tech-info-panel.collapsible .tech-info-header:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+.tech-info-panel.collapsible .panel-toggle {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.tech-info-panel.collapsible.collapsed .panel-toggle {
+    transform: rotate(-90deg);
+}
+
+.tech-info-panel.collapsible.collapsed .tech-grid,
+.tech-info-panel.collapsible.collapsed .tech-badges {
+    display: none;
+}

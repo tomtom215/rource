@@ -1,0 +1,706 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - iOS-Style Bottom Sheet
+ *
+ * Native-feeling bottom sheet for mobile with drag-to-dismiss,
+ * floating action button, and content sections.
+ */
+
+/* =============================================================================
+   Bottom Sheet - Desktop Hidden
+   ============================================================================= */
+
+.bottom-sheet-backdrop {
+    display: none;
+}
+
+.bottom-sheet {
+    display: none;
+}
+
+.bottom-sheet-fab {
+    display: none;
+}
+
+/* =============================================================================
+   Bottom Sheet - Mobile
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    /* Hide old sidebar when bottom sheet is active */
+    .has-bottom-sheet .sidebar-toggle {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .sidebar-panel {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .sidebar-wrapper {
+        display: none !important;
+    }
+
+    /* -------------------------------------------------------------------------
+       Backdrop (dimmed background)
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-backdrop {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 299;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        pointer-events: none;
+    }
+
+    .bottom-sheet-backdrop.visible {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    /* -------------------------------------------------------------------------
+       Sheet Container
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 92vh;
+        max-height: calc(100vh - env(safe-area-inset-top) - 20px);
+        background: var(--bg-primary);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        z-index: 300;
+        transform: translateY(100%);
+        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        overflow: hidden;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .bottom-sheet.open {
+        transform: translateY(0);
+    }
+
+    /* -------------------------------------------------------------------------
+       Drag Handle Header
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 16px 8px;
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+    }
+
+    .bottom-sheet-header:active {
+        cursor: grabbing;
+    }
+
+    .bottom-sheet-handle {
+        width: 36px;
+        height: 5px;
+        background: var(--border-light);
+        border-radius: 2.5px;
+        margin-bottom: 12px;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .bottom-sheet-header:active .bottom-sheet-handle {
+        background: var(--text-muted);
+        transform: scaleX(1.1);
+    }
+
+    .bottom-sheet-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0 4px;
+    }
+
+    .bottom-sheet-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        flex: 1;
+        text-align: center;
+        padding-left: 36px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Close Button
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: var(--bg-tertiary);
+        border: none;
+        border-radius: 50%;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .bottom-sheet-close:hover {
+        background: var(--border);
+        color: var(--text-primary);
+    }
+
+    .bottom-sheet-close:active {
+        background: var(--border-light);
+        transform: scale(0.95);
+    }
+
+    .bottom-sheet-close svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Scrollable Content
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-content {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 0 16px 16px;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Floating Action Button (FAB)
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-fab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+        right: 16px;
+        width: 56px;
+        height: 56px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4),
+                    0 2px 4px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        z-index: 250;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .bottom-sheet-fab:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(233, 69, 96, 0.5),
+                    0 3px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .bottom-sheet-fab:active {
+        transform: scale(0.95);
+    }
+
+    .bottom-sheet-fab svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Quick Actions
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-quick-actions {
+        display: flex;
+        gap: 12px;
+        padding: 0 16px 16px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+    }
+
+    .bottom-sheet-action-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-action-btn:active {
+        transform: scale(0.97);
+        background: var(--border);
+    }
+
+    .bottom-sheet-action-btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+    }
+
+    .bottom-sheet-action-btn.primary:active {
+        background: var(--accent-hover);
+    }
+
+    .bottom-sheet-action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .bottom-sheet-action-btn svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Sections and Labels
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-section {
+        padding: 0 16px;
+        margin-bottom: 16px;
+    }
+
+    .bottom-sheet-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .bottom-sheet-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .bottom-sheet-section-header svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Input Group
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-input-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .bottom-sheet-input {
+        flex: 1;
+        padding: 12px 14px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+        -webkit-appearance: none;
+    }
+
+    .bottom-sheet-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
+    }
+
+    .bottom-sheet-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .bottom-sheet-fetch-btn {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-fetch-btn:active {
+        background: var(--accent-hover);
+    }
+
+    .bottom-sheet-fetch-btn:disabled {
+        background: var(--bg-tertiary);
+        color: var(--text-muted);
+        cursor: not-allowed;
+    }
+
+    .bottom-sheet-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 8px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Collapsible Details
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-details {
+        margin: 0 16px 8px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .bottom-sheet-summary {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        cursor: pointer;
+        list-style: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .bottom-sheet-summary::after {
+        content: '';
+        margin-left: auto;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid var(--text-muted);
+        transition: transform 0.2s ease;
+    }
+
+    .bottom-sheet-details[open] .bottom-sheet-summary::after {
+        transform: rotate(180deg);
+    }
+
+    .bottom-sheet-summary svg {
+        width: 18px;
+        height: 18px;
+        color: var(--accent);
+        flex-shrink: 0;
+    }
+
+    .bottom-sheet-details-content {
+        padding: 0 16px 16px;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    .bottom-sheet-details-content p {
+        margin: 0 0 8px;
+    }
+
+    .bottom-sheet-details-content ul {
+        margin: 8px 0;
+        padding-left: 20px;
+    }
+
+    .bottom-sheet-details-content li {
+        margin-bottom: 4px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Legend Section
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-legends {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .bottom-sheet-legend-section {
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .bottom-sheet-legend-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .bottom-sheet-legend-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .bottom-sheet-legend-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .bottom-sheet-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        font-size: 0.75rem;
+    }
+
+    .bottom-sheet-legend-color {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .bottom-sheet-legend-count {
+        color: var(--text-muted);
+        font-size: 0.6875rem;
+    }
+
+    /* -------------------------------------------------------------------------
+       Author Items
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-author-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+    }
+
+    .bottom-sheet-author-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .bottom-sheet-author-name {
+        flex: 1;
+        font-size: 0.8125rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .bottom-sheet-author-commits {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* -------------------------------------------------------------------------
+       Footer Links
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-footer {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        padding: 16px;
+        margin-top: auto;
+        border-top: 1px solid var(--border);
+    }
+
+    .bottom-sheet-link {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8125rem;
+        color: var(--accent-blue);
+        text-decoration: none;
+    }
+
+    .bottom-sheet-link svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Compact Panels in Bottom Sheet
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet .showcase-panel {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .bottom-sheet .showcase-panel h2 {
+        font-size: 1rem;
+    }
+
+    .bottom-sheet .showcase-panel p {
+        font-size: 0.85rem;
+    }
+
+    .bottom-sheet .showcase-stats {
+        gap: 0.5rem;
+    }
+
+    .bottom-sheet .showcase-stat-value {
+        font-size: 1.25rem;
+    }
+
+    .bottom-sheet .panel {
+        margin-bottom: 0.75rem;
+    }
+
+    .bottom-sheet .panel-header h2 {
+        font-size: 0.95rem;
+    }
+
+    .bottom-sheet .panel.collapsible .panel-body {
+        padding: 0.75rem;
+    }
+
+    .bottom-sheet .docs-section {
+        padding: 0.5rem 0;
+    }
+
+    .bottom-sheet .docs-section h3 {
+        font-size: 0.9rem;
+    }
+
+    .bottom-sheet .docs-section p,
+    .bottom-sheet .docs-section li {
+        font-size: 0.85rem;
+    }
+
+    .bottom-sheet .tab-nav {
+        gap: 0.25rem;
+    }
+
+    .bottom-sheet .tab-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .bottom-sheet .about-banner {
+        padding: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .bottom-sheet .about-banner h2 {
+        font-size: 1rem;
+    }
+}
+
+/* =============================================================================
+   Landscape Adjustments
+   ============================================================================= */
+
+@media (max-width: 768px) and (orientation: landscape) {
+    .bottom-sheet {
+        height: 80vh;
+        max-height: calc(100vh - 20px);
+    }
+
+    .bottom-sheet-header {
+        padding: 8px 16px 4px;
+    }
+
+    .bottom-sheet-handle {
+        margin-bottom: 8px;
+    }
+
+    .bottom-sheet-fab {
+        bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
+        width: 48px;
+        height: 48px;
+    }
+}
+
+/* =============================================================================
+   Extra Small Screens (iPhone SE)
+   ============================================================================= */
+
+@media (max-width: 375px) {
+    .bottom-sheet-fab {
+        width: 52px;
+        height: 52px;
+        right: 12px;
+    }
+
+    .bottom-sheet-content {
+        padding: 0 12px 12px;
+    }
+
+    .bottom-sheet-quick-actions {
+        padding: 0 12px 10px;
+    }
+}

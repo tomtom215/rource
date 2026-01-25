@@ -1,0 +1,232 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Help Overlay Styles
+ *
+ * Full-screen help overlay with keyboard shortcuts and feature documentation.
+ */
+
+/* =============================================================================
+   Help Overlay Container
+   ============================================================================= */
+
+.help-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    visibility: visible;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, visibility 0.2s;
+    backdrop-filter: blur(4px);
+}
+
+.help-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* =============================================================================
+   Help Content Container
+   ============================================================================= */
+
+.help-content {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 600px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    position: relative;
+}
+
+.help-content h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.help-content h2 svg {
+    color: var(--accent);
+}
+
+/* =============================================================================
+   Help Sections
+   ============================================================================= */
+
+.help-section {
+    margin-bottom: 1.5rem;
+}
+
+.help-section:last-child {
+    margin-bottom: 0;
+}
+
+.help-section h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.help-section h3 svg {
+    color: var(--accent-blue);
+    width: 16px;
+    height: 16px;
+}
+
+/* =============================================================================
+   Keyboard Shortcuts Grid
+   ============================================================================= */
+
+.help-shortcuts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem 1rem;
+}
+
+.help-key {
+    background: var(--bg-tertiary);
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    text-align: center;
+    min-width: 2em;
+}
+
+.help-desc {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+}
+
+/* =============================================================================
+   Help Button
+   ============================================================================= */
+
+.help-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Use composited properties only for better performance */
+    transition: opacity 0.2s, transform 0.2s;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.help-btn:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.help-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+/* =============================================================================
+   Close Help Button
+   ============================================================================= */
+
+.help-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s, transform 0.2s;
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.help-close:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+/* =============================================================================
+   Help Footer
+   ============================================================================= */
+
+.help-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.help-footer kbd {
+    background: var(--bg-tertiary);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: 0.75rem;
+    border: 1px solid var(--border);
+}
+
+/* =============================================================================
+   Responsive Adjustments
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    .help-content {
+        padding: 1.5rem;
+        max-height: 80vh;
+    }
+
+    .help-content h2 {
+        font-size: 1.25rem;
+    }
+
+    .help-section h3 {
+        font-size: 0.9rem;
+    }
+
+    .help-shortcuts {
+        gap: 0.4rem 0.75rem;
+    }
+
+    .help-key {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+    }
+
+    .help-desc {
+        font-size: 0.8rem;
+    }
+}
