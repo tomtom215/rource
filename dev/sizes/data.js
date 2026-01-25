@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769307894895,
+  "lastUpdate": 1769334226143,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2066,6 +2066,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1069735,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fd60357159c88bce26a7b200f2f766fa20785826",
+          "message": "Merge pull request #163 from tomtom215/claude/rource-algorithmic-excellence-BvJGM\n\nPhase 57: Evaluate cutting-edge WASM optimization techniques",
+          "timestamp": "2026-01-25T10:41:40+01:00",
+          "tree_id": "b8f526b1b995ac5ea0d6e6c332cd3b8d2c9fc005",
+          "url": "https://github.com/tomtom215/rource/commit/fd60357159c88bce26a7b200f2f766fa20785826"
+        },
+        "date": 1769334225700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913176,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2772043,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1070535,
             "unit": "bytes"
           }
         ]
