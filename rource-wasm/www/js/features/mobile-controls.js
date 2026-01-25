@@ -256,6 +256,14 @@ export function initMobileControls(options = {}) {
     // Check initial mobile mode
     updateMobileMode();
 
+    // Auto-collapse performance overlay on mobile for cleaner UI
+    if (isMobileMode) {
+        const perfOverlay = document.getElementById('perf-overlay');
+        if (perfOverlay && !perfOverlay.classList.contains('collapsed')) {
+            perfOverlay.classList.add('collapsed');
+        }
+    }
+
     // Canvas tap to show/hide controls
     const canvas = getElement('canvas');
     if (canvas) {

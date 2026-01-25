@@ -354,38 +354,107 @@
 
     .timeline-date {
         font-size: 0.85rem;
+        /* Ensure date doesn't get crushed */
+        flex-shrink: 0;
+        min-width: max-content;
     }
 
     .timeline-commit-info {
         font-size: 0.7rem;
-        max-width: 45%;
+        /* Allow more space for author name on mobile */
+        max-width: none;
+        flex: 1;
+        /* Better truncation: show as much as possible */
+        min-width: 0;
+        /* Truncate with ellipsis */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Date row needs proper flex layout for truncation */
+    .timeline-date-row {
+        min-width: 0;
+        /* Ensure proper truncation behavior */
+        display: flex;
+        overflow: hidden;
+    }
+
+    /* -------------------------------------------------------------------------
+       Mobile Slider Thumb - Larger Touch Target
+       -------------------------------------------------------------------------
+       WCAG 2.5.5 requires 44x44px minimum touch targets.
+       Slider thumb expanded with visible indicator + larger touch area.
+    */
+
+    .timeline-slider {
+        height: 8px;
+        border-radius: 4px;
+        /* Increase vertical touch area */
+        padding: 12px 0;
+        margin: -12px 0;
+        background-clip: content-box;
+    }
+
+    .timeline-slider::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+        /* Create larger invisible touch area with box-shadow */
+        box-shadow: 0 0 0 10px transparent, 0 2px 6px rgba(233, 69, 96, 0.4);
+        cursor: pointer;
+        /* iOS-style: slightly larger visual indicator */
+        border: 2px solid rgba(255, 255, 255, 0.9);
+    }
+
+    .timeline-slider::-webkit-slider-thumb:active {
+        transform: scale(1.15);
+        box-shadow: 0 0 0 10px rgba(233, 69, 96, 0.15), 0 2px 8px rgba(233, 69, 96, 0.5);
+    }
+
+    .timeline-slider::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        cursor: pointer;
+    }
+
+    .timeline-slider::-moz-range-thumb:active {
+        transform: scale(1.15);
+    }
+
+    /* Slider container needs more height for larger thumb */
+    .timeline-slider-container {
+        height: 32px;
     }
 
     .play-btn-main {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
     }
 
     .play-btn-main svg {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
     }
 
     .timeline-btn {
-        width: 28px;
-        height: 28px;
+        width: 36px;
+        height: 36px;
     }
 
     .speed-control label {
         display: none;
     }
 
-    /* Speed select: use shorter labels on mobile to prevent truncation */
+    /* Speed select: optimized for mobile to prevent truncation */
     .speed-control select {
-        font-size: 0.7rem;
-        padding: 0.2rem 0.35rem;
-        min-width: auto;
-        max-width: 90px;
+        font-size: 0.75rem;
+        padding: 0.3rem 0.5rem;
+        min-width: 85px;
+        max-width: 110px;
+        /* Ensure dropdown arrow has space */
+        padding-right: 20px;
+        background-position: right 4px center;
     }
 
     /* Timeline controls row: allow wrapping on very narrow screens */
@@ -424,27 +493,45 @@
 
     .timeline-commit-info {
         font-size: 0.65rem;
-        max-width: 40%;
+        /* Still use flexible width */
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Stack date row elements more tightly */
+    .timeline-date-row {
+        gap: 0.4rem;
+    }
+
+    /* Slider thumb slightly smaller on tiny screens but still touch-friendly */
+    .timeline-slider::-webkit-slider-thumb {
+        width: 22px;
+        height: 22px;
+    }
+
+    .timeline-slider::-moz-range-thumb {
+        width: 22px;
+        height: 22px;
     }
 
     .play-btn-main {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
     }
 
     .play-btn-main svg {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
     }
 
     .timeline-btn {
-        width: 26px;
-        height: 26px;
+        width: 32px;
+        height: 32px;
     }
 
     .reset-btn {
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
     }
 
     .timeline-info {
@@ -453,9 +540,11 @@
     }
 
     .speed-control select {
-        font-size: 0.65rem;
-        padding: 0.15rem 0.25rem;
-        max-width: 75px;
+        font-size: 0.7rem;
+        padding: 0.25rem 0.4rem;
+        min-width: 75px;
+        max-width: 95px;
+        padding-right: 18px;
     }
 
     /* Date labels even smaller on tiny screens */

@@ -86,12 +86,23 @@
 
 /* =============================================================================
    Mobile Responsive Adjustments
-   ============================================================================= */
+   =============================================================================
+
+   On mobile, position toast at TOP of screen (iOS notification pattern).
+   This avoids overlap with:
+   - Timeline controls at bottom
+   - Bottom sheet when open
+   - Mobile toolbar
+   - FAB button
+*/
 
 @media (max-width: 768px) {
     .toast {
-        /* Position above timeline controls (which are ~110px on mobile) */
-        bottom: 130px;
+        /* iOS-style top positioning to avoid all bottom overlaps */
+        bottom: auto;
+        top: max(60px, calc(env(safe-area-inset-top, 0px) + 50px));
+        /* Slide down animation instead of up */
+        transform: translateX(-50%) translateY(-100px);
         /* Narrower padding for smaller screens */
         padding: var(--spacing-sm) var(--spacing-md);
         /* Allow slightly wider toasts on mobile */
@@ -101,6 +112,14 @@
         /* Ensure safe area inset is respected */
         margin-left: env(safe-area-inset-left, 0);
         margin-right: env(safe-area-inset-right, 0);
+        /* Compact border radius for top position */
+        border-radius: var(--radius-lg);
+        /* Subtle shadow for depth */
+        box-shadow: 0 4px 16px var(--shadow), 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .toast.visible {
+        transform: translateX(-50%) translateY(0);
     }
 
     .toast-message {
@@ -111,13 +130,19 @@
     .toast-close {
         padding: 0.35rem;
         font-size: 1.1rem;
+        /* Larger touch target */
+        min-width: 36px;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 }
 
 /* Extra small screens */
 @media (max-width: 375px) {
     .toast {
-        bottom: 125px;
+        top: max(55px, calc(env(safe-area-inset-top, 0px) + 45px));
         padding: var(--spacing-xs) var(--spacing-sm);
         max-width: 92%;
     }
@@ -127,9 +152,9 @@
     }
 }
 
-/* Landscape mode: toast positioned higher to avoid cramped space */
+/* Landscape mode: toast positioned closer to top due to reduced height */
 @media (max-width: 768px) and (orientation: landscape) {
     .toast {
-        bottom: 100px;
+        top: max(8px, env(safe-area-inset-top, 0px));
     }
 }
