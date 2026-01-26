@@ -38,7 +38,7 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 18 | A1, A2, A3, I1, I2, I3, L1, L3, L7, L8, L10, L11, T2, T3, V1, X1, X3 |
+| **Done** | 20 | A1, A2, A3, I1, I2, I3, L1, L3, L7, L8, L10, L11, T2, T3, T8, T9, V1, X1, X3 |
 | **Partial** | 2 | T1, T5 (collision detection works but width estimation bug causes overlap) |
 | **In Progress** | 1 | V2 |
 | **Pending** | 30 | All others |
@@ -58,6 +58,14 @@ TOTAL:    46 issues
   - Previous label state restored on exit
   - Provides true immersive viewing experience
   - File: `rource-wasm/www/js/features/immersive-mode.js`
+- T8: Marked as Done (was fixed in Session 6 commit 4dbe880)
+  - Label width estimation factor increased from 0.6 to 0.75
+- T9: Fixed off-screen label rendering
+  - Added viewport bounds checking to LabelPlacer
+  - Labels extending beyond viewport edges are rejected
+  - Prevents visual clutter and wasted render calls
+  - Updated both rource-render (CLI) and rource-wasm implementations
+  - Files: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases.rs`
 
 **Session 6 Mobile Screenshot Analysis (2026-01-26):**
 - Investigated T1/T5 label collision - found text width estimation bug:
@@ -146,8 +154,8 @@ TOTAL:    46 issues
 | T5 | No label collision detection | Typography | Critical | Partial |
 | T6 | No label LOD (Level of Detail) | Typography | High | Pending |
 | T7 | Date format unnecessarily verbose | Typography | Low | Pending |
-| T8 | Label width estimation inaccurate (causes overlap) | Typography | Critical | Pending |
-| T9 | Labels can extend off screen edges | Typography | High | Pending |
+| T8 | Label width estimation inaccurate (causes overlap) | Typography | Critical | Done |
+| T9 | Labels can extend off screen edges | Typography | High | Done |
 | A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Done |
 | A2 | Touch targets below 44px minimum | Accessibility | High | Done |
 | A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Done |

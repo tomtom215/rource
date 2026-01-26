@@ -1470,6 +1470,8 @@ impl Rource {
         // T1/T5: Reset label placer once for BOTH user and file labels
         // This ensures user labels and file labels don't overlap each other
         self.label_placer.reset(ctx.camera_zoom);
+        // T9: Set viewport dimensions for off-screen label culling
+        self.label_placer.set_viewport(screen_width, screen_height);
 
         // Render user labels FIRST (they get priority for label placement)
         render_user_labels(

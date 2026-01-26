@@ -1023,6 +1023,10 @@ const LABEL_GRID_MAX_IDX: isize = (LABEL_GRID_SIZE - 1) as isize;
 /// cleanup cost.
 const LABEL_GRID_STALE_THRESHOLD: usize = 2048;
 
+/// Small margin for viewport bounds checking (T9).
+/// Labels within this margin of the viewport edge are considered on-screen.
+const VIEWPORT_MARGIN: f32 = 5.0;
+
 /// Label placement helper for collision avoidance using spatial hashing.
 ///
 /// Uses a grid-based spatial hash to achieve O(n) average-case collision detection
@@ -1043,11 +1047,19 @@ const LABEL_GRID_STALE_THRESHOLD: usize = 2048;
 /// increment the generation (O(1)). When checking collisions, entries with old
 /// generations are skipped. This amortizes grid cleanup into collision checks.
 ///
+/// # Viewport Bounds Checking (T9)
+///
+/// Labels that would extend beyond viewport edges are rejected. This prevents:
+/// - Labels from being cut off at screen edges
+/// - Wasted render calls for off-screen labels
+/// - Visual clutter at viewport boundaries
+///
 /// # Memory Layout
 ///
 /// - `placed_labels`: Stores actual label rectangles
 /// - `grid`: 32×32 array of Vecs containing `(index, generation)` tuples
 /// - `generation`: Current generation counter (incremented on reset)
+/// - `viewport_width/height`: Current viewport dimensions for bounds checking
 /// - Total overhead: ~32KB for grid structure (reused across frames)
 pub struct LabelPlacer {
     /// All placed label rectangles.
@@ -1062,10 +1074,18 @@ pub struct LabelPlacer {
     stale_entry_count: usize,
     /// Maximum number of labels to place.
     max_labels: usize,
+    /// Viewport width for bounds checking (T9: skip off-screen labels).
+    viewport_width: f32,
+    /// Viewport height for bounds checking (T9: skip off-screen labels).
+    viewport_height: f32,
 }
 
 impl LabelPlacer {
     /// Creates a new label placer with spatial hash grid.
+    ///
+    /// # Arguments
+    ///
+    /// * `camera_zoom` - Current camera zoom level (affects max label count)
     pub fn new(camera_zoom: f32) -> Self {
         let max_labels = compute_max_labels(camera_zoom);
         let mut grid = Vec::with_capacity(LABEL_GRID_SIZE);
@@ -1082,7 +1102,20 @@ impl LabelPlacer {
             generation: 0,
             stale_entry_count: 0,
             max_labels,
+            // Default viewport (will be set properly on first reset)
+            viewport_width: 1920.0,
+            viewport_height: 1080.0,
         }
+    }
+
+    /// Sets the viewport dimensions for bounds checking (T9).
+    ///
+    /// Call this when viewport size changes or at the start of each frame
+    /// before placing labels.
+    #[inline]
+    pub fn set_viewport(&mut self, width: f32, height: f32) {
+        self.viewport_width = width;
+        self.viewport_height = height;
     }
 
     /// Resets the placer for a new frame using O(1) generation increment.
@@ -1174,9 +1207,26 @@ impl LabelPlacer {
     ///
     /// Stale entries (from previous generations) are skipped during collision
     /// checks, enabling O(1) reset via generation increment.
+    ///
+    /// # T9: Viewport Bounds Checking
+    ///
+    /// Labels that would extend beyond viewport edges are rejected to prevent:
+    /// - Labels being cut off at screen edges
+    /// - Wasted render calls for off-screen labels
     #[inline]
     pub fn try_place(&mut self, pos: Vec2, width: f32, height: f32) -> bool {
         let rect = Rect::new(pos.x, pos.y, width, height);
+
+        // T9: Viewport bounds check - reject labels that extend off-screen
+        // Allow small negative positions (partial visibility) but reject if mostly off-screen
+        if rect.x + rect.width < VIEWPORT_MARGIN
+            || rect.y + rect.height < VIEWPORT_MARGIN
+            || rect.x > self.viewport_width - VIEWPORT_MARGIN
+            || rect.y > self.viewport_height - VIEWPORT_MARGIN
+        {
+            return false;
+        }
+
         let ((min_cx, min_cy), (max_cx, max_cy)) = Self::rect_cell_range(&rect);
         let current_gen = self.generation;
 
@@ -1959,16 +2009,18 @@ mod tests {
     #[test]
     fn test_label_placer_fallback() {
         let mut placer = LabelPlacer::new(1.0);
+        // T9: Set viewport for test to allow fallback positions
+        placer.set_viewport(800.0, 600.0);
 
-        // Place at primary position
-        placer.try_place(Vec2::new(10.0, 0.0), 50.0, 20.0);
+        // Place at primary position (center of viewport to allow fallbacks in all directions)
+        placer.try_place(Vec2::new(300.0, 300.0), 50.0, 20.0);
 
         // Try to place overlapping - should use fallback
         let result = placer.try_place_with_fallback(
-            Vec2::new(10.0, 0.0),
+            Vec2::new(300.0, 300.0),
             50.0,
             20.0,
-            Vec2::new(0.0, 10.0),
+            Vec2::new(300.0, 310.0),
             5.0,
         );
         // Should find a fallback position

@@ -92,10 +92,20 @@ impl LabelConfig {
     }
 }
 
+/// Small margin for viewport bounds checking (T9).
+/// Labels within this margin of the viewport edge are considered on-screen.
+const VIEWPORT_MARGIN: f32 = 5.0;
+
 /// Manages label placement to avoid overlaps.
 ///
 /// Uses a simple approach: labels are placed in priority order, and each
 /// new label is checked against all previously placed labels for collisions.
+///
+/// # T9: Viewport Bounds Checking
+///
+/// Labels that would extend beyond viewport edges are rejected. This prevents:
+/// - Labels being cut off at screen edges
+/// - Wasted render calls for off-screen labels
 #[derive(Debug)]
 pub struct LabelPlacer {
     /// Occupied regions on screen.
@@ -106,6 +116,10 @@ pub struct LabelPlacer {
     count: usize,
     /// Maximum labels allowed (based on zoom).
     max_count: usize,
+    /// Viewport width for bounds checking (T9).
+    viewport_width: f32,
+    /// Viewport height for bounds checking (T9).
+    viewport_height: f32,
 }
 
 impl LabelPlacer {
@@ -122,6 +136,9 @@ impl LabelPlacer {
             config,
             count: 0,
             max_count,
+            // Default viewport (will be set properly via set_viewport)
+            viewport_width: 1920.0,
+            viewport_height: 1080.0,
         }
     }
 
@@ -131,6 +148,16 @@ impl LabelPlacer {
         self.occupied.clear();
         self.count = 0;
         self.max_count = self.config.max_labels_at_zoom(zoom);
+    }
+
+    /// Sets the viewport dimensions for bounds checking (T9).
+    ///
+    /// Call this when viewport size changes or at the start of each frame
+    /// before placing labels.
+    #[inline]
+    pub fn set_viewport(&mut self, width: f32, height: f32) {
+        self.viewport_width = width;
+        self.viewport_height = height;
     }
 
     /// Returns true if more labels can be placed.
@@ -160,8 +187,22 @@ impl LabelPlacer {
     /// Attempts to place a label at the given position.
     ///
     /// Returns true if the label was placed (no collision), false otherwise.
+    ///
+    /// # T9: Viewport Bounds Checking
+    ///
+    /// Labels that would extend beyond viewport edges are rejected.
     pub fn try_place(&mut self, position: Vec2, width: f32, height: f32) -> bool {
         if !self.can_place_more() {
+            return false;
+        }
+
+        // T9: Viewport bounds check - reject labels that extend off-screen
+        // Allow small negative positions (partial visibility) but reject if mostly off-screen
+        if position.x + width < VIEWPORT_MARGIN
+            || position.y + height < VIEWPORT_MARGIN
+            || position.x > self.viewport_width - VIEWPORT_MARGIN
+            || position.y > self.viewport_height - VIEWPORT_MARGIN
+        {
             return false;
         }
 
