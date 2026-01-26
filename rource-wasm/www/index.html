@@ -48,6 +48,8 @@
     <link rel="modulepreload" href="js/animation.js">
     <link rel="modulepreload" href="js/data-loader.js">
     <link rel="modulepreload" href="js/github-fetch.js">
+    <link rel="modulepreload" href="js/indexeddb-cache.js">
+    <link rel="modulepreload" href="js/static-logs.js">
     <link rel="modulepreload" href="js/build-info.js">
     <link rel="modulepreload" href="js/features/playback.js">
     <link rel="modulepreload" href="js/features/canvas-input.js">
@@ -638,23 +640,39 @@
                         </button>
                     </div>
                     <div class="popular-repos">
-                        <span class="popular-repos-label">Try a repository (50 most recent commits):</span>
+                        <span class="popular-repos-label">Pre-cached repos (instant, no API calls):</span>
                         <div class="repo-chips">
-                            <button type="button" class="repo-chip" data-repo="facebook/react">
-                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
-                                react
+                            <button type="button" class="repo-chip repo-chip-cached" data-repo="facebook/react" title="Pre-cached - instant loading">
+                                <svg viewBox="0 0 16 16" fill="#61dafb"><circle cx="8" cy="8" r="3"/></svg>
+                                React
                             </button>
-                            <button type="button" class="repo-chip" data-repo="vuejs/vue">
-                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
-                                vue
+                            <button type="button" class="repo-chip repo-chip-cached" data-repo="vuejs/vue" title="Pre-cached - instant loading">
+                                <svg viewBox="0 0 16 16" fill="#42b883"><circle cx="8" cy="8" r="3"/></svg>
+                                Vue
                             </button>
-                            <button type="button" class="repo-chip" data-repo="sveltejs/svelte">
-                                <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
-                                svelte
+                            <button type="button" class="repo-chip repo-chip-cached" data-repo="sveltejs/svelte" title="Pre-cached - instant loading">
+                                <svg viewBox="0 0 16 16" fill="#ff3e00"><circle cx="8" cy="8" r="3"/></svg>
+                                Svelte
                             </button>
-                            <button type="button" class="repo-chip" data-repo="denoland/deno">
+                            <button type="button" class="repo-chip repo-chip-cached" data-repo="denoland/deno" title="Pre-cached - instant loading">
                                 <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
-                                deno
+                                Deno
+                            </button>
+                            <button type="button" class="repo-chip repo-chip-cached" data-repo="rust-lang/rust" title="Pre-cached - instant loading">
+                                <svg viewBox="0 0 16 16" fill="#dea584"><circle cx="8" cy="8" r="3"/></svg>
+                                Rust
+                            </button>
+                            <button type="button" class="repo-chip repo-chip-cached" data-repo="microsoft/vscode" title="Pre-cached - instant loading">
+                                <svg viewBox="0 0 16 16" fill="#007acc"><circle cx="8" cy="8" r="3"/></svg>
+                                VS Code
+                            </button>
+                            <button type="button" class="repo-chip repo-chip-cached" data-repo="golang/go" title="Pre-cached - instant loading">
+                                <svg viewBox="0 0 16 16" fill="#00add8"><circle cx="8" cy="8" r="3"/></svg>
+                                Go
+                            </button>
+                            <button type="button" class="repo-chip repo-chip-cached" data-repo="torvalds/linux" title="Pre-cached - instant loading">
+                                <svg viewBox="0 0 16 16" fill="#f1c40f"><circle cx="8" cy="8" r="3"/></svg>
+                                Linux
                             </button>
                         </div>
                     </div>

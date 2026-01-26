@@ -26,6 +26,8 @@
 import { CONFIG } from './config.js';
 import { showToast } from './toast.js';
 import { debugLog } from './telemetry.js';
+import { getCachedRepo, setCachedRepo, initCache } from './indexeddb-cache.js';
+import { hasStaticLog, getStaticLog } from './static-logs.js';
 
 // ============================================================================
 // Constants
@@ -268,49 +270,88 @@ export function parseGitHubUrl(input) {
 
 /**
  * Checks the cache for a repository's data.
+ * Uses IndexedDB for persistent caching across sessions, with in-memory fallback.
+ * Also checks static logs first (pre-generated, zero API calls).
+ *
  * @param {string} owner - Repository owner
  * @param {string} repo - Repository name
- * @returns {string|null} Cached log data or null if not cached/expired
+ * @returns {Promise<string|null>} Cached log data or null if not cached/expired
  */
-function getCachedData(owner, repo) {
+async function getCachedData(owner, repo) {
     const key = `${owner}/${repo}`;
-    const cached = repoCache.get(key);
 
-    if (cached) {
-        const age = Date.now() - cached.timestamp;
+    // First, check if we have a static log (pre-generated, instant)
+    if (hasStaticLog(owner, repo)) {
+        const staticLog = getStaticLog(owner, repo);
+        if (staticLog) {
+            debugLog('github', `Static log hit for ${key}`);
+            return staticLog;
+        }
+    }
+
+    // Check in-memory cache first (fast path)
+    const memoryCached = repoCache.get(key);
+    if (memoryCached) {
+        const age = Date.now() - memoryCached.timestamp;
         if (age < CONFIG.GITHUB_CACHE_EXPIRY_MS) {
             // Move to end for LRU behavior (delete and re-add)
             repoCache.delete(key);
-            repoCache.set(key, cached);
-            debugLog('github', `Cache hit for ${key}, age: ${Math.round(age / 1000)}s`);
-            return cached.data;
+            repoCache.set(key, memoryCached);
+            debugLog('github', `Memory cache hit for ${key}, age: ${Math.round(age / 1000)}s`);
+            return memoryCached.data;
         }
         repoCache.delete(key);
+    }
+
+    // Check IndexedDB (persistent cache)
+    try {
+        const persistentData = await getCachedRepo(owner, repo);
+        if (persistentData) {
+            // Also populate in-memory cache for faster subsequent access
+            repoCache.set(key, {
+                data: persistentData,
+                timestamp: Date.now(),
+            });
+            debugLog('github', `IndexedDB cache hit for ${key}`);
+            return persistentData;
+        }
+    } catch (error) {
+        debugLog('github', `IndexedDB read error: ${error.message}`);
     }
 
     return null;
 }
 
 /**
- * Stores repository data in cache with LRU eviction.
+ * Stores repository data in both in-memory and IndexedDB cache.
  * @param {string} owner - Repository owner
  * @param {string} repo - Repository name
  * @param {string} data - Log data to cache
+ * @returns {Promise<void>}
  */
-function setCachedData(owner, repo, data) {
+async function setCachedData(owner, repo, data) {
     const key = `${owner}/${repo}`;
 
-    // Remove oldest entries if at capacity (LRU eviction)
+    // Remove oldest entries if at capacity (LRU eviction) for in-memory cache
     while (repoCache.size >= MAX_CACHE_ENTRIES) {
         const oldestKey = repoCache.keys().next().value;
         repoCache.delete(oldestKey);
-        debugLog('github', `Cache evicted: ${oldestKey}`);
+        debugLog('github', `Memory cache evicted: ${oldestKey}`);
     }
 
+    // Update in-memory cache
     repoCache.set(key, {
         data,
         timestamp: Date.now(),
     });
+
+    // Persist to IndexedDB (non-blocking)
+    try {
+        await setCachedRepo(owner, repo, data);
+        debugLog('github', `Persisted ${key} to IndexedDB`);
+    } catch (error) {
+        debugLog('github', `IndexedDB write error: ${error.message}`);
+    }
 }
 
 // ============================================================================
@@ -562,8 +603,8 @@ export async function fetchGitHubCommits(owner, repo, options = {}) {
         // Clamp to reasonable maximum
         const effectiveMax = Math.min(Math.max(1, maxCommits), 100);
 
-        // Check cache first
-        const cached = getCachedData(owner, repo);
+        // Check cache first (in-memory, IndexedDB, or static logs)
+        const cached = await getCachedData(owner, repo);
         if (cached) {
             debugLog('github', `[${correlationId}] Cache hit for ${owner}/${repo}`);
             return cached;
@@ -643,8 +684,8 @@ export async function fetchGitHubCommits(owner, repo, options = {}) {
 
         const logData = logLines.join('\n');
 
-        // Cache the result
-        setCachedData(owner, repo, logData);
+        // Cache the result (both in-memory and IndexedDB)
+        await setCachedData(owner, repo, logData);
 
         const duration = Math.round(performance.now() - startTime);
         debugLog('github', `[${correlationId}] Complete: ${logLines.length} lines, ${processed} commits, ${duration}ms, rate limit: ${rateLimitState.remaining}`);

@@ -91,6 +91,29 @@
     background: rgba(233, 69, 96, 0.1);
 }
 
+/* Cached repo chips - indicate pre-loaded data (no API calls) */
+.repo-chip-cached {
+    border-color: rgba(63, 185, 80, 0.3);
+    background: rgba(63, 185, 80, 0.05);
+}
+
+.repo-chip-cached::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+    margin-right: 2px;
+    flex-shrink: 0;
+}
+
+.repo-chip-cached:hover {
+    border-color: var(--success);
+    color: var(--success);
+    background: rgba(63, 185, 80, 0.15);
+}
+
 .repo-chip svg {
     width: 10px;
     height: 10px;

@@ -436,7 +436,7 @@ export function updateImmersiveStats() {
     }
 
     if (filesEl) {
-        const fileCount = safeWasmCall('fileCount', () => rource.fileCount(), 0);
+        const fileCount = safeWasmCall('getTotalFiles', () => rource.getTotalFiles(), 0);
         filesEl.textContent = fileCount.toLocaleString();
     }
 }
