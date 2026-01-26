@@ -2039,4 +2039,285 @@ mod tests {
             "Dir branches have lower (or equal) threshold than file branches"
         );
     }
+
+    // =========================================================================
+    // Performance Benchmark Tests
+    // =========================================================================
+    //
+    // These tests measure the performance impact of label collision detection
+    // and beam limiting. They use std::time::Instant for timing.
+    //
+    // Run with: cargo test -p rource-wasm bench_ --release -- --nocapture
+
+    #[test]
+    fn bench_label_placer_new() {
+        use std::time::Instant;
+
+        const ITERATIONS: u32 = 10_000;
+        let start = Instant::now();
+
+        for _ in 0..ITERATIONS {
+            let _ = std::hint::black_box(LabelPlacer::new(1.0));
+        }
+
+        let elapsed = start.elapsed();
+        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
+        println!(
+            "\nLabelPlacer::new(): {} iterations in {:?} ({} ns/op)",
+            ITERATIONS, elapsed, per_op
+        );
+
+        // Note: LabelPlacer::new() is a ONE-TIME startup cost, not per-frame.
+        // The per-frame cost is reset() which is ~250ns.
+        // Assertion: creation should be < 50µs (50,000 ns) - acceptable startup cost
+        assert!(
+            per_op < 50_000,
+            "LabelPlacer::new() too slow: {} ns/op (one-time startup cost)",
+            per_op
+        );
+    }
+
+    #[test]
+    fn bench_label_placer_reset() {
+        use std::time::Instant;
+
+        const ITERATIONS: u32 = 100_000;
+        let mut placer = LabelPlacer::new(1.0);
+
+        // Pre-populate with some labels to make reset realistic
+        for i in 0..50 {
+            placer.try_place(Vec2::new(i as f32 * 100.0, 0.0), 50.0, 20.0);
+        }
+
+        let start = Instant::now();
+
+        for _ in 0..ITERATIONS {
+            placer.reset(1.0);
+            // Add a label to make reset non-trivial
+            placer.try_place(Vec2::new(0.0, 0.0), 50.0, 20.0);
+        }
+
+        let elapsed = start.elapsed();
+        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
+        println!(
+            "\nLabelPlacer::reset(): {} iterations in {:?} ({} ns/op)",
+            ITERATIONS, elapsed, per_op
+        );
+
+        // Assertion: reset should be < 1µs (1,000 ns)
+        assert!(per_op < 1_000, "LabelPlacer::reset() too slow: {} ns/op", per_op);
+    }
+
+    #[test]
+    fn bench_label_placer_try_place() {
+        use std::time::Instant;
+
+        const ITERATIONS: u32 = 100_000;
+        let mut placer = LabelPlacer::new(1.0);
+
+        let start = Instant::now();
+
+        for i in 0..ITERATIONS {
+            // Spread labels across grid to avoid collision checks
+            let x = (i % 100) as f32 * 60.0;
+            let y = (i / 100) as f32 * 30.0;
+            placer.try_place(Vec2::new(x, y), 50.0, 20.0);
+
+            // Reset periodically to avoid filling up
+            if i % 1000 == 999 {
+                placer.reset(1.0);
+            }
+        }
+
+        let elapsed = start.elapsed();
+        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
+        println!(
+            "\nLabelPlacer::try_place() (no collision): {} iterations in {:?} ({} ns/op)",
+            ITERATIONS, elapsed, per_op
+        );
+
+        // Assertion: try_place should be < 500ns
+        assert!(
+            per_op < 500,
+            "LabelPlacer::try_place() too slow: {} ns/op",
+            per_op
+        );
+    }
+
+    #[test]
+    fn bench_label_placer_try_place_with_fallback() {
+        use std::time::Instant;
+
+        const ITERATIONS: u32 = 50_000;
+        let mut placer = LabelPlacer::new(1.0);
+
+        // Pre-populate with labels to force fallback checks
+        for i in 0..20 {
+            placer.try_place(Vec2::new(i as f32 * 60.0, 0.0), 50.0, 20.0);
+        }
+
+        let start = Instant::now();
+
+        for i in 0..ITERATIONS {
+            let x = (i % 20) as f32 * 60.0;
+            let _ = placer.try_place_with_fallback(
+                Vec2::new(x, 0.0),  // Will collide with existing
+                50.0,
+                20.0,
+                Vec2::new(x, 25.0),
+                5.0,
+            );
+
+            if i % 500 == 499 {
+                placer.reset(1.0);
+                for j in 0..20 {
+                    placer.try_place(Vec2::new(j as f32 * 60.0, 0.0), 50.0, 20.0);
+                }
+            }
+        }
+
+        let elapsed = start.elapsed();
+        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
+        println!(
+            "\nLabelPlacer::try_place_with_fallback(): {} iterations in {:?} ({} ns/op)",
+            ITERATIONS, elapsed, per_op
+        );
+
+        // Assertion: try_place_with_fallback should be < 2µs (may need 4 collision checks)
+        assert!(
+            per_op < 2_000,
+            "LabelPlacer::try_place_with_fallback() too slow: {} ns/op",
+            per_op
+        );
+    }
+
+    #[test]
+    fn bench_beam_sorting() {
+        use std::time::Instant;
+
+        const ITERATIONS: u32 = 10_000;
+
+        // Simulate 100 active actions with progress values
+        let actions: Vec<(usize, f32)> = (0..100)
+            .map(|i| (i, (i as f32) / 100.0))
+            .collect();
+
+        let start = Instant::now();
+
+        for _ in 0..ITERATIONS {
+            let mut active = actions.clone();
+            active.sort_unstable_by(|a, b| {
+                a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            let _limited: Vec<_> = std::hint::black_box(active.into_iter().take(15).collect());
+        }
+
+        let elapsed = start.elapsed();
+        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
+        println!(
+            "\nBeam sorting (100 actions, take 15): {} iterations in {:?} ({} ns/op)",
+            ITERATIONS, elapsed, per_op
+        );
+
+        // Assertion: sorting 100 items should be < 5µs
+        assert!(
+            per_op < 5_000,
+            "Beam sorting too slow: {} ns/op",
+            per_op
+        );
+    }
+
+    #[test]
+    fn bench_user_label_sorting() {
+        use std::time::Instant;
+
+        const ITERATIONS: u32 = 10_000;
+
+        // Simulate 50 user candidates with priority values
+        let candidates: Vec<(usize, Vec2, f32, f32, f32)> = (0..50)
+            .map(|i| (i, Vec2::new(i as f32 * 10.0, 0.0), 5.0, 1.0, i as f32))
+            .collect();
+
+        let start = Instant::now();
+
+        for _ in 0..ITERATIONS {
+            let mut users = candidates.clone();
+            // Sort by priority (last field) descending
+            users.sort_unstable_by(|a, b| {
+                b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            let _ = std::hint::black_box(users);
+        }
+
+        let elapsed = start.elapsed();
+        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
+        println!(
+            "\nUser label sorting (50 users): {} iterations in {:?} ({} ns/op)",
+            ITERATIONS, elapsed, per_op
+        );
+
+        // Assertion: sorting 50 items should be < 3µs
+        assert!(
+            per_op < 3_000,
+            "User label sorting too slow: {} ns/op",
+            per_op
+        );
+    }
+
+    #[test]
+    fn bench_full_label_placement_scenario() {
+        use std::time::Instant;
+
+        const ITERATIONS: u32 = 1_000;
+
+        // Simulate realistic scenario: 30 user labels + 50 file labels per frame
+        let start = Instant::now();
+
+        for _ in 0..ITERATIONS {
+            let mut placer = LabelPlacer::new(1.0);
+
+            // Place user labels (high priority, spread across screen)
+            for i in 0..30 {
+                let x = (i % 10) as f32 * 150.0;
+                let y = (i / 10) as f32 * 200.0;
+                placer.try_place_with_fallback(
+                    Vec2::new(x + 20.0, y),
+                    60.0,
+                    18.0,
+                    Vec2::new(x, y + 10.0),
+                    15.0,
+                );
+            }
+
+            // Place file labels (lower priority, denser)
+            for i in 0..50 {
+                let x = (i % 15) as f32 * 100.0;
+                let y = (i / 15) as f32 * 150.0 + 50.0;
+                placer.try_place_with_fallback(
+                    Vec2::new(x + 10.0, y),
+                    50.0,
+                    14.0,
+                    Vec2::new(x, y + 5.0),
+                    8.0,
+                );
+            }
+        }
+
+        let elapsed = start.elapsed();
+        let per_frame = elapsed.as_micros() / ITERATIONS as u128;
+        println!(
+            "\nFull label placement (30 users + 50 files): {} frames in {:?} ({} µs/frame)",
+            ITERATIONS, elapsed, per_frame
+        );
+
+        // Assertion: full frame should be < 100µs (well within 16.67ms budget)
+        assert!(
+            per_frame < 100,
+            "Full label placement too slow: {} µs/frame",
+            per_frame
+        );
+
+        // Note: 100µs is 0.6% of a 16.67ms frame budget at 60fps
+        // This is acceptable overhead for collision-free labels
+    }
 }
