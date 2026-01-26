@@ -66,7 +66,7 @@ rustc-hash = "1.1"
 # Benchmarking
 criterion = { version = "0.8", default-features = false }
 # iai-callgrind for deterministic instruction-count benchmarks (Valgrind-based)
-iai-callgrind = "0.14"
+iai-callgrind = "0.16"
 # DHAT for heap profiling (allocation tracking)
 dhat = "0.3"
 # Tracing infrastructure for Tracy and other profilers
