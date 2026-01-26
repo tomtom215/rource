@@ -214,4 +214,170 @@ mod tests {
         let cache = GlyphCache::new();
         assert!(cache.glyphs.is_empty());
     }
+
+    /// Test to analyze actual font metrics for Roboto Mono.
+    /// This helps validate the width estimation heuristic.
+    #[test]
+    fn test_roboto_mono_character_widths() {
+        use crate::default_font;
+
+        let mut cache = FontCache::new();
+        let font_id = cache
+            .load(default_font::ROBOTO_MONO)
+            .expect("Failed to load Roboto Mono");
+        let font = cache.get(font_id).expect("Font not found");
+
+        let size = 12.0;
+
+        // Measure various ASCII characters
+        let ascii_chars = ['a', 'M', 'W', 'i', 'l', 'm', 'w', '0', '9', '.', '_', '-'];
+        let mut ascii_widths = Vec::new();
+        for ch in ascii_chars {
+            let (metrics, _) = font.rasterize(ch, size);
+            ascii_widths.push((ch, metrics.advance_width));
+        }
+
+        // Print for analysis (run with --nocapture to see)
+        println!("\n=== Roboto Mono Character Width Analysis (size={size}) ===");
+        println!("ASCII characters:");
+        for (ch, width) in &ascii_widths {
+            println!("  '{ch}': advance_width = {width:.2}");
+        }
+
+        // Verify monospace property: all ASCII should have same width
+        let first_width = ascii_widths[0].1;
+        for (ch, width) in &ascii_widths {
+            let diff = (width - first_width).abs();
+            assert!(
+                diff < 0.1,
+                "Monospace violation: '{}' has width {:.2}, expected {:.2}",
+                ch,
+                width,
+                first_width
+            );
+        }
+
+        // Calculate the actual factor: advance_width / font_size
+        let actual_factor = first_width / size;
+        println!("\nActual monospace factor: {actual_factor:.4}");
+        println!("Current heuristic factor: 0.75");
+        println!("Factor difference: {:.4}", (actual_factor - 0.75).abs());
+
+        // Test multi-byte UTF-8 strings
+        println!("\n=== UTF-8 Width Analysis ===");
+        let test_strings = [
+            ("hello", "ASCII only"),
+            ("héllo", "ASCII + accent (é = 2 bytes)"),
+            ("你好", "Chinese (2 chars, 6 bytes)"),
+            ("🚀", "Emoji (1 char, 4 bytes)"),
+        ];
+
+        for (s, desc) in test_strings {
+            let byte_len = s.len();
+            let char_count = s.chars().count();
+            let actual_width = cache.measure_text(font_id, s, size).unwrap_or(0.0);
+            let estimate_old = byte_len as f32 * size * 0.75; // OLD: bytes × 0.75
+            let estimate_new = char_count as f32 * size * 0.62; // NEW: chars × 0.62
+
+            println!("{desc}:");
+            println!("  String: \"{s}\"");
+            println!("  Bytes: {byte_len}, Chars: {char_count}");
+            println!("  Actual width: {actual_width:.2}");
+            println!(
+                "  OLD (bytes × 0.75): {estimate_old:.2} (error: {:.1}%)",
+                ((estimate_old - actual_width) / actual_width * 100.0).abs()
+            );
+            println!(
+                "  NEW (chars × 0.62): {estimate_new:.2} (error: {:.1}%)",
+                ((estimate_new - actual_width) / actual_width * 100.0).abs()
+            );
+        }
+    }
+
+    /// Test realistic file and user name scenarios.
+    /// These are the actual strings that appear in Git repositories.
+    #[test]
+    fn test_realistic_label_scenarios() {
+        use crate::default_font;
+
+        let mut cache = FontCache::new();
+        let font_id = cache
+            .load(default_font::ROBOTO_MONO)
+            .expect("Failed to load Roboto Mono");
+
+        let size = 12.0;
+
+        // Realistic file names from Git repositories
+        let file_names = [
+            "main.rs",
+            "README.md",
+            "Cargo.toml",
+            "src/lib.rs",
+            "tests/integration_test.rs",
+            "über_config.json",   // German umlaut
+            "日本語ファイル.txt", // Japanese
+            "файл.rs",            // Russian
+            "αβγδ.rs",            // Greek
+        ];
+
+        // Realistic user names from Git commits
+        let user_names = [
+            "Alice",
+            "Bob",
+            "John Doe",
+            "María García", // Spanish
+            "田中太郎",     // Japanese
+            "Müller",       // German
+            "Иван Петров",  // Russian
+            "Αλέξανδρος",   // Greek
+        ];
+
+        println!("\n=== Realistic File Names ===");
+        let mut total_error_old = 0.0f32;
+        let mut total_error_new = 0.0f32;
+        let mut count = 0;
+
+        for name in file_names {
+            let actual = cache.measure_text(font_id, name, size).unwrap_or(0.0);
+            let est_old = name.len() as f32 * size * 0.75; // OLD
+            let est_new = name.chars().count() as f32 * size * 0.62; // NEW (Phase 68)
+            let err_old = ((est_old - actual) / actual * 100.0).abs();
+            let err_new = ((est_new - actual) / actual * 100.0).abs();
+            total_error_old += err_old;
+            total_error_new += err_new;
+            count += 1;
+
+            println!(
+                "{:30} actual={:6.1} OLD={:6.1}({:5.1}%) NEW={:6.1}({:5.1}%)",
+                name, actual, est_old, err_old, est_new, err_new
+            );
+        }
+
+        println!("\n=== Realistic User Names ===");
+        for name in user_names {
+            let actual = cache.measure_text(font_id, name, size).unwrap_or(0.0);
+            let est_old = name.len() as f32 * size * 0.75; // OLD
+            let est_new = name.chars().count() as f32 * size * 0.62; // NEW (Phase 68)
+            let err_old = ((est_old - actual) / actual * 100.0).abs();
+            let err_new = ((est_new - actual) / actual * 100.0).abs();
+            total_error_old += err_old;
+            total_error_new += err_new;
+            count += 1;
+
+            println!(
+                "{:30} actual={:6.1} OLD={:6.1}({:5.1}%) NEW={:6.1}({:5.1}%)",
+                name, actual, est_old, err_old, est_new, err_new
+            );
+        }
+
+        let avg_error_old = total_error_old / count as f32;
+        let avg_error_new = total_error_new / count as f32;
+        println!("\n=== Summary ===");
+        println!("OLD (bytes × 0.75): average error = {avg_error_old:.1}%");
+        println!("NEW (chars × 0.62): average error = {avg_error_new:.1}%");
+        println!(
+            "Improvement: {:.1}× more accurate",
+            avg_error_old / avg_error_new
+        );
+    }
 }
