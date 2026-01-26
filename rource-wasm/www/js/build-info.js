@@ -4,6 +4,6 @@ export const BUILD_INFO = {
     wasmGzipKB: 1050,
     jsGzipKB: 32,
     crateCount: 4,
-    testCount: 1899,
+    testCount: 2069,
     buildDate: '2026-01-26T17:30:00Z'
 };
