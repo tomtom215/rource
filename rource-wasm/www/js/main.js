@@ -29,9 +29,9 @@ import { ROURCE_STATS, getFullCachedData } from './cached-data.js';
 // Application modules
 import { showToast, initToast } from './toast.js';
 import {
-    initAnimation, startAnimation,
+    initAnimation, startAnimation, stopAnimation,
     updatePlaybackUI, setUIUpdateCallback, resetTimelineDateLabels,
-    setPlaybackStateCallback
+    setPlaybackStateCallback, getFrameScheduler
 } from './animation.js';
 import { loadLogData, loadRourceData, parseCommits, setOnDataLoadedCallback } from './data-loader.js';
 import { generateTimelineTicks } from './timeline-markers.js';
@@ -63,6 +63,10 @@ import {
 } from './features/bottom-sheet.js';
 import { initMobileToolbar } from './features/mobile-toolbar.js';
 import { initMobileControls, onPlaybackStateChange, showControls } from './features/mobile-controls.js';
+import {
+    initImmersiveMode, onImmersivePlaybackChange, updateHUDPlayButton, isInImmersiveMode,
+    updateImmersiveStats
+} from './features/immersive-mode.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -188,11 +192,70 @@ function updateBottomSheetTechSpecs() {
 
 /**
  * Cleanup handler for page unload.
- * Releases GPU resources to prevent contention on rapid refresh.
+ * Releases GPU resources and stops animation to prevent contention on rapid refresh.
+ *
+ * IMPORTANT: On Firefox, rapid page refreshes can cause GPU resource contention
+ * and WASM panics if resources aren't properly released. This handler ensures:
+ * 1. Animation loop is stopped (prevents new frames during cleanup)
+ * 2. Frame scheduler is destroyed (releases MessageChannel ports)
+ * 3. WASM resources are disposed (releases GPU buffers and textures)
  */
 function setupCleanupHandler() {
     // Handle page unload - release GPU resources
     window.addEventListener('beforeunload', () => {
+        // CRITICAL: Stop animation FIRST to prevent new frames during cleanup
+        // This also cancels any pending scheduler callbacks
+        try {
+            stopAnimation();
+        } catch (e) {
+            // Ignore errors during cleanup
+        }
+
+        // Destroy frame scheduler to release MessageChannel ports
+        // This prevents memory leaks from orphaned ports
+        try {
+            const scheduler = getFrameScheduler();
+            scheduler.destroy();
+        } catch (e) {
+            // Ignore errors during cleanup
+        }
+
+        // Finally, dispose WASM resources (GPU buffers, textures, etc.)
+        const rource = getRource();
+        if (rource) {
+            try {
+                rource.dispose();
+                console.log('Rource: Resources cleared, awaiting garbage collection');
+            } catch (e) {
+                // Ignore errors during cleanup
+            }
+            setRource(null);
+        }
+    });
+
+    // Handle pagehide - more reliable than beforeunload on mobile browsers
+    // This fires when navigating away, closing tab, or switching apps
+    window.addEventListener('pagehide', (event) => {
+        // If page is being persisted in bfcache, don't dispose (will be restored)
+        if (event.persisted) {
+            console.log('Rource: Page cached for back-forward navigation');
+            return;
+        }
+
+        // Page is being discarded, clean up resources
+        try {
+            stopAnimation();
+        } catch (e) {
+            // Ignore errors during cleanup
+        }
+
+        try {
+            const scheduler = getFrameScheduler();
+            scheduler.destroy();
+        } catch (e) {
+            // Ignore errors during cleanup
+        }
+
         const rource = getRource();
         if (rource) {
             try {
@@ -204,7 +267,7 @@ function setupCleanupHandler() {
         }
     });
 
-    // Also handle visibility change for mobile browsers
+    // Handle visibility change - pause animation when hidden to save resources
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
             // Page is being hidden, might be navigating away
@@ -441,8 +504,21 @@ async function main() {
             }
         });
 
-        // Connect playback state changes to mobile controls
-        setPlaybackStateCallback(onPlaybackStateChange);
+        // Initialize immersive mode (landscape fullscreen with HUD overlay)
+        initImmersiveMode({
+            isPlaying: () => safeWasmCall('isPlaying', () => rource.isPlaying(), false),
+            togglePlay: () => {
+                safeWasmCall('togglePlay', () => rource.togglePlay(), undefined);
+                updatePlaybackUI();
+            }
+        });
+
+        // Connect playback state changes to mobile controls and immersive mode
+        setPlaybackStateCallback((playing) => {
+            onPlaybackStateChange(playing);
+            onImmersivePlaybackChange(playing);
+            updateHUDPlayButton(playing);
+        });
 
         // Set up animation callbacks for features that need them
         setAnimateCallback(animate);
@@ -564,6 +640,9 @@ function handleDataLoaded(content, stats, format = 'custom') {
     // Enable font size controls now that data is loaded
     enableFontSizeControls();
     updateFontSizeUI();
+
+    // Update immersive mode stats
+    updateImmersiveStats();
 
     // Update timeline markers
     updateTimelineMarkers(content);

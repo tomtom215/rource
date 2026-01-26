@@ -94,6 +94,15 @@ export class Rource {
      */
     currentCommit(): number;
     /**
+     * Returns debug information about hit testing at the given coordinates.
+     *
+     * Use this to diagnose why drag might not be working:
+     * - Check if `screen_to_world` conversion is correct
+     * - Check if entities are in the spatial index
+     * - Check if entities are within hit radius
+     */
+    debugHitTest(x: number, y: number): string;
+    /**
      * Disables the watermark.
      *
      * # Example (JavaScript)
@@ -139,7 +148,7 @@ export class Rource {
      *
      * Returns `null` if no commits are loaded.
      *
-     * The returned bytes can be stored in IndexedDB for fast subsequent loads.
+     * The returned bytes can be stored in `IndexedDB` for fast subsequent loads.
      *
      * # Example
      *
@@ -267,6 +276,12 @@ export class Rource {
      * This calculates directory count from file paths, independent of
      * playback state. Useful for displaying total stats before playback
      * reaches the end.
+     *
+     * # Optimization Notes
+     *
+     * - Uses `match_indices('/')` for O(n) path parsing instead of O(n²) split+nth
+     * - Stores owned Strings to handle `Cow<str>` from `to_string_lossy()`
+     * - Pre-allocates `HashSet` capacity based on estimated directory count
      */
     getCommitDirectoryCount(): number;
     /**
@@ -465,6 +480,24 @@ export class Rource {
      */
     getGPUCullingThreshold(): number;
     /**
+     * Returns GPU adapter information for diagnostics (WebGPU only).
+     *
+     * Returns a JSON string with hardware details:
+     * - `name`: GPU adapter name
+     * - `vendor`: Vendor ID
+     * - `device`: Device ID
+     * - `deviceType`: Type (`DiscreteGpu`, `IntegratedGpu`)
+     * - `backend`: Graphics backend (`BrowserWebGpu`)
+     * - `maxTextureDimension2d`: Maximum 2D texture size
+     * - `maxBufferSize`: Maximum buffer size in bytes
+     * - `maxStorageBufferBindingSize`: Maximum storage buffer binding size
+     * - `maxComputeWorkgroupSizeX`: Maximum compute workgroup X size
+     * - `maxComputeInvocationsPerWorkgroup`: Maximum compute invocations per workgroup
+     *
+     * Returns `null` for non-WebGPU renderers.
+     */
+    getGPUInfo(): string | undefined;
+    /**
      * Returns the current GPU physics threshold.
      *
      * # Example (JavaScript)
@@ -486,6 +519,10 @@ export class Rource {
      */
     getLayoutConfig(): string;
     /**
+     * Returns the current maximum commits limit.
+     */
+    getMaxCommits(): number;
+    /**
      * Gets the current mouse position in screen coordinates.
      *
      * Returns an array `[x, y]` of the last known mouse position.
@@ -497,6 +534,12 @@ export class Rource {
      * Returns an array `[x, y]` of the mouse position in world space.
      */
     getMouseWorldPosition(): Float32Array;
+    /**
+     * Returns the original commit count before any truncation.
+     *
+     * This is useful for displaying "Showing X of Y commits" in the UI.
+     */
+    getOriginalCommitCount(): number;
     /**
      * Returns the type of renderer being used ("wgpu", "webgl2", or "software").
      */
@@ -593,7 +636,7 @@ export class Rource {
     /**
      * Computes a stable hash for a repository identifier.
      *
-     * Use this to create cache keys for IndexedDB storage.
+     * Use this to create cache keys for `IndexedDB` storage.
      *
      * # Arguments
      *
@@ -607,7 +650,7 @@ export class Rource {
      *
      * ```javascript
      * const hash = Rource.hashRepoId('https://github.com/owner/repo.git');
-     * // Use hash as IndexedDB key
+     * // Use hash as `IndexedDB` key
      * await idb.put('cache', hash, cacheBytes);
      * ```
      */
@@ -795,12 +838,24 @@ export class Rource {
      *
      * Uses lenient parsing by default to skip invalid lines (e.g., lines with
      * pipe characters in author names or unsupported git statuses).
+     *
+     * # Commit Limit
+     *
+     * If the log contains more commits than `maxCommits` (default 100,000),
+     * only the first `maxCommits` commits are loaded. Check `wasCommitsTruncated()`
+     * to detect if truncation occurred.
      */
     loadCustomLog(log: string): number;
     /**
      * Loads commits from git log format.
      *
      * Uses lenient parsing to handle malformed lines gracefully.
+     *
+     * # Commit Limit
+     *
+     * If the log contains more commits than `maxCommits` (default 100,000),
+     * only the first `maxCommits` commits are loaded. Check `wasCommitsTruncated()`
+     * to detect if truncation occurred.
      */
     loadGitLog(log: string): number;
     /**
@@ -926,6 +981,13 @@ export class Rource {
      *
      * This rebuilds the scene state by replaying all commits up to the
      * specified index, then pre-warms the physics simulation.
+     *
+     * # Performance Warning
+     *
+     * For large repositories, seeking to a distant commit (e.g., commit 50,000
+     * in a 100K commit repo) will apply all previous commits synchronously,
+     * which may cause brief UI freezing. Consider using incremental playback
+     * for very large repositories.
      */
     seek(commit_index: number): void;
     /**
@@ -1067,6 +1129,17 @@ export class Rource {
      * ```
      */
     setLayoutPreset(preset: string): void;
+    /**
+     * Sets the maximum number of commits to load.
+     *
+     * Call this before `loadGitLog()` or `loadCustomLog()` to change the limit.
+     * Default is 100,000 commits.
+     *
+     * # Arguments
+     *
+     * * `max` - Maximum commits to load (0 = unlimited, use with caution)
+     */
+    setMaxCommits(max: number): void;
     /**
      * Sets the radial distance scale for directory positioning.
      *
@@ -1290,6 +1363,13 @@ export class Rource {
      */
     warmupGPUPhysics(): void;
     /**
+     * Returns true if commits were truncated during the last load.
+     *
+     * When true, only the first `maxCommits` commits were loaded.
+     * Use `getOriginalCommitCount()` to see the full count.
+     */
+    wasCommitsTruncated(): boolean;
+    /**
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
      *
      * Max zoom is 1000.0 to support deep zoom into massive repositories.
@@ -1323,6 +1403,7 @@ export interface InitOutput {
     readonly rource_configureLayoutForRepo: (a: number, b: number, c: number, d: number) => void;
     readonly rource_create: (a: number) => number;
     readonly rource_currentCommit: (a: number) => number;
+    readonly rource_debugHitTest: (a: number, b: number, c: number, d: number) => void;
     readonly rource_disableWatermark: (a: number) => void;
     readonly rource_dispose: (a: number) => void;
     readonly rource_enableRourceWatermark: (a: number) => void;
@@ -1355,10 +1436,13 @@ export interface InitOutput {
     readonly rource_getFullMapDimensions: (a: number, b: number, c: number) => void;
     readonly rource_getGPUCullingStats: (a: number, b: number) => void;
     readonly rource_getGPUCullingThreshold: (a: number) => number;
+    readonly rource_getGPUInfo: (a: number, b: number) => void;
     readonly rource_getGPUPhysicsThreshold: (a: number) => number;
     readonly rource_getLayoutConfig: (a: number, b: number) => void;
+    readonly rource_getMaxCommits: (a: number) => number;
     readonly rource_getMousePosition: (a: number, b: number) => void;
     readonly rource_getMouseWorldPosition: (a: number, b: number) => void;
+    readonly rource_getOriginalCommitCount: (a: number) => number;
     readonly rource_getRendererType: (a: number, b: number) => void;
     readonly rource_getShowLabels: (a: number) => number;
     readonly rource_getSpeed: (a: number) => number;
@@ -1422,6 +1506,7 @@ export interface InitOutput {
     readonly rource_setGPUCullingThreshold: (a: number, b: number) => void;
     readonly rource_setGPUPhysicsThreshold: (a: number, b: number) => void;
     readonly rource_setLayoutPreset: (a: number, b: number, c: number) => void;
+    readonly rource_setMaxCommits: (a: number, b: number) => void;
     readonly rource_setRadialDistanceScale: (a: number, b: number) => void;
     readonly rource_setShowLabels: (a: number, b: number) => void;
     readonly rource_setSpeed: (a: number, b: number) => void;
@@ -1441,13 +1526,14 @@ export interface InitOutput {
     readonly rource_togglePlay: (a: number) => void;
     readonly rource_warmupGPUCulling: (a: number) => void;
     readonly rource_warmupGPUPhysics: (a: number) => void;
+    readonly rource_wasCommitsTruncated: (a: number) => number;
     readonly rource_zoom: (a: number, b: number) => void;
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
     readonly rource_isTracingEnabled: (a: number) => number;
-    readonly __wasm_bindgen_func_elem_2506: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6680: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2507: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_2563: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6739: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2564: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

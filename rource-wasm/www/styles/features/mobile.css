@@ -19,6 +19,20 @@
  */
 
 /* =============================================================================
+   Mobile Center Play Button - Base Styles (Hidden on Desktop)
+   ============================================================================= */
+
+/*
+ * CRITICAL: The mobile-center-play button must be hidden by default on ALL
+ * screen sizes. The @media query below provides mobile-specific styling,
+ * but we need base hidden state to prevent flash of unstyled content on
+ * page load (especially in Firefox where CSS parsing timing can vary).
+ */
+.mobile-center-play {
+    display: none;
+}
+
+/* =============================================================================
    Mobile Sidebar Toggle
    ============================================================================= */
 
@@ -217,32 +231,52 @@
     .has-bottom-sheet .mobile-toolbar {
         display: flex;
         position: absolute;
-        /* FIXED: Move from top to bottom for thumb accessibility */
+        /* CENTER the toolbar at the bottom for balanced layout */
         bottom: 8px;
-        left: 8px;
+        left: 50%;
+        transform: translateX(-50%);
         z-index: var(--z-canvas-overlays);
         background: rgba(22, 27, 34, 0.92);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border-radius: 24px;
-        padding: 6px 10px;
-        gap: 6px;
+        padding: 6px 12px;
+        gap: 4px;
         border: 1px solid var(--border);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
         /* Auto-hide support */
         transition: opacity 0.3s ease, transform 0.3s ease;
+        /* Center buttons within toolbar */
+        align-items: center;
+        justify-content: center;
     }
 
-    /* Auto-hide when playing - keep slightly visible and tappable */
+    /* Auto-hide when playing - more visible and animated like FAB */
     .has-bottom-sheet.controls-hidden .mobile-toolbar {
-        opacity: 0.15;
-        transform: translateY(10px);
+        opacity: 0.3;
+        /* Maintain center position while animating down */
+        transform: translateX(-50%) translateY(8px);
         /* Keep pointer-events: auto so user can tap to show controls */
         pointer-events: auto;
+        /* Match FAB pulse animation for consistency */
+        animation: toolbar-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes toolbar-pulse {
+        0%, 100% { opacity: 0.25; }
+        50% { opacity: 0.4; }
     }
 
     .has-bottom-sheet.controls-hidden .mobile-toolbar:active {
-        opacity: 0.5;
+        opacity: 0.6;
+        animation: none;
+        transform: translateX(-50%) translateY(8px);
+    }
+
+    /* Also hide stats overlay when controls are hidden for cleaner view */
+    .has-bottom-sheet.controls-hidden .stats-overlay {
+        opacity: 0.2;
+        transition: opacity 0.3s ease;
     }
 
     .mobile-toolbar-btn {
@@ -257,8 +291,17 @@
         border-radius: 12px;
         color: var(--text-secondary);
         cursor: pointer;
-        transition: background 0.15s ease, transform 0.15s ease;
+        transition: background 0.15s ease, transform 0.15s ease, color 0.15s ease;
         -webkit-tap-highlight-color: transparent;
+        /* Ensure buttons are clickable */
+        pointer-events: auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .mobile-toolbar-btn:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
     }
 
     .mobile-toolbar-btn:active {
@@ -266,19 +309,30 @@
         transform: scale(0.92);
     }
 
+    /* Labels toggle active state - clearer visual distinction */
     .mobile-toolbar-btn.active {
         color: var(--accent);
-        background: rgba(233, 69, 96, 0.15);
+        background: rgba(233, 69, 96, 0.18);
+        /* Add subtle border for better visibility */
+        box-shadow: inset 0 0 0 1.5px rgba(233, 69, 96, 0.3);
+    }
+
+    .mobile-toolbar-btn.active:active {
+        background: rgba(233, 69, 96, 0.25);
+        transform: scale(0.92);
     }
 
     .mobile-toolbar-btn:disabled {
         opacity: 0.4;
         cursor: not-allowed;
+        pointer-events: none;
     }
 
     .mobile-toolbar-btn svg {
         width: 20px;
         height: 20px;
+        /* Ensure SVG doesn't capture pointer events */
+        pointer-events: none;
     }
 
     /* Theme button icon visibility */
@@ -403,10 +457,11 @@
     }
 
     /* FAB repositioned for mobile - right corner, above timeline
-       FIXED: Move to right edge for thumb accessibility, clear of timeline */
+       FIXED: Move higher to avoid overlapping author info in timeline date row
+       Timeline is ~110-130px, but author info appears at top of timeline (~160px from bottom) */
     .has-bottom-sheet .bottom-sheet-fab {
-        bottom: max(130px, calc(130px + env(safe-area-inset-bottom)));
-        right: 8px;
+        bottom: max(175px, calc(175px + env(safe-area-inset-bottom)));
+        right: 12px;
         /* 56px is Material Design 3 standard FAB size */
         width: 56px;
         height: 56px;
@@ -415,18 +470,26 @@
         transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    /* Auto-hide FAB when playing - keep tappable to show controls */
+    /* Auto-hide FAB when playing - more visible and animated to hint tappability */
     .has-bottom-sheet.controls-hidden .bottom-sheet-fab {
-        opacity: 0.15;
-        transform: scale(0.8);
+        opacity: 0.4;
+        transform: scale(0.85);
         /* Keep pointer-events: auto so user can tap to show controls */
         pointer-events: auto;
+        /* Subtle pulse animation to hint that FAB can be tapped */
+        animation: fab-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes fab-pulse {
+        0%, 100% { opacity: 0.35; transform: scale(0.85); }
+        50% { opacity: 0.5; transform: scale(0.88); }
     }
 
     /* Visual feedback when tapping hidden FAB */
     .has-bottom-sheet.controls-hidden .bottom-sheet-fab:active {
-        opacity: 0.5;
-        transform: scale(0.75);
+        opacity: 0.7;
+        transform: scale(0.8);
+        animation: none;
     }
 
     /* App container full width on mobile */
@@ -467,47 +530,54 @@
     }
 
     /* -------------------------------------------------------------------------
-       Stats Overlay - Mobile Compact Layout
+       Stats Overlay - Mobile HUD Layout
        -------------------------------------------------------------------------
-       Shows commits/files/dirs/authors in a compact pill at BOTTOM-CENTER.
-       Positioned above timeline controls, between mobile toolbar and FAB.
-       This prevents overlap with bottom-left mobile toolbar.
+       Shows commits/files/dirs/authors as a compact HUD in TOP-LEFT corner.
+       This keeps it out of the way and doesn't cramp the canvas area.
+
+       Layout:
+       - Top-left: Stats overlay (secondary info)
+       - Top-right: Perf overlay (FPS/frame time)
+       - Bottom-center: Mobile toolbar (actions)
+       - Bottom-right: FAB (menu)
     */
 
     .has-bottom-sheet .stats-overlay {
-        /* Bottom-center positioning, above timeline */
-        bottom: max(118px, calc(118px + env(safe-area-inset-bottom)));
-        left: 50%;
+        /* Top-left HUD positioning */
+        top: max(8px, env(safe-area-inset-top));
+        left: max(8px, env(safe-area-inset-left));
+        bottom: auto;
         right: auto;
-        transform: translateX(-50%);
-        padding: 6px 14px;
-        border-radius: 20px;
-        background: rgba(0, 0, 0, 0.8);
+        transform: none;
+        padding: 6px 12px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.75);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-        gap: 14px;
-        font-size: 0.7rem;
-        /* Ensure it doesn't stretch too wide */
-        max-width: calc(100vw - 150px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        gap: 12px;
+        font-size: 0.65rem;
+        /* Compact width */
+        max-width: 200px;
     }
 
     .has-bottom-sheet .stats-overlay .stat-item {
         flex-direction: row;
-        gap: 4px;
+        gap: 3px;
         white-space: nowrap;
     }
 
     .has-bottom-sheet .stats-overlay .stat-value {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 700;
     }
 
     .has-bottom-sheet .stats-overlay .stat-label {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
         text-transform: uppercase;
         letter-spacing: 0.3px;
+        opacity: 0.8;
     }
 
     /* HUD-style container - compact pill in top-right */
@@ -771,6 +841,10 @@
     */
 
     .mobile-center-play {
+        /* Override base display: none for mobile */
+        display: flex;
+        align-items: center;
+        justify-content: center;
         position: absolute;
         top: 50%;
         left: 50%;
@@ -887,11 +961,79 @@
 }
 
 /* Landscape styles via JS-added class (catches phones with width > 768px in landscape) */
+
+/* CRITICAL: Hide sidebar on landscape mobile - content is in bottom sheet instead */
+.landscape-mobile.has-bottom-sheet .sidebar-toggle,
+.landscape-mobile.has-bottom-sheet .sidebar-panel,
+.landscape-mobile.has-bottom-sheet .sidebar-wrapper {
+    display: none !important;
+}
+
+/* Also hide legend and authors panels on landscape mobile */
+.landscape-mobile.has-bottom-sheet .legend-panel,
+.landscape-mobile.has-bottom-sheet .authors-panel {
+    display: none !important;
+}
+
+/* CRITICAL: Enable bottom sheet display for landscape mobile
+   The base bottom-sheet.css only enables it for max-width: 768px,
+   but landscape phones can exceed that width. This ensures the
+   bottom sheet works in landscape mode. */
 .landscape-mobile .bottom-sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
     height: 75vh;
     height: 75dvh;
     max-height: calc(100vh - 20px);
     max-height: calc(100dvh - 20px);
+    background: var(--bg-primary);
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: var(--z-modal);
+    will-change: transform;
+    overflow: hidden;
+}
+
+.landscape-mobile .bottom-sheet.open {
+    transform: translateY(0);
+}
+
+.landscape-mobile .bottom-sheet.half {
+    transform: translateY(50%);
+}
+
+/* Enable backdrop for landscape mobile */
+.landscape-mobile .bottom-sheet-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--backdrop);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: var(--z-modal-backdrop);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
+}
+
+.landscape-mobile .bottom-sheet-backdrop.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Enable FAB for landscape mobile */
+.landscape-mobile .bottom-sheet-fab {
+    display: flex;
 }
 
 .landscape-mobile .bottom-sheet-header {
@@ -912,7 +1054,9 @@
 
 .landscape-mobile.has-bottom-sheet .mobile-toolbar {
     bottom: 6px;
-    left: max(6px, env(safe-area-inset-left));
+    /* Center toolbar in landscape for consistent layout */
+    left: 50%;
+    transform: translateX(-50%);
     gap: 2px;
 }
 
@@ -996,14 +1140,16 @@
     transform: translateX(16px);
 }
 
+/* Landscape stats overlay - also top-left for consistency */
 .landscape-mobile.has-bottom-sheet .stats-overlay {
-    bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
-    left: 50%;
+    top: max(6px, env(safe-area-inset-top));
+    left: max(6px, env(safe-area-inset-left));
+    bottom: auto;
     right: auto;
-    transform: translateX(-50%);
+    transform: none;
     padding: 4px 10px;
-    gap: 10px;
-    max-width: calc(100vw - 200px);
+    gap: 8px;
+    max-width: 180px;
 }
 
 .landscape-mobile.has-bottom-sheet .stats-overlay .stat-value {
@@ -1011,7 +1157,7 @@
 }
 
 .landscape-mobile.has-bottom-sheet .stats-overlay .stat-label {
-    font-size: 0.5rem;
+    font-size: 0.45rem;
 }
 
 /* =============================================================================
@@ -1119,17 +1265,21 @@
    ============================================================================= */
 
 .light-theme.has-bottom-sheet .mobile-toolbar {
-    background: rgba(246, 248, 250, 0.95);
+    background: rgba(250, 251, 252, 0.97);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(31, 35, 40, 0.12);
 }
 
 .light-theme.has-bottom-sheet .stats-overlay {
-    background: rgba(246, 248, 250, 0.95);
+    background: rgba(250, 251, 252, 0.97);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(31, 35, 40, 0.1);
 }
 
 .light-theme.has-bottom-sheet .perf-overlay {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(0, 0, 0, 0.1);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    background: rgba(250, 251, 252, 0.97);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(31, 35, 40, 0.12);
 }
 
 /* Light theme HUD adjustments */

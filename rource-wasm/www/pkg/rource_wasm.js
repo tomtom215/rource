@@ -143,6 +143,33 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns debug information about hit testing at the given coordinates.
+     *
+     * Use this to diagnose why drag might not be working:
+     * - Check if `screen_to_world` conversion is correct
+     * - Check if entities are in the spatial index
+     * - Check if entities are within hit radius
+     * @param {number} x
+     * @param {number} y
+     * @returns {string}
+     */
+    debugHitTest(x, y) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_debugHitTest(retptr, this.__wbg_ptr, x, y);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Disables the watermark.
      *
      * # Example (JavaScript)
@@ -194,7 +221,7 @@ export class Rource {
      *
      * Returns `null` if no commits are loaded.
      *
-     * The returned bytes can be stored in IndexedDB for fast subsequent loads.
+     * The returned bytes can be stored in `IndexedDB` for fast subsequent loads.
      *
      * # Example
      *
@@ -464,6 +491,12 @@ export class Rource {
      * This calculates directory count from file paths, independent of
      * playback state. Useful for displaying total stats before playback
      * reaches the end.
+     *
+     * # Optimization Notes
+     *
+     * - Uses `match_indices('/')` for O(n) path parsing instead of O(n²) split+nth
+     * - Stores owned Strings to handle `Cow<str>` from `to_string_lossy()`
+     * - Pre-allocates `HashSet` capacity based on estimated directory count
      * @returns {number}
      */
     getCommitDirectoryCount() {
@@ -815,6 +848,40 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns GPU adapter information for diagnostics (WebGPU only).
+     *
+     * Returns a JSON string with hardware details:
+     * - `name`: GPU adapter name
+     * - `vendor`: Vendor ID
+     * - `device`: Device ID
+     * - `deviceType`: Type (`DiscreteGpu`, `IntegratedGpu`)
+     * - `backend`: Graphics backend (`BrowserWebGpu`)
+     * - `maxTextureDimension2d`: Maximum 2D texture size
+     * - `maxBufferSize`: Maximum buffer size in bytes
+     * - `maxStorageBufferBindingSize`: Maximum storage buffer binding size
+     * - `maxComputeWorkgroupSizeX`: Maximum compute workgroup X size
+     * - `maxComputeInvocationsPerWorkgroup`: Maximum compute invocations per workgroup
+     *
+     * Returns `null` for non-WebGPU renderers.
+     * @returns {string | undefined}
+     */
+    getGPUInfo() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getGPUInfo(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the current GPU physics threshold.
      *
      * # Example (JavaScript)
@@ -856,6 +923,14 @@ export class Rource {
         }
     }
     /**
+     * Returns the current maximum commits limit.
+     * @returns {number}
+     */
+    getMaxCommits() {
+        const ret = wasm.rource_getMaxCommits(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Gets the current mouse position in screen coordinates.
      *
      * Returns an array `[x, y]` of the last known mouse position.
@@ -892,6 +967,16 @@ export class Rource {
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
+    }
+    /**
+     * Returns the original commit count before any truncation.
+     *
+     * This is useful for displaying "Showing X of Y commits" in the UI.
+     * @returns {number}
+     */
+    getOriginalCommitCount() {
+        const ret = wasm.rource_getOriginalCommitCount(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Returns the type of renderer being used ("wgpu", "webgl2", or "software").
@@ -1084,7 +1169,7 @@ export class Rource {
     /**
      * Computes a stable hash for a repository identifier.
      *
-     * Use this to create cache keys for IndexedDB storage.
+     * Use this to create cache keys for `IndexedDB` storage.
      *
      * # Arguments
      *
@@ -1098,7 +1183,7 @@ export class Rource {
      *
      * ```javascript
      * const hash = Rource.hashRepoId('https://github.com/owner/repo.git');
-     * // Use hash as IndexedDB key
+     * // Use hash as `IndexedDB` key
      * await idb.put('cache', hash, cacheBytes);
      * ```
      * @param {string} repo_id
@@ -1382,6 +1467,12 @@ export class Rource {
      *
      * Uses lenient parsing by default to skip invalid lines (e.g., lines with
      * pipe characters in author names or unsupported git statuses).
+     *
+     * # Commit Limit
+     *
+     * If the log contains more commits than `maxCommits` (default 100,000),
+     * only the first `maxCommits` commits are loaded. Check `wasCommitsTruncated()`
+     * to detect if truncation occurred.
      * @param {string} log
      * @returns {number}
      */
@@ -1406,6 +1497,12 @@ export class Rource {
      * Loads commits from git log format.
      *
      * Uses lenient parsing to handle malformed lines gracefully.
+     *
+     * # Commit Limit
+     *
+     * If the log contains more commits than `maxCommits` (default 100,000),
+     * only the first `maxCommits` commits are loaded. Check `wasCommitsTruncated()`
+     * to detect if truncation occurred.
      * @param {string} log
      * @returns {number}
      */
@@ -1613,6 +1710,13 @@ export class Rource {
      *
      * This rebuilds the scene state by replaying all commits up to the
      * specified index, then pre-warms the physics simulation.
+     *
+     * # Performance Warning
+     *
+     * For large repositories, seeking to a distant commit (e.g., commit 50,000
+     * in a 100K commit repo) will apply all previous commits synchronously,
+     * which may cause brief UI freezing. Consider using incremental playback
+     * for very large repositories.
      * @param {number} commit_index
      */
     seek(commit_index) {
@@ -1798,6 +1902,20 @@ export class Rource {
         const ptr0 = passStringToWasm0(preset, wasm.__wbindgen_export, wasm.__wbindgen_export2);
         const len0 = WASM_VECTOR_LEN;
         wasm.rource_setLayoutPreset(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Sets the maximum number of commits to load.
+     *
+     * Call this before `loadGitLog()` or `loadCustomLog()` to change the limit.
+     * Default is 100,000 commits.
+     *
+     * # Arguments
+     *
+     * * `max` - Maximum commits to load (0 = unlimited, use with caution)
+     * @param {number} max
+     */
+    setMaxCommits(max) {
+        wasm.rource_setMaxCommits(this.__wbg_ptr, max);
     }
     /**
      * Sets the radial distance scale for directory positioning.
@@ -2080,6 +2198,17 @@ export class Rource {
      */
     warmupGPUPhysics() {
         wasm.rource_warmupGPUPhysics(this.__wbg_ptr);
+    }
+    /**
+     * Returns true if commits were truncated during the last load.
+     *
+     * When true, only the first `maxCommits` commits were loaded.
+     * Use `getOriginalCommitCount()` to see the full count.
+     * @returns {boolean}
+     */
+    wasCommitsTruncated() {
+        const ret = wasm.rource_wasCommitsTruncated(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Zooms the camera by a factor (> 1 zooms in, < 1 zooms out).
@@ -2990,6 +3119,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).length;
             return ret;
         },
+        __wbg_limits_4c117fe92a378b1a: function(arg0) {
+            const ret = getObject(arg0).limits;
+            return addHeapObject(ret);
+        },
         __wbg_linkProgram_6600dd2c0863bbfd: function(arg0, arg1) {
             getObject(arg0).linkProgram(getObject(arg1));
         },
@@ -3002,6 +3135,122 @@ function __wbg_get_imports() {
         __wbg_mapAsync_0d9cf9d11808b275: function(arg0, arg1, arg2, arg3) {
             const ret = getObject(arg0).mapAsync(arg1 >>> 0, arg2, arg3);
             return addHeapObject(ret);
+        },
+        __wbg_maxBindGroups_060f2b40f8a292b1: function(arg0) {
+            const ret = getObject(arg0).maxBindGroups;
+            return ret;
+        },
+        __wbg_maxBindingsPerBindGroup_3e4b03bbed2da128: function(arg0) {
+            const ret = getObject(arg0).maxBindingsPerBindGroup;
+            return ret;
+        },
+        __wbg_maxBufferSize_deda0fa7852420cb: function(arg0) {
+            const ret = getObject(arg0).maxBufferSize;
+            return ret;
+        },
+        __wbg_maxColorAttachmentBytesPerSample_4a4a0e04d76eaf2a: function(arg0) {
+            const ret = getObject(arg0).maxColorAttachmentBytesPerSample;
+            return ret;
+        },
+        __wbg_maxColorAttachments_db4883eeb9e8aeae: function(arg0) {
+            const ret = getObject(arg0).maxColorAttachments;
+            return ret;
+        },
+        __wbg_maxComputeInvocationsPerWorkgroup_d050c461ebc92998: function(arg0) {
+            const ret = getObject(arg0).maxComputeInvocationsPerWorkgroup;
+            return ret;
+        },
+        __wbg_maxComputeWorkgroupSizeX_48153a1b779879ad: function(arg0) {
+            const ret = getObject(arg0).maxComputeWorkgroupSizeX;
+            return ret;
+        },
+        __wbg_maxComputeWorkgroupSizeY_7f73d3d16fdea180: function(arg0) {
+            const ret = getObject(arg0).maxComputeWorkgroupSizeY;
+            return ret;
+        },
+        __wbg_maxComputeWorkgroupSizeZ_9fcad0f0dfcffb05: function(arg0) {
+            const ret = getObject(arg0).maxComputeWorkgroupSizeZ;
+            return ret;
+        },
+        __wbg_maxComputeWorkgroupStorageSize_9fe29e00c7d166a6: function(arg0) {
+            const ret = getObject(arg0).maxComputeWorkgroupStorageSize;
+            return ret;
+        },
+        __wbg_maxComputeWorkgroupsPerDimension_f8321761bc8e8feb: function(arg0) {
+            const ret = getObject(arg0).maxComputeWorkgroupsPerDimension;
+            return ret;
+        },
+        __wbg_maxDynamicStorageBuffersPerPipelineLayout_55e1416c376721db: function(arg0) {
+            const ret = getObject(arg0).maxDynamicStorageBuffersPerPipelineLayout;
+            return ret;
+        },
+        __wbg_maxDynamicUniformBuffersPerPipelineLayout_17ff0903196c41a7: function(arg0) {
+            const ret = getObject(arg0).maxDynamicUniformBuffersPerPipelineLayout;
+            return ret;
+        },
+        __wbg_maxSampledTexturesPerShaderStage_59e5fc159e536f0d: function(arg0) {
+            const ret = getObject(arg0).maxSampledTexturesPerShaderStage;
+            return ret;
+        },
+        __wbg_maxSamplersPerShaderStage_84f119909016576b: function(arg0) {
+            const ret = getObject(arg0).maxSamplersPerShaderStage;
+            return ret;
+        },
+        __wbg_maxStorageBufferBindingSize_f9c3b3d285375ee0: function(arg0) {
+            const ret = getObject(arg0).maxStorageBufferBindingSize;
+            return ret;
+        },
+        __wbg_maxStorageBuffersPerShaderStage_f84b702138ac86a4: function(arg0) {
+            const ret = getObject(arg0).maxStorageBuffersPerShaderStage;
+            return ret;
+        },
+        __wbg_maxStorageTexturesPerShaderStage_226be46cbf594437: function(arg0) {
+            const ret = getObject(arg0).maxStorageTexturesPerShaderStage;
+            return ret;
+        },
+        __wbg_maxTextureArrayLayers_a8bf77269db7b94e: function(arg0) {
+            const ret = getObject(arg0).maxTextureArrayLayers;
+            return ret;
+        },
+        __wbg_maxTextureDimension1D_8e69ba5596959195: function(arg0) {
+            const ret = getObject(arg0).maxTextureDimension1D;
+            return ret;
+        },
+        __wbg_maxTextureDimension2D_5a7a17047785cba5: function(arg0) {
+            const ret = getObject(arg0).maxTextureDimension2D;
+            return ret;
+        },
+        __wbg_maxTextureDimension3D_1ea793f1095d392a: function(arg0) {
+            const ret = getObject(arg0).maxTextureDimension3D;
+            return ret;
+        },
+        __wbg_maxUniformBufferBindingSize_4b41f90d6914a995: function(arg0) {
+            const ret = getObject(arg0).maxUniformBufferBindingSize;
+            return ret;
+        },
+        __wbg_maxUniformBuffersPerShaderStage_c5db04bf022a0c83: function(arg0) {
+            const ret = getObject(arg0).maxUniformBuffersPerShaderStage;
+            return ret;
+        },
+        __wbg_maxVertexAttributes_e94e6c887b993b6c: function(arg0) {
+            const ret = getObject(arg0).maxVertexAttributes;
+            return ret;
+        },
+        __wbg_maxVertexBufferArrayStride_92c15a2c2f0faf82: function(arg0) {
+            const ret = getObject(arg0).maxVertexBufferArrayStride;
+            return ret;
+        },
+        __wbg_maxVertexBuffers_db05674c76ef98c9: function(arg0) {
+            const ret = getObject(arg0).maxVertexBuffers;
+            return ret;
+        },
+        __wbg_minStorageBufferOffsetAlignment_2c9fb697a4aedb8b: function(arg0) {
+            const ret = getObject(arg0).minStorageBufferOffsetAlignment;
+            return ret;
+        },
+        __wbg_minUniformBufferOffsetAlignment_6357875312bfd2f0: function(arg0) {
+            const ret = getObject(arg0).minUniformBufferOffsetAlignment;
+            return ret;
         },
         __wbg_navigator_43be698ba96fc088: function(arg0) {
             const ret = getObject(arg0).navigator;
@@ -3034,7 +3283,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6680(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_6739(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -4010,8 +4259,8 @@ function __wbg_get_imports() {
             getObject(arg0).writeTexture(getObject(arg1), getObject(arg2), getObject(arg3), getObject(arg4));
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 688, function: Function { arguments: [Externref], shim_idx: 689, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2506, __wasm_bindgen_func_elem_2507);
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 694, function: Function { arguments: [Externref], shim_idx: 695, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2563, __wasm_bindgen_func_elem_2564);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -4073,12 +4322,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_2507(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_2507(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_2564(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_2564(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6680(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6680(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_6739(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_6739(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

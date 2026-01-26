@@ -381,4 +381,175 @@
         max-width: 150px;
         font-size: 0.7rem;
     }
+
+    /* -----------------------------------------------------------------
+       Mobile Fullscreen: Minimize Distractions
+       -----------------------------------------------------------------
+       In fullscreen on mobile, we want maximum canvas visibility.
+       Auto-collapse overlays and ensure exit button is always visible.
+    */
+
+    /* Exit button: ALWAYS visible and prominent in mobile fullscreen */
+    .pseudo-fullscreen .exit-fullscreen-btn {
+        display: flex !important;
+        position: fixed !important;
+        top: max(12px, env(safe-area-inset-top)) !important;
+        right: max(12px, env(safe-area-inset-right)) !important;
+        z-index: 10010 !important; /* Above everything */
+        width: 44px;
+        height: 44px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* Hide center play button in fullscreen - timeline has play controls */
+    .pseudo-fullscreen .mobile-center-play {
+        display: none !important;
+    }
+
+    /* Auto-collapse perf overlay in mobile fullscreen for cleaner view */
+    .pseudo-fullscreen .perf-overlay {
+        /* Move to bottom-right to not conflict with exit button */
+        top: auto !important;
+        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+        right: max(8px, env(safe-area-inset-right));
+        left: auto !important;
+        /* Compact styling */
+        padding: 6px 10px;
+        max-width: 120px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.7);
+        font-size: 0.7rem;
+    }
+
+    /* Force collapsed state in fullscreen - just show FPS */
+    .pseudo-fullscreen .perf-overlay .perf-details {
+        display: none !important;
+    }
+
+    .pseudo-fullscreen .perf-overlay .perf-header {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .pseudo-fullscreen .perf-overlay .perf-fps {
+        font-size: 0.85rem;
+        min-width: auto;
+    }
+
+    .pseudo-fullscreen .perf-overlay .perf-toggle {
+        display: none;
+    }
+
+    /* Hide mobile toolbar in fullscreen - timeline has all controls */
+    .pseudo-fullscreen .mobile-toolbar {
+        display: none !important;
+    }
+
+    /* Hide FAB in fullscreen */
+    .pseudo-fullscreen .bottom-sheet-fab {
+        display: none !important;
+    }
+
+    /* Hide legend and authors in mobile fullscreen */
+    .pseudo-fullscreen .legend-panel,
+    .pseudo-fullscreen .authors-panel {
+        display: none !important;
+    }
+
+    /* Adjust timeline for mobile fullscreen */
+    .pseudo-fullscreen .timeline-container {
+        min-height: auto;
+        padding: 0.4rem 0.75rem;
+        padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
+    }
+
+    /* Compact date row */
+    .pseudo-fullscreen .timeline-date-row {
+        font-size: 0.8rem;
+    }
+
+    /* Ensure timeline is below exit button z-index */
+    .pseudo-fullscreen .timeline-container {
+        z-index: 1000;
+    }
+}
+
+/* Native fullscreen mode on mobile (if supported) */
+@media (max-width: 768px) {
+    .viz-panel:fullscreen .exit-fullscreen-btn,
+    .viz-panel:-webkit-full-screen .exit-fullscreen-btn {
+        display: flex !important;
+        position: fixed !important;
+        top: max(12px, env(safe-area-inset-top)) !important;
+        right: max(12px, env(safe-area-inset-right)) !important;
+        z-index: 10010 !important;
+        width: 44px;
+        height: 44px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .viz-panel:fullscreen .mobile-center-play,
+    .viz-panel:-webkit-full-screen .mobile-center-play {
+        display: none !important;
+    }
+
+    .viz-panel:fullscreen .mobile-toolbar,
+    .viz-panel:-webkit-full-screen .mobile-toolbar {
+        display: none !important;
+    }
+
+    .viz-panel:fullscreen .bottom-sheet-fab,
+    .viz-panel:-webkit-full-screen .bottom-sheet-fab {
+        display: none !important;
+    }
+
+    .viz-panel:fullscreen .perf-overlay,
+    .viz-panel:-webkit-full-screen .perf-overlay {
+        top: auto !important;
+        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+        right: max(8px, env(safe-area-inset-right));
+        left: auto !important;
+        padding: 6px 10px;
+        max-width: 120px;
+        border-radius: 12px;
+    }
+
+    .viz-panel:fullscreen .perf-overlay .perf-details,
+    .viz-panel:-webkit-full-screen .perf-overlay .perf-details {
+        display: none !important;
+    }
+
+    .viz-panel:fullscreen .perf-overlay .perf-toggle,
+    .viz-panel:-webkit-full-screen .perf-overlay .perf-toggle {
+        display: none;
+    }
+
+    .viz-panel:fullscreen .legend-panel,
+    .viz-panel:-webkit-full-screen .legend-panel,
+    .viz-panel:fullscreen .authors-panel,
+    .viz-panel:-webkit-full-screen .authors-panel {
+        display: none !important;
+    }
+}
+
+/* =============================================================================
+   Light Theme Fullscreen Adjustments
+   ============================================================================= */
+
+.light-theme.pseudo-fullscreen .exit-fullscreen-btn {
+    background: rgba(250, 251, 252, 0.95);
+    border-color: var(--border);
+    color: var(--text-primary);
+}
+
+.light-theme.pseudo-fullscreen .perf-overlay {
+    background: rgba(250, 251, 252, 0.95);
+    border: 1px solid var(--border);
+}
+
+.light-theme.pseudo-fullscreen .timeline-container {
+    background: rgba(250, 251, 252, 0.97);
 }

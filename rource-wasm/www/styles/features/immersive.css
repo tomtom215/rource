@@ -1,0 +1,523 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Immersive Fullscreen Mode Styles
+ *
+ * Cinema/video-game style fullscreen experience for mobile landscape.
+ * Features:
+ * - Full-bleed canvas with no distractions
+ * - Minimal HUD overlay that auto-hides
+ * - Edge-positioned controls for thumb reach
+ * - Smooth transitions for show/hide
+ *
+ * Design inspiration:
+ * - YouTube fullscreen player
+ * - Netflix immersive mode
+ * - Video game HUDs (Call of Duty, Fortnite style minimal overlays)
+ */
+
+/* =============================================================================
+   Fullscreen Prompt Dialog
+   ============================================================================= */
+
+.fullscreen-prompt {
+    position: fixed;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(13, 17, 23, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 16px;
+    padding: 20px 24px;
+    z-index: var(--z-modal);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+    max-width: 320px;
+    width: 90%;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.fullscreen-prompt.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.fullscreen-prompt-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 12px;
+    color: var(--accent);
+}
+
+.fullscreen-prompt-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.fullscreen-prompt-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.fullscreen-prompt-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.fullscreen-prompt-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s, transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.fullscreen-prompt-btn:active {
+    transform: scale(0.96);
+}
+
+.fullscreen-prompt-btn-primary {
+    background: var(--accent);
+    color: white;
+}
+
+.fullscreen-prompt-btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.fullscreen-prompt-btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.fullscreen-prompt-btn-secondary:hover {
+    background: var(--border);
+}
+
+.fullscreen-prompt-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.fullscreen-prompt-checkbox input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* =============================================================================
+   Immersive Mode Base
+   ============================================================================= */
+
+/**
+ * When immersive mode is active, the canvas takes over the entire viewport.
+ * All chrome (header, footer, sidebar, etc.) is hidden.
+ */
+.immersive-mode {
+    /* Hide scrollbars */
+    overflow: hidden !important;
+}
+
+.immersive-mode header,
+.immersive-mode footer,
+.immersive-mode .sidebar-wrapper,
+.immersive-mode .sidebar-panel,
+.immersive-mode .sidebar-toggle,
+.immersive-mode .sidebar-overlay,
+.immersive-mode .bottom-sheet,
+.immersive-mode .bottom-sheet-fab,
+.immersive-mode .bottom-sheet-backdrop,
+.immersive-mode .mobile-toolbar,
+.immersive-mode .mobile-center-play,
+.immersive-mode .legend-panel,
+.immersive-mode .authors-panel,
+.immersive-mode .stats-overlay,
+.immersive-mode .perf-overlay,
+.immersive-mode .empty-state {
+    display: none !important;
+}
+
+.immersive-mode .app-container {
+    display: block;
+    padding: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.immersive-mode #canvas-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+    z-index: 1;
+}
+
+.immersive-mode .viz-panel {
+    display: block;
+    height: 100%;
+}
+
+/* Hide the regular timeline in immersive mode - we use the HUD version */
+.immersive-mode .timeline-container {
+    display: none !important;
+}
+
+/* =============================================================================
+   Immersive HUD Overlay
+   ============================================================================= */
+
+/**
+ * Minimal HUD overlay for immersive mode.
+ * Shows:
+ * - Top-left: Exit button
+ * - Top-right: Stats (optional, tap to show)
+ * - Bottom-center: Play/pause + timeline
+ *
+ * Auto-hides after 3 seconds during playback.
+ */
+
+.immersive-hud {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.immersive-mode .immersive-hud {
+    display: flex;
+    pointer-events: auto;
+}
+
+/* HUD hidden state - fade out */
+.immersive-mode.hud-hidden .immersive-hud {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* -------------------------------------------------------------------------
+   Exit Button (Top-left corner)
+   ------------------------------------------------------------------------- */
+
+.immersive-exit-btn {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    transition: background 0.2s, opacity 0.3s, transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.immersive-mode .immersive-exit-btn {
+    display: flex;
+}
+
+.immersive-mode.hud-hidden .immersive-exit-btn {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.immersive-exit-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.immersive-exit-btn:active {
+    transform: scale(0.9);
+}
+
+.immersive-exit-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* -------------------------------------------------------------------------
+   Bottom HUD Bar (Play + Timeline)
+   ------------------------------------------------------------------------- */
+
+.immersive-bottom-hud {
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    z-index: 1001;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-width: calc(100vw - 32px);
+}
+
+.immersive-mode .immersive-bottom-hud {
+    display: flex;
+}
+
+.immersive-mode.hud-hidden .immersive-bottom-hud {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+    pointer-events: none;
+}
+
+/* Play/Pause Button */
+.immersive-play-btn {
+    width: 48px;
+    height: 48px;
+    background: var(--accent);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.immersive-play-btn:hover {
+    background: var(--accent-hover);
+}
+
+.immersive-play-btn:active {
+    transform: scale(0.92);
+}
+
+.immersive-play-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Timeline Slider in HUD */
+.immersive-timeline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+}
+
+.immersive-timeline-slider {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.immersive-timeline-slider::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: transform 0.15s;
+}
+
+.immersive-timeline-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.immersive-timeline-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.immersive-timeline-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.immersive-timeline-slider::-moz-range-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+/* Time/Date Display */
+.immersive-time-display {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    min-width: 80px;
+    text-align: right;
+}
+
+/* -------------------------------------------------------------------------
+   Optional: Mini Stats Badge (tap to show, hidden by default)
+   ------------------------------------------------------------------------- */
+
+.immersive-stats-badge {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    display: none;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 16px;
+    color: white;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    z-index: 1001;
+    transition: opacity 0.3s ease;
+}
+
+.immersive-mode .immersive-stats-badge {
+    display: flex;
+    gap: 12px;
+}
+
+.immersive-mode.hud-hidden .immersive-stats-badge {
+    opacity: 0;
+}
+
+.immersive-stats-badge span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.immersive-stats-badge .stat-value {
+    font-weight: 600;
+}
+
+.immersive-stats-badge .stat-label {
+    opacity: 0.7;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* =============================================================================
+   Light Theme Adjustments
+   ============================================================================= */
+
+.light-theme .fullscreen-prompt {
+    background: rgba(250, 251, 252, 0.97);
+    border-color: var(--border);
+}
+
+.light-theme .immersive-exit-btn,
+.light-theme .immersive-bottom-hud,
+.light-theme .immersive-stats-badge {
+    background: rgba(250, 251, 252, 0.92);
+    border-color: var(--border);
+}
+
+.light-theme .immersive-exit-btn {
+    color: var(--text-primary);
+}
+
+.light-theme .immersive-time-display {
+    color: var(--text-secondary);
+}
+
+.light-theme .immersive-timeline-slider {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.light-theme .immersive-timeline-slider::-webkit-slider-runnable-track {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.light-theme .immersive-timeline-slider::-moz-range-track {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.light-theme .immersive-stats-badge {
+    color: var(--text-primary);
+}
+
+/* =============================================================================
+   Landscape Adjustments
+   ============================================================================= */
+
+@media (orientation: landscape) {
+    .immersive-bottom-hud {
+        /* Safe area for notched devices in landscape */
+        left: max(50%, calc(50% + env(safe-area-inset-left) / 2));
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+    }
+
+    .immersive-timeline {
+        min-width: 250px;
+        max-width: 500px;
+    }
+}
+
+/* =============================================================================
+   Reduced Motion
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    .fullscreen-prompt,
+    .immersive-hud,
+    .immersive-exit-btn,
+    .immersive-bottom-hud,
+    .immersive-stats-badge {
+        transition: none;
+    }
+}
