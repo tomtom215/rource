@@ -19,10 +19,9 @@ proptest! {
     fn vec2_normalize_preserves_direction(x in -1e3f32..1e3f32, y in -1e3f32..1e3f32) {
         let v = Vec2::new(x, y);
         let len = v.length();
+        let n = v.normalized();
 
         if len > EPSILON * 10.0 {
-            let n = v.normalized();
-
             // Length should be approximately 1
             let normalized_len = n.length();
             prop_assert!(
@@ -41,8 +40,7 @@ proptest! {
                 dot, len, v
             );
         } else {
-            // Near-zero vector normalizes to zero
-            let n = v.normalized();
+            // Near-zero vector normalizes to zero or unit
             prop_assert!(n.length() <= 1.0 + EPSILON, "Normalized near-zero should be unit or zero");
         }
     }

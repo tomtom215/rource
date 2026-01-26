@@ -1259,10 +1259,10 @@ fn resize_rgba(src: &[u8], src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> Ve
             // Bilinear interpolation for each channel
             let dst_idx = ((y * dst_w + x) * 4) as usize;
             for c in 0..4 {
-                let p00 = src[idx00 + c] as f32;
-                let p01 = src[idx01 + c] as f32;
-                let p10 = src[idx10 + c] as f32;
-                let p11 = src[idx11 + c] as f32;
+                let p00 = f32::from(src[idx00 + c]);
+                let p01 = f32::from(src[idx01 + c]);
+                let p10 = f32::from(src[idx10 + c]);
+                let p11 = f32::from(src[idx11 + c]);
 
                 // Interpolate horizontally
                 let top = p00 * (1.0 - x_frac) + p01 * x_frac;

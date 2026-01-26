@@ -4,8 +4,8 @@
 //! Texture batching benchmarks for Phase 61 avatar texture array optimization.
 //!
 //! These benchmarks measure the CPU-side overhead difference between:
-//! - **Per-texture path**: HashMap<TextureId, InstanceBuffer> with separate draw calls
-//! - **Texture array path**: Single InstanceBuffer with layer indices
+//! - **Per-texture path**: `HashMap<TextureId, InstanceBuffer>` with separate draw calls
+//! - **Texture array path**: Single `InstanceBuffer` with layer indices
 //!
 //! ## Benchmark Categories
 //!
@@ -25,11 +25,11 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use rustc_hash::FxHashMap as HashMap;
 use std::collections::hash_map::Entry;
 
-/// Simulated texture ID (matches TextureId in rource-render).
+/// Simulated texture ID (matches `TextureId` in rource-render).
 type TextureId = u32;
 
 /// Instance data for per-texture path (simplified).
-/// In production: bounds[4] + uv_bounds[4] + color[4] = 12 floats.
+/// In production: `bounds[4]` + `uv_bounds[4]` + `color[4]` = 12 floats.
 #[derive(Clone, Copy)]
 #[repr(C)]
 struct PerTextureInstance {
@@ -39,7 +39,7 @@ struct PerTextureInstance {
 }
 
 /// Instance data for texture array path.
-/// In production: bounds[4] + uv_bounds[4] + color[4] + layer[1] = 13 floats.
+/// In production: `bounds[4]` + `uv_bounds[4]` + `color[4]` + `layer[1]` = 13 floats.
 #[derive(Clone, Copy)]
 #[repr(C)]
 struct TextureArrayInstance {
@@ -153,11 +153,7 @@ impl TextureArrayBuffer {
 
     /// Returns number of draw calls needed (always 1 if non-empty).
     fn draw_call_count(&self) -> usize {
-        if self.instances.is_empty() {
-            0
-        } else {
-            1
-        }
+        usize::from(!self.instances.is_empty())
     }
 
     /// Simulates single buffer flush for draw dispatch.
@@ -334,7 +330,7 @@ fn benchmark_draw_call_reduction(c: &mut Criterion) {
 
         // Report draw call counts
         group.bench_function(BenchmarkId::new("verify_per_texture", avatar_count), |b| {
-            b.iter(|| black_box(per_texture_draws))
+            b.iter(|| black_box(per_texture_draws));
         });
         group.bench_function(
             BenchmarkId::new("verify_texture_array", avatar_count),
@@ -348,8 +344,7 @@ fn benchmark_draw_call_reduction(c: &mut Criterion) {
             0.0
         };
         eprintln!(
-            "Avatar count {}: per_texture={} draws, texture_array={} draws ({:.1}% reduction)",
-            avatar_count, per_texture_draws, array_draws, reduction
+            "Avatar count {avatar_count}: per_texture={per_texture_draws} draws, texture_array={array_draws} draws ({reduction:.1}% reduction)"
         );
     }
 

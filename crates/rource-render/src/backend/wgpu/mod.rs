@@ -306,7 +306,7 @@ pub struct WgpuRenderer {
     /// enabling single-draw-call rendering of all avatars.
     avatar_texture_array: Option<textures::AvatarTextureArray>,
 
-    /// Maps TextureId to avatar array layer index.
+    /// Maps `TextureId` to avatar array layer index.
     /// Textures in this map are rendered via the texture array path.
     texture_to_avatar_layer: HashMap<TextureId, u32>,
 
@@ -740,12 +740,6 @@ impl WgpuRenderer {
         self.texture_to_avatar_layer.insert(texture_id, layer);
 
         Some(layer)
-    }
-
-    /// Checks if a texture is in the avatar array.
-    #[inline]
-    fn is_avatar_texture(&self, texture_id: TextureId) -> bool {
-        self.texture_to_avatar_layer.contains_key(&texture_id)
     }
 
     /// Gets the avatar array layer for a texture, if it's in the array.

@@ -820,7 +820,7 @@ mod tests {
     #[test]
     fn test_adaptive_theta_within_bounds() {
         // Adaptive theta should always be within [MIN, MAX]
-        for count in [0, 1, 50, 100, 200, 500, 1000, 5000, 10000, 100000] {
+        for count in [0, 1, 50, 100, 200, 500, 1000, 5000, 10_000, 100_000] {
             let theta = calculate_adaptive_theta(count);
             assert!(
                 theta >= MIN_ADAPTIVE_THETA,
