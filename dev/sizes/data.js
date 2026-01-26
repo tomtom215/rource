@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769390766739,
+  "lastUpdate": 1769413824646,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2597,6 +2597,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/23f392a984fa23e75ec1feb1e3bfe23b69507bf3"
         },
         "date": 1769390765848,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2779987,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1073782,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ffd0079d1bcf024d003d5fe30c042b83a4d2ad5a",
+          "message": "Merge pull request #177 from tomtom215/claude/audit-production-readiness-Mj2iH\n\nAdd property-based testing with proptest to math and VCS crates",
+          "timestamp": "2026-01-26T08:48:13+01:00",
+          "tree_id": "b248bc3d9fc135091ace1a3505fd376feada2781",
+          "url": "https://github.com/tomtom215/rource/commit/ffd0079d1bcf024d003d5fe30c042b83a4d2ad5a"
+        },
+        "date": 1769413823807,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
