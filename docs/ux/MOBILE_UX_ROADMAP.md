@@ -42,6 +42,14 @@ TOTAL:    46 issues
 | **In Progress** | 2 | I1, I2, V2 |
 | **Pending** | 29 | All others |
 
+**Session 4 Changes (Performance Optimization for 42,000 FPS):**
+- T1/T5 Performance: Label collision detection optimized for 42,000 FPS target
+  - LabelPlacer::reset(): 17,942 ns → 198 ns (90× faster via generation counter pattern)
+  - Beam sorting: O(n log n) → O(n) via select_nth_unstable_by (8.6× faster)
+  - Label sorting: O(v log v) → O(v) via select_nth_unstable_by (7.3× faster)
+  - Eliminated per-frame Vec allocations with reusable buffers
+- See Phase 65 in docs/performance/CHRONOLOGY.md for full details
+
 **Session 3 Changes (Typography & Accessibility):**
 - T2: Complete font size audit - all CSS now uses minimum 12px (0.75rem)
 - A2/A3: Touch target audit - all interactive elements now have min-width/min-height: 44px
