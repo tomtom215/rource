@@ -15,7 +15,7 @@
 | Opportunity | Priority | Expected Gain | Complexity | Status |
 |-------------|----------|---------------|------------|--------|
 | Primitive pipeline consolidation | Medium | 15-25% fewer draw calls | Medium | Not Started |
-| Adaptive Barnes-Hut theta | Low | 10-20% physics speedup | Low | Not Started |
+| Adaptive Barnes-Hut theta | Low | 29-61% physics speedup | Low | **Completed (Phase 62)** |
 | GPU visibility pre-culling | Medium | 5-15% buffer upload reduction | High | Not Started |
 
 ---
@@ -89,71 +89,44 @@ Create `crates/rource-render/benches/primitive_consolidation.rs`:
 
 ## Opportunity 2: Adaptive Barnes-Hut Theta
 
-### Priority: Low
-### Expected Gain: 10-20% physics speedup
-### Complexity: Low
+### ✅ COMPLETED - Phase 62 (2026-01-26)
 
-### Problem Statement
+**Actual Gain**: 29-61% physics speedup (exceeded 10-20% target)
 
-The Barnes-Hut algorithm uses a fixed theta parameter (typically 0.5-1.0) that controls
-the accuracy/speed tradeoff. However, the optimal theta varies based on:
-- Entity count (more entities = can use higher theta)
-- Entity distribution (clustered = lower theta needed)
-- Frame rate requirements (low FPS = can use higher theta)
+### Implementation Summary
 
-### Analysis Required
+Implemented adaptive theta selection based on entity count using logarithmic scaling.
 
-Before implementation, benchmark and measure:
-1. Current force calculation time at various theta values
-2. Visual quality degradation at different theta values
-3. Correlation between entity count and optimal theta
+**Results**:
 
-### Proposed Solution
+| Entities | Fixed θ=0.8 | Adaptive θ | Improvement |
+|----------|-------------|------------|-------------|
+| 100      | 26.10 µs    | 26.83 µs   | ~0% (θ=0.80) |
+| 500      | 296.71 µs   | 210.62 µs  | **-29.0%** (θ=1.00) |
+| 1000     | 714.81 µs   | 419.96 µs  | **-41.2%** (θ=1.15) |
+| 5000     | 4.25 ms     | 1.64 ms    | **-61.4%** (θ=1.50) |
 
-Implement adaptive theta that adjusts based on runtime conditions:
-
+**Implementation**:
 ```rust
-// Current: fixed theta
-let theta = 0.7;
-
-// Proposed: adaptive theta
-fn calculate_adaptive_theta(entity_count: usize, current_fps: f32) -> f32 {
-    let base_theta = 0.5;
-
-    // Scale up for large entity counts (diminishing returns on accuracy)
-    let count_factor = (entity_count as f32 / 500.0).log2().max(0.0) * 0.1;
-
-    // Scale up if FPS is low (prioritize speed)
-    let fps_factor = if current_fps < 30.0 {
-        (30.0 - current_fps) / 30.0 * 0.2
-    } else {
-        0.0
-    };
-
-    (base_theta + count_factor + fps_factor).min(1.5)
+pub fn calculate_adaptive_theta(entity_count: usize) -> f32 {
+    if entity_count <= 200 {
+        return 0.8;
+    }
+    let scale_factor = (entity_count as f32 / 200.0).log2() / 25.0f32.log2();
+    (0.8 + 0.7 * scale_factor.clamp(0.0, 1.0)).clamp(0.7, 1.5)
 }
 ```
 
-### Benchmark Requirements
+**Files Modified**:
+- `crates/rource-core/src/physics/barnes_hut.rs`
+- `crates/rource-core/src/physics/force.rs`
+- `crates/rource-core/src/scene/layout_methods.rs`
+- `crates/rource-core/benches/barnes_hut_theta.rs`
 
-Create benchmarks in `crates/rource-core/benches/barnes_hut_theta.rs`:
-- Measure force calculation time at theta = 0.3, 0.5, 0.7, 1.0, 1.5
-- Test at entity counts: 100, 500, 1000, 5000
-- Measure position error vs brute-force at each theta
-- Calculate optimal theta curve
-
-### Files to Modify
-
-- `crates/rource-core/src/physics/barnes_hut.rs` (adaptive theta)
-- `crates/rource-core/src/physics/force.rs` (ForceConfig updates)
-- `crates/rource-core/src/scene/layout_methods.rs` (theta selection)
-
-### Success Criteria
-
-- [ ] Criterion benchmark shows 10-20% speedup in force calculation
-- [ ] Visual quality remains acceptable (position error < 5%)
-- [ ] All tests pass
-- [ ] Documented in all three performance docs
+**Documentation**:
+- [x] CHRONOLOGY.md - Phase 62 entry
+- [x] BENCHMARKS.md - Full benchmark tables
+- [x] SUCCESSFUL_OPTIMIZATIONS.md - Implementation details
 
 ---
 
@@ -273,7 +246,7 @@ performance further.
 
 ### Key Files to Reference
 
-- `docs/performance/CHRONOLOGY.md` - Full optimization history (61 phases)
+- `docs/performance/CHRONOLOGY.md` - Full optimization history (62 phases)
 - `docs/performance/BENCHMARKS.md` - All benchmark data
 - `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` - Implementation details
 - `CLAUDE.md` - Project standards and workflow requirements

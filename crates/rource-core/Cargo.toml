@@ -37,6 +37,11 @@ harness = false
 name = "easing_perf"
 harness = false
 
+# Barnes-Hut theta optimization benchmarks
+[[bench]]
+name = "barnes_hut_theta"
+harness = false
+
 # iai-callgrind benchmarks for deterministic instruction-count measurements
 # These are ideal for CI as they don't suffer from timing variance
 [[bench]]

@@ -18,7 +18,10 @@ pub mod force;
 pub mod optimized;
 pub mod spatial;
 
-pub use barnes_hut::{BarnesHutTree, Body, DEFAULT_BARNES_HUT_THETA};
+pub use barnes_hut::{
+    calculate_adaptive_theta, calculate_adaptive_theta_with_fps, BarnesHutTree, Body,
+    DEFAULT_BARNES_HUT_THETA, MAX_ADAPTIVE_THETA, MIN_ADAPTIVE_THETA,
+};
 pub use force::{ForceConfig, ForceSimulation, SimulationStats};
 pub use optimized::random_push_direction;
 pub use spatial::QuadTree;
