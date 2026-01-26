@@ -1178,6 +1178,182 @@ increase the approximation radius, reducing tree traversal depth.
 
 ---
 
+### Phase 63: Primitive Pipeline Consolidation Analysis
+
+**Date**: 2026-01-26
+**Category**: Rendering Optimization Analysis
+**Status**: Analyzed - DEFERRED
+**Impact**: N/A (not implemented due to marginal ROI)
+
+**Problem Statement**:
+
+Investigated whether consolidating circle and ring rendering into a unified "disc"
+pipeline would provide meaningful performance improvements through:
+- Reduced draw calls (2→1)
+- Eliminated pipeline switches
+- Simplified rendering code
+
+**Analysis**:
+
+Created comprehensive benchmarks (`crates/rource-render/benches/primitive_consolidation.rs`)
+to measure CPU-side overhead of both approaches before implementation.
+
+**Benchmark Results** (criterion, 100 samples, 95% CI):
+
+**Draw Call Reduction**:
+
+| Approach | Draw Calls | Pipeline Switches |
+|----------|------------|-------------------|
+| Separate | 2          | 1                 |
+| Unified  | 1          | 0                 |
+| Reduction| -50%       | -100%             |
+
+**Instance Population** (adding instances to buffers):
+
+| Entity Count | Separate    | Unified     | Change  |
+|--------------|-------------|-------------|---------|
+| 100          | 316.55 ns   | 336.23 ns   | +6.2%   |
+| 300          | 899.75 ns   | 979.13 ns   | +8.8%   |
+| 500          | 1.52 µs     | 1.58 µs     | +3.6%   |
+| 1000         | 3.74 µs     | 3.61 µs     | **-3.5%** |
+
+**Flush Overhead** (simulated pipeline switch + draw):
+
+| Entity Count | Separate    | Unified     | Improvement |
+|--------------|-------------|-------------|-------------|
+| 100          | 24.48 ns    | 22.98 ns    | -6.1%       |
+| 300          | 74.34 ns    | 74.51 ns    | ~0%         |
+| 500          | 119.48 ns   | 117.38 ns   | -1.8%       |
+| 1000         | 246.73 ns   | 221.64 ns   | **-10.2%**  |
+
+**Full Frame** (populate + flush):
+
+| Entity Count | Separate    | Unified     | Improvement |
+|--------------|-------------|-------------|-------------|
+| 100          | 480.94 ns   | 516.49 ns   | +7.4%       |
+| 300          | 1.37 µs     | 1.53 µs     | +11.7%      |
+| 500          | 2.79 µs     | 2.77 µs     | -0.7%       |
+| 1000         | 5.88 µs     | 5.54 µs     | **-5.8%**   |
+
+**Memory Overhead** (80% circles, 20% rings):
+
+| Entity Count | Separate    | Unified     | Overhead |
+|--------------|-------------|-------------|----------|
+| 100          | 2,880 bytes | 3,200 bytes | +11.1%   |
+| 1000         | 28,800 bytes| 32,000 bytes| +11.1%   |
+
+**Why Deferred**:
+
+| Factor     | Assessment                                    |
+|------------|-----------------------------------------------|
+| CPU gain   | 5-10% at high entity counts only              |
+| GPU gain   | Unknown without implementation (can't measure)|
+| Memory cost| +11.1% constant overhead                      |
+| Complexity | High (5+ files, shader changes)               |
+| Risk       | Medium (shader bugs, visual regressions)      |
+| ROI        | Marginal (modest gains vs complexity)         |
+
+Key insight: CPU-side simulation cannot measure GPU pipeline switch costs. The
+net CPU-side improvement (5-10% at high counts) is modest, and the implementation
+complexity is high. Following the project's data-driven standards, this was
+deferred rather than implemented without clear ROI.
+
+**Files Created**:
+- `crates/rource-render/benches/primitive_consolidation.rs` (benchmark artifact preserved)
+
+**Benchmark Command**:
+```bash
+cargo bench --bench primitive_consolidation -p rource-render
+```
+
+---
+
+### Phase 64: GPU Visibility Culling Verification
+
+**Date**: 2026-01-26
+**Category**: Rendering Optimization Verification
+**Status**: Verified Complete (feature already existed)
+**Impact**: Feature was already implemented; documented for completeness
+
+**Problem Statement**:
+
+FUTURE_OPTIMIZATIONS.md listed "GPU Visibility Pre-Culling" as "Not Started" with an
+expected gain of "5-15% buffer upload reduction". Phase 64 investigated this opportunity.
+
+**Discovery**:
+
+Analysis revealed that **GPU visibility culling was already fully implemented**:
+
+**Implemented Components**:
+- `crates/rource-render/src/backend/wgpu/culling.rs` - VisibilityCullingPipeline (874 lines)
+- `crates/rource-render/src/backend/wgpu/shaders.rs` - VISIBILITY_CULLING_SHADER
+- `crates/rource-render/src/backend/wgpu/culling_methods.rs` - Public API (268 lines)
+- `crates/rource-render/src/backend/wgpu/flush_passes.rs` - Pipeline integration
+- `rource-wasm/src/wasm_api/layout.rs` - WASM API exposure
+
+**WASM API Available**:
+- `setUseGPUCulling(bool)` - Enable/disable GPU culling
+- `isGPUCullingEnabled()` - Check if enabled
+- `isGPUCullingActive()` - Check if running (threshold met)
+- `setGPUCullingThreshold(usize)` - Set entity count threshold (default: 10,000)
+- `warmupGPUCulling()` - Pre-compile compute shaders
+
+**Architecture Analysis**:
+
+```
+GPU Culling Data Flow:
+1. CPU builds instance buffer (all instances)
+2. dispatch_culling() uploads to culling input buffer
+3. Compute shader: cs_reset_indirect (reset atomic counter)
+4. Compute shader: cs_cull_X (circles/lines/quads)
+   └─ AABB visibility test
+   └─ Atomic increment + write to output buffer
+5. Regular instance buffer ALSO uploaded (fallback)
+6. Render pass uses culled output via draw_indirect()
+```
+
+**Clarification: Expected vs Actual Benefit**:
+
+| Aspect            | Original Expectation        | Actual Implementation         |
+|-------------------|----------------------------|-------------------------------|
+| Expected benefit  | "5-15% buffer upload reduction" | Reduced vertex shader invocations |
+| Data flow         | Skip upload of culled entities | All instances uploaded, GPU filters |
+| Trade-off         | Less data transferred       | Same data, fewer GPU draw operations |
+
+The implementation does NOT reduce buffer uploads (actually slight overhead from
+double upload). The benefit comes from **indirect draw with fewer instances**,
+reducing vertex shader invocations on the GPU.
+
+**When GPU Culling Helps**:
+- Scene has **10,000+ visible instances**
+- View bounds change every frame (continuous panning/zooming)
+- CPU is already saturated with other work
+
+For smaller scenes (< 10,000 instances), CPU quadtree culling is faster due to
+reduced compute dispatch overhead.
+
+**Technical Details**:
+
+**Compute Shaders**:
+- `cs_reset_indirect` - Atomically reset instance counter
+- `cs_cull_circles` - AABB test for circles (7 floats/instance)
+- `cs_cull_lines` - AABB test for line segments (9 floats/instance)
+- `cs_cull_quads` - AABB test for quads (8 floats/instance)
+
+**Workgroup Configuration**:
+- Workgroup size: 256 threads
+- Minimum buffer capacity: 1,024 instances
+- Buffer growth factor: 1.5x
+
+**Outcome**:
+
+No new implementation required. Updated FUTURE_OPTIMIZATIONS.md to reflect that
+the feature was already complete with clarification about actual vs expected benefits.
+This completes the optimization opportunity audit - all items in FUTURE_OPTIMIZATIONS.md
+are now resolved (implemented, deferred, or verified complete).
+
+---
+
 ## Git Commit References
 
 | Phase | Commit Message                                                   |
@@ -1204,6 +1380,8 @@ increase the approximation radius, reducing tree traversal depth.
 | 60    | perf(wasm): disable GPU physics on Firefox due to compute shader overhead |
 | 61    | perf: implement avatar texture array batching for draw call reduction |
 | 62    | perf: implement adaptive Barnes-Hut theta for large scene speedup |
+| 63    | perf(phase63): analyze primitive consolidation, defer implementation |
+| 64    | perf(phase64): verify GPU visibility culling already implemented |
 
 ---
 
