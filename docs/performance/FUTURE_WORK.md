@@ -44,7 +44,7 @@ This document outlines the complete set of improvements required to achieve **qu
 | SEC-1 | Fuzzing Coverage Metrics & Dashboard | Security | Critical | Medium | Pending |
 | SEC-2 | SBOM Generation | Security | High | Low | Pending |
 | SEC-3 | Supply Chain Security (SLSA) | Security | High | Medium | Pending |
-| SEC-4 | Security Policy (SECURITY.md) | Security | Medium | Low | Pending |
+| SEC-4 | Security Policy (SECURITY.md) | Security | Medium | Low | Done |
 | TST-1 | Mutation Testing Suite | Testing | Critical | High | Pending |
 | TST-2 | Property-Based Test Expansion | Testing | High | Medium | Pending |
 | TST-3 | Visual Regression Testing | Testing | High | High | Pending |
@@ -60,7 +60,7 @@ This document outlines the complete set of improvements required to achieve **qu
 | ACC-2 | WCAG 2.1 AA Compliance Audit | Accessibility | Critical | High | Pending |
 | ACC-3 | Screen Reader Compatibility | Accessibility | High | High | Pending |
 | ACC-4 | Color Contrast Compliance | Accessibility | High | Medium | Pending |
-| ACC-5 | Reduced Motion Support | Accessibility | Medium | Low | Pending |
+| ACC-5 | Reduced Motion Support | Accessibility | Medium | Low | Done |
 
 ---
 
@@ -596,6 +596,16 @@ cargo sbom --format cyclonedx > sbom.json
 **Priority**: Medium
 **Complexity**: Low
 **Estimated Effort**: 0.5 session
+**Status**: ✅ **COMPLETED** (2026-01-26)
+
+#### Completion Notes
+
+Created `/SECURITY.md` with:
+- Supported versions table
+- Vulnerability reporting via GitHub Security Advisories
+- Response timeline (48h acknowledgment, 7-day critical fix)
+- Security measures documentation (audits, fuzzing, minimal unsafe)
+- WASM security considerations
 
 #### Implementation
 
@@ -1363,6 +1373,26 @@ impl AccessibleTheme {
 **Priority**: Medium
 **Complexity**: Low
 **Estimated Effort**: 0.5 session
+**Status**: ✅ **COMPLETED** (2026-01-26)
+
+#### Completion Notes
+
+Implemented comprehensive reduced motion support:
+- CSS: `@media (prefers-reduced-motion: reduce)` disables all CSS animations/transitions
+- CSS: `.reduce-motion` class for manual override when user selects 'always'
+- JS: `reduced-motion.js` feature module with:
+  - System preference detection via `matchMedia`
+  - Three-state preference: 'system' (default), 'always', 'never'
+  - WASM integration: slows playback speed (10x) and disables bloom
+  - Preference persistence via localStorage
+  - Event dispatching for component reactions
+
+Files created/modified:
+- `rource-wasm/www/js/features/reduced-motion.js` (new)
+- `rource-wasm/www/js/preferences.js` (added `reducedMotion` default)
+- `rource-wasm/www/styles/features/accessibility.css` (added `.reduce-motion` class)
+- `rource-wasm/www/js/main.js` (integration)
+- `rource-wasm/www/index.html` (modulepreload)
 
 #### Success Criteria
 
@@ -1371,23 +1401,6 @@ impl AccessibleTheme {
 | Detect preference | `prefers-reduced-motion` | CSS/JS check |
 | Respect preference | Reduce/disable animations | Visual check |
 | Manual toggle | User can override | Settings UI |
-
-#### Implementation
-
-```typescript
-// Detect system preference
-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-// Apply to rource
-if (prefersReducedMotion) {
-  rource.setAnimationSpeed(0.1);  // Slow instead of stop
-  rource.setBloomEnabled(false);  // Disable visual effects
-  rource.setParticlesEnabled(false);
-}
-
-// Allow user override
-rource.setReducedMotion(enabled: boolean);
-```
 
 ---
 
