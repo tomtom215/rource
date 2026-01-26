@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769428799106,
+  "lastUpdate": 1769435074590,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2846,6 +2846,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1075815,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "188fb9976c346871c107b16414b54955cbf5a1b0",
+          "message": "Merge pull request #183 from tomtom215/claude/review-standards-roadmap-IPfW4\n\ndocs: establish Expert+ code review standards",
+          "timestamp": "2026-01-26T14:42:28+01:00",
+          "tree_id": "a31cf05bcf5908433942436e9b59956f03de6a10",
+          "url": "https://github.com/tomtom215/rource/commit/188fb9976c346871c107b16414b54955cbf5a1b0"
+        },
+        "date": 1769435074236,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913808,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2795014,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1079251,
             "unit": "bytes"
           }
         ]
