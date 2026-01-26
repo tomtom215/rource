@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769455396627,
+  "lastUpdate": 1769459562827,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3041,6 +3041,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1080459,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84ca0d1c46190d2c766b4ed5db8207917df59421",
+          "message": "Merge pull request #198 from tomtom215/claude/update-dependencies-d6q5N\n\nUpdate dependencies: wgpu 28, criterion 0.8, and related crates",
+          "timestamp": "2026-01-26T21:28:26+01:00",
+          "tree_id": "de4dc031e596c8c4a33c1641d4cc522582bf7ba2",
+          "url": "https://github.com/tomtom215/rource/commit/84ca0d1c46190d2c766b4ed5db8207917df59421"
+        },
+        "date": 1769459562278,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912136,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3265586,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255085,
             "unit": "bytes"
           }
         ]
