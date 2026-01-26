@@ -30,7 +30,7 @@ rource-vcs = { path = "../rource-vcs" }
 
 # iai-callgrind requires Valgrind which only works on Linux
 [target.'cfg(target_os = "linux")'.dev-dependencies]
-iai-callgrind = "0.14"
+iai-callgrind = "0.16"
 
 [[bench]]
 name = "scene_perf"
