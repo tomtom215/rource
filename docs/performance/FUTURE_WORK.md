@@ -50,12 +50,12 @@ This document outlines the complete set of improvements required to achieve **qu
 | TST-3 | Visual Regression Testing | Testing | High | High | Pending |
 | TST-4 | Cross-Browser Automated Testing | Testing | Medium | High | Pending |
 | CI-1 | Performance Regression Gates | CI/CD | Critical | Medium | Done |
-| CI-2 | Benchmark History Dashboard | CI/CD | High | Medium | Pending |
+| CI-2 | Benchmark History Dashboard | CI/CD | High | Medium | Done |
 | CI-3 | Automated Release Notes | CI/CD | Medium | Low | Done |
 | CI-4 | Canary Deployments | CI/CD | Medium | Medium | Pending |
 | DOC-1 | API Stability Policy (STABILITY.md) | Documentation | Critical | Low | Done |
-| DOC-2 | Architecture Decision Records (ADRs) | Documentation | High | Medium | Pending |
-| DOC-3 | Runbook/Playbook Documentation | Documentation | High | Medium | Pending |
+| DOC-2 | Architecture Decision Records (ADRs) | Documentation | High | Medium | Done |
+| DOC-3 | Runbook/Playbook Documentation | Documentation | High | Medium | Done |
 | ACC-1 | Keyboard Navigation Implementation | Accessibility | Critical | High | Pending |
 | ACC-2 | WCAG 2.1 AA Compliance Audit | Accessibility | Critical | High | Pending |
 | ACC-3 | Screen Reader Compatibility | Accessibility | High | High | Pending |
@@ -1019,6 +1019,30 @@ jobs:
 **Priority**: High
 **Complexity**: Medium
 **Estimated Effort**: 1-2 sessions
+**Status**: ✅ **COMPLETED** (2026-01-26)
+
+#### Completion Notes
+
+Dashboard infrastructure already existed via `benchmark-action/github-action-benchmark`. Added documentation and verification.
+
+**Files Created**:
+- `docs/ci/BENCHMARK_DASHBOARD.md` - Complete dashboard documentation
+
+**Implementation Details**:
+- Dashboard URL: `https://tomtom215.github.io/rource/dev/bench/`
+- Data stored on gh-pages branch (indefinite retention)
+- Artifacts retained for 90 days
+- Auto-generated charts via benchmark-action
+- 10% regression threshold triggers alerts
+
+**Success Criteria Verification**:
+
+| Criterion | Requirement | Status |
+|-----------|-------------|--------|
+| Historical data | 90 days of benchmark history | ✓ Git history on gh-pages |
+| Visualization | Graphs of key metrics over time | ✓ benchmark-action charts |
+| Trend detection | Alert on consistent degradation | ✓ alert-threshold: 110% |
+| Public access | Anyone can view trends | ✓ Public gh-pages URL |
 
 #### Success Criteria
 
@@ -1175,6 +1199,28 @@ These APIs are for testing and may not be available in future versions:
 **Priority**: High
 **Complexity**: Medium
 **Estimated Effort**: 1-2 sessions
+**Status**: ✅ **COMPLETED** (2026-01-26)
+
+#### Completion Notes
+
+Created comprehensive ADR infrastructure with 5 initial ADRs:
+
+**Files Created**:
+- `docs/adr/README.md` - ADR index and introduction
+- `docs/adr/template.md` - ADR template
+- `docs/adr/0001-use-barnes-hut-for-force-layout.md` - Physics algorithm
+- `docs/adr/0002-software-renderer-as-primary-backend.md` - Rendering architecture
+- `docs/adr/0003-wasm-first-architecture.md` - Platform strategy
+- `docs/adr/0004-generation-counter-for-spatial-reset.md` - Performance pattern
+- `docs/adr/0005-texture-array-batching.md` - GPU optimization
+
+**Success Criteria Verification**:
+
+| Criterion | Requirement | Status |
+|-----------|-------------|--------|
+| Key decisions documented | Backend, physics, etc. | ✓ 5 ADRs created |
+| Template | Consistent ADR format | ✓ template.md |
+| Index | List of all ADRs | ✓ docs/adr/README.md |
 
 #### Success Criteria
 
@@ -1220,6 +1266,23 @@ Implement Barnes-Hut algorithm with adaptive theta parameter.
 **Priority**: High
 **Complexity**: Medium
 **Estimated Effort**: 1 session
+**Status**: ✅ **COMPLETED** (2026-01-26)
+
+#### Completion Notes
+
+Created comprehensive operational runbook with incident response procedures.
+
+**Files Created**:
+- `docs/operations/RUNBOOK.md` - Complete operational runbook
+
+**Sections Covered**:
+- Incident response procedures with severity levels
+- Performance issue playbooks (low FPS, frame drops)
+- Memory issue playbooks (high usage, growth over time)
+- Rendering issue playbooks (black screen, artifacts, WebGL context)
+- Browser-specific issues (Firefox, Safari, mobile)
+- Deployment issue playbooks (GitHub Pages)
+- Monitoring and alerting guidance
 
 #### Implementation
 
