@@ -2159,7 +2159,7 @@ dependencies = [
  "regex-lite",
  "rource-math",
  "rource-vcs",
- "rustc-hash 1.1.0",
+ "rustc-hash 2.1.1",
  "serde",
  "toml",
 ]
