@@ -38,9 +38,26 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 17 | A1, A2, A3, I1, I2, I3, L1, L7, L8, T1, T2, T3, T5, V1, X1, X3 |
+| **Done** | 15 | A1, A2, A3, I1, I2, I3, L1, L7, L8, T2, T3, V1, X1, X3 |
+| **Partial** | 2 | T1, T5 (collision detection works but width estimation bug causes overlap) |
 | **In Progress** | 1 | V2 |
-| **Pending** | 28 | All others |
+| **Pending** | 33 | All others (includes 5 new issues: L10, L11, T8, T9) |
+
+**Session 6 Mobile Screenshot Analysis (2026-01-26):**
+- Investigated T1/T5 label collision - found text width estimation bug:
+  - Collision detection IS implemented (spatial hash grid)
+  - Bug: Width estimation uses `text.len() * font_size * 0.6` heuristic
+  - Problem: Wide characters (M, W) and Unicode cause overlap despite detection
+  - Added T8: Label width estimation accuracy issue
+- Investigated layout dead space (screenshot 4):
+  - Canvas height doesn't account for fixed-positioned bottom sheet
+  - Added L10: Canvas/bottom sheet height coordination bug
+- Investigated L3 FAB overlap:
+  - Root cause: Z-index inversion (FAB: 250, Bottom sheet: 300)
+  - HELP button inside bottom sheet appears above FAB
+- Investigated fullscreen/immersive mode:
+  - Labels still render in immersive mode - defeats purpose
+  - Added L11: Immersive mode should hide entity labels
 
 **Session 5 Changes (Documentation & Progressive Disclosure):**
 - I1/I2: Progressive disclosure completed
@@ -84,8 +101,10 @@ TOTAL:    46 issues
 1. **Desktop-First Design** - UI designed for desktop, poorly adapted to mobile
 2. **Developer-Centric Mindset** - Metrics shown for developers, not users
 3. **Missing Mobile UX Patterns** - iOS conventions not followed
-4. **No Label Management System** - Labels render without collision detection
+4. **Label Width Estimation Bug** - Collision detection exists but uses inaccurate heuristic (0.6 × font_size per char), causing overlap with wide characters/unicode
 5. **Information Dump** - Everything shown at once, no progressive disclosure
+6. **Fixed/Absolute Positioning Conflicts** - Bottom sheet (fixed) and canvas (flex) don't coordinate heights
+7. **Z-Index Inversions** - FAB (z-index 250) appears below bottom sheet content (z-index 300)
 
 ---
 
@@ -102,13 +121,17 @@ TOTAL:    46 issues
 | L7 | Visualization area severely constrained | Layout | Critical | Done |
 | L8 | No adaptive layout for playing state | Layout | High | Done |
 | L9 | Z-index conflicts between UI layers | Layout | Medium | Pending |
-| T1 | Labels overlap catastrophically | Typography | Critical | Done |
+| L10 | Canvas height doesn't account for bottom sheet | Layout | Critical | Pending |
+| L11 | Immersive mode doesn't hide entity labels | Layout | High | Pending |
+| T1 | Labels overlap catastrophically | Typography | Critical | Partial |
 | T2 | Font size too small for mobile (~8-10px) | Typography | Critical | Done |
 | T3 | Low contrast gray text on dark background | Typography | High | Done |
 | T4 | Directory labels illegible | Typography | High | Pending |
-| T5 | No label collision detection | Typography | Critical | Done |
+| T5 | No label collision detection | Typography | Critical | Partial |
 | T6 | No label LOD (Level of Detail) | Typography | High | Pending |
 | T7 | Date format unnecessarily verbose | Typography | Low | Pending |
+| T8 | Label width estimation inaccurate (causes overlap) | Typography | Critical | Pending |
+| T9 | Labels can extend off screen edges | Typography | High | Pending |
 | A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Done |
 | A2 | Touch targets below 44px minimum | Accessibility | High | Done |
 | A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Done |
