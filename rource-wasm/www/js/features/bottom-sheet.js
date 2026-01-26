@@ -232,11 +232,19 @@ function snapTo(snapName, instant = false) {
     currentSnap = snapName;
 
     // Update backdrop
+    // L10 fix: At PEEK position, allow touches to pass through to canvas
+    // This lets users interact with the visualization while quick actions are visible
     if (backdrop) {
         if (snapName === 'HIDDEN') {
             backdrop.classList.remove('visible');
             backdrop.style.pointerEvents = 'none';
+        } else if (snapName === 'PEEK') {
+            // At PEEK, show subtle backdrop but allow touch pass-through to canvas
+            backdrop.classList.add('visible');
+            backdrop.style.pointerEvents = 'none';
+            backdrop.style.opacity = '0.15'; // Very subtle
         } else {
+            // At HALF or FULL, normal backdrop behavior (tap to dismiss)
             backdrop.classList.add('visible');
             backdrop.style.pointerEvents = 'auto';
             // Fade backdrop based on sheet position
@@ -392,13 +400,25 @@ function handleTouchMove(e) {
     setSheetPosition(newTranslate);
 
     // Update backdrop opacity during drag
+    // L10: Adjust opacity and pointer-events based on drag position
     if (backdrop) {
         const sheetHeight = sheet.offsetHeight;
         const visibleHeight = sheetHeight - newTranslate;
         const visiblePercent = (visibleHeight / window.innerHeight) * 100;
-        const opacity = Math.min(0.5, Math.max(0, visiblePercent / 100 * 0.6));
-        backdrop.style.opacity = opacity.toString();
-        if (opacity > 0.05) {
+
+        // At low visibility (PEEK level ~20%), use subtle backdrop with pass-through
+        if (visiblePercent <= SNAP_POINTS.PEEK + 5) {
+            const opacity = Math.min(0.15, Math.max(0, visiblePercent / 100 * 0.6));
+            backdrop.style.opacity = opacity.toString();
+            backdrop.style.pointerEvents = 'none';
+        } else {
+            // At higher visibility, normal backdrop behavior
+            const opacity = Math.min(0.5, Math.max(0, visiblePercent / 100 * 0.6));
+            backdrop.style.opacity = opacity.toString();
+            backdrop.style.pointerEvents = 'auto';
+        }
+
+        if (visiblePercent > 5) {
             backdrop.classList.add('visible');
         }
     }

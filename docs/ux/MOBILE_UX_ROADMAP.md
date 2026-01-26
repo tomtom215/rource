@@ -38,10 +38,26 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 15 | A1, A2, A3, I1, I2, I3, L1, L7, L8, T2, T3, V1, X1, X3 |
+| **Done** | 18 | A1, A2, A3, I1, I2, I3, L1, L3, L7, L8, L10, L11, T2, T3, V1, X1, X3 |
 | **Partial** | 2 | T1, T5 (collision detection works but width estimation bug causes overlap) |
 | **In Progress** | 1 | V2 |
-| **Pending** | 33 | All others (includes 5 new issues: L10, L11, T8, T9) |
+| **Pending** | 30 | All others |
+
+**Session 7 Fixes (2026-01-26):**
+- L3: Fixed FAB z-index overlap
+  - Changed `--z-fab` from 250 to 350 (above modal z-index 300)
+  - FAB now visible above bottom sheet content
+  - File: `rource-wasm/www/styles/variables.css`
+- L10: Fixed canvas/backdrop interaction at PEEK position
+  - At PEEK (20vh), backdrop now allows pointer-events pass-through
+  - Users can interact with visualization while quick actions visible
+  - Subtle backdrop opacity (0.15) at PEEK for visual continuity
+  - File: `rource-wasm/www/js/features/bottom-sheet.js`
+- L11: Fixed immersive mode hiding entity labels
+  - Labels now automatically hidden when entering immersive mode
+  - Previous label state restored on exit
+  - Provides true immersive viewing experience
+  - File: `rource-wasm/www/js/features/immersive-mode.js`
 
 **Session 6 Mobile Screenshot Analysis (2026-01-26):**
 - Investigated T1/T5 label collision - found text width estimation bug:
@@ -103,8 +119,8 @@ TOTAL:    46 issues
 3. **Missing Mobile UX Patterns** - iOS conventions not followed
 4. **Label Width Estimation Bug** - Collision detection exists but uses inaccurate heuristic (0.6 × font_size per char), causing overlap with wide characters/unicode
 5. **Information Dump** - Everything shown at once, no progressive disclosure
-6. **Fixed/Absolute Positioning Conflicts** - Bottom sheet (fixed) and canvas (flex) don't coordinate heights
-7. **Z-Index Inversions** - FAB (z-index 250) appears below bottom sheet content (z-index 300)
+6. **Fixed/Absolute Positioning Conflicts** - Bottom sheet (fixed) and canvas (flex) don't coordinate heights *(FIXED: Session 7 - backdrop allows pass-through at PEEK)*
+7. **Z-Index Inversions** - FAB (z-index 250) appears below bottom sheet content (z-index 300) *(FIXED: Session 7 - FAB now z-index 350)*
 
 ---
 
@@ -114,15 +130,15 @@ TOTAL:    46 issues
 |----|-------|----------|----------|--------|
 | L1 | Stats panel occludes 35-40% of visualization | Layout | Critical | Done |
 | L2 | Bottom sheet takes 45% of screen | Layout | High | Pending |
-| L3 | FAB overlaps toolbar controls | Layout | High | Pending |
+| L3 | FAB overlaps toolbar controls | Layout | High | Done |
 | L4 | Toast overlaps stats panel | Layout | High | Pending |
 | L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Pending |
 | L6 | Header elements cramped/truncated | Layout | Medium | Pending |
 | L7 | Visualization area severely constrained | Layout | Critical | Done |
 | L8 | No adaptive layout for playing state | Layout | High | Done |
 | L9 | Z-index conflicts between UI layers | Layout | Medium | Pending |
-| L10 | Canvas height doesn't account for bottom sheet | Layout | Critical | Pending |
-| L11 | Immersive mode doesn't hide entity labels | Layout | High | Pending |
+| L10 | Canvas height doesn't account for bottom sheet | Layout | Critical | Done |
+| L11 | Immersive mode doesn't hide entity labels | Layout | High | Done |
 | T1 | Labels overlap catastrophically | Typography | Critical | Partial |
 | T2 | Font size too small for mobile (~8-10px) | Typography | Critical | Done |
 | T3 | Low contrast gray text on dark background | Typography | High | Done |

@@ -16,10 +16,11 @@
  * - Video game HUD patterns (minimal, auto-hide, edge-positioned)
  */
 
-import { addManagedEventListener, getRource, get } from '../state.js';
+import { addManagedEventListener, getRource, get, set } from '../state.js';
 import { getElement } from '../dom.js';
 import { hapticLight, hapticMedium } from '../utils.js';
 import { safeWasmCall } from '../wasm-api.js';
+import { getPreference } from '../preferences.js';
 
 // =============================================================================
 // Constants
@@ -55,6 +56,9 @@ let isPlayingFn = null;
 
 /** Last time the prompt was shown */
 let lastPromptTime = 0;
+
+/** Previous label state before entering immersive mode (to restore on exit) */
+let previousLabelsState = true;
 
 // =============================================================================
 // Fullscreen Prompt
@@ -157,6 +161,18 @@ export async function enterImmersiveMode() {
     document.body.classList.add('immersive-mode');
     isImmersiveMode = true;
 
+    // Hide entity labels for immersive experience (L11)
+    // Store the current state first so we can restore on exit
+    const rource = getRource();
+    if (rource) {
+        previousLabelsState = safeWasmCall(
+            'getShowLabels',
+            () => rource.getShowLabels(),
+            getPreference('showLabels', true)
+        );
+        safeWasmCall('setShowLabels', () => rource.setShowLabels(false), undefined);
+    }
+
     // Show HUD initially
     showHUD();
 
@@ -186,6 +202,12 @@ export function exitImmersiveMode() {
     // Remove immersive mode classes
     document.body.classList.remove('immersive-mode');
     isImmersiveMode = false;
+
+    // Restore entity labels to previous state (L11)
+    const rource = getRource();
+    if (rource) {
+        safeWasmCall('setShowLabels', () => rource.setShowLabels(previousLabelsState), undefined);
+    }
 
     // Clear hide timer
     clearTimeout(hideControlsTimeout);
