@@ -865,6 +865,14 @@ mod tests {
     }
 
     #[test]
+    fn test_adaptive_theta_with_fps_above_target() {
+        // Above target FPS, should return base adaptive theta (no boost needed)
+        let base_theta = calculate_adaptive_theta(1000);
+        let fps_theta = calculate_adaptive_theta_with_fps(1000, Some(90.0), 60.0); // 150% of target
+        assert!((base_theta - fps_theta).abs() < 0.001);
+    }
+
+    #[test]
     fn test_adaptive_theta_specific_values() {
         // Verify specific values match documented behavior
         // These tests ensure the formula produces expected results
