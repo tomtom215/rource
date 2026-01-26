@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769425494738,
+  "lastUpdate": 1769428799106,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2792,6 +2792,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/cf8be13bfb49b7323b178a1b0fb3db2c0a77d357"
         },
         "date": 1769425493744,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913808,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2785805,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1075815,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e186adacf129c9c99487a3ccc7655369c175fcef",
+          "message": "Merge pull request #182 from tomtom215/claude/complete-future-optimizations-2PYga\n\ndocs: remove FUTURE_OPTIMIZATIONS.md (all items resolved)",
+          "timestamp": "2026-01-26T12:57:50+01:00",
+          "tree_id": "b881689c23b735fb43586ceb7cafc3897e455718",
+          "url": "https://github.com/tomtom215/rource/commit/e186adacf129c9c99487a3ccc7655369c175fcef"
+        },
+        "date": 1769428798153,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
