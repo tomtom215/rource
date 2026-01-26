@@ -38,10 +38,19 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 21 | A1, A2, A3, A6, I1, I2, I3, L1, L3, L7, L8, L10, L11, T2, T3, T8, T9, V1, X1, X3 |
+| **Done** | 22 | A1, A2, A3, A6, I1, I2, I3, L1, L2, L3, L7, L8, L10, L11, T2, T3, T8, T9, V1, X1, X3 |
 | **Partial** | 2 | T1, T5 (collision detection works but width estimation bug causes overlap) |
 | **In Progress** | 1 | V2 |
-| **Pending** | 29 | All others |
+| **Pending** | 28 | All others |
+
+**Session 8 Fixes (2026-01-26):**
+- L2: Fixed bottom sheet excessive height - gives 15% more visualization space
+  - Reduced PEEK snap point from 20vh to 15vh (~120px) - just header + quick actions
+  - Reduced HALF snap point from 55vh to 40vh - shows content without overwhelming
+  - Changed default open behavior from HALF to PEEK for better first impression
+  - User can swipe up to expand to HALF or FULL as needed
+  - Adjusted velocity thresholds for new snap points
+  - File: `rource-wasm/www/js/features/bottom-sheet.js`
 
 **Session 7 Fixes (2026-01-26):**
 - L3: Fixed FAB z-index overlap
@@ -49,7 +58,7 @@ TOTAL:    46 issues
   - FAB now visible above bottom sheet content
   - File: `rource-wasm/www/styles/variables.css`
 - L10: Fixed canvas/backdrop interaction at PEEK position
-  - At PEEK (20vh), backdrop now allows pointer-events pass-through
+  - At PEEK (15vh, updated via L2), backdrop now allows pointer-events pass-through
   - Users can interact with visualization while quick actions visible
   - Subtle backdrop opacity (0.15) at PEEK for visual continuity
   - File: `rource-wasm/www/js/features/bottom-sheet.js`
@@ -143,7 +152,7 @@ TOTAL:    46 issues
 | ID | Issue | Category | Severity | Status |
 |----|-------|----------|----------|--------|
 | L1 | Stats panel occludes 35-40% of visualization | Layout | Critical | Done |
-| L2 | Bottom sheet takes 45% of screen | Layout | High | Pending |
+| L2 | Bottom sheet takes 45% of screen | Layout | High | Done |
 | L3 | FAB overlaps toolbar controls | Layout | High | Done |
 | L4 | Toast overlaps stats panel | Layout | High | Done |
 | L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Done |

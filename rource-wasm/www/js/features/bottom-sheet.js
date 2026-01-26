@@ -22,10 +22,11 @@ import { hapticLight, hapticMedium, HapticPattern, haptic } from '../utils.js';
 // ============================================================================
 
 /** Snap point positions as viewport height percentages (from bottom) */
+// L2 FIX: Reduced PEEK (20→15) and HALF (55→40) to give 15% more visualization space
 const SNAP_POINTS = {
     HIDDEN: 0,      // Fully hidden
-    PEEK: 20,       // Just quick actions visible (~20vh) - more useful peek
-    HALF: 55,       // Slightly more than half - shows most content
+    PEEK: 15,       // Just header + quick actions visible (~15vh = ~120px on typical mobile)
+    HALF: 40,       // 40% of screen - shows content without overwhelming visualization
     FULL: 90,       // Nearly full screen (leave room for status bar)
 };
 
@@ -120,16 +121,17 @@ function calculateSnapPoint(position, velocity) {
     }
 
     // Medium velocity - step to next snap point in direction of swipe
+    // L2 FIX: Adjusted thresholds for new snap points (PEEK=15, HALF=40)
     if (Math.abs(velocity) > VELOCITY_THRESHOLD) {
         if (velocity > 0) {
             // Dragging down (dismissing) - step down one level
             if (positionVh > SNAP_POINTS.HALF + 10) return 'HALF';
-            if (positionVh > SNAP_POINTS.PEEK + 5) return 'PEEK';
+            if (positionVh > SNAP_POINTS.PEEK + 3) return 'PEEK';
             return 'HIDDEN';
         } else {
             // Dragging up (expanding) - step up one level
-            if (positionVh < SNAP_POINTS.PEEK + 10) return 'PEEK';
-            if (positionVh < SNAP_POINTS.HALF + 15) return 'HALF';
+            if (positionVh < SNAP_POINTS.PEEK + 8) return 'PEEK';
+            if (positionVh < SNAP_POINTS.HALF + 12) return 'HALF';
             return 'FULL';
         }
     }
@@ -588,9 +590,10 @@ function updateBottomSheetMode() {
 
 /**
  * Opens the bottom sheet to a specific snap point.
- * @param {string} [snap='HALF'] - Snap point: 'PEEK', 'HALF', or 'FULL'
+ * L2 FIX: Default changed from HALF to PEEK for better initial experience.
+ * @param {string} [snap='PEEK'] - Snap point: 'PEEK', 'HALF', or 'FULL'
  */
-export function openBottomSheet(snap = 'HALF') {
+export function openBottomSheet(snap = 'PEEK') {
     if (!sheet) {
         initBottomSheet();
     }
@@ -605,12 +608,16 @@ export function closeBottomSheet() {
 }
 
 /**
- * Toggles the bottom sheet between hidden and half.
+ * Toggles the bottom sheet between hidden and peek.
+ * L2 FIX: Opens to PEEK instead of HALF for better initial experience.
+ * User can swipe up to HALF or FULL for more content.
  */
 export function toggleBottomSheet() {
     hapticMedium(); // FAB tap feedback
     if (currentSnap === 'HIDDEN') {
-        snapTo('HALF');
+        // L2: Open to PEEK initially - shows quick actions without overwhelming
+        // visualization. User can swipe up to expand.
+        snapTo('PEEK');
     } else {
         snapTo('HIDDEN');
     }
