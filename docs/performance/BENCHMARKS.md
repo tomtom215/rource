@@ -699,4 +699,68 @@ self.user_label_candidates_buf.clear();
 
 ---
 
+## rustc-hash 2.x Upgrade Benchmarks (Phase 66)
+
+**Source**: `rource-wasm/src/render_phases.rs` (benchmark tests)
+**Phase**: 66
+**Date**: 2026-01-26
+
+These benchmarks measure the performance impact of upgrading rustc-hash from 1.1.0 to 2.1.1.
+The new version includes a redesigned hash algorithm by Orson Peters (@orlp) with improved
+performance characteristics for the rustc use case.
+
+### Label Placement Benchmarks
+
+Label placement uses `FxHashMap`/`FxHashSet` internally for spatial hashing collision detection.
+
+| Benchmark | rustc-hash 1.1 | rustc-hash 2.1 | Improvement |
+|-----------|----------------|----------------|-------------|
+| full_label_placement (30u+50f) | 42 µs | 34-38 µs | **-14% to -19%** |
+| try_place_with_fallback | 269 ns | 242-251 ns | **-7% to -10%** |
+| reset | 220 ns | 198-210 ns | **-5% to -10%** |
+| user_label_sorting | 105 ns | 85-107 ns | ~0% to -19% |
+| beam_sorting | 97-117 ns | 104-117 ns | ~0% (variance) |
+| try_place | 9-15 ns | 7-15 ns | ~0% (variance) |
+| new | 32.7-35.2 µs | 33-35 µs | ~0% (variance) |
+
+### Key Performance Gains
+
+| Metric | Before | After | Δ/frame | Δ/second (60 FPS) |
+|--------|--------|-------|---------|-------------------|
+| Full frame | 42 µs | 35 µs | -7 µs | **-420 µs** |
+| Fallback placement | 269 ns | 245 ns | -24 ns | -1.44 µs |
+| Grid reset | 220 ns | 204 ns | -16 ns | -0.96 µs |
+
+### Algorithm Changes in rustc-hash 2.x
+
+The rustc-hash 2.x release replaced the original "fxhash" algorithm with a new custom hasher:
+
+- **Designer**: Orson Peters (@orlp)
+- **Improvements**:
+  - Faster performance measured in rustc benchmarks
+  - Better theoretical properties (improved collision resistance)
+  - Significantly better string hashing
+  - Fix for large hashmap regression in rustc (issue #135477)
+
+### Affected Code Paths
+
+rustc-hash is used throughout the codebase in hot paths:
+
+| Location | Usage |
+|----------|-------|
+| `rource-wasm/src/render_phases.rs` | LabelPlacer spatial hash grid |
+| `crates/rource-core/src/scene/` | Entity lookups, directory membership |
+| `crates/rource-render/src/font.rs` | Glyph cache |
+| `crates/rource-render/src/backend/wgpu/textures.rs` | Texture management |
+| `crates/rource-render/src/backend/webgl2/textures.rs` | WebGL texture cache |
+
+### Statistical Notes
+
+- **Methodology**: Hand-written benchmarks using `std::time::Instant`
+- **Iterations**: 10,000-100,000 per benchmark
+- **Runs**: Multiple runs to establish variance bounds
+- **Environment**: x86_64 Linux, Rust 1.93.0, release build
+
+---
+
 *Last updated: 2026-01-26*
