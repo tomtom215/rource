@@ -1,0 +1,41 @@
+[package]
+name = "rource-fuzz"
+version = "0.0.0"
+authors = ["Rource Contributors"]
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.rource-vcs]
+path = "../crates/rource-vcs"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_custom_parser"
+path = "fuzz_targets/fuzz_custom_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_git_parser"
+path = "fuzz_targets/fuzz_git_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_svn_parser"
+path = "fuzz_targets/fuzz_svn_parser.rs"
+test = false
+doc = false
+bench = false

@@ -510,6 +510,231 @@ impl Vec2 {
     }
 }
 
+// =============================================================================
+// SIMD-Optimized Batch Operations
+// =============================================================================
+//
+// These operations are designed to be auto-vectorized by LLVM when compiled
+// with optimizations. They process multiple vectors at once for better
+// throughput on modern CPUs with SIMD units (SSE, AVX, NEON).
+//
+// Design principles:
+// 1. Process data in contiguous memory for cache efficiency
+// 2. Use simple loops that LLVM can recognize and vectorize
+// 3. Avoid branches in hot paths where possible
+// 4. Use #[repr(C)] struct layout for predictable memory access
+
+impl Vec2 {
+    /// Adds a constant vector to all vectors in a slice.
+    ///
+    /// This is optimized for auto-vectorization and processes vectors
+    /// in batches for better SIMD utilization.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let mut vectors = [Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0)];
+    /// Vec2::batch_add(&mut vectors, Vec2::new(10.0, 20.0));
+    /// assert_eq!(vectors[0], Vec2::new(11.0, 22.0));
+    /// assert_eq!(vectors[1], Vec2::new(13.0, 24.0));
+    /// ```
+    #[inline]
+    pub fn batch_add(vectors: &mut [Self], offset: Self) {
+        // Simple loop that LLVM can auto-vectorize
+        for v in vectors.iter_mut() {
+            v.x += offset.x;
+            v.y += offset.y;
+        }
+    }
+
+    /// Scales all vectors in a slice by a constant factor.
+    ///
+    /// This is optimized for auto-vectorization.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let mut vectors = [Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0)];
+    /// Vec2::batch_scale(&mut vectors, 2.0);
+    /// assert_eq!(vectors[0], Vec2::new(2.0, 4.0));
+    /// assert_eq!(vectors[1], Vec2::new(6.0, 8.0));
+    /// ```
+    #[inline]
+    pub fn batch_scale(vectors: &mut [Self], factor: f32) {
+        for v in vectors.iter_mut() {
+            v.x *= factor;
+            v.y *= factor;
+        }
+    }
+
+    /// Normalizes all vectors in a slice in place.
+    ///
+    /// Zero-length vectors remain unchanged.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let mut vectors = [Vec2::new(3.0, 4.0), Vec2::new(0.0, 5.0)];
+    /// Vec2::batch_normalize(&mut vectors);
+    /// assert!((vectors[0].length() - 1.0).abs() < 1e-6);
+    /// assert!((vectors[1].length() - 1.0).abs() < 1e-6);
+    /// ```
+    #[inline]
+    pub fn batch_normalize(vectors: &mut [Self]) {
+        for v in vectors.iter_mut() {
+            let len_sq = v.x * v.x + v.y * v.y;
+            if len_sq > 0.0 {
+                let inv_len = 1.0 / len_sq.sqrt();
+                v.x *= inv_len;
+                v.y *= inv_len;
+            }
+        }
+    }
+
+    /// Computes the dot products of corresponding vectors from two slices.
+    ///
+    /// Returns a vector of dot products. Panics if slices have different lengths.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let a = [Vec2::new(1.0, 0.0), Vec2::new(1.0, 2.0)];
+    /// let b = [Vec2::new(0.0, 1.0), Vec2::new(3.0, 4.0)];
+    /// let dots = Vec2::batch_dot(&a, &b);
+    /// assert_eq!(dots, vec![0.0, 11.0]);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn batch_dot(a: &[Self], b: &[Self]) -> Vec<f32> {
+        assert_eq!(a.len(), b.len(), "Slice lengths must match");
+
+        a.iter()
+            .zip(b.iter())
+            .map(|(va, vb)| va.x * vb.x + va.y * vb.y)
+            .collect()
+    }
+
+    /// Computes lengths of all vectors in a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let vectors = [Vec2::new(3.0, 4.0), Vec2::new(5.0, 12.0)];
+    /// let lengths = Vec2::batch_lengths(&vectors);
+    /// assert_eq!(lengths, vec![5.0, 13.0]);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn batch_lengths(vectors: &[Self]) -> Vec<f32> {
+        vectors.iter().map(|v| v.x.hypot(v.y)).collect()
+    }
+
+    /// Computes squared lengths of all vectors (avoids sqrt, faster for comparisons).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let vectors = [Vec2::new(3.0, 4.0), Vec2::new(1.0, 0.0)];
+    /// let lengths_sq = Vec2::batch_lengths_squared(&vectors);
+    /// assert_eq!(lengths_sq, vec![25.0, 1.0]);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn batch_lengths_squared(vectors: &[Self]) -> Vec<f32> {
+        vectors.iter().map(|v| v.x * v.x + v.y * v.y).collect()
+    }
+
+    /// Linearly interpolates between corresponding vectors from two slices.
+    ///
+    /// Writes results to the output slice. Panics if slices have different lengths.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let a = [Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)];
+    /// let b = [Vec2::new(10.0, 10.0), Vec2::new(20.0, 20.0)];
+    /// let mut result = [Vec2::ZERO; 2];
+    /// Vec2::batch_lerp(&a, &b, 0.5, &mut result);
+    /// assert_eq!(result[0], Vec2::new(5.0, 5.0));
+    /// assert_eq!(result[1], Vec2::new(15.0, 15.0));
+    /// ```
+    #[inline]
+    pub fn batch_lerp(a: &[Self], b: &[Self], t: f32, out: &mut [Self]) {
+        assert_eq!(a.len(), b.len(), "Slice lengths must match");
+        assert_eq!(a.len(), out.len(), "Output slice length must match");
+
+        let inv_t = 1.0 - t;
+        for ((va, vb), vo) in a.iter().zip(b.iter()).zip(out.iter_mut()) {
+            vo.x = va.x * inv_t + vb.x * t;
+            vo.y = va.y * inv_t + vb.y * t;
+        }
+    }
+
+    /// Computes distances between corresponding points from two slices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let a = [Vec2::new(0.0, 0.0), Vec2::new(0.0, 0.0)];
+    /// let b = [Vec2::new(3.0, 4.0), Vec2::new(5.0, 12.0)];
+    /// let distances = Vec2::batch_distances(&a, &b);
+    /// assert_eq!(distances, vec![5.0, 13.0]);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn batch_distances(a: &[Self], b: &[Self]) -> Vec<f32> {
+        assert_eq!(a.len(), b.len(), "Slice lengths must match");
+
+        a.iter()
+            .zip(b.iter())
+            .map(|(va, vb)| {
+                let dx = vb.x - va.x;
+                let dy = vb.y - va.y;
+                dx.hypot(dy)
+            })
+            .collect()
+    }
+
+    /// Applies a transformation to all vectors: v = v * scale + offset.
+    ///
+    /// This is a common pattern in physics simulations and is optimized
+    /// for auto-vectorization.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rource_math::Vec2;
+    ///
+    /// let mut vectors = [Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0)];
+    /// Vec2::batch_transform_affine(&mut vectors, 2.0, Vec2::new(10.0, 10.0));
+    /// assert_eq!(vectors[0], Vec2::new(12.0, 14.0)); // 1*2+10, 2*2+10
+    /// assert_eq!(vectors[1], Vec2::new(16.0, 18.0)); // 3*2+10, 4*2+10
+    /// ```
+    #[inline]
+    pub fn batch_transform_affine(vectors: &mut [Self], scale: f32, offset: Self) {
+        for v in vectors.iter_mut() {
+            v.x = v.x * scale + offset.x;
+            v.y = v.y * scale + offset.y;
+        }
+    }
+}
+
 // Operator implementations
 
 impl Add for Vec2 {

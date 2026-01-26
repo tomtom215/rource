@@ -24,6 +24,7 @@ bitcode = { version = "0.6", optional = true }
 [dev-dependencies]
 criterion = { workspace = true }
 iai-callgrind = { workspace = true }
+proptest = "1.5"
 
 [[bench]]
 name = "vcs_parsing"
