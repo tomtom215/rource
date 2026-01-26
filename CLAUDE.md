@@ -367,7 +367,7 @@ rource/
 └── rource-wasm/           # WebAssembly application
 ```
 
-**Test Count**: 2,069 tests total across all crates.
+**Test Count**: 2,076 tests total across all crates.
 
 ### Rendering Backends
 
@@ -421,7 +421,7 @@ Every change MUST follow this workflow:
 │     └─ Add tests for new functionality                                  │
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
-│     └─ cargo test (all 2,069+ tests pass)                               │
+│     └─ cargo test (all 2,076+ tests pass)                               │
 │     └─ cargo clippy -- -D warnings (zero warnings)                      │
 │     └─ cargo fmt --check (formatted)                                    │
 │     └─ Mobile Safari test (if UI change)                                │
@@ -529,7 +529,7 @@ Every optimization MUST follow this exact process:
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
 | **Documented** | Added to ALL THREE docs/performance/ files |
-| **Correct** | All 2,069+ tests must pass |
+| **Correct** | All 2,076+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
 | **Mathematical** | Include complexity analysis and/or mathematical proof |
@@ -732,7 +732,7 @@ wasm-pack build --target web --release
 
 | Test Type | Requirement | Status |
 |-----------|-------------|--------|
-| Unit tests | All public functions | ✓ 2,069 tests |
+| Unit tests | All public functions | ✓ 2,076 tests |
 | Property tests | Math crate invariants | ✓ Implemented |
 | Chaos tests | Edge cases, unicode, boundaries | ✓ Implemented |
 | Benchmarks | Critical paths | ✓ 13 benchmark suites |

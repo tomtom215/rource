@@ -18,7 +18,7 @@ philosophy, and current state.
 
 ## Executive Summary
 
-Rource has undergone **65 documented optimization phases** from initial development through
+Rource has undergone **69 documented optimization phases** from initial development through
 2026-01-26. These optimizations span every layer of the application:
 
 | Layer                | Optimization Count | Key Improvements                               |
@@ -34,13 +34,14 @@ Rource has undergone **65 documented optimization phases** from initial developm
 
 ### Portfolio Quality Metrics
 
-| Requirement                         | Status                      |
-|-------------------------------------|-----------------------------|
-| 60 FPS sustained on 10k+ file repos | Verified                    |
-| Sub-second initial load             | Verified (5-10k commits)    |
-| Binary size < 1.5 MB gzipped        | 1.03 MB                     |
-| Test coverage                       | 1,899 tests passing         |
-| Deterministic output                | Guaranteed across platforms |
+| Requirement | Status |
+|-------------|--------|
+| 60 FPS sustained on 10k+ file repos | Verified |
+| Sub-second initial load | Verified (5-10k commits) |
+| Binary size < 1.5 MB gzipped | 1.03 MB |
+| Test coverage | 2,076 tests passing |
+| Deterministic output | Guaranteed across platforms |
+| WASM function audit | 132 functions profiled |
 
 ---
 
@@ -233,8 +234,11 @@ Clear commit message referencing phase number.
 
 ## Navigation
 
-- [Chronology](./CHRONOLOGY.md) - Complete timeline of all 65 phases
+- [Chronology](./CHRONOLOGY.md) - Complete timeline of all 69 phases
 - [Benchmarks](./BENCHMARKS.md) - All benchmark data
+- [Performance Baseline](./PERFORMANCE_BASELINE.md) - Comprehensive WASM audit
+- [Function Profiles](./FUNCTION_PROFILES.md) - Per-function timing profiles
+- [Complexity Verification](./COMPLEXITY_VERIFICATION.md) - Empirical Big-O verification
 - [Successful Optimizations](./SUCCESSFUL_OPTIMIZATIONS.md) - Implemented improvements
 - [Not Applicable](./NOT_APPLICABLE.md) - Analyzed but not applicable
 - [Unsuccessful](./UNSUCCESSFUL.md) - Tested but performed worse

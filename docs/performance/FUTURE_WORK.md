@@ -654,7 +654,7 @@ Do NOT report security vulnerabilities via public GitHub issues.
 **Estimated Effort**: 2-3 sessions
 
 #### Problem Statement
-1,899 tests exist but their effectiveness at catching bugs is unquantified.
+2,076 tests exist but their effectiveness at catching bugs is unquantified.
 Mutation testing reveals "test coverage quality" vs just "test coverage quantity".
 
 #### Success Criteria
