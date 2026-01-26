@@ -182,6 +182,18 @@ export function updatePlaybackUI() {
             timelineInfoNumbers.textContent = '0 / 0';
             timelineSlider.setAttribute('aria-valuetext', '0 of 0 commits');
         }
+
+        // Sync immersive mode timeline slider
+        const immersiveSlider = document.getElementById('immersive-timeline-slider');
+        if (immersiveSlider) {
+            if (total > 0) {
+                immersiveSlider.max = total - 1;
+                immersiveSlider.value = Math.min(current, total - 1);
+            } else {
+                immersiveSlider.max = 0;
+                immersiveSlider.value = 0;
+            }
+        }
     }
 
     // Only fetch commit details if current index changed

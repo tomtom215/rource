@@ -56,6 +56,7 @@
     <link rel="modulepreload" href="js/features/window-events.js">
     <link rel="modulepreload" href="js/features/screenshot.js">
     <link rel="modulepreload" href="js/features/fullscreen.js">
+    <link rel="modulepreload" href="js/features/immersive-mode.js">
     <link rel="modulepreload" href="js/features/theme.js">
     <link rel="modulepreload" href="js/features/help.js">
     <link rel="modulepreload" href="js/features/keyboard.js">
@@ -1125,6 +1126,53 @@
             </div>
 
             <button type="button" id="help-got-it" class="btn" style="width: 100%; margin-top: 1rem;">Got it!</button>
+        </div>
+    </div>
+
+    <!-- Fullscreen Prompt (shown when landscape detected on mobile) -->
+    <div id="fullscreen-prompt" class="fullscreen-prompt" role="dialog" aria-modal="true" aria-labelledby="fullscreen-prompt-title">
+        <svg class="fullscreen-prompt-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+        </svg>
+        <h3 class="fullscreen-prompt-title" id="fullscreen-prompt-title">Immersive Mode</h3>
+        <p class="fullscreen-prompt-text">
+            Experience the visualization in fullscreen with minimal HUD controls for an immersive view.
+        </p>
+        <div class="fullscreen-prompt-buttons">
+            <button type="button" id="fullscreen-prompt-enter" class="fullscreen-prompt-btn fullscreen-prompt-btn-primary">
+                Enter Fullscreen
+            </button>
+            <button type="button" id="fullscreen-prompt-not-now" class="fullscreen-prompt-btn fullscreen-prompt-btn-secondary">
+                Not Now
+            </button>
+        </div>
+        <label class="fullscreen-prompt-checkbox">
+            <input type="checkbox" id="fullscreen-prompt-dont-show">
+            Don't show again
+        </label>
+    </div>
+
+    <!-- Immersive Mode HUD (minimal overlay controls) -->
+    <button type="button" id="immersive-exit-btn" class="immersive-exit-btn" aria-label="Exit fullscreen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        </svg>
+    </button>
+
+    <div class="immersive-stats-badge" aria-label="Statistics">
+        <span><span class="stat-value" id="immersive-stat-commits">0</span> <span class="stat-label">commits</span></span>
+        <span><span class="stat-value" id="immersive-stat-files">0</span> <span class="stat-label">files</span></span>
+    </div>
+
+    <div class="immersive-bottom-hud immersive-hud">
+        <button type="button" id="immersive-play-btn" class="immersive-play-btn" aria-label="Play/Pause">
+            <svg id="immersive-play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        </button>
+        <div class="immersive-timeline">
+            <input type="range" id="immersive-timeline-slider" class="immersive-timeline-slider" min="0" max="0" value="0" aria-label="Timeline">
+            <span class="immersive-time-display" id="immersive-time-display">--</span>
         </div>
     </div>
 

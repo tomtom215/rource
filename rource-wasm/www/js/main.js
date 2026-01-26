@@ -63,6 +63,10 @@ import {
 } from './features/bottom-sheet.js';
 import { initMobileToolbar } from './features/mobile-toolbar.js';
 import { initMobileControls, onPlaybackStateChange, showControls } from './features/mobile-controls.js';
+import {
+    initImmersiveMode, onImmersivePlaybackChange, updateHUDPlayButton, isInImmersiveMode,
+    updateImmersiveStats
+} from './features/immersive-mode.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -500,8 +504,21 @@ async function main() {
             }
         });
 
-        // Connect playback state changes to mobile controls
-        setPlaybackStateCallback(onPlaybackStateChange);
+        // Initialize immersive mode (landscape fullscreen with HUD overlay)
+        initImmersiveMode({
+            isPlaying: () => safeWasmCall('isPlaying', () => rource.isPlaying(), false),
+            togglePlay: () => {
+                safeWasmCall('togglePlay', () => rource.togglePlay(), undefined);
+                updatePlaybackUI();
+            }
+        });
+
+        // Connect playback state changes to mobile controls and immersive mode
+        setPlaybackStateCallback((playing) => {
+            onPlaybackStateChange(playing);
+            onImmersivePlaybackChange(playing);
+            updateHUDPlayButton(playing);
+        });
 
         // Set up animation callbacks for features that need them
         setAnimateCallback(animate);
@@ -623,6 +640,9 @@ function handleDataLoaded(content, stats, format = 'custom') {
     // Enable font size controls now that data is loaded
     enableFontSizeControls();
     updateFontSizeUI();
+
+    // Update immersive mode stats
+    updateImmersiveStats();
 
     // Update timeline markers
     updateTimelineMarkers(content);
