@@ -984,9 +984,17 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
 }
 
 /// Estimates text width for label placement.
+///
+/// Uses a conservative factor of 0.75 to account for:
+/// - Wide characters (M, W, m, w)
+/// - Variable-width fonts
+/// - Unicode characters that may render wider
+///
+/// The factor is intentionally larger than typical monospace (0.5-0.6)
+/// to reduce label collision false negatives (overlap despite detection).
 #[inline]
 fn estimate_text_width(text: &str, font_size: f32) -> f32 {
-    text.len() as f32 * font_size * 0.6
+    text.len() as f32 * font_size * 0.75
 }
 
 /// Spatial hash cell size for label collision detection (pixels).
