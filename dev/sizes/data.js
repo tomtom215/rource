@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769421485086,
+  "lastUpdate": 1769423167880,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2714,6 +2714,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/5405cc4b5f749b025c86bd81fe28a6daed7c0e4d"
         },
         "date": 1769421484444,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913808,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2785805,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1075817,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "babb0fcdbba6ea46a8f00e904eb46766e81a8809",
+          "message": "Merge pull request #180 from tomtom215/claude/rource-perf-optimization-GfsWf\n\nPhase 63: Analyze circle+ring consolidation, defer optimization",
+          "timestamp": "2026-01-26T11:24:06+01:00",
+          "tree_id": "1c818caa906067cfd0547cd891e5af989d53c368",
+          "url": "https://github.com/tomtom215/rource/commit/babb0fcdbba6ea46a8f00e904eb46766e81a8809"
+        },
+        "date": 1769423167411,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
