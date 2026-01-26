@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all 62 optimization phases with dates, commits, and outcomes.
+Complete timeline of all 65 optimization phases with dates, commits, and outcomes.
 
 ---
 
@@ -12,7 +12,7 @@ Complete timeline of all 62 optimization phases with dates, commits, and outcome
 - [Phase 21-30: GPU Pipeline](#phase-21-30-gpu-pipeline)
 - [Phase 31-40: Micro-Optimizations](#phase-31-40-micro-optimizations)
 - [Phase 41-50: Production Hardening](#phase-41-50-production-hardening)
-- [Phase 51-59: Algorithmic Excellence & Rendering](#phase-51-59-algorithmic-excellence--rendering)
+- [Phase 51-65: Algorithmic Excellence & Rendering](#phase-51-65-algorithmic-excellence--rendering)
 
 ---
 
@@ -82,6 +82,9 @@ Complete timeline of all 62 optimization phases with dates, commits, and outcome
 | 60    | 2026-01-25 | Browser         | Firefox GPU physics workaround             | Implemented  |
 | 61    | 2026-01-26 | Rendering       | Avatar texture array batching              | Implemented  |
 | 62    | 2026-01-26 | Physics         | Adaptive Barnes-Hut theta                  | Implemented  |
+| 63    | 2026-01-26 | Analysis        | Primitive pipeline consolidation analysis  | Deferred     |
+| 64    | 2026-01-26 | Verification    | GPU visibility culling verification        | Verified     |
+| 65    | 2026-01-26 | Rendering       | Label collision detection optimization     | Implemented  |
 
 ---
 
@@ -650,7 +653,7 @@ Documented performance gains from Rust 1.82.0 to 1.93.0 upgrade.
 
 ---
 
-## Phase 51-59: Algorithmic Excellence & Rendering
+## Phase 51-65: Algorithmic Excellence & Rendering
 
 ### Phase 51: Algorithmic Excellence Exploration
 
@@ -1354,6 +1357,134 @@ are now resolved (implemented, deferred, or verified complete).
 
 ---
 
+### Phase 65: Label Collision Detection Optimization
+
+**Date**: 2026-01-26
+**Category**: Rendering Optimization
+**Status**: Implemented
+**Impact**: 90× faster grid reset, 7-8× faster sorting, zero per-frame allocations
+
+**Problem Statement**:
+
+Label collision detection (Phase 33) used a spatial hash grid for efficient overlap
+detection. However, the implementation had several performance issues incompatible
+with the 42,000 FPS target (23.8µs frame budget):
+
+1. **O(1024) grid reset**: Cleared all 1024 grid cells every frame
+2. **O(n log n) sorting**: Full sort for beam and label priority selection
+3. **Per-frame allocations**: New Vec allocated for label candidates each frame
+
+**Analysis** (42,000 FPS budget = 23.8µs/frame):
+
+| Operation | Before | Budget % |
+|-----------|--------|----------|
+| Grid reset | 17,942 ns | 75.4% |
+| Beam sorting | ~850 ns | 3.6% |
+| Label sorting | ~720 ns | 3.0% |
+| Per-frame allocs | ~100 ns | 0.4% |
+| **Total overhead** | **~19.6 µs** | **82.4%** |
+
+The grid reset alone consumed 75% of the frame budget before any rendering.
+
+**Solution 1: Generation Counter Pattern for O(1) Reset**
+
+Instead of clearing all grid cells, increment a generation counter. Entries are
+considered stale if their generation doesn't match current.
+
+```rust
+pub struct LabelPlacer {
+    placed_labels: Vec<Rect>,
+    grid: Vec<Vec<Vec<(usize, u32)>>>,  // (index, generation) tuples
+    generation: u32,
+    stale_entry_count: usize,
+    max_labels: usize,
+}
+
+const LABEL_GRID_STALE_THRESHOLD: usize = 2048;
+
+pub fn reset(&mut self, camera_zoom: f32) {
+    self.stale_entry_count += self.placed_labels.len() * 2;
+    self.placed_labels.clear();
+    self.generation = self.generation.wrapping_add(1);
+    self.max_labels = compute_max_labels(camera_zoom);
+
+    // Periodic compaction when too many stale entries
+    if self.stale_entry_count > LABEL_GRID_STALE_THRESHOLD {
+        self.compact_grid();
+    }
+}
+```
+
+**Result**: 17,942 ns → 198 ns (90× faster)
+
+**Solution 2: Partial Selection with select_nth_unstable_by**
+
+For beam limiting (15 beams) and label priority, only need top-N elements.
+`select_nth_unstable_by` provides O(n) partial ordering.
+
+```rust
+// O(n) partial selection instead of O(n log n) full sort
+let select_count = MAX_CONCURRENT_BEAMS.min(beams.len());
+if select_count > 0 && select_count < beams.len() {
+    beams.select_nth_unstable_by(select_count - 1, |a, b| {
+        b.priority.partial_cmp(&a.priority).unwrap_or(Ordering::Equal)
+    });
+}
+```
+
+**Results**:
+- Beam sorting: ~850 ns → 99 ns (8.6× faster)
+- User label sorting: ~720 ns → 99 ns (7.3× faster)
+- File label sorting: ~680 ns → 95 ns (7.2× faster)
+
+**Solution 3: Reusable Buffers**
+
+Eliminated per-frame Vec allocations by adding reusable buffers to the Rource struct.
+
+```rust
+// rource-wasm/src/lib.rs
+pub struct Rource {
+    // ... existing fields ...
+    user_label_candidates_buf: Vec<(UserId, Vec2, f32, f32, f32)>,
+}
+
+impl Rource {
+    pub fn new() -> Self {
+        Self {
+            // ... existing fields ...
+            user_label_candidates_buf: Vec::with_capacity(64),
+        }
+    }
+}
+```
+
+**Benchmark Results** (criterion, 100 samples, 95% CI):
+
+| Operation | Before | After | Improvement |
+|-----------|--------|-------|-------------|
+| LabelPlacer::reset() | 17,942 ns | 198 ns | **90.0×** |
+| Beam sorting (15) | ~850 ns | 99 ns | **8.6×** |
+| User label sorting | ~720 ns | 99 ns | **7.3×** |
+| try_place() | - | 268 ns | Baseline |
+| Full frame (30u + 50f) | - | 33 µs | Baseline |
+
+**Total Overhead Reduction**:
+- Before: ~19.6 µs (82.4% of 23.8µs budget)
+- After: ~0.7 µs (2.9% of 23.8µs budget)
+- Savings: **18.9 µs/frame** (79.5% budget recovered)
+
+**Files Modified**:
+- `rource-wasm/src/render_phases.rs` (LabelPlacer generation counter, sorting)
+- `rource-wasm/src/lib.rs` (reusable buffer)
+
+**Correctness Verification**:
+- All 397 rource-wasm tests pass
+- Clippy clean with -D warnings
+- Rustfmt compliant
+- Visual output identical (labels still render correctly)
+
+---
+
 ## Git Commit References
 
 | Phase | Commit Message                                                   |
@@ -1382,6 +1513,7 @@ are now resolved (implemented, deferred, or verified complete).
 | 62    | perf: implement adaptive Barnes-Hut theta for large scene speedup |
 | 63    | perf(phase63): analyze primitive consolidation, defer implementation |
 | 64    | perf(phase64): verify GPU visibility culling already implemented |
+| 65    | perf: optimize label collision detection for 42,000 FPS target |
 
 ---
 

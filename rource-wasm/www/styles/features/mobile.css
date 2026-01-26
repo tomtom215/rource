@@ -335,6 +335,35 @@
         pointer-events: none;
     }
 
+    /* -------------------------------------------------------------------------
+       Toolbar Button Labels (A1: No mystery meat navigation)
+       -------------------------------------------------------------------------
+       Shows text labels below icons for accessibility and discoverability.
+       Labels are always visible to comply with WCAG and avoid "mystery meat"
+       navigation where users must guess what icons mean.
+    */
+    .mobile-toolbar-btn {
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 6px;
+        min-width: 48px;
+    }
+
+    .mobile-toolbar-btn .btn-label {
+        display: block;
+        font-size: 0.75rem; /* 12px - WCAG minimum readable size */
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+        opacity: 0.85;
+        line-height: 1;
+    }
+
+    .mobile-toolbar-btn.active .btn-label {
+        opacity: 1;
+    }
+
     /* Theme button icon visibility */
     .mobile-toolbar-btn .sun-icon {
         display: none;
@@ -411,7 +440,7 @@
         content: 'MAX';
         display: inline-block;
         margin-left: 4px;
-        font-size: 0.5rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         font-weight: 700;
         background: var(--accent-orange);
         color: var(--text-on-accent);
@@ -557,7 +586,7 @@
         border: 1px solid rgba(255, 255, 255, 0.08);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
         gap: 12px;
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         /* Compact width */
         max-width: 200px;
     }
@@ -574,10 +603,56 @@
     }
 
     .has-bottom-sheet .stats-overlay .stat-label {
-        font-size: 0.5rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum readable size */
         text-transform: uppercase;
         letter-spacing: 0.3px;
         opacity: 0.8;
+    }
+
+    /* -------------------------------------------------------------------------
+       L1: Collapsible Stats Panel
+       -------------------------------------------------------------------------
+       Stats panel collapses to a minimal indicator during playback.
+       Tap to expand, auto-collapse when playing resumes.
+       Maximizes visualization area (target: 85%+ during playback).
+    */
+    .has-bottom-sheet .stats-overlay {
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Collapsed state - minimal indicator */
+    .has-bottom-sheet .stats-overlay.collapsed {
+        padding: 4px 10px;
+        gap: 6px;
+    }
+
+    .has-bottom-sheet .stats-overlay.collapsed .stat-item {
+        display: none;
+    }
+
+    /* Show only first stat (commits) when collapsed */
+    .has-bottom-sheet .stats-overlay.collapsed .stat-item:first-child {
+        display: flex;
+    }
+
+    /* Add expand indicator when collapsed */
+    .has-bottom-sheet .stats-overlay.collapsed::after {
+        content: '›';
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-left: 4px;
+        transition: transform 0.2s ease;
+    }
+
+    .has-bottom-sheet .stats-overlay:not(.collapsed)::after {
+        content: '';
+    }
+
+    /* Tap feedback */
+    .has-bottom-sheet .stats-overlay:active {
+        transform: scale(0.97);
     }
 
     /* HUD-style container - compact pill in top-right */
@@ -656,7 +731,7 @@
     .has-bottom-sheet .perf-overlay .perf-row {
         flex: none;
         gap: 4px;
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum readable size */
     }
 
     .has-bottom-sheet .perf-overlay .perf-label {
@@ -730,7 +805,7 @@
 
     /* Backend indicator - compact badge */
     .has-bottom-sheet .perf-overlay .perf-backend {
-        font-size: 0.6rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         padding: 2px 6px;
         border-radius: 8px;
     }
@@ -1093,7 +1168,7 @@
     left: auto;
     padding: 4px 8px;
     border-radius: 16px;
-    font-size: 0.65rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
 }
 
 .landscape-mobile.has-bottom-sheet .perf-overlay .perf-fps {
@@ -1110,7 +1185,7 @@
 }
 
 .landscape-mobile.has-bottom-sheet .perf-overlay .perf-row {
-    font-size: 0.6rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
 }
 
 .landscape-mobile.has-bottom-sheet .perf-overlay .perf-row:nth-child(n+3):not(.perf-toggle-row):not(.perf-peak-avg-row) {
@@ -1157,7 +1232,7 @@
 }
 
 .landscape-mobile.has-bottom-sheet .stats-overlay .stat-label {
-    font-size: 0.45rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
 }
 
 /* =============================================================================
@@ -1192,7 +1267,7 @@
     }
 
     .has-bottom-sheet .stats-overlay .stat-label {
-        font-size: 0.5rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     /* -------------------------------------------------------------------------
@@ -1244,7 +1319,7 @@
     }
 
     .has-bottom-sheet .perf-overlay .perf-row {
-        font-size: 0.6rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     /* Uncapped toggle inline with label on tiny screens */
@@ -1256,7 +1331,7 @@
     }
 
     .has-bottom-sheet .perf-overlay #perf-uncapped-label {
-        font-size: 0.6rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 }
 
@@ -1454,7 +1529,8 @@
         min-height: 44px;
     }
 
-    /* Help panel close button */
+    /* Help button and close button */
+    .help-btn,
     .help-close {
         min-width: 44px;
         min-height: 44px;
@@ -1480,6 +1556,18 @@
 
     /* Timeline control buttons */
     .timeline-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Main play button */
+    .play-btn-main {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Reset button */
+    .reset-btn {
         min-width: 44px;
         min-height: 44px;
     }

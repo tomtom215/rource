@@ -458,6 +458,10 @@ pub struct Rource {
     /// Stores (`FileId`, `screen_pos`, `radius`, `alpha`, `priority`) tuples.
     file_label_candidates_buf: Vec<(FileId, Vec2, f32, f32, f32)>,
 
+    /// Reusable buffer for user label candidates (avoids per-frame allocation).
+    /// Stores (`UserId`, `screen_pos`, `radius`, `alpha`, `priority`) tuples.
+    user_label_candidates_buf: Vec<(UserId, Vec2, f32, f32, f32)>,
+
     /// Reusable label placer for collision avoidance (avoids per-frame Vec allocation).
     label_placer: render_phases::LabelPlacer,
 
@@ -592,6 +596,7 @@ impl Rource {
             visible_files_buf: Vec::with_capacity(4096),
             visible_users_buf: Vec::with_capacity(256),
             file_label_candidates_buf: Vec::with_capacity(256),
+            user_label_candidates_buf: Vec::with_capacity(64),
             // Reusable label placer (avoids per-frame Vec allocation)
             label_placer: render_phases::LabelPlacer::new(1.0),
             // GPU physics (wgpu only) - default threshold 500 directories
@@ -1461,7 +1466,23 @@ impl Rource {
         render_files(renderer, &ctx, &self.scene, &self.camera);
         render_actions(renderer, &ctx, &self.scene, &self.camera);
         render_users(renderer, &ctx, &self.scene, &self.camera);
-        render_user_labels(renderer, &ctx, &self.scene, &self.camera);
+
+        // T1/T5: Reset label placer once for BOTH user and file labels
+        // This ensures user labels and file labels don't overlap each other
+        self.label_placer.reset(ctx.camera_zoom);
+
+        // Render user labels FIRST (they get priority for label placement)
+        render_user_labels(
+            renderer,
+            &ctx,
+            &self.scene,
+            &self.camera,
+            &mut self.user_label_candidates_buf,
+            &mut self.label_placer,
+        );
+
+        // Render file labels SECOND (they avoid user labels)
+        // Note: label_placer is NOT reset here, so file labels avoid user labels
         render_file_labels(
             renderer,
             &ctx,

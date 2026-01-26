@@ -130,6 +130,8 @@ git commit -m "test: add unit tests for spline interpolation"
 4. Wait for CI checks to pass
 5. Address review feedback
 
+**Important**: All PRs must pass the Expert+ review standards. See [`docs/REVIEW_STANDARDS.md`](docs/REVIEW_STANDARDS.md) for the complete checklist.
+
 ## Testing Guidelines
 
 ### Unit Tests
@@ -304,10 +306,36 @@ When opening an issue, include:
 4. **Actual Behavior**: What actually happens
 5. **Logs/Output**: Any error messages or relevant output
 
+## Review Standards
+
+This project maintains **Expert+ quality standards**. All contributions must pass rigorous review gates:
+
+| Gate | Requirement |
+|------|-------------|
+| Code Quality | Zero clippy warnings, formatted, documented |
+| Test Coverage | Tests for all new/changed code |
+| Performance | No regressions, benchmarks for hot paths |
+| Mobile UX | Tested on mobile Safari (if UI changes) |
+| Accessibility | WCAG 2.1 AA compliance (if UI changes) |
+| Documentation | Roadmaps updated, metrics documented |
+
+**Full details**: [`docs/REVIEW_STANDARDS.md`](docs/REVIEW_STANDARDS.md)
+
+### Quick Pre-Submission Check
+
+```bash
+# Run this before every PR
+cargo fmt && \
+cargo clippy --all-targets --all-features -- -D warnings && \
+cargo test --all && \
+cargo doc --no-deps
+```
+
 ## Questions?
 
 - Check existing [issues](https://github.com/tomtom215/rource/issues)
 - Read the [README](README.md) and [CLAUDE.md](CLAUDE.md)
+- Review [Expert+ standards](docs/REVIEW_STANDARDS.md)
 - Open a discussion for general questions
 
 ## License

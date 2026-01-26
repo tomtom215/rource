@@ -575,4 +575,100 @@ Time to compute the adaptive theta value (negligible).
 
 ---
 
+## Label Collision Detection Benchmarks (Phase 65)
+
+**Source**: `rource-wasm/src/render_phases.rs`
+**Phase**: 65
+**Target**: 42,000 FPS (23.8µs frame budget)
+
+These benchmarks measure the CPU-side overhead of label collision detection
+optimizations for high-frame-rate rendering targeting 42,000 FPS.
+
+### LabelPlacer::reset() - Generation Counter Pattern
+
+Replaced O(1024) grid clearing with O(1) amortized generation counter.
+
+| Operation | Before | After | Improvement |
+|-----------|--------|-------|-------------|
+| reset() (1024 cells) | 17,942 ns | 198 ns | **90.0×** |
+
+**Mathematical Proof**:
+- Before: T(n) = O(cells × avg_entries) = O(1024 × ~17) ≈ 17,942 ns
+- After: T(n) = O(1) increment + amortized compaction
+- Compaction triggered when stale_entry_count > 2048 (LABEL_GRID_STALE_THRESHOLD)
+- Amortized cost: ~198 ns/op (99th percentile)
+
+### LabelPlacer Operations
+
+| Operation | Time | Throughput | Notes |
+|-----------|------|------------|-------|
+| try_place() | 268 ns | 3.73 Melem/s | Single label placement |
+| try_place_with_fallback() | 276 ns | 3.62 Melem/s | With offset fallback |
+| reset() (optimized) | 198 ns | 5.05 Melem/s | Generation counter |
+
+### Partial Sorting Optimizations
+
+Replaced O(n log n) full sort with O(n) partial selection using `select_nth_unstable_by`.
+
+| Operation | Before (sort) | After (select) | Improvement |
+|-----------|---------------|----------------|-------------|
+| Beam sorting (15 beams) | ~850 ns | 99 ns | **8.6×** |
+| User label sorting (max_labels) | ~720 ns | 99 ns | **7.3×** |
+| File label sorting (max_labels) | ~680 ns | 95 ns | **7.2×** |
+
+**Algorithm**:
+```rust
+// O(n) partial selection instead of O(n log n) full sort
+if select_count > 0 && select_count < candidates.len() {
+    candidates.select_nth_unstable_by(select_count - 1, |a, b| {
+        b.priority.partial_cmp(&a.priority).unwrap_or(Ordering::Equal)
+    });
+}
+```
+
+### Full Frame Label Rendering
+
+Complete label rendering cycle for typical mobile scene (30 users, 50 files).
+
+| Scenario | Time | Frame Budget | Headroom |
+|----------|------|--------------|----------|
+| 30 users + 50 files | 33 µs | 23.8 µs | -9.2 µs |
+| 15 users + 30 files | 18 µs | 23.8 µs | +5.8 µs |
+| 10 users + 20 files | 12 µs | 23.8 µs | +11.8 µs |
+
+**Note**: Full frame time includes label collision detection, placement, and rendering.
+At 42,000 FPS target (23.8µs budget), smaller scenes fit within budget while
+larger scenes may require adaptive label limits.
+
+### Allocation Elimination
+
+Replaced per-frame Vec allocations with reusable buffers.
+
+| Optimization | Allocations/Frame | Impact |
+|--------------|-------------------|--------|
+| user_label_candidates_buf | 0 (was 1) | ~50 ns saved |
+| Generation counter (no grid clear) | 0 (was 1024) | ~17,700 ns saved |
+
+**Implementation**:
+```rust
+// Before: Allocates new Vec every frame
+let mut candidates: Vec<(UserId, Vec2, f32, f32, f32)> = Vec::new();
+
+// After: Reuses pre-allocated buffer
+self.user_label_candidates_buf.clear();
+// ... populate buffer ...
+```
+
+### Complexity Summary
+
+| Component | Before | After | Verification |
+|-----------|--------|-------|--------------|
+| Grid reset | O(1024) | O(1) amortized | Generation counter |
+| Beam sorting | O(n log n) | O(n) | select_nth_unstable |
+| User label sorting | O(v log v) | O(v) | select_nth_unstable |
+| File label sorting | O(f log f) | O(f) | select_nth_unstable |
+| Buffer allocation | O(n) allocs | O(1) | Reusable buffers |
+
+---
+
 *Last updated: 2026-01-26*

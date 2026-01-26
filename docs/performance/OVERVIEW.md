@@ -18,13 +18,13 @@ philosophy, and current state.
 
 ## Executive Summary
 
-Rource has undergone **60 documented optimization phases** from initial development through
-2026-01-25. These optimizations span every layer of the application:
+Rource has undergone **65 documented optimization phases** from initial development through
+2026-01-26. These optimizations span every layer of the application:
 
 | Layer                | Optimization Count | Key Improvements                               |
 |----------------------|-------------------|------------------------------------------------|
-| Physics Engine       | 12                | Barnes-Hut O(n log n), zero-allocation queries |
-| Rendering Pipeline   | 15                | Fixed-point blending, LUT color conversion     |
+| Physics Engine       | 13                | Barnes-Hut O(n log n), zero-allocation queries |
+| Rendering Pipeline   | 16                | Fixed-point blending, LUT color, label collision |
 | VCS Parsers          | 4                 | Iterator-based zero-allocation parsing         |
 | WASM Runtime         | 8                 | Commit limits, adaptive prewarm, buffer reuse  |
 | Data Structures      | 10                | HashSet membership, Vec over HashMap           |
@@ -184,7 +184,9 @@ Clear commit message referencing phase number.
 
 | Phase | Optimization               | Improvement       | Category    |
 |-------|----------------------------|-------------------|-------------|
+| 65    | Label grid reset           | 90x faster        | Generation  |
 | 58    | LUT-based random direction | 13.9x faster      | Compile-time|
+| 65    | Label sorting              | 7-8x faster       | O(n) select |
 | 44    | Same-color alpha blend     | 5.3x faster       | Fixed-point |
 | 45    | to_argb8 color conversion  | 2.46x faster      | LUT         |
 | 50    | Rust 1.93.0 upgrade        | 43% blend_batch   | Compiler    |
@@ -199,6 +201,7 @@ Clear commit message referencing phase number.
 | Alpha Blending   | 5.3x same-color, 21% batch, 81% optimized path      |
 | Color Conversion | 54% from_hex, 36% from_rgba8, 62% to_argb8          |
 | Physics          | O(n log n) complexity, sqrt elimination, LUT dirs   |
+| Label Collision  | 90x reset, 7-8x sorting, zero per-frame allocations |
 | VCS Parsing      | Zero allocations per line parsed                    |
 | Scene Operations | 13-17% faster with Rust 1.93                        |
 
@@ -230,7 +233,7 @@ Clear commit message referencing phase number.
 
 ## Navigation
 
-- [Chronology](./CHRONOLOGY.md) - Complete timeline of all 59 phases
+- [Chronology](./CHRONOLOGY.md) - Complete timeline of all 65 phases
 - [Benchmarks](./BENCHMARKS.md) - All benchmark data
 - [Successful Optimizations](./SUCCESSFUL_OPTIMIZATIONS.md) - Implemented improvements
 - [Not Applicable](./NOT_APPLICABLE.md) - Analyzed but not applicable
@@ -238,4 +241,4 @@ Clear commit message referencing phase number.
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-01-26*

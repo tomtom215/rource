@@ -28,10 +28,10 @@
     --accent-gold: #d4a72c;               /* Special highlight (GitHub link) */
     --accent-gold-hover: #f0c142;         /* Special highlight hover */
 
-    /* Text Colors */
-    --text-primary: #f0f6fc;
-    --text-secondary: #8b949e;
-    --text-muted: #6e7681;
+    /* Text Colors - All meet WCAG AA 4.5:1 contrast against bg-primary */
+    --text-primary: #f0f6fc;              /* ~15.5:1 contrast */
+    --text-secondary: #9ca3ab;            /* ~5.7:1 contrast (was #8b949e) */
+    --text-muted: #8b949e;                /* ~4.86:1 contrast (was #6e7681 - failed WCAG) */
     --text-on-accent: #ffffff;            /* White text on accent backgrounds */
 
     /* Border Colors */

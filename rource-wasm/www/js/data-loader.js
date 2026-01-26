@@ -218,7 +218,12 @@ export function loadLogData(content, format = 'custom', options = {}) {
         // Update UI visibility
         if (elements.emptyState) elements.emptyState.classList.add('hidden');
         if (elements.statsOverlay) elements.statsOverlay.classList.remove('hidden');
-        if (elements.perfOverlay) elements.perfOverlay.classList.remove('hidden');
+        // I1/I2: Hide developer metrics (perf overlay) by default on mobile
+        // Users can tap the stats overlay to access detailed metrics if needed
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (elements.perfOverlay && !isMobile) {
+            elements.perfOverlay.classList.remove('hidden');
+        }
 
         // Apply mobile-specific panel states (collapsed by default on mobile)
         applyPanelPreferences();

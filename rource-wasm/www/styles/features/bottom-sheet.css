@@ -659,7 +659,7 @@
     }
 
     .bottom-sheet-tech-label {
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;

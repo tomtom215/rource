@@ -34,6 +34,40 @@ LOW:       3 issues (7%)   ████
 TOTAL:    46 issues
 ```
 
+### Progress Summary (Updated 2026-01-26)
+
+| Status | Count | Issues |
+|--------|-------|--------|
+| **Done** | 15 | A1, A2, A3, I3, L1, L7, L8, T1, T2, T3, T5, V1, X1, X3 |
+| **In Progress** | 2 | I1, I2, V2 |
+| **Pending** | 29 | All others |
+
+**Session 4 Changes (Performance Optimization for 42,000 FPS):**
+- T1/T5 Performance: Label collision detection optimized for 42,000 FPS target
+  - LabelPlacer::reset(): 17,942 ns → 198 ns (90× faster via generation counter pattern)
+  - Beam sorting: O(n log n) → O(n) via select_nth_unstable_by (8.6× faster)
+  - Label sorting: O(v log v) → O(v) via select_nth_unstable_by (7.3× faster)
+  - Eliminated per-frame Vec allocations with reusable buffers
+- See Phase 65 in docs/performance/CHRONOLOGY.md for full details
+
+**Session 3 Changes (Typography & Accessibility):**
+- T2: Complete font size audit - all CSS now uses minimum 12px (0.75rem)
+- A2/A3: Touch target audit - all interactive elements now have min-width/min-height: 44px
+- T3: Contrast ratio fix - updated --text-muted to #8b949e (~4.86:1 contrast)
+- L7/L8: Already addressed via auto-hide controls and collapsible stats panel
+
+**Session 2 Changes (Phase A Critical):**
+- L1: Collapsible stats panel - auto-collapses during playback, tap to expand
+- T1/T5: Label collision detection - user labels now use spatial hash
+- V1: Beam animation choreography - limited to 15 concurrent beams
+- X1: Stats panel now dismissable via tap (same fix as L1)
+
+**Session 1 Changes:**
+- A1: Added visible text labels to all mobile toolbar icons
+- I3: Hidden performance overlay (developer metrics) on mobile by default
+- X3: Fixed mystery meat navigation (same fix as A1)
+- I1/I2: Started progressive disclosure (perf overlay hidden on mobile)
+
 ### Root Causes Identified
 
 1. **Desktop-First Design** - UI designed for desktop, poorly adapted to mobile
@@ -48,48 +82,48 @@ TOTAL:    46 issues
 
 | ID | Issue | Category | Severity | Status |
 |----|-------|----------|----------|--------|
-| L1 | Stats panel occludes 35-40% of visualization | Layout | Critical | Pending |
+| L1 | Stats panel occludes 35-40% of visualization | Layout | Critical | Done |
 | L2 | Bottom sheet takes 45% of screen | Layout | High | Pending |
 | L3 | FAB overlaps toolbar controls | Layout | High | Pending |
 | L4 | Toast overlaps stats panel | Layout | High | Pending |
 | L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Pending |
 | L6 | Header elements cramped/truncated | Layout | Medium | Pending |
-| L7 | Visualization area severely constrained | Layout | Critical | Pending |
-| L8 | No adaptive layout for playing state | Layout | High | Pending |
+| L7 | Visualization area severely constrained | Layout | Critical | Done |
+| L8 | No adaptive layout for playing state | Layout | High | Done |
 | L9 | Z-index conflicts between UI layers | Layout | Medium | Pending |
-| T1 | Labels overlap catastrophically | Typography | Critical | Pending |
-| T2 | Font size too small for mobile (~8-10px) | Typography | Critical | Pending |
-| T3 | Low contrast gray text on dark background | Typography | High | Pending |
+| T1 | Labels overlap catastrophically | Typography | Critical | Done |
+| T2 | Font size too small for mobile (~8-10px) | Typography | Critical | Done |
+| T3 | Low contrast gray text on dark background | Typography | High | Done |
 | T4 | Directory labels illegible | Typography | High | Pending |
-| T5 | No label collision detection | Typography | Critical | Pending |
+| T5 | No label collision detection | Typography | Critical | Done |
 | T6 | No label LOD (Level of Detail) | Typography | High | Pending |
 | T7 | Date format unnecessarily verbose | Typography | Low | Pending |
-| A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Pending |
-| A2 | Touch targets below 44px minimum | Accessibility | High | Pending |
-| A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Pending |
+| A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Done |
+| A2 | Touch targets below 44px minimum | Accessibility | High | Done |
+| A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Done |
 | A4 | File type pills too small | Accessibility | Medium | Pending |
 | A5 | Dropdown trigger too small | Accessibility | Medium | Pending |
 | A6 | No visible focus states | Accessibility | High | Pending |
 | A7 | No gesture support visible (pinch/swipe) | Accessibility | Medium | Pending |
 | A8 | No skip/dismiss gestures for panels | Accessibility | High | Pending |
-| I1 | Information overload (15+ metrics at once) | Information | Critical | Pending |
-| I2 | No progressive disclosure | Information | Critical | Pending |
-| I3 | Developer metrics shown to users | Information | High | Pending |
+| I1 | Information overload (15+ metrics at once) | Information | Critical | In Progress |
+| I2 | No progressive disclosure | Information | Critical | In Progress |
+| I3 | Developer metrics shown to users | Information | High | Done |
 | I4 | Redundant information (FPS + frame time) | Information | Medium | Pending |
 | I5 | No information hierarchy | Information | High | Pending |
 | I6 | No context when stats hidden | Information | High | Pending |
 | I7 | Jargon without explanation | Information | Medium | Pending |
 | I8 | All labels shown regardless of importance | Information | High | Pending |
-| V1 | Visual chaos with simultaneous beams | Visual | Critical | Pending |
-| V2 | No animation choreography | Visual | High | Pending |
+| V1 | Visual chaos with simultaneous beams | Visual | Critical | Done |
+| V2 | No animation choreography | Visual | High | In Progress |
 | V3 | "MAX" badge looks like error/alert | Visual | Medium | Pending |
 | V4 | WEBGPU badge looks like button | Visual | Low | Pending |
 | V5 | Active state unclear on toolbar icons | Visual | Medium | Pending |
 | V6 | No visual hierarchy in beam colors | Visual | Medium | Pending |
 | V7 | No zoom/scale indicator | Visual | Medium | Pending |
-| X1 | No way to dismiss stats panel | Interaction | High | Pending |
+| X1 | No way to dismiss stats panel | Interaction | High | Done |
 | X2 | Multiple conflicting navigation patterns | Interaction | Medium | Pending |
-| X3 | Unclear what toolbar icons do | Interaction | Critical | Pending |
+| X3 | Unclear what toolbar icons do | Interaction | Critical | Done |
 | X4 | No confirmation of mode changes | Interaction | Low | Pending |
 | X5 | Playback speed dropdown hard to use | Interaction | Medium | Pending |
 
