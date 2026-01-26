@@ -909,6 +909,56 @@
     }
 
     /* -------------------------------------------------------------------------
+       I6: Minimal HUD - Context When Controls Hidden
+       -------------------------------------------------------------------------
+       Shows date and progress (commit count) when stats/timeline are hidden.
+       Provides essential context without cluttering the visualization.
+       Positioned at bottom-left to avoid stats panel area at top-left.
+    */
+
+    .minimal-hud {
+        position: absolute;
+        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+        left: max(12px, env(safe-area-inset-left));
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        z-index: var(--z-canvas-overlays);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .minimal-hud-date {
+        color: var(--text-primary);
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+
+    .minimal-hud-progress {
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Show minimal HUD only when controls are hidden during playback */
+    .has-bottom-sheet.controls-hidden .minimal-hud {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Hide minimal HUD when controls are visible (avoid redundancy) */
+    .has-bottom-sheet:not(.controls-hidden) .minimal-hud {
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    /* -------------------------------------------------------------------------
        Tap-to-Show Overlay (Video Player Pattern)
        -------------------------------------------------------------------------
        Large center play button appears on tap when paused.

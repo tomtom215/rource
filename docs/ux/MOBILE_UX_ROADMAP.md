@@ -145,7 +145,7 @@ TOTAL:    46 issues
 | L1 | Stats panel occludes 35-40% of visualization | Layout | Critical | Done |
 | L2 | Bottom sheet takes 45% of screen | Layout | High | Pending |
 | L3 | FAB overlaps toolbar controls | Layout | High | Done |
-| L4 | Toast overlaps stats panel | Layout | High | Pending |
+| L4 | Toast overlaps stats panel | Layout | High | Done |
 | L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Pending |
 | L6 | Header elements cramped/truncated | Layout | Medium | Pending |
 | L7 | Visualization area severely constrained | Layout | Critical | Done |
@@ -175,7 +175,7 @@ TOTAL:    46 issues
 | I3 | Developer metrics shown to users | Information | High | Done |
 | I4 | Redundant information (FPS + frame time) | Information | Medium | Pending |
 | I5 | No information hierarchy | Information | High | Pending |
-| I6 | No context when stats hidden | Information | High | Pending |
+| I6 | No context when stats hidden | Information | High | Done |
 | I7 | Jargon without explanation | Information | Medium | Pending |
 | I8 | All labels shown regardless of importance | Information | High | Pending |
 | V1 | Visual chaos with simultaneous beams | Visual | Critical | Done |
