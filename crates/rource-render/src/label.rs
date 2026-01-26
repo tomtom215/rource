@@ -266,10 +266,16 @@ fn rects_overlap(a: &Rect, b: &Rect) -> bool {
 /// Estimates the width of a text string based on character count.
 ///
 /// This is a simple heuristic when font metrics aren't available.
-/// Assumes a monospace-like font where each character is roughly 0.6 * `font_size` wide.
+/// Uses a conservative factor of 0.75 to account for:
+/// - Wide characters (M, W, m, w)
+/// - Variable-width fonts
+/// - Unicode characters that may render wider
+///
+/// The factor is intentionally larger than typical monospace (0.5-0.6)
+/// to reduce label collision false negatives (overlap despite detection).
 #[inline]
 pub fn estimate_text_width(text: &str, font_size: f32) -> f32 {
-    text.len() as f32 * font_size * 0.55
+    text.len() as f32 * font_size * 0.75
 }
 
 #[cfg(test)]
