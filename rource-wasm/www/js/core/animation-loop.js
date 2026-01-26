@@ -12,8 +12,8 @@
 
 import { CONFIG } from '../config.js';
 import { getElement } from '../dom.js';
-import { getRource, getAnimationId, setAnimationId, get } from '../state.js';
-import { safeWasmCall } from '../wasm-api.js';
+import { getRource, getAnimationId, setAnimationId, get, setState } from '../state.js';
+import { safeWasmCall, isWasmHealthy } from '../wasm-api.js';
 import { debounce } from '../utils.js';
 import { getFrameScheduler } from './frame-scheduler.js';
 import {
@@ -21,6 +21,7 @@ import {
     resetUncappedFpsStats,
     trackFramePerformance,
 } from './performance-metrics.js';
+import { showToast } from '../toast.js';
 
 // =============================================================================
 // Module Constants
@@ -207,6 +208,14 @@ export function animate(timestamp, generation = animationGeneration) {
     const rource = getRource();
     const isUncapped = get('uncappedFps');
 
+    // Check WASM health before proceeding - stop animation if WASM has crashed
+    // This prevents infinite error cascades after a WASM panic
+    if (!isWasmHealthy()) {
+        frameInProgress = false;
+        handleWasmCrash();
+        return;
+    }
+
     if (rource) {
         // Render the frame via WASM
         safeWasmCall('frame', () => rource.frame(timestamp), undefined);
@@ -270,6 +279,75 @@ export function animate(timestamp, generation = animationGeneration) {
         // This is more power efficient and prevents screen tearing
         setAnimationId(requestAnimationFrame((ts) => animate(ts, generation)));
     }
+}
+
+// =============================================================================
+// WASM Crash Handling
+// =============================================================================
+
+/** Flag to track if crash has already been handled (prevent multiple notifications). */
+let crashHandled = false;
+
+/**
+ * Handles a WASM crash by stopping the animation loop and notifying the user.
+ *
+ * This is called when isWasmHealthy() returns false (after 10+ consecutive errors).
+ * The WASM module has likely panicked and all subsequent calls will fail.
+ *
+ * Recovery options:
+ * 1. Reload the page (recommended)
+ * 2. Try loading a smaller repository
+ */
+function handleWasmCrash() {
+    // Only show notification once per crash
+    if (crashHandled) {
+        return;
+    }
+    crashHandled = true;
+
+    // Stop the animation loop
+    stopAnimation();
+
+    // Mark WASM as crashed in state for other components
+    setState({ wasmCrashed: true });
+
+    // Log to console for debugging
+    console.error(
+        '[WASM Crash] The visualization engine has encountered an error and stopped. ' +
+        'This may be due to memory limits with large repositories. ' +
+        'Please reload the page to try again, or use a smaller repository.'
+    );
+
+    // Show user-friendly notification
+    showToast(
+        'Visualization error: The engine crashed, likely due to repository size. ' +
+        'Please reload the page or try a smaller repository.',
+        'error',
+        0 // Persistent - don't auto-dismiss
+    );
+
+    // Show context-lost-like overlay for visual feedback
+    const overlay = document.getElementById('context-lost-overlay');
+    if (overlay) {
+        // Update the overlay text for WASM crash case
+        const heading = overlay.querySelector('h2');
+        const paragraph = overlay.querySelector('p');
+        if (heading) heading.textContent = 'Visualization Error';
+        if (paragraph) {
+            paragraph.textContent =
+                'The rendering engine crashed, possibly due to memory limits with large repositories. ' +
+                'Reload the page to try again, or choose a smaller repository.';
+        }
+        overlay.classList.remove('hidden');
+    }
+}
+
+/**
+ * Resets the crash handling state (for page reload or recovery).
+ */
+export function resetCrashState() {
+    crashHandled = false;
+    setState({ wasmCrashed: false });
 }
 
 // =============================================================================

@@ -29,6 +29,7 @@ const appState = {
 
     // UI state
     isContextLost: false,
+    wasmCrashed: false,
     showLabels: true,
 
     // GitHub fetch state (prevents race conditions)

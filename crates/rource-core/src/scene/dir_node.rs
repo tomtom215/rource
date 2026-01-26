@@ -12,6 +12,7 @@ use rource_math::Vec2;
 use rustc_hash::FxHashSet;
 
 use crate::entity::{DirId, FileId};
+use crate::scene::file::DEFAULT_FILE_RADIUS;
 
 /// Minimum visual radius for directory nodes.
 pub const MIN_DIR_RADIUS: f32 = 5.0;
@@ -398,14 +399,21 @@ impl DirNode {
     ///
     /// Files are positioned in a semi-circle at the outer edge of the directory's
     /// angular sector, creating a "leaf" pattern at branch ends.
+    ///
+    /// # Overlap Prevention (Phase 69)
+    ///
+    /// Enforces minimum angular spacing to prevent file disc overlap:
+    /// - Minimum arc length between files = 2 × `file_radius` (diameter)
+    /// - If angular sector is too narrow, file distance is increased
+    /// - Formula: `min_angular_spacing` = 2 × radius / distance
     #[must_use]
     pub fn get_file_positions_radial(&self, count: usize) -> Vec<Vec2> {
         if count == 0 {
             return Vec::new();
         }
 
-        // Files are positioned slightly beyond the directory
-        let file_distance = self.radial_distance + self.radius * 1.5;
+        // Base file distance: slightly beyond the directory
+        let base_file_distance = self.radial_distance + self.radius * 1.5;
 
         // Spread files across the angular sector
         let span = self.angular_span();
@@ -416,10 +424,38 @@ impl DirNode {
         if count == 1 {
             let angle = self.center_angle();
             return vec![Vec2::new(
-                angle.cos() * file_distance,
-                angle.sin() * file_distance,
+                angle.cos() * base_file_distance,
+                angle.sin() * base_file_distance,
             )];
         }
+
+        // Calculate minimum angular spacing to prevent overlap
+        // Arc length between adjacent files must be >= 2 * file_radius (disc diameter)
+        // Arc length = angular_spacing * distance
+        // Therefore: angular_spacing >= 2 * file_radius / distance
+        //
+        // For n files, we need (n-1) gaps, so total span needed:
+        // min_span = (n - 1) * min_angular_spacing
+        //
+        // If min_span > usable_span, we need to increase the file distance
+        let file_radius = DEFAULT_FILE_RADIUS;
+        let gap_count = (count - 1) as f32;
+
+        // Calculate minimum distance needed to fit all files without overlap
+        // min_angular_spacing = 2 * radius / distance
+        // min_span = gap_count * min_angular_spacing = gap_count * 2 * radius / distance
+        // For no overlap: min_span <= usable_span
+        // gap_count * 2 * radius / distance <= usable_span
+        // distance >= gap_count * 2 * radius / usable_span
+        let min_distance_for_no_overlap = if usable_span > 0.001 {
+            gap_count * 2.0 * file_radius / usable_span
+        } else {
+            // Very narrow sector: use a large distance to spread files radially
+            base_file_distance * 2.0
+        };
+
+        // Use the larger of base distance or minimum distance for no overlap
+        let file_distance = base_file_distance.max(min_distance_for_no_overlap);
 
         (0..count)
             .map(|i| {
@@ -717,6 +753,38 @@ mod tests {
         for pos in &positions {
             let dist = pos.length();
             assert!(dist > 10.0); // Should be outside the directory radius
+        }
+    }
+
+    #[test]
+    fn test_dir_node_get_file_positions_radial_narrow_sector() {
+        // Test the narrow sector edge case (usable_span <= 0.001)
+        // This triggers the fallback path in Phase 69 overlap prevention
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+        node.set_position(Vec2::new(0.0, 0.0));
+        node.set_radius(10.0);
+
+        // Set a very narrow angular sector (0.001 radians)
+        // usable_span = span * 0.8 = 0.001 * 0.8 = 0.0008, which is <= 0.001
+        node.set_angular_sector(0.0, 0.001);
+
+        // Request multiple files in the narrow sector
+        let positions = node.get_file_positions_radial(5);
+        assert_eq!(positions.len(), 5);
+
+        // All positions should be valid (not NaN or infinite)
+        for pos in &positions {
+            assert!(pos.x.is_finite());
+            assert!(pos.y.is_finite());
+        }
+
+        // Files should be spread radially (at increased distance) due to narrow sector
+        let base_distance = node.radial_distance + node.radius * 1.5;
+        for pos in &positions {
+            let dist = pos.length();
+            // Distance should be at least the base distance (possibly more for overlap prevention)
+            assert!(dist >= base_distance * 0.99); // Allow 1% tolerance for floating point
         }
     }
 
