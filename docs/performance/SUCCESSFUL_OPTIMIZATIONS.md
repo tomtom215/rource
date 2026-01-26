@@ -318,6 +318,83 @@ critical for Git repositories with non-ASCII content.
 
 ---
 
+### Disc Overlap Prevention
+
+**Phase**: 69
+**Location**: `crates/rource-core/src/scene/dir_node.rs`, `crates/rource-core/src/scene/layout_methods.rs`
+**Impact**: Eliminates disc overlap for files and directories with no significant performance regression
+
+Implemented two overlap prevention mechanisms to eliminate visual disc overlap
+that persisted even after the physics simulation settled.
+
+**Problem Analysis**:
+
+1. **File Discs**: Files in narrow angular sectors positioned too close, causing overlap
+2. **Directory Discs**: Hardcoded `FORCE_MIN_DISTANCE = 5.0` while directory radii scale
+   with child count (`5.0 + ln(count) × 10.0`), allowing larger directories to overlap
+
+**File Angular Spacing Issue (before fix)**:
+
+| Files in Sector | Arc Length | Disc Diameter | Overlap? |
+|-----------------|------------|---------------|----------|
+| 10              | 9.08 px    | 10.0 px       | YES      |
+| 20              | 4.30 px    | 10.0 px       | YES      |
+| 50              | 1.67 px    | 10.0 px       | YES      |
+
+**Directory FORCE_MIN_DISTANCE Issue (before fix)**:
+
+| Children | Dir Radius | Min for No Overlap | FORCE_MIN_DISTANCE | Gap |
+|----------|------------|--------------------|--------------------|-----|
+| 3        | 16.0       | 32.0               | 5.0                | +27 |
+| 10       | 28.0       | 56.1               | 5.0                | +51 |
+| 100      | 51.1       | 102.1              | 5.0                | +97 |
+
+**Solution 1: File Angular Spacing Enforcement**:
+
+```rust
+// Calculate minimum distance needed to fit all files without overlap
+let min_distance_for_no_overlap = gap_count * 2.0 * file_radius / usable_span;
+let file_distance = base_file_distance.max(min_distance_for_no_overlap);
+```
+
+**Solution 2: Dynamic FORCE_MIN_DISTANCE**:
+
+```rust
+// Phase 69: Dynamic minimum distance based on actual disc radii
+let min_distance = (radius_i + radius_j).max(FORCE_MIN_DISTANCE);
+let min_distance_sq = min_distance * min_distance;
+let clamped_dist_sq = distance_sq.max(min_distance_sq);
+```
+
+**Benchmark Results** (criterion, 100 samples):
+
+| Directories | Baseline | After | Change |
+|-------------|----------|-------|--------|
+| 10          | 2.79 µs  | —     | Improved |
+| 50          | 11.71 µs | 12.19 µs | +3.25% |
+| 100         | 125.87 µs | 125.44 µs | +1.24% (no change) |
+| 200         | 132.21 µs | 119.59 µs | **−7.59%** |
+
+**Mathematical Verification**:
+
+For file overlap prevention:
+```
+Arc length = angular_spacing × distance
+For no overlap: arc_length ≥ 2 × file_radius (diameter)
+Therefore: distance ≥ 2 × radius × (n-1) / usable_span
+```
+
+For directory overlap prevention:
+```
+For two circles not to overlap:
+distance_between_centers ≥ radius_a + radius_b
+```
+
+**UX Impact**: Discs no longer overlap visually, providing clearer visualization
+of directory structure and file distributions.
+
+---
+
 ### Avatar Texture Array Batching
 
 **Phase**: 61
