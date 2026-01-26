@@ -15,8 +15,13 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+# Default permissions - overridden per-job as needed
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
   # Generate changelog for the release
@@ -27,7 +32,7 @@ jobs:
     outputs:
       changelog: ${{ steps.changelog.outputs.changelog }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -41,7 +46,7 @@ jobs:
           OUTPUT: CHANGELOG.md
 
       - name: Upload changelog
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: changelog
           path: CHANGELOG.md
@@ -52,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -68,7 +73,7 @@ jobs:
           cargo sbom --output-format cyclone_dx_json_1_4 > sbom-cyclonedx.json
 
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: sbom
           path: |
@@ -115,23 +120,17 @@ jobs:
             ext: .exe
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Cache Cargo
-        uses: actions/cache@v5
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.target }}-cargo-release-
+          prefix-key: "v1-rust"
+          shared-key: "release-${{ matrix.target }}"
 
       # Install cross for ARM64 Linux builds
       - name: Install cross
@@ -168,7 +167,7 @@ jobs:
       # Upload artifacts
       - name: Upload artifact (Unix)
         if: runner.os != 'Windows'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
           path: |
@@ -177,7 +176,7 @@ jobs:
 
       - name: Upload artifact (Windows)
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
           path: |
@@ -190,21 +189,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: actions/cache@v5
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-wasm-release-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-wasm-release-
+          prefix-key: "v1-rust"
+          shared-key: "release-wasm"
 
       - name: Install wasm-pack
         uses: jetli/wasm-pack-action@v0.4.0
@@ -244,7 +238,7 @@ jobs:
           sha256sum rource-wasm.tar.gz > rource-wasm.tar.gz.sha256
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: rource-wasm
           path: |
@@ -261,10 +255,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 

@@ -12,6 +12,10 @@ concurrency:
   group: integration-${{ github.ref }}
   cancel-in-progress: true
 
+# Minimal permissions for integration tests
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -23,21 +27,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 50  # Need some git history for testing
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/cache@v5
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-integration-
+          prefix-key: "v1-rust"
+          shared-key: "integration"
 
       - name: Build release binary
         run: cargo build --release
@@ -199,7 +198,7 @@ jobs:
           fi
 
       - name: Upload test artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: integration-test-frames
@@ -213,21 +212,16 @@ jobs:
     timeout-minutes: 20
     continue-on-error: true  # Don't fail CI on nightly issues
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt, clippy
 
-      - uses: actions/cache@v5
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-nightly-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-nightly-
+          prefix-key: "v1-rust"
+          shared-key: "nightly"
 
       - name: Check with nightly
         run: cargo check --all --all-features
@@ -246,19 +240,14 @@ jobs:
     timeout-minutes: 20
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@beta
 
-      - uses: actions/cache@v5
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-beta-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-beta-
+          prefix-key: "v1-rust"
+          shared-key: "beta"
 
       - name: Check with beta
         run: cargo check --all --all-features
