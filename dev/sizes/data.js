@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769437237589,
+  "lastUpdate": 1769442012907,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2924,6 +2924,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1079249,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b414a3b0a2bbccee0cea8ea5f980356d15c6c0f",
+          "message": "Merge pull request #194 from tomtom215/claude/rource-development-0dJrx\n\nSession 7: Mobile UX fixes and performance benchmarking standards",
+          "timestamp": "2026-01-26T16:36:22+01:00",
+          "tree_id": "0eb2faa2860c2ccc4987207bec1b1fc9ad441913",
+          "url": "https://github.com/tomtom215/rource/commit/8b414a3b0a2bbccee0cea8ea5f980356d15c6c0f"
+        },
+        "date": 1769442012552,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913424,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2795151,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1079374,
             "unit": "bytes"
           }
         ]
