@@ -9,8 +9,9 @@
 #![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_math::Vec2;
+use std::hint::black_box;
 
 // ============================================================================
 // Perpendicular Vector Normalization Benchmarks

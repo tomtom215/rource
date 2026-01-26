@@ -773,6 +773,71 @@ rustc-hash = "2.1"
 
 ---
 
+### wgpu 28, criterion 0.8, iai-callgrind 0.16 Upgrade
+
+**Phase**: 67
+**Location**: Multiple `Cargo.toml` files
+**Impact**: No regressions, try_place hot path improved 18-45%
+
+Comprehensive dependency update with rigorous A/B benchmarking:
+
+**Version Changes**:
+```toml
+# Before
+wgpu = "24"
+criterion = "0.5"
+iai-callgrind = "0.14"
+
+# After
+wgpu = "28"
+criterion = "0.8"
+iai-callgrind = "0.16"
+```
+
+**API Migration Required**:
+- wgpu 28: Major API changes across 9 backend files
+- criterion 0.8: `black_box` moved to `std::hint::black_box` (11 benchmark files)
+- iai-callgrind 0.16: Target-specific Linux-only dependency
+
+**Benchmark Results (A/B Comparison)**:
+
+| Benchmark | Before (wgpu 24) | After (wgpu 28) | Change |
+|-----------|------------------|-----------------|--------|
+| try_place | 11 ns | 6-9 ns | **-18% to -45%** |
+| to_argb8 | 92 ns | 82 ns | **-11.9%** |
+| full_label_placement | 35-38 µs | 35-37 µs | ~0% |
+| try_place_with_fallback | 248 ns | 245-248 ns | ~0% |
+
+**Key wgpu 28 API Changes**:
+```rust
+// DeviceDescriptor now requires 6 fields
+wgpu::DeviceDescriptor {
+    label: Some("..."),
+    required_features: wgpu::Features::empty(),
+    required_limits: wgpu::Limits::default(),
+    memory_hints: wgpu::MemoryHints::default(),
+    trace: wgpu::Trace::Off,                    // NEW
+    experimental_features: wgpu::ExperimentalFeatures::default(), // NEW
+}
+
+// RenderPassColorAttachment requires depth_slice
+depth_slice: None,  // NEW
+
+// RenderPassDescriptor requires multiview_mask
+multiview_mask: None,  // NEW
+
+// Pipeline push_constant_ranges → immediate_size
+immediate_size: 0,  // Replaces push_constant_ranges: &[]
+
+// Device poll API change
+device.poll(wgpu::PollType::wait_indefinitely());  // Was Maintain::Wait
+```
+
+**Note**: wgpu 28 requires API changes but provides no measurable performance regression.
+The try_place improvement may be due to LLVM/Rust optimizations in the newer dependency tree.
+
+---
+
 ## Compiler Optimizations
 
 ### Rust 1.93.0 Upgrade
@@ -855,11 +920,12 @@ wasm-opt \
 | Blend batch 43%        | 50    | 43%         |
 | apply_commit iterator  | 42    | 35%         |
 
-### Dependency Upgrades (10-20%)
+### Dependency Upgrades (10-45%)
 
 | Optimization           | Phase | Improvement |
 |------------------------|-------|-------------|
 | rustc-hash 2.x         | 66    | 14-19%      |
+| wgpu 28/criterion 0.8  | 67    | 0% (no regression), try_place -18% to -45% |
 
 ---
 

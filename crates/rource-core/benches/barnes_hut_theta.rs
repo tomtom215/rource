@@ -18,8 +18,9 @@
 // Benchmarks don't need documentation - suppress the warning from criterion macros
 #![allow(missing_docs)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_math::{Bounds, Vec2};
+use std::hint::black_box;
 
 /// Creates test bodies distributed across a bounded region.
 ///

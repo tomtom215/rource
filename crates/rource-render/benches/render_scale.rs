@@ -22,9 +22,10 @@
 
 #![allow(missing_docs)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_math::{Color, Vec2};
 use rource_render::{Renderer, SoftwareRenderer};
+use std::hint::black_box;
 
 /// Screen dimensions for benchmarks.
 const BENCH_WIDTH: u32 = 1920;

@@ -8,8 +8,9 @@
 
 #![allow(missing_docs)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_render::effects::BloomEffect;
+use std::hint::black_box;
 
 /// Creates a test pixel buffer with some bright regions for bloom testing.
 fn create_test_buffer(width: usize, height: usize) -> Vec<u32> {

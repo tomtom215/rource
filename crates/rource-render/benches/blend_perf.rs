@@ -12,8 +12,9 @@
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::doc_markdown)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_math::Color;
+use std::hint::black_box;
 
 // ============================================================================
 // Current implementation (floating-point)
