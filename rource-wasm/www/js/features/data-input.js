@@ -17,6 +17,7 @@ import { loadLogData, loadRourceData, detectLogFormat } from '../data-loader.js'
 import { fetchGitHubWithProgress, parseGitHubUrl, getRateLimitStatus, updateRateLimitFromResponse } from '../github-fetch.js';
 import { ROURCE_STATS, setAdditionalCommits } from '../cached-data.js';
 import { formatBytes } from '../utils.js';
+import { hasStaticLog, getStaticLog, getStaticLogMetadata } from '../static-logs.js';
 
 /**
  * Uploaded file content storage (for "Load Uploaded File" button fallback).
@@ -324,6 +325,7 @@ function initGitHubFetch() {
 
 /**
  * Initializes popular repo chip clicks.
+ * Uses static logs when available (zero API calls), falls back to GitHub API.
  */
 function initRepoChips() {
     const chips = document.querySelectorAll('.repo-chip');
@@ -331,8 +333,28 @@ function initRepoChips() {
     const btnFetchGithub = getElement('btnFetchGithub');
 
     chips.forEach(chip => {
-        addManagedEventListener(chip, 'click', () => {
-            // Check rate limit before allowing click
+        addManagedEventListener(chip, 'click', async () => {
+            const repo = chip.dataset.repo;
+            if (!repo) return;
+
+            const [owner, name] = repo.split('/');
+
+            // Check if we have a static log for this repo (zero API calls)
+            if (hasStaticLog(owner, name)) {
+                const logData = getStaticLog(owner, name);
+                const metadata = getStaticLogMetadata(owner, name);
+
+                if (logData) {
+                    const success = loadLogData(logData, 'custom');
+                    if (success) {
+                        const displayName = metadata?.name || name;
+                        showToast(`Loaded ${displayName} (pre-cached, no API call)`, 'success');
+                    }
+                    return;
+                }
+            }
+
+            // Fallback to GitHub API fetch
             const status = getRateLimitStatus();
             if (status.isExhausted) {
                 showToast(`Rate limit exhausted. Try again after ${status.resetTime?.toLocaleTimeString() || 'some time'}.`, 'error', 5000);
@@ -340,7 +362,7 @@ function initRepoChips() {
                 return;
             }
 
-            const repo = chip.dataset.repo;
+            // Update input and trigger fetch
             if (githubUrlInput) {
                 githubUrlInput.value = `https://github.com/${repo}`;
             }
