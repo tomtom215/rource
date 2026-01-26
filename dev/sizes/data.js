@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769387377875,
+  "lastUpdate": 1769389808137,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2519,6 +2519,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/8b191c63fa610bd95cc89991a65b7ce2918020d1"
         },
         "date": 1769387377330,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2779987,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1073782,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "de0d26d1dab813aa3ea04b2fd683d53a81d651ad",
+          "message": "Merge pull request #175 from tomtom215/claude/github-rate-limit-solutions-AC2IT\n\nAdd pre-cached repos and persistent IndexedDB caching",
+          "timestamp": "2026-01-26T01:54:36+01:00",
+          "tree_id": "60e7e1b8f6351fd1eb6b8d76c6fa6ccd1a0c62ef",
+          "url": "https://github.com/tomtom215/rource/commit/de0d26d1dab813aa3ea04b2fd683d53a81d651ad"
+        },
+        "date": 1769389807686,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
