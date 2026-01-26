@@ -21,6 +21,7 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+proptest = "1.5"
 
 [[bench]]
 name = "color_perf"
