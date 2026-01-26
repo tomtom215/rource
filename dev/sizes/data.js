@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769465711054,
+  "lastUpdate": 1769470030593,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3104,6 +3104,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/1d2ca070a7fa9f0f84f2e1ee0acd27615297d62d"
         },
         "date": 1769465710561,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914488,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3265921,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255125,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8cf685874b5843fc31a41d9f3b5ba82c91c576ac",
+          "message": "Merge pull request #200 from tomtom215/claude/performance-audit-wasm-FkGca\n\ndocs: Add comprehensive performance audit and baseline documentation",
+          "timestamp": "2026-01-27T00:24:56+01:00",
+          "tree_id": "cb2dc93923372cfc7f1c8bf2a70f90fc5821603b",
+          "url": "https://github.com/tomtom215/rource/commit/8cf685874b5843fc31a41d9f3b5ba82c91c576ac"
+        },
+        "date": 1769470030299,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
