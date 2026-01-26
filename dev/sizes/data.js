@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769435074590,
+  "lastUpdate": 1769437237589,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2885,6 +2885,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1079251,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21eefbb7cd086c7598c07d169c260587a6345926",
+          "message": "Merge pull request #184 from tomtom215/claude/performance-docs-cvkGw\n\ndocs: Add API stability policy and update roadmap status",
+          "timestamp": "2026-01-26T15:18:27+01:00",
+          "tree_id": "1396b7d336d0de0e445707277f856358b507c928",
+          "url": "https://github.com/tomtom215/rource/commit/21eefbb7cd086c7598c07d169c260587a6345926"
+        },
+        "date": 1769437236720,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913808,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2795014,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1079249,
             "unit": "bytes"
           }
         ]
