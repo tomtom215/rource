@@ -64,7 +64,7 @@ toml = "0.9"
 # Fast hash for HashMaps (20-40% faster than std HashMap)
 rustc-hash = "2.1"
 # Benchmarking
-criterion = { version = "0.5", default-features = false }
+criterion = { version = "0.8", default-features = false }
 # iai-callgrind for deterministic instruction-count benchmarks (Valgrind-based)
 # NOTE: iai-callgrind requires Valgrind which only works on Linux.
 # Individual crates use target-specific dev-dependencies for this.

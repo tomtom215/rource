@@ -9,9 +9,10 @@
 // Benchmarks don't need documentation - suppress the warning from criterion macros
 #![allow(missing_docs)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_core::scene::{ActionType, Scene};
 use std::fmt::Write;
+use std::hint::black_box;
 use std::path::{Path, PathBuf};
 
 /// Creates a scene with the specified number of files distributed across directories.

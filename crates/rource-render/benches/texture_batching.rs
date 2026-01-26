@@ -21,9 +21,10 @@
 
 #![allow(missing_docs)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rustc_hash::FxHashMap as HashMap;
 use std::collections::hash_map::Entry;
+use std::hint::black_box;
 
 /// Simulated texture ID (matches `TextureId` in rource-render).
 type TextureId = u32;

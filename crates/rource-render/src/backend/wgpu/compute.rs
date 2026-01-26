@@ -543,14 +543,14 @@ impl ComputePipeline {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Physics Pipeline Layout"),
                 bind_group_layouts: &[&physics_bind_group_layout],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
 
         let bounds_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Bounds Pipeline Layout"),
                 bind_group_layouts: &[&bounds_bind_group_layout],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
 
         // Create compute pipelines
@@ -1002,7 +1002,7 @@ impl ComputePipeline {
             let _ = tx.send(result);
         });
 
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
 
         if rx.recv().is_ok() {
             let data = slice.get_mapped_range();
@@ -1067,7 +1067,7 @@ impl ComputePipeline {
 
         // Map buffer for reading
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
 
         let data = slice.get_mapped_range();
         let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
@@ -1105,7 +1105,7 @@ impl ComputePipeline {
         queue.submit(Some(encoder.finish()));
 
         #[cfg(not(target_arch = "wasm32"))]
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
 
         // Reset state
         self.entity_count = 0;

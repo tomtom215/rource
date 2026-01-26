@@ -9,11 +9,12 @@
 
 #![allow(missing_docs)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_vcs::parser::{CustomParser, GitParser, Parser};
 use rource_vcs::stream::StreamingCommitLoader;
 use rource_vcs::{detect_format, parse_auto, StringInterner};
 use std::fmt::Write;
+use std::hint::black_box;
 use std::io::{BufReader, Cursor};
 
 // ============================================================================

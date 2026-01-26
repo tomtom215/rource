@@ -219,7 +219,7 @@ impl SpatialHashPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Spatial Hash Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         // Create all compute pipelines
@@ -711,7 +711,7 @@ impl SpatialHashPipeline {
         // Map and read using polling (sync)
         let slice = staging.slice(0..buffer_size as u64);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
 
         let data = slice.get_mapped_range();
         let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
@@ -777,7 +777,7 @@ impl SpatialHashPipeline {
         // Map and read
         let slice = staging.slice(0..buffer_size as u64);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
 
         let data = slice.get_mapped_range();
         let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
@@ -881,7 +881,7 @@ impl SpatialHashPipeline {
         // Map and read (copy was already submitted via prepare_readback)
         let slice = staging.slice(0..buffer_size as u64);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
 
         let data = slice.get_mapped_range();
         let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
@@ -922,7 +922,7 @@ impl SpatialHashPipeline {
         // Map and read (copy was already submitted via prepare_readback)
         let slice = staging.slice(0..buffer_size as u64);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
 
         let data = slice.get_mapped_range();
         let entities: &[ComputeEntity] = bytemuck::cast_slice(&data);
