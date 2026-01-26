@@ -905,4 +905,52 @@ mod tests {
             "Expected non-zero force, got {force:?}"
         );
     }
+
+    #[test]
+    fn test_barnes_hut_with_fixed_theta() {
+        // Test Barnes-Hut repulsion with adaptive_theta disabled
+        // This covers the else branch in calculate_repulsion_barnes_hut
+        let mut sim = ForceSimulation::new();
+        sim.config_mut().use_barnes_hut = true;
+        sim.config_mut().adaptive_theta = false; // Use fixed theta
+        sim.config_mut().barnes_hut_theta = 1.0;
+        sim.config_mut().anchor_root = false;
+
+        let root_id = DirId::new(0, Generation::first());
+
+        let mut nodes = vec![
+            create_test_node(0, "", None),
+            create_test_node(1, "a", Some(root_id)),
+            create_test_node(2, "b", Some(root_id)),
+            create_test_node(3, "c", Some(root_id)),
+        ];
+
+        // Position nodes to trigger Barnes-Hut (need multiple nodes)
+        nodes[0].set_position(Vec2::ZERO);
+        nodes[0].set_depth(0);
+        nodes[1].set_position(Vec2::new(50.0, 0.0));
+        nodes[1].set_depth(1);
+        nodes[2].set_position(Vec2::new(52.0, 0.0));
+        nodes[2].set_depth(1);
+        nodes[3].set_position(Vec2::new(-50.0, 0.0));
+        nodes[3].set_depth(1);
+
+        let initial_pos_1 = nodes[1].position();
+        let initial_pos_2 = nodes[2].position();
+
+        // Run simulation with fixed theta
+        sim.apply_to_slice(&mut nodes, 0.1);
+
+        // Nodes should have moved due to repulsion
+        assert_ne!(
+            nodes[1].position(),
+            initial_pos_1,
+            "Node 1 should have moved"
+        );
+        assert_ne!(
+            nodes[2].position(),
+            initial_pos_2,
+            "Node 2 should have moved"
+        );
+    }
 }
