@@ -129,6 +129,71 @@ jobs:
           echo "Gzipped: $WASM_SIZE_BYTES bytes (~${WASM_SIZE_KB}KB)"
           echo "WASM_SIZE_KB=$WASM_SIZE_KB" >> $GITHUB_ENV
 
+      - name: Bundle CSS (eliminate @import waterfall)
+        run: |
+          cd rource-wasm/www
+
+          # Bundle all CSS files into a single file to prevent 503 errors from
+          # too many concurrent requests hitting GitHub Pages CDN on cold load.
+          # The @import cascade creates ~25 requests; bundling reduces to 1.
+          python3 << 'PYTHON_SCRIPT'
+          import re
+          from pathlib import Path
+
+          def resolve_imports(css_path, base_dir, seen=None):
+              """Recursively resolve @import statements and concatenate CSS."""
+              if seen is None:
+                  seen = set()
+
+              if css_path in seen:
+                  return ""  # Prevent circular imports
+              seen.add(css_path)
+
+              content = css_path.read_text()
+              result = []
+
+              # Process @import statements in order
+              for line in content.split('\n'):
+                  import_match = re.match(r"@import\s+url\(['\"]?([^'\")]+)['\"]?\);?", line.strip())
+                  if import_match:
+                      import_path = import_match.group(1)
+                      # Resolve relative path from the CSS file's directory
+                      resolved = (css_path.parent / import_path).resolve()
+                      if resolved.exists():
+                          try:
+                              rel_path = resolved.relative_to(base_dir)
+                          except ValueError:
+                              rel_path = resolved.name
+                          result.append(f"\n/* === {rel_path} === */\n")
+                          result.append(resolve_imports(resolved, base_dir, seen))
+                      else:
+                          print(f"Warning: Could not find {import_path}")
+                  else:
+                      result.append(line + '\n')
+
+              return ''.join(result)
+
+          base_dir = Path('.').resolve()
+          styles_css = base_dir / 'styles.css'
+
+          if styles_css.exists():
+              bundled = resolve_imports(styles_css, base_dir)
+
+              # Write bundled CSS
+              styles_css.write_text(bundled)
+
+              # Remove the now-unused styles/ directory to save space
+              import shutil
+              styles_dir = base_dir / 'styles'
+              if styles_dir.exists():
+                  shutil.rmtree(styles_dir)
+                  print(f"Removed styles/ directory (bundled into styles.css)")
+
+              print(f"Bundled CSS: {len(bundled)} bytes ({bundled.count(chr(10))} lines)")
+          else:
+              print("Warning: styles.css not found")
+          PYTHON_SCRIPT
+
       - name: Update demo with fresh data
         run: |
           cd rource-wasm/www
