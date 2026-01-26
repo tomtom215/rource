@@ -300,6 +300,18 @@ pub struct WgpuRenderer {
 
     /// File icon texture array (opt-in, call `init_file_icons()` to enable).
     file_icon_array: Option<TextureArray>,
+
+    /// Avatar texture array for batching user avatar textures.
+    /// All avatars are resized to a uniform size and stored in this array,
+    /// enabling single-draw-call rendering of all avatars.
+    avatar_texture_array: Option<textures::AvatarTextureArray>,
+
+    /// Maps TextureId to avatar array layer index.
+    /// Textures in this map are rendered via the texture array path.
+    texture_to_avatar_layer: HashMap<TextureId, u32>,
+
+    /// Instance buffer for avatar quads (uses texture array).
+    avatar_quad_instances: InstanceBuffer,
 }
 
 /// A scissor rectangle in screen coordinates.
@@ -598,6 +610,7 @@ impl WgpuRenderer {
         let quad_instances = InstanceBuffer::new(&device, 8, 500, "quad_instances"); // 8 floats = 32 bytes
         let text_instances = InstanceBuffer::new(&device, 12, 2000, "text_instances"); // 12 floats = 48 bytes
         let file_icon_instances = InstanceBuffer::new(&device, 13, 500, "file_icon_instances"); // 13 values = 52 bytes
+        let avatar_quad_instances = InstanceBuffer::new(&device, 13, 500, "avatar_quad_instances"); // 13 values = 52 bytes
 
         // Create font atlas
         let font_atlas = FontAtlas::new(&device, &texture_bind_group_layout);
@@ -651,10 +664,16 @@ impl WgpuRenderer {
             cull_bounds: [-10000.0, -10000.0, 10000.0, 10000.0],
             current_scissor: None,
             file_icon_array: None,
+            avatar_texture_array: None,
+            texture_to_avatar_layer: HashMap::default(),
+            avatar_quad_instances,
         };
 
         // Initialize pipelines
         renderer.initialize_pipelines();
+
+        // Initialize avatar texture array for batched avatar rendering
+        renderer.init_avatar_texture_array();
 
         Ok(renderer)
     }
@@ -674,6 +693,65 @@ impl WgpuRenderer {
         pipeline_manager.warmup(&self.device);
 
         self.pipeline_manager = Some(pipeline_manager);
+    }
+
+    /// Initializes the avatar texture array for batched avatar rendering.
+    ///
+    /// This enables single-draw-call rendering of all user avatars by storing
+    /// them in a GPU texture array. Avatars are automatically resized to fit.
+    fn init_avatar_texture_array(&mut self) {
+        // Get texture array layout from pipeline manager
+        let Some(ref pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+        let layout = pipeline_manager.texture_array_layout();
+
+        // Create avatar texture array (128x128, up to 256 avatars)
+        self.avatar_texture_array =
+            textures::AvatarTextureArray::with_defaults(&self.device, layout);
+
+        if self.avatar_texture_array.is_some() {
+            eprintln!(
+                "[wgpu] Avatar texture array initialized ({}x{}, max {} avatars)",
+                textures::AVATAR_ARRAY_SIZE,
+                textures::AVATAR_ARRAY_SIZE,
+                textures::MAX_AVATAR_LAYERS
+            );
+        }
+    }
+
+    /// Attempts to add a texture to the avatar array for batched rendering.
+    ///
+    /// Returns `Some(layer)` if the texture was added to the array,
+    /// `None` if it couldn't be added (array full or not initialized).
+    fn try_add_to_avatar_array(
+        &mut self,
+        texture_id: TextureId,
+        width: u32,
+        height: u32,
+        data: &[u8],
+    ) -> Option<u32> {
+        let array = self.avatar_texture_array.as_mut()?;
+
+        // Try to add the avatar to the array
+        let layer = array.add_avatar(&self.queue, width, height, data)?;
+
+        // Track the mapping
+        self.texture_to_avatar_layer.insert(texture_id, layer);
+
+        Some(layer)
+    }
+
+    /// Checks if a texture is in the avatar array.
+    #[inline]
+    fn is_avatar_texture(&self, texture_id: TextureId) -> bool {
+        self.texture_to_avatar_layer.contains_key(&texture_id)
+    }
+
+    /// Gets the avatar array layer for a texture, if it's in the array.
+    #[inline]
+    fn get_avatar_layer(&self, texture_id: TextureId) -> Option<u32> {
+        self.texture_to_avatar_layer.get(&texture_id).copied()
     }
 }
 
@@ -782,6 +860,7 @@ impl WgpuRenderer {
             || !self.quad_instances.is_empty()
             || !self.text_instances.is_empty()
             || !self.file_icon_instances.is_empty()
+            || !self.avatar_quad_instances.is_empty()
             || self.textured_quad_instances.values().any(|b| !b.is_empty());
 
         if has_pending && self.current_encoder.is_some() && self.current_target_view.is_some() {
@@ -1174,7 +1253,29 @@ impl Renderer for WgpuRenderer {
         let max = self.transform_point(bounds.max);
 
         if let Some(tex_id) = texture {
-            // Textured quad
+            // Check if texture is in the avatar array (batched path)
+            if let Some(layer) = self.get_avatar_layer(tex_id) {
+                // Use avatar texture array path - batched into single draw call
+                // Instance format: bounds(4) + uv_bounds(4) + color(4) + layer(1 as u32 bits)
+                self.avatar_quad_instances.push_raw(&[
+                    min.x,
+                    min.y,
+                    max.x,
+                    max.y,
+                    0.0,
+                    0.0,
+                    1.0,
+                    1.0, // UV bounds (full texture)
+                    color.r,
+                    color.g,
+                    color.b,
+                    color.a,
+                    f32::from_bits(layer), // Layer index as bits
+                ]);
+                return;
+            }
+
+            // Fallback: per-texture path (causes separate draw call per texture)
             let instances = self.get_or_create_textured_quad_buffer(tex_id);
 
             // bounds(4) + uv_bounds(4) + color(4)
@@ -1329,6 +1430,19 @@ impl Renderer for WgpuRenderer {
         let id = TextureId::new(self.next_texture_id);
         self.next_texture_id += 1;
 
+        // Try to add to avatar texture array for batched rendering
+        // This enables single-draw-call rendering of all textures in the array
+        let added_to_array = self
+            .try_add_to_avatar_array(id, width, height, data)
+            .is_some();
+
+        if added_to_array {
+            // Texture is in the avatar array - no need for individual ManagedTexture
+            // The draw_quad method will route to the texture array path
+            return id;
+        }
+
+        // Fallback: create individual ManagedTexture (legacy per-texture path)
         let label = format!("texture_{}", id.raw());
         let managed = ManagedTexture::new(
             &self.device,
@@ -1347,6 +1461,9 @@ impl Renderer for WgpuRenderer {
     fn unload_texture(&mut self, texture: TextureId) {
         self.textures.remove(&texture);
         self.textured_quad_instances.remove(&texture);
+        // Note: textures in the avatar array cannot be individually unloaded
+        // (the layer remains allocated but unused if the TextureId is forgotten)
+        self.texture_to_avatar_layer.remove(&texture);
     }
 
     fn load_font(&mut self, data: &[u8]) -> Option<FontId> {

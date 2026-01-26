@@ -55,6 +55,8 @@ impl WgpuRenderer {
             .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.file_icon_instances
             .upload(&self.device, &self.queue, &mut self.frame_stats);
+        self.avatar_quad_instances
+            .upload(&self.device, &self.queue, &mut self.frame_stats);
         self.upload_textured_quads();
 
         // Upload font atlas texture to GPU (critical for text rendering!)
@@ -89,6 +91,7 @@ impl WgpuRenderer {
             self.flush_curves_pass(&mut render_pass, format);
             self.flush_quads_pass(&mut render_pass, format);
             self.flush_textured_quads_pass(&mut render_pass, format);
+            self.flush_avatar_quads_pass(&mut render_pass, format);
             self.flush_texture_array_pass(&mut render_pass, format);
             self.flush_text_pass(&mut render_pass, format);
         }
@@ -101,6 +104,7 @@ impl WgpuRenderer {
         self.quad_instances.clear();
         self.text_instances.clear();
         self.file_icon_instances.clear();
+        self.avatar_quad_instances.clear();
         self.clear_textured_quads();
     }
 
@@ -551,6 +555,71 @@ impl WgpuRenderer {
                 InstanceBuffer::new(&self.device, 12, 100, "textured_quad_instances")
                 // 12 floats = 48 bytes
             })
+    }
+
+    /// Flushes avatar texture array draw calls within a render pass.
+    ///
+    /// This method renders all queued avatar quads in a single instanced draw call,
+    /// using the avatar texture array to batch all user avatars together.
+    /// This is the key optimization that reduces draw calls from N (one per avatar)
+    /// to 1 (single batched draw call).
+    pub(super) fn flush_avatar_quads_pass(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        _format: wgpu::TextureFormat,
+    ) {
+        if self.avatar_quad_instances.is_empty() {
+            return;
+        }
+
+        // Need avatar texture array to be initialized
+        let Some(ref avatar_array) = self.avatar_texture_array else {
+            return;
+        };
+
+        let Some(ref mut pipeline_manager) = self.pipeline_manager else {
+            return;
+        };
+
+        // Get or create pipeline (reuse TextureArray pipeline since format is identical)
+        let pipeline = pipeline_manager.get_pipeline(&self.device, PipelineId::TextureArray);
+
+        if self
+            .render_state
+            .set_pipeline(PipelineId::TextureArray, &mut self.frame_stats)
+        {
+            render_pass.set_pipeline(pipeline);
+        }
+
+        // Set bind groups (with state caching)
+        if self
+            .render_state
+            .set_bind_group(0, BindGroupId::Uniforms, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        }
+        if self
+            .render_state
+            .set_bind_group(1, BindGroupId::AvatarArray, &mut self.frame_stats)
+        {
+            render_pass.set_bind_group(1, avatar_array.bind_group(), &[]);
+        }
+
+        // Set vertex and instance buffers
+        render_pass.set_vertex_buffer(0, self.vertex_buffers.standard_quad.slice(..));
+        render_pass.set_vertex_buffer(1, self.avatar_quad_instances.buffer().slice(..));
+
+        // Draw all avatars in one instanced call
+        let instance_count = self.avatar_quad_instances.instance_count() as u32;
+        render_pass.draw(0..4, 0..instance_count);
+
+        // Track statistics
+        self.frame_stats.draw_calls += 1;
+        self.frame_stats.texture_array_instances += instance_count;
+        self.frame_stats.total_instances += instance_count;
+        self.frame_stats
+            .active_primitives
+            .set(ActivePrimitives::TEXTURE_ARRAYS);
     }
 
     /// Flushes texture array (file icon) draw calls within a render pass.
