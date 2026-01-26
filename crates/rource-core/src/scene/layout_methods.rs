@@ -57,7 +57,8 @@ pub(super) const FORCE_MIN_DISTANCE_SQ: f32 = FORCE_MIN_DISTANCE * FORCE_MIN_DIS
 pub(super) const FORCE_MAX_DISTANCE_SQ: f32 = 10000.0;
 
 /// Directory data for force-directed layout calculation.
-pub(super) type DirForceData = (DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32);
+/// Fields: (id, position, depth, parent, `parent_position`, `target_distance`, radius)
+pub(super) type DirForceData = (DirId, Vec2, u32, Option<DirId>, Option<Vec2>, f32, f32);
 
 impl Scene {
     /// Returns whether Barnes-Hut algorithm is enabled.
@@ -139,6 +140,7 @@ impl Scene {
                 d.parent(),
                 d.parent_position(),
                 d.target_distance(),
+                d.radius(), // Phase 69: Include radius for dynamic overlap prevention
             ));
         }
 
@@ -166,11 +168,17 @@ impl Scene {
     ///
     /// Best for small scenes (< 100 directories) where overhead is low.
     /// Uses Vec indexing for cache-efficient O(1) force accumulation.
+    ///
+    /// # Phase 69: Dynamic Minimum Distance
+    ///
+    /// Uses `radius_i + radius_j` as the minimum distance for force clamping
+    /// instead of the fixed `FORCE_MIN_DISTANCE`. This prevents visual overlap
+    /// for directories of varying sizes.
     fn calculate_repulsion_pairwise(&mut self, dir_count: usize) {
         for i in 0..dir_count {
-            let (_, pos_i, depth_i, parent_i, _, _) = self.dir_data_buffer[i];
+            let (_, pos_i, depth_i, parent_i, _, _, radius_i) = self.dir_data_buffer[i];
             for j in (i + 1)..dir_count {
-                let (_, pos_j, depth_j, parent_j, _, _) = self.dir_data_buffer[j];
+                let (_, pos_j, depth_j, parent_j, _, _, radius_j) = self.dir_data_buffer[j];
 
                 // Repel if:
                 // 1. Siblings (same parent)
@@ -199,9 +207,15 @@ impl Scene {
                     continue;
                 }
 
+                // Phase 69: Dynamic minimum distance based on actual disc radii
+                // For two discs not to overlap, center distance must be >= radius_i + radius_j
+                // Use this as the minimum distance for force clamping instead of fixed 5.0
+                let min_distance = (radius_i + radius_j).max(FORCE_MIN_DISTANCE);
+                let min_distance_sq = min_distance * min_distance;
+
                 // Use squared distance for inverse-square repulsion: F = k / d²
-                // Clamp to minimum squared distance to prevent extreme forces
-                let clamped_dist_sq = distance_sq.max(FORCE_MIN_DISTANCE_SQ);
+                // Clamp to dynamic minimum squared distance to prevent extreme forces
+                let clamped_dist_sq = distance_sq.max(min_distance_sq);
 
                 // Optimized force calculation: combine direction and magnitude
                 // Force = (delta/d) * (k/d²) = delta * k / d³
@@ -236,13 +250,13 @@ impl Scene {
         self.barnes_hut_tree.clear();
 
         for i in 0..dir_count {
-            let (_, pos, _, _, _, _) = self.dir_data_buffer[i];
+            let (_, pos, _, _, _, _, _) = self.dir_data_buffer[i];
             self.barnes_hut_tree.insert(Body::new(pos));
         }
 
         // Calculate forces for each directory using Barnes-Hut approximation
         for i in 0..dir_count {
-            let (_, pos, _, _, _, _) = self.dir_data_buffer[i];
+            let (_, pos, _, _, _, _, _) = self.dir_data_buffer[i];
             let body = Body::new(pos);
 
             // Get repulsive force from all other bodies (approximated by tree)
@@ -260,7 +274,8 @@ impl Scene {
     /// Uses Vec indexing for cache-efficient O(1) force accumulation.
     fn calculate_attraction_forces(&mut self, dir_count: usize) {
         for i in 0..dir_count {
-            let (_, pos, _depth, _parent_id, parent_pos, target_dist) = self.dir_data_buffer[i];
+            let (_, pos, _depth, _parent_id, parent_pos, target_dist, _radius) =
+                self.dir_data_buffer[i];
             if let Some(parent_pos) = parent_pos {
                 let delta = parent_pos - pos;
                 let distance_sq = delta.length_squared();

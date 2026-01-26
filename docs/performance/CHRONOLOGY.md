@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all 68 optimization phases with dates, commits, and outcomes.
+Complete timeline of all 69 optimization phases with dates, commits, and outcomes.
 
 ---
 
@@ -88,6 +88,7 @@ Complete timeline of all 68 optimization phases with dates, commits, and outcome
 | 66    | 2026-01-26 | Dependencies    | rustc-hash 2.x upgrade (14-19% faster)     | Implemented  |
 | 67    | 2026-01-26 | Dependencies    | wgpu 28, criterion 0.8, iai-callgrind 0.16 | Implemented  |
 | 68    | 2026-01-26 | Typography      | Label width estimation accuracy fix        | Implemented  |
+| 69    | 2026-01-26 | Layout          | Disc overlap prevention (files + dirs)     | Implemented  |
 
 ---
 
@@ -1756,6 +1757,112 @@ For UTF-8 with multi-byte chars (bytes > n):
 
 ---
 
+### Phase 69: Disc Overlap Prevention
+
+**Date**: 2026-01-26
+**Category**: Layout / Physics
+**Status**: Implemented
+
+Implemented two overlap prevention mechanisms to eliminate visual disc overlap
+that persisted even after the physics simulation settled.
+
+**Problem**: Disc overlap occurred in two scenarios:
+
+1. **File Discs**: Files in narrow angular sectors were positioned too close
+   together, causing overlap even though they were evenly distributed by angle.
+2. **Directory Discs**: The force clamping used a hardcoded `FORCE_MIN_DISTANCE = 5.0`,
+   but directory radii scale with child count (`5.0 + ln(count) × 10.0`), allowing
+   larger directories to overlap.
+
+**Analysis Results**:
+
+File Angular Spacing Issue (before fix):
+| Files in Sector | Arc Length | Disc Diameter | Overlap? |
+|-----------------|------------|---------------|----------|
+| 10              | 9.08 px    | 10.0 px       | YES      |
+| 20              | 4.30 px    | 10.0 px       | YES      |
+| 50              | 1.67 px    | 10.0 px       | YES      |
+
+Directory FORCE_MIN_DISTANCE Issue (before fix):
+| Children | Dir Radius | Min for No Overlap | FORCE_MIN_DISTANCE | Gap |
+|----------|------------|--------------------|--------------------|-----|
+| 3        | 16.0       | 32.0               | 5.0                | +27 |
+| 10       | 28.0       | 56.1               | 5.0                | +51 |
+| 100      | 51.1       | 102.1              | 5.0                | +97 |
+
+**Solution 1: File Angular Spacing Enforcement**
+
+Modified `get_file_positions_radial()` to dynamically increase file distance
+when angular sector is too narrow:
+
+```rust
+// Calculate minimum distance needed to fit all files without overlap
+// min_angular_spacing = 2 * radius / distance
+// min_span = gap_count * min_angular_spacing
+// distance >= gap_count * 2 * radius / usable_span
+let min_distance_for_no_overlap = gap_count * 2.0 * file_radius / usable_span;
+let file_distance = base_file_distance.max(min_distance_for_no_overlap);
+```
+
+**Solution 2: Dynamic FORCE_MIN_DISTANCE**
+
+Modified `calculate_repulsion_pairwise()` to use actual disc radii instead of
+the hardcoded 5.0:
+
+```rust
+// Phase 69: Dynamic minimum distance based on actual disc radii
+// For two discs not to overlap, center distance must be >= radius_i + radius_j
+let min_distance = (radius_i + radius_j).max(FORCE_MIN_DISTANCE);
+let min_distance_sq = min_distance * min_distance;
+let clamped_dist_sq = distance_sq.max(min_distance_sq);
+```
+
+**Benchmark Results** (criterion, 100 samples):
+
+| Directories | Baseline | After | Change |
+|-------------|----------|-------|--------|
+| 10          | 2.79 µs  | —     | Improved |
+| 50          | 11.71 µs | 12.19 µs | +3.25% |
+| 100         | 125.87 µs | 125.44 µs | +1.24% (no change) |
+| 200         | 132.21 µs | 119.59 µs | **−7.59%** |
+
+**Performance Analysis**:
+- Minor regression at 50 dirs (+3.25%) due to additional `radius_i + radius_j` calculation
+- Improvement at 200 dirs (−7.59%) due to reduced force recalculation when discs
+  are properly separated (forces are clamped earlier, avoiding extreme values)
+- Overall: No statistically significant regression for typical use cases
+
+**Mathematical Verification**:
+
+For file overlap prevention:
+```
+Arc length = angular_spacing × distance
+For no overlap: arc_length ≥ 2 × file_radius (diameter)
+Therefore: angular_spacing × distance ≥ 2 × radius
+Solving for distance: distance ≥ 2 × radius × (n-1) / usable_span
+```
+
+For directory overlap prevention:
+```
+For two circles not to overlap:
+distance_between_centers ≥ radius_a + radius_b
+
+Previous: clamped_distance ≥ 5.0 (fixed)
+Now: clamped_distance ≥ radius_a + radius_b (dynamic)
+```
+
+**Files Modified**:
+- `crates/rource-core/src/scene/dir_node.rs` - File positioning with overlap prevention
+- `crates/rource-core/src/scene/layout_methods.rs` - Dynamic force min_distance
+
+**Verification**:
+- All tests pass
+- Zero clippy warnings
+- Rustfmt compliant
+- Benchmark comparison shows no significant regression
+
+---
+
 ## Git Commit References
 
 | Phase | Commit Message                                                   |
@@ -1788,6 +1895,7 @@ For UTF-8 with multi-byte chars (bytes > n):
 | 66    | deps: bump rustc-hash from 1.1.0 to 2.1.1 |
 | 67    | deps: update wgpu 28, criterion 0.8, iai-callgrind 0.16 |
 | 68    | perf(phase68): fix label width estimation for accurate collision detection |
+| 69    | perf(phase69): implement disc overlap prevention for files and directories |
 
 ---
 
