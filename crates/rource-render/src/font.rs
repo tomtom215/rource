@@ -250,10 +250,7 @@ mod tests {
             let diff = (width - first_width).abs();
             assert!(
                 diff < 0.1,
-                "Monospace violation: '{}' has width {:.2}, expected {:.2}",
-                ch,
-                width,
-                first_width
+                "Monospace violation: '{ch}' has width {width:.2}, expected {first_width:.2}"
             );
         }
 
@@ -348,8 +345,7 @@ mod tests {
             count += 1;
 
             println!(
-                "{:30} actual={:6.1} OLD={:6.1}({:5.1}%) NEW={:6.1}({:5.1}%)",
-                name, actual, est_old, err_old, est_new, err_new
+                "{name:30} actual={actual:6.1} OLD={est_old:6.1}({err_old:5.1}%) NEW={est_new:6.1}({err_new:5.1}%)"
             );
         }
 
@@ -365,8 +361,7 @@ mod tests {
             count += 1;
 
             println!(
-                "{:30} actual={:6.1} OLD={:6.1}({:5.1}%) NEW={:6.1}({:5.1}%)",
-                name, actual, est_old, err_old, est_new, err_new
+                "{name:30} actual={actual:6.1} OLD={est_old:6.1}({err_old:5.1}%) NEW={est_new:6.1}({err_new:5.1}%)"
             );
         }
 

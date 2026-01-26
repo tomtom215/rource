@@ -482,10 +482,10 @@ mod tests {
         assert!((MONOSPACE_WIDTH_FACTOR - 0.62).abs() < 0.001);
 
         // Verify it's larger than actual measured value (0.60) for safety margin
-        assert!(MONOSPACE_WIDTH_FACTOR > 0.60);
+        const { assert!(MONOSPACE_WIDTH_FACTOR > 0.60) };
 
         // Verify it's not too conservative (< 0.65)
-        assert!(MONOSPACE_WIDTH_FACTOR < 0.65);
+        const { assert!(MONOSPACE_WIDTH_FACTOR < 0.65) };
     }
 
     #[test]
