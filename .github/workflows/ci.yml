@@ -64,15 +64,10 @@ jobs:
         with:
           components: clippy
 
-      - uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-clippy-
+          prefix-key: "v1-rust"
+          shared-key: "clippy"
 
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings 2>&1 | tee clippy-output.txt
@@ -110,15 +105,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-test-
+          prefix-key: "v1-rust"
+          shared-key: "test-${{ matrix.os }}"
 
       - name: Run tests
         run: cargo test --all 2>&1 | tee test-output.txt
@@ -130,18 +120,11 @@ jobs:
           echo "## Test Results (${{ matrix.os }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Extract test counts from output
+          # Extract test counts from output (cross-platform compatible - no grep -P)
           if grep -q "test result:" test-output.txt; then
-            # Get all test result lines and format them
-            echo "| Suite | Passed | Failed | Ignored | Time |" >> $GITHUB_STEP_SUMMARY
-            echo "|-------|--------|--------|---------|------|" >> $GITHUB_STEP_SUMMARY
-            grep "test result:" test-output.txt | while read -r line; do
-              PASSED=$(echo "$line" | grep -oP '\d+(?= passed)' || echo "0")
-              FAILED=$(echo "$line" | grep -oP '\d+(?= failed)' || echo "0")
-              IGNORED=$(echo "$line" | grep -oP '\d+(?= ignored)' || echo "0")
-              TIME=$(echo "$line" | grep -oP 'finished in \K[\d.]+s' || echo "-")
-              echo "| Test | $PASSED | $FAILED | $IGNORED | $TIME |" >> $GITHUB_STEP_SUMMARY
-            done
+            # Get the last test result line (summary)
+            RESULT_LINE=$(grep "test result:" test-output.txt | tail -1)
+            echo "**Result:** \`$RESULT_LINE\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "Test output not available" >> $GITHUB_STEP_SUMMARY
           fi
@@ -157,15 +140,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-chaos-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-chaos-
+          prefix-key: "v1-rust"
+          shared-key: "chaos"
 
       - name: Run chaos tests
         run: cargo test -p rource-core chaos --no-fail-fast 2>&1 | tee chaos-output.txt
@@ -209,15 +187,10 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-msrv-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-msrv-${{ matrix.rust }}-
+          prefix-key: "v1-rust"
+          shared-key: "msrv-${{ matrix.rust }}"
 
       - name: Check MSRV
         run: cargo check --all --locked
@@ -240,15 +213,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-
+          prefix-key: "v1-rust"
+          shared-key: "build-native"
 
       - name: Build release
         run: cargo build --release
@@ -289,15 +257,10 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-wasm-
+          prefix-key: "v1-rust"
+          shared-key: "build-wasm"
 
       - name: Install wasm-pack
         uses: jetli/wasm-pack-action@v0.4.0
@@ -344,15 +307,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-docs-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-docs-
+          prefix-key: "v1-rust"
+          shared-key: "docs"
 
       - name: Check documentation
         run: cargo doc --no-deps --all-features 2>&1 | tee doc-output.txt
@@ -384,15 +342,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-features-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-features-
+          prefix-key: "v1-rust"
+          shared-key: "features"
 
       - name: Check default features
         run: cargo check --all

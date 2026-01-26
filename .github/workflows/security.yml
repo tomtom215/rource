@@ -192,6 +192,15 @@ jobs:
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Fail if any check failed
+        if: |
+          steps.advisories.outputs.status == 'fail' ||
+          steps.licenses.outputs.status == 'fail' ||
+          steps.bans.outputs.status == 'fail'
+        run: |
+          echo "One or more dependency policy checks failed."
+          exit 1
+
   # ============================================================================
   # Aggregate security status
   # ============================================================================

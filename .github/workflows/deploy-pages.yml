@@ -35,23 +35,10 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - name: Cache Cargo registry
-        uses: actions/cache@v4
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
-
-      - name: Cache Cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-wasm-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-wasm-
+          prefix-key: "v1-rust"
+          shared-key: "deploy-pages"
 
       - name: Install wasm-pack
         uses: jetli/wasm-pack-action@v0.4.0
@@ -202,6 +189,18 @@ jobs:
           sed -i "s|<div class=\"tech-item-value\" id=\"tech-wasm-size\">~[0-9]*KB</div>|<div class=\"tech-item-value\" id=\"tech-wasm-size\">~${WASM_SIZE_KB}KB</div>|g" index.html
 
           echo "Updated index.html with TEST_COUNT=${TEST_COUNT}, WASM_SIZE=~${WASM_SIZE_KB}KB"
+
+      - name: Generate build summary
+        run: |
+          echo "## GitHub Pages Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Commits | $COMMIT_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| File Changes | $FILE_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| Authors | $AUTHOR_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | $TEST_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| WASM Size (gzip) | ~${WASM_SIZE_KB}KB |" >> $GITHUB_STEP_SUMMARY
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
