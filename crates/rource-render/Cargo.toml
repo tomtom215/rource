@@ -90,3 +90,7 @@ harness = false
 [[bench]]
 name = "texture_batching"
 harness = false
+
+[[bench]]
+name = "primitive_consolidation"
+harness = false

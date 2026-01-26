@@ -14,7 +14,7 @@
 
 | Opportunity | Priority | Expected Gain | Complexity | Status |
 |-------------|----------|---------------|------------|--------|
-| Primitive pipeline consolidation | Medium | 15-25% fewer draw calls | Medium | Not Started |
+| Primitive pipeline consolidation | Low | 5-10% CPU-side flush improvement | High | **Analyzed - Deferred (Phase 63)** |
 | Adaptive Barnes-Hut theta | Low | 29-61% physics speedup | Low | **Completed (Phase 62)** |
 | GPU visibility pre-culling | Medium | 5-15% buffer upload reduction | High | Not Started |
 
@@ -22,68 +22,107 @@
 
 ## Opportunity 1: Primitive Pipeline Consolidation (Circle + Ring)
 
-### Priority: Medium
-### Expected Gain: 15-25% fewer draw calls
-### Complexity: Medium
+### ⏸️ ANALYZED - DEFERRED (Phase 63, 2026-01-26)
 
-### Problem Statement
+**Recommendation**: Deferred due to modest gains vs implementation complexity
 
-Currently, circles and rings (outlined circles) use separate draw calls even when they
-could be batched together. In typical visualizations:
-- Files have both a filled disc AND an outline ring
-- Users have glow layers (multiple rings) AND a center disc
-- Each primitive type triggers a separate draw call
+### Analysis Summary
 
-### Analysis Required
+Comprehensive benchmarks were created and run to evaluate consolidating circle and ring
+rendering into a unified "disc" pipeline. The analysis revealed that while the optimization
+provides measurable improvements, the return on investment is marginal.
 
-Before implementation, benchmark and measure:
-1. Current draw call count for circles vs rings
-2. Time spent in `flush_circle_instances` vs `flush_ring_instances`
-3. GPU state change overhead between circle/ring pipelines
+### Benchmark Results (CPU-side simulation, criterion, 100 samples, 95% CI)
 
-### Proposed Solution
+**Draw Call Reduction**:
+| Approach | Draw Calls | Pipeline Switches |
+|----------|------------|-------------------|
+| Separate | 2 | 1 |
+| Unified | 1 | 0 |
+| Reduction | **-50%** | **-100%** |
 
-Consolidate circle and ring rendering into a unified "disc" pipeline that uses
-instance data to control:
-- Fill mode (solid, outline, both)
-- Inner radius (0 for solid, >0 for ring)
-- Line width (for outline mode)
+**Instance Population** (adding instances to buffers):
+| Entity Count | Separate | Unified | Change |
+|--------------|----------|---------|--------|
+| 100 | 316.55 ns | 336.23 ns | +6.2% |
+| 300 | 899.75 ns | 979.13 ns | +8.8% |
+| 500 | 1.52 µs | 1.58 µs | +3.6% |
+| 1000 | 3.74 µs | 3.61 µs | **-3.5%** |
 
-```rust
-// Current: separate pipelines
-draw_disc(pos, radius, color);           // Pipeline A
-draw_circle(pos, radius, width, color);  // Pipeline B
+**Flush Overhead** (simulated pipeline switch + draw):
+| Entity Count | Separate | Unified | Improvement |
+|--------------|----------|---------|-------------|
+| 100 | 24.48 ns | 22.98 ns | -6.1% |
+| 300 | 74.34 ns | 74.51 ns | ~0% |
+| 500 | 119.48 ns | 117.38 ns | -1.8% |
+| 1000 | 246.73 ns | 221.64 ns | **-10.2%** |
 
-// Proposed: unified pipeline with mode flag
-struct DiscInstance {
-    pos: Vec2,
-    outer_radius: f32,
-    inner_radius: f32,  // 0 = solid disc, >0 = ring
-    color: Color,
-}
+**Full Frame** (populate + flush):
+| Entity Count | Separate | Unified | Improvement |
+|--------------|----------|---------|-------------|
+| 100 | 480.94 ns | 516.49 ns | +7.4% |
+| 300 | 1.37 µs | 1.53 µs | +11.7% |
+| 500 | 2.79 µs | 2.77 µs | -0.7% |
+| 1000 | 5.88 µs | 5.54 µs | **-5.8%** |
+
+**Memory Overhead** (80% circles, 20% rings):
+| Entity Count | Separate | Unified | Overhead |
+|--------------|----------|---------|----------|
+| 100 | 2,880 bytes | 3,200 bytes | +11.1% |
+| 1000 | 28,800 bytes | 32,000 bytes | +11.1% |
+| 5000 | 144,000 bytes | 160,000 bytes | +11.1% |
+
+### Key Findings
+
+1. **Draw call reduction is 50%** (2→1), but circles and rings are only 2 of ~10 draw
+   calls per frame, yielding ~10% net reduction
+
+2. **Pipeline switch elimination** saves GPU state change overhead, but cannot be
+   measured with CPU-only benchmarks
+
+3. **Instance population is slightly slower** for unified approach at small entity
+   counts due to ring→disc conversion (radius-width/2 calculations)
+
+4. **Memory overhead is constant 11.1%** because circles are padded from 28 to 32 bytes
+
+5. **Net CPU-side improvement is 5-10%** at high entity counts, with regression at
+   low entity counts
+
+### Why Deferred
+
+| Factor | Assessment |
+|--------|------------|
+| CPU gain | 5-10% at high entity counts only |
+| GPU gain | Unknown without implementation |
+| Memory cost | +11.1% constant overhead |
+| Complexity | High (5+ files, shader changes, pipeline restructuring) |
+| Risk | Medium (shader bugs, visual regressions) |
+| ROI | Marginal (modest gains vs complexity) |
+
+The optimization provides **measurable but modest** improvements. The implementation
+requires modifying shaders, pipelines, flush passes, and draw methods across 5+ files.
+Given the project's standards for high-confidence optimizations, this is deferred in
+favor of higher-impact work.
+
+### Benchmark Artifact
+
+Benchmark file created: `crates/rource-render/benches/primitive_consolidation.rs`
+
+This benchmark can be re-run in future sessions if priorities change or if actual
+GPU timing reveals that pipeline switch elimination provides larger gains than
+the CPU simulation suggests.
+
+```bash
+cargo bench --bench primitive_consolidation -p rource-render
 ```
 
-### Benchmark Requirements
+### Future Reconsideration Triggers
 
-Create `crates/rource-render/benches/primitive_consolidation.rs`:
-- Measure current separate pipeline performance
-- Measure consolidated pipeline performance
-- Test at entity counts: 100, 300, 500, 1000
-- Verify visual output is identical
-
-### Files to Modify
-
-- `crates/rource-render/src/backend/wgpu/shaders.rs` (unified shader)
-- `crates/rource-render/src/backend/wgpu/pipeline.rs` (consolidated pipeline)
-- `crates/rource-render/src/backend/wgpu/flush_passes.rs` (unified flush)
-- `crates/rource-render/src/backend/wgpu/mod.rs` (draw methods)
-
-### Success Criteria
-
-- [ ] Criterion benchmark shows 15-25% fewer draw calls
-- [ ] All 1,899+ tests pass
-- [ ] Visual output is pixel-identical
-- [ ] Documented in all three performance docs
+This optimization may be worth revisiting if:
+1. Profiling shows pipeline switches are a significant bottleneck
+2. GPU timing tools reveal large gains from switch elimination
+3. The codebase is refactored making the implementation simpler
+4. Higher-impact optimizations are exhausted
 
 ---
 
@@ -254,4 +293,4 @@ performance further.
 ---
 
 *Document created: 2026-01-26*
-*Last updated: 2026-01-26*
+*Last updated: 2026-01-26 (Phase 63 analysis)*
