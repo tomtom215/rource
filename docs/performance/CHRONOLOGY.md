@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all 65 optimization phases with dates, commits, and outcomes.
+Complete timeline of all 66 optimization phases with dates, commits, and outcomes.
 
 ---
 
@@ -85,6 +85,7 @@ Complete timeline of all 65 optimization phases with dates, commits, and outcome
 | 63    | 2026-01-26 | Analysis        | Primitive pipeline consolidation analysis  | Deferred     |
 | 64    | 2026-01-26 | Verification    | GPU visibility culling verification        | Verified     |
 | 65    | 2026-01-26 | Rendering       | Label collision detection optimization     | Implemented  |
+| 66    | 2026-01-26 | Dependencies    | rustc-hash 2.x upgrade (14-19% faster)     | Implemented  |
 
 ---
 
@@ -1485,6 +1486,64 @@ impl Rource {
 
 ---
 
+### Phase 66: rustc-hash 2.x Upgrade
+
+**Date**: 2026-01-26
+**Category**: Dependencies
+**Status**: Implemented
+**Commit**: `790b197`
+
+Upgraded rustc-hash from 1.1.0 to 2.1.1, gaining 14-19% performance improvement
+in hash-heavy operations. The new version includes a redesigned hash algorithm
+by Orson Peters (@orlp) with better performance and theoretical properties.
+
+**Problem**: Hash operations are fundamental to Rource's spatial data structures.
+The LabelPlacer uses FxHashMap for collision detection, and scene management
+uses FxHashSet for entity tracking.
+
+**Solution**: Dependency upgrade to rustc-hash 2.x with new hash algorithm.
+
+**Algorithm Changes in rustc-hash 2.x**:
+- Replaces original "fxhash" algorithm with new custom hasher
+- Measured faster in rustc benchmarks
+- Better theoretical properties (improved collision resistance)
+- Significantly better string hashing
+- Fixes large hashmap regression (rustc issue #135477)
+
+**Benchmark Results** (A/B comparison, same hardware):
+
+| Benchmark | rustc-hash 1.1 | rustc-hash 2.1 | Improvement |
+|-----------|----------------|----------------|-------------|
+| full_label_placement (30u+50f) | 42 µs | 34-38 µs | **-14% to -19%** |
+| try_place_with_fallback | 269 ns | 242-251 ns | **-7% to -10%** |
+| reset | 220 ns | 198-210 ns | **-5% to -10%** |
+| user_label_sorting | 105 ns | 85-107 ns | ~0% to -19% |
+
+**Frame Budget Impact**:
+- Before: 42 µs/frame for label placement
+- After: 35 µs/frame for label placement
+- Savings: **7 µs/frame** (29% of 23.8µs budget at 42,000 FPS)
+- At 60 FPS: **420 µs/second** saved
+
+**Affected Code Paths**:
+- `rource-wasm/src/render_phases.rs` - LabelPlacer spatial hash grid
+- `crates/rource-core/src/scene/` - Entity lookups, directory membership
+- `crates/rource-render/src/font.rs` - Glyph cache
+- `crates/rource-render/src/backend/*/textures.rs` - Texture management
+
+**Verification**:
+- All 1,900+ tests pass
+- Clippy clean with -D warnings
+- Rustfmt compliant
+- No API changes required (drop-in upgrade)
+- Visual output identical
+
+**Note**: This is a "free" performance gain from dependency maintenance—no code
+changes required, only version bump. Demonstrates value of keeping dependencies
+current.
+
+---
+
 ## Git Commit References
 
 | Phase | Commit Message                                                   |
@@ -1514,6 +1573,7 @@ impl Rource {
 | 63    | perf(phase63): analyze primitive consolidation, defer implementation |
 | 64    | perf(phase64): verify GPU visibility culling already implemented |
 | 65    | perf: optimize label collision detection for 42,000 FPS target |
+| 66    | deps: bump rustc-hash from 1.1.0 to 2.1.1 |
 
 ---
 

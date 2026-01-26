@@ -14,7 +14,8 @@ Organized by optimization category with implementation details and code location
 5. [Parser Optimizations](#parser-optimizations)
 6. [WASM Optimizations](#wasm-optimizations)
 7. [Browser-Specific Optimizations](#browser-specific-optimizations)
-8. [Compiler Optimizations](#compiler-optimizations)
+8. [Dependency Optimizations](#dependency-optimizations)
+9. [Compiler Optimizations](#compiler-optimizations)
 
 ---
 
@@ -722,6 +723,56 @@ Firefox handles well.
 
 ---
 
+## Dependency Optimizations
+
+### rustc-hash 2.x Upgrade
+
+**Phase**: 66
+**Location**: `Cargo.toml` (workspace dependency)
+**Impact**: 14-19% improvement in hash-heavy operations
+
+Upgraded rustc-hash from 1.1.0 to 2.1.1. The new version includes a redesigned
+hash algorithm by Orson Peters (@orlp) with better performance characteristics.
+
+**Before** (rustc-hash 1.1):
+```toml
+rustc-hash = "1.1"
+```
+
+**After** (rustc-hash 2.1):
+```toml
+rustc-hash = "2.1"
+```
+
+**Benchmark Results**:
+
+| Benchmark | Before | After | Improvement |
+|-----------|--------|-------|-------------|
+| full_label_placement | 42 µs | 35 µs | **-17%** |
+| try_place_with_fallback | 269 ns | 245 ns | **-9%** |
+| reset | 220 ns | 204 ns | **-7%** |
+
+**Algorithm Changes**:
+- Replaces original "fxhash" with new custom hasher
+- Better theoretical properties (collision resistance)
+- Significantly better string hashing
+- Fixes large hashmap regression (rustc #135477)
+
+**Affected Hot Paths**:
+- LabelPlacer spatial hash grid (collision detection)
+- Scene entity management (FxHashSet)
+- Glyph cache (FxHashMap)
+- Texture management (FxHashMap)
+
+**Frame Budget Impact**:
+- Savings: 7 µs/frame at typical label counts
+- At 42,000 FPS target: 29% budget recovered
+- At 60 FPS: 420 µs/second saved
+
+**Note**: "Free" performance gain—no code changes, only dependency version bump.
+
+---
+
 ## Compiler Optimizations
 
 ### Rust 1.93.0 Upgrade
@@ -803,6 +854,12 @@ wasm-opt \
 | from_hex LUT           | 45    | 54%         |
 | Blend batch 43%        | 50    | 43%         |
 | apply_commit iterator  | 42    | 35%         |
+
+### Dependency Upgrades (10-20%)
+
+| Optimization           | Phase | Improvement |
+|------------------------|-------|-------------|
+| rustc-hash 2.x         | 66    | 14-19%      |
 
 ---
 

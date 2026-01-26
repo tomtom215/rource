@@ -4,23 +4,35 @@
 
 <h1 align="center">Rource</h1>
 
-<!-- CI/CD Status Badges -->
-[![CI](https://img.shields.io/github/actions/workflow/status/tomtom215/rource/ci.yml?branch=main&logo=github&label=CI)](https://github.com/tomtom215/rource/actions/workflows/ci.yml)
-[![Security](https://img.shields.io/github/actions/workflow/status/tomtom215/rource/security.yml?branch=main&logo=github&label=Security)](https://github.com/tomtom215/rource/actions/workflows/security.yml)
-[![codecov](https://img.shields.io/codecov/c/github/tomtom215/rource?logo=codecov)](https://codecov.io/gh/tomtom215/rource)
+<p align="center">
+  <strong>Software version control visualization in Rust + WebAssembly</strong>
+</p>
 
-<!-- Package Info Badges -->
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg?logo=gnu)](https://www.gnu.org/licenses/gpl-3.0)
-[![Rust: 1.93+](https://img.shields.io/badge/MSRV-1.93+-orange.svg?logo=rust)](https://www.rust-lang.org/)
-[![GitHub Release](https://img.shields.io/github/v/release/tomtom215/rource?include_prereleases&logo=github)](https://github.com/tomtom215/rource/releases)
+<p align="center">
+  <!-- CI/CD Status -->
+  <a href="https://github.com/tomtom215/rource/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tomtom215/rource/ci.yml?branch=main&logo=github&label=CI" alt="CI"></a>
+  <a href="https://github.com/tomtom215/rource/actions/workflows/security.yml"><img src="https://img.shields.io/github/actions/workflow/status/tomtom215/rource/security.yml?branch=main&logo=github&label=Security" alt="Security"></a>
+  <a href="https://codecov.io/gh/tomtom215/rource"><img src="https://img.shields.io/codecov/c/github/tomtom215/rource?logo=codecov" alt="codecov"></a>
+</p>
 
-<!-- Live Demo Badge -->
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen.svg?logo=github-pages)](https://tomtom215.github.io/rource/)
-[![Docker](https://img.shields.io/badge/docker-available-blue.svg?logo=docker)](https://github.com/tomtom215/rource/pkgs/container/rource)
+<p align="center">
+  <!-- Package Info -->
+  <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg?logo=gnu" alt="License: GPL-3.0"></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/MSRV-1.93+-orange.svg?logo=rust" alt="Rust: 1.93+"></a>
+  <a href="https://github.com/tomtom215/rource/releases"><img src="https://img.shields.io/github/v/release/tomtom215/rource?include_prereleases&logo=github" alt="GitHub Release"></a>
+</p>
 
-**Rource** (Rust + Gource) is a software version control visualization tool - a complete rewrite of [Gource](https://github.com/acaudwell/Gource) in Rust with WebAssembly support.
+<p align="center">
+  <!-- Live Demo & Docker -->
+  <a href="https://tomtom215.github.io/rource/"><img src="https://img.shields.io/badge/demo-live-brightgreen.svg?logo=github-pages" alt="Live Demo"></a>
+  <a href="https://github.com/tomtom215/rource/pkgs/container/rource"><img src="https://img.shields.io/badge/docker-available-blue.svg?logo=docker" alt="Docker"></a>
+</p>
 
-**[Try it live in your browser](https://tomtom215.github.io/rource/)** - no installation required!
+**Rource** (Rust + Gource) is a complete rewrite of [Gource](https://github.com/acaudwell/Gource) in Rust with WebAssembly support.
+
+<p align="center">
+  <strong><a href="https://tomtom215.github.io/rource/">▶ Try it live in your browser</a></strong> — no installation required!
+</p>
 
 Rource visualizes your repository's commit history as an animated tree where directories branch outward, files appear as leaves, and contributors move around making changes.
 

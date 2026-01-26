@@ -42,16 +42,16 @@ This document outlines the complete set of improvements required to achieve **qu
 | OP-4 | Memory Stability Analysis | Operational | High | Medium | Pending |
 | OP-5 | Error Rate Tracking | Operational | High | Medium | Pending |
 | SEC-1 | Fuzzing Coverage Metrics & Dashboard | Security | Critical | Medium | Pending |
-| SEC-2 | SBOM Generation | Security | High | Low | Pending |
+| SEC-2 | SBOM Generation | Security | High | Low | Done |
 | SEC-3 | Supply Chain Security (SLSA) | Security | High | Medium | Pending |
-| SEC-4 | Security Policy (SECURITY.md) | Security | Medium | Low | Pending |
+| SEC-4 | Security Policy (SECURITY.md) | Security | Medium | Low | Done |
 | TST-1 | Mutation Testing Suite | Testing | Critical | High | Pending |
 | TST-2 | Property-Based Test Expansion | Testing | High | Medium | Pending |
 | TST-3 | Visual Regression Testing | Testing | High | High | Pending |
 | TST-4 | Cross-Browser Automated Testing | Testing | Medium | High | Pending |
 | CI-1 | Performance Regression Gates | CI/CD | Critical | Medium | Pending |
 | CI-2 | Benchmark History Dashboard | CI/CD | High | Medium | Pending |
-| CI-3 | Automated Release Notes | CI/CD | Medium | Low | Pending |
+| CI-3 | Automated Release Notes | CI/CD | Medium | Low | Done |
 | CI-4 | Canary Deployments | CI/CD | Medium | Medium | Pending |
 | DOC-1 | API Stability Policy (STABILITY.md) | Documentation | Critical | Low | Done |
 | DOC-2 | Architecture Decision Records (ADRs) | Documentation | High | Medium | Pending |
@@ -60,7 +60,7 @@ This document outlines the complete set of improvements required to achieve **qu
 | ACC-2 | WCAG 2.1 AA Compliance Audit | Accessibility | Critical | High | Pending |
 | ACC-3 | Screen Reader Compatibility | Accessibility | High | High | Pending |
 | ACC-4 | Color Contrast Compliance | Accessibility | High | Medium | Pending |
-| ACC-5 | Reduced Motion Support | Accessibility | Medium | Low | Pending |
+| ACC-5 | Reduced Motion Support | Accessibility | Medium | Low | Done |
 
 ---
 
@@ -535,33 +535,27 @@ jobs:
 **Priority**: High
 **Complexity**: Low
 **Estimated Effort**: 1 session
+**Status**: ✅ **COMPLETED** (Pre-existing in release.yml)
+
+#### Completion Notes
+
+Already implemented in `.github/workflows/release.yml` (lines 54-81):
+- Generates both SPDX and CycloneDX format SBOMs
+- Uses `cargo-sbom` for generation
+- SBOMs uploaded as release artifacts
+- Integrated into the release workflow
+
+Files:
+- `.github/workflows/release.yml` - SBOM job with dual format output
 
 #### Success Criteria
 
 | Criterion | Requirement | Verification |
 |-----------|-------------|--------------|
-| SBOM format | CycloneDX or SPDX JSON | File exists |
-| CI generation | Generated on every release | Release artifacts |
-| All dependencies | Direct + transitive | Audit SBOM contents |
-| Vulnerability scanning | SBOM fed to scanner | Trivy/Grype integration |
-
-#### Implementation
-
-```bash
-# Install cargo-sbom
-cargo install cargo-sbom
-
-# Generate CycloneDX SBOM
-cargo sbom --format cyclonedx > sbom.json
-
-# In CI release workflow:
-- name: Generate SBOM
-  run: cargo sbom --format cyclonedx > rource-${{ github.ref_name }}-sbom.json
-- name: Scan SBOM for vulnerabilities
-  uses: anchore/scan-action@v3
-  with:
-    sbom: rource-${{ github.ref_name }}-sbom.json
-```
+| SBOM format | CycloneDX or SPDX JSON | ✅ Both formats generated |
+| CI generation | Generated on every release | ✅ Release workflow job |
+| All dependencies | Direct + transitive | ✅ cargo-sbom includes all |
+| Vulnerability scanning | SBOM fed to scanner | ⚠️ Not yet integrated (future enhancement) |
 
 ---
 
@@ -596,6 +590,16 @@ cargo sbom --format cyclonedx > sbom.json
 **Priority**: Medium
 **Complexity**: Low
 **Estimated Effort**: 0.5 session
+**Status**: ✅ **COMPLETED** (2026-01-26)
+
+#### Completion Notes
+
+Created `/SECURITY.md` with:
+- Supported versions table
+- Vulnerability reporting via GitHub Security Advisories
+- Response timeline (48h acknowledgment, 7-day critical fix)
+- Security measures documentation (audits, fuzzing, minimal unsafe)
+- WASM security considerations
 
 #### Implementation
 
@@ -968,19 +972,22 @@ jobs:
 **Priority**: Medium
 **Complexity**: Low
 **Estimated Effort**: 0.5 session
+**Status**: ✅ **COMPLETED** (Pre-existing in release.yml)
 
-#### Implementation
+#### Completion Notes
 
-```yaml
-# .github/workflows/release.yml
-- name: Generate changelog
-  uses: orhun/git-cliff-action@v2
-  with:
-    config: cliff.toml
-    args: --latest --strip header
-  env:
-    OUTPUT: CHANGELOG.md
-```
+Already implemented with comprehensive git-cliff configuration:
+- `/cliff.toml` - Full conventional commits configuration with:
+  - Changelog header/body/footer templates
+  - Commit type grouping (Features, Bug Fixes, Performance, etc.)
+  - GitHub PR/username linking
+  - Breaking change protection
+- `.github/workflows/release.yml` - Changelog job using `orhun/git-cliff-action@v4`
+- Changelog uploaded as release artifact and used for release body
+
+Files:
+- `/cliff.toml` - git-cliff configuration
+- `.github/workflows/release.yml` - Changelog generation job (lines 27-52)
 
 ---
 
@@ -1363,6 +1370,26 @@ impl AccessibleTheme {
 **Priority**: Medium
 **Complexity**: Low
 **Estimated Effort**: 0.5 session
+**Status**: ✅ **COMPLETED** (2026-01-26)
+
+#### Completion Notes
+
+Implemented comprehensive reduced motion support:
+- CSS: `@media (prefers-reduced-motion: reduce)` disables all CSS animations/transitions
+- CSS: `.reduce-motion` class for manual override when user selects 'always'
+- JS: `reduced-motion.js` feature module with:
+  - System preference detection via `matchMedia`
+  - Three-state preference: 'system' (default), 'always', 'never'
+  - WASM integration: slows playback speed (10x) and disables bloom
+  - Preference persistence via localStorage
+  - Event dispatching for component reactions
+
+Files created/modified:
+- `rource-wasm/www/js/features/reduced-motion.js` (new)
+- `rource-wasm/www/js/preferences.js` (added `reducedMotion` default)
+- `rource-wasm/www/styles/features/accessibility.css` (added `.reduce-motion` class)
+- `rource-wasm/www/js/main.js` (integration)
+- `rource-wasm/www/index.html` (modulepreload)
 
 #### Success Criteria
 
@@ -1371,23 +1398,6 @@ impl AccessibleTheme {
 | Detect preference | `prefers-reduced-motion` | CSS/JS check |
 | Respect preference | Reduce/disable animations | Visual check |
 | Manual toggle | User can override | Settings UI |
-
-#### Implementation
-
-```typescript
-// Detect system preference
-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-// Apply to rource
-if (prefersReducedMotion) {
-  rource.setAnimationSpeed(0.1);  // Slow instead of stop
-  rource.setBloomEnabled(false);  // Disable visual effects
-  rource.setParticlesEnabled(false);
-}
-
-// Allow user override
-rource.setReducedMotion(enabled: boolean);
-```
 
 ---
 

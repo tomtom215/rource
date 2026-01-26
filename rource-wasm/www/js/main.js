@@ -67,6 +67,7 @@ import {
     initImmersiveMode, onImmersivePlaybackChange, updateHUDPlayButton, isInImmersiveMode,
     updateImmersiveStats
 } from './features/immersive-mode.js';
+import { initReducedMotion, setRourceInstance as setReducedMotionRource } from './features/reduced-motion.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -381,6 +382,7 @@ async function main() {
         // Retries handle GPU resource contention from rapid page refreshes
         const rource = await createRourceWithRetry(canvas);
         setRource(rource);
+        setReducedMotionRource(rource); // Connect rource to reduced motion support
 
         // Check renderer type - deterministic from WASM, never guessed
         const isGPU = rource.isGPUAccelerated();
@@ -466,6 +468,7 @@ async function main() {
 
         // Initialize feature modules (order matters for some)
         initTheme();
+        initReducedMotion(); // Accessibility: respect prefers-reduced-motion
         initPlayback();
         initCanvasInput();
         initHoverTooltip();

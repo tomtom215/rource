@@ -24,6 +24,7 @@ const defaultPrefs = {
         perf: false,       // Performance overlay (hidden by default)
     },
     theme: 'dark',         // Theme preference
+    reducedMotion: 'system', // Reduced motion: 'system', 'always', 'never'
 };
 
 /**

@@ -60,6 +60,7 @@
     <link rel="modulepreload" href="js/features/fullscreen.js">
     <link rel="modulepreload" href="js/features/immersive-mode.js">
     <link rel="modulepreload" href="js/features/theme.js">
+    <link rel="modulepreload" href="js/features/reduced-motion.js">
     <link rel="modulepreload" href="js/features/help.js">
     <link rel="modulepreload" href="js/features/keyboard.js">
     <link rel="modulepreload" href="js/features/full-map-export.js">
@@ -89,9 +90,9 @@
     .btn:disabled{background:var(--bg-tertiary);color:var(--text-secondary);cursor:not-allowed;opacity:0.7}
     .btn-secondary{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary)}
     .btn-sm{padding:0.4rem 0.75rem;font-size:0.8rem}
-    #loading{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-primary);z-index:1000;display:flex;flex-direction:column}
-    #loading.hidden{display:none}
-    .loading-skeleton{flex:1;display:flex;flex-direction:column;opacity:0.4}
+    #loading{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-primary);z-index:1000;display:flex;flex-direction:column;contain:layout style paint}
+    #loading.hidden{visibility:hidden;opacity:0;pointer-events:none}
+    .loading-skeleton{flex:1;display:flex;flex-direction:column;opacity:0.4;contain:layout style}
     .skeleton-header{height:60px;background:var(--bg-secondary);display:flex;align-items:center;padding:0 1rem;gap:1rem;border-bottom:1px solid var(--border)}
     .skeleton-bar{background:var(--bg-tertiary);border-radius:4px;position:relative;overflow:hidden}
     .skeleton-bar::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent 25%,var(--border) 50%,transparent 75%);animation:shimmer 1.5s infinite;transform:translateX(-100%)}
@@ -132,6 +133,12 @@
     footer{background:var(--bg-secondary);padding:0.5rem 1rem;text-align:center;border-top:1px solid var(--border);font-size:0.75rem;color:var(--text-secondary);flex-shrink:0;min-height:32px}
     .help-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;pointer-events:none}
     @media(max-width:768px){footer{display:none}.timeline-container{min-height:110px}}
+    /* Empty state (LCP critical - prevents render delay) */
+    .empty-state{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--text-secondary);pointer-events:none;max-width:400px;padding:2rem}
+    .empty-state.hidden{display:none}
+    .empty-state-icon{width:80px;height:80px;margin:0 auto 1rem;opacity:0.4}
+    h2.h3-style{font-size:1.1rem;font-weight:600;margin:0 0 0.5rem 0}
+    .empty-state p{font-size:0.9rem;line-height:1.6}
     </style>
 
     <!-- Full CSS (loaded asynchronously - not render blocking) -->

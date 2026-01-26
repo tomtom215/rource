@@ -238,6 +238,43 @@ a:focus-visible {
     }
 }
 
+/**
+ * Manual reduced motion override class.
+ * Applied via JavaScript when user explicitly chooses 'always' reduce motion.
+ * This complements the @media query for user preference override.
+ */
+:root.reduce-motion *,
+:root.reduce-motion *::before,
+:root.reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+:root.reduce-motion .control-btn,
+:root.reduce-motion .collapsible-header,
+:root.reduce-motion .timeline-slider,
+:root.reduce-motion .theme-toggle,
+:root.reduce-motion .sidebar-toggle,
+:root.reduce-motion .btn,
+:root.reduce-motion .input-group input {
+    transition: none !important;
+}
+
+:root.reduce-motion .sidebar-panel {
+    scroll-behavior: auto !important;
+}
+
+/* Loading skeleton animations disabled in reduced motion mode */
+:root.reduce-motion .skeleton-bar::after,
+:root.reduce-motion .loading-spinner,
+:root.reduce-motion .skeleton-node,
+:root.reduce-motion .skeleton-beam,
+:root.reduce-motion .skeleton-pulse {
+    animation: none !important;
+}
+
 /* =============================================================================
    Auto Color Scheme (System Preference)
    ============================================================================= */

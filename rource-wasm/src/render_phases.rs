@@ -2218,11 +2218,8 @@ mod tests {
         }
 
         let elapsed = start.elapsed();
-        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
-        println!(
-            "\nLabelPlacer::new(): {} iterations in {:?} ({} ns/op)",
-            ITERATIONS, elapsed, per_op
-        );
+        let per_op = elapsed.as_nanos() / u128::from(ITERATIONS);
+        println!("\nLabelPlacer::new(): {ITERATIONS} iterations in {elapsed:?} ({per_op} ns/op)");
 
         // Note: LabelPlacer::new() is a ONE-TIME startup cost, not per-frame.
         // The per-frame cost is reset() which is ~250ns.
@@ -2230,8 +2227,7 @@ mod tests {
         // (Relaxed from 50µs to account for CI runner variability)
         assert!(
             per_op < 100_000,
-            "LabelPlacer::new() too slow: {} ns/op (one-time startup cost)",
-            per_op
+            "LabelPlacer::new() too slow: {per_op} ns/op (one-time startup cost)"
         );
     }
 
@@ -2256,18 +2252,14 @@ mod tests {
         }
 
         let elapsed = start.elapsed();
-        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
-        println!(
-            "\nLabelPlacer::reset(): {} iterations in {:?} ({} ns/op)",
-            ITERATIONS, elapsed, per_op
-        );
+        let per_op = elapsed.as_nanos() / u128::from(ITERATIONS);
+        println!("\nLabelPlacer::reset(): {ITERATIONS} iterations in {elapsed:?} ({per_op} ns/op)");
 
         // Assertion: reset should be < 2µs (2,000 ns)
         // (Relaxed from 1µs to account for CI runner variability - CI measured 1041ns)
         assert!(
             per_op < 2_000,
-            "LabelPlacer::reset() too slow: {} ns/op",
-            per_op
+            "LabelPlacer::reset() too slow: {per_op} ns/op"
         );
     }
 
@@ -2293,17 +2285,13 @@ mod tests {
         }
 
         let elapsed = start.elapsed();
-        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
-        println!(
-            "\nLabelPlacer::try_place() (no collision): {} iterations in {:?} ({} ns/op)",
-            ITERATIONS, elapsed, per_op
-        );
+        let per_op = elapsed.as_nanos() / u128::from(ITERATIONS);
+        println!("\nLabelPlacer::try_place() (no collision): {ITERATIONS} iterations in {elapsed:?} ({per_op} ns/op)");
 
         // Assertion: try_place should be < 500ns
         assert!(
             per_op < 500,
-            "LabelPlacer::try_place() too slow: {} ns/op",
-            per_op
+            "LabelPlacer::try_place() too slow: {per_op} ns/op"
         );
     }
 
@@ -2340,17 +2328,13 @@ mod tests {
         }
 
         let elapsed = start.elapsed();
-        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
-        println!(
-            "\nLabelPlacer::try_place_with_fallback(): {} iterations in {:?} ({} ns/op)",
-            ITERATIONS, elapsed, per_op
-        );
+        let per_op = elapsed.as_nanos() / u128::from(ITERATIONS);
+        println!("\nLabelPlacer::try_place_with_fallback(): {ITERATIONS} iterations in {elapsed:?} ({per_op} ns/op)");
 
         // Assertion: try_place_with_fallback should be < 2µs (may need 4 collision checks)
         assert!(
             per_op < 2_000,
-            "LabelPlacer::try_place_with_fallback() too slow: {} ns/op",
-            per_op
+            "LabelPlacer::try_place_with_fallback() too slow: {per_op} ns/op"
         );
     }
 
@@ -2374,14 +2358,11 @@ mod tests {
         }
 
         let elapsed = start.elapsed();
-        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
-        println!(
-            "\nBeam sorting (100 actions, take 15): {} iterations in {:?} ({} ns/op)",
-            ITERATIONS, elapsed, per_op
-        );
+        let per_op = elapsed.as_nanos() / u128::from(ITERATIONS);
+        println!("\nBeam sorting (100 actions, take 15): {ITERATIONS} iterations in {elapsed:?} ({per_op} ns/op)");
 
         // Assertion: sorting 100 items should be < 5µs
-        assert!(per_op < 5_000, "Beam sorting too slow: {} ns/op", per_op);
+        assert!(per_op < 5_000, "Beam sorting too slow: {per_op} ns/op");
     }
 
     #[test]
@@ -2407,17 +2388,13 @@ mod tests {
         }
 
         let elapsed = start.elapsed();
-        let per_op = elapsed.as_nanos() / ITERATIONS as u128;
-        println!(
-            "\nUser label sorting (50 users): {} iterations in {:?} ({} ns/op)",
-            ITERATIONS, elapsed, per_op
-        );
+        let per_op = elapsed.as_nanos() / u128::from(ITERATIONS);
+        println!("\nUser label sorting (50 users): {ITERATIONS} iterations in {elapsed:?} ({per_op} ns/op)");
 
         // Assertion: sorting 50 items should be < 3µs
         assert!(
             per_op < 3_000,
-            "User label sorting too slow: {} ns/op",
-            per_op
+            "User label sorting too slow: {per_op} ns/op"
         );
     }
 
@@ -2461,18 +2438,14 @@ mod tests {
         }
 
         let elapsed = start.elapsed();
-        let per_frame = elapsed.as_micros() / ITERATIONS as u128;
-        println!(
-            "\nFull label placement (30 users + 50 files): {} frames in {:?} ({} µs/frame)",
-            ITERATIONS, elapsed, per_frame
-        );
+        let per_frame = elapsed.as_micros() / u128::from(ITERATIONS);
+        println!("\nFull label placement (30 users + 50 files): {ITERATIONS} frames in {elapsed:?} ({per_frame} µs/frame)");
 
         // Assertion: full frame should be < 250µs (well within 16.67ms budget)
         // (Relaxed from 100µs to account for CI runner variability)
         assert!(
             per_frame < 250,
-            "Full label placement too slow: {} µs/frame",
-            per_frame
+            "Full label placement too slow: {per_frame} µs/frame"
         );
 
         // Note: 250µs is 1.5% of a 16.67ms frame budget at 60fps
