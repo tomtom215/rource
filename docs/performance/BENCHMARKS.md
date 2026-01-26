@@ -416,4 +416,82 @@ Reusable buffers added: `completed_actions_buffer`, `files_to_remove_buffer`, `f
 
 ---
 
-*Last updated: 2026-01-25*
+## Texture Batching Benchmarks (Phase 61)
+
+**Source**: `crates/rource-render/benches/texture_batching.rs`
+**Phase**: 61
+
+These benchmarks measure the CPU-side overhead difference between per-texture HashMap
+rendering and texture array batching for avatar textures.
+
+### Instance Population
+
+Time to add instances to buffer structures during render traversal.
+
+| Avatar Count | Per-Texture | Texture Array | Improvement | Array Throughput |
+|--------------|-------------|---------------|-------------|------------------|
+| 50           | 586.38 ns   | 300.28 ns     | **-48.8%**  | 166.51 Melem/s   |
+| 100          | 1.1552 µs   | 564.60 ns     | **-51.1%**  | 177.12 Melem/s   |
+| 200          | 2.4142 µs   | 1.1456 µs     | **-52.5%**  | 174.58 Melem/s   |
+| 300          | 3.9438 µs   | 1.7219 µs     | **-56.3%**  | 174.23 Melem/s   |
+| 500          | 6.7929 µs   | 3.0585 µs     | **-55.0%**  | 163.48 Melem/s   |
+
+### Flush/Dispatch Overhead
+
+Simulated overhead of iterating buffers and dispatching draw calls.
+
+| Avatar Count | Per-Texture | Texture Array | Improvement | Array Throughput |
+|--------------|-------------|---------------|-------------|------------------|
+| 50           | 139.44 ns   | 11.76 ns      | **-91.6%**  | 4.25 Gelem/s     |
+| 100          | 286.01 ns   | 21.32 ns      | **-92.5%**  | 4.69 Gelem/s     |
+| 200          | 593.97 ns   | 40.06 ns      | **-93.3%**  | 4.99 Gelem/s     |
+| 300          | 875.50 ns   | 62.86 ns      | **-92.8%**  | 4.77 Gelem/s     |
+| 500          | 1.4737 µs   | 99.91 ns      | **-93.2%**  | 5.00 Gelem/s     |
+
+### Full Frame Cycle
+
+Complete frame cycle: clear + populate + flush.
+
+| Avatar Count | Per-Texture | Texture Array | Improvement | Array Throughput |
+|--------------|-------------|---------------|-------------|------------------|
+| 100          | 1.4724 µs   | 641.97 ns     | **-56.4%**  | 155.77 Melem/s   |
+| 300          | 4.8063 µs   | 1.9716 µs     | **-59.0%**  | 152.16 Melem/s   |
+| 500          | 8.0948 µs   | 3.2591 µs     | **-59.7%**  | 153.41 Melem/s   |
+
+### Draw Call Reduction (Verified)
+
+Mathematical verification of draw call reduction from O(n) to O(1).
+
+| Avatar Count | Per-Texture Draws | Texture Array Draws | Reduction |
+|--------------|-------------------|---------------------|-----------|
+| 50           | 50                | 1                   | **98.0%** |
+| 100          | 100               | 1                   | **99.0%** |
+| 200          | 200               | 1                   | **99.5%** |
+| 300          | 300               | 1                   | **99.7%** |
+| 500          | 500               | 1                   | **99.8%** |
+
+### Algorithmic Complexity Analysis
+
+Verification of O(n) vs O(1) draw call count scaling.
+
+| n (avatars) | Per-Texture Time | Texture Array Time | Per-Texture Scaling |
+|-------------|------------------|--------------------|--------------------|
+| 10          | 10.00 ns         | 367.39 ps          | 1.00x (baseline)   |
+| 50          | 51.82 ns         | 361.46 ps          | 5.18x              |
+| 100         | 104.57 ns        | 366.55 ps          | 10.46x             |
+| 250         | 263.02 ns        | 351.50 ps          | 26.30x             |
+| 500         | 530.72 ns        | 356.67 ps          | 53.07x             |
+
+**Mathematical Proof**:
+- Per-texture path: Time ∝ n (linear scaling confirmed)
+  - Regression: y ≈ 1.06n ns (R² ≈ 0.999)
+- Texture array path: Time ≈ 360 ps (constant, independent of n)
+  - Variance: σ = 6.8 ps (< 2% of mean)
+
+**Complexity Classification**:
+- Per-texture: **O(n)** draw calls, **O(n)** dispatch time
+- Texture array: **O(1)** draw calls, **O(1)** dispatch time
+
+---
+
+*Last updated: 2026-01-26*

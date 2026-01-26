@@ -86,3 +86,7 @@ harness = false
 [[bench]]
 name = "render_scale"
 harness = false
+
+[[bench]]
+name = "texture_batching"
+harness = false
