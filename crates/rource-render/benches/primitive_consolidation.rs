@@ -5,7 +5,7 @@
 //!
 //! These benchmarks measure the CPU-side overhead difference between:
 //! - **Separate pipelines**: Circle and Ring use separate instance buffers and draw calls
-//! - **Unified disc pipeline**: Single instance buffer with inner_radius field
+//! - **Unified disc pipeline**: Single instance buffer with `inner_radius` field
 //!
 //! ## Benchmark Categories
 //!
@@ -49,8 +49,8 @@ struct RingInstance {
 }
 
 /// Unified disc instance data for consolidated pipeline approach.
-/// Layout: center(2) + outer_radius(1) + inner_radius(1) + color(4) = 8 floats = 32 bytes.
-/// When inner_radius = 0, renders as solid disc. When inner_radius > 0, renders as ring.
+/// Layout: `center(2)` + `outer_radius(1)` + `inner_radius(1)` + `color(4)` = 8 floats = 32 bytes.
+/// When `inner_radius` = 0, renders as solid disc. When `inner_radius` > 0, renders as ring.
 #[derive(Clone, Copy)]
 #[repr(C)]
 struct DiscInstance {
@@ -104,23 +104,13 @@ impl SeparatePipelineBuffers {
 
     /// Returns number of draw calls needed (0-2).
     fn draw_call_count(&self) -> usize {
-        let mut count = 0;
-        if !self.circles.is_empty() {
-            count += 1;
-        }
-        if !self.rings.is_empty() {
-            count += 1;
-        }
-        count
+        usize::from(!self.circles.is_empty()) + usize::from(!self.rings.is_empty())
     }
 
     /// Returns number of pipeline switches needed (0-1).
     fn pipeline_switch_count(&self) -> usize {
-        if !self.circles.is_empty() && !self.rings.is_empty() {
-            1 // Need to switch from Circle pipeline to Ring pipeline
-        } else {
-            0
-        }
+        // Need to switch from Circle pipeline to Ring pipeline when both present
+        usize::from(!self.circles.is_empty() && !self.rings.is_empty())
     }
 
     /// Simulates flush operation with pipeline switches and draw calls.
@@ -203,16 +193,14 @@ impl UnifiedDiscBuffer {
 
     /// Returns number of draw calls needed (always 0 or 1).
     fn draw_call_count(&self) -> usize {
-        if self.instances.is_empty() {
-            0
-        } else {
-            1
-        }
+        usize::from(!self.instances.is_empty())
     }
 
     /// Returns number of pipeline switches needed (always 0).
+    #[allow(clippy::unused_self)]
     fn pipeline_switch_count(&self) -> usize {
-        0 // Single pipeline, no switching needed
+        // Single pipeline, no switching needed
+        0
     }
 
     /// Simulates flush operation with single draw call.
@@ -463,13 +451,13 @@ fn benchmark_draw_call_reduction(c: &mut Criterion) {
             b.iter(|| {
                 black_box(separate_draws);
                 black_box(separate_switches);
-            })
+            });
         });
         group.bench_function(BenchmarkId::new("verify_unified", entity_count), |b| {
             b.iter(|| {
                 black_box(unified_draws);
                 black_box(unified_switches);
-            })
+            });
         });
 
         // Calculate reduction
@@ -479,8 +467,7 @@ fn benchmark_draw_call_reduction(c: &mut Criterion) {
             0.0
         };
         eprintln!(
-            "Entity count {}: separate=({} draws, {} switches), unified=({} draws, {} switches) → {:.0}% draw reduction",
-            entity_count, separate_draws, separate_switches, unified_draws, unified_switches, draw_reduction
+            "Entity count {entity_count}: separate=({separate_draws} draws, {separate_switches} switches), unified=({unified_draws} draws, {unified_switches} switches) → {draw_reduction:.0}% draw reduction"
         );
     }
 
@@ -629,19 +616,20 @@ fn benchmark_memory_overhead(c: &mut Criterion) {
 
         let separate_bytes = circle_count * circle_size + ring_count * ring_size;
         let unified_bytes = entity_count * disc_size;
+        // Safe cast: entity counts are small, values won't wrap
+        #[allow(clippy::cast_possible_wrap)]
         let overhead_bytes = unified_bytes as i64 - separate_bytes as i64;
         let overhead_pct = 100.0 * overhead_bytes as f64 / separate_bytes as f64;
 
         group.bench_function(BenchmarkId::new("separate_bytes", entity_count), |b| {
-            b.iter(|| black_box(separate_bytes))
+            b.iter(|| black_box(separate_bytes));
         });
         group.bench_function(BenchmarkId::new("unified_bytes", entity_count), |b| {
-            b.iter(|| black_box(unified_bytes))
+            b.iter(|| black_box(unified_bytes));
         });
 
         eprintln!(
-            "Entity count {}: separate={} bytes, unified={} bytes ({:+} bytes, {:+.1}% overhead)",
-            entity_count, separate_bytes, unified_bytes, overhead_bytes, overhead_pct
+            "Entity count {entity_count}: separate={separate_bytes} bytes, unified={unified_bytes} bytes ({overhead_bytes:+} bytes, {overhead_pct:+.1}% overhead)"
         );
     }
 

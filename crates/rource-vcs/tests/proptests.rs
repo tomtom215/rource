@@ -79,7 +79,7 @@ proptest! {
 /// Strategy for generating valid timestamps.
 fn valid_timestamp() -> impl Strategy<Value = i64> {
     // Unix timestamps from year 2000 to 2100
-    946684800i64..4102444800i64
+    946_684_800_i64..4_102_444_800_i64
 }
 
 /// Strategy for generating valid usernames (non-empty, no pipes).
@@ -112,7 +112,7 @@ proptest! {
         action in valid_action_char(),
         filepath in valid_filepath()
     ) {
-        let line = format!("{}|{}|{}|{}", timestamp, username, action, filepath);
+        let line = format!("{timestamp}|{username}|{action}|{filepath}");
         let parser = CustomParser::new();
 
         let result = parser.parse_str(&line);
@@ -151,9 +151,7 @@ proptest! {
         prop_assume!(filepath1 != filepath2);
 
         let log = format!(
-            "{}|{}|A|{}\n{}|{}|M|{}",
-            timestamp, username, filepath1,
-            timestamp, username, filepath2
+            "{timestamp}|{username}|A|{filepath1}\n{timestamp}|{username}|M|{filepath2}"
         );
         let parser = CustomParser::new();
 
@@ -182,10 +180,7 @@ proptest! {
         username in valid_username(),
         filepath in valid_filepath()
     ) {
-        let log = format!(
-            "\n{}|{}|A|{}\n\n\n",
-            timestamp, username, filepath
-        );
+        let log = format!("\n{timestamp}|{username}|A|{filepath}\n\n\n");
         let parser = CustomParser::new();
 
         let result = parser.parse_str(&log);
@@ -205,10 +200,7 @@ proptest! {
         filepath in valid_filepath(),
         comment in "[a-zA-Z0-9 ]{1,50}"
     ) {
-        let log = format!(
-            "# {}\n{}|{}|A|{}",
-            comment, timestamp, username, filepath
-        );
+        let log = format!("# {comment}\n{timestamp}|{username}|A|{filepath}");
         let parser = CustomParser::new();
 
         let result = parser.parse_str(&log);
@@ -238,7 +230,7 @@ proptest! {
     ) {
         // Create a very long path
         let long_path = "a/".repeat(repeat) + "file.txt";
-        let line = format!("{}|{}|A|{}", timestamp, username, long_path);
+        let line = format!("{timestamp}|{username}|A|{long_path}");
 
         let parser = CustomParser::new();
         let result = parser.parse_str(&line);
@@ -268,7 +260,7 @@ proptest! {
         ];
 
         for name in unicode_names {
-            let line = format!("{}|{}|A|{}", timestamp, name, filepath);
+            let line = format!("{timestamp}|{name}|A|{filepath}");
             let parser = CustomParser::new();
             let result = parser.parse_str(&line);
 
@@ -288,7 +280,7 @@ proptest! {
         ];
 
         for path in special_paths {
-            let line = format!("{}|TestUser|A|{}", timestamp, path);
+            let line = format!("{timestamp}|TestUser|A|{path}");
             let parser = CustomParser::new();
             let result = parser.parse_str(&line);
 
@@ -309,7 +301,7 @@ proptest! {
         username in valid_username(),
         filepath in valid_filepath()
     ) {
-        let line = format!("{}|{}|A|{}", timestamp, username, filepath);
+        let line = format!("{timestamp}|{username}|A|{filepath}");
         let parser = CustomParser::new();
 
         let result1 = parser.parse_str(&line);

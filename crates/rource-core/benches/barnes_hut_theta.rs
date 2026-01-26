@@ -91,7 +91,7 @@ fn bench_barnes_hut_theta_speed(c: &mut Criterion) {
                 BenchmarkId::new(format!("entities_{entity_count}"), format!("theta_{theta}")),
                 &theta,
                 |b, &theta| {
-                    let mut tree = BarnesHutTree::with_theta(bounds.clone(), theta);
+                    let mut tree = BarnesHutTree::with_theta(bounds, theta);
 
                     // Insert all bodies
                     for pos in &bodies {
@@ -142,7 +142,7 @@ fn bench_barnes_hut_full_cycle(c: &mut Criterion) {
                 |b, &theta| {
                     b.iter(|| {
                         // Build tree from scratch (simulates per-frame rebuild)
-                        let mut tree = BarnesHutTree::with_theta(bounds.clone(), theta);
+                        let mut tree = BarnesHutTree::with_theta(bounds, theta);
 
                         // Insert all bodies
                         for pos in &bodies {
@@ -189,7 +189,7 @@ fn bench_barnes_hut_accuracy(c: &mut Criterion) {
 
         // Pre-compute exact forces (theta=0, but still using Barnes-Hut structure)
         // Note: theta=0 in Barnes-Hut still uses the tree but never approximates
-        let mut exact_tree = BarnesHutTree::with_theta(bounds.clone(), 0.0);
+        let mut exact_tree = BarnesHutTree::with_theta(bounds, 0.0);
         for pos in &bodies {
             exact_tree.insert(Body::new(*pos));
         }
@@ -207,7 +207,7 @@ fn bench_barnes_hut_accuracy(c: &mut Criterion) {
                 BenchmarkId::new(format!("entities_{entity_count}"), format!("theta_{theta}")),
                 &theta,
                 |b, &theta| {
-                    let mut tree = BarnesHutTree::with_theta(bounds.clone(), theta);
+                    let mut tree = BarnesHutTree::with_theta(bounds, theta);
                     for pos in &bodies {
                         tree.insert(Body::new(*pos));
                     }
@@ -303,7 +303,7 @@ fn bench_tree_construction(c: &mut Criterion) {
             &entity_count,
             |b, _| {
                 b.iter(|| {
-                    let mut tree = BarnesHutTree::new(bounds.clone());
+                    let mut tree = BarnesHutTree::new(bounds);
                     for pos in &bodies {
                         tree.insert(Body::new(*pos));
                     }
@@ -337,7 +337,7 @@ fn bench_tree_reuse(c: &mut Criterion) {
             &entity_count,
             |b, _| {
                 b.iter(|| {
-                    let mut tree = BarnesHutTree::new(bounds.clone());
+                    let mut tree = BarnesHutTree::new(bounds);
                     for pos in &bodies {
                         tree.insert(Body::new(*pos));
                     }
@@ -351,7 +351,7 @@ fn bench_tree_reuse(c: &mut Criterion) {
             BenchmarkId::new("clear_reuse", entity_count),
             &entity_count,
             |b, _| {
-                let mut tree = BarnesHutTree::new(bounds.clone());
+                let mut tree = BarnesHutTree::new(bounds);
                 // Prime the tree structure
                 for pos in &bodies {
                     tree.insert(Body::new(*pos));
@@ -391,7 +391,7 @@ fn bench_fixed_vs_adaptive(c: &mut Criterion) {
             BenchmarkId::new(format!("entities_{entity_count}"), "fixed_0.8"),
             &entity_count,
             |b, _| {
-                let mut tree = BarnesHutTree::with_theta(bounds.clone(), 0.8);
+                let mut tree = BarnesHutTree::with_theta(bounds, 0.8);
                 for pos in &bodies {
                     tree.insert(Body::new(*pos));
                 }
@@ -417,7 +417,7 @@ fn bench_fixed_vs_adaptive(c: &mut Criterion) {
             ),
             &entity_count,
             |b, _| {
-                let mut tree = BarnesHutTree::with_theta(bounds.clone(), adaptive_theta);
+                let mut tree = BarnesHutTree::with_theta(bounds, adaptive_theta);
                 for pos in &bodies {
                     tree.insert(Body::new(*pos));
                 }
