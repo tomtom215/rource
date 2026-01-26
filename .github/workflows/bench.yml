@@ -28,7 +28,7 @@ jobs:
     outputs:
       branch_exists: ${{ steps.check.outputs.exists }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -97,11 +97,11 @@ jobs:
     if: always() && (needs.setup-gh-pages.result == 'success' || needs.setup-gh-pages.result == 'skipped')
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -225,7 +225,7 @@ jobs:
           fi
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
           path: |
@@ -241,13 +241,13 @@ jobs:
     if: always() && (needs.setup-gh-pages.result == 'success' || needs.setup-gh-pages.result == 'skipped')
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -366,7 +366,7 @@ jobs:
           benchmark-data-dir-path: dev/sizes
 
       - name: Upload size metrics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: size-metrics
           path: size-metrics.json
