@@ -6,26 +6,82 @@ This document provides context and guidance for Claude (AI assistant) when worki
 
 ## Table of Contents
 
-1. [Core Operating Principles](#core-operating-principles)
-2. [Project Overview](#project-overview)
-3. [Quick Start](#quick-start)
-4. [Architecture](#architecture)
-5. [Development Guidelines](#development-guidelines)
-6. [Performance Optimization Standards](#performance-optimization-standards)
-7. [Common Tasks](#common-tasks)
-8. [Testing & Validation](#testing--validation)
-9. [CI/CD Pipeline](#cicd-pipeline)
-10. [Debugging](#debugging)
-11. [Dependencies Philosophy](#dependencies-philosophy)
-12. [Git Workflow](#git-workflow)
-13. [Troubleshooting](#troubleshooting)
-14. [Reference Links](#reference-links)
+1. [Expert+ Excellence Standard](#expert-excellence-standard)
+2. [Core Operating Principles](#core-operating-principles)
+3. [Quality Domains](#quality-domains)
+4. [Project Overview](#project-overview)
+5. [Quick Start](#quick-start)
+6. [Architecture](#architecture)
+7. [Development Guidelines](#development-guidelines)
+8. [Performance Optimization Standards](#performance-optimization-standards)
+9. [UI/UX Excellence Standards](#uiux-excellence-standards)
+10. [Testing & Quality Standards](#testing--quality-standards)
+11. [Security Standards](#security-standards)
+12. [Accessibility Standards](#accessibility-standards)
+13. [Documentation Standards](#documentation-standards)
+14. [Common Tasks](#common-tasks)
+15. [CI/CD Pipeline](#cicd-pipeline)
+16. [Debugging](#debugging)
+17. [Dependencies Philosophy](#dependencies-philosophy)
+18. [Git Workflow](#git-workflow)
+19. [Troubleshooting](#troubleshooting)
+20. [Reference Links](#reference-links)
+21. [Roadmap Documents](#roadmap-documents)
+
+---
+
+## Expert+ Excellence Standard
+
+### THE MANDATE
+
+**This project is a professional portfolio showpiece and publicly deployed WASM demo.** Every single contribution—every line of code, every UI element, every test, every document—MUST meet **Expert+ level excellence** with **zero compromises**.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     EXPERT+ EXCELLENCE STANDARD                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  This standard applies to EVERY session, EVERY commit, EVERY change.        │
+│                                                                             │
+│  There are NO exceptions. There are NO shortcuts. There is NO "good enough."│
+│                                                                             │
+│  If it cannot be measured, it did not happen.                               │
+│  If it was not tested, it does not work.                                    │
+│  If it was not documented, it does not exist.                               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Target Ratings
+
+Every domain must achieve and maintain **Expert+ (10/10)** rating:
+
+| Domain | Current | Target | Tracking Document |
+|--------|---------|--------|-------------------|
+| Technical Excellence | Expert | Expert+ | `docs/performance/CHRONOLOGY.md` |
+| Performance Engineering | Expert+ | Expert+ | `docs/performance/BENCHMARKS.md` |
+| UI/UX Design | 3/10 | Expert+ | `docs/ux/MOBILE_UX_ROADMAP.md` |
+| Testing Maturity | Senior+ | Expert+ | `docs/performance/FUTURE_WORK.md` |
+| Security Posture | Senior | Expert+ | `docs/performance/FUTURE_WORK.md` |
+| Accessibility | Not Rated | Expert+ | `docs/ux/MOBILE_UX_ROADMAP.md` |
+| Operational Readiness | Senior+ | Expert+ | `docs/performance/FUTURE_WORK.md` |
+| Documentation Quality | Expert | Expert+ | This document |
+
+### The Non-Negotiable Rules
+
+| Rule | Requirement | Consequence of Violation |
+|------|-------------|--------------------------|
+| **Never Assume** | Verify every claim with data | Work is invalid |
+| **Never Guess** | Base all decisions on measurements | Work is invalid |
+| **Never Skip Tests** | Run full test suite before claiming success | Work is invalid |
+| **Never Ship Broken UX** | Mobile-first, touch-first, accessible | Work is invalid |
+| **Never Commit Undocumented** | Every change documented with metrics | Work is invalid |
+| **Never Ignore Warnings** | Zero clippy warnings, zero console errors | Work is invalid |
+| **Never Approximate** | "~50%" is wrong; "52.5% (2.41µs → 1.15µs)" is correct | Work is invalid |
 
 ---
 
 ## Core Operating Principles
-
-**This project is a professional portfolio showpiece and publicly deployed WASM demo.** Every contribution must meet the highest standards of software engineering excellence.
 
 ### The Standard
 
@@ -36,79 +92,181 @@ This document provides context and guidance for Claude (AI assistant) when worki
 | **Always Test** | Run the full test suite before claiming success. |
 | **Always Measure** | Use criterion benchmarks with statistical significance. |
 | **Always Verify** | Confirm results are reproducible across runs. |
-| **Always Validate** | Cross-check implementations against mathematical proofs. |
-| **Always Document** | Every optimization needs before/after measurements in docs. |
+| **Always Validate** | Cross-check implementations against requirements. |
+| **Always Document** | Every change needs before/after measurements in docs. |
+| **Always Review** | Check mobile UX, accessibility, and user impact. |
 
 ### Precision Requirements
 
-We operate at **nanosecond to picosecond precision**:
+We operate at **nanosecond to picosecond precision** for performance and **pixel-perfect precision** for UI:
 
-| Precision Level | When Required | Example |
-|-----------------|---------------|---------|
-| **Picoseconds** | O(1) constant-time operations | Draw call count verification: 360 ps ± 6.8 ps |
-| **Nanoseconds** | Individual operations | Perpendicular vector: 4.65 ns → 1.28 ns (-72%) |
-| **Microseconds** | Function-level benchmarks | Full frame cycle: 4.81 µs → 1.97 µs (-59%) |
-| **Milliseconds** | Frame-level performance | Frame budget: 16.67 ms at 60 FPS |
-
-### What This Means in Practice
-
-1. **Before implementing any optimization**:
-   - Create criterion benchmarks measuring baseline performance
-   - Document the current state with actual numbers
-   - Analyze algorithmic complexity (Big-O notation)
-
-2. **During implementation**:
-   - Make targeted, minimal changes
-   - Preserve correctness (all 1,899+ tests must pass)
-   - Maintain code quality (clippy, rustfmt)
-
-3. **After implementation**:
-   - Run benchmarks to measure actual improvement
-   - Calculate percentage improvement and speedup factors
-   - Verify mathematical claims (e.g., O(n) → O(1)) with scaling tests
-   - Document in multiple places:
-     - `docs/performance/CHRONOLOGY.md` (phase history)
-     - `docs/performance/BENCHMARKS.md` (raw data tables)
-     - `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` (summary)
+| Domain | Precision Level | Example |
+|--------|-----------------|---------|
+| **Performance** | Picoseconds-Nanoseconds | Draw call: 360 ps ± 6.8 ps |
+| **Touch Targets** | Exact pixels | Minimum 44×44px (no exceptions) |
+| **Typography** | Exact pixels | Minimum 12px body, 4.5:1 contrast |
+| **Layout** | Percentage of viewport | Visualization: 85%+ during playback |
+| **Animation** | Milliseconds | 16.67ms frame budget at 60 FPS |
 
 ### Anti-Patterns to Avoid
 
 | Anti-Pattern | Why It's Wrong | Correct Approach |
 |--------------|----------------|------------------|
-| "This should be faster" | Speculation without data | Benchmark before and after |
-| "~50% improvement" | Approximation, not measurement | "52.5% improvement (2.41µs → 1.15µs)" |
-| "Expected Results" | Prediction, not verification | Run benchmarks, report actual numbers |
-| Implementing without benchmarks | No proof of improvement | Always benchmark first |
-| Single data point | Not statistically significant | Use criterion with 100+ samples |
-| "Fixed" without testing | Assumption of correctness | Run full test suite |
+| "This should be faster" | Speculation | Benchmark before and after |
+| "~50% improvement" | Approximation | "52.5% improvement (2.41µs → 1.15µs)" |
+| "Looks fine on my screen" | Single device | Test on mobile Safari, Chrome, Firefox |
+| "Users will figure it out" | Assumption | Icons need labels, gestures need hints |
+| "I'll document it later" | Never happens | Document as you implement |
+| "The tests pass" | Insufficient | Also check mobile UX, accessibility |
+| "It works on desktop" | Desktop bias | Mobile-first development required |
 
-### Statistical Rigor Requirements
+---
 
-All benchmark claims must include:
+## Quality Domains
 
-1. **Sample size**: Minimum 100 samples (criterion default)
-2. **Confidence interval**: 95% CI reported
-3. **Multiple input sizes**: Test scaling behavior (e.g., 50, 100, 200, 300, 500)
-4. **Throughput metrics**: Elements/second where applicable
-5. **Outlier analysis**: Report and explain outliers
-6. **Reproducibility**: Same results on repeated runs
+### Domain 1: Performance Engineering (Expert+)
 
-Example of proper benchmark reporting:
+**Standard**: Nanosecond-level optimization with mathematical proof
+
+| Criterion | Requirement |
+|-----------|-------------|
+| Benchmarks | Criterion with 100+ samples, 95% CI |
+| Documentation | Before/after in CHRONOLOGY.md, BENCHMARKS.md |
+| Complexity | Big-O analysis with scaling verification |
+| Proof | Mathematical proof for complexity claims |
+
+**Reference**: `docs/performance/CHRONOLOGY.md` (64+ phases)
+
+---
+
+### Domain 2: UI/UX Excellence (Target: Expert+)
+
+**Standard**: Mobile-first, touch-first, user-centric design
+
+| Criterion | Requirement |
+|-----------|-------------|
+| Touch targets | 44×44px minimum (Apple HIG) |
+| Typography | 12px minimum, 4.5:1 contrast ratio (WCAG AA) |
+| Layout | 85%+ viewport for primary content during use |
+| Labels | All icons must have text labels or tooltips |
+| Feedback | Every action has visible/haptic feedback |
+| Progressive disclosure | Show less, reveal more on demand |
+| Mobile testing | Test on real iOS Safari before merge |
+
+**Reference**: `docs/ux/MOBILE_UX_ROADMAP.md` (46 issues tracked)
+
+**Critical Mobile UX Rules**:
 
 ```
-Instance Population (criterion, 100 samples, 95% CI):
-
-| Avatar Count | Per-Texture | Texture Array | Improvement |
-|--------------|-------------|---------------|-------------|
-| 50           | 586.38 ns   | 300.28 ns     | -48.8%      |
-| 100          | 1.1552 µs   | 564.60 ns     | -51.1%      |
-| 300          | 3.9438 µs   | 1.7219 µs     | -56.3%      |
-
-Mathematical Proof:
-- Per-texture: T(n) = 1.06n ns (linear regression, R² ≈ 0.999)
-- Texture array: T(n) = 360 ps ± 6.8 ps (constant)
-- Complexity: O(n) → O(1) verified
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    MOBILE UX REQUIREMENTS                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. TOUCH TARGETS: Every interactive element ≥ 44×44px                  │
+│     └─ Buttons, links, sliders, toggles, pills, icons                   │
+│                                                                         │
+│  2. TYPOGRAPHY: Minimum 12px, prefer 14-16px for body text              │
+│     └─ Contrast ratio ≥ 4.5:1 for all text                              │
+│     └─ No overlapping labels (collision detection required)             │
+│                                                                         │
+│  3. LAYOUT: Primary content takes 80%+ of viewport                      │
+│     └─ Stats/chrome collapsible or auto-hide during use                 │
+│     └─ Safe areas respected (notch, Dynamic Island, home indicator)     │
+│                                                                         │
+│  4. ICONS: Must have labels OR long-press tooltips                      │
+│     └─ Mystery meat navigation is FORBIDDEN                             │
+│                                                                         │
+│  5. INFORMATION: Progressive disclosure, not information dump           │
+│     └─ Developer metrics hidden by default                              │
+│     └─ User-centric language, no jargon                                 │
+│                                                                         │
+│  6. GESTURES: Swipe-to-dismiss, pinch-to-zoom, pan supported            │
+│     └─ First-time gesture hints for discoverability                     │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+### Domain 3: Testing Maturity (Target: Expert+)
+
+**Standard**: Comprehensive testing with mutation analysis
+
+| Criterion | Requirement |
+|-----------|-------------|
+| Unit tests | All public functions tested |
+| Property tests | Mathematical invariants verified |
+| Mutation testing | 80%+ mutation score for critical crates |
+| Visual regression | Golden image comparison for rendering |
+| Cross-browser | Chrome, Firefox, Safari, Edge |
+| Load testing | 100k commits, 30 minutes, <5% memory growth |
+
+**Reference**: `docs/performance/FUTURE_WORK.md` (TST-1 through TST-4)
+
+---
+
+### Domain 4: Security Posture (Target: Expert+)
+
+**Standard**: Quantified security with supply chain transparency
+
+| Criterion | Requirement |
+|-----------|-------------|
+| Fuzzing | Quantified coverage (75%+ edge coverage) |
+| SBOM | Generated with every release |
+| Audits | Weekly `cargo audit`, zero known vulnerabilities |
+| Unsafe | Minimal, documented, justified |
+| Dependencies | Audited, minimal, justified |
+
+**Reference**: `docs/performance/FUTURE_WORK.md` (SEC-1 through SEC-4)
+
+---
+
+### Domain 5: Accessibility (Target: Expert+)
+
+**Standard**: WCAG 2.1 AA compliance
+
+| Criterion | Requirement |
+|-----------|-------------|
+| Keyboard | Full navigation without mouse |
+| Screen reader | VoiceOver/TalkBack compatible |
+| Contrast | 4.5:1 minimum for text, 3:1 for UI elements |
+| Focus | Visible focus indicators |
+| Motion | Reduced motion support |
+| Touch | 44×44px targets, no hover-only interactions |
+
+**Reference**: `docs/ux/MOBILE_UX_ROADMAP.md` (ACC-1 through ACC-5)
+
+---
+
+### Domain 6: Operational Readiness (Target: Expert+)
+
+**Standard**: Production-grade telemetry and SLOs
+
+| Criterion | Requirement |
+|-----------|-------------|
+| Telemetry | Tracing spans in hot paths |
+| Metrics | P50/P99/P99.9 latency documented |
+| Load testing | 30-minute stability test |
+| Memory | Budget documented, growth <5% |
+| Error tracking | Categorized, measured, alerted |
+
+**Reference**: `docs/performance/FUTURE_WORK.md` (OP-1 through OP-5)
+
+---
+
+### Domain 7: Documentation Quality (Target: Expert+)
+
+**Standard**: Complete, accurate, actionable documentation
+
+| Criterion | Requirement |
+|-----------|-------------|
+| API stability | STABILITY.md with semver policy |
+| Architecture | ADRs for key decisions |
+| Runbooks | Operational playbooks |
+| Performance | Before/after measurements always |
+| UI/UX | Screenshots, issue tracking |
+
+**Reference**: `docs/performance/FUTURE_WORK.md` (DOC-1 through DOC-3)
 
 ---
 
@@ -123,20 +281,23 @@ Mathematical Proof:
 | **Portable**     | Run on any CPU architecture without requiring a dedicated GPU |
 | **Lightweight**  | Minimal dependencies, small binary size (~3.8MB native, ~1MB WASM gzip) |
 | **Fast**         | Leverage Rust's performance and modern rendering techniques |
-| **User-friendly**| Better UI/UX than original Gource                         |
+| **User-friendly**| Better UI/UX than original Gource (Expert+ mobile experience) |
 | **Feature-complete** | Maintain at minimum feature parity with Gource        |
+| **Accessible**   | WCAG 2.1 AA compliant, keyboard navigable                 |
 
 ### Key Documents
 
-| Document           | Purpose                                |
-|--------------------|----------------------------------------|
-| `README.md`        | Project overview and usage instructions |
-| `CONTRIBUTING.md`  | Development guidelines and code style  |
-| `docs/performance/CHRONOLOGY.md` | Complete optimization history (61+ phases) |
-| `docs/performance/BENCHMARKS.md` | Raw benchmark data with statistical analysis |
-| `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
-| `docs/performance/ALGORITHMIC_COMPLEXITY.md` | Big-O analysis of all functions |
-| `LICENSE`          | GPL-3.0 license (same as original Gource) |
+| Document | Purpose |
+|----------|---------|
+| `README.md` | Project overview and usage |
+| `CONTRIBUTING.md` | Development guidelines |
+| `STABILITY.md` | API stability policy (TODO) |
+| `SECURITY.md` | Security policy (TODO) |
+| `docs/performance/CHRONOLOGY.md` | Optimization history (64+ phases) |
+| `docs/performance/BENCHMARKS.md` | Raw benchmark data |
+| `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
+| `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
+| `LICENSE` | GPL-3.0 license |
 
 ---
 
@@ -150,29 +311,33 @@ Before starting development, run the setup script:
 source scripts/session-setup.sh
 ```
 
-This script will:
-1. Verify Rust and Cargo are installed
-2. Install the `wasm32-unknown-unknown` target if missing
-3. Install `wasm-pack` if missing
-4. Ensure `clippy` and `rustfmt` are available
+### Session Checklist
+
+**Before ANY work begins, verify**:
+
+```bash
+# 1. Tests pass
+cargo test
+
+# 2. No warnings
+cargo clippy -- -D warnings
+
+# 3. Formatted
+cargo fmt --check
+
+# 4. Read the roadmaps to understand current priorities
+cat docs/performance/FUTURE_WORK.md
+cat docs/ux/MOBILE_UX_ROADMAP.md
+```
 
 ### Required Tools
 
-| Tool      | Version | Purpose            |
-|-----------|---------|-------------------|
-| Rust      | 1.93+   | Core language      |
-| Cargo     | Latest  | Package manager    |
-| wasm-pack | 0.12+   | WASM bundling      |
-| rustup    | Latest  | Toolchain management |
-
-### Optional Tools
-
-| Tool        | Purpose                        |
-|-------------|--------------------------------|
-| wasm-opt    | WASM binary optimization       |
-| cargo-watch | Auto-rebuild on changes        |
-| ffmpeg      | Convert PPM frames to video    |
-| Python 3    | PPM file inspection scripts    |
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Rust | 1.93+ | Core language |
+| Cargo | Latest | Package manager |
+| wasm-pack | 0.12+ | WASM bundling |
+| rustup | Latest | Toolchain management |
 
 ### Running the Project
 
@@ -182,9 +347,6 @@ cargo run --release -- .
 
 # Headless mode (batch export)
 cargo run --release -- --headless --output /tmp/frames --seconds-per-day 0.5 .
-
-# With effects disabled for faster rendering
-cargo run --release -- --headless --no-bloom --output /tmp/frames .
 ```
 
 ---
@@ -208,89 +370,78 @@ rource/
 
 ### Rendering Backends
 
-| Backend            | Platform     | Description                                    |
-|--------------------|--------------|------------------------------------------------|
-| wgpu               | Native + WASM | Cross-platform GPU via WebGPU/Vulkan/Metal/DX12 |
-| WebGL2             | WASM         | GPU-accelerated browser rendering (fallback)   |
-| Software Rasterizer | All         | Pure CPU rendering, maximum compatibility      |
-
-**Backend Priority:**
-- Native: wgpu → Software
-- WASM: wgpu (WebGPU) → WebGL2 → Software (Canvas2D)
-
-The WASM build automatically tries backends in priority order. Check active renderer via `rource.getRendererType()`.
-
-### Module Structure
-
-#### Scene Module (`rource-core/src/scene/`)
-
-| File                  | Purpose                                    |
-|-----------------------|--------------------------------------------|
-| `mod.rs`              | Scene struct, core methods                 |
-| `action.rs`           | Action entities (beams)                    |
-| `dir_node.rs`         | Directory node entities                    |
-| `file.rs`             | File node entities                         |
-| `tree.rs`             | Directory tree structure                   |
-| `user.rs`             | User entities                              |
-| `bounds_methods.rs`   | Entity bounds computation                  |
-| `layout_methods.rs`   | Force-directed layout algorithm            |
-| `spatial_methods.rs`  | Spatial index and visibility queries       |
-| `stats_methods.rs`    | Extension statistics for legend            |
-
-#### Render Backends (`rource-render/src/backend/`)
-
-| Directory   | Purpose                                      |
-|-------------|----------------------------------------------|
-| `software/` | CPU-based software rasterizer                |
-| `webgl2/`   | WebGL2 GPU renderer with bloom/shadow        |
-| `wgpu/`     | wgpu GPU renderer with compute shaders       |
-
-#### WASM API (`rource-wasm/src/wasm_api/`)
-
-| File          | Purpose                          |
-|---------------|----------------------------------|
-| `authors.rs`  | Author list and statistics       |
-| `cache.rs`    | Visualization cache (bitcode)    |
-| `camera.rs`   | Camera control                   |
-| `export.rs`   | Screenshot/video export          |
-| `hover.rs`    | Entity hover detection           |
-| `input.rs`    | Mouse/keyboard input handling    |
-| `layout.rs`   | Layout configuration             |
-| `playback.rs` | Playback control                 |
-| `settings.rs` | Settings configuration           |
-| `stats.rs`    | Statistics and metrics           |
+| Backend | Platform | Description |
+|---------|----------|-------------|
+| wgpu | Native + WASM | Cross-platform GPU via WebGPU/Vulkan/Metal/DX12 |
+| WebGL2 | WASM | GPU-accelerated browser rendering (fallback) |
+| Software | All | Pure CPU rendering, maximum compatibility |
 
 ### CLI and WASM Rendering Synchronization
 
 **The CLI and WASM have separate rendering code that must be kept in sync.**
 
-| Component  | Rendering Code Location                                    |
-|------------|------------------------------------------------------------|
-| Native CLI | `rource-cli/src/rendering.rs`                              |
-| WASM       | `rource-wasm/src/lib.rs` (render method and helpers)       |
-
 When making visual/rendering changes:
-1. Update `rource-cli/src/rendering.rs` for the native CLI
-2. **Also update** `rource-wasm/src/lib.rs` with the same changes
+1. Update `rource-cli/src/rendering.rs` for native CLI
+2. **Also update** `rource-wasm/src/lib.rs` with same changes
 3. Rebuild WASM with `./scripts/build-wasm.sh`
 4. Test both CLI and WASM to verify visual parity
-
-### Coordinate System
-
-| Space        | Description                                    |
-|--------------|------------------------------------------------|
-| World Space  | Entities live in coordinates centered at (0,0) |
-| Screen Space | Top-left is (0,0), Y increases downward        |
-| Transform    | `camera.world_to_screen(pos)` converts coordinates |
+5. **Test on mobile Safari** to verify mobile UX
 
 ---
 
 ## Development Guidelines
 
+### The Development Workflow
+
+Every change MUST follow this workflow:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    EXPERT+ DEVELOPMENT WORKFLOW                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. UNDERSTAND                                                          │
+│     └─ Read relevant roadmap docs (FUTURE_WORK.md, MOBILE_UX_ROADMAP.md)│
+│     └─ Understand the current state and target state                    │
+│     └─ Identify success criteria BEFORE starting                        │
+│                                                                         │
+│  2. MEASURE BASELINE (if applicable)                                    │
+│     └─ Performance: Create criterion benchmarks                         │
+│     └─ UI/UX: Screenshot current state on mobile                        │
+│     └─ Tests: Note current coverage/mutation score                      │
+│                                                                         │
+│  3. IMPLEMENT                                                           │
+│     └─ Make targeted, minimal changes                                   │
+│     └─ Follow all domain-specific standards                             │
+│     └─ Add tests for new functionality                                  │
+│                                                                         │
+│  4. VERIFY CORRECTNESS                                                  │
+│     └─ cargo test (all 1,899+ tests pass)                               │
+│     └─ cargo clippy -- -D warnings (zero warnings)                      │
+│     └─ cargo fmt --check (formatted)                                    │
+│     └─ Mobile Safari test (if UI change)                                │
+│                                                                         │
+│  5. MEASURE IMPROVEMENT                                                 │
+│     └─ Performance: Run same benchmarks, calculate exact improvement    │
+│     └─ UI/UX: Screenshot new state, compare                             │
+│     └─ Tests: Verify coverage maintained/improved                       │
+│                                                                         │
+│  6. DOCUMENT                                                            │
+│     └─ Performance: CHRONOLOGY.md, BENCHMARKS.md                        │
+│     └─ UI/UX: Update MOBILE_UX_ROADMAP.md status                        │
+│     └─ Update relevant roadmap documents                                │
+│                                                                         │
+│  7. COMMIT                                                              │
+│     └─ Clear message with metrics and impact                            │
+│     └─ Reference issue/task IDs                                         │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 ### Code Style
 
 - Use `cargo fmt` before committing
-- Run `cargo clippy` and address warnings
+- Run `cargo clippy -- -D warnings` and fix ALL warnings
 - Follow Rust API guidelines: https://rust-lang.github.io/api-guidelines/
 
 ### Building
@@ -304,9 +455,6 @@ cargo build --release
 
 # WASM build
 wasm-pack build --target web --release
-
-# WASM for Node.js
-wasm-pack build --target nodejs --release
 ```
 
 ### Testing
@@ -315,29 +463,16 @@ wasm-pack build --target nodejs --release
 # Run all tests
 cargo test
 
-# Run specific test
-cargo test test_name
-
-# Run tests with output
-cargo test -- --nocapture
-
-# Run tests for specific crate
+# Run specific crate tests
 cargo test -p rource-core
+
+# Run with output
+cargo test -- --nocapture
 ```
-
-### General Performance Guidelines
-
-- Use spatial hashing/quadtree for entity queries
-- Batch rendering calls (instanced rendering)
-- Implement LOD (Level of Detail) for zoomed-out views
-- Stream commits for large repositories
-- Use arena allocation for entities
 
 ---
 
 ## Performance Optimization Standards
-
-**This project serves as the center showpiece of a professional portfolio and a publicly deployed WASM demo.** As such, we aim for **mathematical perfection** in all performance optimizations—measured, repeatable, verifiable, auditable, and documented improvements.
 
 ### The Optimization Workflow
 
@@ -385,8 +520,6 @@ Every optimization MUST follow this exact process:
 
 ### Quality Bar
 
-Every optimization must meet these standards:
-
 | Criterion | Requirement |
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
@@ -396,209 +529,108 @@ Every optimization must meet these standards:
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
 | **Mathematical** | Include complexity analysis and/or mathematical proof |
 
-### Optimization Philosophy
+### Statistical Rigor Requirements
 
-We pursue optimizations at the **nanosecond level** and **CPU cycle level**:
+All benchmark claims must include:
 
-| Level | Examples |
-|-------|----------|
-| **Algorithmic** | O(n²) → O(n log n) via Barnes-Hut, spatial indexing |
-| **Data Structure** | O(n) → O(1) via HashMap, texture arrays |
-| **Arithmetic** | Division → multiplication by reciprocal, sqrt elimination |
-| **Memory** | Zero-allocation hot paths, arena allocation, buffer reuse |
-| **Compile-time** | Lookup tables, const evaluation, precomputed constants |
-| **Instruction** | Fixed-point arithmetic, bit shifts instead of division |
-| **GPU** | Draw call batching, bind group reduction, instancing |
+1. **Sample size**: Minimum 100 samples (criterion default)
+2. **Confidence interval**: 95% CI reported
+3. **Multiple input sizes**: Test scaling behavior (e.g., 50, 100, 200, 300, 500)
+4. **Throughput metrics**: Elements/second where applicable
+5. **Outlier analysis**: Report and explain outliers
+6. **Reproducibility**: Same results on repeated runs
 
-### Optimization Patterns
+Example of proper benchmark reporting:
 
-**Replace expensive operations with cheaper equivalents:**
-```rust
-// Before: expensive
-let normalized = delta.normalized();  // sqrt + division
+```
+Instance Population (criterion, 100 samples, 95% CI):
 
-// After: reuse known length
-let normalized = delta / known_length;  // division only
+| Avatar Count | Per-Texture | Texture Array | Improvement |
+|--------------|-------------|---------------|-------------|
+| 50           | 586.38 ns   | 300.28 ns     | -48.8%      |
+| 100          | 1.1552 µs   | 564.60 ns     | -51.1%      |
+| 300          | 3.9438 µs   | 1.7219 µs     | -56.3%      |
+
+Mathematical Proof:
+- Per-texture: T(n) = 1.06n ns (linear regression, R² ≈ 0.999)
+- Texture array: T(n) = 360 ps ± 6.8 ps (constant)
+- Complexity: O(n) → O(1) verified
 ```
 
-**Eliminate redundant calculations:**
-```rust
-// Before: sqrt computed twice
-let length = dir.length();
-let perp = Vec2::new(-dir.y, dir.x).normalized();  // same magnitude!
+### Current Optimization History
 
-// After: perpendicular has same length, skip normalization
-let perp = Vec2::new(-dir.y, dir.x);
-```
-
-**Use compile-time lookup tables:**
-```rust
-// Before: runtime division
-let f = byte as f32 / 255.0;
-
-// After: LUT access
-static U8_TO_F32_LUT: [f32; 256] = { /* compile-time computed */ };
-let f = U8_TO_F32_LUT[byte as usize];
-```
-
-**Replace allocations with iterators:**
-```rust
-// Before: allocates Vec
-let parts: Vec<&str> = line.split('|').collect();
-
-// After: zero allocation
-let mut parts = line.split('|');
-let first = parts.next()?;
-```
-
-**Batch GPU operations:**
-```rust
-// Before: n draw calls
-for texture in textures {
-    set_bind_group(texture);  // GPU state change
-    draw(instances);           // Draw call
-}
-
-// After: 1 draw call
-set_bind_group(texture_array);  // Single state change
-draw(all_instances);             // Single instanced draw
-```
-
-### Benchmark Requirements
-
-All benchmarks must:
-
-- Use `criterion` for statistical rigor
-- Test multiple input sizes/scenarios (e.g., 50, 100, 200, 300, 500)
-- Report throughput (elements/second) where applicable
-- Include both micro-benchmarks (isolated operation) and macro-benchmarks (realistic workload)
-- Be reproducible across runs
-- Verify scaling behavior matches theoretical complexity
-
-Example benchmark structure:
-```rust
-fn benchmark_operation(c: &mut Criterion) {
-    let mut group = c.benchmark_group("operation_name");
-
-    for count in [50, 100, 200, 300, 500] {
-        group.throughput(Throughput::Elements(count as u64));
-
-        group.bench_with_input(
-            BenchmarkId::new("baseline", count),
-            &count,
-            |b, &count| {
-                b.iter(|| baseline_implementation(black_box(count)))
-            },
-        );
-
-        group.bench_with_input(
-            BenchmarkId::new("optimized", count),
-            &count,
-            |b, &count| {
-                b.iter(|| optimized_implementation(black_box(count)))
-            },
-        );
-    }
-
-    group.finish();
-}
-```
-
-### Documentation Format
-
-Each optimization phase in `docs/performance/CHRONOLOGY.md` must include:
-
-1. **Phase Header** - Phase number, date, category, status, impact summary
-2. **Problem Statement** - What was inefficient and why
-3. **Analysis** - Code showing before/after structure
-4. **Solution** - Implementation details
-5. **Benchmark Results** - Tables with actual measurements (NOT "expected")
-6. **Mathematical Proof** - Complexity analysis, scaling verification
-7. **Files Modified** - What changed and where
-8. **Correctness Verification** - Test results, clippy, rustfmt status
-
-### Current Optimization Phases
-
-See [docs/performance/](./docs/performance/) for the complete optimization history (61+ phases), including:
-
-- Fixed-point alpha blending (-21% batch, -81% same-color)
-- Color conversion LUTs (-54% from_hex, -62% to_argb8)
-- VCS parser zero-allocation (iterator-based parsing)
-- Force normalization (eliminated redundant sqrt)
-- Perpendicular vector optimization (-72% operation, +14% throughput)
-- Barnes-Hut O(n log n) force layout
-- LUT-based random direction (13.9x faster)
-- Avatar texture array batching (O(n) → O(1) draw calls, 99.7% reduction)
-- And many more...
+See `docs/performance/CHRONOLOGY.md` for complete history (64+ phases).
 
 ---
 
-## Common Tasks
+## UI/UX Excellence Standards
 
-### Adding a New VCS Parser
+### The Mobile-First Mandate
 
-1. Create `crates/rource-vcs/src/parser/newvcs.rs`
-2. Implement the `Parser` trait (see `parser/mod.rs`)
-3. Register in `crates/rource-vcs/src/detect.rs`
-4. Add tests in the new parser file
+**Every UI change MUST be tested on mobile Safari before merge.**
 
-### Adding a New Rendering Backend
+The mobile experience is the PRIMARY experience. Desktop is the fallback.
 
-1. Create `crates/rource-render/src/backend/newbackend/`
-2. Implement the `Renderer` trait
-3. Add feature flag in `Cargo.toml`
-4. Update backend selection logic
+### The UI/UX Workflow
 
-### Adding a New Configuration Option
-
-1. Add field to appropriate module in `rource-core/src/config/settings/`:
-
-   | Module          | Settings Type                |
-   |-----------------|------------------------------|
-   | `camera.rs`     | Camera behavior              |
-   | `display.rs`    | Display/visual               |
-   | `playback.rs`   | Playback timing              |
-   | `visibility.rs` | UI element visibility        |
-   | `limits.rs`     | Performance limits           |
-   | `input.rs`      | Input handling               |
-   | `export.rs`     | Video/screenshot export      |
-   | `title.rs`      | Title and captions           |
-   | `directory.rs`  | Directory display            |
-   | `layout.rs`     | Radial tree layout           |
-   | `overlay.rs`    | Logo/background overlays     |
-   | `filter.rs`     | User/file filtering          |
-
-2. Add CLI argument in `rource-cli/src/args/mod.rs`
-3. Add environment variable in `rource-core/src/config/config_env.rs`
-4. Add WASM binding in `rource-wasm/src/wasm_api/settings.rs`
-5. Update documentation
-
-### Environment Variable Configuration
-
-Settings can be configured via environment variables with the `ROURCE_` prefix:
-
-```bash
-export ROURCE_WIDTH=1920
-export ROURCE_HEIGHT=1080
-export ROURCE_BLOOM_ENABLED=false
-export ROURCE_SECONDS_PER_DAY=5.0
-export ROURCE_TITLE="My Project"
-export ROURCE_HIDE_USERS="bot.*"
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    UI/UX CHANGE WORKFLOW                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. CHECK ROADMAP                                                       │
+│     └─ Read docs/ux/MOBILE_UX_ROADMAP.md                                │
+│     └─ Identify relevant issue IDs (L1-L9, T1-T7, A1-A8, etc.)          │
+│                                                                         │
+│  2. SCREENSHOT BASELINE                                                 │
+│     └─ Take screenshot on mobile Safari BEFORE changes                  │
+│     └─ Note specific measurements (touch target sizes, font sizes)      │
+│                                                                         │
+│  3. IMPLEMENT                                                           │
+│     └─ Follow the implementation guidance in roadmap                    │
+│     └─ Respect all constraints (44px touch, 12px font, 4.5:1 contrast)  │
+│     └─ Test on mobile during development, not after                     │
+│                                                                         │
+│  4. VERIFY                                                              │
+│     └─ Screenshot on mobile Safari AFTER changes                        │
+│     └─ Verify touch targets with inspector                              │
+│     └─ Verify contrast ratios                                           │
+│     └─ Test all gestures (tap, swipe, pinch)                            │
+│     └─ Test with VoiceOver/screen reader                                │
+│                                                                         │
+│  5. DOCUMENT                                                            │
+│     └─ Update issue status in MOBILE_UX_ROADMAP.md                      │
+│     └─ Include before/after screenshots in commit                       │
+│                                                                         │
+│  6. COMMIT                                                              │
+│     └─ Reference issue ID: "fix(L1): collapse stats panel by default"   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Configuration priority** (highest to lowest):
-1. CLI arguments
-2. Environment variables
-3. Config file (`--config`)
-4. Defaults
+### Non-Negotiable UI/UX Requirements
 
-Boolean values accept: `1/true/yes/on` for true, `0/false/no/off` for false.
+| Requirement | Specification | Verification |
+|-------------|---------------|--------------|
+| Touch targets | ≥44×44px | Browser inspector measurement |
+| Font size | ≥12px body, ≥14px preferred | Browser inspector |
+| Contrast | ≥4.5:1 text, ≥3:1 UI elements | Contrast checker tool |
+| Labels | All icons have labels or tooltips | Visual inspection |
+| Safe areas | Respect notch, Dynamic Island, home indicator | iOS device test |
+| Viewport | Primary content ≥80% during use | Screenshot measurement |
+| Collision | No overlapping labels | Visual inspection at all zoom levels |
+
+### Current UI/UX Issues
+
+See `docs/ux/MOBILE_UX_ROADMAP.md` for complete tracking (46 issues).
 
 ---
 
-## Testing & Validation
+## Testing & Quality Standards
 
 ### Pre-Commit Checklist
+
+**EVERY commit must pass this checklist:**
 
 ```bash
 # 1. All tests pass
@@ -613,99 +645,194 @@ cargo fmt --check
 # 4. Release build works
 cargo build --release
 
-# 5. Headless export produces valid output
-./target/release/rource --headless --output /tmp/test-frames /path/to/repo
+# 5. WASM build works (if WASM changes)
+wasm-pack build --target web --release
+
+# 6. Mobile Safari test (if UI changes)
+# Manual test required
 ```
 
-### Validating Headless Output
+### Testing Requirements
 
-```bash
-# Generate frames
-./target/release/rource --headless --output /tmp/frames --seconds-per-day 0.5 .
-
-# Verify frames have content (not all black)
-python3 << 'EOF'
-with open('/tmp/frames/frame_00000000.ppm', 'rb') as f:
-    for _ in range(3): f.readline()  # Skip header
-    data = f.read()
-    non_zero = sum(1 for b in data if b != 0)
-    pct = 100 * non_zero / len(data)
-    print(f'{non_zero} non-zero bytes ({pct:.1f}%) - {"OK" if pct > 1 else "EMPTY!"}')
-EOF
-
-# Convert to video (requires ffmpeg)
-ffmpeg -framerate 60 -i /tmp/frames/frame_%08d.ppm -c:v libx264 -pix_fmt yuv420p output.mp4
-```
+| Test Type | Requirement | Status |
+|-----------|-------------|--------|
+| Unit tests | All public functions | ✓ 1,899 tests |
+| Property tests | Math crate invariants | ✓ Implemented |
+| Chaos tests | Edge cases, unicode, boundaries | ✓ Implemented |
+| Benchmarks | Critical paths | ✓ 13 benchmark suites |
+| Mutation testing | 80%+ score | TODO |
+| Visual regression | Rendering consistency | TODO |
+| Cross-browser | Chrome, Firefox, Safari, Edge | TODO |
+| Load testing | 100k commits, 30 min | TODO |
 
 ### Determinism Requirements
 
 For 100% deterministic output:
 
-1. **Use fixed time step**: In headless mode, use `dt = 1.0 / framerate` instead of real delta time
+1. **Use fixed time step**: In headless mode, use `dt = 1.0 / framerate`
 2. **Seed random generators**: Any randomness should use a fixed seed
-3. **Pre-warm the scene**: Apply first commit and run ~30 update cycles before first render
-4. **Force camera position**: Use `jump_to()` + `set_zoom()` instead of smooth transitions
+3. **Pre-warm the scene**: Run ~30 update cycles before first render
+4. **Force camera position**: Use `jump_to()` + `set_zoom()`
+
+---
+
+## Security Standards
+
+### Security Requirements
+
+| Requirement | Status |
+|-------------|--------|
+| `cargo audit` clean | ✓ CI enforced |
+| Minimal unsafe code | ✓ 1 block, documented |
+| SBOM generation | TODO |
+| Fuzzing coverage | TODO (target: 75%+) |
+| SECURITY.md | TODO |
+
+### Unsafe Code Policy
+
+- Unsafe code requires explicit justification
+- Must have `// SAFETY:` comment explaining invariants
+- Must be reviewed for soundness
+- Current unsafe: 1 block in `webgl2/buffers.rs` (float reinterpretation)
+
+---
+
+## Accessibility Standards
+
+### WCAG 2.1 AA Requirements
+
+| Criterion | Requirement | Status |
+|-----------|-------------|--------|
+| 1.4.3 Contrast | ≥4.5:1 for text | TODO: Fix gray text |
+| 2.1.1 Keyboard | All functionality via keyboard | TODO |
+| 2.4.7 Focus Visible | Clear focus indicators | TODO |
+| 2.5.5 Target Size | ≥44×44px | TODO: Many violations |
+
+### Accessibility Checklist
+
+For every UI change:
+
+- [ ] All interactive elements have visible focus state
+- [ ] All icons have text labels or `aria-label`
+- [ ] Color is not the only way to convey information
+- [ ] Contrast ratios meet WCAG AA (4.5:1 text, 3:1 UI)
+- [ ] Touch targets are ≥44×44px
+- [ ] Screen reader announces state changes
+- [ ] Reduced motion preference is respected
+
+---
+
+## Documentation Standards
+
+### Documentation Requirements
+
+Every change must be documented:
+
+| Change Type | Documentation Required |
+|-------------|------------------------|
+| Performance optimization | CHRONOLOGY.md, BENCHMARKS.md, SUCCESSFUL_OPTIMIZATIONS.md |
+| UI/UX improvement | MOBILE_UX_ROADMAP.md status update |
+| New feature | README.md, API docs, usage examples |
+| Bug fix | Commit message with root cause |
+| Architecture change | ADR in docs/adr/ (TODO) |
+
+### Commit Message Format
+
+```
+<type>(<scope>): <description>
+
+<body with metrics and impact>
+
+<footer with references>
+```
+
+Examples:
+
+```
+perf(phase65): implement label collision detection
+
+- Label overlap: 100% → 0% (collision-free)
+- Performance: 847µs for 1000 labels
+- Algorithm: Spatial hash with greedy placement
+
+Addresses: T1, T5 in MOBILE_UX_ROADMAP.md
+
+fix(L1): collapse stats panel by default on mobile
+
+- Visualization area: 20% → 85% of viewport
+- Touch target: Play button now 48×48px
+- Implements iOS-style swipe-to-dismiss
+
+Before: Stats panel covers 40% of visualization
+After: Stats panel collapsed, tap to expand
+
+Addresses: L1, L7, L8 in MOBILE_UX_ROADMAP.md
+```
+
+---
+
+## Common Tasks
+
+### Adding a New VCS Parser
+
+1. Create `crates/rource-vcs/src/parser/newvcs.rs`
+2. Implement the `Parser` trait
+3. Register in `crates/rource-vcs/src/detect.rs`
+4. Add tests (unit + property + fuzz)
+5. Update documentation
+
+### Adding a New UI Component
+
+1. Check `docs/ux/MOBILE_UX_ROADMAP.md` for requirements
+2. Design mobile-first (44px targets, 12px fonts, 4.5:1 contrast)
+3. Implement with accessibility (labels, focus, ARIA)
+4. Test on mobile Safari
+5. Update roadmap status
+
+### Adding a New Configuration Option
+
+1. Add field to appropriate module in `rource-core/src/config/settings/`
+2. Add CLI argument in `rource-cli/src/args/mod.rs`
+3. Add environment variable in `rource-core/src/config/config_env.rs`
+4. Add WASM binding in `rource-wasm/src/wasm_api/settings.rs`
+5. Update documentation (README, CLAUDE.md if significant)
 
 ---
 
 ## CI/CD Pipeline
 
-The project uses GitHub Actions for CI/CD.
-
 ### Workflow Overview
 
-| Workflow       | File               | Purpose                              |
-|----------------|--------------------|--------------------------------------|
-| CI             | `ci.yml`           | Core quality gates                   |
-| Coverage       | `coverage.yml`     | Code coverage with Codecov           |
-| Benchmarks     | `bench.yml`        | Performance regression detection     |
-| Integration    | `integration.yml`  | Headless rendering tests             |
-| Security       | `security.yml`     | Audits, license checks               |
-| Release        | `release.yml`      | Multi-platform builds, signing       |
-| Docker         | `docker.yml`       | Multi-arch container images          |
-| Deploy Pages   | `deploy-pages.yml` | GitHub Pages deployment              |
+| Workflow | Purpose |
+|----------|---------|
+| CI | Core quality gates (format, clippy, test, build) |
+| Coverage | Code coverage with Codecov |
+| Benchmarks | Performance regression detection |
+| Integration | Headless rendering tests |
+| Security | Audits, license checks |
+| Release | Multi-platform builds, signing |
 
 ### CI Jobs
 
-| Job           | Description                              |
-|---------------|------------------------------------------|
-| Format        | `cargo fmt --check`                      |
-| Clippy        | All lints with `-D warnings`             |
-| Test          | Multi-platform (Linux, macOS, Windows)   |
-| MSRV          | Minimum Supported Rust Version (1.93)    |
-| Build Native  | Release binary with size report          |
-| Build WASM    | WebAssembly with gzip size check         |
-| Documentation | Rustdoc with warning-as-error            |
+| Job | Description |
+|-----|-------------|
+| Format | `cargo fmt --check` |
+| Clippy | All lints with `-D warnings` |
+| Test | Multi-platform (Linux, macOS, Windows) |
+| MSRV | Minimum Supported Rust Version (1.93) |
+| Build Native | Release binary with size report |
+| Build WASM | WebAssembly with gzip size check |
+| Documentation | Rustdoc with warning-as-error |
 
 ### Local CI Verification
 
 ```bash
-# Full CI check
 cargo fmt --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all
 cargo doc --no-deps --all-features
-
-# Coverage
-cargo llvm-cov --all-features --workspace
-
-# Security
-cargo audit
-cargo deny check
-
-# Integration test
 cargo build --release
-./target/release/rource --headless --output /tmp/frames --seconds-per-day 0.1 .
 ```
-
-### Required Secrets
-
-| Secret            | Purpose               | Required    |
-|-------------------|-----------------------|-------------|
-| `GITHUB_TOKEN`    | Automatic             | Yes (auto)  |
-| `GPG_PRIVATE_KEY` | Release signing       | Optional    |
-| `GPG_PASSPHRASE`  | GPG key passphrase    | Optional    |
-| `CODECOV_TOKEN`   | Coverage uploads      | Optional    |
 
 ---
 
@@ -714,34 +841,21 @@ cargo build --release
 ### Native
 
 ```bash
-# Run with backtrace
 RUST_BACKTRACE=1 cargo run
-
-# Run with debug logging
 RUST_LOG=debug cargo run
-
-# Check specific frame output
-./target/release/rource --headless --output /tmp/debug . 2>&1 | head -20
 ```
 
 ### WASM
 
-- Use browser DevTools console
-- Enable `console_error_panic_hook` for better panic messages
+- Browser DevTools console
+- Enable `console_error_panic_hook`
 - Use `web-sys` console logging
 
-### Observability
+### Mobile Safari
 
-```rust
-// Debug output for troubleshooting:
-eprintln!("files={}, users={}, camera=({:.1},{:.1}), zoom={:.3}",
-    scene.file_count(), scene.user_count(),
-    camera.position().x, camera.position().y, camera.zoom());
-
-// Check pixel output:
-let non_black = pixels.iter().filter(|&&p| p != 0xFF000000).count();
-eprintln!("Frame {}: {} non-black pixels", frame, non_black);
-```
+1. Connect iPhone to Mac
+2. Safari → Develop → [Device Name] → [Page]
+3. Use Web Inspector for debugging
 
 ---
 
@@ -755,20 +869,20 @@ We minimize external dependencies to:
 
 ### Approved Dependencies
 
-| Crate         | Reason                         |
-|---------------|--------------------------------|
-| `fontdue`     | Best pure-Rust font rasterizer |
-| `regex-lite`  | Lighter than `regex`, no PCRE  |
-| `chrono`      | Date/time handling             |
-| `wasm-bindgen`| Required for WASM              |
-| `clap`        | CLI only, feature-gated        |
+| Crate | Reason |
+|-------|--------|
+| `fontdue` | Best pure-Rust font rasterizer |
+| `regex-lite` | Lighter than `regex`, no PCRE |
+| `chrono` | Date/time handling |
+| `wasm-bindgen` | Required for WASM |
+| `clap` | CLI only, feature-gated |
 
 ### Avoid
 
-- Heavy GUI frameworks (egui, iced) - we do custom rendering
-- Full `image` crate - use minimal decoders
-- `tokio`/`async-std` - synchronous design is simpler
-- `serde` for core (optional for config files)
+- Heavy GUI frameworks (egui, iced)
+- Full `image` crate
+- `tokio`/`async-std`
+- `serde` for core (optional for config)
 
 ---
 
@@ -776,37 +890,25 @@ We minimize external dependencies to:
 
 ### Branches
 
-| Branch       | Purpose                    |
-|--------------|----------------------------|
-| `main`       | Stable releases            |
-| `develop`    | Integration branch         |
-| `feature/*`  | New features               |
-| `fix/*`      | Bug fixes                  |
-| `claude/*`   | AI-assisted development    |
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable releases |
+| `develop` | Integration branch |
+| `feature/*` | New features |
+| `fix/*` | Bug fixes |
+| `claude/*` | AI-assisted development |
 
 ### Commit Messages
 
-Follow conventional commits:
+Follow conventional commits with metrics:
 
 ```
 feat: add git log parser
 fix: correct spline interpolation at endpoints
-docs: update CLAUDE.md with new guidelines
-refactor: extract quadtree into separate module
-test: add unit tests for Vec2 operations
-perf: optimize bloom effect with sliding window blur
-```
-
-For performance commits, include metrics:
-
-```
-perf(phase61): avatar texture array batching
-
-- Instance population: 3.94µs → 1.72µs (-56.3%)
-- Flush overhead: 875.50ns → 62.86ns (-92.8%)
-- Draw calls: 300 → 1 (-99.7%)
-
-Mathematical proof: O(n) → O(1) verified via scaling test
+docs: update CLAUDE.md with Expert+ standards
+perf(phase65): label collision detection
+ux(L1): collapsible stats panel
+a11y(A1): add icon labels
 ```
 
 ---
@@ -815,69 +917,83 @@ Mathematical proof: O(n) → O(1) verified via scaling test
 
 ### Common Issues
 
-| Symptom                      | Cause                        | Solution                                      |
-|------------------------------|------------------------------|-----------------------------------------------|
-| Black frames                 | Files haven't faded in       | Pre-warm scene with 30 update cycles          |
-| Infinite loop                | Wrong termination condition  | Check `current_commit >= commits.len().saturating_sub(1)` |
-| Camera shows empty area      | Using quadtree bounds        | Use `compute_entity_bounds()` instead         |
-| Files at wrong position      | Camera not updated           | Call `camera.update(dt)` each frame           |
-| UI clicks do nothing         | Duplicate event handlers     | Use single handler via consolidated function  |
-| GitHub fetch fails silently  | Error swallowed in catch     | Always show error via toast and update status |
-| WASM visuals don't match CLI | Rendering code not synced    | Update both CLI and WASM rendering code       |
-| Screenshot blank/corrupted   | Animation loop races         | Stop animation before capture                 |
+| Symptom | Cause | Solution |
+|---------|-------|----------|
+| Black frames | Files haven't faded in | Pre-warm scene |
+| Mobile UI cramped | Desktop-first design | Follow MOBILE_UX_ROADMAP.md |
+| Labels overlap | No collision detection | Implement T1 from roadmap |
+| Touch doesn't work | Targets too small | Ensure ≥44×44px |
+| Low contrast | Wrong colors | Use contrast checker |
 
 ### WASM Build Fails
 
-1. Ensure `wasm32-unknown-unknown` target is installed:
-   ```bash
-   rustup target add wasm32-unknown-unknown
-   ```
-2. Check `wasm-pack` version: `wasm-pack --version`
-3. Try building without `wasm-opt`: add `wasm-opt = false` to `[package.metadata.wasm-pack.profile.release]`
-
-### Performance Issues
-
-1. Check if running debug build (use `--release`)
-2. Profile with `cargo flamegraph` or browser DevTools
-3. Verify spatial indexing is working
-4. Check for excessive allocations
-
-### Rendering Artifacts
-
-1. Check coordinate system (Y-up vs Y-down)
-2. Verify alpha blending order (back-to-front)
-3. Check clip rectangle handling
+```bash
+rustup target add wasm32-unknown-unknown
+wasm-pack --version  # Check version
+```
 
 ---
 
 ## Reference Links
 
-| Resource                | URL                                              |
-|-------------------------|--------------------------------------------------|
-| Original Gource         | https://github.com/acaudwell/Gource              |
-| Gource Core Library     | https://github.com/acaudwell/Core                |
-| Rust WASM Book          | https://rustwasm.github.io/docs/book/            |
-| wasm-pack Docs          | https://rustwasm.github.io/docs/wasm-pack/       |
-| fontdue                 | https://github.com/mooman219/fontdue             |
-| uniform-cubic-splines   | https://docs.rs/uniform-cubic-splines            |
+| Resource | URL |
+|----------|-----|
+| Original Gource | https://github.com/acaudwell/Gource |
+| Rust WASM Book | https://rustwasm.github.io/docs/book/ |
+| Apple HIG | https://developer.apple.com/design/human-interface-guidelines/ |
+| WCAG 2.1 | https://www.w3.org/WAI/WCAG21/quickref/ |
+| Material Design | https://material.io/design |
 
 ---
 
-## Summary: The Rource Standard
+## Roadmap Documents
 
-When working on this project, always remember:
+### Active Roadmaps
 
-1. **This is a portfolio showpiece** - Every line of code reflects professional competence
-2. **Precision matters** - Nanoseconds and picoseconds are our units of measurement
-3. **No guessing** - Every claim is backed by data
-4. **No assumptions** - Test, measure, verify, validate
-5. **Document everything** - Future sessions should understand exactly what was done
-6. **Mathematical rigor** - Complexity analysis, regression analysis, statistical significance
-7. **Reproducibility** - Anyone can re-run benchmarks and get the same results
-8. **Industry standards** - Best practices, clean code, proper testing
+| Document | Purpose | Priority |
+|----------|---------|----------|
+| `docs/performance/FUTURE_WORK.md` | Technical excellence roadmap | High |
+| `docs/ux/MOBILE_UX_ROADMAP.md` | UI/UX excellence roadmap | Critical |
 
-When in doubt, ask: "Can I prove this with a benchmark?"
+### Roadmap Priority Order
+
+**Phase A: Critical (Current Focus)**
+1. Mobile UX fixes (L1, T1, A1, I1, V1)
+2. Performance regression gates (CI-1)
+3. Fuzzing coverage metrics (SEC-1)
+4. API stability policy (DOC-1)
+
+**Phase B: High Priority**
+5. Load testing suite (OP-3)
+6. Mutation testing (TST-1)
+7. Label collision detection (T1, T5)
+8. Touch target fixes (A2, A3)
+
+**Phase C-E: Subsequent Phases**
+See individual roadmap documents for complete priority order.
+
+---
+
+## Summary: The Expert+ Standard
+
+Every session, every commit, every line of code must meet this standard:
+
+| Aspect | Requirement |
+|--------|-------------|
+| **Performance** | Measured with criterion, documented with exact metrics |
+| **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
+| **Testing** | All tests pass, mutations killed, cross-browser verified |
+| **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
+| **Accessibility** | WCAG AA, keyboard navigable, screen reader compatible |
+| **Documentation** | Before/after metrics, roadmap status updated |
+
+**The question to ask before every commit:**
+
+> "Would this pass review by a principal engineer at a top tech company?"
+
+If the answer is anything other than "absolutely yes," the work is not complete.
 
 ---
 
 *Last updated: 2026-01-26*
+*Standard: Expert+ Excellence (Zero Compromises)*
