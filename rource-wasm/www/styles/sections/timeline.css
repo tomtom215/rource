@@ -451,14 +451,19 @@
     }
 
     /* Speed select: optimized for mobile to prevent truncation */
+    /* A5: Increased touch target for dropdown trigger */
     .speed-control select {
-        font-size: 0.75rem;
-        padding: 0.3rem 0.5rem;
-        min-width: 85px;
-        max-width: 110px;
+        font-size: 0.8125rem; /* 13px for better readability */
+        padding: 0.5rem 0.75rem;
+        padding-right: 24px;
+        min-height: 44px; /* Apple HIG minimum touch target */
+        min-width: 90px;
+        max-width: 120px;
         /* Ensure dropdown arrow has space */
-        padding-right: 20px;
-        background-position: right 4px center;
+        background-position: right 6px center;
+        border-radius: 8px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
     }
 
     /* Timeline controls row: allow wrapping on very narrow screens */
@@ -543,12 +548,14 @@
         font-size: 0.7rem;
     }
 
+    /* A5: Maintain touch target on smaller screens */
     .speed-control select {
-        font-size: 0.7rem;
-        padding: 0.25rem 0.4rem;
-        min-width: 75px;
-        max-width: 95px;
-        padding-right: 18px;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        padding: 0.4rem 0.5rem;
+        padding-right: 20px;
+        min-height: 44px; /* Maintain touch target */
+        min-width: 80px;
+        max-width: 100px;
     }
 
     /* Date labels - maintain readable size even on tiny screens */
@@ -644,9 +651,12 @@
         height: 24px;
     }
 
+    /* A5: Touch target maintained on smallest screens */
     .speed-control select {
         font-size: 0.75rem; /* 12px - WCAG minimum */
-        padding: 0.15rem 0.3rem;
+        padding: 0.3rem 0.4rem;
+        padding-right: 18px;
+        min-height: 40px; /* Slightly reduced but still accessible */
     }
 
     .timeline-info {

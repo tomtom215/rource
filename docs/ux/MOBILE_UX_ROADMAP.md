@@ -146,8 +146,8 @@ TOTAL:    46 issues
 | L2 | Bottom sheet takes 45% of screen | Layout | High | Pending |
 | L3 | FAB overlaps toolbar controls | Layout | High | Done |
 | L4 | Toast overlaps stats panel | Layout | High | Done |
-| L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Pending |
-| L6 | Header elements cramped/truncated | Layout | Medium | Pending |
+| L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Done |
+| L6 | Header elements cramped/truncated | Layout | Medium | Done |
 | L7 | Visualization area severely constrained | Layout | Critical | Done |
 | L8 | No adaptive layout for playing state | Layout | High | Done |
 | L9 | Z-index conflicts between UI layers | Layout | Medium | Pending |
@@ -165,8 +165,8 @@ TOTAL:    46 issues
 | A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Done |
 | A2 | Touch targets below 44px minimum | Accessibility | High | Done |
 | A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Done |
-| A4 | File type pills too small | Accessibility | Medium | Pending |
-| A5 | Dropdown trigger too small | Accessibility | Medium | Pending |
+| A4 | File type pills too small | Accessibility | Medium | Done |
+| A5 | Dropdown trigger too small | Accessibility | Medium | Done |
 | A6 | No visible focus states | Accessibility | High | Done |
 | A7 | No gesture support visible (pinch/swipe) | Accessibility | Medium | Pending |
 | A8 | No skip/dismiss gestures for panels | Accessibility | High | Pending |
