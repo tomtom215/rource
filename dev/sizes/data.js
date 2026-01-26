@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769389808137,
+  "lastUpdate": 1769390766739,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2558,6 +2558,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/de0d26d1dab813aa3ea04b2fd683d53a81d651ad"
         },
         "date": 1769389807686,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2779987,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1073782,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "23f392a984fa23e75ec1feb1e3bfe23b69507bf3",
+          "message": "Merge pull request #176 from tomtom215/claude/fix-github-actions-trigger-VWFjR\n\nDowngrade GitHub Actions to v4 for broader compatibility",
+          "timestamp": "2026-01-26T02:22:04+01:00",
+          "tree_id": "296f08dd46902c0dd5356a39546771533a4f2115",
+          "url": "https://github.com/tomtom215/rource/commit/23f392a984fa23e75ec1feb1e3bfe23b69507bf3"
+        },
+        "date": 1769390765848,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
