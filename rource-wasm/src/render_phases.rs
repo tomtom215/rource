@@ -937,7 +937,9 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
         });
     }
 
-    for &(user_id, screen_pos, radius, alpha, _priority) in label_candidates.iter().take(select_count) {
+    for &(user_id, screen_pos, radius, alpha, _priority) in
+        label_candidates.iter().take(select_count)
+    {
         if !label_placer.can_place_more() {
             break;
         }
@@ -1317,7 +1319,9 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
         });
     }
 
-    for (file_id, screen_pos, radius, alpha, _priority) in label_candidates.iter().take(select_count) {
+    for (file_id, screen_pos, radius, alpha, _priority) in
+        label_candidates.iter().take(select_count)
+    {
         if !label_placer.can_place_more() {
             break;
         }
@@ -2198,7 +2202,11 @@ mod tests {
         );
 
         // Assertion: reset should be < 1µs (1,000 ns)
-        assert!(per_op < 1_000, "LabelPlacer::reset() too slow: {} ns/op", per_op);
+        assert!(
+            per_op < 1_000,
+            "LabelPlacer::reset() too slow: {} ns/op",
+            per_op
+        );
     }
 
     #[test]
@@ -2254,7 +2262,7 @@ mod tests {
         for i in 0..ITERATIONS {
             let x = (i % 20) as f32 * 60.0;
             let _ = placer.try_place_with_fallback(
-                Vec2::new(x, 0.0),  // Will collide with existing
+                Vec2::new(x, 0.0), // Will collide with existing
                 50.0,
                 20.0,
                 Vec2::new(x, 25.0),
@@ -2291,9 +2299,7 @@ mod tests {
         const ITERATIONS: u32 = 10_000;
 
         // Simulate 100 active actions with progress values
-        let actions: Vec<(usize, f32)> = (0..100)
-            .map(|i| (i, (i as f32) / 100.0))
-            .collect();
+        let actions: Vec<(usize, f32)> = (0..100).map(|i| (i, (i as f32) / 100.0)).collect();
 
         let start = Instant::now();
 
@@ -2313,11 +2319,7 @@ mod tests {
         );
 
         // Assertion: sorting 100 items should be < 5µs
-        assert!(
-            per_op < 5_000,
-            "Beam sorting too slow: {} ns/op",
-            per_op
-        );
+        assert!(per_op < 5_000, "Beam sorting too slow: {} ns/op", per_op);
     }
 
     #[test]
