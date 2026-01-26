@@ -757,6 +757,38 @@ mod tests {
     }
 
     #[test]
+    fn test_dir_node_get_file_positions_radial_narrow_sector() {
+        // Test the narrow sector edge case (usable_span <= 0.001)
+        // This triggers the fallback path in Phase 69 overlap prevention
+        let id = DirId::from_index(0);
+        let mut node = DirNode::new_root(id);
+        node.set_position(Vec2::new(0.0, 0.0));
+        node.set_radius(10.0);
+
+        // Set a very narrow angular sector (0.001 radians)
+        // usable_span = span * 0.8 = 0.001 * 0.8 = 0.0008, which is <= 0.001
+        node.set_angular_sector(0.0, 0.001);
+
+        // Request multiple files in the narrow sector
+        let positions = node.get_file_positions_radial(5);
+        assert_eq!(positions.len(), 5);
+
+        // All positions should be valid (not NaN or infinite)
+        for pos in &positions {
+            assert!(pos.x.is_finite());
+            assert!(pos.y.is_finite());
+        }
+
+        // Files should be spread radially (at increased distance) due to narrow sector
+        let base_distance = node.radial_distance + node.radius * 1.5;
+        for pos in &positions {
+            let dist = pos.length();
+            // Distance should be at least the base distance (possibly more for overlap prevention)
+            assert!(dist >= base_distance * 0.99); // Allow 1% tolerance for floating point
+        }
+    }
+
+    #[test]
     fn test_dir_node_calculate_radius_from_count() {
         let id = DirId::from_index(0);
         let mut node = DirNode::new_root(id);
