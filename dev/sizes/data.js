@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769444489274,
+  "lastUpdate": 1769455396627,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3002,6 +3002,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1079374,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "39db3c7ec7199870efe33e89c78a9888a2a2be5d",
+          "message": "Merge pull request #197 from tomtom215/claude/dependabot-benchmarking-integration-Nb7uK\n\nchore: upgrade dependencies and GitHub Actions to latest versions",
+          "timestamp": "2026-01-26T20:19:18+01:00",
+          "tree_id": "3a283d14ab87d378eb0160f07b5faa76f97da59b",
+          "url": "https://github.com/tomtom215/rource/commit/39db3c7ec7199870efe33e89c78a9888a2a2be5d"
+        },
+        "date": 1769455395726,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912488,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2795372,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1080459,
             "unit": "bytes"
           }
         ]
