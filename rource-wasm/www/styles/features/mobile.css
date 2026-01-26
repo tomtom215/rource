@@ -961,11 +961,79 @@
 }
 
 /* Landscape styles via JS-added class (catches phones with width > 768px in landscape) */
+
+/* CRITICAL: Hide sidebar on landscape mobile - content is in bottom sheet instead */
+.landscape-mobile.has-bottom-sheet .sidebar-toggle,
+.landscape-mobile.has-bottom-sheet .sidebar-panel,
+.landscape-mobile.has-bottom-sheet .sidebar-wrapper {
+    display: none !important;
+}
+
+/* Also hide legend and authors panels on landscape mobile */
+.landscape-mobile.has-bottom-sheet .legend-panel,
+.landscape-mobile.has-bottom-sheet .authors-panel {
+    display: none !important;
+}
+
+/* CRITICAL: Enable bottom sheet display for landscape mobile
+   The base bottom-sheet.css only enables it for max-width: 768px,
+   but landscape phones can exceed that width. This ensures the
+   bottom sheet works in landscape mode. */
 .landscape-mobile .bottom-sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
     height: 75vh;
     height: 75dvh;
     max-height: calc(100vh - 20px);
     max-height: calc(100dvh - 20px);
+    background: var(--bg-primary);
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: var(--z-modal);
+    will-change: transform;
+    overflow: hidden;
+}
+
+.landscape-mobile .bottom-sheet.open {
+    transform: translateY(0);
+}
+
+.landscape-mobile .bottom-sheet.half {
+    transform: translateY(50%);
+}
+
+/* Enable backdrop for landscape mobile */
+.landscape-mobile .bottom-sheet-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--backdrop);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: var(--z-modal-backdrop);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
+}
+
+.landscape-mobile .bottom-sheet-backdrop.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Enable FAB for landscape mobile */
+.landscape-mobile .bottom-sheet-fab {
+    display: flex;
 }
 
 .landscape-mobile .bottom-sheet-header {
@@ -986,7 +1054,9 @@
 
 .landscape-mobile.has-bottom-sheet .mobile-toolbar {
     bottom: 6px;
-    left: max(6px, env(safe-area-inset-left));
+    /* Center toolbar in landscape for consistent layout */
+    left: 50%;
+    transform: translateX(-50%);
     gap: 2px;
 }
 
