@@ -24,11 +24,14 @@
     align-items: center;
     justify-content: center;
     z-index: var(--z-fullscreen);
+    /* Contain layout to prevent CLS when hiding */
+    contain: layout style paint;
     /* Use composited properties only for better performance */
-    transition: opacity 0.3s;
+    transition: opacity 0.3s, visibility 0.3s;
 }
 
 #loading.hidden {
+    visibility: hidden;
     opacity: 0;
     pointer-events: none;
 }
@@ -41,6 +44,8 @@
     width: 100%;
     max-width: 800px;
     padding: 2rem;
+    /* Contain layout to prevent affecting other elements */
+    contain: layout style;
 }
 
 .skeleton-header {

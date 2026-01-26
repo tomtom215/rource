@@ -21,11 +21,14 @@
     padding: 0.75rem;
     max-width: 180px;
     max-height: 280px;
+    min-height: 32px; /* Reserve minimum height to reduce CLS */
     overflow-y: auto;
     z-index: var(--z-canvas-overlays);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     font-size: 0.75rem;
+    /* Contain layout to prevent CLS when toggling collapsed state */
+    contain: layout style;
     /* Firefox scrollbar styling */
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
