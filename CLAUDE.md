@@ -292,7 +292,7 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 | `README.md` | Project overview and usage |
 | `CONTRIBUTING.md` | Development guidelines |
 | `docs/REVIEW_STANDARDS.md` | Code review requirements |
-| `STABILITY.md` | API stability policy (TODO) |
+| `STABILITY.md` | API stability policy |
 | `SECURITY.md` | Security policy (TODO) |
 | `docs/performance/CHRONOLOGY.md` | Optimization history (64+ phases) |
 | `docs/performance/BENCHMARKS.md` | Raw benchmark data |

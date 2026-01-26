@@ -38,9 +38,20 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 15 | A1, A2, A3, I3, L1, L7, L8, T1, T2, T3, T5, V1, X1, X3 |
-| **In Progress** | 2 | I1, I2, V2 |
-| **Pending** | 29 | All others |
+| **Done** | 17 | A1, A2, A3, I1, I2, I3, L1, L7, L8, T1, T2, T3, T5, V1, X1, X3 |
+| **In Progress** | 1 | V2 |
+| **Pending** | 28 | All others |
+
+**Session 5 Changes (Documentation & Progressive Disclosure):**
+- I1/I2: Progressive disclosure completed
+  - Stats overlay auto-collapses during playback, expands when paused
+  - Performance overlay (developer metrics) hidden by default on mobile
+  - Tap-to-toggle functionality for stats panel
+  - Foundation supports tiered information display
+- DOC-1: Created STABILITY.md - API stability policy document
+  - Categorizes all 70+ WASM APIs into Stable/Beta/Experimental tiers
+  - Defines semver policy and deprecation timeline
+  - Documents migration guides for API consumers
 
 **Session 4 Changes (Performance Optimization for 42,000 FPS):**
 - T1/T5 Performance: Label collision detection optimized for 42,000 FPS target
@@ -106,8 +117,8 @@ TOTAL:    46 issues
 | A6 | No visible focus states | Accessibility | High | Pending |
 | A7 | No gesture support visible (pinch/swipe) | Accessibility | Medium | Pending |
 | A8 | No skip/dismiss gestures for panels | Accessibility | High | Pending |
-| I1 | Information overload (15+ metrics at once) | Information | Critical | In Progress |
-| I2 | No progressive disclosure | Information | Critical | In Progress |
+| I1 | Information overload (15+ metrics at once) | Information | Critical | Done |
+| I2 | No progressive disclosure | Information | Critical | Done |
 | I3 | Developer metrics shown to users | Information | High | Done |
 | I4 | Redundant information (FPS + frame time) | Information | Medium | Pending |
 | I5 | No information hierarchy | Information | High | Pending |
