@@ -350,18 +350,17 @@ impl WgpuRenderer {
             compatible_surface: None,
             force_fallback_adapter: false,
         }))
-        .ok_or(WgpuError::AdapterNotFound)?;
+        .map_err(|_| WgpuError::AdapterNotFound)?;
 
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("Rource Device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
-                memory_hints: wgpu::MemoryHints::default(),
-            },
-            None,
-        ))
-        .map_err(|e| WgpuError::DeviceCreationFailed(e.to_string()))?;
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("Rource Device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+            memory_hints: wgpu::MemoryHints::default(),
+            experimental_features: wgpu::DeviceDescriptor::default().experimental_features,
+            trace: wgpu::DeviceDescriptor::default().trace,
+        }))
+        .map_err(|e: wgpu::RequestDeviceError| WgpuError::DeviceCreationFailed(e.to_string()))?;
 
         let device = Arc::new(device);
         let queue = Arc::new(queue);
@@ -400,18 +399,17 @@ impl WgpuRenderer {
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
         }))
-        .ok_or(WgpuError::AdapterNotFound)?;
+        .map_err(|_| WgpuError::AdapterNotFound)?;
 
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("Rource Device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
-                memory_hints: wgpu::MemoryHints::default(),
-            },
-            None,
-        ))
-        .map_err(|e| WgpuError::DeviceCreationFailed(e.to_string()))?;
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("Rource Device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+            memory_hints: wgpu::MemoryHints::default(),
+            experimental_features: wgpu::DeviceDescriptor::default().experimental_features,
+            trace: wgpu::DeviceDescriptor::default().trace,
+        }))
+        .map_err(|e: wgpu::RequestDeviceError| WgpuError::DeviceCreationFailed(e.to_string()))?;
 
         let device = Arc::new(device);
         let queue = Arc::new(queue);
@@ -482,7 +480,7 @@ impl WgpuRenderer {
                 force_fallback_adapter: false,
             })
             .await
-            .ok_or(WgpuError::AdapterNotFound)?;
+            .map_err(|_| WgpuError::AdapterNotFound)?;
 
         let (device, queue) = adapter
             .request_device(
@@ -491,11 +489,15 @@ impl WgpuRenderer {
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
                     memory_hints: wgpu::MemoryHints::default(),
+                    experimental_features: wgpu::DeviceDescriptor::default().experimental_features,
+                    trace: wgpu::DeviceDescriptor::default().trace,
                 },
                 None,
             )
             .await
-            .map_err(|e| WgpuError::DeviceCreationFailed(e.to_string()))?;
+            .map_err(|e: wgpu::RequestDeviceError| {
+                WgpuError::DeviceCreationFailed(e.to_string())
+            })?;
 
         let device = Arc::new(device);
         let queue = Arc::new(queue);
@@ -1142,10 +1144,12 @@ impl Renderer for WgpuRenderer {
                     }),
                     store: wgpu::StoreOp::Store,
                 },
+                depth_slice: None,
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
         // Render pass is dropped, executing the clear
     }
