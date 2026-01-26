@@ -449,6 +449,11 @@ proptest! {
 
 proptest! {
     /// Triangle inequality: |a + b| <= |a| + |b|
+    ///
+    /// Uses relative epsilon to account for floating-point precision limits.
+    /// For f32, machine epsilon ≈ 1.19e-7, so values with magnitude M have
+    /// precision limit of approximately M * 1.19e-7. We use 1e-5 relative
+    /// tolerance to account for accumulated errors from sqrt operations.
     #[test]
     fn vec2_triangle_inequality(
         x1 in -1e3f32..1e3f32, y1 in -1e3f32..1e3f32,
@@ -460,15 +465,21 @@ proptest! {
         let sum_length = (a + b).length();
         let length_sum = a.length() + b.length();
 
-        // Allow small epsilon for floating point
+        // Use relative epsilon that scales with magnitude, plus small absolute epsilon
+        // for near-zero cases. The 1e-5 factor accounts for accumulated rounding in
+        // multiple sqrt() calls and additions.
+        let tolerance = length_sum * 1e-5 + EPSILON;
         prop_assert!(
-            sum_length <= length_sum + EPSILON,
-            "Triangle inequality violated: {} > {}",
-            sum_length, length_sum
+            sum_length <= length_sum + tolerance,
+            "Triangle inequality violated: {} > {} (tolerance: {})",
+            sum_length, length_sum, tolerance
         );
     }
 
     /// Cauchy-Schwarz: |a.dot(b)| <= |a| * |b|
+    ///
+    /// Uses relative epsilon since length_product can reach ~1e6 for vectors
+    /// with magnitude ~1e3, where absolute epsilon 1e-6 is insufficient.
     #[test]
     fn vec2_cauchy_schwarz(
         x1 in -1e3f32..1e3f32, y1 in -1e3f32..1e3f32,
@@ -480,10 +491,12 @@ proptest! {
         let dot_abs = a.dot(b).abs();
         let length_product = a.length() * b.length();
 
+        // Use relative epsilon that scales with magnitude
+        let tolerance = length_product * 1e-5 + EPSILON;
         prop_assert!(
-            dot_abs <= length_product + EPSILON,
-            "Cauchy-Schwarz violated: {} > {}",
-            dot_abs, length_product
+            dot_abs <= length_product + tolerance,
+            "Cauchy-Schwarz violated: {} > {} (tolerance: {})",
+            dot_abs, length_product, tolerance
         );
     }
 
