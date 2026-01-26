@@ -38,11 +38,17 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 3 | A1, I3, X3 |
-| **In Progress** | 3 | I1, I2, T2 |
-| **Pending** | 40 | All others |
+| **Done** | 9 | A1, I3, X3, L1, T1, T5, V1, X1 |
+| **In Progress** | 4 | I1, I2, T2, V2 |
+| **Pending** | 33 | All others |
 
-**Session Changes:**
+**Session 2 Changes (Phase A Critical):**
+- L1: Collapsible stats panel - auto-collapses during playback, tap to expand
+- T1/T5: Label collision detection - user labels now use spatial hash
+- V1: Beam animation choreography - limited to 15 concurrent beams
+- X1: Stats panel now dismissable via tap (same fix as L1)
+
+**Session 1 Changes:**
 - A1: Added visible text labels to all mobile toolbar icons
 - I3: Hidden performance overlay (developer metrics) on mobile by default
 - X3: Fixed mystery meat navigation (same fix as A1)
@@ -63,7 +69,7 @@ TOTAL:    46 issues
 
 | ID | Issue | Category | Severity | Status |
 |----|-------|----------|----------|--------|
-| L1 | Stats panel occludes 35-40% of visualization | Layout | Critical | Pending |
+| L1 | Stats panel occludes 35-40% of visualization | Layout | Critical | Done |
 | L2 | Bottom sheet takes 45% of screen | Layout | High | Pending |
 | L3 | FAB overlaps toolbar controls | Layout | High | Pending |
 | L4 | Toast overlaps stats panel | Layout | High | Pending |
@@ -72,11 +78,11 @@ TOTAL:    46 issues
 | L7 | Visualization area severely constrained | Layout | Critical | Pending |
 | L8 | No adaptive layout for playing state | Layout | High | Pending |
 | L9 | Z-index conflicts between UI layers | Layout | Medium | Pending |
-| T1 | Labels overlap catastrophically | Typography | Critical | Pending |
+| T1 | Labels overlap catastrophically | Typography | Critical | Done |
 | T2 | Font size too small for mobile (~8-10px) | Typography | Critical | In Progress |
 | T3 | Low contrast gray text on dark background | Typography | High | Pending |
 | T4 | Directory labels illegible | Typography | High | Pending |
-| T5 | No label collision detection | Typography | Critical | Pending |
+| T5 | No label collision detection | Typography | Critical | Done |
 | T6 | No label LOD (Level of Detail) | Typography | High | Pending |
 | T7 | Date format unnecessarily verbose | Typography | Low | Pending |
 | A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Done |
@@ -95,14 +101,14 @@ TOTAL:    46 issues
 | I6 | No context when stats hidden | Information | High | Pending |
 | I7 | Jargon without explanation | Information | Medium | Pending |
 | I8 | All labels shown regardless of importance | Information | High | Pending |
-| V1 | Visual chaos with simultaneous beams | Visual | Critical | Pending |
-| V2 | No animation choreography | Visual | High | Pending |
+| V1 | Visual chaos with simultaneous beams | Visual | Critical | Done |
+| V2 | No animation choreography | Visual | High | In Progress |
 | V3 | "MAX" badge looks like error/alert | Visual | Medium | Pending |
 | V4 | WEBGPU badge looks like button | Visual | Low | Pending |
 | V5 | Active state unclear on toolbar icons | Visual | Medium | Pending |
 | V6 | No visual hierarchy in beam colors | Visual | Medium | Pending |
 | V7 | No zoom/scale indicator | Visual | Medium | Pending |
-| X1 | No way to dismiss stats panel | Interaction | High | Pending |
+| X1 | No way to dismiss stats panel | Interaction | High | Done |
 | X2 | Multiple conflicting navigation patterns | Interaction | Medium | Pending |
 | X3 | Unclear what toolbar icons do | Interaction | Critical | Done |
 | X4 | No confirmation of mode changes | Interaction | Low | Pending |

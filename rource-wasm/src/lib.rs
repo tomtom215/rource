@@ -1461,7 +1461,22 @@ impl Rource {
         render_files(renderer, &ctx, &self.scene, &self.camera);
         render_actions(renderer, &ctx, &self.scene, &self.camera);
         render_users(renderer, &ctx, &self.scene, &self.camera);
-        render_user_labels(renderer, &ctx, &self.scene, &self.camera);
+
+        // T1/T5: Reset label placer once for BOTH user and file labels
+        // This ensures user labels and file labels don't overlap each other
+        self.label_placer.reset(ctx.camera_zoom);
+
+        // Render user labels FIRST (they get priority for label placement)
+        render_user_labels(
+            renderer,
+            &ctx,
+            &self.scene,
+            &self.camera,
+            &mut self.label_placer,
+        );
+
+        // Render file labels SECOND (they avoid user labels)
+        // Note: label_placer is NOT reset here, so file labels avoid user labels
         render_file_labels(
             renderer,
             &ctx,

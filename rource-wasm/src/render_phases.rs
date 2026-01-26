@@ -751,7 +751,29 @@ pub fn render_files<R: Renderer + ?Sized>(
     }
 }
 
+/// Maximum number of concurrent action beams to render.
+///
+/// # V1: Beam Animation Choreography
+///
+/// Limiting concurrent beams prevents visual chaos when many files are
+/// modified simultaneously. The limit is chosen to:
+/// - Keep the visualization readable (not overwhelming)
+/// - Show enough activity to convey repository activity
+/// - Prioritize active user's actions
+const MAX_CONCURRENT_BEAMS: usize = 15;
+
 /// Renders action beams from users to files.
+///
+/// # V1: Beam Animation Choreography
+///
+/// To prevent visual chaos when many files are modified simultaneously,
+/// beams are:
+/// 1. Limited to `MAX_CONCURRENT_BEAMS` (15) at a time
+/// 2. Sorted by priority (newer actions first, as they're more visually important)
+/// 3. The natural stagger comes from actions starting at different simulation times
+///
+/// This creates a more pleasing visual effect where beams appear in waves
+/// rather than all at once.
 #[inline(never)]
 pub fn render_actions<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -759,11 +781,28 @@ pub fn render_actions<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
-    for action in scene.actions() {
-        if action.is_complete() {
-            continue;
-        }
+    // Collect active actions with their indices for sorting
+    // V1: We'll prioritize by progress (newer beams first)
+    let mut active_indices: Vec<(usize, f32)> = scene
+        .actions()
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| !a.is_complete())
+        .map(|(i, a)| (i, a.progress()))
+        .collect();
 
+    // Sort by progress ascending (0.0 = just started, 1.0 = about to complete)
+    // This prioritizes newer beams that are more visually interesting
+    active_indices.sort_unstable_by(|a, b| {
+        a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    // V1: Limit concurrent beams to prevent visual chaos
+    let beam_limit = MAX_CONCURRENT_BEAMS.min(active_indices.len());
+    let actions_slice = scene.actions();
+
+    for (idx, _progress) in active_indices.into_iter().take(beam_limit) {
+        let action = &actions_slice[idx];
         let user_opt = scene.get_user(action.user());
         let file_opt = scene.get_file(action.file());
 
@@ -817,20 +856,48 @@ pub fn render_users<R: Renderer + ?Sized>(
 
 /// Renders user name labels.
 ///
-/// Applies LOD (Level-of-Detail) optimization:
-/// - Labels are skipped when screen radius < `LOD_MIN_USER_LABEL_RADIUS`
+/// Renders user labels with collision detection.
+///
+/// # T1/T5: Label Collision Detection
+///
+/// User labels now use the same `LabelPlacer` as file labels to prevent
+/// overlapping text. Labels are placed using `try_place_with_fallback` which
+/// tries multiple positions (right, left, above, below) if the primary position
+/// is blocked.
+///
+/// # Priority
+///
+/// Users are sorted by radius * alpha (visibility) so that prominent users
+/// get their labels placed first. Smaller/faded users may have labels skipped
+/// if there's no room.
+///
+/// # Arguments
+///
+/// * `label_placer` - Reusable label placer for collision avoidance.
+///   Should be reset before calling this function if starting a new frame.
+///   Pass the same placer to `render_file_labels` to ensure user and file
+///   labels don't overlap.
+///
+/// # LOD Optimization
+///
+/// Labels are skipped when screen radius < `LOD_MIN_USER_LABEL_RADIUS`
 #[inline(never)]
 pub fn render_user_labels<R: Renderer + ?Sized>(
     renderer: &mut R,
     ctx: &RenderContext,
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
+    label_placer: &mut LabelPlacer,
 ) {
     if !ctx.show_labels {
         return;
     }
 
     let Some(font_id) = ctx.font_id else { return };
+
+    // Collect user label candidates with priority for sorting
+    // Higher priority users get their labels placed first
+    let mut candidates: Vec<(UserId, Vec2, f32, f32, f32)> = Vec::new();
 
     for user_id in ctx.visible_users {
         if let Some(user) = scene.get_user(*user_id) {
@@ -844,12 +911,48 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
             }
 
             let radius = compute_user_effective_radius(raw_radius);
-            let label_pos = compute_label_position(screen_pos, radius, ctx.font_size, 5.0);
+            // Priority based on visibility (larger, more visible users first)
+            let priority = radius * alpha;
 
+            candidates.push((*user_id, screen_pos, radius, alpha, priority));
+        }
+    }
+
+    // Sort by priority (highest first) - prominent users get labels first
+    candidates.sort_unstable_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
+
+    for (user_id, screen_pos, radius, alpha, _priority) in candidates {
+        if !label_placer.can_place_more() {
+            break;
+        }
+
+        let Some(user) = scene.get_user(user_id) else {
+            continue;
+        };
+        let name = user.name();
+
+        // Calculate label dimensions
+        let text_width = estimate_text_width(name, ctx.font_size);
+        let text_height = ctx.font_size;
+
+        // Primary position: right of the user avatar
+        let primary_pos = Vec2::new(
+            screen_pos.x + radius + 5.0,
+            screen_pos.y - ctx.font_size * 0.3,
+        );
+
+        // T1/T5: Try to place with fallback positions (right, left, above, below)
+        if let Some(label_pos) = label_placer.try_place_with_fallback(
+            primary_pos,
+            text_width,
+            text_height,
+            screen_pos,
+            radius,
+        ) {
             // Shadow for better readability
             let shadow_color = Color::new(0.0, 0.0, 0.0, 0.5 * alpha);
             renderer.draw_text(
-                user.name(),
+                name,
                 label_pos + Vec2::new(1.0, 1.0),
                 font_id,
                 ctx.font_size,
@@ -857,7 +960,7 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
             );
 
             let label_color = Color::new(1.0, 1.0, 1.0, 0.9 * alpha);
-            renderer.draw_text(user.name(), label_pos, font_id, ctx.font_size, label_color);
+            renderer.draw_text(name, label_pos, font_id, ctx.font_size, label_color);
         }
     }
 }
@@ -1049,6 +1152,12 @@ fn rects_intersect(a: &Rect, b: &Rect) -> bool {
 
 /// Renders file name labels with collision avoidance.
 ///
+/// # T1/T5: Label Collision Detection
+///
+/// File labels use the shared `LabelPlacer` which may already contain user labels.
+/// This ensures file labels don't overlap user labels. The placer should be reset
+/// BEFORE `render_user_labels` is called, not here.
+///
 /// Applies LOD (Level-of-Detail) optimization:
 /// - Labels are skipped when camera zoom is too low (< 0.15)
 /// - Labels are skipped for files with screen radius < `LOD_MIN_FILE_LABEL_RADIUS`
@@ -1059,7 +1168,8 @@ fn rects_intersect(a: &Rect, b: &Rect) -> bool {
 /// * `label_candidates` - Reusable buffer for label candidates (avoids per-frame allocation).
 ///   Will be cleared and repopulated each frame.
 /// * `label_placer` - Reusable label placer for collision avoidance (avoids per-frame Vec allocation).
-///   Will be reset via `reset()` at the start of each frame.
+///   Should be reset by the caller before rendering the first labels of the frame.
+///   Do NOT reset here - user labels may already be placed.
 #[inline(never)]
 pub fn render_file_labels<R: Renderer + ?Sized>(
     renderer: &mut R,
@@ -1111,8 +1221,8 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
     label_candidates
         .sort_unstable_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
 
-    // Reset label placer for this frame (reuses internal Vec allocation)
-    label_placer.reset(ctx.camera_zoom);
+    // Note: label_placer is NOT reset here - user labels may already be placed
+    // The caller (lib.rs render function) resets it before render_user_labels
 
     for (file_id, screen_pos, radius, alpha, _priority) in label_candidates.iter() {
         if !label_placer.can_place_more() {

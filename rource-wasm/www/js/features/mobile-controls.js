@@ -50,6 +50,9 @@ let isPlayingFn = null;
 /** Callback to toggle play/pause */
 let togglePlayFn = null;
 
+/** Whether stats panel is collapsed */
+let statsCollapsed = false;
+
 // =============================================================================
 // Auto-Hide Controls (YouTube/Netflix Pattern)
 // =============================================================================
@@ -112,12 +115,61 @@ export function onPlaybackStateChange(playing) {
         hideTimeout = setTimeout(hideControls, HIDE_DELAY);
         // Hide center play button
         updateCenterPlayButton(false);
+        // L1: Auto-collapse stats panel during playback
+        setStatsCollapsed(true);
     } else {
         // Show controls when paused
         showControls();
         // Show center play button
         updateCenterPlayButton(true);
+        // L1: Expand stats panel when paused
+        setStatsCollapsed(false);
     }
+}
+
+// =============================================================================
+// L1: Collapsible Stats Panel
+// =============================================================================
+
+/**
+ * Sets the collapsed state of the stats overlay.
+ * @param {boolean} collapsed - Whether to collapse
+ */
+function setStatsCollapsed(collapsed) {
+    const statsOverlay = document.getElementById('stats-overlay');
+    if (statsOverlay) {
+        statsCollapsed = collapsed;
+        statsOverlay.classList.toggle('collapsed', collapsed);
+    }
+}
+
+/**
+ * Toggles the stats overlay collapsed state.
+ */
+function toggleStatsPanel() {
+    // Only allow toggle when paused
+    if (isPlayingFn && isPlayingFn()) {
+        // If playing, just show briefly then re-collapse
+        setStatsCollapsed(false);
+        setTimeout(() => {
+            if (isPlayingFn && isPlayingFn()) {
+                setStatsCollapsed(true);
+            }
+        }, 3000);
+    } else {
+        // When paused, toggle freely
+        setStatsCollapsed(!statsCollapsed);
+    }
+    hapticLight();
+}
+
+/**
+ * Handles stats overlay tap.
+ * @param {Event} e - Click event
+ */
+function handleStatsTap(e) {
+    e.stopPropagation(); // Don't trigger canvas tap
+    toggleStatsPanel();
 }
 
 // =============================================================================
@@ -279,6 +331,17 @@ export function initMobileControls(options = {}) {
         const perfOverlay = document.getElementById('perf-overlay');
         if (perfOverlay && !perfOverlay.classList.contains('collapsed')) {
             perfOverlay.classList.add('collapsed');
+        }
+    }
+
+    // L1: Stats overlay tap to toggle collapsed state
+    const statsOverlay = document.getElementById('stats-overlay');
+    if (statsOverlay) {
+        addManagedEventListener(statsOverlay, 'click', handleStatsTap);
+        // Start collapsed on mobile
+        if (isMobileMode) {
+            statsOverlay.classList.add('collapsed');
+            statsCollapsed = true;
         }
     }
 

@@ -609,6 +609,52 @@
         opacity: 0.8;
     }
 
+    /* -------------------------------------------------------------------------
+       L1: Collapsible Stats Panel
+       -------------------------------------------------------------------------
+       Stats panel collapses to a minimal indicator during playback.
+       Tap to expand, auto-collapse when playing resumes.
+       Maximizes visualization area (target: 85%+ during playback).
+    */
+    .has-bottom-sheet .stats-overlay {
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Collapsed state - minimal indicator */
+    .has-bottom-sheet .stats-overlay.collapsed {
+        padding: 4px 10px;
+        gap: 6px;
+    }
+
+    .has-bottom-sheet .stats-overlay.collapsed .stat-item {
+        display: none;
+    }
+
+    /* Show only first stat (commits) when collapsed */
+    .has-bottom-sheet .stats-overlay.collapsed .stat-item:first-child {
+        display: flex;
+    }
+
+    /* Add expand indicator when collapsed */
+    .has-bottom-sheet .stats-overlay.collapsed::after {
+        content: '›';
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-left: 4px;
+        transition: transform 0.2s ease;
+    }
+
+    .has-bottom-sheet .stats-overlay:not(.collapsed)::after {
+        content: '';
+    }
+
+    /* Tap feedback */
+    .has-bottom-sheet .stats-overlay:active {
+        transform: scale(0.97);
+    }
+
     /* HUD-style container - compact pill in top-right */
     .has-bottom-sheet .perf-overlay {
         top: 8px;
