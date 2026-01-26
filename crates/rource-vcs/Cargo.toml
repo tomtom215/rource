@@ -23,13 +23,17 @@ bitcode = { version = "0.6", optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
-iai-callgrind = { workspace = true }
 proptest = "1.5"
+
+# iai-callgrind requires Valgrind which only works on Linux
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+iai-callgrind = "0.14"
 
 [[bench]]
 name = "vcs_parsing"
 harness = false
 
+# NOTE: Only compiles on Linux (requires Valgrind)
 [[bench]]
 name = "iai_vcs"
 harness = false

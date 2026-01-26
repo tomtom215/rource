@@ -10,6 +10,8 @@
 //! Run with: `cargo bench --bench iai_scene`
 //! Requires: valgrind installed (Linux only)
 
+// Only compile on Linux (iai-callgrind requires Valgrind)
+#![cfg(target_os = "linux")]
 // Suppress warnings from macro-generated code
 #![allow(missing_docs)]
 

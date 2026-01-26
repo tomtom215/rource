@@ -26,8 +26,11 @@ toml = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
-iai-callgrind = { workspace = true }
 rource-vcs = { path = "../rource-vcs" }
+
+# iai-callgrind requires Valgrind which only works on Linux
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+iai-callgrind = "0.14"
 
 [[bench]]
 name = "scene_perf"
@@ -44,6 +47,7 @@ harness = false
 
 # iai-callgrind benchmarks for deterministic instruction-count measurements
 # These are ideal for CI as they don't suffer from timing variance
+# NOTE: Only compiles on Linux (requires Valgrind)
 [[bench]]
 name = "iai_scene"
 harness = false

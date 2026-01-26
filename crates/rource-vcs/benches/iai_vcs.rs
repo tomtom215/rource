@@ -5,7 +5,11 @@
 //!
 //! These benchmarks use iai-callgrind to measure CPU instructions,
 //! which is deterministic and ideal for CI regression detection.
+//!
+//! Requires: valgrind installed (Linux only)
 
+// Only compile on Linux (iai-callgrind requires Valgrind)
+#![cfg(target_os = "linux")]
 #![allow(missing_docs)]
 
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
