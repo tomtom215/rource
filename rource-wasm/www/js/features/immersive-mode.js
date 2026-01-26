@@ -16,7 +16,7 @@
  * - Video game HUD patterns (minimal, auto-hide, edge-positioned)
  */
 
-import { addManagedEventListener, getRource, get, set } from '../state.js';
+import { addManagedEventListener, getRource, get } from '../state.js';
 import { getElement } from '../dom.js';
 import { hapticLight, hapticMedium } from '../utils.js';
 import { safeWasmCall } from '../wasm-api.js';
