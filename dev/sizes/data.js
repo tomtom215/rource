@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769382936846,
+  "lastUpdate": 1769387377875,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2480,6 +2480,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/0ae5fe25d7cb2e9bbdccb761d86a5f3d3e39c551"
         },
         "date": 1769382936013,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2779987,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1073782,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b191c63fa610bd95cc89991a65b7ce2918020d1",
+          "message": "Merge pull request #174 from tomtom215/claude/fix-firefox-play-button-vNZbb\n\nFix animation race conditions and improve mobile UI stability",
+          "timestamp": "2026-01-26T01:27:13+01:00",
+          "tree_id": "bc4786cf8f8497fb58631667dc069291dabfbe9d",
+          "url": "https://github.com/tomtom215/rource/commit/8b191c63fa610bd95cc89991a65b7ce2918020d1"
+        },
+        "date": 1769387377330,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
