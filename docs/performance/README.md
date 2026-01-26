@@ -8,18 +8,36 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 
 ## Table of Contents
 
-| Document                                                              | Purpose                                          |
-|-----------------------------------------------------------------------|--------------------------------------------------|
-| [OVERVIEW.md](./OVERVIEW.md)                                          | Executive summary and optimization philosophy    |
-| [CHRONOLOGY.md](./CHRONOLOGY.md)                                      | Complete timeline of all 65 optimization phases  |
-| [BENCHMARKS.md](./BENCHMARKS.md)                                      | All benchmark data with methodology              |
-| [SUCCESSFUL_OPTIMIZATIONS.md](./SUCCESSFUL_OPTIMIZATIONS.md)          | Implemented optimizations with measured gains    |
-| [NOT_APPLICABLE.md](./NOT_APPLICABLE.md)                              | Analyzed but not applicable optimizations        |
-| [UNSUCCESSFUL.md](./UNSUCCESSFUL.md)                                  | Tested optimizations that performed worse        |
-| [GUIDE.md](./GUIDE.md)                                                | General performance tips and configuration       |
-| [PROFILING.md](./PROFILING.md)                                        | Profiling tools and techniques                   |
-| [ALGORITHMIC_COMPLEXITY.md](./ALGORITHMIC_COMPLEXITY.md)              | Big-O analysis of all functions                  |
-| [THEORETICAL_ALGORITHMS.md](./THEORETICAL_ALGORITHMS.md)              | Advanced algorithmic research reference          |
+### Core Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [OVERVIEW.md](./OVERVIEW.md) | Executive summary and optimization philosophy |
+| [CHRONOLOGY.md](./CHRONOLOGY.md) | Complete timeline of all 69 optimization phases |
+| [BENCHMARKS.md](./BENCHMARKS.md) | All benchmark data with methodology |
+| [PERFORMANCE_BASELINE.md](./PERFORMANCE_BASELINE.md) | **NEW** Comprehensive WASM performance audit |
+| [FUNCTION_PROFILES.md](./FUNCTION_PROFILES.md) | **NEW** Per-function timing profiles |
+| [COMPLEXITY_VERIFICATION.md](./COMPLEXITY_VERIFICATION.md) | **NEW** Empirical Big-O verification |
+
+### Optimization History
+
+| Document | Purpose |
+|----------|---------|
+| [SUCCESSFUL_OPTIMIZATIONS.md](./SUCCESSFUL_OPTIMIZATIONS.md) | Implemented optimizations with measured gains |
+| [NOT_APPLICABLE.md](./NOT_APPLICABLE.md) | Analyzed but not applicable optimizations |
+| [UNSUCCESSFUL.md](./UNSUCCESSFUL.md) | Tested optimizations that performed worse |
+
+### Guides and References
+
+| Document | Purpose |
+|----------|---------|
+| [GUIDE.md](./GUIDE.md) | General performance tips and configuration |
+| [PROFILING.md](./PROFILING.md) | Profiling tools and techniques |
+| [METHODOLOGY.md](./METHODOLOGY.md) | Benchmark methodology and standards |
+| [ALGORITHMIC_COMPLEXITY.md](./ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of all functions |
+| [THEORETICAL_ALGORITHMS.md](./THEORETICAL_ALGORITHMS.md) | Advanced algorithmic research reference |
+| [SHADERS.md](./SHADERS.md) | GPU shader optimization reference |
+| [FUTURE_WORK.md](./FUTURE_WORK.md) | Expert+ technical roadmap |
 
 ---
 
@@ -51,12 +69,12 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 
 ### By Improvement Magnitude
 
-| Improvement     | Phases                                                     |
-|-----------------|------------------------------------------------------------|
-| 10x or greater  | 65 (label reset 90x), 58 (LUT directions 13.9x), 65 (label sort 7-8x), 44 (same-color blend 5.3x) |
-| 2-10x           | 60 (Firefox workaround 6-7x), 45 (to_argb8 2.46x), 40 (DirNode O(1)) |
-| 30-99%          | 42 (apply_commit 35%), 50 (blend_batch 43%)                |
-| 10-29%          | 42 (force_layout 10.1%), 50 (apply_commit 17%)             |
+| Improvement | Phases |
+|-------------|--------|
+| 10x or greater | 65 (label reset 90x), 58 (LUT directions 13.9x), 65 (label sort 7-8x), 44 (same-color blend 5.3x) |
+| 2-10x | 62 (adaptive theta 2.6x), 60 (Firefox workaround 6-7x), 45 (to_argb8 2.46x), 40 (DirNode O(1)) |
+| 30-99% | 61 (texture batching 99.8% draw reduction), 42 (apply_commit 35%), 50 (blend_batch 43%) |
+| 10-29% | 66 (rustc-hash 2.x 14-19%), 42 (force_layout 10.1%), 50 (apply_commit 17%) |
 
 ### By Optimization Type
 
@@ -73,11 +91,12 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 
 All optimization documentation follows these requirements:
 
-1. **Measurable**: Backed by criterion benchmarks with statistical significance
+1. **Measurable**: Backed by criterion benchmarks with 100+ samples, 95% CI
 2. **Documented**: Before/after measurements with clear methodology
-3. **Correct**: All 1,899+ tests must pass
-4. **Clean**: Clippy and rustfmt compliant
+3. **Correct**: All 2,076 tests must pass
+4. **Clean**: Clippy and rustfmt compliant (zero warnings)
 5. **Verifiable**: Benchmarks can be re-run to reproduce results
+6. **Complexity Verified**: Big-O claims empirically verified at 5 input sizes
 
 ---
 
@@ -105,15 +124,17 @@ cargo bench -- --verbose
 
 ## Version Information
 
-| Metric                | Value               |
-|-----------------------|---------------------|
-| Total phases          | 67                  |
-| Test count            | 2,069               |
-| Last updated          | 2026-01-26          |
-| Rust version          | 1.93.0              |
-| Benchmark framework   | Criterion 0.8       |
+| Metric | Value |
+|--------|-------|
+| Total phases | 69 |
+| Test count | 2,076 |
+| Last updated | 2026-01-26 |
+| Rust version | 1.93.0 |
+| Benchmark framework | Criterion 0.8 |
+| Platform | x86_64-unknown-linux-gnu |
+| Audit coverage | 132 WASM functions profiled |
 
 ---
 
-*This documentation represents the culmination of 67 optimization phases, demonstrating
-portfolio-grade attention to performance at the nanosecond and CPU cycle level.*
+*This documentation represents the culmination of 69 optimization phases, demonstrating
+Expert+ portfolio-grade attention to performance at the picosecond and nanosecond level.*

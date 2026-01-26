@@ -1,8 +1,10 @@
 # Algorithmic Complexity Audit - Rource Codebase
 
 **Audit Date**: January 2026
-**Last Updated**: 2026-01-25
-**Test Count**: 1,899 tests passing
+**Last Updated**: 2026-01-26
+**Test Count**: 2,076 tests passing
+
+> **See Also**: [COMPLEXITY_VERIFICATION.md](./COMPLEXITY_VERIFICATION.md) for empirical Big-O verification with scaling tests at 5 input sizes.
 
 ---
 

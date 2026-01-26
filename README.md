@@ -56,7 +56,7 @@ This project was developed with AI-assisted programming using [Claude](https://w
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 1,899 tests | - |
+| **Test Coverage** | 2,076 tests | - |
 | **Rendering** | CPU + WebGL2 + wgpu | OpenGL only |
 
 ### Performance Highlights
@@ -64,21 +64,24 @@ This project was developed with AI-assisted programming using [Claude](https://w
 - **68% memory savings** on large repositories via string interning and compact storage
 - **GPU acceleration** in browsers via WebGPU or WebGL2 (with automatic CPU fallback)
 - **Tested with 100k+ commit repos** (Home Assistant: 103,533 commits, 533,366 file changes)
+- **69 optimization phases** documented with nanosecond-level measurements
+- **132 WASM functions profiled** with criterion benchmarks (100+ samples, 95% CI)
+
+See [docs/performance/](docs/performance/) for the complete optimization history and benchmarks.
 
 ### Architecture
 
 ```
 rource/
 ├── crates/
-│   ├── rource-math/    144 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/     165 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/    331 tests   Scene graph, physics, camera, Barnes-Hut
-│   └── rource-render/  458 tests   Software + WebGL2 + wgpu rendering
+│   ├── rource-math/    172 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/     179 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/    376 tests   Scene graph, physics, camera, Barnes-Hut
+│   └── rource-render/  517 tests   Software + WebGL2 + wgpu rendering
 ├── rource-cli/         337 tests   Native application (winit + softbuffer)
-└── rource-wasm/        390 tests   WebAssembly (browser)
-                       + 74 integration/doc tests
-                      ─────
-                      1,899 total
+└── rource-wasm/        495 tests   WebAssembly (browser)
+                       ─────
+                       2,076 total tests
 ```
 
 ## Installation
