@@ -272,6 +272,11 @@ jobs:
           cd rource-wasm
           wasm-pack build --target web --release
 
+      - name: Validate JavaScript imports
+        run: |
+          echo "Validating JavaScript import/export consistency..."
+          python3 scripts/validate-js-imports.py
+
       - name: Generate WASM summary
         run: |
           echo "## WASM Build" >> $GITHUB_STEP_SUMMARY
@@ -286,6 +291,7 @@ jobs:
 
           echo "| WASM Size | $WASM_SIZE | - |" >> $GITHUB_STEP_SUMMARY
           echo "| Gzipped | ${WASM_GZIP_KB}KB | < 300KB |" >> $GITHUB_STEP_SUMMARY
+          echo "| JS Imports | Validated | - |" >> $GITHUB_STEP_SUMMARY
 
           # Size check
           if [ $WASM_GZIP -gt 307200 ]; then
@@ -295,6 +301,9 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "WASM size is within 300KB gzipped target." >> $GITHUB_STEP_SUMMARY
           fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**JavaScript Validation:** All imports reference valid exports." >> $GITHUB_STEP_SUMMARY
 
   # Doc check
   docs:
