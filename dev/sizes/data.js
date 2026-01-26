@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769459562827,
+  "lastUpdate": 1769465711054,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3080,6 +3080,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1255085,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d2ca070a7fa9f0f84f2e1ee0acd27615297d62d",
+          "message": "Merge pull request #199 from tomtom215/claude/rource-development-mlKLd\n\nperf: fix label width estimation and implement disc overlap prevention",
+          "timestamp": "2026-01-26T23:13:05+01:00",
+          "tree_id": "ad1c190db746a3d39259ee6e0964e6252180f814",
+          "url": "https://github.com/tomtom215/rource/commit/1d2ca070a7fa9f0f84f2e1ee0acd27615297d62d"
+        },
+        "date": 1769465710561,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914488,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3265921,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255125,
             "unit": "bytes"
           }
         ]
