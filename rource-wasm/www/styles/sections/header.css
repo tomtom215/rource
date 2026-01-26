@@ -14,7 +14,11 @@
 
 header {
     background: var(--bg-secondary);
+    /* L5: Respect safe area for notched devices (iPhone X+, Dynamic Island) */
     padding: 0.75rem 1.5rem;
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
     display: flex;
     align-items: center;
     justify-content: space-between;

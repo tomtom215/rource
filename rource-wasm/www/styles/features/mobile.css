@@ -457,7 +457,11 @@
 
 @media (max-width: 768px) {
     header {
+        /* L5/L6: Safe area support + better mobile padding */
         padding: 10px 12px;
+        padding-top: max(10px, env(safe-area-inset-top, 0px));
+        padding-left: max(12px, env(safe-area-inset-left, 0px));
+        padding-right: max(12px, env(safe-area-inset-right, 0px));
         justify-content: space-between;
         flex-wrap: nowrap;
         gap: 8px;
@@ -465,15 +469,22 @@
 
     .header-brand {
         flex-shrink: 0;
+        /* L6: Prevent brand from being too cramped */
+        min-width: 0;
     }
 
     .header-brand h1 {
         font-size: 1.125rem;
+        /* L6: Allow text to truncate gracefully if needed */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .logo-icon {
         width: 24px;
         height: 24px;
+        flex-shrink: 0;
     }
 
     /* Hide controls in header on mobile with bottom sheet */
