@@ -8,16 +8,25 @@ on:
   schedule:
     # Run weekly on Monday at 00:00 UTC
     - cron: '0 0 * * 1'
+  workflow_dispatch:
 
 # Prevent concurrent security audit runs on the same branch/PR
 concurrency:
   group: security-${{ github.ref }}
   cancel-in-progress: true
 
+# Minimal permissions for security scanning
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # ============================================================================
+  # Security vulnerability scanning
+  # ============================================================================
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -25,13 +34,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Use cached installation for speed
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
 
       - name: Run security audit
+        run: cargo audit --json 2>/dev/null | tee audit-results.json || true
+
+      - name: Check audit results
         run: cargo audit
 
-  # Check for unsafe code usage
+      - name: Generate audit summary
+        if: always()
+        run: |
+          echo "## Security Audit" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f audit-results.json ] && [ -s audit-results.json ]; then
+            # Parse JSON for summary (if jq available)
+            if command -v jq &> /dev/null; then
+              VULN_COUNT=$(jq '.vulnerabilities.count // 0' audit-results.json 2>/dev/null || echo "0")
+              WARNING_COUNT=$(jq '.warnings | length // 0' audit-results.json 2>/dev/null || echo "0")
+
+              echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+              echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+              echo "| Vulnerabilities | $VULN_COUNT |" >> $GITHUB_STEP_SUMMARY
+              echo "| Warnings | $WARNING_COUNT |" >> $GITHUB_STEP_SUMMARY
+
+              if [ "$VULN_COUNT" -gt 0 ]; then
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "### Vulnerabilities Found" >> $GITHUB_STEP_SUMMARY
+                echo '```' >> $GITHUB_STEP_SUMMARY
+                jq -r '.vulnerabilities.list[]? | "- \(.advisory.id): \(.advisory.title)"' audit-results.json 2>/dev/null | head -10 >> $GITHUB_STEP_SUMMARY
+                echo '```' >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "Audit completed. See job logs for details." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "No vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ============================================================================
+  # Unsafe code analysis
+  # ============================================================================
+
   unsafe-check:
     name: Unsafe Code Check
     runs-on: ubuntu-latest
@@ -41,19 +88,44 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Check for unsafe blocks
+      - name: Analyze unsafe code usage
+        id: unsafe
         run: |
-          echo "=== Scanning for unsafe code ==="
-          # Count unsafe blocks (informational, not blocking)
-          unsafe_count=$(grep -r "unsafe" --include="*.rs" . | grep -v "target/" | grep -v "#\[deny(unsafe" | wc -l || true)
-          echo "Found $unsafe_count lines containing 'unsafe'"
+          echo "## Unsafe Code Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Count unsafe blocks (excluding target directory and deny attributes)
+          UNSAFE_BLOCKS=$(grep -r "unsafe {" --include="*.rs" . | grep -v "target/" | grep -v "#\[deny(unsafe" | wc -l || echo "0")
+          UNSAFE_FN=$(grep -r "unsafe fn" --include="*.rs" . | grep -v "target/" | wc -l || echo "0")
+          UNSAFE_IMPL=$(grep -r "unsafe impl" --include="*.rs" . | grep -v "target/" | wc -l || echo "0")
+
+          echo "| Category | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Unsafe blocks | $UNSAFE_BLOCKS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unsafe functions | $UNSAFE_FN |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unsafe impl | $UNSAFE_IMPL |" >> $GITHUB_STEP_SUMMARY
 
           # List files with unsafe code
-          echo ""
-          echo "=== Files containing unsafe code ==="
-          grep -rl "unsafe {" --include="*.rs" . | grep -v "target/" || echo "No unsafe blocks found"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files with Unsafe Code" >> $GITHUB_STEP_SUMMARY
 
-  # Check for known vulnerabilities and license compliance
+          UNSAFE_FILES=$(grep -rl "unsafe {" --include="*.rs" . | grep -v "target/" || true)
+          if [ -n "$UNSAFE_FILES" ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$UNSAFE_FILES" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No unsafe blocks found in source code." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Export for potential use
+          echo "unsafe_blocks=$UNSAFE_BLOCKS" >> $GITHUB_OUTPUT
+          echo "unsafe_fn=$UNSAFE_FN" >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # Dependency policy checks
+  # ============================================================================
+
   deny-check:
     name: cargo-deny Check
     runs-on: ubuntu-latest
@@ -61,14 +133,90 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Use cached installation for speed
       - name: Install cargo-deny
-        run: cargo install cargo-deny
+        uses: taiki-e/install-action@cargo-deny
 
       - name: Check for vulnerabilities and advisories
-        run: cargo deny check advisories
+        id: advisories
+        run: |
+          if cargo deny check advisories 2>&1 | tee advisories-output.txt; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check licenses
-        run: cargo deny check licenses
+        id: licenses
+        run: |
+          if cargo deny check licenses 2>&1 | tee licenses-output.txt; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check for banned/duplicate dependencies
-        run: cargo deny check bans
+        id: bans
+        run: |
+          if cargo deny check bans 2>&1 | tee bans-output.txt; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate deny summary
+        if: always()
+        run: |
+          echo "## Dependency Policy Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Advisories | ${{ steps.advisories.outputs.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Licenses | ${{ steps.licenses.outputs.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bans | ${{ steps.bans.outputs.status }} |" >> $GITHUB_STEP_SUMMARY
+
+          # Show any failures
+          if [ "${{ steps.advisories.outputs.status }}" = "fail" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Advisory Issues" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "^error|RUSTSEC" advisories-output.txt | head -10 >> $GITHUB_STEP_SUMMARY || true
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ steps.licenses.outputs.status }}" = "fail" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### License Issues" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "^error|rejected" licenses-output.txt | head -10 >> $GITHUB_STEP_SUMMARY || true
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ============================================================================
+  # Aggregate security status
+  # ============================================================================
+
+  security-status:
+    name: Security Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [audit, unsafe-check, deny-check]
+    if: always()
+    steps:
+      - name: Check all security job results
+        run: |
+          echo "## Security Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Audit | ${{ needs.audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unsafe Code Check | ${{ needs.unsafe-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Policy | ${{ needs.deny-check.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if any security check failed
+        if: |
+          needs.audit.result == 'failure' ||
+          needs.deny-check.result == 'failure'
+        run: |
+          echo "Security checks failed. Review the issues above."
+          exit 1

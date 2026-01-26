@@ -12,6 +12,10 @@ concurrency:
   group: integration-${{ github.ref }}
   cancel-in-progress: true
 
+# Minimal permissions for integration tests
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1

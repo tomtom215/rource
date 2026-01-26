@@ -12,12 +12,15 @@ concurrency:
   group: benchmarks-${{ github.ref }}
   cancel-in-progress: true
 
+# Permissions for benchmark storage and PR comments
 permissions:
-  contents: write
-  deployments: write
+  contents: write      # Required for gh-pages push
+  deployments: write   # Required for deployment status
+  pull-requests: write # Required for PR comments on performance regressions
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
   # Setup gh-pages branch if it doesn't exist (runs once, others depend on it)

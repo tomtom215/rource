@@ -15,8 +15,13 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+# Default permissions - overridden per-job as needed
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
   # Generate changelog for the release
