@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769413824646,
+  "lastUpdate": 1769418339231,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2651,6 +2651,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1073782,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b0246d74cdf7b50d9d81bf06dda41e8792bbf6a",
+          "message": "Merge pull request #178 from tomtom215/claude/optimize-fps-performance-coSJw\n\nperf: implement avatar texture array batching for draw call reduction",
+          "timestamp": "2026-01-26T10:03:35+01:00",
+          "tree_id": "cd3e4d7d93ac77339669c650f82b4d62e7bda5d4",
+          "url": "https://github.com/tomtom215/rource/commit/0b0246d74cdf7b50d9d81bf06dda41e8792bbf6a"
+        },
+        "date": 1769418338695,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913480,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2785659,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1075637,
             "unit": "bytes"
           }
         ]
