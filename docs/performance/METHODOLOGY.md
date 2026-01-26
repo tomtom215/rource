@@ -347,6 +347,6 @@ Before claiming a performance improvement:
 
 ---
 
-*Document Version: 1.0*
+*Document Version: 1.1*
 *Last Updated: 2026-01-26*
-*Based on: Criterion 0.5.1, IAI-CallGrind 0.14*
+*Based on: Criterion 0.8, IAI-CallGrind 0.16*

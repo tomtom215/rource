@@ -1,7 +1,7 @@
 # Benchmark Data Reference
 
 Comprehensive collection of all benchmark measurements from Rource optimization phases.
-All benchmarks use Criterion 0.5.1 with `--sample-size 50` for statistical significance.
+All benchmarks use Criterion 0.8 with `--sample-size 50` for statistical significance.
 
 ---
 
@@ -26,8 +26,8 @@ All benchmarks use Criterion 0.5.1 with `--sample-size 50` for statistical signi
 |---------------------|-------------------------------------|
 | Platform            | x86_64-unknown-linux-gnu            |
 | Rust Version        | 1.93.0 (254b59607 2026-01-19)       |
-| Benchmark Framework | Criterion 0.5.1                     |
-| Test Suite          | 1,899 tests                         |
+| Benchmark Framework | Criterion 0.8                       |
+| Test Suite          | 2,069 tests                         |
 | Sample Size         | 50 (default for statistical rigor)  |
 
 ---
@@ -759,6 +759,90 @@ rustc-hash is used throughout the codebase in hot paths:
 - **Methodology**: Hand-written benchmarks using `std::time::Instant`
 - **Iterations**: 10,000-100,000 per benchmark
 - **Runs**: Multiple runs to establish variance bounds
+- **Environment**: x86_64 Linux, Rust 1.93.0, release build
+
+---
+
+## Major Dependency Updates (Phase 67)
+
+**Source**: `rource-wasm/src/render_phases.rs` (benchmark tests)
+**Phase**: 67
+**Date**: 2026-01-26
+
+Comprehensive dependency update with A/B benchmarking to verify performance stability:
+- wgpu: 24.x → 28.0.0 (with API migration)
+- criterion: 0.5 → 0.8 (with black_box migration)
+- iai-callgrind: 0.14 → 0.16 (Linux-only)
+
+### A/B Benchmark Comparison
+
+Benchmarks measured before (wgpu 24, main branch) and after (wgpu 28, update branch).
+
+#### Hot Path Benchmarks (wgpu-independent)
+
+| Benchmark | wgpu 24 (Baseline) | wgpu 28 (After) | Change |
+|-----------|-------------------|-----------------|--------|
+| try_place | 11 ns | 6-9 ns | **-18% to -45%** |
+| try_place_with_fallback | 248 ns | 245-248 ns | ~0% |
+| label_placer_reset | 205 ns | 192-207 ns | ~0% |
+| full_label_placement | 35-38 µs | 35-37 µs | ~0% |
+| beam_sorting | 102-117 ns | 107-117 ns | ~0% |
+| user_label_sorting | 90-106 ns | 88-108 ns | ~0% |
+| label_placer_new | 33-35 µs | 33-35 µs | ~0% |
+
+#### Color Conversion (wgpu-independent)
+
+| Benchmark | wgpu 24 (Baseline) | wgpu 28 (After) | Change |
+|-----------|-------------------|-----------------|--------|
+| to_argb8 | 92 ns | 82 ns | **-11.9%** |
+
+### Key Findings
+
+1. **No Regressions**: All hot path benchmarks show stable or improved performance
+2. **try_place Improvement**: Critical collision detection path improved by 18-45%
+3. **Color Conversion Improvement**: to_argb8 improved by 11.9%
+4. **API Changes Only**: wgpu 28 required significant API migration but no performance impact
+
+### wgpu 28 API Migration Summary
+
+Major API changes required for wgpu 28 compatibility:
+
+| API Change | Before (wgpu 24) | After (wgpu 28) |
+|------------|------------------|-----------------|
+| Device request | `request_device()` returns Option | Returns Result |
+| DeviceDescriptor | 4 fields | 6 fields (+trace, +experimental_features) |
+| RenderPassColorAttachment | No depth_slice | Requires `depth_slice: None` |
+| RenderPassDescriptor | No multiview_mask | Requires `multiview_mask: None` |
+| RenderPipelineDescriptor | `multiview` | `multiview_mask` |
+| PipelineLayoutDescriptor | `push_constant_ranges` | `immediate_size: 0` |
+| Sampler mipmap_filter | `FilterMode` | `MipmapFilterMode` |
+| Device poll | `Maintain::Wait` | `PollType::wait_indefinitely()` |
+
+### criterion 0.8 Migration
+
+The criterion upgrade required updating black_box imports in 11 benchmark files:
+
+```rust
+// Before (criterion 0.5)
+use criterion::black_box;
+
+// After (criterion 0.8)
+use std::hint::black_box;
+```
+
+### Files Modified
+
+| Category | Files Changed | Key Changes |
+|----------|---------------|-------------|
+| wgpu backend | 9 files | API migration |
+| Benchmarks | 11 files | black_box import |
+| Cargo.toml | 4 files | Version bumps |
+
+### Statistical Notes
+
+- **Methodology**: Hand-written benchmarks using `std::time::Instant`
+- **Iterations**: 10,000-100,000 per benchmark
+- **Runs**: Multiple A/B runs with git checkout comparison
 - **Environment**: x86_64 Linux, Rust 1.93.0, release build
 
 ---

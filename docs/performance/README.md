@@ -107,13 +107,13 @@ cargo bench -- --verbose
 
 | Metric                | Value               |
 |-----------------------|---------------------|
-| Total phases          | 65                  |
-| Test count            | 1,899               |
+| Total phases          | 67                  |
+| Test count            | 2,069               |
 | Last updated          | 2026-01-26          |
 | Rust version          | 1.93.0              |
-| Benchmark framework   | Criterion 0.5.1     |
+| Benchmark framework   | Criterion 0.8       |
 
 ---
 
-*This documentation represents the culmination of 65 optimization phases, demonstrating
+*This documentation represents the culmination of 67 optimization phases, demonstrating
 portfolio-grade attention to performance at the nanosecond and CPU cycle level.*
