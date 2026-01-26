@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769423167880,
+  "lastUpdate": 1769425494738,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2768,6 +2768,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1075817,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cf8be13bfb49b7323b178a1b0fb3db2c0a77d357",
+          "message": "Merge pull request #181 from tomtom215/claude/optimize-rource-perf-QXroA\n\nperf(phase63-64): analyze primitives, verify GPU culling, code cleanup",
+          "timestamp": "2026-01-26T12:02:41+01:00",
+          "tree_id": "9d3fe50d75fa07930f21a26c443ec27e0c23ec68",
+          "url": "https://github.com/tomtom215/rource/commit/cf8be13bfb49b7323b178a1b0fb3db2c0a77d357"
+        },
+        "date": 1769425493744,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913808,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2785805,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1075815,
             "unit": "bytes"
           }
         ]
