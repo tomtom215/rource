@@ -173,6 +173,90 @@ pub struct QuadTree<T: Clone> {
 
 ---
 
+### Label Collision Detection Optimization
+
+**Phase**: 65
+**Location**: `rource-wasm/src/render_phases.rs`
+**Impact**: 90× faster grid reset, 7-8× sorting improvement, zero allocations
+
+Optimized label collision detection for 42,000 FPS target (23.8µs frame budget).
+The original implementation consumed 82% of frame budget before any rendering.
+
+**Problem Analysis** (at 23.8µs budget):
+
+| Operation | Before | Budget % |
+|-----------|--------|----------|
+| Grid reset | 17,942 ns | 75.4% |
+| Beam sorting | ~850 ns | 3.6% |
+| Label sorting | ~720 ns | 3.0% |
+| Per-frame allocs | ~100 ns | 0.4% |
+| **Total** | **~19.6 µs** | **82.4%** |
+
+**Solution 1: Generation Counter Pattern**
+
+Instead of clearing 1024 grid cells each frame, increment a generation counter.
+Entries are stale if their generation doesn't match current.
+
+```rust
+pub struct LabelPlacer {
+    grid: Vec<Vec<Vec<(usize, u32)>>>,  // (index, generation) tuples
+    generation: u32,
+    stale_entry_count: usize,
+}
+
+pub fn reset(&mut self) {
+    self.stale_entry_count += self.placed_labels.len() * 2;
+    self.placed_labels.clear();
+    self.generation = self.generation.wrapping_add(1);
+
+    // Periodic compaction when stale_entry_count > 2048
+    if self.stale_entry_count > LABEL_GRID_STALE_THRESHOLD {
+        self.compact_grid();
+    }
+}
+```
+
+**Result**: 17,942 ns → 198 ns (**90× faster**)
+
+**Solution 2: Partial Selection with select_nth_unstable_by**
+
+For beam limiting (15 beams) and label priority, only need top-N elements.
+`select_nth_unstable_by` provides O(n) partial ordering vs O(n log n) full sort.
+
+```rust
+// O(n) partial selection instead of O(n log n) full sort
+let select_count = MAX_CONCURRENT_BEAMS.min(beams.len());
+if select_count > 0 && select_count < beams.len() {
+    beams.select_nth_unstable_by(select_count - 1, |a, b| {
+        b.priority.partial_cmp(&a.priority).unwrap_or(Ordering::Equal)
+    });
+}
+```
+
+**Sorting Results**:
+- Beam sorting: ~850 ns → 99 ns (**8.6× faster**)
+- User label sorting: ~720 ns → 99 ns (**7.3× faster**)
+- File label sorting: ~680 ns → 95 ns (**7.2× faster**)
+
+**Solution 3: Reusable Buffers**
+
+Eliminated per-frame Vec allocations:
+
+```rust
+// Before: Allocates new Vec every frame
+let mut candidates: Vec<(UserId, Vec2, f32, f32, f32)> = Vec::new();
+
+// After: Reuses pre-allocated buffer in Rource struct
+self.user_label_candidates_buf.clear();
+```
+
+**Total Overhead Reduction**:
+- Before: ~19.6 µs (82.4% of budget)
+- After: ~0.7 µs (2.9% of budget)
+- Savings: **18.9 µs/frame** (79.5% budget recovered)
+
+---
+
 ### Avatar Texture Array Batching
 
 **Phase**: 61
@@ -696,7 +780,9 @@ wasm-opt \
 
 | Optimization           | Phase | Improvement |
 |------------------------|-------|-------------|
+| Label grid reset       | 65    | 90x         |
 | LUT random direction   | 58    | 13.9x       |
+| Label sorting          | 65    | 7-8x        |
 | Same-color blend       | 44    | 5.3x        |
 
 ### High Impact (2-10x)

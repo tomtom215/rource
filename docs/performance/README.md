@@ -11,7 +11,7 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 | Document                                                              | Purpose                                          |
 |-----------------------------------------------------------------------|--------------------------------------------------|
 | [OVERVIEW.md](./OVERVIEW.md)                                          | Executive summary and optimization philosophy    |
-| [CHRONOLOGY.md](./CHRONOLOGY.md)                                      | Complete timeline of all 60 optimization phases  |
+| [CHRONOLOGY.md](./CHRONOLOGY.md)                                      | Complete timeline of all 65 optimization phases  |
 | [BENCHMARKS.md](./BENCHMARKS.md)                                      | All benchmark data with methodology              |
 | [SUCCESSFUL_OPTIMIZATIONS.md](./SUCCESSFUL_OPTIMIZATIONS.md)          | Implemented optimizations with measured gains    |
 | [NOT_APPLICABLE.md](./NOT_APPLICABLE.md)                              | Analyzed but not applicable optimizations        |
@@ -28,6 +28,7 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 ### By Category
 
 **Core Rendering Optimizations**
+- Label collision detection (Phase 65) - 90x reset, 7-8x sorting
 - Fixed-point alpha blending (Phase 44) - 21% batch improvement
 - Color conversion LUTs (Phase 45) - 54% from_hex, 62% to_argb8
 - Bloom strip-based processing (Phase 43) - 6.6% improvement
@@ -52,7 +53,7 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 
 | Improvement     | Phases                                                     |
 |-----------------|------------------------------------------------------------|
-| 10x or greater  | 58 (LUT directions 13.9x), 44 (same-color blend 5.3x)      |
+| 10x or greater  | 65 (label reset 90x), 58 (LUT directions 13.9x), 65 (label sort 7-8x), 44 (same-color blend 5.3x) |
 | 2-10x           | 60 (Firefox workaround 6-7x), 45 (to_argb8 2.46x), 40 (DirNode O(1)) |
 | 30-99%          | 42 (apply_commit 35%), 50 (blend_batch 43%)                |
 | 10-29%          | 42 (force_layout 10.1%), 50 (apply_commit 17%)             |
@@ -106,13 +107,13 @@ cargo bench -- --verbose
 
 | Metric                | Value               |
 |-----------------------|---------------------|
-| Total phases          | 60                  |
+| Total phases          | 65                  |
 | Test count            | 1,899               |
-| Last updated          | 2026-01-25          |
+| Last updated          | 2026-01-26          |
 | Rust version          | 1.93.0              |
 | Benchmark framework   | Criterion 0.5.1     |
 
 ---
 
-*This documentation represents the culmination of 60 optimization phases, demonstrating
+*This documentation represents the culmination of 65 optimization phases, demonstrating
 portfolio-grade attention to performance at the nanosecond and CPU cycle level.*
