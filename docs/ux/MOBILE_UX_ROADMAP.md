@@ -34,6 +34,21 @@ LOW:       3 issues (7%)   ████
 TOTAL:    46 issues
 ```
 
+### Progress Summary (Updated 2026-01-26)
+
+| Status | Count | Issues |
+|--------|-------|--------|
+| **Done** | 3 | A1, I3, X3 |
+| **In Progress** | 3 | I1, I2, T2 |
+| **Pending** | 40 | All others |
+
+**Session Changes:**
+- A1: Added visible text labels to all mobile toolbar icons
+- I3: Hidden performance overlay (developer metrics) on mobile by default
+- X3: Fixed mystery meat navigation (same fix as A1)
+- T2: Improved font sizes in mobile stats overlay (partial)
+- I1/I2: Started progressive disclosure (perf overlay hidden on mobile)
+
 ### Root Causes Identified
 
 1. **Desktop-First Design** - UI designed for desktop, poorly adapted to mobile
@@ -58,13 +73,13 @@ TOTAL:    46 issues
 | L8 | No adaptive layout for playing state | Layout | High | Pending |
 | L9 | Z-index conflicts between UI layers | Layout | Medium | Pending |
 | T1 | Labels overlap catastrophically | Typography | Critical | Pending |
-| T2 | Font size too small for mobile (~8-10px) | Typography | Critical | Pending |
+| T2 | Font size too small for mobile (~8-10px) | Typography | Critical | In Progress |
 | T3 | Low contrast gray text on dark background | Typography | High | Pending |
 | T4 | Directory labels illegible | Typography | High | Pending |
 | T5 | No label collision detection | Typography | Critical | Pending |
 | T6 | No label LOD (Level of Detail) | Typography | High | Pending |
 | T7 | Date format unnecessarily verbose | Typography | Low | Pending |
-| A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Pending |
+| A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Done |
 | A2 | Touch targets below 44px minimum | Accessibility | High | Pending |
 | A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Pending |
 | A4 | File type pills too small | Accessibility | Medium | Pending |
@@ -72,9 +87,9 @@ TOTAL:    46 issues
 | A6 | No visible focus states | Accessibility | High | Pending |
 | A7 | No gesture support visible (pinch/swipe) | Accessibility | Medium | Pending |
 | A8 | No skip/dismiss gestures for panels | Accessibility | High | Pending |
-| I1 | Information overload (15+ metrics at once) | Information | Critical | Pending |
-| I2 | No progressive disclosure | Information | Critical | Pending |
-| I3 | Developer metrics shown to users | Information | High | Pending |
+| I1 | Information overload (15+ metrics at once) | Information | Critical | In Progress |
+| I2 | No progressive disclosure | Information | Critical | In Progress |
+| I3 | Developer metrics shown to users | Information | High | Done |
 | I4 | Redundant information (FPS + frame time) | Information | Medium | Pending |
 | I5 | No information hierarchy | Information | High | Pending |
 | I6 | No context when stats hidden | Information | High | Pending |
@@ -89,7 +104,7 @@ TOTAL:    46 issues
 | V7 | No zoom/scale indicator | Visual | Medium | Pending |
 | X1 | No way to dismiss stats panel | Interaction | High | Pending |
 | X2 | Multiple conflicting navigation patterns | Interaction | Medium | Pending |
-| X3 | Unclear what toolbar icons do | Interaction | Critical | Pending |
+| X3 | Unclear what toolbar icons do | Interaction | Critical | Done |
 | X4 | No confirmation of mode changes | Interaction | Low | Pending |
 | X5 | Playback speed dropdown hard to use | Interaction | Medium | Pending |
 
