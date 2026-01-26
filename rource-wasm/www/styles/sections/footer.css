@@ -61,7 +61,7 @@ footer .separator {
 @media (max-height: 500px) {
     footer {
         padding: 0.35rem 0.75rem;
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 }
 

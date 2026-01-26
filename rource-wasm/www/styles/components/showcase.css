@@ -38,7 +38,7 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    font-size: 0.55rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     padding: 0.15rem 0.4rem;
     background: var(--accent);
     color: var(--text-on-accent);
@@ -208,7 +208,7 @@
 }
 
 .showcase-stat-label {
-    font-size: 0.6rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -305,7 +305,7 @@
 }
 
 .tech-item-label {
-    font-size: 0.6rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -319,7 +319,7 @@
 }
 
 .tech-badge {
-    font-size: 0.6rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     padding: 0.15rem 0.4rem;
     background: var(--bg-tertiary);
     border-radius: 10px;

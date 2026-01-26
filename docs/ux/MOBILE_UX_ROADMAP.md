@@ -38,9 +38,15 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 9 | A1, I3, X3, L1, T1, T5, V1, X1 |
-| **In Progress** | 4 | I1, I2, T2, V2 |
-| **Pending** | 33 | All others |
+| **Done** | 15 | A1, A2, A3, I3, L1, L7, L8, T1, T2, T3, T5, V1, X1, X3 |
+| **In Progress** | 2 | I1, I2, V2 |
+| **Pending** | 29 | All others |
+
+**Session 3 Changes (Typography & Accessibility):**
+- T2: Complete font size audit - all CSS now uses minimum 12px (0.75rem)
+- A2/A3: Touch target audit - all interactive elements now have min-width/min-height: 44px
+- T3: Contrast ratio fix - updated --text-muted to #8b949e (~4.86:1 contrast)
+- L7/L8: Already addressed via auto-hide controls and collapsible stats panel
 
 **Session 2 Changes (Phase A Critical):**
 - L1: Collapsible stats panel - auto-collapses during playback, tap to expand
@@ -52,7 +58,6 @@ TOTAL:    46 issues
 - A1: Added visible text labels to all mobile toolbar icons
 - I3: Hidden performance overlay (developer metrics) on mobile by default
 - X3: Fixed mystery meat navigation (same fix as A1)
-- T2: Improved font sizes in mobile stats overlay (partial)
 - I1/I2: Started progressive disclosure (perf overlay hidden on mobile)
 
 ### Root Causes Identified
@@ -75,19 +80,19 @@ TOTAL:    46 issues
 | L4 | Toast overlaps stats panel | Layout | High | Pending |
 | L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Pending |
 | L6 | Header elements cramped/truncated | Layout | Medium | Pending |
-| L7 | Visualization area severely constrained | Layout | Critical | Pending |
-| L8 | No adaptive layout for playing state | Layout | High | Pending |
+| L7 | Visualization area severely constrained | Layout | Critical | Done |
+| L8 | No adaptive layout for playing state | Layout | High | Done |
 | L9 | Z-index conflicts between UI layers | Layout | Medium | Pending |
 | T1 | Labels overlap catastrophically | Typography | Critical | Done |
-| T2 | Font size too small for mobile (~8-10px) | Typography | Critical | In Progress |
-| T3 | Low contrast gray text on dark background | Typography | High | Pending |
+| T2 | Font size too small for mobile (~8-10px) | Typography | Critical | Done |
+| T3 | Low contrast gray text on dark background | Typography | High | Done |
 | T4 | Directory labels illegible | Typography | High | Pending |
 | T5 | No label collision detection | Typography | Critical | Done |
 | T6 | No label LOD (Level of Detail) | Typography | High | Pending |
 | T7 | Date format unnecessarily verbose | Typography | Low | Pending |
 | A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Done |
-| A2 | Touch targets below 44px minimum | Accessibility | High | Pending |
-| A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Pending |
+| A2 | Touch targets below 44px minimum | Accessibility | High | Done |
+| A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Done |
 | A4 | File type pills too small | Accessibility | Medium | Pending |
 | A5 | Dropdown trigger too small | Accessibility | Medium | Pending |
 | A6 | No visible focus states | Accessibility | High | Pending |

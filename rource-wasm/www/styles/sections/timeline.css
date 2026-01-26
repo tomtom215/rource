@@ -76,7 +76,7 @@
 
 /* Date labels at ends of slider */
 .timeline-date-label {
-    font-size: 0.65rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -474,7 +474,7 @@
     }
 
     .timeline-info-label {
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     /* Adjust marker container offset for mobile thumb (10px = half of 20px) */
@@ -496,7 +496,7 @@
     }
 
     .timeline-commit-info {
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         /* Still use flexible width */
         flex: 1;
         min-width: 0;
@@ -551,9 +551,9 @@
         padding-right: 18px;
     }
 
-    /* Date labels even smaller on tiny screens */
+    /* Date labels - maintain readable size even on tiny screens */
     .timeline-date-label {
-        font-size: 0.6rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         min-width: 45px;
     }
 }
@@ -579,7 +579,7 @@
     }
 
     .timeline-commit-info {
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     .play-btn-main {
@@ -645,12 +645,12 @@
     }
 
     .speed-control select {
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         padding: 0.15rem 0.3rem;
     }
 
     .timeline-info {
-        font-size: 0.65rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         min-width: 50px;
     }
 }
@@ -872,7 +872,7 @@
     bottom: calc(100% + 2px);
     left: 50%;
     transform: translateX(-50%);
-    font-size: 0.55rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-secondary);
     white-space: nowrap;
     pointer-events: none;
