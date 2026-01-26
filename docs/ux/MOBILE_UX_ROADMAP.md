@@ -38,10 +38,40 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 15 | A1, A2, A3, I1, I2, I3, L1, L7, L8, T2, T3, V1, X1, X3 |
+| **Done** | 21 | A1, A2, A3, A6, I1, I2, I3, L1, L3, L7, L8, L10, L11, T2, T3, T8, T9, V1, X1, X3 |
 | **Partial** | 2 | T1, T5 (collision detection works but width estimation bug causes overlap) |
 | **In Progress** | 1 | V2 |
-| **Pending** | 33 | All others (includes 5 new issues: L10, L11, T8, T9) |
+| **Pending** | 29 | All others |
+
+**Session 7 Fixes (2026-01-26):**
+- L3: Fixed FAB z-index overlap
+  - Changed `--z-fab` from 250 to 350 (above modal z-index 300)
+  - FAB now visible above bottom sheet content
+  - File: `rource-wasm/www/styles/variables.css`
+- L10: Fixed canvas/backdrop interaction at PEEK position
+  - At PEEK (20vh), backdrop now allows pointer-events pass-through
+  - Users can interact with visualization while quick actions visible
+  - Subtle backdrop opacity (0.15) at PEEK for visual continuity
+  - File: `rource-wasm/www/js/features/bottom-sheet.js`
+- L11: Fixed immersive mode hiding entity labels
+  - Labels now automatically hidden when entering immersive mode
+  - Previous label state restored on exit
+  - Provides true immersive viewing experience
+  - File: `rource-wasm/www/js/features/immersive-mode.js`
+- T8: Marked as Done (was fixed in Session 6 commit 4dbe880)
+  - Label width estimation factor increased from 0.6 to 0.75
+- T9: Fixed off-screen label rendering
+  - Added viewport bounds checking to LabelPlacer
+  - Labels extending beyond viewport edges are rejected
+  - Prevents visual clutter and wasted render calls
+  - Updated both rource-render (CLI) and rource-wasm implementations
+  - Files: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases.rs`
+- A6: Added visible focus states for keyboard navigation
+  - Comprehensive :focus-visible styles for all interactive elements
+  - WCAG 2.1 Success Criterion 2.4.7 compliance
+  - Styled buttons, inputs, links, tabs, panels, timeline
+  - Light theme and high contrast mode support
+  - File: `rource-wasm/www/styles/features/accessibility.css`
 
 **Session 6 Mobile Screenshot Analysis (2026-01-26):**
 - Investigated T1/T5 label collision - found text width estimation bug:
@@ -103,8 +133,8 @@ TOTAL:    46 issues
 3. **Missing Mobile UX Patterns** - iOS conventions not followed
 4. **Label Width Estimation Bug** - Collision detection exists but uses inaccurate heuristic (0.6 × font_size per char), causing overlap with wide characters/unicode
 5. **Information Dump** - Everything shown at once, no progressive disclosure
-6. **Fixed/Absolute Positioning Conflicts** - Bottom sheet (fixed) and canvas (flex) don't coordinate heights
-7. **Z-Index Inversions** - FAB (z-index 250) appears below bottom sheet content (z-index 300)
+6. **Fixed/Absolute Positioning Conflicts** - Bottom sheet (fixed) and canvas (flex) don't coordinate heights *(FIXED: Session 7 - backdrop allows pass-through at PEEK)*
+7. **Z-Index Inversions** - FAB (z-index 250) appears below bottom sheet content (z-index 300) *(FIXED: Session 7 - FAB now z-index 350)*
 
 ---
 
@@ -114,15 +144,15 @@ TOTAL:    46 issues
 |----|-------|----------|----------|--------|
 | L1 | Stats panel occludes 35-40% of visualization | Layout | Critical | Done |
 | L2 | Bottom sheet takes 45% of screen | Layout | High | Pending |
-| L3 | FAB overlaps toolbar controls | Layout | High | Pending |
-| L4 | Toast overlaps stats panel | Layout | High | Pending |
-| L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Pending |
-| L6 | Header elements cramped/truncated | Layout | Medium | Pending |
+| L3 | FAB overlaps toolbar controls | Layout | High | Done |
+| L4 | Toast overlaps stats panel | Layout | High | Done |
+| L5 | No safe area respect (notch/dynamic island) | Layout | Medium | Done |
+| L6 | Header elements cramped/truncated | Layout | Medium | Done |
 | L7 | Visualization area severely constrained | Layout | Critical | Done |
 | L8 | No adaptive layout for playing state | Layout | High | Done |
 | L9 | Z-index conflicts between UI layers | Layout | Medium | Pending |
-| L10 | Canvas height doesn't account for bottom sheet | Layout | Critical | Pending |
-| L11 | Immersive mode doesn't hide entity labels | Layout | High | Pending |
+| L10 | Canvas height doesn't account for bottom sheet | Layout | Critical | Done |
+| L11 | Immersive mode doesn't hide entity labels | Layout | High | Done |
 | T1 | Labels overlap catastrophically | Typography | Critical | Partial |
 | T2 | Font size too small for mobile (~8-10px) | Typography | Critical | Done |
 | T3 | Low contrast gray text on dark background | Typography | High | Done |
@@ -130,14 +160,14 @@ TOTAL:    46 issues
 | T5 | No label collision detection | Typography | Critical | Partial |
 | T6 | No label LOD (Level of Detail) | Typography | High | Pending |
 | T7 | Date format unnecessarily verbose | Typography | Low | Pending |
-| T8 | Label width estimation inaccurate (causes overlap) | Typography | Critical | Pending |
-| T9 | Labels can extend off screen edges | Typography | High | Pending |
+| T8 | Label width estimation inaccurate (causes overlap) | Typography | Critical | Done |
+| T9 | Labels can extend off screen edges | Typography | High | Done |
 | A1 | Icons without labels (mystery meat navigation) | Accessibility | Critical | Done |
 | A2 | Touch targets below 44px minimum | Accessibility | High | Done |
 | A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Done |
-| A4 | File type pills too small | Accessibility | Medium | Pending |
-| A5 | Dropdown trigger too small | Accessibility | Medium | Pending |
-| A6 | No visible focus states | Accessibility | High | Pending |
+| A4 | File type pills too small | Accessibility | Medium | Done |
+| A5 | Dropdown trigger too small | Accessibility | Medium | Done |
+| A6 | No visible focus states | Accessibility | High | Done |
 | A7 | No gesture support visible (pinch/swipe) | Accessibility | Medium | Pending |
 | A8 | No skip/dismiss gestures for panels | Accessibility | High | Pending |
 | I1 | Information overload (15+ metrics at once) | Information | Critical | Done |
@@ -145,7 +175,7 @@ TOTAL:    46 issues
 | I3 | Developer metrics shown to users | Information | High | Done |
 | I4 | Redundant information (FPS + frame time) | Information | Medium | Pending |
 | I5 | No information hierarchy | Information | High | Pending |
-| I6 | No context when stats hidden | Information | High | Pending |
+| I6 | No context when stats hidden | Information | High | Done |
 | I7 | Jargon without explanation | Information | Medium | Pending |
 | I8 | All labels shown regardless of importance | Information | High | Pending |
 | V1 | Visual chaos with simultaneous beams | Visual | Critical | Done |

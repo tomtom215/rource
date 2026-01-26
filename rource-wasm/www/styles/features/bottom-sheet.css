@@ -735,12 +735,16 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 5px 10px;
+        /* A4: Increase touch target to 44px minimum (Apple HIG) */
+        padding: 10px 14px;
+        min-height: 44px;
         background: var(--bg-secondary);
-        border-radius: 16px;
-        font-size: 0.75rem;
+        border-radius: 22px;
+        font-size: 0.8125rem; /* 13px for better readability */
         white-space: nowrap;
         transition: background 0.15s ease;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
     }
 
     /* Subtle hover feedback */
@@ -749,8 +753,9 @@
     }
 
     .bottom-sheet-legend-color {
-        width: 10px;
-        height: 10px;
+        /* A4: Slightly larger color dot for better visibility */
+        width: 12px;
+        height: 12px;
         border-radius: 50%;
         flex-shrink: 0;
         /* Add subtle shadow for depth */

@@ -640,6 +640,34 @@ Complete label rendering cycle for typical mobile scene (30 users, 50 files).
 At 42,000 FPS target (23.8µs budget), smaller scenes fit within budget while
 larger scenes may require adaptive label limits.
 
+### T9: Viewport Bounds Check (Session 7)
+
+Added early-exit viewport check to `try_place()` to skip labels outside viewport.
+
+| Operation | Before T9 | After T9 | Impact |
+|-----------|-----------|----------|--------|
+| try_place_with_fallback() | 256 ns | 263 ns | +2.7% overhead (acceptable) |
+| try_place() (outside viewport) | 229 ns | 7 ns | **-97%** (early exit) |
+| Full frame (30+50 labels) | 38-39 µs | 38-39 µs | No measurable regression |
+
+**Analysis**:
+- The viewport check (4 float comparisons) adds ~7 ns overhead per in-viewport placement
+- Labels outside viewport benefit from early exit (skips spatial hash collision detection)
+- Net effect: negligible overhead for typical scenes, significant speedup for edge cases
+- Benefits: prevents visual clutter at viewport edges, saves wasted render calls
+
+**Implementation**:
+```rust
+// T9: Early exit for labels outside viewport
+if rect.x + rect.width < VIEWPORT_MARGIN
+    || rect.y + rect.height < VIEWPORT_MARGIN
+    || rect.x > self.viewport_width - VIEWPORT_MARGIN
+    || rect.y > self.viewport_height - VIEWPORT_MARGIN
+{
+    return false;  // Skip collision detection entirely
+}
+```
+
 ### Allocation Elimination
 
 Replaced per-frame Vec allocations with reusable buffers.

@@ -173,14 +173,25 @@ export function updatePlaybackUI() {
             timelineSlider.value = Math.min(current, total - 1);
             timelineSlider.disabled = false;
             const displayCurrent = Math.min(current + 1, total);
-            timelineInfoNumbers.textContent = `${displayCurrent} / ${total}`;
+            const progressText = `${displayCurrent} / ${total}`;
+            timelineInfoNumbers.textContent = progressText;
             timelineSlider.setAttribute('aria-valuetext', `Commit ${displayCurrent} of ${total}`);
+            // I6: Update minimal HUD progress
+            const { minimalHudProgress } = elements;
+            if (minimalHudProgress) {
+                minimalHudProgress.textContent = progressText;
+            }
         } else {
             timelineSlider.max = 0;
             timelineSlider.value = 0;
             timelineSlider.disabled = true;
             timelineInfoNumbers.textContent = '0 / 0';
             timelineSlider.setAttribute('aria-valuetext', '0 of 0 commits');
+            // I6: Clear minimal HUD progress
+            const { minimalHudProgress } = elements;
+            if (minimalHudProgress) {
+                minimalHudProgress.textContent = '0 / 0';
+            }
         }
 
         // Sync immersive mode timeline slider
@@ -210,6 +221,11 @@ export function updatePlaybackUI() {
             playbackUICache.lastTimestamp = timestamp;
             if (timelineDate) {
                 timelineDate.textContent = formatDateTime(timestamp);
+            }
+            // I6: Update minimal HUD date (short format for compact display)
+            const { minimalHudDate } = elements;
+            if (minimalHudDate) {
+                minimalHudDate.textContent = formatDate(timestamp, true);
             }
         }
 
@@ -245,6 +261,9 @@ export function updatePlaybackUI() {
         // Clear displays when no data
         if (timelineDate) timelineDate.textContent = '--';
         if (timelineCommitInfo) timelineCommitInfo.textContent = '';
+        // I6: Clear minimal HUD when no data
+        const { minimalHudDate } = elements;
+        if (minimalHudDate) minimalHudDate.textContent = '--';
     }
 
     // Update date range (start and end dates) - only need to do once when data changes

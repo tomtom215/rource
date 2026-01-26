@@ -54,6 +54,134 @@ h2.h3-style {
 }
 
 /* =============================================================================
+   Focus States (A6: Visible Focus Indicators)
+   ============================================================================= */
+
+/**
+ * Visible focus indicators for keyboard navigation.
+ * Uses :focus-visible to show focus rings only for keyboard users,
+ * not for mouse/touch interactions.
+ *
+ * WCAG 2.1 Success Criterion 2.4.7: Focus Visible (Level AA)
+ */
+
+/* Base focus ring for all focusable elements */
+:focus-visible {
+    outline: 2px solid var(--accent-primary, #e94560);
+    outline-offset: 2px;
+}
+
+/* Remove default focus ring (replaced by :focus-visible) */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Button focus states */
+.btn:focus-visible,
+.control-btn:focus-visible,
+.mobile-toolbar-btn:focus-visible,
+.bottom-sheet-fab:focus-visible,
+.theme-toggle:focus-visible,
+.sidebar-toggle:focus-visible,
+.showcase-btn:focus-visible {
+    outline: 2px solid var(--text-primary, #f0f6fc);
+    outline-offset: 2px;
+    border-radius: inherit;
+}
+
+/* Timeline scrubber focus */
+.timeline-slider:focus-visible {
+    outline: 3px solid var(--accent-primary, #e94560);
+    outline-offset: 4px;
+}
+
+/* Timeline thumb focus (for custom range inputs) */
+.timeline-slider:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px var(--accent-primary, #e94560);
+}
+
+.timeline-slider:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px var(--accent-primary, #e94560);
+}
+
+/* Input field focus */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.input-group input:focus-visible {
+    outline: 2px solid var(--accent-primary, #e94560);
+    outline-offset: 1px;
+    border-color: var(--accent-primary, #e94560);
+}
+
+/* Link focus */
+a:focus-visible {
+    outline: 2px solid var(--accent-primary, #e94560);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Tab focus */
+.tab-btn:focus-visible,
+.quick-action:focus-visible {
+    outline: 2px solid var(--accent-primary, #e94560);
+    outline-offset: 2px;
+    border-radius: var(--radius-md, 8px);
+}
+
+/* Panel/card focus (for keyboard-navigable panels) */
+.author-item:focus-visible,
+.legend-item:focus-visible,
+.collapsible-header:focus-visible {
+    outline: 2px solid var(--accent-primary, #e94560);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Speed dropdown focus */
+.speed-select:focus-visible {
+    outline: 2px solid var(--text-primary, #f0f6fc);
+    outline-offset: 2px;
+}
+
+/* Close button focus */
+.modal-close:focus-visible,
+.help-close:focus-visible,
+.toast-close:focus-visible {
+    outline: 2px solid var(--text-primary, #f0f6fc);
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+
+/* Skip link for keyboard users */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--accent-primary, #e94560);
+    color: white;
+    padding: 8px 16px;
+    z-index: 10000;
+    transition: top 0.2s;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Light theme focus adjustments */
+.light-theme :focus-visible,
+:root:not(.theme-manual) :focus-visible {
+    outline-color: var(--accent, #d6335a);
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not(.theme-manual) :focus-visible {
+        outline-color: var(--accent, #d6335a);
+    }
+}
+
+/* =============================================================================
    Composited Animations (GPU Acceleration)
    ============================================================================= */
 

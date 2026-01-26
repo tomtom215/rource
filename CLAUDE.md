@@ -382,11 +382,15 @@ rource/
 **The CLI and WASM have separate rendering code that must be kept in sync.**
 
 When making visual/rendering changes:
-1. Update `rource-cli/src/rendering.rs` for native CLI
-2. **Also update** `rource-wasm/src/lib.rs` with same changes
-3. Rebuild WASM with `./scripts/build-wasm.sh`
-4. Test both CLI and WASM to verify visual parity
-5. **Test on mobile Safari** to verify mobile UX
+1. **BENCHMARK BASELINE FIRST** - Run `cargo test -p rource-wasm bench_ --release -- --nocapture`
+2. Update `rource-cli/src/rendering.rs` for native CLI
+3. **Also update** `rource-wasm/src/lib.rs` and `rource-wasm/src/render_phases.rs` with same changes
+4. Update `crates/rource-render/src/label.rs` if label-related changes
+5. **BENCHMARK AFTER** - Compare with baseline, verify < 5% regression
+6. Rebuild WASM with `./scripts/build-wasm.sh`
+7. Test both CLI and WASM to verify visual parity
+8. **Test on mobile Safari** to verify mobile UX
+9. Document benchmark results in commit message
 
 ---
 
@@ -561,6 +565,77 @@ Mathematical Proof:
 ### Current Optimization History
 
 See `docs/performance/CHRONOLOGY.md` for complete history (64+ phases).
+
+### MANDATORY: Benchmark Before Committing Performance-Sensitive Code
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CRITICAL: NEVER ASSUME, ALWAYS BENCHMARK                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ANY change to the following code paths REQUIRES A/B benchmarking           │
+│  BEFORE committing:                                                         │
+│                                                                             │
+│  • Label rendering (LabelPlacer, try_place, collision detection)            │
+│  • Rendering loops (render_files, render_users, render_actions)             │
+│  • Spatial data structures (grids, hashes, trees)                           │
+│  • Per-frame operations (reset, update, draw calls)                         │
+│  • Hot paths in rource-render, rource-wasm/render_phases.rs                 │
+│  • Any code with "optimization", "performance", or "LOD" in comments        │
+│                                                                             │
+│  Even "simple" changes like adding 4 comparisons can have unexpected        │
+│  impacts due to: cache effects, branch prediction, struct size changes,     │
+│  compiler optimization differences, or memory layout changes.               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**A/B Benchmarking Protocol**:
+
+```bash
+# 1. BEFORE making changes, run baseline benchmarks
+cargo test -p rource-wasm bench_ --release -- --nocapture
+
+# 2. Record baseline numbers (copy/paste output)
+
+# 3. Make your changes
+
+# 4. Run SAME benchmarks again
+cargo test -p rource-wasm bench_ --release -- --nocapture
+
+# 5. Compare results - regression threshold is 5%
+#    If regression > 5%, investigate before committing
+
+# 6. For proper A/B comparison, use git checkout:
+git stash
+git checkout HEAD~1 -- <files>   # Baseline
+cargo test -p rource-wasm bench_<name> --release -- --nocapture
+git checkout HEAD -- <files>      # With changes
+cargo test -p rource-wasm bench_<name> --release -- --nocapture
+git stash pop
+```
+
+**Available Benchmarks**:
+
+| Benchmark | What It Measures | Location |
+|-----------|------------------|----------|
+| `bench_label_placer_new` | LabelPlacer creation cost | render_phases.rs |
+| `bench_label_placer_reset` | Per-frame reset cost | render_phases.rs |
+| `bench_label_placer_try_place` | Single label placement | render_phases.rs |
+| `bench_label_placer_try_place_with_fallback` | Placement with collision | render_phases.rs |
+| `bench_full_label_placement_scenario` | Full frame (30+50 labels) | render_phases.rs |
+| `bench_beam_sorting` | Action beam ordering | render_phases.rs |
+| `bench_user_label_sorting` | User label prioritization | render_phases.rs |
+
+**Regression Thresholds**:
+
+| Severity | Threshold | Action |
+|----------|-----------|--------|
+| Acceptable | < 5% | Document in commit message |
+| Warning | 5-10% | Investigate, justify in PR |
+| Blocking | > 10% | Do NOT commit without review |
+
+**Session 7 Lesson Learned**: T9 viewport bounds check was committed without benchmarking. Post-commit A/B testing revealed +2.7% overhead (acceptable) but this should have been verified BEFORE committing. Always benchmark first.
 
 ---
 

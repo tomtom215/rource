@@ -92,10 +92,20 @@ impl LabelConfig {
     }
 }
 
+/// Small margin for viewport bounds checking (T9).
+/// Labels within this margin of the viewport edge are considered on-screen.
+const VIEWPORT_MARGIN: f32 = 5.0;
+
 /// Manages label placement to avoid overlaps.
 ///
 /// Uses a simple approach: labels are placed in priority order, and each
 /// new label is checked against all previously placed labels for collisions.
+///
+/// # T9: Viewport Bounds Checking
+///
+/// Labels that would extend beyond viewport edges are rejected. This prevents:
+/// - Labels being cut off at screen edges
+/// - Wasted render calls for off-screen labels
 #[derive(Debug)]
 pub struct LabelPlacer {
     /// Occupied regions on screen.
@@ -106,6 +116,10 @@ pub struct LabelPlacer {
     count: usize,
     /// Maximum labels allowed (based on zoom).
     max_count: usize,
+    /// Viewport width for bounds checking (T9).
+    viewport_width: f32,
+    /// Viewport height for bounds checking (T9).
+    viewport_height: f32,
 }
 
 impl LabelPlacer {
@@ -122,6 +136,9 @@ impl LabelPlacer {
             config,
             count: 0,
             max_count,
+            // Default viewport (will be set properly via set_viewport)
+            viewport_width: 1920.0,
+            viewport_height: 1080.0,
         }
     }
 
@@ -131,6 +148,16 @@ impl LabelPlacer {
         self.occupied.clear();
         self.count = 0;
         self.max_count = self.config.max_labels_at_zoom(zoom);
+    }
+
+    /// Sets the viewport dimensions for bounds checking (T9).
+    ///
+    /// Call this when viewport size changes or at the start of each frame
+    /// before placing labels.
+    #[inline]
+    pub fn set_viewport(&mut self, width: f32, height: f32) {
+        self.viewport_width = width;
+        self.viewport_height = height;
     }
 
     /// Returns true if more labels can be placed.
@@ -160,8 +187,22 @@ impl LabelPlacer {
     /// Attempts to place a label at the given position.
     ///
     /// Returns true if the label was placed (no collision), false otherwise.
+    ///
+    /// # T9: Viewport Bounds Checking
+    ///
+    /// Labels that would extend beyond viewport edges are rejected.
     pub fn try_place(&mut self, position: Vec2, width: f32, height: f32) -> bool {
         if !self.can_place_more() {
+            return false;
+        }
+
+        // T9: Viewport bounds check - reject labels that extend off-screen
+        // Allow small negative positions (partial visibility) but reject if mostly off-screen
+        if position.x + width < VIEWPORT_MARGIN
+            || position.y + height < VIEWPORT_MARGIN
+            || position.x > self.viewport_width - VIEWPORT_MARGIN
+            || position.y > self.viewport_height - VIEWPORT_MARGIN
+        {
             return false;
         }
 
@@ -412,5 +453,48 @@ mod tests {
 
         // Can place again at same position after reset
         assert!(placer.try_place(Vec2::new(0.0, 0.0), 50.0, 12.0));
+    }
+
+    #[test]
+    fn test_label_placer_set_viewport() {
+        let mut placer = LabelPlacer::new(1.0);
+
+        // Default viewport is 1920x1080
+        // Set to smaller viewport
+        placer.set_viewport(800.0, 600.0);
+
+        // Label within new viewport should succeed
+        assert!(placer.try_place(Vec2::new(100.0, 100.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 1);
+    }
+
+    #[test]
+    fn test_label_placer_viewport_bounds_t9() {
+        let mut placer = LabelPlacer::new(1.0);
+        placer.set_viewport(800.0, 600.0);
+
+        // T9: Label off-screen to the left (position.x + width < VIEWPORT_MARGIN)
+        assert!(!placer.try_place(Vec2::new(-100.0, 100.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 0);
+
+        // T9: Label off-screen to the top (position.y + height < VIEWPORT_MARGIN)
+        assert!(!placer.try_place(Vec2::new(100.0, -100.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 0);
+
+        // T9: Label off-screen to the right (position.x > viewport_width - VIEWPORT_MARGIN)
+        assert!(!placer.try_place(Vec2::new(800.0, 100.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 0);
+
+        // T9: Label off-screen to the bottom (position.y > viewport_height - VIEWPORT_MARGIN)
+        assert!(!placer.try_place(Vec2::new(100.0, 600.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 0);
+
+        // Labels within viewport should succeed
+        assert!(placer.try_place(Vec2::new(100.0, 100.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 1);
+
+        // Label at edge but still visible (within VIEWPORT_MARGIN)
+        assert!(placer.try_place(Vec2::new(700.0, 500.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 2);
     }
 }

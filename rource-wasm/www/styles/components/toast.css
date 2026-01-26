@@ -100,18 +100,20 @@
     .toast {
         /* iOS-style top positioning to avoid all bottom overlaps */
         bottom: auto;
-        top: max(60px, calc(env(safe-area-inset-top, 0px) + 50px));
+        /* L4 FIX: Position toast to the right of stats panel area
+           Stats panel is at top-left (max-width: 200px).
+           Move toast to right side of screen to avoid overlap. */
+        top: max(12px, calc(env(safe-area-inset-top, 0px) + 8px));
+        left: auto;
+        right: max(12px, env(safe-area-inset-right, 0px));
+        transform: translateX(0) translateY(-100px);
         /* Slide down animation instead of up */
-        transform: translateX(-50%) translateY(-100px);
         /* Narrower padding for smaller screens */
         padding: var(--spacing-sm) var(--spacing-md);
-        /* Allow slightly wider toasts on mobile */
-        max-width: 95%;
+        /* Constrain width to avoid overlapping stats on left */
+        max-width: min(85%, calc(100vw - 220px));
         /* Smaller font for mobile */
         font-size: 0.8125rem;
-        /* Ensure safe area inset is respected */
-        margin-left: env(safe-area-inset-left, 0);
-        margin-right: env(safe-area-inset-right, 0);
         /* Compact border radius for top position */
         border-radius: var(--radius-lg);
         /* Subtle shadow for depth */
@@ -119,7 +121,7 @@
     }
 
     .toast.visible {
-        transform: translateX(-50%) translateY(0);
+        transform: translateX(0) translateY(0);
     }
 
     .toast-message {
@@ -142,9 +144,11 @@
 /* Extra small screens */
 @media (max-width: 375px) {
     .toast {
-        top: max(55px, calc(env(safe-area-inset-top, 0px) + 45px));
+        top: max(10px, calc(env(safe-area-inset-top, 0px) + 6px));
+        right: max(8px, env(safe-area-inset-right, 0px));
         padding: var(--spacing-xs) var(--spacing-sm);
-        max-width: 92%;
+        /* Smaller screens: allow more width since stats panel also smaller */
+        max-width: min(88%, calc(100vw - 180px));
     }
 
     .toast-message {
@@ -155,6 +159,7 @@
 /* Landscape mode: toast positioned closer to top due to reduced height */
 @media (max-width: 768px) and (orientation: landscape) {
     .toast {
-        top: max(8px, env(safe-area-inset-top, 0px));
+        top: max(6px, env(safe-area-inset-top, 0px));
+        right: max(8px, env(safe-area-inset-right, 0px));
     }
 }

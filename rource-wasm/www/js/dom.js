@@ -93,6 +93,11 @@ export function initDomElements() {
     elements.statDirs = document.getElementById('stat-dirs');
     elements.statAuthors = document.getElementById('stat-authors');
 
+    // Minimal HUD (I6: context when controls hidden)
+    elements.minimalHud = document.getElementById('minimal-hud');
+    elements.minimalHudDate = document.getElementById('minimal-hud-date');
+    elements.minimalHudProgress = document.getElementById('minimal-hud-progress');
+
     // Toast notification
     elements.toast = document.getElementById('toast');
 

@@ -586,6 +586,9 @@ pub fn render_frame(app: &mut App) {
     );
 
     // Render files (uses reusable label candidates buffer to avoid per-frame allocations)
+    // T9: Pass viewport dimensions for off-screen label culling
+    let viewport_width = renderer.width() as f32;
+    let viewport_height = renderer.height() as f32;
     render_files(
         renderer,
         &app.scene,
@@ -594,6 +597,8 @@ pub fn render_frame(app: &mut App) {
         &app.args,
         app.default_font,
         &mut app.file_label_candidates_buffer,
+        viewport_width,
+        viewport_height,
     );
 
     // Render actions (beams)
@@ -763,6 +768,11 @@ fn render_directories(
 ///
 /// Uses a reusable buffer for label candidates to avoid per-frame allocations.
 /// The buffer stores (`FileId`, `screen_pos`, radius, alpha, priority) tuples.
+///
+/// # T9: Viewport Bounds Checking
+///
+/// Passes viewport dimensions to label renderer for off-screen culling.
+#[allow(clippy::too_many_arguments)]
 fn render_files(
     renderer: &mut SoftwareRenderer,
     scene: &Scene,
@@ -771,6 +781,8 @@ fn render_files(
     args: &Args,
     font_id: Option<FontId>,
     label_candidates: &mut Vec<(FileId, Vec2, f32, f32, f32)>,
+    viewport_width: f32,
+    viewport_height: f32,
 ) {
     let show_filenames = !args.hide_filenames;
     let hide_tree = args.hide_tree;
@@ -884,6 +896,8 @@ fn render_files(
             camera_zoom,
             file_font_size,
             fid,
+            viewport_width,
+            viewport_height,
         );
     }
 }
@@ -892,6 +906,11 @@ fn render_files(
 ///
 /// Uses `FileId` in candidates buffer to enable zero-allocation across frames.
 /// Looks up file names from the scene when rendering.
+///
+/// # T9: Viewport Bounds Checking
+///
+/// Labels that would extend beyond viewport edges are rejected.
+#[allow(clippy::too_many_arguments)]
 fn render_file_labels(
     renderer: &mut SoftwareRenderer,
     scene: &Scene,
@@ -899,12 +918,16 @@ fn render_file_labels(
     camera_zoom: f32,
     font_size: f32,
     font_id: FontId,
+    viewport_width: f32,
+    viewport_height: f32,
 ) {
     // Sort by priority (highest first) - use unstable sort for performance
     candidates.sort_unstable_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
 
     // Create label placer with zoom-based limit
     let mut placer = LabelPlacer::new(camera_zoom);
+    // T9: Set viewport for off-screen label culling
+    placer.set_viewport(viewport_width, viewport_height);
 
     for &(file_id, screen_pos, radius, alpha, _priority) in candidates.iter() {
         if !placer.can_place_more() {

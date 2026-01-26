@@ -102,9 +102,9 @@
     --z-sidebar-drawer: 150;      /* Slide-out sidebar (tablet breakpoint) */
     --z-sidebar-scroll: 151;      /* Scroll indicator in sidebar */
     --z-sticky: 200;
-    --z-fab: 250;                 /* Floating action buttons */
     --z-modal-backdrop: 299;      /* Modal/sheet backdrop */
     --z-modal: 300;               /* Modal dialogs, bottom sheets */
+    --z-fab: 350;                 /* Floating action buttons (above modal for mobile UX) */
     --z-popover: 400;
     --z-overlay: 500;             /* Full-screen overlays (help, etc.) */
     --z-gesture: 550;             /* Gesture indicators */
