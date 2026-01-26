@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769442012907,
+  "lastUpdate": 1769444489274,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -2948,6 +2948,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/8b414a3b0a2bbccee0cea8ea5f980356d15c6c0f"
         },
         "date": 1769442012552,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913424,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 2795151,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1079374,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8cd987afa5f86274f029572c548bb681f9678178",
+          "message": "Merge pull request #196 from tomtom215/claude/rource-development-bfOIr\n\nFix L2: Reduce bottom sheet height for better visualization space",
+          "timestamp": "2026-01-26T17:19:18+01:00",
+          "tree_id": "f451cca5550039e78e18f7962152754c4445e746",
+          "url": "https://github.com/tomtom215/rource/commit/8cd987afa5f86274f029572c548bb681f9678178"
+        },
+        "date": 1769444488797,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
