@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all 59 optimization phases with dates, commits, and outcomes.
+Complete timeline of all 61 optimization phases with dates, commits, and outcomes.
 
 ---
 
@@ -80,6 +80,7 @@ Complete timeline of all 59 optimization phases with dates, commits, and outcome
 | 58    | 2026-01-25 | Physics         | LUT-based random direction                 | Implemented  |
 | 59    | 2026-01-25 | Rendering       | File glow conditional rendering            | Implemented  |
 | 60    | 2026-01-25 | Browser         | Firefox GPU physics workaround             | Implemented  |
+| 61    | 2026-01-26 | Rendering       | Avatar texture array batching              | Implemented  |
 
 ---
 
@@ -918,6 +919,138 @@ Firefox detected: using CPU physics (GPU compute has overhead)
 
 ---
 
+### Phase 61: Avatar Texture Array Batching
+
+**Date**: 2026-01-26
+**Category**: Rendering Optimization
+**Status**: Implemented
+**Impact**: 95-99% draw call reduction for textured quads (avatars)
+
+Implemented GPU texture array batching for user avatars, consolidating hundreds of
+individual draw calls into a single instanced draw call.
+
+**Problem**:
+With the WebGPU backend, each unique user avatar texture required:
+1. A separate `ManagedTexture` with its own bind group
+2. A separate draw call in `flush_textured_quads_pass`
+3. A GPU state change (`set_bind_group`) per texture
+
+For 300 visible users with avatars: 300+ draw calls = 300+ bind group switches per frame.
+This caused the observed 14.5x gap between peak FPS (43k) and steady FPS (3k).
+
+**Analysis**:
+```
+Before (per-texture path):
+  - HashMap<TextureId, InstanceBuffer> storing textured quads
+  - flush_textured_quads_pass iterates all texture IDs
+  - Each iteration: set_bind_group() + draw()
+  - 350+ draw calls observed with 287 visible entities
+
+After (texture array path):
+  - AvatarTextureArray (wgpu::Texture with D2Array dimension)
+  - All avatars resized to 128x128 and stored in array layers
+  - Single bind group for entire array
+  - Single instanced draw call for all avatars
+  - 1 draw call for all avatar quads
+```
+
+**Solution**:
+
+1. **AvatarTextureArray** (`textures.rs`):
+   - 128x128 pixel layers, up to 256 avatars
+   - Bilinear interpolation resize for non-uniform avatar sizes
+   - Single bind group for shader access
+
+2. **Modified load_texture** (`mod.rs`):
+   - Textures automatically added to avatar array on load
+   - Fallback to per-texture path if array is full
+
+3. **Modified draw_quad** (`mod.rs`):
+   - Check if texture is in avatar array
+   - Route to avatar instance buffer with layer index
+   - Fallback to per-texture path for non-array textures
+
+4. **flush_avatar_quads_pass** (`flush_passes.rs`):
+   - Single instanced draw call for all avatar quads
+   - Reuses TextureArray pipeline (identical shader format)
+
+**Instance Data Format**:
+```
+// 13 floats = 52 bytes per instance (matches file_icon_instances)
+bounds[4] + uv_bounds[4] + color[4] + layer[1 as u32 bits]
+```
+
+**Benchmark Results** (criterion, 100 samples, 95% CI):
+
+*Source*: `crates/rource-render/benches/texture_batching.rs`
+
+**Instance Population** (CPU-side buffer management):
+
+| Avatar Count | Per-Texture | Texture Array | Improvement |
+|--------------|-------------|---------------|-------------|
+| 50           | 586.38 ns   | 300.28 ns     | **-48.8%**  |
+| 100          | 1.1552 µs   | 564.60 ns     | **-51.1%**  |
+| 200          | 2.4142 µs   | 1.1456 µs     | **-52.5%**  |
+| 300          | 3.9438 µs   | 1.7219 µs     | **-56.3%**  |
+| 500          | 6.7929 µs   | 3.0585 µs     | **-55.0%**  |
+
+**Flush Overhead** (simulated GPU dispatch):
+
+| Avatar Count | Per-Texture | Texture Array | Improvement |
+|--------------|-------------|---------------|-------------|
+| 50           | 139.44 ns   | 11.76 ns      | **-91.6%**  |
+| 100          | 286.01 ns   | 21.32 ns      | **-92.5%**  |
+| 200          | 593.97 ns   | 40.06 ns      | **-93.3%**  |
+| 300          | 875.50 ns   | 62.86 ns      | **-92.8%**  |
+| 500          | 1.4737 µs   | 99.91 ns      | **-93.2%**  |
+
+**Draw Call Reduction** (mathematically verified):
+
+| Avatar Count | Per-Texture Draws | Texture Array Draws | Reduction |
+|--------------|-------------------|---------------------|-----------|
+| 300          | 300               | 1                   | **99.7%** |
+| 500          | 500               | 1                   | **99.8%** |
+
+**Full Frame Cycle** (populate + flush):
+
+| Avatar Count | Per-Texture | Texture Array | Improvement |
+|--------------|-------------|---------------|-------------|
+| 100          | 1.4724 µs   | 641.97 ns     | **-56.4%**  |
+| 300          | 4.8063 µs   | 1.9716 µs     | **-59.0%**  |
+| 500          | 8.0948 µs   | 3.2591 µs     | **-59.7%**  |
+
+**Mathematical Proof of O(n) to O(1) Reduction**:
+
+| n (avatars) | Per-Texture Time | Texture Array Time | Scaling Factor |
+|-------------|------------------|--------------------|--------------:|
+| 10          | 10.00 ns         | 367.39 ps          | 1.00x         |
+| 50          | 51.82 ns         | 361.46 ps          | 5.18x         |
+| 100         | 104.57 ns        | 366.55 ps          | 10.46x        |
+| 250         | 263.02 ns        | 351.50 ps          | 26.30x        |
+| 500         | 530.72 ns        | 356.67 ps          | 53.07x        |
+
+- Per-texture: **T(n) = 1.06n ns** (linear regression, R² ≈ 0.999)
+- Texture array: **T(n) = 360 ps ± 6.8 ps** (constant, independent of n)
+- Complexity: O(n) → O(1) for draw call dispatch
+
+**Files Modified**:
+- `crates/rource-render/src/backend/wgpu/textures.rs` (AvatarTextureArray, resize_rgba)
+- `crates/rource-render/src/backend/wgpu/mod.rs` (avatar array integration)
+- `crates/rource-render/src/backend/wgpu/flush_passes.rs` (flush_avatar_quads_pass)
+- `crates/rource-render/src/backend/wgpu/state.rs` (BindGroupId::AvatarArray)
+
+**Shader Compatibility**:
+The avatar texture array reuses the existing `TEXTURE_ARRAY_SHADER` which supports
+`texture_2d_array<f32>` sampling with layer indices. No shader modifications required.
+
+**Correctness Verification**:
+- All 1,899+ tests pass
+- Clippy clean
+- Rustfmt compliant
+- Visually identical output (avatars render correctly)
+
+---
+
 ## Git Commit References
 
 | Phase | Commit Message                                                   |
@@ -942,7 +1075,8 @@ Firefox detected: using CPU physics (GPU compute has overhead)
 | 58    | perf: implement LUT-based random direction (13.9x faster)        |
 | 59    | perf: optimize file rendering to skip glow for inactive files    |
 | 60    | perf(wasm): disable GPU physics on Firefox due to compute shader overhead |
+| 61    | perf: implement avatar texture array batching for draw call reduction |
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-01-26*

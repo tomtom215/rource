@@ -129,6 +129,8 @@ pub enum BindGroupId {
     ShadowTexture = 7,
     /// File icon texture array at group 1.
     FileIconArray = 8,
+    /// Avatar texture array at group 1.
+    AvatarArray = 9,
 }
 
 impl BindGroupId {
@@ -145,7 +147,8 @@ impl BindGroupId {
             | Self::BloomTextureB
             | Self::ShadowScene
             | Self::ShadowTexture
-            | Self::FileIconArray => 1,
+            | Self::FileIconArray
+            | Self::AvatarArray => 1,
         }
     }
 }

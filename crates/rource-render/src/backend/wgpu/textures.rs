@@ -1081,9 +1081,254 @@ impl TextureArrayStats {
     }
 }
 
+// ============================================================================
+// Avatar Texture Array (for batching user avatars)
+// ============================================================================
+
+/// Default avatar texture array size (square dimensions).
+pub const AVATAR_ARRAY_SIZE: u32 = 128;
+
+/// Maximum number of avatars in the texture array.
+pub const MAX_AVATAR_LAYERS: u32 = 256;
+
+/// Texture array optimized for batching user avatar textures.
+///
+/// This structure enables rendering all user avatars with a single draw call
+/// by storing them in a GPU texture array. Avatars of any size are resized
+/// to fit the uniform array dimensions using bilinear interpolation.
+///
+/// ## Performance Impact
+///
+/// Without batching: N avatars = N draw calls (bind group switch per avatar)
+/// With batching: N avatars = 1 draw call (single bind group, instanced rendering)
+///
+/// For 300 visible users, this reduces draw calls from ~300 to 1, improving
+/// frame time by eliminating GPU state changes.
+///
+/// ## Usage
+///
+/// ```ignore
+/// // Create avatar array (128x128 pixels, up to 256 avatars)
+/// let array = AvatarTextureArray::new(&device, &layout, 128, 256)?;
+///
+/// // Add avatar (automatically resized to 128x128)
+/// let layer = array.add_avatar(&queue, 64, 64, &rgba_data)?;
+///
+/// // Use layer index in shader to sample correct avatar
+/// ```
+#[derive(Debug)]
+pub struct AvatarTextureArray {
+    /// Underlying texture array.
+    inner: TextureArray,
+}
+
+impl AvatarTextureArray {
+    /// Creates a new avatar texture array.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - wgpu device for resource creation
+    /// * `texture_array_layout` - Bind group layout for texture array access
+    /// * `size` - Width and height of each avatar slot in pixels
+    /// * `max_avatars` - Maximum number of avatars (up to 256)
+    pub fn new(
+        device: &wgpu::Device,
+        texture_array_layout: &wgpu::BindGroupLayout,
+        size: u32,
+        max_avatars: u32,
+    ) -> Option<Self> {
+        let inner = TextureArray::new(device, texture_array_layout, size, size, max_avatars)?;
+        Some(Self { inner })
+    }
+
+    /// Creates an avatar array with default settings (128x128, 256 max).
+    pub fn with_defaults(
+        device: &wgpu::Device,
+        texture_array_layout: &wgpu::BindGroupLayout,
+    ) -> Option<Self> {
+        Self::new(
+            device,
+            texture_array_layout,
+            AVATAR_ARRAY_SIZE,
+            MAX_AVATAR_LAYERS,
+        )
+    }
+
+    /// Returns the bind group for shader access.
+    #[inline]
+    pub fn bind_group(&self) -> &wgpu::BindGroup {
+        self.inner.bind_group()
+    }
+
+    /// Returns the current number of avatars.
+    #[inline]
+    pub fn avatar_count(&self) -> u32 {
+        self.inner.layer_count()
+    }
+
+    /// Returns the maximum number of avatars.
+    #[inline]
+    pub fn max_avatars(&self) -> u32 {
+        self.inner.max_layers()
+    }
+
+    /// Returns the avatar size in pixels.
+    #[inline]
+    pub fn avatar_size(&self) -> u32 {
+        self.inner.width()
+    }
+
+    /// Checks if the array is full.
+    #[inline]
+    pub fn is_full(&self) -> bool {
+        self.inner.layer_count() >= self.inner.max_layers()
+    }
+
+    /// Adds an avatar to the array, resizing if necessary.
+    ///
+    /// # Arguments
+    ///
+    /// * `queue` - wgpu queue for upload
+    /// * `width` - Source image width
+    /// * `height` - Source image height
+    /// * `data` - RGBA pixel data
+    ///
+    /// # Returns
+    ///
+    /// The layer index, or `None` if the array is full.
+    pub fn add_avatar(
+        &mut self,
+        queue: &wgpu::Queue,
+        width: u32,
+        height: u32,
+        data: &[u8],
+    ) -> Option<u32> {
+        let target_size = self.inner.width();
+        let expected_len = (width * height * 4) as usize;
+
+        if data.len() != expected_len {
+            return None;
+        }
+
+        if self.is_full() {
+            return None;
+        }
+
+        // If already the right size, use directly
+        if width == target_size && height == target_size {
+            return self.inner.add_layer(queue, data);
+        }
+
+        // Resize using bilinear interpolation
+        let resized = resize_rgba(data, width, height, target_size, target_size);
+        self.inner.add_layer(queue, &resized)
+    }
+}
+
+/// Resizes RGBA image data using bilinear interpolation.
+///
+/// This is a simple software resize implementation to avoid adding
+/// image processing dependencies. For avatars (small images), the
+/// performance impact is negligible.
+fn resize_rgba(src: &[u8], src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> Vec<u8> {
+    let mut dst = vec![0u8; (dst_w * dst_h * 4) as usize];
+
+    let x_ratio = src_w as f32 / dst_w as f32;
+    let y_ratio = src_h as f32 / dst_h as f32;
+
+    for y in 0..dst_h {
+        for x in 0..dst_w {
+            // Map destination pixel to source coordinates
+            let src_x = x as f32 * x_ratio;
+            let src_y = y as f32 * y_ratio;
+
+            // Get integer and fractional parts
+            let x0 = src_x.floor() as u32;
+            let y0 = src_y.floor() as u32;
+            let x1 = (x0 + 1).min(src_w - 1);
+            let y1 = (y0 + 1).min(src_h - 1);
+            let x_frac = src_x - x0 as f32;
+            let y_frac = src_y - y0 as f32;
+
+            // Sample four neighboring pixels
+            let idx00 = ((y0 * src_w + x0) * 4) as usize;
+            let idx01 = ((y0 * src_w + x1) * 4) as usize;
+            let idx10 = ((y1 * src_w + x0) * 4) as usize;
+            let idx11 = ((y1 * src_w + x1) * 4) as usize;
+
+            // Bilinear interpolation for each channel
+            let dst_idx = ((y * dst_w + x) * 4) as usize;
+            for c in 0..4 {
+                let p00 = src[idx00 + c] as f32;
+                let p01 = src[idx01 + c] as f32;
+                let p10 = src[idx10 + c] as f32;
+                let p11 = src[idx11 + c] as f32;
+
+                // Interpolate horizontally
+                let top = p00 * (1.0 - x_frac) + p01 * x_frac;
+                let bottom = p10 * (1.0 - x_frac) + p11 * x_frac;
+
+                // Interpolate vertically
+                let value = top * (1.0 - y_frac) + bottom * y_frac;
+
+                dst[dst_idx + c] = value.round() as u8;
+            }
+        }
+    }
+
+    dst
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_resize_rgba_same_size() {
+        // 2x2 red image
+        let src = vec![
+            255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255,
+        ];
+        let dst = resize_rgba(&src, 2, 2, 2, 2);
+        assert_eq!(dst.len(), 16);
+        // Should remain red
+        assert_eq!(dst[0], 255); // R
+        assert_eq!(dst[1], 0); // G
+        assert_eq!(dst[2], 0); // B
+        assert_eq!(dst[3], 255); // A
+    }
+
+    #[test]
+    fn test_resize_rgba_upscale() {
+        // 1x1 blue pixel -> 2x2
+        let src = vec![0, 0, 255, 255];
+        let dst = resize_rgba(&src, 1, 1, 2, 2);
+        assert_eq!(dst.len(), 16);
+        // All pixels should be blue
+        for i in 0..4 {
+            assert_eq!(dst[i * 4], 0); // R
+            assert_eq!(dst[i * 4 + 1], 0); // G
+            assert_eq!(dst[i * 4 + 2], 255); // B
+            assert_eq!(dst[i * 4 + 3], 255); // A
+        }
+    }
+
+    #[test]
+    fn test_resize_rgba_downscale() {
+        // 2x2 -> 1x1 (average of colors)
+        // Top-left: red, top-right: green, bottom-left: blue, bottom-right: white
+        let src = vec![
+            255, 0, 0, 255, // red
+            0, 255, 0, 255, // green
+            0, 0, 255, 255, // blue
+            255, 255, 255, 255, // white
+        ];
+        let dst = resize_rgba(&src, 2, 2, 1, 1);
+        assert_eq!(dst.len(), 4);
+        // Result should be a blend (bilinear samples top-left corner)
+        // At (0,0) mapping to (0,0), we sample just the top-left pixel
+        assert_eq!(dst[0], 255); // R from red pixel
+    }
 
     #[test]
     fn test_glyph_key_new() {

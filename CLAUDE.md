@@ -6,19 +6,109 @@ This document provides context and guidance for Claude (AI assistant) when worki
 
 ## Table of Contents
 
-1. [Project Overview](#project-overview)
-2. [Quick Start](#quick-start)
-3. [Architecture](#architecture)
-4. [Development Guidelines](#development-guidelines)
-5. [Performance Optimization Standards](#performance-optimization-standards)
-6. [Common Tasks](#common-tasks)
-7. [Testing & Validation](#testing--validation)
-8. [CI/CD Pipeline](#cicd-pipeline)
-9. [Debugging](#debugging)
-10. [Dependencies Philosophy](#dependencies-philosophy)
-11. [Git Workflow](#git-workflow)
-12. [Troubleshooting](#troubleshooting)
-13. [Reference Links](#reference-links)
+1. [Core Operating Principles](#core-operating-principles)
+2. [Project Overview](#project-overview)
+3. [Quick Start](#quick-start)
+4. [Architecture](#architecture)
+5. [Development Guidelines](#development-guidelines)
+6. [Performance Optimization Standards](#performance-optimization-standards)
+7. [Common Tasks](#common-tasks)
+8. [Testing & Validation](#testing--validation)
+9. [CI/CD Pipeline](#cicd-pipeline)
+10. [Debugging](#debugging)
+11. [Dependencies Philosophy](#dependencies-philosophy)
+12. [Git Workflow](#git-workflow)
+13. [Troubleshooting](#troubleshooting)
+14. [Reference Links](#reference-links)
+
+---
+
+## Core Operating Principles
+
+**This project is a professional portfolio showpiece and publicly deployed WASM demo.** Every contribution must meet the highest standards of software engineering excellence.
+
+### The Standard
+
+| Principle | Requirement |
+|-----------|-------------|
+| **Never Assume** | Verify every claim with data. If unsure, investigate first. |
+| **Never Guess** | Base all decisions on measurements, not intuition. |
+| **Always Test** | Run the full test suite before claiming success. |
+| **Always Measure** | Use criterion benchmarks with statistical significance. |
+| **Always Verify** | Confirm results are reproducible across runs. |
+| **Always Validate** | Cross-check implementations against mathematical proofs. |
+| **Always Document** | Every optimization needs before/after measurements in docs. |
+
+### Precision Requirements
+
+We operate at **nanosecond to picosecond precision**:
+
+| Precision Level | When Required | Example |
+|-----------------|---------------|---------|
+| **Picoseconds** | O(1) constant-time operations | Draw call count verification: 360 ps ± 6.8 ps |
+| **Nanoseconds** | Individual operations | Perpendicular vector: 4.65 ns → 1.28 ns (-72%) |
+| **Microseconds** | Function-level benchmarks | Full frame cycle: 4.81 µs → 1.97 µs (-59%) |
+| **Milliseconds** | Frame-level performance | Frame budget: 16.67 ms at 60 FPS |
+
+### What This Means in Practice
+
+1. **Before implementing any optimization**:
+   - Create criterion benchmarks measuring baseline performance
+   - Document the current state with actual numbers
+   - Analyze algorithmic complexity (Big-O notation)
+
+2. **During implementation**:
+   - Make targeted, minimal changes
+   - Preserve correctness (all 1,899+ tests must pass)
+   - Maintain code quality (clippy, rustfmt)
+
+3. **After implementation**:
+   - Run benchmarks to measure actual improvement
+   - Calculate percentage improvement and speedup factors
+   - Verify mathematical claims (e.g., O(n) → O(1)) with scaling tests
+   - Document in multiple places:
+     - `docs/performance/CHRONOLOGY.md` (phase history)
+     - `docs/performance/BENCHMARKS.md` (raw data tables)
+     - `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` (summary)
+
+### Anti-Patterns to Avoid
+
+| Anti-Pattern | Why It's Wrong | Correct Approach |
+|--------------|----------------|------------------|
+| "This should be faster" | Speculation without data | Benchmark before and after |
+| "~50% improvement" | Approximation, not measurement | "52.5% improvement (2.41µs → 1.15µs)" |
+| "Expected Results" | Prediction, not verification | Run benchmarks, report actual numbers |
+| Implementing without benchmarks | No proof of improvement | Always benchmark first |
+| Single data point | Not statistically significant | Use criterion with 100+ samples |
+| "Fixed" without testing | Assumption of correctness | Run full test suite |
+
+### Statistical Rigor Requirements
+
+All benchmark claims must include:
+
+1. **Sample size**: Minimum 100 samples (criterion default)
+2. **Confidence interval**: 95% CI reported
+3. **Multiple input sizes**: Test scaling behavior (e.g., 50, 100, 200, 300, 500)
+4. **Throughput metrics**: Elements/second where applicable
+5. **Outlier analysis**: Report and explain outliers
+6. **Reproducibility**: Same results on repeated runs
+
+Example of proper benchmark reporting:
+
+```
+Instance Population (criterion, 100 samples, 95% CI):
+
+| Avatar Count | Per-Texture | Texture Array | Improvement |
+|--------------|-------------|---------------|-------------|
+| 50           | 586.38 ns   | 300.28 ns     | -48.8%      |
+| 100          | 1.1552 µs   | 564.60 ns     | -51.1%      |
+| 300          | 3.9438 µs   | 1.7219 µs     | -56.3%      |
+
+Mathematical Proof:
+- Per-texture: T(n) = 1.06n ns (linear regression, R² ≈ 0.999)
+- Texture array: T(n) = 360 ps ± 6.8 ps (constant)
+- Complexity: O(n) → O(1) verified
+```
 
 ---
 
@@ -42,7 +132,9 @@ This document provides context and guidance for Claude (AI assistant) when worki
 |--------------------|----------------------------------------|
 | `README.md`        | Project overview and usage instructions |
 | `CONTRIBUTING.md`  | Development guidelines and code style  |
-| `docs/performance/` | Performance optimization documentation (59 phases) |
+| `docs/performance/CHRONOLOGY.md` | Complete optimization history (61+ phases) |
+| `docs/performance/BENCHMARKS.md` | Raw benchmark data with statistical analysis |
+| `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/ALGORITHMIC_COMPLEXITY.md` | Big-O analysis of all functions |
 | `LICENSE`          | GPL-3.0 license (same as original Gource) |
 
@@ -247,6 +339,50 @@ cargo test -p rource-core
 
 **This project serves as the center showpiece of a professional portfolio and a publicly deployed WASM demo.** As such, we aim for **mathematical perfection** in all performance optimizations—measured, repeatable, verifiable, auditable, and documented improvements.
 
+### The Optimization Workflow
+
+Every optimization MUST follow this exact process:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    OPTIMIZATION WORKFLOW                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. IDENTIFY                                                            │
+│     └─ Profile, grep for patterns, analyze algorithmic complexity       │
+│                                                                         │
+│  2. BENCHMARK BASELINE                                                  │
+│     └─ Create criterion benchmark BEFORE any changes                    │
+│     └─ Record exact measurements with statistical significance          │
+│     └─ Test multiple input sizes to verify complexity                   │
+│                                                                         │
+│  3. IMPLEMENT                                                           │
+│     └─ Make targeted, minimal changes                                   │
+│     └─ Add comments explaining the optimization                         │
+│     └─ Preserve all existing behavior                                   │
+│                                                                         │
+│  4. VERIFY CORRECTNESS                                                  │
+│     └─ Run ALL tests: cargo test                                        │
+│     └─ Run clippy: cargo clippy -- -D warnings                          │
+│     └─ Run rustfmt: cargo fmt --check                                   │
+│                                                                         │
+│  5. BENCHMARK OPTIMIZED                                                 │
+│     └─ Run same benchmarks as step 2                                    │
+│     └─ Calculate exact improvement percentages                          │
+│     └─ Verify scaling behavior matches theoretical complexity           │
+│                                                                         │
+│  6. DOCUMENT                                                            │
+│     └─ CHRONOLOGY.md: Full phase documentation                          │
+│     └─ BENCHMARKS.md: Raw data tables                                   │
+│     └─ SUCCESSFUL_OPTIMIZATIONS.md: Summary entry                       │
+│                                                                         │
+│  7. COMMIT                                                              │
+│     └─ Clear message with phase number and key metrics                  │
+│     └─ Include improvement percentages in commit body                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 ### Quality Bar
 
 Every optimization must meet these standards:
@@ -254,10 +390,11 @@ Every optimization must meet these standards:
 | Criterion | Requirement |
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
-| **Documented** | Added to `docs/performance/` with before/after measurements |
+| **Documented** | Added to ALL THREE docs/performance/ files |
 | **Correct** | All 1,899+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
+| **Mathematical** | Include complexity analysis and/or mathematical proof |
 
 ### Optimization Philosophy
 
@@ -266,10 +403,12 @@ We pursue optimizations at the **nanosecond level** and **CPU cycle level**:
 | Level | Examples |
 |-------|----------|
 | **Algorithmic** | O(n²) → O(n log n) via Barnes-Hut, spatial indexing |
+| **Data Structure** | O(n) → O(1) via HashMap, texture arrays |
 | **Arithmetic** | Division → multiplication by reciprocal, sqrt elimination |
 | **Memory** | Zero-allocation hot paths, arena allocation, buffer reuse |
 | **Compile-time** | Lookup tables, const evaluation, precomputed constants |
 | **Instruction** | Fixed-point arithmetic, bit shifts instead of division |
+| **GPU** | Draw call batching, bind group reduction, instancing |
 
 ### Optimization Patterns
 
@@ -312,40 +451,54 @@ let mut parts = line.split('|');
 let first = parts.next()?;
 ```
 
-### Optimization Methodology
+**Batch GPU operations:**
+```rust
+// Before: n draw calls
+for texture in textures {
+    set_bind_group(texture);  // GPU state change
+    draw(instances);           // Draw call
+}
 
-Every optimization follows this rigorous process:
-
-1. **Identify** - Profile, grep for patterns, analyze algorithmic complexity
-2. **Benchmark** - Create criterion benchmarks measuring baseline performance
-3. **Implement** - Make targeted changes with clear before/after comments
-4. **Verify** - Run all tests, clippy, rustfmt
-5. **Document** - Update `docs/performance/CHRONOLOGY.md` with measurements and rationale
-6. **Commit** - Clear commit message referencing phase number
+// After: 1 draw call
+set_bind_group(texture_array);  // Single state change
+draw(all_instances);             // Single instanced draw
+```
 
 ### Benchmark Requirements
 
 All benchmarks must:
 
 - Use `criterion` for statistical rigor
-- Test multiple input sizes/scenarios
+- Test multiple input sizes/scenarios (e.g., 50, 100, 200, 300, 500)
 - Report throughput (elements/second) where applicable
 - Include both micro-benchmarks (isolated operation) and macro-benchmarks (realistic workload)
 - Be reproducible across runs
+- Verify scaling behavior matches theoretical complexity
 
 Example benchmark structure:
 ```rust
 fn benchmark_operation(c: &mut Criterion) {
     let mut group = c.benchmark_group("operation_name");
-    group.throughput(Throughput::Elements(1000));
 
-    group.bench_function("baseline", |b| {
-        b.iter(|| baseline_implementation(black_box(input)))
-    });
+    for count in [50, 100, 200, 300, 500] {
+        group.throughput(Throughput::Elements(count as u64));
 
-    group.bench_function("optimized", |b| {
-        b.iter(|| optimized_implementation(black_box(input)))
-    });
+        group.bench_with_input(
+            BenchmarkId::new("baseline", count),
+            &count,
+            |b, &count| {
+                b.iter(|| baseline_implementation(black_box(count)))
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("optimized", count),
+            &count,
+            |b, &count| {
+                b.iter(|| optimized_implementation(black_box(count)))
+            },
+        );
+    }
 
     group.finish();
 }
@@ -355,17 +508,18 @@ fn benchmark_operation(c: &mut Criterion) {
 
 Each optimization phase in `docs/performance/CHRONOLOGY.md` must include:
 
-1. **Overview** - What was optimized and why
-2. **The Problem** - Code showing the inefficiency
-3. **The Solution** - Optimized code with explanation
-4. **Mathematical Proof** (if applicable) - Why the optimization is correct
-5. **Benchmark Results** - Table with before/after measurements
-6. **Files Modified** - What changed and where
-7. **Correctness Verification** - How correctness was validated
+1. **Phase Header** - Phase number, date, category, status, impact summary
+2. **Problem Statement** - What was inefficient and why
+3. **Analysis** - Code showing before/after structure
+4. **Solution** - Implementation details
+5. **Benchmark Results** - Tables with actual measurements (NOT "expected")
+6. **Mathematical Proof** - Complexity analysis, scaling verification
+7. **Files Modified** - What changed and where
+8. **Correctness Verification** - Test results, clippy, rustfmt status
 
 ### Current Optimization Phases
 
-See [docs/performance/](./docs/performance/) for the complete optimization history (59 phases), including:
+See [docs/performance/](./docs/performance/) for the complete optimization history (61+ phases), including:
 
 - Fixed-point alpha blending (-21% batch, -81% same-color)
 - Color conversion LUTs (-54% from_hex, -62% to_argb8)
@@ -374,7 +528,7 @@ See [docs/performance/](./docs/performance/) for the complete optimization histo
 - Perpendicular vector optimization (-72% operation, +14% throughput)
 - Barnes-Hut O(n log n) force layout
 - LUT-based random direction (13.9x faster)
-- File glow conditional rendering (scenario-dependent improvement)
+- Avatar texture array batching (O(n) → O(1) draw calls, 99.7% reduction)
 - And many more...
 
 ---
@@ -643,6 +797,18 @@ test: add unit tests for Vec2 operations
 perf: optimize bloom effect with sliding window blur
 ```
 
+For performance commits, include metrics:
+
+```
+perf(phase61): avatar texture array batching
+
+- Instance population: 3.94µs → 1.72µs (-56.3%)
+- Flush overhead: 875.50ns → 62.86ns (-92.8%)
+- Draw calls: 300 → 1 (-99.7%)
+
+Mathematical proof: O(n) → O(1) verified via scaling test
+```
+
 ---
 
 ## Troubleshooting
@@ -697,15 +863,21 @@ perf: optimize bloom effect with sliding window blur
 
 ---
 
-## Contact
+## Summary: The Rource Standard
 
-This project uses Claude (AI assistant) for development assistance. When working with Claude:
+When working on this project, always remember:
 
-1. Reference this document for project context
-2. Run `source scripts/session-setup.sh` at the start of each session
-3. Commit frequently with clear messages
-4. See [docs/performance/](./docs/performance/) for optimization history
+1. **This is a portfolio showpiece** - Every line of code reflects professional competence
+2. **Precision matters** - Nanoseconds and picoseconds are our units of measurement
+3. **No guessing** - Every claim is backed by data
+4. **No assumptions** - Test, measure, verify, validate
+5. **Document everything** - Future sessions should understand exactly what was done
+6. **Mathematical rigor** - Complexity analysis, regression analysis, statistical significance
+7. **Reproducibility** - Anyone can re-run benchmarks and get the same results
+8. **Industry standards** - Best practices, clean code, proper testing
+
+When in doubt, ask: "Can I prove this with a benchmark?"
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-01-26*
