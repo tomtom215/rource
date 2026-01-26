@@ -49,7 +49,7 @@ This document outlines the complete set of improvements required to achieve **qu
 | TST-2 | Property-Based Test Expansion | Testing | High | Medium | Pending |
 | TST-3 | Visual Regression Testing | Testing | High | High | Pending |
 | TST-4 | Cross-Browser Automated Testing | Testing | Medium | High | Pending |
-| CI-1 | Performance Regression Gates | CI/CD | Critical | Medium | Pending |
+| CI-1 | Performance Regression Gates | CI/CD | Critical | Medium | Done |
 | CI-2 | Benchmark History Dashboard | CI/CD | High | Medium | Pending |
 | CI-3 | Automated Release Notes | CI/CD | Medium | Low | Done |
 | CI-4 | Canary Deployments | CI/CD | Medium | Medium | Pending |
@@ -881,6 +881,32 @@ test.describe('Rource WASM', () => {
 **Priority**: Critical
 **Complexity**: Medium
 **Estimated Effort**: 1-2 sessions
+**Status**: ✅ **COMPLETED** (2026-01-26)
+
+#### Completion Notes
+
+Implemented using Option B (critcmp) with the following features:
+
+**Files Created**:
+- `.github/workflows/bench-pr.yml` - PR benchmark comparison workflow
+- `docs/ci/BENCHMARK_GATES.md` - Complete documentation
+
+**Implementation Details**:
+- 5% regression threshold enforced (fails CI if exceeded)
+- Compares PR branch against `main` using `critcmp`
+- Posts detailed comparison comment on PR
+- Label bypass: `allow-perf-regression` skips the check
+- Triggers only on performance-sensitive file changes
+- 45-minute timeout for comprehensive benchmark suite
+
+**Success Criteria Verification**:
+
+| Criterion | Requirement | Status |
+|-----------|-------------|--------|
+| Threshold | Block if >5% regression | ✓ CI fails on regression |
+| Baseline | Compare against main branch | ✓ critcmp main pr |
+| Report | PR comment with comparison | ✓ GitHub Script action |
+| Override | Allow with justification | ✓ `allow-perf-regression` label |
 
 #### Problem Statement
 Benchmarks exist but don't block PRs. A PR could regress performance by 50%
@@ -922,7 +948,7 @@ jobs:
             cargo bench
 ```
 
-**Option B: Using criterion-compare**
+**Option B: Using criterion-compare** *(Implemented)*
 ```yaml
 - name: Benchmark comparison
   run: |
