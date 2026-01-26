@@ -57,7 +57,7 @@ console_error_panic_hook = "0.1"
 # wgpu for WebGPU rendering (primary GPU backend)
 # webgpu: Enable WebGPU backend for WASM
 # webgl: Enable WebGL fallback for browsers without WebGPU
-wgpu = { version = "28", features = ["webgpu", "webgl"] }
+wgpu = { version = "24", features = ["webgpu", "webgl"] }
 
 # Profiling dependencies (optional, enabled with --features profiling or --features tracing)
 tracing = { workspace = true, optional = true }
