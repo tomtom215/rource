@@ -223,7 +223,7 @@ jobs:
           fi
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results
           path: |
@@ -359,7 +359,7 @@ jobs:
           benchmark-data-dir-path: dev/sizes
 
       - name: Upload size metrics
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: size-metrics
           path: size-metrics.json
