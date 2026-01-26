@@ -38,10 +38,10 @@ TOTAL:    46 issues
 
 | Status | Count | Issues |
 |--------|-------|--------|
-| **Done** | 20 | A1, A2, A3, I1, I2, I3, L1, L3, L7, L8, L10, L11, T2, T3, T8, T9, V1, X1, X3 |
+| **Done** | 21 | A1, A2, A3, A6, I1, I2, I3, L1, L3, L7, L8, L10, L11, T2, T3, T8, T9, V1, X1, X3 |
 | **Partial** | 2 | T1, T5 (collision detection works but width estimation bug causes overlap) |
 | **In Progress** | 1 | V2 |
-| **Pending** | 30 | All others |
+| **Pending** | 29 | All others |
 
 **Session 7 Fixes (2026-01-26):**
 - L3: Fixed FAB z-index overlap
@@ -66,6 +66,12 @@ TOTAL:    46 issues
   - Prevents visual clutter and wasted render calls
   - Updated both rource-render (CLI) and rource-wasm implementations
   - Files: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases.rs`
+- A6: Added visible focus states for keyboard navigation
+  - Comprehensive :focus-visible styles for all interactive elements
+  - WCAG 2.1 Success Criterion 2.4.7 compliance
+  - Styled buttons, inputs, links, tabs, panels, timeline
+  - Light theme and high contrast mode support
+  - File: `rource-wasm/www/styles/features/accessibility.css`
 
 **Session 6 Mobile Screenshot Analysis (2026-01-26):**
 - Investigated T1/T5 label collision - found text width estimation bug:
@@ -161,7 +167,7 @@ TOTAL:    46 issues
 | A3 | Timeline scrubber thumb too small (~20px) | Accessibility | High | Done |
 | A4 | File type pills too small | Accessibility | Medium | Pending |
 | A5 | Dropdown trigger too small | Accessibility | Medium | Pending |
-| A6 | No visible focus states | Accessibility | High | Pending |
+| A6 | No visible focus states | Accessibility | High | Done |
 | A7 | No gesture support visible (pinch/swipe) | Accessibility | Medium | Pending |
 | A8 | No skip/dismiss gestures for panels | Accessibility | High | Pending |
 | I1 | Information overload (15+ metrics at once) | Information | Critical | Done |
