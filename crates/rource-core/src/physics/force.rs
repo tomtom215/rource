@@ -9,7 +9,9 @@
 
 use rource_math::{Bounds, Vec2};
 
-use crate::physics::barnes_hut::{BarnesHutTree, Body, DEFAULT_BARNES_HUT_THETA};
+use crate::physics::barnes_hut::{
+    calculate_adaptive_theta, BarnesHutTree, Body, DEFAULT_BARNES_HUT_THETA,
+};
 use crate::physics::optimized::random_push_direction;
 use crate::scene::tree::DirNode;
 
@@ -56,7 +58,18 @@ pub struct ForceConfig {
     /// Theta parameter for Barnes-Hut approximation (0.0-2.0).
     /// Lower = more accurate but slower, higher = faster but less accurate.
     /// Default: 0.8 (good balance for visualization).
+    /// Ignored when `adaptive_theta` is enabled.
     pub barnes_hut_theta: f32,
+
+    /// Whether to use adaptive theta based on entity count.
+    ///
+    /// When enabled, theta is automatically adjusted:
+    /// - ≤200 entities: θ=0.8 (accurate)
+    /// - 1000 entities: θ≈1.0 (30% faster)
+    /// - 5000+ entities: θ=1.5 (62% faster)
+    ///
+    /// Default: true (recommended for best performance).
+    pub adaptive_theta: bool,
 }
 
 impl Default for ForceConfig {
@@ -70,6 +83,7 @@ impl Default for ForceConfig {
             anchor_root: true,
             use_barnes_hut: true,
             barnes_hut_theta: DEFAULT_BARNES_HUT_THETA,
+            adaptive_theta: true, // Enable adaptive theta by default
         }
     }
 }
@@ -87,6 +101,7 @@ impl ForceConfig {
             anchor_root: true,
             use_barnes_hut: true,
             barnes_hut_theta: DEFAULT_BARNES_HUT_THETA,
+            adaptive_theta: true,
         }
     }
 
@@ -461,17 +476,24 @@ impl ForceSimulation {
             Vec2::new(max_x + margin, max_y + margin),
         );
 
+        // Calculate theta: use adaptive if enabled, otherwise use configured value
+        let theta = if self.config.adaptive_theta {
+            calculate_adaptive_theta(nodes.len())
+        } else {
+            self.config.barnes_hut_theta
+        };
+
         // Create or reuse Barnes-Hut tree
         let tree = self
             .barnes_hut_tree
-            .get_or_insert_with(|| BarnesHutTree::with_theta(bounds, self.config.barnes_hut_theta));
+            .get_or_insert_with(|| BarnesHutTree::with_theta(bounds, theta));
 
         // Update tree bounds if needed (bounds may have changed)
         if tree.bounds() == &bounds {
             tree.clear();
-            tree.set_theta(self.config.barnes_hut_theta);
+            tree.set_theta(theta);
         } else {
-            *tree = BarnesHutTree::with_theta(bounds, self.config.barnes_hut_theta);
+            *tree = BarnesHutTree::with_theta(bounds, theta);
         }
 
         // Insert all nodes into tree
@@ -881,6 +903,54 @@ mod tests {
         assert!(
             force.length() > 0.0,
             "Expected non-zero force, got {force:?}"
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_with_fixed_theta() {
+        // Test Barnes-Hut repulsion with adaptive_theta disabled
+        // This covers the else branch in calculate_repulsion_barnes_hut
+        let mut sim = ForceSimulation::new();
+        sim.config_mut().use_barnes_hut = true;
+        sim.config_mut().adaptive_theta = false; // Use fixed theta
+        sim.config_mut().barnes_hut_theta = 1.0;
+        sim.config_mut().anchor_root = false;
+
+        let root_id = DirId::new(0, Generation::first());
+
+        let mut nodes = vec![
+            create_test_node(0, "", None),
+            create_test_node(1, "a", Some(root_id)),
+            create_test_node(2, "b", Some(root_id)),
+            create_test_node(3, "c", Some(root_id)),
+        ];
+
+        // Position nodes to trigger Barnes-Hut (need multiple nodes)
+        nodes[0].set_position(Vec2::ZERO);
+        nodes[0].set_depth(0);
+        nodes[1].set_position(Vec2::new(50.0, 0.0));
+        nodes[1].set_depth(1);
+        nodes[2].set_position(Vec2::new(52.0, 0.0));
+        nodes[2].set_depth(1);
+        nodes[3].set_position(Vec2::new(-50.0, 0.0));
+        nodes[3].set_depth(1);
+
+        let initial_pos_1 = nodes[1].position();
+        let initial_pos_2 = nodes[2].position();
+
+        // Run simulation with fixed theta
+        sim.apply_to_slice(&mut nodes, 0.1);
+
+        // Nodes should have moved due to repulsion
+        assert_ne!(
+            nodes[1].position(),
+            initial_pos_1,
+            "Node 1 should have moved"
+        );
+        assert_ne!(
+            nodes[2].position(),
+            initial_pos_2,
+            "Node 2 should have moved"
         );
     }
 }

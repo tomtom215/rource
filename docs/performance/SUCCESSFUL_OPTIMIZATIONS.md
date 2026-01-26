@@ -43,6 +43,64 @@ ForceConfig::pairwise()           // Preset for exact calculation
 
 ---
 
+### Adaptive Barnes-Hut Theta
+
+**Phase**: 62
+**Location**: `crates/rource-core/src/physics/barnes_hut.rs`
+**Impact**: 29-61% speedup for medium-to-large scenes
+
+Implemented adaptive theta parameter selection based on entity count. The theta parameter
+controls accuracy/speed tradeoff in Barnes-Hut approximation.
+
+**Before** (fixed θ=0.8):
+```rust
+let theta = 0.8;  // Same for all scene sizes
+```
+
+**After** (adaptive θ):
+```rust
+pub fn calculate_adaptive_theta(entity_count: usize) -> f32 {
+    if entity_count <= 200 {
+        return 0.8;  // Small scenes: accurate
+    }
+    // Logarithmic scaling to 1.5 for large scenes
+    let scale_factor = (entity_count as f32 / 200.0).log2() / 25.0f32.log2();
+    (0.8 + 0.7 * scale_factor.clamp(0.0, 1.0)).clamp(0.7, 1.5)
+}
+```
+
+**Benchmark Results**:
+
+| Entities | Fixed θ=0.8 | Adaptive θ | Improvement |
+|----------|-------------|------------|-------------|
+| 100      | 26.10 µs    | 26.83 µs   | ~0% (same)  |
+| 500      | 296.71 µs   | 210.62 µs  | **-29.0%**  |
+| 1000     | 714.81 µs   | 419.96 µs  | **-41.2%**  |
+| 5000     | 4.25 ms     | 1.64 ms    | **-61.4%**  |
+
+**Mathematical Basis**:
+- θ(n) = 0.8 + 0.7 × clamp(log₂(n/200) / log₂(25), 0, 1)
+- Logarithmic scaling prevents sudden jumps
+- Clamped to [0.7, 1.5] for safety
+
+**API**:
+```rust
+// Main function
+pub fn calculate_adaptive_theta(entity_count: usize) -> f32;
+
+// With FPS consideration (boosts theta when FPS drops)
+pub fn calculate_adaptive_theta_with_fps(
+    entity_count: usize,
+    current_fps: Option<f32>,
+    target_fps: f32,
+) -> f32;
+
+// ForceConfig field
+pub adaptive_theta: bool,  // Default: true
+```
+
+---
+
 ### DirNode HashSet Children
 
 **Phase**: 40

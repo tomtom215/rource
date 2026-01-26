@@ -494,4 +494,85 @@ Verification of O(n) vs O(1) draw call count scaling.
 
 ---
 
+## Adaptive Barnes-Hut Theta Benchmarks (Phase 62)
+
+**Source**: `crates/rource-core/benches/barnes_hut_theta.rs`
+**Phase**: 62
+
+These benchmarks measure the performance improvement from adaptive theta selection
+in the Barnes-Hut force calculation algorithm.
+
+### Fixed θ=0.8 vs Adaptive Theta
+
+Force calculation time comparison between the previous fixed theta and the new adaptive theta.
+
+| Entities | Fixed θ=0.8 | Adaptive θ   | Theta  | Improvement | Throughput (adaptive) |
+|----------|-------------|--------------|--------|-------------|----------------------|
+| 100      | 26.10 µs    | 26.83 µs     | 0.80   | ~0%         | 3.73 Melem/s         |
+| 500      | 296.71 µs   | 210.62 µs    | 1.00   | **-29.0%**  | 2.37 Melem/s         |
+| 1000     | 714.81 µs   | 419.96 µs    | 1.15   | **-41.2%**  | 2.38 Melem/s         |
+| 5000     | 4.25 ms     | 1.64 ms      | 1.50   | **-61.4%**  | 3.05 Melem/s         |
+
+### Theta Value Scaling
+
+Adaptive theta values computed for different entity counts.
+
+| Entities | Computed θ | Formula Component              |
+|----------|------------|--------------------------------|
+| 100      | 0.80       | Below threshold, default       |
+| 200      | 0.80       | At threshold, default          |
+| 500      | 1.00       | log₂(2.5) / log₂(25) × 0.7     |
+| 1000     | 1.15       | log₂(5) / log₂(25) × 0.7       |
+| 2000     | 1.30       | log₂(10) / log₂(25) × 0.7      |
+| 5000     | 1.50       | At max, clamped                |
+| 10000    | 1.50       | Above max, clamped             |
+
+### Full Cycle Performance
+
+Complete force layout cycle including tree construction.
+
+| Entities | Fixed θ=0.8 | Adaptive   | Improvement | Throughput (adaptive) |
+|----------|-------------|------------|-------------|----------------------|
+| 100      | 31.02 µs    | 31.02 µs   | 0%          | 3.22 Melem/s         |
+| 500      | 337.72 µs   | 247.51 µs  | **-26.7%**  | 2.02 Melem/s         |
+| 1000     | 904.09 µs   | 625.23 µs  | **-30.8%**  | 1.60 Melem/s         |
+| 5000     | 4.76 ms     | 2.25 ms    | **-52.7%**  | 2.22 Melem/s         |
+
+### Theta Speed Comparison (All Values)
+
+Force calculation time at different fixed theta values.
+
+| Entities | θ=0.3      | θ=0.5      | θ=0.7      | θ=0.8      | θ=1.0      | θ=1.2      | θ=1.5      |
+|----------|------------|------------|------------|------------|------------|------------|------------|
+| 100      | 76.30 µs   | 44.13 µs   | 30.84 µs   | 26.83 µs   | 19.56 µs   | 15.29 µs   | 11.42 µs   |
+| 500      | 925.60 µs  | 539.27 µs  | 357.04 µs  | 300.92 µs  | 211.09 µs  | 144.48 µs  | 84.16 µs   |
+| 1000     | 2.48 ms    | 1.31 ms    | 857.24 µs  | 780.20 µs  | 531.06 µs  | 389.97 µs  | 269.10 µs  |
+| 5000     | 18.38 ms   | 8.33 ms    | 5.22 ms    | 4.21 ms    | 3.04 ms    | 2.39 ms    | 1.60 ms    |
+
+### Adaptive Theta Calculation Overhead
+
+Time to compute the adaptive theta value (negligible).
+
+| Entities | Overhead   | Fraction of Force Calc |
+|----------|------------|------------------------|
+| 100      | 1.31 ns    | 0.005%                 |
+| 500      | 1.29 ns    | 0.0004%                |
+| 1000     | 1.31 ns    | 0.0002%                |
+| 5000     | 1.21 ns    | 0.00003%               |
+
+### Speedup Summary
+
+| Entities | Speedup Factor | Improvement % |
+|----------|----------------|---------------|
+| 100      | 1.0×           | 0%            |
+| 500      | 1.41×          | 29%           |
+| 1000     | 1.70×          | 41%           |
+| 5000     | 2.59×          | 61%           |
+
+**Mathematical Verification**:
+- Speedup(n) = Time(θ=0.8, n) / Time(θ=adaptive, n)
+- At n=5000: 4.25 ms / 1.64 ms = 2.59×
+
+---
+
 *Last updated: 2026-01-26*

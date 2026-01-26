@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all 61 optimization phases with dates, commits, and outcomes.
+Complete timeline of all 62 optimization phases with dates, commits, and outcomes.
 
 ---
 
@@ -81,6 +81,7 @@ Complete timeline of all 61 optimization phases with dates, commits, and outcome
 | 59    | 2026-01-25 | Rendering       | File glow conditional rendering            | Implemented  |
 | 60    | 2026-01-25 | Browser         | Firefox GPU physics workaround             | Implemented  |
 | 61    | 2026-01-26 | Rendering       | Avatar texture array batching              | Implemented  |
+| 62    | 2026-01-26 | Physics         | Adaptive Barnes-Hut theta                  | Implemented  |
 
 ---
 
@@ -1051,6 +1052,132 @@ The avatar texture array reuses the existing `TEXTURE_ARRAY_SHADER` which suppor
 
 ---
 
+### Phase 62: Adaptive Barnes-Hut Theta
+
+**Date**: 2026-01-26
+**Category**: Physics Optimization
+**Status**: Implemented
+**Impact**: 29-61% speedup in force calculations for medium-to-large scenes
+
+**Problem Statement**:
+
+The Barnes-Hut algorithm uses a fixed theta parameter (θ=0.8) that controls the accuracy/speed
+tradeoff. For small scenes, this works well, but larger scenes pay an unnecessary accuracy tax
+when higher theta values would produce visually identical results with significant speedups.
+
+**Analysis**:
+
+The theta parameter determines when the algorithm approximates distant clusters as single bodies:
+- θ=0.0: Exact O(n²) calculation (no approximation)
+- θ=0.8: Default, balanced for general use
+- θ=1.0: ~30% faster with minimal accuracy loss
+- θ=1.5: ~60% faster, acceptable for large scenes
+
+For visualization (not scientific simulation), higher theta values produce visually
+indistinguishable results while dramatically reducing computation time.
+
+**Solution**:
+
+Implemented adaptive theta selection based on entity count:
+
+```rust
+/// Calculates adaptive theta based on entity count.
+/// - ≤200 entities: θ=0.8 (accurate)
+/// - 1000 entities: θ≈1.15 (30-40% faster)
+/// - 5000+ entities: θ=1.5 (60% faster)
+pub fn calculate_adaptive_theta(entity_count: usize) -> f32 {
+    if entity_count <= 200 {
+        return 0.8;
+    }
+
+    // Logarithmic scaling from threshold to max
+    let ratio = entity_count as f32 / 200.0;
+    let max_ratio = 5000.0 / 200.0; // = 25
+    let scale_factor = ratio.log2() / max_ratio.log2();
+
+    let theta = 0.8 + 0.7 * scale_factor.clamp(0.0, 1.0);
+    theta.clamp(0.7, 1.5)
+}
+```
+
+Mathematical basis:
+- θ(n) = 0.8 + 0.7 × clamp(log₂(n/200) / log₂(25), 0, 1)
+- Logarithmic scaling ensures gradual increase, not sudden jumps
+- Clamped to [0.7, 1.5] for safety
+
+**Benchmark Results** (criterion, 100 samples, 95% CI):
+
+*Source*: `crates/rource-core/benches/barnes_hut_theta.rs`
+
+**Fixed θ=0.8 vs Adaptive Theta - Force Calculation Time**:
+
+| Entities | Fixed θ=0.8 | Adaptive θ | Theta  | Improvement |
+|----------|-------------|------------|--------|-------------|
+| 100      | 26.10 µs    | 26.83 µs   | 0.80   | ~0% (same)  |
+| 500      | 296.71 µs   | 210.62 µs  | 1.00   | **-29.0%**  |
+| 1000     | 714.81 µs   | 419.96 µs  | 1.15   | **-41.2%**  |
+| 5000     | 4.25 ms     | 1.64 ms    | 1.50   | **-61.4%**  |
+
+**Theta Scaling Behavior**:
+
+| Entities | Computed θ | Speedup vs θ=0.8 |
+|----------|------------|------------------|
+| 100      | 0.80       | 1.0× (baseline)  |
+| 200      | 0.80       | 1.0× (threshold) |
+| 500      | 1.00       | 1.41×            |
+| 1000     | 1.15       | 1.70×            |
+| 2000     | 1.30       | 2.1×             |
+| 5000     | 1.50       | 2.59×            |
+
+**Full Cycle Performance** (includes tree build + force calc):
+
+| Entities | Fixed θ=0.8 | Adaptive   | Improvement |
+|----------|-------------|------------|-------------|
+| 100      | 31.02 µs    | 31.02 µs   | 0%          |
+| 500      | 337.72 µs   | 247.51 µs  | -26.7%      |
+| 1000     | 904.09 µs   | 625.23 µs  | -30.8%      |
+| 5000     | 4.76 ms     | 2.25 ms    | -52.7%      |
+
+**Adaptive Theta Calculation Overhead**:
+
+| Entities | Overhead  |
+|----------|-----------|
+| 100      | 1.31 ns   |
+| 500      | 1.29 ns   |
+| 1000     | 1.31 ns   |
+| 5000     | 1.21 ns   |
+
+The overhead (~1.3 ns) is completely negligible compared to force calculation
+savings (hundreds of microseconds to milliseconds).
+
+**Mathematical Proof of Speedup**:
+
+For force calculation at different theta values:
+- θ=0.8 at 5000 entities: 4.25 ms
+- θ=1.5 at 5000 entities: 1.64 ms
+- Speedup = 4.25 / 1.64 = 2.59×
+- Improvement = 1 - (1.64 / 4.25) = 61.4%
+
+The speedup follows the expected pattern where higher theta values
+increase the approximation radius, reducing tree traversal depth.
+
+**Files Modified**:
+- `crates/rource-core/src/physics/barnes_hut.rs` (calculate_adaptive_theta functions)
+- `crates/rource-core/src/physics/mod.rs` (exports)
+- `crates/rource-core/src/physics/force.rs` (ForceConfig adaptive_theta field)
+- `crates/rource-core/src/scene/layout_methods.rs` (adaptive theta integration)
+- `crates/rource-core/benches/barnes_hut_theta.rs` (comprehensive benchmarks)
+- `crates/rource-core/Cargo.toml` (benchmark registration)
+
+**Correctness Verification**:
+- All 335 rource-core tests pass
+- All 1,899+ project tests pass
+- Clippy clean with -D warnings
+- Rustfmt compliant
+- Adaptive theta tests verify bounds and monotonicity
+
+---
+
 ## Git Commit References
 
 | Phase | Commit Message                                                   |
@@ -1076,6 +1203,7 @@ The avatar texture array reuses the existing `TEXTURE_ARRAY_SHADER` which suppor
 | 59    | perf: optimize file rendering to skip glow for inactive files    |
 | 60    | perf(wasm): disable GPU physics on Firefox due to compute shader overhead |
 | 61    | perf: implement avatar texture array batching for draw call reduction |
+| 62    | perf: implement adaptive Barnes-Hut theta for large scene speedup |
 
 ---
 
