@@ -275,4 +275,83 @@ let progress = elapsed / duration;       // ~20 cycles
 
 ---
 
+## 19.11 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| Easing enum | `crates/rource-core/src/animation/tween.rs` | 41-90 |
+| ease function | `crates/rource-core/src/animation/tween.rs` | 129-280 |
+| Tween struct | `crates/rource-core/src/animation/tween.rs` | 290-350 |
+| Bounce implementation | `crates/rource-core/src/animation/tween.rs` | 220-250 |
+
+### Core Implementation
+
+**Easing Enum** (`tween.rs:41-90`):
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Easing {
+    #[default]
+    Linear,
+    QuadIn, QuadOut, QuadInOut,
+    CubicIn, CubicOut, CubicInOut,
+    QuartIn, QuartOut, QuartInOut,
+    QuintIn, QuintOut, QuintInOut,
+    SineIn, SineOut, SineInOut,
+    ExpoIn, ExpoOut, ExpoInOut,
+    CircIn, CircOut, CircInOut,
+    ElasticIn, ElasticOut, ElasticInOut,
+    BackIn, BackOut, BackInOut,
+    BounceIn, BounceOut, BounceInOut,
+}
+```
+
+**ease Function** (`tween.rs:129-135`):
+
+```rust
+#[must_use]
+pub fn ease(t: f32, easing: Easing) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    match easing {
+        Easing::Linear => t,
+        Easing::QuadIn => t * t,
+        Easing::QuadOut => 1.0 - (1.0 - t) * (1.0 - t),
+        // ... other easings
+    }
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 19.1 | tⁿ for ease-in | `tween.rs:134` | `t * t` (QuadIn) |
+| 19.1 | 1-(1-t)ⁿ for ease-out | `tween.rs:135` | `1.0 - (1.0 - t) * (1.0 - t)` |
+| 19.4 | exp2 optimization | `tween.rs:180` | `f32::exp2(10.0 * t)` |
+
+### Verification Commands
+
+```bash
+# Run easing function tests
+cargo test -p rource-core easing --release -- --nocapture
+
+# Run boundary condition tests
+cargo test -p rource-core test_easing_boundaries --release -- --nocapture
+
+# Benchmark easing performance
+cargo bench -p rource-core easing_perf
+```
+
+### Validation Checklist
+
+- [x] All 30 easing functions (10 types × 3 variants)
+- [x] Boundary conditions: e(0)=0, e(1)=1
+- [x] exp2() optimization for exponential
+- [x] Direct multiplication vs powi()
+- [x] Precomputed constants for performance
+
+---
+
 *[Back to Index](./README.md)*

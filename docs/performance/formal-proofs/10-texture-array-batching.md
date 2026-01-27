@@ -71,4 +71,102 @@ Texture array: T_total = T_bind + T_draw = O(1)
 
 ---
 
+## 10.3 Implementation
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| Row packer | `crates/rource-render/src/backend/wgpu/textures.rs` | 118-191 |
+| Atlas region | `crates/rource-render/src/backend/wgpu/textures.rs` | 72-105 |
+| Glyph key | `crates/rource-render/src/backend/wgpu/textures.rs` | 46-70 |
+
+### Core Implementation
+
+**Row-Based Atlas Packer** (`textures.rs:118-191`):
+
+```rust
+/// Row-based atlas packer.
+#[derive(Debug)]
+struct RowPacker {
+    /// All rows in the atlas.
+    rows: Vec<AtlasRow>,
+    /// Atlas width and height.
+    size: u32,
+    /// Current Y position for new rows.
+    next_row_y: u32,
+}
+
+impl RowPacker {
+    /// Attempts to allocate a region.
+    fn allocate(&mut self, width: u32, height: u32) -> Option<AtlasRegion> {
+        // Try to fit in an existing row
+        for row in &mut self.rows {
+            if row.height >= height && row.x + width + GLYPH_PADDING <= self.size {
+                let region = AtlasRegion {
+                    x: row.x,
+                    y: row.y,
+                    width,
+                    height,
+                };
+                row.x += width + GLYPH_PADDING;
+                return Some(region);
+            }
+        }
+
+        // Need a new row
+        if self.next_row_y + height + GLYPH_PADDING > self.size {
+            return None; // Atlas is full
+        }
+        // ... create new row
+    }
+}
+```
+
+**UV Coordinate Calculation** (`textures.rs:96-104`):
+
+```rust
+#[inline]
+pub fn uv_bounds(&self, atlas_size: u32) -> (f32, f32, f32, f32) {
+    let inv_size = 1.0 / atlas_size as f32;
+    (
+        self.x as f32 * inv_size,
+        self.y as f32 * inv_size,
+        (self.x + self.width) as f32 * inv_size,
+        (self.y + self.height) as f32 * inv_size,
+    )
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 10.2 | Single bind | `textures.rs` | `bind_texture_array()` concept |
+| 10.2 | O(1) draw dispatch | GPU side | Instanced draw with tex_index |
+| 10.2 | T(n) = 360ps ± 6.8ps | Benchmark | Constant-time population |
+
+### Verification Commands
+
+```bash
+# Run texture atlas tests
+cargo test -p rource-render textures --release -- --nocapture
+
+# Run atlas allocation tests
+cargo test -p rource-render atlas --release -- --nocapture
+
+# Benchmark instance population
+cargo test -p rource-wasm bench_instance --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] Row-based packing for efficient space usage
+- [x] UV normalization with inverse multiplication
+- [x] Dynamic atlas growth (512→2048)
+- [x] O(1) draw call with texture array indexing
+- [x] 48-56% improvement over per-texture binding
+
+---
+
 *[Back to Index](./README.md)*

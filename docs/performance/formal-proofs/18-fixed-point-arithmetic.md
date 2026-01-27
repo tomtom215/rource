@@ -274,4 +274,79 @@ Maximum error: ±1 in the result.
 
 ---
 
+## 18.11 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| SQRT_LUT | `crates/rource-render/src/backend/software/optimized.rs` | 76-87 |
+| INV_TABLE | `crates/rource-render/src/backend/software/optimized.rs` | 126-136 |
+| fast_sqrt_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 158-175 |
+| blend_pixel_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 211-236 |
+
+### Core Implementation
+
+**SQRT Lookup Table** (`optimized.rs:76-87`):
+
+```rust
+pub static SQRT_LUT: [u16; SQRT_TABLE_SIZE + 1] = {
+    let mut table = [0u16; SQRT_TABLE_SIZE + 1];
+    let mut i = 0;
+    while i <= SQRT_TABLE_SIZE {
+        // Store sqrt(i) * 256 as 8.8 fixed-point
+        table[i] = (const_sqrt(i as f64) * 256.0) as u16;
+        i += 1;
+    }
+    table
+};
+```
+
+**Inverse Table for Division** (`optimized.rs:126-136`):
+
+```rust
+pub static INV_TABLE: [u32; 256] = {
+    let mut table = [0u32; 256];
+    table[0] = 0; // Division by zero -> 0 (safe default)
+    let mut i = 1;
+    while i < 256 {
+        // Round to nearest: (65536 + i/2) / i
+        table[i] = (65536 + i as u32 / 2) / i as u32;
+        i += 1;
+    }
+    table
+};
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 18.4 | A + B deterministic | integer ADD | Guaranteed by CPU |
+| 18.5 | (a×b) >> 8 | `optimized.rs:231-233` | Fixed-point multiply |
+| 18.7 | LUT[i] = √i × 256 | `optimized.rs:80` | Compile-time Newton-Raphson |
+
+### Verification Commands
+
+```bash
+# Run fixed-point tests
+cargo test -p rource-render optimized --release -- --nocapture
+
+# Run sqrt LUT tests
+cargo test -p rource-render test_sqrt_lut --release -- --nocapture
+
+# Run blend determinism tests
+cargo test -p rource-render test_blend_determinism --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] SQRT_LUT computed at compile time
+- [x] INV_TABLE with rounding for accuracy
+- [x] Linear interpolation for sub-table precision
+- [x] ±1 maximum error in alpha blending
+- [x] Deterministic across all platforms
+
+---
+
 *[Back to Index](./README.md)*

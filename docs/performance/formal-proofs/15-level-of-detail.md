@@ -197,4 +197,68 @@ This supports the UI/UX principle of information hierarchy.
 
 ---
 
+## 15.9 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| LOD constants | `crates/rource-render/src/lod.rs` | 55-85 |
+| should_render_file | `crates/rource-render/src/lod.rs` | 182-183 |
+| should_render_directory | `crates/rource-render/src/lod.rs` | 206-210 |
+| should_render_user | `crates/rource-render/src/lod.rs` | 195-196 |
+| Label LOD functions | `crates/rource-render/src/lod.rs` | 219-260 |
+
+### Core Implementation
+
+**LOD Constants** (`lod.rs:55-85`):
+
+```rust
+pub const MIN_FILE_RADIUS: f32 = 0.1;
+pub const MIN_DIR_RADIUS: f32 = 0.05;
+pub const MIN_USER_RADIUS: f32 = 0.3;
+pub const MIN_FILE_LABEL_RADIUS: f32 = 3.0;
+pub const MIN_DIR_LABEL_RADIUS: f32 = 4.0;
+pub const MIN_USER_LABEL_RADIUS: f32 = 5.0;
+```
+
+**should_render_file** (`lod.rs:182-183`):
+
+```rust
+pub const fn should_render_file(screen_radius: f32, alpha: f32) -> bool {
+    alpha >= 0.01 && screen_radius >= MIN_FILE_RADIUS
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 15.3 | r_s ≥ τ | `lod.rs:183` | `screen_radius >= MIN_FILE_RADIUS` |
+| 15.5 | r_s = r_w × z | Caller | `world_radius * camera_zoom` |
+| 15.7 | depth == 0 exception | `lod.rs:207` | Root always rendered |
+
+### Verification Commands
+
+```bash
+# Run LOD tests
+cargo test -p rource-render lod --release -- --nocapture
+
+# Run culling effectiveness tests
+cargo test -p rource-render test_lod_culling --release -- --nocapture
+
+# Test auto-fit minimum zoom
+cargo test -p rource-render test_auto_fit_min_zoom --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] Files: τ = 0.1px (subpixel culling)
+- [x] Users: τ = 0.3px (minimum 5px render)
+- [x] Labels: τ = 3-5px (readability threshold)
+- [x] Root directory always visible
+- [x] O(1) per-entity check
+
+---
+
 *[Back to Index](./README.md)*
