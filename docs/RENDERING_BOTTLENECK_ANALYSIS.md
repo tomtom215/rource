@@ -203,19 +203,24 @@ renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);  // Was 2.0
 | 1.5× | 2.25× main | -44% |
 | 1.25× | 1.56× main | -61% |
 
-### 4. SIMD Vectorization (Medium Effort)
+### 4. SIMD Vectorization (Medium Effort) ✓ Implemented (Phase 71)
 
-Process 4 pixels simultaneously using SIMD:
+Process 4 pixels simultaneously using SIMD-friendly batch blending:
 
 ```rust
-// Current: 1 pixel at a time
+// Before: 1 pixel at a time
 pixels[idx] = blend_pixel_fixed(pixels[idx], r, g, b, alpha);
 
-// Proposed: 4 pixels with SIMD
-blend_4pixels_simd(&mut pixels[idx..idx+4], r, g, b, alphas);
+// After (Phase 71): Batch 4 pixels for LLVM auto-vectorization
+blend_scanline_uniform(pixels, start_idx, count, r, g, b, alpha);
 ```
 
-Estimated speedup: 2-3× for inner pixels (no sqrt branch divergence).
+**Results**:
+- `blend_scanline_uniform`: 1.72 ns/pixel (batch processing)
+- Blend throughput: +4% (criterion benchmark)
+- Disc rendering: -2% overhead (run tracking cost)
+
+The batch blend infrastructure is in place. Full SIMD benefit for disc rendering requires further tuning of run-length thresholds.
 
 ### 5. Multi-threaded Scanlines (Medium Effort)
 

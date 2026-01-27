@@ -868,6 +868,59 @@ Small files (when zoomed out) no longer have imperceptible glow rendered.
 
 ---
 
+### SIMD-Friendly Batch Blending Infrastructure
+
+**Phase**: 71
+**Location**: `crates/rource-render/src/backend/software/optimized.rs`
+**Impact**: +4% blend throughput; infrastructure for future SIMD optimizations
+
+Implemented batch blending function `blend_scanline_uniform` optimized for LLVM auto-vectorization with WASM SIMD128.
+
+**Key Features**:
+1. Processes 4 pixels per iteration (matches SIMD128 width)
+2. Pre-computes source terms outside loop
+3. Unrolled loop structure enables SLP vectorization
+
+```rust
+pub fn blend_scanline_uniform(
+    pixels: &mut [u32],
+    start_idx: usize,
+    count: usize,
+    src_r: u8, src_g: u8, src_b: u8,
+    alpha: u32,
+) {
+    // Pre-compute source terms
+    let src_r_alpha = src_r as u32 * alpha;
+    let inv_alpha = 256 - alpha;
+
+    // Process 4 pixels at a time
+    for chunk_idx in 0..chunks {
+        let base = chunk_idx * 4;
+        // Load, blend, store 4 pixels (enables SIMD)
+    }
+}
+```
+
+**Benchmark Results**:
+
+| Metric | Value |
+|--------|-------|
+| `blend_scanline_uniform` | 1.72 ns/pixel (1000 pixel batch) |
+| Blend throughput improvement | +4% (criterion benchmark) |
+| Disc rendering overhead | -2% (run tracking cost) |
+
+**Test Coverage**: 17 new tests
+- Batch blend correctness (8 tests)
+- SIMD disc parity with original (7 tests)
+- Performance benchmarks (2 tests)
+
+**Future Applications**:
+- Scanline-based effects (blur, bloom)
+- Text rendering with solid fills
+- Large disc rendering (radius > 50)
+
+---
+
 ## Browser-Specific Optimizations
 
 ### Firefox GPU Physics Workaround
