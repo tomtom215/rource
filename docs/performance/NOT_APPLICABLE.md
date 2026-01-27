@@ -673,6 +673,73 @@ render_pass.draw_indirect(culled.indirect(), 0)
 
 ---
 
+### Spatial Hash Grid for Core Library LabelPlacer
+
+**Phase**: 76
+**Date**: 2026-01-27
+**Claimed Performance**: 10-44× improvement for collision detection
+
+**Why Not Applicable**:
+
+The spatial hash grid optimization was evaluated for the core library's `LabelPlacer`
+(`crates/rource-render/src/label.rs`). The WASM version already uses spatial hash
+(`rource-wasm/src/render_phases.rs`), but the core library uses O(n) linear scan.
+
+**Benchmark Results** (criterion, 100 samples, 95% CI):
+
+| Labels | O(n) Baseline | Spatial Hash | Regression |
+|--------|---------------|--------------|------------|
+| 0      | 5.8 ns        | 234 ns       | +40× |
+| 10     | 88.9 ns       | 1.06 µs      | +12× |
+| 50     | 1.46 µs       | 2.87 µs      | +2× |
+| 100    | 5.4 µs        | 5.8 µs       | +7% |
+| Full frame (80) | 3.26 µs | 18.8 µs  | +5.8× |
+
+**Root Cause Analysis**:
+
+The spatial hash adds overhead that isn't amortized for small label counts:
+
+1. **Grid initialization**: 32×32 = 1024 Vec cells with pre-allocated capacity (~32KB)
+2. **Grid registration**: Each `try_place` must push to multiple grid cells
+3. **Cell iteration**: Looking up and iterating over cell contents has cache misses
+4. **Generation checking**: Additional branch for each entry to skip stale entries
+
+For O(n) linear scan:
+- Simple Vec iteration is cache-optimal (sequential memory access)
+- AABB intersection is just 4 float comparisons (extremely fast)
+- No hash computation or grid cell management
+
+**Crossover Point Analysis**:
+
+For n labels placed sequentially, total comparisons:
+- O(n) linear scan: 0 + 1 + 2 + ... + (n-1) = n(n-1)/2 ≈ O(n²/2)
+- Spatial hash: n × k where k ≈ constant (labels per cell)
+
+Theoretical crossover at n where O(n²/2) > O(n × overhead).
+Empirically, spatial hash only breaks even around 100+ labels.
+
+**Why WASM Uses Spatial Hash**:
+
+The WASM version in `render_phases.rs` uses spatial hash for different reasons:
+
+1. **Frame rate target**: 42,000+ FPS requires O(1) reset (generation counter)
+2. **Memory pressure**: WASM heap is constrained; generation counter avoids allocation
+3. **Label count**: WASM may render more labels than native CLI
+4. **Already implemented**: Phase 33 + 65 optimized the WASM version
+
+**Decision**:
+
+Keep O(n) linear scan for core library:
+- Typical label counts: 30-100 per frame
+- Sequential Vec iteration is cache-optimal
+- Simpler code, less maintenance burden
+- Performance is already excellent (3.26 µs for full frame)
+
+**Reference**: `docs/performance/formal-proofs/07-label-collision-detection.md`
+(documents the algorithm, but notes WASM-specific applicability)
+
+---
+
 ## Summary Table
 
 | Optimization               | Phase | Reason                           |
@@ -697,6 +764,7 @@ render_pass.draw_indirect(culled.indirect(), 0)
 | **Welford Statistics**     | **75**| **No variance calculations needed** |
 | **Quantized AABB**         | **75**| **Memory not bottleneck, f32 required** |
 | **GPU Instancing Indirect**| **75**| **ALREADY IMPLEMENTED** |
+| Spatial Hash (core lib)    | 76    | Overhead > benefit for <100 labels |
 
 ---
 

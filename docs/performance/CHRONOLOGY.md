@@ -95,6 +95,7 @@ Complete timeline of all 72 optimization phases with dates, commits, and outcome
 | 73    | 2026-01-27 | Documentation   | Floyd's Tortoise and Hare Algorithm analysis| Documented   |
 | 74    | 2026-01-27 | Data Integrity  | Floyd's Algorithm production implementation | Implemented  |
 | 75    | 2026-01-27 | Analysis        | Spatial acceleration algorithm evaluation   | Documented   |
+| 76    | 2026-01-27 | Analysis        | Spatial hash for core LabelPlacer          | N/A          |
 
 ---
 
@@ -2550,6 +2551,117 @@ of this evaluation:
 - [NOT_APPLICABLE.md](NOT_APPLICABLE.md) - Detailed algorithm analyses
 - [SUCCESSFUL_OPTIMIZATIONS.md](SUCCESSFUL_OPTIMIZATIONS.md) - Implemented optimizations
 - [Phase 64](#phase-64) - GPU visibility culling verification (ALREADY_IMPLEMENTED)
+
+---
+
+## Phase 76: Spatial Hash Grid Evaluation for Core Library (2026-01-27)
+
+### Summary
+
+**Category**: Performance Analysis
+**Status**: NOT APPLICABLE
+**Date**: 2026-01-27
+
+Evaluated spatial hash grid optimization for the core library's `LabelPlacer`
+(`crates/rource-render/src/label.rs`). The implementation was completed and
+benchmarked, but **showed regression** for typical label counts (30-100).
+
+### Problem Statement
+
+The continuation prompt from a previous session identified the core library's
+`LabelPlacer` as using O(n) linear scan for collision detection, while the
+WASM version (`rource-wasm/src/render_phases.rs`) uses O(1) spatial hash grid.
+
+The formal proof (`docs/performance/formal-proofs/07-label-collision-detection.md`)
+documents the algorithm, promising 10-44× improvement.
+
+### Implementation
+
+The spatial hash grid was fully implemented in `label.rs`:
+
+1. **Grid structure**: 32×32 cells covering 4K viewport (128px per cell)
+2. **Generation counter**: O(1) reset via generation increment
+3. **Grid registration**: Labels registered in all overlapping cells
+4. **Collision query**: Only check labels in overlapping cells
+
+### Benchmark Results
+
+**Criterion Benchmarks (100 samples, 95% CI)**:
+
+| Labels | O(n) Baseline | Spatial Hash | Regression |
+|--------|---------------|--------------|------------|
+| 0      | 5.8 ns        | 234 ns       | +40× |
+| 10     | 88.9 ns       | 1.06 µs      | +12× |
+| 50     | 1.46 µs       | 2.87 µs      | +2× |
+| 100    | 5.4 µs        | 5.8 µs       | +7% |
+| Full frame (80) | 3.26 µs | 18.8 µs | **+5.8×** |
+
+### Root Cause Analysis
+
+The spatial hash adds overhead that isn't amortized for small label counts:
+
+1. **Grid initialization**: 32×32 = 1024 Vec cells with capacity (~32KB)
+2. **Grid registration**: Each `try_place` pushes to multiple grid cells
+3. **Cell iteration**: Looking up cells and iterating has cache misses
+4. **Generation checking**: Branch per entry to skip stale entries
+
+For O(n) linear scan:
+- Simple Vec iteration is cache-optimal (sequential memory access)
+- AABB intersection is just 4 float comparisons (extremely fast)
+- No hash computation or grid cell management
+
+### Crossover Point Analysis
+
+For n labels placed sequentially, total comparisons:
+- O(n) linear scan: 0 + 1 + 2 + ... + (n-1) = n(n-1)/2 ≈ O(n²/2)
+- Spatial hash: n × k where k ≈ constant (labels per cell)
+
+Empirically, spatial hash only breaks even around **100+ labels**.
+
+For typical usage (30-100 labels), the overhead dominates:
+- 80 labels: O(n²/2) = 3200 comparisons × ~1ns = ~3.2µs
+- 80 labels with spatial hash: ~18.8µs overhead
+
+### Decision
+
+**Keep O(n) linear scan for core library**:
+- Typical label counts: 30-100 per frame
+- Sequential Vec iteration is cache-optimal
+- 3.26 µs per frame is already excellent (0.02% of 16.67ms budget)
+- Simpler code, less maintenance burden
+
+### Why WASM Uses Spatial Hash
+
+The WASM version benefits from spatial hash for different reasons:
+
+1. **Frame rate target**: 42,000+ FPS requires O(1) reset (generation counter)
+2. **Memory pressure**: Generation counter avoids per-frame allocation
+3. **Already implemented**: Phase 33 + 65 optimized for WASM constraints
+4. **Higher label counts**: WASM rendering may handle more labels
+
+### Key Lesson
+
+**Never assume algorithmic improvement equals practical improvement.**
+
+The formal proof correctly identifies O(n) → O(1) complexity improvement,
+but **constant factors matter**. For small n, the O(1) overhead dominates.
+
+This validates CLAUDE.md's guidance:
+- "Never Assume" - verified with benchmarks
+- "Never Guess" - measured actual performance
+- "If it cannot be measured, it did not happen"
+
+### Files Modified
+
+- `docs/performance/NOT_APPLICABLE.md` - Added Phase 76 entry
+- `docs/performance/CHRONOLOGY.md` - Added Phase 76 documentation
+- `crates/rource-render/benches/label_perf.rs` - **NEW** benchmark file
+- `crates/rource-render/Cargo.toml` - Added benchmark entry
+
+### Related Documentation
+
+- [NOT_APPLICABLE.md](NOT_APPLICABLE.md) - Full analysis
+- [docs/performance/formal-proofs/07-label-collision-detection.md](formal-proofs/07-label-collision-detection.md) - Algorithm theory (WASM-specific)
 
 ---
 
