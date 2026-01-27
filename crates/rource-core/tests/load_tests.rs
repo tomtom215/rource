@@ -179,7 +179,8 @@ impl LoadTestMetrics {
         let rss = get_rss_bytes();
 
         self.memory_samples.push((elapsed, rss));
-        self.entity_samples.push((elapsed, scene.file_count(), scene.user_count()));
+        self.entity_samples
+            .push((elapsed, scene.file_count(), scene.user_count()));
         self.last_sample = Instant::now();
     }
 
@@ -246,8 +247,12 @@ impl LoadTestMetrics {
         let avg_ms = if self.frame_times.is_empty() {
             0.0
         } else {
-            self.frame_times.iter().map(|d| d.as_secs_f64()).sum::<f64>()
-                / self.frame_times.len() as f64 * 1000.0
+            self.frame_times
+                .iter()
+                .map(|d| d.as_secs_f64())
+                .sum::<f64>()
+                / self.frame_times.len() as f64
+                * 1000.0
         };
 
         let fps = if avg_ms > 0.0 { 1000.0 / avg_ms } else { 0.0 };
@@ -365,7 +370,9 @@ fn generate_synthetic_log(commit_count: usize) -> String {
 /// Applies commits to scene with proper pacing.
 fn apply_commits_to_scene(scene: &mut Scene, commits: &[rource_vcs::Commit]) {
     for commit in commits {
-        let files: Vec<_> = commit.files.iter()
+        let files: Vec<_> = commit
+            .files
+            .iter()
             .map(|f| {
                 let action = match f.action {
                     FileAction::Create => ActionType::Create,
@@ -408,7 +415,9 @@ fn load_test_30min_100k_commits() {
     let log = generate_synthetic_log(commit_count);
 
     let parser = CustomParser::with_options(ParseOptions::lenient());
-    let commits = parser.parse_str(&log).expect("Failed to parse synthetic log");
+    let commits = parser
+        .parse_str(&log)
+        .expect("Failed to parse synthetic log");
     println!("Parsed {} commits", commits.len());
 
     // Initialize scene
@@ -418,8 +427,11 @@ fn load_test_30min_100k_commits() {
     // Apply all commits
     println!("Applying commits to scene...");
     apply_commits_to_scene(&mut scene, &commits);
-    println!("Scene initialized with {} files, {} users",
-             scene.file_count(), scene.user_count());
+    println!(
+        "Scene initialized with {} files, {} users",
+        scene.file_count(),
+        scene.user_count()
+    );
 
     // Warm-up phase (60 frames = 1 second)
     println!("\nWarm-up phase (60 frames)...");
@@ -431,8 +443,14 @@ fn load_test_30min_100k_commits() {
     let mut metrics = LoadTestMetrics::new(Duration::from_secs(1));
     metrics.set_warmup_baseline();
 
-    println!("Warm-up baseline RSS: {:.1} MB", bytes_to_mb(metrics.warmup_rss));
-    println!("\nStarting {:.0}-minute load test...\n", test_duration.as_secs_f64() / 60.0);
+    println!(
+        "Warm-up baseline RSS: {:.1} MB",
+        bytes_to_mb(metrics.warmup_rss)
+    );
+    println!(
+        "\nStarting {:.0}-minute load test...\n",
+        test_duration.as_secs_f64() / 60.0
+    );
 
     // Main load test loop
     let start = Instant::now();
@@ -485,15 +503,28 @@ fn load_test_30min_100k_commits() {
     let growth = metrics.memory_growth_percent();
     let p99_ratio = p99.as_secs_f64() / p50.as_secs_f64();
 
-    println!("Duration:        {:.1} minutes", metrics.elapsed().as_secs_f64() / 60.0);
+    println!(
+        "Duration:        {:.1} minutes",
+        metrics.elapsed().as_secs_f64() / 60.0
+    );
     println!("Total Frames:    {}", metrics.frame_count());
-    println!("Final Entities:  {} files, {} users", scene.file_count(), scene.user_count());
+    println!(
+        "Final Entities:  {} files, {} users",
+        scene.file_count(),
+        scene.user_count()
+    );
     println!();
     println!("Frame Times:");
     println!("  P50:           {:.3} ms", p50.as_secs_f64() * 1000.0);
-    println!("  P95:           {:.3} ms", metrics.p95().as_secs_f64() * 1000.0);
+    println!(
+        "  P95:           {:.3} ms",
+        metrics.p95().as_secs_f64() * 1000.0
+    );
     println!("  P99:           {:.3} ms", p99.as_secs_f64() * 1000.0);
-    println!("  P99.9:         {:.3} ms", metrics.p999().as_secs_f64() * 1000.0);
+    println!(
+        "  P99.9:         {:.3} ms",
+        metrics.p999().as_secs_f64() * 1000.0
+    );
     println!("  P99/P50 Ratio: {:.2}x", p99_ratio);
     println!();
     println!("Memory:");
@@ -519,9 +550,20 @@ fn load_test_30min_100k_commits() {
     let memory_ok = growth < 5.0;
     let frame_ok = p99_ratio < 2.0;
 
-    println!("✓ Duration ≥ 30 min:        {}", if duration_ok { "PASS" } else { "FAIL" });
-    println!("✓ Memory growth < 5%:       {} ({:.2}%)", if memory_ok { "PASS" } else { "FAIL" }, growth);
-    println!("✓ P99 < 2x P50:             {} ({:.2}x)", if frame_ok { "PASS" } else { "FAIL" }, p99_ratio);
+    println!(
+        "✓ Duration ≥ 30 min:        {}",
+        if duration_ok { "PASS" } else { "FAIL" }
+    );
+    println!(
+        "✓ Memory growth < 5%:       {} ({:.2}%)",
+        if memory_ok { "PASS" } else { "FAIL" },
+        growth
+    );
+    println!(
+        "✓ P99 < 2x P50:             {} ({:.2}x)",
+        if frame_ok { "PASS" } else { "FAIL" },
+        p99_ratio
+    );
 
     // Assert success criteria
     assert!(duration_ok, "Test did not run for full 30 minutes");
@@ -548,13 +590,18 @@ fn load_test_smoke_5min_10k_commits() {
     let log = generate_synthetic_log(commit_count);
 
     let parser = CustomParser::with_options(ParseOptions::lenient());
-    let commits = parser.parse_str(&log).expect("Failed to parse synthetic log");
+    let commits = parser
+        .parse_str(&log)
+        .expect("Failed to parse synthetic log");
 
     // Initialize and populate scene
     let mut scene = Scene::new();
     apply_commits_to_scene(&mut scene, &commits);
-    println!("Scene initialized with {} files, {} users",
-             scene.file_count(), scene.user_count());
+    println!(
+        "Scene initialized with {} files, {} users",
+        scene.file_count(),
+        scene.user_count()
+    );
 
     // Warm-up
     for _ in 0..60 {
@@ -565,8 +612,14 @@ fn load_test_smoke_5min_10k_commits() {
     let mut metrics = LoadTestMetrics::new(Duration::from_secs(1));
     metrics.set_warmup_baseline();
 
-    println!("Warm-up baseline RSS: {:.1} MB", bytes_to_mb(metrics.warmup_rss));
-    println!("\nStarting {:.0}-minute smoke test...\n", test_duration.as_secs_f64() / 60.0);
+    println!(
+        "Warm-up baseline RSS: {:.1} MB",
+        bytes_to_mb(metrics.warmup_rss)
+    );
+    println!(
+        "\nStarting {:.0}-minute smoke test...\n",
+        test_duration.as_secs_f64() / 60.0
+    );
 
     // Main loop
     let start = Instant::now();
@@ -607,7 +660,10 @@ fn load_test_smoke_5min_10k_commits() {
     println!("\n========================================");
     println!("Smoke Test Results");
     println!("========================================");
-    println!("Duration:    {:.1} minutes", metrics.elapsed().as_secs_f64() / 60.0);
+    println!(
+        "Duration:    {:.1} minutes",
+        metrics.elapsed().as_secs_f64() / 60.0
+    );
     println!("Frames:      {}", metrics.frame_count());
     println!("P50:         {:.3} ms", p50.as_secs_f64() * 1000.0);
     println!("P99:         {:.3} ms", p99.as_secs_f64() * 1000.0);
@@ -619,8 +675,10 @@ fn load_test_smoke_5min_10k_commits() {
 
     // Same criteria, just shorter duration
     assert!(growth < 5.0, "Memory growth exceeded 5%: {:.2}%", growth);
-    assert!(p99.as_secs_f64() < 2.0 * p50.as_secs_f64(),
-            "P99/P50 ratio exceeded 2x");
+    assert!(
+        p99.as_secs_f64() < 2.0 * p50.as_secs_f64(),
+        "P99/P50 ratio exceeded 2x"
+    );
 
     println!("\n✓ Smoke test passed!");
 }
@@ -660,8 +718,14 @@ fn load_test_quick_sanity_1min() {
     }
 
     // Basic sanity checks
-    assert!(metrics.frame_count() > 3000, "Should have at least 3000 frames in 1 minute");
-    assert!(metrics.p50().as_secs_f64() * 1000.0 < 100.0, "P50 should be under 100ms");
+    assert!(
+        metrics.frame_count() > 3000,
+        "Should have at least 3000 frames in 1 minute"
+    );
+    assert!(
+        metrics.p50().as_secs_f64() * 1000.0 < 100.0,
+        "P50 should be under 100ms"
+    );
 }
 
 // ============================================================================
@@ -694,8 +758,13 @@ fn load_test_memory_churn() {
         // Add files
         let mut log = String::with_capacity(50_000);
         for j in 0..1000 {
-            let _ = writeln!(log, "{}|Churner|A|churn/iter{}/file{}.rs",
-                           1_000_000_000 + (i * 1000 + j) as i64, i, j);
+            let _ = writeln!(
+                log,
+                "{}|Churner|A|churn/iter{}/file{}.rs",
+                1_000_000_000 + (i * 1000 + j) as i64,
+                i,
+                j
+            );
         }
 
         let parser = CustomParser::with_options(ParseOptions::lenient());
@@ -710,7 +779,12 @@ fn load_test_memory_churn() {
         if i % 10 == 0 {
             let rss = get_rss_bytes();
             let growth = ((rss as f64 - baseline_rss as f64) / baseline_rss as f64) * 100.0;
-            println!("Iteration {}: RSS = {:.1} MB ({:+.1}%)", i, bytes_to_mb(rss), growth);
+            println!(
+                "Iteration {}: RSS = {:.1} MB ({:+.1}%)",
+                i,
+                bytes_to_mb(rss),
+                growth
+            );
         }
     }
 
@@ -722,5 +796,9 @@ fn load_test_memory_churn() {
 
     // Allow more growth for churn test (20% instead of 5%)
     // Churn creates many entities which is expected to use memory
-    assert!(growth < 100.0, "Excessive memory growth during churn: {:.2}%", growth);
+    assert!(
+        growth < 100.0,
+        "Excessive memory growth during churn: {:.2}%",
+        growth
+    );
 }
