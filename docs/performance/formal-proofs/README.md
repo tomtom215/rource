@@ -25,6 +25,17 @@ This directory contains formal mathematical proofs for the key algorithms used i
 | 11 | [Adaptive Barnes-Hut Theta](./11-adaptive-barnes-hut-theta.md) | `crates/rource-core/src/physics/barnes_hut.rs` | Physics Simulation |
 | 12 | [Bloom Effect Sliding Window](./12-bloom-effect-sliding-window.md) | `crates/rource-render/src/effects/bloom.rs` | Rendering Effects |
 | 13 | [Floyd's Cycle Detection Algorithm](./13-floyds-cycle-detection.md) | `crates/rource-core/src/scene/tree.rs`, `tests/chaos/wasm/mod.rs` | Data Integrity |
+| 14 | [Catmull-Rom Spline Interpolation](./14-catmull-rom-spline.md) | `crates/rource-core/src/animation/spline.rs` | Animation |
+| 15 | [Level of Detail (LOD) Culling](./15-level-of-detail.md) | `crates/rource-render/src/lod.rs` | Rendering Optimization |
+| 16 | [GPU Spatial Hashing](./16-gpu-spatial-hashing.md) | `crates/rource-render/src/backend/wgpu/spatial_hash.rs` | GPU Algorithms |
+| 17 | [String Interning](./17-string-interning.md) | `crates/rource-vcs/src/intern.rs` | Memory Optimization |
+| 18 | [Fixed-Point Arithmetic](./18-fixed-point-arithmetic.md) | `crates/rource-render/src/backend/software/optimized.rs` | Determinism |
+| 19 | [Easing Functions](./19-easing-functions.md) | `crates/rource-core/src/animation/tween.rs` | Animation |
+| 20 | [GPU Visibility Culling](./20-gpu-visibility-culling.md) | `crates/rource-render/src/backend/wgpu/culling.rs` | GPU Optimization |
+| 21 | [Square Root and Inverse Lookup Tables](./21-sqrt-inverse-lookup-tables.md) | `crates/rource-render/src/backend/software/optimized.rs` | Numerical Optimization |
+| 22 | [Anti-Aliased Disc Rendering](./22-antialiased-disc-rendering.md) | `crates/rource-render/src/backend/software/optimized.rs` | Software Rendering |
+| 23 | [Nearest-Neighbor Search](./23-nearest-neighbor-search.md) | `crates/rource-core/src/physics/spatial.rs` | Spatial Query |
+| 24 | [Separable Box Blur](./24-separable-box-blur.md) | `crates/rource-render/src/effects/bloom.rs` | Image Processing |
 
 ---
 
@@ -47,6 +58,17 @@ This directory contains formal mathematical proofs for the key algorithms used i
 | Adaptive Theta | O(n log n) | O(n) | Auto-tuned accuracy |
 | Bloom Sliding | O(n) | O(n) | 41x vs direct |
 | Floyd's Cycle | O(μ + λ) | O(1) | Zero overhead |
+| Catmull-Rom Spline | O(1) per eval | O(n) control pts | C1 continuous |
+| LOD Culling | O(1) per entity | O(1) | 65% early exit |
+| GPU Spatial Hash | O(N) | O(N + G) | 3.2M particles/frame |
+| String Interning | O(1) lookup | O(unique) | 90% memory reduction |
+| Fixed-Point | O(1) per op | O(1) | Bit-exact determinism |
+| Easing Functions | O(1) | O(1) | 30 types, C0 smooth |
+| GPU Visibility Cull | O(N) compute | O(N) | 99% cull rate |
+| Sqrt/Inverse LUT | O(1) | O(3KB) | 4× sqrt, 7.5× div |
+| AA Disc Render | O(r) sqrt calls | O(1) | 318× speedup @r=1000 |
+| Nearest Neighbor | O(log n) avg | O(n) | 14× vs brute force |
+| Separable Box Blur | O(n²) | O(n²) | Kernel-independent |
 
 ---
 
@@ -61,10 +83,10 @@ This directory contains formal mathematical proofs for the key algorithms used i
 
 | Field | Value |
 |-------|-------|
-| Version | 3.0 |
+| Version | 4.0 |
 | Last Updated | 2026-01-27 |
 | Validated Against | rource-core v0.1.0, Phases 61-74 |
-| Total Proofs | 13 |
+| Total Proofs | 24 |
 
 ---
 
