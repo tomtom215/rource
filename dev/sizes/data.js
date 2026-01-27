@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769536045647,
+  "lastUpdate": 1769539917511,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3455,6 +3455,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/dd32192b6570b417be1916a6c0822178191dd5dc"
         },
         "date": 1769536044993,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "17375eb5b514b36114061441190887226601f432",
+          "message": "Merge pull request #209 from tomtom215/claude/rource-implementation-1wTQk\n\nImplement Floyd's Cycle Detection for Data Integrity Validation",
+          "timestamp": "2026-01-27T19:49:46+01:00",
+          "tree_id": "57ecf359a6adf9e88545a542d204084b047aa74e",
+          "url": "https://github.com/tomtom215/rource/commit/17375eb5b514b36114061441190887226601f432"
+        },
+        "date": 1769539917175,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
