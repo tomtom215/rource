@@ -1,10 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tom F <https://github.com/tomtom215>
 
-//! Performance metrics and render statistics for Rource WASM.
+//! Performance metrics, error tracking, and render statistics for Rource WASM.
 //!
-//! This module provides types for tracking frame timing, FPS calculation,
-//! and per-frame render statistics.
+//! This module provides types for:
+//! - Frame timing and FPS calculation ([`PerformanceMetrics`])
+//! - Error categorization and counting ([`ErrorMetrics`])
+//! - Per-frame render statistics ([`RenderStats`])
+//!
+//! # Error Rate Tracking
+//!
+//! The [`ErrorMetrics`] struct provides categorized error counting for:
+//! - Parse errors (VCS log parsing failures)
+//! - Render errors (WebGL/wgpu rendering issues)
+//! - WebGL errors (shader/context failures)
+//! - Configuration errors (invalid settings)
+//!
+//! This enables calculation of error rates against total operations,
+//! supporting the project's <0.1% error rate SLO target.
 
 // ============================================================================
 // Constants
@@ -207,6 +220,286 @@ impl RenderStats {
 }
 
 // ============================================================================
+// Error Metrics
+// ============================================================================
+
+/// Categories of errors that can occur in Rource.
+///
+/// Each category represents a distinct failure domain with different
+/// mitigation strategies and alerting thresholds.
+///
+/// # Error Budget Allocation
+///
+/// The project targets <0.1% total error rate. Individual categories have
+/// specific thresholds:
+/// - Parse errors: <0.5% of load operations
+/// - Render errors: <0.01% of frames
+/// - WebGL errors: <0.1% of initialization attempts
+/// - Config errors: <1% of configuration changes
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum ErrorCategory {
+    /// VCS log parsing failures (malformed input, invalid timestamps).
+    Parse = 0,
+    /// General rendering failures (frame buffer, texture upload).
+    Render = 1,
+    /// WebGL/wgpu context errors (shader compilation, context lost).
+    WebGl = 2,
+    /// Configuration/settings validation errors.
+    Config = 3,
+    /// Image/asset loading errors.
+    Asset = 4,
+    /// I/O errors (file read, network).
+    Io = 5,
+}
+
+impl ErrorCategory {
+    /// Returns the category name as a string.
+    #[inline]
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Parse => "parse",
+            Self::Render => "render",
+            Self::WebGl => "webgl",
+            Self::Config => "config",
+            Self::Asset => "asset",
+            Self::Io => "io",
+        }
+    }
+
+    /// Number of error categories.
+    pub const COUNT: usize = 6;
+
+    /// All error categories.
+    #[allow(dead_code)]
+    pub const ALL: [Self; Self::COUNT] = [
+        Self::Parse,
+        Self::Render,
+        Self::WebGl,
+        Self::Config,
+        Self::Asset,
+        Self::Io,
+    ];
+}
+
+impl std::fmt::Display for ErrorCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", (*self).as_str())
+    }
+}
+
+/// Error metrics for tracking errors by category.
+///
+/// Provides counters for each error category and total operation counts
+/// to enable error rate calculation.
+///
+/// # Thread Safety
+///
+/// This struct is designed for single-threaded WASM usage. All operations
+/// are O(1) and lock-free.
+///
+/// # Example
+///
+/// ```ignore
+/// let mut errors = ErrorMetrics::new();
+///
+/// // Record a parse error during log loading
+/// errors.record_error(ErrorCategory::Parse);
+/// errors.record_operation(ErrorCategory::Parse);
+///
+/// // Check error rate
+/// let rate = errors.error_rate(ErrorCategory::Parse);
+/// if rate > 0.001 {
+///     // Alert: Parse error rate exceeds 0.1% threshold
+/// }
+/// ```
+#[derive(Debug, Clone)]
+pub struct ErrorMetrics {
+    /// Error counts by category (indexed by `ErrorCategory as usize`).
+    error_counts: [u64; ErrorCategory::COUNT],
+    /// Operation counts by category (for rate calculation).
+    operation_counts: [u64; ErrorCategory::COUNT],
+    /// Total errors across all categories.
+    total_errors: u64,
+    /// Total operations across all categories.
+    total_operations: u64,
+}
+
+impl Default for ErrorMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ErrorMetrics {
+    /// Creates a new error metrics tracker with all counters at zero.
+    #[inline]
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            error_counts: [0; ErrorCategory::COUNT],
+            operation_counts: [0; ErrorCategory::COUNT],
+            total_errors: 0,
+            total_operations: 0,
+        }
+    }
+
+    /// Records an error in the specified category.
+    ///
+    /// This increments both the category-specific counter and the total.
+    #[inline]
+    pub fn record_error(&mut self, category: ErrorCategory) {
+        self.error_counts[category as usize] += 1;
+        self.total_errors += 1;
+    }
+
+    /// Records a successful operation in the specified category.
+    ///
+    /// This is used to calculate error rates (errors / operations).
+    /// Call this for both successful and failed operations.
+    #[inline]
+    pub fn record_operation(&mut self, category: ErrorCategory) {
+        self.operation_counts[category as usize] += 1;
+        self.total_operations += 1;
+    }
+
+    /// Records multiple operations at once (bulk operation).
+    ///
+    /// Useful after batch processing (e.g., parsing many commits).
+    #[inline]
+    #[allow(dead_code)]
+    pub fn record_operations(&mut self, category: ErrorCategory, count: u64) {
+        self.operation_counts[category as usize] += count;
+        self.total_operations += count;
+    }
+
+    /// Returns the error count for a specific category.
+    #[inline]
+    #[must_use]
+    pub fn error_count(&self, category: ErrorCategory) -> u64 {
+        self.error_counts[category as usize]
+    }
+
+    /// Returns the operation count for a specific category.
+    #[inline]
+    #[must_use]
+    pub fn operation_count(&self, category: ErrorCategory) -> u64 {
+        self.operation_counts[category as usize]
+    }
+
+    /// Returns the total error count across all categories.
+    #[inline]
+    #[must_use]
+    pub fn total_errors(&self) -> u64 {
+        self.total_errors
+    }
+
+    /// Returns the total operation count across all categories.
+    #[inline]
+    #[must_use]
+    pub fn total_operations(&self) -> u64 {
+        self.total_operations
+    }
+
+    /// Calculates the error rate for a specific category (0.0-1.0).
+    ///
+    /// Returns 0.0 if no operations have been recorded for the category.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // If 5 parse errors out of 1000 parse operations:
+    /// // error_rate(ErrorCategory::Parse) = 0.005 (0.5%)
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn error_rate(&self, category: ErrorCategory) -> f64 {
+        let ops = self.operation_counts[category as usize];
+        if ops == 0 {
+            0.0
+        } else {
+            self.error_counts[category as usize] as f64 / ops as f64
+        }
+    }
+
+    /// Calculates the total error rate across all categories (0.0-1.0).
+    ///
+    /// Returns 0.0 if no operations have been recorded.
+    #[inline]
+    #[must_use]
+    pub fn total_error_rate(&self) -> f64 {
+        if self.total_operations == 0 {
+            0.0
+        } else {
+            self.total_errors as f64 / self.total_operations as f64
+        }
+    }
+
+    /// Checks if the error rate exceeds the given threshold.
+    ///
+    /// # Arguments
+    ///
+    /// * `category` - The error category to check
+    /// * `threshold` - Maximum acceptable error rate (0.0-1.0)
+    ///
+    /// # Returns
+    ///
+    /// `true` if error rate > threshold AND at least one operation recorded.
+    #[inline]
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn exceeds_threshold(&self, category: ErrorCategory, threshold: f64) -> bool {
+        let ops = self.operation_counts[category as usize];
+        if ops == 0 {
+            false
+        } else {
+            self.error_rate(category) > threshold
+        }
+    }
+
+    /// Checks if total error rate exceeds the given threshold.
+    #[inline]
+    #[must_use]
+    pub fn total_exceeds_threshold(&self, threshold: f64) -> bool {
+        if self.total_operations == 0 {
+            false
+        } else {
+            self.total_error_rate() > threshold
+        }
+    }
+
+    /// Resets all counters to zero.
+    ///
+    /// Useful for per-session error tracking or after a configuration change.
+    #[inline]
+    pub fn reset(&mut self) {
+        self.error_counts = [0; ErrorCategory::COUNT];
+        self.operation_counts = [0; ErrorCategory::COUNT];
+        self.total_errors = 0;
+        self.total_operations = 0;
+    }
+
+    /// Returns a summary of errors as a JSON-compatible string.
+    ///
+    /// Format: `{"parse":0,"render":0,"webgl":0,"config":0,"asset":0,"io":0,"total":0,"rate":0.0}`
+    #[must_use]
+    pub fn to_json(&self) -> String {
+        format!(
+            r#"{{"parse":{},"render":{},"webgl":{},"config":{},"asset":{},"io":{},"total":{},"rate":{:.6}}}"#,
+            self.error_counts[ErrorCategory::Parse as usize],
+            self.error_counts[ErrorCategory::Render as usize],
+            self.error_counts[ErrorCategory::WebGl as usize],
+            self.error_counts[ErrorCategory::Config as usize],
+            self.error_counts[ErrorCategory::Asset as usize],
+            self.error_counts[ErrorCategory::Io as usize],
+            self.total_errors,
+            self.total_error_rate()
+        )
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -372,5 +665,223 @@ mod tests {
         let stats = RenderStats::new();
         let debug_str = format!("{stats:?}");
         assert!(debug_str.contains("visible_files"));
+    }
+
+    // Error Metrics Tests
+
+    #[test]
+    fn test_error_category_as_str() {
+        assert_eq!(ErrorCategory::Parse.as_str(), "parse");
+        assert_eq!(ErrorCategory::Render.as_str(), "render");
+        assert_eq!(ErrorCategory::WebGl.as_str(), "webgl");
+        assert_eq!(ErrorCategory::Config.as_str(), "config");
+        assert_eq!(ErrorCategory::Asset.as_str(), "asset");
+        assert_eq!(ErrorCategory::Io.as_str(), "io");
+    }
+
+    #[test]
+    fn test_error_category_display() {
+        assert_eq!(format!("{}", ErrorCategory::Parse), "parse");
+        assert_eq!(format!("{}", ErrorCategory::WebGl), "webgl");
+    }
+
+    #[test]
+    fn test_error_category_count() {
+        assert_eq!(ErrorCategory::COUNT, 6);
+        assert_eq!(ErrorCategory::ALL.len(), 6);
+    }
+
+    #[test]
+    fn test_error_metrics_new() {
+        let metrics = ErrorMetrics::new();
+        assert_eq!(metrics.total_errors(), 0);
+        assert_eq!(metrics.total_operations(), 0);
+        assert_eq!(metrics.total_error_rate(), 0.0);
+    }
+
+    #[test]
+    fn test_error_metrics_default() {
+        let metrics = ErrorMetrics::default();
+        assert_eq!(metrics.total_errors(), 0);
+    }
+
+    #[test]
+    fn test_error_metrics_record_error() {
+        let mut metrics = ErrorMetrics::new();
+
+        metrics.record_error(ErrorCategory::Parse);
+        assert_eq!(metrics.error_count(ErrorCategory::Parse), 1);
+        assert_eq!(metrics.total_errors(), 1);
+
+        metrics.record_error(ErrorCategory::Parse);
+        assert_eq!(metrics.error_count(ErrorCategory::Parse), 2);
+        assert_eq!(metrics.total_errors(), 2);
+
+        metrics.record_error(ErrorCategory::Render);
+        assert_eq!(metrics.error_count(ErrorCategory::Render), 1);
+        assert_eq!(metrics.total_errors(), 3);
+    }
+
+    #[test]
+    fn test_error_metrics_record_operation() {
+        let mut metrics = ErrorMetrics::new();
+
+        metrics.record_operation(ErrorCategory::Parse);
+        assert_eq!(metrics.operation_count(ErrorCategory::Parse), 1);
+        assert_eq!(metrics.total_operations(), 1);
+
+        metrics.record_operations(ErrorCategory::Parse, 99);
+        assert_eq!(metrics.operation_count(ErrorCategory::Parse), 100);
+        assert_eq!(metrics.total_operations(), 100);
+    }
+
+    #[test]
+    fn test_error_metrics_error_rate() {
+        let mut metrics = ErrorMetrics::new();
+
+        // No operations = 0.0 rate
+        assert_eq!(metrics.error_rate(ErrorCategory::Parse), 0.0);
+
+        // 5 errors out of 1000 operations = 0.5%
+        for _ in 0..5 {
+            metrics.record_error(ErrorCategory::Parse);
+        }
+        metrics.record_operations(ErrorCategory::Parse, 1000);
+
+        let rate = metrics.error_rate(ErrorCategory::Parse);
+        assert!((rate - 0.005).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_error_metrics_total_error_rate() {
+        let mut metrics = ErrorMetrics::new();
+
+        // 10 errors across categories
+        for _ in 0..5 {
+            metrics.record_error(ErrorCategory::Parse);
+        }
+        for _ in 0..5 {
+            metrics.record_error(ErrorCategory::Render);
+        }
+
+        // 10000 total operations
+        metrics.record_operations(ErrorCategory::Parse, 5000);
+        metrics.record_operations(ErrorCategory::Render, 5000);
+
+        // 10 errors / 10000 ops = 0.1%
+        let rate = metrics.total_error_rate();
+        assert!((rate - 0.001).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_error_metrics_exceeds_threshold() {
+        let mut metrics = ErrorMetrics::new();
+
+        // No operations - never exceeds
+        assert!(!metrics.exceeds_threshold(ErrorCategory::Parse, 0.001));
+
+        // 1% error rate (10 errors / 1000 ops)
+        for _ in 0..10 {
+            metrics.record_error(ErrorCategory::Parse);
+        }
+        metrics.record_operations(ErrorCategory::Parse, 1000);
+
+        // Should exceed 0.5% threshold but not 2% threshold
+        assert!(metrics.exceeds_threshold(ErrorCategory::Parse, 0.005));
+        assert!(!metrics.exceeds_threshold(ErrorCategory::Parse, 0.02));
+    }
+
+    #[test]
+    fn test_error_metrics_total_exceeds_threshold() {
+        let mut metrics = ErrorMetrics::new();
+
+        // 0.1% total error rate
+        for _ in 0..10 {
+            metrics.record_error(ErrorCategory::Parse);
+        }
+        metrics.record_operations(ErrorCategory::Parse, 10000);
+
+        // Should exceed 0.05% but not 0.2%
+        assert!(metrics.total_exceeds_threshold(0.0005));
+        assert!(!metrics.total_exceeds_threshold(0.002));
+    }
+
+    #[test]
+    fn test_error_metrics_reset() {
+        let mut metrics = ErrorMetrics::new();
+
+        // Record some errors and operations
+        metrics.record_error(ErrorCategory::Parse);
+        metrics.record_error(ErrorCategory::Render);
+        metrics.record_operations(ErrorCategory::Parse, 100);
+
+        assert_eq!(metrics.total_errors(), 2);
+        assert_eq!(metrics.total_operations(), 100);
+
+        // Reset
+        metrics.reset();
+
+        assert_eq!(metrics.total_errors(), 0);
+        assert_eq!(metrics.total_operations(), 0);
+        assert_eq!(metrics.error_count(ErrorCategory::Parse), 0);
+        assert_eq!(metrics.operation_count(ErrorCategory::Parse), 0);
+    }
+
+    #[test]
+    fn test_error_metrics_to_json() {
+        let mut metrics = ErrorMetrics::new();
+
+        // Record specific error counts
+        metrics.record_error(ErrorCategory::Parse);
+        metrics.record_error(ErrorCategory::Parse);
+        metrics.record_error(ErrorCategory::WebGl);
+
+        let json = metrics.to_json();
+
+        assert!(json.contains("\"parse\":2"));
+        assert!(json.contains("\"render\":0"));
+        assert!(json.contains("\"webgl\":1"));
+        assert!(json.contains("\"total\":3"));
+    }
+
+    #[test]
+    fn test_error_metrics_clone() {
+        let mut metrics1 = ErrorMetrics::new();
+        metrics1.record_error(ErrorCategory::Parse);
+        metrics1.record_operations(ErrorCategory::Parse, 10);
+
+        let metrics2 = metrics1.clone();
+        assert_eq!(metrics1.total_errors(), metrics2.total_errors());
+        assert_eq!(metrics1.total_operations(), metrics2.total_operations());
+    }
+
+    #[test]
+    fn test_error_category_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(ErrorCategory::Parse);
+        set.insert(ErrorCategory::Render);
+        set.insert(ErrorCategory::Parse); // duplicate
+
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_error_metrics_all_categories() {
+        let mut metrics = ErrorMetrics::new();
+
+        // Record one error for each category
+        for category in &ErrorCategory::ALL {
+            metrics.record_error(*category);
+            metrics.record_operation(*category);
+        }
+
+        assert_eq!(metrics.total_errors(), ErrorCategory::COUNT as u64);
+        assert_eq!(metrics.total_operations(), ErrorCategory::COUNT as u64);
+
+        // Each category should have error rate of 1.0
+        for category in &ErrorCategory::ALL {
+            assert_eq!(metrics.error_rate(*category), 1.0);
+        }
     }
 }

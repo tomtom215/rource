@@ -17,6 +17,7 @@
 //! | `settings` | Visual settings (bloom, background, labels) |
 //! | `export` | Screenshot and full-map export |
 //! | `stats` | Render statistics and entity counts |
+//! | `error` | Error metrics and error rate tracking |
 //! | `authors` | Author information and colors |
 //! | `hover` | Hover detection and entity info for tooltips |
 
@@ -24,6 +25,7 @@ mod authors;
 #[cfg(feature = "cache")]
 mod cache;
 mod camera;
+mod error;
 mod export;
 mod hover;
 mod input;
