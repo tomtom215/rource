@@ -2202,20 +2202,23 @@ pub fn draw_disc_precomputed(...) {
 
 ### Benchmark Results
 
-**Moderate Disc (r=50, 200×200 viewport)**:
+**Criterion Benchmarks (100 samples, 95% CI)**:
 
-| Method | Time | Speedup |
-|--------|------|---------|
-| Original (`draw_disc_optimized`) | 32.45µs | 1.00x |
-| Phase 71 SIMD (`draw_disc_simd`) | 35.48µs | 0.91x |
-| **Phase 72 Precomputed** | **10.58µs** | **3.06x** |
+**Moderate Disc (r=50)**:
 
-**Large Disc (r=150, 400×400 viewport)**:
+| Method | Time (median) | 95% CI | Speedup |
+|--------|---------------|--------|---------|
+| Original (`draw_disc_optimized`) | 31.213 µs | [31.010, 31.434] | 1.00x |
+| Phase 71 SIMD (`draw_disc_simd`) | 31.067 µs | [30.953, 31.201] | 1.00x |
+| **Phase 72 Precomputed** | **9.2807 µs** | **[9.2206, 9.3470]** | **3.36x** |
 
-| Method | Time | Speedup |
-|--------|------|---------|
-| Original | 253.16µs | 1.00x |
-| **Precomputed** | **64.76µs** | **3.91x** |
+**Large Disc (r=150)**:
+
+| Method | Time (median) | 95% CI | Speedup |
+|--------|---------------|--------|---------|
+| Original | 251.48 µs | [250.37, 252.67] | 1.00x |
+| Phase 71 SIMD | 261.35 µs | [259.25, 263.50] | 0.96x (regression) |
+| **Precomputed** | **66.705 µs** | **[66.045, 67.444]** | **3.77x** |
 
 ### Mathematical Analysis
 
@@ -2261,11 +2264,12 @@ For r=50 disc (diameter 100, ~7850 pixels, ~100 scanlines):
 
 | Metric | Value |
 |--------|-------|
-| Speedup (r=50) | **3.06x** (32.45µs → 10.58µs) |
-| Speedup (r=150) | **3.91x** (253.16µs → 64.76µs) |
+| Speedup (r=50) | **3.36x** (31.213µs → 9.2807µs, criterion 100 samples, 95% CI) |
+| Speedup (r=150) | **3.77x** (251.48µs → 66.705µs, criterion 100 samples, 95% CI) |
 | Radius threshold | 12.0 (below uses original) |
 | Batch threshold | 8 pixels |
 | Tests added | 9 |
+| Criterion benchmark | disc_perf.rs (6 radii × 3 algorithms) |
 | Bit-exact | Yes (verified) |
 
 ### Algorithm Characteristics

@@ -94,3 +94,7 @@ harness = false
 [[bench]]
 name = "primitive_consolidation"
 harness = false
+
+[[bench]]
+name = "disc_perf"
+harness = false

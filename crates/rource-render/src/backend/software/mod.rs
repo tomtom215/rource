@@ -27,6 +27,7 @@ pub use renderer::SoftwareRenderer;
 
 // Re-export optimized primitives for direct use
 pub use optimized::{
-    blend_pixel_fixed, color_to_rgb, draw_disc_optimized, draw_ring_optimized, fast_sqrt_fixed,
-    RenderMetrics, ScanlineBuffer, SQRT_LUT,
+    blend_pixel_fixed, blend_scanline_uniform, color_to_rgb, draw_disc_optimized,
+    draw_disc_precomputed, draw_disc_simd, draw_ring_optimized, fast_sqrt_fixed, RenderMetrics,
+    ScanlineBuffer, SQRT_LUT,
 };

@@ -224,8 +224,8 @@ draw_disc_precomputed(pixels, width, height, cx, cy, radius, color);
 - Disc rendering: -2% overhead (run tracking cost)
 
 **Phase 72 Results (Pre-Computed Bounds)**:
-- **Moderate disc (r=50)**: 32.45µs → 10.58µs = **3.06x speedup**
-- **Large disc (r=150)**: 253.16µs → 64.76µs = **3.91x speedup**
+- **Moderate disc (r=50)**: 31.213µs → 9.2807µs = **3.36x speedup** (criterion 100 samples, 95% CI)
+- **Large disc (r=150)**: 251.48µs → 66.705µs = **3.77x speedup** (criterion 100 samples, 95% CI)
 - Radius threshold: 12.0 (below uses original for overhead avoidance)
 - Bit-exact output verified
 

@@ -947,12 +947,12 @@ let (inner_left, inner_right) = if dy_sq < inner_radius_sq {
 // Process: left edge → inner batch → right edge
 ```
 
-**Benchmark Results**:
+**Criterion Benchmark Results (100 samples, 95% CI)**:
 
 | Disc Size | Original | Phase 72 | Speedup |
 |-----------|----------|----------|---------|
-| r=50 (moderate) | 32.45µs | 10.58µs | **3.06x** |
-| r=150 (large) | 253.16µs | 64.76µs | **3.91x** |
+| r=50 | 31.213 µs [31.010, 31.434] | 9.2807 µs [9.2206, 9.3470] | **3.36x** |
+| r=150 | 251.48 µs [250.37, 252.67] | 66.705 µs [66.045, 67.444] | **3.77x** |
 
 **Why Faster**:
 - Phase 71: O(N) per-pixel Option tracking (N = pixels)
@@ -1207,7 +1207,7 @@ wasm-opt \
 |------------------------|-------|-------------|
 | Avatar texture array   | 61    | 300x (draw calls) |
 | Firefox GPU workaround | 60    | 6-7x        |
-| **Pre-computed disc bounds** | **72** | **3.06-3.91x** |
+| **Pre-computed disc bounds** | **72** | **3.36-3.77x** (criterion verified) |
 | to_argb8 conversion    | 45    | 2.46x       |
 | GPU spatial hash       | 22    | 2,200x      |
 | DirNode membership     | 40    | O(n) to O(1)|
