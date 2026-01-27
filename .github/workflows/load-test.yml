@@ -1,0 +1,163 @@
+name: Load Test
+
+on:
+  schedule:
+    # Run weekly on Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Test duration (smoke = 5min, full = 30min)'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - full
+
+# Only one load test at a time
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  load-test:
+    name: Load Test (${{ github.event.inputs.duration || 'smoke' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45  # 30min test + 15min buffer
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: rustfmt
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-load-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-load-test-
+            ${{ runner.os }}-cargo-
+
+      - name: Build release binary
+        run: cargo build --release -p rource-core
+
+      - name: Run smoke test (5 minutes)
+        if: github.event.inputs.duration != 'full'
+        run: |
+          cargo test --release -p rource-core --test load_tests smoke -- --ignored --nocapture
+        timeout-minutes: 10
+
+      - name: Run full load test (30 minutes)
+        if: github.event.inputs.duration == 'full'
+        run: |
+          cargo test --release -p rource-core --test load_tests load_test_30min -- --ignored --nocapture
+        timeout-minutes: 40
+
+      - name: Upload load test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-report-${{ github.run_id }}
+          path: |
+            load_test_report.json
+            load_test_smoke_report.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "load_test_report.json" ]; then
+            echo "### Full Test Report" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat load_test_report.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "load_test_smoke_report.json" ]; then
+            echo "### Smoke Test Report" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat load_test_smoke_report.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: load-test
+    if: failure()
+
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Load Test Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `
+            ## Load Test Failure
+
+            The weekly load test has failed. Please investigate.
+
+            **Workflow Run**: [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            **Triggered**: ${context.eventName}
+            **Duration**: ${{ github.event.inputs.duration || 'smoke' }}
+
+            ### Possible Causes
+            - Memory leak (>5% growth after warmup)
+            - Frame time regression (P99 > 2x P50)
+            - Test infrastructure issue
+
+            ### Investigation Steps
+            1. Download the load test report artifact
+            2. Review memory and frame time metrics
+            3. Check for recent changes that may have impacted performance
+            `;
+
+            // Check if similar issue exists and is open
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'load-test-failure',
+              per_page: 5
+            });
+
+            const existingIssue = issues.data.find(i => i.title.includes('Load Test Failed'));
+
+            if (existingIssue) {
+              // Comment on existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `Another load test failure occurred.\n\n**Run**: [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['load-test-failure', 'performance', 'bug']
+              });
+            }

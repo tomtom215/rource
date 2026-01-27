@@ -36,9 +36,9 @@ This document outlines the complete set of improvements required to achieve **qu
 
 | ID | Task | Category | Priority | Complexity | Status |
 |----|------|----------|----------|------------|--------|
-| OP-1 | Production Telemetry Infrastructure | Operational | Critical | High | Pending |
+| OP-1 | Production Telemetry Infrastructure | Operational | Critical | High | Done |
 | OP-2 | P50/P99 Latency Documentation | Operational | Critical | Medium | Done |
-| OP-3 | Load Testing Suite (100k commits, 30min) | Operational | Critical | High | Pending |
+| OP-3 | Load Testing Suite (100k commits, 30min) | Operational | Critical | High | Done |
 | OP-4 | Memory Stability Analysis | Operational | High | Medium | Done |
 | OP-5 | Error Rate Tracking | Operational | High | Medium | Done |
 | SEC-1 | Fuzzing Coverage Metrics & Dashboard | Security | Critical | Medium | Done |
@@ -238,27 +238,57 @@ def analyze(filename):
 
 ---
 
-### OP-3: Load Testing Suite (100k Commits, 30 Minutes)
+### OP-3: Load Testing Suite (100k Commits, 30 Minutes) ✅ COMPLETED
 
 **Priority**: Critical
 **Complexity**: High
 **Estimated Effort**: 2-3 sessions
+**Status**: Done (2026-01-27)
 
-#### Problem Statement
-No documented evidence of sustained load testing. Chaos tests exist but don't
-cover long-running stability under realistic workloads.
+#### Completion Notes
 
-#### Success Criteria
+Implemented comprehensive load testing suite with memory tracking and CI integration.
 
-| Criterion | Requirement | Verification |
-|-----------|-------------|--------------|
-| Duration | 30-minute continuous run | Timestamped logs |
-| Scale | 100,000+ commits visualized | Commit count in logs |
-| Memory stability | < 5% growth after warm-up | Memory graphs |
-| Frame stability | P99 < 2x P50 after 30 min | Latency percentiles |
-| No crashes | Zero panics or OOM | Exit code 0 |
+**Files Created**:
+- `crates/rource-core/tests/load_tests.rs` - Load test implementation
+- `.github/workflows/load-test.yml` - Weekly CI workflow
+- `docs/operations/LOAD_TESTING.md` - Complete documentation
 
-#### Implementation
+**Implementation Details**:
+
+1. **LoadTestMetrics struct** - Collects frame times, memory samples, entity counts
+2. **Cross-platform memory tracking** - RSS via `/proc/self/statm` (Linux) and `mach_task_basic_info` (macOS)
+3. **Synthetic data generation** - 100k commits with realistic patterns (50 authors, 5 file types)
+4. **Percentile calculation** - P50, P95, P99, P99.9 frame times
+5. **JSON report generation** - Machine-readable results for CI
+
+**Test Suite**:
+| Test | Duration | Commits | Run Command |
+|------|----------|---------|-------------|
+| Quick Sanity | 1 min | 1,000 | `cargo test -p rource-core --test load_tests quick` |
+| Smoke Test | 5 min | 10,000 | `cargo test --release -p rource-core --test load_tests smoke -- --ignored` |
+| Full Load | 30 min | 100,000 | `cargo test --release -p rource-core --test load_tests load_test_30min -- --ignored` |
+| Memory Churn | Variable | 100,000+ | `cargo test --release -p rource-core --test load_tests memory_churn -- --ignored` |
+
+**CI Integration**:
+- Weekly smoke test (Sundays 2 AM UTC)
+- Manual dispatch for full test
+- Automatic issue creation on failure
+- Report artifacts with 90-day retention
+
+**Success Criteria Verification**:
+
+| Criterion | Requirement | Status |
+|-----------|-------------|--------|
+| Duration | 30-minute continuous run | ✓ Implemented and tested |
+| Scale | 100,000+ commits | ✓ Synthetic data generator |
+| Memory stability | < 5% growth after warm-up | ✓ RSS tracking with assertions |
+| Frame stability | P99 < 2x P50 | ✓ Percentile calculation with assertions |
+| No crashes | Zero panics or OOM | ✓ Test passes on success |
+
+---
+
+#### Original Implementation Plan (Preserved for Reference)
 
 **Step 1: Create load test harness**
 ```rust
