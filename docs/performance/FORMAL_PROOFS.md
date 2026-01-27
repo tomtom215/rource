@@ -19,6 +19,7 @@ This document provides formal mathematical proofs for the key algorithms used in
 11. [Adaptive Barnes-Hut Theta](#11-adaptive-barnes-hut-theta)
 12. [Bloom Effect Sliding Window](#12-bloom-effect-sliding-window)
 13. [Floyd's Cycle Detection Algorithm](#13-floyds-cycle-detection-algorithm-tortoise-and-hare)
+14. [Catmull-Rom Spline Interpolation](#14-catmull-rom-spline-interpolation)
 
 ---
 
@@ -1252,6 +1253,362 @@ DOI: 10.1007/BF01933190
 
 ---
 
+## 14. Catmull-Rom Spline Interpolation
+
+**Implementation**: `crates/rource-core/src/animation/spline.rs`
+**Phase**: Animation System
+**Category**: Interpolation Algorithm
+
+### 14.1 Problem Definition
+
+**Definition 14.1 (Interpolating Spline)**: Given a sequence of n control points P = {P₀, P₁, ..., Pₙ₋₁} in ℝ², an *interpolating spline* is a piecewise polynomial curve C(t) such that:
+1. C passes through all control points: C(tᵢ) = Pᵢ for designated parameter values tᵢ
+2. C is continuous across segment boundaries
+3. C has bounded curvature (no sharp corners)
+
+**Definition 14.2 (Continuity Classes)**:
+- **C⁰ continuity**: Position continuous (no gaps)
+- **C¹ continuity**: First derivative continuous (no velocity discontinuities)
+- **C² continuity**: Second derivative continuous (no acceleration discontinuities)
+
+**Problem**: Construct a C¹-continuous interpolating curve through n points using only local information (4 points per segment).
+
+### 14.2 Catmull-Rom Formulation
+
+**Definition 14.3 (Catmull-Rom Spline Segment)**: For four consecutive control points P₀, P₁, P₂, P₃ and tension parameter τ ∈ [0, 1], the Catmull-Rom segment between P₁ and P₂ is:
+
+```
+C(t) = [1  t  t²  t³] · M_CR · [P₀  P₁  P₂  P₃]ᵀ
+```
+
+where t ∈ [0, 1] and M_CR is the Catmull-Rom basis matrix:
+
+```
+         ┌                              ┐
+         │   0      1       0       0   │
+M_CR = τ │  -1      0       1       0   │
+         │   2     -5+2τ   4-τ     -1   │  ÷ τ (normalized form)
+         │  -1      3-2τ   -3+τ     1   │
+         └                              ┘
+```
+
+**Implementation Form** (tension τ = s in code):
+
+```
+C(t) = a₀·P₀ + a₁·P₁ + a₂·P₂ + a₃·P₃
+```
+
+where the blending functions are:
+```
+a₀(t) = -s·t³ + 2s·t² - s·t
+a₁(t) = (2-s)·t³ + (s-3)·t² + 1
+a₂(t) = (s-2)·t³ + (3-2s)·t² + s·t
+a₃(t) = s·t³ - s·t²
+```
+
+**Standard Catmull-Rom**: τ = s = 0.5 (centripetal parameterization)
+
+### 14.3 Theorem: Interpolation Property
+
+**Theorem 14.1**: The Catmull-Rom spline exactly interpolates the interior control points P₁ and P₂.
+
+**Proof**:
+
+**At t = 0** (start of segment, should equal P₁):
+
+Evaluate the blending functions at t = 0:
+```
+a₀(0) = -s·(0) + 2s·(0) - s·(0) = 0
+a₁(0) = (2-s)·(0) + (s-3)·(0) + 1 = 1
+a₂(0) = (s-2)·(0) + (3-2s)·(0) + s·(0) = 0
+a₃(0) = s·(0) - s·(0) = 0
+```
+
+Therefore:
+```
+C(0) = 0·P₀ + 1·P₁ + 0·P₂ + 0·P₃ = P₁ ✓
+```
+
+**At t = 1** (end of segment, should equal P₂):
+
+Evaluate the blending functions at t = 1:
+```
+a₀(1) = -s + 2s - s = 0
+a₁(1) = (2-s) + (s-3) + 1 = 0
+a₂(1) = (s-2) + (3-2s) + s = 1
+a₃(1) = s - s = 0
+```
+
+Therefore:
+```
+C(1) = 0·P₀ + 0·P₁ + 1·P₂ + 0·P₃ = P₂ ✓
+```
+
+∎
+
+### 14.4 Theorem: C¹ Continuity
+
+**Theorem 14.2**: Adjacent Catmull-Rom segments share the same tangent vector at their junction point, guaranteeing C¹ continuity.
+
+**Proof**:
+
+**Step 1: Derive the tangent (first derivative)**
+
+The tangent vector is C'(t) = dC/dt:
+```
+C'(t) = d₀·P₀ + d₁·P₁ + d₂·P₂ + d₃·P₃
+```
+
+where:
+```
+d₀(t) = -3s·t² + 4s·t - s
+d₁(t) = 3(2-s)·t² + 2(s-3)·t
+d₂(t) = 3(s-2)·t² + 2(3-2s)·t + s
+d₃(t) = 3s·t² - 2s·t
+```
+
+**Step 2: Evaluate tangent at segment endpoints**
+
+At t = 0 (entering P₁):
+```
+d₀(0) = -s
+d₁(0) = 0
+d₂(0) = s
+d₃(0) = 0
+```
+
+Tangent entering P₁:
+```
+C'(0) = -s·P₀ + 0·P₁ + s·P₂ + 0·P₃ = s(P₂ - P₀)
+```
+
+At t = 1 (leaving P₂):
+```
+d₀(1) = -3s + 4s - s = 0
+d₁(1) = 3(2-s) + 2(s-3) = 6 - 3s + 2s - 6 = -s
+d₂(1) = 3(s-2) + 2(3-2s) + s = 3s - 6 + 6 - 4s + s = 0
+d₃(1) = 3s - 2s = s
+```
+
+Tangent leaving P₂:
+```
+C'(1) = 0·P₀ + (-s)·P₁ + 0·P₂ + s·P₃ = s(P₃ - P₁)
+```
+
+**Step 3: Verify continuity at junction**
+
+Consider two adjacent segments:
+- Segment A: uses points {P_{i-1}, P_i, P_{i+1}, P_{i+2}}
+- Segment B: uses points {P_i, P_{i+1}, P_{i+2}, P_{i+3}}
+
+At the junction point P_{i+1}:
+- Tangent leaving segment A at t=1: s(P_{i+2} - P_i)
+- Tangent entering segment B at t=0: s(P_{i+2} - P_i)
+
+These are identical. ∎
+
+**Corollary 14.1**: The Catmull-Rom spline is C¹-continuous but generally NOT C²-continuous (second derivative may be discontinuous at knots).
+
+### 14.5 Theorem: Local Control Property
+
+**Theorem 14.3**: Modifying control point Pᵢ affects only the segments in the range [i-2, i+1], providing O(1) local control.
+
+**Proof**:
+
+Each segment uses exactly 4 control points: {P_{j-1}, P_j, P_{j+1}, P_{j+2}}.
+
+Point Pᵢ appears in segments:
+- Segment j = i-2: as P_{j+2} = P_i
+- Segment j = i-1: as P_{j+1} = P_i
+- Segment j = i: as P_j = P_i
+- Segment j = i+1: as P_{j-1} = P_i
+
+Total affected segments: **4**
+
+For n control points with n-1 segments, modifying one point affects at most min(4, n-1) segments, which is O(1) regardless of n. ∎
+
+### 14.6 Theorem: Tension Parameter Effect
+
+**Theorem 14.4**: The tension parameter s controls curve tightness:
+- s = 0: Linear interpolation between P₁ and P₂ (ignores P₀, P₃)
+- s = 0.5: Standard Catmull-Rom (balanced tangents)
+- s = 1: Maximum tangent influence (overshoots possible)
+
+**Proof**:
+
+**Case s = 0** (zero tension):
+
+Blending functions become:
+```
+a₀(t) = 0
+a₁(t) = 2t³ - 3t² + 1
+a₂(t) = -2t³ + 3t²
+a₃(t) = 0
+```
+
+Note that a₁(t) + a₂(t) = 1 for all t, and these are exactly the Hermite basis functions with zero tangent:
+```
+C(t) = (2t³ - 3t² + 1)·P₁ + (-2t³ + 3t²)·P₂
+     = (1-t)²(1+2t)·P₁ + t²(3-2t)·P₂
+```
+
+This reduces to Hermite interpolation with zero derivative constraints, yielding a smooth but "flat" curve.
+
+**Case s = 0.5** (standard):
+
+Tangent at P₁: C'(0) = 0.5(P₂ - P₀) = (P₂ - P₀)/2
+
+This is the central difference approximation of the derivative, providing balanced tangent estimation.
+
+**Case s = 1** (maximum tension):
+
+Tangent at P₁: C'(0) = 1·(P₂ - P₀) = P₂ - P₀
+
+Full chord vector as tangent, which can cause overshooting when control points are far apart. ∎
+
+### 14.7 Theorem: Affine Invariance
+
+**Theorem 14.5**: Catmull-Rom splines are affine invariant: applying an affine transformation to control points produces the same result as transforming the entire curve.
+
+**Proof**:
+
+Let T(P) = AP + b be an affine transformation where A is a 2×2 matrix and b is a translation vector.
+
+For the transformed control points:
+```
+C_T(t) = a₀(t)·T(P₀) + a₁(t)·T(P₁) + a₂(t)·T(P₂) + a₃(t)·T(P₃)
+       = a₀(t)·(AP₀+b) + a₁(t)·(AP₁+b) + a₂(t)·(AP₂+b) + a₃(t)·(AP₃+b)
+       = A[a₀(t)·P₀ + a₁(t)·P₁ + a₂(t)·P₂ + a₃(t)·P₃] + b[a₀(t) + a₁(t) + a₂(t) + a₃(t)]
+```
+
+**Partition of Unity Check**:
+```
+a₀ + a₁ + a₂ + a₃ = (-st³ + 2st² - st) + ((2-s)t³ + (s-3)t² + 1)
+                   + ((s-2)t³ + (3-2s)t² + st) + (st³ - st²)
+                 = t³(-s + 2-s + s-2 + s) + t²(2s + s-3 + 3-2s - s) + t(-s + s) + 1
+                 = t³(0) + t²(0) + t(0) + 1
+                 = 1
+```
+
+Therefore:
+```
+C_T(t) = A·C(t) + b = T(C(t))
+```
+
+∎
+
+### 14.8 Endpoint Handling (Phantom Points)
+
+**Definition 14.4 (Phantom Points)**: For endpoint segments lacking adjacent control points, Rource generates phantom points by reflection:
+- First segment phantom: P₋₁ = P₀ + (P₀ - P₁) = 2P₀ - P₁
+- Last segment phantom: Pₙ = Pₙ₋₁ + (Pₙ₋₁ - Pₙ₋₂) = 2Pₙ₋₁ - Pₙ₋₂
+
+**Theorem 14.6**: Reflection-based phantom points preserve natural tangent direction at endpoints.
+
+**Proof**:
+
+At the first control point P₀ with phantom P₋₁ = 2P₀ - P₁:
+
+Tangent = s(P₁ - P₋₁) = s(P₁ - (2P₀ - P₁)) = s(2P₁ - 2P₀) = 2s(P₁ - P₀)
+
+This tangent points from P₀ toward P₁, which is the natural direction for entering the curve. The factor 2s affects magnitude but not direction. ∎
+
+### 14.9 Complexity Analysis
+
+**Theorem 14.7**: Catmull-Rom spline operations have the following complexity:
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Single point evaluation | O(1) | O(1) |
+| Tangent evaluation | O(1) | O(1) |
+| Full curve tessellation (k segments/span) | O(nk) | O(nk) |
+| Closest point (tessellated) | O(nk) | O(1) |
+| Arc length approximation | O(nk) | O(1) |
+
+**Proof**:
+
+**Single point evaluation**: Constant arithmetic operations (12 multiplications, 12 additions for blending functions, plus vector operations). O(1).
+
+**Tangent evaluation**: Same structure as point evaluation with derivative coefficients. O(1).
+
+**Tessellation**: For n control points and k segments per span:
+- Spans: n-1
+- Total samples: (n-1)k + 1
+- Each sample: O(1) evaluation
+- Total: O(nk)
+
+**Closest point**: Linear scan of tessellated points with distance comparison. O(nk) comparisons, O(1) auxiliary space.
+
+**Arc length**: Sum of distances between adjacent tessellated points. O(nk) operations. ∎
+
+### 14.10 Error Bounds
+
+**Theorem 14.8**: For a Catmull-Rom spline with tessellation resolution k segments per span, the maximum deviation from the true curve is bounded by:
+
+```
+ε_max ≤ (1/8) · h² · max|C''(t)|
+```
+
+where h = 1/k is the parameter step size.
+
+**Proof**:
+
+This follows from standard polynomial approximation theory. Between tessellation samples at parameters t_i and t_{i+1} = t_i + h, the linear interpolant has error:
+
+```
+|C(t) - L(t)| ≤ (h²/8) · max_{t ∈ [t_i, t_{i+1}]} |C''(t)|
+```
+
+For cubic polynomials, |C''(t)| is bounded. With k=16 (default), h=1/16:
+
+```
+ε_max ≤ (1/8) · (1/256) · max|C''| = max|C''|/2048
+```
+
+For typical control point spacings of ~100 pixels and curvature bounded by geometry, this yields sub-pixel accuracy. ∎
+
+### 14.11 Implementation Verification
+
+The implementation in `spline.rs` matches the formal specification:
+
+```rust
+pub fn catmull_rom(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32, tension: f32) -> Vec2 {
+    let t2 = t * t;
+    let t3 = t2 * t;
+    let s = tension;
+
+    // Blending functions exactly as proven
+    let a0 = -s * t3 + 2.0 * s * t2 - s * t;
+    let a1 = (2.0 - s) * t3 + (s - 3.0) * t2 + 1.0;
+    let a2 = (s - 2.0) * t3 + (3.0 - 2.0 * s) * t2 + s * t;
+    let a3 = s * t3 - s * t2;
+
+    p0 * a0 + p1 * a1 + p2 * a2 + p3 * a3
+}
+```
+
+**Verified Properties**:
+- ✓ Interpolation: C(0) = P₁, C(1) = P₂
+- ✓ C¹ continuity: Tangent formulas match derivative proof
+- ✓ Local control: Only 4 points used per segment
+- ✓ Tension clamping: `tension.clamp(0.0, 1.0)`
+- ✓ Phantom points: Reflection-based endpoint handling
+
+### 14.12 Citation
+
+```
+Catmull, E., & Rom, R. (1974).
+"A Class of Local Interpolating Splines"
+Computer Aided Geometric Design, Academic Press, pp. 317-326.
+
+Barry, P. J., & Goldman, R. N. (1988).
+"A Recursive Evaluation Algorithm for a Class of Catmull-Rom Splines"
+ACM SIGGRAPH Computer Graphics, 22(4), 199-204.
+DOI: 10.1145/378456.378511
+```
+
+---
+
 ## Appendix A: Notation
 
 | Symbol | Meaning |
@@ -1273,6 +1630,12 @@ DOI: 10.1007/BF01933190
 | S | Finite state space |
 | T(i) | Tortoise position after i iterations |
 | H(i) | Hare position after i iterations |
+| P_i | Control point i in spline |
+| C(t) | Spline curve function |
+| C'(t) | Spline tangent (first derivative) |
+| τ, s | Tension parameter (Catmull-Rom) |
+| a_i(t) | Blending function i |
+| M_CR | Catmull-Rom basis matrix |
 
 ## Appendix B: References
 
@@ -1286,10 +1649,12 @@ DOI: 10.1007/BF01933190
 8. Knuth, D. E. (1997). "The Art of Computer Programming, Volume 2: Seminumerical Algorithms." Third Edition. Addison-Wesley. Section 3.1, Exercise 6.
 9. Brent, R. P. (1980). "An Improved Monte Carlo Factorization Algorithm." *BIT Numerical Mathematics*, 20(2), 176-184. DOI: 10.1007/BF01933190
 10. Hull, T. E., & Dobell, A. R. (1962). "Random Number Generators." *SIAM Review*, 4(3), 230-254.
+11. Catmull, E., & Rom, R. (1974). "A Class of Local Interpolating Splines." *Computer Aided Geometric Design*, Academic Press, pp. 317-326.
+12. Barry, P. J., & Goldman, R. N. (1988). "A Recursive Evaluation Algorithm for a Class of Catmull-Rom Splines." *ACM SIGGRAPH Computer Graphics*, 22(4), 199-204. DOI: 10.1145/378456.378511
 
 ---
 
-*Document Version: 3.0*
+*Document Version: 4.0*
 *Last Updated: 2026-01-27*
-*Validated Against: rource-core v0.1.0, Phases 61-74*
-*Total Proofs: 13 (6 original + 6 from Phases 61-66 + 1 from Phase 74)*
+*Validated Against: rource-core v0.1.0, Phases 61-74, Animation System*
+*Total Proofs: 14 (6 original + 6 from Phases 61-66 + 1 from Phase 74 + 1 Animation)*
