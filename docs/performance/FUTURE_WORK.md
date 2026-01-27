@@ -46,7 +46,7 @@ This document outlines the complete set of improvements required to achieve **qu
 | SEC-3 | Supply Chain Security (SLSA) | Security | High | Medium | Done |
 | SEC-4 | Security Policy (SECURITY.md) | Security | Medium | Low | Done |
 | TST-1 | Mutation Testing Suite | Testing | Critical | High | Pending |
-| TST-2 | Property-Based Test Expansion | Testing | High | Medium | Pending |
+| TST-2 | Property-Based Test Expansion | Testing | High | Medium | Done |
 | TST-3 | Visual Regression Testing | Testing | High | High | Pending |
 | TST-4 | Cross-Browser Automated Testing | Testing | Medium | High | Pending |
 | CI-1 | Performance Regression Gates | CI/CD | Critical | Medium | Done |
@@ -872,11 +872,56 @@ a potential bug that tests would miss.
 
 ---
 
-### TST-2: Property-Based Test Expansion
+### TST-2: Property-Based Test Expansion ✅ COMPLETED
 
 **Priority**: High
 **Complexity**: Medium
 **Estimated Effort**: 1-2 sessions
+**Status**: Done (2026-01-27)
+
+#### Completion Notes
+
+Implemented comprehensive property-based tests in `crates/rource-math/tests/proptests.rs`:
+
+**Vec4 Tests (8 new)**:
+- `vec4_normalize_unit_length` - Normalized vectors have unit length
+- `vec4_dot_commutative` - Dot product commutativity
+- `vec4_add_commutative` - Addition commutativity
+- `vec4_neg_self_inverse` - Double negation identity
+- `vec4_lerp_endpoints` - Lerp boundary conditions
+- `vec4_distance_symmetric` - Distance symmetry
+- `vec4_triangle_inequality` - Triangle inequality verification
+- `vec4_cauchy_schwarz` - Cauchy-Schwarz inequality
+
+**Mat3 Tests (7 new)**:
+- `mat3_identity_property` - A * I = I * A = A
+- `mat3_inverse_property` - A * A^-1 = I
+- `mat3_transpose_self_inverse` - (A^T)^T = A
+- `mat3_rotation_preserves_length` - Rotation orthogonality
+- `mat3_identity_determinant` - det(I) = 1
+- `mat3_rotation_determinant` - det(rotation) = 1
+- `mat3_transform_point_inverse_roundtrip` - Transform/inverse roundtrip
+
+**Mat4 Tests (9 new)**:
+- `mat4_identity_property` - Identity multiplication
+- `mat4_mul_associative` - (A*B)*C = A*(B*C)
+- `mat4_inverse_property` - A * A^-1 = I
+- `mat4_transpose_self_inverse` - (A^T)^T = A
+- `mat4_identity_determinant` - det(I) = 1
+- `mat4_scaling_determinant` - det(S) = sx*sy*sz
+- `mat4_rotation_preserves_length` - Rotation orthogonality
+- `mat4_transform_point_inverse_roundtrip` - Transform/inverse roundtrip
+- `mat4_rotation_determinant` - det(rotation) = 1
+
+**Color Tests (6 new)**:
+- `color_argb8_roundtrip` - ARGB8 pack/unpack roundtrip
+- `color_lerp_endpoints` - Lerp(0)=start, Lerp(1)=end
+- `color_lerp_midpoint` - Lerp(0.5) = midpoint
+- `color_clamp_in_range` - Clamped values in [0,1]
+- `color_hsl_roundtrip` - RGB->HSL->RGB roundtrip
+- `hsl_with_lightness_changes_l` - HSL lightness adjustment
+
+**Total**: 58 property tests (30 new tests added)
 
 #### Success Criteria
 
