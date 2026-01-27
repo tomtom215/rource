@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769495998724,
+  "lastUpdate": 1769504354344,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3236,6 +3236,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1255334,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6badec0d0e4eca24ae135894599dbcf827c26876",
+          "message": "Merge pull request #203 from tomtom215/claude/rource-wasm-visualization-gRI6I\n\nImplement comprehensive keyboard navigation for accessibility",
+          "timestamp": "2026-01-27T09:57:10+01:00",
+          "tree_id": "41ad39cbfff6e814929cfc04226585beb98ee3cf",
+          "url": "https://github.com/tomtom215/rource/commit/6badec0d0e4eca24ae135894599dbcf827c26876"
+        },
+        "date": 1769504353859,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914488,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269311,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255329,
             "unit": "bytes"
           }
         ]
