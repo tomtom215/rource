@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769470030593,
+  "lastUpdate": 1769475375908,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3158,6 +3158,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1255125,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa910f1373d8438bc3bd3b5a38c1bde58744292c",
+          "message": "Merge pull request #201 from tomtom215/claude/rource-wasm-performance-9Sw66\n\nAdd performance regression gates and fuzzing CI workflows",
+          "timestamp": "2026-01-27T01:54:02+01:00",
+          "tree_id": "8fc86806eea84a9c1caa53fc8ae4c93d20e84e6f",
+          "url": "https://github.com/tomtom215/rource/commit/fa910f1373d8438bc3bd3b5a38c1bde58744292c"
+        },
+        "date": 1769475375599,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914488,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3265893,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255128,
             "unit": "bytes"
           }
         ]
