@@ -13,6 +13,7 @@ to be not applicable to Rource's architecture, constraints, or use case.
 4. [Already Implemented Equivalents](#already-implemented-equivalents)
 5. [Browser/Platform Limitations](#browserplatform-limitations)
 6. [Theoretical Algorithms](#theoretical-algorithms)
+7. [Phase 75: Spatial Acceleration Algorithm Evaluation](#phase-75-spatial-acceleration-algorithm-evaluation)
 
 ---
 
@@ -339,6 +340,339 @@ HashMap lookup is already optimal.
 
 ---
 
+## Phase 75: Spatial Acceleration Algorithm Evaluation
+
+**Date**: 2026-01-27
+**Analysis Scope**: 9 candidate algorithms proposed for spatial acceleration
+
+This section documents a comprehensive analysis of algorithms proposed for potential
+performance improvement in spatial queries, rendering, and physics.
+
+---
+
+### H-PLOC (High-quality Parallel Locally-Ordered Clustering BVH)
+
+**Phase**: 75
+**Expected Gain**: 1.8-3.6× BVH construction
+**Claimed Use**: Ray tracing, 3D scene management
+
+**Why Not Applicable**:
+
+| Criterion | H-PLOC Requirement | Rource Reality |
+|-----------|-------------------|----------------|
+| Dimensions | 3D scenes | 2D visualization |
+| Primary use | Ray tracing acceleration | No ray tracing |
+| Spatial queries | Hierarchical ray-box tests | QuadTree O(log n) |
+| Build frequency | Per-scene or incremental | Per-frame rebuild OK |
+
+**Analysis**:
+
+Rource already has optimal 2D spatial structures:
+- **QuadTree**: O(log n) queries for visibility and physics culling
+- **GPU Spatial Hash**: O(n) for N-body physics with 3×3 neighbor queries
+- **GPU Visibility Culling**: AABB intersection in compute shader
+
+BVH is designed for 3D ray-object intersection with hierarchical early-out.
+For 2D AABB-vs-viewport tests, a simple QuadTree provides equivalent O(log n)
+performance with simpler implementation and better cache behavior.
+
+**Verdict**: Domain mismatch - QuadTree optimal for 2D
+
+---
+
+### LBVH (Linear BVH via Morton Codes)
+
+**Phase**: 75
+**Expected Gain**: 3-6× faster BVH construction
+**Claimed Use**: Real-time ray tracing, dynamic scenes
+
+**Why Not Applicable**:
+
+| Criterion | LBVH Requirement | Rource Reality |
+|-----------|-----------------|----------------|
+| Primary use | Ray tracing | No ray tracing |
+| Construction | GPU Morton code sort | Not needed |
+| Traversal | Ray-box intersection | AABB-only test |
+| Dimensionality | 3D | 2D |
+
+**Analysis**:
+
+LBVH's main benefit is O(n log n) GPU-parallel BVH construction using Z-order
+(Morton) curves for spatial locality. This is valuable for:
+- Dynamic ray tracing scenes
+- Real-time global illumination
+- Large-scale collision detection with complex geometry
+
+Rource's use case differs fundamentally:
+1. No ray tracing whatsoever
+2. Entities are points/circles, not complex meshes
+3. Current spatial hash provides O(n) physics with excellent cache locality
+4. QuadTree provides O(log n) queries, which is optimal for 2D point data
+
+Morton codes could theoretically improve cache locality for entity iteration,
+but current spatial hash grid already achieves this via cell-ordered access.
+
+**Verdict**: Domain mismatch - no ray tracing, existing O(n) spatial hash sufficient
+
+---
+
+### SIMD Frustum Culling (Vectorized 6-Plane Test)
+
+**Phase**: 75
+**Expected Gain**: 4-8× CPU frustum culling
+**Claimed Use**: 3D rendering with 6-plane frustum
+
+**Why Not Applicable**:
+
+| Criterion | 3D Frustum Culling | Rource 2D Culling |
+|-----------|-------------------|-------------------|
+| Planes | 6 (near, far, left, right, top, bottom) | 4 bounds (AABB) |
+| Test | Point-to-plane signed distance | AABB overlap |
+| Operations | 6× dot product + compare | 4× compare |
+| SIMD benefit | High (4 planes parallel) | Low (already 4 ops) |
+
+**Analysis**:
+
+Traditional SIMD frustum culling tests a point against 6 frustum planes using
+4-wide SIMD to evaluate 4 planes simultaneously:
+
+```
+// 3D frustum: 6 planes × (3 multiplies + 2 adds + 1 compare)
+visible = dot(plane[i].normal, point) + plane[i].d > 0  // for all 6 planes
+```
+
+Rource's 2D culling is fundamentally simpler:
+
+```rust
+// 2D AABB: 4 comparisons only
+visible = (center.x + radius >= view.min_x) &&
+          (center.x - radius <= view.max_x) &&
+          (center.y + radius >= view.min_y) &&
+          (center.y - radius <= view.max_y)
+```
+
+**Current Implementation** (`culling.rs`):
+- GPU compute shader performs 4-comparison AABB test in parallel
+- All entities processed in one compute dispatch
+- No CPU frustum culling needed - GPU handles it
+
+SIMD128 is already enabled in WASM builds. The 4-comparison 2D test is already
+optimal and doesn't benefit from explicit SIMD vectorization.
+
+**Verdict**: Domain mismatch - 2D uses 4-comparison AABB, not 6-plane frustum
+
+---
+
+### SweepSAH + AVX2
+
+**Phase**: 75
+**Expected Gain**: 4× faster SAH BVH build
+**Claimed Use**: High-quality ray tracing BVH construction
+
+**Why Not Applicable**:
+
+| Criterion | Requirement | Rource Constraint |
+|-----------|-------------|-------------------|
+| CPU arch | x86-64 with AVX2 | WASM required |
+| Domain | Ray tracing | No ray tracing |
+| SAH use | Split quality metric | N/A |
+
+**Analysis**:
+
+Surface Area Heuristic (SAH) optimizes BVH split planes by minimizing expected
+ray traversal cost. AVX2 accelerates the sweep-line SAH evaluation:
+
+```
+// SAH cost function
+cost(split) = C_trav + (SA_left/SA_parent) × count_left × C_isect
+            + (SA_right/SA_parent) × count_right × C_isect
+```
+
+**Constraint Violations**:
+1. **x86-only**: AVX2 intrinsics don't compile to WASM
+2. **No ray tracing**: SAH optimizes ray-box traversal, which Rource doesn't do
+3. **No mesh geometry**: SAH assumes triangles/polygons, not point entities
+
+Even with portable SIMD, SAH itself is irrelevant - Rource has no ray queries.
+
+**Verdict**: Platform incompatible (x86-only) + domain mismatch (no ray tracing)
+
+---
+
+### Conservative Rasterization
+
+**Phase**: 75
+**Expected Gain**: 1-2× for voxelization/collision
+**Claimed Use**: Ensuring all covered pixels generate fragments
+
+**Why Not Applicable**:
+
+| Criterion | Conservative Raster | Rource Collision |
+|-----------|--------------------| -----------------|
+| Domain | GPU pixel coverage | CPU rectangle test |
+| Output | Fragment generation | Boolean overlap |
+| Precision | Sub-pixel coverage | Exact AABB |
+| Use case | Voxelization, shadow maps | Label placement |
+
+**Analysis**:
+
+Conservative rasterization generates fragments for all pixels that a primitive
+touches, even partially. This is useful for:
+- Voxelization (3D grids)
+- Shadow mapping (avoiding light leaks)
+- Collision detection via GPU rendering
+
+Rource's label collision detection uses exact CPU rectangle intersection:
+
+```rust
+fn rects_overlap(a: &Rect, b: &Rect) -> bool {
+    a.x < b.x + b.width && a.x + a.width > b.x &&
+    a.y < b.y + b.height && a.y + a.height > b.y
+}
+```
+
+This is already mathematically exact - no approximation that conservative
+rasterization would improve. The test is O(1) per pair.
+
+For label collision (15-200 labels), the linear scan is acceptable. If scaling
+to thousands of labels, a spatial hash grid would be the solution - not
+conservative rasterization.
+
+**Verdict**: Domain mismatch - rectangle collision already exact, no GPU raster needed
+
+---
+
+### Welford Online Statistics
+
+**Phase**: 75
+**Expected Gain**: 1× (single-pass vs two-pass)
+**Claimed Use**: Numerically stable mean/variance calculation
+
+**Why Not Applicable**:
+
+| Criterion | Welford Requirement | Rource Stats |
+|-----------|---------------------|--------------|
+| Variance | Rolling variance calculation | Not computed |
+| Precision | High-precision streaming stats | Simple averages |
+| Data | Large streaming datasets | 60-frame windows |
+
+**Analysis**:
+
+Welford's algorithm provides numerically stable one-pass mean and variance:
+
+```python
+def welford_update(count, mean, M2, new_value):
+    count += 1
+    delta = new_value - mean
+    mean += delta / count
+    delta2 = new_value - mean
+    M2 += delta * delta2
+    return count, mean, M2
+```
+
+Rource's statistics are simple:
+- **FPS**: Rolling 60-frame exponential moving average
+- **Frame time**: Same rolling average
+- **Entity counts**: Instantaneous values
+
+No variance calculations exist in Rource's hot paths. The HudCache
+(`rource-core/src/hud.rs`) uses simple averaging that's numerically stable
+for the scale of values involved (frame times in milliseconds).
+
+If variance tracking were added (e.g., frame time jitter metrics), Welford
+would be the correct choice. Currently, no such requirement exists.
+
+**Verdict**: No variance calculations in hot paths - simple averages sufficient
+
+---
+
+### Quantized AABB (Fixed-Point Bounds)
+
+**Phase**: 75
+**Expected Gain**: 2× memory for large BVH
+**Claimed Use**: Memory-efficient BVH storage
+
+**Why Not Applicable**:
+
+| Criterion | Quantized AABB | Rource Entities |
+|-----------|----------------|-----------------|
+| Memory pressure | Large BVH (millions of nodes) | 10k-100k entities |
+| Precision | 16-bit sufficient | f32 required for smooth motion |
+| Structure | BVH node bounds | Entity positions |
+| Access pattern | Traversal-only | Read + write (physics) |
+
+**Analysis**:
+
+Quantized AABBs compress bounds from 6×f32 (24 bytes) to 6×u16 (12 bytes)
+by storing offsets relative to parent bounds. This halves BVH memory.
+
+Rource's memory profile (`docs/performance/MEMORY_BUDGET.md`):
+
+| Entity Type | Size | Memory Bottleneck? |
+|-------------|------|-------------------|
+| File | 128 bytes | No |
+| Directory | 256 bytes | No |
+| User | 192 bytes | No |
+| Action | 64 bytes | No |
+
+At 100k commits:
+- Estimated memory: 165 MB
+- Actual memory: 198 MB
+- Well within WASM limits (~2GB)
+
+**Why f32 is required**:
+1. Smooth physics animation needs sub-pixel precision
+2. Camera zoom spans 0.01× to 10×, requiring high dynamic range
+3. Quantization introduces visual stepping artifacts
+4. Physics calculations would need de-quantization every frame
+
+Quantized AABB would be valuable for:
+- Ray tracing BVH with millions of triangles
+- Mobile GPUs with memory constraints
+- Static geometry with read-only traversal
+
+None of these apply to Rource's animated 2D visualization.
+
+**Verdict**: Memory not a bottleneck + f32 precision required for smooth animation
+
+---
+
+## Already Implemented Equivalents (Phase 75 Additions)
+
+### GPU Instancing Indirect
+
+**Phase**: 75
+**Expected Gain**: 5-20× draw calls
+**Status**: **ALREADY IMPLEMENTED** in `culling.rs`
+
+**Implementation Details**:
+
+Rource already uses GPU-driven indirect rendering:
+
+```rust
+// culling.rs - compute shader generates draw commands
+render_pass.draw_indirect(culled.indirect(), 0)
+```
+
+**Current capabilities**:
+- `PrimitiveCullingBuffers` for circles, lines, quads
+- GPU compute shader filters instances against view bounds
+- `DrawIndirectCommand` populated by GPU, not CPU
+- Integrated with visibility culling pipeline
+
+**When enabled** (10,000+ instances, dynamic view):
+- GPU determines visible instance count
+- Zero CPU-GPU synchronization for instance counting
+- Reduces CPU command buffer overhead
+
+**Potential extension** (not yet implemented):
+- GPU LOD filtering (combine visibility + size culling)
+- GPU physics-based filtering (hide settled entities)
+
+**Verdict**: Core feature already implemented. Extensions are incremental optimization.
+
+---
+
 ## Summary Table
 
 | Optimization               | Phase | Reason                           |
@@ -355,7 +689,15 @@ HashMap lookup is already optimal.
 | Tree balancing             | 55    | Not using BST structure          |
 | GPU Barnes-Hut             | 55    | Already have spatial hash        |
 | wasm-opt -O4               | 57    | Already equivalent               |
+| **H-PLOC (BVH)**           | **75**| **2D visualization, QuadTree optimal** |
+| **LBVH (Linear BVH)**      | **75**| **No ray tracing, spatial hash sufficient** |
+| **SIMD Frustum Culling**   | **75**| **2D uses AABB, not 6-plane frustum** |
+| **SweepSAH + AVX2**        | **75**| **x86-only + no ray tracing** |
+| **Conservative Raster**    | **75**| **Rectangle collision already exact** |
+| **Welford Statistics**     | **75**| **No variance calculations needed** |
+| **Quantized AABB**         | **75**| **Memory not bottleneck, f32 required** |
+| **GPU Instancing Indirect**| **75**| **ALREADY IMPLEMENTED** |
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-01-27*

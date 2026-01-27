@@ -94,6 +94,7 @@ Complete timeline of all 72 optimization phases with dates, commits, and outcome
 | 72    | 2026-01-27 | Rendering       | Pre-computed inner bounds disc (3.06x)     | Implemented  |
 | 73    | 2026-01-27 | Documentation   | Floyd's Tortoise and Hare Algorithm analysis| Documented   |
 | 74    | 2026-01-27 | Data Integrity  | Floyd's Algorithm production implementation | Implemented  |
+| 75    | 2026-01-27 | Analysis        | Spatial acceleration algorithm evaluation   | Documented   |
 
 ---
 
@@ -2459,6 +2460,96 @@ During clippy verification, the following pre-existing issues were fixed:
 
 - [Phase 73](#phase-73-floyds-tortoise-and-hare-algorithm-analysis-2026-01-27) - Algorithm analysis
 - [THEORETICAL_ALGORITHMS.md](THEORETICAL_ALGORITHMS.md) - Complete algorithm reference
+
+---
+
+## Phase 75: Spatial Acceleration Algorithm Evaluation (2026-01-27)
+
+### Summary
+
+**Category**: Analysis / Documentation
+**Status**: Documented
+**Date**: 2026-01-27
+
+Comprehensive evaluation of 9 candidate spatial acceleration algorithms proposed
+for potential performance improvement. Analysis determined that 7 algorithms are
+NOT_APPLICABLE to Rource's 2D visualization domain, 1 is ALREADY_IMPLEMENTED,
+and none require new implementation.
+
+### Algorithms Evaluated
+
+| Algorithm | Expected Gain | Verdict | Reason |
+|-----------|--------------|---------|--------|
+| H-PLOC (BVH) | 1.8-3.6× | NOT_APPLICABLE | 2D visualization, QuadTree optimal |
+| LBVH (Linear BVH) | 3-6× | NOT_APPLICABLE | No ray tracing, spatial hash sufficient |
+| Hi-Z Occlusion Culling | 2-10× | NOT_APPLICABLE | 2D only, no depth buffer |
+| SIMD Frustum Culling | 4-8× | NOT_APPLICABLE | 2D uses AABB, not 6-plane frustum |
+| SweepSAH + AVX2 | 4× | NOT_APPLICABLE | x86-only + no ray tracing |
+| Conservative Rasterization | 1-2× | NOT_APPLICABLE | Rectangle collision already exact |
+| GPU Instancing Indirect | 5-20× | ALREADY_IMPLEMENTED | culling.rs:draw_indirect |
+| Welford Online Stats | 1× | NOT_APPLICABLE | No variance calculations needed |
+| Quantized AABB | 2× memory | NOT_APPLICABLE | Memory not bottleneck, f32 required |
+
+### Key Findings
+
+**Domain Mismatch (5 algorithms)**:
+- H-PLOC, LBVH, SweepSAH: Designed for 3D ray tracing acceleration
+- Hi-Z Culling: Requires depth buffer (Rource is 2D, no depth)
+- SIMD Frustum Culling: Tests 6 planes; Rource uses 4-comparison AABB
+
+**Platform Constraints (1 algorithm)**:
+- SweepSAH + AVX2: x86-only intrinsics, violates WASM compatibility
+
+**Already Optimal (2 algorithms)**:
+- Conservative Rasterization: CPU rectangle collision already mathematically exact
+- Welford Statistics: No variance calculations in hot paths, simple averages sufficient
+
+**Already Implemented (1 algorithm)**:
+- GPU Instancing Indirect: `culling.rs` already uses `draw_indirect()` with GPU-populated
+  `DrawIndirectCommand` for circles, lines, and quads
+
+### Rource's Existing Spatial Infrastructure
+
+| Structure | Location | Complexity | Use Case |
+|-----------|----------|------------|----------|
+| QuadTree | physics/spatial.rs | O(log n) | Visibility queries, physics culling |
+| GPU Spatial Hash | wgpu/spatial_hash.rs | O(n) | N-body physics (5k+ entities) |
+| GPU Visibility Culling | wgpu/culling.rs | O(1)/entity | Instance filtering (10k+) |
+| Label Collision Grid | label.rs | O(1) expected | Label placement (15-200 labels) |
+
+### Potential Future Optimizations (Not Evaluated)
+
+The following algorithms may merit future investigation but were outside the scope
+of this evaluation:
+
+| Algorithm | Potential Use |
+|-----------|---------------|
+| Morton/Z-Order Curves | Cache-friendly entity iteration |
+| Temporal Reprojection | Camera animation smoothing |
+| GPU LOD Filtering | Combine visibility + size culling |
+| Parallel Radix Sort | GPU depth sorting |
+
+### Documentation Updates
+
+- **NOT_APPLICABLE.md**: Added Phase 75 section with 8 algorithm analyses
+- **CHRONOLOGY.md**: Added Phase 75 entry (this section)
+- **Summary Table**: Updated with 8 new entries
+
+### Verification
+
+- All existing tests pass
+- No code changes required (documentation-only phase)
+- Constraint alignment verified:
+  - WASM compatibility: ✓
+  - Determinism: ✓
+  - 2D domain: ✓
+  - Existing optimality: ✓
+
+### Related Documentation
+
+- [NOT_APPLICABLE.md](NOT_APPLICABLE.md) - Detailed algorithm analyses
+- [SUCCESSFUL_OPTIMIZATIONS.md](SUCCESSFUL_OPTIMIZATIONS.md) - Implemented optimizations
+- [Phase 64](#phase-64) - GPU visibility culling verification (ALREADY_IMPLEMENTED)
 
 ---
 
