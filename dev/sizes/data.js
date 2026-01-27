@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769504354344,
+  "lastUpdate": 1769518533122,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3260,6 +3260,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/6badec0d0e4eca24ae135894599dbcf827c26876"
         },
         "date": 1769504353859,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914488,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269311,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255329,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "148230660333eb4e480f5ebf24f33dbadc6fab18",
+          "message": "Merge pull request #204 from tomtom215/claude/wasm-version-control-viz-6AWcP\n\nAdd visual regression testing and expand mutation test coverage",
+          "timestamp": "2026-01-27T13:53:15+01:00",
+          "tree_id": "13ee18287d5e54803b0f27dd13758ce567113ed1",
+          "url": "https://github.com/tomtom215/rource/commit/148230660333eb4e480f5ebf24f33dbadc6fab18"
+        },
+        "date": 1769518532218,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
