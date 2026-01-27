@@ -7,26 +7,28 @@ This document provides context and guidance for Claude (AI assistant) when worki
 ## Table of Contents
 
 1. [Expert+ Excellence Standard](#expert-excellence-standard)
-2. [Core Operating Principles](#core-operating-principles)
-3. [Quality Domains](#quality-domains)
-4. [Project Overview](#project-overview)
-5. [Quick Start](#quick-start)
-6. [Architecture](#architecture)
-7. [Development Guidelines](#development-guidelines)
-8. [Performance Optimization Standards](#performance-optimization-standards)
-9. [UI/UX Excellence Standards](#uiux-excellence-standards)
-10. [Testing & Quality Standards](#testing--quality-standards)
-11. [Security Standards](#security-standards)
-12. [Accessibility Standards](#accessibility-standards)
-13. [Documentation Standards](#documentation-standards)
-14. [Common Tasks](#common-tasks)
-15. [CI/CD Pipeline](#cicd-pipeline)
-16. [Debugging](#debugging)
-17. [Dependencies Philosophy](#dependencies-philosophy)
-18. [Git Workflow](#git-workflow)
-19. [Troubleshooting](#troubleshooting)
-20. [Reference Links](#reference-links)
-21. [Roadmap Documents](#roadmap-documents)
+2. [Performance Scale and Precision](#performance-scale-and-precision)
+3. [Core Operating Principles](#core-operating-principles)
+4. [Quality Domains](#quality-domains)
+5. [Project Overview](#project-overview)
+6. [Quick Start](#quick-start)
+7. [Architecture](#architecture)
+8. [Development Guidelines](#development-guidelines)
+9. [Performance Optimization Standards](#performance-optimization-standards)
+10. [UI/UX Excellence Standards](#uiux-excellence-standards)
+11. [Testing & Quality Standards](#testing--quality-standards)
+12. [Security Standards](#security-standards)
+13. [Accessibility Standards](#accessibility-standards)
+14. [Documentation Standards](#documentation-standards)
+15. [Common Tasks](#common-tasks)
+16. [CI/CD Pipeline](#cicd-pipeline)
+17. [Debugging](#debugging)
+18. [Dependencies Philosophy](#dependencies-philosophy)
+19. [Git Workflow](#git-workflow)
+20. [Troubleshooting](#troubleshooting)
+21. [Reference Links](#reference-links)
+22. [Roadmap Documents](#roadmap-documents)
+23. [Session Best Practices](#session-best-practices)
 
 ---
 
@@ -48,6 +50,7 @@ This document provides context and guidance for Claude (AI assistant) when worki
 │  If it cannot be measured, it did not happen.                               │
 │  If it was not tested, it does not work.                                    │
 │  If it was not documented, it does not exist.                               │
+│  If it was not benchmarked BEFORE and AFTER, it is speculation.             │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -163,11 +166,89 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 
 ---
 
+## Performance Scale and Precision
+
+### The 50,000 FPS Target
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CRITICAL: FRAME BUDGET CONSTRAINT                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Target FPS:     50,000 FPS (theoretical maximum on test hardware)          │
+│  Frame Budget:   20 microseconds (20,000 nanoseconds) MAXIMUM               │
+│                                                                             │
+│  At this scale:                                                             │
+│    • 1 microsecond = 5% of frame budget                                     │
+│    • 100 nanoseconds = 0.5% of frame budget                                 │
+│    • 10 nanoseconds = 0.05% of frame budget                                 │
+│    • 1 nanosecond = 0.005% of frame budget                                  │
+│                                                                             │
+│  Every nanosecond matters. Every CPU cycle counts.                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### CPU Clock Cycle Reference
+
+On a 3.0 GHz CPU (typical test hardware):
+
+| Duration | Clock Cycles | Significance |
+|----------|--------------|--------------|
+| 1 picosecond | 0.003 cycles | Sub-instruction timing |
+| 1 nanosecond | 3 cycles | Single instruction |
+| 10 nanoseconds | 30 cycles | L1 cache access |
+| 100 nanoseconds | 300 cycles | L2 cache access |
+| 1 microsecond | 3,000 cycles | Complex operation |
+| 10 microseconds | 30,000 cycles | Half frame budget |
+| 20 microseconds | 60,000 cycles | **FULL FRAME BUDGET** |
+
+### Measurement Precision Requirements
+
+| Measurement | Precision Required | Example |
+|-------------|-------------------|---------|
+| Per-operation timing | Picoseconds | Draw call: 360 ps ± 6.8 ps |
+| Per-label timing | Nanoseconds | Label placement: 88.9 ns |
+| Per-frame timing | Microseconds | Full frame: 18.4 µs |
+| Improvement claims | Exact percentage | 52.3% improvement (not "~50%") |
+
+### The Absolute Rule
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  NEVER guess about performance. NEVER assume an optimization helps.         │
+│  NEVER overstate improvements. NEVER approximate measurements.              │
+│                                                                             │
+│  The ONLY acceptable evidence is:                                           │
+│                                                                             │
+│  1. BEFORE benchmark (criterion, 100+ samples, 95% CI)                      │
+│  2. AFTER benchmark (same methodology, same conditions)                     │
+│  3. EXACT improvement calculation with measured values                      │
+│  4. Statistical significance verification                                   │
+│                                                                             │
+│  If you cannot measure it, you cannot claim it.                             │
+│  If you did not benchmark BEFORE changes, the change is speculation.        │
+│  If the improvement is not statistically significant, it did not happen.    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Current Performance Status
+
+| Metric | Current | Target | Status |
+|--------|---------|--------|--------|
+| Frame time | ~18-23 µs | <20 µs | Near target |
+| Optimization phases | 77 | Ongoing | Active |
+| Algorithms evaluated | 77+ | Comprehensive | See ALGORITHM_CANDIDATES.md |
+
+---
+
 ## Quality Domains
 
 ### Domain 1: Performance Engineering (Expert+)
 
-**Standard**: Nanosecond-level optimization with mathematical proof
+**Standard**: Picosecond-to-nanosecond optimization with mathematical proof
 
 | Criterion | Requirement |
 |-----------|-------------|
@@ -175,8 +256,10 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 | Documentation | Before/after in CHRONOLOGY.md, BENCHMARKS.md |
 | Complexity | Big-O analysis with scaling verification |
 | Proof | Mathematical proof for complexity claims |
+| Precision | Picosecond/nanosecond measurements |
+| Frame Budget | Total render time < 20 µs |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (69 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (77 phases)
 
 ---
 
@@ -335,8 +418,11 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 | `docs/REVIEW_STANDARDS.md` | Code review requirements |
 | `STABILITY.md` | API stability policy |
 | `SECURITY.md` | Security policy |
-| `docs/performance/CHRONOLOGY.md` | Optimization history (69 phases) |
+| `docs/performance/CHRONOLOGY.md` | Optimization history (77 phases) |
 | `docs/performance/BENCHMARKS.md` | Raw benchmark data |
+| `docs/performance/NOT_APPLICABLE.md` | Algorithms evaluated as N/A |
+| `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
+| `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
 | `LICENSE` | GPL-3.0 license |
@@ -605,7 +691,7 @@ Mathematical Proof:
 
 ### Current Optimization History
 
-See `docs/performance/CHRONOLOGY.md` for complete history (69 phases).
+See `docs/performance/CHRONOLOGY.md` for complete history (77 phases).
 
 ### MANDATORY: Benchmark Before Committing Performance-Sensitive Code
 
@@ -1092,26 +1178,150 @@ See individual roadmap documents for complete priority order.
 
 ---
 
+## Session Best Practices
+
+### Starting a Session
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    SESSION STARTUP CHECKLIST                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. RUN VERIFICATION                                                        │
+│     cargo test                          # All tests must pass               │
+│     cargo clippy -- -D warnings         # Zero warnings allowed             │
+│     cargo fmt --check                   # Must be formatted                 │
+│                                                                             │
+│  2. READ CURRENT STATE                                                      │
+│     docs/performance/CHRONOLOGY.md      # What phase are we on?             │
+│     docs/performance/ALGORITHM_CANDIDATES.md  # What's next?                │
+│     docs/performance/NOT_APPLICABLE.md  # What's been ruled out?            │
+│                                                                             │
+│  3. ESTABLISH BASELINE                                                      │
+│     cargo test -p rource-wasm bench_ --release -- --nocapture               │
+│     Record exact numbers BEFORE any changes                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### During a Session
+
+| Action | Requirement |
+|--------|-------------|
+| Before changing hot path code | Benchmark baseline |
+| After changing hot path code | Benchmark again, compare |
+| Claiming an improvement | Exact % with before/after values |
+| Claiming N/A status | Document WHY with evidence |
+| Any optimization attempt | Update CHRONOLOGY.md with phase number |
+
+### Ending a Session
+
+1. **Verify clean state**: `cargo test && cargo clippy -- -D warnings`
+2. **Update documentation**: CHRONOLOGY.md, NOT_APPLICABLE.md as needed
+3. **Commit with metrics**: Include exact measurements in commit message
+4. **Push to branch**: Ensure all changes are pushed
+
+### Tips for Expert+ Quality
+
+1. **Never trust intuition**
+   - "This should be faster" is not evidence
+   - The only evidence is before/after benchmarks
+   - Even "obvious" improvements can regress performance
+
+2. **Measure twice, claim once**
+   - Run benchmarks multiple times
+   - Ensure statistical significance (95% CI)
+   - Account for measurement noise
+
+3. **Document the negative results**
+   - NOT APPLICABLE findings are valuable
+   - They prevent future sessions from repeating work
+   - Always explain WHY something didn't work
+
+4. **Respect the 20 µs budget**
+   - At 50,000 FPS, every nanosecond counts
+   - 1 µs = 5% of frame budget
+   - Small regressions compound
+
+5. **Use the phase system**
+   - Every optimization attempt gets a phase number
+   - Implemented, N/A, or Failed - all get documented
+   - The CHRONOLOGY is the project's optimization history
+
+6. **Read before implementing**
+   - Check NOT_APPLICABLE.md before trying an algorithm
+   - Check SUCCESSFUL_OPTIMIZATIONS.md for patterns
+   - Don't repeat work that's already been done
+
+7. **Benchmark protocol**
+   ```bash
+   # Always do this before AND after changes:
+   cargo test -p rource-wasm bench_ --release -- --nocapture 2>&1 | tee benchmark_$(date +%Y%m%d_%H%M%S).txt
+   ```
+
+### Common Pitfalls to Avoid
+
+| Pitfall | Why It's Wrong | Correct Approach |
+|---------|---------------|------------------|
+| "I didn't benchmark before" | No baseline = speculation | Always baseline first |
+| "The improvement is obvious" | Intuition ≠ data | Measure everything |
+| "~50% faster" | Approximation | "52.3% faster (2.41µs → 1.15µs)" |
+| "Works on my machine" | Not reproducible | Use criterion with CI |
+| "This is a pre-existing issue" | Abdication | Fix it or document it |
+| "I'll document later" | Never happens | Document as you implement |
+
+### Performance Vocabulary
+
+Use precise language:
+
+| Imprecise | Precise |
+|-----------|---------|
+| "faster" | "52.3% reduction in execution time (2.41µs → 1.15µs)" |
+| "slower" | "+15.2% regression (1.15µs → 1.32µs)" |
+| "about 50%" | "52.3% (calculated from measured values)" |
+| "significant improvement" | "statistically significant (p < 0.05, 95% CI)" |
+| "no change" | "within noise margin (±2.1%, not statistically significant)" |
+
+---
+
 ## Summary: The Expert+ Standard
 
 Every session, every commit, every line of code must meet this standard:
 
 | Aspect | Requirement |
 |--------|-------------|
-| **Performance** | Measured with criterion, documented with exact metrics |
+| **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
+| **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
 | **Accessibility** | WCAG AA, keyboard navigable, screen reader compatible |
-| **Documentation** | Before/after metrics, roadmap status updated |
+| **Documentation** | Before/after metrics, CHRONOLOGY.md updated, phase number assigned |
 
-**The question to ask before every commit:**
+**The questions to ask before every commit:**
 
-> "Would this pass review by a principal engineer at a top tech company?"
+1. "Did I benchmark BEFORE making changes?"
+2. "Did I benchmark AFTER making changes?"
+3. "Is the improvement statistically significant?"
+4. "Is the documentation complete with exact metrics?"
+5. "Would this pass review by a principal engineer at a top tech company?"
 
-If the answer is anything other than "absolutely yes," the work is not complete.
+If the answer to ANY of these is "no," the work is not complete.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  50,000 FPS = 20 µs frame budget                                            │
+│  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
+│  Every nanosecond matters.                                                  │
+│                                                                             │
+│  Never guess. Never assume. Never overstate. Always measure.                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 *Last updated: 2026-01-27*
 *Standard: Expert+ Excellence (Zero Compromises)*
+*Optimization Phases: 77 (see docs/performance/CHRONOLOGY.md)*

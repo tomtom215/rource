@@ -52,7 +52,7 @@ Complete technical documentation for the Rource project.
 |----------|-------------|
 | [performance/README.md](./performance/README.md) | Performance documentation index |
 | [performance/OVERVIEW.md](./performance/OVERVIEW.md) | Executive summary and philosophy |
-| [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) | Timeline of all **69 optimization phases** |
+| [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) | Timeline of all **77 optimization phases** |
 | [performance/BENCHMARKS.md](./performance/BENCHMARKS.md) | Benchmark data with methodology |
 | [performance/SUCCESSFUL_OPTIMIZATIONS.md](./performance/SUCCESSFUL_OPTIMIZATIONS.md) | Implemented optimizations |
 | [performance/FUTURE_WORK.md](./performance/FUTURE_WORK.md) | **Expert+ roadmap** (active) |
@@ -152,7 +152,7 @@ Complete technical documentation for the Rource project.
 1. [performance/GUIDE.md](./performance/GUIDE.md) - General performance tips
 2. [performance/PROFILING.md](./performance/PROFILING.md) - Finding bottlenecks
 3. [performance/BENCHMARKS.md](./performance/BENCHMARKS.md) - Benchmark methodology
-4. [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) - 69 optimization phases
+4. [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) - 77 optimization phases
 
 ### Expert+ Development
 1. [../CLAUDE.md](../CLAUDE.md) - Development standards
