@@ -45,7 +45,7 @@ This document outlines the complete set of improvements required to achieve **qu
 | SEC-2 | SBOM Generation | Security | High | Low | Done |
 | SEC-3 | Supply Chain Security (SLSA) | Security | High | Medium | Done |
 | SEC-4 | Security Policy (SECURITY.md) | Security | Medium | Low | Done |
-| TST-1 | Mutation Testing Suite | Testing | Critical | High | Pending |
+| TST-1 | Mutation Testing Suite | Testing | Critical | High | In Progress |
 | TST-2 | Property-Based Test Expansion | Testing | High | Medium | Done |
 | TST-3 | Visual Regression Testing | Testing | High | High | Pending |
 | TST-4 | Cross-Browser Automated Testing | Testing | Medium | High | Pending |
@@ -787,11 +787,25 @@ Do NOT report security vulnerabilities via public GitHub issues.
 
 ---
 
-### TST-1: Mutation Testing Suite
+### TST-1: Mutation Testing Suite 🔄 IN PROGRESS
 
 **Priority**: Critical
 **Complexity**: High
 **Estimated Effort**: 2-3 sessions
+**Status**: In Progress (2026-01-27)
+
+#### Progress Notes
+
+**Completed**:
+- ✅ CI workflow created (`.github/workflows/mutation.yml`)
+- ✅ Documentation created (`docs/testing/MUTATION_TESTING.md`)
+- ✅ Runs on PRs modifying `rource-math` or `rource-vcs`
+- ✅ Manual trigger via workflow_dispatch
+
+**Remaining**:
+- ⏳ Initial baseline run (long-running, ~30+ minutes per crate)
+- ⏳ Record baseline scores in documentation
+- ⏳ Analyze and address any significant test gaps
 
 #### Problem Statement
 2,076 tests exist but their effectiveness at catching bugs is unquantified.
