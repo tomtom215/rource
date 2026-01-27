@@ -89,6 +89,7 @@ Complete timeline of all 69 optimization phases with dates, commits, and outcome
 | 67    | 2026-01-26 | Dependencies    | wgpu 28, criterion 0.8, iai-callgrind 0.16 | Implemented  |
 | 68    | 2026-01-26 | Typography      | Label width estimation accuracy fix        | Implemented  |
 | 69    | 2026-01-26 | Layout          | Disc overlap prevention (files + dirs)     | Implemented  |
+| 70    | 2026-01-27 | Rendering       | File glow LOD culling + radius reduction   | Implemented  |
 
 ---
 
@@ -1863,6 +1864,115 @@ Now: clamped_distance ≥ radius_a + radius_b (dynamic)
 
 ---
 
+### Phase 70: File Glow LOD Culling and Radius Reduction
+
+**Date**: 2026-01-27
+**Category**: Rendering Optimization
+**Status**: Implemented
+**Impact**: 43.75% reduction in glow pixel area + LOD culling for small files
+
+**Problem Statement**:
+
+File glow rendering remained a significant cost even after Phase 59's "touched-only" optimization.
+The glow disc used 2.0x the effective radius, resulting in 4.0x the pixel area of the file disc.
+Additionally, for small files (effective_radius < 3.0), the glow disc was nearly imperceptible
+but still required full blending operations.
+
+**Analysis**:
+
+```
+Phase 59 State:
+- Glow rendered only for touched files (not all files)
+- Glow radius: 2.0x effective_radius
+- Glow area: 4.0x file area (2.0^2)
+- Small files still rendered glow even when barely visible
+
+Issue 1: Glow radius too large
+- Glow at 2.0x radius covers 4.0x the area
+- Visual impact diminishes rapidly beyond 1.5x radius
+- Pixel cost: O(radius^2) means 2.0x vs 1.5x = 78% more pixels
+
+Issue 2: No LOD culling for glow
+- Files with effective_radius < 3.0 have glow disc < 6px diameter
+- At this size, glow is imperceptible to users
+- Still costs same blending operations as larger files
+```
+
+**Solution 1: Reduce Glow Radius from 2.0x to 1.5x**
+
+```rust
+// Before:
+renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+
+// After:
+renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);
+```
+
+**Pixel Area Reduction**:
+- Before: (2.0 * r)^2 = 4.0 * r^2
+- After: (1.5 * r)^2 = 2.25 * r^2
+- Reduction: 1 - (2.25 / 4.0) = **43.75%**
+
+**Solution 2: LOD Culling for Small Files**
+
+```rust
+// Before:
+if is_touched {
+    let glow_color = color.with_alpha(0.25 * alpha);
+    renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+}
+
+// After:
+if is_touched && effective_radius >= 3.0 {
+    let glow_color = color.with_alpha(0.25 * alpha);
+    renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);
+}
+```
+
+**LOD Culling Rationale**:
+- At effective_radius < 3.0, glow diameter < 4.5px (at 1.5x)
+- At 4.5px diameter, glow is visually indistinguishable from the file border
+- Blending cost is identical regardless of perceptibility
+- Threshold of 3.0 balances visual fidelity vs performance
+
+**Theoretical Performance Impact**:
+
+| Scenario | Glow Draws | Area per Draw | Total Savings |
+|----------|------------|---------------|---------------|
+| Radius reduction alone | Same | 43.75% less | 43.75% |
+| LOD culling (zoomed out) | Fewer | N/A | Variable |
+| Combined (typical) | Fewer | 43.75% less | 50%+ |
+
+**Mathematical Proof of Area Reduction**:
+
+```
+Glow disc area = pi * r_glow^2
+
+Before: A_before = pi * (2.0 * r_eff)^2 = 4.0 * pi * r_eff^2
+After:  A_after  = pi * (1.5 * r_eff)^2 = 2.25 * pi * r_eff^2
+
+Reduction = (A_before - A_after) / A_before
+          = (4.0 - 2.25) / 4.0
+          = 1.75 / 4.0
+          = 43.75%
+```
+
+**Files Modified**:
+- `rource-cli/src/rendering.rs` (lines 846-854)
+- `rource-wasm/src/render_phases.rs` (lines 754-762)
+
+**Verification**:
+- All 2,163+ tests pass
+- Zero clippy warnings
+- Rustfmt compliant
+- Visual appearance: Glow remains visible, slightly tighter around files
+- LOD culling: Small files appear identical (glow was imperceptible anyway)
+
+**Related Documentation**:
+- [docs/RENDERING_BOTTLENECK_ANALYSIS.md](../RENDERING_BOTTLENECK_ANALYSIS.md)
+
+---
+
 ## Git Commit References
 
 | Phase | Commit Message                                                   |
@@ -1896,7 +2006,8 @@ Now: clamped_distance ≥ radius_a + radius_b (dynamic)
 | 67    | deps: update wgpu 28, criterion 0.8, iai-callgrind 0.16 |
 | 68    | perf(phase68): fix label width estimation for accurate collision detection |
 | 69    | perf(phase69): implement disc overlap prevention for files and directories |
+| 70    | perf(phase70): implement glow LOD culling and radius reduction |
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-01-27*

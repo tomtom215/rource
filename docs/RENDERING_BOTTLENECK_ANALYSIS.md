@@ -352,15 +352,15 @@ The optimization IS effective for **typical interactive usage**:
    - Impact: Scenario-dependent (0-64% file render reduction)
    - Risk: Minor visual change (inactive files slightly dimmer)
 
-### Short-term (Low-Medium Risk)
+### Short-term (Implemented Yes)
 
-2. **Add LOD culling for glow**
+2. **Add LOD culling for glow** Yes (Phase 70)
    - Skip glow when `effective_radius < 3.0`
    - Impact: Additional 10-20% reduction
 
-3. **Reduce glow radius from 2× to 1.5×**
-   - Impact: -44% glow pixels
-   - Risk: Glow less prominent
+3. **Reduce glow radius from 2× to 1.5×** Yes (Phase 70)
+   - Impact: -43.75% glow pixels (4.0x² → 2.25x²)
+   - Risk: Glow slightly less prominent, still visible
 
 ### Medium-term (Medium Effort)
 

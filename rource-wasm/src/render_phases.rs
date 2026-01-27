@@ -751,12 +751,14 @@ pub fn render_files<R: Renderer + ?Sized>(
                 }
             }
 
-            // Draw soft glow behind file ONLY for touched files
-            // Optimization: Skip glow for inactive files (~97% of files)
+            // Draw soft glow behind file ONLY for touched files AND large enough to be visible
+            // Phase 59: Skip glow for inactive files (~97% of files)
+            // Phase 70: LOD culling - skip glow when effective_radius < 3.0 (glow imperceptible)
+            //           Reduced glow radius from 2.0x to 1.5x (-44% pixel area: 4.0x -> 2.25x)
             let is_touched = file.touch_time() > 0.0;
-            if is_touched {
+            if is_touched && effective_radius >= 3.0 {
                 let glow_color = color.with_alpha(0.25 * alpha);
-                renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+                renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);
             }
 
             // Outer ring (darker border)
