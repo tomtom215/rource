@@ -90,6 +90,59 @@ function resetCamera() {
 }
 
 /**
+ * Pan amount in screen pixels per key press.
+ * @type {number}
+ */
+const PAN_AMOUNT = 50;
+
+/**
+ * Pans camera up.
+ */
+function panUp() {
+    const rource = getRource();
+    if (!rource) return;
+    safeWasmCall('pan', () => rource.pan(0, -PAN_AMOUNT), undefined);
+}
+
+/**
+ * Pans camera down.
+ */
+function panDown() {
+    const rource = getRource();
+    if (!rource) return;
+    safeWasmCall('pan', () => rource.pan(0, PAN_AMOUNT), undefined);
+}
+
+/**
+ * Pans camera left.
+ */
+function panLeft() {
+    const rource = getRource();
+    if (!rource) return;
+    safeWasmCall('pan', () => rource.pan(-PAN_AMOUNT, 0), undefined);
+}
+
+/**
+ * Pans camera right.
+ */
+function panRight() {
+    const rource = getRource();
+    if (!rource) return;
+    safeWasmCall('pan', () => rource.pan(PAN_AMOUNT, 0), undefined);
+}
+
+/**
+ * Checks if the canvas element is currently focused.
+ * This allows WASD keys to pan when canvas is focused without conflicting
+ * with other shortcuts (A=authors, S=screenshot).
+ * @returns {boolean} True if canvas has focus
+ */
+function isCanvasFocused() {
+    const canvas = getElement('canvas');
+    return document.activeElement === canvas;
+}
+
+/**
  * Toggles labels.
  */
 function toggleLabels() {
@@ -231,6 +284,21 @@ export function initKeyboard() {
                 restart();
                 break;
 
+            // WASD Camera Panning (only when canvas is focused for accessibility)
+            case 'w':
+                if (!e.ctrlKey && !e.metaKey && isCanvasFocused()) {
+                    e.preventDefault();
+                    panUp();
+                }
+                break;
+
+            case 'd':
+                if (!e.ctrlKey && !e.metaKey && isCanvasFocused()) {
+                    e.preventDefault();
+                    panRight();
+                }
+                break;
+
             // UI toggles
             case 'l':
                 toggleLabels();
@@ -242,8 +310,14 @@ export function initKeyboard() {
 
             case 's':
                 if (!e.ctrlKey && !e.metaKey) {
-                    e.preventDefault();
-                    captureScreenshot();
+                    // Pan down when canvas is focused, otherwise screenshot
+                    if (isCanvasFocused()) {
+                        e.preventDefault();
+                        panDown();
+                    } else {
+                        e.preventDefault();
+                        captureScreenshot();
+                    }
                 }
                 break;
 
@@ -266,16 +340,22 @@ export function initKeyboard() {
                 }
                 break;
 
-            // Authors panel toggle
+            // Authors panel toggle (or pan left when canvas focused)
             case 'a':
-                if (!e.ctrlKey && !e.metaKey && hasData()) {
-                    const authorsPanel = getElement('authorsPanel');
-                    const authorsToggle = getElement('authorsToggle');
-                    if (authorsPanel && !authorsPanel.classList.contains('hidden')) {
-                        authorsPanel.classList.toggle('collapsed');
-                        const isExpanded = !authorsPanel.classList.contains('collapsed');
-                        if (authorsToggle) {
-                            authorsToggle.setAttribute('aria-expanded', isExpanded.toString());
+                if (!e.ctrlKey && !e.metaKey) {
+                    // Pan left when canvas is focused, otherwise toggle authors panel
+                    if (isCanvasFocused()) {
+                        e.preventDefault();
+                        panLeft();
+                    } else if (hasData()) {
+                        const authorsPanel = getElement('authorsPanel');
+                        const authorsToggle = getElement('authorsToggle');
+                        if (authorsPanel && !authorsPanel.classList.contains('hidden')) {
+                            authorsPanel.classList.toggle('collapsed');
+                            const isExpanded = !authorsPanel.classList.contains('collapsed');
+                            if (authorsToggle) {
+                                authorsToggle.setAttribute('aria-expanded', isExpanded.toString());
+                            }
                         }
                     }
                 }

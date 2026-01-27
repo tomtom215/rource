@@ -230,3 +230,34 @@ export function hapticSuccess() {
 export function hapticError() {
     return haptic(HapticPattern.ERROR);
 }
+
+// =============================================================================
+// Screen Reader Announcements (WCAG 4.1.3 Status Messages)
+// =============================================================================
+
+/**
+ * Announces a message to screen readers via the status-announcer element.
+ * Uses aria-live="polite" so messages don't interrupt current speech.
+ *
+ * @param {string} message - The message to announce
+ * @param {boolean} [clearAfter=true] - Clear the message after announcement (default: true)
+ */
+export function announce(message, clearAfter = true) {
+    const announcer = document.getElementById('status-announcer');
+    if (!announcer) return;
+
+    // Clear first to ensure repeated messages are announced
+    announcer.textContent = '';
+
+    // Use setTimeout to ensure the DOM update is processed
+    setTimeout(() => {
+        announcer.textContent = message;
+
+        // Clear after a delay to allow screen readers to read it
+        if (clearAfter) {
+            setTimeout(() => {
+                announcer.textContent = '';
+            }, 1000);
+        }
+    }, 100);
+}

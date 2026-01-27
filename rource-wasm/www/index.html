@@ -148,6 +148,9 @@
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
+    <!-- Screen reader status announcer - updated by JavaScript for important status changes -->
+    <div id="status-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
     <div id="loading" role="status" aria-live="polite">
         <div class="loading-skeleton" aria-hidden="true">
             <div class="skeleton-header">
@@ -278,7 +281,7 @@
         <!-- Visualization Panel -->
         <div class="viz-panel">
             <div id="canvas-container">
-                <canvas id="canvas" width="1280" height="720" aria-label="Rource visualization canvas"></canvas>
+                <canvas id="canvas" width="1280" height="720" tabindex="0" role="application" aria-label="Git repository visualization. Click to focus for keyboard navigation: Space play/pause, arrows step commits, WASD pan, plus/minus zoom, question mark for help"></canvas>
 
                 <!-- Mobile Center Play Button (YouTube pattern) -->
                 <button type="button" id="mobile-center-play" class="mobile-center-play" aria-label="Play">
@@ -770,7 +773,7 @@
                 </div>
 
                 <div id="tab-paste" class="tab-content" role="tabpanel" hidden>
-                    <textarea id="log-input" placeholder="Paste your log data here...&#10;Formats auto-detected: git log or timestamp|author|action|path"></textarea>
+                    <textarea id="log-input" aria-label="Log data input - paste git log or custom format data" placeholder="Paste your log data here...&#10;Formats auto-detected: git log or timestamp|author|action|path"></textarea>
                     <button type="button" id="btn-load" class="btn btn-sm" disabled>Load Log Data</button>
                     <p class="help-text">
                         Supported formats (auto-detected):<br>
@@ -1158,9 +1161,49 @@
                     <li><strong>Hover</strong> over files or users to see details</li>
                     <li><strong>Drag</strong> to pan around the visualization</li>
                     <li><strong>Scroll</strong> to zoom in/out</li>
-                    <li>Press <kbd style="background: var(--bg-tertiary); padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.8rem;">Space</kbd> to play/pause</li>
-                    <li>Press <kbd style="background: var(--bg-tertiary); padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.8rem;">?</kbd> to show this help anytime</li>
+                    <li><strong>Click canvas</strong> to focus, then use keyboard shortcuts</li>
                 </ul>
+            </div>
+
+            <div class="help-section">
+                <h3 class="help-section-heading">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
+                    Keyboard Shortcuts
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; color: var(--text-secondary); font-size: 0.85rem;">
+                    <!-- Playback -->
+                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Playback</div>
+                    <div><kbd class="kbd">Space</kbd> Play / Pause</div>
+                    <div><kbd class="kbd">Home</kbd> Restart</div>
+                    <div><kbd class="kbd">←</kbd> <kbd class="kbd">,</kbd> Previous commit</div>
+                    <div><kbd class="kbd">→</kbd> <kbd class="kbd">.</kbd> Next commit</div>
+                    <div><kbd class="kbd">[</kbd> Slower speed</div>
+                    <div><kbd class="kbd">]</kbd> Faster speed</div>
+                    <!-- Camera -->
+                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Camera</div>
+                    <div><kbd class="kbd">W</kbd><kbd class="kbd">A</kbd><kbd class="kbd">S</kbd><kbd class="kbd">D</kbd> Pan<span style="color: var(--text-muted); font-size: 0.75rem;"> (canvas focused)</span></div>
+                    <div><kbd class="kbd">R</kbd> Reset camera</div>
+                    <div><kbd class="kbd">+</kbd> <kbd class="kbd">=</kbd> Zoom in</div>
+                    <div><kbd class="kbd">-</kbd> Zoom out</div>
+                    <!-- Display -->
+                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Display</div>
+                    <div><kbd class="kbd">L</kbd> Toggle labels</div>
+                    <div><kbd class="kbd">F</kbd> Fullscreen</div>
+                    <div><kbd class="kbd">T</kbd> Toggle theme</div>
+                    <div><kbd class="kbd">A</kbd> Toggle authors panel</div>
+                    <div><kbd class="kbd">P</kbd> Performance overlay</div>
+                    <div><kbd class="kbd">Shift</kbd>+<kbd class="kbd">↑↓</kbd> Font size</div>
+                    <!-- Export -->
+                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Export</div>
+                    <div><kbd class="kbd">S</kbd> Screenshot</div>
+                    <div><kbd class="kbd">M</kbd> Export full map</div>
+                    <div><kbd class="kbd">V</kbd> Video recording</div>
+                    <div></div>
+                    <!-- Help -->
+                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Help</div>
+                    <div><kbd class="kbd">?</kbd> Show this help</div>
+                    <div><kbd class="kbd">Esc</kbd> Close dialogs</div>
+                </div>
             </div>
 
             <button type="button" id="help-got-it" class="btn" style="width: 100%; margin-top: 1rem;">Got it!</button>
