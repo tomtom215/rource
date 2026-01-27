@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769524129731,
+  "lastUpdate": 1769526227541,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3338,6 +3338,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/119e682a3929c40578c586fe155ddc300d0d2d51"
         },
         "date": 1769524129185,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8bfd7e15ab2c457a39385769e5ff61e07c5ebd88",
+          "message": "Merge pull request #206 from tomtom215/claude/wasm-version-control-viz-zCxeg\n\nperf(phase71): implement SIMD-friendly batch blending infrastructure",
+          "timestamp": "2026-01-27T16:01:29+01:00",
+          "tree_id": "1f685f01481a3f683c7cfe545dd0df7f823f900c",
+          "url": "https://github.com/tomtom215/rource/commit/8bfd7e15ab2c457a39385769e5ff61e07c5ebd88"
+        },
+        "date": 1769526226521,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
