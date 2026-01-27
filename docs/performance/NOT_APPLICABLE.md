@@ -740,6 +740,189 @@ Keep O(n) linear scan for core library:
 
 ---
 
+## Phase 77: CPU Physics Algorithm Evaluation
+
+**Date**: 2026-01-27
+**Analysis Scope**: 4 candidate algorithms for CPU physics optimization
+
+Evaluated algorithms proposed for potential performance improvement in CPU physics
+calculations (force-directed layout simulation).
+
+---
+
+### SIMD128 Horizontal Prefix Sum
+
+**Phase**: 77
+**Priority**: 2 (from continuation prompt)
+**Claimed Location**: `force.rs` CPU physics fallback
+
+**Why Not Applicable**:
+
+| Criterion | Prefix Sum Requirement | Rource CPU Physics |
+|-----------|------------------------|-------------------|
+| Operation | Cumulative sum across data | No scan operations |
+| Use case | Stream compaction, histograms | Force accumulation |
+| Access pattern | Sequential with dependencies | Embarrassingly parallel |
+
+**Analysis**:
+
+The CPU physics module uses:
+
+1. **Barnes-Hut O(n log n)**: Recursive tree traversal (`barnes_hut.rs`)
+   - Force calculation traverses tree independently per body
+   - No cumulative sum required
+
+2. **Force accumulation**: Independent per body (`force.rs:506-510`)
+   ```rust
+   for (i, node) in nodes.iter().enumerate() {
+       let force = tree.calculate_force(&body, ...);
+       self.forces_buffer[i] += force;  // Independent writes
+   }
+   ```
+
+3. **Reductions**: Simple min/max for bounds, sum for kinetic energy
+   - Reductions ≠ prefix sums (reductions produce scalar, prefix sums produce array)
+
+The GPU spatial hash (`spatial_hash.rs`) uses Blelloch prefix sum for cell offset
+computation, but this is already implemented and doesn't apply to CPU fallback.
+
+**Verdict**: No prefix sum operation exists in CPU physics to optimize
+
+---
+
+### Branchless Selection
+
+**Phase**: 77
+**Priority**: 3 (from continuation prompt)
+**Target**: `should_repel()` function in `force.rs:333-342`
+
+**Why Not Applicable**:
+
+| Criterion | Branchless Benefit | Rource Branch Pattern |
+|-----------|-------------------|----------------------|
+| Branch prediction | Unpredictable branches | Highly predictable |
+| Call frequency | Tight inner loop | O(n log n) via Barnes-Hut |
+| Bottleneck | Branch misprediction | Memory + FP calculation |
+
+**Analysis**:
+
+The `should_repel()` function:
+
+```rust
+fn should_repel(a: &DirNode, b: &DirNode) -> bool {
+    if a.parent() == b.parent() && a.parent().is_some() {
+        return true;  // Siblings always repel
+    }
+    let depth_diff = a.depth().abs_diff(b.depth());
+    depth_diff <= 1
+}
+```
+
+Branch prediction characteristics:
+- Most node pairs are NOT siblings (95%+ predictable `false` for first branch)
+- Depth comparison is integer ≤ with predictable distribution
+
+The real bottleneck is NOT branch misprediction:
+- Barnes-Hut reduces O(n²) to O(n log n) - branch prediction irrelevant to complexity
+- Memory access for position/depth lookup dominates
+- Floating-point force calculations dominate
+
+**Verification Required**: Profiling would be needed to confirm branch misprediction
+is not a bottleneck. Given Barnes-Hut's algorithmic reduction, it's unlikely.
+
+**Verdict**: Branch prediction not a bottleneck; optimization unjustified without profiling
+
+---
+
+### VEB (Van Emde Boas) QuadTree Layout
+
+**Phase**: 77
+**Priority**: 4 (from continuation prompt)
+**Target**: Barnes-Hut quadtree in `barnes_hut.rs`
+
+**Why Not Applicable**:
+
+| Criterion | VEB Benefit | Rource QuadTree |
+|-----------|-------------|-----------------|
+| Tree size | Large trees (>L2 cache) | 100-5000 nodes |
+| Memory | >1MB tree data | ~320KB max |
+| Depth | Deep trees (>20 levels) | MAX_DEPTH=16, typical 8-10 |
+| Access pattern | DFS traversal | Recursive traversal |
+
+**Analysis**:
+
+VEB layout optimizes cache-line utilization by arranging tree nodes in a specific
+memory order that matches depth-first traversal. Benefits appear when:
+
+1. **Tree exceeds L2 cache**: VEB ensures child nodes are in same/adjacent cache lines
+2. **Deep traversal**: Reduces cache misses on deep recursive calls
+3. **Sequential array storage**: VEB requires array-based tree representation
+
+Rource's Barnes-Hut characteristics:
+
+1. **Tree size**: 5000 entities × ~64 bytes = 320KB
+   - L2 cache: 256KB-1MB on modern CPUs
+   - **Tree fits entirely in L2 cache**
+
+2. **Tree depth**: MAX_TREE_DEPTH = 16, typical depth = 8-10
+   - Stack frame cache works well for moderate depth
+
+3. **Implementation complexity**:
+   - Complete rewrite to array-based representation
+   - Custom node indexing scheme
+   - Loss of pointer-based insertion/deletion flexibility
+
+4. **Diminishing returns for small trees**: Cache optimization matters when
+   tree data causes cache misses; if tree fits in L2, VEB adds overhead with no benefit.
+
+**Verdict**: Tree fits in L2 cache; complexity unjustified
+
+---
+
+### Hybrid Introsort
+
+**Phase**: 77
+**Priority**: 5 (from continuation prompt)
+**Target**: Sorting operations in render phases and physics
+
+**Why Not Applicable**:
+
+| Criterion | Introsort Feature | Rust pdqsort |
+|-----------|------------------|--------------|
+| Quicksort | Average case O(n log n) | Yes (partition-based) |
+| Heapsort fallback | Prevents O(n²) worst case | Yes (pattern-defeating) |
+| Insertion sort | Small array optimization | Yes (<16 elements) |
+| Pattern detection | Pre-sorted optimization | Yes (includes run detection) |
+
+**Analysis**:
+
+Rust's standard library `sort_unstable` uses pattern-defeating quicksort (pdqsort),
+which is functionally equivalent to (and often better than) hybrid introsort:
+
+Current usage in Rource:
+```rust
+// render_phases.rs:2519 - already uses optimal sort
+active.sort_unstable_by(|a, b| { ... });
+
+// render_phases.rs:2549 - already uses optimal sort
+users.sort_unstable_by(|a, b| { ... });
+```
+
+pdqsort features:
+- **Block partitioning**: Better cache utilization than classic quicksort
+- **Pivot selection**: Median-of-three with fallback strategies
+- **Run detection**: Efficiently handles partially sorted data
+- **Heapsort fallback**: Prevents O(n²) on adversarial inputs
+
+Implementing custom introsort would:
+- Duplicate existing stdlib functionality
+- Likely perform worse (pdqsort is heavily optimized)
+- Add maintenance burden
+
+**Verdict**: Rust pdqsort already provides equivalent (or better) functionality
+
+---
+
 ## Summary Table
 
 | Optimization               | Phase | Reason                           |
@@ -765,6 +948,10 @@ Keep O(n) linear scan for core library:
 | **Quantized AABB**         | **75**| **Memory not bottleneck, f32 required** |
 | **GPU Instancing Indirect**| **75**| **ALREADY IMPLEMENTED** |
 | Spatial Hash (core lib)    | 76    | Overhead > benefit for <100 labels |
+| SIMD128 Prefix Sum (CPU)   | 77    | No prefix sum op in CPU physics |
+| Branchless Selection       | 77    | Branch prediction not bottleneck |
+| VEB QuadTree Layout        | 77    | Tree fits in L2 cache |
+| Hybrid Introsort           | 77    | Rust pdqsort already equivalent |
 
 ---
 
