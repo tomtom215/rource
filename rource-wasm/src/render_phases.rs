@@ -28,6 +28,29 @@ use rource_core::{FileId, UserId};
 use rource_math::{Bounds, Color, Rect, Vec2};
 use rource_render::{FontId, Renderer};
 
+// =============================================================================
+// Tracing Infrastructure (OP-1: Production Telemetry)
+// =============================================================================
+// When the `tracing` feature is enabled, these macros create spans that appear
+// in the browser console and Chrome DevTools Performance timeline.
+
+/// Creates a tracing span for a render phase (no-op when tracing is disabled).
+#[cfg(feature = "tracing")]
+macro_rules! trace_span {
+    ($name:expr) => {
+        let _span = tracing::info_span!($name).entered();
+    };
+    ($name:expr, $($field:tt)*) => {
+        let _span = tracing::info_span!($name, $($field)*).entered();
+    };
+}
+
+#[cfg(not(feature = "tracing"))]
+macro_rules! trace_span {
+    ($name:expr) => {};
+    ($name:expr, $($field:tt)*) => {};
+}
+
 // Import shared LOD constants from rource-render for visual parity with CLI
 use rource_render::lod::{
     MIN_DIR_LABEL_RADIUS as LOD_MIN_DIR_LABEL_RADIUS, MIN_DIR_RADIUS as LOD_MIN_DIR_RADIUS,
@@ -548,6 +571,8 @@ pub fn render_directories<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
+    trace_span!("render_directories", count = ctx.visible_dirs.len());
+
     // Pre-compute whether we should render directory branches at this zoom level
     let render_branches = should_render_directory_branches(ctx.camera_zoom);
 
@@ -620,6 +645,8 @@ pub fn render_directory_labels<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
+    trace_span!("render_directory_labels");
+
     if !ctx.show_labels {
         return;
     }
@@ -687,6 +714,8 @@ pub fn render_files<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
+    trace_span!("render_files", count = ctx.visible_files.len());
+
     // Pre-compute whether we should render file branches at this zoom level
     let render_branches = should_render_file_branches(ctx.camera_zoom);
 
@@ -781,6 +810,8 @@ pub fn render_actions<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
+    trace_span!("render_actions");
+
     // Collect active actions with their indices
     // V1: We'll prioritize by progress (newer beams = lower progress first)
     let mut active_indices: Vec<(usize, f32)> = scene
@@ -837,6 +868,8 @@ pub fn render_users<R: Renderer + ?Sized>(
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
 ) {
+    trace_span!("render_users", count = ctx.visible_users.len());
+
     for user_id in ctx.visible_users {
         if let Some(user) = scene.get_user(*user_id) {
             let alpha = user.alpha();
@@ -894,6 +927,8 @@ pub fn render_user_labels<R: Renderer + ?Sized>(
     label_candidates: &mut Vec<(UserId, Vec2, f32, f32, f32)>,
     label_placer: &mut LabelPlacer,
 ) {
+    trace_span!("render_user_labels");
+
     if !ctx.show_labels {
         return;
     }
@@ -1351,6 +1386,8 @@ pub fn render_file_labels<R: Renderer + ?Sized>(
     label_candidates: &mut Vec<(FileId, Vec2, f32, f32, f32)>,
     label_placer: &mut LabelPlacer,
 ) {
+    trace_span!("render_file_labels");
+
     if !ctx.show_labels || ctx.camera_zoom <= 0.15 {
         return;
     }
