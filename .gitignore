@@ -21,6 +21,9 @@ Thumbs.db
 mutants.out/
 mutants-output/
 
+# Visual regression test output (but NOT golden images)
+crates/rource-render/tests/visual/output/
+
 # WASM build artifacts
 /pkg/
 /wasm-pack-logs/
