@@ -807,11 +807,16 @@ Do NOT report security vulnerabilities via public GitHub issues.
 - ✅ Documentation created (`docs/testing/MUTATION_TESTING.md`)
 - ✅ Runs on PRs modifying `rource-math` or `rource-vcs`
 - ✅ Manual trigger via workflow_dispatch
+- ✅ **19 targeted tests added to color.rs** to kill identified mutants (2026-01-27)
+  - Bit manipulation tests for `from_hex_alpha`, `to_rgba8`, `to_argb8`, `to_abgr8`
+  - Boundary tests for `clamp`, `contrasting` (luminance threshold)
+  - Formula verification for `premultiplied`, `blend_over`, `fade`
+  - HSL conversion tests for achromatic, primary hues, saturation/lightness
 
 **Remaining**:
-- ⏳ Initial baseline run (long-running, ~30+ minutes per crate)
-- ⏳ Record baseline scores in documentation
-- ⏳ Analyze and address any significant test gaps
+- ⏳ Full baseline run in CI (long-running, ~30+ minutes per crate)
+- ⏳ Record final mutation scores in documentation
+- ⏳ Address any additional test gaps identified in baseline run
 
 #### Problem Statement
 2,076 tests exist but their effectiveness at catching bugs is unquantified.
