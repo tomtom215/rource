@@ -232,7 +232,7 @@ These APIs are for testing and debugging only. They may be removed or changed wi
 ### Usage Warning
 
 ```javascript
-// ⚠️ Experimental - Do not use in production
+// WARNING: Experimental - Do not use in production
 const debugInfo = rource.getZoomDebugInfo();
 console.log('Debug only:', debugInfo);
 ```

@@ -57,33 +57,33 @@ This benchmark compares **Rource** (Rust implementation) against **Gource** (ori
 
 | Platform | Rource | Gource |
 |----------|--------|--------|
-| Linux (native) | ✅ | ✅ |
-| macOS (native) | ✅ | ✅ |
-| Windows (native) | ✅ | ✅ |
-| WebAssembly (browser) | ✅ | ❌ |
-| True Headless (no GPU) | ✅ | ❌ |
-| ARM/RISC-V | ✅ | Limited |
+| Linux (native) | Yes | Yes |
+| macOS (native) | Yes | Yes |
+| Windows (native) | Yes | Yes |
+| WebAssembly (browser) | Yes | No |
+| True Headless (no GPU) | Yes | No |
+| ARM/RISC-V | Yes | Limited |
 
 ### Rendering Backends
 
 | Backend | Rource | Gource |
 |---------|--------|--------|
-| Software (CPU) | ✅ (default) | ❌ |
-| OpenGL | ❌ | ✅ (required) |
-| WebGL2 | ✅ (WASM) | ❌ |
+| Software (CPU) | Yes (default) | No |
+| OpenGL | No | Yes (required) |
+| WebGL2 | Yes (WASM) | No |
 
 ### Feature Matrix
 
 | Feature | Rource | Gource |
 |---------|--------|--------|
-| Git log parsing | ✅ | ✅ |
-| Custom log format | ✅ | ✅ |
-| SVN/CVS/Hg/Bzr | ❌ | ✅ |
-| PPM frame export | ✅ | ✅ |
-| Bloom effect | ✅ | ✅ |
-| 3D camera mode | ✅ | ❌ |
-| User avatars | ✅ | ✅ |
-| Logo/background | ✅ | ✅ |
+| Git log parsing | Yes | Yes |
+| Custom log format | Yes | Yes |
+| SVN/CVS/Hg/Bzr | No | Yes |
+| PPM frame export | Yes | Yes |
+| Bloom effect | Yes | Yes |
+| 3D camera mode | Yes | No |
+| User avatars | Yes | Yes |
+| Logo/background | Yes | Yes |
 
 ---
 

@@ -287,7 +287,7 @@ k × dt < 1/dt
 
 With typical dt = 1/60 and k = 100:
 ```
-k × dt = 100/60 ≈ 1.67 < 2 ✓
+k × dt = 100/60 ≈ 1.67 < 2 OK
 ```
 
 Stable configuration verified. ∎
@@ -693,7 +693,7 @@ From Section 1.3, relative error ≤ O(θ²).
 | 5000    | 0.8  | 16.0%        | 12.3%             |
 | 10000   | 1.0  | 25.0%        | 19.1%             |
 
-All empirical errors below theoretical bounds. ✓
+All empirical errors below theoretical bounds. OK
 
 **Speedup Analysis**:
 

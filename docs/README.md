@@ -23,12 +23,12 @@ Complete technical documentation for the Rource project.
 
 | Document | Description | Status |
 |----------|-------------|--------|
-| [README.md](../README.md) | Project overview, installation, usage | ✓ Current |
-| [CLAUDE.md](../CLAUDE.md) | Development guidelines and Expert+ standards | ✓ Current |
-| [CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution guidelines and setup | ✓ Current |
-| [STABILITY.md](../STABILITY.md) | API versioning and stability policy | ✓ Current |
-| [SECURITY.md](../SECURITY.md) | Security policy and vulnerability reporting | ✓ Current |
-| [CHANGELOG.md](../CHANGELOG.md) | Release history and optimization phases | ✓ Current |
+| [README.md](../README.md) | Project overview, installation, usage | Current |
+| [CLAUDE.md](../CLAUDE.md) | Development guidelines and Expert+ standards | Current |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution guidelines and setup | Current |
+| [STABILITY.md](../STABILITY.md) | API versioning and stability policy | Current |
+| [SECURITY.md](../SECURITY.md) | Security policy and vulnerability reporting | Current |
+| [CHANGELOG.md](../CHANGELOG.md) | Release history and optimization phases | Current |
 
 ---
 

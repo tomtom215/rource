@@ -345,9 +345,9 @@ The optimization IS effective for **typical interactive usage**:
 
 ## Recommendations
 
-### Immediate (Implemented ✓)
+### Immediate (Implemented Yes)
 
-1. **Only draw glow for touched files** ✓
+1. **Only draw glow for touched files** Yes
    - Change: 1 line (`if is_touched { ... }`)
    - Impact: Scenario-dependent (0-64% file render reduction)
    - Risk: Minor visual change (inactive files slightly dimmer)
@@ -444,8 +444,8 @@ Action beams use efficient line rendering. Already well-optimized.
 
 | Component | % of Render | Per-Entity | Status |
 |-----------|-------------|------------|--------|
-| Files | 68.1% | 3.9µs | ✓ Optimized (glow for touched only) |
-| Users | 14.3% | 5.5µs | ✓ Already optimized (is_active check) |
+| Files | 68.1% | 3.9µs | Yes Optimized (glow for touched only) |
+| Users | 14.3% | 5.5µs | Yes Already optimized (is_active check) |
 | Directories | 11.0% | 4.1µs | No changes needed |
 | Actions | 6.5% | 2.8µs | No changes needed |
 

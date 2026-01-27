@@ -94,7 +94,7 @@ The workflow posts a comment with this structure:
 
 Comparing PR branch `feature/xyz` against `main` (`abc1234`)
 
-### ✅ No Significant Regressions
+### PASS: No Significant Regressions
 All benchmarks are within the 5% tolerance threshold.
 
 ### Detailed Comparison
@@ -173,10 +173,10 @@ The workflow has a 45-minute timeout. For large benchmark suites:
 
 | Criterion | Requirement | Status |
 |-----------|-------------|--------|
-| Threshold | Block if >5% regression | ✓ Implemented |
-| Baseline | Compare against main branch | ✓ Implemented |
-| Report | PR comment with comparison | ✓ Implemented |
-| Override | Allow with justification (label) | ✓ Implemented |
+| Threshold | Block if >5% regression | Yes Implemented |
+| Baseline | Compare against main branch | Yes Implemented |
+| Report | PR comment with comparison | Yes Implemented |
+| Override | Allow with justification (label) | Yes Implemented |
 
 ---
 

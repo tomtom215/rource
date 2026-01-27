@@ -74,7 +74,7 @@ See [docs/performance/](docs/performance/) for the complete optimization history
 ## Table of Contents
 
 <details>
-<summary><strong>📖 This README</strong></summary>
+<summary><strong>This README</strong></summary>
 
 - [Features](#features) · [Why Rource?](#why-rource) · [Performance Highlights](#performance-highlights)
 - [Installation](#installation) · [Quick Start](#quick-start) · [Usage](#usage)
@@ -88,7 +88,7 @@ See [docs/performance/](docs/performance/) for the complete optimization history
 </details>
 
 <details>
-<summary><strong>📚 Documentation</strong></summary>
+<summary><strong>Documentation</strong></summary>
 
 | Document | Description |
 |----------|-------------|
@@ -101,7 +101,7 @@ See [docs/performance/](docs/performance/) for the complete optimization history
 </details>
 
 <details>
-<summary><strong>🏗️ Architecture & Design</strong></summary>
+<summary><strong>Architecture & Design</strong></summary>
 
 | Document | Description |
 |----------|-------------|
@@ -113,7 +113,7 @@ See [docs/performance/](docs/performance/) for the complete optimization history
 </details>
 
 <details>
-<summary><strong>⚡ Performance</strong></summary>
+<summary><strong>Performance</strong></summary>
 
 | Document | Description |
 |----------|-------------|
@@ -126,7 +126,7 @@ See [docs/performance/](docs/performance/) for the complete optimization history
 </details>
 
 <details>
-<summary><strong>🧪 Testing & Quality</strong></summary>
+<summary><strong>Testing & Quality</strong></summary>
 
 | Document | Description |
 |----------|-------------|

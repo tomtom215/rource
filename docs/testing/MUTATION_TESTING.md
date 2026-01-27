@@ -43,10 +43,10 @@ cargo mutants -p rource-math --timeout=60 --output=mutants-output
 
 | Outcome | Meaning | Good/Bad |
 |---------|---------|----------|
-| **Killed** | Mutant detected by tests | ✅ Good |
-| **Survived** | Mutant NOT detected | ❌ Bad (test gap) |
-| **Timeout** | Test took too long | ⚠️ Needs investigation |
-| **Unviable** | Mutation broke compilation | ➖ Ignored |
+| **Killed** | Mutant detected by tests | Good |
+| **Survived** | Mutant NOT detected | Bad (test gap) |
+| **Timeout** | Test took too long | Needs investigation |
+| **Unviable** | Mutation broke compilation | Ignored |
 
 ### Target Scores
 
