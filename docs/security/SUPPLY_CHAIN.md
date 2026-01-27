@@ -177,7 +177,7 @@ Core dependencies are audited and minimal:
 
 ## Security Contacts
 
-For security vulnerabilities, see [SECURITY.md](/SECURITY.md).
+For security vulnerabilities, see [SECURITY.md](../../SECURITY.md).
 
 ## References
 
@@ -189,5 +189,5 @@ For security vulnerabilities, see [SECURITY.md](/SECURITY.md).
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-01-27*
 *Task: SEC-3 Supply Chain Security (SLSA)*

@@ -310,7 +310,7 @@ Benchmark (Home Assistant Core: 103k commits, 533k file changes):
 - **Property tests**: Math operations with random inputs
 - **Doc tests**: Examples in rustdoc comments
 
-Total: **1,899 tests** across the codebase
+Total: **2,200+ tests** across the codebase
 
 ## Future Considerations
 
