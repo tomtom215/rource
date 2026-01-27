@@ -92,6 +92,8 @@ Complete timeline of all 72 optimization phases with dates, commits, and outcome
 | 70    | 2026-01-27 | Rendering       | File glow LOD culling + radius reduction   | Implemented  |
 | 71    | 2026-01-27 | Rendering       | SIMD-friendly batch blending infrastructure| Implemented  |
 | 72    | 2026-01-27 | Rendering       | Pre-computed inner bounds disc (3.06x)     | Implemented  |
+| 73    | 2026-01-27 | Documentation   | Floyd's Tortoise and Hare Algorithm analysis| Documented   |
+| 74    | 2026-01-27 | Data Integrity  | Floyd's Algorithm production implementation | Implemented  |
 
 ---
 
@@ -2286,6 +2288,177 @@ For r=50 disc (diameter 100, ~7850 pixels, ~100 scanlines):
 
 - [Phase 71](#phase-71-simd-friendly-batch-blending-infrastructure-2026-01-27) - Batch blend infrastructure
 - [docs/RENDERING_BOTTLENECK_ANALYSIS.md](../RENDERING_BOTTLENECK_ANALYSIS.md) - Optimization priorities
+
+---
+
+## Phase 73: Floyd's Tortoise and Hare Algorithm Analysis (2026-01-27)
+
+### Summary
+
+**Category**: Documentation
+**Status**: Documented
+**Date**: 2026-01-27
+
+Comprehensive analysis and documentation of Floyd's Cycle Detection Algorithm
+(Tortoise and Hare) for potential integration into Rource's data validation
+and testing infrastructure.
+
+### Background
+
+Floyd's algorithm (1967) is a pointer-based cycle detection technique that achieves
+O(μ + λ) time complexity with O(1) space—making it optimal for memory-constrained
+environments like WASM. Key properties:
+
+| Parameter | Symbol | Definition |
+|-----------|--------|------------|
+| Cycle Start | μ | Index where cycle begins |
+| Cycle Length | λ | Size of the repeating cycle |
+| Tail Length | μ | Elements before cycle |
+
+### Applicability Analysis
+
+| Use Case | Location | Priority |
+|----------|----------|----------|
+| Directory tree cycle detection | `crates/rource-core/src/scene/tree.rs` | HIGH |
+| PRNG period verification | `tests/chaos/wasm/mod.rs` | HIGH |
+| Hash collision analysis | `crates/rource-core/src/scene/user.rs` | MODERATE |
+
+### Documentation Added
+
+- **740 lines** added to `docs/performance/THEORETICAL_ALGORITHMS.md`
+- Mathematical proof of correctness
+- Three-phase algorithm pseudocode
+- Complexity analysis with comparison table
+- Brent's algorithm variant (~36% faster)
+- Five application domains with code examples
+- Complete Rust implementation reference
+
+### Related Documentation
+
+- [THEORETICAL_ALGORITHMS.md](THEORETICAL_ALGORITHMS.md) - Complete algorithm reference
+- [Phase 74](#phase-74-floyds-algorithm-production-implementation-2026-01-27) - Implementation
+
+---
+
+## Phase 74: Floyd's Algorithm Production Implementation (2026-01-27)
+
+### Summary
+
+**Category**: Data Integrity
+**Status**: Implemented
+**Date**: 2026-01-27
+
+Production implementation of Floyd's Tortoise and Hare Algorithm for data
+integrity validation in Rource. Implements O(1) space cycle detection for
+directory tree validation, PRNG period testing, and hash distribution analysis.
+
+### Implementations
+
+#### 1. DirTree Cycle Detection (`tree.rs`)
+
+Added `detect_ancestor_cycle()` method to `DirTree` for validating parent-chain
+integrity using Floyd's algorithm.
+
+```rust
+/// Detects if there is a cycle in the ancestor chain.
+/// Uses Floyd's Tortoise and Hare algorithm for O(1) space.
+pub fn detect_ancestor_cycle(&self, id: DirId) -> bool
+```
+
+**Complexity**:
+- Time: O(μ + λ) where μ = tail length, λ = cycle length
+- Space: O(1) - two pointers only
+
+**Added Methods**:
+- `detect_ancestor_cycle(&self, id: DirId) -> bool`
+- `validate_no_cycles(&self) -> bool`
+
+#### 2. PRNG Period Verification (`tests/chaos/wasm/mod.rs`)
+
+Added Floyd's cycle detection for verifying LCG PRNG doesn't have short cycles.
+
+```rust
+pub fn floyd_cycle_detect<T, F>(x0: T, f: F, max_iterations: u64) -> Option<CycleInfo>
+pub fn verify_lcg_no_short_cycle(seed: u64, max_check: u64) -> bool
+```
+
+**LCG Parameters Verified**:
+- Multiplier: 6364136223846793005 (from PCG)
+- Increment: 1
+- Full period: 2^64 (no short cycles detected in 10M iterations)
+
+#### 3. Hash Distribution Tests (`user.rs`)
+
+Added Floyd's algorithm-based tests for `color_from_name()` hash quality:
+
+- `test_color_hash_no_short_cycle` - Verifies hash doesn't cycle early
+- `test_color_hash_distribution_quality` - Validates hue distribution
+- `test_color_hash_collision_resistance` - Tests similar names diverge
+- `test_color_hash_empty_and_special` - Edge case handling
+
+### Test Summary
+
+| Test Category | Tests Added | Status |
+|---------------|-------------|--------|
+| DirTree cycle detection | 6 | ✅ Pass |
+| Color hash distribution | 4 | ✅ Pass |
+| Floyd's algorithm (general) | 8 | ✅ Pass |
+
+**Total New Tests**: 18
+
+### Files Modified
+
+- `crates/rource-core/src/scene/tree.rs`
+  - Added `detect_ancestor_cycle()` (lines 621-693)
+  - Added `validate_no_cycles()` (lines 696-720)
+  - Added 6 unit tests (lines 953-1056)
+
+- `crates/rource-core/src/scene/user.rs`
+  - Added 4 hash distribution tests (lines 447-578)
+
+- `tests/chaos/wasm/mod.rs`
+  - Added `CycleInfo` struct (lines 161-168)
+  - Added `floyd_cycle_detect()` function (lines 170-230)
+  - Added `verify_lcg_no_short_cycle()` function (lines 232-248)
+  - Added 8 unit tests (lines 292-408)
+
+### Key Metrics
+
+| Metric | Value |
+|--------|-------|
+| Time Complexity | O(μ + λ) |
+| Space Complexity | O(1) |
+| Tests Added | 18 |
+| Files Modified | 3 |
+| Lines Added | ~350 |
+
+### Complexity Analysis
+
+**Floyd's Algorithm vs Alternatives**:
+
+| Method | Time | Space | Notes |
+|--------|------|-------|-------|
+| Hash table | O(μ + λ) | O(μ + λ) | Stores all visited states |
+| Floyd's | O(μ + λ) | O(1) | Two pointers only |
+| Brent's | O(μ + λ) | O(1) | ~36% faster on average |
+
+**WASM Benefit**: O(1) space is critical for WASM environments where memory
+is constrained. Hash table approach would require O(n) memory for n ancestors.
+
+### Pre-existing Issues Fixed
+
+During clippy verification, the following pre-existing issues were fixed:
+
+- `crates/rource-render/benches/disc_perf.rs`: Fixed 2 `uninlined_format_args` warnings
+- `crates/rource-render/src/backend/software/optimized.rs`: Fixed 8 clippy warnings
+  - 6 loop variable indexing warnings
+  - 1 redundant clone
+  - 1 uninlined format args
+
+### Related Documentation
+
+- [Phase 73](#phase-73-floyds-tortoise-and-hare-algorithm-analysis-2026-01-27) - Algorithm analysis
+- [THEORETICAL_ALGORITHMS.md](THEORETICAL_ALGORITHMS.md) - Complete algorithm reference
 
 ---
 

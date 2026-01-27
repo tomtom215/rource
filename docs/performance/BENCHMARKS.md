@@ -961,4 +961,69 @@ pub fn estimate_text_width(text: &str, font_size: f32) -> f32 {
 
 ---
 
-*Last updated: 2026-01-26*
+## Phase 74: Floyd's Tortoise and Hare Algorithm (2026-01-27)
+
+### Complexity Analysis
+
+Floyd's cycle detection algorithm provides optimal time-space tradeoff for
+cycle detection in sequences:
+
+| Algorithm | Time | Space | Function Evaluations |
+|-----------|------|-------|---------------------|
+| Hash table | O(μ + λ) | O(μ + λ) | μ + λ |
+| Floyd's | O(μ + λ) | O(1) | ≤ 3(μ + λ) |
+| Brent's | O(μ + λ) | O(1) | ≤ 2(μ + λ) |
+
+Where:
+- μ = tail length (elements before cycle)
+- λ = cycle length
+
+### DirTree Ancestor Cycle Detection
+
+Implemented in `crates/rource-core/src/scene/tree.rs`:
+
+| Metric | Value |
+|--------|-------|
+| Algorithm | Floyd's Tortoise and Hare |
+| Time Complexity | O(d) where d = tree depth |
+| Space Complexity | O(1) - two pointers |
+| Memory per call | 16 bytes (2 × DirId) |
+
+### PRNG Period Verification
+
+LCG configuration tested for short cycles:
+
+| Parameter | Value |
+|-----------|-------|
+| Multiplier | 6364136223846793005 |
+| Increment | 1 |
+| Full Period | 2^64 |
+| Verified Iterations | 10,000,000 |
+| Short Cycles Found | None |
+
+### Hash Distribution Analysis
+
+`color_from_name()` hash function analysis:
+
+| Hash Function | DJB2 variant |
+|---------------|--------------|
+| Formula | h = h × 31 + byte |
+| Hue Buckets Used | ≥ 6 (of 36) |
+| Max per Bucket | ≤ 30% of names |
+| Collision Resistance | Verified for similar names |
+
+### WASM Memory Benefit
+
+Comparison of cycle detection approaches for WASM environments:
+
+| Approach | Memory (100 ancestors) | Memory (1000 ancestors) |
+|----------|------------------------|-------------------------|
+| Hash table | 4 KB | 40 KB |
+| Floyd's (O(1)) | 16 bytes | 16 bytes |
+
+**WASM Advantage**: Floyd's O(1) space is critical for memory-constrained
+WASM environments. Hash table approach scales linearly with depth.
+
+---
+
+*Last updated: 2026-01-27*

@@ -1527,10 +1527,12 @@ mod tests {
         blend_scanline_uniform(&mut pixels, 10, 20, 255, 0, 0, 256); // Red, fully opaque
 
         // Check all 20 pixels are red
-        for i in 10..30 {
+        for (i, &pixel) in pixels[10..30].iter().enumerate() {
             assert_eq!(
-                pixels[i], 0xFFFF_0000,
-                "Pixel {i} should be red after opaque blend"
+                pixel,
+                0xFFFF_0000,
+                "Pixel {} should be red after opaque blend",
+                i + 10
             );
         }
 
@@ -1545,8 +1547,7 @@ mod tests {
         blend_scanline_uniform(&mut pixels, 0, 10, 255, 255, 255, 128); // 50% white
 
         // Check all 10 pixels are gray (~128)
-        for i in 0..10 {
-            let pixel = pixels[i];
+        for (i, &pixel) in pixels[0..10].iter().enumerate() {
             let r = (pixel >> 16) & 0xFF;
             let g = (pixel >> 8) & 0xFF;
             let b = pixel & 0xFF;
@@ -1573,9 +1574,9 @@ mod tests {
         blend_scanline_uniform(&mut pixels, 0, 50, 0, 255, 0, 0); // Transparent green
 
         // All pixels should still be red
-        for i in 0..50 {
+        for (i, &pixel) in pixels[0..50].iter().enumerate() {
             assert_eq!(
-                pixels[i], 0xFFFF_0000,
+                pixel, 0xFFFF_0000,
                 "Pixel {i} should still be red after transparent blend"
             );
         }
@@ -1597,12 +1598,12 @@ mod tests {
         blend_scanline_uniform(&mut pixels, 5, 100, 0, 255, 0, 256);
 
         // First 5 unchanged
-        for i in 0..5 {
-            assert_eq!(pixels[i], 0xFFFF_0000);
+        for pixel in &pixels[0..5] {
+            assert_eq!(*pixel, 0xFFFF_0000);
         }
         // Rest should be green
-        for i in 5..10 {
-            assert_eq!(pixels[i], 0xFF00_FF00);
+        for pixel in &pixels[5..10] {
+            assert_eq!(*pixel, 0xFF00_FF00);
         }
     }
 
@@ -1613,9 +1614,9 @@ mod tests {
             let mut pixels = vec![0xFF00_0000; 100];
             blend_scanline_uniform(&mut pixels, 0, count, 255, 255, 255, 256);
 
-            for i in 0..count {
+            for (i, &pixel) in pixels[0..count].iter().enumerate() {
                 assert_eq!(
-                    pixels[i], 0xFFFF_FFFF,
+                    pixel, 0xFFFF_FFFF,
                     "Pixel {i} should be white (count={count})"
                 );
             }
@@ -1644,7 +1645,7 @@ mod tests {
         // Verify batch blend produces same results as per-pixel blend
         let initial = vec![0xFF80_4020; 20];
         let mut batch_pixels = initial.clone();
-        let mut single_pixels = initial.clone();
+        let mut single_pixels = initial;
 
         let (r, g, b, alpha) = (200, 100, 50, 180);
 
@@ -1838,10 +1839,7 @@ mod tests {
                 if diff_count <= 10 {
                     let x = i % 100;
                     let y = i / 100;
-                    println!(
-                        "Diff at ({}, {}): original={:#010X}, precomputed={:#010X}",
-                        x, y, p1, p2
-                    );
+                    println!("Diff at ({x}, {y}): original={p1:#010X}, precomputed={p2:#010X}");
                 }
             }
         }
@@ -1850,8 +1848,7 @@ mod tests {
         }
         assert_eq!(
             diff_count, 0,
-            "Precomputed disc should match original disc ({} differences found)",
-            diff_count
+            "Precomputed disc should match original disc ({diff_count} differences found)"
         );
     }
 
