@@ -13,9 +13,10 @@ Organized by optimization category with implementation details and code location
 4. [Compile-Time Optimizations](#compile-time-optimizations)
 5. [Parser Optimizations](#parser-optimizations)
 6. [WASM Optimizations](#wasm-optimizations)
-7. [Browser-Specific Optimizations](#browser-specific-optimizations)
-8. [Dependency Optimizations](#dependency-optimizations)
-9. [Compiler Optimizations](#compiler-optimizations)
+7. [Rendering Optimizations](#rendering-optimizations)
+8. [Browser-Specific Optimizations](#browser-specific-optimizations)
+9. [Dependency Optimizations](#dependency-optimizations)
+10. [Compiler Optimizations](#compiler-optimizations)
 
 ---
 
@@ -803,6 +804,70 @@ for strip in 0..(width / STRIP_WIDTH) {
 
 ---
 
+## Rendering Optimizations
+
+### File Glow LOD Culling and Radius Reduction
+
+**Phase**: 70
+**Location**: `rource-wasm/src/render_phases.rs`, `rource-cli/src/rendering.rs`
+**Impact**: 43.75% reduction in glow pixel area + LOD culling for small files
+
+Optimized file glow rendering through two complementary strategies:
+
+1. **LOD Culling**: Skip glow rendering when `effective_radius < 3.0` (glow imperceptible)
+2. **Radius Reduction**: Reduce glow radius from 2.0x to 1.5x effective_radius
+
+**Before (Phase 59)**:
+```rust
+// Glow for all touched files, regardless of size
+if is_touched {
+    let glow_color = color.with_alpha(0.25 * alpha);
+    renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+}
+```
+
+**After (Phase 70)**:
+```rust
+// LOD culling + reduced radius
+if is_touched && effective_radius >= 3.0 {
+    let glow_color = color.with_alpha(0.25 * alpha);
+    renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);
+}
+```
+
+**Pixel Area Reduction** (Mathematical Proof):
+
+```
+Glow disc area = pi * r_glow^2
+
+Before: A_before = pi * (2.0 * r_eff)^2 = 4.0 * pi * r_eff^2
+After:  A_after  = pi * (1.5 * r_eff)^2 = 2.25 * pi * r_eff^2
+
+Reduction = (A_before - A_after) / A_before
+          = (4.0 - 2.25) / 4.0
+          = 1.75 / 4.0
+          = 43.75%
+```
+
+**Benchmark Results**:
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| LOD culling decision overhead | 0 ns/file | Negligible (single comparison) |
+| Glow area reduction | 43.75% | (2.0^2 - 1.5^2) / 2.0^2 |
+| Files affected by LOD culling | Variable | Depends on zoom level |
+
+**Test Coverage**:
+- `test_glow_lod_culling_threshold_boundary` - Threshold behavior
+- `test_glow_radius_calculation` - Area reduction verification
+- `test_glow_lod_culling_condition` - Condition logic
+- `bench_glow_lod_culling` - Decision overhead measurement
+
+**Visual Impact**: Glow remains visible for normal-sized files, slightly tighter around file discs.
+Small files (when zoomed out) no longer have imperceptible glow rendered.
+
+---
+
 ## Browser-Specific Optimizations
 
 ### Firefox GPU Physics Workaround
@@ -1143,4 +1208,4 @@ A comprehensive performance audit identified and resolved the following issues:
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-01-27*

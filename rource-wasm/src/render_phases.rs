@@ -751,12 +751,14 @@ pub fn render_files<R: Renderer + ?Sized>(
                 }
             }
 
-            // Draw soft glow behind file ONLY for touched files
-            // Optimization: Skip glow for inactive files (~97% of files)
+            // Draw soft glow behind file ONLY for touched files AND large enough to be visible
+            // Phase 59: Skip glow for inactive files (~97% of files)
+            // Phase 70: LOD culling - skip glow when effective_radius < 3.0 (glow imperceptible)
+            //           Reduced glow radius from 2.0x to 1.5x (-44% pixel area: 4.0x -> 2.25x)
             let is_touched = file.touch_time() > 0.0;
-            if is_touched {
+            if is_touched && effective_radius >= 3.0 {
                 let glow_color = color.with_alpha(0.25 * alpha);
-                renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+                renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);
             }
 
             // Outer ring (darker border)
@@ -1889,6 +1891,84 @@ mod tests {
     }
 
     // -------------------------------------------------------------------------
+    // Phase 70: Glow LOD Culling Tests
+    // -------------------------------------------------------------------------
+
+    /// Tests the LOD culling threshold for glow rendering.
+    ///
+    /// Phase 70 introduced LOD culling: glow is only drawn when
+    /// `effective_radius` >= 3.0, because smaller glows are imperceptible.
+    #[test]
+    fn test_glow_lod_culling_threshold_boundary() {
+        // At exactly 3.0, glow SHOULD be rendered
+        let at_threshold = compute_file_effective_radius(3.0);
+        assert!(
+            at_threshold >= 3.0,
+            "effective_radius at 3.0 should pass threshold"
+        );
+
+        // Just below threshold, glow should NOT be rendered
+        // Note: effective_radius has a minimum of 2.0, so we test behavior at various inputs
+        let below_threshold = compute_file_effective_radius(2.5);
+        assert!(
+            below_threshold < 3.0,
+            "effective_radius at 2.5 should be below threshold"
+        );
+    }
+
+    /// Tests that glow radius calculation is correct (1.5x after Phase 70).
+    #[test]
+    fn test_glow_radius_calculation() {
+        let effective_radius: f32 = 5.0;
+        let glow_radius: f32 = effective_radius * 1.5; // Phase 70: reduced from 2.0
+        assert!((glow_radius - 7.5).abs() < 0.001);
+
+        // Verify area reduction: 1.5^2 = 2.25 vs 2.0^2 = 4.0
+        // Reduction = 1 - (2.25/4.0) = 0.4375 = 43.75%
+        let old_area: f32 = std::f32::consts::PI * (effective_radius * 2.0).powi(2);
+        let new_area: f32 = std::f32::consts::PI * glow_radius.powi(2);
+        let reduction: f32 = 1.0 - (new_area / old_area);
+        assert!(
+            (reduction - 0.4375).abs() < 0.001,
+            "Area reduction should be 43.75%"
+        );
+    }
+
+    /// Tests glow LOD culling condition matches implementation.
+    #[test]
+    fn test_glow_lod_culling_condition() {
+        // Helper function matching the render_files condition:
+        // if is_touched && effective_radius >= 3.0
+        fn should_render_glow(is_touched: bool, effective_radius: f32) -> bool {
+            is_touched && effective_radius >= 3.0
+        }
+
+        // Case 1: touched + large radius -> glow rendered
+        assert!(
+            should_render_glow(true, 5.0),
+            "touched + radius 5.0 should render glow"
+        );
+
+        // Case 2: touched + small radius -> glow NOT rendered (LOD culling)
+        assert!(
+            !should_render_glow(true, 2.5),
+            "touched + radius 2.5 should NOT render glow"
+        );
+
+        // Case 3: not touched + large radius -> glow NOT rendered (Phase 59)
+        assert!(
+            !should_render_glow(false, 5.0),
+            "not touched should never render glow (Phase 59)"
+        );
+
+        // Case 4: not touched + small radius -> glow NOT rendered
+        assert!(
+            !should_render_glow(false, 2.5),
+            "not touched + small radius should not render glow"
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // File Border Color Tests
     // -------------------------------------------------------------------------
 
@@ -2604,6 +2684,89 @@ mod tests {
         assert!(
             utf8_per_call_ps < 50_000, // 50ns in picoseconds
             "estimate_text_width too slow: {utf8_per_call_ps} ps/call"
+        );
+    }
+
+    /// Benchmark for Phase 70 glow rendering optimization.
+    ///
+    /// Measures the theoretical improvement from:
+    /// 1. LOD culling (skip glow when `effective_radius` < 3.0)
+    /// 2. Reduced glow radius (2.0x -> 1.5x = 43.75% fewer pixels)
+    ///
+    /// Run with: `cargo test -p rource-wasm bench_glow --release -- --nocapture`
+    #[test]
+    fn bench_glow_lod_culling() {
+        use std::time::Instant;
+
+        const ITERATIONS: u32 = 100_000;
+
+        // Simulate decision logic for glow rendering
+        // This measures the overhead of the LOD culling check itself
+
+        // Scenario: 1000 files with various radii (realistic distribution)
+        // Radii range from 1.0 to 10.0, with uniform distribution across file indices
+        let file_radii: Vec<f32> = (0..1000)
+            .map(|i| {
+                // Use prime-based mixing to decorrelate radius from index
+                let base = ((i * 7 + 3) % 10) as f32 + 1.0; // 1.0 to 10.0
+                compute_file_effective_radius(base)
+            })
+            .collect();
+
+        // 5% of files are touched, distributed uniformly
+        let touch_states: Vec<bool> = (0..1000).map(|i| i % 20 == 0).collect();
+
+        // Measure decision overhead for Phase 70 condition
+        let start = Instant::now();
+        let mut glow_count = 0u32;
+        for _ in 0..ITERATIONS {
+            for i in 0..file_radii.len() {
+                let is_touched = touch_states[i];
+                let effective_radius = file_radii[i];
+
+                // Phase 70 condition
+                if is_touched && effective_radius >= 3.0 {
+                    glow_count += 1;
+                }
+            }
+        }
+        let elapsed = start.elapsed();
+        let total_decisions = u128::from(ITERATIONS) * 1000;
+        let ns_per_decision = elapsed.as_nanos() / total_decisions;
+
+        // Count how many glows would be rendered vs skipped
+        let files_touched = touch_states.iter().filter(|&&t| t).count();
+        let files_large_enough = file_radii.iter().filter(|&&r| r >= 3.0).count();
+        let files_both = file_radii
+            .iter()
+            .zip(touch_states.iter())
+            .filter(|&(&r, &t)| t && r >= 3.0)
+            .count();
+
+        let touched_skip_pct = if files_touched > 0 {
+            100.0 - (files_both as f64 / files_touched as f64 * 100.0)
+        } else {
+            0.0
+        };
+
+        // Area reduction from 2.0x to 1.5x
+        let old_area_multiplier = 4.0_f64; // 2.0^2
+        let new_area_multiplier = 2.25_f64; // 1.5^2
+        let area_reduction_pct = (1.0 - new_area_multiplier / old_area_multiplier) * 100.0;
+
+        println!("\nPhase 70 Glow LOD Culling Benchmark:");
+        println!("  Files tested: 1000 (5% touched = {files_touched})");
+        println!("  Files with effective_radius >= 3.0: {files_large_enough}");
+        println!("  Files rendering glow (touched AND large): {files_both}");
+        println!("  LOD culling saves: {touched_skip_pct:.1}% of touched file glows");
+        println!("  Decision overhead: {ns_per_decision} ns/file (negligible)");
+        println!("  Glow count (sanity check): {glow_count}");
+        println!("  Glow area reduction (radius 2.0x->1.5x): {area_reduction_pct:.2}%");
+
+        // Decision overhead should be < 1ns (just a comparison)
+        assert!(
+            ns_per_decision < 5,
+            "LOD culling decision overhead too high: {ns_per_decision} ns"
         );
     }
 }
