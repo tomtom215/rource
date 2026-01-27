@@ -15,7 +15,8 @@
 5. [Rendering Issues](#rendering-issues)
 6. [Browser-Specific Issues](#browser-specific-issues)
 7. [Deployment Issues](#deployment-issues)
-8. [Monitoring and Alerting](#monitoring-and-alerting)
+8. [Error Rate Issues](#error-rate-issues)
+9. [Monitoring and Alerting](#monitoring-and-alerting)
 
 ---
 
@@ -306,6 +307,90 @@ console.log('Renderer:', rource.getRendererType());
 
 ---
 
+## Error Rate Issues
+
+### Playbook: High Error Rate (>0.1%)
+
+**Symptoms**:
+- Parse failures on valid-looking logs
+- Multiple operations failing
+- Console showing repeated error messages
+
+**Diagnosis**:
+```javascript
+// 1. Check overall error rate
+console.log('Error rate:', rource.getErrorRate().toFixed(4) + '%');
+
+// 2. Get detailed error breakdown
+const metrics = JSON.parse(rource.getDetailedErrorMetrics());
+console.log('Parse errors:', metrics.errors.parse, '/', metrics.operations.parse);
+console.log('Render errors:', metrics.errors.render, '/', metrics.operations.render);
+console.log('WebGL errors:', metrics.errors.webgl, '/', metrics.operations.webgl);
+
+// 3. Check if threshold exceeded
+if (rource.errorRateExceedsThreshold(0.1)) {
+    console.warn('Error budget exhausted!');
+}
+```
+
+**Resolution by Category**:
+
+| Category | Threshold | Resolution |
+|----------|-----------|------------|
+| Parse >0.5% | Check input format | Verify git log command, check encoding |
+| Render >0.01% | Check WebGL status | Fall back to software renderer |
+| WebGL >0.1% | Check browser support | Refresh page, try different browser |
+| Config >1% | Check settings | Reset to defaults |
+| Asset >0.5% | Check network | Retry asset loading |
+
+### Playbook: Parse Error Surge
+
+**Symptoms**:
+- `loadGitLog()` returning errors
+- High parse error count in metrics
+- Truncated or garbled commit data
+
+**Diagnosis**:
+```javascript
+// Check parse error rate specifically
+console.log('Parse error rate:', rource.getParseErrorRate().toFixed(4) + '%');
+console.log('Parse errors:', rource.getParseErrorCount());
+
+// Get detailed breakdown
+const metrics = JSON.parse(rource.getDetailedErrorMetrics());
+console.log('Parse ops:', metrics.operations.parse);
+```
+
+**Resolution**:
+1. Verify git log format:
+   ```bash
+   git log --pretty=format:'%at|%an|%s' --stat --no-merges
+   ```
+2. Check for encoding issues (UTF-8 BOM, non-UTF-8 characters)
+3. Enable lenient parsing (default)
+4. If persists, file bug with sample input (redacted)
+
+### Playbook: WebGL Context Lost
+
+**Symptoms**:
+- Black screen after running for a while
+- WebGL error count increasing
+- "Context lost" errors in console
+
+**Diagnosis**:
+```javascript
+console.log('WebGL errors:', rource.getWebGlErrorCount());
+console.log('Renderer type:', rource.getRendererType());
+```
+
+**Resolution**:
+1. Automatic fallback to software renderer should occur
+2. Refresh page to reset WebGL context
+3. Check system memory pressure
+4. Try reducing entity count or disabling bloom
+
+---
+
 ## Monitoring and Alerting
 
 ### Key Metrics to Monitor
@@ -316,6 +401,8 @@ console.log('Renderer:', rource.getRendererType());
 | Memory growth | <5%/30min | >10%/30min |
 | Crash count | 0 | >0 |
 | CI pass rate | 100% | <95% |
+| **Error rate** | **<0.1%** | **>0.05%** |
+| **Parse error rate** | **<0.5%** | **>0.1%** |
 
 ### Alerting Setup
 
@@ -330,7 +417,44 @@ console.log('Renderer:', rource.getRendererType());
 if (rource.getLastFrameTime() > 20) {
     console.warn('Frame time exceeds target:', rource.getLastFrameTime());
 }
+
+// Add error rate warnings
+if (rource.errorRateExceedsThreshold(0.05)) {
+    console.warn('Error rate warning:', rource.getErrorRate().toFixed(4) + '%');
+}
+if (rource.errorRateExceedsThreshold(0.1)) {
+    console.error('Error budget exhausted:', rource.getErrorRate().toFixed(4) + '%');
+}
 ```
+
+### Error Budget Monitoring
+
+Monitor error rates to ensure SLO compliance:
+
+```javascript
+// Periodic error budget check
+function checkErrorBudget() {
+    const metrics = JSON.parse(rource.getErrorMetrics());
+
+    // Log current state
+    console.log(`Error budget: ${(0.1 - metrics.rate * 100).toFixed(4)}% remaining`);
+
+    // Alert if approaching threshold
+    if (metrics.rate > 0.0005) { // >0.05%
+        console.warn('Error rate warning - approaching budget limit');
+    }
+
+    if (metrics.rate > 0.001) { // >0.1%
+        console.error('Error budget EXHAUSTED');
+        // Trigger mitigation
+    }
+}
+
+// Run every 60 seconds
+setInterval(checkErrorBudget, 60000);
+```
+
+See [ERROR_BUDGET.md](./ERROR_BUDGET.md) for detailed error budget policy.
 
 ---
 

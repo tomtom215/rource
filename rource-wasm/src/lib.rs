@@ -107,7 +107,7 @@ use rource_vcs::Commit;
 // Internal re-exports for submodules
 use backend::{RendererBackend, RendererType};
 use interaction::DragTarget;
-use metrics::{PerformanceMetrics, RenderStats};
+use metrics::{ErrorCategory, ErrorMetrics, PerformanceMetrics, RenderStats};
 use playback::{apply_vcs_commit, calculate_seconds_per_commit, prewarm_scene, PlaybackState};
 use render_phases::{
     render_actions, render_directories, render_directory_labels, render_file_labels, render_files,
@@ -444,6 +444,9 @@ pub struct Rource {
     /// Render statistics for the current frame.
     render_stats: RenderStats,
 
+    /// Error metrics for tracking errors by category.
+    error_metrics: ErrorMetrics,
+
     // ---- Visibility Buffers (zero-allocation rendering) ----
     /// Reusable buffer for visible directory IDs.
     visible_dirs_buf: Vec<DirId>,
@@ -591,6 +594,7 @@ impl Rource {
             perf_metrics: PerformanceMetrics::new(),
             frame_profiler: profiler::FrameProfiler::new(),
             render_stats: RenderStats::default(),
+            error_metrics: ErrorMetrics::new(),
             // Pre-allocate visibility buffers for zero-allocation rendering
             visible_dirs_buf: Vec::with_capacity(1024),
             visible_files_buf: Vec::with_capacity(4096),
@@ -742,11 +746,16 @@ impl Rource {
     /// to detect if truncation occurred.
     #[wasm_bindgen(js_name = loadCustomLog)]
     pub fn load_custom_log(&mut self, log: &str) -> Result<usize, JsValue> {
+        // Record parse operation
+        self.error_metrics.record_operation(ErrorCategory::Parse);
+
         // Use lenient parsing to handle malformed lines gracefully
         let parser = CustomParser::with_options(ParseOptions::lenient());
-        let commits = parser
-            .parse_str(log)
-            .map_err(|e| JsValue::from_str(&format!("Parse error: {e}")))?;
+        let commits = parser.parse_str(log).map_err(|e| {
+            // Record parse error
+            self.error_metrics.record_error(ErrorCategory::Parse);
+            JsValue::from_str(&format!("Parse error: {e}"))
+        })?;
 
         Ok(self.load_commits_internal(commits))
     }
@@ -762,11 +771,16 @@ impl Rource {
     /// to detect if truncation occurred.
     #[wasm_bindgen(js_name = loadGitLog)]
     pub fn load_git_log(&mut self, log: &str) -> Result<usize, JsValue> {
+        // Record parse operation
+        self.error_metrics.record_operation(ErrorCategory::Parse);
+
         // Use lenient parsing to handle malformed lines gracefully
         let parser = GitParser::with_options(ParseOptions::lenient());
-        let commits = parser
-            .parse_str(log)
-            .map_err(|e| JsValue::from_str(&format!("Parse error: {e}")))?;
+        let commits = parser.parse_str(log).map_err(|e| {
+            // Record parse error
+            self.error_metrics.record_error(ErrorCategory::Parse);
+            JsValue::from_str(&format!("Parse error: {e}"))
+        })?;
 
         Ok(self.load_commits_internal(commits))
     }
