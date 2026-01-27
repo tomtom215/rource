@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all 69 optimization phases with dates, commits, and outcomes.
+Complete timeline of all 72 optimization phases with dates, commits, and outcomes.
 
 ---
 
@@ -90,6 +90,8 @@ Complete timeline of all 69 optimization phases with dates, commits, and outcome
 | 68    | 2026-01-26 | Typography      | Label width estimation accuracy fix        | Implemented  |
 | 69    | 2026-01-26 | Layout          | Disc overlap prevention (files + dirs)     | Implemented  |
 | 70    | 2026-01-27 | Rendering       | File glow LOD culling + radius reduction   | Implemented  |
+| 71    | 2026-01-27 | Rendering       | SIMD-friendly batch blending infrastructure| Implemented  |
+| 72    | 2026-01-27 | Rendering       | Pre-computed inner bounds disc (3.06x)     | Implemented  |
 
 ---
 
@@ -2133,6 +2135,153 @@ For disc rendering, the benefit is limited because:
 ### Related Documentation
 
 - [docs/RENDERING_BOTTLENECK_ANALYSIS.md](../RENDERING_BOTTLENECK_ANALYSIS.md) - SIMD vectorization priority
+
+---
+
+## Phase 72: Pre-Computed Inner Bounds Disc Rendering (2026-01-27)
+
+**Category**: Rendering Optimization
+**Impact**: 3.06x to 3.91x speedup for disc rendering (r≥12)
+**Complexity**: Medium
+**Risk**: Low (bit-exact output verified)
+
+### Problem Statement
+
+Phase 71's `draw_disc_simd` used runtime run-length tracking (`Option<i32>` per pixel) to identify inner region batches. This overhead negated the batch blending benefit, resulting in 2-3% slowdown.
+
+The bottleneck was per-pixel Option bookkeeping:
+- `is_none()` check on every inner pixel
+- `.take()` on every run boundary
+- Double-processing on edge scanlines (both edge loops ran)
+
+### Solution
+
+Replace runtime run tracking with **pre-computed inner bounds per scanline** using geometry:
+
+For a disc with center (cx, cy) and inner_radius r_i, on scanline y:
+```
+dy = y + 0.5 - cy
+if dy² < r_i²:
+    dx_inner = sqrt(r_i² - dy²)
+    inner_left = ceil(cx - dx_inner + 0.5)   // Conservative bound
+    inner_right = floor(cx + dx_inner - 0.5)
+else:
+    no inner region (all edge pixels)
+```
+
+Key improvements:
+1. **One sqrt per scanline** instead of Option tracking per pixel
+2. **Direct batch processing** of inner region without per-pixel checks
+3. **Correct edge-only scanline handling** - only left edge loop processes pixels
+
+```rust
+pub fn draw_disc_precomputed(...) {
+    // For each scanline
+    for py in min_y..=max_y {
+        let dy_sq = dy * dy;
+
+        // Pre-compute inner bounds (one sqrt)
+        let (inner_left, inner_right) = if dy_sq < inner_radius_sq {
+            let dx_inner = (inner_radius_sq - dy_sq).sqrt();
+            let left = (cx - dx_inner + 0.5).ceil() as i32;
+            let right = (cx + dx_inner - 0.5).floor() as i32;
+            (left.max(min_x), right.min(max_x))
+        } else {
+            (max_x + 1, max_x)  // Left edge processes all, right edge none
+        };
+
+        // Process: left edge → inner batch → right edge
+        for px in min_x..inner_left { /* edge pixels */ }
+        if inner_left <= inner_right {
+            blend_scanline_uniform(/* batch */);
+        }
+        for px in (inner_right + 1)..=max_x { /* edge pixels */ }
+    }
+}
+```
+
+### Benchmark Results
+
+**Moderate Disc (r=50, 200×200 viewport)**:
+
+| Method | Time | Speedup |
+|--------|------|---------|
+| Original (`draw_disc_optimized`) | 32.45µs | 1.00x |
+| Phase 71 SIMD (`draw_disc_simd`) | 35.48µs | 0.91x |
+| **Phase 72 Precomputed** | **10.58µs** | **3.06x** |
+
+**Large Disc (r=150, 400×400 viewport)**:
+
+| Method | Time | Speedup |
+|--------|------|---------|
+| Original | 253.16µs | 1.00x |
+| **Precomputed** | **64.76µs** | **3.91x** |
+
+### Mathematical Analysis
+
+**Why pre-computed bounds are faster**:
+
+Phase 71 runtime tracking:
+- Per-pixel cost: ~10 ops (Option check, branch, potential .take())
+- N pixels × 10 ops = O(N)
+
+Phase 72 pre-computed bounds:
+- Per-scanline cost: 1 sqrt (~20 ops) + 2 f32 ops
+- S scanlines × 22 ops = O(S)
+- S << N (scanlines vs pixels)
+
+For r=50 disc (diameter 100, ~7850 pixels, ~100 scanlines):
+- Phase 71: 7850 × 10 = 78,500 ops
+- Phase 72: 100 × 22 = 2,200 ops
+- Ratio: 35× fewer overhead ops
+
+### Tests Added (9 new tests)
+
+**Bit-Exact Parity Tests**:
+- `test_draw_disc_precomputed_matches_optimized`
+- `test_draw_disc_precomputed_small_radius_fallback`
+- `test_draw_disc_precomputed_large_radius`
+- `test_draw_disc_precomputed_with_alpha`
+- `test_draw_disc_precomputed_off_center`
+- `test_draw_disc_precomputed_partial_clipping`
+- `test_draw_disc_precomputed_deterministic`
+
+**Benchmarks**:
+- `bench_draw_disc_all_versions`
+- `bench_draw_disc_large_radius`
+
+### Files Modified
+
+- `crates/rource-render/src/backend/software/optimized.rs`
+  - Added `DISC_MIN_BATCH_SIZE` constant (line 775)
+  - Added `draw_disc_precomputed` function (lines 777-951)
+  - Added 9 tests (lines 1830-2020)
+
+### Key Metrics
+
+| Metric | Value |
+|--------|-------|
+| Speedup (r=50) | **3.06x** (32.45µs → 10.58µs) |
+| Speedup (r=150) | **3.91x** (253.16µs → 64.76µs) |
+| Radius threshold | 12.0 (below uses original) |
+| Batch threshold | 8 pixels |
+| Tests added | 9 |
+| Bit-exact | Yes (verified) |
+
+### Algorithm Characteristics
+
+**Time Complexity**:
+- Per-scanline: O(1) sqrt + O(edge_width) edge processing
+- Total: O(S + E) where S = scanlines, E = edge pixels
+- Inner region: O(1) batch call per scanline
+
+**Space Complexity**:
+- O(1) additional (only stack variables)
+
+### Related Documentation
+
+- [Phase 71](#phase-71-simd-friendly-batch-blending-infrastructure-2026-01-27) - Batch blend infrastructure
+- [docs/RENDERING_BOTTLENECK_ANALYSIS.md](../RENDERING_BOTTLENECK_ANALYSIS.md) - Optimization priorities
 
 ---
 

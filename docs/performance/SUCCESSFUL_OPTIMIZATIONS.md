@@ -921,6 +921,50 @@ pub fn blend_scanline_uniform(
 
 ---
 
+### Pre-Computed Inner Bounds Disc Rendering
+
+**Phase**: 72
+**Location**: `crates/rource-render/src/backend/software/optimized.rs`
+**Impact**: 3.06x to 3.91x speedup for disc rendering (r≥12)
+
+Improved on Phase 71's `draw_disc_simd` by replacing runtime run-length tracking with
+**pre-computed inner bounds per scanline** using circle geometry.
+
+**Problem with Phase 71**:
+- `Option<i32>` tracking added ~10 ops per pixel
+- Double-processing bug on edge-only scanlines
+
+**Solution**:
+```rust
+// Pre-compute inner bounds (one sqrt per scanline)
+let (inner_left, inner_right) = if dy_sq < inner_radius_sq {
+    let dx_inner = (inner_radius_sq - dy_sq).sqrt();
+    (ceil(cx - dx_inner + 0.5), floor(cx + dx_inner - 0.5))
+} else {
+    (max_x + 1, max_x)  // No inner region
+};
+
+// Process: left edge → inner batch → right edge
+```
+
+**Benchmark Results**:
+
+| Disc Size | Original | Phase 72 | Speedup |
+|-----------|----------|----------|---------|
+| r=50 (moderate) | 32.45µs | 10.58µs | **3.06x** |
+| r=150 (large) | 253.16µs | 64.76µs | **3.91x** |
+
+**Why Faster**:
+- Phase 71: O(N) per-pixel Option tracking (N = pixels)
+- Phase 72: O(S) per-scanline sqrt (S = scanlines, S << N)
+- For r=50: 7850 pixels × 10 ops → 100 scanlines × 22 ops = 35× fewer overhead ops
+
+**Test Coverage**: 9 new tests (bit-exact parity + benchmarks)
+
+**API**: `draw_disc_precomputed(pixels, width, height, cx, cy, radius, color)`
+
+---
+
 ## Browser-Specific Optimizations
 
 ### Firefox GPU Physics Workaround
@@ -1163,6 +1207,7 @@ wasm-opt \
 |------------------------|-------|-------------|
 | Avatar texture array   | 61    | 300x (draw calls) |
 | Firefox GPU workaround | 60    | 6-7x        |
+| **Pre-computed disc bounds** | **72** | **3.06-3.91x** |
 | to_argb8 conversion    | 45    | 2.46x       |
 | GPU spatial hash       | 22    | 2,200x      |
 | DirNode membership     | 40    | O(n) to O(1)|
