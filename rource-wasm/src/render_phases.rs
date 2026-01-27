@@ -1902,7 +1902,10 @@ mod tests {
     fn test_glow_lod_culling_threshold_boundary() {
         // At exactly 3.0, glow SHOULD be rendered
         let at_threshold = compute_file_effective_radius(3.0);
-        assert!(at_threshold >= 3.0, "effective_radius at 3.0 should pass threshold");
+        assert!(
+            at_threshold >= 3.0,
+            "effective_radius at 3.0 should pass threshold"
+        );
 
         // Just below threshold, glow should NOT be rendered
         // Note: effective_radius has a minimum of 2.0, so we test behavior at various inputs
