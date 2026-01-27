@@ -73,22 +73,19 @@ See [docs/performance/](docs/performance/) for the complete optimization history
 
 ## Table of Contents
 
-<details>
-<summary><strong>This README</strong></summary>
+### This README
 
-- [Features](#features) · [Why Rource?](#why-rource) · [Performance Highlights](#performance-highlights)
-- [Installation](#installation) · [Quick Start](#quick-start) · [Usage](#usage)
-- [Controls](#keyboard-controls): [Keyboard](#keyboard-controls) · [Mouse](#mouse-controls)
-- [Configuration](#configuration) · [Environment Variables](#environment-variables)
-- [Video Export](#video-export) · [Filtering](#filtering) · [User Avatars](#user-avatars)
-- [WebAssembly](#webassembly) · [Custom Log Format](#custom-log-format)
-- [Performance Tips](#performance-tips) · [Screenshots](#screenshots)
-- [Migrating from Gource](#migrating-from-gource) · [Contributing](#contributing)
+| Getting Started | Configuration | Features |
+|-----------------|---------------|----------|
+| [Features](#features) | [Config File](#configuration) | [Video Export](#video-export) |
+| [Why Rource?](#why-rource) | [Environment Variables](#environment-variables) | [Filtering](#filtering) |
+| [Installation](#installation) | [Keyboard Controls](#keyboard-controls) | [User Avatars](#user-avatars) |
+| [Quick Start](#quick-start) | [Mouse Controls](#mouse-controls) | [WebAssembly](#webassembly) |
+| [Usage](#usage) | [Visual Elements](#visual-elements) | [Custom Log Format](#custom-log-format) |
+| [Architecture](#architecture) | [Performance Tips](#performance-tips) | [Screenshots](#screenshots) |
+| [Contributing](#contributing) | [Migrating from Gource](#migrating-from-gource) | |
 
-</details>
-
-<details>
-<summary><strong>Documentation</strong></summary>
+### Documentation
 
 | Document | Description |
 |----------|-------------|
@@ -98,43 +95,22 @@ See [docs/performance/](docs/performance/) for the complete optimization history
 | [SECURITY.md](SECURITY.md) | Security policy and reporting |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
-</details>
+### Architecture & Performance
 
-<details>
-<summary><strong>Architecture & Design</strong></summary>
+| Architecture | Performance |
+|--------------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture | [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) - 69 optimization phases |
+| [docs/RENDERING.md](docs/RENDERING.md) - Rendering pipeline | [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) - Benchmark data |
+| [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) - Gource comparison | [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) - Big-O analysis |
+| [docs/adr/](docs/adr/) - Architecture Decision Records | [docs/performance/FORMAL_PROOFS.md](docs/performance/FORMAL_PROOFS.md) - Mathematical proofs |
 
-| Document | Description |
-|----------|-------------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and crate structure |
-| [docs/RENDERING.md](docs/RENDERING.md) | Rendering pipeline and backends |
-| [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) | Feature comparison with Gource |
-| [docs/adr/](docs/adr/) | Architecture Decision Records |
-
-</details>
-
-<details>
-<summary><strong>Performance</strong></summary>
-
-| Document | Description |
-|----------|-------------|
-| [docs/performance/](docs/performance/) | Performance documentation index |
-| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 69 optimization phases |
-| [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) | Benchmark data with methodology |
-| [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis |
-| [docs/performance/FORMAL_PROOFS.md](docs/performance/FORMAL_PROOFS.md) | Mathematical proofs |
-
-</details>
-
-<details>
-<summary><strong>Testing & Quality</strong></summary>
+### Testing & Quality
 
 | Document | Description |
 |----------|-------------|
 | [docs/testing/MUTATION_TESTING.md](docs/testing/MUTATION_TESTING.md) | Mutation testing setup |
 | [docs/testing/VISUAL_REGRESSION.md](docs/testing/VISUAL_REGRESSION.md) | Visual regression testing |
 | [docs/REVIEW_STANDARDS.md](docs/REVIEW_STANDARDS.md) | Code review requirements |
-
-</details>
 
 For the complete documentation index, see [docs/README.md](docs/README.md).
 
