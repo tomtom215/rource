@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769546931792,
+  "lastUpdate": 1769551483470,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3572,6 +3572,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/ea6b79e44f0a0d9f9a171d922a6ce340287d19fc"
         },
         "date": 1769546930839,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dedf46d5134d42196ea56c28001a503117f6e6a2",
+          "message": "Merge pull request #212 from tomtom215/claude/rource-visualization-eEvAx\n\ndocs: Phase 75 - Spatial acceleration algorithm evaluation",
+          "timestamp": "2026-01-27T23:02:34+01:00",
+          "tree_id": "5f694dbc56e9edf3730146eb5650d97064cd0e27",
+          "url": "https://github.com/tomtom215/rource/commit/dedf46d5134d42196ea56c28001a503117f6e6a2"
+        },
+        "date": 1769551483139,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
