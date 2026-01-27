@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769530375201,
+  "lastUpdate": 1769536045647,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3416,6 +3416,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/b798ddbe6ff184a9c3adb070d765e9b866d934cb"
         },
         "date": 1769530374874,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dd32192b6570b417be1916a6c0822178191dd5dc",
+          "message": "Merge pull request #208 from tomtom215/claude/benchmark-performance-optimization-bc8sR\n\ndocs: Add Phase 73 - Floyd's Tortoise and Hare Algorithm analysis",
+          "timestamp": "2026-01-27T18:45:12+01:00",
+          "tree_id": "1fa2e28b01e6489109be9ef265007f5db282c997",
+          "url": "https://github.com/tomtom215/rource/commit/dd32192b6570b417be1916a6c0822178191dd5dc"
+        },
+        "date": 1769536044993,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
