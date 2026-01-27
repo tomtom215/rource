@@ -72,8 +72,10 @@ jobs:
           prefix-key: "v1-rust"
           shared-key: "bench-pr"
 
-      - name: Install critcmp
-        run: cargo install critcmp --locked
+      - name: Install benchmark tools
+        run: |
+          cargo install critcmp --locked
+          cargo install cargo-criterion --locked
 
       - name: Get main branch SHA
         id: main-sha
@@ -85,8 +87,12 @@ jobs:
       - name: Run PR benchmarks
         run: |
           echo "Running benchmarks on PR branch (${{ github.head_ref }})..."
-          # Run core benchmarks that are most sensitive to performance changes
-          cargo bench --workspace -- --save-baseline pr --noplot 2>&1 | tee pr-bench.txt
+          # Use cargo criterion for baseline functionality
+          cargo criterion --workspace --message-format=json -- --noplot 2>&1 | tee pr-bench.json || true
+          # Save criterion output directory as PR baseline
+          if [ -d "target/criterion" ]; then
+            cp -r target/criterion target/criterion-pr
+          fi
           echo "PR benchmarks completed"
 
       - name: Checkout main branch
@@ -97,7 +103,11 @@ jobs:
       - name: Run main branch benchmarks
         run: |
           echo "Running benchmarks on main branch..."
-          cargo bench --workspace -- --save-baseline main --noplot 2>&1 | tee main-bench.txt
+          cargo criterion --workspace --message-format=json -- --noplot 2>&1 | tee main-bench.json || true
+          # Save criterion output directory as main baseline
+          if [ -d "target/criterion" ]; then
+            cp -r target/criterion target/criterion-main
+          fi
           echo "Main branch benchmarks completed"
 
       - name: Checkout back to PR
@@ -111,11 +121,18 @@ jobs:
           echo "Comparing PR branch \`${{ github.head_ref }}\` against \`main\` (\`${{ steps.main-sha.outputs.sha }}\`)" >> comparison.md
           echo "" >> comparison.md
 
-          # Run critcmp and capture output
-          critcmp main pr --threshold ${{ env.REGRESSION_THRESHOLD }} 2>&1 | tee critcmp-output.txt || true
+          # Compare criterion output directories
+          # critcmp can compare directories containing criterion output
+          if [ -d "target/criterion-main" ] && [ -d "target/criterion-pr" ]; then
+            critcmp target/criterion-main target/criterion-pr --threshold ${{ env.REGRESSION_THRESHOLD }} 2>&1 | tee critcmp-output.txt || true
+          else
+            echo "Warning: Criterion output directories not found" | tee critcmp-output.txt
+            echo "main dir exists: $(test -d target/criterion-main && echo yes || echo no)" >> critcmp-output.txt
+            echo "pr dir exists: $(test -d target/criterion-pr && echo yes || echo no)" >> critcmp-output.txt
+          fi
 
-          # Check for regressions
-          REGRESSIONS=$(grep -c "regressed" critcmp-output.txt 2>/dev/null || echo "0")
+          # Check for regressions (critcmp outputs "Regressed" with capital R)
+          REGRESSIONS=$(grep -ic "regress" critcmp-output.txt 2>/dev/null || echo "0")
 
           if [ "$REGRESSIONS" -gt 0 ]; then
             echo "### ⚠️ Performance Regressions Detected" >> comparison.md
@@ -191,8 +208,8 @@ jobs:
           path: |
             comparison.md
             critcmp-output.txt
-            pr-bench.txt
-            main-bench.txt
+            pr-bench.json
+            main-bench.json
           retention-days: 14
 
       - name: Fail on regression
