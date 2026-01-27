@@ -940,7 +940,7 @@ mod tests {
     // Mutation Testing: Targeted tests to kill MISSED mutants
     // =========================================================================
 
-    /// Test from_hex_alpha with isolated channel values to verify bit positions.
+    /// Test `from_hex_alpha` with isolated channel values to verify bit positions.
     /// Each test isolates one channel to ensure correct shift amounts.
     #[test]
     fn test_from_hex_alpha_isolated_channels() {
@@ -992,7 +992,7 @@ mod tests {
         assert!((mixed.a - (0x78 as f32 / 255.0)).abs() < 0.001);
     }
 
-    /// Test to_rgba8 bit positions by verifying each channel independently.
+    /// Test `to_rgba8` bit positions by verifying each channel independently.
     /// Format: 0xRRGGBBAA
     #[test]
     fn test_to_rgba8_bit_positions() {
@@ -1033,7 +1033,7 @@ mod tests {
         assert_eq!(Color::TRANSPARENT.to_rgba8(), 0x00000000);
     }
 
-    /// Test to_argb8 bit positions by verifying each channel independently.
+    /// Test `to_argb8` bit positions by verifying each channel independently.
     /// Format: 0xAARRGGBB
     #[test]
     fn test_to_argb8_bit_positions() {
@@ -1072,7 +1072,7 @@ mod tests {
         assert_eq!(Color::BLACK.to_argb8(), 0xFF000000);
     }
 
-    /// Test to_abgr8 bit positions by verifying each channel independently.
+    /// Test `to_abgr8` bit positions by verifying each channel independently.
     /// Format: 0xAABBGGRR
     #[test]
     fn test_to_abgr8_bit_positions() {
@@ -1220,7 +1220,7 @@ mod tests {
         assert!((quarter.b - 0.1).abs() < crate::EPSILON);
     }
 
-    /// Test blend_over formula: result = src * src_alpha + dst * (1 - src_alpha)
+    /// Test `blend_over` formula: result = src × alpha + dst × (1 - alpha)
     #[test]
     fn test_blend_over_formula() {
         // Test fully opaque foreground completely covers background
@@ -1429,7 +1429,7 @@ mod tests {
         assert!((large_rotation.h - 120.0).abs() < crate::EPSILON);
     }
 
-    /// Test from_hex with various bit patterns.
+    /// Test `from_hex` with various bit patterns.
     #[test]
     fn test_from_hex_bit_patterns() {
         // Alternating bits: 0xAA = 10101010, 0x55 = 01010101
@@ -1530,7 +1530,7 @@ mod tests {
         assert_eq!(rgb2.b, 0.3);
     }
 
-    /// Test approx_eq tolerance.
+    /// Test `approx_eq` tolerance.
     #[test]
     fn test_approx_eq() {
         let c1 = Color::new(0.5, 0.5, 0.5, 0.5);

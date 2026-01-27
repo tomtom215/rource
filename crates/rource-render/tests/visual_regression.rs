@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tom F <https://github.com/tomtom215>
 
+// Test module clippy configuration:
+// - cast_possible_wrap: Pixel channel extraction (u8 shifted from u32) always fits in i32
+// - cast_lossless: Using `as` for clarity in test assertions over verbose From::from
+// - unreadable_literal: Hex color literals are more readable without separators (0xFF0000FF)
+#![allow(
+    clippy::cast_possible_wrap,
+    clippy::cast_lossless,
+    clippy::unreadable_literal
+)]
+
 //! Visual Regression Testing Suite for rource-render
 //!
 //! This module provides pixel-perfect visual regression testing for the rendering
@@ -350,7 +360,7 @@ pub fn read_png_from_file<P: AsRef<Path>>(path: P) -> io::Result<(Vec<u32>, u32,
     file.read_to_end(&mut data)?;
 
     // Verify PNG signature
-    if data.len() < 8 || &data[0..8] != &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
+    if data.len() < 8 || data[0..8] != [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "Invalid PNG signature",
@@ -562,12 +572,7 @@ pub fn assert_visual_match(test_name: &str, renderer: &SoftwareRenderer) {
     assert_eq!(
         (width, height),
         (golden_width, golden_height),
-        "Image dimensions mismatch for test '{}': expected {}x{}, got {}x{}",
-        test_name,
-        golden_width,
-        golden_height,
-        width,
-        height
+        "Image dimensions mismatch for test '{test_name}': expected {golden_width}x{golden_height}, got {width}x{height}",
     );
 
     // Compare pixels
@@ -581,37 +586,33 @@ pub fn assert_visual_match(test_name: &str, renderer: &SoftwareRenderer) {
     }
 
     // Check if within threshold
-    if !diff.is_match(MSE_THRESHOLD) {
-        panic!(
-            "Visual regression detected in test '{}'!\n\
-             \n\
-             Metrics:\n\
-             - MSE: {:.6} (threshold: {:.6})\n\
-             - PSNR: {:.2} dB\n\
-             - Different pixels: {} / {} ({:.2}%)\n\
-             - Max channel diff: {}\n\
-             \n\
-             Files:\n\
-             - Golden:  {}\n\
-             - Actual:  {}\n\
-             - Diff:    {}\n\
-             \n\
-             If this change is intentional, update golden images with:\n\
-             UPDATE_GOLDEN=1 cargo test -p rource-render --test visual_regression {}",
-            test_name,
-            diff.mse,
-            MSE_THRESHOLD,
-            diff.psnr,
-            diff.different_pixels,
-            diff.total_pixels,
-            (diff.different_pixels as f64 / diff.total_pixels as f64) * 100.0,
-            diff.max_diff,
-            golden_path.display(),
-            actual_path.display(),
-            diff_path.display(),
-            test_name
-        );
-    }
+    let diff_percent = (diff.different_pixels as f64 / diff.total_pixels as f64) * 100.0;
+    let golden_display = golden_path.display();
+    let actual_display = actual_path.display();
+    let diff_display = diff_path.display();
+    assert!(
+        diff.is_match(MSE_THRESHOLD),
+        "Visual regression detected in test '{test_name}'!\n\
+         \n\
+         Metrics:\n\
+         - MSE: {:.6} (threshold: {MSE_THRESHOLD:.6})\n\
+         - PSNR: {:.2} dB\n\
+         - Different pixels: {} / {} ({diff_percent:.2}%)\n\
+         - Max channel diff: {}\n\
+         \n\
+         Files:\n\
+         - Golden:  {golden_display}\n\
+         - Actual:  {actual_display}\n\
+         - Diff:    {diff_display}\n\
+         \n\
+         If this change is intentional, update golden images with:\n\
+         UPDATE_GOLDEN=1 cargo test -p rource-render --test visual_regression {test_name}",
+        diff.mse,
+        diff.psnr,
+        diff.different_pixels,
+        diff.total_pixels,
+        diff.max_diff,
+    );
 
     println!(
         "Visual test '{}' passed (MSE: {:.6}, {} pixels identical)",
@@ -734,7 +735,7 @@ fn visual_line_rendering() {
     assert_visual_match("line_rendering", &renderer);
 }
 
-/// Test: Filled rectangle rendering using draw_quad.
+/// Test: Filled rectangle rendering using `draw_quad`.
 #[test]
 fn visual_rect_rendering() {
     let mut renderer = SoftwareRenderer::new(TEST_WIDTH, TEST_HEIGHT);
@@ -809,7 +810,7 @@ fn visual_alpha_blending() {
     assert_visual_match("alpha_blending", &renderer);
 }
 
-/// Test: Ring/circle outline rendering (using draw_circle).
+/// Test: Ring/circle outline rendering (using `draw_circle`).
 #[test]
 fn visual_ring_rendering() {
     let mut renderer = SoftwareRenderer::new(TEST_WIDTH, TEST_HEIGHT);
@@ -844,7 +845,7 @@ fn visual_ring_rendering() {
     assert_visual_match("ring_rendering", &renderer);
 }
 
-/// Test: Color spectrum using draw_quad.
+/// Test: Color spectrum using `draw_quad`.
 #[test]
 fn visual_color_spectrum() {
     let mut renderer = SoftwareRenderer::new(TEST_WIDTH, TEST_HEIGHT);

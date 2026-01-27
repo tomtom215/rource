@@ -119,6 +119,47 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 | "I'll document it later" | Never happens | Document as you implement |
 | "The tests pass" | Insufficient | Also check mobile UX, accessibility |
 | "It works on desktop" | Desktop bias | Mobile-first development required |
+| **"Pre-existing issue"** | **Abdication of responsibility** | **Fix it NOW** |
+| **"Unrelated to my changes"** | **Destroys trust and quality** | **You touched it, you own it** |
+
+### CRITICAL: The "Pre-Existing Issue" Fallacy
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ⚠️  ABSOLUTE PROHIBITION  ⚠️                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  NEVER dismiss ANY issue as "pre-existing" or "unrelated to my changes."   │
+│                                                                             │
+│  This behavior is ABSOLUTELY UNACCEPTABLE and represents:                   │
+│                                                                             │
+│  ❌ A fundamental violation of Expert+ standards                            │
+│  ❌ An abdication of professional responsibility                            │
+│  ❌ A betrayal of trust with the project owner                              │
+│  ❌ A threat to the integrity of the entire codebase                        │
+│  ❌ Potential hidden bugs that will surface in production                   │
+│                                                                             │
+│  The correct response to ANY warning, error, or issue is:                   │
+│                                                                             │
+│  ✓ FIX IT IMMEDIATELY                                                       │
+│  ✓ If you cannot fix it, DOCUMENT why and create a tracking issue           │
+│  ✓ NEVER proceed with other work until the codebase is clean                │
+│                                                                             │
+│  Remember: This is a PORTFOLIO SHOWPIECE and PUBLIC WASM DEMO.              │
+│  Every clippy warning, every test failure, every console error              │
+│  reflects directly on the quality of the project and its author.            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**The Rule**: If you encounter ANY issue during your work session—whether you caused it or not—you are responsible for fixing it. There is no "not my problem." There is no "out of scope." If clippy reports 20 warnings, you fix 20 warnings. If tests fail, you fix the tests. Period.
+
+**Why This Matters**:
+1. **Hidden bugs accumulate**: "Pre-existing" issues often mask real bugs
+2. **Trust erosion**: Dismissing issues signals you don't care about quality
+3. **Technical debt compounds**: Every ignored warning makes the next one easier to ignore
+4. **Portfolio damage**: A single clippy warning in a public demo undermines credibility
+5. **Production risk**: Warnings today become crashes tomorrow
 
 ---
 
