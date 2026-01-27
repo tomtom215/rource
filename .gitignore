@@ -17,6 +17,8 @@ Thumbs.db
 # Test artifacts
 *.profraw
 *.profdata
+*.proptest-regressions
+mutants.out/
 
 # WASM build artifacts
 /pkg/
