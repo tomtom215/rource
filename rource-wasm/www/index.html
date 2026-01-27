@@ -148,6 +148,9 @@
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
+    <!-- Screen reader status announcer - updated by JavaScript for important status changes -->
+    <div id="status-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
     <div id="loading" role="status" aria-live="polite">
         <div class="loading-skeleton" aria-hidden="true">
             <div class="skeleton-header">
@@ -770,7 +773,7 @@
                 </div>
 
                 <div id="tab-paste" class="tab-content" role="tabpanel" hidden>
-                    <textarea id="log-input" placeholder="Paste your log data here...&#10;Formats auto-detected: git log or timestamp|author|action|path"></textarea>
+                    <textarea id="log-input" aria-label="Log data input - paste git log or custom format data" placeholder="Paste your log data here...&#10;Formats auto-detected: git log or timestamp|author|action|path"></textarea>
                     <button type="button" id="btn-load" class="btn btn-sm" disabled>Load Log Data</button>
                     <p class="help-text">
                         Supported formats (auto-detected):<br>
