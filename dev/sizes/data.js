@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769518533122,
+  "lastUpdate": 1769524129731,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3314,6 +3314,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1255329,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "119e682a3929c40578c586fe155ddc300d0d2d51",
+          "message": "Merge pull request #205 from tomtom215/claude/wasm-version-control-viz-fJ0da\n\nperf(phase70): implement glow LOD culling and radius reduction",
+          "timestamp": "2026-01-27T15:26:42+01:00",
+          "tree_id": "6b6711de1940abae0970575c54664f159410a1bb",
+          "url": "https://github.com/tomtom215/rource/commit/119e682a3929c40578c586fe155ddc300d0d2d51"
+        },
+        "date": 1769524129185,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
             "unit": "bytes"
           }
         ]
