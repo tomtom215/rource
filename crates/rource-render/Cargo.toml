@@ -98,3 +98,7 @@ harness = false
 [[bench]]
 name = "disc_perf"
 harness = false
+
+[[bench]]
+name = "label_perf"
+harness = false

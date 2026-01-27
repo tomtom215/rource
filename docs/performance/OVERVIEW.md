@@ -234,7 +234,7 @@ Clear commit message referencing phase number.
 
 ## Navigation
 
-- [Chronology](./CHRONOLOGY.md) - Complete timeline of all 69 phases
+- [Chronology](./CHRONOLOGY.md) - Complete timeline of all 77 phases
 - [Benchmarks](./BENCHMARKS.md) - All benchmark data
 - [Performance Baseline](./PERFORMANCE_BASELINE.md) - Comprehensive WASM audit
 - [Function Profiles](./FUNCTION_PROFILES.md) - Per-function timing profiles

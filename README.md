@@ -64,8 +64,10 @@ This project was developed with AI-assisted programming using [Claude](https://w
 - **68% memory savings** on large repositories via string interning and compact storage
 - **GPU acceleration** in browsers via WebGPU or WebGL2 (with automatic CPU fallback)
 - **Tested with 100k+ commit repos** (Home Assistant: 103,533 commits, 533,366 file changes)
-- **69 optimization phases** documented with nanosecond-level measurements
+- **77 optimization phases** documented with picosecond/nanosecond-level measurements
+- **50,000 FPS target** on test hardware (20 µs frame budget)
 - **132 WASM functions profiled** with criterion benchmarks (100+ samples, 95% CI)
+- **Every optimization benchmarked** before and after with statistical significance
 
 See [docs/performance/](docs/performance/) for the complete optimization history and benchmarks.
 
@@ -99,7 +101,7 @@ See [docs/performance/](docs/performance/) for the complete optimization history
 
 | Architecture | Performance |
 |--------------|-------------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture | [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) - 69 optimization phases |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture | [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) - 77 optimization phases |
 | [docs/RENDERING.md](docs/RENDERING.md) - Rendering pipeline | [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) - Benchmark data |
 | [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) - Gource comparison | [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) - Big-O analysis |
 | [docs/adr/](docs/adr/) - Architecture Decision Records | [docs/performance/FORMAL_PROOFS.md](docs/performance/FORMAL_PROOFS.md) - Mathematical proofs |

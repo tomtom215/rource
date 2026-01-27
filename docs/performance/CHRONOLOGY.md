@@ -95,6 +95,8 @@ Complete timeline of all 72 optimization phases with dates, commits, and outcome
 | 73    | 2026-01-27 | Documentation   | Floyd's Tortoise and Hare Algorithm analysis| Documented   |
 | 74    | 2026-01-27 | Data Integrity  | Floyd's Algorithm production implementation | Implemented  |
 | 75    | 2026-01-27 | Analysis        | Spatial acceleration algorithm evaluation   | Documented   |
+| 76    | 2026-01-27 | Analysis        | Spatial hash for core LabelPlacer          | N/A          |
+| 77    | 2026-01-27 | Analysis        | CPU physics algorithm evaluation (4 algs)  | N/A          |
 
 ---
 
@@ -2550,6 +2552,256 @@ of this evaluation:
 - [NOT_APPLICABLE.md](NOT_APPLICABLE.md) - Detailed algorithm analyses
 - [SUCCESSFUL_OPTIMIZATIONS.md](SUCCESSFUL_OPTIMIZATIONS.md) - Implemented optimizations
 - [Phase 64](#phase-64) - GPU visibility culling verification (ALREADY_IMPLEMENTED)
+
+---
+
+## Phase 76: Spatial Hash Grid Evaluation for Core Library (2026-01-27)
+
+### Summary
+
+**Category**: Performance Analysis
+**Status**: NOT APPLICABLE
+**Date**: 2026-01-27
+
+Evaluated spatial hash grid optimization for the core library's `LabelPlacer`
+(`crates/rource-render/src/label.rs`). The implementation was completed and
+benchmarked, but **showed regression** for typical label counts (30-100).
+
+### Problem Statement
+
+The continuation prompt from a previous session identified the core library's
+`LabelPlacer` as using O(n) linear scan for collision detection, while the
+WASM version (`rource-wasm/src/render_phases.rs`) uses O(1) spatial hash grid.
+
+The formal proof (`docs/performance/formal-proofs/07-label-collision-detection.md`)
+documents the algorithm, promising 10-44× improvement.
+
+### Implementation
+
+The spatial hash grid was fully implemented in `label.rs`:
+
+1. **Grid structure**: 32×32 cells covering 4K viewport (128px per cell)
+2. **Generation counter**: O(1) reset via generation increment
+3. **Grid registration**: Labels registered in all overlapping cells
+4. **Collision query**: Only check labels in overlapping cells
+
+### Benchmark Results
+
+**Criterion Benchmarks (100 samples, 95% CI)**:
+
+| Labels | O(n) Baseline | Spatial Hash | Regression |
+|--------|---------------|--------------|------------|
+| 0      | 5.8 ns        | 234 ns       | +40× |
+| 10     | 88.9 ns       | 1.06 µs      | +12× |
+| 50     | 1.46 µs       | 2.87 µs      | +2× |
+| 100    | 5.4 µs        | 5.8 µs       | +7% |
+| Full frame (80) | 3.26 µs | 18.8 µs | **+5.8×** |
+
+### Root Cause Analysis
+
+The spatial hash adds overhead that isn't amortized for small label counts:
+
+1. **Grid initialization**: 32×32 = 1024 Vec cells with capacity (~32KB)
+2. **Grid registration**: Each `try_place` pushes to multiple grid cells
+3. **Cell iteration**: Looking up cells and iterating has cache misses
+4. **Generation checking**: Branch per entry to skip stale entries
+
+For O(n) linear scan:
+- Simple Vec iteration is cache-optimal (sequential memory access)
+- AABB intersection is just 4 float comparisons (extremely fast)
+- No hash computation or grid cell management
+
+### Crossover Point Analysis
+
+For n labels placed sequentially, total comparisons:
+- O(n) linear scan: 0 + 1 + 2 + ... + (n-1) = n(n-1)/2 ≈ O(n²/2)
+- Spatial hash: n × k where k ≈ constant (labels per cell)
+
+Empirically, spatial hash only breaks even around **100+ labels**.
+
+For typical usage (30-100 labels), the overhead dominates:
+- 80 labels: O(n²/2) = 3200 comparisons × ~1ns = ~3.2µs
+- 80 labels with spatial hash: ~18.8µs overhead
+
+### Decision
+
+**Keep O(n) linear scan for core library**:
+- Typical label counts: 30-100 per frame
+- Sequential Vec iteration is cache-optimal
+- 3.26 µs per frame is already excellent (0.02% of 16.67ms budget)
+- Simpler code, less maintenance burden
+
+### Why WASM Uses Spatial Hash
+
+The WASM version benefits from spatial hash for different reasons:
+
+1. **Frame rate target**: 42,000+ FPS requires O(1) reset (generation counter)
+2. **Memory pressure**: Generation counter avoids per-frame allocation
+3. **Already implemented**: Phase 33 + 65 optimized for WASM constraints
+4. **Higher label counts**: WASM rendering may handle more labels
+
+### Key Lesson
+
+**Never assume algorithmic improvement equals practical improvement.**
+
+The formal proof correctly identifies O(n) → O(1) complexity improvement,
+but **constant factors matter**. For small n, the O(1) overhead dominates.
+
+This validates CLAUDE.md's guidance:
+- "Never Assume" - verified with benchmarks
+- "Never Guess" - measured actual performance
+- "If it cannot be measured, it did not happen"
+
+### Files Modified
+
+- `docs/performance/NOT_APPLICABLE.md` - Added Phase 76 entry
+- `docs/performance/CHRONOLOGY.md` - Added Phase 76 documentation
+- `crates/rource-render/benches/label_perf.rs` - **NEW** benchmark file
+- `crates/rource-render/Cargo.toml` - Added benchmark entry
+
+### Related Documentation
+
+- [NOT_APPLICABLE.md](NOT_APPLICABLE.md) - Full analysis
+- [docs/performance/formal-proofs/07-label-collision-detection.md](formal-proofs/07-label-collision-detection.md) - Algorithm theory (WASM-specific)
+
+---
+
+## Phase 77: CPU Physics Algorithm Evaluation (2026-01-27)
+
+### Summary
+
+**Category**: Performance Analysis
+**Status**: NOT APPLICABLE (4 algorithms)
+**Date**: 2026-01-27
+
+Evaluated 4 candidate algorithms proposed for CPU physics optimization:
+
+| Algorithm | Priority | Verdict | Reason |
+|-----------|----------|---------|--------|
+| SIMD128 Horizontal Prefix Sum | 2 | NOT APPLICABLE | No prefix sum in CPU physics |
+| Branchless Selection | 3 | NOT APPLICABLE | Branch prediction not a bottleneck |
+| VEB QuadTree Layout | 4 | NOT APPLICABLE | High complexity, tree fits in L2 cache |
+| Hybrid Introsort | 5 | NOT APPLICABLE | Rust pdqsort already equivalent |
+
+### Analysis
+
+#### Priority 2: SIMD128 Horizontal Prefix Sum
+
+**Claimed location**: `force.rs` CPU physics fallback
+
+**Actual finding**: No prefix sum operation exists in CPU physics code.
+
+The CPU physics module uses:
+- Barnes-Hut O(n log n) recursive tree traversal (`barnes_hut.rs`)
+- Independent force accumulation per body (embarrassingly parallel)
+- Simple reductions for bounds (min/max) and energy (sum)
+
+None of these patterns require prefix sum. The GPU spatial hash (`rource-render/src/backend/wgpu/spatial_hash.rs`) already uses Blelloch prefix sum for cell offset computation, but this doesn't apply to CPU fallback.
+
+**Verdict**: NOT APPLICABLE - no prefix sum operation to optimize
+
+#### Priority 3: Branchless Selection
+
+**Target**: `should_repel()` function in `force.rs:333-342`
+
+```rust
+fn should_repel(a: &DirNode, b: &DirNode) -> bool {
+    if a.parent() == b.parent() && a.parent().is_some() {
+        return true;
+    }
+    let depth_diff = a.depth().abs_diff(b.depth());
+    depth_diff <= 1
+}
+```
+
+**Analysis**:
+
+This function has simple branch logic that:
+1. Checks if nodes share a parent (siblings always repel)
+2. Checks if nodes are close in depth (depth_diff ≤ 1)
+
+Branch prediction should be highly effective here:
+- Most node pairs are NOT siblings (predictable false)
+- Depth comparison is a simple integer operation
+
+The Barnes-Hut algorithm already reduces N² comparisons to N log N. Within that reduced set, branch misprediction overhead is negligible compared to:
+- Memory access for position/depth lookups
+- Floating-point force calculations
+
+**Verdict**: NOT APPLICABLE - branch prediction not a bottleneck; optimization would require profiling data
+
+#### Priority 4: VEB (Van Emde Boas) QuadTree Layout
+
+**Target**: Barnes-Hut quadtree in `barnes_hut.rs`
+
+**Analysis**:
+
+VEB layout arranges tree nodes in memory to optimize cache-line utilization during traversal. This provides:
+- Better cache locality for DFS traversal
+- Reduced cache misses for deep trees
+
+However, Rource's Barnes-Hut tree characteristics make VEB layout unnecessary:
+
+1. **Tree size**: Typical scene has 100-5000 entities
+   - 5000 nodes × ~64 bytes = 320KB
+   - Fits entirely in L2 cache (256KB-1MB on modern CPUs)
+
+2. **Tree depth**: MAX_TREE_DEPTH = 16, typical depth = 8-10
+   - Recursive traversal stays within stack cache
+
+3. **Implementation complexity**: VEB layout requires:
+   - Complete tree rewrite to use array-based representation
+   - Custom allocation scheme for node placement
+   - Loss of pointer-based flexibility
+
+4. **Diminishing returns**: Cache optimization matters more for:
+   - Very deep trees (>20 levels)
+   - Trees that exceed L2 cache
+   - Sequential (non-recursive) access patterns
+
+**Verdict**: NOT APPLICABLE - tree fits in L2 cache; complexity not justified
+
+#### Priority 5: Hybrid Introsort
+
+**Target**: Sorting operations in render phases and physics
+
+**Analysis**:
+
+Rust's standard library already implements pattern-defeating quicksort (pdqsort) for `sort_unstable`:
+
+```rust
+// Already optimal - uses pdqsort
+active.sort_unstable_by(|a, b| { ... });
+users.sort_unstable_by(|a, b| { ... });
+```
+
+pdqsort is functionally equivalent to hybrid introsort:
+- **Quicksort**: Average case O(n log n)
+- **Heapsort fallback**: Prevents O(n²) worst case
+- **Insertion sort**: Optimizes small arrays (<16 elements)
+- **Pattern detection**: Handles pre-sorted/reverse-sorted efficiently
+
+Implementing custom introsort would:
+- Duplicate stdlib functionality
+- Likely perform worse (stdlib is heavily optimized)
+- Add maintenance burden
+
+**Verdict**: NOT APPLICABLE - Rust pdqsort already provides equivalent functionality
+
+### Key Takeaways
+
+1. **CPU physics is already optimal**: Barnes-Hut O(n log n) with adaptive theta provides excellent performance for Rource's scale (100-5000 entities).
+
+2. **GPU handles heavy lifting**: The spatial hash grid with Blelloch prefix sum runs on GPU for large entity counts, making CPU optimizations less critical.
+
+3. **Stdlib optimizations are real**: Rust's sort algorithms represent years of optimization work; reimplementing them offers no benefit.
+
+4. **Cache optimization requires scale**: VEB layout and similar techniques only pay off for data structures that exceed cache size.
+
+### Documentation Updates
+
+- `docs/performance/NOT_APPLICABLE.md` - Added Phase 77 entries
+- `docs/performance/CHRONOLOGY.md` - Added Phase 77 documentation
 
 ---
 

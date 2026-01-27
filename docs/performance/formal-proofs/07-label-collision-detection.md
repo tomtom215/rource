@@ -1,8 +1,13 @@
 # 7. Label Collision Detection (Spatial Hash Grid)
 
-**Implementation**: `rource-wasm/src/render_phases.rs`, `crates/rource-render/src/label.rs`
+**Implementation**: `rource-wasm/src/render_phases.rs` (WASM only)
 
 **Category**: Rendering
+
+> **Note (Phase 76)**: The spatial hash grid is implemented only in the WASM version.
+> The core library (`crates/rource-render/src/label.rs`) uses O(n) linear scan,
+> which is faster for small label counts (<100). See Phase 76 in CHRONOLOGY.md
+> for benchmark analysis showing spatial hash adds 5.8× overhead for typical usage.
 
 ---
 
@@ -160,9 +165,14 @@ fn rects_overlap(a: &Rect, b: &Rect) -> bool {
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
 | 7.2 | Cell index: `(x/c, y/c)` | `render_phases.rs` | `(x / cell_size).floor() as i32` |
-| 7.2 | O(1) expected per cell | `label.rs:291-297` | Linear scan of occupied vec |
+| 7.2 | O(1) expected per cell | `render_phases.rs:1296-1307` | Spatial hash lookup in WASM |
+| 7.2 | O(n) linear scan | `label.rs:291-297` | Sequential Vec iteration (core lib) |
 | 7.3 | Greedy by priority | `render_phases.rs` | Sort by priority, place in order |
 | 7.3 | ≥20% approximation | N/A | Empirically >50% achieved |
+
+**Note**: The core library uses O(n) linear scan because benchmarking (Phase 76)
+showed spatial hash overhead is not amortized for <100 labels. For typical usage
+(30-100 labels), O(n) is faster due to cache-optimal sequential Vec iteration.
 
 ### Verification Commands
 
