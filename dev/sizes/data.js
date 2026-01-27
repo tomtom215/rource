@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769526227541,
+  "lastUpdate": 1769530375201,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3377,6 +3377,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/8bfd7e15ab2c457a39385769e5ff61e07c5ebd88"
         },
         "date": 1769526226521,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b798ddbe6ff184a9c3adb070d765e9b866d934cb",
+          "message": "Merge pull request #207 from tomtom215/claude/wasm-version-control-viz-quKmp\n\nPhase 72: Pre-computed inner bounds disc rendering (3.36-3.77x)",
+          "timestamp": "2026-01-27T17:10:44+01:00",
+          "tree_id": "8c65c35289577bef292df20e08a52db77f2b08f8",
+          "url": "https://github.com/tomtom215/rource/commit/b798ddbe6ff184a9c3adb070d765e9b866d934cb"
+        },
+        "date": 1769530374874,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
