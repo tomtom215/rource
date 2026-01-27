@@ -771,6 +771,193 @@ pub fn draw_disc_simd(
     }
 }
 
+/// Minimum batch size for inner region to use batch blending (Phase 72).
+const DISC_MIN_BATCH_SIZE: usize = 8;
+
+/// Renders an anti-aliased disc using pre-computed inner bounds per scanline.
+///
+/// This is Phase 72 improvement over `draw_disc_simd`. Instead of tracking
+/// run-length at runtime (Option<i32> per pixel), this version:
+///
+/// 1. Pre-computes inner region bounds using sqrt per scanline
+/// 2. Processes inner region as a single batch (no per-pixel checks)
+/// 3. Falls back to per-pixel for edge regions only
+///
+/// # Performance
+///
+/// - One sqrt per scanline (not per pixel) vs runtime Option tracking
+/// - ~78% of pixels processed in batch without per-pixel checks
+/// - Eliminates Option bookkeeping overhead
+///
+/// # Algorithm
+///
+/// For scanline at y:
+/// - Compute dy = y + 0.5 - cy
+/// - If |dy| > inner_radius: no inner region, all edge pixels
+/// - Otherwise: dx_inner = sqrt(inner_radius² - dy²)
+///   - inner_left = ceil(cx - dx_inner)
+///   - inner_right = floor(cx + dx_inner)
+///   - Process left edge, inner batch, right edge
+#[allow(clippy::too_many_lines)]
+pub fn draw_disc_precomputed(
+    pixels: &mut [u32],
+    width: u32,
+    height: u32,
+    cx: f32,
+    cy: f32,
+    radius: f32,
+    color: Color,
+) {
+    // Use original version for small discs where overhead dominates
+    if radius < 12.0 {
+        draw_disc_optimized(pixels, width, height, cx, cy, radius, color);
+        return;
+    }
+
+    // Compute bounding box
+    let min_x = (cx - radius - AA_WIDTH).floor().max(0.0) as i32;
+    let max_x = (cx + radius + AA_WIDTH).ceil().min(width as f32 - 1.0) as i32;
+    let min_y = (cy - radius - AA_WIDTH).floor().max(0.0) as i32;
+    let max_y = (cy + radius + AA_WIDTH).ceil().min(height as f32 - 1.0) as i32;
+
+    // Early exit for off-screen discs
+    if min_x > max_x || min_y > max_y {
+        return;
+    }
+
+    // Pre-compute constants
+    let (r, g, b) = color_to_rgb(color);
+    let base_alpha = alpha_to_fixed(color.a);
+
+    // Squared thresholds for fixed-point region checks
+    let inner_radius = (radius - AA_WIDTH).max(0.0);
+    let outer_radius = radius + AA_WIDTH;
+    let inner_sq_fixed = (inner_radius * 256.0) as i64;
+    let inner_sq_fixed = (inner_sq_fixed * inner_sq_fixed) as u64;
+    let outer_sq_fixed = (outer_radius * 256.0) as i64;
+    let outer_sq_fixed = (outer_sq_fixed * outer_sq_fixed) as u64;
+
+    // Float versions for pre-computing bounds (one sqrt per scanline)
+    let inner_radius_sq = inner_radius * inner_radius;
+
+    // AA range for edge interpolation (in 8.8 fixed-point)
+    let aa_range_fixed = (2.0 * AA_WIDTH * 256.0) as u32;
+
+    // Scanline iteration with pre-computed inner bounds
+    for py in min_y..=max_y {
+        let row_start = (py as usize) * (width as usize);
+        let dy = py as f32 + 0.5 - cy;
+        let dy_sq = dy * dy;
+
+        // Pre-compute inner bounds for this scanline (one sqrt per scanline)
+        // When there's no inner region, we set inner_left > inner_right so:
+        // - Left edge loop processes [min_x, inner_left) = [min_x, max_x+1) = all pixels
+        // - Inner region check fails (inner_left > inner_right)
+        // - Right edge loop processes nothing (inner_right+1 > max_x)
+        let (inner_left, inner_right) = if dy_sq < inner_radius_sq {
+            // Use conservative bounds: shrink by 0.5 pixel for f32 vs fixed-point parity
+            let dx_inner = (inner_radius_sq - dy_sq).sqrt();
+            let left = (cx - dx_inner + 0.5).ceil() as i32;
+            let right = (cx + dx_inner - 0.5).floor() as i32;
+            // Clamp to bounding box
+            (left.max(min_x), right.min(max_x))
+        } else {
+            // No inner region on this scanline (all edge pixels)
+            // Set inner_left = max_x + 1 so left edge processes all [min_x, max_x+1)
+            // Set inner_right = max_x so right edge processes none (max_x+1..=max_x is empty)
+            (max_x + 1, max_x)
+        };
+
+        // Fixed-point dy for edge calculations
+        let dy_fixed = (dy * 256.0) as i64;
+        let dy_sq_fixed = (dy_fixed * dy_fixed) as u64;
+
+        // Process left edge region: [min_x, inner_left)
+        // When no inner region, this processes all pixels [min_x, max_x+1)
+        for px in min_x..inner_left {
+            let dx = px as f32 + 0.5 - cx;
+            let dx_fixed = (dx * 256.0) as i64;
+            let dist_sq = (dx_fixed * dx_fixed) as u64 + dy_sq_fixed;
+
+            // Edge might actually be inner due to conservative bounds
+            let alpha = if dist_sq <= inner_sq_fixed {
+                base_alpha
+            } else if dist_sq > outer_sq_fixed {
+                continue;
+            } else {
+                // Edge region: anti-aliased (need sqrt lookup)
+                let dist_sq_16 = (dist_sq >> 8) as u32;
+                let dist_fixed = fast_sqrt_fixed(dist_sq_16);
+
+                let outer_fixed = (outer_radius * 256.0) as u32;
+                if dist_fixed >= outer_fixed as u16 {
+                    continue;
+                }
+                let edge_diff = outer_fixed - dist_fixed as u32;
+                let edge_t = ((edge_diff << 8) / aa_range_fixed).min(256);
+                (base_alpha * edge_t) >> 8
+            };
+
+            if alpha >= ALPHA_THRESHOLD {
+                let idx = row_start + px as usize;
+                if idx < pixels.len() {
+                    pixels[idx] = blend_pixel_fixed(pixels[idx], r, g, b, alpha);
+                }
+            }
+        }
+
+        // Process inner region as batch: [inner_left, inner_right]
+        if inner_left <= inner_right {
+            let batch_len = (inner_right - inner_left + 1) as usize;
+            if batch_len >= DISC_MIN_BATCH_SIZE {
+                let start_idx = row_start + inner_left as usize;
+                blend_scanline_uniform(pixels, start_idx, batch_len, r, g, b, base_alpha);
+            } else {
+                // Short inner run - process individually
+                for inner_px in inner_left..=inner_right {
+                    let idx = row_start + inner_px as usize;
+                    if idx < pixels.len() {
+                        pixels[idx] = blend_pixel_fixed(pixels[idx], r, g, b, base_alpha);
+                    }
+                }
+            }
+        }
+
+        // Process right edge region: (inner_right, max_x]
+        for px in (inner_right + 1)..=max_x {
+            let dx = px as f32 + 0.5 - cx;
+            let dx_fixed = (dx * 256.0) as i64;
+            let dist_sq = (dx_fixed * dx_fixed) as u64 + dy_sq_fixed;
+
+            // Edge might actually be inner due to conservative bounds
+            let alpha = if dist_sq <= inner_sq_fixed {
+                base_alpha
+            } else if dist_sq > outer_sq_fixed {
+                continue;
+            } else {
+                // Edge region: anti-aliased (need sqrt lookup)
+                let dist_sq_16 = (dist_sq >> 8) as u32;
+                let dist_fixed = fast_sqrt_fixed(dist_sq_16);
+
+                let outer_fixed = (outer_radius * 256.0) as u32;
+                if dist_fixed >= outer_fixed as u16 {
+                    continue;
+                }
+                let edge_diff = outer_fixed - dist_fixed as u32;
+                let edge_t = ((edge_diff << 8) / aa_range_fixed).min(256);
+                (base_alpha * edge_t) >> 8
+            };
+
+            if alpha >= ALPHA_THRESHOLD {
+                let idx = row_start + px as usize;
+                if idx < pixels.len() {
+                    pixels[idx] = blend_pixel_fixed(pixels[idx], r, g, b, alpha);
+                }
+            }
+        }
+    }
+}
+
 /// Renders an anti-aliased ring (circle outline) using fixed-point arithmetic.
 ///
 /// # Arguments
@@ -1626,6 +1813,218 @@ mod tests {
             "draw_disc (r=50): original={:.2}µs, simd={:.2}µs, speedup={:.2}x",
             optimized_ns / 1000.0,
             simd_ns / 1000.0,
+            speedup
+        );
+    }
+
+    // ========================================================================
+    // Phase 72: Pre-computed Inner Bounds Tests
+    // ========================================================================
+
+    #[test]
+    fn test_draw_disc_precomputed_matches_optimized() {
+        // Precomputed disc should produce identical output to original
+        let mut pixels1 = vec![0xFF00_0000; 100 * 100];
+        let mut pixels2 = vec![0xFF00_0000; 100 * 100];
+
+        draw_disc_optimized(&mut pixels1, 100, 100, 50.0, 50.0, 20.0, Color::WHITE);
+        draw_disc_precomputed(&mut pixels2, 100, 100, 50.0, 50.0, 20.0, Color::WHITE);
+
+        // Find differences
+        let mut diff_count = 0;
+        for (i, (p1, p2)) in pixels1.iter().zip(pixels2.iter()).enumerate() {
+            if p1 != p2 {
+                diff_count += 1;
+                if diff_count <= 10 {
+                    let x = i % 100;
+                    let y = i / 100;
+                    println!(
+                        "Diff at ({}, {}): original={:#010X}, precomputed={:#010X}",
+                        x, y, p1, p2
+                    );
+                }
+            }
+        }
+        if diff_count > 10 {
+            println!("... and {} more differences", diff_count - 10);
+        }
+        assert_eq!(
+            diff_count, 0,
+            "Precomputed disc should match original disc ({} differences found)",
+            diff_count
+        );
+    }
+
+    #[test]
+    fn test_draw_disc_precomputed_small_radius_fallback() {
+        // Small discs (radius < 12) should use original algorithm
+        let mut pixels1 = vec![0xFF00_0000; 100 * 100];
+        let mut pixels2 = vec![0xFF00_0000; 100 * 100];
+
+        draw_disc_optimized(&mut pixels1, 100, 100, 50.0, 50.0, 10.0, Color::WHITE);
+        draw_disc_precomputed(&mut pixels2, 100, 100, 50.0, 50.0, 10.0, Color::WHITE);
+
+        assert_eq!(
+            pixels1, pixels2,
+            "Small precomputed disc should match original"
+        );
+    }
+
+    #[test]
+    fn test_draw_disc_precomputed_large_radius() {
+        let mut pixels1 = vec![0xFF00_0000; 200 * 200];
+        let mut pixels2 = vec![0xFF00_0000; 200 * 200];
+
+        draw_disc_optimized(&mut pixels1, 200, 200, 100.0, 100.0, 80.0, Color::WHITE);
+        draw_disc_precomputed(&mut pixels2, 200, 200, 100.0, 100.0, 80.0, Color::WHITE);
+
+        assert_eq!(
+            pixels1, pixels2,
+            "Large precomputed disc should match original"
+        );
+    }
+
+    #[test]
+    fn test_draw_disc_precomputed_with_alpha() {
+        let mut pixels1 = vec![0xFF00_0000; 100 * 100];
+        let mut pixels2 = vec![0xFF00_0000; 100 * 100];
+
+        let color = Color::new(1.0, 0.5, 0.25, 0.7);
+        draw_disc_optimized(&mut pixels1, 100, 100, 50.0, 50.0, 25.0, color);
+        draw_disc_precomputed(&mut pixels2, 100, 100, 50.0, 50.0, 25.0, color);
+
+        assert_eq!(
+            pixels1, pixels2,
+            "Precomputed disc with alpha should match original"
+        );
+    }
+
+    #[test]
+    fn test_draw_disc_precomputed_off_center() {
+        let mut pixels1 = vec![0xFF00_0000; 100 * 100];
+        let mut pixels2 = vec![0xFF00_0000; 100 * 100];
+
+        draw_disc_optimized(&mut pixels1, 100, 100, 75.3, 25.7, 15.0, Color::WHITE);
+        draw_disc_precomputed(&mut pixels2, 100, 100, 75.3, 25.7, 15.0, Color::WHITE);
+
+        assert_eq!(
+            pixels1, pixels2,
+            "Off-center precomputed disc should match original"
+        );
+    }
+
+    #[test]
+    fn test_draw_disc_precomputed_partial_clipping() {
+        // Disc partially outside viewport
+        let mut pixels1 = vec![0xFF00_0000; 100 * 100];
+        let mut pixels2 = vec![0xFF00_0000; 100 * 100];
+
+        draw_disc_optimized(&mut pixels1, 100, 100, 10.0, 10.0, 30.0, Color::WHITE);
+        draw_disc_precomputed(&mut pixels2, 100, 100, 10.0, 10.0, 30.0, Color::WHITE);
+
+        assert_eq!(
+            pixels1, pixels2,
+            "Clipped precomputed disc should match original"
+        );
+    }
+
+    #[test]
+    fn test_draw_disc_precomputed_deterministic() {
+        let mut pixels1 = vec![0xFF00_0000; 100 * 100];
+        let mut pixels2 = vec![0xFF00_0000; 100 * 100];
+
+        draw_disc_precomputed(&mut pixels1, 100, 100, 50.0, 50.0, 25.0, Color::WHITE);
+        draw_disc_precomputed(&mut pixels2, 100, 100, 50.0, 50.0, 25.0, Color::WHITE);
+
+        assert_eq!(
+            pixels1, pixels2,
+            "Precomputed disc rendering should be deterministic"
+        );
+    }
+
+    // ========================================================================
+    // Phase 72: Comparative Benchmark
+    // ========================================================================
+
+    #[test]
+    fn bench_draw_disc_all_versions() {
+        use std::time::Instant;
+        const ITERATIONS: u32 = 100;
+
+        let mut pixels = vec![0xFF00_0000; 200 * 200];
+
+        // Benchmark original
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            draw_disc_optimized(&mut pixels, 200, 200, 100.0, 100.0, 50.0, Color::WHITE);
+            std::hint::black_box(&pixels);
+        }
+        let optimized_time = start.elapsed();
+
+        // Benchmark SIMD (runtime run tracking)
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            draw_disc_simd(&mut pixels, 200, 200, 100.0, 100.0, 50.0, Color::WHITE);
+            std::hint::black_box(&pixels);
+        }
+        let simd_time = start.elapsed();
+
+        // Benchmark precomputed (one sqrt per scanline)
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            draw_disc_precomputed(&mut pixels, 200, 200, 100.0, 100.0, 50.0, Color::WHITE);
+            std::hint::black_box(&pixels);
+        }
+        let precomputed_time = start.elapsed();
+
+        let optimized_ns = optimized_time.as_nanos() as f64 / ITERATIONS as f64;
+        let simd_ns = simd_time.as_nanos() as f64 / ITERATIONS as f64;
+        let precomputed_ns = precomputed_time.as_nanos() as f64 / ITERATIONS as f64;
+
+        let simd_speedup = optimized_ns / simd_ns;
+        let precomputed_speedup = optimized_ns / precomputed_ns;
+
+        println!(
+            "draw_disc (r=50): original={:.2}µs, simd={:.2}µs ({:.2}x), precomputed={:.2}µs ({:.2}x)",
+            optimized_ns / 1000.0,
+            simd_ns / 1000.0,
+            simd_speedup,
+            precomputed_ns / 1000.0,
+            precomputed_speedup
+        );
+    }
+
+    #[test]
+    fn bench_draw_disc_large_radius() {
+        use std::time::Instant;
+        const ITERATIONS: u32 = 50;
+
+        let mut pixels = vec![0xFF00_0000; 400 * 400];
+
+        // Benchmark original (r=150)
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            draw_disc_optimized(&mut pixels, 400, 400, 200.0, 200.0, 150.0, Color::WHITE);
+            std::hint::black_box(&pixels);
+        }
+        let optimized_time = start.elapsed();
+
+        // Benchmark precomputed
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            draw_disc_precomputed(&mut pixels, 400, 400, 200.0, 200.0, 150.0, Color::WHITE);
+            std::hint::black_box(&pixels);
+        }
+        let precomputed_time = start.elapsed();
+
+        let optimized_ns = optimized_time.as_nanos() as f64 / ITERATIONS as f64;
+        let precomputed_ns = precomputed_time.as_nanos() as f64 / ITERATIONS as f64;
+        let speedup = optimized_ns / precomputed_ns;
+
+        println!(
+            "draw_disc (r=150): original={:.2}µs, precomputed={:.2}µs, speedup={:.2}x",
+            optimized_ns / 1000.0,
+            precomputed_ns / 1000.0,
             speedup
         );
     }

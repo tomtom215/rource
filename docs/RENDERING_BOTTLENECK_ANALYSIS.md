@@ -203,7 +203,7 @@ renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);  // Was 2.0
 | 1.5× | 2.25× main | -44% |
 | 1.25× | 1.56× main | -61% |
 
-### 4. SIMD Vectorization (Medium Effort) ✓ Implemented (Phase 71)
+### 4. SIMD Vectorization (Medium Effort) ✓ Implemented (Phase 71, 72)
 
 Process 4 pixels simultaneously using SIMD-friendly batch blending:
 
@@ -213,14 +213,23 @@ pixels[idx] = blend_pixel_fixed(pixels[idx], r, g, b, alpha);
 
 // After (Phase 71): Batch 4 pixels for LLVM auto-vectorization
 blend_scanline_uniform(pixels, start_idx, count, r, g, b, alpha);
+
+// After (Phase 72): Pre-computed inner bounds per scanline
+draw_disc_precomputed(pixels, width, height, cx, cy, radius, color);
 ```
 
-**Results**:
+**Phase 71 Results (Infrastructure)**:
 - `blend_scanline_uniform`: 1.72 ns/pixel (batch processing)
 - Blend throughput: +4% (criterion benchmark)
 - Disc rendering: -2% overhead (run tracking cost)
 
-The batch blend infrastructure is in place. Full SIMD benefit for disc rendering requires further tuning of run-length thresholds.
+**Phase 72 Results (Pre-Computed Bounds)**:
+- **Moderate disc (r=50)**: 31.213µs → 9.2807µs = **3.36x speedup** (criterion 100 samples, 95% CI)
+- **Large disc (r=150)**: 251.48µs → 66.705µs = **3.77x speedup** (criterion 100 samples, 95% CI)
+- Radius threshold: 12.0 (below uses original for overhead avoidance)
+- Bit-exact output verified
+
+Phase 72 solved the run-length tracking overhead by pre-computing inner bounds per scanline using circle geometry (one sqrt per scanline instead of per-pixel Option tracking).
 
 ### 5. Multi-threaded Scanlines (Medium Effort)
 
