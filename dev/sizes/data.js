@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769539917511,
+  "lastUpdate": 1769542418646,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3494,6 +3494,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/17375eb5b514b36114061441190887226601f432"
         },
         "date": 1769539917175,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "211142471ab85cfb558745551c1103a46be788a5",
+          "message": "Merge pull request #210 from tomtom215/claude/restructure-formal-proofs-docs-aVnRq\n\nRefactor: Split monolithic formal proofs document into modular files",
+          "timestamp": "2026-01-27T20:31:22+01:00",
+          "tree_id": "cfd2899c2ebddb8d0c2c450dc41ae7a93618748e",
+          "url": "https://github.com/tomtom215/rource/commit/211142471ab85cfb558745551c1103a46be788a5"
+        },
+        "date": 1769542418312,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
