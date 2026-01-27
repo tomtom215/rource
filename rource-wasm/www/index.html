@@ -433,6 +433,10 @@
                 <div id="perf-overlay" class="perf-overlay hidden" role="complementary" aria-label="Performance metrics">
                     <div class="perf-header" id="perf-toggle" role="button" tabindex="0" aria-expanded="true">
                         <span class="perf-fps good" id="perf-fps">-- FPS</span>
+                        <span class="perf-peak-badge hidden" id="perf-peak-badge" title="Peak FPS (uncapped mode)">
+                            <span class="perf-peak-label">Peak</span>
+                            <span class="perf-peak-value" id="perf-peak-header">--</span>
+                        </span>
                         <span class="perf-toggle" aria-hidden="true">&#9650;</span>
                     </div>
                     <div class="perf-details">
@@ -842,7 +846,7 @@
                         <div class="tech-item-label">Renderer</div>
                     </div>
                     <div class="tech-item">
-                        <div class="tech-item-value" id="tech-tests">2200+</div>
+                        <div class="tech-item-value" id="tech-tests">2100+</div>
                         <div class="tech-item-label">Unit Tests</div>
                     </div>
                     <div class="tech-item">

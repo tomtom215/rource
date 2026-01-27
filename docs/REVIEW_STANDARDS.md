@@ -39,7 +39,7 @@ This document defines the **mandatory review standards** for the Rource project.
 Every PR, regardless of type, must satisfy:
 
 ```
-[ ] cargo test              - All 2,200+ tests pass
+[ ] cargo test              - All 2,100+ tests pass
 [ ] cargo clippy            - Zero warnings (-D warnings)
 [ ] cargo fmt --check       - Code formatted
 [ ] cargo doc               - Documentation builds without warnings

@@ -367,7 +367,7 @@ rource/
 └── rource-wasm/           # WebAssembly application
 ```
 
-**Test Count**: 2,200+ tests total across all crates.
+**Test Count**: 2,100+ tests total across all crates.
 
 ### Rendering Backends
 
@@ -421,7 +421,7 @@ Every change MUST follow this workflow:
 │     └─ Add tests for new functionality                                  │
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
-│     └─ cargo test (all 2,200+ tests pass)                               │
+│     └─ cargo test (all 2,100+ tests pass)                               │
 │     └─ cargo clippy -- -D warnings (zero warnings)                      │
 │     └─ cargo fmt --check (formatted)                                    │
 │     └─ Mobile Safari test (if UI change)                                │
@@ -529,7 +529,7 @@ Every optimization MUST follow this exact process:
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
 | **Documented** | Added to ALL THREE docs/performance/ files |
-| **Correct** | All 2,200+ tests must pass |
+| **Correct** | All 2,100+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
 | **Mathematical** | Include complexity analysis and/or mathematical proof |

@@ -125,6 +125,15 @@ jobs:
             # Get the last test result line (summary)
             RESULT_LINE=$(grep "test result:" test-output.txt | tail -1)
             echo "**Result:** \`$RESULT_LINE\`" >> $GITHUB_STEP_SUMMARY
+
+            # Calculate total passed tests across all crates
+            if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+              TOTAL_PASSED=$(grep "test result:" test-output.txt | sed 's/.*\([0-9]\+\) passed.*/\1/' | awk '{sum+=$1} END {print sum}')
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+              echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+              echo "| Total Tests Passed | **$TOTAL_PASSED** |" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "Test output not available" >> $GITHUB_STEP_SUMMARY
           fi

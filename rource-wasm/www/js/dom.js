@@ -115,6 +115,8 @@ export function initDomElements() {
     elements.perfPeakAvgRow = document.getElementById('perf-peak-avg-row');
     elements.perfPeakFps = document.getElementById('perf-peak-fps');
     elements.perfAvgFps = document.getElementById('perf-avg-fps');
+    elements.perfPeakBadge = document.getElementById('perf-peak-badge');
+    elements.perfPeakHeader = document.getElementById('perf-peak-header');
 
     // Showcase panel (Rource repo)
     elements.btnVisualizeRource = document.getElementById('btn-visualize-rource');
