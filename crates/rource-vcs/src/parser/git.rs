@@ -165,11 +165,16 @@ impl GitParser {
             .or_else(|| line.strip_prefix("author:"))
             .map_or(line, str::trim);
 
+        // Look for email in angle brackets
+        // The email must be properly formatted: <email> with < before >
         if let Some(email_start) = line.rfind('<') {
             if let Some(email_end) = line.rfind('>') {
-                let name = line[..email_start].trim().to_string();
-                let email = line[email_start + 1..email_end].to_string();
-                return (name, Some(email));
+                // Ensure > comes after < (not malformed like "><" or "<<><<<<<")
+                if email_end > email_start {
+                    let name = line[..email_start].trim().to_string();
+                    let email = line[email_start + 1..email_end].to_string();
+                    return (name, Some(email));
+                }
             }
         }
 
@@ -658,5 +663,58 @@ A\tfile.txt
         let parser = GitParser::new();
         let commits = parser.parse_str(log).unwrap();
         assert_eq!(commits[0].hash, "abc1234");
+    }
+
+    // Regression tests for fuzzer-discovered issues
+
+    #[test]
+    fn test_malformed_author_with_reversed_brackets() {
+        // Fuzzer crash input contained: author:<<><<<<<
+        // This caused panic when > appears before < in rfind
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: test:<<><<<<<\"
+Date: 1000
+A\tfile.txt
+";
+        let parser = GitParser::new();
+        // Should not panic, just parse without email
+        let result = parser.parse_str(log);
+        // This is valid (has files) so should succeed
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_malformed_author_angle_brackets() {
+        // Various malformed angle bracket patterns
+        let (name, email) = GitParser::parse_author_line("Author: test><");
+        assert_eq!(name, "test><");
+        assert!(email.is_none());
+
+        let (name, email) = GitParser::parse_author_line("Author: <<><<<");
+        assert_eq!(name, "<<><<<");
+        assert!(email.is_none());
+
+        let (name, email) = GitParser::parse_author_line("Author: >");
+        assert_eq!(name, ">");
+        assert!(email.is_none());
+    }
+
+    #[test]
+    fn test_input_with_null_bytes() {
+        // Parser should handle null bytes gracefully
+        let parser = GitParser::new();
+        let input = "commit abc1234\nAuthor: test\0\0\0\nDate: 1000\nA\tfile.txt\n";
+        // Should not panic
+        let _ = parser.parse_str(input);
+    }
+
+    #[test]
+    fn test_input_with_carriage_returns() {
+        // Parser should handle carriage returns
+        let parser = GitParser::new();
+        let input = "commit abc1234\r\nAuthor: test\r\nDate: 1000\r\nA\tfile.txt\r\n";
+        let result = parser.parse_str(input);
+        assert!(result.is_ok());
     }
 }

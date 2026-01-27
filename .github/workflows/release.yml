@@ -245,10 +245,60 @@ jobs:
             rource-wasm.tar.gz
             rource-wasm.tar.gz.sha256
 
+  # Calculate artifact hashes for SLSA provenance
+  hash-artifacts:
+    name: Calculate Artifact Hashes
+    needs: [build, wasm]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate artifact hashes
+        id: hash
+        run: |
+          # Calculate SHA256 hashes for all release artifacts
+          cd artifacts
+          HASHES=""
+          for file in **/*.tar.gz **/*.zip; do
+            if [ -f "$file" ]; then
+              HASH=$(sha256sum "$file" | awk '{print $1}')
+              NAME=$(basename "$file")
+              # Format: base64(sha256:hash filename)
+              ENTRY=$(echo -n "$HASH  $NAME" | base64 -w0)
+              if [ -n "$HASHES" ]; then
+                HASHES="$HASHES,$ENTRY"
+              else
+                HASHES="$ENTRY"
+              fi
+            fi
+          done
+          echo "hashes=$HASHES" >> $GITHUB_OUTPUT
+
+  # Generate SLSA Level 3 provenance
+  # This job is only triggered on releases and uses the SLSA framework
+  slsa-provenance:
+    name: Generate SLSA Provenance
+    needs: [hash-artifacts]
+    if: github.event_name == 'release'
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: ${{ needs.hash-artifacts.outputs.hashes }}
+      upload-assets: true
+
   # Sign and upload to GitHub Release
   upload-release:
     name: Upload to Release
-    needs: [build, wasm, sbom, changelog]
+    needs: [build, wasm, sbom, changelog, slsa-provenance]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name == 'release'

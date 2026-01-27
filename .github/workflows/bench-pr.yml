@@ -1,0 +1,250 @@
+name: Benchmark PR
+
+# TEMPORARILY DISABLED: Re-enable when iteration frequency decreases
+# To re-enable: uncomment pull_request trigger below
+on:
+  workflow_dispatch:  # Manual trigger only for now
+  # pull_request:
+  #   branches: [main]
+  #   paths:
+  #     # Only run benchmarks when performance-sensitive code changes
+  #     - 'crates/**/*.rs'
+  #     - 'rource-cli/**/*.rs'
+  #     - 'rource-wasm/**/*.rs'
+  #     - 'Cargo.toml'
+  #     - 'Cargo.lock'
+  #     - '.github/workflows/bench-pr.yml'
+
+# Prevent concurrent benchmark runs on the same PR
+concurrency:
+  group: bench-pr-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+# Required permissions for PR comments
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # 5% regression threshold as documented in CLAUDE.md
+  REGRESSION_THRESHOLD: 5
+
+jobs:
+  # Check if we should skip due to bypass label
+  check-label:
+    name: Check Bypass Label
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check for bypass label
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if PR has the allow-perf-regression label
+          LABELS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} --jq '.labels[].name' 2>/dev/null || echo "")
+          if echo "$LABELS" | grep -q "allow-perf-regression"; then
+            echo "Found 'allow-perf-regression' label - skipping benchmark comparison"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "No bypass label found - will run benchmark comparison"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+  benchmark-comparison:
+    name: Benchmark Comparison
+    runs-on: ubuntu-latest
+    needs: check-label
+    if: needs.check-label.outputs.should_skip != 'true'
+    timeout-minutes: 45
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Need full history for main branch access
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1-rust"
+          shared-key: "bench-pr"
+
+      - name: Install benchmark tools
+        run: |
+          cargo install critcmp --locked
+          cargo install cargo-criterion --locked
+
+      - name: Get main branch SHA
+        id: main-sha
+        run: |
+          MAIN_SHA=$(git rev-parse origin/main)
+          echo "sha=$MAIN_SHA" >> $GITHUB_OUTPUT
+          echo "Main branch SHA: $MAIN_SHA"
+
+      - name: Run PR benchmarks
+        run: |
+          echo "Running benchmarks on PR branch (${{ github.head_ref }})..."
+          # Use cargo criterion for baseline functionality
+          cargo criterion --workspace --message-format=json -- --noplot 2>&1 | tee pr-bench.json || true
+          # Save criterion output directory as PR baseline
+          if [ -d "target/criterion" ]; then
+            cp -r target/criterion target/criterion-pr
+          fi
+          echo "PR benchmarks completed"
+
+      - name: Checkout main branch
+        run: |
+          git checkout origin/main
+          echo "Checked out main branch for baseline comparison"
+
+      - name: Run main branch benchmarks
+        run: |
+          echo "Running benchmarks on main branch..."
+          cargo criterion --workspace --message-format=json -- --noplot 2>&1 | tee main-bench.json || true
+          # Save criterion output directory as main baseline
+          if [ -d "target/criterion" ]; then
+            cp -r target/criterion target/criterion-main
+          fi
+          echo "Main branch benchmarks completed"
+
+      - name: Checkout back to PR
+        run: git checkout ${{ github.head_ref }}
+
+      - name: Compare benchmarks
+        id: compare
+        run: |
+          echo "## Benchmark Comparison Results" > comparison.md
+          echo "" >> comparison.md
+          echo "Comparing PR branch \`${{ github.head_ref }}\` against \`main\` (\`${{ steps.main-sha.outputs.sha }}\`)" >> comparison.md
+          echo "" >> comparison.md
+
+          # Compare criterion output directories
+          # critcmp can compare directories containing criterion output
+          if [ -d "target/criterion-main" ] && [ -d "target/criterion-pr" ]; then
+            critcmp target/criterion-main target/criterion-pr --threshold ${{ env.REGRESSION_THRESHOLD }} 2>&1 | tee critcmp-output.txt || true
+          else
+            echo "Warning: Criterion output directories not found" | tee critcmp-output.txt
+            echo "main dir exists: $(test -d target/criterion-main && echo yes || echo no)" >> critcmp-output.txt
+            echo "pr dir exists: $(test -d target/criterion-pr && echo yes || echo no)" >> critcmp-output.txt
+          fi
+
+          # Check for regressions (critcmp outputs "Regressed" with capital R)
+          REGRESSIONS=$(grep -ic "regress" critcmp-output.txt 2>/dev/null || echo "0")
+
+          if [ "$REGRESSIONS" -gt 0 ]; then
+            echo "### ⚠️ Performance Regressions Detected" >> comparison.md
+            echo "" >> comparison.md
+            echo "Found **$REGRESSIONS** benchmark(s) that regressed by more than ${{ env.REGRESSION_THRESHOLD }}%." >> comparison.md
+            echo "" >> comparison.md
+            echo "To merge this PR with performance regressions, add the \`allow-perf-regression\` label and include justification in the PR description." >> comparison.md
+            echo "" >> comparison.md
+            echo "has_regressions=true" >> $GITHUB_OUTPUT
+            echo "regression_count=$REGRESSIONS" >> $GITHUB_OUTPUT
+          else
+            echo "### ✅ No Significant Regressions" >> comparison.md
+            echo "" >> comparison.md
+            echo "All benchmarks are within the ${{ env.REGRESSION_THRESHOLD }}% tolerance threshold." >> comparison.md
+            echo "" >> comparison.md
+            echo "has_regressions=false" >> $GITHUB_OUTPUT
+            echo "regression_count=0" >> $GITHUB_OUTPUT
+          fi
+
+          echo "### Detailed Comparison" >> comparison.md
+          echo "" >> comparison.md
+          echo '```' >> comparison.md
+          cat critcmp-output.txt >> comparison.md
+          echo '```' >> comparison.md
+          echo "" >> comparison.md
+          echo "---" >> comparison.md
+          echo "*Threshold: ${{ env.REGRESSION_THRESHOLD }}% regression is blocking*" >> comparison.md
+
+          # Output for summary
+          cat comparison.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Post PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comparison = fs.readFileSync('comparison.md', 'utf8');
+
+            // Find existing comment to update
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## Benchmark Comparison Results')
+            );
+
+            const commentBody = comparison + '\n\n*Generated by benchmark-pr workflow*';
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody,
+              });
+            }
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: benchmark-comparison
+          path: |
+            comparison.md
+            critcmp-output.txt
+            pr-bench.json
+            main-bench.json
+          retention-days: 14
+
+      - name: Fail on regression
+        if: steps.compare.outputs.has_regressions == 'true'
+        run: |
+          echo "::error::Performance regression detected! ${{ steps.compare.outputs.regression_count }} benchmark(s) regressed by more than ${{ env.REGRESSION_THRESHOLD }}%."
+          echo ""
+          echo "Options:"
+          echo "1. Fix the performance regression"
+          echo "2. Add the 'allow-perf-regression' label with justification in PR description"
+          echo ""
+          echo "See the PR comment for detailed benchmark comparison."
+          exit 1
+
+  # Summary job that always runs
+  benchmark-status:
+    name: Benchmark Status
+    runs-on: ubuntu-latest
+    needs: [check-label, benchmark-comparison]
+    if: always()
+    steps:
+      - name: Report status
+        run: |
+          echo "## Benchmark PR Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.check-label.outputs.should_skip }}" == "true" ]; then
+            echo "✅ Skipped due to \`allow-perf-regression\` label" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.benchmark-comparison.result }}" == "success" ]; then
+            echo "✅ All benchmarks passed regression checks" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.benchmark-comparison.result }}" == "failure" ]; then
+            echo "❌ Performance regression detected (>${{ env.REGRESSION_THRESHOLD }}%)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Benchmark comparison: ${{ needs.benchmark-comparison.result }}" >> $GITHUB_STEP_SUMMARY
+          fi

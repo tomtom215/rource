@@ -2525,8 +2525,8 @@ mod tests {
         ];
 
         let size = 12.0;
-        let total_ascii = ITERATIONS as u128 * ascii_strings.len() as u128;
-        let total_utf8 = ITERATIONS as u128 * utf8_strings.len() as u128;
+        let total_ascii = u128::from(ITERATIONS) * ascii_strings.len() as u128;
+        let total_utf8 = u128::from(ITERATIONS) * utf8_strings.len() as u128;
 
         // Benchmark ASCII
         let start = Instant::now();
@@ -2561,16 +2561,12 @@ mod tests {
             utf8_per_call_ps,
             utf8_per_call_ps as f64 / 1000.0
         );
-        println!(
-            "  Total time: ASCII={:?}, UTF-8={:?}",
-            ascii_elapsed, utf8_elapsed
-        );
+        println!("  Total time: ASCII={ascii_elapsed:?}, UTF-8={utf8_elapsed:?}");
 
         // Assertion: should be < 50ns per call even with UTF-8 (chars().count() is O(n))
         assert!(
             utf8_per_call_ps < 50_000, // 50ns in picoseconds
-            "estimate_text_width too slow: {} ps/call",
-            utf8_per_call_ps
+            "estimate_text_width too slow: {utf8_per_call_ps} ps/call"
         );
     }
 }

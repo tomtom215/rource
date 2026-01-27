@@ -304,24 +304,44 @@ impl SvnParser {
         while let Some(entry_start) = input[search_start..].find("<logentry") {
             let abs_start = search_start + entry_start;
 
-            // Find revision attribute
-            let Some(tag_end) = input[abs_start..].find('>') else {
-                break;
-            };
-            let tag_content = &input[abs_start..abs_start + tag_end];
-            let revision = Self::extract_attribute(tag_content, "revision").unwrap_or("0");
-
-            // Find closing </logentry>
+            // Find closing </logentry> first to bound our search
             let Some(close_start) = input[abs_start..].find("</logentry>") else {
                 break;
             };
+            let close_abs = abs_start + close_start;
+
+            // Find the closing '>' of the opening tag - must be before </logentry>
+            let tag_search_region = &input[abs_start..close_abs];
+            let Some(tag_end) = tag_search_region.find('>') else {
+                // Malformed: no '>' in opening tag before closing tag
+                search_start = close_abs + 11;
+                continue;
+            };
+
+            // Validate tag_end is reasonable (not just finding '>' in content)
+            let tag_content = &input[abs_start..abs_start + tag_end];
+
+            // Skip if tag contains null bytes or other invalid characters
+            if tag_content.bytes().any(|b| b == 0) {
+                search_start = close_abs + 11;
+                continue;
+            }
+
+            let revision = Self::extract_attribute(tag_content, "revision").unwrap_or("0");
+
             let content_start = abs_start + tag_end + 1;
-            let content_end = abs_start + close_start;
+            let content_end = close_abs;
+
+            // Safety check: ensure valid slice bounds
+            if content_start > content_end || content_end > input.len() {
+                search_start = close_abs + 11;
+                continue;
+            }
 
             let content = &input[content_start..content_end];
             entries.push((revision, content));
 
-            search_start = abs_start + close_start + 11; // Move past </logentry>
+            search_start = close_abs + 11; // Move past </logentry>
         }
 
         entries
@@ -629,5 +649,50 @@ mod tests {
         assert!(days_2000 > 0);
         // Approximately 30 years * 365 days = 10950, with leap years ~10957
         assert!(days_2000 > 10000 && days_2000 < 12000);
+    }
+
+    // Regression tests for fuzzer-discovered issues
+
+    #[test]
+    fn test_malformed_logentry_with_null_bytes() {
+        // Fuzzer crash input: <logentry=\0\0\0\0\0\0\0\0\0\0\0</logentry>
+        // This caused a panic due to invalid slice bounds
+        let parser = SvnParser::new();
+        let malformed = "<logentry=\0\0\0\0\0\0\0\0\0\0\0</logentry>";
+
+        // Should not panic, just return error or empty
+        let result = parser.parse_str(malformed);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_malformed_logentry_no_closing_bracket() {
+        // <logentry without > before </logentry>
+        let parser = SvnParser::new();
+        let malformed = "<logentry revision=\"1\"</logentry>";
+
+        // Should not panic
+        let result = parser.parse_str(malformed);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_malformed_logentry_reversed_brackets() {
+        // Content end before content start scenario
+        let parser = SvnParser::new();
+        let malformed = "<logentry</logentry>";
+
+        let result = parser.parse_str(malformed);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_arbitrary_binary_in_log() {
+        // Ensure parser handles arbitrary binary data gracefully
+        let parser = SvnParser::new();
+        let binary = "<log>\x00\x01\x02\x03</log>";
+
+        let result = parser.parse_str(binary);
+        assert!(result.is_err());
     }
 }
