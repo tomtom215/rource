@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769542418646,
+  "lastUpdate": 1769546931792,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3533,6 +3533,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/211142471ab85cfb558745551c1103a46be788a5"
         },
         "date": 1769542418312,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea6b79e44f0a0d9f9a171d922a6ce340287d19fc",
+          "message": "Merge pull request #211 from tomtom215/claude/rource-visualization-buHuh\n\ndocs: Add implementation sections to all formal proof documents",
+          "timestamp": "2026-01-27T21:46:30+01:00",
+          "tree_id": "81f77bc97a28153185e1787d4f2f3f0a3ddf5ead",
+          "url": "https://github.com/tomtom215/rource/commit/ea6b79e44f0a0d9f9a171d922a6ce340287d19fc"
+        },
+        "date": 1769546930839,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
