@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769551483470,
+  "lastUpdate": 1769554813499,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3611,6 +3611,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/dedf46d5134d42196ea56c28001a503117f6e6a2"
         },
         "date": 1769551483139,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3375cbd7221646aace3d8b5c9863f31ff984f6a2",
+          "message": "Merge pull request #213 from tomtom215/claude/rource-visualization-3SDbW\n\nAdd label placement benchmarks and Phase 76-77 performance analysis",
+          "timestamp": "2026-01-27T23:55:56+01:00",
+          "tree_id": "530c9a9eb6633fd18aab15404c293a220743b873",
+          "url": "https://github.com/tomtom215/rource/commit/3375cbd7221646aace3d8b5c9863f31ff984f6a2"
+        },
+        "date": 1769554813076,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
