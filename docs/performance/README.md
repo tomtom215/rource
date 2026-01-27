@@ -36,6 +36,7 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 | [METHODOLOGY.md](./METHODOLOGY.md) | Benchmark methodology and standards |
 | [ALGORITHMIC_COMPLEXITY.md](./ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of all functions |
 | [THEORETICAL_ALGORITHMS.md](./THEORETICAL_ALGORITHMS.md) | Advanced algorithmic research reference |
+| [FORMAL_PROOFS.md](./FORMAL_PROOFS.md) | Mathematical proofs for core algorithms |
 | [SHADERS.md](./SHADERS.md) | GPU shader optimization reference |
 | [FUTURE_WORK.md](./FUTURE_WORK.md) | Expert+ technical roadmap |
 
@@ -84,6 +85,45 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 | Arithmetic            | Fixed-point, reciprocal multiplication                     |
 | Memory                | Zero-allocation, buffer reuse, Vec over HashMap            |
 | Compile-time          | LUTs, const evaluation, precomputed constants              |
+
+---
+
+## Algorithm Reference
+
+Quick reference for the core algorithms and their complexities. For formal proofs, see [FORMAL_PROOFS.md](./FORMAL_PROOFS.md).
+
+### Spatial Data Structures
+
+| Algorithm | Complexity | Location |
+|-----------|-----------|----------|
+| QuadTree | O(log n) query/insert | `rource-core/src/physics/spatial.rs` |
+| Barnes-Hut | O(n log n) force calc | `rource-core/src/physics/barnes_hut.rs` |
+| GPU Spatial Hash | O(n) with GPU | `rource-render/src/backend/wgpu/spatial_hash.rs` |
+
+### Physics Simulation
+
+| Algorithm | Complexity | Location |
+|-----------|-----------|----------|
+| Force-Directed Layout | O(n log n) | `rource-core/src/physics/force.rs` |
+| Semi-Implicit Euler | O(n) | `rource-core/src/physics/force.rs` |
+
+### Rendering
+
+| Algorithm | Complexity | Location |
+|-----------|-----------|----------|
+| Software Rasterization | O(pixels) | `rource-render/src/backend/software/` |
+| Fixed-Point Blending | O(1) per pixel | `rource-render/src/backend/software/optimized.rs` |
+| Kawase Blur (Bloom) | O(pixels × passes) | `rource-render/src/backend/wgpu/bloom.rs` |
+
+### Complexity Distribution
+
+From [ALGORITHMIC_COMPLEXITY.md](./ALGORITHMIC_COMPLEXITY.md):
+
+- **87%** of functions are O(1)
+- **4%** are O(log n)
+- **6%** are O(n)
+- **2%** are O(n log n)
+- **<1%** are O(n²) (fallback paths only)
 
 ---
 

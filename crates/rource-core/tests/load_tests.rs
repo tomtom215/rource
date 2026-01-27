@@ -792,5 +792,8 @@ fn load_test_memory_churn() {
 
     // Allow more growth for churn test (20% instead of 5%)
     // Churn creates many entities which is expected to use memory
-    assert!(growth < 100.0, "Excessive memory growth during churn: {growth:.2}%");
+    assert!(
+        growth < 100.0,
+        "Excessive memory growth during churn: {growth:.2}%"
+    );
 }

@@ -46,7 +46,7 @@ Complete technical documentation for the Rource project.
 
 ---
 
-### Performance Documentation (19 files)
+### Performance Documentation (20 files)
 
 | Document | Description |
 |----------|-------------|
@@ -58,6 +58,7 @@ Complete technical documentation for the Rource project.
 | [performance/FUTURE_WORK.md](./performance/FUTURE_WORK.md) | **Expert+ roadmap** (active) |
 | [performance/THEORETICAL_ALGORITHMS.md](./performance/THEORETICAL_ALGORITHMS.md) | Advanced algorithmic research |
 | [performance/ALGORITHMIC_COMPLEXITY.md](./performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of all functions |
+| [performance/FORMAL_PROOFS.md](./performance/FORMAL_PROOFS.md) | Mathematical proofs for core algorithms |
 | [performance/COMPLEXITY_VERIFICATION.md](./performance/COMPLEXITY_VERIFICATION.md) | Empirical Big-O verification |
 | [performance/FUNCTION_PROFILES.md](./performance/FUNCTION_PROFILES.md) | Per-function timing profiles |
 | [performance/PERFORMANCE_BASELINE.md](./performance/PERFORMANCE_BASELINE.md) | WASM performance audit |
@@ -135,15 +136,6 @@ Complete technical documentation for the Rource project.
 
 ---
 
-### Algorithms (2 files)
-
-| Document | Description |
-|----------|-------------|
-| [algorithms/README.md](./algorithms/README.md) | Algorithms documentation index |
-| [algorithms/FORMAL_PROOFS.md](./algorithms/FORMAL_PROOFS.md) | Mathematical proofs |
-
----
-
 ## Documentation by Topic
 
 ### Getting Started
@@ -183,8 +175,8 @@ Complete technical documentation for the Rource project.
 
 | Metric | Value |
 |--------|-------|
-| Total documentation files | **62** |
-| Performance documents | 19 |
+| Total documentation files | **61** |
+| Performance documents | 20 |
 | Operations documents | 6 |
 | Architecture/Design documents | 8 |
 | ADR documents | 6 |
@@ -192,7 +184,6 @@ Complete technical documentation for the Rource project.
 | Testing documents | 2 |
 | UX/Accessibility documents | 2 |
 | CI/CD documents | 2 |
-| Algorithm documents | 2 |
 | Root documents | 6 |
 | Other (examples, benchmarks) | 6 |
 
