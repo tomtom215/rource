@@ -147,6 +147,106 @@ pub fn malformed_log_line(variant: usize) -> String {
     }
 }
 
+// ===================================================================
+// Floyd's Tortoise and Hare Algorithm (Phase 74)
+// ===================================================================
+
+/// The LCG multiplier used in chaos tests.
+/// This is from PCG: https://www.pcg-random.org/
+const LCG_MULTIPLIER: u64 = 6364136223846793005;
+
+/// The LCG increment used in chaos tests.
+const LCG_INCREMENT: u64 = 1;
+
+/// Result of cycle detection using Floyd's algorithm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CycleInfo {
+    /// Index where cycle begins (μ)
+    pub start: usize,
+    /// Length of the cycle (λ)
+    pub length: usize,
+}
+
+/// Detects cycles using Floyd's Tortoise and Hare algorithm.
+///
+/// This is an O(1) space algorithm for detecting cycles in iterated function sequences.
+/// For a function f: S → S, it detects when the sequence x, f(x), f(f(x)), ... repeats.
+///
+/// # Arguments
+/// * `x0` - Initial value
+/// * `f` - Iteration function (must be a total function)
+/// * `max_iterations` - Maximum iterations before declaring "no short cycle"
+///
+/// # Returns
+/// * `Some(CycleInfo)` if a cycle is detected within max_iterations
+/// * `None` if no cycle found within the iteration limit
+///
+/// # Complexity
+/// * Time: O(μ + λ) where μ = tail length, λ = cycle length
+/// * Space: O(1) - only two values stored
+pub fn floyd_cycle_detect<T, F>(x0: T, mut f: F, max_iterations: u64) -> Option<CycleInfo>
+where
+    T: PartialEq + Clone,
+    F: FnMut(&T) -> T,
+{
+    // Phase 1: Detect meeting point
+    let mut tortoise = f(&x0);
+    let mut hare = f(&f(&x0));
+    let mut iterations = 0u64;
+
+    while tortoise != hare {
+        if iterations >= max_iterations {
+            return None; // No short cycle detected
+        }
+
+        tortoise = f(&tortoise);
+        hare = f(&f(&hare));
+        iterations += 1;
+    }
+
+    // Phase 2: Find cycle start (μ)
+    let mut mu = 0usize;
+    tortoise = x0;
+
+    while tortoise != hare {
+        tortoise = f(&tortoise);
+        hare = f(&hare);
+        mu += 1;
+    }
+
+    // Phase 3: Find cycle length (λ)
+    let mut lambda = 1usize;
+    hare = f(&tortoise);
+
+    while tortoise != hare {
+        hare = f(&hare);
+        lambda += 1;
+    }
+
+    Some(CycleInfo {
+        start: mu,
+        length: lambda,
+    })
+}
+
+/// Verifies the LCG PRNG doesn't have short cycles using Floyd's algorithm.
+///
+/// A proper LCG with full period should have period 2^64 for 64-bit state.
+/// This function verifies no short cycles exist by sampling.
+///
+/// # Arguments
+/// * `seed` - Initial seed value
+/// * `max_check` - Maximum iterations to check (cannot check full 2^64)
+///
+/// # Returns
+/// * `true` if no short cycle detected (PRNG is good for this sample)
+/// * `false` if a short cycle was detected (PRNG quality issue)
+pub fn verify_lcg_no_short_cycle(seed: u64, max_check: u64) -> bool {
+    let f = |x: &u64| x.wrapping_mul(LCG_MULTIPLIER).wrapping_add(LCG_INCREMENT);
+
+    floyd_cycle_detect(seed, f, max_check).is_none()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,5 +287,123 @@ mod tests {
             // Should not panic, just produce a string
             assert!(line.len() < 20000);
         }
+    }
+
+    // ===================================================================
+    // Floyd's Tortoise and Hare Algorithm Tests (Phase 74)
+    // ===================================================================
+
+    #[test]
+    fn test_floyd_simple_cycle() {
+        // f(x) = (x + 1) mod 5, starting from 0
+        // Sequence: 0 → 1 → 2 → 3 → 4 → 0 → ...
+        // μ = 0, λ = 5
+        let info = floyd_cycle_detect(0u32, |&x| (x + 1) % 5, 1000)
+            .expect("Cycle should be detected");
+
+        assert_eq!(info.start, 0, "Cycle should start at index 0");
+        assert_eq!(info.length, 5, "Cycle length should be 5");
+    }
+
+    #[test]
+    fn test_floyd_tail_and_cycle() {
+        // Sequence: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 5 → 6 → ...
+        // μ = 5 (tail length before cycle), λ = 5 (cycle length)
+        let info = floyd_cycle_detect(
+            0u32,
+            |&x| {
+                if x < 5 {
+                    x + 1
+                } else {
+                    5 + (x - 4) % 5
+                }
+            },
+            1000,
+        )
+        .expect("Cycle should be detected");
+
+        assert_eq!(info.start, 5, "Cycle should start at index 5");
+        assert_eq!(info.length, 5, "Cycle length should be 5");
+    }
+
+    #[test]
+    fn test_floyd_small_lcg() {
+        // Small LCG for testing: x_{n+1} = (5*x_n + 1) mod 16
+        // This is a full-period LCG with period = 16
+        let info = floyd_cycle_detect(0u32, |&x| (5 * x + 1) % 16, 1000)
+            .expect("Cycle should be detected");
+
+        assert_eq!(info.start, 0, "Full-period LCG should cycle from start");
+        assert_eq!(info.length, 16, "Period should be 16");
+    }
+
+    #[test]
+    fn test_floyd_no_short_cycle() {
+        // Test that large iteration limit returns None when no cycle exists
+        // Use a function that won't cycle within the limit
+        let info = floyd_cycle_detect(0u64, |&x| x.wrapping_add(1), 100);
+
+        assert!(info.is_none(), "Should not find cycle within 100 iterations");
+    }
+
+    #[test]
+    fn test_lcg_prng_no_short_cycle() {
+        // Verify our LCG doesn't have short cycles
+        // Full period is 2^64, we can only sample a small portion
+        const MAX_CHECK: u64 = 10_000_000; // 10 million iterations
+
+        // Test with multiple seeds
+        for seed in [0u64, 1, 42, 12345, 0xDEADBEEF, u64::MAX] {
+            assert!(
+                verify_lcg_no_short_cycle(seed, MAX_CHECK),
+                "LCG should not have short cycle with seed {}",
+                seed
+            );
+        }
+    }
+
+    #[test]
+    fn test_lcg_prng_determinism() {
+        // Verify LCG produces deterministic sequence
+        let mut state1 = 42u64;
+        let mut state2 = 42u64;
+
+        for _ in 0..1000 {
+            state1 = state1.wrapping_mul(LCG_MULTIPLIER).wrapping_add(LCG_INCREMENT);
+            state2 = state2.wrapping_mul(LCG_MULTIPLIER).wrapping_add(LCG_INCREMENT);
+
+            assert_eq!(state1, state2, "LCG should be deterministic");
+        }
+    }
+
+    #[test]
+    fn test_lcg_prng_different_seeds() {
+        // Different seeds should produce different sequences
+        let mut state1 = 42u64;
+        let mut state2 = 43u64;
+
+        state1 = state1.wrapping_mul(LCG_MULTIPLIER).wrapping_add(LCG_INCREMENT);
+        state2 = state2.wrapping_mul(LCG_MULTIPLIER).wrapping_add(LCG_INCREMENT);
+
+        assert_ne!(state1, state2, "Different seeds should diverge immediately");
+    }
+
+    #[test]
+    fn test_cycle_info_equality() {
+        let info1 = CycleInfo {
+            start: 5,
+            length: 10,
+        };
+        let info2 = CycleInfo {
+            start: 5,
+            length: 10,
+        };
+        let info3 = CycleInfo {
+            start: 5,
+            length: 11,
+        };
+
+        assert_eq!(info1, info2);
+        assert_ne!(info1, info3);
     }
 }

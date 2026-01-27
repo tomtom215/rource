@@ -443,4 +443,169 @@ mod tests {
         let display = user.display_color();
         assert!((display.a - 0.5).abs() < 0.001);
     }
+
+    // ===================================================================
+    // Hash Distribution Tests (Phase 74 - Floyd's Algorithm Application)
+    // ===================================================================
+
+    #[test]
+    fn test_color_hash_no_short_cycle() {
+        const MAX_CHECK: u32 = 1_000_000;
+
+        // Test that the hash function doesn't have short cycles when
+        // iteratively applied (simulating single-byte input progression)
+        //
+        // f(h) = h * 31 + 0x61 ('a')
+        // This tests the hash's multiplicative structure
+        let f = |h: u32| h.wrapping_mul(31).wrapping_add(0x61);
+
+        // Floyd's Tortoise and Hare for cycle detection
+        let x0 = 0u32;
+        let mut tortoise = f(x0);
+        let mut hare = f(f(x0));
+        let mut iterations = 0u32;
+
+        while tortoise != hare && iterations < MAX_CHECK {
+            tortoise = f(tortoise);
+            hare = f(f(hare));
+            iterations += 1;
+        }
+
+        // If we hit MAX_CHECK, no short cycle exists
+        // If cycle found, calculate its length
+        if tortoise == hare && iterations < MAX_CHECK {
+            // Find cycle length
+            let mut lambda = 1u32;
+            hare = f(tortoise);
+            while tortoise != hare {
+                hare = f(hare);
+                lambda += 1;
+            }
+
+            // Hash should have cycle > 100,000 for reasonable distribution
+            assert!(
+                lambda > 100_000,
+                "Hash function has short cycle: {} iterations",
+                lambda
+            );
+        }
+        // No short cycle found - this is good!
+    }
+
+    #[test]
+    fn test_color_hash_distribution_quality() {
+        // Test that color_from_name produces well-distributed colors
+        // by checking hue distribution across common names
+        use std::collections::HashMap;
+
+        let test_names = [
+            "Alice",
+            "Bob",
+            "Charlie",
+            "David",
+            "Eve",
+            "Frank",
+            "Grace",
+            "Henry",
+            "Ivy",
+            "Jack",
+            "Kate",
+            "Liam",
+            "Mia",
+            "Noah",
+            "Olivia",
+            "Paul",
+            "Quinn",
+            "Rose",
+            "Sam",
+            "Tina",
+            "Uma",
+            "Victor",
+            "Wendy",
+            "Xavier",
+            "Yuki",
+            "Zoe",
+            "admin",
+            "root",
+            "user",
+            "developer",
+            "test",
+            "bot",
+            "system",
+            "github-actions",
+            "dependabot",
+        ];
+
+        let mut hue_buckets: HashMap<u32, u32> = HashMap::new();
+
+        for name in &test_names {
+            let color = User::color_from_name(name);
+            let hsl = color.to_hsl();
+            // Bucket hues into 36 buckets (10 degrees each)
+            let bucket = (hsl.h / 10.0) as u32;
+            *hue_buckets.entry(bucket).or_insert(0) += 1;
+        }
+
+        // Check distribution: no bucket should have more than 30% of names
+        let max_per_bucket = (test_names.len() as f32 * 0.3).ceil() as u32;
+        for (bucket, count) in &hue_buckets {
+            assert!(
+                *count <= max_per_bucket,
+                "Bucket {} has {} names, exceeds 30% threshold ({})",
+                bucket,
+                count,
+                max_per_bucket
+            );
+        }
+
+        // At least 6 different buckets should be used (spread across color wheel)
+        assert!(
+            hue_buckets.len() >= 6,
+            "Colors too concentrated: only {} hue buckets used",
+            hue_buckets.len()
+        );
+    }
+
+    #[test]
+    fn test_color_hash_collision_resistance() {
+        // Test that similar names produce different colors
+        let pairs = [
+            ("user1", "user2"),
+            ("test", "Test"),
+            ("alice", "Alice"),
+            ("Bob", "bob"),
+            ("a", "b"),
+            ("file.rs", "file.ts"),
+        ];
+
+        for (name1, name2) in pairs {
+            let color1 = User::color_from_name(name1);
+            let color2 = User::color_from_name(name2);
+
+            // Colors should be different
+            assert_ne!(
+                color1, color2,
+                "Names '{}' and '{}' should produce different colors",
+                name1, name2
+            );
+        }
+    }
+
+    #[test]
+    fn test_color_hash_empty_and_special() {
+        // Test edge cases
+        let empty = User::color_from_name("");
+        let space = User::color_from_name(" ");
+        let unicode = User::color_from_name("🦀");
+        let long_name = User::color_from_name(&"a".repeat(1000));
+
+        // All should produce valid colors (no panic)
+        assert!(empty.to_hsl().h >= 0.0);
+        assert!(space.to_hsl().h >= 0.0);
+        assert!(unicode.to_hsl().h >= 0.0);
+        assert!(long_name.to_hsl().h >= 0.0);
+
+        // Empty and single space should be different
+        assert_ne!(empty, space);
+    }
 }

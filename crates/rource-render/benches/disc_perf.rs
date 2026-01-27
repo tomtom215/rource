@@ -116,7 +116,7 @@ fn bench_disc_alpha(c: &mut Criterion) {
         group.throughput(Throughput::Elements(pixel_count));
 
         group.bench_with_input(
-            BenchmarkId::new("optimized", format!("a={:.2}", alpha)),
+            BenchmarkId::new("optimized", format!("a={alpha:.2}")),
             &color,
             |b, color| {
                 let mut pixels = vec![0xFF00_0000u32; (size * size) as usize];
@@ -136,7 +136,7 @@ fn bench_disc_alpha(c: &mut Criterion) {
         );
 
         group.bench_with_input(
-            BenchmarkId::new("precomputed_p72", format!("a={:.2}", alpha)),
+            BenchmarkId::new("precomputed_p72", format!("a={alpha:.2}")),
             &color,
             |b, color| {
                 let mut pixels = vec![0xFF00_0000u32; (size * size) as usize];

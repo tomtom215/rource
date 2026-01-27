@@ -618,6 +618,107 @@ impl DirTree {
         }
     }
 
+    /// Detects if there is a cycle in the ancestor chain starting from the given node.
+    ///
+    /// Uses Floyd's Tortoise and Hare algorithm for O(1) space complexity.
+    /// This is useful for validating data integrity - in a properly formed tree,
+    /// following parent pointers should always terminate at the root.
+    ///
+    /// # Returns
+    /// - `true` if a cycle is detected (indicates data corruption)
+    /// - `false` if the ancestor chain terminates normally at the root
+    ///
+    /// # Complexity
+    /// - Time: O(μ + λ) where μ = tail length, λ = cycle length (if any)
+    /// - Space: O(1) - only two pointers
+    ///
+    /// # Example
+    /// ```ignore
+    /// let tree = DirTree::new();
+    /// let dir_id = tree.get_or_create_path(Path::new("src/lib"));
+    /// assert!(!tree.detect_ancestor_cycle(dir_id)); // Should be false in valid tree
+    /// ```
+    #[must_use]
+    pub fn detect_ancestor_cycle(&self, id: DirId) -> bool {
+        // Helper function: f(node) = node.parent()
+        let get_parent =
+            |node_id: DirId| -> Option<DirId> { self.get(node_id).and_then(DirNode::parent) };
+
+        // Phase 1: Initialize tortoise and hare
+        // Tortoise starts at f(id), hare at f(f(id))
+        let Some(tortoise_start) = get_parent(id) else {
+            // No parent means we're at root - no cycle possible from this node
+            return false;
+        };
+
+        let Some(hare_mid) = get_parent(tortoise_start) else {
+            // Only one ancestor (the root) - no cycle
+            return false;
+        };
+
+        let Some(hare_start) = get_parent(hare_mid) else {
+            // Two ancestors, both terminating at root - no cycle
+            return false;
+        };
+
+        let mut tortoise = tortoise_start;
+        let mut hare = hare_start;
+
+        // Phase 1: Detect meeting point (if cycle exists)
+        loop {
+            if tortoise == hare {
+                // Meeting point found - cycle detected!
+                return true;
+            }
+
+            // Move tortoise one step
+            let Some(next_tortoise) = get_parent(tortoise) else {
+                // Tortoise reached root - no cycle
+                return false;
+            };
+
+            // Move hare two steps
+            let Some(hare_mid) = get_parent(hare) else {
+                // Hare reached root - no cycle
+                return false;
+            };
+            let Some(next_hare) = get_parent(hare_mid) else {
+                // Hare reached root - no cycle
+                return false;
+            };
+
+            tortoise = next_tortoise;
+            hare = next_hare;
+        }
+    }
+
+    /// Validates that the entire tree has no cycles in any ancestor chains.
+    ///
+    /// This is a comprehensive integrity check that verifies no node
+    /// has corrupted parent pointers that would create a cycle.
+    ///
+    /// # Returns
+    /// - `true` if the tree is valid (no cycles)
+    /// - `false` if any cycle is detected
+    ///
+    /// # Complexity
+    /// - Time: O(n * d) where n = number of nodes, d = max depth
+    /// - Space: O(1) per check, O(n) for iteration
+    #[must_use]
+    pub fn validate_no_cycles(&self) -> bool {
+        // Collect all node IDs first (to avoid borrowing issues)
+        let node_ids: Vec<DirId> = self.iter().map(DirNode::id).collect();
+
+        // Check each node for cycles
+        for id in node_ids {
+            if self.detect_ancestor_cycle(id) {
+                return false;
+            }
+        }
+
+        true
+    }
+
     /// Updates parent positions cache for physics simulation.
     ///
     /// Uses index-based iteration to avoid intermediate Vec allocation.
@@ -846,5 +947,110 @@ mod tests {
 
         assert_eq!(id4.index(), 1); // Reuses index
         assert!(id4.generation().value() > id2.generation().value()); // New generation
+    }
+
+    // ===================================================================
+    // Floyd's Tortoise and Hare Algorithm Tests (Phase 74)
+    // ===================================================================
+
+    #[test]
+    fn test_detect_ancestor_cycle_empty_tree() {
+        let tree = DirTree::new();
+        let root_id = tree.root_id();
+
+        // Root has no parent, so no cycle possible
+        assert!(!tree.detect_ancestor_cycle(root_id));
+    }
+
+    #[test]
+    fn test_detect_ancestor_cycle_single_child() {
+        let mut tree = DirTree::new();
+
+        let src_id = tree.get_or_create_path(Path::new("src"));
+
+        // Single child with parent pointing to root - no cycle
+        assert!(!tree.detect_ancestor_cycle(src_id));
+    }
+
+    #[test]
+    fn test_detect_ancestor_cycle_deep_tree() {
+        let mut tree = DirTree::new();
+
+        // Create a deep tree: root -> a -> b -> c -> d -> e
+        let deep_id = tree.get_or_create_path(Path::new("a/b/c/d/e"));
+
+        // No cycles in a properly formed tree
+        assert!(!tree.detect_ancestor_cycle(deep_id));
+
+        // Also verify the entire tree is valid
+        assert!(tree.validate_no_cycles());
+    }
+
+    #[test]
+    fn test_detect_ancestor_cycle_wide_tree() {
+        let mut tree = DirTree::new();
+
+        // Create a wide tree with many siblings
+        tree.get_or_create_path(Path::new("src"));
+        tree.get_or_create_path(Path::new("tests"));
+        tree.get_or_create_path(Path::new("docs"));
+        tree.get_or_create_path(Path::new("benches"));
+        let examples_id = tree.get_or_create_path(Path::new("examples"));
+
+        // No cycles
+        assert!(!tree.detect_ancestor_cycle(examples_id));
+        assert!(tree.validate_no_cycles());
+    }
+
+    #[test]
+    fn test_detect_ancestor_cycle_mixed_tree() {
+        let mut tree = DirTree::new();
+
+        // Create a realistic repository structure
+        tree.get_or_create_path(Path::new("src/core/engine"));
+        tree.get_or_create_path(Path::new("src/core/math"));
+        tree.get_or_create_path(Path::new("src/render/gpu"));
+        tree.get_or_create_path(Path::new("src/render/software"));
+        tree.get_or_create_path(Path::new("tests/unit"));
+        tree.get_or_create_path(Path::new("tests/integration"));
+        let deep_id = tree.get_or_create_path(Path::new("examples/basic/hello_world"));
+
+        // No cycles in properly formed tree
+        assert!(!tree.detect_ancestor_cycle(deep_id));
+        assert!(tree.validate_no_cycles());
+    }
+
+    #[test]
+    fn test_validate_no_cycles_comprehensive() {
+        let mut tree = DirTree::new();
+
+        // Create 100 directories at various depths
+        for i in 0..20 {
+            tree.get_or_create_path(Path::new(&format!("dir_{i}")));
+            tree.get_or_create_path(Path::new(&format!("dir_{i}/sub_a")));
+            tree.get_or_create_path(Path::new(&format!("dir_{i}/sub_b")));
+            tree.get_or_create_path(Path::new(&format!("dir_{i}/sub_a/deep")));
+            tree.get_or_create_path(Path::new(&format!("dir_{i}/sub_b/deep")));
+        }
+
+        // All 101 nodes (1 root + 100 created) should have no cycles
+        assert_eq!(tree.len(), 101);
+        assert!(tree.validate_no_cycles());
+    }
+
+    #[test]
+    fn test_detect_ancestor_cycle_after_removal() {
+        let mut tree = DirTree::new();
+
+        // Create structure
+        let src_id = tree.get_or_create_path(Path::new("src"));
+        tree.get_or_create_path(Path::new("src/lib"));
+        tree.get_or_create_path(Path::new("tests"));
+
+        // Remove src subtree
+        tree.remove(src_id);
+
+        // Remaining tree should still be valid
+        assert!(tree.validate_no_cycles());
     }
 }
