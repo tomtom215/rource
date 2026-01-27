@@ -152,6 +152,8 @@ export function updatePerfMetrics() {
         perfPeakAvgRow,
         perfPeakFps,
         perfAvgFps,
+        perfPeakBadge,
+        perfPeakHeader,
     } = elements;
 
     if (!perfFps) return;
@@ -200,16 +202,38 @@ export function updatePerfMetrics() {
         }
 
         // Update Peak/Avg row visibility and values
+        const fpsStats = isUncapped ? getUncappedFpsStats() : null;
         if (perfPeakAvgRow) {
             if (isUncapped && isPlaying) {
                 // Show peak/avg row in uncapped mode while playing
                 perfPeakAvgRow.classList.remove('hidden');
-                const fpsStats = getUncappedFpsStats();
                 if (perfPeakFps) perfPeakFps.textContent = Math.round(fpsStats.maxFps);
                 if (perfAvgFps) perfAvgFps.textContent = Math.round(fpsStats.emaFps);
             } else {
                 // Hide when not in uncapped mode or not playing
                 perfPeakAvgRow.classList.add('hidden');
+            }
+        }
+
+        // Update Peak badge in header (visible even when overlay is collapsed)
+        // This ensures peak FPS is visible on mobile where the overlay is collapsed by default
+        if (perfPeakBadge) {
+            if (isUncapped && fpsStats && fpsStats.maxFps > 0) {
+                // Show badge with peak FPS value
+                perfPeakBadge.classList.remove('hidden');
+                if (perfPeakHeader) {
+                    const newPeak = Math.round(fpsStats.maxFps);
+                    const oldPeak = parseInt(perfPeakHeader.textContent, 10) || 0;
+                    perfPeakHeader.textContent = newPeak;
+                    // Add brief highlight animation when a new peak is reached
+                    if (newPeak > oldPeak && oldPeak > 0) {
+                        perfPeakBadge.classList.add('new-record');
+                        setTimeout(() => perfPeakBadge.classList.remove('new-record'), 600);
+                    }
+                }
+            } else {
+                // Hide badge when not in uncapped mode or no data yet
+                perfPeakBadge.classList.add('hidden');
             }
         }
 
@@ -253,6 +277,7 @@ export function updatePerfMetrics() {
         if (perfVisible) perfVisible.textContent = '--';
         if (perfDraws) perfDraws.textContent = '--';
         if (perfPeakAvgRow) perfPeakAvgRow.classList.add('hidden');
+        if (perfPeakBadge) perfPeakBadge.classList.add('hidden');
     }
 }
 

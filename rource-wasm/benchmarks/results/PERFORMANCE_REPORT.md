@@ -175,13 +175,13 @@ Measured at Frame 200 with maximum entity count:
 0.12ms/frame
 ```
 - Efficient quadtree-based spatial query
-- ✓ Well-optimized
+- Yes Well-optimized
 
 #### 8. Commit Apply
 ```
 2.3ms/frame
 ```
-- ✓ Well-optimized, uses string interning
+- Yes Well-optimized, uses string interning
 
 ---
 

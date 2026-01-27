@@ -28,7 +28,7 @@ All benchmarks use Criterion 0.8 with `--sample-size 50` for statistical signifi
 | Platform            | x86_64-unknown-linux-gnu            |
 | Rust Version        | 1.93.0 (254b59607 2026-01-19)       |
 | Benchmark Framework | Criterion 0.8                       |
-| Test Suite          | 2,076 tests                         |
+| Test Suite          | 2,100+ tests                        |
 | Sample Size         | 50 (default for statistical rigor)  |
 
 ---
@@ -887,7 +887,7 @@ Roboto Mono character width analysis at size 12.0px:
 | "hello" | 5 | 5 | 36.0 | 45.0 | +25.0% | 37.2 | +3.3% |
 | "héllo" | 6 | 5 | 36.0 | 54.0 | +50.0% | 37.2 | +3.3% |
 | "你好" | 6 | 2 | 14.4 | 54.0 | +275.0% | 14.9 | +3.3% |
-| "🚀" | 4 | 1 | 7.2 | 36.0 | +400.0% | 7.4 | +3.3% |
+| (4-byte char) | 4 | 1 | 7.2 | 36.0 | +400.0% | 7.4 | +3.3% |
 
 ### Realistic Label Scenarios
 

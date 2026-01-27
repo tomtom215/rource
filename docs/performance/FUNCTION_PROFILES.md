@@ -57,7 +57,7 @@ These functions are called every frame and directly impact FPS.
 | 1000 | 262.9µs | 3.8 Melem/s | Scaling verified |
 | 5000 | 317.9µs | 15.7 Melem/s | Batch benefits |
 
-**Complexity**: O(n) where n = file count ✓
+**Complexity**: O(n) where n = file count Yes
 
 ---
 
@@ -81,7 +81,7 @@ These functions are called every frame and directly impact FPS.
 **Scaling Analysis**:
 ```
 Regression: T(n) ≈ 150ns + 500ns × n
-Complexity: O(n) ✓
+Complexity: O(n) Yes
 ```
 
 ### `Scene::rebuild_spatial_index()`
@@ -100,9 +100,9 @@ Complexity: O(n) ✓
 
 **Scaling Analysis**:
 ```
-500→2000 (4x): 2.6x time (expected 2.8x for O(n log n)) ✓
-2000→10000 (5x): 4.5x time (expected 4.6x for O(n log n)) ✓
-Complexity: O(n log n) ✓
+500→2000 (4x): 2.6x time (expected 2.8x for O(n log n)) Yes
+2000→10000 (5x): 4.5x time (expected 4.6x for O(n log n)) Yes
+Complexity: O(n log n) Yes
 ```
 
 ### `Scene::visible_entities_into(bounds, ...)`
@@ -113,7 +113,7 @@ Complexity: O(n log n) ✓
 
 **Measurements**: ~100ns for typical viewport (QuadTree query)
 
-**Complexity**: O(log n + k) where k = visible entities ✓
+**Complexity**: O(log n + k) where k = visible entities Yes
 
 ### `Scene::extension_stats_cached()`
 
@@ -155,7 +155,7 @@ Complexity: O(n log n) ✓
 | 1000 | 2.48ms | 1.31ms | 780µs | 531µs | 269µs | 420µs |
 | 5000 | 18.4ms | 8.3ms | 4.2ms | 3.0ms | 1.6ms | 1.64ms |
 
-**Complexity**: O(n log n) verified ✓
+**Complexity**: O(n log n) verified Yes
 
 ### `random_push_direction(i, j) → Vec2`
 

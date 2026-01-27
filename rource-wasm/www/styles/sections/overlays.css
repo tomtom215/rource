@@ -239,6 +239,50 @@
 .perf-fps.uncapped { color: var(--accent-orange); } /* Orange for uncapped mode */
 
 /* -----------------------------------------------------------------------------
+   Peak FPS Badge (visible in header when uncapped mode is active)
+   ----------------------------------------------------------------------------- */
+
+.perf-peak-badge {
+    display: none; /* Hidden by default */
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding: 2px 6px;
+    background: rgba(255, 215, 0, 0.15);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    font-size: 0.7rem;
+}
+
+.perf-peak-badge:not(.hidden) {
+    display: inline-flex;
+}
+
+.perf-peak-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.perf-peak-value {
+    color: #ffd700; /* Gold for peak/high score */
+    font-weight: 700;
+    text-shadow: 0 0 4px rgba(255, 215, 0, 0.4);
+}
+
+/* New record animation */
+.perf-peak-badge.new-record .perf-peak-value {
+    animation: peak-pulse 0.6s ease-out;
+}
+
+@keyframes peak-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); }
+    100% { transform: scale(1); }
+}
+
+/* -----------------------------------------------------------------------------
    Toggle Switch (for uncapped FPS)
    ----------------------------------------------------------------------------- */
 

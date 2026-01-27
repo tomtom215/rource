@@ -39,7 +39,7 @@ Rource has undergone **69 documented optimization phases** from initial developm
 | 60 FPS sustained on 10k+ file repos | Verified |
 | Sub-second initial load | Verified (5-10k commits) |
 | Binary size < 1.5 MB gzipped | 1.03 MB |
-| Test coverage | 2,076 tests passing |
+| Test coverage | 2,100+ tests passing |
 | Deterministic output | Guaranteed across platforms |
 | WASM function audit | 132 functions profiled |
 

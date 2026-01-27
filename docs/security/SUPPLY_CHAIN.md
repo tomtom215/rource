@@ -18,11 +18,11 @@ Rource implements [SLSA (Supply-chain Levels for Software Artifacts)](https://sl
 
 | Requirement | Implementation | Status |
 |-------------|----------------|--------|
-| Build as code | GitHub Actions workflows | ✅ |
-| Signed provenance | slsa-github-generator | ✅ |
-| Provenance from build | Automatic attestation | ✅ |
-| Non-falsifiable provenance | Sigstore signing | ✅ |
-| Isolated build | GitHub-hosted runners | ✅ |
+| Build as code | GitHub Actions workflows | Yes |
+| Signed provenance | slsa-github-generator | Yes |
+| Provenance from build | Automatic attestation | Yes |
+| Non-falsifiable provenance | Sigstore signing | Yes |
+| Isolated build | GitHub-hosted runners | Yes |
 
 ### What SLSA Provenance Provides
 
@@ -170,14 +170,14 @@ Core dependencies are audited and minimal:
 
 | Dependency | Purpose | Audit Status |
 |------------|---------|--------------|
-| fontdue | Font rendering | ✅ Audited |
-| regex-lite | Log parsing | ✅ Audited |
-| chrono | Date handling | ✅ Audited |
-| wasm-bindgen | WASM bindings | ✅ Audited |
+| fontdue | Font rendering | Yes Audited |
+| regex-lite | Log parsing | Yes Audited |
+| chrono | Date handling | Yes Audited |
+| wasm-bindgen | WASM bindings | Yes Audited |
 
 ## Security Contacts
 
-For security vulnerabilities, see [SECURITY.md](/SECURITY.md).
+For security vulnerabilities, see [SECURITY.md](../../SECURITY.md).
 
 ## References
 
@@ -189,5 +189,5 @@ For security vulnerabilities, see [SECURITY.md](/SECURITY.md).
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-01-27*
 *Task: SEC-3 Supply Chain Security (SLSA)*

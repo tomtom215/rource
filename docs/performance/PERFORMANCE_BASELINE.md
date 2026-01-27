@@ -28,11 +28,11 @@
 
 | Metric | Target | Actual (Measured) | Status |
 |--------|--------|-------------------|--------|
-| Frame Rate (paused, GPU physics) | 50,000 FPS | ~25,000 FPS¹ | ⚠ |
-| Frame Rate (60 FPS interactive) | 60 FPS | 60+ FPS | ✓ |
-| Frame Budget | 20µs | ~40µs (labels dominate) | ⚠ |
-| Per-Entity Budget (5000) | 4ns | ~8ns² | ⚠ |
-| Per-Frame Allocations | 0 | 0 | ✓ |
+| Frame Rate (paused, GPU physics) | 50,000 FPS | ~25,000 FPS¹ | WARN |
+| Frame Rate (60 FPS interactive) | 60 FPS | 60+ FPS | Yes |
+| Frame Budget | 20µs | ~40µs (labels dominate) | WARN |
+| Per-Entity Budget (5000) | 4ns | ~8ns² | WARN |
+| Per-Frame Allocations | 0 | 0 | Yes |
 | Memory Growth (30 min) | <5% | *Requires stress test* | - |
 
 ¹ Estimated from component benchmarks. Browser measurement needed for actual FPS.
@@ -51,16 +51,16 @@
 
 | Phase | Budget | Measured | % of Budget | Status |
 |-------|--------|----------|-------------|--------|
-| Scene Update (no commit) | 5µs | 0.5µs | 10% | ✓ |
-| Scene Update (commit 10 files) | 5µs | 5.0µs | 100% | ⚠ |
-| Physics (CPU, 100 dirs) | 5µs | 22µs | 440% | ✗ |
-| Physics (GPU, 100+ dirs) | 5µs | ~2µs¹ | 40% | ✓ |
-| Render Prepare (visibility) | 3µs | 0.1µs | 3% | ✓ |
-| Render Execute (100 entities) | 5µs | ~3µs | 60% | ✓ |
-| Labels (30u+50f) | - | 40µs | 200% | ✗ |
-| GPU Wait | 2µs | ~1µs² | 50% | ✓ |
-| **Total (GPU physics, no labels)** | **20µs** | **~7µs** | 35% | ✓ |
-| **Total (GPU physics, with labels)** | **20µs** | **~47µs** | 235% | ✗ |
+| Scene Update (no commit) | 5µs | 0.5µs | 10% | Yes |
+| Scene Update (commit 10 files) | 5µs | 5.0µs | 100% | WARN |
+| Physics (CPU, 100 dirs) | 5µs | 22µs | 440% | No |
+| Physics (GPU, 100+ dirs) | 5µs | ~2µs¹ | 40% | Yes |
+| Render Prepare (visibility) | 3µs | 0.1µs | 3% | Yes |
+| Render Execute (100 entities) | 5µs | ~3µs | 60% | Yes |
+| Labels (30u+50f) | - | 40µs | 200% | No |
+| GPU Wait | 2µs | ~1µs² | 50% | Yes |
+| **Total (GPU physics, no labels)** | **20µs** | **~7µs** | 35% | Yes |
+| **Total (GPU physics, with labels)** | **20µs** | **~47µs** | 235% | No |
 
 ¹ GPU physics estimate - requires browser profiling for accurate measurement
 ² GPU wait varies by browser and load - estimate from wgpu profiling
@@ -183,7 +183,7 @@ Batches 15+ metrics into single JSON string to reduce WASM↔JS overhead by ~90%
 | apply_commit/50 files | 26.1 µs | 1.9 Melem/s | O(n) |
 | apply_commit/100 files | 56.4 µs | 1.8 Melem/s | O(n) |
 
-**Complexity Verified**: O(n) where n = files per commit ✓
+**Complexity Verified**: O(n) where n = files per commit Yes
 
 ### Spatial Index Operations
 
@@ -194,10 +194,10 @@ Batches 15+ metrics into single JSON string to reduce WASM↔JS overhead by ~90%
 | rebuild_spatial/10000 | 464.2 µs | 21.5 Melem/s | O(n log n) |
 
 **Scaling Factor Analysis**:
-- 4x entities (500→2000): 2.6x time (expected: 2.8x for O(n log n)) ✓
-- 5x entities (2000→10000): 4.5x time (expected: 4.6x for O(n log n)) ✓
+- 4x entities (500→2000): 2.6x time (expected: 2.8x for O(n log n)) Yes
+- 5x entities (2000→10000): 4.5x time (expected: 4.6x for O(n log n)) Yes
 
-**Complexity Verified**: O(n log n) ✓
+**Complexity Verified**: O(n log n) Yes
 
 ---
 
@@ -263,7 +263,7 @@ render()
 Clamped to [0.7, 1.5]
 ```
 
-**Complexity**: O(n log n) for force calculation ✓
+**Complexity**: O(n log n) for force calculation Yes
 
 ### GPU Physics (WebGPU Compute Shader)
 
@@ -315,13 +315,13 @@ Current: Needs measurement during stress test
 
 | Algorithm | Claimed | Verified | Method |
 |-----------|---------|----------|--------|
-| Spatial Index Query | O(log n) | ✓ | QuadTree + scaling test |
-| Spatial Index Build | O(n log n) | ✓ | Scaling test (4x→2.6x) |
-| Barnes-Hut Force | O(n log n) | ✓ | Scaling test + theta impact |
-| Label Collision | O(1) | ✓ | Spatial hash grid |
-| Commit Application | O(files) | ✓ | Linear scaling confirmed |
-| Entity Lookup | O(1) | ✓ | HashMap |
-| Draw Call (textures) | O(1) | ✓ | Texture array batching |
+| Spatial Index Query | O(log n) | Yes | QuadTree + scaling test |
+| Spatial Index Build | O(n log n) | Yes | Scaling test (4x→2.6x) |
+| Barnes-Hut Force | O(n log n) | Yes | Scaling test + theta impact |
+| Label Collision | O(1) | Yes | Spatial hash grid |
+| Commit Application | O(files) | Yes | Linear scaling confirmed |
+| Entity Lookup | O(1) | Yes | HashMap |
+| Draw Call (textures) | O(1) | Yes | Texture array batching |
 
 ### Scaling Test Results
 

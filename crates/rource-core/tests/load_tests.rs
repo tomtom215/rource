@@ -126,9 +126,9 @@ pub struct LoadTestMetrics {
     start_time: Instant,
     /// Frame times collected during the test
     frame_times: Vec<Duration>,
-    /// Memory samples (elapsed_secs, rss_bytes)
+    /// Memory samples (`elapsed_secs`, `rss_bytes`)
     memory_samples: Vec<(f64, u64)>,
-    /// Entity count samples (elapsed_secs, file_count, user_count)
+    /// Entity count samples (`elapsed_secs`, `file_count`, `user_count`)
     entity_samples: Vec<(f64, usize, usize)>,
     /// Warm-up memory baseline (RSS bytes after warm-up)
     warmup_rss: u64,
@@ -223,7 +223,7 @@ impl LoadTestMetrics {
             return 0.0;
         }
 
-        let current_rss = self.memory_samples.last().map(|(_, rss)| *rss).unwrap_or(0);
+        let current_rss = self.memory_samples.last().map_or(0, |(_, rss)| *rss);
         ((current_rss as f64 - self.warmup_rss as f64) / self.warmup_rss as f64) * 100.0
     }
 
@@ -249,7 +249,7 @@ impl LoadTestMetrics {
         } else {
             self.frame_times
                 .iter()
-                .map(|d| d.as_secs_f64())
+                .map(Duration::as_secs_f64)
                 .sum::<f64>()
                 / self.frame_times.len() as f64
                 * 1000.0
@@ -301,11 +301,11 @@ impl LoadTestMetrics {
             fps,
             1000.0 / p99_ms.max(0.001), // Min sustainable FPS based on P99
             bytes_to_mb(self.warmup_rss),
-            bytes_to_mb(self.memory_samples.last().map(|(_, rss)| *rss).unwrap_or(0)),
+            bytes_to_mb(self.memory_samples.last().map_or(0, |(_, rss)| *rss)),
             self.memory_growth_percent(),
             self.memory_samples.len(),
-            self.entity_samples.last().map(|(_, f, _)| *f).unwrap_or(0),
-            self.entity_samples.last().map(|(_, _, u)| *u).unwrap_or(0),
+            self.entity_samples.last().map_or(0, |(_, f, _)| *f),
+            self.entity_samples.last().map_or(0, |(_, _, u)| *u),
             self.entity_samples.len(),
             self.elapsed().as_secs() >= 30 * 60,
             self.memory_growth_percent() < 5.0,
@@ -333,16 +333,18 @@ fn generate_synthetic_log(commit_count: usize) -> String {
     // - 50 authors
     // - Files organized in modules
     // - Mix of create/modify/delete
-    let authors = (0..50).map(|i| format!("Author{}", i)).collect::<Vec<_>>();
+    let authors = (0..50).map(|i| format!("Author{i}")).collect::<Vec<_>>();
 
     for i in 0..commit_count {
+        // Safe cast: commit_count is bounded by test design to fit in i64
+        #[allow(clippy::cast_possible_wrap)]
         let timestamp = 1_000_000_000 + (i as i64) * 3600; // One commit per hour
         let author = &authors[i % authors.len()];
 
         // Vary action types: 60% modify, 30% create, 10% delete
         let action = match i % 10 {
             0 => "D",
-            1 | 2 | 3 => "A",
+            1..=3 => "A",
             _ => "M",
         };
 
@@ -359,8 +361,7 @@ fn generate_synthetic_log(commit_count: usize) -> String {
 
         let _ = writeln!(
             log,
-            "{}|{}|{}|src/module{}/file{}.{}",
-            timestamp, author, action, module, file_idx, ext
+            "{timestamp}|{author}|{action}|src/module{module}/file{file_idx}.{ext}",
         );
     }
 
@@ -400,7 +401,8 @@ fn apply_commits_to_scene(scene: &mut Scene, commits: &[rource_vcs::Commit]) {
 /// - Frame stability: P99 < 2x P50 after 30 min
 /// - No crashes: Zero panics or OOM
 #[test]
-#[ignore] // Run with: cargo test --release -p rource-core --test load_tests load_test_30min -- --ignored --nocapture
+#[ignore = "Long-running test (30 min). Run with: cargo test --release -p rource-core --test load_tests load_test_30min -- --ignored --nocapture"]
+#[allow(clippy::too_many_lines)]
 fn load_test_30min_100k_commits() {
     println!("\n========================================");
     println!("Load Test: 30 Minutes, 100k Commits");
@@ -411,7 +413,7 @@ fn load_test_30min_100k_commits() {
     let dt = 1.0 / 60.0; // 60 FPS target
 
     // Generate synthetic data
-    println!("Generating {} synthetic commits...", commit_count);
+    println!("Generating {commit_count} synthetic commits...");
     let log = generate_synthetic_log(commit_count);
 
     let parser = CustomParser::with_options(ParseOptions::lenient());
@@ -525,20 +527,22 @@ fn load_test_30min_100k_commits() {
         "  P99.9:         {:.3} ms",
         metrics.p999().as_secs_f64() * 1000.0
     );
-    println!("  P99/P50 Ratio: {:.2}x", p99_ratio);
+    println!("  P99/P50 Ratio: {p99_ratio:.2}x");
     println!();
     println!("Memory:");
-    println!("  Warm-up RSS:   {:.1} MB", bytes_to_mb(metrics.warmup_rss));
-    println!("  Final RSS:     {:.1} MB", bytes_to_mb(get_rss_bytes()));
-    println!("  Growth:        {:.2}%", growth);
+    let warmup_mb = bytes_to_mb(metrics.warmup_rss);
+    let final_mb = bytes_to_mb(get_rss_bytes());
+    println!("  Warm-up RSS:   {warmup_mb:.1} MB");
+    println!("  Final RSS:     {final_mb:.1} MB");
+    println!("  Growth:        {growth:.2}%");
     println!();
 
     // Write report
     let report_path = "load_test_report.json";
     if let Err(e) = metrics.write_report(report_path) {
-        eprintln!("Warning: Failed to write report: {}", e);
+        eprintln!("Warning: Failed to write report: {e}");
     } else {
-        println!("Report written to: {}", report_path);
+        println!("Report written to: {report_path}");
     }
 
     // Assertions
@@ -555,27 +559,25 @@ fn load_test_30min_100k_commits() {
         if duration_ok { "PASS" } else { "FAIL" }
     );
     println!(
-        "✓ Memory growth < 5%:       {} ({:.2}%)",
+        "✓ Memory growth < 5%:       {} ({growth:.2}%)",
         if memory_ok { "PASS" } else { "FAIL" },
-        growth
     );
     println!(
-        "✓ P99 < 2x P50:             {} ({:.2}x)",
+        "✓ P99 < 2x P50:             {} ({p99_ratio:.2}x)",
         if frame_ok { "PASS" } else { "FAIL" },
-        p99_ratio
     );
 
     // Assert success criteria
     assert!(duration_ok, "Test did not run for full 30 minutes");
-    assert!(memory_ok, "Memory growth exceeded 5%: {:.2}%", growth);
-    assert!(frame_ok, "P99/P50 ratio exceeded 2x: {:.2}x", p99_ratio);
+    assert!(memory_ok, "Memory growth exceeded 5%: {growth:.2}%");
+    assert!(frame_ok, "P99/P50 ratio exceeded 2x: {p99_ratio:.2}x");
 
     println!("\n✓ All success criteria met!");
 }
 
 /// Shorter 5-minute smoke test for CI verification.
 #[test]
-#[ignore] // Run with: cargo test --release -p rource-core --test load_tests smoke -- --ignored --nocapture
+#[ignore = "CI smoke test (5 min). Run with: cargo test --release -p rource-core --test load_tests smoke -- --ignored --nocapture"]
 fn load_test_smoke_5min_10k_commits() {
     println!("\n========================================");
     println!("Smoke Test: 5 Minutes, 10k Commits");
@@ -586,7 +588,7 @@ fn load_test_smoke_5min_10k_commits() {
     let dt = 1.0 / 60.0;
 
     // Generate synthetic data
-    println!("Generating {} synthetic commits...", commit_count);
+    println!("Generating {commit_count} synthetic commits...");
     let log = generate_synthetic_log(commit_count);
 
     let parser = CustomParser::with_options(ParseOptions::lenient());
@@ -668,13 +670,13 @@ fn load_test_smoke_5min_10k_commits() {
     println!("P50:         {:.3} ms", p50.as_secs_f64() * 1000.0);
     println!("P99:         {:.3} ms", p99.as_secs_f64() * 1000.0);
     println!("P99/P50:     {:.2}x", p99.as_secs_f64() / p50.as_secs_f64());
-    println!("Mem Growth:  {:.2}%", growth);
+    println!("Mem Growth:  {growth:.2}%");
 
     // Write report
     let _ = metrics.write_report("load_test_smoke_report.json");
 
     // Same criteria, just shorter duration
-    assert!(growth < 5.0, "Memory growth exceeded 5%: {:.2}%", growth);
+    assert!(growth < 5.0, "Memory growth exceeded 5%: {growth:.2}%");
     assert!(
         p99.as_secs_f64() < 2.0 * p50.as_secs_f64(),
         "P99/P50 ratio exceeded 2x"
@@ -734,7 +736,7 @@ fn load_test_quick_sanity_1min() {
 
 /// Tests for memory leaks by repeatedly creating/destroying entities.
 #[test]
-#[ignore]
+#[ignore = "Memory churn stress test. Run with: cargo test --release -p rource-core --test load_tests memory_churn -- --ignored --nocapture"]
 fn load_test_memory_churn() {
     println!("\n========================================");
     println!("Memory Churn Test");
@@ -751,20 +753,17 @@ fn load_test_memory_churn() {
     }
 
     let baseline_rss = get_rss_bytes();
-    println!("Baseline RSS: {:.1} MB", bytes_to_mb(baseline_rss));
+    let baseline_mb = bytes_to_mb(baseline_rss);
+    println!("Baseline RSS: {baseline_mb:.1} MB");
 
     // Churn: add 1000 files, update, repeat
     for i in 0..iterations {
         // Add files
         let mut log = String::with_capacity(50_000);
         for j in 0..1000 {
-            let _ = writeln!(
-                log,
-                "{}|Churner|A|churn/iter{}/file{}.rs",
-                1_000_000_000 + (i * 1000 + j) as i64,
-                i,
-                j
-            );
+            // Safe: i and j are small loop indices that easily fit in i64
+            let timestamp = 1_000_000_000_i64 + i64::from(i * 1000 + j);
+            let _ = writeln!(log, "{timestamp}|Churner|A|churn/iter{i}/file{j}.rs",);
         }
 
         let parser = CustomParser::with_options(ParseOptions::lenient());
@@ -779,26 +778,22 @@ fn load_test_memory_churn() {
         if i % 10 == 0 {
             let rss = get_rss_bytes();
             let growth = ((rss as f64 - baseline_rss as f64) / baseline_rss as f64) * 100.0;
-            println!(
-                "Iteration {}: RSS = {:.1} MB ({:+.1}%)",
-                i,
-                bytes_to_mb(rss),
-                growth
-            );
+            let rss_mb = bytes_to_mb(rss);
+            println!("Iteration {i}: RSS = {rss_mb:.1} MB ({growth:+.1}%)");
         }
     }
 
     let final_rss = get_rss_bytes();
     let growth = ((final_rss as f64 - baseline_rss as f64) / baseline_rss as f64) * 100.0;
 
-    println!("\nFinal RSS: {:.1} MB", bytes_to_mb(final_rss));
-    println!("Total growth: {:.2}%", growth);
+    let final_mb = bytes_to_mb(final_rss);
+    println!("\nFinal RSS: {final_mb:.1} MB");
+    println!("Total growth: {growth:.2}%");
 
     // Allow more growth for churn test (20% instead of 5%)
     // Churn creates many entities which is expected to use memory
     assert!(
         growth < 100.0,
-        "Excessive memory growth during churn: {:.2}%",
-        growth
+        "Excessive memory growth during churn: {growth:.2}%"
     );
 }

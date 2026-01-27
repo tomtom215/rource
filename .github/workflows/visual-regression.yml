@@ -1,0 +1,206 @@
+name: Visual Regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/rource-render/**'
+      - 'crates/rource-math/**'
+      - '.github/workflows/visual-regression.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'crates/rource-render/**'
+      - 'crates/rource-math/**'
+      - '.github/workflows/visual-regression.yml'
+  workflow_dispatch:
+    inputs:
+      update_golden:
+        description: 'Update golden images (use with caution)'
+        required: false
+        type: boolean
+        default: false
+
+# Prevent concurrent runs on the same branch/PR
+concurrency:
+  group: visual-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ============================================================================
+  # Visual Regression Tests
+  # ============================================================================
+  visual-regression:
+    name: Visual Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1-rust"
+          shared-key: "visual-regression"
+
+      - name: Run visual regression tests
+        id: visual_tests
+        run: |
+          # Run tests and capture output
+          cargo test -p rource-render --test visual_regression -- --nocapture 2>&1 | tee visual-output.txt
+
+          # Check for failures
+          if grep -q "Visual regression detected" visual-output.txt; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Visual Regression Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Count passed tests
+          PASSED=$(grep -c "Visual test '.*' passed" visual-output.txt || echo "0")
+          TOTAL=$(grep -c "test visual_" visual-output.txt || echo "0")
+
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Tests | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.visual_tests.outputs.status }}" = "failure" ]; then
+            echo "### Failures Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Visual regressions were detected. Review the diff images below." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "To update golden images (if changes are intentional):" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "UPDATE_GOLDEN=1 cargo test -p rource-render --test visual_regression" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "All visual tests passed with pixel-perfect matching." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload diff images on failure
+        if: failure() || steps.visual_tests.outputs.status == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-diffs
+          path: |
+            crates/rource-render/tests/visual/output/*_diff.png
+            crates/rource-render/tests/visual/output/*_actual.png
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Comment on PR with diff summary
+        if: github.event_name == 'pull_request' && (failure() || steps.visual_tests.outputs.status == 'failure')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Check for diff files
+            const outputDir = 'crates/rource-render/tests/visual/output';
+            let diffFiles = [];
+
+            try {
+              const files = fs.readdirSync(outputDir);
+              diffFiles = files.filter(f => f.endsWith('_diff.png'));
+            } catch (e) {
+              console.log('No diff files found');
+            }
+
+            let body = '## Visual Regression Detected\n\n';
+            body += 'The following visual tests have regressions:\n\n';
+
+            if (diffFiles.length > 0) {
+              for (const file of diffFiles) {
+                const testName = file.replace('_diff.png', '');
+                body += `- \`${testName}\`\n`;
+              }
+            } else {
+              body += '- Check workflow logs for details\n';
+            }
+
+            body += '\n### Resolution\n\n';
+            body += 'If these changes are intentional, update the golden images:\n';
+            body += '```bash\n';
+            body += 'UPDATE_GOLDEN=1 cargo test -p rource-render --test visual_regression\n';
+            body += '```\n';
+            body += '\nThen commit the updated golden images.';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail if visual tests failed
+        if: steps.visual_tests.outputs.status == 'failure'
+        run: |
+          echo "Visual regression tests failed. See artifacts for diff images."
+          exit 1
+
+  # ============================================================================
+  # Update Golden Images (manual workflow only)
+  # ============================================================================
+  update-golden:
+    name: Update Golden Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.update_golden == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1-rust"
+          shared-key: "visual-regression"
+
+      - name: Update golden images
+        run: |
+          UPDATE_GOLDEN=1 cargo test -p rource-render --test visual_regression -- --nocapture
+
+      - name: Commit updated golden images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if there are changes
+          if git diff --quiet crates/rource-render/tests/visual/golden/; then
+            echo "No changes to golden images"
+          else
+            git add crates/rource-render/tests/visual/golden/*.png
+            git commit -m "chore: update visual regression golden images"
+            git push
+          fi
+
+      - name: Generate update summary
+        if: always()
+        run: |
+          echo "## Golden Images Updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following golden images were updated:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ls -la crates/rource-render/tests/visual/golden/*.png | while read line; do
+            echo "- $(basename $(echo $line | awk '{print $NF}'))" >> $GITHUB_STEP_SUMMARY
+          done

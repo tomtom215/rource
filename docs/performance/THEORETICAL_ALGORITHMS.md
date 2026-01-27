@@ -1575,7 +1575,7 @@ fn reduce_sum() {
 **Browser Support**:
 | Browser | subgroups | subgroupAdd |
 |---------|-----------|-------------|
-| Chrome 128+ | ✓ | Chrome 134+ |
+| Chrome 128+ | Yes | Chrome 134+ |
 | Firefox | Development | No |
 | Safari | Development | No |
 

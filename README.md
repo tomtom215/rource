@@ -56,7 +56,7 @@ This project was developed with AI-assisted programming using [Claude](https://w
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 2,076 tests | - |
+| **Test Coverage** | 2,100+ tests | - |
 | **Rendering** | CPU + WebGL2 + wgpu | OpenGL only |
 
 ### Performance Highlights
@@ -69,19 +69,90 @@ This project was developed with AI-assisted programming using [Claude](https://w
 
 See [docs/performance/](docs/performance/) for the complete optimization history and benchmarks.
 
+---
+
+## Table of Contents
+
+<details>
+<summary><strong>This README</strong></summary>
+
+- [Features](#features) · [Why Rource?](#why-rource) · [Performance Highlights](#performance-highlights)
+- [Installation](#installation) · [Quick Start](#quick-start) · [Usage](#usage)
+- [Controls](#keyboard-controls): [Keyboard](#keyboard-controls) · [Mouse](#mouse-controls)
+- [Configuration](#configuration) · [Environment Variables](#environment-variables)
+- [Video Export](#video-export) · [Filtering](#filtering) · [User Avatars](#user-avatars)
+- [WebAssembly](#webassembly) · [Custom Log Format](#custom-log-format)
+- [Performance Tips](#performance-tips) · [Screenshots](#screenshots)
+- [Migrating from Gource](#migrating-from-gource) · [Contributing](#contributing)
+
+</details>
+
+<details>
+<summary><strong>Documentation</strong></summary>
+
+| Document | Description |
+|----------|-------------|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and guidelines |
+| [CLAUDE.md](CLAUDE.md) | AI-assisted development standards |
+| [STABILITY.md](STABILITY.md) | API versioning and stability policy |
+| [SECURITY.md](SECURITY.md) | Security policy and reporting |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+
+</details>
+
+<details>
+<summary><strong>Architecture & Design</strong></summary>
+
+| Document | Description |
+|----------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and crate structure |
+| [docs/RENDERING.md](docs/RENDERING.md) | Rendering pipeline and backends |
+| [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) | Feature comparison with Gource |
+| [docs/adr/](docs/adr/) | Architecture Decision Records |
+
+</details>
+
+<details>
+<summary><strong>Performance</strong></summary>
+
+| Document | Description |
+|----------|-------------|
+| [docs/performance/](docs/performance/) | Performance documentation index |
+| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 69 optimization phases |
+| [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) | Benchmark data with methodology |
+| [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis |
+| [docs/performance/FORMAL_PROOFS.md](docs/performance/FORMAL_PROOFS.md) | Mathematical proofs |
+
+</details>
+
+<details>
+<summary><strong>Testing & Quality</strong></summary>
+
+| Document | Description |
+|----------|-------------|
+| [docs/testing/MUTATION_TESTING.md](docs/testing/MUTATION_TESTING.md) | Mutation testing setup |
+| [docs/testing/VISUAL_REGRESSION.md](docs/testing/VISUAL_REGRESSION.md) | Visual regression testing |
+| [docs/REVIEW_STANDARDS.md](docs/REVIEW_STANDARDS.md) | Code review requirements |
+
+</details>
+
+For the complete documentation index, see [docs/README.md](docs/README.md).
+
+---
+
 ### Architecture
 
 ```
 rource/
 ├── crates/
-│   ├── rource-math/    172 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/     179 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/    376 tests   Scene graph, physics, camera, Barnes-Hut
-│   └── rource-render/  517 tests   Software + WebGL2 + wgpu rendering
-├── rource-cli/         337 tests   Native application (winit + softbuffer)
-└── rource-wasm/        495 tests   WebAssembly (browser)
-                       ─────
-                       2,076 total tests
+│   ├── rource-math/      270 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/       195 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/      390 tests   Scene graph, physics, camera, Barnes-Hut
+│   └── rource-render/    560 tests   Software + WebGL2 + wgpu rendering
+├── rource-cli/           340 tests   Native application (winit + softbuffer)
+└── rource-wasm/          420 tests   WebAssembly (browser)
+                         ─────────
+                         2,100+ total tests
 ```
 
 ## Installation

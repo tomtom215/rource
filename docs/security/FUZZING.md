@@ -24,8 +24,8 @@ Rource uses continuous fuzzing to ensure the robustness of its VCS (Version Cont
 |--------|--------|---------|
 | Edge Coverage | ≥ 75% | *Run `scripts/fuzz-coverage.sh` to measure* |
 | Line Coverage | ≥ 80% | *Run `scripts/fuzz-coverage.sh` to measure* |
-| Weekly Fuzzing | 1+ hour per target | ✓ Configured |
-| Crashes | 0 | ✓ (last verified by CI) |
+| Weekly Fuzzing | 1+ hour per target | Yes Configured |
+| Crashes | 0 | Yes (last verified by CI) |
 
 ## CI Integration
 
@@ -275,11 +275,11 @@ Fuzzing metrics are collected in `fuzz/coverage-metrics.json` and uploaded as CI
 
 | Criterion | Requirement | Status |
 |-----------|-------------|--------|
-| Coverage report | cargo-fuzz coverage output | ✓ `scripts/fuzz-coverage.sh` |
-| Edge coverage % | Document % of branches hit | ✓ Coverage reports |
-| Corpus statistics | Number of inputs, unique crashes | ✓ `coverage-metrics.json` |
-| CI integration | Weekly fuzzing run with report | ✓ `.github/workflows/fuzz.yml` |
-| README badge | Fuzzing status badge | ✓ Badge code provided |
+| Coverage report | cargo-fuzz coverage output | Yes `scripts/fuzz-coverage.sh` |
+| Edge coverage % | Document % of branches hit | Yes Coverage reports |
+| Corpus statistics | Number of inputs, unique crashes | Yes `coverage-metrics.json` |
+| CI integration | Weekly fuzzing run with report | Yes `.github/workflows/fuzz.yml` |
+| README badge | Fuzzing status badge | Yes Badge code provided |
 
 ---
 

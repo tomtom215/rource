@@ -43,10 +43,10 @@ cargo mutants -p rource-math --timeout=60 --output=mutants-output
 
 | Outcome | Meaning | Good/Bad |
 |---------|---------|----------|
-| **Killed** | Mutant detected by tests | ✅ Good |
-| **Survived** | Mutant NOT detected | ❌ Bad (test gap) |
-| **Timeout** | Test took too long | ⚠️ Needs investigation |
-| **Unviable** | Mutation broke compilation | ➖ Ignored |
+| **Killed** | Mutant detected by tests | Good |
+| **Survived** | Mutant NOT detected | Bad (test gap) |
+| **Timeout** | Test took too long | Needs investigation |
+| **Unviable** | Mutation broke compilation | Ignored |
 
 ### Target Scores
 
@@ -205,19 +205,54 @@ Mutation testing is computationally expensive:
 
 ## Mutation Testing Results
 
-*Results will be added after initial baseline run.*
-
 ### rource-math
 
-| Date | Mutants | Killed | Survived | Score |
-|------|---------|--------|----------|-------|
-| TBD | TBD | TBD | TBD | TBD% |
+| Date | Mutants | Killed | Survived | Score | Notes |
+|------|---------|--------|----------|-------|-------|
+| 2026-01-27 | ~2403 | Partial | - | In Progress | Added targeted tests for color.rs |
+
+#### Tests Added to Kill Mutants (2026-01-27)
+
+The following tests were added to `crates/rource-math/src/color.rs` to kill mutants identified in bit manipulation and conversion functions:
+
+**Bit Manipulation Tests**:
+| Test | Target Function | Mutation Patterns Killed |
+|------|-----------------|--------------------------|
+| `test_from_hex_alpha_isolated_channels` | `from_hex_alpha` | `>>` shift amount changes, `&` mask changes |
+| `test_to_rgba8_bit_positions` | `to_rgba8` | `<<` shift positions, `\|` channel ordering |
+| `test_to_argb8_bit_positions` | `to_argb8` | `<<` shift positions, `\|` channel ordering |
+| `test_to_abgr8_bit_positions` | `to_abgr8` | `<<` shift positions, `\|` channel ordering |
+| `test_from_hex_bit_patterns` | `from_hex` | Bit extraction correctness |
+
+**Boundary and Value Tests**:
+| Test | Target Function | Mutation Patterns Killed |
+|------|-----------------|--------------------------|
+| `test_clamp_boundaries` | `clamp` | Comparison direction (`<` vs `>`), boundary values |
+| `test_contrasting_luminance_boundary` | `contrasting` | `>` threshold comparison at 0.5 |
+| `test_luminance_coefficients` | `luminance` | Coefficient multiplication values |
+
+**Formula Verification Tests**:
+| Test | Target Function | Mutation Patterns Killed |
+|------|-----------------|--------------------------|
+| `test_premultiplied_all_channels` | `premultiplied` | `*` multiplication with alpha |
+| `test_blend_over_formula` | `blend_over` | Alpha blending formula operators |
+| `test_fade_alpha_multiplication` | `fade` | `*` multiplication |
+
+**HSL Conversion Tests**:
+| Test | Target Function | Mutation Patterns Killed |
+|------|-----------------|--------------------------|
+| `test_hsl_achromatic` | `to_hsl`/`to_color` | Saturation = 0 path |
+| `test_hsl_primary_hues` | `to_hsl` | Hue calculation branches |
+| `test_hsl_saturation_lightness_relation` | `to_color` | q/p calculation formulas |
+| `test_hsl_hue_rotation` | `rotate_hue` | Modulo operator, negative handling |
+
+**Total**: 19 new tests added, targeting 20+ mutation-prone code patterns.
 
 ### rource-vcs
 
-| Date | Mutants | Killed | Survived | Score |
-|------|---------|--------|----------|-------|
-| TBD | TBD | TBD | TBD | TBD% |
+| Date | Mutants | Killed | Survived | Score | Notes |
+|------|---------|--------|----------|-------|-------|
+| TBD | TBD | TBD | TBD | TBD% | Pending baseline run |
 
 ---
 

@@ -46,14 +46,14 @@
 
 | Algorithm | Claimed | Measured | Scaling Factor | Status |
 |-----------|---------|----------|----------------|--------|
-| Spatial Index Query | O(log n) | O(log n) | 2.1× for 10× input | ✓ |
-| Spatial Index Build | O(n log n) | O(n log n) | 11.8× for 10× input | ✓ |
-| Barnes-Hut Force | O(n log n) | O(n log n) | 12.2× for 10× input | ✓ |
-| Label Collision | O(1) | O(1) | <5% variance | ✓ |
-| Commit Application | O(n) | O(n) | 9.4× for 10× input | ✓ |
-| Entity Lookup | O(1) | O(1) | <3% variance | ✓ |
-| Draw Calls (batched) | O(1) | O(1) | Constant 1 call | ✓ |
-| Grid Reset | O(1) | O(1) | <5% variance | ✓ |
+| Spatial Index Query | O(log n) | O(log n) | 2.1× for 10× input | Yes |
+| Spatial Index Build | O(n log n) | O(n log n) | 11.8× for 10× input | Yes |
+| Barnes-Hut Force | O(n log n) | O(n log n) | 12.2× for 10× input | Yes |
+| Label Collision | O(1) | O(1) | <5% variance | Yes |
+| Commit Application | O(n) | O(n) | 9.4× for 10× input | Yes |
+| Entity Lookup | O(1) | O(1) | <3% variance | Yes |
+| Draw Calls (batched) | O(1) | O(1) | Constant 1 call | Yes |
+| Grid Reset | O(1) | O(1) | <5% variance | Yes |
 
 ---
 
@@ -76,7 +76,7 @@
 - This confirms O(log n) for tree traversal
 - k (visible entities) dominates only when many entities visible
 
-**Verdict**: ✓ O(log n + k) VERIFIED
+**Verdict**: Yes O(log n + k) VERIFIED
 
 ### QuadTree Build: O(n log n)
 
@@ -123,7 +123,7 @@ This is between O(n) and O(n log n), typical for
 well-optimized QuadTree with batch insertion.
 ```
 
-**Verdict**: ✓ O(n log n) VERIFIED (better than expected due to cache optimization)
+**Verdict**: Yes O(n log n) VERIFIED (better than expected due to cache optimization)
 
 ---
 
@@ -157,7 +157,7 @@ Force calc: O(n × nodes_visited)
 nodes_visited ≈ 1/θ² × log(n) for well-separated distributions
 
 At θ=0.8: nodes_visited ≈ 1.56 × log(n)
-Total: O(n × log(n)) ✓
+Total: O(n × log(n)) Yes
 
 The worse-than-expected scaling suggests the distribution
 isn't perfectly well-separated, causing more node visits.
@@ -183,7 +183,7 @@ Adaptive theta provides scaling BETTER than O(n log n)
 by increasing approximation at larger scales.
 ```
 
-**Verdict**: ✓ O(n log n) VERIFIED with adaptive theta
+**Verdict**: Yes O(n log n) VERIFIED with adaptive theta
 
 ---
 
@@ -219,7 +219,7 @@ self.generation = self.generation.wrapping_add(1);
 - Frames between compaction: ~25
 - Amortized cost: (compaction_time / 25) + reset_time ≈ O(1)
 
-**Verdict**: ✓ O(1) VERIFIED (90× improvement)
+**Verdict**: Yes O(1) VERIFIED (90× improvement)
 
 ### Collision Check: O(1)
 
@@ -236,7 +236,7 @@ self.generation = self.generation.wrapping_add(1);
 
 **Analysis**: Time is constant regardless of placed label count.
 
-**Verdict**: ✓ O(1) VERIFIED
+**Verdict**: Yes O(1) VERIFIED
 
 ### Sorting Optimization: O(n) → O(n) partial
 
@@ -261,7 +261,7 @@ candidates.select_nth_unstable_by(limit - 1, ...);
 | Beam (100→15) | ~850 ns | 99 ns | **8.6×** |
 | User labels | ~720 ns | 99 ns | **7.3×** |
 
-**Verdict**: ✓ O(n) VERIFIED (7-9× improvement)
+**Verdict**: Yes O(n) VERIFIED (7-9× improvement)
 
 ---
 
@@ -302,7 +302,7 @@ Measured: 56.4µs
 Close enough - O(n) confirmed with fixed overhead.
 ```
 
-**Verdict**: ✓ O(n) VERIFIED
+**Verdict**: Yes O(n) VERIFIED
 
 ---
 
@@ -332,7 +332,7 @@ Per-texture: 53× time increase (O(n) confirmed)
 Array: <2% variance (O(1) confirmed)
 ```
 
-**Verdict**: ✓ O(n) → O(1) VERIFIED (99.8% draw call reduction)
+**Verdict**: Yes O(n) → O(1) VERIFIED (99.8% draw call reduction)
 
 ---
 
@@ -352,7 +352,7 @@ Array: <2% variance (O(1) confirmed)
 
 **Analysis**: Time is constant regardless of map size (tested up to 10,000 entries).
 
-**Verdict**: ✓ O(1) VERIFIED
+**Verdict**: Yes O(1) VERIFIED
 
 ### Hash Algorithm Upgrade Impact
 
@@ -373,14 +373,14 @@ All claimed Big O complexities have been empirically verified:
 
 | Algorithm | Claim | Measured | Confidence |
 |-----------|-------|----------|------------|
-| QuadTree Query | O(log n) | ✓ Constant | HIGH |
-| QuadTree Build | O(n log n) | ✓ Scales correctly | HIGH |
-| Barnes-Hut | O(n log n) | ✓ With adaptive θ | HIGH |
-| Label Grid Reset | O(1) | ✓ 90× faster | HIGH |
-| Collision Check | O(1) | ✓ Constant | HIGH |
-| Commit Apply | O(n) | ✓ Linear + overhead | HIGH |
-| Draw Batching | O(1) | ✓ Constant | HIGH |
-| Hash Operations | O(1) | ✓ <3% variance | HIGH |
+| QuadTree Query | O(log n) | Yes Constant | HIGH |
+| QuadTree Build | O(n log n) | Yes Scales correctly | HIGH |
+| Barnes-Hut | O(n log n) | Yes With adaptive θ | HIGH |
+| Label Grid Reset | O(1) | Yes 90× faster | HIGH |
+| Collision Check | O(1) | Yes Constant | HIGH |
+| Commit Apply | O(n) | Yes Linear + overhead | HIGH |
+| Draw Batching | O(1) | Yes Constant | HIGH |
+| Hash Operations | O(1) | Yes <3% variance | HIGH |
 
 ---
 

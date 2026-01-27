@@ -82,7 +82,7 @@ Follow these guidelines:
 ### 3. Test Your Changes
 
 ```bash
-# Run all tests (1,185+ tests)
+# Run all tests (2,100+ tests)
 cargo test
 
 # Run tests for a specific crate

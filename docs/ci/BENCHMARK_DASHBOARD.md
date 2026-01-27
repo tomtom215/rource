@@ -175,10 +175,10 @@ gh workflow run bench.yml
 
 | Criterion | Requirement | Status |
 |-----------|-------------|--------|
-| Historical data | 90 days of benchmark history | ✓ Git history retention |
-| Visualization | Graphs of key metrics over time | ✓ benchmark-action charts |
-| Trend detection | Alert on consistent degradation | ✓ 10% threshold alerts |
-| Public access | Anyone can view trends | ✓ Public gh-pages URL |
+| Historical data | 90 days of benchmark history | Yes Git history retention |
+| Visualization | Graphs of key metrics over time | Yes benchmark-action charts |
+| Trend detection | Alert on consistent degradation | Yes 10% threshold alerts |
+| Public access | Anyone can view trends | Yes Public gh-pages URL |
 
 ---
 

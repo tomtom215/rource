@@ -1348,7 +1348,7 @@ const tests = [
 
 tests.forEach(({ fg, bg, name, min }) => {
   const ratio = checkContrast(fg, bg);
-  const pass = ratio >= min ? '✓' : '✗';
+  const pass = ratio >= min ? 'PASS' : 'FAIL';
   console.log(`${pass} ${name}: ${ratio.toFixed(2)}:1 (min ${min}:1)`);
 });
 ```

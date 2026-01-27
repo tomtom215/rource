@@ -1586,21 +1586,21 @@ stabilization now allow upgrading.
 
 | Benchmark | Baseline (wgpu 24) | Updated (wgpu 28) | Delta | Status |
 |-----------|-------------------|-------------------|-------|--------|
-| try_place (HOT PATH) | 11 ns | 6-9 ns | **-18% to -45%** | ✓✓ |
-| beam_sorting | 100 ns | 97 ns | -3% | ✓ |
-| try_place_with_fallback | 239 ns | 235-241 ns | ~0% | ✓ |
-| user_label_sorting | 104 ns | 110 ns | +6% | ⚠ |
-| label_placer_reset | 222 ns | 235 ns | +6% | ⚠ |
-| full_label_placement | 36 µs | 38 µs | +6% | ⚠ |
+| try_place (HOT PATH) | 11 ns | 6-9 ns | **-18% to -45%** | PASS |
+| beam_sorting | 100 ns | 97 ns | -3% | OK |
+| try_place_with_fallback | 239 ns | 235-241 ns | ~0% | OK |
+| user_label_sorting | 104 ns | 110 ns | +6% | WARN |
+| label_placer_reset | 222 ns | 235 ns | +6% | WARN |
+| full_label_placement | 36 µs | 38 µs | +6% | WARN |
 
 **Color Operation Benchmarks** (criterion, 95% CI):
 
 | Benchmark | Baseline | Updated | Delta | Status |
 |-----------|----------|---------|-------|--------|
-| to_argb8/baseline | 92.11 ns | 82.13 ns | **-11.9%** | ✓✓ |
-| to_argb8/lut | 54.40 ns | 51.32 ns | **-6.3%** | ✓✓ |
-| from_hex/baseline | 8.14 ns | 8.23 ns | +0.7% | ✓ |
-| from_hex/lut | 3.80 ns | 3.79 ns | ~0% | ✓ |
+| to_argb8/baseline | 92.11 ns | 82.13 ns | **-11.9%** | PASS |
+| to_argb8/lut | 54.40 ns | 51.32 ns | **-6.3%** | PASS |
+| from_hex/baseline | 8.14 ns | 8.23 ns | +0.7% | OK |
+| from_hex/lut | 3.80 ns | 3.79 ns | ~0% | OK |
 
 **Scene Update Analysis**:
 
@@ -1672,10 +1672,10 @@ Roboto Mono Character Width Analysis (font_size = 12.0):
 - Previous heuristic factor: 0.75 (25% overestimate for ASCII)
 
 UTF-8 Byte Count Issue:
-- "hello" (ASCII): 5 bytes = 5 chars ✓
+- "hello" (ASCII): 5 bytes = 5 chars OK
 - "héllo" (accent): 6 bytes, 5 chars → 20% extra error
 - "田中太郎" (CJK): 12 bytes, 4 chars → 200% extra error
-- "🚀" (emoji): 4 bytes, 1 char → 300% extra error
+- (4-byte emoji): 4 bytes, 1 char -> 300% extra error
 ```
 
 **Solution**: Changed from `text.len() * font_size * 0.75` to `text.chars().count() * font_size * 0.62`:

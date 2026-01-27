@@ -27,10 +27,10 @@ This document defines Service Level Objectives (SLOs) for Rource frame latency a
 
 | Scenario | Commits | Entities | P50 | P95 | P99 | P99.9 | Target FPS | Status |
 |----------|---------|----------|-----|-----|-----|-------|------------|--------|
-| Small | 1,000 | ~500 | 0.045 ms | 0.068 ms | 0.085 ms | 0.120 ms | 60 FPS | ✅ |
-| Medium | 10,000 | ~3,000 | 0.080 ms | 0.120 ms | 0.150 ms | 0.200 ms | 60 FPS | ✅ |
-| Large | 50,000 | ~10,000 | 0.150 ms | 0.225 ms | 0.280 ms | 0.350 ms | 30 FPS | ✅ |
-| Stress | 100,000 | ~25,000 | 0.500 ms | 0.750 ms | 0.900 ms | 1.200 ms | 15 FPS | ✅ |
+| Small | 1,000 | ~500 | 0.045 ms | 0.068 ms | 0.085 ms | 0.120 ms | 60 FPS | Yes |
+| Medium | 10,000 | ~3,000 | 0.080 ms | 0.120 ms | 0.150 ms | 0.200 ms | 60 FPS | Yes |
+| Large | 50,000 | ~10,000 | 0.150 ms | 0.225 ms | 0.280 ms | 0.350 ms | 30 FPS | Yes |
+| Stress | 100,000 | ~25,000 | 0.500 ms | 0.750 ms | 0.900 ms | 1.200 ms | 15 FPS | Yes |
 
 ### Frame Time Budget Breakdown
 
@@ -164,12 +164,12 @@ Where:
 
 | SLO | Target | Current | Status |
 |-----|--------|---------|--------|
-| P99 < 2× P50 (small) | ✓ | 1.89× | ✅ Met |
-| P99 < 2× P50 (medium) | ✓ | 1.88× | ✅ Met |
-| P99 < 2× P50 (large) | ✓ | 1.87× | ✅ Met |
-| 60 FPS for < 10k entities | ✓ | Yes | ✅ Met |
-| 30 FPS for < 50k entities | ✓ | Yes | ✅ Met |
-| No P99.9 > 33.33ms (30 FPS) | ✓ | Yes | ✅ Met |
+| P99 < 2× P50 (small) | Yes | 1.89× | Yes Met |
+| P99 < 2× P50 (medium) | Yes | 1.88× | Yes Met |
+| P99 < 2× P50 (large) | Yes | 1.87× | Yes Met |
+| 60 FPS for < 10k entities | Yes | Yes | Yes Met |
+| 30 FPS for < 50k entities | Yes | Yes | Yes Met |
+| No P99.9 > 33.33ms (30 FPS) | Yes | Yes | Yes Met |
 
 ### Alerting Thresholds
 
@@ -202,10 +202,10 @@ Where:
 
 | Criterion | Requirement | Status |
 |-----------|-------------|--------|
-| P50/P95/P99 documented | Frame time percentiles | ✓ Tables above |
-| Multiple scenarios | Small, Medium, Large | ✓ 4 scenarios |
-| Hardware baseline | Test hardware specs | ✓ Reference system documented |
-| Browser matrix | Chrome, Firefox, Safari, Edge | ✓ Performance matrix |
+| P50/P95/P99 documented | Frame time percentiles | Yes Tables above |
+| Multiple scenarios | Small, Medium, Large | Yes 4 scenarios |
+| Hardware baseline | Test hardware specs | Yes Reference system documented |
+| Browser matrix | Chrome, Firefox, Safari, Edge | Yes Performance matrix |
 
 ---
 

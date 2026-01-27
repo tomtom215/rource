@@ -119,6 +119,47 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 | "I'll document it later" | Never happens | Document as you implement |
 | "The tests pass" | Insufficient | Also check mobile UX, accessibility |
 | "It works on desktop" | Desktop bias | Mobile-first development required |
+| **"Pre-existing issue"** | **Abdication of responsibility** | **Fix it NOW** |
+| **"Unrelated to my changes"** | **Destroys trust and quality** | **You touched it, you own it** |
+
+### CRITICAL: The "Pre-Existing Issue" Fallacy
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    **  ABSOLUTE PROHIBITION  **                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  NEVER dismiss ANY issue as "pre-existing" or "unrelated to my changes."   │
+│                                                                             │
+│  This behavior is ABSOLUTELY UNACCEPTABLE and represents:                   │
+│                                                                             │
+│  - A fundamental violation of Expert+ standards                             │
+│  - An abdication of professional responsibility                             │
+│  - A betrayal of trust with the project owner                               │
+│  - A threat to the integrity of the entire codebase                         │
+│  - Potential hidden bugs that will surface in production                    │
+│                                                                             │
+│  The correct response to ANY warning, error, or issue is:                   │
+│                                                                             │
+│  1. FIX IT IMMEDIATELY                                                      │
+│  2. If you cannot fix it, DOCUMENT why and create a tracking issue          │
+│  3. NEVER proceed with other work until the codebase is clean               │
+│                                                                             │
+│  Remember: This is a PORTFOLIO SHOWPIECE and PUBLIC WASM DEMO.              │
+│  Every clippy warning, every test failure, every console error              │
+│  reflects directly on the quality of the project and its author.            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**The Rule**: If you encounter ANY issue during your work session—whether you caused it or not—you are responsible for fixing it. There is no "not my problem." There is no "out of scope." If clippy reports 20 warnings, you fix 20 warnings. If tests fail, you fix the tests. Period.
+
+**Why This Matters**:
+1. **Hidden bugs accumulate**: "Pre-existing" issues often mask real bugs
+2. **Trust erosion**: Dismissing issues signals you don't care about quality
+3. **Technical debt compounds**: Every ignored warning makes the next one easier to ignore
+4. **Portfolio damage**: A single clippy warning in a public demo undermines credibility
+5. **Production risk**: Warnings today become crashes tomorrow
 
 ---
 
@@ -367,7 +408,7 @@ rource/
 └── rource-wasm/           # WebAssembly application
 ```
 
-**Test Count**: 2,076 tests total across all crates.
+**Test Count**: 2,100+ tests total across all crates.
 
 ### Rendering Backends
 
@@ -421,7 +462,7 @@ Every change MUST follow this workflow:
 │     └─ Add tests for new functionality                                  │
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
-│     └─ cargo test (all 2,076+ tests pass)                               │
+│     └─ cargo test (all 2,100+ tests pass)                               │
 │     └─ cargo clippy -- -D warnings (zero warnings)                      │
 │     └─ cargo fmt --check (formatted)                                    │
 │     └─ Mobile Safari test (if UI change)                                │
@@ -529,7 +570,7 @@ Every optimization MUST follow this exact process:
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
 | **Documented** | Added to ALL THREE docs/performance/ files |
-| **Correct** | All 2,076+ tests must pass |
+| **Correct** | All 2,100+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
 | **Mathematical** | Include complexity analysis and/or mathematical proof |
@@ -732,10 +773,10 @@ wasm-pack build --target web --release
 
 | Test Type | Requirement | Status |
 |-----------|-------------|--------|
-| Unit tests | All public functions | ✓ 2,076 tests |
-| Property tests | Math crate invariants | ✓ Implemented |
-| Chaos tests | Edge cases, unicode, boundaries | ✓ Implemented |
-| Benchmarks | Critical paths | ✓ 13 benchmark suites |
+| Unit tests | All public functions | Yes (2,076 tests) |
+| Property tests | Math crate invariants | Yes (Implemented) |
+| Chaos tests | Edge cases, unicode, boundaries | Yes (Implemented) |
+| Benchmarks | Critical paths | Yes (13 benchmark suites) |
 | Mutation testing | 80%+ score | TODO |
 | Visual regression | Rendering consistency | TODO |
 | Cross-browser | Chrome, Firefox, Safari, Edge | TODO |
@@ -758,11 +799,11 @@ For 100% deterministic output:
 
 | Requirement | Status |
 |-------------|--------|
-| `cargo audit` clean | ✓ CI enforced |
-| Minimal unsafe code | ✓ 1 block, documented |
-| SBOM generation | ✓ Generated with releases (SPDX + CycloneDX) |
+| `cargo audit` clean | Yes (CI enforced) |
+| Minimal unsafe code | Yes (1 block, documented) |
+| SBOM generation | Yes (SPDX + CycloneDX) |
 | Fuzzing coverage | TODO (target: 75%+) |
-| SECURITY.md | ✓ Created with vulnerability reporting process |
+| SECURITY.md | Yes (vulnerability reporting process) |
 
 ### Unsafe Code Policy
 
@@ -1072,5 +1113,5 @@ If the answer is anything other than "absolutely yes," the work is not complete.
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-01-27*
 *Standard: Expert+ Excellence (Zero Compromises)*

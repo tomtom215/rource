@@ -935,4 +935,612 @@ mod tests {
         assert!(s.contains("255"));
         assert!(s.contains("0.75"));
     }
+
+    // =========================================================================
+    // Mutation Testing: Targeted tests to kill MISSED mutants
+    // =========================================================================
+
+    /// Test `from_hex_alpha` with isolated channel values to verify bit positions.
+    /// Each test isolates one channel to ensure correct shift amounts.
+    #[test]
+    fn test_from_hex_alpha_isolated_channels() {
+        // Test R channel only (bits 24-31): 0xRR000000
+        let r_only = Color::from_hex_alpha(0xAB000000);
+        assert!(
+            (r_only.r - (0xAB as f32 / 255.0)).abs() < 0.001,
+            "R channel extraction failed"
+        );
+        assert!(r_only.g.abs() < 0.001, "G should be 0 when only R is set");
+        assert!(r_only.b.abs() < 0.001, "B should be 0 when only R is set");
+        assert!(r_only.a.abs() < 0.001, "A should be 0 when only R is set");
+
+        // Test G channel only (bits 16-23): 0x00GG0000
+        let g_only = Color::from_hex_alpha(0x00CD0000);
+        assert!(g_only.r.abs() < 0.001, "R should be 0 when only G is set");
+        assert!(
+            (g_only.g - (0xCD as f32 / 255.0)).abs() < 0.001,
+            "G channel extraction failed"
+        );
+        assert!(g_only.b.abs() < 0.001, "B should be 0 when only G is set");
+        assert!(g_only.a.abs() < 0.001, "A should be 0 when only G is set");
+
+        // Test B channel only (bits 8-15): 0x0000BB00
+        let b_only = Color::from_hex_alpha(0x0000EF00);
+        assert!(b_only.r.abs() < 0.001, "R should be 0 when only B is set");
+        assert!(b_only.g.abs() < 0.001, "G should be 0 when only B is set");
+        assert!(
+            (b_only.b - (0xEF as f32 / 255.0)).abs() < 0.001,
+            "B channel extraction failed"
+        );
+        assert!(b_only.a.abs() < 0.001, "A should be 0 when only B is set");
+
+        // Test A channel only (bits 0-7): 0x000000AA
+        let a_only = Color::from_hex_alpha(0x00000089);
+        assert!(a_only.r.abs() < 0.001, "R should be 0 when only A is set");
+        assert!(a_only.g.abs() < 0.001, "G should be 0 when only A is set");
+        assert!(a_only.b.abs() < 0.001, "B should be 0 when only A is set");
+        assert!(
+            (a_only.a - (0x89 as f32 / 255.0)).abs() < 0.001,
+            "A channel extraction failed"
+        );
+
+        // Test all channels with distinct values
+        let mixed = Color::from_hex_alpha(0x12345678);
+        assert!((mixed.r - (0x12 as f32 / 255.0)).abs() < 0.001);
+        assert!((mixed.g - (0x34 as f32 / 255.0)).abs() < 0.001);
+        assert!((mixed.b - (0x56 as f32 / 255.0)).abs() < 0.001);
+        assert!((mixed.a - (0x78 as f32 / 255.0)).abs() < 0.001);
+    }
+
+    /// Test `to_rgba8` bit positions by verifying each channel independently.
+    /// Format: 0xRRGGBBAA
+    #[test]
+    fn test_to_rgba8_bit_positions() {
+        // Test with isolated R channel (1.0, 0.0, 0.0, 0.0)
+        let r_only = Color::new(1.0, 0.0, 0.0, 0.0).to_rgba8();
+        assert_eq!(r_only >> 24, 255, "R should be in bits 24-31");
+        assert_eq!((r_only >> 16) & 0xFF, 0, "G should be 0");
+        assert_eq!((r_only >> 8) & 0xFF, 0, "B should be 0");
+        assert_eq!(r_only & 0xFF, 0, "A should be 0");
+
+        // Test with isolated G channel (0.0, 1.0, 0.0, 0.0)
+        let g_only = Color::new(0.0, 1.0, 0.0, 0.0).to_rgba8();
+        assert_eq!(g_only >> 24, 0, "R should be 0");
+        assert_eq!((g_only >> 16) & 0xFF, 255, "G should be in bits 16-23");
+        assert_eq!((g_only >> 8) & 0xFF, 0, "B should be 0");
+        assert_eq!(g_only & 0xFF, 0, "A should be 0");
+
+        // Test with isolated B channel (0.0, 0.0, 1.0, 0.0)
+        let b_only = Color::new(0.0, 0.0, 1.0, 0.0).to_rgba8();
+        assert_eq!(b_only >> 24, 0, "R should be 0");
+        assert_eq!((b_only >> 16) & 0xFF, 0, "G should be 0");
+        assert_eq!((b_only >> 8) & 0xFF, 255, "B should be in bits 8-15");
+        assert_eq!(b_only & 0xFF, 0, "A should be 0");
+
+        // Test with isolated A channel (0.0, 0.0, 0.0, 1.0)
+        let a_only = Color::new(0.0, 0.0, 0.0, 1.0).to_rgba8();
+        assert_eq!(a_only >> 24, 0, "R should be 0");
+        assert_eq!((a_only >> 16) & 0xFF, 0, "G should be 0");
+        assert_eq!((a_only >> 8) & 0xFF, 0, "B should be 0");
+        assert_eq!(a_only & 0xFF, 255, "A should be in bits 0-7");
+
+        // Verify format is exactly 0xRRGGBBAA
+        assert_eq!(Color::RED.to_rgba8(), 0xFF0000FF);
+        assert_eq!(Color::GREEN.to_rgba8(), 0x00FF00FF);
+        assert_eq!(Color::BLUE.to_rgba8(), 0x0000FFFF);
+        assert_eq!(Color::WHITE.to_rgba8(), 0xFFFFFFFF);
+        assert_eq!(Color::BLACK.to_rgba8(), 0x000000FF);
+        assert_eq!(Color::TRANSPARENT.to_rgba8(), 0x00000000);
+    }
+
+    /// Test `to_argb8` bit positions by verifying each channel independently.
+    /// Format: 0xAARRGGBB
+    #[test]
+    fn test_to_argb8_bit_positions() {
+        // Test with isolated A channel
+        let a_only = Color::new(0.0, 0.0, 0.0, 1.0).to_argb8();
+        assert_eq!(a_only >> 24, 255, "A should be in bits 24-31");
+        assert_eq!((a_only >> 16) & 0xFF, 0, "R should be 0");
+        assert_eq!((a_only >> 8) & 0xFF, 0, "G should be 0");
+        assert_eq!(a_only & 0xFF, 0, "B should be 0");
+
+        // Test with isolated R channel
+        let r_only = Color::new(1.0, 0.0, 0.0, 0.0).to_argb8();
+        assert_eq!(r_only >> 24, 0, "A should be 0");
+        assert_eq!((r_only >> 16) & 0xFF, 255, "R should be in bits 16-23");
+        assert_eq!((r_only >> 8) & 0xFF, 0, "G should be 0");
+        assert_eq!(r_only & 0xFF, 0, "B should be 0");
+
+        // Test with isolated G channel
+        let g_only = Color::new(0.0, 1.0, 0.0, 0.0).to_argb8();
+        assert_eq!(g_only >> 24, 0, "A should be 0");
+        assert_eq!((g_only >> 16) & 0xFF, 0, "R should be 0");
+        assert_eq!((g_only >> 8) & 0xFF, 255, "G should be in bits 8-15");
+        assert_eq!(g_only & 0xFF, 0, "B should be 0");
+
+        // Test with isolated B channel
+        let b_only = Color::new(0.0, 0.0, 1.0, 0.0).to_argb8();
+        assert_eq!(b_only >> 24, 0, "A should be 0");
+        assert_eq!((b_only >> 16) & 0xFF, 0, "R should be 0");
+        assert_eq!((b_only >> 8) & 0xFF, 0, "G should be 0");
+        assert_eq!(b_only & 0xFF, 255, "B should be in bits 0-7");
+
+        // Verify format is exactly 0xAARRGGBB
+        assert_eq!(Color::GREEN.to_argb8(), 0xFF00FF00);
+        assert_eq!(Color::BLUE.to_argb8(), 0xFF0000FF);
+        assert_eq!(Color::WHITE.to_argb8(), 0xFFFFFFFF);
+        assert_eq!(Color::BLACK.to_argb8(), 0xFF000000);
+    }
+
+    /// Test `to_abgr8` bit positions by verifying each channel independently.
+    /// Format: 0xAABBGGRR
+    #[test]
+    fn test_to_abgr8_bit_positions() {
+        // Test with isolated A channel
+        let a_only = Color::new(0.0, 0.0, 0.0, 1.0).to_abgr8();
+        assert_eq!(a_only >> 24, 255, "A should be in bits 24-31");
+        assert_eq!((a_only >> 16) & 0xFF, 0, "B should be 0");
+        assert_eq!((a_only >> 8) & 0xFF, 0, "G should be 0");
+        assert_eq!(a_only & 0xFF, 0, "R should be 0");
+
+        // Test with isolated B channel
+        let b_only = Color::new(0.0, 0.0, 1.0, 0.0).to_abgr8();
+        assert_eq!(b_only >> 24, 0, "A should be 0");
+        assert_eq!((b_only >> 16) & 0xFF, 255, "B should be in bits 16-23");
+        assert_eq!((b_only >> 8) & 0xFF, 0, "G should be 0");
+        assert_eq!(b_only & 0xFF, 0, "R should be 0");
+
+        // Test with isolated G channel
+        let g_only = Color::new(0.0, 1.0, 0.0, 0.0).to_abgr8();
+        assert_eq!(g_only >> 24, 0, "A should be 0");
+        assert_eq!((g_only >> 16) & 0xFF, 0, "B should be 0");
+        assert_eq!((g_only >> 8) & 0xFF, 255, "G should be in bits 8-15");
+        assert_eq!(g_only & 0xFF, 0, "R should be 0");
+
+        // Test with isolated R channel
+        let r_only = Color::new(1.0, 0.0, 0.0, 0.0).to_abgr8();
+        assert_eq!(r_only >> 24, 0, "A should be 0");
+        assert_eq!((r_only >> 16) & 0xFF, 0, "B should be 0");
+        assert_eq!((r_only >> 8) & 0xFF, 0, "G should be 0");
+        assert_eq!(r_only & 0xFF, 255, "R should be in bits 0-7");
+
+        // Verify format is exactly 0xAABBGGRR
+        assert_eq!(Color::GREEN.to_abgr8(), 0xFF00FF00);
+        assert_eq!(Color::BLUE.to_abgr8(), 0xFFFF0000);
+        assert_eq!(Color::WHITE.to_abgr8(), 0xFFFFFFFF);
+        assert_eq!(Color::BLACK.to_abgr8(), 0xFF000000);
+    }
+
+    /// Test clamp with boundary values to verify clamping behavior.
+    #[test]
+    fn test_clamp_boundaries() {
+        // Test values below 0.0 are clamped to 0.0
+        let below_zero = Color::new(-0.5, -1.0, -100.0, -0.001).clamp();
+        assert_eq!(below_zero.r, 0.0, "Negative R should clamp to 0.0");
+        assert_eq!(below_zero.g, 0.0, "Negative G should clamp to 0.0");
+        assert_eq!(below_zero.b, 0.0, "Negative B should clamp to 0.0");
+        assert_eq!(below_zero.a, 0.0, "Negative A should clamp to 0.0");
+
+        // Test values above 1.0 are clamped to 1.0
+        let above_one = Color::new(1.5, 2.0, 100.0, 1.001).clamp();
+        assert_eq!(above_one.r, 1.0, "R > 1 should clamp to 1.0");
+        assert_eq!(above_one.g, 1.0, "G > 1 should clamp to 1.0");
+        assert_eq!(above_one.b, 1.0, "B > 1 should clamp to 1.0");
+        assert_eq!(above_one.a, 1.0, "A > 1 should clamp to 1.0");
+
+        // Test values within range are preserved
+        let in_range = Color::new(0.0, 0.5, 1.0, 0.25).clamp();
+        assert_eq!(in_range.r, 0.0, "R at 0.0 should stay 0.0");
+        assert_eq!(in_range.g, 0.5, "G at 0.5 should stay 0.5");
+        assert_eq!(in_range.b, 1.0, "B at 1.0 should stay 1.0");
+        assert_eq!(in_range.a, 0.25, "A at 0.25 should stay 0.25");
+
+        // Test exact boundaries
+        let boundaries = Color::new(0.0, 1.0, 0.0, 1.0).clamp();
+        assert_eq!(boundaries.r, 0.0);
+        assert_eq!(boundaries.g, 1.0);
+        assert_eq!(boundaries.b, 0.0);
+        assert_eq!(boundaries.a, 1.0);
+    }
+
+    /// Test contrasting color at luminance boundary.
+    #[test]
+    fn test_contrasting_luminance_boundary() {
+        // Just below 0.5 luminance should return WHITE
+        // Luminance = 0.2126*R + 0.7152*G + 0.0722*B
+        // For gray, luminance = value. So gray(0.49) has luminance 0.49 < 0.5
+        let dark = Color::gray(0.49);
+        assert!(dark.luminance() < 0.5, "Luminance should be < 0.5");
+        assert_eq!(
+            dark.contrasting(),
+            Color::WHITE,
+            "Dark color should contrast with WHITE"
+        );
+
+        // Just above 0.5 luminance should return BLACK
+        let light = Color::gray(0.51);
+        assert!(light.luminance() > 0.5, "Luminance should be > 0.5");
+        assert_eq!(
+            light.contrasting(),
+            Color::BLACK,
+            "Light color should contrast with BLACK"
+        );
+
+        // Test exactly at boundary (0.5 luminance) - should return BLACK (> 0.5 comparison)
+        let mid = Color::gray(0.5);
+        // luminance(0.5, 0.5, 0.5) = 0.2126*0.5 + 0.7152*0.5 + 0.0722*0.5 = 0.5
+        assert!(
+            (mid.luminance() - 0.5).abs() < crate::EPSILON,
+            "Luminance should be ~0.5"
+        );
+        // Since luminance == 0.5 is NOT > 0.5, it returns WHITE
+        assert_eq!(
+            mid.contrasting(),
+            Color::WHITE,
+            "Mid gray should contrast with WHITE"
+        );
+
+        // Test with non-gray colors
+        assert_eq!(
+            Color::YELLOW.contrasting(),
+            Color::BLACK,
+            "Yellow is bright"
+        );
+        assert_eq!(Color::BLUE.contrasting(), Color::WHITE, "Blue is dark");
+    }
+
+    /// Test premultiplied alpha multiplication on all channels.
+    #[test]
+    fn test_premultiplied_all_channels() {
+        // Test with alpha = 0.5
+        let c = Color::new(1.0, 0.8, 0.6, 0.5).premultiplied();
+        assert!((c.r - 0.5).abs() < crate::EPSILON, "R * 0.5 = 0.5");
+        assert!((c.g - 0.4).abs() < crate::EPSILON, "G * 0.5 = 0.4");
+        assert!((c.b - 0.3).abs() < crate::EPSILON, "B * 0.5 = 0.3");
+        assert_eq!(c.a, 0.5, "Alpha should be unchanged");
+
+        // Test with alpha = 0.0 (all channels become 0)
+        let zero = Color::new(1.0, 1.0, 1.0, 0.0).premultiplied();
+        assert_eq!(zero.r, 0.0, "R * 0 = 0");
+        assert_eq!(zero.g, 0.0, "G * 0 = 0");
+        assert_eq!(zero.b, 0.0, "B * 0 = 0");
+        assert_eq!(zero.a, 0.0);
+
+        // Test with alpha = 1.0 (channels unchanged)
+        let full = Color::new(0.5, 0.5, 0.5, 1.0).premultiplied();
+        assert_eq!(full.r, 0.5, "R * 1 = R");
+        assert_eq!(full.g, 0.5, "G * 1 = G");
+        assert_eq!(full.b, 0.5, "B * 1 = B");
+        assert_eq!(full.a, 1.0);
+
+        // Test with specific alpha value (0.25)
+        let quarter = Color::new(1.0, 0.8, 0.4, 0.25).premultiplied();
+        assert!((quarter.r - 0.25).abs() < crate::EPSILON);
+        assert!((quarter.g - 0.2).abs() < crate::EPSILON);
+        assert!((quarter.b - 0.1).abs() < crate::EPSILON);
+    }
+
+    /// Test `blend_over` formula: result = src × alpha + dst × (1 - alpha)
+    #[test]
+    fn test_blend_over_formula() {
+        // Test fully opaque foreground completely covers background
+        let fg_opaque = Color::new(1.0, 0.0, 0.0, 1.0);
+        let bg = Color::new(0.0, 1.0, 0.0, 1.0);
+        let result = fg_opaque.blend_over(bg);
+        assert!(
+            (result.r - 1.0).abs() < crate::EPSILON,
+            "Opaque fg should show"
+        );
+        assert!(
+            result.g.abs() < crate::EPSILON,
+            "Bg should not show through opaque fg"
+        );
+        assert!(result.b.abs() < crate::EPSILON);
+        assert!((result.a - 1.0).abs() < crate::EPSILON);
+
+        // Test fully transparent foreground shows only background
+        let fg_transparent = Color::new(1.0, 0.0, 0.0, 0.0);
+        let result = fg_transparent.blend_over(bg);
+        assert!(
+            result.r.abs() < crate::EPSILON,
+            "Transparent fg should not show"
+        );
+        assert!(
+            (result.g - 1.0).abs() < crate::EPSILON,
+            "Bg should show through"
+        );
+        assert!((result.a - 1.0).abs() < crate::EPSILON);
+
+        // Test 50% blend: result = 0.5 * fg + 0.5 * bg
+        let fg_half = Color::new(1.0, 0.0, 0.0, 0.5);
+        let result = fg_half.blend_over(bg);
+        assert!(
+            (result.r - 0.5).abs() < crate::EPSILON,
+            "R = 1*0.5 + 0*0.5 = 0.5"
+        );
+        assert!(
+            (result.g - 0.5).abs() < crate::EPSILON,
+            "G = 0*0.5 + 1*0.5 = 0.5"
+        );
+        assert!(result.b.abs() < crate::EPSILON);
+
+        // Test blend with specific values for precise verification
+        // fg = (0.8, 0.2, 0.4, 0.75), bg = (0.2, 0.6, 0.8, 1.0)
+        // result.r = 0.8*0.75 + 0.2*0.25 = 0.6 + 0.05 = 0.65
+        // result.g = 0.2*0.75 + 0.6*0.25 = 0.15 + 0.15 = 0.30
+        // result.b = 0.4*0.75 + 0.8*0.25 = 0.30 + 0.20 = 0.50
+        let fg = Color::new(0.8, 0.2, 0.4, 0.75);
+        let bg2 = Color::new(0.2, 0.6, 0.8, 1.0);
+        let result = fg.blend_over(bg2);
+        assert!((result.r - 0.65).abs() < 0.001, "R blend formula");
+        assert!((result.g - 0.30).abs() < 0.001, "G blend formula");
+        assert!((result.b - 0.50).abs() < 0.001, "B blend formula");
+
+        // Test alpha blending: result.a = src.a + bg.a * (1 - src.a)
+        let fg_semi = Color::new(1.0, 0.0, 0.0, 0.5);
+        let bg_semi = Color::new(0.0, 1.0, 0.0, 0.5);
+        let result = fg_semi.blend_over(bg_semi);
+        // result.a = 0.5 + 0.5 * (1 - 0.5) = 0.5 + 0.25 = 0.75
+        assert!(
+            (result.a - 0.75).abs() < crate::EPSILON,
+            "Alpha blend formula"
+        );
+    }
+
+    /// Test HSL conversion with gray colors (achromatic - hue undefined).
+    #[test]
+    fn test_hsl_achromatic() {
+        // Pure gray should have saturation = 0
+        let gray = Color::gray(0.5);
+        let hsl = gray.to_hsl();
+        assert_eq!(hsl.s, 0.0, "Gray should have 0 saturation");
+        assert!(
+            (hsl.l - 0.5).abs() < crate::EPSILON,
+            "Lightness should be 0.5"
+        );
+
+        // Converting back should give the same gray
+        let back = hsl.to_color();
+        assert!(gray.approx_eq(back), "Achromatic roundtrip should work");
+
+        // Test black
+        let black_hsl = Color::BLACK.to_hsl();
+        assert_eq!(black_hsl.l, 0.0, "Black lightness = 0");
+        assert_eq!(black_hsl.s, 0.0, "Black saturation = 0");
+
+        // Test white
+        let white_hsl = Color::WHITE.to_hsl();
+        assert_eq!(white_hsl.l, 1.0, "White lightness = 1");
+        assert_eq!(white_hsl.s, 0.0, "White saturation = 0");
+    }
+
+    /// Test HSL hue values for primary colors.
+    #[test]
+    fn test_hsl_primary_hues() {
+        // Red: hue = 0
+        let red_hsl = Color::RED.to_hsl();
+        assert!(
+            red_hsl.h.abs() < 1.0 || (red_hsl.h - 360.0).abs() < 1.0,
+            "Red hue ~0"
+        );
+        assert!(
+            (red_hsl.s - 1.0).abs() < crate::EPSILON,
+            "Red saturation = 1"
+        );
+        assert!(
+            (red_hsl.l - 0.5).abs() < crate::EPSILON,
+            "Red lightness = 0.5"
+        );
+
+        // Green: hue = 120
+        let green_hsl = Color::GREEN.to_hsl();
+        assert!((green_hsl.h - 120.0).abs() < 1.0, "Green hue ~120");
+
+        // Blue: hue = 240
+        let blue_hsl = Color::BLUE.to_hsl();
+        assert!((blue_hsl.h - 240.0).abs() < 1.0, "Blue hue ~240");
+
+        // Yellow: hue = 60
+        let yellow_hsl = Color::YELLOW.to_hsl();
+        assert!((yellow_hsl.h - 60.0).abs() < 1.0, "Yellow hue ~60");
+
+        // Cyan: hue = 180
+        let cyan_hsl = Color::CYAN.to_hsl();
+        assert!((cyan_hsl.h - 180.0).abs() < 1.0, "Cyan hue ~180");
+
+        // Magenta: hue = 300
+        let magenta_hsl = Color::MAGENTA.to_hsl();
+        assert!((magenta_hsl.h - 300.0).abs() < 1.0, "Magenta hue ~300");
+    }
+
+    /// Test HSL saturation calculation for different lightness values.
+    #[test]
+    fn test_hsl_saturation_lightness_relation() {
+        // Low lightness (dark red): L=0.25, S=1.0
+        // q = L * (1 + S) = 0.25 * 2 = 0.5
+        // p = 2*L - q = 0.5 - 0.5 = 0.0
+        // Red hue at 0: r = q = 0.5, g = p = 0.0, b = p = 0.0
+        let dark_red = Hsl::new(0.0, 1.0, 0.25).to_color();
+        assert!(
+            dark_red.r > dark_red.g,
+            "Dark red should have more red than green"
+        );
+        assert!(
+            dark_red.r > dark_red.b,
+            "Dark red should have more red than blue"
+        );
+        assert!((dark_red.r - 0.5).abs() < 0.01, "Dark red R should be ~0.5");
+        assert!(dark_red.g.abs() < 0.01, "Dark red G should be ~0");
+
+        // High lightness (light red): L=0.75, S=1.0
+        // q = L + S - L*S = 0.75 + 1.0 - 0.75 = 1.0
+        // p = 2*L - q = 1.5 - 1.0 = 0.5
+        // Red hue at 0: r = q = 1.0, g = p = 0.5, b = p = 0.5
+        let light_red = Hsl::new(0.0, 1.0, 0.75).to_color();
+        assert!(
+            light_red.r > light_red.g,
+            "Light red should have more red than green"
+        );
+        assert!(
+            (light_red.r - 1.0).abs() < 0.01,
+            "Light red R should be ~1.0"
+        );
+        assert!(
+            (light_red.g - 0.5).abs() < 0.01,
+            "Light red G should be ~0.5"
+        );
+        assert!(
+            (light_red.b - 0.5).abs() < 0.01,
+            "Light red B should be ~0.5"
+        );
+
+        // Medium lightness (pure red): L=0.5, S=1.0
+        // Should match Color::RED
+        let pure_red = Hsl::new(0.0, 1.0, 0.5).to_color();
+        assert!(
+            pure_red.approx_eq(Color::RED),
+            "HSL(0, 1, 0.5) should be pure red"
+        );
+    }
+
+    /// Test HSL hue rotation.
+    #[test]
+    fn test_hsl_hue_rotation() {
+        let red = Hsl::new(0.0, 1.0, 0.5);
+
+        // Rotate 120 degrees to green
+        let rotated = red.rotate_hue(120.0);
+        assert!((rotated.h - 120.0).abs() < crate::EPSILON);
+
+        // Rotate 360 degrees back to original
+        let full_rotation = red.rotate_hue(360.0);
+        assert!(
+            full_rotation.h.abs() < crate::EPSILON
+                || (full_rotation.h - 360.0).abs() < crate::EPSILON
+        );
+
+        // Negative rotation
+        let neg_rotation = Hsl::new(60.0, 1.0, 0.5).rotate_hue(-120.0);
+        // 60 - 120 = -60, wrapped to 300
+        assert!((neg_rotation.h - 300.0).abs() < crate::EPSILON);
+
+        // Large rotation wraps correctly
+        let large_rotation = red.rotate_hue(480.0); // 480 % 360 = 120
+        assert!((large_rotation.h - 120.0).abs() < crate::EPSILON);
+    }
+
+    /// Test `from_hex` with various bit patterns.
+    #[test]
+    fn test_from_hex_bit_patterns() {
+        // Alternating bits: 0xAA = 10101010, 0x55 = 01010101
+        let alt = Color::from_hex(0xAA5500);
+        assert!((alt.r - (0xAA as f32 / 255.0)).abs() < 0.001);
+        assert!((alt.g - (0x55 as f32 / 255.0)).abs() < 0.001);
+        assert!(alt.b.abs() < 0.001);
+
+        // Single bit patterns
+        assert!((Color::from_hex(0x010000).r - (1.0 / 255.0)).abs() < 0.001);
+        assert!((Color::from_hex(0x000100).g - (1.0 / 255.0)).abs() < 0.001);
+        assert!((Color::from_hex(0x000001).b - (1.0 / 255.0)).abs() < 0.001);
+
+        // Max value patterns
+        assert_eq!(Color::from_hex(0xFFFFFF), Color::WHITE.with_alpha(1.0));
+        assert_eq!(Color::from_hex(0x000000), Color::BLACK.with_alpha(1.0));
+    }
+
+    /// Test luminance calculation with known values.
+    #[test]
+    fn test_luminance_coefficients() {
+        // Rec. 709 coefficients: 0.2126*R + 0.7152*G + 0.0722*B
+
+        // Pure red luminance = 0.2126
+        let red_lum = Color::RED.luminance();
+        assert!(
+            (red_lum - 0.2126).abs() < 0.001,
+            "Red luminance should be ~0.2126"
+        );
+
+        // Pure green luminance = 0.7152
+        let green_lum = Color::GREEN.luminance();
+        assert!(
+            (green_lum - 0.7152).abs() < 0.001,
+            "Green luminance should be ~0.7152"
+        );
+
+        // Pure blue luminance = 0.0722
+        let blue_lum = Color::BLUE.luminance();
+        assert!(
+            (blue_lum - 0.0722).abs() < 0.001,
+            "Blue luminance should be ~0.0722"
+        );
+
+        // Combined: (0.5, 0.5, 0.5) = 0.5 * (0.2126 + 0.7152 + 0.0722) = 0.5
+        let gray_lum = Color::gray(0.5).luminance();
+        assert!((gray_lum - 0.5).abs() < 0.001);
+    }
+
+    /// Test fade multiplies alpha correctly.
+    #[test]
+    fn test_fade_alpha_multiplication() {
+        let c = Color::new(1.0, 0.5, 0.25, 0.8);
+
+        // Fade by 0.5 should halve alpha
+        let faded = c.fade(0.5);
+        assert_eq!(faded.r, 1.0, "R unchanged");
+        assert_eq!(faded.g, 0.5, "G unchanged");
+        assert_eq!(faded.b, 0.25, "B unchanged");
+        assert!(
+            (faded.a - 0.4).abs() < crate::EPSILON,
+            "A = 0.8 * 0.5 = 0.4"
+        );
+
+        // Fade by 0 should make fully transparent
+        let gone = c.fade(0.0);
+        assert_eq!(gone.a, 0.0);
+
+        // Fade by 1 should keep original
+        let same = c.fade(1.0);
+        assert_eq!(same.a, 0.8);
+
+        // Fade by 2 should double (allowing >1)
+        let bright = Color::new(1.0, 1.0, 1.0, 0.5).fade(2.0);
+        assert!((bright.a - 1.0).abs() < crate::EPSILON);
+    }
+
+    /// Test Rgb struct conversions.
+    #[test]
+    fn test_rgb_struct() {
+        let rgb = Rgb::new(0.3, 0.6, 0.9);
+
+        // to_color has alpha 1.0
+        let c = rgb.to_color();
+        assert_eq!(c.r, 0.3);
+        assert_eq!(c.g, 0.6);
+        assert_eq!(c.b, 0.9);
+        assert_eq!(c.a, 1.0);
+
+        // with_alpha sets specific alpha
+        let c2 = rgb.with_alpha(0.5);
+        assert_eq!(c2.a, 0.5);
+
+        // From Color extracts RGB, drops alpha
+        let rgb2: Rgb = Color::new(0.1, 0.2, 0.3, 0.4).into();
+        assert_eq!(rgb2.r, 0.1);
+        assert_eq!(rgb2.g, 0.2);
+        assert_eq!(rgb2.b, 0.3);
+    }
+
+    /// Test `approx_eq` tolerance.
+    #[test]
+    fn test_approx_eq() {
+        let c1 = Color::new(0.5, 0.5, 0.5, 0.5);
+        let c2 = Color::new(0.5 + crate::EPSILON / 2.0, 0.5, 0.5, 0.5);
+        assert!(c1.approx_eq(c2), "Small difference should be approx equal");
+
+        let c3 = Color::new(0.5 + 0.01, 0.5, 0.5, 0.5);
+        assert!(
+            !c1.approx_eq(c3),
+            "Larger difference should not be approx equal"
+        );
+    }
 }
