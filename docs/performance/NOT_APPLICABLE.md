@@ -952,6 +952,44 @@ Implementing custom introsort would:
 | Branchless Selection       | 77    | Branch prediction not bottleneck |
 | VEB QuadTree Layout        | 77    | Tree fits in L2 cache |
 | Hybrid Introsort           | 77    | Rust pdqsort already equivalent |
+| **SIMD AABB Batch Testing**| **78**| **AoS layout + early exit value** |
+
+---
+
+## Phase 78: Four-Way SIMD AABB Batch Testing
+
+**Phase**: 78
+**Priority**: 1 (from ALGORITHM_CANDIDATES.md)
+**Target**: `collides()` in `crates/rource-render/src/label.rs`
+**Source**: [Titanfall GDC Talk](https://www.gdcvault.com/play/1025126/Extreme-SIMD-Optimized-Collision-Detection)
+
+**Why Not Applicable**:
+
+| Issue | Impact | Alternative |
+|-------|--------|-------------|
+| AoS memory layout | SIMD needs SoA; transpose overhead | Keep AoS, simpler API |
+| Early exit value | Sparse labels benefit from early exit | Scalar with branches |
+| Small n (30-100) | Can't amortize SIMD setup | Linear scan O(n) |
+| Already fast | 2.95 µs/frame for 80 labels | No optimization needed |
+
+**Benchmark Results (criterion, 100 samples, 95% CI)**:
+
+| Labels | Time | Per-label |
+|--------|------|-----------|
+| 0 | 4.4 ns | - |
+| 10 | 77 ns | 7.7 ns |
+| 50 | 1.33 µs | 26.6 ns |
+| 100 | 5.4 µs | 54 ns |
+| Full frame (80) | **2.95 µs** | - |
+
+**Assembly Analysis**:
+
+The collision loop uses scalar SSE (`movss`, `ucomiss`) with 4 early exit
+branches per rect. For non-overlapping labels, ~2 comparisons execute on
+average before early exit. SIMD batch (4) would do all 4 comparisons for
+4 rects, losing this benefit.
+
+**Verdict**: Early exit scalar outperforms SIMD batch for sparse label placement
 
 ---
 

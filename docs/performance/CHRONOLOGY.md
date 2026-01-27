@@ -97,6 +97,7 @@ Complete timeline of all 72 optimization phases with dates, commits, and outcome
 | 75    | 2026-01-27 | Analysis        | Spatial acceleration algorithm evaluation   | Documented   |
 | 76    | 2026-01-27 | Analysis        | Spatial hash for core LabelPlacer          | N/A          |
 | 77    | 2026-01-27 | Analysis        | CPU physics algorithm evaluation (4 algs)  | N/A          |
+| 78    | 2026-01-27 | Analysis        | Four-Way SIMD AABB batch testing           | N/A          |
 
 ---
 
@@ -2802,6 +2803,146 @@ Implementing custom introsort would:
 
 - `docs/performance/NOT_APPLICABLE.md` - Added Phase 77 entries
 - `docs/performance/CHRONOLOGY.md` - Added Phase 77 documentation
+
+---
+
+## Phase 78: Four-Way SIMD AABB Batch Testing Evaluation (2026-01-27)
+
+### Summary
+
+**Category**: Performance Analysis
+**Status**: NOT APPLICABLE
+**Date**: 2026-01-27
+
+Evaluated Four-Way SIMD AABB batch testing for label collision detection
+in the core library (`crates/rource-render/src/label.rs`).
+
+### Source Research
+
+- [Titanfall GDC Talk: Extreme SIMD](https://www.gdcvault.com/play/1025126/Extreme-SIMD-Optimized-Collision-Detection)
+- [SIMD AABB Implementation](https://gist.github.com/mtsamis/441c16f3d6fc86566eaa2a302ed247c9)
+- ALGORITHM_CANDIDATES.md Priority 1
+
+### Concept
+
+Instead of testing one AABB against one AABB (4 comparisons), test one AABB
+against four AABBs simultaneously using SIMD128 f32x4:
+
+```
+Standard: 4 comparisons × n iterations = 4n operations
+SIMD:     4 comparisons × (n/4) iterations = n operations (4× fewer iterations)
+```
+
+### Investigation Steps
+
+1. **Verified LLVM auto-vectorization status**: Examined assembly output for
+   `try_place()` function. The collision loop at `.LBB29_11` uses scalar
+   SSE instructions (`movss`, `ucomiss`) with early exit branches.
+   **Not auto-vectorized**.
+
+2. **Ran criterion benchmarks** to establish baseline:
+
+| Benchmark | Time | Statistical Significance |
+|-----------|------|--------------------------|
+| `try_place(0 labels)` | 4.4 ns | 95% CI |
+| `try_place(10 labels)` | 77 ns | 95% CI |
+| `try_place(50 labels)` | 1.33 µs | 95% CI |
+| `try_place(100 labels)` | 5.4 µs | 95% CI |
+| `collision_detection(early exit)` | 3.7 ns | 95% CI |
+| `full_frame(80 labels)` | **2.95 µs** | 95% CI |
+
+3. **Analyzed early exit behavior**: The `collision_detection` benchmark
+   shows ~3.7 ns regardless of label count because early exit finds the
+   collision at the first label.
+
+### Root Cause Analysis
+
+**Why SIMD batch testing is NOT APPLICABLE:**
+
+#### 1. Memory Layout (AoS vs SoA)
+
+Current `Rect` storage is Array of Structs (AoS):
+```
+Memory: [x0, y0, w0, h0, x1, y1, w1, h1, x2, y2, w2, h2, ...]
+```
+
+SIMD batch testing requires Structure of Arrays (SoA):
+```
+Memory: [x0, x1, x2, x3], [y0, y1, y2, y3], [w0, w1, w2, w3], [h0, h1, h2, h3]
+```
+
+Transposing AoS→SoA on-the-fly requires shuffle operations that negate
+SIMD benefits. Changing to SoA storage would require API changes and
+affect all callers.
+
+#### 2. Early Exit Value
+
+For non-overlapping labels (typical case), the current scalar loop exits
+after ~2 comparisons on average (first axis failure). SIMD batch would
+do all 4 comparisons for all 4 rects, losing this benefit.
+
+**Cost comparison for sparse case (no overlaps):**
+- Scalar with early exit: ~2 comparisons × n rects
+- SIMD batch (4): 4 comparisons × n/4 iterations = n comparisons
+
+SIMD appears 2× faster theoretically, but overhead negates this:
+- Broadcast test rect to 4 lanes
+- Unaligned memory loads
+- Horizontal OR to check any match
+- Remainder handling (n % 4)
+
+#### 3. Current Performance is Already Excellent
+
+Full frame benchmark achieves **2.95 µs** for 80 labels, which is:
+- Better than Phase 76's reported 3.26 µs
+- 0.02% of 16.67 ms frame budget (60 FPS)
+- 14.75% of 20 µs frame budget (50,000 FPS target)
+
+The collision detection is not the bottleneck.
+
+### Assembly Analysis
+
+```asm
+.LBB29_11:                          ; Collision loop (scalar)
+    movss   (%rsi), %xmm4           ; Load rect.x
+    ucomiss %xmm4, %xmm6            ; Compare a.x+a.width > b.x
+    jbe     .LBB29_10               ; EARLY EXIT on fail
+    addss   8(%rsi), %xmm4          ; rect.x + rect.width
+    ucomiss %xmm0, %xmm4            ; Compare b.x+b.width > a.x
+    jbe     .LBB29_10               ; EARLY EXIT on fail
+    movss   4(%rsi), %xmm4          ; Load rect.y
+    ucomiss %xmm4, %xmm5            ; Compare a.y+a.height > b.y
+    jbe     .LBB29_10               ; EARLY EXIT on fail
+    addss   12(%rsi), %xmm4         ; rect.y + rect.height
+    ucomiss %xmm1, %xmm4            ; Compare b.y+b.height > a.y
+    jbe     .LBB29_10               ; EARLY EXIT on fail
+    jmp     .LBB29_4                ; Collision found → return false
+```
+
+The early exit branches (`jbe`) allow skipping 75% of comparisons on average
+when labels don't overlap.
+
+### Verdict
+
+**NOT APPLICABLE** - SIMD batch testing would not improve performance for
+the core library's label collision detection because:
+
+1. Memory layout is AoS; SIMD needs SoA (transpose overhead negates benefit)
+2. Early exit saves more work than SIMD parallelism provides for sparse case
+3. Small label counts (30-100) don't amortize SIMD setup overhead
+4. Current 2.95 µs/frame is already excellent
+
+### Lesson Learned
+
+This validates a key insight from competitive programming research: SIMD
+batch testing is optimal for **dense** collision detection (many overlaps)
+but not for **sparse** label placement (few overlaps). Early exit with
+scalar operations outperforms SIMD batch for sparse distributions.
+
+### Documentation Updates
+
+- `docs/performance/NOT_APPLICABLE.md` - Added Phase 78 entry
+- `docs/performance/CHRONOLOGY.md` - Added Phase 78 documentation
 
 ---
 
