@@ -218,4 +218,75 @@ This exceeds practical memory limits, so the u32 limit is never reached in pract
 
 ---
 
+## 17.9 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| StringInterner struct | `crates/rource-vcs/src/intern.rs` | 61-66 |
+| intern method | `crates/rource-vcs/src/intern.rs` | 68-80 |
+| resolve method | `crates/rource-vcs/src/intern.rs` | 82-90 |
+| PathInterner struct | `crates/rource-vcs/src/intern.rs` | 95-110 |
+
+### Core Implementation
+
+**StringInterner Struct** (`intern.rs:61-66`):
+
+```rust
+#[derive(Debug, Default)]
+pub struct StringInterner {
+    /// Map from string to its index in the storage.
+    lookup: HashMap<String, u32>,
+    /// Storage for interned strings.
+    strings: Vec<String>,
+}
+```
+
+**intern Method** (`intern.rs:68-80`):
+
+```rust
+pub fn intern(&mut self, s: &str) -> InternedString {
+    if let Some(&idx) = self.lookup.get(s) {
+        return InternedString(idx);
+    }
+    let idx = self.strings.len() as u32;
+    let owned = s.to_owned();
+    self.lookup.insert(owned.clone(), idx);
+    self.strings.push(owned);
+    InternedString(idx)
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 17.3 | O(1) lookup | `intern.rs:69` | `self.lookup.get(s)` (HashMap) |
+| 17.3 | O(1) resolve | `intern.rs:84` | `self.strings.get(id.0)` (Vec) |
+| 17.1 | Idempotent | `intern.rs:70` | Early return if exists |
+
+### Verification Commands
+
+```bash
+# Run string interning tests
+cargo test -p rource-vcs intern --release -- --nocapture
+
+# Run path interning tests
+cargo test -p rource-vcs path_intern --release -- --nocapture
+
+# Benchmark interning performance
+cargo test -p rource-vcs bench_intern --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] O(1) amortized intern and resolve
+- [x] Idempotent: same string → same ID
+- [x] Round-trip correctness: resolve(intern(s)) == s
+- [x] u32 index supports 4+ billion unique strings
+- [x] 82-93% memory savings vs repeated storage
+
+---
+
 *[Back to Index](./README.md)*

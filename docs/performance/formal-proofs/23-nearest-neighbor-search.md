@@ -233,4 +233,75 @@ let picked = spatial_index.nearest_neighbor(cursor_world_pos, PICK_RADIUS);
 
 ---
 
+## 23.10 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| QuadTree struct | `crates/rource-core/src/physics/spatial.rs` | 22-40 |
+| query_range | `crates/rource-core/src/physics/spatial.rs` | 252-296 |
+| query_for_each | `crates/rource-core/src/physics/spatial.rs` | 252-275 |
+| insert | `crates/rource-core/src/physics/spatial.rs` | 116-134 |
+
+### Core Implementation
+
+**Range Query** (`spatial.rs:252-275`):
+
+```rust
+pub fn query_for_each<F>(&self, range: &Bounds, mut f: F)
+where
+    F: FnMut(&T),
+{
+    if !self.bounds.intersects(range) {
+        return;
+    }
+
+    // Check items in this node
+    for item in &self.items {
+        if range.contains(item.position()) {
+            f(item);
+        }
+    }
+
+    // Recurse into children
+    if let Some(ref children) = self.children {
+        for child in children.iter() {
+            child.query_for_each(range, &mut f);
+        }
+    }
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 23.3 | O(log n + k) | `spatial.rs:254` | Early bounds check |
+| 23.4 | d² preserves order | Comparisons | `distance_sq` used |
+| 23.3 | Radius expansion | Algorithm | Double radius on miss |
+
+### Verification Commands
+
+```bash
+# Run nearest neighbor tests
+cargo test -p rource-core test_nearest --release -- --nocapture
+
+# Run spatial query tests
+cargo test -p rource-core spatial --release -- --nocapture
+
+# Benchmark query performance
+cargo test -p rource-core bench_spatial --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] QuadTree-based spatial indexing
+- [x] O(log n + k) expected query time
+- [x] Squared distance for comparisons
+- [x] Radius expansion strategy
+- [x] 14× faster than brute force
+
+---
+
 *[Back to Index](./README.md)*

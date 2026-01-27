@@ -297,4 +297,68 @@ let force_scale = INV_TABLE[(dist >> 8) as usize];
 
 ---
 
+## 21.11 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| SQRT_LUT | `crates/rource-render/src/backend/software/optimized.rs` | 76-87 |
+| INV_TABLE | `crates/rource-render/src/backend/software/optimized.rs` | 126-136 |
+| fast_sqrt_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 158-175 |
+| const_sqrt (Newton-Raphson) | `crates/rource-render/src/backend/software/optimized.rs` | 40-55 |
+
+### Core Implementation
+
+**Fast Sqrt with Interpolation** (`optimized.rs:158-175`):
+
+```rust
+pub fn fast_sqrt_fixed(dist_sq_fixed: u32) -> u16 {
+    let dist_sq = (dist_sq_fixed >> 8).min(SQRT_TABLE_SIZE as u32);
+    let idx = dist_sq as usize;
+    let frac = dist_sq_fixed & 0xFF;
+
+    if idx >= SQRT_TABLE_SIZE {
+        return SQRT_LUT[SQRT_TABLE_SIZE];
+    }
+
+    let a = SQRT_LUT[idx] as u32;
+    let b = SQRT_LUT[idx + 1] as u32;
+
+    // Linear interpolation: a + (b - a) × frac / 256
+    (a + (((b - a) * frac) >> 8)) as u16
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 21.1 | y_{n+1} = (y_n + x/y_n)/2 | `optimized.rs:48` | Newton iteration |
+| 21.4 | lerp(a, b, frac) | `optimized.rs:170` | `a + (((b - a) * frac) >> 8)` |
+| 21.6 | error ≤ 1 | `optimized.rs:166` | Integer rounding |
+
+### Verification Commands
+
+```bash
+# Run sqrt LUT tests
+cargo test -p rource-render test_sqrt_lut --release -- --nocapture
+
+# Run inverse table accuracy tests
+cargo test -p rource-render test_inv_table --release -- --nocapture
+
+# Run determinism tests
+cargo test -p rource-render test_fixed_determinism --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] Compile-time LUT generation
+- [x] 8.8 fixed-point format
+- [x] Linear interpolation for sub-table precision
+- [x] Error ≤ 1 for division approximation
+- [x] 3-7× speedup vs standard sqrt/division
+
+---
+
 *[Back to Index](./README.md)*

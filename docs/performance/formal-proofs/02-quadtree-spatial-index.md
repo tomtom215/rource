@@ -67,6 +67,150 @@ Let Q be the query rectangle.
 
 ---
 
+---
+
+## 2.4 Implementation
+
+### Source Code
+
+Located in: `crates/rource-core/src/physics/spatial.rs`
+
+#### QuadTree Structure (lines 22-40)
+
+```rust
+#[derive(Debug, Clone)]
+pub struct QuadTree<T: Clone> {
+    /// The bounds of this node.
+    bounds: Bounds,
+
+    /// Items stored at this node.
+    items: Vec<(Vec2, T)>,
+
+    /// Child nodes (if subdivided).
+    children: Option<Box<[Self; 4]>>,
+
+    /// Maximum items before subdivision.
+    max_items: usize,
+
+    /// Maximum depth of the tree.
+    max_depth: usize,
+
+    /// Current depth of this node.
+    depth: usize,
+}
+```
+
+#### Insert with Subdivision (lines 116-134)
+
+```rust
+/// Inserts an item at the given position.
+pub fn insert(&mut self, position: Vec2, item: T) {
+    if !self.bounds.contains(position) {
+        return;
+    }
+
+    // If we have children, delegate to the appropriate child
+    if self.children.is_some() {
+        self.insert_into_child(position, item);
+        return;
+    }
+
+    // Store at this node
+    self.items.push((position, item));
+
+    // Subdivide if we exceed capacity and haven't reached max depth
+    if self.items.len() > self.max_items && self.depth < self.max_depth {
+        self.subdivide();
+    }
+}
+```
+
+#### Query with Bounds Intersection (lines 278-296)
+
+```rust
+/// Recursive query implementation.
+fn query_recursive<'a>(&'a self, bounds: &Bounds, results: &mut Vec<&'a T>) {
+    if !self.bounds.intersects(*bounds) {
+        return;  // O(1) bounds check enables O(log n) traversal
+    }
+
+    // Check items at this node
+    for (pos, item) in &self.items {
+        if bounds.contains(*pos) {
+            results.push(item);  // O(k) output
+        }
+    }
+
+    // Check children
+    if let Some(ref children) = self.children {
+        for child in children.iter() {
+            child.query_recursive(bounds, results);
+        }
+    }
+}
+```
+
+#### Zero-Allocation Visitor Pattern (lines 252-275)
+
+```rust
+/// Queries items and calls a closure for each match (zero-allocation).
+#[inline]
+pub fn query_for_each(&self, bounds: &Bounds, mut visitor: impl FnMut(&T)) {
+    self.query_for_each_recursive(bounds, &mut visitor);
+}
+
+fn query_for_each_recursive(&self, bounds: &Bounds, visitor: &mut impl FnMut(&T)) {
+    if !self.bounds.intersects(*bounds) {
+        return;
+    }
+
+    for (pos, item) in &self.items {
+        if bounds.contains(*pos) {
+            visitor(item);
+        }
+    }
+
+    if let Some(ref children) = self.children {
+        for child in children.iter() {
+            child.query_for_each_recursive(bounds, visitor);
+        }
+    }
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem/Equation | Code Location | Line(s) | Verification |
+|------------------|---------------|---------|--------------|
+| Theorem 2.1: Query O(log n + k) | `query_recursive` | 278-296 | ✓ Bounds intersection prunes non-overlapping subtrees |
+| Theorem 2.2: Insert O(log n) | `insert` | 116-134 | ✓ Single path to leaf, max depth bounded |
+| Space O(n) | `items: Vec<(Vec2, T)>` | 27 | ✓ Each item stored once |
+| MAX_ITEMS subdivision | `self.items.len() > self.max_items` | 131 | ✓ Triggers subdivision |
+| Depth bound | `self.depth < self.max_depth` | 131 | ✓ Prevents infinite recursion |
+
+### Verification Commands
+
+```bash
+# Run unit tests
+cargo test -p rource-core quadtree --release -- --nocapture
+
+# Run query tests
+cargo test -p rource-core test_quadtree_query --release -- --nocapture
+
+# Run all spatial tests
+cargo test -p rource-core spatial --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] Code matches mathematical specification exactly
+- [x] All theorems have corresponding code locations
+- [x] Bounds intersection test is O(1)
+- [x] Zero-allocation visitor pattern available
+- [x] Subdivision triggered only when exceeding max_items
+
+---
+
 ## References
 
 - Samet, H. (1984). "The quadtree and related hierarchical data structures." *ACM Computing Surveys*, 16(2), 187-260.

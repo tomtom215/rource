@@ -244,4 +244,79 @@ for y in (cy - outer_radius) as i32 ..= (cy + outer_radius) as i32 {
 
 ---
 
+## 22.12 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| draw_disc_optimized | `crates/rource-render/src/backend/software/optimized.rs` | 450-550 |
+| draw_disc_precomputed | `crates/rource-render/src/backend/software/optimized.rs` | 560-640 |
+| draw_disc_simd | `crates/rource-render/src/backend/software/optimized.rs` | 650-750 |
+| blend_pixel_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 211-236 |
+
+### Core Implementation
+
+**Distance-Based Anti-Aliasing** (conceptual from `optimized.rs`):
+
+```rust
+pub fn draw_disc_optimized(
+    buffer: &mut [u32],
+    cx: f32, cy: f32, radius: f32,
+    color: Color, width: usize
+) {
+    let inner_sq = (radius - AA_WIDTH) * (radius - AA_WIDTH);
+    let outer_sq = (radius + AA_WIDTH) * (radius + AA_WIDTH);
+
+    for y in (cy - radius - 1.0) as i32 ..= (cy + radius + 1.0) as i32 {
+        for x in (cx - radius - 1.0) as i32 ..= (cx + radius + 1.0) as i32 {
+            let dx = x as f32 - cx;
+            let dy = y as f32 - cy;
+            let dist_sq = dx * dx + dy * dy;
+
+            if dist_sq < inner_sq {
+                // Fully inside - no sqrt needed
+                blend_pixel_fixed(&mut buffer[...], color, 256);
+            } else if dist_sq < outer_sq {
+                // Edge region - compute coverage
+                let dist = fast_sqrt(dist_sq);
+                let coverage = (radius + AA_WIDTH - dist) / (2.0 * AA_WIDTH);
+                blend_pixel_fixed(&mut buffer[...], color, (coverage * 256) as u32);
+            }
+        }
+    }
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 22.4 | f(d) = 0.5 - d | Coverage calculation | Linear edge transition |
+| 22.6 | Edge pixels = O(r) | Inner bound check | Avoids sqrt for interior |
+| 22.10 | Integer blending | `blend_pixel_fixed` | Fixed-point alpha blend |
+
+### Verification Commands
+
+```bash
+# Run disc rendering tests
+cargo test -p rource-render test_disc --release -- --nocapture
+
+# Run anti-aliasing quality tests
+cargo test -p rource-render test_aa_quality --release -- --nocapture
+
+# Benchmark disc rendering
+cargo test -p rource-render bench_disc --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] Inner bound optimization (sqrt only for edge)
+- [x] Distance-based coverage calculation
+- [x] Fixed-point throughout pipeline
+- [x] Scanline-friendly access pattern
+- [x] 6-64× sqrt call reduction
+
+---
+
 *[Back to Index](./README.md)*

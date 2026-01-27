@@ -334,4 +334,81 @@ variable_blur(image, depth_buffer, blur_amount);
 
 ---
 
+## 24.13 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| BloomEffect::apply | `crates/rource-render/src/effects/bloom.rs` | 167-195 |
+| box_blur_in_place | `crates/rource-render/src/effects/bloom.rs` | 425-502 |
+| vertical_blur_striped | `crates/rource-render/src/effects/bloom.rs` | 514-556 |
+| extract_and_downscale | `crates/rource-render/src/effects/bloom.rs` | 250-320 |
+
+### Core Implementation
+
+**Sliding Window Box Blur** (`bloom.rs:425-490`):
+
+```rust
+fn box_blur_in_place(&mut self, width: usize, height: usize) {
+    let r = self.radius as usize;
+    let diameter = 2 * r + 1;
+    let inv_diameter_fixed = (1024 + diameter / 2) / diameter;
+
+    // Horizontal pass
+    for y in 0..height {
+        let row = y * width;
+        let mut sum_r = 0u32;
+        let mut sum_g = 0u32;
+        let mut sum_b = 0u32;
+
+        // Initialize window
+        for i in 0..=r.min(width - 1) {
+            let p = self.small_buffer[row + i];
+            sum_r += (p >> 16) & 0xFF;
+            sum_g += (p >> 8) & 0xFF;
+            sum_b += p & 0xFF;
+        }
+
+        // Slide window
+        for x in 0..width {
+            let avg_r = (sum_r * inv_diameter_fixed as u32) >> 10;
+            self.blur_temp[row + x] = 0xFF000000 | (avg_r << 16) | ...;
+            // Update sum: -leave +enter
+        }
+    }
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 24.3 | B_k = b_k ⊗ b_k^T | `bloom.rs:425-502` | Horizontal then vertical |
+| 24.5 | O(1) per pixel | `bloom.rs:475-488` | `-leave +enter` pattern |
+| 24.6 | S_{x+1} = S_x - left + right | Loop | Sliding sum update |
+
+### Verification Commands
+
+```bash
+# Run box blur tests
+cargo test -p rource-render test_box_blur --release -- --nocapture
+
+# Run bloom effect tests
+cargo test -p rource-render bloom --release -- --nocapture
+
+# Benchmark blur performance
+cargo test -p rource-render bench_blur --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] Separable two-pass design
+- [x] Sliding window O(1) per pixel
+- [x] Strip processing for cache efficiency
+- [x] Fixed-point arithmetic
+- [x] Time independent of kernel size
+
+---
+
 *[Back to Index](./README.md)*

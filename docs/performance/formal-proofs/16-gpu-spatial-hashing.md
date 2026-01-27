@@ -247,4 +247,67 @@ fn cs_calculate_forces_spatial(@builtin(global_invocation_id) id: vec3<u32>) {
 
 ---
 
+## 16.9 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| hash_position (WGSL) | `crates/rource-render/src/backend/wgpu/shaders.rs` | 714-718, 902-910 |
+| Prefix sum kernel | `crates/rource-render/src/backend/wgpu/shaders.rs` | 897-980 |
+| Force calculation | `crates/rource-render/src/backend/wgpu/shaders.rs` | 982-1050 |
+| Scatter entities | `crates/rource-render/src/backend/wgpu/shaders.rs` | 950-975 |
+
+### Core Implementation
+
+**Spatial Hash Function** (`shaders.rs:902-910`):
+
+```wgsl
+fn hash_position(pos: vec2<f32>) -> u32 {
+    // Clamp to grid bounds to handle entities outside the grid
+    let grid_x = clamp(
+        u32(floor(pos.x / params.grid_size)),
+        0u,
+        params.grid_cells - 1u
+    );
+    let grid_y = clamp(
+        u32(floor(pos.y / params.grid_size)),
+        0u,
+        params.grid_cells - 1u
+    );
+    return grid_y * params.grid_cells + grid_x;
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 16.3 | E[k] = N/G² | `shaders.rs` | Grid sizing |
+| 16.3 | O(N) total | N × 9 × k | 3×3 neighborhood query |
+| 16.4 | Prefix sum O(n) | `shaders.rs:897-980` | Blelloch scan |
+
+### Verification Commands
+
+```bash
+# Run GPU spatial hash tests
+cargo test -p rource-render spatial_hash --release -- --nocapture
+
+# Run wgpu compute shader tests
+cargo test -p rource-render wgpu --release -- --nocapture
+
+# Benchmark spatial hash performance
+cargo test -p rource-render bench_spatial --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] O(N) complexity for uniform distribution
+- [x] Parallel prefix sum (Blelloch scan)
+- [x] Atomic scatter for correct entity placement
+- [x] 3×3 neighborhood query for complete coverage
+- [x] 231× speedup at N=5000 vs O(N²)
+
+---
+
 *[Back to Index](./README.md)*

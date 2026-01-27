@@ -266,4 +266,82 @@ pub fn warmup(&mut self, device: &Device, queue: &Queue) {
 
 ---
 
+## 20.11 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| Culling module | `crates/rource-render/src/backend/wgpu/culling.rs` | 1-600 |
+| cs_cull_circles (WGSL) | `crates/rource-render/src/backend/wgpu/shaders.rs` | 1450-1500 |
+| cs_cull_lines (WGSL) | `crates/rource-render/src/backend/wgpu/shaders.rs` | 1502-1550 |
+| Pipeline creation | `crates/rource-render/src/backend/wgpu/culling.rs` | 395-400 |
+
+### Core Implementation
+
+**Circle Culling Shader** (`shaders.rs:1450-1500`):
+
+```wgsl
+@compute @workgroup_size(256)
+fn cs_cull_circles(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+) {
+    let idx = global_id.x;
+    if (idx >= params.instance_count) { return; }
+
+    let center = vec2(input[idx * 7], input[idx * 7 + 1]);
+    let radius = input[idx * 7 + 2];
+
+    if (is_circle_visible(center, radius, params.view_bounds)) {
+        let out_idx = atomicAdd(&indirect.instance_count, 1u);
+        for (var i = 0u; i < 7u; i++) {
+            output[out_idx * 7 + i] = input[idx * 7 + i];
+        }
+    }
+}
+```
+
+**Pipeline Setup** (`culling.rs:395-400`):
+
+```rust
+device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+    label: Some("Cull Circles Pipeline"),
+    layout: Some(&pipeline_layout),
+    module: &shader_module,
+    entry_point: Some("cs_cull_circles"),
+    // ...
+});
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 20.3 | AABB intersection | `shaders.rs:1442-1448` | 4 comparisons |
+| 20.4 | Atomic compaction | `shaders.rs:1460` | `atomicAdd(&indirect.instance_count, 1u)` |
+| 20.6 | Sound + complete | Shader logic | No false positives/negatives |
+
+### Verification Commands
+
+```bash
+# Run GPU culling tests
+cargo test -p rource-render culling --release -- --nocapture
+
+# Run visibility test correctness
+cargo test -p rource-render test_visibility --release -- --nocapture
+
+# Test indirect draw integration
+cargo test -p rource-render test_indirect --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] AABB visibility test (4 comparisons)
+- [x] Atomic stream compaction
+- [x] DrawIndirect integration (no CPU readback)
+- [x] Warmup for pipeline compilation
+- [x] 75-99% culling rate at partial zoom
+
+---
+
 *[Back to Index](./README.md)*

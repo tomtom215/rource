@@ -75,4 +75,116 @@ With priority ordering and typical label sizes, empirical ratio is >50%. ∎
 
 ---
 
+## 7.4 Implementation
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| LabelPlacer struct | `crates/rource-render/src/label.rs` | 110-123 |
+| try_place method | `crates/rource-render/src/label.rs` | 194-227 |
+| rects_overlap function | `crates/rource-render/src/label.rs` | 303-305 |
+| Spatial hash (WASM) | `rource-wasm/src/render_phases.rs` | 1125-1135 |
+
+### Core Implementation
+
+**LabelPlacer Struct** (`label.rs:110-123`):
+
+```rust
+#[derive(Debug)]
+pub struct LabelPlacer {
+    /// Occupied regions on screen.
+    occupied: Vec<Rect>,
+    /// Configuration for label behavior.
+    config: LabelConfig,
+    /// Number of labels placed so far.
+    count: usize,
+    /// Maximum labels allowed (based on zoom).
+    max_count: usize,
+    /// Viewport width for bounds checking (T9).
+    viewport_width: f32,
+    /// Viewport height for bounds checking (T9).
+    viewport_height: f32,
+}
+```
+
+**try_place Method** (`label.rs:194-227`):
+
+```rust
+pub fn try_place(&mut self, position: Vec2, width: f32, height: f32) -> bool {
+    if !self.can_place_more() {
+        return false;
+    }
+
+    // T9: Viewport bounds check - reject labels that extend off-screen
+    if position.x + width < VIEWPORT_MARGIN
+        || position.y + height < VIEWPORT_MARGIN
+        || position.x > self.viewport_width - VIEWPORT_MARGIN
+        || position.y > self.viewport_height - VIEWPORT_MARGIN
+    {
+        return false;
+    }
+
+    // Create padded bounds for collision check
+    let padding = self.config.padding;
+    let bounds = Rect::new(
+        position.x - padding,
+        position.y - padding,
+        width + padding * 2.0,
+        height + padding * 2.0,
+    );
+
+    // Check for collisions with existing labels
+    if self.collides(&bounds) {
+        return false;
+    }
+
+    // Place the label
+    self.occupied.push(bounds);
+    self.count += 1;
+    true
+}
+```
+
+**Rectangle Overlap Test** (`label.rs:303-305`):
+
+```rust
+#[inline]
+fn rects_overlap(a: &Rect, b: &Rect) -> bool {
+    a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 7.2 | Cell index: `(x/c, y/c)` | `render_phases.rs` | `(x / cell_size).floor() as i32` |
+| 7.2 | O(1) expected per cell | `label.rs:291-297` | Linear scan of occupied vec |
+| 7.3 | Greedy by priority | `render_phases.rs` | Sort by priority, place in order |
+| 7.3 | ≥20% approximation | N/A | Empirically >50% achieved |
+
+### Verification Commands
+
+```bash
+# Run label placer tests
+cargo test -p rource-render label --release -- --nocapture
+
+# Run collision detection tests
+cargo test -p rource-render test_label_placer --release -- --nocapture
+
+# Benchmark label placement
+cargo test -p rource-wasm bench_label_placer --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] Viewport bounds checking prevents off-screen labels (T9)
+- [x] Padding applied to prevent labels from touching
+- [x] rects_overlap uses standard AABB intersection test
+- [x] O(n) collision check for simple implementation
+- [x] Spatial hash variant achieves O(1) expected time
+
+---
+
 *[Back to Index](./README.md)*

@@ -518,4 +518,45 @@ DOI: 10.1007/BF01933190
 
 ---
 
+## 13.15 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| detect_ancestor_cycle | `crates/rource-core/src/scene/tree.rs` | 642-693 |
+| Test cases | `crates/rource-core/src/scene/tree.rs` | 851-954 |
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 13.1 | tortoise = f(tortoise) | `tree.rs:669` | `tortoise = next_t` |
+| 13.1 | hare = f(f(hare)) | `tree.rs:670-671` | Two get_parent calls |
+| 13.4 | O(1) space | struct | Only 2 pointers maintained |
+| 13.5 | O(μ + λ) time | loop | Terminates on meeting or root |
+
+### Verification Commands
+
+```bash
+# Run Floyd's cycle detection tests
+cargo test -p rource-core detect_ancestor_cycle --release -- --nocapture
+
+# Run comprehensive tree validation tests
+cargo test -p rource-core tree::tests --release -- --nocapture
+
+# Run chaos tests for cycle detection
+cargo test -p rource-wasm chaos --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] O(1) space complexity (2 pointers only)
+- [x] O(μ + λ) time complexity
+- [x] Handles edge cases (root, single child)
+- [x] Sound: no false positives
+- [x] Complete: no false negatives
+
+---
+
 *[Back to Index](./README.md)*

@@ -217,4 +217,68 @@ pub fn catmull_rom(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32, tension: f32)
 
 ---
 
+## 14.9 Implementation (Papers With Code)
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| catmull_rom function | `crates/rource-core/src/animation/spline.rs` | 462-477 |
+| catmull_rom_tangent | `crates/rource-core/src/animation/spline.rs` | 481-492 |
+| catmull_rom_spline | `crates/rource-render/src/visual.rs` | 113-145 |
+| catmull_rom_interpolate | `crates/rource-render/src/visual.rs` | 169-180 |
+| GPU shader | `crates/rource-render/src/backend/wgpu/shaders.rs` | 1269-1290 |
+
+### Core Implementation
+
+**Catmull-Rom with Tension** (`spline.rs:462-477`):
+
+```rust
+#[must_use]
+pub fn catmull_rom(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32, tension: f32) -> Vec2 {
+    let t2 = t * t;
+    let t3 = t2 * t;
+
+    // Catmull-Rom basis matrix with tension
+    let s = tension;
+    let a0 = -s * t3 + 2.0 * s * t2 - s * t;
+    let a1 = (2.0 - s) * t3 + (s - 3.0) * t2 + 1.0;
+    let a2 = (s - 2.0) * t3 + (3.0 - 2.0 * s) * t2 + s * t;
+    let a3 = s * t3 - s * t2;
+
+    p0 * a0 + p1 * a1 + p2 * a2 + p3 * a3
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 14.2 | a₁(0) = 1 | `spline.rs:470` | `+ 1.0` term |
+| 14.3 | C'(t) = τ(P₂-P₀) | `spline.rs:481-492` | Derivative calculation |
+| 14.1 | O(1) evaluation | Function | Fixed number of operations |
+
+### Verification Commands
+
+```bash
+# Run Catmull-Rom tests
+cargo test -p rource-core catmull_rom --release -- --nocapture
+
+# Run spline interpolation tests
+cargo test -p rource-render catmull --release -- --nocapture
+
+# Test endpoint behavior
+cargo test -p rource-core test_spline_endpoints --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] Interpolation property: C(0) = P₁, C(1) = P₂
+- [x] C1 continuity at control points
+- [x] Configurable tension parameter
+- [x] Phantom endpoint generation for boundaries
+- [x] O(1) evaluation per point
+
+---
+
 *[Back to Index](./README.md)*

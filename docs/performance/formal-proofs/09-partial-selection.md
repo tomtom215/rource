@@ -70,4 +70,78 @@ if beams.len() > 15 {
 
 ---
 
+## 9.3 Implementation
+
+### Source Code Location
+
+| Component | File | Lines |
+|-----------|------|-------|
+| Beam selection | `rource-wasm/src/render_phases.rs` | 828-836 |
+| User label selection | `rource-wasm/src/render_phases.rs` | 963-975 |
+| File label selection | `rource-wasm/src/render_phases.rs` | 1431-1441 |
+
+### Core Implementation
+
+**Beam Selection with O(n) Partial Ordering** (`render_phases.rs:828-836`):
+
+```rust
+// V1: Limit concurrent beams to prevent visual chaos
+// OPTIMIZATION: Use select_nth_unstable for O(n) partial selection instead of O(n log n) sort
+// This partitions the array so elements [0..beam_limit] are the smallest (unordered)
+let beam_limit = MAX_CONCURRENT_BEAMS.min(active_indices.len());
+if beam_limit > 0 && beam_limit < active_indices.len() {
+    // Partial sort: only need the smallest `beam_limit` elements
+    active_indices.select_nth_unstable_by(beam_limit - 1, |a, b| {
+        a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+    });
+}
+```
+
+**User Label Selection** (`render_phases.rs:963-975`):
+
+```rust
+// OPTIMIZATION: Use select_nth_unstable for O(n) partial selection instead of O(n log n) sort
+// We only need the top max_labels candidates, not a fully sorted list.
+let max_labels = label_placer.max_labels();
+let select_count = max_labels.min(label_candidates.len());
+if select_count > 0 && select_count < label_candidates.len() {
+    // Partition so [0..select_count] contains highest priority (unordered)
+    // Note: select_nth_unstable_by finds nth smallest, so we use reversed comparison
+    label_candidates.select_nth_unstable_by(select_count - 1, |a, b| {
+        b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal)
+    });
+}
+```
+
+### Mathematical-Code Correspondence
+
+| Theorem | Mathematical Expression | Code Location | Implementation |
+|---------|------------------------|---------------|----------------|
+| 9.2 | E[C(n,k)] = O(n) | `render_phases.rs:833` | `select_nth_unstable_by` |
+| 9.2 | Partition property | `render_phases.rs:834` | `a.1.partial_cmp(&b.1)` |
+| 9.2 | Worst case O(n) | Rust std lib | Introselect hybrid algorithm |
+
+### Verification Commands
+
+```bash
+# Run beam selection benchmark
+cargo test -p rource-wasm bench_beam_sorting --release -- --nocapture
+
+# Run user label selection benchmark
+cargo test -p rource-wasm bench_user_label_sorting --release -- --nocapture
+
+# Run all render phase tests
+cargo test -p rource-wasm render --release -- --nocapture
+```
+
+### Validation Checklist
+
+- [x] O(n) expected time via Introselect
+- [x] Worst case O(n) guaranteed (not O(n²))
+- [x] Correct partial ordering (top k in [0..k])
+- [x] Reversed comparison for descending order
+- [x] 7-9× faster than full sort for typical sizes
+
+---
+
 *[Back to Index](./README.md)*
