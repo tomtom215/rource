@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769475375908,
+  "lastUpdate": 1769495998724,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3197,6 +3197,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1255128,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a64c470441a7fe12b1ad5301bda9a3ab540f3744",
+          "message": "Merge pull request #202 from tomtom215/claude/rource-visualization-W7qup\n\nImplement error rate tracking and error budget policy",
+          "timestamp": "2026-01-27T07:37:44+01:00",
+          "tree_id": "f3f1db6ed81f0bffb0ad322738bfab2682273a1f",
+          "url": "https://github.com/tomtom215/rource/commit/a64c470441a7fe12b1ad5301bda9a3ab540f3744"
+        },
+        "date": 1769495997691,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914488,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269311,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255334,
             "unit": "bytes"
           }
         ]
