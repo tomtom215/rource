@@ -1,0 +1,14 @@
+-R . RourceMath
+
+# Core type specifications
+Vec2.v
+Vec3.v
+Vec4.v
+
+# Algebraic property proofs
+Vec2_Proofs.v
+Vec3_Proofs.v
+Vec4_Proofs.v
+
+# Complexity bounds (ICC)
+Complexity.v
