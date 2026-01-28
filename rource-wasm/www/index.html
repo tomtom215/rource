@@ -1118,7 +1118,25 @@
                     </div>
                     <div class="help-item">
                         <svg class="help-item-icon" viewBox="0 0 32 32">
-                            <line x1="8" y1="16" x2="24" y2="16" stroke="#3fb950" stroke-width="3"/>
+                            <!-- Beam with glow effect -->
+                            <defs>
+                                <linearGradient id="beam-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#3fb950;stop-opacity:0.3"/>
+                                    <stop offset="50%" style="stop-color:#3fb950;stop-opacity:1"/>
+                                    <stop offset="100%" style="stop-color:#3fb950;stop-opacity:0.3"/>
+                                </linearGradient>
+                                <filter id="beam-glow">
+                                    <feGaussianBlur stdDeviation="2" result="blur"/>
+                                    <feMerge>
+                                        <feMergeNode in="blur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+                            <!-- Glow layer -->
+                            <line x1="4" y1="16" x2="28" y2="16" stroke="#3fb950" stroke-width="4" opacity="0.3" stroke-linecap="round"/>
+                            <!-- Main beam line -->
+                            <line x1="4" y1="16" x2="28" y2="16" stroke="url(#beam-gradient)" stroke-width="2" stroke-linecap="round" filter="url(#beam-glow)"/>
                         </svg>
                         <div class="help-item-text">
                             <strong>Beams</strong>

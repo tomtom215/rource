@@ -218,11 +218,15 @@ export function loadLogData(content, format = 'custom', options = {}) {
         // Update UI visibility
         if (elements.emptyState) elements.emptyState.classList.add('hidden');
         if (elements.statsOverlay) elements.statsOverlay.classList.remove('hidden');
-        // I1/I2: Hide developer metrics (perf overlay) by default on mobile
-        // Users can tap the stats overlay to access detailed metrics if needed
-        const isMobile = window.matchMedia('(max-width: 768px)').matches;
-        if (elements.perfOverlay && !isMobile) {
+        // FPS counter is now ALWAYS visible (mobile and desktop)
+        // User requested visible FPS with Max/Avg - this is important for performance awareness
+        if (elements.perfOverlay) {
             elements.perfOverlay.classList.remove('hidden');
+            // On mobile, start in collapsed mode to save screen space
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            if (isMobile) {
+                elements.perfOverlay.classList.add('collapsed');
+            }
         }
 
         // Apply mobile-specific panel states (collapsed by default on mobile)
