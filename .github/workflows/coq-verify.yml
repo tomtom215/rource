@@ -74,6 +74,18 @@ jobs:
           echo "Building Mat4.v..."
           timeout 60 coqc -Q . RourceMath Mat4.v 2>&1
 
+          # Build complexity proofs (fast, uses lia tactic)
+          echo "Building Complexity.v..."
+          COMPLEXITY_OUTPUT=$(timeout 60 coqc -Q . RourceMath Complexity.v 2>&1 || true)
+          if echo "$COMPLEXITY_OUTPUT" | grep -q "Error"; then
+            echo "complexity_status=failed" >> $GITHUB_OUTPUT
+            echo "$COMPLEXITY_OUTPUT"
+            exit 1
+          else
+            echo "complexity_status=verified" >> $GITHUB_OUTPUT
+            echo "Complexity.v verified successfully"
+          fi
+
           # Build vector proofs (moderate, ~5-30 seconds each)
           echo "Building Vec2_Proofs.v..."
           VEC2_OUTPUT=$(timeout 120 coqc -Q . RourceMath Vec2_Proofs.v 2>&1 || true)
@@ -144,14 +156,16 @@ jobs:
           VEC4_THEOREMS=$(grep -c "^Theorem\|^Lemma" Vec4_Proofs.v || echo "0")
           MAT3_THEOREMS=$(grep -c "^Theorem\|^Lemma" Mat3_Proofs.v || echo "0")
           MAT4_THEOREMS=$(grep -c "^Theorem\|^Lemma" Mat4_Proofs.v || echo "0")
+          COMPLEXITY_THEOREMS=$(grep -c "^Theorem\|^Lemma" Complexity.v || echo "0")
 
           echo "vec2_theorems=$VEC2_THEOREMS" >> $GITHUB_OUTPUT
           echo "vec3_theorems=$VEC3_THEOREMS" >> $GITHUB_OUTPUT
           echo "vec4_theorems=$VEC4_THEOREMS" >> $GITHUB_OUTPUT
           echo "mat3_theorems=$MAT3_THEOREMS" >> $GITHUB_OUTPUT
           echo "mat4_theorems=$MAT4_THEOREMS" >> $GITHUB_OUTPUT
+          echo "complexity_theorems=$COMPLEXITY_THEOREMS" >> $GITHUB_OUTPUT
 
-          TOTAL=$((VEC2_THEOREMS + VEC3_THEOREMS + VEC4_THEOREMS + MAT3_THEOREMS + MAT4_THEOREMS))
+          TOTAL=$((VEC2_THEOREMS + VEC3_THEOREMS + VEC4_THEOREMS + MAT3_THEOREMS + MAT4_THEOREMS + COMPLEXITY_THEOREMS))
           echo "total_theorems=$TOTAL" >> $GITHUB_OUTPUT
 
       - name: Check for admits
@@ -208,6 +222,16 @@ jobs:
           echo "| Mat4_Proofs | ${{ steps.count.outputs.mat4_theorems }} | $MAT4_STATUS |" >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Complexity Proofs (Phase 2)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Theorems | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Complexity
+          COMPLEXITY_STATUS="${{ steps.build.outputs.complexity_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
+          echo "| Complexity | ${{ steps.count.outputs.complexity_theorems }} | $COMPLEXITY_STATUS |" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| **Total** | **${{ steps.count.outputs.total_theorems }}** | |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -243,4 +267,9 @@ jobs:
           echo "- **Scalar Multiplication**: Identity, zero, distribution, associativity" >> $GITHUB_STEP_SUMMARY
           echo "- **Transpose**: Double transpose, distribution over addition/scaling" >> $GITHUB_STEP_SUMMARY
           echo "- **Ring Structure**: Mat3/Mat4 form rings with identity" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Complexity Properties (Phase 2 - ICC)" >> $GITHUB_STEP_SUMMARY
+          echo "- **O(1) Bounds**: All 40 operations proven constant-time" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cost Model**: Abstract operation counting (muls + adds)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Master Theorem**: \`all_rource_math_O1\` proves all operations O(1)" >> $GITHUB_STEP_SUMMARY
 

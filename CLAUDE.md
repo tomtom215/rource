@@ -360,6 +360,8 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-28 | SD81W | Coq installation via apt needs coq-theories | apt-get only installs coqc without theories | Use `apt-get install -y coq coq-theories` | Yes |
 | 2026-01-28 | SD81W | Mat3/Mat4 Coq proofs follow Vec2/Vec3/Vec4 pattern | Manual Coq specs work well | Added Mat3.v, Mat4.v, Mat3_Proofs.v, Mat4_Proofs.v (44 new theorems) | Yes |
 | 2026-01-28 | SD81W | Network issues can block apt-get | Transient DNS failures | Script should retry with exponential backoff | Yes |
+| 2026-01-28 | 4sbzk | ICC complexity proofs simpler for fixed-size types | Operations on Vec2-4, Mat3-4 have constant cost regardless of input values | Created Complexity.v with 60 theorems proving O(1) for all operations | Yes |
+| 2026-01-28 | 4sbzk | Coq lia tactic sufficient for O(1) bounds | Simple constant-cost proofs don't need ring/lra | Used `lia` for all complexity bounds; compilation under 1 second | Yes |
 
 ---
 
