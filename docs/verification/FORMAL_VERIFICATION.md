@@ -435,12 +435,73 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 | 3 | lib.rs | `lerp`, `clamp` | Foundational operations |
 | 4 | Mat3/Mat4 | `determinant` properties | Mathematical foundations |
 
+## Floating-Point Refinement Investigation
+
+### Investigation Summary (2026-01-28)
+
+We investigated Verus's current floating-point support to assess feasibility of verifying
+operations like `length()`, `normalized()`, and `lerp()`.
+
+### Current Verus Floating-Point Support
+
+| Component | Support Level | Description |
+|-----------|---------------|-------------|
+| `vstd::float` module | Basic | Properties of floating point values |
+| `FloatBitsProperties` trait | Available | Bit-level extraction for f32/f64 |
+| Arithmetic verification | Limited | Not well-supported per recent research |
+| Transcendental functions | None | sin/cos/sqrt not verifiable |
+
+### Technical Challenges
+
+1. **Rounding semantics**: IEEE 754 rounding modes create non-determinism that SMT solvers struggle with
+2. **Exception handling**: NaN propagation, infinities, and denormals complicate proofs
+3. **No algebraic structure**: Floating-point arithmetic is not associative or distributive
+4. **Formula explosion**: Verification formulas become very large and slow
+
+### Research References
+
+- Yang, C., et al. "AutoVerus: Automated Proof Generation for Rust Code." arXiv:2409.13082, 2024.
+  - Notes floating-point as "not well supported by Rust/Verus"
+- Friedlos, L. "Verifying Rust Programs Using Floating-Point Numbers and Bitwise Operations." ETH Zurich thesis.
+  - States "guarantees for programs using floating-points are generally rather low"
+
+### Recommendation
+
+For rource-math, we recommend:
+
+1. **Integer specifications remain primary**: Continue using `int` specs for algebraic properties
+2. **Bit-level properties only**: Use `FloatBitsProperties` for verifying representation invariants
+3. **Refinement types**: Document the integer→f32 translation assumptions explicitly
+4. **Monitor Verus development**: Check quarterly for improved floating-point support
+
+### What CAN Be Verified with Floating-Point
+
+| Property | Verifiable | Notes |
+|----------|------------|-------|
+| Bit layout (sign, exponent, mantissa) | Yes | Via `FloatBitsProperties` |
+| is_nan, is_infinite predicates | Yes | Bit patterns |
+| Comparison with NaN handling | Partial | Requires careful specification |
+| Basic arithmetic correctness | No | Rounding non-determinism |
+| Transcendental accuracy | No | No SMT theory support |
+
+### Conclusion
+
+**Floating-point formal verification in Verus is not mature enough for production use.**
+Our current approach of proving properties over `int` specifications and documenting
+the f32 translation assumptions is the recommended best practice per Verus maintainers.
+
+The 78% of operations not formally verified (those requiring floating-point) will
+remain covered by:
+- Unit tests (100% coverage)
+- Property-based testing
+- Manual review for IEEE 754 compliance
+
 ## Future Work
 
 1. ~~**Vec4 proofs**~~ - ✅ COMPLETED (22 theorems, 68 VCs)
 2. ~~**Matrix proofs (Mat3, Mat4)**~~ - ✅ COMPLETED (Mat3: 18 theorems, 26 VCs; Mat4: 18 theorems, 27 VCs)
 3. **Complexity bounds** - Prove O(1) for vector operations
-4. **Floating-point refinement** - Investigate Verus's float support
+4. ~~**Floating-point refinement**~~ - ✅ INVESTIGATED (see above - not feasible with current Verus)
 5. ~~**CI integration**~~ - ✅ COMPLETED (`.github/workflows/verus-verify.yml`)
 6. ~~**Proof coverage metrics**~~ - ✅ COMPLETED (see above)
 
