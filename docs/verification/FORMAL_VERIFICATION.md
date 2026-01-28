@@ -366,14 +366,83 @@ The proofs demonstrate:
 3. **Reproducibility**: Complete verification commands documented
 4. **Practical impact**: Proofs for production code, not toy examples
 
+## Proof Coverage Metrics
+
+This section tracks formal verification coverage across the `rource-math` crate.
+
+### Coverage Summary
+
+| Module | Operations | Formally Verified | Unit Tested | Coverage |
+|--------|------------|-------------------|-------------|----------|
+| Vec2 | 42 | 11 (26%) | 42 (100%) | 26% |
+| Vec3 | 28 | 12 (43%) | 28 (100%) | 43% |
+| Vec4 | 24 | 12 (50%) | 24 (100%) | 50% |
+| Mat3 | 17 | 8 (47%) | 17 (100%) | 47% |
+| Mat4 | 26 | 7 (27%) | 26 (100%) | 27% |
+| Color | 38 | 0 (0%) | 38 (100%) | 0% |
+| Rect | 50 | 0 (0%) | 50 (100%) | 0% |
+| lib.rs | 5 | 0 (0%) | 5 (100%) | 0% |
+| **Total** | **230** | **50 (22%)** | **230 (100%)** | **22%** |
+
+### Verified Operations by Module
+
+#### Vec2 (11 operations verified)
+- `new`, `zero`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `perp`, `length_squared`, `mul`
+
+**Not verified** (require floating-point or transcendentals):
+- `splat`, `from_angle`, `to_angle`, `rotate`, `length`, `normalized`, `lerp`, `min`, `max`
+- `abs`, `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`
+- `reflect`, `project`, `rejection`, `element_sum`, `element_product`, `min_element`, `max_element`
+- `is_finite`, `is_nan`, `as_ivec2`, `as_uvec2`, batch operations
+
+#### Vec3 (12 operations verified)
+- `new`, `zero`, `x`, `y`, `z`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `length_squared`
+
+**Not verified**: Similar to Vec2 plus 3D-specific operations
+
+#### Vec4 (12 operations verified)
+- `new`, `zero`, `x`, `y`, `z`, `w`, `add`, `sub`, `scale`, `neg`, `dot`, `length_squared`, `mul`
+
+**Not verified**: Similar to Vec2/Vec3 plus 4D-specific operations
+
+#### Mat3 (8 operations verified)
+- `new`, `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
+
+**Not verified**: `translation`, `rotation`, `scaling`, `inverse`, `determinant`, etc.
+
+#### Mat4 (7 operations verified)
+- `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
+
+**Not verified**: `perspective`, `orthographic`, `look_at`, `rotation_*`, `inverse`, etc.
+
+### Verification Limitations
+
+Operations that **cannot be formally verified** with current Verus capabilities:
+
+| Category | Reason | Examples |
+|----------|--------|----------|
+| Floating-point | Verus uses integer specs | `length()`, `normalized()`, `sin/cos` |
+| Transcendentals | No SMT support | `from_angle()`, `to_angle()`, `rotate()` |
+| Type conversions | Platform-specific | `as_ivec2()`, `as_uvec2()` |
+| NaN handling | IEEE 754 semantics | `is_nan()`, `is_finite()` |
+
+### Prioritized Verification Roadmap
+
+| Priority | Module | Operations | Rationale |
+|----------|--------|------------|-----------|
+| 1 | Color | HSL ↔ RGB conversion | Color correctness critical for visualization |
+| 2 | Rect | `contains`, `intersects`, `union` | Spatial logic used in collision detection |
+| 3 | lib.rs | `lerp`, `clamp` | Foundational operations |
+| 4 | Mat3/Mat4 | `determinant` properties | Mathematical foundations |
+
 ## Future Work
 
 1. ~~**Vec4 proofs**~~ - ✅ COMPLETED (22 theorems, 68 VCs)
 2. ~~**Matrix proofs (Mat3, Mat4)**~~ - ✅ COMPLETED (Mat3: 18 theorems, 26 VCs; Mat4: 18 theorems, 27 VCs)
 3. **Complexity bounds** - Prove O(1) for vector operations
 4. **Floating-point refinement** - Investigate Verus's float support
-5. **CI integration** - Automated proof checking in GitHub Actions
-6. **Proof coverage metrics** - Track verified vs unverified functions
+5. ~~**CI integration**~~ - ✅ COMPLETED (`.github/workflows/verus-verify.yml`)
+6. ~~**Proof coverage metrics**~~ - ✅ COMPLETED (see above)
 
 ## References
 
