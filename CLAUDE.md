@@ -166,6 +166,110 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 
 ---
 
+## Intellectual Honesty Standards
+
+### The Honesty Mandate
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ABSOLUTE INTELLECTUAL HONESTY                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  NEVER guess. NEVER assume. NEVER exaggerate. NEVER overstate.              │
+│  NEVER skim. NEVER compromise. NEVER take shortcuts with truth.             │
+│                                                                             │
+│  Every claim must be:                                                       │
+│    • VERIFIABLE - Can be independently reproduced                           │
+│    • AUDITABLE - Evidence exists and is documented                          │
+│    • PRECISE - Exact values, not approximations                             │
+│    • HONEST - Acknowledges limitations and uncertainty                      │
+│                                                                             │
+│  When uncertain, say "I don't know" or "This needs verification."           │
+│  When wrong, immediately correct and document the error.                    │
+│  When results are inconclusive, say so explicitly.                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### What Constitutes a Valid Performance Claim
+
+| Claim Type | Required Evidence | Invalid Without |
+|------------|-------------------|-----------------|
+| **"X% faster"** | Criterion benchmark, 100+ samples, 95% CI, before/after | Statistical significance test |
+| **"No regression"** | Same benchmark methodology, threshold-based pass/fail | Defined acceptance thresholds |
+| **"Optimization"** | Algorithmic/data structure change + measured improvement | Actual code change that affects runtime |
+| **"Improvement"** | Quantified metric with baseline comparison | Reproducible measurement |
+
+### Invalid Performance Claims
+
+The following are **NEVER** valid performance claims:
+
+| Invalid Claim | Why It's Wrong | Correct Approach |
+|---------------|----------------|------------------|
+| "Module refactoring improved performance" | Module organization doesn't affect compiled binary | "Module refactoring improved maintainability; verified no regression" |
+| "~X% improvement" | Approximation violates precision standards | "X.XX% improvement (before: Y, after: Z)" |
+| "Should be faster" | Speculation, not measurement | Benchmark before claiming |
+| "Feels faster" | Subjective, unmeasurable | Use objective metrics |
+| "Minor improvement" | Vague, unquantified | Provide exact numbers |
+| Timing variations within noise margin | Measurement artifacts | "Within noise margin (±X%)" |
+
+### The Noise Margin Rule
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  CRITICAL: Timing variations ≤ 10% between runs are typically NOISE.        │
+│                                                                             │
+│  Sources of noise:                                                          │
+│    • CPU frequency scaling (turbo boost, thermal throttling)                │
+│    • Cache state differences (cold vs warm cache)                           │
+│    • System load (background processes)                                     │
+│    • Memory allocation timing                                               │
+│    • Kernel scheduling variations                                           │
+│                                                                             │
+│  To claim a real improvement:                                               │
+│    1. Use criterion with 100+ samples                                       │
+│    2. Verify 95% confidence intervals don't overlap                         │
+│    3. Improvement must exceed noise margin                                  │
+│    4. Results must be reproducible across multiple runs                     │
+│                                                                             │
+│  If criterion reports "No change" or "Change within noise threshold"        │
+│  then there is NO performance change - do not claim otherwise.              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Code Quality vs. Performance
+
+**Code quality changes** (refactoring, module organization, documentation) should be:
+- Documented as code quality improvements, NOT performance improvements
+- Verified to cause no regression (threshold-based pass/fail)
+- Not claimed as optimizations (the binary is identical)
+
+**Performance changes** (algorithmic improvements, data structure changes) should be:
+- Documented with criterion benchmarks (100+ samples, 95% CI)
+- Include before/after measurements with exact values
+- Calculate exact improvement percentages
+- Verify statistical significance
+
+### Self-Correction Protocol
+
+When an error in reporting is discovered:
+
+1. **Immediately acknowledge** the error explicitly
+2. **Correct the documentation** with accurate information
+3. **Explain** what was wrong and why
+4. **Prevent recurrence** by strengthening standards if needed
+5. **Do not minimize** or make excuses
+
+Example of proper self-correction:
+> "I incorrectly reported timing variations as performance improvements.
+> Module refactoring does not affect compiled binary; observed timing
+> differences were measurement artifacts within noise margin. The correct
+> claim is: verified no regression against defined thresholds."
+
+---
+
 ## Performance Scale and Precision
 
 ### The 50,000 FPS Target
