@@ -505,6 +505,170 @@ remain covered by:
 5. ~~**CI integration**~~ - ✅ COMPLETED (`.github/workflows/verus-verify.yml`)
 6. ~~**Proof coverage metrics**~~ - ✅ COMPLETED (see above)
 
+## Hybrid Verification Architecture: Verus + Coq
+
+### Motivation
+
+Verus excels at algebraic property verification but has limitations:
+- No mature floating-point support
+- No complexity bounds proofs (O(1), O(n))
+- No verified compilation to WASM
+
+To achieve **PEER REVIEWED PUBLISHED ACADEMIC** standards, we propose a hybrid
+architecture combining Verus with the Coq ecosystem.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    HYBRID VERIFICATION ARCHITECTURE                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  rource-math (Rust)                                                     │
+│       │                                                                 │
+│       ├──► Verus ──────────────► Algebraic Properties                   │
+│       │         (105 theorems)   Vector space axioms, dot/cross         │
+│       │                          properties, matrix ring structure      │
+│       │                                                                 │
+│       ├──► coq-of-rust ────────► Coq Representation                     │
+│       │                                │                                │
+│       │                                ├──► ICC ──► Complexity Bounds   │
+│       │                                │            O(1), O(n) proofs   │
+│       │                                │                                │
+│       │                                └──► CertiCoq-WASM               │
+│       │                                          │                      │
+│       │                                          ▼                      │
+│       │                                     Verified WASM               │
+│       │                                                                 │
+│       └──► RefinedRust ────────► Memory Safety (unsafe blocks)          │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Tool Ecosystem
+
+| Tool | Purpose | Maturity | Integration |
+|------|---------|----------|-------------|
+| **Verus** | Algebraic properties | Production | ✅ Active |
+| **coq-of-rust** | Rust → Coq translation | Beta | Planned |
+| **CertiCoq-WASM** | Coq → Verified WASM | Research (CPP 2025) | Planned |
+| **WasmCert-Coq** | WASM formalization | Production | Dependency |
+| **ICC/Coq** | Complexity bounds | Research | Planned |
+| **RefinedRust** | Unsafe code verification | Research (PLDI 2024) | Optional |
+
+### CertiCoq-WASM Details
+
+[CertiCoq-WASM](https://github.com/womeier/certicoqwasm) provides verified compilation
+from Coq to WebAssembly, presented at CPP 2025.
+
+**Key Features:**
+- Mechanized with respect to WasmCert-Coq formalization
+- Produces WebAssembly programs with reasonable performance
+- Verified against WebAssembly 1.0 standard
+- Implements Coq's primitive integer operations as efficient WASM instructions
+
+**Relevance to Rource:**
+- Rource's WASM target (`rource-wasm`) could use verified compilation
+- Critical math operations could be extracted via Coq → CertiCoq-WASM
+- End-to-end verification: Rust → Coq proof → Verified WASM
+
+### Implicit Computational Complexity (ICC)
+
+[ICC](https://en.wikipedia.org/wiki/Implicit_computational_complexity) characterizes
+complexity classes through program structure rather than explicit resource counting.
+
+**Coq-Based ICC Tools:**
+
+| Tool | Capability | Reference |
+|------|------------|-----------|
+| Quasi-interpretations | Polynomial-time proofs | [Moyen et al.](https://lipn.fr/~moyen/walgo/papers/FHMMN-Coq.pdf) |
+| Time Credits | O notation in Separation Logic | [Guéneau et al.](http://gallium.inria.fr/~agueneau/publis/gueneau-chargueraud-pottier-coq-bigO.pdf) |
+| L calculus | Complexity mechanization | [ITP 2021 Cook-Levin](https://drops.dagstuhl.de/storage/00lipics/lipics-vol193-itp2021/LIPIcs.ITP.2021.20/LIPIcs.ITP.2021.20.pdf) |
+
+**Application to rource-math:**
+```
+vec2_add: O(1)     ──► Prove via ICC: constant-time structure
+mat4_mul: O(1)     ──► Prove via ICC: fixed 64 multiplications
+label_collision: O(n) ──► Prove via ICC: linear iteration
+```
+
+### Rust-to-Coq Bridge: coq-of-rust
+
+[coq-of-rust](https://github.com/formal-land/coq-of-rust) translates Rust to Coq
+for formal verification.
+
+**Capabilities:**
+- Works at THIR intermediate representation
+- Supports 99% of Rust By Example code
+- Enables Coq proofs about Rust semantics
+
+**Integration Path:**
+```bash
+# Translate rource-math to Coq
+coq-of-rust crates/rource-math/src/vec2.rs -o proofs/coq/vec2.v
+
+# Prove complexity bounds in Coq
+coqc proofs/coq/vec2_complexity.v
+
+# Extract verified WASM via CertiCoq-WASM
+certicoq -wasm proofs/coq/vec2.v -o verified_vec2.wasm
+```
+
+### Implementation Roadmap
+
+#### Phase 1: Coq Foundation (Q1 2026)
+- [ ] Install coq-of-rust, test on vec2.rs
+- [ ] Set up Coq project structure in `proofs/coq/`
+- [ ] Translate Vec2, Vec3, Vec4 to Coq
+- [ ] Verify translation preserves semantics
+
+#### Phase 2: Complexity Proofs (Q2 2026)
+- [ ] Implement ICC framework in Coq
+- [ ] Prove O(1) bounds for vector operations
+- [ ] Prove O(1) bounds for matrix operations
+- [ ] Document complexity certificates
+
+#### Phase 3: CertiCoq-WASM Integration (Q3 2026)
+- [ ] Install CertiCoq-WASM pipeline
+- [ ] Extract critical math operations to verified WASM
+- [ ] Benchmark verified vs unverified WASM performance
+- [ ] Integrate into build pipeline (optional flag)
+
+#### Phase 4: Publication (Q4 2026)
+- [ ] Write academic paper on hybrid verification
+- [ ] Submit to appropriate venue (CPP, PLDI, or POPL)
+- [ ] Open-source all proof artifacts
+
+### Publication Targets
+
+| Venue | Focus | Timeline |
+|-------|-------|----------|
+| **CPP** (Certified Programs and Proofs) | Coq mechanization | January 2027 |
+| **PLDI** (Programming Language Design & Implementation) | Practical tooling | June 2027 |
+| **POPL** (Principles of Programming Languages) | Theoretical foundations | January 2028 |
+| **ITP** (Interactive Theorem Proving) | ICC complexity proofs | 2027 |
+
+### Academic Contribution
+
+This hybrid approach would be novel in several ways:
+
+1. **First verified Rust graphics library**: rource-math with machine-checked proofs
+2. **Verus + Coq interoperability**: Demonstrating complementary strengths
+3. **ICC for graphics code**: Complexity bounds for visualization pipeline
+4. **End-to-end verified WASM**: From Rust source to verified WebAssembly
+
+### References (Hybrid Architecture)
+
+4. Meier, W., Pichon-Pharabod, J., Spitters, B. "CertiCoq-Wasm: A Verified WebAssembly
+   Backend for CertiCoq." CPP 2025.
+5. Guéneau, A., Charguéraud, A., Pottier, F. "A Fistful of Dollars: Formalizing
+   Asymptotic Complexity Claims via Deductive Program Verification." ESOP 2018.
+6. Jung, R., et al. "RustBelt: Securing the Foundations of the Rust Programming
+   Language." POPL 2018.
+7. Sammler, M., et al. "RefinedRust: A Type System for High-Assurance Verification
+   of Rust Programs." PLDI 2024.
+8. Formal Land. "coq-of-rust: Formal verification tool for Rust." GitHub, 2024.
+
 ## References
 
 1. Lattuada, A., et al. "Verus: Verifying Rust Programs using Linear Ghost Types." OOPSLA 2023.
