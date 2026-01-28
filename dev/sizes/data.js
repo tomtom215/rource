@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769617955910,
+  "lastUpdate": 1769620644132,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3884,6 +3884,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/6c220a2605eb3b5fa908b4c2aa01646b54d8fc5f"
         },
         "date": 1769617954959,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "427b31ac12eb634cfa528ebd1ad246ceb85a7cf3",
+          "message": "Merge pull request #220 from tomtom215/claude/complete-codebase-audit-JhTPq\n\nAdd Vec4 proofs and scalar triple product theorems for Vec3",
+          "timestamp": "2026-01-28T18:15:16+01:00",
+          "tree_id": "955c5b14de7493f7052eb84515a46257453dcb05",
+          "url": "https://github.com/tomtom215/rource/commit/427b31ac12eb634cfa528ebd1ad246ceb85a7cf3"
+        },
+        "date": 1769620643749,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
