@@ -19,6 +19,9 @@
  * 4. Scalar Multiplication Properties (Theorems 10-13)
  * 5. Transpose Properties (Theorems 14-16)
  * 6. Additional Properties (Theorems 17-18)
+ *
+ * OPTIMIZATION: Uses lra (linear real arithmetic) for linear proofs instead
+ * of ring, which is much faster for 9-component matrices.
  *)
 
 Require Import RourceMath.Mat3.
@@ -26,9 +29,6 @@ Require Import Reals.
 Require Import Lra.
 Require Import Psatz.
 Open Scope R_scope.
-
-(** Timeout for expensive proofs (3 minutes) *)
-Set Default Timeout 180.
 
 (** * Matrix Addition Properties *)
 
@@ -39,7 +39,7 @@ Theorem mat3_add_comm : forall a b : Mat3,
 Proof.
   intros a b. destruct a, b.
   unfold mat3_add. simpl.
-  f_equal; ring.
+  f_equal; lra.
 Qed.
 
 (** Theorem 2: Matrix addition is associative.
@@ -49,7 +49,7 @@ Theorem mat3_add_assoc : forall a b c : Mat3,
 Proof.
   intros a b c. destruct a, b, c.
   unfold mat3_add. simpl.
-  f_equal; ring.
+  f_equal; lra.
 Qed.
 
 (** Theorem 3: Zero matrix is the additive identity.
@@ -59,7 +59,7 @@ Theorem mat3_add_zero_r : forall a : Mat3,
 Proof.
   intros a. destruct a.
   unfold mat3_add, mat3_zero. simpl.
-  f_equal; ring.
+  f_equal; lra.
 Qed.
 
 (** Theorem 3b: Zero matrix is the left additive identity.
@@ -77,7 +77,7 @@ Theorem mat3_add_neg : forall a : Mat3,
 Proof.
   intros a. destruct a.
   unfold mat3_add, mat3_neg, mat3_zero. simpl.
-  f_equal; ring.
+  f_equal; lra.
 Qed.
 
 (** * Matrix Multiplication Identity Properties *)
@@ -202,7 +202,7 @@ Theorem mat3_transpose_add : forall a b : Mat3,
 Proof.
   intros a b. destruct a, b.
   unfold mat3_transpose, mat3_add. simpl.
-  f_equal; ring.
+  reflexivity.
 Qed.
 
 (** Theorem 16: Transpose commutes with scalar multiplication.
@@ -212,7 +212,7 @@ Theorem mat3_transpose_scale : forall s : R, forall a : Mat3,
 Proof.
   intros s a. destruct a.
   unfold mat3_transpose, mat3_scale. simpl.
-  f_equal; ring.
+  reflexivity.
 Qed.
 
 (** * Additional Properties *)
@@ -294,9 +294,12 @@ Qed.
     - Theorems 17-18: Negation and ring structure (3)
     - Additional properties (2)
 
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, repeat split
+    Total tactics used: lra, ring, f_equal, reflexivity, destruct, apply, repeat split
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
+
+    OPTIMIZATION: Linear proofs use lra (fast) instead of ring.
+    Only nonlinear proofs (multiplication) use ring.
 *)

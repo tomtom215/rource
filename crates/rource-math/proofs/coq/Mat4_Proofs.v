@@ -23,6 +23,9 @@
  * NOTE: Mat4 multiplication associativity is essential for 3D transformation
  * pipelines (model-view-projection matrices). The proof handles 64 nonlinear
  * constraints (16 components x 4 terms each).
+ *
+ * OPTIMIZATION: Uses lra (linear real arithmetic) for linear proofs instead
+ * of ring, which is much faster for 16-component matrices.
  *)
 
 Require Import RourceMath.Mat4.
@@ -31,8 +34,14 @@ Require Import Lra.
 Require Import Psatz.
 Open Scope R_scope.
 
-(** Timeout for expensive proofs (5 minutes) *)
-Set Default Timeout 300.
+(** Helper tactic for Mat4 equality proofs using lra.
+    This is MUCH faster than ring for linear arithmetic on 16 fields. *)
+Ltac mat4_lra :=
+  match goal with
+  | |- mkMat4 ?a1 ?a2 ?a3 ?a4 ?a5 ?a6 ?a7 ?a8 ?a9 ?a10 ?a11 ?a12 ?a13 ?a14 ?a15 ?a16 =
+       mkMat4 ?b1 ?b2 ?b3 ?b4 ?b5 ?b6 ?b7 ?b8 ?b9 ?b10 ?b11 ?b12 ?b13 ?b14 ?b15 ?b16 =>
+    f_equal; lra
+  end.
 
 (** * Matrix Addition Properties *)
 
@@ -43,7 +52,7 @@ Theorem mat4_add_comm : forall a b : Mat4,
 Proof.
   intros a b. destruct a, b.
   unfold mat4_add. simpl.
-  f_equal; ring.
+  f_equal; lra.
 Qed.
 
 (** Theorem 2: Matrix addition is associative.
@@ -53,7 +62,7 @@ Theorem mat4_add_assoc : forall a b c : Mat4,
 Proof.
   intros a b c. destruct a, b, c.
   unfold mat4_add. simpl.
-  f_equal; ring.
+  f_equal; lra.
 Qed.
 
 (** Theorem 3: Zero matrix is the additive identity.
@@ -63,7 +72,7 @@ Theorem mat4_add_zero_r : forall a : Mat4,
 Proof.
   intros a. destruct a.
   unfold mat4_add, mat4_zero. simpl.
-  f_equal; ring.
+  f_equal; lra.
 Qed.
 
 (** Theorem 3b: Zero matrix is the left additive identity.
@@ -81,7 +90,7 @@ Theorem mat4_add_neg : forall a : Mat4,
 Proof.
   intros a. destruct a.
   unfold mat4_add, mat4_neg, mat4_zero. simpl.
-  f_equal; ring.
+  f_equal; lra.
 Qed.
 
 (** * Matrix Multiplication Identity Properties *)
@@ -140,8 +149,8 @@ Qed.
     - Each component is a sum of 4 products
     - Each product involves 3 matrix elements
 
-    The `ring` tactic in Coq automatically verifies that both
-    (A*B)*C and A*(B*C) produce algebraically identical expressions. *)
+    NOTE: This proof uses ring which can be slow (~1-2 min) due to
+    the large polynomial expressions involved. *)
 Theorem mat4_mul_assoc : forall a b c : Mat4,
   mat4_mul (mat4_mul a b) c = mat4_mul a (mat4_mul b c).
 Proof.
@@ -211,7 +220,7 @@ Theorem mat4_transpose_add : forall a b : Mat4,
 Proof.
   intros a b. destruct a, b.
   unfold mat4_transpose, mat4_add. simpl.
-  f_equal; ring.
+  reflexivity.
 Qed.
 
 (** Theorem 16: Transpose commutes with scalar multiplication.
@@ -221,7 +230,7 @@ Theorem mat4_transpose_scale : forall s : R, forall a : Mat4,
 Proof.
   intros s a. destruct a.
   unfold mat4_transpose, mat4_scale. simpl.
-  f_equal; ring.
+  reflexivity.
 Qed.
 
 (** * Additional Properties *)
@@ -303,12 +312,12 @@ Qed.
     - Theorems 17-18: Negation and ring structure (3)
     - Additional properties (2)
 
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, repeat split
+    Total tactics used: lra, ring, f_equal, reflexivity, destruct, apply, repeat split
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
 
-    Note: Matrix multiplication associativity handles 64 nonlinear constraints
-    (16 components x 4 terms) automatically via the ring tactic.
+    OPTIMIZATION: Linear proofs use lra (fast) instead of ring.
+    Only nonlinear proofs (multiplication) use ring.
 *)
