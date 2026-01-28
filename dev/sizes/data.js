@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769581013513,
+  "lastUpdate": 1769591802923,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3704,6 +3704,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bc6c9f603ccc428e858c0625a4bcda462aa9456",
+          "message": "Merge pull request #215 from tomtom215/claude/refactor-rust-files-40kwe\n\nRefactor render_phases.rs into modular directory structure",
+          "timestamp": "2026-01-28T10:14:29+01:00",
+          "tree_id": "09e916206af3c1d22b94d3c5c107407672e10ce5",
+          "url": "https://github.com/tomtom215/rource/commit/5bc6c9f603ccc428e858c0625a4bcda462aa9456"
+        },
+        "date": 1769591802263,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
             "unit": "bytes"
           }
         ]
