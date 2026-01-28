@@ -62,7 +62,7 @@ All proofs verified with `0 errors`.
 | 22 | Negation as Scaling | -v = (-1) * v |
 | 23 | Vector Space Structure | Combined axiom verification |
 
-### Vec3 (18 Theorems, 42 Verification Conditions)
+### Vec3 (24 Theorems, 68 Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -71,6 +71,13 @@ All proofs verified with `0 errors`.
 | Theorem | Property |
 |---------|----------|
 | 1-7 | Same as Vec2 (vector space axioms) |
+
+#### Dot Product Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 8 | Commutativity | a · b = b · a |
+| 9 | Length Squared Non-negative | \|a\|² ≥ 0 |
 
 #### Cross Product Properties
 
@@ -84,6 +91,64 @@ All proofs verified with `0 errors`.
 | 15 | Right-hand Rule (Y × Z) | Y × Z = X |
 | 16 | Right-hand Rule (Z × X) | Z × X = Y |
 | 17 | Anti-right-hand | Y × X = -Z |
+
+#### Scalar Triple Product Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 19 | Expansion a·(b×c) | vec3_dot(a, vec3_cross(b, c)) expands to 6 terms |
+| 20 | Expansion b·(c×a) | vec3_dot(b, vec3_cross(c, a)) expands to 6 terms |
+| 21 | Expansion c·(a×b) | vec3_dot(c, vec3_cross(a, b)) expands to 6 terms |
+| 22 | Expanded Forms Equal | All three expansions are algebraically identical |
+| 23 | **Scalar Triple Cyclic** | **a · (b × c) = b · (c × a) = c · (a × b)** |
+
+> **Note**: The scalar triple product cyclic property (Theorem 23) proves that the signed volume
+> of the parallelepiped formed by three vectors is invariant under cyclic permutation. This
+> required proof decomposition techniques to guide Z3 through the nonlinear arithmetic.
+
+#### Vector Space Structure
+
+| Theorem | Property |
+|---------|----------|
+| 24 | Vector Space Structure | Combined axiom verification |
+
+### Vec4 (22 Theorems, 68 Verification Conditions)
+
+All proofs verified with `0 errors`.
+
+#### Algebraic Properties
+
+| Theorem | Property |
+|---------|----------|
+| 1-9 | Vector space axioms (same structure as Vec2/Vec3) |
+
+#### Dot Product Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 10 | Commutativity | a · b = b · a |
+| 11 | Linearity (First Argument) | (s * a) · b = s * (a · b) |
+| 12 | Distribution | (a + b) · c = a · c + b · c |
+| 13 | Length Squared Non-negative | \|a\|² ≥ 0 |
+
+#### Basis Orthonormality Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 14 | X-Y Orthogonal | X · Y = 0 |
+| 15 | All Basis Orthogonal | X, Y, Z, W mutually orthogonal |
+| 16 | Basis Unit Length | \|X\|² = \|Y\|² = \|Z\|² = \|W\|² = 1 |
+| 17 | Zero Vector Length | \|0\|² = 0 |
+
+#### Additional Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 18 | Subtraction Equivalence | a - b = a + (-b) |
+| 19 | Component Multiplication Commutativity | a * b = b * a |
+| 20 | Negation as Scaling | -v = (-1) * v |
+| 21 | Length Squared Zero iff Zero | \|a\|² = 0 ⟺ a = 0 |
+| 22 | Vector Space Structure | Combined axiom verification |
 
 ## Verification Methodology
 
@@ -141,18 +206,24 @@ rustup install 1.92.0
 
 # Verify Vec3 proofs
 ./verus /path/to/rource/crates/rource-math/proofs/vec3_proofs.rs
-# Expected: verification results:: 42 verified, 0 errors
+# Expected: verification results:: 68 verified, 0 errors
+
+# Verify Vec4 proofs
+./verus /path/to/rource/crates/rource-math/proofs/vec4_proofs.rs
+# Expected: verification results:: 68 verified, 0 errors
 ```
 
 ## Verification Coverage
 
 | Crate | Status | Theorems | VCs | Notes |
 |-------|--------|----------|-----|-------|
-| rource-math/Vec2 | VERIFIED | 23 | 53 | Complete vector space axioms |
-| rource-math/Vec3 | VERIFIED | 18 | 42 | Cross product properties |
-| rource-math/Vec4 | PLANNED | - | - | Similar to Vec3 |
+| rource-math/Vec2 | ✅ VERIFIED | 23 | 53 | Complete vector space axioms |
+| rource-math/Vec3 | ✅ VERIFIED | 24 | 68 | Cross product + scalar triple product |
+| rource-math/Vec4 | ✅ VERIFIED | 22 | 68 | 4D vector space, basis orthonormality |
 | rource-math/Mat3 | PLANNED | - | - | Matrix multiplication associativity |
 | rource-math/Mat4 | PLANNED | - | - | Transformation correctness |
+
+**Total: 69 theorems, 189 verification conditions verified**
 
 ## Relationship to Testing
 
@@ -186,11 +257,12 @@ The proofs demonstrate:
 
 ## Future Work
 
-1. **Vec4 and matrix proofs** - Similar methodology
-2. **Complexity bounds** - Prove O(1) for vector operations
-3. **Floating-point refinement** - Investigate Verus's float support
-4. **CI integration** - Automated proof checking in GitHub Actions
-5. **Proof coverage metrics** - Track verified vs unverified functions
+1. ~~**Vec4 proofs**~~ - ✅ COMPLETED (22 theorems, 68 VCs)
+2. **Matrix proofs (Mat3, Mat4)** - Multiplication associativity, identity, transpose
+3. **Complexity bounds** - Prove O(1) for vector operations
+4. **Floating-point refinement** - Investigate Verus's float support
+5. **CI integration** - Automated proof checking in GitHub Actions
+6. **Proof coverage metrics** - Track verified vs unverified functions
 
 ## References
 
@@ -202,5 +274,6 @@ The proofs demonstrate:
 
 *Last verified: 2026-01-28*
 *Verus version: 0.2026.01.23.1650a05*
-*Total verification conditions: 95 (53 + 42)*
+*Total theorems: 69 (Vec2: 23, Vec3: 24, Vec4: 22)*
+*Total verification conditions: 189 (Vec2: 53, Vec3: 68, Vec4: 68)*
 *Status: All proofs verified with 0 errors*
