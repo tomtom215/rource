@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769605169552,
+  "lastUpdate": 1769616138315,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3806,6 +3806,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/144cc9875192e35d68a19976d52b067c36497068"
         },
         "date": 1769605168734,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1fd908a8402ebccefa9cd34b7996b7a940d03652",
+          "message": "Merge pull request #218 from tomtom215/claude/complete-codebase-audit-iq5lo\n\nFix tarpaulin coverage measurement and add comprehensive test coverage",
+          "timestamp": "2026-01-28T16:59:41+01:00",
+          "tree_id": "fba3f3ef290f73271212cff52bb53803ee107a05",
+          "url": "https://github.com/tomtom215/rource/commit/1fd908a8402ebccefa9cd34b7996b7a940d03652"
+        },
+        "date": 1769616137499,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
