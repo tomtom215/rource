@@ -9,32 +9,52 @@
 </p>
 
 <p align="center">
-  <!-- CI/CD Status -->
   <a href="https://github.com/tomtom215/rource/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tomtom215/rource/ci.yml?branch=main&logo=github&label=CI" alt="CI"></a>
   <a href="https://github.com/tomtom215/rource/actions/workflows/security.yml"><img src="https://img.shields.io/github/actions/workflow/status/tomtom215/rource/security.yml?branch=main&logo=github&label=Security" alt="Security"></a>
   <a href="https://codecov.io/gh/tomtom215/rource"><img src="https://img.shields.io/codecov/c/github/tomtom215/rource?logo=codecov" alt="codecov"></a>
 </p>
 
 <p align="center">
-  <!-- Package Info -->
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg?logo=gnu" alt="License: GPL-3.0"></a>
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/MSRV-1.93+-orange.svg?logo=rust" alt="Rust: 1.93+"></a>
   <a href="https://github.com/tomtom215/rource/releases"><img src="https://img.shields.io/github/v/release/tomtom215/rource?include_prereleases&logo=github" alt="GitHub Release"></a>
 </p>
 
 <p align="center">
-  <!-- Live Demo & Docker -->
   <a href="https://tomtom215.github.io/rource/"><img src="https://img.shields.io/badge/demo-live-brightgreen.svg?logo=github-pages" alt="Live Demo"></a>
   <a href="https://github.com/tomtom215/rource/pkgs/container/rource"><img src="https://img.shields.io/badge/docker-available-blue.svg?logo=docker" alt="Docker"></a>
 </p>
-
-**Rource** (Rust + Gource) is a complete rewrite of [Gource](https://github.com/acaudwell/Gource) in Rust with WebAssembly support.
 
 <p align="center">
   <strong><a href="https://tomtom215.github.io/rource/">▶ Try it live in your browser</a></strong> — no installation required!
 </p>
 
-Rource visualizes your repository's commit history as an animated tree where directories branch outward, files appear as leaves, and contributors move around making changes.
+<p align="center">
+  <b>Rource</b> (Rust + Gource) is a complete rewrite of <a href="https://github.com/acaudwell/Gource">Gource</a> in Rust with WebAssembly support.<br>
+  Visualizes your repository's commit history as an animated tree where directories branch outward,<br>
+  files appear as leaves, and contributors move around making changes.
+</p>
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Why Rource?](#why-rource)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+- [Controls](#controls)
+- [Configuration](#configuration)
+- [Advanced Features](#advanced-features)
+- [WebAssembly](#webassembly)
+- [Architecture](#architecture)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+- [Credits](#credits)
+
+---
 
 ## Features
 
@@ -44,9 +64,7 @@ Rource visualizes your repository's commit history as an animated tree where dir
 - **Cross-platform**: Native (Linux, macOS, Windows) and WebAssembly
 - **Compatible**: Supports Git, SVN, Mercurial, Bazaar, and custom log formats
 
-## Acknowledgments
-
-This project was developed with AI-assisted programming using [Claude](https://www.anthropic.com/claude) by Anthropic. The AI assisted with code implementation, architecture decisions, documentation, and adherence to Rust best practices throughout the development process.
+---
 
 ## Why Rource?
 
@@ -64,74 +82,13 @@ This project was developed with AI-assisted programming using [Claude](https://w
 - **68% memory savings** on large repositories via string interning and compact storage
 - **GPU acceleration** in browsers via WebGPU or WebGL2 (with automatic CPU fallback)
 - **Tested with 100k+ commit repos** (Home Assistant: 103,533 commits, 533,366 file changes)
-- **77 optimization phases** documented with picosecond/nanosecond-level measurements
+- **79 optimization phases** documented with picosecond/nanosecond-level measurements
 - **50,000 FPS target** on test hardware (20 µs frame budget)
 - **132 WASM functions profiled** with criterion benchmarks (100+ samples, 95% CI)
-- **Every optimization benchmarked** before and after with statistical significance
 
-See [docs/performance/](docs/performance/) for the complete optimization history and benchmarks.
-
----
-
-## Table of Contents
-
-### This README
-
-| Getting Started | Configuration | Features |
-|-----------------|---------------|----------|
-| [Features](#features) | [Config File](#configuration) | [Video Export](#video-export) |
-| [Why Rource?](#why-rource) | [Environment Variables](#environment-variables) | [Filtering](#filtering) |
-| [Installation](#installation) | [Keyboard Controls](#keyboard-controls) | [User Avatars](#user-avatars) |
-| [Quick Start](#quick-start) | [Mouse Controls](#mouse-controls) | [WebAssembly](#webassembly) |
-| [Usage](#usage) | [Visual Elements](#visual-elements) | [Custom Log Format](#custom-log-format) |
-| [Architecture](#architecture) | [Performance Tips](#performance-tips) | [Screenshots](#screenshots) |
-| [Contributing](#contributing) | [Migrating from Gource](#migrating-from-gource) | |
-
-### Documentation
-
-| Document | Description |
-|----------|-------------|
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and guidelines |
-| [CLAUDE.md](CLAUDE.md) | AI-assisted development standards |
-| [STABILITY.md](STABILITY.md) | API versioning and stability policy |
-| [SECURITY.md](SECURITY.md) | Security policy and reporting |
-| [CHANGELOG.md](CHANGELOG.md) | Release history |
-
-### Architecture & Performance
-
-| Architecture | Performance |
-|--------------|-------------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture | [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) - 77 optimization phases |
-| [docs/RENDERING.md](docs/RENDERING.md) - Rendering pipeline | [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) - Benchmark data |
-| [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) - Gource comparison | [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) - Big-O analysis |
-| [docs/adr/](docs/adr/) - Architecture Decision Records | [docs/performance/FORMAL_PROOFS.md](docs/performance/FORMAL_PROOFS.md) - Mathematical proofs |
-
-### Testing & Quality
-
-| Document | Description |
-|----------|-------------|
-| [docs/testing/MUTATION_TESTING.md](docs/testing/MUTATION_TESTING.md) | Mutation testing setup |
-| [docs/testing/VISUAL_REGRESSION.md](docs/testing/VISUAL_REGRESSION.md) | Visual regression testing |
-| [docs/REVIEW_STANDARDS.md](docs/REVIEW_STANDARDS.md) | Code review requirements |
-
-For the complete documentation index, see [docs/README.md](docs/README.md).
+See [Performance Documentation](#performance-documentation) for the complete optimization history.
 
 ---
-
-### Architecture
-
-```
-rource/
-├── crates/
-│   ├── rource-math/      270 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/       195 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/      390 tests   Scene graph, physics, camera, Barnes-Hut
-│   └── rource-render/    560 tests   Software + WebGL2 + wgpu rendering
-├── rource-cli/           340 tests   Native application (winit + softbuffer)
-└── rource-wasm/          420 tests   WebAssembly (browser)
-                         ─────────
-                         2,100+ total tests
-```
 
 ## Installation
 
@@ -153,6 +110,8 @@ cargo build --release
 - Rust 1.93+ (install via [rustup](https://rustup.rs/))
 - For WASM: `wasm-pack` (`cargo install wasm-pack`)
 
+---
+
 ## Quick Start
 
 ```bash
@@ -171,6 +130,8 @@ rource --title "My Project" .
 # Export video frames
 rource --output /tmp/frames --headless .
 ```
+
+---
 
 ## Usage
 
@@ -206,7 +167,11 @@ Options:
   -V, --version                    Print version
 ```
 
-## Keyboard Controls
+---
+
+## Controls
+
+### Keyboard
 
 | Key | Action |
 |-----|--------|
@@ -216,7 +181,7 @@ Options:
 | R | Reset camera |
 | Q/Escape | Quit |
 
-## Mouse Controls
+### Mouse
 
 | Action | Effect |
 |--------|--------|
@@ -225,7 +190,7 @@ Options:
 | Middle click | Reset camera |
 | Click progress bar | Seek to position |
 
-## Visual Elements
+### Visual Elements
 
 | Element | Description |
 |---------|-------------|
@@ -236,6 +201,8 @@ Options:
 | **Branch lines** | Directory structure - curved lines showing folder hierarchy |
 
 The visualization uses a radial layout where the root directory is at the center, and subdirectories branch outward. Files orbit around their parent directories.
+
+---
 
 ## Configuration
 
@@ -283,7 +250,11 @@ Run `rource --env-help` for the complete list.
 
 **Priority**: CLI args > Environment variables > Config file > Defaults
 
-## Video Export
+---
+
+## Advanced Features
+
+### Video Export
 
 Export frames for video creation:
 
@@ -301,9 +272,24 @@ Options:
 - `--no-bloom` - Faster rendering without glow effect
 - `-s 0.5` - Speed up playback (0.5 seconds per day)
 
-## Filtering
+### Screenshots
 
-### Filter Users
+The `--screenshot` option captures a single frame as a PNG image:
+
+```bash
+# Capture final state of visualization
+rource --screenshot output.png .
+
+# Capture at a specific commit (0-based index)
+rource --screenshot output.png --screenshot-at 50 .
+
+# Capture with custom resolution
+rource -W 1920 -H 1080 --screenshot output.png .
+```
+
+### Filtering
+
+**Filter Users:**
 
 ```bash
 # Show only specific users
@@ -313,7 +299,7 @@ rource --show-users "^(alice|bob)$" .
 rource --hide-users "bot.*|dependabot|renovate" .
 ```
 
-### Filter Files
+**Filter Files:**
 
 ```bash
 # Show only Rust files
@@ -326,7 +312,7 @@ rource --hide-files "\.(lock|sum|generated)$" .
 rource --hide-dirs "node_modules|target|\.git|vendor" .
 ```
 
-## User Avatars
+### User Avatars
 
 Display custom user avatars:
 
@@ -347,10 +333,59 @@ Avatar files should be PNG format and named after the username (case-insensitive
 └── john_doe.png        # Matches "john_doe"
 ```
 
-Naming rules:
-- File extension must be `.png`
-- Filename matches the git author name (case-insensitive)
-- Spaces and special characters in usernames are preserved in filenames
+### Custom Log Format
+
+Rource supports a pipe-delimited custom format:
+
+```
+timestamp|username|action|filepath
+```
+
+Where action is: A (add), M (modify), D (delete)
+
+Example:
+```
+1609459200|alice|A|src/main.rs
+1609459260|bob|M|README.md
+1609459320|alice|D|old_file.txt
+```
+
+```bash
+rource --custom-log custom.log
+```
+
+### Performance Tips
+
+For large repositories (50k+ commits):
+
+```bash
+# Disable effects for faster rendering
+rource --no-bloom .
+
+# Limit visible files
+rource --max-files 1000 .
+
+# Speed up playback
+rource -s 0.5 .
+
+# Filter out noise
+rource --hide-dirs "node_modules|vendor|target" .
+```
+
+### Migrating from Gource
+
+See [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) for a detailed comparison and migration guide.
+
+Quick comparison:
+| Gource | Rource |
+|--------|--------|
+| `-s 0.5` | `-s 0.5` (same) |
+| `--seconds-per-day` | `--seconds-per-day` (same) |
+| `--hide-filenames` | `--hide-filenames` (same) |
+| `-o -` (pipe to ffmpeg) | `--output dir --headless` |
+| Requires OpenGL | Pure software rendering |
+
+---
 
 ## WebAssembly
 
@@ -412,72 +447,82 @@ function frame(timestamp) {
 requestAnimationFrame(frame);
 ```
 
-## Custom Log Format
+---
 
-Rource supports a pipe-delimited custom format:
+## Architecture
 
 ```
-timestamp|username|action|filepath
+rource/
+├── crates/
+│   ├── rource-math/      270 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/       195 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/      390 tests   Scene graph, physics, camera, Barnes-Hut
+│   └── rource-render/    560 tests   Software + WebGL2 + wgpu rendering
+├── rource-cli/           340 tests   Native application (winit + softbuffer)
+└── rource-wasm/          420 tests   WebAssembly (browser)
+                         ─────────
+                         2,100+ total tests
 ```
 
-Where action is: A (add), M (modify), D (delete)
+---
 
-Example:
-```
-1609459200|alice|A|src/main.rs
-1609459260|bob|M|README.md
-1609459320|alice|D|old_file.txt
-```
+## Documentation
 
-```bash
-rource --custom-log custom.log
-```
+### Project Documents
 
-## Performance Tips
+| Document | Description |
+|----------|-------------|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and contribution guidelines |
+| [CLAUDE.md](CLAUDE.md) | AI-assisted development and Expert+ quality standards |
+| [STABILITY.md](STABILITY.md) | API versioning and stability policy |
+| [SECURITY.md](SECURITY.md) | Security policy and vulnerability reporting |
+| [CHANGELOG.md](CHANGELOG.md) | Release history and version notes |
 
-For large repositories (50k+ commits):
+### Architecture Documentation
 
-```bash
-# Disable effects for faster rendering
-rource --no-bloom .
+| Document | Description |
+|----------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and crate structure |
+| [docs/RENDERING.md](docs/RENDERING.md) | Rendering pipeline and backends |
+| [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) | Feature comparison with original Gource |
+| [docs/adr/](docs/adr/) | Architecture Decision Records |
 
-# Limit visible files
-rource --max-files 1000 .
+### Performance Documentation
 
-# Speed up playback
-rource -s 0.5 .
+| Document | Description |
+|----------|-------------|
+| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 79 optimization phases with measurements |
+| [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) | Raw benchmark data and methodology |
+| [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of algorithms |
+| [docs/performance/FORMAL_PROOFS.md](docs/performance/FORMAL_PROOFS.md) | Mathematical proofs for optimizations |
+| [docs/performance/SUCCESSFUL_OPTIMIZATIONS.md](docs/performance/SUCCESSFUL_OPTIMIZATIONS.md) | Catalog of implemented optimizations |
+| [docs/performance/ALGORITHM_CANDIDATES.md](docs/performance/ALGORITHM_CANDIDATES.md) | Future optimization candidates |
+| [docs/performance/NOT_APPLICABLE.md](docs/performance/NOT_APPLICABLE.md) | Algorithms evaluated and ruled out |
+| [docs/performance/FUTURE_WORK.md](docs/performance/FUTURE_WORK.md) | Technical roadmap and Expert+ targets |
 
-# Filter out noise
-rource --hide-dirs "node_modules|vendor|target" .
-```
+### Testing & Quality Documentation
 
-## Migrating from Gource
+| Document | Description |
+|----------|-------------|
+| [docs/testing/MUTATION_TESTING.md](docs/testing/MUTATION_TESTING.md) | Mutation testing setup and results |
+| [docs/testing/VISUAL_REGRESSION.md](docs/testing/VISUAL_REGRESSION.md) | Visual regression testing methodology |
+| [docs/REVIEW_STANDARDS.md](docs/REVIEW_STANDARDS.md) | Code review requirements and checklists |
 
-See [docs/GOURCE_COMPARISON.md](docs/GOURCE_COMPARISON.md) for a detailed comparison and migration guide.
+### UX Documentation
 
-Quick comparison:
-| Gource | Rource |
-|--------|--------|
-| `-s 0.5` | `-s 0.5` (same) |
-| `--seconds-per-day` | `--seconds-per-day` (same) |
-| `--hide-filenames` | `--hide-filenames` (same) |
-| `-o -` (pipe to ffmpeg) | `--output dir --headless` |
-| Requires OpenGL | Pure software rendering |
+| Document | Description |
+|----------|-------------|
+| [docs/ux/MOBILE_UX_ROADMAP.md](docs/ux/MOBILE_UX_ROADMAP.md) | Mobile UX improvement roadmap |
 
-## Screenshots
+For the complete documentation index, see [docs/README.md](docs/README.md).
 
-The `--screenshot` option captures a single frame as a PNG image:
+---
 
-```bash
-# Capture final state of visualization
-rource --screenshot output.png .
+## Acknowledgments
 
-# Capture at a specific commit (0-based index)
-rource --screenshot output.png --screenshot-at 50 .
+This project was developed with AI-assisted programming using [Claude](https://www.anthropic.com/claude) by Anthropic. The AI assisted with code implementation, architecture decisions, documentation, and adherence to Rust best practices throughout the development process.
 
-# Capture with custom resolution
-rource -W 1920 -H 1080 --screenshot output.png .
-```
+---
 
 ## Contributing
 
@@ -486,9 +531,13 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 - Code style and testing requirements
 - Submitting pull requests
 
+---
+
 ## License
 
 GPL-3.0 (same as original Gource)
+
+---
 
 ## Credits
 
