@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769554813499,
+  "lastUpdate": 1769581013513,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3650,6 +3650,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/3375cbd7221646aace3d8b5c9863f31ff984f6a2"
         },
         "date": 1769554813076,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269332,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255354,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7629662570f35257df6a6e241e77f6051580b9c3",
+          "message": "Merge pull request #214 from tomtom215/claude/rource-setup-QPp2y\n\nPhase 78: Document SIMD AABB and Bitflags as NOT APPLICABLE",
+          "timestamp": "2026-01-28T07:14:39+01:00",
+          "tree_id": "a3c2bef6cc4abaa3b6c4beba3186980f10e42a57",
+          "url": "https://github.com/tomtom215/rource/commit/7629662570f35257df6a6e241e77f6051580b9c3"
+        },
+        "date": 1769581013150,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
