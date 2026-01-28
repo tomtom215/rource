@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769595273734,
+  "lastUpdate": 1769605169552,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3767,6 +3767,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/971c988f708ef61a6aba66de61566fbbdb748414"
         },
         "date": 1769595272710,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "144cc9875192e35d68a19976d52b067c36497068",
+          "message": "Merge pull request #217 from tomtom215/claude/complete-codebase-audit-iEQqs\n\nAdd comprehensive edge case tests across core modules",
+          "timestamp": "2026-01-28T13:57:18+01:00",
+          "tree_id": "b54c0fe26db81ceb8e078cba58829f08baa76867",
+          "url": "https://github.com/tomtom215/rource/commit/144cc9875192e35d68a19976d52b067c36497068"
+        },
+        "date": 1769605168734,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
