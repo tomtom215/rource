@@ -1,14 +1,22 @@
 -R . RourceMath
 
-# Core type specifications
+# Vector type specifications
 Vec2.v
 Vec3.v
 Vec4.v
 
-# Algebraic property proofs
+# Vector algebraic property proofs
 Vec2_Proofs.v
 Vec3_Proofs.v
 Vec4_Proofs.v
 
-# Complexity bounds (ICC)
-Complexity.v
+# Matrix type specifications
+Mat3.v
+Mat4.v
+
+# Matrix algebraic property proofs
+Mat3_Proofs.v
+Mat4_Proofs.v
+
+# Complexity bounds (ICC) - PLANNED: Phase 2
+# Complexity.v
