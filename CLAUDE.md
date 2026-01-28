@@ -65,6 +65,7 @@ Every domain must achieve and maintain **Expert+ (10/10)** rating:
 | Performance Engineering | Expert+ | Expert+ | `docs/performance/BENCHMARKS.md` |
 | UI/UX Design | 3/10 | Expert+ | `docs/ux/MOBILE_UX_ROADMAP.md` |
 | Testing Maturity | Senior+ | Expert+ | `docs/performance/FUTURE_WORK.md` |
+| Formal Verification | Expert+ | Expert+ | `docs/verification/FORMAL_VERIFICATION.md` |
 | Security Posture | Senior | Expert+ | `docs/performance/FUTURE_WORK.md` |
 | Accessibility | Not Rated | Expert+ | `docs/ux/MOBILE_UX_ROADMAP.md` |
 | Operational Readiness | Senior+ | Expert+ | `docs/performance/FUTURE_WORK.md` |
@@ -1159,6 +1160,58 @@ For 100% deterministic output:
 2. **Seed random generators**: Any randomness should use a fixed seed
 3. **Pre-warm the scene**: Run ~30 update cycles before first render
 4. **Force camera position**: Use `jump_to()` + `set_zoom()`
+
+### Formal Verification (PUBLISHED ACADEMIC Standard)
+
+The project uses Microsoft's Verus tool for machine-checked proofs of mathematical
+correctness. This elevates code from "tested" to "formally verified" - suitable
+for academic publication.
+
+**Verification Hierarchy:**
+
+| Level | Name | Description | Example |
+|-------|------|-------------|---------|
+| 1 | TESTED | Unit tests pass | `cargo test` passes |
+| 2 | BENCHMARKED | Performance measured with statistical rigor | Criterion with 95% CI |
+| 3 | FORMALLY VERIFIED | Correctness proven mathematically | Verus proofs compile |
+| 4 | PUBLISHED ACADEMIC | Proofs suitable for peer review | Zero admits, reproducible |
+
+**Verified Components:**
+
+| Component | Theorems | VCs | Status |
+|-----------|----------|-----|--------|
+| Vec2 (vector space axioms, geometric properties) | 23 | 53 | VERIFIED |
+| Vec3 (cross product properties, orthogonality) | 18 | 42 | VERIFIED |
+| Vec4 | - | - | PLANNED |
+| Mat3/Mat4 | - | - | PLANNED |
+
+**Running Formal Verification:**
+
+```bash
+# Install Verus (requires Rust 1.92.0 toolchain)
+curl -L -o verus.zip "https://github.com/verus-lang/verus/releases/latest/download/verus-x86_64-linux.zip"
+unzip verus.zip && cd verus-x86-linux
+rustup install 1.92.0
+
+# Verify Vec2 proofs
+./verus crates/rource-math/proofs/vec2_proofs.rs
+# Expected: verification results:: 53 verified, 0 errors
+
+# Verify Vec3 proofs
+./verus crates/rource-math/proofs/vec3_proofs.rs
+# Expected: verification results:: 42 verified, 0 errors
+```
+
+**Formal Verification Rules:**
+
+| Rule | Requirement |
+|------|-------------|
+| Zero Admits | Never use `assume!()` to skip proof obligations |
+| Complete Specs | Specifications must capture full behavior |
+| Reproducibility | All proofs must verify from clean state |
+| Documentation | Each theorem documented with mathematical statement |
+
+**Reference:** See `docs/verification/FORMAL_VERIFICATION.md` for complete details.
 
 ---
 
