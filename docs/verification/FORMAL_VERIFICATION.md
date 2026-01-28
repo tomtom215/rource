@@ -150,6 +150,109 @@ All proofs verified with `0 errors`.
 | 21 | Length Squared Zero iff Zero | \|a\|² = 0 ⟺ a = 0 |
 | 22 | Vector Space Structure | Combined axiom verification |
 
+### Mat3 (18 Theorems, 26 Verification Conditions)
+
+All proofs verified with `0 errors`.
+
+#### Matrix Addition Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 1 | Commutativity | A + B = B + A |
+| 2 | Associativity | (A + B) + C = A + (B + C) |
+| 3 | Additive Identity | A + 0 = A |
+| 4 | Additive Inverse | A + (-A) = 0 |
+
+#### Matrix Multiplication Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 5 | Left Identity | I * A = A |
+| 6 | Right Identity | A * I = A |
+| 7 | Zero Left Annihilator | 0 * A = 0 |
+| 8 | Zero Right Annihilator | A * 0 = 0 |
+| 9 | **Associativity** | **(A * B) * C = A * (B * C)** |
+
+> **Note**: Matrix multiplication associativity (Theorem 9) is the critical property for
+> transformation pipelines. It ensures that sequences of transformations can be grouped
+> arbitrarily. The proof required decomposition into helper lemmas due to the 27 nonlinear
+> arithmetic constraints (9 components × 3 terms each).
+
+#### Scalar Multiplication Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 10 | Identity | 1 * A = A |
+| 11 | Zero | 0 * A = 0 |
+| 12 | Distribution | s * (A + B) = s * A + s * B |
+| 13 | Associativity | (s * t) * A = s * (t * A) |
+
+#### Transpose Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 14 | Double Transpose | (A^T)^T = A |
+| 15 | Distribution over Add | (A + B)^T = A^T + B^T |
+| 16 | Commutes with Scalar | (s * A)^T = s * A^T |
+
+#### Additional Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 17 | Negation as Scaling | -A = (-1) * A |
+| 18 | Ring Structure | Mat3 forms a ring with identity |
+
+### Mat4 (18 Theorems, 27 Verification Conditions)
+
+All proofs verified with `0 errors`.
+
+#### Matrix Addition Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 1 | Commutativity | A + B = B + A |
+| 2 | Associativity | (A + B) + C = A + (B + C) |
+| 3 | Additive Identity | A + 0 = A |
+| 4 | Additive Inverse | A + (-A) = 0 |
+
+#### Matrix Multiplication Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 5 | Left Identity | I * A = A |
+| 6 | Right Identity | A * I = A |
+| 7 | Zero Left Annihilator | 0 * A = 0 |
+| 8 | Zero Right Annihilator | A * 0 = 0 |
+| 9 | **Associativity** | **(A * B) * C = A * (B * C)** |
+
+> **Note**: Mat4 multiplication associativity is essential for 3D transformation pipelines
+> (model-view-projection matrices). The proof handles 64 nonlinear constraints (16 components
+> × 4 terms each) using distribution and associativity helper lemmas.
+
+#### Scalar Multiplication Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 10 | Identity | 1 * A = A |
+| 11 | Zero | 0 * A = 0 |
+| 12 | Distribution | s * (A + B) = s * A + s * B |
+| 13 | Associativity | (s * t) * A = s * (t * A) |
+
+#### Transpose Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 14 | Double Transpose | (A^T)^T = A |
+| 15 | Distribution over Add | (A + B)^T = A^T + B^T |
+| 16 | Commutes with Scalar | (s * A)^T = s * A^T |
+
+#### Additional Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 17 | Negation as Scaling | -A = (-1) * A |
+| 18 | Ring Structure | Mat4 forms a ring with identity |
+
 ## Verification Methodology
 
 ### Modeling Approach
@@ -211,6 +314,14 @@ rustup install 1.92.0
 # Verify Vec4 proofs
 ./verus /path/to/rource/crates/rource-math/proofs/vec4_proofs.rs
 # Expected: verification results:: 68 verified, 0 errors
+
+# Verify Mat3 proofs (requires higher rlimit for associativity)
+./verus --rlimit 20000000 /path/to/rource/crates/rource-math/proofs/mat3_proofs.rs
+# Expected: verification results:: 26 verified, 0 errors
+
+# Verify Mat4 proofs (requires higher rlimit for associativity)
+./verus --rlimit 30000000 /path/to/rource/crates/rource-math/proofs/mat4_proofs.rs
+# Expected: verification results:: 27 verified, 0 errors
 ```
 
 ## Verification Coverage
@@ -220,10 +331,10 @@ rustup install 1.92.0
 | rource-math/Vec2 | ✅ VERIFIED | 23 | 53 | Complete vector space axioms |
 | rource-math/Vec3 | ✅ VERIFIED | 24 | 68 | Cross product + scalar triple product |
 | rource-math/Vec4 | ✅ VERIFIED | 22 | 68 | 4D vector space, basis orthonormality |
-| rource-math/Mat3 | PLANNED | - | - | Matrix multiplication associativity |
-| rource-math/Mat4 | PLANNED | - | - | Transformation correctness |
+| rource-math/Mat3 | ✅ VERIFIED | 18 | 26 | Matrix multiplication associativity, ring structure |
+| rource-math/Mat4 | ✅ VERIFIED | 18 | 27 | 3D transformation pipelines, ring structure |
 
-**Total: 69 theorems, 189 verification conditions verified**
+**Total: 105 theorems, 242 verification conditions verified**
 
 ## Relationship to Testing
 
@@ -258,7 +369,7 @@ The proofs demonstrate:
 ## Future Work
 
 1. ~~**Vec4 proofs**~~ - ✅ COMPLETED (22 theorems, 68 VCs)
-2. **Matrix proofs (Mat3, Mat4)** - Multiplication associativity, identity, transpose
+2. ~~**Matrix proofs (Mat3, Mat4)**~~ - ✅ COMPLETED (Mat3: 18 theorems, 26 VCs; Mat4: 18 theorems, 27 VCs)
 3. **Complexity bounds** - Prove O(1) for vector operations
 4. **Floating-point refinement** - Investigate Verus's float support
 5. **CI integration** - Automated proof checking in GitHub Actions
@@ -274,6 +385,6 @@ The proofs demonstrate:
 
 *Last verified: 2026-01-28*
 *Verus version: 0.2026.01.23.1650a05*
-*Total theorems: 69 (Vec2: 23, Vec3: 24, Vec4: 22)*
-*Total verification conditions: 189 (Vec2: 53, Vec3: 68, Vec4: 68)*
+*Total theorems: 105 (Vec2: 23, Vec3: 24, Vec4: 22, Mat3: 18, Mat4: 18)*
+*Total verification conditions: 242 (Vec2: 53, Vec3: 68, Vec4: 68, Mat3: 26, Mat4: 27)*
 *Status: All proofs verified with 0 errors*
