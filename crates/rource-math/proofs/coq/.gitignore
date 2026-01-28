@@ -1,0 +1,11 @@
+# Coq compiled files
+*.vo
+*.vok
+*.vos
+*.glob
+.*.aux
+*.crashcoqide
+.coqdeps.d
+.lia.cache
+CoqMakefile
+CoqMakefile.conf
