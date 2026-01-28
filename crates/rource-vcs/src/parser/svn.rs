@@ -715,7 +715,10 @@ mod tests {
         let parser = SvnParser::new();
         let commits = parser.parse_str(SAMPLE_SVN_LOG).unwrap();
         // Second file in first commit has action="A"
-        assert!(commits[0].files.iter().any(|f| f.action == FileAction::Create));
+        assert!(commits[0]
+            .files
+            .iter()
+            .any(|f| f.action == FileAction::Create));
     }
 
     #[test]
@@ -825,8 +828,14 @@ mod tests {
 
     #[test]
     fn test_svn_strip_trunk_prefix() {
-        assert_eq!(SvnParser::strip_svn_prefix("/trunk/src/main.rs"), "src/main.rs");
-        assert_eq!(SvnParser::strip_svn_prefix("trunk/src/main.rs"), "src/main.rs");
+        assert_eq!(
+            SvnParser::strip_svn_prefix("/trunk/src/main.rs"),
+            "src/main.rs"
+        );
+        assert_eq!(
+            SvnParser::strip_svn_prefix("trunk/src/main.rs"),
+            "src/main.rs"
+        );
     }
 
     #[test]

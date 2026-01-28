@@ -548,16 +548,10 @@ mod tests {
 
         if let Some(inv) = m.inverse() {
             let product = m * inv;
-            assert!(
-                product.approx_eq(Mat3::IDENTITY),
-                "M * M^-1 = I"
-            );
+            assert!(product.approx_eq(Mat3::IDENTITY), "M * M^-1 = I");
 
             let product2 = inv * m;
-            assert!(
-                product2.approx_eq(Mat3::IDENTITY),
-                "M^-1 * M = I"
-            );
+            assert!(product2.approx_eq(Mat3::IDENTITY), "M^-1 * M = I");
         }
     }
 
@@ -691,5 +685,30 @@ mod tests {
 
         let m3 = Mat3::new(1.01, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
         assert!(!m1.approx_eq(m3));
+    }
+
+    // ========================================================================
+    // Additional Coverage Tests (CI Coverage)
+    // ========================================================================
+
+    #[test]
+    fn test_mat3_display() {
+        let m = Mat3::IDENTITY;
+        let display = format!("{}", m);
+
+        // Verify display contains the expected values
+        assert!(display.contains("1.0000"), "Display should show 1.0000");
+        assert!(display.contains("0.0000"), "Display should show 0.0000");
+        assert!(display.contains("|"), "Display should use | delimiters");
+    }
+
+    #[test]
+    fn test_mat3_debug() {
+        let m = Mat3::IDENTITY;
+        let debug = format!("{:?}", m);
+
+        // Verify debug output contains Mat3 struct info
+        assert!(debug.contains("Mat3"), "Debug should contain Mat3");
+        assert!(debug.contains("m:"), "Debug should contain m field");
     }
 }

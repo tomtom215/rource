@@ -813,7 +813,10 @@ mod tests {
         let ba = b.cross(a);
 
         // a × b = -(b × a)
-        assert!(ab.approx_eq(-ba), "Cross product should be anti-commutative");
+        assert!(
+            ab.approx_eq(-ba),
+            "Cross product should be anti-commutative"
+        );
     }
 
     #[test]
@@ -872,7 +875,10 @@ mod tests {
         let onto = Vec3::Y;
 
         let result = v.project(onto);
-        assert!(result.approx_eq(Vec3::ZERO), "Perpendicular projection is zero");
+        assert!(
+            result.approx_eq(Vec3::ZERO),
+            "Perpendicular projection is zero"
+        );
     }
 
     #[test]

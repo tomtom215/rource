@@ -1030,7 +1030,9 @@ modified:
 
     #[test]
     fn test_bzr_is_separator() {
-        assert!(BazaarParser::is_separator("------------------------------------------------------------"));
+        assert!(BazaarParser::is_separator(
+            "------------------------------------------------------------"
+        ));
         assert!(BazaarParser::is_separator("--------------------"));
         assert!(!BazaarParser::is_separator("-----")); // Too short
         assert!(!BazaarParser::is_separator("revno: 1"));

@@ -728,7 +728,10 @@ files:       src/main.rs
 
     #[test]
     fn test_hg_extract_author_email_only() {
-        assert_eq!(extract_author_name("<john@example.com>"), "john@example.com");
+        assert_eq!(
+            extract_author_name("<john@example.com>"),
+            "john@example.com"
+        );
     }
 
     #[test]

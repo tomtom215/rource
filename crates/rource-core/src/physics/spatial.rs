@@ -781,7 +781,10 @@ mod tests {
         tree.insert(Vec2::new(10.0, 10.0), 1);
 
         // Query area that doesn't intersect with tree bounds
-        let results = tree.query(&Bounds::new(Vec2::new(200.0, 200.0), Vec2::new(300.0, 300.0)));
+        let results = tree.query(&Bounds::new(
+            Vec2::new(200.0, 200.0),
+            Vec2::new(300.0, 300.0),
+        ));
         assert!(results.is_empty());
     }
 
@@ -1017,7 +1020,10 @@ mod tests {
 
         // Re-insert items
         for i in 0..5 {
-            tree.insert(Vec2::new(i as f32 * 20.0 + 1.0, i as f32 * 20.0 + 1.0), i + 100);
+            tree.insert(
+                Vec2::new(i as f32 * 20.0 + 1.0, i as f32 * 20.0 + 1.0),
+                i + 100,
+            );
         }
 
         assert_eq!(tree.total_items(), 5);
@@ -1061,8 +1067,61 @@ mod tests {
 
         assert_eq!(tree.total_items(), 3);
 
-        let results = tree.query(&Bounds::new(Vec2::new(-60.0, -60.0), Vec2::new(-40.0, -40.0)));
+        let results = tree.query(&Bounds::new(
+            Vec2::new(-60.0, -60.0),
+            Vec2::new(-40.0, -40.0),
+        ));
         assert_eq!(results.len(), 1);
         assert!(results.contains(&&1));
+    }
+
+    // ========================================================================
+    // Additional Coverage Tests (CI Coverage)
+    // ========================================================================
+
+    #[test]
+    fn test_quadtree_iter_exhausted() {
+        // Test that iterator correctly handles exhaustion
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(10.0, 10.0), 1);
+
+        let mut iter = tree.iter();
+        assert!(iter.next().is_some());
+        assert!(iter.next().is_none()); // Should be exhausted
+        assert!(iter.next().is_none()); // Should still be exhausted
+    }
+
+    #[test]
+    fn test_quadtree_iter_subdivided_exhaustion() {
+        // Test iterator exhaustion with subdivided tree
+        let mut tree = create_test_tree();
+
+        // Insert enough to subdivide
+        for i in 0..10 {
+            tree.insert(Vec2::new((i * 10) as f32 + 1.0, (i * 10) as f32 + 1.0), i);
+        }
+
+        let count = tree.iter().count();
+        assert_eq!(count, 10);
+
+        // Verify double iteration works correctly
+        let count2 = tree.iter().count();
+        assert_eq!(count2, 10);
+    }
+
+    #[test]
+    fn test_quadtree_query_circle_for_each_with_items() {
+        let mut tree = create_test_tree();
+
+        tree.insert(Vec2::new(50.0, 50.0), 1);
+        tree.insert(Vec2::new(55.0, 50.0), 2);
+        tree.insert(Vec2::new(90.0, 90.0), 3); // Outside circle
+
+        let mut positions = Vec::new();
+        tree.query_circle_for_each(Vec2::new(50.0, 50.0), 10.0, |pos, _| {
+            positions.push(pos);
+        });
+
+        assert_eq!(positions.len(), 2);
     }
 }

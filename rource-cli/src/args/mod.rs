@@ -1012,7 +1012,9 @@ width = 1920
         };
         let result = args.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("--benchmark requires --headless"));
+        assert!(result
+            .unwrap_err()
+            .contains("--benchmark requires --headless"));
     }
 
     #[test]

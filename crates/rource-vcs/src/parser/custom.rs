@@ -718,7 +718,10 @@ mod tests {
         // Single quotes
         let input = "1234567890|User|M|it's a file.txt";
         let commits = parser.parse_str(input).unwrap();
-        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "it's a file.txt");
+        assert_eq!(
+            commits[0].files[0].path.to_str().unwrap(),
+            "it's a file.txt"
+        );
 
         // Double quotes
         let input = "1234567890|User|A|\"quoted\"/file.txt";
@@ -734,8 +737,8 @@ mod tests {
         let parser = CustomParser::new();
 
         // Create a path with 1000+ characters
-        let long_path = (0..100).map(|_| "directory").collect::<Vec<_>>().join("/")
-            + "/very_long_filename.txt";
+        let long_path =
+            (0..100).map(|_| "directory").collect::<Vec<_>>().join("/") + "/very_long_filename.txt";
         let input = format!("1234567890|User|A|{long_path}");
         let commits = parser.parse_str(&input).unwrap();
         assert_eq!(commits[0].files[0].path.to_str().unwrap(), long_path);
@@ -772,11 +775,7 @@ mod tests {
         for ext in binary_extensions {
             let input = format!("1234567890|User|A|binary/file{ext}");
             let commits = parser.parse_str(&input).unwrap();
-            assert!(commits[0].files[0]
-                .path
-                .to_str()
-                .unwrap()
-                .ends_with(ext));
+            assert!(commits[0].files[0].path.to_str().unwrap().ends_with(ext));
         }
     }
 

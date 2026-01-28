@@ -1137,10 +1137,7 @@ mod tests {
         // Bounce out should produce values between 0 and 1 (mostly)
         // and end at 1.0
         let at_end = ease(1.0, Easing::BounceOut);
-        assert!(
-            approx_eq(at_end, 1.0),
-            "BounceOut at t=1.0 should be 1.0"
-        );
+        assert!(approx_eq(at_end, 1.0), "BounceOut at t=1.0 should be 1.0");
 
         // Bounce should have valid intermediate values
         let at_half = ease(0.5, Easing::BounceOut);
@@ -1156,7 +1153,10 @@ mod tests {
         let at_start = ease(0.0, Easing::ElasticOut);
         let at_end = ease(1.0, Easing::ElasticOut);
 
-        assert!(approx_eq(at_start, 0.0), "ElasticOut at t=0.0 should be 0.0");
+        assert!(
+            approx_eq(at_start, 0.0),
+            "ElasticOut at t=0.0 should be 0.0"
+        );
         assert!(approx_eq(at_end, 1.0), "ElasticOut at t=1.0 should be 1.0");
 
         // Elastic out should overshoot at some point (value > 1.0)

@@ -1244,4 +1244,66 @@ mod tests {
             "Zero FPS should boost to max theta"
         );
     }
+
+    // ========================================================================
+    // Additional Coverage Tests (CI Coverage)
+    // ========================================================================
+
+    #[test]
+    fn test_barnes_hut_insert_at_max_depth_multiple_bodies() {
+        // Test the max depth scenario where bodies are inserted but no further subdivision
+        // This covers the "at max depth" path in insert()
+        let bounds = Bounds::new(Vec2::new(-10.0, -10.0), Vec2::new(10.0, 10.0));
+        let mut tree = BarnesHutTree::new(bounds);
+
+        // Insert many bodies at the same location to force max depth
+        for i in 0..50 {
+            let offset = (i as f32) * 0.001; // Very small offsets
+            tree.insert(Body::new(Vec2::new(offset, offset)));
+        }
+
+        // All bodies should be stored despite max depth
+        assert!((tree.total_mass() - 50.0).abs() < 0.001);
+
+        // Force calculation should still work
+        let body = Body::new(Vec2::new(5.0, 5.0));
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+        assert!(force.length() > 0.0, "Should produce force");
+    }
+
+    #[test]
+    fn test_barnes_hut_node_reset_deep_tree() {
+        // Test that reset works correctly on a deeply nested tree
+        let bounds = Bounds::new(Vec2::new(-100.0, -100.0), Vec2::new(100.0, 100.0));
+        let mut tree = BarnesHutTree::new(bounds);
+
+        // Insert bodies in different quadrants to create deep nesting
+        for i in 0..100 {
+            let x = ((i % 10) as f32 - 5.0) * 15.0;
+            let y = ((i / 10) as f32 - 5.0) * 15.0;
+            tree.insert(Body::new(Vec2::new(x, y)));
+        }
+
+        assert!((tree.total_mass() - 100.0).abs() < 0.001);
+
+        // Clear and verify
+        tree.clear();
+        assert_eq!(tree.total_mass(), 0.0);
+
+        // Re-insert should work
+        tree.insert(Body::new(Vec2::new(0.0, 0.0)));
+        assert!((tree.total_mass() - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_barnes_hut_force_on_empty_tree() {
+        // Test force calculation on empty tree
+        let tree = create_test_tree();
+        let body = Body::new(Vec2::new(0.0, 0.0));
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+        assert!(
+            force.length() < 0.001,
+            "Empty tree should produce zero force"
+        );
+    }
 }

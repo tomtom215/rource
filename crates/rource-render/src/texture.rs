@@ -398,7 +398,11 @@ mod tests {
 
         // Sample at midpoint should be gray
         let mid = tex.sample(0.5, 0.0);
-        assert!(mid.0 > 100 && mid.0 < 160, "Expected ~127-128, got {}", mid.0);
+        assert!(
+            mid.0 > 100 && mid.0 < 160,
+            "Expected ~127-128, got {}",
+            mid.0
+        );
         assert_eq!(mid.3, 255); // Alpha unchanged
     }
 
@@ -411,7 +415,11 @@ mod tests {
 
         // Sample at midpoint should be gray
         let mid = tex.sample(0.0, 0.5);
-        assert!(mid.0 > 100 && mid.0 < 160, "Expected ~127-128, got {}", mid.0);
+        assert!(
+            mid.0 > 100 && mid.0 < 160,
+            "Expected ~127-128, got {}",
+            mid.0
+        );
     }
 
     #[test]
