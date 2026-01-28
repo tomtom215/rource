@@ -157,12 +157,28 @@ function startOfYear(date) {
 
 /**
  * Generates date boundaries for daily ticks.
+ * For very short repos (< 7 days), includes the start date itself to ensure
+ * at least one tick is shown.
+ *
  * @param {Date} start - Start date
  * @param {Date} end - End date
- * @returns {Array<{date: Date, label: string, isFirst: boolean}>} Array of boundaries
+ * @returns {Array<{date: Date, label: string, isFirst: boolean, isMajor: boolean}>} Array of boundaries
  */
 function generateDailyBoundaries(start, end) {
     const boundaries = [];
+    const rangeDays = (end - start) / MS_PER_DAY;
+
+    // For very short repos (< 3 days), include the start date boundary
+    // to ensure we have at least one tick
+    if (rangeDays < 3) {
+        boundaries.push({
+            date: new Date(startOfDay(start)),
+            label: formatDayLabel(start),
+            isFirst: true,
+            isMajor: true,
+        });
+    }
+
     let current = startOfDay(new Date(start.getTime() + MS_PER_DAY));
 
     while (current <= end) {
@@ -171,7 +187,7 @@ function generateDailyBoundaries(start, end) {
             date: new Date(current),
             label: formatDayLabel(current),
             isFirst: isFirstOfMonth,
-            isMajor: isFirstOfMonth,
+            isMajor: isFirstOfMonth || rangeDays < 7, // All ticks major for very short repos
         });
         current.setDate(current.getDate() + 1);
     }
@@ -181,12 +197,27 @@ function generateDailyBoundaries(start, end) {
 
 /**
  * Generates date boundaries for weekly ticks.
+ * For repos < 3 weeks, includes the first week's Monday to ensure visibility.
+ *
  * @param {Date} start - Start date
  * @param {Date} end - End date
- * @returns {Array<{date: Date, label: string, isFirst: boolean}>} Array of boundaries
+ * @returns {Array<{date: Date, label: string, isFirst: boolean, isMajor: boolean}>} Array of boundaries
  */
 function generateWeeklyBoundaries(start, end) {
     const boundaries = [];
+    const rangeWeeks = (end - start) / (DAYS_PER_WEEK * MS_PER_DAY);
+
+    // For very short repos (< 2 weeks), include the start week
+    if (rangeWeeks < 2) {
+        const startWeek = startOfWeek(start);
+        boundaries.push({
+            date: new Date(startWeek),
+            label: formatWeekLabel(startWeek),
+            isFirst: true,
+            isMajor: true,
+        });
+    }
+
     let current = startOfWeek(new Date(start.getTime() + DAYS_PER_WEEK * MS_PER_DAY));
 
     while (current <= end) {
@@ -195,7 +226,7 @@ function generateWeeklyBoundaries(start, end) {
             date: new Date(current),
             label: formatWeekLabel(current),
             isFirst: isFirstOfMonth,
-            isMajor: isFirstOfMonth,
+            isMajor: isFirstOfMonth || rangeWeeks < 6, // All ticks major for short repos
         });
         current.setDate(current.getDate() + 7);
     }
@@ -766,12 +797,20 @@ function renderTicks(boundaries, config, startTimestamp, endTimestamp, container
         return true;
     });
 
+    // Calculate date range to adjust filtering for short repos
+    const rangeDays = (endTimestamp - startTimestamp) / (24 * 60 * 60);
+    const isShortRepo = rangeDays < 30; // Less than a month
+
     // Apply edge filtering with special handling for first/last boundaries
-    // Allow first boundary to be at 1%, last at 99% for better coverage
-    // Middle boundaries still use 3%-97% range to avoid edge crowding
+    // For short repos, be more permissive to show more context
     const filteredBoundaries = dedupedBoundaries.filter((boundary, index, arr) => {
         const isFirst = index === 0;
         const isLast = index === arr.length - 1;
+
+        // For very short repos, allow ticks anywhere
+        if (isShortRepo) {
+            return true;
+        }
 
         if (isFirst) {
             // First tick: allow closer to left edge (1%)
