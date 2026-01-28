@@ -4,7 +4,7 @@
 //! Tests for pure computation functions in helpers module.
 
 use rource_core::config::WatermarkPosition;
-use rource_math::{Color, Vec2};
+use rource_math::Color;
 
 use crate::render_phases::estimate_text_width;
 use crate::render_phases::helpers::*;

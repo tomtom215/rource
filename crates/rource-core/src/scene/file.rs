@@ -605,4 +605,168 @@ mod tests {
         file.set_radius(0.0);
         assert_eq!(file.radius(), 1.0);
     }
+
+    // ============================================================
+    // Edge Case Tests (Phase 3 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_file_node_set_color() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let mut file = FileNode::new(id, "test.rs", dir_id);
+
+        let custom_color = Color::from_rgb8(123, 45, 67);
+        file.set_color(custom_color);
+        assert_eq!(file.color(), custom_color);
+    }
+
+    #[test]
+    fn test_file_node_pinned() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let mut file = FileNode::new(id, "test.rs", dir_id);
+
+        assert!(!file.is_pinned());
+
+        file.set_pinned(true);
+        assert!(file.is_pinned());
+
+        file.set_pinned(false);
+        assert!(!file.is_pinned());
+    }
+
+    #[test]
+    fn test_file_node_current_color_no_touch() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let file = FileNode::new(id, "test.rs", dir_id);
+
+        // Without touch, current_color should return base color
+        assert_eq!(file.current_color(), file.color());
+    }
+
+    #[test]
+    fn test_file_node_target_position() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let mut file = FileNode::new(id, "test.rs", dir_id);
+
+        assert_eq!(file.target(), Vec2::ZERO);
+
+        file.set_target(Vec2::new(50.0, 100.0));
+        assert_eq!(file.target(), Vec2::new(50.0, 100.0));
+    }
+
+    #[test]
+    fn test_file_node_update_at_target() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let mut file = FileNode::new(id, "test.rs", dir_id);
+
+        // Set position and target to same location
+        file.set_position(Vec2::new(100.0, 100.0));
+        file.set_target(Vec2::new(100.0, 100.0));
+
+        file.update(1.0);
+
+        // Position should remain at target
+        assert_eq!(file.position(), file.target());
+    }
+
+    #[test]
+    fn test_file_node_update_zero_dt() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let mut file = FileNode::new(id, "test.rs", dir_id);
+
+        let initial_alpha = file.alpha();
+        let initial_idle = file.idle_time();
+
+        file.update(0.0);
+
+        // Zero dt should have no effect
+        assert_eq!(file.alpha(), initial_alpha);
+        assert_eq!(file.idle_time(), initial_idle);
+    }
+
+    #[test]
+    fn test_file_node_extension_uppercase() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let file = FileNode::new(id, "File.RS", dir_id);
+
+        // Extension should be normalized to lowercase
+        assert_eq!(file.extension(), Some("rs"));
+    }
+
+    #[test]
+    fn test_file_node_hidden_file() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let file = FileNode::new(id, ".gitignore", dir_id);
+
+        assert_eq!(file.name(), ".gitignore");
+        // .gitignore has no extension in Rust's path module
+        // (extension is the part after the last "." in the file stem)
+        assert_eq!(file.extension(), None);
+        // Therefore it gets the default color
+        assert_eq!(file.color(), Color::GRAY);
+    }
+
+    #[test]
+    fn test_file_node_deeply_nested_path() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let file = FileNode::new(id, "a/b/c/d/e/f/g/main.rs", dir_id);
+
+        assert_eq!(file.name(), "main.rs");
+        assert_eq!(file.extension(), Some("rs"));
+    }
+
+    #[test]
+    fn test_file_node_should_remove_not_removing() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let file = FileNode::new(id, "test.rs", dir_id);
+
+        // File not marked for removal should not be removed
+        assert!(!file.should_remove());
+    }
+
+    #[test]
+    fn test_file_node_multiple_touches() {
+        let id = FileId::from_index(0);
+        let dir_id = DirId::from_index(0);
+        let mut file = FileNode::new(id, "test.rs", dir_id);
+
+        // First touch
+        file.touch(Color::RED);
+        assert_eq!(file.touch_time(), TOUCH_DURATION);
+
+        // Update partially
+        file.update(0.5);
+        let after_first_update = file.touch_time();
+        assert!(after_first_update < TOUCH_DURATION);
+
+        // Second touch should reset
+        file.touch(Color::BLUE);
+        assert_eq!(file.touch_time(), TOUCH_DURATION);
+    }
+
+    #[test]
+    fn test_file_node_color_various_extensions() {
+        // Test some specific extensions for deterministic colors
+        let html = FileNode::color_from_extension("html");
+        let htm = FileNode::color_from_extension("htm");
+        assert_eq!(html, htm); // Both should be the same color
+
+        let jsx = FileNode::color_from_extension("jsx");
+        let tsx = FileNode::color_from_extension("tsx");
+        assert_eq!(jsx, tsx); // Both React extensions
+
+        let cpp = FileNode::color_from_extension("cpp");
+        let cc = FileNode::color_from_extension("cc");
+        assert_eq!(cpp, cc); // Both C++
+    }
 }

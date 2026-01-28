@@ -828,4 +828,309 @@ mod tests {
         assert!(vec2_approx_eq(before, Vec2::new(0.0, 0.0)));
         assert!(vec2_approx_eq(after, Vec2::new(100.0, 0.0)));
     }
+
+    // ========================================================================
+    // Edge Case Tests (Expert+ Audit Phase 2)
+    // ========================================================================
+
+    #[test]
+    fn test_spline_empty_interpolate() {
+        let spline = CatmullRomSpline::new();
+        let result = spline.interpolate(0.5);
+        assert!(vec2_approx_eq(result, Vec2::ZERO));
+    }
+
+    #[test]
+    fn test_spline_empty_tangent() {
+        let spline = CatmullRomSpline::new();
+        let tangent = spline.tangent(0.5);
+        assert!(vec2_approx_eq(tangent, Vec2::ZERO));
+    }
+
+    #[test]
+    fn test_spline_single_point_tangent() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(50.0, 50.0));
+
+        let tangent = spline.tangent(0.5);
+        assert!(vec2_approx_eq(tangent, Vec2::ZERO));
+    }
+
+    #[test]
+    fn test_spline_remove_from_empty() {
+        let mut spline = CatmullRomSpline::new();
+        let removed = spline.remove_point(0);
+        assert!(removed.is_none());
+    }
+
+    #[test]
+    fn test_spline_remove_out_of_bounds() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+
+        let removed = spline.remove_point(10);
+        assert!(removed.is_none());
+        assert_eq!(spline.len(), 1);
+    }
+
+    #[test]
+    fn test_spline_insert_at_end() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+
+        // Insert at index beyond length (should clamp to end)
+        spline.insert_point(100, Vec2::new(100.0, 100.0));
+        assert_eq!(spline.len(), 2);
+    }
+
+    #[test]
+    fn test_spline_set_point_out_of_bounds() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+
+        // Setting out-of-bounds should do nothing
+        spline.set_point(10, Vec2::new(100.0, 100.0));
+        assert_eq!(spline.len(), 1);
+        assert!(vec2_approx_eq(
+            spline.points()[0].position,
+            Vec2::new(0.0, 0.0)
+        ));
+    }
+
+    #[test]
+    fn test_spline_many_points() {
+        let mut spline = CatmullRomSpline::new();
+
+        // Add 20 points
+        for i in 0..20 {
+            spline.add_point(Vec2::new(i as f32 * 10.0, (i as f32 * 0.5).sin() * 50.0));
+        }
+
+        assert_eq!(spline.len(), 20);
+        assert_eq!(spline.span_count(), 19);
+
+        // Interpolation should still work
+        let mid = spline.interpolate(0.5);
+        assert!(mid.x > 0.0);
+    }
+
+    #[test]
+    fn test_spline_collinear_points() {
+        // Points all on a straight line
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+        spline.add_point(Vec2::new(50.0, 0.0));
+        spline.add_point(Vec2::new(100.0, 0.0));
+
+        let mid = spline.interpolate(0.5);
+        assert!(approx_eq(mid.y, 0.0));
+    }
+
+    #[test]
+    fn test_spline_zero_tension() {
+        let mut spline = CatmullRomSpline::with_tension(0.0);
+        spline.add_point(Vec2::new(0.0, 0.0));
+        spline.add_point(Vec2::new(50.0, 50.0));
+        spline.add_point(Vec2::new(100.0, 0.0));
+
+        let mid = spline.interpolate(0.5);
+        // Should still interpolate (just more linear)
+        assert!(mid.x > 0.0 && mid.x < 100.0);
+    }
+
+    #[test]
+    fn test_spline_max_tension() {
+        let mut spline = CatmullRomSpline::with_tension(1.0);
+        spline.add_point(Vec2::new(0.0, 0.0));
+        spline.add_point(Vec2::new(50.0, 50.0));
+        spline.add_point(Vec2::new(100.0, 0.0));
+
+        let mid = spline.interpolate(0.5);
+        // Should still interpolate (just more curvy)
+        assert!(mid.x > 0.0 && mid.x < 100.0);
+    }
+
+    #[test]
+    fn test_spline_closest_point_empty() {
+        let mut spline = CatmullRomSpline::new();
+        let (t, dist) = spline.closest_point(Vec2::new(50.0, 50.0));
+        assert_eq!(t, 0.0);
+        assert!(dist.is_infinite());
+    }
+
+    #[test]
+    fn test_spline_closest_point_single() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+
+        let (_, dist) = spline.closest_point(Vec2::new(30.0, 40.0));
+        assert!(approx_eq(dist, 50.0)); // 3-4-5 triangle
+    }
+
+    #[test]
+    fn test_spline_approximate_length_empty() {
+        let mut spline = CatmullRomSpline::new();
+        let length = spline.approximate_length();
+        assert_eq!(length, 0.0);
+    }
+
+    #[test]
+    fn test_spline_approximate_length_single() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(50.0, 50.0));
+
+        let length = spline.approximate_length();
+        assert_eq!(length, 0.0);
+    }
+
+    #[test]
+    fn test_spline_tessellate_empty() {
+        let mut spline = CatmullRomSpline::new();
+        let points = spline.tessellate();
+        assert!(points.is_empty());
+    }
+
+    #[test]
+    fn test_spline_tessellate_single() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(50.0, 50.0));
+
+        let points = spline.tessellate();
+        assert_eq!(points.len(), 1);
+    }
+
+    #[test]
+    fn test_spline_segments_per_span() {
+        let mut spline = CatmullRomSpline::new();
+        assert_eq!(spline.segments_per_span(), DEFAULT_SEGMENTS_PER_SPAN);
+
+        spline.set_segments_per_span(32);
+        assert_eq!(spline.segments_per_span(), 32);
+
+        // Setting to 0 should use 1
+        spline.set_segments_per_span(0);
+        assert_eq!(spline.segments_per_span(), 1);
+    }
+
+    #[test]
+    fn test_spline_default_trait() {
+        let spline = CatmullRomSpline::default();
+        assert!(spline.is_empty());
+        assert!(approx_eq(spline.tension(), DEFAULT_TENSION));
+    }
+
+    #[test]
+    fn test_spline_add_point_with_tangent() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point_with_tangent(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0));
+
+        assert_eq!(spline.len(), 1);
+        assert!(spline.points()[0].tangent.is_some());
+    }
+
+    #[test]
+    fn test_spline_interpolate_span_invalid() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+        spline.add_point(Vec2::new(100.0, 0.0));
+
+        // Invalid span index
+        let result = spline.interpolate_span(10, 0.5);
+        assert!(vec2_approx_eq(result, Vec2::new(0.0, 0.0)));
+    }
+
+    #[test]
+    fn test_spline_tangent_span_invalid() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+        spline.add_point(Vec2::new(100.0, 0.0));
+
+        // Invalid span index
+        let tangent = spline.tangent_span(10, 0.5);
+        assert!(vec2_approx_eq(tangent, Vec2::ZERO));
+    }
+
+    #[test]
+    fn test_linear_spline_empty() {
+        let spline = LinearSpline::new();
+        assert!(spline.is_empty());
+
+        let result = spline.interpolate(0.5);
+        assert!(vec2_approx_eq(result, Vec2::ZERO));
+    }
+
+    #[test]
+    fn test_linear_spline_single() {
+        let mut spline = LinearSpline::new();
+        spline.add_point(Vec2::new(50.0, 50.0));
+
+        let result = spline.interpolate(0.5);
+        assert!(vec2_approx_eq(result, Vec2::new(50.0, 50.0)));
+    }
+
+    #[test]
+    fn test_linear_spline_clear() {
+        let mut spline = LinearSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+        spline.add_point(Vec2::new(100.0, 100.0));
+
+        spline.clear();
+        assert!(spline.is_empty());
+    }
+
+    #[test]
+    fn test_linear_spline_length_empty() {
+        let spline = LinearSpline::new();
+        assert_eq!(spline.length(), 0.0);
+    }
+
+    #[test]
+    fn test_linear_spline_many_segments() {
+        let mut spline = LinearSpline::new();
+        for i in 0..10 {
+            spline.add_point(Vec2::new(i as f32 * 10.0, 0.0));
+        }
+
+        let length = spline.length();
+        assert!(approx_eq(length, 90.0)); // 9 segments of 10 units
+    }
+
+    #[test]
+    fn test_catmull_rom_tangent_at_endpoints() {
+        let p0 = Vec2::new(-50.0, 0.0);
+        let p1 = Vec2::new(0.0, 0.0);
+        let p2 = Vec2::new(100.0, 0.0);
+        let p3 = Vec2::new(150.0, 0.0);
+
+        let tangent_0 = catmull_rom_tangent(p0, p1, p2, p3, 0.0, 0.5);
+        let tangent_1 = catmull_rom_tangent(p0, p1, p2, p3, 1.0, 0.5);
+
+        // For straight line, tangent should point in x direction
+        assert!(tangent_0.x > 0.0);
+        assert!(tangent_1.x > 0.0);
+    }
+
+    #[test]
+    fn test_spline_point_from_vec2() {
+        let point: SplinePoint = Vec2::new(10.0, 20.0).into();
+        assert_eq!(point.position, Vec2::new(10.0, 20.0));
+        assert!(point.tangent.is_none());
+    }
+
+    #[test]
+    fn test_spline_cache_invalidation() {
+        let mut spline = CatmullRomSpline::new();
+        spline.add_point(Vec2::new(0.0, 0.0));
+        spline.add_point(Vec2::new(100.0, 0.0));
+
+        // Force cache
+        let _ = spline.tessellate();
+
+        // Modify should invalidate
+        spline.add_point(Vec2::new(200.0, 0.0));
+        let points = spline.tessellate();
+
+        // Should have more points now
+        assert!(points.len() > 9);
+    }
 }

@@ -616,4 +616,206 @@ mod tests {
         assert_eq!(commits[0].author, "John Doe");
         assert_eq!(commits[0].files[0].path.to_str().unwrap(), "src/main.rs");
     }
+
+    // ========================================================================
+    // PHASE 2: Expert+ Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_parse_empty_file() {
+        let parser = CustomParser::new();
+        let result = parser.parse_str("");
+        assert!(matches!(result, Err(ParseError::EmptyLog)));
+    }
+
+    #[test]
+    fn test_parse_single_line() {
+        let input = "1234567890|SingleUser|A|single_file.txt";
+        let parser = CustomParser::new();
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "SingleUser");
+        assert_eq!(commits[0].files.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_missing_fields() {
+        let parser = CustomParser::new();
+        // Missing filepath
+        let result = parser.parse_str("1234567890|John|A");
+        assert!(matches!(result, Err(ParseError::InvalidLine { .. })));
+
+        // Missing action
+        let result = parser.parse_str("1234567890|John");
+        assert!(matches!(result, Err(ParseError::InvalidLine { .. })));
+    }
+
+    #[test]
+    fn test_parse_malformed_timestamp() {
+        let parser = CustomParser::new();
+        let result = parser.parse_str("not_a_timestamp|John|A|file.txt");
+        assert!(matches!(result, Err(ParseError::InvalidTimestamp { .. })));
+
+        // Floating point timestamp
+        let result = parser.parse_str("123456.789|John|A|file.txt");
+        assert!(matches!(result, Err(ParseError::InvalidTimestamp { .. })));
+
+        // Negative timestamp should parse successfully
+        let result = parser.parse_str("-1|John|A|file.txt");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_unicode_author() {
+        let parser = CustomParser::new();
+
+        // Japanese characters
+        let input = "1234567890|田中太郎|A|src/main.rs";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits[0].author, "田中太郎");
+
+        // Emoji in author name
+        let input = "1234567890|Dev 🚀|M|file.txt";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits[0].author, "Dev 🚀");
+
+        // Cyrillic characters
+        let input = "1234567890|Иван Петров|A|file.rs";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits[0].author, "Иван Петров");
+    }
+
+    #[test]
+    fn test_parse_unicode_path() {
+        let parser = CustomParser::new();
+
+        // Chinese characters in path
+        let input = "1234567890|User|A|文档/测试.txt";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "文档/测试.txt");
+
+        // Emoji in path
+        let input = "1234567890|User|M|assets/🎮/game.png";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(
+            commits[0].files[0].path.to_str().unwrap(),
+            "assets/🎮/game.png"
+        );
+    }
+
+    #[test]
+    fn test_parse_special_chars_in_path() {
+        let parser = CustomParser::new();
+
+        // Spaces in path
+        let input = "1234567890|User|A|path with spaces/file name.txt";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(
+            commits[0].files[0].path.to_str().unwrap(),
+            "path with spaces/file name.txt"
+        );
+
+        // Single quotes
+        let input = "1234567890|User|M|it's a file.txt";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "it's a file.txt");
+
+        // Double quotes
+        let input = "1234567890|User|A|\"quoted\"/file.txt";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(
+            commits[0].files[0].path.to_str().unwrap(),
+            "\"quoted\"/file.txt"
+        );
+    }
+
+    #[test]
+    fn test_parse_very_long_path() {
+        let parser = CustomParser::new();
+
+        // Create a path with 1000+ characters
+        let long_path = (0..100).map(|_| "directory").collect::<Vec<_>>().join("/")
+            + "/very_long_filename.txt";
+        let input = format!("1234567890|User|A|{long_path}");
+        let commits = parser.parse_str(&input).unwrap();
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), long_path);
+    }
+
+    #[test]
+    fn test_parse_deeply_nested_path() {
+        let parser = CustomParser::new();
+
+        // Create a deeply nested path (50+ levels)
+        let deep_path = (0..60)
+            .map(|i| format!("level{i}"))
+            .collect::<Vec<_>>()
+            .join("/")
+            + "/file.txt";
+        let input = format!("1234567890|User|A|{deep_path}");
+        let commits = parser.parse_str(&input).unwrap();
+        assert!(commits[0].files[0]
+            .path
+            .to_str()
+            .unwrap()
+            .starts_with("level0/level1/"));
+    }
+
+    #[test]
+    fn test_parse_binary_file_paths() {
+        let parser = CustomParser::new();
+
+        let binary_extensions = [
+            ".exe", ".dll", ".so", ".dylib", ".bin", ".dat", ".o", ".a", ".lib", ".png", ".jpg",
+            ".gif", ".mp3", ".mp4", ".zip", ".tar.gz", ".wasm",
+        ];
+
+        for ext in binary_extensions {
+            let input = format!("1234567890|User|A|binary/file{ext}");
+            let commits = parser.parse_str(&input).unwrap();
+            assert!(commits[0].files[0]
+                .path
+                .to_str()
+                .unwrap()
+                .ends_with(ext));
+        }
+    }
+
+    #[test]
+    fn test_parse_only_comments() {
+        let parser = CustomParser::new();
+        let input = "# Comment 1\n# Comment 2\n# Comment 3";
+        let result = parser.parse_str(input);
+        assert!(matches!(result, Err(ParseError::EmptyLog)));
+    }
+
+    #[test]
+    fn test_parse_mixed_valid_invalid_lenient() {
+        let input = "\
+            1234567890|Valid|A|file1.txt\n\
+            invalid line without pipes\n\
+            1234567891|Valid|M|file2.txt\n\
+            also invalid\n\
+            1234567892|Valid|D|file3.txt\n";
+
+        let parser = CustomParser::with_options(ParseOptions::lenient());
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_null_byte_in_input() {
+        let parser = CustomParser::new();
+        // Null bytes should not crash the parser
+        let input = "1234567890|User\0Name|A|file.txt";
+        let _ = parser.parse_str(input);
+    }
+
+    #[test]
+    fn test_parse_large_timestamp() {
+        let parser = CustomParser::new();
+        // Year 3000+ timestamp
+        let input = "32503680000|FutureUser|A|future_file.txt";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits[0].timestamp, 32503680000);
+    }
 }

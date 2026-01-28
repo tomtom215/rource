@@ -336,4 +336,156 @@ mod tests {
         action.update(0.25); // 100%
         assert_eq!(action.beam_length(), 1.0);
     }
+
+    // ============================================================
+    // Edge Case Tests (Phase 3 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_action_type_equality() {
+        assert_eq!(ActionType::Create, ActionType::Create);
+        assert_ne!(ActionType::Create, ActionType::Modify);
+        assert_ne!(ActionType::Modify, ActionType::Delete);
+    }
+
+    #[test]
+    fn test_action_update_overshoots() {
+        let id = ActionId::from_index(0);
+        let user = UserId::from_index(0);
+        let file = FileId::from_index(0);
+
+        let mut action = Action::new(id, user, file, ActionType::Create);
+
+        // Huge dt that would overshoot
+        let still_in_progress = action.update(10.0);
+
+        // Progress should clamp to 1.0
+        assert_eq!(action.progress(), 1.0);
+        assert!(!still_in_progress);
+        assert!(action.is_complete());
+    }
+
+    #[test]
+    fn test_action_update_zero_dt() {
+        let id = ActionId::from_index(0);
+        let user = UserId::from_index(0);
+        let file = FileId::from_index(0);
+
+        let mut action = Action::new(id, user, file, ActionType::Modify);
+
+        let still_in_progress = action.update(0.0);
+
+        // Zero dt should have no effect
+        assert_eq!(action.progress(), 0.0);
+        assert!(still_in_progress);
+    }
+
+    #[test]
+    fn test_action_beam_end_at_start() {
+        let id = ActionId::from_index(0);
+        let user = UserId::from_index(0);
+        let file = FileId::from_index(0);
+
+        let action = Action::new(id, user, file, ActionType::Create);
+
+        let user_pos = Vec2::new(10.0, 20.0);
+        let file_pos = Vec2::new(100.0, 200.0);
+
+        // At start (progress = 0), beam end is at user position
+        assert_eq!(action.beam_end(user_pos, file_pos), user_pos);
+    }
+
+    #[test]
+    fn test_action_beam_start_constant() {
+        let id = ActionId::from_index(0);
+        let user = UserId::from_index(0);
+        let file = FileId::from_index(0);
+
+        let mut action = Action::new(id, user, file, ActionType::Delete);
+
+        let user_pos = Vec2::new(10.0, 20.0);
+
+        // Beam start should always be user position, regardless of progress
+        assert_eq!(action.beam_start(user_pos), user_pos);
+
+        action.update(0.25);
+        assert_eq!(action.beam_start(user_pos), user_pos);
+
+        action.update(0.5);
+        assert_eq!(action.beam_start(user_pos), user_pos);
+    }
+
+    #[test]
+    fn test_action_beam_color_at_start() {
+        let id = ActionId::from_index(0);
+        let user = UserId::from_index(0);
+        let file = FileId::from_index(0);
+
+        let action = Action::new(id, user, file, ActionType::Create);
+
+        // At start, alpha should be 1.0
+        let beam_color = action.beam_color();
+        assert_eq!(beam_color.a, 1.0);
+        // Color should match action type color
+        assert_eq!(beam_color.r, ActionType::Create.color().r);
+        assert_eq!(beam_color.g, ActionType::Create.color().g);
+        assert_eq!(beam_color.b, ActionType::Create.color().b);
+    }
+
+    #[test]
+    fn test_action_beam_color_at_70_percent() {
+        let id = ActionId::from_index(0);
+        let user = UserId::from_index(0);
+        let file = FileId::from_index(0);
+
+        let mut action = Action::new(id, user, file, ActionType::Modify);
+        action.progress = 0.7;
+
+        // At 70%, should still be full alpha (fade starts at 80%)
+        assert_eq!(action.beam_color().a, 1.0);
+    }
+
+    #[test]
+    fn test_action_all_types_have_different_colors() {
+        let create = ActionType::Create.color();
+        let modify = ActionType::Modify.color();
+        let delete = ActionType::Delete.color();
+
+        assert_ne!(create, modify);
+        assert_ne!(create, delete);
+        assert_ne!(modify, delete);
+    }
+
+    #[test]
+    fn test_action_sequential_updates() {
+        let id = ActionId::from_index(0);
+        let user = UserId::from_index(0);
+        let file = FileId::from_index(0);
+
+        let mut action = Action::new(id, user, file, ActionType::Create);
+
+        // Multiple small updates
+        for _ in 0..5 {
+            action.update(0.05); // Each adds 0.1 to progress
+        }
+
+        // Should be at 50% progress (5 * 0.05 * ACTION_SPEED(2.0) = 0.5)
+        assert!((action.progress() - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_action_same_user_and_file_positions() {
+        let id = ActionId::from_index(0);
+        let user = UserId::from_index(0);
+        let file = FileId::from_index(0);
+
+        let mut action = Action::new(id, user, file, ActionType::Modify);
+
+        let same_pos = Vec2::new(50.0, 50.0);
+
+        // When user and file are at same position, beam has zero length
+        action.update(0.25);
+        let beam_end = action.beam_end(same_pos, same_pos);
+        assert_eq!(beam_end, same_pos);
+    }
 }

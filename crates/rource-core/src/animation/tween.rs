@@ -881,4 +881,298 @@ mod tests {
         let easing = Easing::default();
         assert_eq!(easing, Easing::Linear);
     }
+
+    // ========================================================================
+    // Edge Case Tests (Expert+ Audit Phase 2)
+    // ========================================================================
+
+    #[test]
+    fn test_tween_negative_duration() {
+        let tween = Tween::new(0.0, 100.0, -1.0, Easing::Linear);
+
+        // Negative duration should behave like zero duration
+        assert!(approx_eq(tween.progress(), 1.0));
+        assert!(approx_eq(tween.value(), 100.0));
+    }
+
+    #[test]
+    fn test_tween_very_small_duration() {
+        let tween = Tween::new(0.0, 100.0, 0.0001, Easing::Linear);
+
+        // Very small duration should work correctly
+        assert!(!tween.is_complete());
+        assert!(approx_eq(tween.progress(), 0.0));
+    }
+
+    #[test]
+    fn test_tween_update_past_completion() {
+        let mut tween = Tween::new(0.0, 100.0, 1.0, Easing::Linear);
+
+        // Update past completion
+        tween.update(2.0);
+        assert!(tween.is_complete());
+        assert!(approx_eq(tween.value(), 100.0));
+
+        // Further updates should return false
+        assert!(!tween.update(0.5));
+        assert!(tween.is_complete());
+    }
+
+    #[test]
+    fn test_tween_update_negative_dt() {
+        let mut tween = Tween::new(0.0, 100.0, 1.0, Easing::Linear);
+
+        // Update with positive dt first
+        tween.update(0.5);
+        assert!(approx_eq(tween.progress(), 0.5));
+
+        // Update with negative dt - should still add (allowing time reversal if needed)
+        tween.update(-0.3);
+        // Progress is clamped to 0-1 in the progress() function
+        assert!(tween.progress() >= 0.0);
+    }
+
+    #[test]
+    fn test_tween_same_start_end() {
+        let mut tween = Tween::new(50.0, 50.0, 1.0, Easing::Linear);
+
+        tween.update(0.5);
+        assert!(approx_eq(tween.value(), 50.0));
+
+        tween.update(0.5);
+        assert!(approx_eq(tween.value(), 50.0));
+    }
+
+    #[test]
+    fn test_tween_reverse_direction() {
+        let mut tween = Tween::new(100.0, 0.0, 1.0, Easing::Linear);
+
+        tween.update(0.5);
+        assert!(approx_eq(tween.value(), 50.0));
+
+        tween.update(0.5);
+        assert!(approx_eq(tween.value(), 0.0));
+    }
+
+    #[test]
+    fn test_ease_all_functions_at_boundaries() {
+        // All easing functions should return 0.0 at t=0.0 and 1.0 at t=1.0
+        let easings = [
+            Easing::Linear,
+            Easing::QuadIn,
+            Easing::QuadOut,
+            Easing::QuadInOut,
+            Easing::CubicIn,
+            Easing::CubicOut,
+            Easing::CubicInOut,
+            Easing::QuartIn,
+            Easing::QuartOut,
+            Easing::QuartInOut,
+            Easing::QuintIn,
+            Easing::QuintOut,
+            Easing::QuintInOut,
+            Easing::SineIn,
+            Easing::SineOut,
+            Easing::SineInOut,
+            Easing::ExpoIn,
+            Easing::ExpoOut,
+            Easing::ExpoInOut,
+            Easing::CircIn,
+            Easing::CircOut,
+            Easing::CircInOut,
+            Easing::ElasticIn,
+            Easing::ElasticOut,
+            Easing::ElasticInOut,
+            Easing::BackIn,
+            Easing::BackOut,
+            Easing::BackInOut,
+            Easing::BounceIn,
+            Easing::BounceOut,
+            Easing::BounceInOut,
+        ];
+
+        for easing in &easings {
+            let at_0 = ease(0.0, *easing);
+            let at_1 = ease(1.0, *easing);
+            assert!(
+                approx_eq(at_0, 0.0),
+                "{easing:?} at t=0: expected 0.0, got {at_0}"
+            );
+            assert!(
+                approx_eq(at_1, 1.0),
+                "{easing:?} at t=1: expected 1.0, got {at_1}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_ease_in_out_symmetry() {
+        // InOut functions should be symmetric around t=0.5
+        let in_out_easings = [
+            Easing::QuadInOut,
+            Easing::CubicInOut,
+            Easing::QuartInOut,
+            Easing::QuintInOut,
+            Easing::SineInOut,
+            Easing::CircInOut,
+        ];
+
+        for easing in &in_out_easings {
+            let at_half = ease(0.5, *easing);
+            assert!(
+                approx_eq(at_half, 0.5),
+                "{easing:?} at t=0.5: expected 0.5, got {at_half}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_ease_overshoot_back() {
+        // Back easing should overshoot
+        let at_quarter = ease(0.25, Easing::BackIn);
+        assert!(
+            at_quarter < 0.0,
+            "BackIn should undershoot at start: {at_quarter}"
+        );
+
+        let at_three_quarter = ease(0.75, Easing::BackOut);
+        assert!(
+            at_three_quarter > 1.0,
+            "BackOut should overshoot at end: {at_three_quarter}"
+        );
+    }
+
+    #[test]
+    fn test_lerp_edge_cases() {
+        // Large values
+        assert!(approx_eq(lerp(0.0, 1_000_000.0, 0.5), 500_000.0));
+
+        // Negative values
+        assert!(approx_eq(lerp(-100.0, 100.0, 0.5), 0.0));
+
+        // Negative range
+        assert!(approx_eq(lerp(100.0, -100.0, 0.5), 0.0));
+    }
+
+    #[test]
+    fn test_inverse_lerp_edge_cases() {
+        // Value at start
+        assert!(approx_eq(inverse_lerp(0.0, 100.0, 0.0), 0.0));
+
+        // Value beyond range (should clamp)
+        assert!(approx_eq(inverse_lerp(0.0, 100.0, 150.0), 1.0));
+        assert!(approx_eq(inverse_lerp(0.0, 100.0, -50.0), 0.0));
+
+        // Reverse range
+        assert!(approx_eq(inverse_lerp(100.0, 0.0, 50.0), 0.5));
+    }
+
+    #[test]
+    fn test_remap_edge_cases() {
+        // Same range
+        assert!(approx_eq(remap(50.0, 0.0, 100.0, 0.0, 100.0), 50.0));
+
+        // Inverted output range
+        assert!(approx_eq(remap(25.0, 0.0, 100.0, 100.0, 0.0), 75.0));
+
+        // Very small input range
+        assert!(approx_eq(remap(0.5, 0.0, 1.0, 0.0, 1000.0), 500.0));
+    }
+
+    #[test]
+    fn test_interpolate_all_easings() {
+        // Verify interpolate works with all easings
+        let result_linear = interpolate(0.0, 100.0, 0.5, Easing::Linear);
+        assert!(approx_eq(result_linear, 50.0));
+
+        let result_cubic = interpolate(0.0, 100.0, 0.5, Easing::CubicIn);
+        assert!(approx_eq(result_cubic, 12.5)); // 0.5^3 = 0.125
+    }
+
+    #[test]
+    fn test_tween_linear_constructor() {
+        let tween = Tween::linear(0.0, 100.0, 2.0);
+        assert_eq!(tween.easing(), Easing::Linear);
+        assert_eq!(tween.duration(), 2.0);
+    }
+
+    #[test]
+    fn test_tween_ease_out_constructor() {
+        let tween = Tween::ease_out(0.0, 100.0, 2.0);
+        assert_eq!(tween.easing(), Easing::QuadOut);
+    }
+
+    #[test]
+    fn test_tween_ease_in_out_constructor() {
+        let tween = Tween::ease_in_out(0.0, 100.0, 2.0);
+        assert_eq!(tween.easing(), Easing::QuadInOut);
+    }
+
+    #[test]
+    fn test_tween_multiple_resets() {
+        let mut tween = Tween::new(0.0, 100.0, 1.0, Easing::Linear);
+
+        for _ in 0..3 {
+            tween.update(1.0);
+            assert!(tween.is_complete());
+            tween.reset();
+            assert!(!tween.is_complete());
+            assert_eq!(tween.elapsed(), 0.0);
+        }
+    }
+
+    #[test]
+    fn test_tween_retarget_preserves_easing() {
+        let mut tween = Tween::new(0.0, 100.0, 1.0, Easing::CubicInOut);
+
+        tween.update(0.5);
+        tween.retarget(200.0);
+
+        assert_eq!(tween.easing(), Easing::CubicInOut);
+        assert_eq!(tween.end(), 200.0);
+    }
+
+    #[test]
+    fn test_bounce_characteristic() {
+        // Bounce out should produce values between 0 and 1 (mostly)
+        // and end at 1.0
+        let at_end = ease(1.0, Easing::BounceOut);
+        assert!(
+            approx_eq(at_end, 1.0),
+            "BounceOut at t=1.0 should be 1.0"
+        );
+
+        // Bounce should have valid intermediate values
+        let at_half = ease(0.5, Easing::BounceOut);
+        assert!(
+            at_half > 0.5 && at_half < 1.0,
+            "BounceOut at t=0.5 should be between 0.5 and 1.0: {at_half}"
+        );
+    }
+
+    #[test]
+    fn test_elastic_characteristic() {
+        // Elastic easing should produce valid start and end values
+        let at_start = ease(0.0, Easing::ElasticOut);
+        let at_end = ease(1.0, Easing::ElasticOut);
+
+        assert!(approx_eq(at_start, 0.0), "ElasticOut at t=0.0 should be 0.0");
+        assert!(approx_eq(at_end, 1.0), "ElasticOut at t=1.0 should be 1.0");
+
+        // Elastic out should overshoot at some point (value > 1.0)
+        // Check at various points
+        let mut found_overshoot = false;
+        for i in 1..20 {
+            let t = i as f32 / 20.0;
+            let v = ease(t, Easing::ElasticOut);
+            if v > 1.0 {
+                found_overshoot = true;
+                break;
+            }
+        }
+        assert!(
+            found_overshoot,
+            "ElasticOut should overshoot 1.0 at some point"
+        );
+    }
 }

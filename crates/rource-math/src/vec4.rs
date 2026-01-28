@@ -593,4 +593,165 @@ mod tests {
         assert_eq!(format!("{v}"), "(1, 2, 3, 4)");
         assert_eq!(format!("{v:?}"), "Vec4 { x: 1.0, y: 2.0, z: 3.0, w: 4.0 }");
     }
+
+    // ============================================================
+    // Edge Case Tests (Phase 3 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_default_is_zero() {
+        let v: Vec4 = Default::default();
+        assert_eq!(v, Vec4::ZERO);
+    }
+
+    #[test]
+    fn test_division_by_zero() {
+        // IEEE 754 semantics
+        let v = Vec4::new(1.0, -1.0, 0.0, 2.0);
+        let result = v / 0.0;
+
+        assert!(result.x.is_infinite() && result.x > 0.0, "1/0 = +inf");
+        assert!(result.y.is_infinite() && result.y < 0.0, "-1/0 = -inf");
+        assert!(result.z.is_nan(), "0/0 = NaN");
+        assert!(result.w.is_infinite() && result.w > 0.0, "2/0 = +inf");
+    }
+
+    #[test]
+    fn test_div_assign_by_zero() {
+        let mut v = Vec4::new(1.0, -1.0, 0.0, 2.0);
+        v /= 0.0;
+
+        assert!(v.x.is_infinite() && v.x > 0.0);
+        assert!(v.y.is_infinite() && v.y < 0.0);
+        assert!(v.z.is_nan());
+        assert!(v.w.is_infinite() && v.w > 0.0);
+    }
+
+    #[test]
+    fn test_normalize_in_place() {
+        let mut v = Vec4::new(1.0, 2.0, 2.0, 4.0);
+        v.normalize();
+
+        assert!((v.length() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_normalize_in_place_zero_vector() {
+        let mut v = Vec4::ZERO;
+        v.normalize();
+
+        assert_eq!(v, Vec4::ZERO, "Zero vector stays zero after normalize");
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let mut v = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        v += Vec4::new(5.0, 6.0, 7.0, 8.0);
+        assert_eq!(v, Vec4::new(6.0, 8.0, 10.0, 12.0));
+    }
+
+    #[test]
+    fn test_sub_assign() {
+        let mut v = Vec4::new(6.0, 8.0, 10.0, 12.0);
+        v -= Vec4::new(5.0, 6.0, 7.0, 8.0);
+        assert_eq!(v, Vec4::new(1.0, 2.0, 3.0, 4.0));
+    }
+
+    #[test]
+    fn test_mul_assign() {
+        let mut v = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        v *= 2.0;
+        assert_eq!(v, Vec4::new(2.0, 4.0, 6.0, 8.0));
+    }
+
+    #[test]
+    fn test_lerp_extrapolation() {
+        let a = Vec4::ZERO;
+        let b = Vec4::new(10.0, 20.0, 30.0, 40.0);
+
+        // t < 0 extrapolates backwards
+        let back = a.lerp(b, -0.5);
+        assert_eq!(back, Vec4::new(-5.0, -10.0, -15.0, -20.0));
+
+        // t > 1 extrapolates forward
+        let forward = a.lerp(b, 1.5);
+        assert_eq!(forward, Vec4::new(15.0, 30.0, 45.0, 60.0));
+    }
+
+    #[test]
+    fn test_clamp_preserves_in_range() {
+        let v = Vec4::new(0.5, 0.5, 0.5, 0.5);
+        let min = Vec4::ZERO;
+        let max = Vec4::ONE;
+        let clamped = v.clamp(min, max);
+        assert_eq!(clamped, v);
+    }
+
+    #[test]
+    fn test_clamp_boundary_values() {
+        let v = Vec4::new(-1.0, 0.0, 1.0, 2.0);
+        let clamped = v.clamp(Vec4::ZERO, Vec4::ONE);
+        assert_eq!(clamped, Vec4::new(0.0, 0.0, 1.0, 1.0));
+    }
+
+    #[test]
+    fn test_approx_eq_with_epsilon() {
+        let v1 = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        let v2 = Vec4::new(
+            1.0 + crate::EPSILON * 0.5,
+            2.0 + crate::EPSILON * 0.5,
+            3.0 + crate::EPSILON * 0.5,
+            4.0 + crate::EPSILON * 0.5,
+        );
+        assert!(v1.approx_eq(v2));
+
+        let v3 = Vec4::new(1.01, 2.0, 3.0, 4.0);
+        assert!(!v1.approx_eq(v3));
+    }
+
+    #[test]
+    fn test_length_squared_zero() {
+        assert_eq!(Vec4::ZERO.length_squared(), 0.0);
+        assert_eq!(Vec4::ZERO.length(), 0.0);
+    }
+
+    #[test]
+    fn test_dot_with_self() {
+        let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        // dot(v, v) = 1 + 4 + 9 + 16 = 30
+        assert_eq!(v.dot(v), 30.0);
+        assert_eq!(v.dot(v), v.length_squared());
+    }
+
+    #[test]
+    fn test_dot_orthogonal() {
+        // X and Y unit vectors are orthogonal
+        assert_eq!(Vec4::X.dot(Vec4::Y), 0.0);
+        assert_eq!(Vec4::X.dot(Vec4::Z), 0.0);
+        assert_eq!(Vec4::X.dot(Vec4::W), 0.0);
+        assert_eq!(Vec4::Y.dot(Vec4::Z), 0.0);
+        assert_eq!(Vec4::Y.dot(Vec4::W), 0.0);
+        assert_eq!(Vec4::Z.dot(Vec4::W), 0.0);
+    }
+
+    #[test]
+    fn test_component_wise_multiplication() {
+        let a = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        let b = Vec4::new(2.0, 3.0, 4.0, 5.0);
+        let result = a * b;
+        assert_eq!(result, Vec4::new(2.0, 6.0, 12.0, 20.0));
+    }
+
+    #[test]
+    fn test_negation() {
+        let v = Vec4::new(1.0, -2.0, 3.0, -4.0);
+        assert_eq!(-v, Vec4::new(-1.0, 2.0, -3.0, 4.0));
+    }
+
+    #[test]
+    fn test_scalar_multiplication_commutativity() {
+        let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        let s = 2.5;
+        assert_eq!(v * s, s * v);
+    }
 }

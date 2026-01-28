@@ -877,4 +877,235 @@ modified:
 
         assert_eq!(commits.len(), 2);
     }
+
+    // ========================================================================
+    // PHASE 2: Expert+ Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_bzr_parse_basic() {
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: TestUser
+timestamp: Mon 2024-01-01 12:00:00 +0000
+message:
+  Basic test commit
+modified:
+  file.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "TestUser");
+        assert_eq!(commits[0].hash, "1");
+    }
+
+    #[test]
+    fn test_bzr_parse_nested() {
+        // Nested tree format with sub-paths
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: NestedUser
+timestamp: Mon 2024-01-01 12:00:00 +0000
+modified:
+  nested/deeply/path/to/file.rs
+  another/nested/path.txt
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].files.len(), 2);
+        assert_eq!(
+            commits[0].files[0].path.to_str().unwrap(),
+            "nested/deeply/path/to/file.rs"
+        );
+    }
+
+    #[test]
+    fn test_bzr_parse_unicode_author() {
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: 田中太郎 <tanaka@example.com>
+timestamp: Mon 2024-01-01 12:00:00 +0000
+modified:
+  file.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].author, "田中太郎");
+    }
+
+    #[test]
+    fn test_bzr_parse_unicode_path() {
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: User
+timestamp: Mon 2024-01-01 12:00:00 +0000
+modified:
+  文档/测试.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "文档/测试.rs");
+    }
+
+    #[test]
+    fn test_bzr_parse_all_actions() {
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: User
+timestamp: Mon 2024-01-01 12:00:00 +0000
+added:
+  added_file.rs
+modified:
+  modified_file.rs
+removed:
+  removed_file.rs
+renamed:
+  old_name.rs => new_name.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].files.len(), 4);
+
+        assert!(commits[0]
+            .files
+            .iter()
+            .any(|f| f.action == FileAction::Create));
+        assert!(commits[0]
+            .files
+            .iter()
+            .any(|f| f.action == FileAction::Modify));
+        assert!(commits[0]
+            .files
+            .iter()
+            .any(|f| f.action == FileAction::Delete));
+    }
+
+    #[test]
+    fn test_bzr_parse_tags() {
+        let log = r"------------------------------------------------------------
+revno: 5
+tags: v1.0, release-1.0
+committer: Tagger
+timestamp: Mon 2024-01-01 12:00:00 +0000
+modified:
+  tagged.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        // Tags are ignored, but commit should parse
+        assert_eq!(commits[0].author, "Tagger");
+    }
+
+    #[test]
+    fn test_bzr_parse_branch_nick() {
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: User
+branch nick: feature-branch
+timestamp: Mon 2024-01-01 12:00:00 +0000
+modified:
+  feature.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+    }
+
+    #[test]
+    fn test_bzr_parse_date_format_jan() {
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: User
+timestamp: Jan 15 14:30:00 2024 +0000
+modified:
+  file.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert!(commits[0].timestamp > 0);
+    }
+
+    #[test]
+    fn test_bzr_is_separator() {
+        assert!(BazaarParser::is_separator("------------------------------------------------------------"));
+        assert!(BazaarParser::is_separator("--------------------"));
+        assert!(!BazaarParser::is_separator("-----")); // Too short
+        assert!(!BazaarParser::is_separator("revno: 1"));
+    }
+
+    #[test]
+    fn test_bzr_parse_time() {
+        assert_eq!(parse_time("12:30:45"), Some((12, 30, 45)));
+        assert_eq!(parse_time("00:00:00"), Some((0, 0, 0)));
+        assert_eq!(parse_time("23:59:59"), Some((23, 59, 59)));
+        assert!(parse_time("invalid").is_none());
+    }
+
+    #[test]
+    fn test_bzr_is_date_format() {
+        assert!(is_date_format("2024-01-15"));
+        assert!(is_date_format("1970-01-01"));
+        assert!(!is_date_format("2024-13-01")); // Invalid month
+        assert!(!is_date_format("2024-01-32")); // Invalid day
+        assert!(!is_date_format("not-a-date"));
+    }
+
+    #[test]
+    fn test_bzr_parse_empty_log() {
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str("").unwrap();
+        assert!(commits.is_empty());
+    }
+
+    #[test]
+    fn test_bzr_parse_multiple_commits() {
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: Alice
+timestamp: Mon 2024-01-01 10:00:00 +0000
+added:
+  file1.rs
+
+------------------------------------------------------------
+revno: 2
+committer: Bob
+timestamp: Tue 2024-01-02 11:00:00 +0000
+modified:
+  file1.rs
+
+------------------------------------------------------------
+revno: 3
+committer: Charlie
+timestamp: Wed 2024-01-03 12:00:00 +0000
+added:
+  file2.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 3);
+        assert_eq!(commits[0].author, "Alice");
+        assert_eq!(commits[1].author, "Bob");
+        assert_eq!(commits[2].author, "Charlie");
+    }
+
+    #[test]
+    fn test_bzr_is_month() {
+        assert!(is_month("Jan"));
+        assert!(is_month("jan"));
+        assert!(is_month("JAN"));
+        assert!(is_month("Dec"));
+        assert!(!is_month("January")); // Full month name
+        assert!(!is_month("13"));
+    }
+
+    #[test]
+    fn test_bzr_parse_month() {
+        assert_eq!(parse_month("jan"), Some(1));
+        assert_eq!(parse_month("Feb"), Some(2));
+        assert_eq!(parse_month("DEC"), Some(12));
+        assert!(parse_month("invalid").is_none());
+    }
 }

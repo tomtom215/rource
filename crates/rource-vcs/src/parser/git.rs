@@ -717,4 +717,258 @@ A\tfile.txt
         let result = parser.parse_str(input);
         assert!(result.is_ok());
     }
+
+    // ========================================================================
+    // PHASE 2: Expert+ Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_git_parse_merge_commit() {
+        // Merge commit with multiple parents
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Merge: aaa1234 bbb5678
+Author: Merger <merger@test.com>
+Date: 1000
+
+    Merge branch 'feature'
+
+M\tmerged_file.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "Merger");
+    }
+
+    #[test]
+    fn test_git_parse_octopus_merge() {
+        // Octopus merge with 3+ parents
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Merge: aaa1234 bbb5678 ccc9012 ddd3456
+Author: Octopus <octopus@test.com>
+Date: 1000
+
+    Octopus merge of multiple branches
+
+M\toctopus.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "Octopus");
+    }
+
+    #[test]
+    fn test_git_parse_empty_commit() {
+        // Commit with no files
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: Empty <empty@test.com>
+Date: 1000
+
+    Empty commit message
+
+commit def1234567890123456789012345678901234567
+Author: NotEmpty <notempty@test.com>
+Date: 1001
+
+A\tfile.txt
+";
+        // Default skips empty commits
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "NotEmpty");
+    }
+
+    #[test]
+    fn test_git_parse_rename() {
+        // File rename with similarity percentage
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: Renamer <renamer@test.com>
+Date: 1000
+
+    Rename file
+
+R100\told/path.rs\tnew/path.rs
+R095\tsrc/old.rs\tsrc/new.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].files.len(), 2);
+        assert_eq!(commits[0].files[0].action, FileAction::Modify);
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "new/path.rs");
+    }
+
+    #[test]
+    fn test_git_parse_mode_change() {
+        // File mode change
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: ModeChanger <mode@test.com>
+Date: 1000
+
+    Make script executable
+
+T\tscript.sh
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].files[0].action, FileAction::Modify);
+    }
+
+    #[test]
+    fn test_git_parse_binary_diff() {
+        // Binary file changes
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: Binary <binary@test.com>
+Date: 1000
+
+    Add binary files
+
+A\timage.png
+A\tdata.bin
+M\texisting.so
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].files.len(), 3);
+    }
+
+    #[test]
+    fn test_git_parse_submodule() {
+        // Submodule changes
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: SubModule <submodule@test.com>
+Date: 1000
+
+    Update submodule
+
+M\tvendor/external-lib
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(
+            commits[0].files[0].path.to_str().unwrap(),
+            "vendor/external-lib"
+        );
+    }
+
+    #[test]
+    fn test_git_parse_gpg_signed() {
+        // GPG-signed commit (extra headers)
+        let log = "\
+commit abc1234567890123456789012345678901234567
+gpgsig -----BEGIN PGP SIGNATURE-----
+
+ iQEzBAABCAAdFiEE...
+ -----END PGP SIGNATURE-----
+Author: Signer <signer@test.com>
+Date: 1000
+
+    Signed commit
+
+A\tsigned.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "Signer");
+    }
+
+    #[test]
+    fn test_git_parse_unicode_author() {
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: 田中太郎 <tanaka@example.com>
+Date: 1000
+
+    Unicode author
+
+A\tfile.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].author, "田中太郎");
+    }
+
+    #[test]
+    fn test_git_parse_unicode_path() {
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: Test <test@test.com>
+Date: 1000
+
+    Unicode path
+
+A\t文档/测试.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "文档/测试.rs");
+    }
+
+    #[test]
+    fn test_git_parse_copy() {
+        // Copy operation
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: Copier <copy@test.com>
+Date: 1000
+
+    Copy file
+
+C100\tsrc/original.rs\tsrc/copy.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].files[0].action, FileAction::Create);
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "src/copy.rs");
+    }
+
+    #[test]
+    fn test_git_parse_unmerged() {
+        // Unmerged file status
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: Unmerged <unmerged@test.com>
+Date: 1000
+
+    Resolve conflict
+
+U\tconflicted.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].files[0].action, FileAction::Modify);
+    }
+
+    #[test]
+    fn test_git_parse_commit_message_with_action_like_start() {
+        // Commit message that looks like a file status line but isn't
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: Test <test@test.com>
+Date: 1000
+
+    Add new feature
+
+A\tfile.rs
+";
+        let parser = GitParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        // Should only have one file, not parse \"Add new feature\" as a file
+        assert_eq!(commits[0].files.len(), 1);
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "file.rs");
+    }
 }

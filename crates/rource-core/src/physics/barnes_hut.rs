@@ -893,4 +893,355 @@ mod tests {
             theta_5000
         );
     }
+
+    // ========================================================================
+    // Edge Case Tests (Expert+ Audit Phase 2)
+    // ========================================================================
+
+    #[test]
+    fn test_barnes_hut_two_bodies_aligned_x() {
+        // Test two bodies aligned on x-axis
+        let mut tree = create_test_tree();
+        tree.insert(Body::new(Vec2::new(-50.0, 0.0)));
+        tree.insert(Body::new(Vec2::new(50.0, 0.0)));
+
+        // Body at origin should experience forces from both sides
+        let body = Body::new(Vec2::ZERO);
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        // Forces should cancel on x-axis (symmetric)
+        assert!(
+            force.x.abs() < 0.1,
+            "X-aligned symmetric forces should cancel: got x={}",
+            force.x
+        );
+        assert!(
+            force.y.abs() < 0.001,
+            "No y-component expected: got y={}",
+            force.y
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_two_bodies_aligned_y() {
+        // Test two bodies aligned on y-axis
+        let mut tree = create_test_tree();
+        tree.insert(Body::new(Vec2::new(0.0, -50.0)));
+        tree.insert(Body::new(Vec2::new(0.0, 50.0)));
+
+        // Body at origin should experience forces from both sides
+        let body = Body::new(Vec2::ZERO);
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        // Forces should cancel on y-axis (symmetric)
+        assert!(
+            force.x.abs() < 0.001,
+            "No x-component expected: got x={}",
+            force.x
+        );
+        assert!(
+            force.y.abs() < 0.1,
+            "Y-aligned symmetric forces should cancel: got y={}",
+            force.y
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_clustered_bodies() {
+        // Test tightly clustered bodies (stress test for subdivision)
+        let mut tree = create_test_tree();
+
+        // Insert 20 bodies in a tight cluster around (10, 10)
+        for i in 0..20 {
+            let offset_x = (i % 5) as f32 * 0.5 - 1.0;
+            let offset_y = (i / 5) as f32 * 0.5 - 1.0;
+            tree.insert(Body::new(Vec2::new(10.0 + offset_x, 10.0 + offset_y)));
+        }
+
+        assert!((tree.total_mass() - 20.0).abs() < 0.001);
+
+        // Force on body far from cluster
+        let body = Body::new(Vec2::new(80.0, 80.0));
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        // Force should point away from cluster (toward upper-right)
+        assert!(force.x > 0.0, "Force should point away from cluster (x)");
+        assert!(force.y > 0.0, "Force should point away from cluster (y)");
+    }
+
+    #[test]
+    fn test_barnes_hut_scattered_bodies() {
+        // Test widely scattered bodies (minimal subdivision needed)
+        let mut tree = create_test_tree();
+
+        // Insert bodies at corners
+        tree.insert(Body::new(Vec2::new(-90.0, -90.0)));
+        tree.insert(Body::new(Vec2::new(90.0, -90.0)));
+        tree.insert(Body::new(Vec2::new(-90.0, 90.0)));
+        tree.insert(Body::new(Vec2::new(90.0, 90.0)));
+
+        assert!((tree.total_mass() - 4.0).abs() < 0.001);
+
+        // Body at center should experience near-zero net force (symmetric)
+        let body = Body::new(Vec2::ZERO);
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        assert!(
+            force.length() < 1.0,
+            "Scattered symmetric layout should produce small net force: {}",
+            force.length()
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_zero_mass_body() {
+        // Test body with zero mass
+        let mut tree = create_test_tree();
+        tree.insert(Body::with_mass(Vec2::new(50.0, 50.0), 0.0));
+
+        // Zero mass body should contribute zero to total mass
+        assert_eq!(tree.total_mass(), 0.0);
+
+        // Force calculation with zero mass in tree
+        let body = Body::new(Vec2::ZERO);
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        // Zero mass produces zero force
+        assert!(
+            force.length() < 0.001,
+            "Zero mass should produce zero force"
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_negative_positions() {
+        // Test bodies with negative positions
+        let mut tree = create_test_tree();
+
+        tree.insert(Body::new(Vec2::new(-50.0, -50.0)));
+        tree.insert(Body::new(Vec2::new(-30.0, -80.0)));
+
+        assert!((tree.total_mass() - 2.0).abs() < 0.001);
+
+        // Body in positive quadrant should be pushed away
+        let body = Body::new(Vec2::new(50.0, 50.0));
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        // Force should point away from negative quadrant (positive direction)
+        assert!(
+            force.x > 0.0,
+            "Force should push away from negative x: got {}",
+            force.x
+        );
+        assert!(
+            force.y > 0.0,
+            "Force should push away from negative y: got {}",
+            force.y
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_very_large_positions() {
+        // Test bodies at extreme positions (boundary of bounds)
+        let mut tree = create_test_tree();
+
+        tree.insert(Body::new(Vec2::new(-99.9, -99.9)));
+        tree.insert(Body::new(Vec2::new(99.9, 99.9)));
+
+        assert!((tree.total_mass() - 2.0).abs() < 0.001);
+
+        // Body at origin should experience symmetric forces
+        let body = Body::new(Vec2::ZERO);
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        // Symmetric positions should produce near-zero net force
+        assert!(
+            force.length() < 0.5,
+            "Symmetric extreme positions should produce small net force: {}",
+            force.length()
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_theta_zero_exact() {
+        // Test theta=0 produces exact calculation (no approximation)
+        let mut tree = create_test_tree();
+        tree.set_theta(0.0);
+
+        // Insert bodies that would be approximated with higher theta
+        tree.insert(Body::new(Vec2::new(50.0, 0.0)));
+        tree.insert(Body::new(Vec2::new(51.0, 0.0)));
+        tree.insert(Body::new(Vec2::new(52.0, 0.0)));
+
+        let body = Body::new(Vec2::ZERO);
+        let force = tree.calculate_force(&body, 800.0, 1.0);
+
+        // With theta=0, force should be exact sum
+        // F = k/d² for each body: 800/50² + 800/51² + 800/52²
+        // = 800/2500 + 800/2601 + 800/2704
+        // = 0.32 + 0.3076 + 0.2959 ≈ 0.9235
+        let expected_magnitude = 800.0 / 2500.0 + 800.0 / 2601.0 + 800.0 / 2704.0;
+        let actual_magnitude = force.length();
+
+        assert!(
+            (actual_magnitude - expected_magnitude).abs() < 0.05,
+            "Theta=0 should give exact sum: expected {}, got {}",
+            expected_magnitude,
+            actual_magnitude
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_theta_one_approximate() {
+        // Test theta=1.0 uses approximation
+        let mut tree_exact = create_test_tree();
+        let mut tree_approx = create_test_tree();
+
+        tree_exact.set_theta(0.0);
+        tree_approx.set_theta(1.0);
+
+        // Insert bodies in same quadrant
+        for tree in [&mut tree_exact, &mut tree_approx] {
+            tree.insert(Body::new(Vec2::new(50.0, 50.0)));
+            tree.insert(Body::new(Vec2::new(55.0, 55.0)));
+            tree.insert(Body::new(Vec2::new(60.0, 60.0)));
+        }
+
+        let body = Body::new(Vec2::ZERO);
+        let force_exact = tree_exact.calculate_force(&body, 800.0, 1.0);
+        let force_approx = tree_approx.calculate_force(&body, 800.0, 1.0);
+
+        // Both forces should be in same general direction
+        assert!(force_exact.x < 0.0 && force_approx.x < 0.0);
+        assert!(force_exact.y < 0.0 && force_approx.y < 0.0);
+
+        // Approximate force may differ in magnitude due to center-of-mass approximation
+        let diff = (force_exact - force_approx).length();
+        // Just verify the approximation is reasonable (within 50%)
+        assert!(
+            diff < force_exact.length() * 0.5,
+            "Approximation should be within 50% of exact"
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_identical_positions() {
+        // Test multiple bodies at identical positions
+        let mut tree = create_test_tree();
+
+        tree.insert(Body::new(Vec2::new(50.0, 50.0)));
+        tree.insert(Body::new(Vec2::new(50.0, 50.0)));
+        tree.insert(Body::new(Vec2::new(50.0, 50.0)));
+
+        // Total mass should be sum
+        assert!((tree.total_mass() - 3.0).abs() < 0.001);
+
+        // Force on body at same position should be zero (or very small)
+        let body = Body::new(Vec2::new(50.0, 50.0));
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        assert!(
+            force.length() < 0.1,
+            "Force on body at identical position should be minimal: {}",
+            force.length()
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_diagonal_force() {
+        // Test force direction for diagonal arrangement
+        let mut tree = create_test_tree();
+        tree.insert(Body::new(Vec2::new(50.0, 50.0)));
+
+        // Body at origin should be pushed toward negative diagonal
+        let body = Body::new(Vec2::ZERO);
+        let force = tree.calculate_force(&body, 800.0, 25.0);
+
+        // Force should be at 45 degrees (equal x and y components)
+        let angle = force.y.atan2(force.x);
+        let expected_angle = std::f32::consts::FRAC_PI_4 * 5.0; // -135 degrees or 225 degrees
+        let angle_diff = (angle - expected_angle).abs();
+        let normalized_diff = angle_diff.min(2.0 * std::f32::consts::PI - angle_diff);
+
+        assert!(
+            normalized_diff < 0.1,
+            "Force should be at ~225 degrees: got {} radians",
+            angle
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_force_inverse_square() {
+        // Verify inverse square law
+        let mut tree1 = create_test_tree();
+        let mut tree2 = create_test_tree();
+
+        tree1.insert(Body::new(Vec2::new(10.0, 0.0))); // Distance 10
+        tree2.insert(Body::new(Vec2::new(20.0, 0.0))); // Distance 20
+
+        let body = Body::new(Vec2::ZERO);
+        let force1 = tree1.calculate_force(&body, 800.0, 1.0);
+        let force2 = tree2.calculate_force(&body, 800.0, 1.0);
+
+        // Force at distance 20 should be 1/4 of force at distance 10
+        let ratio = force1.length() / force2.length();
+        assert!(
+            (ratio - 4.0).abs() < 0.1,
+            "Inverse square: force ratio should be 4, got {}",
+            ratio
+        );
+    }
+
+    #[test]
+    fn test_barnes_hut_variable_mass() {
+        // Test that mass affects force linearly
+        let mut tree1 = create_test_tree();
+        let mut tree2 = create_test_tree();
+
+        tree1.insert(Body::with_mass(Vec2::new(50.0, 0.0), 1.0));
+        tree2.insert(Body::with_mass(Vec2::new(50.0, 0.0), 3.0));
+
+        let body = Body::new(Vec2::ZERO);
+        let force1 = tree1.calculate_force(&body, 800.0, 1.0);
+        let force2 = tree2.calculate_force(&body, 800.0, 1.0);
+
+        // Force with mass 3 should be 3x force with mass 1
+        let ratio = force2.length() / force1.length();
+        assert!(
+            (ratio - 3.0).abs() < 0.1,
+            "Mass scaling: force ratio should be 3, got {}",
+            ratio
+        );
+    }
+
+    #[test]
+    fn test_adaptive_theta_zero_entities() {
+        // Edge case: zero entities
+        let theta = calculate_adaptive_theta(0);
+        assert!(
+            theta >= MIN_ADAPTIVE_THETA && theta <= MAX_ADAPTIVE_THETA,
+            "Zero entities should produce valid theta: {}",
+            theta
+        );
+    }
+
+    #[test]
+    fn test_adaptive_theta_one_entity() {
+        // Edge case: single entity
+        let theta = calculate_adaptive_theta(1);
+        assert!(
+            (theta - DEFAULT_BARNES_HUT_THETA).abs() < 0.001,
+            "Single entity should use default theta"
+        );
+    }
+
+    #[test]
+    fn test_adaptive_theta_with_fps_zero() {
+        // Edge case: zero FPS (extreme deficit)
+        let theta = calculate_adaptive_theta_with_fps(1000, Some(0.0), 60.0);
+        assert!(
+            (theta - MAX_ADAPTIVE_THETA).abs() < 0.01,
+            "Zero FPS should boost to max theta"
+        );
+    }
 }

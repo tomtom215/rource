@@ -482,4 +482,214 @@ mod tests {
     fn test_default() {
         assert_eq!(Mat3::default(), Mat3::IDENTITY);
     }
+
+    // ============================================================
+    // Edge Case Tests (Phase 3 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_from_translation() {
+        let v = Vec2::new(15.0, 25.0);
+        let t = Mat3::from_translation(v);
+        assert_eq!(t.get_translation(), v);
+
+        // Should produce same matrix as translation()
+        let t2 = Mat3::translation(15.0, 25.0);
+        assert!(t.approx_eq(t2));
+    }
+
+    #[test]
+    fn test_mul_assign() {
+        let mut m = Mat3::translation(10.0, 0.0);
+        let s = Mat3::scaling(2.0, 2.0);
+        m *= s;
+
+        // Same as m = m * s
+        let expected = Mat3::translation(10.0, 0.0) * Mat3::scaling(2.0, 2.0);
+        assert!(m.approx_eq(expected));
+    }
+
+    #[test]
+    fn test_double_transpose_identity() {
+        let m = Mat3::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
+        let double_transposed = m.transpose().transpose();
+        assert!(m.approx_eq(double_transposed), "M^T^T = M");
+    }
+
+    #[test]
+    fn test_near_singular_matrix() {
+        // Create a matrix with very small determinant (close to epsilon)
+        let nearly_singular = Mat3::new(
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            crate::EPSILON * 0.1, // Very small
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        );
+
+        // Determinant should be very small (near epsilon * 0.1)
+        let det = nearly_singular.determinant();
+        assert!(det.abs() < crate::EPSILON);
+
+        // Inverse should return None for near-singular matrix
+        assert!(
+            nearly_singular.inverse().is_none(),
+            "Near-singular matrix should not be invertible"
+        );
+    }
+
+    #[test]
+    fn test_inverse_times_original_is_identity() {
+        let m = Mat3::translation(5.0, 10.0) * Mat3::rotation(PI / 4.0) * Mat3::scaling(2.0, 3.0);
+
+        if let Some(inv) = m.inverse() {
+            let product = m * inv;
+            assert!(
+                product.approx_eq(Mat3::IDENTITY),
+                "M * M^-1 = I"
+            );
+
+            let product2 = inv * m;
+            assert!(
+                product2.approx_eq(Mat3::IDENTITY),
+                "M^-1 * M = I"
+            );
+        }
+    }
+
+    #[test]
+    fn test_transform_vector_ignores_translation() {
+        let t = Mat3::translation(100.0, 200.0);
+        let v = Vec2::new(1.0, 0.0);
+
+        // transform_vector should ignore translation
+        let result = t.transform_vector(v);
+        assert_eq!(result, v, "Translation should not affect vectors");
+    }
+
+    #[test]
+    fn test_transform_point_applies_translation() {
+        let t = Mat3::translation(100.0, 200.0);
+        let p = Vec2::ZERO;
+
+        // transform_point should apply translation
+        let result = t.transform_point(p);
+        assert_eq!(result, Vec2::new(100.0, 200.0));
+    }
+
+    #[test]
+    fn test_rotation_preserves_length() {
+        let r = Mat3::rotation(PI / 3.0);
+        let v = Vec2::new(3.0, 4.0);
+        let original_len = v.length();
+
+        let transformed = r.transform_vector(v);
+        let new_len = transformed.length();
+
+        assert!(
+            (original_len - new_len).abs() < 1e-6,
+            "Rotation should preserve length"
+        );
+    }
+
+    #[test]
+    fn test_rotation_full_circle() {
+        let r = Mat3::rotation(2.0 * PI);
+        let v = Vec2::new(1.0, 0.0);
+
+        let result = r.transform_point(v);
+        assert!(
+            result.approx_eq(v),
+            "Full rotation should return to original"
+        );
+    }
+
+    #[test]
+    fn test_scaling_zero() {
+        let s = Mat3::scaling(0.0, 0.0);
+        let v = Vec2::new(100.0, 200.0);
+
+        let result = s.transform_point(v);
+        assert_eq!(result, Vec2::ZERO, "Scaling by 0 produces zero");
+    }
+
+    #[test]
+    fn test_scaling_negative() {
+        let s = Mat3::scaling(-1.0, -1.0);
+        let v = Vec2::new(3.0, 4.0);
+
+        let result = s.transform_point(v);
+        assert_eq!(result, Vec2::new(-3.0, -4.0), "Negative scaling reflects");
+    }
+
+    #[test]
+    fn test_shearing_identity_values() {
+        let sh = Mat3::shearing(0.0, 0.0);
+        assert!(sh.approx_eq(Mat3::IDENTITY), "Zero shear is identity");
+    }
+
+    #[test]
+    fn test_determinant_scaling() {
+        // Determinant of scaling matrix = sx * sy
+        let s = Mat3::scaling(3.0, 4.0);
+        assert!((s.determinant() - 12.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_determinant_rotation() {
+        // Determinant of rotation matrix = 1 (preserves area)
+        let r = Mat3::rotation(PI / 6.0);
+        assert!((r.determinant() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_get_scale_with_uniform_scaling() {
+        let s = Mat3::uniform_scaling(5.0);
+        let scale = s.get_scale();
+        assert!((scale.x - 5.0).abs() < 1e-6);
+        assert!((scale.y - 5.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_identity_multiplication() {
+        let m = Mat3::translation(10.0, 20.0) * Mat3::rotation(PI / 4.0);
+
+        // M * I = M
+        let result1 = m * Mat3::IDENTITY;
+        assert!(result1.approx_eq(m));
+
+        // I * M = M
+        let result2 = Mat3::IDENTITY * m;
+        assert!(result2.approx_eq(m));
+    }
+
+    #[test]
+    fn test_zero_matrix() {
+        let m = Mat3::ZERO;
+        assert_eq!(m.determinant(), 0.0);
+        assert!(m.inverse().is_none());
+
+        // Zero * anything = Zero
+        let result = m * Mat3::IDENTITY;
+        assert!(result.approx_eq(Mat3::ZERO));
+    }
+
+    #[test]
+    fn test_approx_eq_with_epsilon() {
+        let m1 = Mat3::IDENTITY;
+        let mut m2_elements = [0.0f32; 9];
+        for (i, elem) in m2_elements.iter_mut().enumerate() {
+            *elem = Mat3::IDENTITY.m[i] + crate::EPSILON * 0.5;
+        }
+        let m2 = Mat3 { m: m2_elements };
+
+        assert!(m1.approx_eq(m2));
+
+        let m3 = Mat3::new(1.01, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+        assert!(!m1.approx_eq(m3));
+    }
 }
