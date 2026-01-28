@@ -344,4 +344,128 @@ mod tests {
             || (alice.b - bob.b).abs() > 0.01;
         assert!(differs, "Different names should produce different colors");
     }
+
+    // ========================================================================
+    // Additional JSON Escaping Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_escape_json_string_unicode() {
+        // Unicode characters should pass through unchanged
+        assert_eq!(escape_json_string("日本語"), "日本語");
+        assert_eq!(escape_json_string("émojis 🎉"), "émojis 🎉");
+        assert_eq!(escape_json_string("Ñoño"), "Ñoño");
+    }
+
+    #[test]
+    fn test_escape_json_string_unicode_with_escapes() {
+        // Unicode mixed with escapable characters
+        assert_eq!(
+            escape_json_string(r#"日本語 "quote""#),
+            r#"日本語 \"quote\""#
+        );
+    }
+
+    #[test]
+    fn test_escape_json_string_only_escapes() {
+        // String of only escapable characters
+        assert_eq!(escape_json_string(r#"\\"#), r#"\\\\"#);
+        assert_eq!(escape_json_string(r#""""#), r#"\"\""#);
+    }
+
+    #[test]
+    fn test_escape_json_string_long_string() {
+        // Long string should not overflow or truncate
+        let long = "a".repeat(10000);
+        let escaped = escape_json_string(&long);
+        assert_eq!(escaped.len(), 10000);
+        assert_eq!(escaped, long);
+    }
+
+    #[test]
+    fn test_escape_json_string_long_string_with_escapes() {
+        // Long string with escapes
+        let long = r#"\"#.repeat(1000);
+        let escaped = escape_json_string(&long);
+        // Each backslash becomes two backslashes
+        assert_eq!(escaped.len(), 2000);
+    }
+
+    #[test]
+    fn test_escape_json_string_alternating_escapes() {
+        // Alternating characters that need escaping
+        let input = r#"a"b\c"d\e"#;
+        let expected = r#"a\"b\\c\"d\\e"#;
+        assert_eq!(escape_json_string(input), expected);
+    }
+
+    #[test]
+    fn test_escape_json_string_whitespace() {
+        // Regular whitespace (spaces, tabs in input)
+        // Note: tabs are not escaped by this function (only backslash and quote)
+        assert_eq!(escape_json_string("hello world"), "hello world");
+        assert_eq!(escape_json_string("tab\there"), "tab\there");
+    }
+
+    #[test]
+    fn test_escape_json_string_numbers_and_symbols() {
+        // Numbers and common symbols should pass through
+        assert_eq!(escape_json_string("123.45"), "123.45");
+        assert_eq!(escape_json_string("!@#$%^&*()"), "!@#$%^&*()");
+        assert_eq!(escape_json_string("<html>"), "<html>");
+    }
+
+    // ========================================================================
+    // Color to Hex Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_color_to_hex_near_boundaries() {
+        // Values very close to 0 and 1
+        let near_zero = Color::new(0.001, 0.001, 0.001, 1.0);
+        let hex = color_to_hex(&near_zero);
+        assert_eq!(hex, "#000000");
+
+        let near_one = Color::new(0.999, 0.999, 0.999, 1.0);
+        let hex = color_to_hex(&near_one);
+        // 0.999 * 255 = 254.745, truncates to 254 = 0xFE
+        assert_eq!(hex, "#fefefe");
+    }
+
+    #[test]
+    fn test_color_to_hex_exact_midpoint() {
+        // Exact 50% gray
+        let gray = Color::new(0.5, 0.5, 0.5, 1.0);
+        let hex = color_to_hex(&gray);
+        // 0.5 * 255 = 127.5, truncates to 127 = 0x7F
+        assert_eq!(hex, "#7f7f7f");
+    }
+
+    // ========================================================================
+    // Format Author JSON Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_author_json_empty_name() {
+        let color = Color::new(1.0, 0.0, 0.0, 1.0);
+        let json = format_author_json("", &color, 1);
+        assert_eq!(json, r##"{"name":"","color":"#ff0000","commits":1}"##);
+    }
+
+    #[test]
+    fn test_format_author_json_unicode_name() {
+        let color = Color::new(0.0, 1.0, 0.0, 1.0);
+        let json = format_author_json("田中太郎", &color, 100);
+        assert_eq!(
+            json,
+            r##"{"name":"田中太郎","color":"#00ff00","commits":100}"##
+        );
+    }
+
+    #[test]
+    fn test_format_author_json_max_commits() {
+        let color = Color::new(0.0, 0.0, 1.0, 1.0);
+        let json = format_author_json("Author", &color, usize::MAX);
+        assert!(json.contains(&format!(r#""commits":{}"#, usize::MAX)));
+    }
 }

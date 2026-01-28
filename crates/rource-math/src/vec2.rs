@@ -1161,4 +1161,286 @@ mod tests {
         v.normalize();
         assert!((v.length() - 1.0).abs() < 1e-6);
     }
+
+    // ============================================================
+    // Batch Operation Tests (Phase 1 CRITICAL - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_batch_add_basic() {
+        let mut vectors = [
+            Vec2::new(1.0, 2.0),
+            Vec2::new(3.0, 4.0),
+            Vec2::new(5.0, 6.0),
+        ];
+        Vec2::batch_add(&mut vectors, Vec2::new(10.0, 20.0));
+        assert_eq!(vectors[0], Vec2::new(11.0, 22.0));
+        assert_eq!(vectors[1], Vec2::new(13.0, 24.0));
+        assert_eq!(vectors[2], Vec2::new(15.0, 26.0));
+    }
+
+    #[test]
+    fn test_batch_add_empty() {
+        let mut vectors: [Vec2; 0] = [];
+        Vec2::batch_add(&mut vectors, Vec2::new(10.0, 20.0));
+        // Should not panic on empty slice
+    }
+
+    #[test]
+    fn test_batch_add_negative_offset() {
+        let mut vectors = [Vec2::new(10.0, 20.0)];
+        Vec2::batch_add(&mut vectors, Vec2::new(-5.0, -10.0));
+        assert_eq!(vectors[0], Vec2::new(5.0, 10.0));
+    }
+
+    #[test]
+    fn test_batch_scale_basic() {
+        let mut vectors = [Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0)];
+        Vec2::batch_scale(&mut vectors, 3.0);
+        assert_eq!(vectors[0], Vec2::new(3.0, 6.0));
+        assert_eq!(vectors[1], Vec2::new(9.0, 12.0));
+    }
+
+    #[test]
+    fn test_batch_scale_zero() {
+        let mut vectors = [Vec2::new(5.0, 10.0)];
+        Vec2::batch_scale(&mut vectors, 0.0);
+        assert_eq!(vectors[0], Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_batch_scale_negative() {
+        let mut vectors = [Vec2::new(2.0, 4.0)];
+        Vec2::batch_scale(&mut vectors, -1.0);
+        assert_eq!(vectors[0], Vec2::new(-2.0, -4.0));
+    }
+
+    #[test]
+    fn test_batch_normalize_basic() {
+        let mut vectors = [Vec2::new(3.0, 4.0), Vec2::new(5.0, 12.0)];
+        Vec2::batch_normalize(&mut vectors);
+        assert!((vectors[0].length() - 1.0).abs() < 1e-6);
+        assert!((vectors[1].length() - 1.0).abs() < 1e-6);
+        // Check direction preserved
+        assert!((vectors[0].x - 0.6).abs() < 1e-6);
+        assert!((vectors[0].y - 0.8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_batch_normalize_zero_vector() {
+        let mut vectors = [Vec2::ZERO, Vec2::new(3.0, 4.0)];
+        Vec2::batch_normalize(&mut vectors);
+        // Zero vector should remain zero
+        assert_eq!(vectors[0], Vec2::ZERO);
+        // Non-zero vector should be normalized
+        assert!((vectors[1].length() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_batch_normalize_unit_vectors() {
+        let mut vectors = [Vec2::X, Vec2::Y];
+        Vec2::batch_normalize(&mut vectors);
+        // Already unit vectors should remain unchanged
+        assert!(vectors[0].approx_eq(Vec2::X));
+        assert!(vectors[1].approx_eq(Vec2::Y));
+    }
+
+    #[test]
+    fn test_batch_dot_basic() {
+        let a = [
+            Vec2::new(1.0, 0.0),
+            Vec2::new(1.0, 2.0),
+            Vec2::new(3.0, 4.0),
+        ];
+        let b = [
+            Vec2::new(0.0, 1.0),
+            Vec2::new(3.0, 4.0),
+            Vec2::new(5.0, 6.0),
+        ];
+        let dots = Vec2::batch_dot(&a, &b);
+        assert_eq!(dots.len(), 3);
+        assert_eq!(dots[0], 0.0); // perpendicular
+        assert_eq!(dots[1], 11.0); // 1*3 + 2*4
+        assert_eq!(dots[2], 39.0); // 3*5 + 4*6
+    }
+
+    #[test]
+    fn test_batch_dot_empty() {
+        let a: [Vec2; 0] = [];
+        let b: [Vec2; 0] = [];
+        let dots = Vec2::batch_dot(&a, &b);
+        assert!(dots.is_empty());
+    }
+
+    #[test]
+    #[should_panic(expected = "Slice lengths must match")]
+    fn test_batch_dot_mismatched_lengths() {
+        let a = [Vec2::X];
+        let b = [Vec2::X, Vec2::Y];
+        let _ = Vec2::batch_dot(&a, &b);
+    }
+
+    #[test]
+    fn test_batch_lengths_basic() {
+        let vectors = [
+            Vec2::new(3.0, 4.0),
+            Vec2::new(5.0, 12.0),
+            Vec2::new(8.0, 15.0),
+        ];
+        let lengths = Vec2::batch_lengths(&vectors);
+        assert_eq!(lengths.len(), 3);
+        assert_eq!(lengths[0], 5.0);
+        assert_eq!(lengths[1], 13.0);
+        assert_eq!(lengths[2], 17.0);
+    }
+
+    #[test]
+    fn test_batch_lengths_zero() {
+        let vectors = [Vec2::ZERO];
+        let lengths = Vec2::batch_lengths(&vectors);
+        assert_eq!(lengths[0], 0.0);
+    }
+
+    #[test]
+    fn test_batch_lengths_squared_basic() {
+        let vectors = [Vec2::new(3.0, 4.0), Vec2::new(1.0, 1.0)];
+        let lengths_sq = Vec2::batch_lengths_squared(&vectors);
+        assert_eq!(lengths_sq.len(), 2);
+        assert_eq!(lengths_sq[0], 25.0); // 9 + 16
+        assert_eq!(lengths_sq[1], 2.0); // 1 + 1
+    }
+
+    #[test]
+    fn test_batch_lengths_squared_empty() {
+        let vectors: [Vec2; 0] = [];
+        let lengths_sq = Vec2::batch_lengths_squared(&vectors);
+        assert!(lengths_sq.is_empty());
+    }
+
+    #[test]
+    fn test_batch_lerp_basic() {
+        let a = [Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)];
+        let b = [Vec2::new(10.0, 10.0), Vec2::new(20.0, 20.0)];
+        let mut result = [Vec2::ZERO; 2];
+        Vec2::batch_lerp(&a, &b, 0.5, &mut result);
+        assert_eq!(result[0], Vec2::new(5.0, 5.0));
+        assert_eq!(result[1], Vec2::new(15.0, 15.0));
+    }
+
+    #[test]
+    fn test_batch_lerp_t_zero() {
+        let a = [Vec2::new(1.0, 2.0)];
+        let b = [Vec2::new(10.0, 20.0)];
+        let mut result = [Vec2::ZERO; 1];
+        Vec2::batch_lerp(&a, &b, 0.0, &mut result);
+        assert_eq!(result[0], Vec2::new(1.0, 2.0));
+    }
+
+    #[test]
+    fn test_batch_lerp_t_one() {
+        let a = [Vec2::new(1.0, 2.0)];
+        let b = [Vec2::new(10.0, 20.0)];
+        let mut result = [Vec2::ZERO; 1];
+        Vec2::batch_lerp(&a, &b, 1.0, &mut result);
+        assert_eq!(result[0], Vec2::new(10.0, 20.0));
+    }
+
+    #[test]
+    #[should_panic(expected = "Slice lengths must match")]
+    fn test_batch_lerp_mismatched_a_b() {
+        let a = [Vec2::X];
+        let b = [Vec2::X, Vec2::Y];
+        let mut result = [Vec2::ZERO; 1];
+        Vec2::batch_lerp(&a, &b, 0.5, &mut result);
+    }
+
+    #[test]
+    #[should_panic(expected = "Output slice length must match")]
+    fn test_batch_lerp_mismatched_output() {
+        let a = [Vec2::X, Vec2::Y];
+        let b = [Vec2::X, Vec2::Y];
+        let mut result = [Vec2::ZERO; 1];
+        Vec2::batch_lerp(&a, &b, 0.5, &mut result);
+    }
+
+    #[test]
+    fn test_batch_distances_basic() {
+        let a = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 1.0),
+        ];
+        let b = [
+            Vec2::new(3.0, 4.0),
+            Vec2::new(5.0, 12.0),
+            Vec2::new(4.0, 5.0),
+        ];
+        let distances = Vec2::batch_distances(&a, &b);
+        assert_eq!(distances.len(), 3);
+        assert_eq!(distances[0], 5.0);
+        assert_eq!(distances[1], 13.0);
+        assert_eq!(distances[2], 5.0); // sqrt((4-1)^2 + (5-1)^2) = sqrt(9+16) = 5
+    }
+
+    #[test]
+    fn test_batch_distances_same_points() {
+        let a = [Vec2::new(5.0, 5.0)];
+        let b = [Vec2::new(5.0, 5.0)];
+        let distances = Vec2::batch_distances(&a, &b);
+        assert_eq!(distances[0], 0.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Slice lengths must match")]
+    fn test_batch_distances_mismatched() {
+        let a = [Vec2::X];
+        let b = [Vec2::X, Vec2::Y];
+        let _ = Vec2::batch_distances(&a, &b);
+    }
+
+    #[test]
+    fn test_batch_transform_affine_basic() {
+        let mut vectors = [Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0)];
+        Vec2::batch_transform_affine(&mut vectors, 2.0, Vec2::new(10.0, 10.0));
+        assert_eq!(vectors[0], Vec2::new(12.0, 14.0)); // 1*2+10, 2*2+10
+        assert_eq!(vectors[1], Vec2::new(16.0, 18.0)); // 3*2+10, 4*2+10
+    }
+
+    #[test]
+    fn test_batch_transform_affine_identity() {
+        let original = [Vec2::new(5.0, 7.0)];
+        let mut vectors = original;
+        Vec2::batch_transform_affine(&mut vectors, 1.0, Vec2::ZERO);
+        assert_eq!(vectors[0], original[0]);
+    }
+
+    #[test]
+    fn test_batch_transform_affine_scale_only() {
+        let mut vectors = [Vec2::new(2.0, 3.0)];
+        Vec2::batch_transform_affine(&mut vectors, 3.0, Vec2::ZERO);
+        assert_eq!(vectors[0], Vec2::new(6.0, 9.0));
+    }
+
+    #[test]
+    fn test_batch_transform_affine_offset_only() {
+        let mut vectors = [Vec2::new(2.0, 3.0)];
+        Vec2::batch_transform_affine(&mut vectors, 1.0, Vec2::new(5.0, 10.0));
+        assert_eq!(vectors[0], Vec2::new(7.0, 13.0));
+    }
+
+    #[test]
+    fn test_batch_operations_large_slice() {
+        // Test that batch operations work correctly with larger slices
+        // (important for auto-vectorization verification)
+        let mut vectors: Vec<Vec2> = (0..100)
+            .map(|i| Vec2::new(i as f32, i as f32 * 2.0))
+            .collect();
+        let original = vectors.clone();
+
+        Vec2::batch_scale(&mut vectors, 2.0);
+        for (i, v) in vectors.iter().enumerate() {
+            assert_eq!(v.x, original[i].x * 2.0);
+            assert_eq!(v.y, original[i].y * 2.0);
+        }
+    }
 }

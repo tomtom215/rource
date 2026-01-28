@@ -913,4 +913,140 @@ mod tests {
             );
         }
     }
+
+    // ============================================================
+    // Perspective Edge Case Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    /// Tests perspective with near-zero aspect ratio (release build)
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn test_perspective_near_zero_aspect() {
+        use std::f32::consts::PI;
+
+        // Near-zero aspect ratio should not produce NaN in release builds
+        let m = Mat4::perspective(PI / 4.0, 0.0001, 0.1, 100.0);
+
+        for i in 0..16 {
+            assert!(
+                m.m[i].is_finite(),
+                "Matrix element {} is not finite with near-zero aspect",
+                i
+            );
+        }
+    }
+
+    /// Tests perspective with zero aspect ratio (release build)
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn test_perspective_zero_aspect() {
+        use std::f32::consts::PI;
+
+        // Zero aspect ratio should not produce NaN in release builds
+        let m = Mat4::perspective(PI / 4.0, 0.0, 0.1, 100.0);
+
+        for i in 0..16 {
+            assert!(
+                m.m[i].is_finite(),
+                "Matrix element {} is not finite with zero aspect",
+                i
+            );
+        }
+    }
+
+    /// Tests perspective with very small FOV (release build)
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn test_perspective_very_small_fov() {
+        // Very small FOV should produce finite values
+        let m = Mat4::perspective(0.001, 1.0, 0.1, 100.0);
+
+        for i in 0..16 {
+            assert!(
+                m.m[i].is_finite(),
+                "Matrix element {} is not finite with very small FOV",
+                i
+            );
+        }
+    }
+
+    /// Tests perspective with FOV near PI (release build)
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn test_perspective_fov_near_pi() {
+        use std::f32::consts::PI;
+
+        // FOV near PI (but still valid) should produce finite values
+        let m = Mat4::perspective(PI - 0.001, 1.0, 0.1, 100.0);
+
+        for i in 0..16 {
+            assert!(
+                m.m[i].is_finite(),
+                "Matrix element {} is not finite with FOV near PI",
+                i
+            );
+        }
+    }
+
+    /// Tests perspective with very close near/far planes (release build)
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn test_perspective_close_near_far() {
+        use std::f32::consts::PI;
+
+        // Very close near and far planes should not produce NaN
+        let m = Mat4::perspective(PI / 4.0, 1.0, 1.0, 1.001);
+
+        for i in 0..16 {
+            assert!(
+                m.m[i].is_finite(),
+                "Matrix element {} is not finite with close near/far",
+                i
+            );
+        }
+    }
+
+    /// Tests that perspective panics in debug build with invalid FOV
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "fov_y must be between 0 and PI")]
+    fn test_perspective_invalid_fov_negative_debug() {
+        let _ = Mat4::perspective(-0.1, 1.0, 0.1, 100.0);
+    }
+
+    /// Tests that perspective panics in debug build with FOV >= PI
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "fov_y must be between 0 and PI")]
+    fn test_perspective_invalid_fov_too_large_debug() {
+        use std::f32::consts::PI;
+        let _ = Mat4::perspective(PI, 1.0, 0.1, 100.0);
+    }
+
+    /// Tests that perspective panics in debug build with zero aspect
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "aspect ratio must be positive")]
+    fn test_perspective_invalid_aspect_debug() {
+        use std::f32::consts::PI;
+        let _ = Mat4::perspective(PI / 4.0, 0.0, 0.1, 100.0);
+    }
+
+    /// Tests that perspective panics in debug build with negative near
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "near plane must be positive")]
+    fn test_perspective_invalid_near_debug() {
+        use std::f32::consts::PI;
+        let _ = Mat4::perspective(PI / 4.0, 1.0, -0.1, 100.0);
+    }
+
+    /// Tests that perspective panics in debug build with far <= near
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "far plane must be greater than near")]
+    fn test_perspective_invalid_far_debug() {
+        use std::f32::consts::PI;
+        let _ = Mat4::perspective(PI / 4.0, 1.0, 100.0, 10.0);
+    }
 }

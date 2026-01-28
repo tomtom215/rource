@@ -363,4 +363,175 @@ mod tests {
         let json = info.to_json();
         assert!(json.contains('\\')); // Contains escaped quotes/backslashes
     }
+
+    // ========================================================================
+    // Additional Escape JSON Tests
+    // ========================================================================
+
+    #[test]
+    fn test_escape_json_newlines() {
+        assert_eq!(escape_json("line\nbreak"), "line\\nbreak");
+        assert_eq!(escape_json("line\r\nbreak"), "line\\r\\nbreak");
+    }
+
+    #[test]
+    fn test_escape_json_tabs() {
+        assert_eq!(escape_json("col1\tcol2"), "col1\\tcol2");
+    }
+
+    #[test]
+    fn test_escape_json_mixed_special_chars() {
+        assert_eq!(
+            escape_json("quote\"newline\ntab\t"),
+            "quote\\\"newline\\ntab\\t"
+        );
+    }
+
+    #[test]
+    fn test_escape_json_empty() {
+        assert_eq!(escape_json(""), "");
+    }
+
+    #[test]
+    fn test_escape_json_unicode_preserved() {
+        assert_eq!(escape_json("日本語テスト"), "日本語テスト");
+        assert_eq!(escape_json("emoji 🎉"), "emoji 🎉");
+    }
+
+    // ========================================================================
+    // Additional Color to Hex Tests
+    // ========================================================================
+
+    #[test]
+    fn test_color_to_hex_primary_colors() {
+        let cyan = rource_math::Color::new(0.0, 1.0, 1.0, 1.0);
+        assert_eq!(color_to_hex(cyan), "#00FFFF");
+
+        let magenta = rource_math::Color::new(1.0, 0.0, 1.0, 1.0);
+        assert_eq!(color_to_hex(magenta), "#FF00FF");
+
+        let yellow = rource_math::Color::new(1.0, 1.0, 0.0, 1.0);
+        assert_eq!(color_to_hex(yellow), "#FFFF00");
+    }
+
+    #[test]
+    fn test_color_to_hex_ignores_alpha() {
+        let semi_transparent = rource_math::Color::new(1.0, 0.0, 0.0, 0.5);
+        assert_eq!(color_to_hex(semi_transparent), "#FF0000");
+
+        let fully_transparent = rource_math::Color::new(0.0, 1.0, 0.0, 0.0);
+        assert_eq!(color_to_hex(fully_transparent), "#00FF00");
+    }
+
+    // ========================================================================
+    // Build Hover JSON Tests
+    // ========================================================================
+
+    #[test]
+    fn test_build_hover_json_file() {
+        let color = rource_math::Color::new(1.0, 0.5, 0.0, 1.0);
+        let json = build_hover_json("file", "main.rs", "src/main.rs", "rs", color, 5.0);
+
+        assert!(json.contains(r#""entityType":"file""#));
+        assert!(json.contains(r#""name":"main.rs""#));
+        assert!(json.contains(r#""path":"src/main.rs""#));
+        assert!(json.contains(r#""extension":"rs""#));
+        assert!(json.contains(r#""radius":5"#));
+        assert!(json.contains(r##""color":"#FF7F00""##));
+    }
+
+    #[test]
+    fn test_build_hover_json_user() {
+        let color = rource_math::Color::new(0.0, 0.5, 1.0, 1.0);
+        let json = build_hover_json("user", "Alice", "", "", color, 10.0);
+
+        assert!(json.contains(r#""entityType":"user""#));
+        assert!(json.contains(r#""name":"Alice""#));
+        assert!(json.contains(r#""path":"""#));
+        assert!(json.contains(r#""extension":"""#));
+    }
+
+    #[test]
+    fn test_build_hover_json_directory() {
+        let color = rource_math::Color::new(0.6, 0.45, 0.3, 1.0);
+        let json = build_hover_json("directory", "src", "project/src", "", color, 15.0);
+
+        assert!(json.contains(r#""entityType":"directory""#));
+        assert!(json.contains(r#""name":"src""#));
+        assert!(json.contains(r#""path":"project/src""#));
+    }
+
+    #[test]
+    fn test_build_hover_json_escapes_special_chars() {
+        let color = rource_math::Color::new(1.0, 1.0, 1.0, 1.0);
+        let json = build_hover_json(
+            "file",
+            "file\"with\"quotes.txt",
+            "path\\with\\backslashes",
+            "txt",
+            color,
+            3.0,
+        );
+
+        // Should have escaped quotes and backslashes
+        assert!(json.contains(r#"\"with\""#));
+        assert!(json.contains(r#"path\\with\\backslashes"#));
+    }
+
+    #[test]
+    fn test_build_hover_json_unicode_names() {
+        let color = rource_math::Color::new(0.5, 0.5, 0.5, 1.0);
+        let json = build_hover_json(
+            "file",
+            "日本語.txt",
+            "フォルダ/日本語.txt",
+            "txt",
+            color,
+            4.0,
+        );
+
+        assert!(json.contains("日本語.txt"));
+        assert!(json.contains("フォルダ/日本語.txt"));
+    }
+
+    // ========================================================================
+    // Write Color Hex Into Tests
+    // ========================================================================
+
+    #[test]
+    fn test_write_color_hex_into_zero_allocation() {
+        let color = rource_math::Color::new(1.0, 0.0, 0.0, 1.0);
+        let mut buffer = String::with_capacity(7);
+        write_color_hex_into(color, &mut buffer);
+        assert_eq!(buffer, "#FF0000");
+    }
+
+    #[test]
+    fn test_write_color_hex_into_appends() {
+        let color = rource_math::Color::new(0.0, 1.0, 0.0, 1.0);
+        let mut buffer = String::from("prefix:");
+        write_color_hex_into(color, &mut buffer);
+        assert_eq!(buffer, "prefix:#00FF00");
+    }
+
+    // ========================================================================
+    // Needs JSON Escaping Tests
+    // ========================================================================
+
+    #[test]
+    fn test_needs_json_escaping_detects_all_special() {
+        assert!(needs_json_escaping("has\\backslash"));
+        assert!(needs_json_escaping("has\"quote"));
+        assert!(needs_json_escaping("has\nnewline"));
+        assert!(needs_json_escaping("has\rcarriage"));
+        assert!(needs_json_escaping("has\ttab"));
+    }
+
+    #[test]
+    fn test_needs_json_escaping_normal_strings() {
+        assert!(!needs_json_escaping("normal string"));
+        assert!(!needs_json_escaping("with numbers 123"));
+        assert!(!needs_json_escaping("unicode 日本語"));
+        assert!(!needs_json_escaping(""));
+    }
 }

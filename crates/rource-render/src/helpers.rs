@@ -852,4 +852,130 @@ mod tests {
         assert!((compute_user_glow_alpha(base, 1) - 0.1125).abs() < 0.001);
         assert!((compute_user_glow_alpha(base, 2) - 0.075).abs() < 0.001);
     }
+
+    // ============================================================
+    // Branch Color Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_compute_branch_color_basic() {
+        let dir_color = Color::new(0.5, 0.4, 0.3, 1.0);
+        let branch = compute_branch_color(dir_color, 0.5);
+
+        // Branch should be slightly brighter (1.1x for R/G, 1.2x for B)
+        assert!((branch.r - 0.55).abs() < 0.001);
+        assert!((branch.g - 0.44).abs() < 0.001);
+        assert!((branch.b - 0.36).abs() < 0.001);
+        assert!((branch.a - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_branch_color_full_opacity() {
+        let dir_color = Color::new(0.5, 0.4, 0.3, 1.0);
+        let branch = compute_branch_color(dir_color, 1.0);
+        assert!((branch.a - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_branch_color_zero_opacity() {
+        let dir_color = Color::new(0.5, 0.4, 0.3, 1.0);
+        let branch = compute_branch_color(dir_color, 0.0);
+        assert!((branch.a - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_branch_color_default_uses_constant() {
+        let dir_color = Color::new(0.5, 0.4, 0.3, 1.0);
+        let branch_default = compute_branch_color_default(dir_color);
+        let branch_explicit = compute_branch_color(dir_color, DEFAULT_BRANCH_OPACITY);
+
+        // Should be identical
+        assert!((branch_default.r - branch_explicit.r).abs() < 0.001);
+        assert!((branch_default.g - branch_explicit.g).abs() < 0.001);
+        assert!((branch_default.b - branch_explicit.b).abs() < 0.001);
+        assert!((branch_default.a - branch_explicit.a).abs() < 0.001);
+    }
+
+    // ============================================================
+    // Glow Color Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_compute_file_glow_color_sets_alpha() {
+        let file_color = Color::new(0.8, 0.6, 0.4, 1.0);
+        let intensity = 0.5;
+        let glow = compute_file_glow_color(file_color, intensity);
+
+        // RGB should be preserved
+        assert!((glow.r - 0.8).abs() < 0.001);
+        assert!((glow.g - 0.6).abs() < 0.001);
+        assert!((glow.b - 0.4).abs() < 0.001);
+        // Alpha should be set to intensity
+        assert!((glow.a - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_file_glow_color_zero_intensity() {
+        let file_color = Color::new(0.5, 0.5, 0.5, 0.7);
+        let glow = compute_file_glow_color(file_color, 0.0);
+
+        // Alpha should be 0
+        assert!((glow.a - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_file_glow_color_full_intensity() {
+        let file_color = Color::new(0.5, 0.5, 0.5, 0.7);
+        let glow = compute_file_glow_color(file_color, 1.0);
+
+        // Alpha should be 1
+        assert!((glow.a - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_directory_glow_color_basic() {
+        let dir_color = Color::new(0.3, 0.3, 0.4, 1.0);
+        let glow = compute_directory_glow_color(dir_color);
+
+        // RGB should be preserved
+        assert!((glow.r - 0.3).abs() < 0.01);
+        assert!((glow.g - 0.3).abs() < 0.01);
+        assert!((glow.b - 0.4).abs() < 0.01);
+        // Alpha should be set to 0.1
+        assert!((glow.a - 0.1).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_directory_glow_color_ignores_input_alpha() {
+        let dir_color = Color::new(0.3, 0.3, 0.4, 0.55);
+        let glow = compute_directory_glow_color(dir_color);
+
+        // Alpha should be 0.1 regardless of input
+        assert!((glow.a - 0.1).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_glow_alphas_are_lower_than_base() {
+        let base = Color::new(0.4, 0.4, 0.4, 1.0);
+
+        let file_glow = compute_file_glow_color(base, 0.3);
+        let dir_glow = compute_directory_glow_color(base);
+
+        // Both glows should have lower alpha than base
+        assert!(file_glow.a < base.a);
+        assert!(dir_glow.a < base.a);
+    }
+
+    #[test]
+    fn test_compute_directory_center_color() {
+        let dir_color = Color::new(0.3, 0.4, 0.5, 1.0);
+        let center = compute_directory_center_color(dir_color);
+
+        // RGB should be preserved
+        assert!((center.r - 0.3).abs() < 0.001);
+        assert!((center.g - 0.4).abs() < 0.001);
+        assert!((center.b - 0.5).abs() < 0.001);
+        // Alpha should be 0.4
+        assert!((center.a - 0.4).abs() < 0.001);
+    }
 }

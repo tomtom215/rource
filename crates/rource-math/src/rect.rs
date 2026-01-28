@@ -898,4 +898,184 @@ mod tests {
         let b = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(100.0, 50.0));
         assert!(format!("{b}").contains("Bounds"));
     }
+
+    // ============================================================
+    // Bounds Method Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_bounds_is_valid() {
+        // Valid bounds (positive area)
+        let valid = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        assert!(valid.is_valid());
+
+        // Invalid bounds (inverted)
+        let inverted = Bounds::new(Vec2::new(10.0, 10.0), Vec2::new(0.0, 0.0));
+        assert!(!inverted.is_valid());
+
+        // Zero area (min == max)
+        let zero_area = Bounds::new(Vec2::new(5.0, 5.0), Vec2::new(5.0, 5.0));
+        assert!(!zero_area.is_valid());
+
+        // Zero width only
+        let zero_width = Bounds::new(Vec2::new(5.0, 0.0), Vec2::new(5.0, 10.0));
+        assert!(!zero_width.is_valid());
+
+        // Zero height only
+        let zero_height = Bounds::new(Vec2::new(0.0, 5.0), Vec2::new(10.0, 5.0));
+        assert!(!zero_height.is_valid());
+    }
+
+    #[test]
+    fn test_bounds_is_empty() {
+        // Valid bounds (not empty)
+        let valid = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        assert!(!valid.is_empty());
+
+        // Inverted bounds (empty)
+        let inverted = Bounds::new(Vec2::new(10.0, 10.0), Vec2::new(0.0, 0.0));
+        assert!(inverted.is_empty());
+
+        // Zero area (empty)
+        let zero_area = Bounds::new(Vec2::new(5.0, 5.0), Vec2::new(5.0, 5.0));
+        assert!(zero_area.is_empty());
+
+        // Zero width only (empty)
+        let zero_width = Bounds::new(Vec2::new(5.0, 0.0), Vec2::new(5.0, 10.0));
+        assert!(zero_width.is_empty());
+
+        // Zero height only (empty)
+        let zero_height = Bounds::new(Vec2::new(0.0, 5.0), Vec2::new(10.0, 5.0));
+        assert!(zero_height.is_empty());
+    }
+
+    #[test]
+    fn test_bounds_is_valid_and_is_empty_inverse_relationship() {
+        // For normal bounds, is_valid and is_empty should be opposites
+        let bounds = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        assert_eq!(bounds.is_valid(), !bounds.is_empty());
+
+        // For inverted bounds
+        let inverted = Bounds::new(Vec2::new(10.0, 10.0), Vec2::new(0.0, 0.0));
+        assert_eq!(inverted.is_valid(), !inverted.is_empty());
+    }
+
+    #[test]
+    fn test_bounds_approx_eq() {
+        let b1 = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        let b2 = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        assert!(b1.approx_eq(b2));
+
+        // With small epsilon difference
+        let b3 = Bounds::new(Vec2::new(crate::EPSILON * 0.5, 0.0), Vec2::new(10.0, 10.0));
+        assert!(b1.approx_eq(b3));
+
+        // With larger difference
+        let b4 = Bounds::new(Vec2::new(0.1, 0.0), Vec2::new(10.0, 10.0));
+        assert!(!b1.approx_eq(b4));
+
+        // Different max
+        let b5 = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.1, 10.0));
+        assert!(!b1.approx_eq(b5));
+    }
+
+    #[test]
+    fn test_bounds_from_center_half_extents() {
+        let center = Vec2::new(50.0, 50.0);
+        let half_extents = Vec2::new(25.0, 15.0);
+        let b = Bounds::from_center_half_extents(center, half_extents);
+
+        assert_eq!(b.min, Vec2::new(25.0, 35.0));
+        assert_eq!(b.max, Vec2::new(75.0, 65.0));
+        assert_eq!(b.center(), center);
+        assert_eq!(b.half_extents(), half_extents);
+    }
+
+    #[test]
+    fn test_bounds_from_center_half_extents_zero() {
+        let center = Vec2::new(10.0, 10.0);
+        let half_extents = Vec2::ZERO;
+        let b = Bounds::from_center_half_extents(center, half_extents);
+
+        assert_eq!(b.min, center);
+        assert_eq!(b.max, center);
+        assert!(b.is_empty());
+    }
+
+    // ============================================================
+    // Rect Method Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_rect_expand_xy() {
+        let r = Rect::new(10.0, 20.0, 100.0, 50.0);
+        let expanded = r.expand_xy(5.0, 10.0);
+
+        // Expands in all directions
+        assert_eq!(expanded.x, 5.0); // 10 - 5
+        assert_eq!(expanded.y, 10.0); // 20 - 10
+        assert_eq!(expanded.width, 110.0); // 100 + 2*5
+        assert_eq!(expanded.height, 70.0); // 50 + 2*10
+    }
+
+    #[test]
+    fn test_rect_expand_xy_zero() {
+        let r = Rect::new(10.0, 20.0, 100.0, 50.0);
+        let expanded = r.expand_xy(0.0, 0.0);
+
+        assert!(r.approx_eq(expanded));
+    }
+
+    #[test]
+    fn test_rect_expand_xy_negative() {
+        let r = Rect::new(10.0, 20.0, 100.0, 50.0);
+        let contracted = r.expand_xy(-5.0, -5.0);
+
+        assert_eq!(contracted.x, 15.0);
+        assert_eq!(contracted.y, 25.0);
+        assert_eq!(contracted.width, 90.0);
+        assert_eq!(contracted.height, 40.0);
+    }
+
+    #[test]
+    fn test_rect_from_pos_size() {
+        let pos = Vec2::new(10.0, 20.0);
+        let size = Vec2::new(100.0, 50.0);
+        let r = Rect::from_pos_size(pos, size);
+
+        assert_eq!(r.x, 10.0);
+        assert_eq!(r.y, 20.0);
+        assert_eq!(r.width, 100.0);
+        assert_eq!(r.height, 50.0);
+    }
+
+    #[test]
+    fn test_rect_from_pos_size_zero() {
+        let r = Rect::from_pos_size(Vec2::ZERO, Vec2::ZERO);
+
+        assert_eq!(r.x, 0.0);
+        assert_eq!(r.y, 0.0);
+        assert_eq!(r.width, 0.0);
+        assert_eq!(r.height, 0.0);
+    }
+
+    #[test]
+    fn test_bounds_translate() {
+        let b = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(30.0, 40.0));
+        let translated = b.translate(Vec2::new(5.0, 10.0));
+
+        assert_eq!(translated.min, Vec2::new(15.0, 30.0));
+        assert_eq!(translated.max, Vec2::new(35.0, 50.0));
+        // Size should remain the same
+        assert_eq!(translated.size(), b.size());
+    }
+
+    #[test]
+    fn test_bounds_translate_negative() {
+        let b = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(30.0, 40.0));
+        let translated = b.translate(Vec2::new(-5.0, -10.0));
+
+        assert_eq!(translated.min, Vec2::new(5.0, 10.0));
+        assert_eq!(translated.max, Vec2::new(25.0, 30.0));
+    }
 }
