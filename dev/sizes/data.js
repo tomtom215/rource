@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769620644132,
+  "lastUpdate": 1769624276407,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3923,6 +3923,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/427b31ac12eb634cfa528ebd1ad246ceb85a7cf3"
         },
         "date": 1769620643749,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "264447bac1f9a705a2ce737f7d449a284d60e52b",
+          "message": "Merge pull request #221 from tomtom215/claude/complete-codebase-audit-6DLCQ\n\nAdd formal verification proofs for Mat3 operations using Verus",
+          "timestamp": "2026-01-28T19:15:42+01:00",
+          "tree_id": "35a1feee53418bc8a593dd7485fe5d8fac63c4c3",
+          "url": "https://github.com/tomtom215/rource/commit/264447bac1f9a705a2ce737f7d449a284d60e52b"
+        },
+        "date": 1769624274970,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
