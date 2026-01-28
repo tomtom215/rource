@@ -211,30 +211,41 @@ The following are **NEVER** valid performance claims:
 | "Should be faster" | Speculation, not measurement | Benchmark before claiming |
 | "Feels faster" | Subjective, unmeasurable | Use objective metrics |
 | "Minor improvement" | Vague, unquantified | Provide exact numbers |
-| Timing variations within noise margin | Measurement artifacts | "Within noise margin (±X%)" |
+| Timing variations without statistical analysis | Measurement requires rigor | Use criterion: 100+ samples, 95% CI, reproducible |
 
-### The Noise Margin Rule
+### Measurement Precision at Scale
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PRECISION AT PICOSECOND SCALE                             │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  CRITICAL: Timing variations ≤ 10% between runs are typically NOISE.        │
+│  At our frame budget of 20µs (target: <10µs), EVERY PERCENT MATTERS:        │
 │                                                                             │
-│  Sources of noise:                                                          │
-│    • CPU frequency scaling (turbo boost, thermal throttling)                │
-│    • Cache state differences (cold vs warm cache)                           │
-│    • System load (background processes)                                     │
-│    • Memory allocation timing                                               │
-│    • Kernel scheduling variations                                           │
+│    • 10% of 20µs = 2µs = 6,000 CPU cycles = NOT NOISE                       │
+│    • 5% of 20µs = 1µs = 3,000 CPU cycles = SIGNIFICANT                      │
+│    • 1% of 20µs = 200ns = 600 CPU cycles = MEASURABLE                       │
 │                                                                             │
-│  To claim a real improvement:                                               │
-│    1. Use criterion with 100+ samples                                       │
+│  We are measuring INDIVIDUAL CPU CLOCK CYCLES. There is no such thing       │
+│  as "acceptable noise" at this precision level. Timing variations that      │
+│  would be noise in millisecond-scale applications are REAL COSTS here.      │
+│                                                                             │
+│  Sources of variance (NOT noise - actual measurement considerations):       │
+│    • CPU frequency scaling: Control with `cpupower frequency-set`           │
+│    • Cache state: Warm up with 100+ samples before measuring                │
+│    • System load: Use dedicated test environment, minimize processes        │
+│    • Memory allocation: Pre-allocate, avoid measurement-time allocs         │
+│    • Kernel scheduling: Use real-time priority, isolate CPU cores           │
+│                                                                             │
+│  To establish statistical confidence:                                       │
+│    1. Use criterion with 100+ samples (statistical rigor)                   │
 │    2. Verify 95% confidence intervals don't overlap                         │
-│    3. Improvement must exceed noise margin                                  │
-│    4. Results must be reproducible across multiple runs                     │
+│    3. Report exact values: "52.3% improvement" not "~50%"                   │
+│    4. Run multiple independent benchmark sessions                           │
+│    5. Control for variance sources listed above                             │
 │                                                                             │
-│  If criterion reports "No change" or "Change within noise threshold"        │
-│  then there is NO performance change - do not claim otherwise.              │
+│  If criterion reports "No change" - report exactly that.                    │
+│  If criterion reports a change - verify it's reproducible, then report it.  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -267,6 +278,48 @@ Example of proper self-correction:
 > Module refactoring does not affect compiled binary; observed timing
 > differences were measurement artifacts within noise margin. The correct
 > claim is: verified no regression against defined thresholds."
+
+### Self-Improvement Protocol
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ITERATIVE EXCELLENCE IMPROVEMENT                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  When ANY EXPERT+ violation occurs, this document MUST be updated:          │
+│                                                                             │
+│  1. IDENTIFY the violation class                                            │
+│     └─ Performance claim without evidence                                   │
+│     └─ Approximation instead of exact measurement                           │
+│     └─ Overstated or exaggerated results                                    │
+│     └─ Skipped verification step                                            │
+│     └─ Incorrect precision assumptions                                      │
+│                                                                             │
+│  2. DOCUMENT the specific error                                             │
+│     └─ What was claimed vs. what was true                                   │
+│     └─ Why the error occurred (root cause)                                  │
+│     └─ What damage could have resulted                                      │
+│                                                                             │
+│  3. ADD PREVENTIVE GUIDANCE to CLAUDE.md                                    │
+│     └─ New rule, checklist item, or warning                                 │
+│     └─ Specific enough to prevent recurrence                                │
+│     └─ Placed in the relevant section                                       │
+│                                                                             │
+│  4. UPDATE the Lessons Learned log (below)                                  │
+│     └─ Date, violation type, correction made                                │
+│                                                                             │
+│  This creates an iterative, self-improving system that tightens             │
+│  tolerances with each session. The goal: ZERO EXPERT+ violations.           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Lessons Learned Log
+
+| Date | Violation | Root Cause | Correction Added |
+|------|-----------|------------|------------------|
+| 2026-01-28 | Reported timing variations as performance improvements | Module refactoring doesn't affect compiled binary | Added "Invalid Performance Claims" table; clarified code quality vs performance |
+| 2026-01-28 | Stated "10% is noise" at picosecond precision | Incorrect understanding of scale | Replaced "Noise Margin Rule" with "Measurement Precision at Scale" showing 10% = 6,000 CPU cycles |
 
 ---
 
@@ -343,8 +396,8 @@ On a 3.0 GHz CPU (typical test hardware):
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
 | Frame time | ~18-23 µs | <20 µs | Near target |
-| Optimization phases | 77 | Ongoing | Active |
-| Algorithms evaluated | 77+ | Comprehensive | See ALGORITHM_CANDIDATES.md |
+| Optimization phases | 79 | Ongoing | Active |
+| Algorithms evaluated | 79+ | Comprehensive | See ALGORITHM_CANDIDATES.md |
 
 ---
 
@@ -363,7 +416,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Precision | Picosecond/nanosecond measurements |
 | Frame Budget | Total render time < 20 µs |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (77 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (79 phases)
 
 ---
 
@@ -850,13 +903,15 @@ git stash pop
 
 | Benchmark | What It Measures | Location |
 |-----------|------------------|----------|
-| `bench_label_placer_new` | LabelPlacer creation cost | render_phases.rs |
-| `bench_label_placer_reset` | Per-frame reset cost | render_phases.rs |
-| `bench_label_placer_try_place` | Single label placement | render_phases.rs |
-| `bench_label_placer_try_place_with_fallback` | Placement with collision | render_phases.rs |
-| `bench_full_label_placement_scenario` | Full frame (30+50 labels) | render_phases.rs |
-| `bench_beam_sorting` | Action beam ordering | render_phases.rs |
-| `bench_user_label_sorting` | User label prioritization | render_phases.rs |
+| `bench_label_placer_new` | LabelPlacer creation cost | render_phases/tests/benchmark_tests.rs |
+| `bench_label_placer_reset` | Per-frame reset cost | render_phases/tests/benchmark_tests.rs |
+| `bench_label_placer_try_place` | Single label placement | render_phases/tests/benchmark_tests.rs |
+| `bench_label_placer_try_place_with_fallback` | Placement with collision | render_phases/tests/benchmark_tests.rs |
+| `bench_full_label_placement_scenario` | Full frame (30+50 labels) | render_phases/tests/benchmark_tests.rs |
+| `bench_beam_sorting` | Action beam ordering | render_phases/tests/benchmark_tests.rs |
+| `bench_user_label_sorting` | User label prioritization | render_phases/tests/benchmark_tests.rs |
+| `bench_estimate_text_width` | Text width estimation | render_phases/tests/benchmark_tests.rs |
+| `bench_glow_lod_culling` | Glow LOD decision overhead | render_phases/tests/benchmark_tests.rs |
 
 **Regression Thresholds**:
 
