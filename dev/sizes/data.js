@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769624276407,
+  "lastUpdate": 1769632318304,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3962,6 +3962,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/264447bac1f9a705a2ce737f7d449a284d60e52b"
         },
         "date": 1769624274970,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0257f505eb30451f3ca20c94f3430e7cd37519a7",
+          "message": "Merge pull request #222 from tomtom215/claude/restore-triple-product-WBhqf\n\nAdd Verus formal proof CI and verification coverage metrics",
+          "timestamp": "2026-01-28T21:29:50+01:00",
+          "tree_id": "0dad9baf5a3c87513c87e4f3da9ddd48cd9445a5",
+          "url": "https://github.com/tomtom215/rource/commit/0257f505eb30451f3ca20c94f3430e7cd37519a7"
+        },
+        "date": 1769632317789,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
