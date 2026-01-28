@@ -714,4 +714,414 @@ mod tests {
         // Zero should be included, max boundary behavior
         assert!(tree.total_items() >= 1);
     }
+
+    // ========================================================================
+    // Edge Case Tests (Expert+ Audit Phase 2)
+    // ========================================================================
+
+    #[test]
+    fn test_quadtree_single_item() {
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(50.0, 50.0), 42);
+
+        assert_eq!(tree.total_items(), 1);
+        assert!(!tree.is_subdivided());
+
+        // Query should find the single item
+        let results = tree.query(&Bounds::new(Vec2::ZERO, Vec2::new(100.0, 100.0)));
+        assert_eq!(results.len(), 1);
+        assert_eq!(*results[0], 42);
+    }
+
+    #[test]
+    fn test_quadtree_insert_at_center() {
+        let mut tree = create_test_tree();
+
+        // Insert exactly at center of bounds
+        tree.insert(Vec2::new(50.0, 50.0), 1);
+
+        assert_eq!(tree.total_items(), 1);
+
+        // Query all quadrants should find it
+        let results = tree.query(&Bounds::new(Vec2::new(40.0, 40.0), Vec2::new(60.0, 60.0)));
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn test_quadtree_insert_at_corners() {
+        let mut tree = create_test_tree();
+
+        // Insert at all four corners (within bounds)
+        tree.insert(Vec2::new(1.0, 1.0), 1); // near min corner
+        tree.insert(Vec2::new(99.0, 1.0), 2);
+        tree.insert(Vec2::new(1.0, 99.0), 3);
+        tree.insert(Vec2::new(99.0, 99.0), 4);
+
+        assert_eq!(tree.total_items(), 4);
+
+        // Query each corner
+        let nw = tree.query(&Bounds::new(Vec2::ZERO, Vec2::new(50.0, 50.0)));
+        assert!(nw.contains(&&1));
+
+        let ne = tree.query(&Bounds::new(Vec2::new(50.0, 0.0), Vec2::new(100.0, 50.0)));
+        assert!(ne.contains(&&2));
+    }
+
+    #[test]
+    fn test_quadtree_query_empty_tree() {
+        let tree: QuadTree<u32> = create_test_tree();
+
+        let results = tree.query(&Bounds::new(Vec2::ZERO, Vec2::new(100.0, 100.0)));
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_quadtree_query_no_intersection() {
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(10.0, 10.0), 1);
+
+        // Query area that doesn't intersect with tree bounds
+        let results = tree.query(&Bounds::new(
+            Vec2::new(200.0, 200.0),
+            Vec2::new(300.0, 300.0),
+        ));
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_quadtree_max_depth_reached() {
+        // Create tree with very small max depth
+        let mut tree: QuadTree<u32> =
+            QuadTree::new(Bounds::new(Vec2::ZERO, Vec2::new(100.0, 100.0)), 1, 2);
+
+        // Insert many items in same area to force max depth
+        for i in 0..20 {
+            let x = 10.0 + (i % 5) as f32 * 0.1;
+            let y = 10.0 + (i / 5) as f32 * 0.1;
+            tree.insert(Vec2::new(x, y), i);
+        }
+
+        // All items should still be present
+        assert_eq!(tree.total_items(), 20);
+    }
+
+    #[test]
+    fn test_quadtree_capacity_stress() {
+        let mut tree = create_test_tree();
+
+        // Insert many items to stress test capacity
+        for i in 0..1000 {
+            let x = (i % 100) as f32 + 0.5;
+            let y = (i / 100) as f32 * 10.0 + 0.5;
+            tree.insert(Vec2::new(x, y), i);
+        }
+
+        assert_eq!(tree.total_items(), 1000);
+        assert!(tree.is_subdivided());
+    }
+
+    #[test]
+    fn test_quadtree_query_circle_empty() {
+        let tree: QuadTree<u32> = create_test_tree();
+
+        let results = tree.query_circle(Vec2::new(50.0, 50.0), 10.0);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_quadtree_query_circle_no_match() {
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(10.0, 10.0), 1);
+
+        // Circle that doesn't contain any items
+        let results = tree.query_circle(Vec2::new(90.0, 90.0), 5.0);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_quadtree_query_circle_boundary() {
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(50.0, 50.0), 1);
+        tree.insert(Vec2::new(60.0, 50.0), 2); // exactly 10 units away
+
+        // Circle with radius exactly at boundary
+        let results = tree.query_circle(Vec2::new(50.0, 50.0), 10.0);
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_quadtree_query_circle_for_each_empty() {
+        let tree: QuadTree<u32> = create_test_tree();
+
+        let mut count = 0;
+        tree.query_circle_for_each(Vec2::new(50.0, 50.0), 10.0, |_, _| {
+            count += 1;
+        });
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_quadtree_query_circle_for_each_all() {
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(50.0, 50.0), 1);
+        tree.insert(Vec2::new(52.0, 52.0), 2);
+
+        let mut items = Vec::new();
+        tree.query_circle_for_each(Vec2::new(50.0, 50.0), 10.0, |_, item| {
+            items.push(*item);
+        });
+        assert_eq!(items.len(), 2);
+    }
+
+    #[test]
+    fn test_quadtree_nearest_empty_tree() {
+        let tree: QuadTree<u32> = create_test_tree();
+        let result = tree.nearest(Vec2::new(50.0, 50.0));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_quadtree_nearest_single_item() {
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(10.0, 10.0), 42);
+
+        let result = tree.nearest(Vec2::new(50.0, 50.0));
+        assert!(result.is_some());
+        let (pos, &val) = result.unwrap();
+        assert_eq!(pos, Vec2::new(10.0, 10.0));
+        assert_eq!(val, 42);
+    }
+
+    #[test]
+    fn test_quadtree_nearest_tie_breaker() {
+        let mut tree = create_test_tree();
+
+        // Two items equidistant from query point
+        tree.insert(Vec2::new(40.0, 50.0), 1); // 10 units left
+        tree.insert(Vec2::new(60.0, 50.0), 2); // 10 units right
+
+        let result = tree.nearest(Vec2::new(50.0, 50.0));
+        assert!(result.is_some());
+        // Either item is acceptable as nearest
+        let (_, &val) = result.unwrap();
+        assert!(val == 1 || val == 2);
+    }
+
+    #[test]
+    fn test_quadtree_nearest_exact_position() {
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(50.0, 50.0), 1);
+        tree.insert(Vec2::new(10.0, 10.0), 2);
+
+        let result = tree.nearest(Vec2::new(50.0, 50.0));
+        assert!(result.is_some());
+        let (pos, &val) = result.unwrap();
+        assert_eq!(pos, Vec2::new(50.0, 50.0));
+        assert_eq!(val, 1);
+    }
+
+    #[test]
+    fn test_quadtree_iter_empty() {
+        let tree: QuadTree<u32> = create_test_tree();
+        let items: Vec<_> = tree.iter().collect();
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn test_quadtree_iter_with_subdivision() {
+        let mut tree = create_test_tree();
+
+        // Insert enough to cause subdivision
+        for i in 0..10 {
+            tree.insert(Vec2::new(i as f32 * 10.0 + 1.0, i as f32 * 10.0 + 1.0), i);
+        }
+
+        let items: Vec<_> = tree.iter().map(|(_, &v)| v).collect();
+        assert_eq!(items.len(), 10);
+
+        // All items should be present
+        for i in 0..10u32 {
+            assert!(items.contains(&i), "Missing item {}", i);
+        }
+    }
+
+    #[test]
+    fn test_quadtree_query_into_reuse() {
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(10.0, 10.0), 1);
+        tree.insert(Vec2::new(90.0, 90.0), 2);
+
+        let mut buffer = Vec::with_capacity(10);
+
+        // First query
+        tree.query_into(&Bounds::new(Vec2::ZERO, Vec2::new(50.0, 50.0)), &mut buffer);
+        assert_eq!(buffer.len(), 1);
+
+        // Second query - buffer should be cleared and reused
+        tree.query_into(
+            &Bounds::new(Vec2::new(50.0, 50.0), Vec2::new(100.0, 100.0)),
+            &mut buffer,
+        );
+        assert_eq!(buffer.len(), 1);
+        assert!(buffer.contains(&&2));
+    }
+
+    #[test]
+    fn test_quadtree_distance_to_bounds() {
+        // Point inside bounds - distance should be 0
+        let bounds = Bounds::new(Vec2::ZERO, Vec2::new(100.0, 100.0));
+        let dist = QuadTree::<u32>::distance_squared_to_bounds(&bounds, Vec2::new(50.0, 50.0));
+        assert_eq!(dist, 0.0);
+
+        // Point outside bounds
+        let dist = QuadTree::<u32>::distance_squared_to_bounds(&bounds, Vec2::new(110.0, 50.0));
+        assert!((dist - 100.0).abs() < 0.001); // 10 units away, squared = 100
+    }
+
+    #[test]
+    fn test_quadtree_query_for_each_subdivided() {
+        let mut tree = create_test_tree();
+
+        // Force subdivision
+        for i in 0..20 {
+            let x = (i % 5) as f32 * 20.0 + 5.0;
+            let y = (i / 5) as f32 * 20.0 + 5.0;
+            tree.insert(Vec2::new(x, y), i);
+        }
+
+        assert!(tree.is_subdivided());
+
+        // Query using for_each
+        let mut collected = Vec::new();
+        tree.query_for_each(
+            &Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(50.0, 50.0)),
+            |item| {
+                collected.push(*item);
+            },
+        );
+
+        // Verify matches query() results
+        let query_results = tree.query(&Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(50.0, 50.0)));
+        assert_eq!(collected.len(), query_results.len());
+    }
+
+    #[test]
+    fn test_quadtree_clear_and_reinsert() {
+        let mut tree = create_test_tree();
+
+        for i in 0..10 {
+            tree.insert(Vec2::new(i as f32 * 10.0 + 1.0, i as f32 * 10.0 + 1.0), i);
+        }
+
+        assert_eq!(tree.total_items(), 10);
+        tree.clear();
+        assert_eq!(tree.total_items(), 0);
+        assert!(!tree.is_subdivided());
+
+        // Re-insert items
+        for i in 0..5 {
+            tree.insert(
+                Vec2::new(i as f32 * 20.0 + 1.0, i as f32 * 20.0 + 1.0),
+                i + 100,
+            );
+        }
+
+        assert_eq!(tree.total_items(), 5);
+    }
+
+    #[test]
+    fn test_quadtree_item_at_subdivision_boundary() {
+        let mut tree = create_test_tree();
+
+        // Insert items exactly at the center (subdivision boundary)
+        tree.insert(Vec2::new(50.0, 50.0), 1);
+        tree.insert(Vec2::new(50.0, 50.0), 2);
+        tree.insert(Vec2::new(50.0, 50.0), 3);
+        tree.insert(Vec2::new(50.0, 50.0), 4);
+        tree.insert(Vec2::new(50.0, 50.0), 5);
+
+        // All should be inserted despite being at boundary
+        assert_eq!(tree.total_items(), 5);
+    }
+
+    #[test]
+    fn test_quadtree_very_small_bounds() {
+        let mut tree: QuadTree<u32> =
+            QuadTree::new(Bounds::new(Vec2::ZERO, Vec2::new(1.0, 1.0)), 4, 8);
+
+        tree.insert(Vec2::new(0.5, 0.5), 1);
+        tree.insert(Vec2::new(0.1, 0.1), 2);
+        tree.insert(Vec2::new(0.9, 0.9), 3);
+
+        assert_eq!(tree.total_items(), 3);
+    }
+
+    #[test]
+    fn test_quadtree_negative_bounds() {
+        let mut tree: QuadTree<u32> =
+            QuadTree::new(Bounds::new(Vec2::new(-100.0, -100.0), Vec2::ZERO), 4, 8);
+
+        tree.insert(Vec2::new(-50.0, -50.0), 1);
+        tree.insert(Vec2::new(-10.0, -10.0), 2);
+        tree.insert(Vec2::new(-90.0, -90.0), 3);
+
+        assert_eq!(tree.total_items(), 3);
+
+        let results = tree.query(&Bounds::new(
+            Vec2::new(-60.0, -60.0),
+            Vec2::new(-40.0, -40.0),
+        ));
+        assert_eq!(results.len(), 1);
+        assert!(results.contains(&&1));
+    }
+
+    // ========================================================================
+    // Additional Coverage Tests (CI Coverage)
+    // ========================================================================
+
+    #[test]
+    fn test_quadtree_iter_exhausted() {
+        // Test that iterator correctly handles exhaustion
+        let mut tree = create_test_tree();
+        tree.insert(Vec2::new(10.0, 10.0), 1);
+
+        let mut iter = tree.iter();
+        assert!(iter.next().is_some());
+        assert!(iter.next().is_none()); // Should be exhausted
+        assert!(iter.next().is_none()); // Should still be exhausted
+    }
+
+    #[test]
+    fn test_quadtree_iter_subdivided_exhaustion() {
+        // Test iterator exhaustion with subdivided tree
+        let mut tree = create_test_tree();
+
+        // Insert enough to subdivide
+        for i in 0..10 {
+            tree.insert(Vec2::new((i * 10) as f32 + 1.0, (i * 10) as f32 + 1.0), i);
+        }
+
+        let count = tree.iter().count();
+        assert_eq!(count, 10);
+
+        // Verify double iteration works correctly
+        let count2 = tree.iter().count();
+        assert_eq!(count2, 10);
+    }
+
+    #[test]
+    fn test_quadtree_query_circle_for_each_with_items() {
+        let mut tree = create_test_tree();
+
+        tree.insert(Vec2::new(50.0, 50.0), 1);
+        tree.insert(Vec2::new(55.0, 50.0), 2);
+        tree.insert(Vec2::new(90.0, 90.0), 3); // Outside circle
+
+        let mut positions = Vec::new();
+        tree.query_circle_for_each(Vec2::new(50.0, 50.0), 10.0, |pos, _| {
+            positions.push(pos);
+        });
+
+        assert_eq!(positions.len(), 2);
+    }
 }

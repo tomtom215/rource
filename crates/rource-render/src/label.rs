@@ -568,4 +568,386 @@ mod tests {
         assert!(placer.try_place(Vec2::new(700.0, 500.0), 50.0, 12.0));
         assert_eq!(placer.count(), 2);
     }
+
+    // =========================================================================
+    // Edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_label_candidate_empty_text() {
+        let candidate = LabelCandidate::new("", Vec2::new(10.0, 20.0), 0.0, 12.0, 1.0);
+        assert!(candidate.text.is_empty());
+        assert_eq!(candidate.position, Vec2::new(10.0, 20.0));
+        assert_eq!(candidate.bounds.width, 0.0);
+    }
+
+    #[test]
+    fn test_label_candidate_zero_dimensions() {
+        let candidate = LabelCandidate::new("test", Vec2::new(0.0, 0.0), 0.0, 0.0, 0.0);
+        assert_eq!(candidate.bounds.width, 0.0);
+        assert_eq!(candidate.bounds.height, 0.0);
+        assert_eq!(candidate.priority, 0.0);
+    }
+
+    #[test]
+    fn test_label_candidate_negative_priority() {
+        let candidate = LabelCandidate::new("test", Vec2::ZERO, 50.0, 12.0, -100.0);
+        assert_eq!(candidate.priority, -100.0);
+    }
+
+    #[test]
+    fn test_label_candidate_unicode() {
+        let candidate = LabelCandidate::new("こんにちは🚀", Vec2::ZERO, 100.0, 14.0, 1.0);
+        assert_eq!(candidate.text, "こんにちは🚀");
+    }
+
+    #[test]
+    fn test_label_config_min_equals_full() {
+        let config = LabelConfig {
+            min_zoom: 0.5,
+            full_zoom: 0.5, // Same as min
+            min_labels: 10,
+            max_labels: 100,
+            ..Default::default()
+        };
+
+        // At min_zoom, should return min_labels
+        assert_eq!(config.max_labels_at_zoom(0.5), 10);
+        // Above should return max_labels
+        assert_eq!(config.max_labels_at_zoom(0.6), 100);
+    }
+
+    #[test]
+    fn test_label_config_min_greater_than_full() {
+        // Edge case: min_zoom > full_zoom (invalid config but shouldn't crash)
+        // When min_zoom > full_zoom, the conditions overlap in unexpected ways
+        let config = LabelConfig {
+            min_zoom: 1.0,
+            full_zoom: 0.5, // Less than min
+            min_labels: 10,
+            max_labels: 100,
+            ..Default::default()
+        };
+
+        // At zoom=0.5: 0.5 <= min_zoom (1.0) is TRUE, so returns min_labels (10)
+        // The first condition catches low zooms before the full_zoom check
+        assert_eq!(config.max_labels_at_zoom(0.5), 10);
+
+        // At zoom=1.0: 1.0 <= min_zoom (1.0) is TRUE, returns min_labels (10)
+        assert_eq!(config.max_labels_at_zoom(1.0), 10);
+
+        // At zoom=1.5: 1.5 <= min_zoom (1.0) is FALSE, 1.5 >= full_zoom (0.5) is TRUE
+        // Returns max_labels (100)
+        assert_eq!(config.max_labels_at_zoom(1.5), 100);
+
+        // This tests that the function doesn't crash with inverted configs
+    }
+
+    #[test]
+    fn test_label_config_zero_labels() {
+        let config = LabelConfig {
+            min_labels: 0,
+            max_labels: 0,
+            ..Default::default()
+        };
+
+        assert_eq!(config.max_labels_at_zoom(0.0), 0);
+        assert_eq!(config.max_labels_at_zoom(1.0), 0);
+    }
+
+    #[test]
+    fn test_label_placer_zero_max_labels() {
+        let config = LabelConfig {
+            min_labels: 0,
+            max_labels: 0,
+            ..Default::default()
+        };
+
+        let mut placer = LabelPlacer::with_config(1.0, config);
+
+        // Can't place any labels
+        assert!(!placer.can_place_more());
+        assert!(!placer.try_place(Vec2::new(100.0, 100.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 0);
+    }
+
+    #[test]
+    fn test_label_placer_single_label_max() {
+        let config = LabelConfig {
+            min_labels: 1,
+            max_labels: 1,
+            padding: 0.0,
+            ..Default::default()
+        };
+
+        let mut placer = LabelPlacer::with_config(1.0, config);
+
+        assert!(placer.try_place(Vec2::new(100.0, 100.0), 50.0, 12.0));
+        assert!(!placer.can_place_more());
+        // Second placement fails
+        assert!(!placer.try_place(Vec2::new(200.0, 200.0), 50.0, 12.0));
+    }
+
+    #[test]
+    fn test_label_placer_very_small_viewport() {
+        let mut placer = LabelPlacer::new(1.0);
+        placer.set_viewport(10.0, 10.0);
+
+        // Small label should fit in small viewport
+        assert!(placer.try_place(Vec2::new(0.0, 0.0), 5.0, 5.0));
+
+        // Reset and try label that starts beyond viewport edge
+        placer.reset(1.0);
+        // Label starting at x=6 would extend to x=56, but position.x (6) > viewport_width - MARGIN (5)
+        assert!(!placer.try_place(Vec2::new(6.0, 0.0), 50.0, 10.0));
+
+        // Label that fits within viewport bounds (position within margin, size doesn't matter for check)
+        placer.reset(1.0);
+        assert!(placer.try_place(Vec2::new(0.0, 0.0), 8.0, 8.0));
+    }
+
+    #[test]
+    fn test_label_placer_fallback_all_blocked() {
+        let config = LabelConfig {
+            padding: 0.0,
+            min_labels: 100,
+            max_labels: 100,
+            ..Default::default()
+        };
+
+        let mut placer = LabelPlacer::with_config(1.0, config);
+        placer.set_viewport(200.0, 200.0);
+
+        // Fill the viewport with reserved space
+        placer.reserve(Vec2::new(0.0, 0.0), 200.0, 200.0);
+
+        // All fallback positions should fail
+        let anchor = Vec2::new(100.0, 100.0);
+        let primary = Vec2::new(110.0, 95.0);
+        let result = placer.try_place_with_fallback(primary, 40.0, 12.0, anchor, 10.0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_label_placer_multiple_resets() {
+        let mut placer = LabelPlacer::new(1.0);
+
+        // Place some labels
+        assert!(placer.try_place(Vec2::new(0.0, 0.0), 50.0, 12.0));
+        assert!(placer.try_place(Vec2::new(100.0, 0.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 2);
+
+        // Reset and verify cleared
+        placer.reset(0.5);
+        assert_eq!(placer.count(), 0);
+
+        // Place again
+        assert!(placer.try_place(Vec2::new(0.0, 0.0), 50.0, 12.0));
+        assert_eq!(placer.count(), 1);
+
+        // Reset again
+        placer.reset(1.0);
+        assert_eq!(placer.count(), 0);
+    }
+
+    #[test]
+    fn test_label_placer_accessors() {
+        let config = LabelConfig {
+            min_zoom: 0.1,
+            full_zoom: 2.0,
+            min_labels: 5,
+            max_labels: 50,
+            padding: 3.0,
+            min_alpha: 0.5,
+        };
+
+        let placer = LabelPlacer::with_config(1.0, config);
+
+        assert_eq!(placer.count(), 0);
+        assert!(placer.can_place_more());
+        assert!(placer.max_count() > 0);
+
+        let cfg = placer.config();
+        assert_eq!(cfg.padding, 3.0);
+        assert_eq!(cfg.min_alpha, 0.5);
+    }
+
+    #[test]
+    fn test_estimate_text_width_empty() {
+        let width = estimate_text_width("", 12.0);
+        assert_eq!(width, 0.0);
+    }
+
+    #[test]
+    fn test_estimate_text_width_zero_font() {
+        let width = estimate_text_width("hello", 0.0);
+        assert_eq!(width, 0.0);
+    }
+
+    #[test]
+    fn test_estimate_text_width_single_char() {
+        let width = estimate_text_width("x", 12.0);
+        // 1 * 12.0 * 0.62 = 7.44
+        assert!((width - 7.44).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_estimate_text_width_long_string() {
+        let long_text = "a".repeat(1000);
+        let width = estimate_text_width(&long_text, 12.0);
+        // 1000 * 12.0 * 0.62 = 7440.0
+        assert!((width - 7440.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_rects_overlap_touching() {
+        // Rects that touch at edge but don't overlap
+        let a = Rect::new(0.0, 0.0, 10.0, 10.0);
+        let b = Rect::new(10.0, 0.0, 10.0, 10.0); // Touches right edge
+
+        assert!(!rects_overlap(&a, &b));
+    }
+
+    #[test]
+    fn test_rects_overlap_one_pixel() {
+        // Rects that overlap by one pixel
+        let a = Rect::new(0.0, 0.0, 10.0, 10.0);
+        let b = Rect::new(9.0, 0.0, 10.0, 10.0); // Overlaps by 1 pixel
+
+        assert!(rects_overlap(&a, &b));
+    }
+
+    #[test]
+    fn test_rects_overlap_contained() {
+        // One rect completely contains the other
+        let outer = Rect::new(0.0, 0.0, 100.0, 100.0);
+        let inner = Rect::new(25.0, 25.0, 50.0, 50.0);
+
+        assert!(rects_overlap(&outer, &inner));
+        assert!(rects_overlap(&inner, &outer));
+    }
+
+    #[test]
+    fn test_rects_overlap_same() {
+        // Same rect should overlap with itself
+        let a = Rect::new(10.0, 10.0, 50.0, 50.0);
+        assert!(rects_overlap(&a, &a));
+    }
+
+    #[test]
+    fn test_rects_overlap_zero_size() {
+        // Zero-size rect at position inside normal rect
+        let zero = Rect::new(50.0, 50.0, 0.0, 0.0);
+        let normal = Rect::new(0.0, 0.0, 100.0, 100.0);
+
+        // Zero-size rect at (50, 50) is technically a point inside the normal rect
+        // The overlap formula: a.x < b.x + b.width (50 < 100) AND a.x + a.width > b.x (50 > 0)
+        // Both conditions pass for x and y, so it reports as overlapping
+        assert!(rects_overlap(&zero, &normal));
+
+        // Zero-size rect outside normal rect should not overlap
+        let zero_outside = Rect::new(150.0, 150.0, 0.0, 0.0);
+        assert!(!rects_overlap(&zero_outside, &normal));
+    }
+
+    #[test]
+    fn test_label_placer_diagonal_collision() {
+        let mut placer = LabelPlacer::new(1.0);
+
+        // Place label at origin
+        assert!(placer.try_place(Vec2::new(0.0, 0.0), 50.0, 50.0));
+
+        // Label at diagonal that touches corner - should collide
+        assert!(!placer.try_place(Vec2::new(45.0, 45.0), 50.0, 50.0));
+
+        // Label at diagonal past the corner - should not collide
+        assert!(placer.try_place(Vec2::new(200.0, 200.0), 50.0, 50.0));
+    }
+
+    #[test]
+    fn test_label_placer_reserve_multiple() {
+        let mut placer = LabelPlacer::new(1.0);
+
+        // Reserve multiple spaces
+        placer.reserve(Vec2::new(0.0, 0.0), 50.0, 50.0);
+        placer.reserve(Vec2::new(100.0, 0.0), 50.0, 50.0);
+        placer.reserve(Vec2::new(200.0, 0.0), 50.0, 50.0);
+
+        // Count should still be 0 (reserved don't count)
+        assert_eq!(placer.count(), 0);
+
+        // Can't place in reserved areas
+        assert!(!placer.try_place(Vec2::new(10.0, 10.0), 30.0, 30.0));
+        assert!(!placer.try_place(Vec2::new(110.0, 10.0), 30.0, 30.0));
+
+        // Can place in gaps
+        assert!(placer.try_place(Vec2::new(60.0, 10.0), 30.0, 30.0));
+    }
+
+    #[test]
+    fn test_label_placer_exact_viewport_edge() {
+        let mut placer = LabelPlacer::new(1.0);
+        placer.set_viewport(800.0, 600.0);
+
+        // Label exactly at VIEWPORT_MARGIN boundary should work
+        let margin = 5.0; // VIEWPORT_MARGIN
+        assert!(placer.try_place(Vec2::new(800.0 - margin - 50.0, 100.0), 50.0, 12.0));
+    }
+
+    #[test]
+    fn test_label_candidate_clone() {
+        let original = LabelCandidate::new("test", Vec2::new(10.0, 20.0), 50.0, 12.0, 5.0);
+        let cloned = original.clone();
+
+        assert_eq!(original.text, cloned.text);
+        assert_eq!(original.position, cloned.position);
+        assert_eq!(original.priority, cloned.priority);
+    }
+
+    #[test]
+    fn test_label_config_default() {
+        let config = LabelConfig::default();
+
+        assert_eq!(config.min_zoom, 0.15);
+        assert_eq!(config.full_zoom, 0.8);
+        assert_eq!(config.min_labels, 15);
+        assert_eq!(config.max_labels, 200);
+        assert_eq!(config.padding, 2.0);
+        assert_eq!(config.min_alpha, 0.3);
+    }
+
+    #[test]
+    fn test_label_config_clone() {
+        let config = LabelConfig {
+            min_zoom: 0.25,
+            full_zoom: 0.9,
+            min_labels: 20,
+            max_labels: 300,
+            padding: 5.0,
+            min_alpha: 0.4,
+        };
+        let cloned = config.clone();
+
+        assert_eq!(config.min_zoom, cloned.min_zoom);
+        assert_eq!(config.max_labels, cloned.max_labels);
+        assert_eq!(config.padding, cloned.padding);
+    }
+
+    #[test]
+    fn test_label_placer_fallback_uses_left() {
+        let mut placer = LabelPlacer::new(1.0);
+        placer.set_viewport(400.0, 400.0);
+
+        let anchor = Vec2::new(100.0, 100.0);
+        let primary = Vec2::new(110.0, 95.0); // Right of anchor
+
+        // Place primary first
+        let pos1 = placer.try_place_with_fallback(primary, 40.0, 12.0, anchor, 10.0);
+        assert_eq!(pos1, Some(primary));
+
+        // Second call should try fallback (left)
+        let pos2 = placer.try_place_with_fallback(primary, 40.0, 12.0, anchor, 10.0);
+        assert!(pos2.is_some());
+        assert!(pos2.unwrap().x < anchor.x, "Should be placed to the left");
+    }
 }

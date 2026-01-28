@@ -374,4 +374,154 @@ mod tests {
         let alloc = IdAllocator::with_capacity(100);
         assert!(alloc.is_empty());
     }
+
+    // =========================================================================
+    // Extended Coverage Tests
+    // =========================================================================
+
+    #[test]
+    fn test_generation_default() {
+        let gen = Generation::default();
+        assert_eq!(gen.value(), 0);
+    }
+
+    #[test]
+    fn test_generation_debug_format() {
+        let gen = Generation::first();
+        let debug = format!("{:?}", gen);
+        assert!(debug.contains("Gen(1)"));
+    }
+
+    #[test]
+    fn test_generation_equality() {
+        let gen1 = Generation::first();
+        let gen2 = Generation::first();
+        assert_eq!(gen1, gen2);
+
+        let mut gen3 = Generation::first();
+        gen3.increment();
+        assert_ne!(gen1, gen3);
+    }
+
+    #[test]
+    fn test_generation_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(Generation::first());
+        set.insert(Generation::first());
+        assert_eq!(set.len(), 1);
+    }
+
+    #[test]
+    fn test_raw_entity_id_debug_format() {
+        let id = RawEntityId::new(42, Generation::first());
+        let debug = format!("{:?}", id);
+        assert!(debug.contains("Entity(42"));
+    }
+
+    #[test]
+    fn test_raw_entity_id_equality() {
+        let id1 = RawEntityId::new(1, Generation::first());
+        let id2 = RawEntityId::new(1, Generation::first());
+        let id3 = RawEntityId::new(2, Generation::first());
+        assert_eq!(id1, id2);
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_raw_entity_id_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(RawEntityId::new(1, Generation::first()));
+        set.insert(RawEntityId::new(1, Generation::first()));
+        assert_eq!(set.len(), 1);
+    }
+
+    #[test]
+    fn test_typed_id_new() {
+        let gen = Generation::first();
+        let user_id = UserId::new(5, gen);
+        assert_eq!(user_id.index(), 5);
+        assert_eq!(user_id.generation().value(), 1);
+    }
+
+    #[test]
+    fn test_typed_id_raw() {
+        let user_id = UserId::from_index(10);
+        let raw = user_id.raw();
+        assert_eq!(raw.index(), 10);
+    }
+
+    #[test]
+    fn test_typed_id_index_usize() {
+        let file_id = FileId::from_index(100);
+        assert_eq!(file_id.index_usize(), 100);
+    }
+
+    #[test]
+    fn test_typed_id_debug_format() {
+        let dir_id = DirId::from_index(7);
+        let debug = format!("{:?}", dir_id);
+        assert!(debug.contains("Dir(7"));
+    }
+
+    #[test]
+    fn test_typed_id_display_format() {
+        let action_id = ActionId::from_index(3);
+        let display = format!("{}", action_id);
+        assert_eq!(display, "Action#3");
+    }
+
+    #[test]
+    fn test_typed_id_equality() {
+        let id1 = EntityId::from_index(1);
+        let id2 = EntityId::from_index(1);
+        let id3 = EntityId::from_index(2);
+        assert_eq!(id1, id2);
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_typed_id_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(FileId::from_index(1));
+        set.insert(FileId::from_index(1));
+        set.insert(FileId::from_index(2));
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_id_allocator_default() {
+        let alloc = IdAllocator::default();
+        assert!(alloc.is_empty());
+        assert_eq!(alloc.high_water_mark(), 0);
+    }
+
+    #[test]
+    fn test_id_allocator_debug() {
+        let alloc = IdAllocator::new();
+        let debug = format!("{:?}", alloc);
+        assert!(debug.contains("IdAllocator"));
+    }
+
+    #[test]
+    fn test_id_allocator_multiple_free_reuse() {
+        let mut alloc = IdAllocator::new();
+
+        // Allocate several IDs
+        let ids: Vec<_> = (0..5).map(|_| alloc.allocate()).collect();
+        assert_eq!(alloc.len(), 5);
+
+        // Free all
+        for id in ids.iter() {
+            alloc.free(*id);
+        }
+        assert_eq!(alloc.len(), 0);
+
+        // Reallocate - should reuse in LIFO order
+        let new_id = alloc.allocate();
+        assert_eq!(new_id.index(), 4); // Last freed
+        assert_eq!(new_id.generation().value(), 2); // Incremented
+    }
 }

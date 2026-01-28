@@ -719,4 +719,250 @@ mod tests {
         assert_eq!(format!("{v}"), "(1, 2, 3)");
         assert_eq!(format!("{v:?}"), "Vec3 { x: 1.0, y: 2.0, z: 3.0 }");
     }
+
+    // ============================================================
+    // Edge Case Tests (Phase 3 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_negative_axis_constants() {
+        assert_eq!(Vec3::NEG_X, Vec3::new(-1.0, 0.0, 0.0));
+        assert_eq!(Vec3::NEG_Y, Vec3::new(0.0, -1.0, 0.0));
+        assert_eq!(Vec3::NEG_Z, Vec3::new(0.0, 0.0, -1.0));
+
+        // Verify they are unit length
+        assert!((Vec3::NEG_X.length() - 1.0).abs() < f32::EPSILON);
+        assert!((Vec3::NEG_Y.length() - 1.0).abs() < f32::EPSILON);
+        assert!((Vec3::NEG_Z.length() - 1.0).abs() < f32::EPSILON);
+
+        // Verify they are negations of positive axis constants
+        assert_eq!(Vec3::NEG_X, -Vec3::X);
+        assert_eq!(Vec3::NEG_Y, -Vec3::Y);
+        assert_eq!(Vec3::NEG_Z, -Vec3::Z);
+    }
+
+    #[test]
+    fn test_division_by_zero() {
+        // IEEE 754 semantics: positive / 0 = inf, negative / 0 = -inf, 0/0 = NaN
+        let v = Vec3::new(1.0, -1.0, 0.0);
+        let result = v / 0.0;
+
+        assert!(result.x.is_infinite() && result.x > 0.0, "1/0 = +inf");
+        assert!(result.y.is_infinite() && result.y < 0.0, "-1/0 = -inf");
+        assert!(result.z.is_nan(), "0/0 = NaN");
+    }
+
+    #[test]
+    fn test_div_assign_by_zero() {
+        let mut v = Vec3::new(2.0, -2.0, 0.0);
+        v /= 0.0;
+
+        assert!(v.x.is_infinite() && v.x > 0.0);
+        assert!(v.y.is_infinite() && v.y < 0.0);
+        assert!(v.z.is_nan());
+    }
+
+    #[test]
+    fn test_component_wise_division() {
+        let a = Vec3::new(10.0, 20.0, 30.0);
+        let b = Vec3::new(2.0, 4.0, 5.0);
+        let result = a / b;
+
+        assert_eq!(result.x, 5.0);
+        assert_eq!(result.y, 5.0);
+        assert_eq!(result.z, 6.0);
+    }
+
+    #[test]
+    fn test_component_wise_division_by_zero() {
+        let a = Vec3::new(1.0, -1.0, 0.0);
+        let b = Vec3::new(0.0, 0.0, 0.0);
+        let result = a / b;
+
+        assert!(result.x.is_infinite() && result.x > 0.0);
+        assert!(result.y.is_infinite() && result.y < 0.0);
+        assert!(result.z.is_nan());
+    }
+
+    #[test]
+    fn test_normalize_in_place() {
+        let mut v = Vec3::new(3.0, 4.0, 0.0);
+        v.normalize();
+
+        assert!((v.length() - 1.0).abs() < 1e-6);
+        assert!((v.x - 0.6).abs() < 1e-6);
+        assert!((v.y - 0.8).abs() < 1e-6);
+        assert!(v.z.abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_normalize_in_place_zero_vector() {
+        let mut v = Vec3::ZERO;
+        v.normalize();
+
+        // Zero vector stays zero after normalize
+        assert_eq!(v, Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_cross_product_anti_commutativity() {
+        let a = Vec3::new(1.0, 2.0, 3.0);
+        let b = Vec3::new(4.0, 5.0, 6.0);
+
+        let ab = a.cross(b);
+        let ba = b.cross(a);
+
+        // a × b = -(b × a)
+        assert!(
+            ab.approx_eq(-ba),
+            "Cross product should be anti-commutative"
+        );
+    }
+
+    #[test]
+    fn test_cross_product_with_self_is_zero() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let result = v.cross(v);
+
+        assert!(result.approx_eq(Vec3::ZERO), "v × v = 0");
+    }
+
+    #[test]
+    fn test_cross_product_perpendicularity() {
+        let a = Vec3::new(1.0, 2.0, 3.0);
+        let b = Vec3::new(4.0, 5.0, 6.0);
+        let cross = a.cross(b);
+
+        // Cross product should be perpendicular to both inputs
+        let dot_a = cross.dot(a);
+        let dot_b = cross.dot(b);
+
+        assert!(dot_a.abs() < 1e-5, "Cross product perpendicular to a");
+        assert!(dot_b.abs() < 1e-5, "Cross product perpendicular to b");
+    }
+
+    #[test]
+    fn test_project_onto_zero_vector() {
+        let v = Vec3::new(3.0, 4.0, 5.0);
+        let zero = Vec3::ZERO;
+
+        let result = v.project(zero);
+        assert_eq!(result, Vec3::ZERO, "Projection onto zero vector is zero");
+    }
+
+    #[test]
+    fn test_project_zero_onto_vector() {
+        let zero = Vec3::ZERO;
+        let v = Vec3::new(1.0, 0.0, 0.0);
+
+        let result = zero.project(v);
+        assert_eq!(result, Vec3::ZERO, "Zero projected onto any vector is zero");
+    }
+
+    #[test]
+    fn test_project_parallel_vectors() {
+        let v = Vec3::new(3.0, 6.0, 9.0);
+        let onto = Vec3::new(1.0, 2.0, 3.0);
+
+        let result = v.project(onto);
+        // v is parallel to onto (v = 3 * onto), so projection should equal v
+        assert!(result.approx_eq(v), "Projection of parallel vector");
+    }
+
+    #[test]
+    fn test_project_perpendicular_vectors() {
+        let v = Vec3::X;
+        let onto = Vec3::Y;
+
+        let result = v.project(onto);
+        assert!(
+            result.approx_eq(Vec3::ZERO),
+            "Perpendicular projection is zero"
+        );
+    }
+
+    #[test]
+    fn test_reflect_normal_vector() {
+        // Ray going down-right, reflecting off horizontal surface
+        let v = Vec3::new(1.0, -1.0, 0.0).normalized();
+        let normal = Vec3::Y; // upward normal
+
+        let reflected = v.reflect(normal);
+
+        // Should reflect upward
+        assert!(reflected.y > 0.0, "Reflected vector should go upward");
+        assert!((reflected.x - v.x).abs() < 1e-6, "X component unchanged");
+        assert!((reflected.y + v.y).abs() < 1e-6, "Y component negated");
+    }
+
+    #[test]
+    fn test_lerp_extrapolation() {
+        let a = Vec3::ZERO;
+        let b = Vec3::new(10.0, 10.0, 10.0);
+
+        // t < 0 extrapolates backwards
+        let back = a.lerp(b, -0.5);
+        assert_eq!(back, Vec3::new(-5.0, -5.0, -5.0));
+
+        // t > 1 extrapolates forward
+        let forward = a.lerp(b, 1.5);
+        assert_eq!(forward, Vec3::new(15.0, 15.0, 15.0));
+    }
+
+    #[test]
+    fn test_default_is_zero() {
+        let v: Vec3 = Default::default();
+        assert_eq!(v, Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let mut v = Vec3::new(1.0, 2.0, 3.0);
+        v += Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(v, Vec3::new(5.0, 7.0, 9.0));
+    }
+
+    #[test]
+    fn test_sub_assign() {
+        let mut v = Vec3::new(5.0, 7.0, 9.0);
+        v -= Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(v, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_mul_assign() {
+        let mut v = Vec3::new(1.0, 2.0, 3.0);
+        v *= 2.0;
+        assert_eq!(v, Vec3::new(2.0, 4.0, 6.0));
+    }
+
+    #[test]
+    fn test_distance_to_self_is_zero() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(v.distance(v), 0.0);
+        assert_eq!(v.distance_squared(v), 0.0);
+    }
+
+    #[test]
+    fn test_clamp_preserves_in_range() {
+        let v = Vec3::new(0.5, 0.5, 0.5);
+        let min = Vec3::ZERO;
+        let max = Vec3::ONE;
+        let clamped = v.clamp(min, max);
+        assert_eq!(clamped, v);
+    }
+
+    #[test]
+    fn test_approx_eq_with_epsilon() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(
+            1.0 + crate::EPSILON * 0.5,
+            2.0 + crate::EPSILON * 0.5,
+            3.0 + crate::EPSILON * 0.5,
+        );
+        assert!(v1.approx_eq(v2));
+
+        let v3 = Vec3::new(1.01, 2.0, 3.0);
+        assert!(!v1.approx_eq(v3));
+    }
 }

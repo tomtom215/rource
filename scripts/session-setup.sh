@@ -347,11 +347,14 @@ check_cargo_tools() {
     install_cargo_tool "cargo-audit" "cargo-audit"
     install_cargo_tool "cargo-deny" "cargo-deny"
 
-    # Coverage tool
+    # EXPERT+ Coverage tools (REQUIRED for verifiable quality)
+    install_cargo_tool "cargo-tarpaulin" "cargo-tarpaulin"
+
+    # Coverage tool (alternative)
     if command_exists cargo-llvm-cov; then
         print_ok "cargo-llvm-cov is installed"
     else
-        print_info "cargo-llvm-cov not found (optional - for coverage reports)"
+        print_info "cargo-llvm-cov not found (optional - alternative coverage tool)"
         print_info "  Install with: cargo install cargo-llvm-cov"
     fi
 
@@ -480,6 +483,13 @@ print_summary() {
     echo "  cargo fmt                Format code"
     echo "  ./scripts/build-wasm.sh  Build WASM version"
     echo ""
+    echo -e "${BOLD}EXPERT+ Verification (REQUIRED):${NC}"
+    echo "  cargo doc --no-deps --all-features                 Doc coverage (must be 0 warnings)"
+    echo "  cargo tarpaulin -p rource-math -p rource-vcs \\    Line coverage analysis"
+    echo "    -p rource-core -p rource-render --out Stdout"
+    echo "  cargo clippy --all -- -D warnings                  Zero warnings required"
+    echo "  cargo test --all                                   All tests must pass"
+    echo ""
     echo -e "${BOLD}Project Paths:${NC}"
     echo "  Project Root: ${ROURCE_PROJECT_ROOT:-<not set>}"
     echo "  CLI Binary:   target/release/rource"
@@ -513,12 +523,17 @@ Requirements:
   - Rust ${REQUIRED_RUST_VERSION} or later
   - wasm-pack (for WASM builds)
   - wasm32-unknown-unknown target
+  - cargo-tarpaulin (for EXPERT+ coverage verification)
+
+EXPERT+ Verification Tools (REQUIRED):
+  - cargo-tarpaulin - Line coverage analysis
+  - cargo doc --all-features - Documentation coverage
 
 Optional Tools:
   - wasm-opt (from binaryen) - WASM optimization
   - ffmpeg - Video export
   - Python 3 - PPM inspection scripts
-  - cargo-llvm-cov - Coverage reports
+  - cargo-llvm-cov - Alternative coverage reports
 
 Environment Variables Set:
   RUST_BACKTRACE     Enables backtraces (default: 1)

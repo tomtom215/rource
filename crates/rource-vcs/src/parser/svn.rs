@@ -695,4 +695,167 @@ mod tests {
         let result = parser.parse_str(binary);
         assert!(result.is_err());
     }
+
+    // ========================================================================
+    // PHASE 2: Expert+ Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_svn_parse_basic_phase2() {
+        // Simple test to verify basic parsing works
+        let parser = SvnParser::new();
+        let commits = parser.parse_str(SAMPLE_SVN_LOG).unwrap();
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].author, "johndoe");
+    }
+
+    #[test]
+    fn test_svn_action_create_in_sample() {
+        // Verify that 'A' action parses to Create in sample log
+        let parser = SvnParser::new();
+        let commits = parser.parse_str(SAMPLE_SVN_LOG).unwrap();
+        // Second file in first commit has action="A"
+        assert!(commits[0]
+            .files
+            .iter()
+            .any(|f| f.action == FileAction::Create));
+    }
+
+    #[test]
+    fn test_svn_parse_properties_change() {
+        // Property changes still count as modifications
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="50">
+<author>propchanger</author>
+<date>2024-01-01T00:00:00.000000Z</date>
+<paths>
+<path action="M">/trunk/src/lib.rs</path>
+</paths>
+<msg>Update svn:ignore</msg>
+</logentry>
+</log>"#;
+
+        let parser = SvnParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].files[0].action, FileAction::Modify);
+    }
+
+    #[test]
+    fn test_svn_parse_unicode_author_phase2() {
+        let log = r#"<?xml version="1.0" encoding="UTF-8"?>
+<log>
+<logentry revision="1">
+<author>田中太郎</author>
+<date>2024-01-01T00:00:00.000000Z</date>
+<paths>
+<path action="A">/trunk/file.txt</path>
+</paths>
+</logentry>
+</log>"#;
+
+        let parser = SvnParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].author, "田中太郎");
+    }
+
+    #[test]
+    fn test_svn_parse_empty_author_phase2() {
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author></author>
+<date>2024-01-01T00:00:00.000000Z</date>
+<paths>
+<path action="A">/trunk/file.txt</path>
+</paths>
+</logentry>
+</log>"#;
+
+        let parser = SvnParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].author, "unknown");
+    }
+
+    #[test]
+    fn test_svn_is_leap_year() {
+        // Verify leap year calculation
+        assert!(SvnParser::is_leap_year(2000)); // Divisible by 400
+        assert!(!SvnParser::is_leap_year(1900)); // Divisible by 100 but not 400
+        assert!(SvnParser::is_leap_year(2024)); // Divisible by 4
+        assert!(!SvnParser::is_leap_year(2023)); // Not divisible by 4
+    }
+
+    #[test]
+    fn test_svn_parse_very_long_revision() {
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="999999999">
+<author>test</author>
+<date>2024-01-01T00:00:00.000000Z</date>
+<paths>
+<path action="A">/trunk/file.txt</path>
+</paths>
+</logentry>
+</log>"#;
+
+        let parser = SvnParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].hash, "999999999");
+    }
+
+    #[test]
+    fn test_svn_parse_multiple_files() {
+        // Test parsing multiple files in one commit
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author>multi</author>
+<date>2024-01-01T00:00:00.000000Z</date>
+<paths>
+<path action="A">/trunk/file1.txt</path>
+<path action="M">/trunk/file2.txt</path>
+<path action="D">/trunk/file3.txt</path>
+</paths>
+</logentry>
+</log>"#;
+
+        let parser = SvnParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].files.len(), 3);
+    }
+
+    #[test]
+    fn test_svn_strip_trunk_prefix() {
+        assert_eq!(
+            SvnParser::strip_svn_prefix("/trunk/src/main.rs"),
+            "src/main.rs"
+        );
+        assert_eq!(
+            SvnParser::strip_svn_prefix("trunk/src/main.rs"),
+            "src/main.rs"
+        );
+    }
+
+    #[test]
+    fn test_svn_strip_branches_prefix() {
+        assert_eq!(
+            SvnParser::strip_svn_prefix("/branches/feature/src/main.rs"),
+            "src/main.rs"
+        );
+    }
+
+    #[test]
+    fn test_svn_strip_tags_prefix() {
+        assert_eq!(
+            SvnParser::strip_svn_prefix("/tags/v1.0/src/main.rs"),
+            "src/main.rs"
+        );
+    }
+
+    #[test]
+    fn test_svn_no_prefix_strip() {
+        assert_eq!(SvnParser::strip_svn_prefix("src/main.rs"), "src/main.rs");
+    }
 }

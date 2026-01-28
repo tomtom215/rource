@@ -615,4 +615,155 @@ files:       src/lib.rs src/utils.rs
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].files.len(), 3);
     }
+
+    // ========================================================================
+    // PHASE 2: Expert+ Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_hg_parse_basic() {
+        let log = "1704067200 -18000|Alice|A|src/main.rs\n";
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "Alice");
+        assert_eq!(commits[0].files[0].action, FileAction::Create);
+    }
+
+    #[test]
+    fn test_hg_parse_branch() {
+        // Verbose format with branch information
+        let log = r"changeset:   0:abc123
+branch:      feature
+user:        Alice <alice@example.com>
+date:        Mon Jan 01 12:00:00 2024 +0000
+files:       src/main.rs
+
+changeset:   1:def456
+branch:      default
+user:        Bob
+date:        Tue Jan 02 12:00:00 2024 +0000
+files:       src/lib.rs
+";
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].author, "Alice");
+        assert_eq!(commits[1].author, "Bob");
+    }
+
+    #[test]
+    fn test_hg_parse_unicode_author() {
+        let log = "1704067200 -18000|田中太郎|A|src/main.rs\n";
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].author, "田中太郎");
+    }
+
+    #[test]
+    fn test_hg_parse_unicode_path() {
+        let log = "1704067200 -18000|User|A|文档/测试.rs\n";
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "文档/测试.rs");
+    }
+
+    #[test]
+    fn test_hg_parse_delete_action() {
+        let log = "1704067200 -18000|User|D|deleted_file.rs\n";
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].files[0].action, FileAction::Delete);
+    }
+
+    #[test]
+    fn test_hg_parse_verbose_with_description() {
+        let log = r"changeset:   0:abc123
+user:        Alice
+date:        Mon Jan 01 12:00:00 2024 +0000
+description:
+This is a multiline
+commit message
+files:       src/main.rs
+";
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "Alice");
+    }
+
+    #[test]
+    fn test_hg_parse_negative_timezone() {
+        // Timezone offset behind UTC
+        let log = "1704067200 -28800|User|A|file.rs\n"; // -8 hours
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].timestamp, 1_704_067_200);
+    }
+
+    #[test]
+    fn test_hg_parse_positive_timezone() {
+        // Timezone offset ahead of UTC
+        let log = "1704067200 28800|User|A|file.rs\n"; // +8 hours
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits[0].timestamp, 1_704_067_200);
+    }
+
+    #[test]
+    fn test_hg_parse_empty_log() {
+        let parser = MercurialParser::new();
+        let result = parser.parse_str("");
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_hg_extract_author_with_email() {
+        assert_eq!(
+            extract_author_name("John Doe <john@example.com>"),
+            "John Doe"
+        );
+    }
+
+    #[test]
+    fn test_hg_extract_author_email_only() {
+        assert_eq!(
+            extract_author_name("<john@example.com>"),
+            "john@example.com"
+        );
+    }
+
+    #[test]
+    fn test_hg_parse_verbose_date_formats() {
+        // Test different date formats
+        let ts1 = parse_hg_date("Mon Jan 01 12:00:00 2024 +0000");
+        assert!(ts1.is_some());
+
+        let ts2 = parse_hg_date("Thu, 01 Jan 2024 12:00:00 +0000");
+        assert!(ts2.is_some());
+
+        let ts3 = parse_hg_date("1704067200");
+        assert_eq!(ts3, Some(1_704_067_200));
+    }
+
+    #[test]
+    fn test_hg_parse_multiple_files_same_changeset() {
+        let log = r"changeset:   0:abc123
+user:        Alice
+date:        Mon Jan 01 12:00:00 2024 +0000
+files:       file1.rs file2.rs file3.rs
+";
+        let parser = MercurialParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].files.len(), 3);
+    }
+
+    #[test]
+    fn test_hg_skip_day_name() {
+        assert_eq!(skip_day_name("Mon Jan 01"), "Jan 01");
+        assert_eq!(skip_day_name("Tue, Jan 01"), "Jan 01");
+        assert_eq!(skip_day_name("Jan 01"), "Jan 01"); // No day name
+    }
 }

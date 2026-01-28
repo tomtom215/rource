@@ -274,4 +274,216 @@ mod tests {
         let sample = tex.sample(2.0, 2.0);
         assert_eq!(sample, (128, 128, 128, 255));
     }
+
+    // =========================================================================
+    // Edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_texture_id_zero() {
+        let id = TextureId::new(0);
+        assert_eq!(id.raw(), 0);
+    }
+
+    #[test]
+    fn test_texture_id_max() {
+        let id = TextureId::new(u32::MAX);
+        assert_eq!(id.raw(), u32::MAX);
+    }
+
+    #[test]
+    fn test_texture_id_equality() {
+        let id1 = TextureId::new(42);
+        let id2 = TextureId::new(42);
+        let id3 = TextureId::new(43);
+        assert_eq!(id1, id2);
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_texture_id_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(TextureId::new(1));
+        set.insert(TextureId::new(2));
+        set.insert(TextureId::new(1)); // Duplicate
+
+        assert_eq!(set.len(), 2);
+        assert!(set.contains(&TextureId::new(1)));
+        assert!(set.contains(&TextureId::new(2)));
+        assert!(!set.contains(&TextureId::new(3)));
+    }
+
+    #[test]
+    fn test_texture_id_clone_copy() {
+        let id1 = TextureId::new(42);
+        let id2 = id1; // Copy
+        let id3 = id1.clone(); // Clone
+        assert_eq!(id1, id2);
+        assert_eq!(id1, id3);
+    }
+
+    #[test]
+    fn test_texture_1x1() {
+        let tex = Texture::solid(1, 1, 255, 128, 64, 255);
+        assert_eq!(tex.width(), 1);
+        assert_eq!(tex.height(), 1);
+        assert_eq!(tex.data().len(), 4);
+        assert_eq!(tex.get_pixel(0, 0), (255, 128, 64, 255));
+    }
+
+    #[test]
+    fn test_texture_1x1_sample() {
+        let tex = Texture::solid(1, 1, 100, 150, 200, 250);
+
+        // All sample positions should return the same pixel
+        assert_eq!(tex.sample(0.0, 0.0), (100, 150, 200, 250));
+        assert_eq!(tex.sample(0.5, 0.5), (100, 150, 200, 250));
+        assert_eq!(tex.sample(1.0, 1.0), (100, 150, 200, 250));
+    }
+
+    #[test]
+    fn test_texture_non_square() {
+        // Non-square texture (3x5)
+        let tex = Texture::solid(3, 5, 255, 0, 0, 255);
+        assert_eq!(tex.width(), 3);
+        assert_eq!(tex.height(), 5);
+        assert_eq!(tex.data().len(), 3 * 5 * 4);
+
+        // Access corners
+        assert_eq!(tex.get_pixel(0, 0), (255, 0, 0, 255));
+        assert_eq!(tex.get_pixel(2, 0), (255, 0, 0, 255));
+        assert_eq!(tex.get_pixel(0, 4), (255, 0, 0, 255));
+        assert_eq!(tex.get_pixel(2, 4), (255, 0, 0, 255));
+    }
+
+    #[test]
+    fn test_texture_data_mut() {
+        let mut tex = Texture::empty(2, 2);
+
+        // Modify pixel data directly via data_mut
+        let data = tex.data_mut();
+        data[0] = 255; // R
+        data[1] = 128; // G
+        data[2] = 64; // B
+        data[3] = 255; // A
+
+        // Verify the pixel was modified
+        assert_eq!(tex.get_pixel(0, 0), (255, 128, 64, 255));
+    }
+
+    #[test]
+    fn test_texture_data_len() {
+        let tex = Texture::solid(4, 3, 0, 0, 0, 0);
+        assert_eq!(tex.data().len(), 4 * 3 * 4);
+    }
+
+    #[test]
+    fn test_texture_clone() {
+        let tex1 = Texture::solid(2, 2, 100, 150, 200, 255);
+        let tex2 = tex1.clone();
+
+        assert_eq!(tex1.width(), tex2.width());
+        assert_eq!(tex1.height(), tex2.height());
+        assert_eq!(tex1.data(), tex2.data());
+        assert_eq!(tex1.get_pixel(0, 0), tex2.get_pixel(0, 0));
+    }
+
+    #[test]
+    fn test_texture_sample_horizontal_gradient() {
+        // Create a horizontal gradient (left=black, right=white)
+        let mut tex = Texture::empty(2, 1);
+        tex.set_pixel(0, 0, 0, 0, 0, 255); // Black
+        tex.set_pixel(1, 0, 255, 255, 255, 255); // White
+
+        // Sample at midpoint should be gray
+        let mid = tex.sample(0.5, 0.0);
+        assert!(
+            mid.0 > 100 && mid.0 < 160,
+            "Expected ~127-128, got {}",
+            mid.0
+        );
+        assert_eq!(mid.3, 255); // Alpha unchanged
+    }
+
+    #[test]
+    fn test_texture_sample_vertical_gradient() {
+        // Create a vertical gradient (top=black, bottom=white)
+        let mut tex = Texture::empty(1, 2);
+        tex.set_pixel(0, 0, 0, 0, 0, 255); // Black
+        tex.set_pixel(0, 1, 255, 255, 255, 255); // White
+
+        // Sample at midpoint should be gray
+        let mid = tex.sample(0.0, 0.5);
+        assert!(
+            mid.0 > 100 && mid.0 < 160,
+            "Expected ~127-128, got {}",
+            mid.0
+        );
+    }
+
+    #[test]
+    fn test_texture_set_pixel_all_corners() {
+        let mut tex = Texture::empty(4, 4);
+
+        // Set all four corners with different colors
+        tex.set_pixel(0, 0, 255, 0, 0, 255); // Red
+        tex.set_pixel(3, 0, 0, 255, 0, 255); // Green
+        tex.set_pixel(0, 3, 0, 0, 255, 255); // Blue
+        tex.set_pixel(3, 3, 255, 255, 0, 255); // Yellow
+
+        assert_eq!(tex.get_pixel(0, 0), (255, 0, 0, 255));
+        assert_eq!(tex.get_pixel(3, 0), (0, 255, 0, 255));
+        assert_eq!(tex.get_pixel(0, 3), (0, 0, 255, 255));
+        assert_eq!(tex.get_pixel(3, 3), (255, 255, 0, 255));
+
+        // Middle should still be empty
+        assert_eq!(tex.get_pixel(1, 1), (0, 0, 0, 0));
+    }
+
+    #[test]
+    fn test_texture_sample_alpha_interpolation() {
+        // Test that alpha is also interpolated
+        let mut tex = Texture::empty(2, 2);
+        tex.set_pixel(0, 0, 255, 255, 255, 0); // Transparent
+        tex.set_pixel(1, 0, 255, 255, 255, 255); // Opaque
+        tex.set_pixel(0, 1, 255, 255, 255, 0); // Transparent
+        tex.set_pixel(1, 1, 255, 255, 255, 255); // Opaque
+
+        // Sample at center should have ~128 alpha
+        let center = tex.sample(0.5, 0.5);
+        assert!(center.3 > 100 && center.3 < 160);
+    }
+
+    #[test]
+    fn test_texture_wide() {
+        // Very wide texture (100x1)
+        let tex = Texture::solid(100, 1, 128, 128, 128, 255);
+        assert_eq!(tex.width(), 100);
+        assert_eq!(tex.height(), 1);
+        assert_eq!(tex.get_pixel(99, 0), (128, 128, 128, 255));
+    }
+
+    #[test]
+    fn test_texture_tall() {
+        // Very tall texture (1x100)
+        let tex = Texture::solid(1, 100, 128, 128, 128, 255);
+        assert_eq!(tex.width(), 1);
+        assert_eq!(tex.height(), 100);
+        assert_eq!(tex.get_pixel(0, 99), (128, 128, 128, 255));
+    }
+
+    #[test]
+    #[should_panic(expected = "Texture data size mismatch")]
+    fn test_texture_new_too_much_data() {
+        let data = vec![255u8; 100]; // Too much data for 4x4
+        let _ = Texture::new(4, 4, data);
+    }
+
+    #[test]
+    #[should_panic(expected = "Texture data size mismatch")]
+    fn test_texture_new_too_little_data() {
+        let data = vec![255u8; 10]; // Too little data for 4x4
+        let _ = Texture::new(4, 4, data);
+    }
 }

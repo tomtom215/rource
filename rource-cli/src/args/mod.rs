@@ -911,4 +911,435 @@ width = 1920
         };
         assert!(args.validate().is_err());
     }
+
+    // =========================================================================
+    // Edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_validate_dimension_boundaries() {
+        // Minimum valid dimension (16)
+        let args = Args {
+            width: 16,
+            height: 16,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+
+        // Maximum valid dimension (16384)
+        let args = Args {
+            width: 16384,
+            height: 16384,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_framerate_boundaries() {
+        // Minimum framerate (1)
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 1,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+
+        // Maximum framerate (240)
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 240,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_font_size_boundaries() {
+        // Minimum font size (4.0)
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 4.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+
+        // Maximum font size (200.0)
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 200.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_benchmark_requires_headless() {
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            benchmark: true,
+            headless: false,
+            ..Args::default()
+        };
+        let result = args.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .contains("--benchmark requires --headless"));
+    }
+
+    #[test]
+    fn test_validate_headless_with_output() {
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 10.0,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            headless: true,
+            output: Some(PathBuf::from("/tmp/frames")),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+    }
+
+    #[test]
+    fn test_parse_background_color_variations() {
+        // Without hash
+        let args = Args {
+            background_color: "FF5500".to_string(),
+            ..Args::default()
+        };
+        let color = args.parse_background_color();
+        assert!((color.r - 1.0).abs() < 0.01);
+        assert!((color.g - 0.333).abs() < 0.01);
+        assert!((color.b).abs() < 0.01);
+
+        // With hash
+        let args = Args {
+            background_color: "#00FF00".to_string(),
+            ..Args::default()
+        };
+        let color = args.parse_background_color();
+        assert!((color.g - 1.0).abs() < 0.01);
+
+        // Invalid falls back to black
+        let args = Args {
+            background_color: "invalid".to_string(),
+            ..Args::default()
+        };
+        let color = args.parse_background_color();
+        assert!((color.r).abs() < 0.01);
+        assert!((color.g).abs() < 0.01);
+        assert!((color.b).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_parse_logo_offset_negative() {
+        let args = Args {
+            logo_offset: "-10x-20".to_string(),
+            ..Args::default()
+        };
+        assert_eq!(args.parse_logo_offset(), (-10, -20));
+    }
+
+    #[test]
+    fn test_parse_logo_offset_comma_format() {
+        let args = Args {
+            logo_offset: "15,25".to_string(),
+            ..Args::default()
+        };
+        assert_eq!(args.parse_logo_offset(), (15, 25));
+    }
+
+    #[test]
+    fn test_parse_logo_offset_whitespace() {
+        let args = Args {
+            logo_offset: " 10 x 20 ".to_string(),
+            ..Args::default()
+        };
+        assert_eq!(args.parse_logo_offset(), (10, 20));
+    }
+
+    #[test]
+    fn test_build_watermark_settings_default() {
+        let args = Args {
+            watermark_position: "bottom-right".to_string(),
+            watermark_font_size: 14.0,
+            watermark_opacity: 0.5,
+            watermark_color: "FFFFFF".to_string(),
+            watermark_margin: 15.0,
+            ..Args::default()
+        };
+
+        let settings = args.build_watermark_settings();
+        assert!(!settings.enabled);
+        assert!(settings.text.is_empty());
+        assert!(settings.subtext.is_none());
+        assert!((settings.font_size - 14.0).abs() < 0.01);
+        assert!((settings.opacity - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_build_watermark_settings_with_text() {
+        let args = Args {
+            watermark_text: Some("Project Name".to_string()),
+            watermark_subtext: Some("Copyright 2026".to_string()),
+            watermark_position: "top-left".to_string(),
+            watermark_font_size: 16.0,
+            watermark_opacity: 0.8,
+            watermark_color: "FF0000".to_string(),
+            watermark_margin: 20.0,
+            ..Args::default()
+        };
+
+        let settings = args.build_watermark_settings();
+        assert!(settings.enabled);
+        assert_eq!(settings.text, "Project Name");
+        assert_eq!(settings.subtext, Some("Copyright 2026".to_string()));
+        assert!((settings.font_size - 16.0).abs() < 0.01);
+        assert!((settings.opacity - 0.8).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_build_watermark_settings_opacity_clamp() {
+        // Over 1.0 should be clamped
+        let args = Args {
+            watermark: true,
+            watermark_opacity: 1.5,
+            watermark_position: "bottom-right".to_string(),
+            watermark_color: "FFFFFF".to_string(),
+            ..Args::default()
+        };
+        let settings = args.build_watermark_settings();
+        assert!((settings.opacity - 1.0).abs() < 0.01);
+
+        // Under 0.0 should be clamped
+        let args = Args {
+            watermark: true,
+            watermark_opacity: -0.5,
+            watermark_position: "bottom-right".to_string(),
+            watermark_color: "FFFFFF".to_string(),
+            ..Args::default()
+        };
+        let settings = args.build_watermark_settings();
+        assert!((settings.opacity - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_to_settings_camera_3d_2d_flags() {
+        // --3d only
+        let args = Args {
+            camera_3d: true,
+            camera_2d: false,
+            camera_mode: "overview".to_string(),
+            ..Args::default()
+        };
+        let settings = args.to_settings();
+        assert!(settings.camera.enable_3d);
+
+        // --2d overrides --3d
+        let args = Args {
+            camera_3d: true,
+            camera_2d: true,
+            camera_mode: "overview".to_string(),
+            ..Args::default()
+        };
+        let settings = args.to_settings();
+        assert!(!settings.camera.enable_3d);
+
+        // Neither
+        let args = Args {
+            camera_3d: false,
+            camera_2d: false,
+            camera_mode: "overview".to_string(),
+            ..Args::default()
+        };
+        let settings = args.to_settings();
+        assert!(!settings.camera.enable_3d);
+    }
+
+    #[test]
+    fn test_to_settings_filters() {
+        let args = Args {
+            show_users: Some("alice|bob".to_string()),
+            hide_users: Some("charlie".to_string()),
+            show_files: Some(".*\\.rs$".to_string()),
+            hide_files: Some(".*\\.md$".to_string()),
+            hide_dirs: Some("node_modules".to_string()),
+            camera_mode: "overview".to_string(),
+            ..Args::default()
+        };
+
+        let settings = args.to_settings();
+
+        // Test that filter patterns are applied by checking the pattern getters
+        assert!(settings.filter.show_users_pattern().is_some());
+        assert!(settings.filter.hide_users_pattern().is_some());
+        assert!(settings.filter.show_files_pattern().is_some());
+        assert!(settings.filter.hide_files_pattern().is_some());
+        assert!(settings.filter.hide_dirs_pattern().is_some());
+
+        // Verify exact patterns
+        assert_eq!(settings.filter.show_users_pattern(), Some("alice|bob"));
+        assert_eq!(settings.filter.hide_dirs_pattern(), Some("node_modules"));
+    }
+
+    #[test]
+    fn test_to_settings_visibility_flags() {
+        let args = Args {
+            hide_filenames: true,
+            hide_usernames: true,
+            hide_date: true,
+            hide_progress: true,
+            hide_legend: true,
+            hide_dirnames: true,
+            hide_root: true,
+            hide_tree: true,
+            hide_bloom: true,
+            hide_mouse: true,
+            camera_mode: "overview".to_string(),
+            ..Args::default()
+        };
+
+        let settings = args.to_settings();
+        assert!(settings.visibility.hide_filenames);
+        assert!(settings.visibility.hide_usernames);
+        assert!(settings.visibility.hide_date);
+        assert!(settings.visibility.hide_progress);
+        assert!(settings.visibility.hide_legend);
+        assert!(settings.visibility.hide_dirnames);
+        assert!(settings.visibility.hide_root);
+        assert!(settings.visibility.hide_tree);
+        assert!(settings.visibility.hide_bloom);
+        assert!(settings.visibility.hide_mouse);
+    }
+
+    #[test]
+    fn test_sample_config_not_empty() {
+        let config = Args::sample_config();
+        assert!(!config.is_empty());
+        // Should contain TOML-style configuration
+        assert!(config.contains("="));
+    }
+
+    #[test]
+    fn test_env_help_not_empty() {
+        let help = Args::env_help();
+        assert!(!help.is_empty());
+        // Should mention environment variables
+        assert!(help.contains("ROURCE"));
+    }
+
+    #[test]
+    fn test_to_settings_export() {
+        let args = Args {
+            output: Some(PathBuf::from("/tmp/frames")),
+            framerate: 30,
+            screenshot: Some(PathBuf::from("/tmp/screenshot.png")),
+            camera_mode: "overview".to_string(),
+            ..Args::default()
+        };
+
+        let settings = args.to_settings();
+        assert_eq!(settings.export.output_path, Some("/tmp/frames".to_string()));
+        assert_eq!(settings.export.framerate, 30);
+        assert_eq!(
+            settings.export.screenshot_path,
+            Some("/tmp/screenshot.png".to_string())
+        );
+    }
+
+    #[test]
+    fn test_to_settings_playback() {
+        let args = Args {
+            seconds_per_day: 5.0,
+            loop_playback: true,
+            paused: true,
+            time_scale: 2.0,
+            stop_at_time: Some(120.0),
+            realtime: true,
+            camera_mode: "overview".to_string(),
+            ..Args::default()
+        };
+
+        let settings = args.to_settings();
+        assert!((settings.playback.seconds_per_day - 5.0).abs() < 0.01);
+        assert!(settings.playback.loop_playback);
+        assert!(settings.playback.start_paused);
+        assert!((settings.playback.time_scale - 2.0).abs() < 0.01);
+        assert_eq!(settings.playback.stop_at_time, Some(120.0));
+        assert!(settings.playback.realtime);
+    }
+
+    #[test]
+    fn test_to_settings_limits() {
+        let args = Args {
+            max_files: 1000,
+            max_users: 50,
+            camera_mode: "overview".to_string(),
+            ..Args::default()
+        };
+
+        let settings = args.to_settings();
+        assert_eq!(settings.limits.max_files, 1000);
+        assert_eq!(settings.limits.max_users, 50);
+    }
+
+    #[test]
+    fn test_validate_seconds_per_day_edge() {
+        // Minimum valid value (0.001)
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 0.001,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_ok());
+
+        // Just below minimum
+        let args = Args {
+            width: 1280,
+            height: 720,
+            framerate: 60,
+            seconds_per_day: 0.0009,
+            font_size: 12.0,
+            background_color: "000000".to_string(),
+            ..Args::default()
+        };
+        assert!(args.validate().is_err());
+    }
 }

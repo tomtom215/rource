@@ -777,7 +777,7 @@ const DISC_MIN_BATCH_SIZE: usize = 8;
 /// Renders an anti-aliased disc using pre-computed inner bounds per scanline.
 ///
 /// This is Phase 72 improvement over `draw_disc_simd`. Instead of tracking
-/// run-length at runtime (Option<i32> per pixel), this version:
+/// run-length at runtime (`Option<i32>` per pixel), this version:
 ///
 /// 1. Pre-computes inner region bounds using sqrt per scanline
 /// 2. Processes inner region as a single batch (no per-pixel checks)

@@ -1014,6 +1014,115 @@ wasm-pack build --target web --release
 # Manual test required
 ```
 
+### EXPERT+ Coverage Verification (MANDATORY)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    COVERAGE VERIFICATION REQUIREMENTS                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  To claim EXPERT+ quality, coverage must be MEASURED and DOCUMENTED.        │
+│  "I think the tests are good" is NOT acceptable.                            │
+│  "Coverage is X% (measured by tarpaulin)" IS acceptable.                    │
+│                                                                             │
+│  EVERY session that adds/modifies code MUST run these verifications:        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1. Documentation Coverage (REQUIRED)
+
+```bash
+# Must produce ZERO warnings
+cargo doc --no-deps --all-features 2>&1 | grep -E "(warning|error)"
+
+# Expected output: (empty - no warnings)
+# If warnings appear, FIX THEM before committing
+```
+
+**What this verifies:**
+- All public items have documentation
+- No broken doc links or unclosed HTML tags
+- Doc examples compile correctly
+
+#### 2. Line Coverage Analysis (REQUIRED)
+
+```bash
+# Install cargo-tarpaulin (done by session-setup.sh)
+cargo install cargo-tarpaulin
+
+# Run coverage analysis on core library crates
+cargo tarpaulin -p rource-math -p rource-vcs -p rource-core -p rource-render \
+    --out Stdout --skip-clean 2>&1 | tail -50
+
+# Record the coverage percentage in commit messages
+```
+
+**Coverage Targets:**
+
+| Crate | Target | Acceptable | Notes |
+|-------|--------|------------|-------|
+| rource-math | 80%+ | 60%+ | Pure functions, highly testable |
+| rource-vcs | 70%+ | 50%+ | Parser logic, edge cases |
+| rource-core | 60%+ | 40%+ | Scene, physics, animation |
+| rource-render | 50%+ | 30%+ | Some GPU code untestable |
+| rource-wasm | 30%+ | 20%+ | Platform-specific code |
+
+**What coverage analysis reveals:**
+- Which lines are never executed by tests
+- Which branches are not covered
+- Potential dead code or untested edge cases
+
+#### 3. Coverage Reporting Protocol
+
+**When adding tests, ALWAYS report:**
+
+```markdown
+Coverage improvement:
+- Before: X% (Y/Z lines)
+- After: X% (Y/Z lines)
+- Delta: +X% (N new lines covered)
+```
+
+**When modifying code, ALWAYS verify:**
+
+```bash
+# Before changes
+cargo tarpaulin -p <crate> --out Stdout 2>&1 | grep "coverage"
+
+# After changes
+cargo tarpaulin -p <crate> --out Stdout 2>&1 | grep "coverage"
+
+# Coverage should NOT decrease
+```
+
+#### 4. Per-File Coverage Check (Optional but Recommended)
+
+```bash
+# Get detailed per-file breakdown
+cargo tarpaulin -p rource-core --out Stdout 2>&1 | grep -E "^\\|\\| crates/"
+
+# Example output:
+# || crates/rource-core/src/animation/spline.rs: 93/138 +0.00%
+# || crates/rource-core/src/physics/barnes_hut.rs: 51/83 +0.00%
+```
+
+#### 5. Coverage Exceptions
+
+Some code CANNOT be covered by unit tests:
+
+| Category | Example | Reason |
+|----------|---------|--------|
+| Platform-specific | WASM bindings | Requires browser runtime |
+| GPU code | WebGL2 shaders | Requires GPU context |
+| CLI entry points | main() | Integration test territory |
+| Interactive code | Event handlers | Requires user input |
+
+**For uncoverable code:**
+- Document WHY it can't be unit tested
+- Ensure it's integration tested or manually verified
+- Mark with `// COVERAGE: Integration tested` comment
+
 ### Testing Requirements
 
 | Test Type | Requirement | Status |
@@ -1350,6 +1459,7 @@ See individual roadmap documents for complete priority order.
 │     cargo test                          # All tests must pass               │
 │     cargo clippy -- -D warnings         # Zero warnings allowed             │
 │     cargo fmt --check                   # Must be formatted                 │
+│     cargo doc --no-deps --all-features  # Zero doc warnings                 │
 │                                                                             │
 │  2. READ CURRENT STATE                                                      │
 │     docs/performance/CHRONOLOGY.md      # What phase are we on?             │
@@ -1359,6 +1469,10 @@ See individual roadmap documents for complete priority order.
 │  3. ESTABLISH BASELINE                                                      │
 │     cargo test -p rource-wasm bench_ --release -- --nocapture               │
 │     Record exact numbers BEFORE any changes                                 │
+│                                                                             │
+│  4. RECORD COVERAGE BASELINE (if adding/modifying code)                     │
+│     cargo tarpaulin -p <crate> --out Stdout | grep "coverage"               │
+│     Record percentage BEFORE making changes                                 │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1375,10 +1489,18 @@ See individual roadmap documents for complete priority order.
 
 ### Ending a Session
 
-1. **Verify clean state**: `cargo test && cargo clippy -- -D warnings`
-2. **Update documentation**: CHRONOLOGY.md, NOT_APPLICABLE.md as needed
-3. **Commit with metrics**: Include exact measurements in commit message
-4. **Push to branch**: Ensure all changes are pushed
+1. **Verify clean state**:
+   ```bash
+   cargo test && cargo clippy -- -D warnings && cargo doc --no-deps --all-features
+   ```
+2. **Verify coverage (if code was added/modified)**:
+   ```bash
+   cargo tarpaulin -p <crate> --out Stdout | grep "coverage"
+   # Coverage should NOT decrease from baseline
+   ```
+3. **Update documentation**: CHRONOLOGY.md, NOT_APPLICABLE.md as needed
+4. **Commit with metrics**: Include exact measurements AND coverage in commit message
+5. **Push to branch**: Ensure all changes are pushed
 
 ### Tips for Expert+ Quality
 
