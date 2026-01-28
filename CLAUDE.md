@@ -83,8 +83,8 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 105 theorems, 242 verification conditions, 0 errors
-- **Coq**: 90+ theorems, 0 admits, machine-checked
-- **Combined**: 195+ formally verified theorems
+- **Coq**: 132+ theorems, 0 admits, machine-checked
+- **Combined**: 237+ formally verified theorems
 
 ### The Non-Negotiable Rules
 
@@ -357,6 +357,9 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-28 | WBhqf | coq-of-rust incompatible with Rust 1.93 | Tool requires older nightly | Manual Coq specs; documented in FORMAL_VERIFICATION.md | Yes |
 | 2026-01-28 | WBhqf | Windows CI benchmark timeout | Threshold too tight for CI variability | Increased threshold 100µs→150µs | Yes |
 | 2026-01-28 | WBhqf | No automated Verus/Coq setup | Tools required manual installation | Created scripts/setup-formal-verification.sh | Yes |
+| 2026-01-28 | SD81W | Coq installation via apt needs coq-theories | apt-get only installs coqc without theories | Use `apt-get install -y coq coq-theories` | Yes |
+| 2026-01-28 | SD81W | Mat3/Mat4 Coq proofs follow Vec2/Vec3/Vec4 pattern | Manual Coq specs work well | Added Mat3.v, Mat4.v, Mat3_Proofs.v, Mat4_Proofs.v (44 new theorems) | Yes |
+| 2026-01-28 | SD81W | Network issues can block apt-get | Transient DNS failures | Script should retry with exponential backoff | Yes |
 
 ---
 
@@ -1225,7 +1228,7 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | 1 | TESTED | Unit tests pass | `cargo test` passes |
 | 2 | BENCHMARKED | Performance measured with statistical rigor | Criterion with 95% CI |
 | 3 | FORMALLY VERIFIED | Correctness proven mathematically | Verus/Coq proofs compile |
-| 4 | **DUAL VERIFIED** | Proven in BOTH Verus AND Coq | Vec2, Vec3, Vec4 |
+| 4 | **DUAL VERIFIED** | Proven in BOTH Verus AND Coq | Vec2, Vec3, Vec4, Mat3, Mat4 |
 | 5 | **PUBLISHED ACADEMIC** | Suitable for PLDI/POPL/CAV review | Zero admits, reproducible |
 
 **Verified Components:**
@@ -1235,9 +1238,9 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | Vec2 | 23 theorems, 53 VCs | 29 theorems | 52 | DUAL VERIFIED |
 | Vec3 | 24 theorems, 68 VCs | 37 theorems | 61 | DUAL VERIFIED |
 | Vec4 | 22 theorems, 68 VCs | 26+ theorems | 48+ | DUAL VERIFIED |
-| Mat3 | 18 theorems, 26 VCs | - | 18 | VERUS VERIFIED |
-| Mat4 | 18 theorems, 27 VCs | - | 18 | VERUS VERIFIED |
-| **Total** | **105 theorems** | **90+ theorems** | **195+** | **ACADEMIC** |
+| Mat3 | 18 theorems, 26 VCs | 21 theorems | 39 | DUAL VERIFIED |
+| Mat4 | 18 theorems, 27 VCs | 21 theorems | 39 | DUAL VERIFIED |
+| **Total** | **105 theorems** | **132+ theorems** | **237+** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1254,8 +1257,13 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Coq proofs
 cd crates/rource-math/proofs/coq
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v
+
+# Build specifications
+coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v
+
+# Build proofs
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
+coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
 ```
 
 **Formal Verification Rules:**
@@ -1266,7 +1274,7 @@ coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 | Complete Specs | Specifications must capture full behavior |
 | Reproducibility | All proofs must verify from clean state |
 | Documentation | Each theorem documented with mathematical statement |
-| Dual Verification | Critical types (Vec2-4) verified in BOTH tools |
+| Dual Verification | Critical types (Vec2-4, Mat3-4) verified in BOTH tools |
 
 **Reference:** See `docs/verification/FORMAL_VERIFICATION.md` for complete details.
 
@@ -1698,7 +1706,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq proofs, zero admits, dual verification for critical types |
+| **Formal Verification** | Verus + Coq proofs (237+ theorems), zero admits, dual verification for Vec2-4, Mat3-4 |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1733,7 +1741,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  195+ formally verified theorems across Verus + Coq                         │
+│  237+ formally verified theorems across Verus + Coq                         │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1748,4 +1756,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-28*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 79 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 195+ theorems (Verus: 105, Coq: 90+)*
+*Formal Verification: 237+ theorems (Verus: 105, Coq: 132+)*

@@ -63,11 +63,26 @@ const INTERVAL_CONFIG = {
     [INTERVAL_TYPES.YEARLY]: {
         maxDays: Infinity,        // Use yearly for anything larger
         minTicks: 2,
-        maxTicks: 20,
+        maxTicks: 25,             // Allow more year ticks but will be dynamically spaced
         markerClass: 'tick-year',
         heightClass: 'tick-major',
     },
 };
+
+/**
+ * Determines the optimal year step for very long repositories.
+ * For repos spanning many years, we skip years to avoid overcrowding.
+ *
+ * @param {number} totalYears - Total number of years in the repo
+ * @returns {number} Step size for year boundaries (1, 2, 5, 10, etc.)
+ */
+function getYearStep(totalYears) {
+    if (totalYears <= 15) return 1;       // Show every year
+    if (totalYears <= 30) return 2;       // Show every 2 years
+    if (totalYears <= 60) return 5;       // Show every 5 years
+    if (totalYears <= 120) return 10;     // Show every decade
+    return 20;                            // Show every 20 years for very old repos
+}
 
 /**
  * Determines the appropriate tick interval based on the date range.
@@ -142,12 +157,28 @@ function startOfYear(date) {
 
 /**
  * Generates date boundaries for daily ticks.
+ * For very short repos (< 7 days), includes the start date itself to ensure
+ * at least one tick is shown.
+ *
  * @param {Date} start - Start date
  * @param {Date} end - End date
- * @returns {Array<{date: Date, label: string, isFirst: boolean}>} Array of boundaries
+ * @returns {Array<{date: Date, label: string, isFirst: boolean, isMajor: boolean}>} Array of boundaries
  */
 function generateDailyBoundaries(start, end) {
     const boundaries = [];
+    const rangeDays = (end - start) / MS_PER_DAY;
+
+    // For very short repos (< 3 days), include the start date boundary
+    // to ensure we have at least one tick
+    if (rangeDays < 3) {
+        boundaries.push({
+            date: new Date(startOfDay(start)),
+            label: formatDayLabel(start),
+            isFirst: true,
+            isMajor: true,
+        });
+    }
+
     let current = startOfDay(new Date(start.getTime() + MS_PER_DAY));
 
     while (current <= end) {
@@ -156,7 +187,7 @@ function generateDailyBoundaries(start, end) {
             date: new Date(current),
             label: formatDayLabel(current),
             isFirst: isFirstOfMonth,
-            isMajor: isFirstOfMonth,
+            isMajor: isFirstOfMonth || rangeDays < 7, // All ticks major for very short repos
         });
         current.setDate(current.getDate() + 1);
     }
@@ -166,12 +197,27 @@ function generateDailyBoundaries(start, end) {
 
 /**
  * Generates date boundaries for weekly ticks.
+ * For repos < 3 weeks, includes the first week's Monday to ensure visibility.
+ *
  * @param {Date} start - Start date
  * @param {Date} end - End date
- * @returns {Array<{date: Date, label: string, isFirst: boolean}>} Array of boundaries
+ * @returns {Array<{date: Date, label: string, isFirst: boolean, isMajor: boolean}>} Array of boundaries
  */
 function generateWeeklyBoundaries(start, end) {
     const boundaries = [];
+    const rangeWeeks = (end - start) / (DAYS_PER_WEEK * MS_PER_DAY);
+
+    // For very short repos (< 2 weeks), include the start week
+    if (rangeWeeks < 2) {
+        const startWeek = startOfWeek(start);
+        boundaries.push({
+            date: new Date(startWeek),
+            label: formatWeekLabel(startWeek),
+            isFirst: true,
+            isMajor: true,
+        });
+    }
+
     let current = startOfWeek(new Date(start.getTime() + DAYS_PER_WEEK * MS_PER_DAY));
 
     while (current <= end) {
@@ -180,7 +226,7 @@ function generateWeeklyBoundaries(start, end) {
             date: new Date(current),
             label: formatWeekLabel(current),
             isFirst: isFirstOfMonth,
-            isMajor: isFirstOfMonth,
+            isMajor: isFirstOfMonth || rangeWeeks < 6, // All ticks major for short repos
         });
         current.setDate(current.getDate() + 7);
     }
@@ -239,25 +285,58 @@ function generateQuarterlyBoundaries(start, end) {
 }
 
 /**
- * Generates date boundaries for yearly ticks.
+ * Generates date boundaries for yearly ticks with adaptive stepping.
+ * For very long repos (10+ years), uses dynamic year stepping to avoid overcrowding.
+ *
  * @param {Date} start - Start date
  * @param {Date} end - End date
- * @returns {Array<{date: Date, label: string, isFirst: boolean}>} Array of boundaries
+ * @returns {Array<{date: Date, label: string, isFirst: boolean, isMajor: boolean}>} Array of boundaries
  */
 function generateYearlyBoundaries(start, end) {
     const boundaries = [];
-    let current = startOfYear(start);
-    current.setFullYear(current.getFullYear() + 1);
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    const totalYears = endYear - startYear + 1;
+
+    // Determine optimal step size based on total years
+    const yearStep = getYearStep(totalYears);
+
+    // Find the first "round" year boundary after start (aligned to step)
+    // e.g., if step=5 and startYear=2013, first boundary is 2015
+    let firstBoundaryYear = Math.ceil((startYear + 1) / yearStep) * yearStep;
+    if (firstBoundaryYear <= startYear) {
+        firstBoundaryYear += yearStep;
+    }
+
+    let current = new Date(firstBoundaryYear, 0, 1);
 
     while (current <= end) {
-        const isDecade = current.getFullYear() % 10 === 0;
+        const year = current.getFullYear();
+        // Mark as major if it's a decade or the step is large
+        const isDecade = year % 10 === 0;
+        const isMajor = isDecade || yearStep >= 5;
+
         boundaries.push({
             date: new Date(current),
             label: formatYearLabel(current),
             isFirst: false,
-            isMajor: isDecade,
+            isMajor: isMajor,
         });
-        current.setFullYear(current.getFullYear() + 1);
+        current.setFullYear(current.getFullYear() + yearStep);
+    }
+
+    // Always include the start year if not already present and there are boundaries
+    // This helps anchor the timeline visually
+    if (boundaries.length > 0 && boundaries[0].date.getFullYear() > startYear + 1) {
+        const startBoundary = new Date(startYear + 1, 0, 1);
+        if (startBoundary <= end) {
+            boundaries.unshift({
+                date: startBoundary,
+                label: formatYearLabel(startBoundary),
+                isFirst: true,
+                isMajor: false,
+            });
+        }
     }
 
     return boundaries;
@@ -427,6 +506,10 @@ function formatFullDateLabel(date) {
 
 /**
  * Creates a tick marker DOM element.
+ * The tick represents a time period boundary (e.g., start of 2024) but is positioned
+ * at the first commit on or after that boundary, so the tooltip shows both the
+ * period label and the actual commit date for clarity.
+ *
  * @param {Object} boundary - Boundary object with date, label, isMajor, actualDate
  * @param {number} position - Position percentage
  * @param {Object} config - Interval configuration
@@ -442,16 +525,35 @@ function createTickElement(boundary, position, config, showLabel = false) {
     }
 
     tick.style.left = `${position}%`;
-    // Use actual commit date for accurate data attributes
+
+    // Use actual commit date for accurate positioning and tooltip
     const displayDate = boundary.actualDate || boundary.date;
+    const boundaryDate = boundary.date;
+
     tick.setAttribute('data-date', displayDate.toISOString());
-    // Use data-label for CSS ::after tooltip content - shows actual commit date
-    tick.setAttribute('data-label', formatFullDateLabel(displayDate));
-    // Title shows the period label (e.g., "Feb '24") for quick reference
-    tick.setAttribute('title', `${boundary.label} (${formatFullDateLabel(displayDate)})`);
-    // Use role="img" to allow aria-label on a div (visual timeline marker)
+
+    // Build informative tooltip: show period label + actual commit date
+    // E.g., "2024 • First commit: Jan 15, 2024"
+    const actualDateStr = formatFullDateLabel(displayDate);
+    const periodLabel = boundary.label;
+
+    // Check if actual date differs significantly from boundary date
+    const daysDiff = Math.abs(displayDate - boundaryDate) / MS_PER_DAY;
+    let tooltipText;
+    if (daysDiff < 1) {
+        // Commit is on or very close to boundary date
+        tooltipText = actualDateStr;
+    } else {
+        // Commit is after boundary - show both for clarity
+        tooltipText = `${periodLabel} • ${actualDateStr}`;
+    }
+
+    tick.setAttribute('data-label', tooltipText);
+    tick.setAttribute('title', tooltipText);
+
+    // Accessibility: describe the marker
     tick.setAttribute('role', 'img');
-    tick.setAttribute('aria-label', `Timeline marker: ${boundary.label}`);
+    tick.setAttribute('aria-label', `Timeline marker: ${periodLabel}`);
 
     // Add inline label for major ticks or when explicitly requested
     if (showLabel && (boundary.isMajor || config.heightClass === 'tick-major')) {
@@ -467,6 +569,12 @@ function createTickElement(boundary, position, config, showLabel = false) {
 /**
  * Generates and renders date tick marks on the timeline.
  * This is the main entry point called when data is loaded.
+ *
+ * The algorithm:
+ * 1. Determines the appropriate interval type based on date range
+ * 2. For very long repos (10+ years), uses adaptive year stepping
+ * 3. Positions ticks based on commit index (not timestamp) to align with slider
+ * 4. Ensures first/last boundaries are visible for context
  */
 export function generateTimelineTicks() {
     const rource = getRource();
@@ -505,12 +613,24 @@ export function generateTimelineTicks() {
     const startDate = new Date(startTimestamp * 1000);
     const endDate = new Date(endTimestamp * 1000);
 
+    // Calculate date range info for debugging and interval selection
+    const rangeDays = (endTimestamp - startTimestamp) / (24 * 60 * 60);
+    const rangeYears = rangeDays / DAYS_IN_YEAR;
+
     // Determine appropriate interval
     const intervalType = determineInterval(startTimestamp, endTimestamp);
     const config = INTERVAL_CONFIG[intervalType];
 
     // Generate boundaries
-    const boundaries = generateBoundaries(intervalType, startDate, endDate);
+    let boundaries = generateBoundaries(intervalType, startDate, endDate);
+
+    // Log useful debug info for development
+    if (typeof console !== 'undefined' && console.debug) {
+        console.debug(
+            `Timeline: ${totalCommits} commits, ${rangeDays.toFixed(0)} days (${rangeYears.toFixed(1)} years), ` +
+            `interval: ${intervalType}, boundaries: ${boundaries.length}`
+        );
+    }
 
     // Check if we have too few or too many ticks
     if (boundaries.length < config.minTicks) {
@@ -524,8 +644,26 @@ export function generateTimelineTicks() {
                 return;
             }
         }
-    } else if (boundaries.length > config.maxTicks) {
-        // Try a coarser granularity
+
+        // If still too few, just render what we have (better than nothing)
+        if (boundaries.length > 0) {
+            renderTicks(boundaries, config, startTimestamp, endTimestamp, timelineMarkers, rource, totalCommits);
+        }
+        return;
+    }
+
+    // For very long repos that still have too many ticks after boundary generation,
+    // the generateYearlyBoundaries function already handles dynamic stepping,
+    // so we just render what we have
+    if (boundaries.length > config.maxTicks && intervalType === INTERVAL_TYPES.YEARLY) {
+        // Yearly with dynamic stepping already applied - render as-is
+        // The adaptive getYearStep() should have handled this
+        renderTicks(boundaries, config, startTimestamp, endTimestamp, timelineMarkers, rource, totalCommits);
+        return;
+    }
+
+    if (boundaries.length > config.maxTicks) {
+        // Try a coarser granularity for non-yearly intervals
         const coarserInterval = getCoarserInterval(intervalType);
         if (coarserInterval) {
             const coarserConfig = INTERVAL_CONFIG[coarserInterval];
@@ -614,8 +752,8 @@ function selectLabeledTicks(boundaries, minSpacing = 15) {
  *
  * @param {Array} boundaries - Array of boundary objects
  * @param {Object} config - Interval configuration
- * @param {number} startTimestamp - Start timestamp in seconds (unused, kept for API compatibility)
- * @param {number} endTimestamp - End timestamp in seconds (unused, kept for API compatibility)
+ * @param {number} startTimestamp - Start timestamp in seconds
+ * @param {number} endTimestamp - End timestamp in seconds
  * @param {HTMLElement} container - Container element
  * @param {Object} rource - Rource WASM instance
  * @param {number} totalCommits - Total number of commits
@@ -624,12 +762,11 @@ function renderTicks(boundaries, config, startTimestamp, endTimestamp, container
     // Create document fragment for performance
     const fragment = document.createDocumentFragment();
 
-    // Filter out ticks that would be too close to the edges (within 2%)
-    // and calculate positions based on COMMIT INDEX (not timestamp)
+    // Calculate positions based on COMMIT INDEX (not timestamp)
     // This is critical: the slider is positioned by commit index, so tick marks
     // must use commit-index-based positions to align correctly.
     const mappedBoundaries = boundaries
-        .map(boundary => {
+        .map((boundary, originalIndex) => {
             const timestampSecs = boundary.date.getTime() / 1000;
             // Find the FIRST commit on or after this boundary date
             // This ensures "February" tick points to the first February commit,
@@ -645,14 +782,14 @@ function renderTicks(boundaries, config, startTimestamp, endTimestamp, container
             const actualDate = new Date(actualTimestamp * 1000);
             // Calculate position based on commit index, not timestamp
             const position = calculatePositionByCommitIndex(commitIndex, totalCommits);
-            return { ...boundary, position, commitIndex, actualDate };
+            return { ...boundary, position, commitIndex, actualDate, originalIndex };
         })
-        .filter(boundary => boundary !== null && boundary.position > 2 && boundary.position < 98);
+        .filter(boundary => boundary !== null);
 
     // Dedupe boundaries that map to the same commit index
     // (e.g., if no commits for 2 months, both month ticks would point to same commit)
     const seenCommitIndices = new Set();
-    const filteredBoundaries = mappedBoundaries.filter(boundary => {
+    let dedupedBoundaries = mappedBoundaries.filter(boundary => {
         if (seenCommitIndices.has(boundary.commitIndex)) {
             return false;
         }
@@ -660,11 +797,45 @@ function renderTicks(boundaries, config, startTimestamp, endTimestamp, container
         return true;
     });
 
+    // Calculate date range to adjust filtering for short repos
+    const rangeDays = (endTimestamp - startTimestamp) / (24 * 60 * 60);
+    const isShortRepo = rangeDays < 30; // Less than a month
+
+    // Apply edge filtering with special handling for first/last boundaries
+    // For short repos, be more permissive to show more context
+    const filteredBoundaries = dedupedBoundaries.filter((boundary, index, arr) => {
+        const isFirst = index === 0;
+        const isLast = index === arr.length - 1;
+
+        // For very short repos, allow ticks anywhere
+        if (isShortRepo) {
+            return true;
+        }
+
+        if (isFirst) {
+            // First tick: allow closer to left edge (1%)
+            return boundary.position >= 1;
+        } else if (isLast) {
+            // Last tick: allow closer to right edge (99%)
+            return boundary.position <= 99;
+        } else {
+            // Middle ticks: keep away from edges (3%-97%)
+            return boundary.position > 3 && boundary.position < 97;
+        }
+    });
+
+    // If we have very few ticks after filtering, be more permissive
+    let finalBoundaries = filteredBoundaries;
+    if (filteredBoundaries.length < 2 && dedupedBoundaries.length >= 2) {
+        // Use all deduped boundaries if filtering removed too many
+        finalBoundaries = dedupedBoundaries;
+    }
+
     // Determine which ticks get inline labels
-    const labeledIndices = selectLabeledTicks(filteredBoundaries);
+    const labeledIndices = selectLabeledTicks(finalBoundaries);
 
     // Add ticks
-    filteredBoundaries.forEach((boundary, index) => {
+    finalBoundaries.forEach((boundary, index) => {
         const showLabel = labeledIndices.has(index);
         const tick = createTickElement(boundary, boundary.position, config, showLabel);
         fragment.appendChild(tick);

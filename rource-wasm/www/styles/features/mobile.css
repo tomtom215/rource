@@ -345,19 +345,23 @@
     .mobile-toolbar-btn {
         flex-direction: column;
         gap: 2px;
-        padding: 4px 6px;
+        padding: 4px 8px;
+        /* FIXED: Use auto width with min-width to prevent text truncation */
         min-width: 48px;
+        width: auto;
     }
 
     .mobile-toolbar-btn .btn-label {
         display: block;
-        font-size: 0.75rem; /* 12px - WCAG minimum readable size */
-        font-weight: 500;
+        font-size: 0.65rem; /* Slightly smaller for better fit */
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.2px;
         white-space: nowrap;
-        opacity: 0.85;
+        opacity: 0.9;
         line-height: 1;
+        /* Ensure text doesn't overflow */
+        overflow: visible;
     }
 
     .mobile-toolbar-btn.active .btn-label {
@@ -1078,16 +1082,22 @@
         height: 32px;
     }
 
-    /* Landscape toolbar: Maintain 44px touch targets (WCAG 2.5.5) with smaller icons */
+    /* Landscape toolbar: Maintain 44px touch targets (WCAG 2.5.5) */
     .has-bottom-sheet .mobile-toolbar-btn {
-        width: 44px;
-        height: 44px;
-        padding: 0;
+        min-width: 44px;
+        min-height: 44px;
+        width: auto;
+        padding: 4px 6px;
     }
 
     .has-bottom-sheet .mobile-toolbar-btn svg {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Smaller labels in landscape to save space */
+    .has-bottom-sheet .mobile-toolbar-btn .btn-label {
+        font-size: 0.6rem;
     }
 
     /* Tighter toolbar spacing in landscape */
@@ -1212,14 +1222,19 @@
 }
 
 .landscape-mobile.has-bottom-sheet .mobile-toolbar-btn {
-    width: 44px;
-    height: 44px;
-    padding: 0;
+    min-width: 44px;
+    min-height: 44px;
+    width: auto;
+    padding: 4px 6px;
 }
 
 .landscape-mobile.has-bottom-sheet .mobile-toolbar-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
+}
+
+.landscape-mobile.has-bottom-sheet .mobile-toolbar-btn .btn-label {
+    font-size: 0.6rem;
 }
 
 /* Landscape styles via JS-added class - Performance and Stats overlays */

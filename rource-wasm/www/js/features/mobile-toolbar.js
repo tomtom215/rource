@@ -96,18 +96,24 @@ async function handleScreenshot() {
  */
 function handleLabelsToggle() {
     const rource = getRource();
-    if (!rource) return;
+    if (!rource) {
+        showToast('Labels not available yet', 'error');
+        return;
+    }
 
     labelsEnabled = !labelsEnabled;
 
     try {
-        rource.setLabelsEnabled(labelsEnabled);
+        // FIXED: Use correct WASM API method name
+        rource.setShowLabels(labelsEnabled);
         const labelsBtn = document.getElementById('mobile-labels-btn');
         if (labelsBtn) {
             updateLabelsButtonState(labelsBtn, labelsEnabled);
         }
+        showToast(labelsEnabled ? 'Labels on' : 'Labels off', 'info');
     } catch (error) {
         console.error('Failed to toggle labels:', error);
+        showToast('Failed to toggle labels', 'error');
     }
 }
 

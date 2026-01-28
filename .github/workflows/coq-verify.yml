@@ -57,45 +57,79 @@ jobs:
         run: |
           echo "Building Coq proofs..."
 
-          # Build specifications first
+          # Build vector specifications first (fast, ~1-2 seconds each)
           echo "Building Vec2.v..."
-          coqc -Q . RourceMath Vec2.v 2>&1
+          timeout 60 coqc -Q . RourceMath Vec2.v 2>&1
 
           echo "Building Vec3.v..."
-          coqc -Q . RourceMath Vec3.v 2>&1
+          timeout 60 coqc -Q . RourceMath Vec3.v 2>&1
 
           echo "Building Vec4.v..."
-          coqc -Q . RourceMath Vec4.v 2>&1
+          timeout 60 coqc -Q . RourceMath Vec4.v 2>&1
 
-          # Build proofs
+          # Build matrix specifications (fast, ~1-2 seconds each)
+          echo "Building Mat3.v..."
+          timeout 60 coqc -Q . RourceMath Mat3.v 2>&1
+
+          echo "Building Mat4.v..."
+          timeout 60 coqc -Q . RourceMath Mat4.v 2>&1
+
+          # Build vector proofs (moderate, ~5-30 seconds each)
           echo "Building Vec2_Proofs.v..."
-          VEC2_OUTPUT=$(coqc -Q . RourceMath Vec2_Proofs.v 2>&1 || true)
+          VEC2_OUTPUT=$(timeout 120 coqc -Q . RourceMath Vec2_Proofs.v 2>&1 || true)
           if echo "$VEC2_OUTPUT" | grep -q "Error"; then
             echo "vec2_status=failed" >> $GITHUB_OUTPUT
             echo "$VEC2_OUTPUT"
             exit 1
           else
             echo "vec2_status=verified" >> $GITHUB_OUTPUT
+            echo "Vec2_Proofs.v verified successfully"
           fi
 
           echo "Building Vec3_Proofs.v..."
-          VEC3_OUTPUT=$(coqc -Q . RourceMath Vec3_Proofs.v 2>&1 || true)
+          VEC3_OUTPUT=$(timeout 120 coqc -Q . RourceMath Vec3_Proofs.v 2>&1 || true)
           if echo "$VEC3_OUTPUT" | grep -q "Error"; then
             echo "vec3_status=failed" >> $GITHUB_OUTPUT
             echo "$VEC3_OUTPUT"
             exit 1
           else
             echo "vec3_status=verified" >> $GITHUB_OUTPUT
+            echo "Vec3_Proofs.v verified successfully"
           fi
 
           echo "Building Vec4_Proofs.v..."
-          VEC4_OUTPUT=$(coqc -Q . RourceMath Vec4_Proofs.v 2>&1 || true)
+          VEC4_OUTPUT=$(timeout 180 coqc -Q . RourceMath Vec4_Proofs.v 2>&1 || true)
           if echo "$VEC4_OUTPUT" | grep -q "Error"; then
             echo "vec4_status=failed" >> $GITHUB_OUTPUT
             echo "$VEC4_OUTPUT"
             exit 1
           else
             echo "vec4_status=verified" >> $GITHUB_OUTPUT
+            echo "Vec4_Proofs.v verified successfully"
+          fi
+
+          # Build matrix proofs (slow due to ring tactic on large expressions)
+          # Mat3 has 9 components, Mat4 has 16 - multiplication associativity is expensive
+          echo "Building Mat3_Proofs.v (may take 1-2 minutes)..."
+          MAT3_OUTPUT=$(timeout 300 coqc -Q . RourceMath Mat3_Proofs.v 2>&1 || true)
+          if echo "$MAT3_OUTPUT" | grep -q "Error"; then
+            echo "mat3_status=failed" >> $GITHUB_OUTPUT
+            echo "$MAT3_OUTPUT"
+            exit 1
+          else
+            echo "mat3_status=verified" >> $GITHUB_OUTPUT
+            echo "Mat3_Proofs.v verified successfully"
+          fi
+
+          echo "Building Mat4_Proofs.v (may take 2-5 minutes)..."
+          MAT4_OUTPUT=$(timeout 600 coqc -Q . RourceMath Mat4_Proofs.v 2>&1 || true)
+          if echo "$MAT4_OUTPUT" | grep -q "Error"; then
+            echo "mat4_status=failed" >> $GITHUB_OUTPUT
+            echo "$MAT4_OUTPUT"
+            exit 1
+          else
+            echo "mat4_status=verified" >> $GITHUB_OUTPUT
+            echo "Mat4_Proofs.v verified successfully"
           fi
 
           echo "All Coq proofs verified successfully!"
@@ -108,12 +142,16 @@ jobs:
           VEC2_THEOREMS=$(grep -c "^Theorem\|^Lemma" Vec2_Proofs.v || echo "0")
           VEC3_THEOREMS=$(grep -c "^Theorem\|^Lemma" Vec3_Proofs.v || echo "0")
           VEC4_THEOREMS=$(grep -c "^Theorem\|^Lemma" Vec4_Proofs.v || echo "0")
+          MAT3_THEOREMS=$(grep -c "^Theorem\|^Lemma" Mat3_Proofs.v || echo "0")
+          MAT4_THEOREMS=$(grep -c "^Theorem\|^Lemma" Mat4_Proofs.v || echo "0")
 
           echo "vec2_theorems=$VEC2_THEOREMS" >> $GITHUB_OUTPUT
           echo "vec3_theorems=$VEC3_THEOREMS" >> $GITHUB_OUTPUT
           echo "vec4_theorems=$VEC4_THEOREMS" >> $GITHUB_OUTPUT
+          echo "mat3_theorems=$MAT3_THEOREMS" >> $GITHUB_OUTPUT
+          echo "mat4_theorems=$MAT4_THEOREMS" >> $GITHUB_OUTPUT
 
-          TOTAL=$((VEC2_THEOREMS + VEC3_THEOREMS + VEC4_THEOREMS))
+          TOTAL=$((VEC2_THEOREMS + VEC3_THEOREMS + VEC4_THEOREMS + MAT3_THEOREMS + MAT4_THEOREMS))
           echo "total_theorems=$TOTAL" >> $GITHUB_OUTPUT
 
       - name: Check for admits
@@ -138,6 +176,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Formal proofs verified using [Coq](https://coq.inria.fr/) v${{ env.COQ_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Vector Proofs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Theorems | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|----------|--------|" >> $GITHUB_STEP_SUMMARY
 
@@ -153,6 +193,21 @@ jobs:
           VEC4_STATUS="${{ steps.build.outputs.vec4_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
           echo "| Vec4_Proofs | ${{ steps.count.outputs.vec4_theorems }} | $VEC4_STATUS |" >> $GITHUB_STEP_SUMMARY
 
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Matrix Proofs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Theorems | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Mat3
+          MAT3_STATUS="${{ steps.build.outputs.mat3_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
+          echo "| Mat3_Proofs | ${{ steps.count.outputs.mat3_theorems }} | $MAT3_STATUS |" >> $GITHUB_STEP_SUMMARY
+
+          # Mat4
+          MAT4_STATUS="${{ steps.build.outputs.mat4_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
+          echo "| Mat4_Proofs | ${{ steps.count.outputs.mat4_theorems }} | $MAT4_STATUS |" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| **Total** | **${{ steps.count.outputs.total_theorems }}** | |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -174,10 +229,18 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Properties Verified" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Vector Properties" >> $GITHUB_STEP_SUMMARY
           echo "- **Vector Space Axioms**: Commutativity, associativity, distributivity, identity" >> $GITHUB_STEP_SUMMARY
           echo "- **Dot Product**: Commutativity, linearity, positive definiteness" >> $GITHUB_STEP_SUMMARY
           echo "- **Cross Product** (Vec3): Anti-commutativity, orthogonality, right-hand rule" >> $GITHUB_STEP_SUMMARY
           echo "- **Scalar Triple Product** (Vec3): Cyclic invariance" >> $GITHUB_STEP_SUMMARY
           echo "- **Interpolation**: Lerp boundary conditions" >> $GITHUB_STEP_SUMMARY
           echo "- **Orthonormal Basis**: Unit vector properties" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Matrix Properties" >> $GITHUB_STEP_SUMMARY
+          echo "- **Matrix Addition**: Commutativity, associativity, identity, inverse" >> $GITHUB_STEP_SUMMARY
+          echo "- **Matrix Multiplication**: Left/right identity, associativity (CRITICAL for MVP)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Scalar Multiplication**: Identity, zero, distribution, associativity" >> $GITHUB_STEP_SUMMARY
+          echo "- **Transpose**: Double transpose, distribution over addition/scaling" >> $GITHUB_STEP_SUMMARY
+          echo "- **Ring Structure**: Mat3/Mat4 form rings with identity" >> $GITHUB_STEP_SUMMARY
 

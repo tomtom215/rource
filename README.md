@@ -88,6 +88,20 @@
 
 See [Performance Documentation](#performance-documentation) for the complete optimization history.
 
+### Formal Verification
+
+**PEER REVIEWED PUBLISHED ACADEMIC STANDARD** - Mathematical correctness proven by machine-checked proofs:
+
+| Tool | Components | Theorems | Status |
+|------|------------|----------|--------|
+| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4 | 105 theorems, 242 VCs | ✅ Verified |
+| **Coq** | Vec2, Vec3, Vec4, Mat3, Mat4 | 132+ theorems | ✅ Zero admits |
+| **Combined** | All core math types | **237+ theorems** | ✅ DUAL VERIFIED |
+
+Properties verified include: vector space axioms, dot/cross product laws, matrix multiplication associativity (critical for MVP transformations), ring structure, and more.
+
+See [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) for complete details.
+
 ---
 
 ## Installation
@@ -507,6 +521,12 @@ rource/
 | [docs/testing/MUTATION_TESTING.md](docs/testing/MUTATION_TESTING.md) | Mutation testing setup and results |
 | [docs/testing/VISUAL_REGRESSION.md](docs/testing/VISUAL_REGRESSION.md) | Visual regression testing methodology |
 | [docs/REVIEW_STANDARDS.md](docs/REVIEW_STANDARDS.md) | Code review requirements and checklists |
+
+### Verification Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 237+ formally verified theorems (Verus + Coq) |
 
 ### UX Documentation
 

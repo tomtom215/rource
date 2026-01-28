@@ -621,8 +621,9 @@ certicoq -wasm proofs/coq/vec2.v -o verified_vec2.wasm
 - [x] ~~Install coq-of-rust, test on vec2.rs~~ (coq-of-rust not compatible with Rust 1.93 toolchain)
 - [x] Set up Coq project structure in `proofs/coq/`
 - [x] Translate Vec2, Vec3, Vec4 to Coq (manual translation with verified semantics)
-- [x] Verify translation preserves semantics (90 theorems, 0 admits)
+- [x] Verify translation preserves semantics (90+ theorems, 0 admits)
 - [x] Create CI workflow for Coq proof checking (`.github/workflows/coq-verify.yml`)
+- [x] Add Mat3, Mat4 Coq specifications and proofs (42+ theorems)
 
 **Phase 1 Completion Details:**
 
@@ -634,13 +635,18 @@ certicoq -wasm proofs/coq/vec2.v -o verified_vec2.wasm
 | Vec3_Proofs.v | 36 | ✅ | Cross product, scalar triple, right-hand rule |
 | Vec4.v | 1 | ✅ | Specification (equality lemma) |
 | Vec4_Proofs.v | 25+ | ✅ | Orthonormal basis, 4D vector space |
-| **Total** | **90+** | ✅ | All proofs machine-checked, 0 admits |
+| Mat3.v | 1 | ✅ | Specification (equality lemma) |
+| Mat3_Proofs.v | 21 | ✅ | Matrix addition, multiplication, transpose, ring structure |
+| Mat4.v | 1 | ✅ | Specification (equality lemma) |
+| Mat4_Proofs.v | 21 | ✅ | Matrix addition, multiplication, transpose, ring structure |
+| **Total** | **132+** | ✅ | All proofs machine-checked, 0 admits |
 
 **Verification Command:**
 ```bash
 cd crates/rource-math/proofs/coq
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v
+coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
+coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
 # All files compile with 0 errors
 ```
 
@@ -715,11 +721,11 @@ This hybrid approach would be novel in several ways:
 
 **Coq Proofs (Phase 1 Complete):**
 *Version: Coq 8.18*
-*Total theorems: 90+ (Vec2: 29, Vec3: 37, Vec4: 26+)*
+*Total theorems: 132+ (Vec2: 29, Vec3: 37, Vec4: 26+, Mat3: 21, Mat4: 21)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Combined Verification:**
-*Total theorems: 195+ across Verus and Coq*
+*Total theorems: 237+ across Verus and Coq*
 *Total admits: 0*
 *Status: Dual-verification for maximum confidence*

@@ -402,6 +402,25 @@ check_optional_tools() {
         print_warn "git not found (required for repository visualization)"
     fi
 
+    # Formal verification tools (for PEER REVIEWED PUBLISHED ACADEMIC standard)
+    if command_exists coqc; then
+        local coq_version
+        coq_version=$(coqc --version 2>/dev/null | grep -oP 'version \K[0-9.]+' | head -1 || echo "installed")
+        print_ok "Coq is installed (version: $coq_version)"
+    else
+        print_info "Coq not found (for formal verification)"
+        print_info "  Install with: ./scripts/setup-formal-verification.sh --coq"
+    fi
+
+    if [[ -x "/tmp/verus/verus" ]]; then
+        local verus_version
+        verus_version=$(/tmp/verus/verus --version 2>/dev/null | head -1 || echo "installed")
+        print_ok "Verus is installed ($verus_version)"
+    else
+        print_info "Verus not found (for formal verification)"
+        print_info "  Install with: ./scripts/setup-formal-verification.sh --verus"
+    fi
+
     return 0
 }
 
@@ -490,6 +509,10 @@ print_summary() {
     echo "  cargo clippy --all -- -D warnings                  Zero warnings required"
     echo "  cargo test --all                                   All tests must pass"
     echo ""
+    echo -e "${BOLD}Formal Verification (PEER REVIEWED PUBLISHED ACADEMIC):${NC}"
+    echo "  ./scripts/setup-formal-verification.sh --verify    Run all Verus + Coq proofs"
+    echo "  # 237+ theorems total (105 Verus + 132+ Coq), zero admits"
+    echo ""
     echo -e "${BOLD}Project Paths:${NC}"
     echo "  Project Root: ${ROURCE_PROJECT_ROOT:-<not set>}"
     echo "  CLI Binary:   target/release/rource"
@@ -528,6 +551,11 @@ Requirements:
 EXPERT+ Verification Tools (REQUIRED):
   - cargo-tarpaulin - Line coverage analysis
   - cargo doc --all-features - Documentation coverage
+
+Formal Verification Tools (PEER REVIEWED PUBLISHED ACADEMIC):
+  - Verus - Rust formal verification (Microsoft)
+  - Coq 8.18+ - Proof assistant for dual verification
+  - Install: ./scripts/setup-formal-verification.sh
 
 Optional Tools:
   - wasm-opt (from binaryen) - WASM optimization
