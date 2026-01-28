@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769616138315,
+  "lastUpdate": 1769617955910,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -3845,6 +3845,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/1fd908a8402ebccefa9cd34b7996b7a940d03652"
         },
         "date": 1769616137499,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c220a2605eb3b5fa908b4c2aa01646b54d8fc5f",
+          "message": "Merge pull request #219 from tomtom215/claude/complete-codebase-audit-2Jf9D\n\nAdd formal verification of Vec2 and Vec3 using Verus",
+          "timestamp": "2026-01-28T17:30:15+01:00",
+          "tree_id": "133461f99fdaff04d5bfc6a6fa2dcd3733edc86d",
+          "url": "https://github.com/tomtom215/rource/commit/6c220a2605eb3b5fa908b4c2aa01646b54d8fc5f"
+        },
+        "date": 1769617954959,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
