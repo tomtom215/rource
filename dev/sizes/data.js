@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769632318304,
+  "lastUpdate": 1769639505608,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4001,6 +4001,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/0257f505eb30451f3ca20c94f3430e7cd37519a7"
         },
         "date": 1769632317789,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4f7eee0e07d6f27fbd6c3827c2b6cdf882b790a",
+          "message": "Merge pull request #223 from tomtom215/claude/add-wasm-support-SD81W\n\nAdd Mat3/Mat4 Coq proofs: 42 new theorems, dual verification complete",
+          "timestamp": "2026-01-28T23:29:27+01:00",
+          "tree_id": "bf1a9a45af5bb03a1c491111d59f10b672a6bc3c",
+          "url": "https://github.com/tomtom215/rource/commit/c4f7eee0e07d6f27fbd6c3827c2b6cdf882b790a"
+        },
+        "date": 1769639504625,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
