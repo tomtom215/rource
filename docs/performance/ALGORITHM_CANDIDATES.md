@@ -354,11 +354,18 @@ in single-digit nanoseconds unless flags are accessed millions of times per fram
 2. Frequency of flag access in hot paths
 3. Bulk flag operations (e.g., "hide all files matching X")
 
-### Verdict: **LOW PRIORITY BUT CLEAN WIN**
+### Verdict: **NOT APPLICABLE (Verified Phase 78 Session)**
 
-Bitflags are a clean optimization with no downside. Likely already used for some
-flags (check existing code). Low priority because gain is small unless flags are
-accessed in tight loops.
+Bitflags audit was performed. Found:
+- **VisibilitySettings**: 11 bools → would save 9 bytes, but only ONE instance exists (singleton)
+- **FileNode**: 144 bytes total, bools have alignment padding, savings <1%
+- **No arrays of small bool-heavy structs** that would benefit from bulk operations
+
+The bitflags crate is NOT used in this codebase because:
+1. Config structs are singletons, not arrays
+2. Entity struct bools are scattered with padding
+3. Hot paths access individual bools, not bulk operations
+4. API complexity increase for negligible cache benefit
 
 ---
 
@@ -456,13 +463,13 @@ pattern (many labels, few collisions, incremental updates).
 
 Based on feasibility, expected gain, and implementation complexity:
 
-| Priority | Algorithm | Expected Gain | Complexity | Risk |
-|----------|-----------|---------------|------------|------|
-| 1 | Four-Way SIMD AABB | 1-2 µs/frame | Low | Medium |
-| 2 | Bitflags Audit | 0.1-0.5 µs | Very Low | Very Low |
-| 3 | SoA Prototype | Unknown | High | High |
-| 4 | Morton Code | Likely negative | Medium | High |
-| 5 | Interval Tree | Likely N/A | Medium | High |
+| Priority | Algorithm | Expected Gain | Complexity | Risk | Status |
+|----------|-----------|---------------|------------|------|--------|
+| 1 | Four-Way SIMD AABB | 1-2 µs/frame | Low | Medium | **N/A (Phase 78)** |
+| 2 | Bitflags Audit | 0.1-0.5 µs | Very Low | Very Low | **N/A (singleton structs)** |
+| 3 | SoA Prototype | Unknown | High | High | Pending |
+| 4 | Morton Code | Likely negative | Medium | High | Pending |
+| 5 | Interval Tree | Likely N/A | Medium | High | Pending |
 
 ### Priority 1: Four-Way SIMD AABB
 
@@ -538,19 +545,19 @@ identified.
 
 ## Conclusion
 
-### Genuinely Promising (Worth Benchmarking)
+### Verified NOT APPLICABLE (Phase 78 Session)
 
-1. **Four-Way SIMD AABB Batch Testing** - Low risk, measurable gain
-2. **Bitflags Audit** - Zero risk, clean improvement
+1. **Four-Way SIMD AABB Batch Testing** - N/A: AoS layout + early exit value exceeds SIMD benefit
+2. **Bitflags Audit** - N/A: Singleton config structs, alignment padding limits savings
 
 ### Uncertain (Requires Prototype)
 
-3. **SoA Entity Layout** - High potential, high complexity
+3. **SoA Entity Layout** - High potential, high complexity (PENDING)
 
 ### Likely Not Applicable (But Worth Verifying)
 
-4. **Morton Code Sorting** - Sorting cost exceeds cache benefit
-5. **Interval Tree** - Spatial hash already optimal
+4. **Morton Code Sorting** - Sorting cost exceeds cache benefit (PENDING)
+5. **Interval Tree** - Spatial hash already optimal (PENDING)
 
 ### Already Exhausted
 
@@ -560,10 +567,12 @@ identified.
 - All BVH variants (N/A - no ray tracing)
 - Hybrid Introsort (pdqsort equivalent)
 - VEB Layout (tree fits in cache)
+- SIMD AABB batch testing (N/A - Phase 78)
+- Bitflags (N/A - singleton structs)
 
 ### Path to Novel Algorithm
 
-If Candidates 1-5 prove NOT APPLICABLE after rigorous benchmarking, the next
+If Candidates 3-5 prove NOT APPLICABLE after rigorous benchmarking, the next
 session should:
 
 1. Profile to identify the actual remaining bottleneck
@@ -575,5 +584,6 @@ session should:
 ---
 
 *Document created: 2026-01-27*
+*Updated: 2026-01-27 (Phase 78 session - verified candidates 1-2 as N/A)*
 *Standard: Expert+ (Never guess, always benchmark)*
 *Sources: See hyperlinks throughout document*
