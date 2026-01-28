@@ -64,14 +64,15 @@ const playbackUICache = {
  * Formats a Unix timestamp to a readable date string.
  *
  * @param {number} timestamp - Unix timestamp in seconds
- * @param {boolean} [short=false] - If true, use short format (e.g., "Jan 20")
+ * @param {boolean} [short=false] - If true, use short format with 2-digit year (e.g., "Jan 20 '24")
  * @returns {string} Formatted date string or '--' if invalid
  */
 function formatDate(timestamp, short = false) {
     if (!timestamp || timestamp <= 0) return '--';
     const date = new Date(timestamp * 1000);
     if (short) {
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        // Include 2-digit year for context in long repos
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
     }
     return date.toLocaleDateString(undefined, {
         year: 'numeric',
