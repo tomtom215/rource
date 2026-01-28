@@ -320,6 +320,7 @@ Example of proper self-correction:
 |------|-----------|------------|------------------|
 | 2026-01-28 | Reported timing variations as performance improvements | Module refactoring doesn't affect compiled binary | Added "Invalid Performance Claims" table; clarified code quality vs performance |
 | 2026-01-28 | Stated "10% is noise" at picosecond precision | Incorrect understanding of scale | Replaced "Noise Margin Rule" with "Measurement Precision at Scale" showing 10% = 6,000 CPU cycles |
+| 2026-01-28 | Dismissed low coverage as "tarpaulin issue with inline functions" | Made excuse instead of investigating root cause | Found default ptrace engine doesn't trace `#[inline]`; added `--engine Llvm` requirement to all tarpaulin commands |
 
 ---
 
@@ -1052,11 +1053,25 @@ cargo doc --no-deps --all-features 2>&1 | grep -E "(warning|error)"
 cargo install cargo-tarpaulin
 
 # Run coverage analysis on core library crates
+# CRITICAL: Use --engine Llvm to properly trace #[inline] functions
 cargo tarpaulin -p rource-math -p rource-vcs -p rource-core -p rource-render \
-    --out Stdout --skip-clean 2>&1 | tail -50
+    --engine Llvm --out Stdout --skip-clean 2>&1 | tail -50
 
 # Record the coverage percentage in commit messages
 ```
+
+**CRITICAL: Why `--engine Llvm` is Required**
+
+The default ptrace engine does NOT trace `#[inline]` functions, causing severe
+under-reporting. This codebase uses `#[inline]` extensively for performance.
+
+| Engine | rect.rs Coverage | vec2.rs Coverage | Overall |
+|--------|------------------|------------------|---------|
+| ptrace (default) | 2.2% (4/179) | 23.0% (37/161) | ~44% |
+| Llvm | 84.6% (170/201) | 100% (161/161) | ~65% |
+
+The difference is NOT measurement error - it's the ptrace engine's inability
+to instrument inlined code. Always use `--engine Llvm` for accurate results.
 
 **Coverage Targets:**
 
@@ -1087,11 +1102,11 @@ Coverage improvement:
 **When modifying code, ALWAYS verify:**
 
 ```bash
-# Before changes
-cargo tarpaulin -p <crate> --out Stdout 2>&1 | grep "coverage"
+# Before changes (MUST use --engine Llvm for accurate inline function coverage)
+cargo tarpaulin -p <crate> --engine Llvm --out Stdout 2>&1 | grep "coverage"
 
 # After changes
-cargo tarpaulin -p <crate> --out Stdout 2>&1 | grep "coverage"
+cargo tarpaulin -p <crate> --engine Llvm --out Stdout 2>&1 | grep "coverage"
 
 # Coverage should NOT decrease
 ```
@@ -1099,8 +1114,8 @@ cargo tarpaulin -p <crate> --out Stdout 2>&1 | grep "coverage"
 #### 4. Per-File Coverage Check (Optional but Recommended)
 
 ```bash
-# Get detailed per-file breakdown
-cargo tarpaulin -p rource-core --out Stdout 2>&1 | grep -E "^\\|\\| crates/"
+# Get detailed per-file breakdown (MUST use --engine Llvm)
+cargo tarpaulin -p rource-core --engine Llvm --out Stdout 2>&1 | grep -E "^\\|\\| crates/"
 
 # Example output:
 # || crates/rource-core/src/animation/spline.rs: 93/138 +0.00%
@@ -1471,7 +1486,7 @@ See individual roadmap documents for complete priority order.
 │     Record exact numbers BEFORE any changes                                 │
 │                                                                             │
 │  4. RECORD COVERAGE BASELINE (if adding/modifying code)                     │
-│     cargo tarpaulin -p <crate> --out Stdout | grep "coverage"               │
+│     cargo tarpaulin -p <crate> --engine Llvm --out Stdout | grep "coverage" │
 │     Record percentage BEFORE making changes                                 │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -1495,8 +1510,8 @@ See individual roadmap documents for complete priority order.
    ```
 2. **Verify coverage (if code was added/modified)**:
    ```bash
-   cargo tarpaulin -p <crate> --out Stdout | grep "coverage"
-   # Coverage should NOT decrease from baseline
+   cargo tarpaulin -p <crate> --engine Llvm --out Stdout | grep "coverage"
+   # Coverage should NOT decrease from baseline (MUST use --engine Llvm)
    ```
 3. **Update documentation**: CHRONOLOGY.md, NOT_APPLICABLE.md as needed
 4. **Commit with metrics**: Include exact measurements AND coverage in commit message

@@ -916,4 +916,317 @@ mod tests {
             panic!("Expected validation error");
         }
     }
+
+    // ============================================================
+    // Additional Coverage Tests (Phase 4 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_config_error_display_io() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let err = ConfigError::IoError(io_err);
+        let display = format!("{err}");
+        assert!(display.contains("Failed to read config file"));
+    }
+
+    #[test]
+    fn test_config_error_display_validation() {
+        let err = ConfigError::ValidationError("test validation error".to_string());
+        let display = format!("{err}");
+        assert!(display.contains("Invalid configuration"));
+        assert!(display.contains("test validation error"));
+    }
+
+    #[test]
+    fn test_config_error_source_io() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let err = ConfigError::IoError(io_err);
+        assert!(std::error::Error::source(&err).is_some());
+    }
+
+    #[test]
+    fn test_config_error_source_validation() {
+        let err = ConfigError::ValidationError("test".to_string());
+        assert!(std::error::Error::source(&err).is_none());
+    }
+
+    #[test]
+    fn test_config_error_from_io() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied");
+        let config_err: ConfigError = io_err.into();
+        match config_err {
+            ConfigError::IoError(_) => (),
+            _ => panic!("Expected IoError variant"),
+        }
+    }
+
+    #[test]
+    fn test_parse_hex_color_invalid_length() {
+        let result = super::parse_hex_color("FFFF");
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError(msg)) = result {
+            assert!(msg.contains("6-digit hex"));
+        }
+    }
+
+    #[test]
+    fn test_parse_hex_color_invalid_red() {
+        let result = super::parse_hex_color("GG0000");
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError(msg)) = result {
+            assert!(msg.contains("red component"));
+        }
+    }
+
+    #[test]
+    fn test_parse_hex_color_invalid_green() {
+        let result = super::parse_hex_color("00GG00");
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError(msg)) = result {
+            assert!(msg.contains("green component"));
+        }
+    }
+
+    #[test]
+    fn test_parse_hex_color_invalid_blue() {
+        let result = super::parse_hex_color("0000GG");
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError(msg)) = result {
+            assert!(msg.contains("blue component"));
+        }
+    }
+
+    #[test]
+    fn test_load_config_file_not_found() {
+        let result = load_config_file("/nonexistent/path/to/config.toml");
+        assert!(result.is_err());
+        match result {
+            Err(ConfigError::IoError(_)) => (),
+            _ => panic!("Expected IoError"),
+        }
+    }
+
+    #[test]
+    fn test_load_config_file_valid() {
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test_rource_config.toml");
+
+        let config_content = r#"
+            [display]
+            width = 1600
+            height = 900
+        "#;
+
+        std::fs::write(&temp_path, config_content).unwrap();
+
+        let result = load_config_file(&temp_path);
+        assert!(result.is_ok());
+        let settings = result.unwrap();
+        assert_eq!(settings.display.width, 1600);
+        assert_eq!(settings.display.height, 900);
+
+        std::fs::remove_file(&temp_path).ok();
+    }
+
+    #[test]
+    fn test_merge_config_file_not_found() {
+        let base = Settings::default();
+        let result = merge_config_file(base, "/nonexistent/path/to/config.toml");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_merge_config_file_valid() {
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test_rource_merge_config.toml");
+
+        let config_content = r#"
+            [display]
+            width = 2560
+            bloom_enabled = false
+
+            [playback]
+            seconds_per_day = 15.0
+        "#;
+
+        std::fs::write(&temp_path, config_content).unwrap();
+
+        let mut base = Settings::default();
+        base.display.height = 1440; // This should be preserved
+
+        let result = merge_config_file(base, &temp_path);
+        assert!(result.is_ok());
+        let settings = result.unwrap();
+
+        // Merged values from config
+        assert_eq!(settings.display.width, 2560);
+        assert!(!settings.display.bloom_enabled);
+        assert!((settings.playback.seconds_per_day - 15.0).abs() < 0.01);
+
+        // Preserved from base (not in config)
+        assert_eq!(settings.display.height, 1440);
+
+        std::fs::remove_file(&temp_path).ok();
+    }
+
+    #[test]
+    fn test_merge_config_file_validation_error() {
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test_rource_invalid_merge.toml");
+
+        let config_content = r#"
+            [display]
+            width = 0
+        "#;
+
+        std::fs::write(&temp_path, config_content).unwrap();
+
+        let base = Settings::default();
+        let result = merge_config_file(base, &temp_path);
+        assert!(result.is_err());
+        match result {
+            Err(ConfigError::ValidationError(msg)) => {
+                assert!(msg.contains("width"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
+
+        std::fs::remove_file(&temp_path).ok();
+    }
+
+    #[test]
+    fn test_parse_limits_settings() {
+        let config = r"
+            [limits]
+            max_files = 1000
+            max_users = 50
+            file_idle_time = 120.0
+            user_idle_time = 30.0
+        ";
+        let settings = parse_config(config).unwrap();
+        assert_eq!(settings.limits.max_files, 1000);
+        assert_eq!(settings.limits.max_users, 50);
+        assert!((settings.limits.file_idle_time - 120.0).abs() < 0.01);
+        assert!((settings.limits.user_idle_time - 30.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_parse_input_settings() {
+        let config = r"
+            [input]
+            disable_input = true
+            mouse_sensitivity = 2.5
+        ";
+        let settings = parse_config(config).unwrap();
+        assert!(settings.input.disable_input);
+        assert!((settings.input.mouse_sensitivity - 2.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_parse_export_settings() {
+        let config = r#"
+            [export]
+            output_path = "/tmp/output"
+            framerate = 30
+            screenshot_path = "/tmp/screenshot.png"
+        "#;
+        let settings = parse_config(config).unwrap();
+        assert_eq!(settings.export.output_path, Some("/tmp/output".to_string()));
+        assert_eq!(settings.export.framerate, 30);
+        assert_eq!(
+            settings.export.screenshot_path,
+            Some("/tmp/screenshot.png".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_all_camera_settings() {
+        let config = r#"
+            [camera]
+            mode = "follow"
+            min_zoom = 0.05
+            max_zoom = 15.0
+            smoothness = 0.8
+            padding = 200.0
+            follow_user = "alice"
+            highlight_users = "bob,charlie"
+            highlight_all_users = true
+            enable_3d = true
+            pitch = 0.5
+            rotation_speed = 0.1
+            disable_auto_rotate = true
+        "#;
+        let settings = parse_config(config).unwrap();
+        assert_eq!(settings.camera.mode, CameraModeSetting::Follow);
+        assert!((settings.camera.min_zoom - 0.05).abs() < 0.01);
+        assert!((settings.camera.max_zoom - 15.0).abs() < 0.01);
+        assert!((settings.camera.smoothness - 0.8).abs() < 0.01);
+        assert!((settings.camera.padding - 200.0).abs() < 0.01);
+        assert_eq!(settings.camera.follow_user, Some("alice".to_string()));
+        assert_eq!(
+            settings.camera.highlight_users,
+            Some("bob,charlie".to_string())
+        );
+        assert!(settings.camera.highlight_all_users);
+        assert!(settings.camera.enable_3d);
+        assert!((settings.camera.pitch - 0.5).abs() < 0.01);
+        assert!((settings.camera.rotation_speed - 0.1).abs() < 0.01);
+        assert!(settings.camera.disable_auto_rotate);
+    }
+
+    #[test]
+    fn test_parse_all_playback_settings() {
+        let config = r"
+            [playback]
+            seconds_per_day = 3.0
+            auto_skip_seconds = 2.0
+            start_timestamp = 1609459200
+            stop_timestamp = 1640995200
+            loop_playback = true
+            start_paused = false
+            time_scale = 2.0
+            stop_at_time = 100.0
+            realtime = true
+        ";
+        let settings = parse_config(config).unwrap();
+        assert!((settings.playback.seconds_per_day - 3.0).abs() < 0.01);
+        assert!((settings.playback.auto_skip_seconds - 2.0).abs() < 0.01);
+        assert_eq!(settings.playback.start_timestamp, Some(1609459200));
+        assert_eq!(settings.playback.stop_timestamp, Some(1640995200));
+        assert!(settings.playback.loop_playback);
+        assert!(!settings.playback.start_paused);
+        assert!((settings.playback.time_scale - 2.0).abs() < 0.01);
+        assert_eq!(settings.playback.stop_at_time, Some(100.0));
+        assert!(settings.playback.realtime);
+    }
+
+    #[test]
+    fn test_parse_all_visibility_settings() {
+        let config = r"
+            [visibility]
+            hide_filenames = true
+            hide_usernames = true
+            hide_date = true
+            hide_progress = true
+            hide_legend = true
+            hide_dirnames = true
+            hide_root = true
+            hide_tree = true
+            hide_bloom = true
+            hide_mouse = true
+            show_fps = true
+        ";
+        let settings = parse_config(config).unwrap();
+        assert!(settings.visibility.hide_filenames);
+        assert!(settings.visibility.hide_usernames);
+        assert!(settings.visibility.hide_date);
+        assert!(settings.visibility.hide_progress);
+        assert!(settings.visibility.hide_legend);
+        assert!(settings.visibility.hide_dirnames);
+        assert!(settings.visibility.hide_root);
+        assert!(settings.visibility.hide_tree);
+        assert!(settings.visibility.hide_bloom);
+        assert!(settings.visibility.hide_mouse);
+        assert!(settings.visibility.show_fps);
+    }
 }

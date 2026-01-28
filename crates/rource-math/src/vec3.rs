@@ -965,4 +965,18 @@ mod tests {
         let v3 = Vec3::new(1.01, 2.0, 3.0);
         assert!(!v1.approx_eq(v3));
     }
+
+    #[test]
+    fn test_normalized_zero_vector() {
+        // Normalizing a zero vector should return zero (not NaN/Inf)
+        let zero = Vec3::ZERO;
+        let normalized = zero.normalized();
+        assert_eq!(normalized, Vec3::ZERO);
+
+        // Also test with very small vectors that might underflow to zero length
+        let tiny = Vec3::new(f32::MIN_POSITIVE * 0.1, 0.0, 0.0);
+        let tiny_normalized = tiny.normalized();
+        // Either returns normalized vector or zero depending on precision
+        assert!(tiny_normalized.length() <= 1.0 + f32::EPSILON || tiny_normalized == Vec3::ZERO);
+    }
 }

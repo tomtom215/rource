@@ -1078,4 +1078,129 @@ mod tests {
         assert_eq!(translated.min, Vec2::new(5.0, 10.0));
         assert_eq!(translated.max, Vec2::new(25.0, 30.0));
     }
+
+    // ============================================================
+    // Additional Coverage Tests (Phase 4 - 100% Coverage Target)
+    // ============================================================
+
+    #[test]
+    fn test_rect_debug_format() {
+        let r = Rect::new(10.0, 20.0, 100.0, 50.0);
+        let debug_str = format!("{:?}", r);
+
+        assert!(debug_str.contains("Rect"));
+        assert!(debug_str.contains("x"));
+        assert!(debug_str.contains("y"));
+        assert!(debug_str.contains("width"));
+        assert!(debug_str.contains("height"));
+        assert!(debug_str.contains("10"));
+        assert!(debug_str.contains("20"));
+        assert!(debug_str.contains("100"));
+        assert!(debug_str.contains("50"));
+    }
+
+    #[test]
+    fn test_bounds_debug_format() {
+        let b = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(30.0, 40.0));
+        let debug_str = format!("{:?}", b);
+
+        assert!(debug_str.contains("Bounds"));
+        assert!(debug_str.contains("min"));
+        assert!(debug_str.contains("max"));
+    }
+
+    #[test]
+    fn test_bounds_contains_bounds_fully_inside() {
+        let outer = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(100.0, 100.0));
+        let inner = Bounds::new(Vec2::new(20.0, 20.0), Vec2::new(80.0, 80.0));
+
+        assert!(outer.contains_bounds(inner));
+        assert!(!inner.contains_bounds(outer));
+    }
+
+    #[test]
+    fn test_bounds_contains_bounds_partial_overlap() {
+        let a = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(50.0, 50.0));
+        let b = Bounds::new(Vec2::new(25.0, 25.0), Vec2::new(75.0, 75.0));
+
+        assert!(!a.contains_bounds(b));
+        assert!(!b.contains_bounds(a));
+    }
+
+    #[test]
+    fn test_bounds_contains_bounds_same() {
+        let bounds = Bounds::new(Vec2::new(10.0, 10.0), Vec2::new(50.0, 50.0));
+
+        assert!(bounds.contains_bounds(bounds));
+    }
+
+    #[test]
+    fn test_bounds_intersection_overlapping() {
+        let a = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(50.0, 50.0));
+        let b = Bounds::new(Vec2::new(25.0, 25.0), Vec2::new(75.0, 75.0));
+
+        let intersection = a.intersection(b);
+        assert!(intersection.is_some());
+
+        let result = intersection.unwrap();
+        assert_eq!(result.min, Vec2::new(25.0, 25.0));
+        assert_eq!(result.max, Vec2::new(50.0, 50.0));
+    }
+
+    #[test]
+    fn test_bounds_intersection_no_overlap() {
+        let a = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        let b = Bounds::new(Vec2::new(20.0, 20.0), Vec2::new(30.0, 30.0));
+
+        let intersection = a.intersection(b);
+        assert!(intersection.is_none());
+    }
+
+    #[test]
+    fn test_bounds_intersection_touching_edge() {
+        let a = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        let b = Bounds::new(Vec2::new(10.0, 0.0), Vec2::new(20.0, 10.0));
+
+        // Touching at edge should return None (no area of overlap)
+        let intersection = a.intersection(b);
+        assert!(intersection.is_none());
+    }
+
+    #[test]
+    fn test_bounds_expand() {
+        let b = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(30.0, 40.0));
+        let expanded = b.expand(5.0);
+
+        assert_eq!(expanded.min, Vec2::new(5.0, 15.0));
+        assert_eq!(expanded.max, Vec2::new(35.0, 45.0));
+    }
+
+    #[test]
+    fn test_bounds_shrink() {
+        let b = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(30.0, 40.0));
+        let shrunk = b.shrink(5.0);
+
+        assert_eq!(shrunk.min, Vec2::new(15.0, 25.0));
+        assert_eq!(shrunk.max, Vec2::new(25.0, 35.0));
+    }
+
+    #[test]
+    fn test_bounds_from_rect() {
+        let rect = Rect::new(10.0, 20.0, 30.0, 40.0);
+        let bounds: Bounds = rect.into();
+
+        assert_eq!(bounds.min, Vec2::new(10.0, 20.0));
+        assert_eq!(bounds.max, Vec2::new(40.0, 60.0));
+    }
+
+    #[test]
+    fn test_rect_from_bounds() {
+        let bounds = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(40.0, 60.0));
+        let rect: Rect = bounds.into();
+
+        assert_eq!(rect.x, 10.0);
+        assert_eq!(rect.y, 20.0);
+        assert_eq!(rect.width, 30.0);
+        assert_eq!(rect.height, 40.0);
+    }
 }

@@ -1,0 +1,15 @@
+# Tarpaulin configuration for accurate coverage measurement
+# See: https://github.com/xd009642/tarpaulin
+
+[coverage]
+# Use LLVM engine to properly trace #[inline] functions
+# The default ptrace engine does NOT trace inline functions
+engine = "Llvm"
+
+# Disable optimizations for accurate line coverage
+# opt-level > 0 can optimize away branches, causing false negatives
+# Verified: vec3.rs shows 137/138 with opt-level=1, 138/138 with opt-level=0
+rustflags = "-C opt-level=0"
+
+# Skip cleaning to speed up repeated runs (use --force-clean when needed)
+skip-clean = true
