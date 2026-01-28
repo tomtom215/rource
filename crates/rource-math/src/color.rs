@@ -1543,4 +1543,170 @@ mod tests {
             "Larger difference should not be approx equal"
         );
     }
+
+    // ============================================================
+    // Color and HSL Method Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_color_gray_mid_value() {
+        let gray = Color::gray(0.5);
+        assert_eq!(gray.r, 0.5);
+        assert_eq!(gray.g, 0.5);
+        assert_eq!(gray.b, 0.5);
+        assert_eq!(gray.a, 1.0);
+    }
+
+    #[test]
+    fn test_color_gray_black_extreme() {
+        let black = Color::gray(0.0);
+        assert_eq!(black.r, 0.0);
+        assert_eq!(black.g, 0.0);
+        assert_eq!(black.b, 0.0);
+        assert_eq!(black.a, 1.0);
+    }
+
+    #[test]
+    fn test_color_gray_white_extreme() {
+        let white = Color::gray(1.0);
+        assert_eq!(white.r, 1.0);
+        assert_eq!(white.g, 1.0);
+        assert_eq!(white.b, 1.0);
+        assert_eq!(white.a, 1.0);
+    }
+
+    #[test]
+    fn test_color_from_rgb8_const() {
+        let red = Color::from_rgb8_const(255, 0, 0);
+        assert!((red.r - 1.0).abs() < crate::EPSILON);
+        assert_eq!(red.g, 0.0);
+        assert_eq!(red.b, 0.0);
+        assert_eq!(red.a, 1.0);
+    }
+
+    #[test]
+    fn test_color_from_rgb8_const_mid_values() {
+        let mid = Color::from_rgb8_const(128, 64, 192);
+        // 128/255 ≈ 0.502, 64/255 ≈ 0.251, 192/255 ≈ 0.753
+        assert!((mid.r - 128.0 / 255.0).abs() < crate::EPSILON);
+        assert!((mid.g - 64.0 / 255.0).abs() < crate::EPSILON);
+        assert!((mid.b - 192.0 / 255.0).abs() < crate::EPSILON);
+        assert_eq!(mid.a, 1.0);
+    }
+
+    #[test]
+    fn test_hsl_new() {
+        let hsl = Hsl::new(180.0, 0.5, 0.75);
+        assert_eq!(hsl.h, 180.0);
+        assert_eq!(hsl.s, 0.5);
+        assert_eq!(hsl.l, 0.75);
+    }
+
+    #[test]
+    fn test_hsl_with_saturation() {
+        let hsl = Hsl::new(120.0, 0.3, 0.5);
+        let modified = hsl.with_saturation(0.8);
+        assert_eq!(modified.h, 120.0);
+        assert_eq!(modified.s, 0.8);
+        assert_eq!(modified.l, 0.5);
+    }
+
+    #[test]
+    fn test_hsl_with_saturation_zero() {
+        let hsl = Hsl::new(120.0, 0.8, 0.5);
+        let grayscale = hsl.with_saturation(0.0);
+        // Converting to color should give gray
+        let color = grayscale.to_color();
+        assert!(
+            (color.r - color.g).abs() < crate::EPSILON,
+            "Zero saturation should be grayscale"
+        );
+        assert!(
+            (color.g - color.b).abs() < crate::EPSILON,
+            "Zero saturation should be grayscale"
+        );
+    }
+
+    #[test]
+    fn test_hsl_with_hue() {
+        let hsl = Hsl::new(120.0, 0.5, 0.5);
+        let modified = hsl.with_hue(240.0);
+        assert_eq!(modified.h, 240.0);
+        assert_eq!(modified.s, 0.5);
+        assert_eq!(modified.l, 0.5);
+    }
+
+    #[test]
+    fn test_hsl_with_hue_preserves_others() {
+        let original = Hsl::new(60.0, 0.7, 0.3);
+        let modified = original.with_hue(180.0);
+        assert_eq!(modified.s, original.s);
+        assert_eq!(modified.l, original.l);
+    }
+
+    #[test]
+    fn test_hsl_roundtrip_arbitrary_color() {
+        // Test that RGB -> HSL -> RGB preserves the color
+        let original = Color::rgb(0.8, 0.3, 0.5);
+        let hsl = Hsl::from_color(original);
+        let recovered = hsl.to_color();
+        assert!(
+            (original.r - recovered.r).abs() < 0.01,
+            "Red should be preserved"
+        );
+        assert!(
+            (original.g - recovered.g).abs() < 0.01,
+            "Green should be preserved"
+        );
+        assert!(
+            (original.b - recovered.b).abs() < 0.01,
+            "Blue should be preserved"
+        );
+    }
+
+    #[test]
+    fn test_hsl_rotate_hue() {
+        let hsl = Hsl::new(60.0, 0.5, 0.5);
+        let rotated = hsl.rotate_hue(120.0);
+        assert_eq!(rotated.h, 180.0);
+        assert_eq!(rotated.s, 0.5);
+        assert_eq!(rotated.l, 0.5);
+    }
+
+    #[test]
+    fn test_hsl_rotate_hue_wraparound() {
+        let hsl = Hsl::new(300.0, 0.5, 0.5);
+        let rotated = hsl.rotate_hue(120.0);
+        // 300 + 120 = 420, which wraps to 60
+        assert!((rotated.h - 60.0).abs() < crate::EPSILON);
+    }
+
+    #[test]
+    fn test_hsl_rotate_hue_negative() {
+        let hsl = Hsl::new(60.0, 0.5, 0.5);
+        let rotated = hsl.rotate_hue(-120.0);
+        // 60 - 120 = -60, which wraps to 300
+        assert!((rotated.h - 300.0).abs() < crate::EPSILON);
+    }
+
+    #[test]
+    fn test_hsl_primary_colors() {
+        // Red: H=0
+        let red = Hsl::new(0.0, 1.0, 0.5).to_color();
+        assert!((red.r - 1.0).abs() < 0.01);
+        assert!(red.g < 0.01);
+        assert!(red.b < 0.01);
+
+        // Green: H=120
+        let green = Hsl::new(120.0, 1.0, 0.5).to_color();
+        assert!(green.r < 0.01);
+        assert!((green.g - 1.0).abs() < 0.01);
+        assert!(green.b < 0.01);
+
+        // Blue: H=240
+        let blue = Hsl::new(240.0, 1.0, 0.5).to_color();
+        assert!(blue.r < 0.01);
+        assert!(blue.g < 0.01);
+        assert!((blue.b - 1.0).abs() < 0.01);
+    }
 }

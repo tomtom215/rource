@@ -1053,4 +1053,261 @@ mod tests {
         // Remaining tree should still be valid
         assert!(tree.validate_no_cycles());
     }
+
+    // ============================================================
+    // Layout Configuration Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_compute_radial_layout_with_large_repo_config() {
+        let mut tree = DirTree::new();
+
+        tree.get_or_create_path(Path::new("src"));
+        tree.get_or_create_path(Path::new("tests"));
+        tree.get_or_create_path(Path::new("docs"));
+
+        let config = LayoutConfig::large_repo();
+        tree.compute_radial_layout_with_config(&config);
+
+        // Children should have larger radial distances with large_repo config
+        let children: Vec<_> = tree.iter().filter(|n| n.depth() == 1).collect();
+        for child in &children {
+            // large_repo has radial_distance_scale = 160.0 vs default 120.0
+            assert!(child.radial_distance() > 0.0);
+        }
+    }
+
+    #[test]
+    fn test_compute_radial_layout_with_massive_repo_config() {
+        let mut tree = DirTree::new();
+
+        tree.get_or_create_path(Path::new("src"));
+        tree.get_or_create_path(Path::new("tests"));
+
+        let config = LayoutConfig::massive_repo();
+        tree.compute_radial_layout_with_config(&config);
+
+        // Verify layout was applied
+        let children: Vec<_> = tree.iter().filter(|n| n.depth() == 1).collect();
+        for child in &children {
+            assert!(child.radial_distance() > 0.0);
+            assert!(child.angular_span() > 0.0);
+        }
+    }
+
+    #[test]
+    fn test_compute_radial_layout_with_custom_config() {
+        let mut tree = DirTree::new();
+
+        tree.get_or_create_path(Path::new("a/b/c"));
+
+        let config = LayoutConfig {
+            radial_distance_scale: 200.0,
+            min_angular_span: 0.2,
+            depth_distance_exponent: 1.5,
+            sibling_spacing_multiplier: 1.3,
+        };
+        tree.compute_radial_layout_with_config(&config);
+
+        // Verify deep node has proportionally larger distance
+        let deep = tree.iter().find(|n| n.name() == "c").unwrap();
+        // With exponent 1.5 and depth 3: distance = 200 * 3^1.5 ≈ 1039
+        assert!(deep.radial_distance() > 500.0);
+    }
+
+    #[test]
+    fn test_layout_config_from_settings() {
+        let settings = LayoutSettings::default();
+        let config = LayoutConfig::from_settings(&settings);
+
+        assert_eq!(config.radial_distance_scale, settings.radial_distance_scale);
+        assert_eq!(config.min_angular_span, settings.min_angular_span);
+    }
+
+    // ============================================================
+    // Iteration Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_iter_empty_tree() {
+        let tree = DirTree::new();
+
+        // Empty tree still has root
+        let count = tree.iter().count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_iter_mut_modify_positions() {
+        let mut tree = DirTree::new();
+
+        tree.get_or_create_path(Path::new("src"));
+        tree.get_or_create_path(Path::new("tests"));
+
+        // Modify all positions via iter_mut
+        for node in tree.iter_mut() {
+            node.set_position(Vec2::new(100.0, 100.0));
+        }
+
+        // Verify all positions were modified
+        for node in tree.iter() {
+            assert_eq!(node.position(), Vec2::new(100.0, 100.0));
+        }
+    }
+
+    // ============================================================
+    // Path Edge Case Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_get_or_create_path_single_component() {
+        let mut tree = DirTree::new();
+
+        let id = tree.get_or_create_path(Path::new("single"));
+        let node = tree.get(id).unwrap();
+
+        assert_eq!(node.name(), "single");
+        assert_eq!(node.depth(), 1);
+    }
+
+    #[test]
+    fn test_get_or_create_path_unicode() {
+        let mut tree = DirTree::new();
+
+        let id = tree.get_or_create_path(Path::new("日本語/中文/한국어"));
+        let node = tree.get(id).unwrap();
+
+        assert_eq!(node.name(), "한국어");
+        assert_eq!(node.depth(), 3);
+    }
+
+    #[test]
+    fn test_get_or_create_path_spaces_in_name() {
+        let mut tree = DirTree::new();
+
+        let id = tree.get_or_create_path(Path::new("my folder/sub folder"));
+        let node = tree.get(id).unwrap();
+
+        assert_eq!(node.name(), "sub folder");
+    }
+
+    // ============================================================
+    // Remove Edge Case Tests (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_remove_leaf_node() {
+        let mut tree = DirTree::new();
+
+        let src_id = tree.get_or_create_path(Path::new("src"));
+        let lib_id = tree.get_or_create_path(Path::new("src/lib"));
+
+        // Remove only the leaf
+        let removed = tree.remove(lib_id);
+        assert_eq!(removed.len(), 1);
+
+        // src still exists
+        assert!(tree.get(src_id).is_some());
+        // lib is gone
+        assert!(tree.get(lib_id).is_none());
+    }
+
+    #[test]
+    fn test_remove_middle_node() {
+        let mut tree = DirTree::new();
+
+        let src_id = tree.get_or_create_path(Path::new("src"));
+        tree.get_or_create_path(Path::new("src/lib/module"));
+
+        // Remove src (middle of chain)
+        let removed = tree.remove(src_id);
+
+        // Should remove src and all descendants
+        assert_eq!(removed.len(), 3); // src + lib + module
+        assert_eq!(tree.len(), 1); // Only root
+    }
+
+    #[test]
+    fn test_remove_nonexistent() {
+        let mut tree = DirTree::new();
+
+        // Create a valid ID, then remove it, then try to remove again
+        let id = tree.get_or_create_path(Path::new("temp"));
+        tree.remove(id);
+
+        // Trying to remove an already-removed node should be safe
+        let removed = tree.remove(id);
+        assert!(removed.is_empty());
+    }
+
+    // ============================================================
+    // Update Branch Layout Edge Cases (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_update_branch_layout_root() {
+        let mut tree = DirTree::new();
+
+        tree.compute_radial_layout();
+
+        // Calling update_branch_layout on root should not crash
+        tree.update_branch_layout(tree.root_id());
+
+        // Tree should still be valid
+        assert!(tree.validate_no_cycles());
+    }
+
+    #[test]
+    fn test_update_branch_layout_single_child_chain() {
+        let mut tree = DirTree::new();
+
+        tree.get_or_create_path(Path::new("a"));
+        tree.compute_radial_layout();
+
+        // Add a child to form a chain
+        let new_id = tree.get_or_create_path(Path::new("a/b/c"));
+        tree.update_branch_layout(new_id);
+
+        // Verify positions are set
+        let node = tree.get(new_id).unwrap();
+        assert!(node.radial_distance() > 0.0);
+    }
+
+    // ============================================================
+    // Update Parent Positions Edge Cases (Phase 1 - Audit Coverage)
+    // ============================================================
+
+    #[test]
+    fn test_update_parent_positions_root_only() {
+        let mut tree = DirTree::new();
+
+        // Set root position
+        tree.root_mut().set_position(Vec2::new(50.0, 50.0));
+
+        // Should not crash with only root
+        tree.update_parent_positions();
+
+        // Root has no parent
+        assert_eq!(tree.root().parent_position(), None);
+    }
+
+    #[test]
+    fn test_update_parent_positions_after_layout() {
+        let mut tree = DirTree::new();
+
+        tree.get_or_create_path(Path::new("a/b/c"));
+        tree.compute_radial_layout();
+        tree.update_parent_positions();
+
+        // Each non-root node should have parent position set
+        let non_root_nodes: Vec<_> = tree.iter().filter(|n| !n.is_root()).collect();
+        assert_eq!(non_root_nodes.len(), 3); // a, b, c
+
+        // Verify all have parent positions (unwrap will panic if None)
+        let parent_positions: Vec<_> = non_root_nodes
+            .iter()
+            .map(|n| n.parent_position().unwrap())
+            .collect();
+        assert_eq!(parent_positions.len(), 3);
+    }
 }

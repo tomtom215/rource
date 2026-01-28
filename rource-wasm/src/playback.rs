@@ -635,4 +635,198 @@ mod tests {
         // Scene should be valid
         assert_eq!(scene.file_count(), 0);
     }
+
+    // ========================================================================
+    // Frame Cycle Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_playback_state_large_accumulated_time() {
+        let mut state = PlaybackState::new();
+
+        // Simulate very large accumulated time (e.g., backgrounded tab)
+        state.add_time(1000.0);
+        assert_eq!(state.accumulated_time(), 1000.0);
+
+        // Clamping should prevent unbounded growth
+        state.clamp_accumulated_time(0.5);
+        assert_eq!(state.accumulated_time(), 0.5);
+    }
+
+    #[test]
+    fn test_playback_state_stop_clears_playing() {
+        let mut state = PlaybackState::new();
+        state.play();
+        assert!(state.is_playing());
+
+        state.stop();
+        assert!(!state.is_playing());
+    }
+
+    #[test]
+    fn test_playback_state_commit_index_boundary() {
+        let mut state = PlaybackState::new();
+
+        // Test setting commit to max usize
+        state.set_current_commit(usize::MAX);
+        assert_eq!(state.current_commit(), usize::MAX);
+
+        // Test last applied commit tracking
+        state.set_last_applied_commit(usize::MAX - 1);
+        assert_eq!(state.last_applied_commit(), usize::MAX - 1);
+    }
+
+    #[test]
+    fn test_playback_state_repeated_advance() {
+        let mut state = PlaybackState::new();
+
+        // Simulate rapid commit advancement (like MAX_COMMITS_PER_FRAME scenario)
+        for i in 0..100 {
+            assert_eq!(state.current_commit(), i);
+            state.advance_commit();
+        }
+        assert_eq!(state.current_commit(), 100);
+    }
+
+    #[test]
+    fn test_playback_state_time_precision() {
+        let mut state = PlaybackState::new();
+
+        // Test small time increments don't lose precision
+        for _ in 0..1000 {
+            state.add_time(0.001);
+        }
+        // Should be close to 1.0 (allowing for floating point error)
+        assert!((state.accumulated_time() - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_playback_state_negative_time_subtract() {
+        let mut state = PlaybackState::new();
+        state.add_time(1.0);
+
+        // Subtracting more than accumulated should result in negative
+        state.subtract_time(2.0);
+        assert!(state.accumulated_time() < 0.0);
+        assert!((state.accumulated_time() - (-1.0)).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_calculate_seconds_per_commit_edge_values() {
+        // Very fast playback
+        assert!((calculate_seconds_per_commit(0.01) - 0.001).abs() < 0.0001);
+
+        // Very slow playback
+        assert!((calculate_seconds_per_commit(1000.0) - 100.0).abs() < 0.0001);
+
+        // Zero (edge case - would be invalid but shouldn't panic)
+        assert_eq!(calculate_seconds_per_commit(0.0), 0.0);
+    }
+
+    #[test]
+    fn test_get_date_range_reversed_timestamps() {
+        // Commits with reversed timestamps (unusual but valid)
+        let commits = vec![
+            Commit {
+                hash: "abc123".to_string(),
+                author: "Test".to_string(),
+                email: None,
+                timestamp: 3000,
+                files: vec![],
+            },
+            Commit {
+                hash: "def456".to_string(),
+                author: "Test".to_string(),
+                email: None,
+                timestamp: 1000,
+                files: vec![],
+            },
+        ];
+        // Should return first and last timestamps as-is
+        let range = get_date_range(&commits);
+        assert_eq!(range, Some((3000, 1000)));
+    }
+
+    #[test]
+    fn test_get_date_range_negative_timestamps() {
+        // Commits before Unix epoch
+        let commits = vec![
+            Commit {
+                hash: "abc123".to_string(),
+                author: "Test".to_string(),
+                email: None,
+                timestamp: -86400,
+                files: vec![],
+            },
+            Commit {
+                hash: "def456".to_string(),
+                author: "Test".to_string(),
+                email: None,
+                timestamp: 0,
+                files: vec![],
+            },
+        ];
+        let range = get_date_range(&commits);
+        assert_eq!(range, Some((-86400, 0)));
+    }
+
+    #[test]
+    fn test_prewarm_scene_large_cycles() {
+        let mut scene = Scene::new();
+
+        // Apply a commit first
+        let commit = Commit {
+            hash: "abc123".to_string(),
+            author: "Alice".to_string(),
+            email: None,
+            timestamp: 1000,
+            files: vec![FileChange {
+                path: PathBuf::from("src/main.rs"),
+                action: FileAction::Create,
+            }],
+        };
+        apply_vcs_commit(&mut scene, &commit);
+
+        // Large number of prewarm cycles should not panic
+        prewarm_scene(&mut scene, 1000, 1.0 / 60.0);
+
+        // Scene should still be valid
+        assert!(scene.file_count() >= 1);
+    }
+
+    #[test]
+    fn test_prewarm_scene_large_dt() {
+        let mut scene = Scene::new();
+
+        // Apply a commit first
+        let commit = Commit {
+            hash: "abc123".to_string(),
+            author: "Alice".to_string(),
+            email: None,
+            timestamp: 1000,
+            files: vec![FileChange {
+                path: PathBuf::from("src/main.rs"),
+                action: FileAction::Create,
+            }],
+        };
+        apply_vcs_commit(&mut scene, &commit);
+
+        // Large delta time (simulating long frame) should not panic
+        prewarm_scene(&mut scene, 10, 1.0);
+
+        // Scene should still be valid
+        assert!(scene.file_count() >= 1);
+    }
+
+    #[test]
+    fn test_play_resets_last_frame_time() {
+        let mut state = PlaybackState::new();
+        state.set_last_frame_time(1000.0);
+        assert_eq!(state.last_frame_time(), 1000.0);
+
+        state.play();
+        assert!(state.is_playing());
+        // play() should reset last_frame_time to 0.0
+        assert_eq!(state.last_frame_time(), 0.0);
+    }
 }
