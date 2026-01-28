@@ -296,11 +296,23 @@ install_coq() {
     # Try apt-get first (simpler)
     if command_exists apt-get; then
         print_info "Installing Coq via apt-get..."
-        if sudo apt-get update && sudo apt-get install -y coq; then
-            print_ok "Coq installed via apt-get"
-        else
-            print_warn "apt-get installation failed, trying opam..."
-        fi
+        # CRITICAL: Install both coq and coq-theories for standard library (Reals, Lra, etc.)
+        local max_retries=4
+        local retry_delay=2
+        for attempt in $(seq 1 $max_retries); do
+            if sudo apt-get update && sudo apt-get install -y coq coq-theories; then
+                print_ok "Coq installed via apt-get (coq + coq-theories)"
+                break
+            else
+                if [[ $attempt -lt $max_retries ]]; then
+                    print_warn "apt-get attempt $attempt failed, retrying in ${retry_delay}s..."
+                    sleep $retry_delay
+                    retry_delay=$((retry_delay * 2))
+                else
+                    print_warn "apt-get installation failed after $max_retries attempts, trying opam..."
+                fi
+            fi
+        done
     fi
 
     # Verify installation
@@ -426,8 +438,8 @@ verify_coq_proofs() {
     # Change to Coq directory
     pushd "$coq_dir" > /dev/null
 
-    # Compile specifications first
-    for spec_file in Vec2.v Vec3.v Vec4.v; do
+    # Compile specifications first (vectors then matrices)
+    for spec_file in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v; do
         if [[ -f "$spec_file" ]]; then
             print_info "Compiling $spec_file..."
             if coqc -Q . RourceMath "$spec_file" 2>&1; then
@@ -439,8 +451,21 @@ verify_coq_proofs() {
         fi
     done
 
-    # Compile proofs
+    # Compile vector proofs
     for proof_file in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v; do
+        if [[ -f "$proof_file" ]]; then
+            print_info "Verifying $proof_file..."
+            if coqc -Q . RourceMath "$proof_file" 2>&1; then
+                print_ok "$proof_file: VERIFIED"
+            else
+                print_error "$proof_file: FAILED"
+                ((failed++)) || true
+            fi
+        fi
+    done
+
+    # Compile matrix proofs
+    for proof_file in Mat3_Proofs.v Mat4_Proofs.v; do
         if [[ -f "$proof_file" ]]; then
             print_info "Verifying $proof_file..."
             if coqc -Q . RourceMath "$proof_file" 2>&1; then
@@ -505,8 +530,9 @@ print_summary() {
     echo ""
     echo "  # Coq proofs"
     echo "  cd crates/rource-math/proofs/coq"
-    echo "  coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v"
+    echo "  coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v"
     echo "  coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v"
+    echo "  coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v"
     echo ""
 
     if [[ $ERRORS -eq 0 ]] && [[ $WARNINGS -eq 0 ]]; then
@@ -544,13 +570,13 @@ Tools Installed:
     - Requires Rust $VERUS_RUST_VERSION toolchain
 
   - Coq $COQ_MIN_VERSION+ (proof assistant)
-    - Installed via apt-get or opam
-    - Used for dual verification of Vec2/Vec3/Vec4
+    - Installed via apt-get (coq + coq-theories) or opam
+    - Used for dual verification of Vec2/Vec3/Vec4/Mat3/Mat4
 
 Verification Status:
   - Verus: 105 theorems, 242 VCs across Vec2/Vec3/Vec4/Mat3/Mat4
-  - Coq: 90+ theorems across Vec2/Vec3/Vec4
-  - Combined: 195+ formally verified theorems
+  - Coq: 132+ theorems across Vec2/Vec3/Vec4/Mat3/Mat4
+  - Combined: 237+ formally verified theorems (DUAL VERIFIED)
 
 Requirements:
   - Linux x86_64 (for Verus binary)
