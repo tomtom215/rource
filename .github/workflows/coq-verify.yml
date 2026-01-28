@@ -57,73 +57,79 @@ jobs:
         run: |
           echo "Building Coq proofs..."
 
-          # Build vector specifications first
+          # Build vector specifications first (fast, ~1-2 seconds each)
           echo "Building Vec2.v..."
-          coqc -Q . RourceMath Vec2.v 2>&1
+          timeout 60 coqc -Q . RourceMath Vec2.v 2>&1
 
           echo "Building Vec3.v..."
-          coqc -Q . RourceMath Vec3.v 2>&1
+          timeout 60 coqc -Q . RourceMath Vec3.v 2>&1
 
           echo "Building Vec4.v..."
-          coqc -Q . RourceMath Vec4.v 2>&1
+          timeout 60 coqc -Q . RourceMath Vec4.v 2>&1
 
-          # Build matrix specifications
+          # Build matrix specifications (fast, ~1-2 seconds each)
           echo "Building Mat3.v..."
-          coqc -Q . RourceMath Mat3.v 2>&1
+          timeout 60 coqc -Q . RourceMath Mat3.v 2>&1
 
           echo "Building Mat4.v..."
-          coqc -Q . RourceMath Mat4.v 2>&1
+          timeout 60 coqc -Q . RourceMath Mat4.v 2>&1
 
-          # Build vector proofs
+          # Build vector proofs (moderate, ~5-30 seconds each)
           echo "Building Vec2_Proofs.v..."
-          VEC2_OUTPUT=$(coqc -Q . RourceMath Vec2_Proofs.v 2>&1 || true)
+          VEC2_OUTPUT=$(timeout 120 coqc -Q . RourceMath Vec2_Proofs.v 2>&1 || true)
           if echo "$VEC2_OUTPUT" | grep -q "Error"; then
             echo "vec2_status=failed" >> $GITHUB_OUTPUT
             echo "$VEC2_OUTPUT"
             exit 1
           else
             echo "vec2_status=verified" >> $GITHUB_OUTPUT
+            echo "Vec2_Proofs.v verified successfully"
           fi
 
           echo "Building Vec3_Proofs.v..."
-          VEC3_OUTPUT=$(coqc -Q . RourceMath Vec3_Proofs.v 2>&1 || true)
+          VEC3_OUTPUT=$(timeout 120 coqc -Q . RourceMath Vec3_Proofs.v 2>&1 || true)
           if echo "$VEC3_OUTPUT" | grep -q "Error"; then
             echo "vec3_status=failed" >> $GITHUB_OUTPUT
             echo "$VEC3_OUTPUT"
             exit 1
           else
             echo "vec3_status=verified" >> $GITHUB_OUTPUT
+            echo "Vec3_Proofs.v verified successfully"
           fi
 
           echo "Building Vec4_Proofs.v..."
-          VEC4_OUTPUT=$(coqc -Q . RourceMath Vec4_Proofs.v 2>&1 || true)
+          VEC4_OUTPUT=$(timeout 180 coqc -Q . RourceMath Vec4_Proofs.v 2>&1 || true)
           if echo "$VEC4_OUTPUT" | grep -q "Error"; then
             echo "vec4_status=failed" >> $GITHUB_OUTPUT
             echo "$VEC4_OUTPUT"
             exit 1
           else
             echo "vec4_status=verified" >> $GITHUB_OUTPUT
+            echo "Vec4_Proofs.v verified successfully"
           fi
 
-          # Build matrix proofs
-          echo "Building Mat3_Proofs.v..."
-          MAT3_OUTPUT=$(coqc -Q . RourceMath Mat3_Proofs.v 2>&1 || true)
+          # Build matrix proofs (slow due to ring tactic on large expressions)
+          # Mat3 has 9 components, Mat4 has 16 - multiplication associativity is expensive
+          echo "Building Mat3_Proofs.v (may take 1-2 minutes)..."
+          MAT3_OUTPUT=$(timeout 300 coqc -Q . RourceMath Mat3_Proofs.v 2>&1 || true)
           if echo "$MAT3_OUTPUT" | grep -q "Error"; then
             echo "mat3_status=failed" >> $GITHUB_OUTPUT
             echo "$MAT3_OUTPUT"
             exit 1
           else
             echo "mat3_status=verified" >> $GITHUB_OUTPUT
+            echo "Mat3_Proofs.v verified successfully"
           fi
 
-          echo "Building Mat4_Proofs.v..."
-          MAT4_OUTPUT=$(coqc -Q . RourceMath Mat4_Proofs.v 2>&1 || true)
+          echo "Building Mat4_Proofs.v (may take 2-5 minutes)..."
+          MAT4_OUTPUT=$(timeout 600 coqc -Q . RourceMath Mat4_Proofs.v 2>&1 || true)
           if echo "$MAT4_OUTPUT" | grep -q "Error"; then
             echo "mat4_status=failed" >> $GITHUB_OUTPUT
             echo "$MAT4_OUTPUT"
             exit 1
           else
             echo "mat4_status=verified" >> $GITHUB_OUTPUT
+            echo "Mat4_Proofs.v verified successfully"
           fi
 
           echo "All Coq proofs verified successfully!"

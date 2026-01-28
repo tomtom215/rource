@@ -27,6 +27,9 @@ Require Import Lra.
 Require Import Psatz.
 Open Scope R_scope.
 
+(** Timeout for expensive proofs (3 minutes) *)
+Set Default Timeout 180.
+
 (** * Matrix Addition Properties *)
 
 (** Theorem 1: Matrix addition is commutative.
