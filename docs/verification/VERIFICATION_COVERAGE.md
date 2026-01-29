@@ -1,0 +1,184 @@
+# Verification Coverage Metrics
+
+This document tracks formal verification coverage across the `rource-math` crate,
+including per-module metrics, verification limitations, the floating-point
+assessment, and the relationship between formal verification and testing.
+
+For an overview of the complete verification effort (Verus + Coq), see
+[FORMAL_VERIFICATION.md](FORMAL_VERIFICATION.md).
+
+## Coverage Summary
+
+| Module | Operations | Formally Verified | Unit Tested | Coverage |
+|--------|------------|-------------------|-------------|----------|
+| Vec2 | 42 | 11 (26%) | 42 (100%) | 26% |
+| Vec3 | 28 | 12 (43%) | 28 (100%) | 43% |
+| Vec4 | 24 | 12 (50%) | 24 (100%) | 50% |
+| Mat3 | 17 | 8 (47%) | 17 (100%) | 47% |
+| Mat4 | 26 | 7 (27%) | 26 (100%) | 27% |
+| Color | 38 | 14 (37%) | 38 (100%) | 37% |
+| Rect | 50 | 16 (32%) | 50 (100%) | 32% |
+| Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
+| **Total** | **230** | **85 (37%)** | **230 (100%)** | **37%** |
+
+## Verified Operations by Module
+
+### Vec2 (11 operations verified)
+- `new`, `zero`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `perp`, `length_squared`, `mul`
+
+**Not verified** (require floating-point or transcendentals):
+- `splat`, `from_angle`, `to_angle`, `rotate`, `length`, `normalized`, `lerp`, `min`, `max`
+- `abs`, `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`
+- `reflect`, `project`, `rejection`, `element_sum`, `element_product`, `min_element`, `max_element`
+- `is_finite`, `is_nan`, `as_ivec2`, `as_uvec2`, batch operations
+
+### Vec3 (12 operations verified)
+- `new`, `zero`, `x`, `y`, `z`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `length_squared`
+
+**Not verified**: Similar to Vec2 plus 3D-specific operations
+
+### Vec4 (12 operations verified)
+- `new`, `zero`, `x`, `y`, `z`, `w`, `add`, `sub`, `scale`, `neg`, `dot`, `length_squared`, `mul`
+
+**Not verified**: Similar to Vec2/Vec3 plus 4D-specific operations
+
+### Mat3 (8 operations verified)
+- `new`, `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
+
+**Not verified**: `translation`, `rotation`, `scaling`, `inverse`, `determinant`, etc.
+
+### Mat4 (7 operations verified)
+- `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
+
+**Not verified**: `perspective`, `orthographic`, `look_at`, `rotation_*`, `inverse`, etc.
+
+### Color (14 operations verified)
+- `new`, `rgb`, `gray`, `with_alpha`, `fade`, `lerp`, `premultiplied`, `blend_over`, `luminance`, `clamp`, `transparent`, `black`, `white`, `clamp_component`
+
+**Not verified** (require floating-point or HSL conversions):
+- `from_hsl`, `to_hsl`, `lighten`, `darken`, `saturate`, `desaturate`
+- `invert`, `mix`, `contrast_ratio`, `is_light`, `is_dark`
+- `to_hex`, `from_hex`, `to_array`, `from_array`
+- Floating-point-specific: `approx_eq`, `is_finite`, `is_nan`
+
+### Rect (16 operations verified)
+- `new`, `zero`, `right`, `bottom`, `center_x`, `center_y`, `area`, `perimeter`
+- `contains_point`, `contains_rect`, `intersects`, `union`, `translate`, `expand`, `shrink`, `is_valid`
+
+**Not verified** (require floating-point or complex geometry):
+- `intersection` (computed intersection rect), `from_center`, `from_points`
+- `scale`, `normalize`, `merge_bounds`, `clip_to`
+- Floating-point-specific: `lerp`, `grow_to_contain`, iterator-based operations
+- Complex geometry: `transform_by_mat3`, `transform_by_mat4`
+
+### Utils (5 operations verified)
+- `lerp`, `clamp` (both R-based and Z-based proofs)
+
+**Not verified** (require floating-point or transcendentals):
+- `approx_eq` (floating-point epsilon comparison)
+- `deg_to_rad`, `rad_to_deg` (require pi constant)
+
+## Verification Limitations
+
+Operations that **cannot be formally verified** with current Verus capabilities:
+
+| Category | Reason | Examples |
+|----------|--------|----------|
+| Floating-point | Verus uses integer specs | `length()`, `normalized()`, `sin/cos` |
+| Transcendentals | No SMT support | `from_angle()`, `to_angle()`, `rotate()` |
+| Type conversions | Platform-specific | `as_ivec2()`, `as_uvec2()` |
+| NaN handling | IEEE 754 semantics | `is_nan()`, `is_finite()` |
+
+## Prioritized Verification Roadmap
+
+| Priority | Module | Operations | Rationale | Status |
+|----------|--------|------------|-----------|--------|
+| ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 23, Coq R: 26, Coq Z: 22) |
+| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 23, Coq R: 20, Coq Z: 22) |
+| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 10, Coq Z: 14) |
+| 4 | Mat3/Mat4 | `determinant` properties | Mathematical foundations | TODO |
+| 5 | Color | HSL <-> RGB conversion | Requires transcendentals | Blocked (floating-point) |
+
+## Relationship to Testing
+
+Formal verification and testing serve complementary purposes:
+
+| Aspect | Testing | Formal Verification |
+|--------|---------|---------------------|
+| Coverage | Sample-based | Exhaustive |
+| Confidence | Statistical | Mathematical certainty |
+| Floating-point | Direct testing | Models exact arithmetic |
+| Effort | Lower | Higher |
+| Maintenance | Test code | Proof maintenance |
+
+The project maintains both:
+- **100% test coverage** for `rource-math` via tarpaulin (runtime behavior)
+- **Formal proofs** for core properties (mathematical correctness)
+
+## Floating-Point Refinement Investigation
+
+### Investigation Summary (2026-01-28)
+
+We investigated Verus's current floating-point support to assess feasibility of verifying
+operations like `length()`, `normalized()`, and `lerp()`.
+
+### Current Verus Floating-Point Support
+
+| Component | Support Level | Description |
+|-----------|---------------|-------------|
+| `vstd::float` module | Basic | Properties of floating point values |
+| `FloatBitsProperties` trait | Available | Bit-level extraction for f32/f64 |
+| Arithmetic verification | Limited | Not well-supported per recent research |
+| Transcendental functions | None | sin/cos/sqrt not verifiable |
+
+### Technical Challenges
+
+1. **Rounding semantics**: IEEE 754 rounding modes create non-determinism that SMT solvers struggle with
+2. **Exception handling**: NaN propagation, infinities, and denormals complicate proofs
+3. **No algebraic structure**: Floating-point arithmetic is not associative or distributive
+4. **Formula explosion**: Verification formulas become very large and slow
+
+### Research References
+
+- Yang, C., et al. "AutoVerus: Automated Proof Generation for Rust Code." arXiv:2409.13082, 2024.
+  - Notes floating-point as "not well supported by Rust/Verus"
+- Friedlos, L. "Verifying Rust Programs Using Floating-Point Numbers and Bitwise Operations." ETH Zurich thesis.
+  - States "guarantees for programs using floating-points are generally rather low"
+
+### Recommendation
+
+For rource-math, we recommend:
+
+1. **Integer specifications remain primary**: Continue using `int` specs for algebraic properties
+2. **Bit-level properties only**: Use `FloatBitsProperties` for verifying representation invariants
+3. **Refinement types**: Document the integer->f32 translation assumptions explicitly
+4. **Monitor Verus development**: Check quarterly for improved floating-point support
+
+### What CAN Be Verified with Floating-Point
+
+| Property | Verifiable | Notes |
+|----------|------------|-------|
+| Bit layout (sign, exponent, mantissa) | Yes | Via `FloatBitsProperties` |
+| is_nan, is_infinite predicates | Yes | Bit patterns |
+| Comparison with NaN handling | Partial | Requires careful specification |
+| Basic arithmetic correctness | No | Rounding non-determinism |
+| Transcendental accuracy | No | No SMT theory support |
+
+### Conclusion
+
+**Floating-point formal verification in Verus is not mature enough for production use.**
+Our current approach of proving properties over `int` specifications and documenting
+the f32 translation assumptions is the recommended best practice per Verus maintainers.
+
+The 63% of operations not formally verified (those requiring floating-point or
+transcendentals) will remain covered by:
+- Unit tests (100% coverage)
+- Property-based testing
+- Manual review for IEEE 754 compliance
+
+---
+
+*Last verified: 2026-01-29*
+*Formal verification coverage: 85/230 operations (37%)*
+*Unit test coverage: 230/230 operations (100%)*
+*Unverifiable operations: 145 (floating-point, transcendentals, type conversions)*

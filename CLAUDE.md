@@ -669,9 +669,13 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification status (796 theorems) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (796 theorems) |
+| `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (240 proof functions, 7 types) |
+| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 556 theorems, development workflow) |
+| `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
+| `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
-| `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment |
+| `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment (9-path survey) |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
 | `LICENSE` | GPL-3.0 license |
 
@@ -1366,9 +1370,13 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | Dual Verification | Critical types (Vec2-4, Mat3-4) verified in BOTH tools |
 
 **Reference:**
+- Overview & Index: `docs/verification/FORMAL_VERIFICATION.md`
+- Verus Proofs: `docs/verification/VERUS_PROOFS.md`
+- Coq Proofs: `docs/verification/COQ_PROOFS.md`
+- Coverage & Limitations: `docs/verification/VERIFICATION_COVERAGE.md`
+- WASM Pipeline: `docs/verification/WASM_EXTRACTION_PIPELINE.md`
 - Setup Guide: `docs/verification/SETUP_GUIDE.md`
-- Full Details: `docs/verification/FORMAL_VERIFICATION.md`
-- WASM Pipeline: `docs/verification/CERTICOQ_WASM_ASSESSMENT.md`
+- 9-Path Survey: `docs/verification/CERTICOQ_WASM_ASSESSMENT.md`
 
 ---
 
