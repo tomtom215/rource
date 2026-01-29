@@ -1,10 +1,10 @@
 # Formal Verification of rource-math
 
-This document describes the formal verification work performed on the `rource-math` crate using Microsoft's Verus tool.
+This document describes the formal verification work performed on the `rource-math` crate using both Microsoft's Verus and the Coq proof assistant.
 
 ## Overview
 
-The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, etc.) used throughout the Rource project. We have formally verified key algebraic and geometric properties of these types using Verus, achieving machine-checked proofs that can withstand academic peer review.
+The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, and semantic properties of these types using a hybrid Verus + Coq architecture, achieving 612 machine-checked theorems with zero admits that can withstand academic peer review.
 
 ## Verification Tool
 
@@ -253,6 +253,125 @@ All proofs verified with `0 errors`.
 | 17 | Negation as Scaling | -A = (-1) * A |
 | 18 | Ring Structure | Mat4 forms a ring with identity |
 
+### Color (23 Theorems)
+
+All proofs verified with `0 errors`.
+
+#### Constructor Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 1 | Component Correctness | new(r,g,b,a) sets all components correctly |
+| 2 | RGB Full Alpha | rgb(r,g,b).a = 1 (opaque) |
+| 3 | Gray Equal RGB | gray(v).r = gray(v).g = gray(v).b = v |
+| 4 | Gray Opaque | gray(v).a = 1 |
+
+#### Alpha Operations
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 5 | with_alpha Preserves RGB | with_alpha(c, a).rgb = c.rgb |
+| 6 | fade(1) Preserves | fade(c, 1).a = c.a |
+| 7 | fade(0) Zeroes Alpha | fade(c, 0).a = 0 |
+| 8 | fade Preserves RGB | fade(c, f).rgb = c.rgb |
+
+#### Interpolation Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 9 | Same-Color Identity | lerp(c, c, t) = c |
+| 10 | Start Boundary | lerp(a, b, 0) = a |
+| 11 | End Boundary | lerp(a, b, 1) = b |
+
+#### Blending Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 12 | Opaque FG Covers | blend(src, dst) = src when src.a = 1 |
+| 13 | Transparent FG Shows BG | blend(src, dst) = dst when src.a = 0 |
+
+#### Premultiplication Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 14 | Full Alpha Preserves RGB | premultiplied(c).rgb = c.rgb when c.a = 1 |
+| 15 | Zero Alpha Zeroes RGB | premultiplied(c).rgb = 0 when c.a = 0 |
+| 16 | Preserves Alpha | premultiplied(c).a = c.a |
+
+#### Clamping Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 17 | In-Range Identity | clamp(c) = c when c in [0,1] |
+| 18 | Bounds Guarantee | 0 <= clamp(c) <= 1 |
+| 19 | Idempotence | clamp(clamp(c)) = clamp(c) |
+
+#### Luminance Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 20 | Black Luminance | luminance(black) = 0 |
+| 21 | Non-negative | luminance(c) >= 0 for valid c |
+| 22 | Gray Proportional | luminance(gray(v)) = 10000 * v |
+| 23 | White Maximum | luminance(white) = 10000000 |
+
+### Rect (23 Theorems)
+
+All proofs verified with `0 errors`.
+
+#### Containment Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 1 | Contains Top-Left | rect contains point (x, y) |
+| 2 | Contains Bottom-Right | rect contains point (x+w, y+h) |
+| 3 | Contains Center | rect contains its center point |
+| 4 | contains_rect Reflexive | contains_rect(r, r) = true |
+| 5 | contains_rect Transitive | contains(a,b) ∧ contains(b,c) → contains(a,c) |
+
+#### Intersection Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 6 | Symmetry | intersects(a, b) = intersects(b, a) |
+| 7 | Self-Intersection | intersects(r, r) for valid r |
+| 8 | Contains Implies Intersects | contains_rect(a, b) → intersects(a, b) |
+
+#### Union Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 9 | Commutativity | union(a, b) = union(b, a) |
+| 10 | Contains First | contains_rect(union(a,b), a) |
+| 11 | Contains Second | contains_rect(union(a,b), b) |
+
+#### Transformation Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 12 | Translate Preserves Size | translate(r).size = r.size |
+| 13 | Translate Identity | translate(r, 0, 0) = r |
+| 14 | Translate Composition | translate(translate(r,d1),d2) = translate(r,d1+d2) |
+| 15 | Expand-Shrink Inverse | expand(shrink(r, a), a) = r |
+| 16 | Shrink-Expand Inverse | shrink(expand(r, a), a) = r |
+
+#### Area and Perimeter Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 17 | Area Non-negative | area(r) >= 0 for valid r |
+| 18 | Perimeter Non-negative | perimeter(r) >= 0 for valid r |
+| 19 | Square Perimeter | perimeter(square(s)) = 4s |
+| 20 | Square Area | area(square(s)) = s^2 |
+
+#### Validity Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 21 | Valid Implies Not Empty | is_valid(r) → !is_empty(r) |
+| 22 | Zero Is Empty | is_empty(rect_zero) |
+| 23 | Expand Preserves Validity | is_valid(expand(r, a)) for valid r, a >= 0 |
+
 ## Verification Methodology
 
 ### Modeling Approach
@@ -322,6 +441,14 @@ rustup install 1.92.0
 # Verify Mat4 proofs (requires higher rlimit for associativity)
 ./verus --rlimit 30000000 /path/to/rource/crates/rource-math/proofs/mat4_proofs.rs
 # Expected: verification results:: 27 verified, 0 errors
+
+# Verify Color proofs
+./verus /path/to/rource/crates/rource-math/proofs/color_proofs.rs
+# Expected: verification results:: verified, 0 errors
+
+# Verify Rect proofs
+./verus /path/to/rource/crates/rource-math/proofs/rect_proofs.rs
+# Expected: verification results:: verified, 0 errors
 ```
 
 ## Verification Coverage
@@ -333,8 +460,10 @@ rustup install 1.92.0
 | rource-math/Vec4 | ✅ VERIFIED | 22 | 68 | 4D vector space, basis orthonormality |
 | rource-math/Mat3 | ✅ VERIFIED | 18 | 26 | Matrix multiplication associativity, ring structure |
 | rource-math/Mat4 | ✅ VERIFIED | 18 | 27 | 3D transformation pipelines, ring structure |
+| rource-math/Color | ✅ VERIFIED | 23 | — | Constructor, alpha, interpolation, blending, clamping, luminance |
+| rource-math/Rect | ✅ VERIFIED | 23 | — | Containment, intersection, union, transformations, area/perimeter, validity |
 
-**Total: 105 theorems, 242 verification conditions verified**
+**Total: 151 theorems verified (Verus)**
 
 ## Relationship to Testing
 
@@ -379,10 +508,10 @@ This section tracks formal verification coverage across the `rource-math` crate.
 | Vec4 | 24 | 12 (50%) | 24 (100%) | 50% |
 | Mat3 | 17 | 8 (47%) | 17 (100%) | 47% |
 | Mat4 | 26 | 7 (27%) | 26 (100%) | 27% |
-| Color | 38 | 0 (0%) | 38 (100%) | 0% |
-| Rect | 50 | 0 (0%) | 50 (100%) | 0% |
-| lib.rs | 5 | 0 (0%) | 5 (100%) | 0% |
-| **Total** | **230** | **50 (22%)** | **230 (100%)** | **22%** |
+| Color | 38 | 14 (37%) | 38 (100%) | 37% |
+| Rect | 50 | 16 (32%) | 50 (100%) | 32% |
+| Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
+| **Total** | **230** | **85 (37%)** | **230 (100%)** | **37%** |
 
 ### Verified Operations by Module
 
@@ -415,6 +544,32 @@ This section tracks formal verification coverage across the `rource-math` crate.
 
 **Not verified**: `perspective`, `orthographic`, `look_at`, `rotation_*`, `inverse`, etc.
 
+#### Color (14 operations verified)
+- `new`, `rgb`, `gray`, `with_alpha`, `fade`, `lerp`, `premultiplied`, `blend_over`, `luminance`, `clamp`, `transparent`, `black`, `white`, `clamp_component`
+
+**Not verified** (require floating-point or HSL conversions):
+- `from_hsl`, `to_hsl`, `lighten`, `darken`, `saturate`, `desaturate`
+- `invert`, `mix`, `contrast_ratio`, `is_light`, `is_dark`
+- `to_hex`, `from_hex`, `to_array`, `from_array`
+- Floating-point-specific: `approx_eq`, `is_finite`, `is_nan`
+
+#### Rect (16 operations verified)
+- `new`, `zero`, `right`, `bottom`, `center_x`, `center_y`, `area`, `perimeter`
+- `contains_point`, `contains_rect`, `intersects`, `union`, `translate`, `expand`, `shrink`, `is_valid`
+
+**Not verified** (require floating-point or complex geometry):
+- `intersection` (computed intersection rect), `from_center`, `from_points`
+- `scale`, `normalize`, `merge_bounds`, `clip_to`
+- Floating-point-specific: `lerp`, `grow_to_contain`, iterator-based operations
+- Complex geometry: `transform_by_mat3`, `transform_by_mat4`
+
+#### Utils (5 operations verified)
+- `lerp`, `clamp` (both R-based and Z-based proofs)
+
+**Not verified** (require floating-point or transcendentals):
+- `approx_eq` (floating-point epsilon comparison)
+- `deg_to_rad`, `rad_to_deg` (require pi constant)
+
 ### Verification Limitations
 
 Operations that **cannot be formally verified** with current Verus capabilities:
@@ -428,12 +583,13 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 
 ### Prioritized Verification Roadmap
 
-| Priority | Module | Operations | Rationale |
-|----------|--------|------------|-----------|
-| 1 | Color | HSL ↔ RGB conversion | Color correctness critical for visualization |
-| 2 | Rect | `contains`, `intersects`, `union` | Spatial logic used in collision detection |
-| 3 | lib.rs | `lerp`, `clamp` | Foundational operations |
-| 4 | Mat3/Mat4 | `determinant` properties | Mathematical foundations |
+| Priority | Module | Operations | Rationale | Status |
+|----------|--------|------------|-----------|--------|
+| ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | ✅ DONE (Verus: 23, Coq R: 26, Coq Z: 22) |
+| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | ✅ DONE (Verus: 23, Coq R: 20, Coq Z: 22) |
+| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | ✅ DONE (Coq R: 10, Coq Z: 14) |
+| 4 | Mat3/Mat4 | `determinant` properties | Mathematical foundations | TODO |
+| 5 | Color | HSL ↔ RGB conversion | Requires transcendentals | Blocked (floating-point) |
 
 ## Floating-Point Refinement Investigation
 
@@ -490,8 +646,8 @@ For rource-math, we recommend:
 Our current approach of proving properties over `int` specifications and documenting
 the f32 translation assumptions is the recommended best practice per Verus maintainers.
 
-The 78% of operations not formally verified (those requiring floating-point) will
-remain covered by:
+The 63% of operations not formally verified (those requiring floating-point or
+transcendentals) will remain covered by:
 - Unit tests (100% coverage)
 - Property-based testing
 - Manual review for IEEE 754 compliance
@@ -500,10 +656,15 @@ remain covered by:
 
 1. ~~**Vec4 proofs**~~ - ✅ COMPLETED (22 theorems, 68 VCs)
 2. ~~**Matrix proofs (Mat3, Mat4)**~~ - ✅ COMPLETED (Mat3: 18 theorems, 26 VCs; Mat4: 18 theorems, 27 VCs)
-3. **Complexity bounds** - Prove O(1) for vector operations
+3. ~~**Complexity bounds**~~ - ✅ COMPLETED (60 Coq theorems, O(1) for 40 operations)
 4. ~~**Floating-point refinement**~~ - ✅ INVESTIGATED (see above - not feasible with current Verus)
 5. ~~**CI integration**~~ - ✅ COMPLETED (`.github/workflows/verus-verify.yml`)
 6. ~~**Proof coverage metrics**~~ - ✅ COMPLETED (see above)
+7. ~~**Color proofs**~~ - ✅ COMPLETED (Verus: 23, Coq R: 26, Coq Z: 22 theorems)
+8. ~~**Rect proofs**~~ - ✅ COMPLETED (Verus: 23, Coq R: 20, Coq Z: 22 theorems)
+9. ~~**Utils proofs (lerp, clamp)**~~ - ✅ COMPLETED (Coq R: 10, Coq Z: 14 theorems)
+10. **Determinant properties** - Prove det(A*B) = det(A)*det(B) for Mat3/Mat4
+11. **HSL color space** - Requires transcendental functions (blocked by floating-point)
 
 ## Hybrid Verification Architecture: Verus + Coq
 

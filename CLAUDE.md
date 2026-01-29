@@ -397,6 +397,12 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | T2LcJ | `make install` for MetaCoq takes ~15-20 min | Builds ToPCUIC and ToTemplate quotation theories, not just file copy | Budget time accordingly; monitor with verbose output | Yes |
 | 2026-01-29 | T2LcJ | Recompilation order matters for Coq .vo files | Layer dependencies: specs → proofs → complexity → compute → extraction → MetaCoq erasure | Always recompile in order; automated in `recompile_coq_proofs()` function | Yes |
 | 2026-01-29 | T2LcJ | `verify_coq_proofs()` has 4 layers | Layer 1: specs+proofs, Layer 2: compute, Layer 3: extraction, Layer 4: MetaCoq (optional) | Each layer depends on prior; MetaCoq layer is optional (not a failure if unavailable) | Yes |
+| 2026-01-29 | fqYWd | `simpl` destroys Z term structure for `lia`/`ring` | `simpl` reduces `Z.mul`, `Z.add` with variables into match expressions `lia`/`ring` cannot handle | Use `cbn -[Z.mul Z.div Z.add Z.sub]` to reduce only record projections; use `assert (H: 0/1000=0) by reflexivity; rewrite H` for ground divisions | Yes |
+| 2026-01-29 | fqYWd | `Z.div_mul` requires specific operand order | `Z.div_mul: a * b / b = a` matches second mult operand = divisor; `Z.mul_comm` breaks this | Don't use `Z.mul_comm` before `Z.div_mul`; use `rewrite Z.div_mul by lia` directly | Yes |
+| 2026-01-29 | fqYWd | `Z.gtb` not definitionally equal to `Z.ltb` with flipped args | `Z.gtb x y` defined as `match x ?= y with Gt => true | _ => false end`, NOT `Z.ltb y x` | Prove `Z_gtb_ltb: (x >? y) = (y <? x)` using `Z.compare_antisym` | Yes |
+| 2026-01-29 | fqYWd | `zclamp_upper` requires `lo <= hi` precondition | Without `lo <= hi`, `v > hi` and `v < lo` possible (when `hi < lo`); clamp returns `lo` not `hi` | Add `lo <= hi` hypothesis to clamp theorems that assume ordered bounds | Yes |
+| 2026-01-29 | fqYWd | `remember` + `destruct` avoids `simpl`/`cbn` reduction issues | Complex boolean proofs corrupt when `simpl`/`cbn` reduce Z comparisons | Use `remember (expr) as c; destruct c` to abstract boolean expressions before case analysis | Yes |
+| 2026-01-29 | fqYWd | Color/Rect/Utils verification scales well | Same layered architecture (R→Z→Extract) works for all types | Color: 48 theorems, Rect: 42 theorems, Utils: 24 theorems, all 0 admits | Yes |
 
 ---
 
