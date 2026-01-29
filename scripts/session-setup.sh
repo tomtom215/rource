@@ -29,7 +29,8 @@ readonly REQUIRED_RUST_VERSION="1.82"
 
 # Script metadata
 readonly SCRIPT_VERSION="2.0.0"
-readonly SCRIPT_NAME="session-setup.sh"
+# Script name used in error messages and documentation
+export SCRIPT_NAME="session-setup.sh"
 
 # -----------------------------------------------------------------------------
 # Global Variables
@@ -474,9 +475,9 @@ setup_environment() {
     if [[ -d "$HOME/.cargo/bin" ]]; then
         if [[ ":$PATH:" != *":$HOME/.cargo/bin:"* ]]; then
             export PATH="$HOME/.cargo/bin:$PATH"
-            print_ok "Added ~/.cargo/bin to PATH"
+            print_ok "Added $HOME/.cargo/bin to PATH"
         else
-            print_debug "~/.cargo/bin already in PATH"
+            print_debug "$HOME/.cargo/bin already in PATH"
         fi
     fi
 

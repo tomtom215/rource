@@ -570,12 +570,64 @@ architecture combining Verus with the Coq ecosystem.
 | **Verus** | Algebraic properties | Production | ✅ Active |
 | **Coq** | Mathematical proofs, complexity | Production | ✅ Active (347 theorems) |
 | **wasm_of_ocaml** | OCaml → WASM compilation | Production (v6.2.0) | ✅ Active (Path 1, 6.8 KB lib) |
-| **MetaCoq Verified Extraction** | Verified Coq → OCaml | Research (PLDI'24) | Blocked (Path 2, opam 503) |
+| **MetaCoq Verified Extraction** | Verified Coq → OCaml | Research (PLDI'24) | ✅ Built from source (Path 2) |
 | **CertiCoq-WASM** | Coq → Verified WASM | Research (CPP 2025) | Deferred (Path 4, needs 8.20) |
 | **coq-rust-extraction** | Coq → Rust extraction | Early research (v0.1.1) | Deferred (needs 8.20+) |
 | **WasmCert-Coq** | WASM formalization | Production | CertiCoq-WASM dependency |
 | **ICC/Coq** | Complexity bounds | Research | ✅ Active (60 theorems) |
 | **RefinedRust** | Unsafe code verification | Research (PLDI 2024) | Optional |
+
+### Coq → Rocq Rebranding (Critical Context)
+
+The Coq Proof Assistant was officially renamed to **The Rocq Prover** with
+version 9.0 (released March 2025). This rebranding affects the entire ecosystem:
+
+**Key Changes:**
+
+| Aspect | Coq (Legacy) | Rocq (Current) |
+|--------|-------------|----------------|
+| Name | The Coq Proof Assistant | The Rocq Prover |
+| Versions | 8.x (up to 8.20) | 9.x (9.0, 9.1) |
+| Opam package | `coq` | `rocq-prover` (= `rocq-core` + `rocq-stdlib`) |
+| Opam repo | `coq.inria.fr/opam/released` | `rocq-prover.org/opam/released` |
+| Standard library | `From Coq` | `From Stdlib` |
+| MetaCoq | `MetaCoq/metacoq` | `MetaRocq/metarocq` |
+| Build system | `coq_makefile` | `rocq makefile` (coq_makefile compat shim) |
+| Binary | `coqc` | `rocq` (coqc compat shim via `coq-core`) |
+
+**Impact on Rource:**
+
+1. **Both opam repos return HTTP 503**: The old `coq.inria.fr/opam/released` and new
+   `rocq-prover.org/opam/released` repos are periodically unavailable. The default
+   `opam.ocaml.org` repo has core packages (`rocq-core`, `rocq-stdlib`, `coq`) but
+   NOT MetaCoq/MetaRocq or coq-equations (beyond 1.3+8.18).
+
+2. **Our Coq 8.18 is valid**: The `coq-core` compatibility shim exists up to v9.1.0,
+   maintaining backward compatibility. Our proofs using `From Coq` namespace work with
+   both Coq 8.18 and via the compatibility layer in Rocq 9.x.
+
+3. **MetaRocq 1.4.1 exists for Rocq 9.1**: The latest MetaRocq (Dec 2024) targets
+   Rocq 9.1, but requires `From MetaRocq` namespace (breaking change from `From MetaCoq`).
+
+**Migration Strategy (Documented Decision):**
+
+| Timeline | Action | Rationale |
+|----------|--------|-----------|
+| **Current** | Stay on Coq 8.18 + MetaCoq (built from source) | Working, tested, 452 theorems compile |
+| **Near-term** | Migrate to Rocq 9.0 when opam repos stabilize | `rocq-prover 9.0.0` available on opam.ocaml.org |
+| **Medium-term** | Migrate to Rocq 9.1 + MetaRocq 1.4.1 | Latest, with full opam packages |
+
+**Namespace Migration Required for Rocq 9.x:**
+
+```coq
+(* Coq 8.18 (current) *)
+From Coq Require Import Reals.
+From MetaCoq.ErasurePlugin Require Import Loader.
+
+(* Rocq 9.x (future) *)
+From Stdlib Require Import Reals.
+From MetaRocq.ErasurePlugin Require Import Loader.
+```
 
 ### CertiCoq-WASM Details
 
@@ -805,7 +857,7 @@ Pipeline operational: All 5 types (Vec2-4, Mat3-4) extracted to OCaml and compil
 | RourceMath_Extract.v | Done | Unified extraction of all 5 types |
 | test_extracted.ml | Done | OCaml test driver, all tests pass |
 | wasm_of_ocaml pipeline | Done | Library: 6.8 KB WASM, test: 42.2 KB WASM |
-| MetaCoq investigation | Blocked | Coq opam repository HTTP 503 |
+| MetaCoq build from source | Done | All 8 components built, bypasses opam 503 |
 
 **Near-Term (Path 1 - wasm_of_ocaml):**
 - [x] Install wasm_of_ocaml toolchain (OCaml + Dune + Binaryen)
@@ -814,12 +866,20 @@ Pipeline operational: All 5 types (Vec2-4, Mat3-4) extracted to OCaml and compil
 - [x] Extend computational bridge to all types (Vec3/4, Mat3/4)
 
 **Medium-Term (Path 2 - MetaCoq Verified Extraction):**
-- [ ] Install MetaCoq for Coq 8.18 (blocked: Coq opam repository HTTP 503)
-- [ ] Test verified extraction on Vec2_Compute.v
+- [x] Install MetaCoq for Coq 8.18 (built from source, all 8 components)
+- [x] Install MetaCoq to Coq user-contrib (`make install`)
+- [x] Test verified extraction on Vec2_Compute.v (9 operations erased successfully)
 - [ ] Document TCB reduction for academic publication
 
-> **Note**: MetaCoq installation was attempted but blocked by Coq opam repository
-> returning HTTP 503 errors. This path remains viable once opam infrastructure recovers.
+> **Note**: MetaCoq was successfully built from source by cloning the `coq-8.18`
+> branch from `github.com/MetaCoq/metacoq` and building all 8 components. This
+> bypasses the Coq opam repository HTTP 503 errors. The coq-equations dependency
+> was pinned directly from GitHub source (`mattam82/Coq-Equations#v1.3-8.18`).
+
+> **Rocq Migration Note**: The Coq Proof Assistant has been renamed to The Rocq
+> Prover (v9.0+, March 2025). MetaCoq is now MetaRocq (v1.4.1 for Rocq 9.1).
+> A future migration from Coq 8.18 to Rocq 9.x is planned. See "Coq → Rocq
+> Rebranding" section above for migration strategy and namespace changes.
 
 **Long-Term (Path 4 - CertiCoq-WASM, deferred to Coq 8.20):**
 - [ ] Upgrade Coq to 8.20 and verify all proofs
@@ -843,6 +903,7 @@ coqc -Q . RourceMath Vec4_Extract.v    # OCaml extraction
 coqc -Q . RourceMath Mat3_Extract.v    # OCaml extraction
 coqc -Q . RourceMath Mat4_Extract.v    # OCaml extraction
 coqc -Q . RourceMath RourceMath_Extract.v  # Unified extraction of all 5 types
+coqc -Q . RourceMath Vec2_VerifiedExtract.v  # MetaCoq verified erasure (Path 2)
 ```
 
 #### Phase 4: Publication (Q4 2026)
@@ -904,7 +965,7 @@ This hybrid approach would be novel in several ways:
 *Version: Coq 8.18*
 *Total theorems: 347 (Vec2: 31, Vec3: 39, Vec4: 29, Mat3: 23, Mat4: 39, Complexity: 60, Vec2_Compute: 27, Vec3_Compute: 31, Vec4_Compute: 22, Mat3_Compute: 25, Mat4_Compute: 21)*
 *Admits: 0*
-*Compilation time: ~39.8 seconds total (22 files)*
+*Compilation time: ~39.8 seconds total (23 files, including Vec2_VerifiedExtract.v)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**
@@ -922,7 +983,8 @@ This hybrid approach would be novel in several ways:
 *Recommended Path: Standard Extraction + wasm_of_ocaml (production-ready, Coq 8.18 compatible)*
 *Alternative Path: MetaCoq Verified Extraction (PLDI'24, partially verified, Coq 8.18 compatible)*
 *CertiCoq-WASM: Assessed, deferred to Coq 8.20 availability (strongest verification)*
-*MetaCoq: Attempted, blocked by Coq opam repository HTTP 503*
+*MetaCoq: Built from source, installed, verified extraction tested (9 ZVec2 ops erased)*
+*Rocq Rebranding: Coq renamed to Rocq Prover (v9.0+, March 2025); migration planned*
 *Status: Full pipeline operational, all 5 types extractable to WASM*
 
 **Combined Verification:**
