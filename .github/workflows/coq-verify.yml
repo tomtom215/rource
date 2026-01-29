@@ -133,8 +133,8 @@ jobs:
             echo "Mat3_Proofs.v verified successfully"
           fi
 
-          echo "Building Mat4_Proofs.v (may take 2-5 minutes)..."
-          MAT4_OUTPUT=$(timeout 600 coqc -Q . RourceMath Mat4_Proofs.v 2>&1 || true)
+          echo "Building Mat4_Proofs.v (~6 seconds with optimizations)..."
+          MAT4_OUTPUT=$(timeout 120 coqc -Q . RourceMath Mat4_Proofs.v 2>&1 || true)
           if echo "$MAT4_OUTPUT" | grep -q "Error"; then
             echo "mat4_status=failed" >> $GITHUB_OUTPUT
             echo "$MAT4_OUTPUT"
