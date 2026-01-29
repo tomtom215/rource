@@ -906,6 +906,42 @@ coqc -Q . RourceMath RourceMath_Extract.v  # Unified extraction of all 5 types
 coqc -Q . RourceMath Vec2_VerifiedExtract.v  # MetaCoq verified erasure (Path 2)
 ```
 
+#### Coq Development Workflow (Proven Best Practices)
+
+These practices were established through hard-won experience across multiple sessions:
+
+**Library Consistency (CRITICAL):**
+
+| Scenario | Problem | Solution |
+|----------|---------|----------|
+| apt Coq + opam MetaCoq | `.vo` files compiled with `/usr/lib/coq` are incompatible with opam's `/root/.opam/default/lib/coq` | Always use `eval $(opam env)` before compilation; delete and recompile all `.vo` after MetaCoq install |
+| Mixed Coq installations | "Inconsistent assumptions over library Coq.Init.Ltac" | `rm -f *.vo *.vos *.vok *.glob` then recompile in layer order |
+
+**Compilation Layer Order (MANDATORY):**
+```
+Layer 1: Specs    → Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v
+Layer 1: Proofs   → Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v
+Layer 1: Complex  → Complexity.v
+Layer 2: Compute  → Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v
+Layer 3: Extract  → Vec2_Extract.v ... Mat4_Extract.v RourceMath_Extract.v
+Layer 4: MetaCoq  → Vec2_VerifiedExtract.v (optional, requires MetaCoq installed)
+```
+
+**Tactic Selection for Z-based Proofs:**
+
+| Proof Type | Tactic | Pitfall to Avoid |
+|------------|--------|------------------|
+| Linear arithmetic | `lra` | N/A |
+| Polynomial identities | `ring` | Never use `simpl` before `ring` on Z multiplication |
+| Record field reduction | `cbn [field_names]` | Never use `simpl` (reduces Z constants into match expressions) |
+| Large record equality | `apply <type>_eq` | Never use `f_equal` (exponential blowup on 16-field records) |
+| Complex polynomial (48+ vars) | Component decomposition | Use `Local Lemma` per component, each proven with `ring` |
+
+**MetaCoq Installation:**
+- Build from source: `github.com/MetaCoq/metacoq#coq-8.18` (~30 min build, ~15 min install)
+- `make install` compiles additional quotation theories (not just file copy)
+- After install: recompile ALL `.vo` files (automated by `setup-formal-verification.sh`)
+
 #### Phase 4: Publication (Q4 2026)
 - [ ] Write academic paper on hybrid verification
 - [ ] Submit to appropriate venue (CPP, PLDI, or POPL)

@@ -393,6 +393,10 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | T2LcJ | rocq-core 9.1.0 available on opam.ocaml.org | Default opam repo has Rocq core packages (no dedicated repo needed) | `opam pin add rocq-prover 9.0.0` works from default repo | Yes |
 | 2026-01-29 | T2LcJ | MetaRocq 1.4.1 is latest (Dec 2024, Rocq 9.1) | GitHub releases show clear version history per Rocq target | Use MetaRocq/metarocq releases page for version compatibility | Yes |
 | 2026-01-29 | T2LcJ | MetaCoq built from source bypasses opam 503 | All 8 components build in ~30 min from `MetaCoq/metacoq#coq-8.18` | Document build order: utils→common→template-coq→pcuic→template-pcuic→safechecker→erasure→erasure-plugin | Yes |
+| 2026-01-29 | T2LcJ | apt Coq vs opam Coq .vo file inconsistency | .vo compiled with apt Coq (`/usr/lib/coq`) incompatible with opam Coq (`~/.opam/default/lib/coq`) even at same version | After MetaCoq install: `rm -f *.vo *.vos *.vok *.glob` then recompile all layers with `eval $(opam env)` | Yes |
+| 2026-01-29 | T2LcJ | `make install` for MetaCoq takes ~15-20 min | Builds ToPCUIC and ToTemplate quotation theories, not just file copy | Budget time accordingly; monitor with verbose output | Yes |
+| 2026-01-29 | T2LcJ | Recompilation order matters for Coq .vo files | Layer dependencies: specs → proofs → complexity → compute → extraction → MetaCoq erasure | Always recompile in order; automated in `recompile_coq_proofs()` function | Yes |
+| 2026-01-29 | T2LcJ | `verify_coq_proofs()` has 4 layers | Layer 1: specs+proofs, Layer 2: compute, Layer 3: extraction, Layer 4: MetaCoq (optional) | Each layer depends on prior; MetaCoq layer is optional (not a failure if unavailable) | Yes |
 
 ---
 

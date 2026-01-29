@@ -250,7 +250,8 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 2 (Compute) | `Mat3_Compute.v` | 21 | Z-based Mat3 (extractable) |
 | 2 (Compute) | `Mat4_Compute.v` | 21 | Z-based Mat4 (extractable) |
 | 3 (Extract) | `RourceMath_Extract.v` | 0 | Unified OCaml extraction |
-| **Total** | **22 files** | **347** | **Zero admits** |
+| 3 (Verified) | `Vec2_VerifiedExtract.v` | 0 | MetaCoq verified erasure (Path 2) |
+| **Total** | **23 files** | **347** | **Zero admits** |
 
 ---
 
@@ -335,17 +336,59 @@ template-coq (includes OCaml plugin)
   erasure-plugin (our target)
 ```
 
-### MetaCoq Usage
+### MetaCoq Usage (Proven Pattern)
 
-After installation, MetaCoq's erasure plugin can be loaded in Coq:
+After installation, MetaCoq's erasure plugin can erase Coq terms to
+untyped lambda calculus with verified semantics preservation:
 
 ```coq
+(* Load the erasure plugin *)
 From MetaCoq.ErasurePlugin Require Import Loader.
-From MetaCoq.Erasure Require Import Extraction.
 
-(* Use MetaCoq's verified erasure instead of standard Extraction *)
-MetaCoq Run (erase_and_print_template_program <term>).
+(* Import your Z-based computational definitions *)
+Require Import RourceMath.Vec2_Compute.
+
+(* Erase individual operations (prints erased lambda terms) *)
+MetaCoq Erase zvec2_add.
+MetaCoq Erase zvec2_dot.
+MetaCoq Erase zvec2_cross.
 ```
+
+**What `MetaCoq Erase` does**: Translates the Coq term through MetaCoq's
+verified erasure pipeline, producing an untyped lambda calculus term. The
+erasure is proven to preserve the computational behavior of the source
+term (PLDI 2024 Distinguished Paper: Forster, Sozeau, Tabareau).
+
+**TCB Reduction**: Standard Coq `Extraction` is unverified OCaml code.
+MetaCoq's erasure is verified in Coq itself, removing extraction from the
+Trusted Computing Base (TCB).
+
+**Known Axioms** (5, expected for MetaCoq erasure):
+- `fake_guard_impl_properties`
+- `assume_preservation_template_program_env_expansion`
+- `fake_normalization`
+- `assume_that_we_only_erase_on_welltyped_programs`
+- `assume_welltyped_template_program_expansion`
+
+These axioms are documented in the MetaCoq paper and are part of the
+standard MetaCoq erasure pipeline design.
+
+### MetaCoq Install Time Expectations
+
+| Step | Time | Notes |
+|------|------|-------|
+| `git clone` | ~30s | Shallow clone of coq-8.18 branch |
+| `configure.sh local` | ~5s | Generates Makefiles |
+| `make utils` through `make erasure-plugin` | ~30 min | All 8 components |
+| `make install` | ~15-20 min | Builds quotation theories (ToPCUIC, ToTemplate) |
+| **Total** | **~50 min** | One-time setup per environment |
+
+### Post-Install: Recompile .vo Files (CRITICAL)
+
+After installing MetaCoq, you MUST recompile all rource-math .vo files to
+ensure they use the same Coq installation that MetaCoq was compiled with.
+Failure to do this causes "inconsistent assumptions" errors. See the
+Troubleshooting section for details.
 
 ---
 
@@ -528,8 +571,18 @@ using variable name `by`.
 
 **Cause**: MetaCoq was built but not installed.
 
-**Solution**: Run `make install` in the MetaCoq directory, or add the local
-build paths:
+**Solution**: Run `make install` in the MetaCoq directory:
+
+```bash
+cd /tmp/metacoq && eval $(opam env) && make install
+```
+
+**Note**: `make install` compiles additional quotation theories (ToPCUIC,
+ToTemplate) and copies all .vo files to Coq's user-contrib. This step
+can take 15-20 minutes because it builds quotation modules not built
+during the main `make <component>` steps.
+
+If you cannot run `make install`, add the local build paths manually:
 
 ```bash
 coqc -R /tmp/metacoq/erasure-plugin/theories MetaCoq.ErasurePlugin \
@@ -542,6 +595,44 @@ coqc -R /tmp/metacoq/erasure-plugin/theories MetaCoq.ErasurePlugin \
      -I /tmp/metacoq/template-coq \
      your_file.v
 ```
+
+### Inconsistent assumptions after MetaCoq install (CRITICAL)
+
+**Symptom**: `Compiled library RourceMath.Vec2_Compute makes inconsistent
+assumptions over library Coq.Init.Ltac`
+
+**Cause**: The .vo files for rource-math proofs were compiled with one Coq
+installation (e.g., `apt`-installed Coq at `/usr/lib/coq`) but MetaCoq was
+compiled with a different one (`opam`-installed Coq at `~/.opam/default/lib/coq`).
+Even though both are Coq 8.18.0, their theory files have different internal
+checksums because they were compiled separately.
+
+**Solution**: Recompile ALL .vo files using the same `coqc` that MetaCoq uses:
+
+```bash
+# 1. Ensure opam Coq is active (same as MetaCoq)
+eval $(opam env)
+which coqc  # Must point to ~/.opam/default/bin/coqc
+
+# 2. Delete old .vo files
+cd crates/rource-math/proofs/coq
+rm -f *.vo *.vos *.vok *.glob
+
+# 3. Recompile everything in dependency order
+coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v
+coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
+coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
+coqc -Q . RourceMath Complexity.v
+coqc -Q . RourceMath Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v
+coqc -Q . RourceMath Mat3_Compute.v Mat4_Compute.v
+coqc -Q . RourceMath Vec2_Extract.v Vec3_Extract.v Vec4_Extract.v
+coqc -Q . RourceMath Mat3_Extract.v Mat4_Extract.v
+coqc -Q . RourceMath RourceMath_Extract.v
+coqc -Q . RourceMath Vec2_VerifiedExtract.v  # Requires MetaCoq
+```
+
+**Prevention**: Always use `eval $(opam env)` before any `coqc` command.
+The setup script handles this automatically.
 
 ### f_equal causes exponential blowup on large records
 
@@ -606,6 +697,7 @@ crates/rource-math/proofs/
        |-- Mat3_Extract.v     # Layer 3: Individual extraction
        |-- Mat4_Extract.v     # Layer 3: Individual extraction
        |-- RourceMath_Extract.v  # Layer 3: Unified extraction
+       |-- Vec2_VerifiedExtract.v  # MetaCoq verified erasure (Path 2)
        |
        |-- vec2_extracted.ml  # Generated: individual OCaml
        |-- vec3_extracted.ml  # Generated: individual OCaml

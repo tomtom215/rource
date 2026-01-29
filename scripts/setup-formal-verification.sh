@@ -569,15 +569,111 @@ install_metacoq_to_coq() {
     fi
 
     if [[ "$CHECK_ONLY" == true ]]; then
-        return 0
+        # Check if MetaCoq is already installed
+        local user_contrib
+        user_contrib="$(eval "$(opam env 2>/dev/null)" && coqtop -where 2>/dev/null)/user-contrib/MetaCoq"
+        if [[ -d "$user_contrib/ErasurePlugin" ]]; then
+            print_ok "MetaCoq installed at $user_contrib"
+            return 0
+        else
+            print_warn "MetaCoq not installed to user-contrib"
+            return 1
+        fi
     fi
 
     print_info "Installing MetaCoq to Coq's user-contrib..."
+    print_info "(This builds quotation theories and takes 15-20 min)"
     if (cd "$METACOQ_INSTALL_DIR" && eval "$(opam env 2>/dev/null)" && \
         make install 2>&1 | tail -5); then
         print_ok "MetaCoq installed to Coq's user-contrib"
     else
         print_error "MetaCoq installation failed"
+        return 1
+    fi
+
+    # CRITICAL: Recompile .vo files to match MetaCoq's Coq installation
+    # Without this, loading MetaCoq modules alongside rource-math .vo files
+    # causes "inconsistent assumptions over library Coq.Init.Ltac" errors
+    recompile_coq_proofs
+
+    return 0
+}
+
+recompile_coq_proofs() {
+    print_header "Recompile .vo Files (Coq library consistency)"
+
+    local project_root
+    project_root="$(get_project_root)"
+    local coq_dir="$project_root/crates/rource-math/proofs/coq"
+
+    if [[ ! -d "$coq_dir" ]]; then
+        print_warn "Coq proofs directory not found, skipping recompilation"
+        return 0
+    fi
+
+    print_info "Removing old .vo files to prevent library inconsistency..."
+    (cd "$coq_dir" && rm -f ./*.vo ./*.vos ./*.vok ./*.glob)
+
+    print_info "Recompiling all proofs with opam Coq (matching MetaCoq)..."
+    eval "$(opam env 2>/dev/null)" || true
+
+    pushd "$coq_dir" > /dev/null
+
+    # Layer 1: Specifications
+    local failed=0
+    for f in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v; do
+        if [[ -f "$f" ]] && ! coqc -Q . RourceMath "$f" 2>&1; then
+            print_error "Failed to compile $f"
+            failed=$((failed + 1))
+        fi
+    done
+
+    # Layer 1: Proofs
+    for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v; do
+        if [[ -f "$f" ]] && ! coqc -Q . RourceMath "$f" 2>&1; then
+            print_error "Failed to compile $f"
+            failed=$((failed + 1))
+        fi
+    done
+
+    # Complexity
+    if [[ -f "Complexity.v" ]] && ! coqc -Q . RourceMath Complexity.v 2>&1; then
+        print_error "Failed to compile Complexity.v"
+        failed=$((failed + 1))
+    fi
+
+    # Layer 2: Compute
+    for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v; do
+        if [[ -f "$f" ]] && ! coqc -Q . RourceMath "$f" 2>&1; then
+            print_error "Failed to compile $f"
+            failed=$((failed + 1))
+        fi
+    done
+
+    # Layer 3: Extraction
+    for f in Vec2_Extract.v Vec3_Extract.v Vec4_Extract.v \
+             Mat3_Extract.v Mat4_Extract.v RourceMath_Extract.v; do
+        if [[ -f "$f" ]] && ! coqc -Q . RourceMath "$f" 2>&1; then
+            print_error "Failed to compile $f"
+            failed=$((failed + 1))
+        fi
+    done
+
+    # MetaCoq verified extraction (requires MetaCoq installed)
+    if [[ -f "Vec2_VerifiedExtract.v" ]]; then
+        if coqc -Q . RourceMath Vec2_VerifiedExtract.v 2>&1; then
+            print_ok "Vec2_VerifiedExtract.v: MetaCoq verified erasure OK"
+        else
+            print_warn "Vec2_VerifiedExtract.v: MetaCoq erasure not available"
+        fi
+    fi
+
+    popd > /dev/null
+
+    if [[ $failed -eq 0 ]]; then
+        print_ok "All .vo files recompiled (consistent with MetaCoq Coq)"
+    else
+        print_error "$failed file(s) failed recompilation"
         return 1
     fi
 
@@ -761,6 +857,17 @@ verify_coq_proofs() {
             fi
         fi
     done
+
+    # Layer 4: MetaCoq verified extraction (optional, requires MetaCoq installed)
+    if [[ -f "Vec2_VerifiedExtract.v" ]]; then
+        print_info "Verifying MetaCoq erasure: Vec2_VerifiedExtract.v..."
+        if coqc -Q . RourceMath Vec2_VerifiedExtract.v 2>&1; then
+            print_ok "Vec2_VerifiedExtract.v: MetaCoq verified erasure OK"
+            compiled=$((compiled + 1))
+        else
+            print_warn "Vec2_VerifiedExtract.v: MetaCoq not available (install with --metacoq)"
+        fi
+    fi
 
     popd > /dev/null
 
