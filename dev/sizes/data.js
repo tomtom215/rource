@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769675543143,
+  "lastUpdate": 1769690028401,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4118,6 +4118,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/6d8b3e0b6844bc1ba4d5f548c222bf3842d8f675"
         },
         "date": 1769675542153,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b126dd7008526a3e42701b244fb555acb9e8a272",
+          "message": "Merge pull request #226 from tomtom215/claude/certicoq-wasm-integration-T2LcJ\n\nAdd Coq computational layer (Z-based) with 126 new theorems and extraction pipeline",
+          "timestamp": "2026-01-29T13:31:28+01:00",
+          "tree_id": "80e346f69d9abec0716d2997399c5f2969a19e32",
+          "url": "https://github.com/tomtom215/rource/commit/b126dd7008526a3e42701b244fb555acb9e8a272"
+        },
+        "date": 1769690027815,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
