@@ -369,7 +369,7 @@ mod tests {
     #[test]
     fn test_escape_json_string_only_escapes() {
         // String of only escapable characters
-        assert_eq!(escape_json_string(r#"\\"#), r#"\\\\"#);
+        assert_eq!(escape_json_string(r"\\"), r"\\\\");
         assert_eq!(escape_json_string(r#""""#), r#"\"\""#);
     }
 
@@ -385,7 +385,7 @@ mod tests {
     #[test]
     fn test_escape_json_string_long_string_with_escapes() {
         // Long string with escapes
-        let long = r#"\"#.repeat(1000);
+        let long = r"\".repeat(1000);
         let escaped = escape_json_string(&long);
         // Each backslash becomes two backslashes
         assert_eq!(escaped.len(), 2000);

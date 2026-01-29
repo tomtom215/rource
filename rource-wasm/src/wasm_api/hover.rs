@@ -475,7 +475,7 @@ mod tests {
 
         // Should have escaped quotes and backslashes
         assert!(json.contains(r#"\"with\""#));
-        assert!(json.contains(r#"path\\with\\backslashes"#));
+        assert!(json.contains(r"path\\with\\backslashes"));
     }
 
     #[test]

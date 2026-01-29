@@ -600,7 +600,7 @@ mod tests {
 
     #[test]
     fn test_default_is_zero() {
-        let v: Vec4 = Default::default();
+        let v: Vec4 = Vec4::default();
         assert_eq!(v, Vec4::ZERO);
     }
 

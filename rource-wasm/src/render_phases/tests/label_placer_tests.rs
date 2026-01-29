@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tom F <https://github.com/tomtom215>
 
-//! Tests for LabelPlacer spatial hash collision detection.
+//! Tests for `LabelPlacer` spatial hash collision detection.
 
 use rource_math::{Rect, Vec2};
 

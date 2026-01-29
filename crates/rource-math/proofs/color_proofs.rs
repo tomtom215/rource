@@ -431,9 +431,12 @@ proof fn color_luminance_nonneg(c: SpecColor)
     ensures
         color_luminance_scaled(c) >= 0,
 {
-    assert(2126 * c.r >= 0) by(nonlinear_arith);
-    assert(7152 * c.g >= 0) by(nonlinear_arith);
-    assert(722 * c.b >= 0) by(nonlinear_arith);
+    assert(2126 * c.r >= 0) by(nonlinear_arith)
+        requires c.r >= 0;
+    assert(7152 * c.g >= 0) by(nonlinear_arith)
+        requires c.g >= 0;
+    assert(722 * c.b >= 0) by(nonlinear_arith)
+        requires c.b >= 0;
 }
 
 /// **Theorem 22**: Gray colors have luminance proportional to value.

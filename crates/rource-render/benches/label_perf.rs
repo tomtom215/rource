@@ -6,20 +6,20 @@
 //! Measures the performance of label placement and collision detection
 //! in the core library (rource-render).
 //!
-//! Run with: cargo bench -p rource-render --bench label_perf
+//! Run with: `cargo bench -p rource-render --bench label_perf`
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rource_math::Vec2;
 use rource_render::LabelPlacer;
 
-/// Benchmark LabelPlacer creation.
+/// Benchmark `LabelPlacer` creation.
 fn bench_label_placer_new(c: &mut Criterion) {
     c.bench_function("LabelPlacer::new", |b| {
         b.iter(|| std::hint::black_box(LabelPlacer::new(1.0)));
     });
 }
 
-/// Benchmark LabelPlacer reset.
+/// Benchmark `LabelPlacer` reset.
 fn bench_label_placer_reset(c: &mut Criterion) {
     let mut group = c.benchmark_group("LabelPlacer::reset");
 
@@ -52,7 +52,7 @@ fn bench_label_placer_reset(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark try_place with increasing label counts (collision detection scaling).
+/// Benchmark `try_place` with increasing label counts (collision detection scaling).
 ///
 /// This is the key benchmark for O(n) vs O(1) complexity.
 fn bench_label_placer_try_place(c: &mut Criterion) {
@@ -133,7 +133,7 @@ fn bench_collision_detection(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark try_place_with_fallback (multiple collision checks per call).
+/// Benchmark `try_place_with_fallback` (multiple collision checks per call).
 fn bench_try_place_with_fallback(c: &mut Criterion) {
     let mut group = c.benchmark_group("LabelPlacer::try_place_with_fallback");
 

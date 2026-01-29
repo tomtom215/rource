@@ -1011,11 +1011,11 @@ mod tests {
         let temp_dir = std::env::temp_dir();
         let temp_path = temp_dir.join("test_rource_config.toml");
 
-        let config_content = r#"
+        let config_content = r"
             [display]
             width = 1600
             height = 900
-        "#;
+        ";
 
         std::fs::write(&temp_path, config_content).unwrap();
 
@@ -1040,14 +1040,14 @@ mod tests {
         let temp_dir = std::env::temp_dir();
         let temp_path = temp_dir.join("test_rource_merge_config.toml");
 
-        let config_content = r#"
+        let config_content = r"
             [display]
             width = 2560
             bloom_enabled = false
 
             [playback]
             seconds_per_day = 15.0
-        "#;
+        ";
 
         std::fs::write(&temp_path, config_content).unwrap();
 
@@ -1074,10 +1074,10 @@ mod tests {
         let temp_dir = std::env::temp_dir();
         let temp_path = temp_dir.join("test_rource_invalid_merge.toml");
 
-        let config_content = r#"
+        let config_content = r"
             [display]
             width = 0
-        "#;
+        ";
 
         std::fs::write(&temp_path, config_content).unwrap();
 
@@ -1191,8 +1191,8 @@ mod tests {
         let settings = parse_config(config).unwrap();
         assert!((settings.playback.seconds_per_day - 3.0).abs() < 0.01);
         assert!((settings.playback.auto_skip_seconds - 2.0).abs() < 0.01);
-        assert_eq!(settings.playback.start_timestamp, Some(1609459200));
-        assert_eq!(settings.playback.stop_timestamp, Some(1640995200));
+        assert_eq!(settings.playback.start_timestamp, Some(1_609_459_200));
+        assert_eq!(settings.playback.stop_timestamp, Some(1_640_995_200));
         assert!(settings.playback.loop_playback);
         assert!(!settings.playback.start_paused);
         assert!((settings.playback.time_scale - 2.0).abs() < 0.01);

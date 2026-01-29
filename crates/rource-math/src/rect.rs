@@ -1086,11 +1086,11 @@ mod tests {
     #[test]
     fn test_rect_debug_format() {
         let r = Rect::new(10.0, 20.0, 100.0, 50.0);
-        let debug_str = format!("{:?}", r);
+        let debug_str = format!("{r:?}");
 
         assert!(debug_str.contains("Rect"));
-        assert!(debug_str.contains("x"));
-        assert!(debug_str.contains("y"));
+        assert!(debug_str.contains('x'));
+        assert!(debug_str.contains('y'));
         assert!(debug_str.contains("width"));
         assert!(debug_str.contains("height"));
         assert!(debug_str.contains("10"));
@@ -1102,7 +1102,7 @@ mod tests {
     #[test]
     fn test_bounds_debug_format() {
         let b = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(30.0, 40.0));
-        let debug_str = format!("{:?}", b);
+        let debug_str = format!("{b:?}");
 
         assert!(debug_str.contains("Bounds"));
         assert!(debug_str.contains("min"));

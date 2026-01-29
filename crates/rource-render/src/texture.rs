@@ -318,7 +318,7 @@ mod tests {
     fn test_texture_id_clone_copy() {
         let id1 = TextureId::new(42);
         let id2 = id1; // Copy
-        let id3 = id1.clone(); // Clone
+        let id3 = id1; // Copy (TextureId implements Copy)
         assert_eq!(id1, id2);
         assert_eq!(id1, id3);
     }

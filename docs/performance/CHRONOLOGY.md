@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all optimization phases (82 phases) with dates, commits, and outcomes.
+Complete timeline of all optimization phases (83 phases) with dates, commits, and outcomes.
 
 ---
 
@@ -102,6 +102,7 @@ Complete timeline of all optimization phases (82 phases) with dates, commits, an
 | 80    | 2026-01-29 | Verification    | Coq Mat4 proof optimization (>300× faster) | Implemented  |
 | 81    | 2026-01-29 | Verification    | CertiCoq-WASM assessment + Vec2 bridge     | Implemented  |
 | 82    | 2026-01-29 | Verification    | Full Coq-to-WASM pipeline (126 Z-theorems) | Implemented  |
+| 83    | 2026-01-29 | Verification    | Requires-axiom decomposition technique (+26 Verus proofs) | Implemented  |
 
 ---
 
@@ -3489,6 +3490,109 @@ coqc -Q . RourceMath RourceMath_Extract.v
 
 - [CERTICOQ_WASM_ASSESSMENT.md](../verification/CERTICOQ_WASM_ASSESSMENT.md) - Full pipeline assessment
 - [FORMAL_VERIFICATION.md](../verification/FORMAL_VERIFICATION.md) - Verification roadmap
+
+---
+
+## Phase 83: Requires-Axiom Decomposition — Verus Proof Technique Breakthrough (2026-01-29)
+
+### Summary
+
+**Category**: Formal Verification / Proof Engineering
+**Status**: COMPLETED
+**Date**: 2026-01-29
+
+Discovered and documented a general proof technique for machine-checking degree-3+
+polynomial identities in Verus that Z3's `nonlinear_arith` cannot solve directly.
+This unlocked 22 new Mat3 theorems (determinant, translation, scaling, shearing,
+transform properties) and resolved the previously "Z3-intractable" `det(A^T) = det(A)`.
+
+### Problem Statement
+
+Z3's `by(nonlinear_arith)` operates in an **isolated context** that does not inherit
+facts from the outer proof body. For polynomial identities involving Verus `open spec fn`
+calls (e.g., `mat3_determinant(mat3_transpose(a)) == mat3_determinant(a)`), Z3 must:
+1. Expand nested spec function calls into polynomial terms
+2. Verify the resulting degree-3 polynomial equality over 9 variables
+
+This combination exceeds Z3's resource limits. Helper lemma calls in the outer proof
+body are invisible inside `nonlinear_arith` blocks, so decomposition via helper lemmas
+alone does not help.
+
+### Solution: 4-Phase Requires-Axiom Decomposition
+
+| Phase | Context | Work Performed |
+|-------|---------|----------------|
+| 1. EXPAND | Outer Z3 | Distribution lemmas expand det(A) into 6 triple products; assert expanded form |
+| 2. EXPAND | Outer Z3 | Same for det(A^T) with transpose field substitution |
+| 3. BRIDGE | Individual `nonlinear_arith` | Prove each differing triple-product pair equal (5 degree-2 commutativity facts) |
+| 4. CLOSE | `nonlinear_arith` with `requires` | Pre-expanded polynomial forms fed as axioms; Z3 verifies raw-integer equality |
+
+**Key Insight**: The `requires` clause in `assert(goal) by(nonlinear_arith) requires ...;`
+feeds axioms directly to Z3's nonlinear arithmetic solver, decoupling spec-function
+expansion (handled by outer Z3 which CAN expand `open spec fn`) from polynomial equality
+verification (handled by `nonlinear_arith` operating on pre-expanded integer expressions).
+
+### Verification Results
+
+| File | Before | After | Change |
+|------|--------|-------|--------|
+| mat3_extended_proofs.rs | N/A (new file) | 45 verified, 0 errors | +26 proof functions |
+| mat3_proofs.rs (base) | 26 verified, 0 errors | 26 verified, 0 errors | Unchanged |
+| color_proofs.rs | Errors (nonlinear_arith) | 46 verified, 0 errors | Fixed requires |
+| rect_proofs.rs | Errors (nonlinear_arith) | 42 verified, 0 errors | Fixed requires |
+| **All 8 Verus files** | — | **452 verified, 0 errors** | **+26 proof functions** |
+
+### New Mat3 Extended Theorems (22 + 4 helpers)
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| Determinant | 5 | det(I)=1, det(A^T)=det(A), det(swap_cols)=-det(A), det(diag) |
+| Translation | 5 | Structure, det=1, origin mapping, vector preservation, additive composition |
+| Scaling | 5 | Structure, det=sx*sy, identity, multiplicative composition, point transform |
+| Shearing | 3 | Structure, det=1-shx*shy, zero=identity |
+| Transform | 4 | Identity point/vector, translation point, shearing point |
+| Helpers | 4 | Distribution, left/right commutativity, associativity |
+
+### Updated Verification Totals
+
+| Metric | Before Phase 83 | After Phase 83 | Change |
+|--------|-----------------|----------------|--------|
+| Verus proof functions | 240 | 266 | +26 |
+| Verus VCs verified | 426 | 452 | +26 |
+| Total theorems (Verus + Coq) | 796 | 822 | +26 |
+| Admits | 0 | 0 | — |
+
+### Applicability (Future Work)
+
+This technique is generalizable to ANY proof where:
+- The goal involves **spec function calls** that expand to polynomials
+- The polynomial degree is **3 or higher**
+- There are **6+ variables**
+- Direct `by(nonlinear_arith)` fails or times out
+
+Specific candidates:
+- Mat4 determinant properties (degree-4, 16 variables)
+- Quaternion algebra identities (degree-4, 4 variables)
+- Cross product / scalar triple product identities (degree-3, 9 variables)
+- Cayley-Hamilton theorem (degree-N, N² variables)
+
+### Key Technical Learnings
+
+1. **`by(nonlinear_arith)` has isolated context** — does NOT inherit outer proof facts
+2. **`requires` feeds axioms to the solver** — only way to provide external facts
+3. **Distribution lemmas + outer Z3 = spec function expansion** — the outer Z3 context
+   can expand `open spec fn` and verify the expanded form equals the original
+4. **Degree-2 commutativity is trivial for Z3** — individual `a*b == b*a` assertions
+   verify instantly, enabling term-by-term bridge between expanded forms
+5. **File splitting manages Z3 resource profiles** — different proof styles
+   (200+ helper lemma associativity vs. nonlinear_arith determinant) should be in
+   separate files to avoid resource competition
+
+### Related Documentation
+
+- [VERUS_PROOFS.md](../verification/VERUS_PROOFS.md) — Full proof technique with code example
+- [FORMAL_VERIFICATION.md](../verification/FORMAL_VERIFICATION.md) — Updated technique summary
+- [SUCCESSFUL_OPTIMIZATIONS.md](SUCCESSFUL_OPTIMIZATIONS.md) — Cataloged as formal verification optimization
 
 ---
 

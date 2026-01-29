@@ -1219,9 +1219,8 @@ mod tests {
         // Edge case: zero entities
         let theta = calculate_adaptive_theta(0);
         assert!(
-            theta >= MIN_ADAPTIVE_THETA && theta <= MAX_ADAPTIVE_THETA,
-            "Zero entities should produce valid theta: {}",
-            theta
+            (MIN_ADAPTIVE_THETA..=MAX_ADAPTIVE_THETA).contains(&theta),
+            "Zero entities should produce valid theta: {theta}",
         );
     }
 

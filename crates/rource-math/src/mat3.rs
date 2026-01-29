@@ -694,18 +694,18 @@ mod tests {
     #[test]
     fn test_mat3_display() {
         let m = Mat3::IDENTITY;
-        let display = format!("{}", m);
+        let display = format!("{m}");
 
         // Verify display contains the expected values
         assert!(display.contains("1.0000"), "Display should show 1.0000");
         assert!(display.contains("0.0000"), "Display should show 0.0000");
-        assert!(display.contains("|"), "Display should use | delimiters");
+        assert!(display.contains('|'), "Display should use | delimiters");
     }
 
     #[test]
     fn test_mat3_debug() {
         let m = Mat3::IDENTITY;
-        let debug = format!("{:?}", m);
+        let debug = format!("{m:?}");
 
         // Verify debug output contains Mat3 struct info
         assert!(debug.contains("Mat3"), "Debug should contain Mat3");
