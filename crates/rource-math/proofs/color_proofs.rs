@@ -455,6 +455,180 @@ proof fn color_luminance_white()
     // 2126 * 1000 + 7152 * 1000 + 722 * 1000 = 10000 * 1000 = 10000000
 }
 
+// =============================================================================
+// EXTENDED COLOR OPERATIONS
+// =============================================================================
+
+/// Invert a color: (1000 - r, 1000 - g, 1000 - b, a).
+pub open spec fn color_invert(c: SpecColor) -> SpecColor {
+    SpecColor {
+        r: 1000 - c.r,
+        g: 1000 - c.g,
+        b: 1000 - c.b,
+        a: c.a,
+    }
+}
+
+/// Mix two colors equally: (a + b) / 2 per component.
+pub open spec fn color_mix(a: SpecColor, b: SpecColor) -> SpecColor {
+    SpecColor {
+        r: (a.r + b.r) / 2,
+        g: (a.g + b.g) / 2,
+        b: (a.b + b.b) / 2,
+        a: (a.a + b.a) / 2,
+    }
+}
+
+/// Whether a color is "light" (luminance > 5000000, i.e., > 50% of white's luminance).
+pub open spec fn color_is_light(c: SpecColor) -> bool {
+    color_luminance_scaled(c) > 5000000
+}
+
+/// Whether a color is "dark" (luminance <= 5000000).
+pub open spec fn color_is_dark(c: SpecColor) -> bool {
+    color_luminance_scaled(c) <= 5000000
+}
+
+/// Component-wise addition of two colors.
+pub open spec fn color_add(a: SpecColor, b: SpecColor) -> SpecColor {
+    SpecColor {
+        r: a.r + b.r,
+        g: a.g + b.g,
+        b: a.b + b.b,
+        a: a.a + b.a,
+    }
+}
+
+/// Scale all components by a factor (scaled arithmetic: s is in [0, 1000]).
+pub open spec fn color_scale(c: SpecColor, s: int) -> SpecColor {
+    SpecColor {
+        r: c.r * s / 1000,
+        g: c.g * s / 1000,
+        b: c.b * s / 1000,
+        a: c.a * s / 1000,
+    }
+}
+
+// =============================================================================
+// INVERT PROOFS
+// =============================================================================
+
+/// **Theorem 24**: Double inversion is identity (for valid colors).
+///
+/// For colors in [0, 1000]: invert(invert(c)) = c.
+proof fn color_invert_involution(c: SpecColor)
+    ensures
+        color_invert(color_invert(c)) == c,
+{
+    // invert(c) = (1000 - c.r, 1000 - c.g, 1000 - c.b, c.a)
+    // invert(invert(c)) = (1000 - (1000 - c.r), ...) = (c.r, c.g, c.b, c.a) = c
+}
+
+/// **Theorem 25**: Inversion preserves alpha.
+proof fn color_invert_preserves_alpha(c: SpecColor)
+    ensures
+        color_invert(c).a == c.a,
+{
+}
+
+/// **Theorem 26**: Inversion of black is white.
+proof fn color_invert_black_is_white()
+    ensures
+        color_invert(color_black()) == color_white(),
+{
+}
+
+/// **Theorem 27**: Inversion of white is black.
+proof fn color_invert_white_is_black()
+    ensures
+        color_invert(color_white()) == color_black(),
+{
+}
+
+// =============================================================================
+// MIX PROOFS
+// =============================================================================
+
+/// **Theorem 28**: Mix is commutative.
+proof fn color_mix_commutative(a: SpecColor, b: SpecColor)
+    ensures
+        color_mix(a, b) == color_mix(b, a),
+{
+    // (a.r + b.r) / 2 == (b.r + a.r) / 2
+    assert(a.r + b.r == b.r + a.r);
+    assert(a.g + b.g == b.g + a.g);
+    assert(a.b + b.b == b.b + a.b);
+    assert(a.a + b.a == b.a + a.a);
+}
+
+/// **Theorem 29**: Mix of same color is identity.
+proof fn color_mix_same(c: SpecColor)
+    ensures
+        color_mix(c, c) == c,
+{
+    // (c.r + c.r) / 2 = 2*c.r / 2 = c.r
+    assert((c.r + c.r) / 2 == c.r);
+    assert((c.g + c.g) / 2 == c.g);
+    assert((c.b + c.b) / 2 == c.b);
+    assert((c.a + c.a) / 2 == c.a);
+}
+
+// =============================================================================
+// IS_LIGHT / IS_DARK PROOFS
+// =============================================================================
+
+/// **Theorem 30**: is_light and is_dark are complementary.
+proof fn color_light_dark_complement(c: SpecColor)
+    ensures
+        color_is_light(c) != color_is_dark(c)
+        || (color_luminance_scaled(c) == 5000000 && color_is_dark(c) && !color_is_light(c)),
+{
+    // Light: luminance > 5000000
+    // Dark: luminance <= 5000000
+    // They are complementary except at exactly 5000000 (where dark = true, light = false)
+}
+
+/// **Theorem 31**: White is light.
+proof fn color_white_is_light()
+    ensures
+        color_is_light(color_white()),
+{
+    // luminance(white) = 10000000 > 5000000
+}
+
+/// **Theorem 32**: Black is dark.
+proof fn color_black_is_dark()
+    ensures
+        color_is_dark(color_black()),
+{
+    // luminance(black) = 0 <= 5000000
+}
+
+// =============================================================================
+// COLOR ADDITION PROOFS
+// =============================================================================
+
+/// **Theorem 33**: Color addition is commutative.
+proof fn color_add_commutative(a: SpecColor, b: SpecColor)
+    ensures
+        color_add(a, b) == color_add(b, a),
+{
+}
+
+/// **Theorem 34**: Adding transparent (0,0,0,0) is identity.
+proof fn color_add_transparent_identity(c: SpecColor)
+    ensures
+        color_add(c, color_transparent()) == c,
+{
+}
+
+/// **Theorem 35**: Color addition is associative.
+proof fn color_add_associative(a: SpecColor, b: SpecColor, c: SpecColor)
+    ensures
+        color_add(color_add(a, b), c) == color_add(a, color_add(b, c)),
+{
+}
+
 fn main() {
     // Verification only
 }

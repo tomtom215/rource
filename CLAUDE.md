@@ -82,10 +82,10 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 | Documentation Quality | Expert | Academic | This document |
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
-- **Verus**: 151 theorems, 242+ verification conditions, 0 errors
-- **Coq (R-based)**: 277 theorems, 0 admits (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
-- **Coq (Z-based)**: 184 theorems, 0 admits (extractable computational bridge, 8 types)
-- **Combined**: 612 formally verified theorems across 8 types
+- **Verus**: 236 theorems, 360+ verification conditions, 0 errors
+- **Coq (R-based)**: 342 theorems, 0 admits (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
+- **Coq (Z-based)**: 235 theorems, 0 admits (extractable computational bridge, 8 types)
+- **Combined**: 813 formally verified theorems across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -665,7 +665,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification status (452 theorems) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification status (813 theorems) |
 | `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
 | `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
@@ -1301,16 +1301,16 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Total | Status |
 |-----------|-------|---------------|-----------------|-------|--------|
-| Vec2 | 23 theorems, 53 VCs | 31 theorems | 27 theorems | 81 | DUAL VERIFIED |
-| Vec3 | 24 theorems, 68 VCs | 39 theorems | 31 theorems | 94 | DUAL VERIFIED |
-| Vec4 | 22 theorems, 68 VCs | 29 theorems | 22 theorems | 73 | DUAL VERIFIED |
+| Vec2 | 50 theorems, 53+ VCs | 48 theorems | 38 theorems | 136 | DUAL VERIFIED |
+| Vec3 | 42 theorems, 68+ VCs | 54 theorems | 42 theorems | 138 | DUAL VERIFIED |
+| Vec4 | 40 theorems, 68+ VCs | 44 theorems | 33 theorems | 117 | DUAL VERIFIED |
 | Mat3 | 18 theorems, 26 VCs | 23 theorems | 25 theorems | 66 | DUAL VERIFIED |
 | Mat4 | 18 theorems, 27 VCs | 39 theorems | 21 theorems | 78 | DUAL VERIFIED |
-| Color | 23 theorems | 26 theorems | 22 theorems | 71 | DUAL VERIFIED |
-| Rect | 23 theorems | 20 theorems | 22 theorems | 65 | DUAL VERIFIED |
+| Color | 35 theorems | 36 theorems | 32 theorems | 103 | DUAL VERIFIED |
+| Rect | 33 theorems | 28 theorems | 30 theorems | 91 | DUAL VERIFIED |
 | Utils | — | 10 theorems | 14 theorems | 24 | VERIFIED |
 | Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **151 theorems** | **277 theorems** | **184 theorems** | **612** | **ACADEMIC** |
+| **Total** | **236 theorems** | **342 theorems** | **235 theorems** | **813** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1323,7 +1323,7 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Verus proofs (151 theorems)
+# Verus proofs (236 theorems)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs
@@ -1332,7 +1332,7 @@ approach provides maximum confidence suitable for top-tier academic publication.
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
-# Coq proofs (461 theorems, ~40s)
+# Coq proofs (577 theorems, ~45s)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specifications + proofs
@@ -1794,7 +1794,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq proofs (237+ theorems), zero admits, dual verification for Vec2-4, Mat3-4 |
+| **Formal Verification** | Verus + Coq proofs (813 theorems), zero admits, dual verification for Vec2-4, Mat3-4, Color, Rect |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1829,7 +1829,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  612 formally verified theorems across Verus + Coq                          │
+│  813 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1844,4 +1844,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 82 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 612 theorems (Verus: 151, Coq R-based: 277, Coq Z-based: 184)*
+*Formal Verification: 813 theorems (Verus: 236, Coq R-based: 342, Coq Z-based: 235)*

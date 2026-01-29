@@ -329,6 +329,114 @@ Proof.
   - apply zvec2_scale_dist_scalar.
 Qed.
 
+(** * Min/Max/Abs Operations *)
+
+Definition zvec2_min (a b : ZVec2) : ZVec2 :=
+  mkZVec2 (Z.min (zvec2_x a) (zvec2_x b)) (Z.min (zvec2_y a) (zvec2_y b)).
+
+Definition zvec2_max (a b : ZVec2) : ZVec2 :=
+  mkZVec2 (Z.max (zvec2_x a) (zvec2_x b)) (Z.max (zvec2_y a) (zvec2_y b)).
+
+Definition zvec2_abs (v : ZVec2) : ZVec2 :=
+  mkZVec2 (Z.abs (zvec2_x v)) (Z.abs (zvec2_y v)).
+
+(** * Reduction Operations *)
+
+Definition zvec2_element_sum (v : ZVec2) : Z :=
+  zvec2_x v + zvec2_y v.
+
+Definition zvec2_element_product (v : ZVec2) : Z :=
+  zvec2_x v * zvec2_y v.
+
+Definition zvec2_distance_squared (a b : ZVec2) : Z :=
+  zvec2_length_squared (zvec2_sub a b).
+
+(** ** Min/Max Properties *)
+
+Theorem zvec2_min_comm : forall a b : ZVec2,
+  zvec2_min a b = zvec2_min b a.
+Proof.
+  intros [ax ay] [bx by0]. unfold zvec2_min. simpl.
+  apply zvec2_eq; apply Z.min_comm.
+Qed.
+
+Theorem zvec2_max_comm : forall a b : ZVec2,
+  zvec2_max a b = zvec2_max b a.
+Proof.
+  intros [ax ay] [bx by0]. unfold zvec2_max. simpl.
+  apply zvec2_eq; apply Z.max_comm.
+Qed.
+
+Theorem zvec2_min_self : forall a : ZVec2,
+  zvec2_min a a = a.
+Proof.
+  intros [ax ay]. unfold zvec2_min. simpl.
+  apply zvec2_eq; apply Z.min_id.
+Qed.
+
+Theorem zvec2_max_self : forall a : ZVec2,
+  zvec2_max a a = a.
+Proof.
+  intros [ax ay]. unfold zvec2_max. simpl.
+  apply zvec2_eq; apply Z.max_id.
+Qed.
+
+(** ** Abs Properties *)
+
+Theorem zvec2_abs_nonneg : forall v : ZVec2,
+  0 <= zvec2_x (zvec2_abs v) /\ 0 <= zvec2_y (zvec2_abs v).
+Proof.
+  intros [vx vy]. unfold zvec2_abs. simpl. split; apply Z.abs_nonneg.
+Qed.
+
+Theorem zvec2_abs_neg : forall v : ZVec2,
+  zvec2_abs (zvec2_neg v) = zvec2_abs v.
+Proof.
+  intros [vx vy]. unfold zvec2_abs, zvec2_neg. simpl.
+  apply zvec2_eq; apply Z.abs_opp.
+Qed.
+
+Theorem zvec2_abs_idempotent : forall v : ZVec2,
+  zvec2_abs (zvec2_abs v) = zvec2_abs v.
+Proof.
+  intros [vx vy]. unfold zvec2_abs. simpl.
+  apply zvec2_eq; apply Z.abs_eq; apply Z.abs_nonneg.
+Qed.
+
+(** ** Distance Properties *)
+
+Theorem zvec2_distance_squared_self : forall a : ZVec2,
+  zvec2_distance_squared a a = 0.
+Proof.
+  intros [ax ay].
+  unfold zvec2_distance_squared, zvec2_length_squared, zvec2_sub, zvec2_dot.
+  simpl. ring.
+Qed.
+
+Theorem zvec2_distance_squared_symmetric : forall a b : ZVec2,
+  zvec2_distance_squared a b = zvec2_distance_squared b a.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold zvec2_distance_squared, zvec2_length_squared, zvec2_sub, zvec2_dot.
+  simpl. ring.
+Qed.
+
+Theorem zvec2_distance_squared_nonneg : forall a b : ZVec2,
+  0 <= zvec2_distance_squared a b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold zvec2_distance_squared, zvec2_length_squared, zvec2_sub, zvec2_dot.
+  simpl. nia.
+Qed.
+
+(** ** Element Sum/Product Properties *)
+
+Theorem zvec2_element_sum_zero :
+  zvec2_element_sum zvec2_zero = 0.
+Proof.
+  unfold zvec2_element_sum, zvec2_zero. simpl. reflexivity.
+Qed.
+
 (** * Computational Tests (Extracted) *)
 
 (** These evaluate to concrete values, demonstrating computability. *)

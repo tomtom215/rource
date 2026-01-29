@@ -418,10 +418,341 @@ proof fn vec2_neg_is_scale_neg_one(v: SpecVec2)
 }
 
 // =============================================================================
+// EXTENDED OPERATIONS (Spec Functions)
+// =============================================================================
+
+/// Creates a vector with both components set to the same value.
+pub open spec fn vec2_splat(value: int) -> SpecVec2 {
+    SpecVec2 { x: value, y: value }
+}
+
+/// Component-wise minimum of two vectors.
+pub open spec fn vec2_min(a: SpecVec2, b: SpecVec2) -> SpecVec2 {
+    SpecVec2 {
+        x: if a.x <= b.x { a.x } else { b.x },
+        y: if a.y <= b.y { a.y } else { b.y },
+    }
+}
+
+/// Component-wise maximum of two vectors.
+pub open spec fn vec2_max(a: SpecVec2, b: SpecVec2) -> SpecVec2 {
+    SpecVec2 {
+        x: if a.x >= b.x { a.x } else { b.x },
+        y: if a.y >= b.y { a.y } else { b.y },
+    }
+}
+
+/// Component-wise absolute value.
+pub open spec fn vec2_abs(v: SpecVec2) -> SpecVec2 {
+    SpecVec2 {
+        x: if v.x >= 0 { v.x } else { -v.x },
+        y: if v.y >= 0 { v.y } else { -v.y },
+    }
+}
+
+/// Component-wise clamp.
+pub open spec fn vec2_clamp(v: SpecVec2, lo: SpecVec2, hi: SpecVec2) -> SpecVec2 {
+    SpecVec2 {
+        x: if v.x < lo.x { lo.x } else if v.x > hi.x { hi.x } else { v.x },
+        y: if v.y < lo.y { lo.y } else if v.y > hi.y { hi.y } else { v.y },
+    }
+}
+
+/// Squared distance between two points.
+pub open spec fn vec2_distance_squared(a: SpecVec2, b: SpecVec2) -> int {
+    vec2_length_squared(vec2_sub(a, b))
+}
+
+/// Reflection of v off surface with normal n: v - 2*(v·n)*n.
+pub open spec fn vec2_reflect(v: SpecVec2, n: SpecVec2) -> SpecVec2 {
+    vec2_sub(v, vec2_scale(2 * vec2_dot(v, n), n))
+}
+
+/// Sum of all components.
+pub open spec fn vec2_element_sum(v: SpecVec2) -> int {
+    v.x + v.y
+}
+
+/// Product of all components.
+pub open spec fn vec2_element_product(v: SpecVec2) -> int {
+    v.x * v.y
+}
+
+// =============================================================================
+// SPLAT PROOFS
+// =============================================================================
+
+/// **Theorem 24**: Splat is equivalent to new(v, v).
+proof fn vec2_splat_is_new(value: int)
+    ensures
+        vec2_splat(value) == vec2_new(value, value),
+{
+}
+
+/// **Theorem 25**: Splat(0) is the zero vector.
+proof fn vec2_splat_zero()
+    ensures
+        vec2_splat(0) == vec2_zero(),
+{
+}
+
+// =============================================================================
+// MIN/MAX PROOFS
+// =============================================================================
+
+/// **Theorem 26**: Component-wise min is commutative.
+proof fn vec2_min_commutative(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_min(a, b) == vec2_min(b, a),
+{
+    // For x: if a.x <= b.x then a.x, else b.x  ==  if b.x <= a.x then b.x, else a.x
+    // When a.x == b.x: both sides give a.x = b.x
+    // When a.x < b.x: min(a,b).x = a.x, min(b,a).x = (b.x <= a.x? no) = a.x
+    // When a.x > b.x: min(a,b).x = b.x, min(b,a).x = (b.x <= a.x? yes) = b.x
+}
+
+/// **Theorem 27**: Component-wise max is commutative.
+proof fn vec2_max_commutative(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_max(a, b) == vec2_max(b, a),
+{
+}
+
+/// **Theorem 28**: min(a, a) = a (idempotent).
+proof fn vec2_min_idempotent(a: SpecVec2)
+    ensures
+        vec2_min(a, a) == a,
+{
+}
+
+/// **Theorem 29**: max(a, a) = a (idempotent).
+proof fn vec2_max_idempotent(a: SpecVec2)
+    ensures
+        vec2_max(a, a) == a,
+{
+}
+
+/// **Theorem 30**: min(a, b) + max(a, b) = a + b (component-wise).
+///
+/// This is a key identity: the min/max partition preserves the sum.
+proof fn vec2_min_max_sum(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_add(vec2_min(a, b), vec2_max(a, b)) == vec2_add(a, b),
+{
+    // For each component: min(a,b) + max(a,b) = a + b
+    // Case a.x <= b.x: a.x + b.x = a.x + b.x ✓
+    // Case a.x > b.x:  b.x + a.x = a.x + b.x ✓
+}
+
+/// **Theorem 31**: min(a, b) is component-wise <= a and <= b.
+proof fn vec2_min_le_both(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_min(a, b).x <= a.x && vec2_min(a, b).x <= b.x,
+        vec2_min(a, b).y <= a.y && vec2_min(a, b).y <= b.y,
+{
+}
+
+/// **Theorem 32**: max(a, b) is component-wise >= a and >= b.
+proof fn vec2_max_ge_both(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_max(a, b).x >= a.x && vec2_max(a, b).x >= b.x,
+        vec2_max(a, b).y >= a.y && vec2_max(a, b).y >= b.y,
+{
+}
+
+// =============================================================================
+// ABS PROOFS
+// =============================================================================
+
+/// **Theorem 33**: Abs produces non-negative components.
+proof fn vec2_abs_nonneg(v: SpecVec2)
+    ensures
+        vec2_abs(v).x >= 0 && vec2_abs(v).y >= 0,
+{
+}
+
+/// **Theorem 34**: Abs is idempotent: abs(abs(v)) = abs(v).
+proof fn vec2_abs_idempotent(v: SpecVec2)
+    ensures
+        vec2_abs(vec2_abs(v)) == vec2_abs(v),
+{
+    // After first abs, both components are >= 0
+    // So second abs is identity
+    let a = vec2_abs(v);
+    assert(a.x >= 0);
+    assert(a.y >= 0);
+}
+
+/// **Theorem 35**: Abs of zero is zero.
+proof fn vec2_abs_zero()
+    ensures
+        vec2_abs(vec2_zero()) == vec2_zero(),
+{
+}
+
+/// **Theorem 36**: Abs of negation equals abs: |−v| = |v|.
+proof fn vec2_abs_neg(v: SpecVec2)
+    ensures
+        vec2_abs(vec2_neg(v)) == vec2_abs(v),
+{
+    // If v.x >= 0: abs(-v).x = abs(-v.x) = -(-v.x) = v.x = abs(v).x
+    // If v.x < 0: abs(-v).x = abs(-v.x) = -v.x (which is > 0) = abs(v).x = -v.x
+}
+
+// =============================================================================
+// CLAMP PROOFS
+// =============================================================================
+
+/// **Theorem 37**: Clamp produces values within bounds (when lo <= hi).
+proof fn vec2_clamp_bounds(v: SpecVec2, lo: SpecVec2, hi: SpecVec2)
+    requires
+        lo.x <= hi.x && lo.y <= hi.y,
+    ensures ({
+        let c = vec2_clamp(v, lo, hi);
+        c.x >= lo.x && c.x <= hi.x && c.y >= lo.y && c.y <= hi.y
+    }),
+{
+}
+
+/// **Theorem 38**: Clamp of in-range value is identity.
+proof fn vec2_clamp_identity(v: SpecVec2, lo: SpecVec2, hi: SpecVec2)
+    requires
+        v.x >= lo.x && v.x <= hi.x && v.y >= lo.y && v.y <= hi.y,
+    ensures
+        vec2_clamp(v, lo, hi) == v,
+{
+}
+
+/// **Theorem 39**: Clamp is idempotent (when lo <= hi).
+proof fn vec2_clamp_idempotent(v: SpecVec2, lo: SpecVec2, hi: SpecVec2)
+    requires
+        lo.x <= hi.x && lo.y <= hi.y,
+    ensures
+        vec2_clamp(vec2_clamp(v, lo, hi), lo, hi) == vec2_clamp(v, lo, hi),
+{
+    let c = vec2_clamp(v, lo, hi);
+    assert(c.x >= lo.x && c.x <= hi.x);
+    assert(c.y >= lo.y && c.y <= hi.y);
+}
+
+// =============================================================================
+// DISTANCE SQUARED PROOFS
+// =============================================================================
+
+/// **Theorem 40**: Distance squared is non-negative.
+proof fn vec2_distance_squared_nonneg(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_distance_squared(a, b) >= 0,
+{
+    let d = vec2_sub(a, b);
+    vec2_length_squared_nonnegative(d);
+}
+
+/// **Theorem 41**: Distance squared is symmetric.
+proof fn vec2_distance_squared_symmetric(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_distance_squared(a, b) == vec2_distance_squared(b, a),
+{
+    let d1 = vec2_sub(a, b);
+    let d2 = vec2_sub(b, a);
+    // d1.x = a.x - b.x, d2.x = b.x - a.x = -(a.x - b.x) = -d1.x
+    // d1.x² = d2.x² since (-x)² = x²
+    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith);
+    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith);
+}
+
+/// **Theorem 42**: Distance squared to self is zero.
+proof fn vec2_distance_squared_self(a: SpecVec2)
+    ensures
+        vec2_distance_squared(a, a) == 0,
+{
+    // sub(a, a) = (0, 0), length_squared((0, 0)) = 0
+}
+
+// =============================================================================
+// ELEMENT SUM / PRODUCT PROOFS
+// =============================================================================
+
+/// **Theorem 43**: Element sum of zero is zero.
+proof fn vec2_element_sum_zero()
+    ensures
+        vec2_element_sum(vec2_zero()) == 0,
+{
+}
+
+/// **Theorem 44**: Element sum is additive: sum(a + b) = sum(a) + sum(b).
+proof fn vec2_element_sum_additive(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_element_sum(vec2_add(a, b)) == vec2_element_sum(a) + vec2_element_sum(b),
+{
+    // (a.x + b.x) + (a.y + b.y) = (a.x + a.y) + (b.x + b.y)
+}
+
+/// **Theorem 45**: Element sum commutes with scaling.
+proof fn vec2_element_sum_scale(s: int, v: SpecVec2)
+    ensures
+        vec2_element_sum(vec2_scale(s, v)) == s * vec2_element_sum(v),
+{
+    // s * v.x + s * v.y = s * (v.x + v.y)
+    assert(s * v.x + s * v.y == s * (v.x + v.y)) by(nonlinear_arith);
+}
+
+/// **Theorem 46**: Element product of splat is value squared.
+proof fn vec2_element_product_splat(value: int)
+    ensures
+        vec2_element_product(vec2_splat(value)) == value * value,
+{
+}
+
+/// **Theorem 47**: Element product is commutative: x*y = y*x.
+proof fn vec2_element_product_commutative(v: SpecVec2)
+    ensures
+        vec2_element_product(v) == v.y * v.x,
+{
+    assert(v.x * v.y == v.y * v.x) by(nonlinear_arith);
+}
+
+// =============================================================================
+// REFLECT PROOFS
+// =============================================================================
+
+/// **Theorem 48**: Reflecting a vector parallel to normal negates it.
+///
+/// If v is a scalar multiple of n, reflect(v, n) = -v when |n|² divides appropriately.
+/// Special case: reflect(n, n) = n - 2*(n·n)*n for unit-length normal.
+/// For integer model with |n|²=1: reflect(n, n) = n - 2n = -n.
+proof fn vec2_reflect_along_unit_normal(n: SpecVec2)
+    requires
+        vec2_dot(n, n) == 1,
+    ensures
+        vec2_reflect(n, n) == vec2_neg(n),
+{
+    // reflect(n, n) = n - 2*(n·n)*n = n - 2*1*n = n - 2n = -n
+    assert(2 * vec2_dot(n, n) == 2);
+    assert(2 * n.x == 2 * 1 * n.x) by(nonlinear_arith);
+    assert(2 * n.y == 2 * 1 * n.y) by(nonlinear_arith);
+}
+
+/// **Theorem 49**: Reflecting a vector perpendicular to normal preserves it.
+///
+/// If v · n = 0, then reflect(v, n) = v.
+proof fn vec2_reflect_perpendicular(v: SpecVec2, n: SpecVec2)
+    requires
+        vec2_dot(v, n) == 0,
+    ensures
+        vec2_reflect(v, n) == v,
+{
+    // reflect(v, n) = v - 2*(v·n)*n = v - 2*0*n = v - 0 = v
+    assert(2 * 0 == 0);
+    assert(0 * n.x == 0) by(nonlinear_arith);
+    assert(0 * n.y == 0) by(nonlinear_arith);
+}
+
+// =============================================================================
 // VECTOR SPACE STRUCTURE
 // =============================================================================
 
-/// **Theorem 23**: Vec2 forms a vector space.
+/// **Theorem 50**: Vec2 forms a vector space.
 ///
 /// This proof invokes all the vector space axioms to demonstrate Vec2
 /// satisfies the complete definition of a vector space over integers.

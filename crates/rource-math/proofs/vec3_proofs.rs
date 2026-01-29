@@ -444,10 +444,214 @@ proof fn vec3_scalar_triple_cyclic(a: SpecVec3, b: SpecVec3, c: SpecVec3)
 }
 
 // =============================================================================
+// EXTENDED OPERATIONS (Spec Functions)
+// =============================================================================
+
+/// Creates a vector with all components set to the same value.
+pub open spec fn vec3_splat(value: int) -> SpecVec3 {
+    SpecVec3 { x: value, y: value, z: value }
+}
+
+/// Component-wise minimum of two vectors.
+pub open spec fn vec3_min(a: SpecVec3, b: SpecVec3) -> SpecVec3 {
+    SpecVec3 {
+        x: if a.x <= b.x { a.x } else { b.x },
+        y: if a.y <= b.y { a.y } else { b.y },
+        z: if a.z <= b.z { a.z } else { b.z },
+    }
+}
+
+/// Component-wise maximum of two vectors.
+pub open spec fn vec3_max(a: SpecVec3, b: SpecVec3) -> SpecVec3 {
+    SpecVec3 {
+        x: if a.x >= b.x { a.x } else { b.x },
+        y: if a.y >= b.y { a.y } else { b.y },
+        z: if a.z >= b.z { a.z } else { b.z },
+    }
+}
+
+/// Component-wise absolute value.
+pub open spec fn vec3_abs(v: SpecVec3) -> SpecVec3 {
+    SpecVec3 {
+        x: if v.x >= 0 { v.x } else { -v.x },
+        y: if v.y >= 0 { v.y } else { -v.y },
+        z: if v.z >= 0 { v.z } else { -v.z },
+    }
+}
+
+/// Sum of all components.
+pub open spec fn vec3_element_sum(v: SpecVec3) -> int {
+    v.x + v.y + v.z
+}
+
+/// Product of all components.
+pub open spec fn vec3_element_product(v: SpecVec3) -> int {
+    v.x * v.y * v.z
+}
+
+/// Squared distance between two points.
+pub open spec fn vec3_distance_squared(a: SpecVec3, b: SpecVec3) -> int {
+    vec3_length_squared(vec3_sub(a, b))
+}
+
+// =============================================================================
+// SPLAT PROOFS
+// =============================================================================
+
+/// **Theorem 25**: Splat is equivalent to new(v, v, v).
+proof fn vec3_splat_is_new(value: int)
+    ensures
+        vec3_splat(value) == vec3_new(value, value, value),
+{
+}
+
+/// **Theorem 26**: Splat(0) is the zero vector.
+proof fn vec3_splat_zero()
+    ensures
+        vec3_splat(0) == vec3_zero(),
+{
+}
+
+// =============================================================================
+// MIN/MAX PROOFS
+// =============================================================================
+
+/// **Theorem 27**: Component-wise min is commutative.
+proof fn vec3_min_commutative(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_min(a, b) == vec3_min(b, a),
+{
+}
+
+/// **Theorem 28**: Component-wise max is commutative.
+proof fn vec3_max_commutative(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_max(a, b) == vec3_max(b, a),
+{
+}
+
+/// **Theorem 29**: min(a, a) = a (idempotent).
+proof fn vec3_min_idempotent(a: SpecVec3)
+    ensures
+        vec3_min(a, a) == a,
+{
+}
+
+/// **Theorem 30**: max(a, a) = a (idempotent).
+proof fn vec3_max_idempotent(a: SpecVec3)
+    ensures
+        vec3_max(a, a) == a,
+{
+}
+
+/// **Theorem 31**: min(a, b) + max(a, b) = a + b.
+proof fn vec3_min_max_sum(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_add(vec3_min(a, b), vec3_max(a, b)) == vec3_add(a, b),
+{
+}
+
+/// **Theorem 32**: min(a, b) is component-wise <= both operands.
+proof fn vec3_min_le_both(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_min(a, b).x <= a.x && vec3_min(a, b).x <= b.x,
+        vec3_min(a, b).y <= a.y && vec3_min(a, b).y <= b.y,
+        vec3_min(a, b).z <= a.z && vec3_min(a, b).z <= b.z,
+{
+}
+
+// =============================================================================
+// ABS PROOFS
+// =============================================================================
+
+/// **Theorem 33**: Abs produces non-negative components.
+proof fn vec3_abs_nonneg(v: SpecVec3)
+    ensures
+        vec3_abs(v).x >= 0 && vec3_abs(v).y >= 0 && vec3_abs(v).z >= 0,
+{
+}
+
+/// **Theorem 34**: Abs is idempotent: abs(abs(v)) = abs(v).
+proof fn vec3_abs_idempotent(v: SpecVec3)
+    ensures
+        vec3_abs(vec3_abs(v)) == vec3_abs(v),
+{
+    let a = vec3_abs(v);
+    assert(a.x >= 0);
+    assert(a.y >= 0);
+    assert(a.z >= 0);
+}
+
+/// **Theorem 35**: Abs of negation equals abs: |−v| = |v|.
+proof fn vec3_abs_neg(v: SpecVec3)
+    ensures
+        vec3_abs(vec3_neg(v)) == vec3_abs(v),
+{
+}
+
+// =============================================================================
+// ELEMENT SUM / PRODUCT PROOFS
+// =============================================================================
+
+/// **Theorem 36**: Element sum of zero is zero.
+proof fn vec3_element_sum_zero()
+    ensures
+        vec3_element_sum(vec3_zero()) == 0,
+{
+}
+
+/// **Theorem 37**: Element sum is additive: sum(a + b) = sum(a) + sum(b).
+proof fn vec3_element_sum_additive(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_element_sum(vec3_add(a, b)) == vec3_element_sum(a) + vec3_element_sum(b),
+{
+}
+
+/// **Theorem 38**: Element sum commutes with scaling.
+proof fn vec3_element_sum_scale(s: int, v: SpecVec3)
+    ensures
+        vec3_element_sum(vec3_scale(s, v)) == s * vec3_element_sum(v),
+{
+    assert(s * v.x + s * v.y + s * v.z == s * (v.x + v.y + v.z)) by(nonlinear_arith);
+}
+
+// =============================================================================
+// DISTANCE SQUARED PROOFS
+// =============================================================================
+
+/// **Theorem 39**: Distance squared is non-negative.
+proof fn vec3_distance_squared_nonneg(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_distance_squared(a, b) >= 0,
+{
+    let d = vec3_sub(a, b);
+    vec3_length_squared_nonnegative(d);
+}
+
+/// **Theorem 40**: Distance squared is symmetric.
+proof fn vec3_distance_squared_symmetric(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_distance_squared(a, b) == vec3_distance_squared(b, a),
+{
+    let d1 = vec3_sub(a, b);
+    let d2 = vec3_sub(b, a);
+    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith);
+    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith);
+    assert(d1.z * d1.z == d2.z * d2.z) by(nonlinear_arith);
+}
+
+/// **Theorem 41**: Distance squared to self is zero.
+proof fn vec3_distance_squared_self(a: SpecVec3)
+    ensures
+        vec3_distance_squared(a, a) == 0,
+{
+}
+
+// =============================================================================
 // VECTOR SPACE STRUCTURE
 // =============================================================================
 
-/// **Theorem 24**: Vec3 forms a vector space.
+/// **Theorem 42**: Vec3 forms a vector space.
 proof fn vec3_is_vector_space(a: SpecVec3, b: SpecVec3, c: SpecVec3, s: int, t: int)
     ensures
         vec3_add(a, b) == vec3_add(b, a),

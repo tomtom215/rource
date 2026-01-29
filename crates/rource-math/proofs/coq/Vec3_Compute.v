@@ -341,6 +341,118 @@ Proof.
   - apply zvec3_scale_dist_scalar.
 Qed.
 
+(** * Min/Max/Abs Operations *)
+
+Definition zvec3_min (a b : ZVec3) : ZVec3 :=
+  mkZVec3 (Z.min (zvec3_x a) (zvec3_x b)) (Z.min (zvec3_y a) (zvec3_y b))
+          (Z.min (zvec3_z a) (zvec3_z b)).
+
+Definition zvec3_max (a b : ZVec3) : ZVec3 :=
+  mkZVec3 (Z.max (zvec3_x a) (zvec3_x b)) (Z.max (zvec3_y a) (zvec3_y b))
+          (Z.max (zvec3_z a) (zvec3_z b)).
+
+Definition zvec3_abs (v : ZVec3) : ZVec3 :=
+  mkZVec3 (Z.abs (zvec3_x v)) (Z.abs (zvec3_y v)) (Z.abs (zvec3_z v)).
+
+(** * Reduction Operations *)
+
+Definition zvec3_element_sum (v : ZVec3) : Z :=
+  zvec3_x v + zvec3_y v + zvec3_z v.
+
+Definition zvec3_element_product (v : ZVec3) : Z :=
+  zvec3_x v * zvec3_y v * zvec3_z v.
+
+Definition zvec3_distance_squared (a b : ZVec3) : Z :=
+  zvec3_length_squared (zvec3_sub a b).
+
+(** ** Min/Max Properties *)
+
+Theorem zvec3_min_comm : forall a b : ZVec3,
+  zvec3_min a b = zvec3_min b a.
+Proof.
+  intros [ax ay az] [bx by0 bz]. unfold zvec3_min. simpl.
+  apply zvec3_eq; apply Z.min_comm.
+Qed.
+
+Theorem zvec3_max_comm : forall a b : ZVec3,
+  zvec3_max a b = zvec3_max b a.
+Proof.
+  intros [ax ay az] [bx by0 bz]. unfold zvec3_max. simpl.
+  apply zvec3_eq; apply Z.max_comm.
+Qed.
+
+Theorem zvec3_min_self : forall a : ZVec3,
+  zvec3_min a a = a.
+Proof.
+  intros [ax ay az]. unfold zvec3_min. simpl.
+  apply zvec3_eq; apply Z.min_id.
+Qed.
+
+Theorem zvec3_max_self : forall a : ZVec3,
+  zvec3_max a a = a.
+Proof.
+  intros [ax ay az]. unfold zvec3_max. simpl.
+  apply zvec3_eq; apply Z.max_id.
+Qed.
+
+(** ** Abs Properties *)
+
+Theorem zvec3_abs_nonneg : forall v : ZVec3,
+  0 <= zvec3_x (zvec3_abs v) /\ 0 <= zvec3_y (zvec3_abs v) /\
+  0 <= zvec3_z (zvec3_abs v).
+Proof.
+  intros [vx vy vz]. unfold zvec3_abs. simpl.
+  repeat split; apply Z.abs_nonneg.
+Qed.
+
+Theorem zvec3_abs_neg : forall v : ZVec3,
+  zvec3_abs (zvec3_neg v) = zvec3_abs v.
+Proof.
+  intros [vx vy vz]. unfold zvec3_abs, zvec3_neg. simpl.
+  apply zvec3_eq; apply Z.abs_opp.
+Qed.
+
+Theorem zvec3_abs_idempotent : forall v : ZVec3,
+  zvec3_abs (zvec3_abs v) = zvec3_abs v.
+Proof.
+  intros [vx vy vz]. unfold zvec3_abs. simpl.
+  apply zvec3_eq; apply Z.abs_eq; apply Z.abs_nonneg.
+Qed.
+
+(** ** Distance Properties *)
+
+Theorem zvec3_distance_squared_self : forall a : ZVec3,
+  zvec3_distance_squared a a = 0.
+Proof.
+  intros [ax ay az].
+  unfold zvec3_distance_squared, zvec3_length_squared, zvec3_sub, zvec3_dot.
+  simpl. ring.
+Qed.
+
+Theorem zvec3_distance_squared_symmetric : forall a b : ZVec3,
+  zvec3_distance_squared a b = zvec3_distance_squared b a.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold zvec3_distance_squared, zvec3_length_squared, zvec3_sub, zvec3_dot.
+  simpl. ring.
+Qed.
+
+Theorem zvec3_distance_squared_nonneg : forall a b : ZVec3,
+  0 <= zvec3_distance_squared a b.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold zvec3_distance_squared, zvec3_length_squared, zvec3_sub, zvec3_dot.
+  simpl. nia.
+Qed.
+
+(** ** Element Sum/Product Properties *)
+
+Theorem zvec3_element_sum_zero :
+  zvec3_element_sum zvec3_zero = 0.
+Proof.
+  unfold zvec3_element_sum, zvec3_zero. simpl. reflexivity.
+Qed.
+
 (** * Computational Tests *)
 
 Example zvec3_test_add :

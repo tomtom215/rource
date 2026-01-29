@@ -83,3 +83,19 @@ Definition rect_expand (r : Rect) (amount : R) : Rect :=
 
 Definition rect_shrink (r : Rect) (amount : R) : Rect :=
   rect_expand r (- amount).
+
+(** Intersection of two rectangles (non-negative dimensions guaranteed) *)
+Definition rect_intersection (a b : Rect) : Rect :=
+  let x := Rmax (rect_x a) (rect_x b) in
+  let y0 := Rmax (rect_y a) (rect_y b) in
+  let right := Rmin (rect_right a) (rect_right b) in
+  let bottom := Rmin (rect_bottom a) (rect_bottom b) in
+  mkRect x y0 (Rmax 0 (right - x)) (Rmax 0 (bottom - y0)).
+
+(** Create rectangle from center point and dimensions *)
+Definition rect_from_center (cx cy w h : R) : Rect :=
+  mkRect (cx - w / 2) (cy - h / 2) w h.
+
+(** Scale rectangle dimensions by a factor (position preserved) *)
+Definition rect_scale (r : Rect) (factor : R) : Rect :=
+  mkRect (rect_x r) (rect_y r) (rect_w r * factor) (rect_h r * factor).

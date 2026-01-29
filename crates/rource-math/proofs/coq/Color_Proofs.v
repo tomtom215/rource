@@ -256,3 +256,104 @@ Proof.
   unfold color_blend_over. simpl.
   apply color_eq; lra.
 Qed.
+
+(** * Inversion Properties *)
+
+(** Theorem 27: double inversion is identity.
+    ∀ c : Color, invert(invert(c)) = c *)
+Theorem color_invert_involutive : forall (c : Color),
+  color_invert (color_invert c) = c.
+Proof.
+  intros [r g b a].
+  unfold color_invert. simpl.
+  apply color_eq; lra.
+Qed.
+
+(** Theorem 28: inversion preserves alpha.
+    ∀ c : Color, invert(c).a = c.a *)
+Theorem color_invert_preserves_alpha : forall (c : Color),
+  color_a (color_invert c) = color_a c.
+Proof.
+  intros [r g b a]. simpl. reflexivity.
+Qed.
+
+(** Theorem 29: inverting black gives white. *)
+Theorem color_invert_black :
+  color_invert color_black = color_white.
+Proof.
+  unfold color_invert, color_black, color_white. simpl.
+  apply color_eq; lra.
+Qed.
+
+(** Theorem 30: inverting white gives black. *)
+Theorem color_invert_white :
+  color_invert color_white = color_black.
+Proof.
+  unfold color_invert, color_white, color_black. simpl.
+  apply color_eq; lra.
+Qed.
+
+(** * Mix Properties *)
+
+(** Theorem 31: mix is commutative.
+    ∀ a b : Color, mix(a, b) = mix(b, a) *)
+Theorem color_mix_comm : forall (a b : Color),
+  color_mix a b = color_mix b a.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_mix. simpl.
+  apply color_eq; lra.
+Qed.
+
+(** Theorem 32: mixing a color with itself is identity.
+    ∀ c : Color, mix(c, c) = c *)
+Theorem color_mix_self : forall (c : Color),
+  color_mix c c = c.
+Proof.
+  intros [r g b a].
+  unfold color_mix. simpl.
+  apply color_eq; lra.
+Qed.
+
+(** * Addition Properties *)
+
+(** Theorem 33: color addition is commutative.
+    ∀ a b : Color, a + b = b + a *)
+Theorem color_add_comm : forall (a b : Color),
+  color_add a b = color_add b a.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_add. simpl.
+  apply color_eq; lra.
+Qed.
+
+(** Theorem 34: adding black is identity.
+    ∀ c : Color, c + black = c (except alpha: c.a + 1) *)
+Theorem color_add_zero_rgb : forall (c : Color),
+  color_r (color_add c color_transparent) = color_r c /\
+  color_g (color_add c color_transparent) = color_g c /\
+  color_b (color_add c color_transparent) = color_b c.
+Proof.
+  intros [r g b a]. simpl.
+  repeat split; lra.
+Qed.
+
+(** Theorem 35: scaling by 1 is identity.
+    ∀ c : Color, scale(c, 1) = c *)
+Theorem color_scale_one : forall (c : Color),
+  color_scale c 1 = c.
+Proof.
+  intros [r g b a].
+  unfold color_scale. simpl.
+  apply color_eq; lra.
+Qed.
+
+(** Theorem 36: scaling by 0 zeroes all components.
+    ∀ c : Color, scale(c, 0) = transparent *)
+Theorem color_scale_zero : forall (c : Color),
+  color_scale c 0 = color_transparent.
+Proof.
+  intros [r g b a].
+  unfold color_scale, color_transparent. simpl.
+  apply color_eq; lra.
+Qed.

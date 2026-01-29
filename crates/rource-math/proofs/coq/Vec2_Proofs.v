@@ -351,10 +351,183 @@ Proof.
   f_equal; ring.
 Qed.
 
+(** * Component-wise Operation Properties *)
+
+(** Theorem 29: min is commutative.
+    ∀ a b : Vec2, min(a, b) = min(b, a) *)
+Theorem vec2_min_comm : forall a b : Vec2,
+  vec2_min a b = vec2_min b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec2_min. simpl.
+  f_equal; apply Rmin_comm.
+Qed.
+
+(** Theorem 30: max is commutative.
+    ∀ a b : Vec2, max(a, b) = max(b, a) *)
+Theorem vec2_max_comm : forall a b : Vec2,
+  vec2_max a b = vec2_max b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec2_max. simpl.
+  f_equal; apply Rmax_comm.
+Qed.
+
+(** Theorem 31: min of a vector with itself is identity.
+    ∀ a : Vec2, min(a, a) = a *)
+Theorem vec2_min_self : forall a : Vec2,
+  vec2_min a a = a.
+Proof.
+  intros a. destruct a.
+  unfold vec2_min. simpl.
+  f_equal; unfold Rmin; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 32: max of a vector with itself is identity.
+    ∀ a : Vec2, max(a, a) = a *)
+Theorem vec2_max_self : forall a : Vec2,
+  vec2_max a a = a.
+Proof.
+  intros a. destruct a.
+  unfold vec2_max. simpl.
+  f_equal; unfold Rmax; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 33: abs produces non-negative components.
+    ∀ v : Vec2, |v|.x ≥ 0 ∧ |v|.y ≥ 0 *)
+Theorem vec2_abs_nonneg : forall v : Vec2,
+  0 <= vec2_x (vec2_abs v) /\ 0 <= vec2_y (vec2_abs v).
+Proof.
+  intros v. destruct v.
+  unfold vec2_abs. simpl.
+  split; apply Rabs_pos.
+Qed.
+
+(** Theorem 34: abs of negation equals abs.
+    ∀ v : Vec2, |−v| = |v| *)
+Theorem vec2_abs_neg : forall v : Vec2,
+  vec2_abs (vec2_neg v) = vec2_abs v.
+Proof.
+  intros v. destruct v.
+  unfold vec2_abs, vec2_neg. simpl.
+  f_equal; apply Rabs_Ropp.
+Qed.
+
+(** Theorem 35: abs is idempotent.
+    ∀ v : Vec2, ||v|| = |v| *)
+Theorem vec2_abs_idempotent : forall v : Vec2,
+  vec2_abs (vec2_abs v) = vec2_abs v.
+Proof.
+  intros v. destruct v.
+  unfold vec2_abs. simpl.
+  f_equal; apply Rabs_pos_eq; apply Rabs_pos.
+Qed.
+
+(** * Distance Properties *)
+
+(** Theorem 36: distance squared from a point to itself is 0.
+    ∀ a : Vec2, dist²(a, a) = 0 *)
+Theorem vec2_distance_squared_self : forall a : Vec2,
+  vec2_distance_squared a a = 0.
+Proof.
+  intros a. destruct a.
+  unfold vec2_distance_squared, vec2_sub, vec2_length_squared, vec2_dot. simpl.
+  ring.
+Qed.
+
+(** Theorem 37: distance squared is symmetric.
+    ∀ a b : Vec2, dist²(a, b) = dist²(b, a) *)
+Theorem vec2_distance_squared_symmetric : forall a b : Vec2,
+  vec2_distance_squared a b = vec2_distance_squared b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec2_distance_squared, vec2_sub, vec2_length_squared, vec2_dot. simpl.
+  ring.
+Qed.
+
+(** Theorem 38: distance squared is non-negative.
+    ∀ a b : Vec2, dist²(a, b) ≥ 0 *)
+Theorem vec2_distance_squared_nonneg : forall a b : Vec2,
+  0 <= vec2_distance_squared a b.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec2_distance_squared, vec2_sub, vec2_length_squared, vec2_dot. simpl.
+  nra.
+Qed.
+
+(** * Reduction Operation Properties *)
+
+(** Theorem 39: element sum of zero vector is 0.
+    sum(0) = 0 *)
+Theorem vec2_element_sum_zero :
+  vec2_element_sum vec2_zero = 0.
+Proof.
+  unfold vec2_element_sum, vec2_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 40: element sum distributes over addition.
+    ∀ a b : Vec2, sum(a + b) = sum(a) + sum(b) *)
+Theorem vec2_element_sum_add : forall a b : Vec2,
+  vec2_element_sum (vec2_add a b) = vec2_element_sum a + vec2_element_sum b.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec2_element_sum, vec2_add. simpl.
+  ring.
+Qed.
+
+(** Theorem 41: element product of zero vector is 0.
+    prod(0) = 0 *)
+Theorem vec2_element_product_zero :
+  vec2_element_product vec2_zero = 0.
+Proof.
+  unfold vec2_element_product, vec2_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 42: element sum of splat is 2*v.
+    ∀ v : R, sum(splat(v)) = 2v *)
+Theorem vec2_element_sum_splat : forall v : R,
+  vec2_element_sum (vec2_splat v) = 2 * v.
+Proof.
+  intros v.
+  unfold vec2_element_sum, vec2_splat. simpl.
+  ring.
+Qed.
+
+(** Theorem 43: element product of splat is v².
+    ∀ v : R, prod(splat(v)) = v² *)
+Theorem vec2_element_product_splat : forall v : R,
+  vec2_element_product (vec2_splat v) = v * v.
+Proof.
+  intros v.
+  unfold vec2_element_product, vec2_splat. simpl.
+  ring.
+Qed.
+
+(** * Splat Properties *)
+
+(** Theorem 44: splat produces equal components.
+    ∀ v : R, splat(v).x = v ∧ splat(v).y = v *)
+Theorem vec2_splat_components : forall v : R,
+  vec2_x (vec2_splat v) = v /\ vec2_y (vec2_splat v) = v.
+Proof.
+  intros v. unfold vec2_splat. simpl. split; reflexivity.
+Qed.
+
+(** Theorem 45: splat(0) = zero vector.
+    splat(0) = 0 *)
+Theorem vec2_splat_zero :
+  vec2_splat 0 = vec2_zero.
+Proof.
+  unfold vec2_splat, vec2_zero. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 28
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply
+    Total theorems: 45
+    Total tactics used: ring, f_equal, reflexivity, destruct, apply, Rmin_comm,
+      Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra
     Admits: 0
     Axioms: Standard Coq real number library only
 

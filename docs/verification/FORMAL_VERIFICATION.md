@@ -4,7 +4,7 @@ This document describes the formal verification work performed on the `rource-ma
 
 ## Overview
 
-The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, and semantic properties of these types using a hybrid Verus + Coq architecture, achieving 612 machine-checked theorems with zero admits that can withstand academic peer review.
+The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, and semantic properties of these types using a hybrid Verus + Coq architecture, achieving 813 machine-checked theorems with zero admits that can withstand academic peer review.
 
 ## Verification Tool
 
@@ -460,10 +460,10 @@ rustup install 1.92.0
 | rource-math/Vec4 | ✅ VERIFIED | 22 | 68 | 4D vector space, basis orthonormality |
 | rource-math/Mat3 | ✅ VERIFIED | 18 | 26 | Matrix multiplication associativity, ring structure |
 | rource-math/Mat4 | ✅ VERIFIED | 18 | 27 | 3D transformation pipelines, ring structure |
-| rource-math/Color | ✅ VERIFIED | 23 | — | Constructor, alpha, interpolation, blending, clamping, luminance |
-| rource-math/Rect | ✅ VERIFIED | 23 | — | Containment, intersection, union, transformations, area/perimeter, validity |
+| rource-math/Color | ✅ VERIFIED | 35 | — | Constructor, alpha, interpolation, blending, clamping, luminance, inversion, mixing |
+| rource-math/Rect | ✅ VERIFIED | 33 | — | Containment, intersection, union, transformations, area/perimeter, validity, scaling |
 
-**Total: 151 theorems verified (Verus)**
+**Total: 236 theorems verified (Verus)**
 
 ## Relationship to Testing
 
@@ -688,11 +688,11 @@ architecture combining Verus with the Coq ecosystem.
 │  rource-math (Rust)                                                     │
 │       │                                                                 │
 │       ├──► Verus ──────────────► Algebraic Properties                   │
-│       │         (151 theorems)   Vector space axioms, dot/cross         │
+│       │         (236 theorems)   Vector space axioms, dot/cross         │
 │       │                          properties, matrix ring structure,     │
 │       │                          color operations, rect operations      │
 │       │                                                                 │
-│       ├──► Manual Coq Specs ───► Coq Proofs (461 theorems)             │
+│       ├──► Manual Coq Specs ───► Coq Proofs (577 theorems)             │
 │       │                                │                                │
 │       │                                ├──► ICC ──► Complexity Bounds   │
 │       │                                │            O(1) proofs (60)    │
@@ -732,8 +732,8 @@ architecture combining Verus with the Coq ecosystem.
 
 | Tool | Purpose | Maturity | Integration |
 |------|---------|----------|-------------|
-| **Verus** | Algebraic properties | Production | ✅ Active (151 theorems) |
-| **Coq** | Mathematical proofs, complexity | Production | ✅ Active (461 theorems) |
+| **Verus** | Algebraic properties | Production | ✅ Active (236 theorems) |
+| **Coq** | Mathematical proofs, complexity | Production | ✅ Active (577 theorems) |
 | **wasm_of_ocaml** | OCaml → WASM compilation | Production (v6.2.0) | ✅ Active (Path 1, 6.8 KB lib) |
 | **MetaCoq Verified Extraction** | Verified Coq → OCaml | Research (PLDI'24) | ✅ Built from source (Path 2) |
 | **CertiCoq-WASM** | Coq → Verified WASM | Research (CPP 2025) | Deferred (Path 4, needs 8.20) |
@@ -778,7 +778,7 @@ version 9.0 (released March 2025). This rebranding affects the entire ecosystem:
 
 | Timeline | Action | Rationale |
 |----------|--------|-----------|
-| **Current** | Stay on Coq 8.18 + MetaCoq (built from source) | Working, tested, 612 theorems compile |
+| **Current** | Stay on Coq 8.18 + MetaCoq (built from source) | Working, tested, 813 theorems compile |
 | **Near-term** | Migrate to Rocq 9.0 when opam repos stabilize | `rocq-prover 9.0.0` available on opam.ocaml.org |
 | **Medium-term** | Migrate to Rocq 9.1 + MetaRocq 1.4.1 | Latest, with full opam packages |
 
@@ -1152,8 +1152,8 @@ Layer 4: MetaCoq  → Vec2_VerifiedExtract.v (optional, requires MetaCoq install
 
 This hybrid approach would be novel in several ways:
 
-1. **First verified Rust graphics library**: rource-math with 612 machine-checked proofs across 8 types
-2. **Verus + Coq interoperability**: Demonstrating complementary strengths (151 Verus + 461 Coq)
+1. **First verified Rust graphics library**: rource-math with 813 machine-checked proofs across 8 types
+2. **Verus + Coq interoperability**: Demonstrating complementary strengths (236 Verus + 577 Coq)
 3. **ICC for graphics code**: Complexity bounds for visualization pipeline
 4. **End-to-end verified WASM**: From Rust source to verified WebAssembly (8 types extracted)
 5. **Color and spatial correctness**: Formal proofs for RGBA blending, luminance, and rectangle operations
@@ -1186,21 +1186,21 @@ This hybrid approach would be novel in several ways:
 
 **Verus Proofs:**
 *Version: 0.2026.01.23.1650a05*
-*Total theorems: 151 (Vec2: 23, Vec3: 24, Vec4: 22, Mat3: 18, Mat4: 18, Color: 23, Rect: 23)*
-*Total verification conditions: 242+ (Vec2: 53, Vec3: 68, Vec4: 68, Mat3: 26, Mat4: 27, Color: —, Rect: —)*
+*Total theorems: 236 (Vec2: 50, Vec3: 42, Vec4: 40, Mat3: 18, Mat4: 18, Color: 35, Rect: 33)*
+*Total verification conditions: 360+ (Vec2: 53+, Vec3: 68+, Vec4: 68+, Mat3: 26, Mat4: 27, Color: —, Rect: —)*
 *Status: All proofs verified with 0 errors*
 
-**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b):**
+**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4):**
 *Version: Coq 8.18*
-*Total theorems: 277 (Vec2: 31, Vec3: 39, Vec4: 29, Mat3: 23, Mat4: 39, Complexity: 60, Color: 26, Rect: 20, Utils: 10)*
+*Total theorems: 342 (Vec2: 48, Vec3: 54, Vec4: 44, Mat3: 23, Mat4: 39, Complexity: 60, Color: 36, Rect: 28, Utils: 10)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
-**Coq Proofs (Z-based Computational Bridge, Phase 3):**
+**Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4):**
 *Version: Coq 8.18*
-*Total theorems: 184 (Vec2: 27, Vec3: 31, Vec4: 22, Mat3: 25, Mat4: 21, Color: 22, Rect: 22, Utils: 14)*
+*Total theorems: 235 (Vec2: 38, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 21, Color: 32, Rect: 30, Utils: 14)*
 *Admits: 0*
-*Compilation time: ~40 seconds total (32 .vo files, including Vec2_VerifiedExtract.v)*
+*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**
@@ -1208,8 +1208,8 @@ This hybrid approach would be novel in several ways:
 *Cost model: Abstract operation counting (muls + adds)*
 *Status: All complexity bounds verified*
 
-**Computational Bridge (Phase 3 + Phase 3 Continued):**
-*8 Compute files: Vec2(27), Vec3(31), Vec4(22), Mat3(25), Mat4(21), Color(22), Rect(22), Utils(14) = 184 theorems over Z*
+**Computational Bridge (Phase 3 + Phase 3 Continued + Phase 4):**
+*8 Compute files: Vec2(38), Vec3(42), Vec4(33), Mat3(25), Mat4(21), Color(32), Rect(30), Utils(14) = 235 theorems over Z*
 *8 Extract files + 1 unified extraction (RourceMath_Extract.v)*
 *OCaml test driver: all tests pass*
 *WASM pipeline: Library 6.8 KB, test driver 42.2 KB (via wasm_of_ocaml v6.2.0)*
@@ -1223,7 +1223,7 @@ This hybrid approach would be novel in several ways:
 *Status: Full pipeline operational, all 8 types extractable to WASM*
 
 **Combined Verification:**
-*Total theorems: 612 across Verus and Coq (Verus: 151, Coq R-based: 277, Coq Z-based: 184)*
+*Total theorems: 813 across Verus and Coq (Verus: 236, Coq R-based: 342, Coq Z-based: 235)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Utils*
 *Status: Dual-verification + complexity bounds + computational bridge + WASM pipeline*
