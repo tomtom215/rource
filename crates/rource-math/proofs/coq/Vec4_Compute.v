@@ -297,6 +297,120 @@ Proof.
   - apply zvec4_scale_dist_scalar.
 Qed.
 
+(** * Min/Max/Abs Operations *)
+
+Definition zvec4_min (a b : ZVec4) : ZVec4 :=
+  mkZVec4 (Z.min (zvec4_x a) (zvec4_x b)) (Z.min (zvec4_y a) (zvec4_y b))
+          (Z.min (zvec4_z a) (zvec4_z b)) (Z.min (zvec4_w a) (zvec4_w b)).
+
+Definition zvec4_max (a b : ZVec4) : ZVec4 :=
+  mkZVec4 (Z.max (zvec4_x a) (zvec4_x b)) (Z.max (zvec4_y a) (zvec4_y b))
+          (Z.max (zvec4_z a) (zvec4_z b)) (Z.max (zvec4_w a) (zvec4_w b)).
+
+Definition zvec4_abs (v : ZVec4) : ZVec4 :=
+  mkZVec4 (Z.abs (zvec4_x v)) (Z.abs (zvec4_y v))
+          (Z.abs (zvec4_z v)) (Z.abs (zvec4_w v)).
+
+(** * Reduction Operations *)
+
+Definition zvec4_element_sum (v : ZVec4) : Z :=
+  zvec4_x v + zvec4_y v + zvec4_z v + zvec4_w v.
+
+Definition zvec4_element_product (v : ZVec4) : Z :=
+  zvec4_x v * zvec4_y v * zvec4_z v * zvec4_w v.
+
+Definition zvec4_distance_squared (a b : ZVec4) : Z :=
+  zvec4_length_squared (zvec4_sub a b).
+
+(** ** Min/Max Properties *)
+
+Theorem zvec4_min_comm : forall a b : ZVec4,
+  zvec4_min a b = zvec4_min b a.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw]. unfold zvec4_min. simpl.
+  apply zvec4_eq; apply Z.min_comm.
+Qed.
+
+Theorem zvec4_max_comm : forall a b : ZVec4,
+  zvec4_max a b = zvec4_max b a.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw]. unfold zvec4_max. simpl.
+  apply zvec4_eq; apply Z.max_comm.
+Qed.
+
+Theorem zvec4_min_self : forall a : ZVec4,
+  zvec4_min a a = a.
+Proof.
+  intros [ax ay az aw]. unfold zvec4_min. simpl.
+  apply zvec4_eq; apply Z.min_id.
+Qed.
+
+Theorem zvec4_max_self : forall a : ZVec4,
+  zvec4_max a a = a.
+Proof.
+  intros [ax ay az aw]. unfold zvec4_max. simpl.
+  apply zvec4_eq; apply Z.max_id.
+Qed.
+
+(** ** Abs Properties *)
+
+Theorem zvec4_abs_nonneg : forall v : ZVec4,
+  0 <= zvec4_x (zvec4_abs v) /\ 0 <= zvec4_y (zvec4_abs v) /\
+  0 <= zvec4_z (zvec4_abs v) /\ 0 <= zvec4_w (zvec4_abs v).
+Proof.
+  intros [vx vy vz vw]. unfold zvec4_abs. simpl.
+  repeat split; apply Z.abs_nonneg.
+Qed.
+
+Theorem zvec4_abs_neg : forall v : ZVec4,
+  zvec4_abs (zvec4_neg v) = zvec4_abs v.
+Proof.
+  intros [vx vy vz vw]. unfold zvec4_abs, zvec4_neg. simpl.
+  apply zvec4_eq; apply Z.abs_opp.
+Qed.
+
+Theorem zvec4_abs_idempotent : forall v : ZVec4,
+  zvec4_abs (zvec4_abs v) = zvec4_abs v.
+Proof.
+  intros [vx vy vz vw]. unfold zvec4_abs. simpl.
+  apply zvec4_eq; apply Z.abs_eq; apply Z.abs_nonneg.
+Qed.
+
+(** ** Distance Properties *)
+
+Theorem zvec4_distance_squared_self : forall a : ZVec4,
+  zvec4_distance_squared a a = 0.
+Proof.
+  intros [ax ay az aw].
+  unfold zvec4_distance_squared, zvec4_length_squared, zvec4_sub, zvec4_dot.
+  simpl. ring.
+Qed.
+
+Theorem zvec4_distance_squared_symmetric : forall a b : ZVec4,
+  zvec4_distance_squared a b = zvec4_distance_squared b a.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold zvec4_distance_squared, zvec4_length_squared, zvec4_sub, zvec4_dot.
+  simpl. ring.
+Qed.
+
+Theorem zvec4_distance_squared_nonneg : forall a b : ZVec4,
+  0 <= zvec4_distance_squared a b.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold zvec4_distance_squared, zvec4_length_squared, zvec4_sub, zvec4_dot.
+  simpl.
+  apply Z.add_nonneg_nonneg; [apply Z.add_nonneg_nonneg; [apply Z.add_nonneg_nonneg |] |]; apply Z.square_nonneg.
+Qed.
+
+(** ** Element Sum/Product Properties *)
+
+Theorem zvec4_element_sum_zero :
+  zvec4_element_sum zvec4_zero = 0.
+Proof.
+  unfold zvec4_element_sum, zvec4_zero. simpl. reflexivity.
+Qed.
+
 (** * Computational Tests *)
 
 Example zvec4_test_add :

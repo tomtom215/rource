@@ -195,3 +195,82 @@ Proof.
   intros [x y0 w h] amount [Hw Hh] Ha. simpl in *.
   unfold rect_is_valid, rect_expand. simpl. lra.
 Qed.
+
+(** * From-Center Properties *)
+
+(** Theorem 21: from_center preserves dimensions.
+    ∀ cx cy w h, from_center(cx, cy, w, h).w = w *)
+Theorem rect_from_center_dimensions : forall cx cy w h : R,
+  rect_w (rect_from_center cx cy w h) = w /\
+  rect_h (rect_from_center cx cy w h) = h.
+Proof.
+  intros. unfold rect_from_center. simpl. split; reflexivity.
+Qed.
+
+(** Theorem 22: from_center center_x matches.
+    ∀ cx cy w h, center_x(from_center(cx, cy, w, h)) = cx *)
+Theorem rect_from_center_center_x : forall cx cy w h : R,
+  rect_center_x (rect_from_center cx cy w h) = cx.
+Proof.
+  intros. unfold rect_center_x, rect_from_center. simpl. lra.
+Qed.
+
+(** Theorem 23: from_center center_y matches.
+    ∀ cx cy w h, center_y(from_center(cx, cy, w, h)) = cy *)
+Theorem rect_from_center_center_y : forall cx cy w h : R,
+  rect_center_y (rect_from_center cx cy w h) = cy.
+Proof.
+  intros. unfold rect_center_y, rect_from_center. simpl. lra.
+Qed.
+
+(** * Scale Properties *)
+
+(** Theorem 24: scale by 1 is identity.
+    ∀ r : Rect, scale(r, 1) = r *)
+Theorem rect_scale_identity : forall (r : Rect),
+  rect_scale r 1 = r.
+Proof.
+  intros [x y0 w h].
+  unfold rect_scale. simpl.
+  apply rect_eq; lra.
+Qed.
+
+(** Theorem 25: scale preserves position.
+    ∀ r : Rect, ∀ f : R, scale(r, f).x = r.x ∧ scale(r, f).y = r.y *)
+Theorem rect_scale_preserves_position : forall (r : Rect) (factor : R),
+  rect_x (rect_scale r factor) = rect_x r /\
+  rect_y (rect_scale r factor) = rect_y r.
+Proof.
+  intros [x y0 w h] factor. simpl. split; reflexivity.
+Qed.
+
+(** Theorem 26: scale area = factor² × original area.
+    ∀ r : Rect, ∀ f : R, area(scale(r, f)) = f² × area(r) *)
+Theorem rect_scale_area : forall (r : Rect) (factor : R),
+  rect_area (rect_scale r factor) = factor * factor * rect_area r.
+Proof.
+  intros [x y0 w h] factor.
+  unfold rect_area, rect_scale. simpl. ring.
+Qed.
+
+(** Theorem 27: scale by 0 produces zero dimensions.
+    ∀ r : Rect, area(scale(r, 0)) = 0 *)
+Theorem rect_scale_zero_area : forall (r : Rect),
+  rect_area (rect_scale r 0) = 0.
+Proof.
+  intros [x y0 w h].
+  unfold rect_area, rect_scale. simpl. ring.
+Qed.
+
+(** * Intersection Properties *)
+
+(** Theorem 28: intersection has non-negative dimensions.
+    ∀ a b : Rect, intersection(a, b).w ≥ 0 ∧ intersection(a, b).h ≥ 0 *)
+Theorem rect_intersection_nonneg : forall (a b : Rect),
+  rect_w (rect_intersection a b) >= 0 /\
+  rect_h (rect_intersection a b) >= 0.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_intersection, rect_right, rect_bottom. simpl.
+  split; unfold Rmax; destruct (Rle_dec _ _); lra.
+Qed.

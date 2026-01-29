@@ -275,6 +275,108 @@ Proof.
   unfold zcolor_luminance. cbn -[Z.mul Z.add]. nia.
 Qed.
 
+(** * Component-wise Operations *)
+
+(** Color addition (component-wise) *)
+Definition zcolor_add (a b : ZColor) : ZColor :=
+  mkZColor (zcolor_r a + zcolor_r b) (zcolor_g a + zcolor_g b)
+           (zcolor_b a + zcolor_b b) (zcolor_a a + zcolor_a b).
+
+(** Color scalar multiplication (fixed-point: s=1000 means 1.0) *)
+Definition zcolor_scale (c : ZColor) (s : Z) : ZColor :=
+  mkZColor (zcolor_r c * s / 1000) (zcolor_g c * s / 1000)
+           (zcolor_b c * s / 1000) (zcolor_a c * s / 1000).
+
+(** Color inversion: 1000-c for RGB (1000 = 1.0), alpha preserved *)
+Definition zcolor_invert (c : ZColor) : ZColor :=
+  mkZColor (1000 - zcolor_r c) (1000 - zcolor_g c) (1000 - zcolor_b c) (zcolor_a c).
+
+(** Color mix (average of two colors) *)
+Definition zcolor_mix (a b : ZColor) : ZColor :=
+  mkZColor ((zcolor_r a + zcolor_r b) / 2) ((zcolor_g a + zcolor_g b) / 2)
+           ((zcolor_b a + zcolor_b b) / 2) ((zcolor_a a + zcolor_a b) / 2).
+
+(** ** Inversion Properties *)
+
+Theorem zcolor_invert_involutive : forall (c : ZColor),
+  zcolor_invert (zcolor_invert c) = c.
+Proof.
+  intros [r g b a]. unfold zcolor_invert.
+  cbn [zcolor_r zcolor_g zcolor_b zcolor_a].
+  apply zcolor_eq; lia.
+Qed.
+
+Theorem zcolor_invert_preserves_alpha : forall (c : ZColor),
+  zcolor_a (zcolor_invert c) = zcolor_a c.
+Proof.
+  intros [r g b a]. unfold zcolor_invert. simpl. reflexivity.
+Qed.
+
+Theorem zcolor_invert_black :
+  zcolor_invert zcolor_black = mkZColor 1000 1000 1000 1000.
+Proof.
+  unfold zcolor_invert, zcolor_black. simpl. reflexivity.
+Qed.
+
+Theorem zcolor_invert_white :
+  zcolor_invert zcolor_white = mkZColor 0 0 0 1000.
+Proof.
+  unfold zcolor_invert, zcolor_white. simpl. reflexivity.
+Qed.
+
+(** ** Mix Properties *)
+
+Theorem zcolor_mix_comm : forall (a b : ZColor),
+  zcolor_mix a b = zcolor_mix b a.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba]. unfold zcolor_mix. simpl.
+  apply zcolor_eq; f_equal; lia.
+Qed.
+
+Theorem zcolor_mix_self : forall (c : ZColor),
+  zcolor_mix c c = c.
+Proof.
+  intros [r g b a]. unfold zcolor_mix. simpl.
+  apply zcolor_eq.
+  - replace (r + r) with (r * 2) by ring. apply Z.div_mul. lia.
+  - replace (g + g) with (g * 2) by ring. apply Z.div_mul. lia.
+  - replace (b + b) with (b * 2) by ring. apply Z.div_mul. lia.
+  - replace (a + a) with (a * 2) by ring. apply Z.div_mul. lia.
+Qed.
+
+(** ** Addition Properties *)
+
+Theorem zcolor_add_comm : forall (a b : ZColor),
+  zcolor_add a b = zcolor_add b a.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba]. unfold zcolor_add. simpl.
+  apply zcolor_eq; ring.
+Qed.
+
+Theorem zcolor_add_transparent : forall (c : ZColor),
+  zcolor_add c zcolor_transparent = c.
+Proof.
+  intros [r g b a]. unfold zcolor_add, zcolor_transparent. simpl.
+  apply zcolor_eq; ring.
+Qed.
+
+(** ** Scale Properties *)
+
+Theorem zcolor_scale_one : forall (c : ZColor),
+  zcolor_scale c 1000 = c.
+Proof.
+  intros [r g b a]. unfold zcolor_scale. simpl.
+  apply zcolor_eq; apply Z.div_mul; lia.
+Qed.
+
+Theorem zcolor_scale_zero : forall (c : ZColor),
+  zcolor_scale c 0 = zcolor_transparent.
+Proof.
+  intros [r g b a]. unfold zcolor_scale, zcolor_transparent.
+  cbn [zcolor_r zcolor_g zcolor_b zcolor_a].
+  apply zcolor_eq; rewrite Z.mul_0_r; reflexivity.
+Qed.
+
 (** * Computational Tests *)
 
 Example zcolor_test_new :

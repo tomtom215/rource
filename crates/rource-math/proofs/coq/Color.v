@@ -105,6 +105,26 @@ Definition color_clamp (c : Color) : Color :=
   mkColor (clamp01 (color_r c)) (clamp01 (color_g c))
           (clamp01 (color_b c)) (clamp01 (color_a c)).
 
+(** * Component-wise Operations *)
+
+(** Color addition (component-wise) *)
+Definition color_add (a b : Color) : Color :=
+  mkColor (color_r a + color_r b) (color_g a + color_g b)
+          (color_b a + color_b b) (color_a a + color_a b).
+
+(** Color scalar multiplication *)
+Definition color_scale (c : Color) (s : R) : Color :=
+  mkColor (color_r c * s) (color_g c * s) (color_b c * s) (color_a c * s).
+
+(** Color inversion: 1 - c (alpha preserved) *)
+Definition color_invert (c : Color) : Color :=
+  mkColor (1 - color_r c) (1 - color_g c) (1 - color_b c) (color_a c).
+
+(** Color mix (average of two colors) *)
+Definition color_mix (a b : Color) : Color :=
+  mkColor ((color_r a + color_r b) / 2) ((color_g a + color_g b) / 2)
+          ((color_b a + color_b b) / 2) ((color_a a + color_a b) / 2).
+
 (** * Notations *)
 
 Notation "+c" := color_new (at level 0).

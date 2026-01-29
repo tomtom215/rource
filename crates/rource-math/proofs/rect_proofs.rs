@@ -447,6 +447,165 @@ proof fn rect_expand_preserves_validity(r: SpecRect, amount: int)
     assert(e.height > 0);
 }
 
+// =============================================================================
+// EXTENDED RECT OPERATIONS
+// =============================================================================
+
+/// Compute the intersection rectangle (may be empty).
+pub open spec fn rect_intersection(a: SpecRect, b: SpecRect) -> SpecRect {
+    let x = max_int(a.x, b.x);
+    let y = max_int(a.y, b.y);
+    let right = min_int(a.x + a.width, b.x + b.width);
+    let bottom = min_int(a.y + a.height, b.y + b.height);
+    SpecRect {
+        x: x,
+        y: y,
+        width: if right > x { right - x } else { 0 },
+        height: if bottom > y { bottom - y } else { 0 },
+    }
+}
+
+/// Create a rectangle from center point and dimensions.
+pub open spec fn rect_from_center(cx: int, cy: int, width: int, height: int) -> SpecRect {
+    SpecRect {
+        x: cx - width / 2,
+        y: cy - height / 2,
+        width: width,
+        height: height,
+    }
+}
+
+/// Scale a rectangle's dimensions by a factor (width and height only).
+pub open spec fn rect_scale(r: SpecRect, factor: int) -> SpecRect {
+    SpecRect {
+        x: r.x,
+        y: r.y,
+        width: r.width * factor,
+        height: r.height * factor,
+    }
+}
+
+// =============================================================================
+// INTERSECTION PROOFS
+// =============================================================================
+
+/// **Theorem 24**: Intersection is commutative.
+proof fn rect_intersection_commutative(a: SpecRect, b: SpecRect)
+    ensures
+        rect_intersection(a, b) == rect_intersection(b, a),
+{
+    assert(max_int(a.x, b.x) == max_int(b.x, a.x));
+    assert(max_int(a.y, b.y) == max_int(b.y, a.y));
+    assert(min_int(a.x + a.width, b.x + b.width) == min_int(b.x + b.width, a.x + a.width));
+    assert(min_int(a.y + a.height, b.y + b.height) == min_int(b.y + b.height, a.y + a.height));
+}
+
+/// **Theorem 25**: Intersection of a rect with itself is itself.
+proof fn rect_intersection_self(r: SpecRect)
+    requires
+        r.width >= 0 && r.height >= 0,
+    ensures
+        rect_intersection(r, r) == r,
+{
+    assert(max_int(r.x, r.x) == r.x);
+    assert(max_int(r.y, r.y) == r.y);
+    assert(min_int(r.x + r.width, r.x + r.width) == r.x + r.width);
+    assert(min_int(r.y + r.height, r.y + r.height) == r.y + r.height);
+}
+
+/// **Theorem 26**: Intersection has non-negative width and height.
+proof fn rect_intersection_nonneg(a: SpecRect, b: SpecRect)
+    ensures ({
+        let i = rect_intersection(a, b);
+        i.width >= 0 && i.height >= 0
+    }),
+{
+}
+
+/// **Theorem 27**: If intersection is non-empty, it is contained in both operands.
+proof fn rect_intersection_contained(a: SpecRect, b: SpecRect)
+    requires ({
+        let i = rect_intersection(a, b);
+        i.width > 0 && i.height > 0
+    }),
+    ensures
+        rect_contains_rect(a, rect_intersection(a, b)),
+        rect_contains_rect(b, rect_intersection(a, b)),
+{
+    let i = rect_intersection(a, b);
+    // i.x = max(a.x, b.x) >= a.x and >= b.x
+    // i.x + i.width <= min(a.right, b.right) <= a.right and <= b.right
+}
+
+// =============================================================================
+// FROM_CENTER PROOFS
+// =============================================================================
+
+/// **Theorem 28**: from_center produces a rect with the given dimensions.
+proof fn rect_from_center_dimensions(cx: int, cy: int, w: int, h: int)
+    ensures ({
+        let r = rect_from_center(cx, cy, w, h);
+        r.width == w && r.height == h
+    }),
+{
+}
+
+/// **Theorem 29**: from_center center_x is within 1 of input cx (integer division rounding).
+proof fn rect_from_center_x_near(cx: int, w: int)
+    requires
+        w >= 0,
+    ensures ({
+        let r = rect_from_center(cx, 0, w, 0);
+        // center_x = x + w/2 = (cx - w/2) + w/2 = cx
+        rect_center_x(r) == cx
+    }),
+{
+    // r.x = cx - w/2
+    // center_x(r) = r.x + w/2 = (cx - w/2) + w/2 = cx
+}
+
+// =============================================================================
+// SCALE PROOFS
+// =============================================================================
+
+/// **Theorem 30**: Scaling by 1 is identity.
+proof fn rect_scale_identity(r: SpecRect)
+    ensures
+        rect_scale(r, 1) == r,
+{
+    assert(r.width * 1 == r.width) by(nonlinear_arith);
+    assert(r.height * 1 == r.height) by(nonlinear_arith);
+}
+
+/// **Theorem 31**: Scaling preserves position.
+proof fn rect_scale_preserves_position(r: SpecRect, factor: int)
+    ensures ({
+        let s = rect_scale(r, factor);
+        s.x == r.x && s.y == r.y
+    }),
+{
+}
+
+/// **Theorem 32**: Area after scaling by factor is factor² × original area.
+proof fn rect_scale_area(r: SpecRect, factor: int)
+    ensures
+        rect_area(rect_scale(r, factor)) == factor * factor * rect_area(r),
+{
+    // scaled.width * scaled.height = (r.width * factor) * (r.height * factor)
+    //                                = r.width * r.height * factor * factor
+    assert((r.width * factor) * (r.height * factor) == factor * factor * (r.width * r.height))
+        by(nonlinear_arith);
+}
+
+/// **Theorem 33**: Scaling by 0 produces zero area.
+proof fn rect_scale_zero_area(r: SpecRect)
+    ensures
+        rect_area(rect_scale(r, 0)) == 0,
+{
+    assert(r.width * 0 == 0) by(nonlinear_arith);
+    assert(r.height * 0 == 0) by(nonlinear_arith);
+}
+
 fn main() {
     // Verification only
 }

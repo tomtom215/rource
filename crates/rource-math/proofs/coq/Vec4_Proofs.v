@@ -340,10 +340,150 @@ Proof.
     + apply vec4_unit_zw_orthogonal.
 Qed.
 
+(** * Component-wise Operation Properties *)
+
+(** Theorem 29: min is commutative. *)
+Theorem vec4_min_comm : forall a b : Vec4,
+  vec4_min a b = vec4_min b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec4_min. simpl.
+  f_equal; apply Rmin_comm.
+Qed.
+
+(** Theorem 30: max is commutative. *)
+Theorem vec4_max_comm : forall a b : Vec4,
+  vec4_max a b = vec4_max b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec4_max. simpl.
+  f_equal; apply Rmax_comm.
+Qed.
+
+(** Theorem 31: min of a vector with itself is identity. *)
+Theorem vec4_min_self : forall a : Vec4,
+  vec4_min a a = a.
+Proof.
+  intros a. destruct a.
+  unfold vec4_min. simpl.
+  f_equal; unfold Rmin; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 32: max of a vector with itself is identity. *)
+Theorem vec4_max_self : forall a : Vec4,
+  vec4_max a a = a.
+Proof.
+  intros a. destruct a.
+  unfold vec4_max. simpl.
+  f_equal; unfold Rmax; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 33: abs produces non-negative components. *)
+Theorem vec4_abs_nonneg : forall v : Vec4,
+  0 <= vec4_x (vec4_abs v) /\ 0 <= vec4_y (vec4_abs v) /\
+  0 <= vec4_z (vec4_abs v) /\ 0 <= vec4_w (vec4_abs v).
+Proof.
+  intros v. destruct v.
+  unfold vec4_abs. simpl.
+  repeat split; apply Rabs_pos.
+Qed.
+
+(** Theorem 34: abs of negation equals abs. *)
+Theorem vec4_abs_neg : forall v : Vec4,
+  vec4_abs (vec4_neg v) = vec4_abs v.
+Proof.
+  intros v. destruct v.
+  unfold vec4_abs, vec4_neg. simpl.
+  f_equal; apply Rabs_Ropp.
+Qed.
+
+(** Theorem 35: abs is idempotent. *)
+Theorem vec4_abs_idempotent : forall v : Vec4,
+  vec4_abs (vec4_abs v) = vec4_abs v.
+Proof.
+  intros v. destruct v.
+  unfold vec4_abs. simpl.
+  f_equal; apply Rabs_pos_eq; apply Rabs_pos.
+Qed.
+
+(** * Distance Properties *)
+
+(** Theorem 36: distance squared from a point to itself is 0. *)
+Theorem vec4_distance_squared_self : forall a : Vec4,
+  vec4_distance_squared a a = 0.
+Proof.
+  intros a. destruct a.
+  unfold vec4_distance_squared, vec4_sub, vec4_length_squared, vec4_dot. simpl.
+  ring.
+Qed.
+
+(** Theorem 37: distance squared is symmetric. *)
+Theorem vec4_distance_squared_symmetric : forall a b : Vec4,
+  vec4_distance_squared a b = vec4_distance_squared b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec4_distance_squared, vec4_sub, vec4_length_squared, vec4_dot. simpl.
+  ring.
+Qed.
+
+(** Theorem 38: distance squared is non-negative. *)
+Theorem vec4_distance_squared_nonneg : forall a b : Vec4,
+  0 <= vec4_distance_squared a b.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec4_distance_squared, vec4_sub, vec4_length_squared, vec4_dot. simpl.
+  assert (H: forall r : R, 0 <= r * r) by (intro; nra).
+  apply Rplus_le_le_0_compat; [apply Rplus_le_le_0_compat; [apply Rplus_le_le_0_compat |] |]; apply H.
+Qed.
+
+(** * Reduction Operation Properties *)
+
+(** Theorem 39: element sum of zero vector is 0. *)
+Theorem vec4_element_sum_zero :
+  vec4_element_sum vec4_zero = 0.
+Proof.
+  unfold vec4_element_sum, vec4_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 40: element sum distributes over addition. *)
+Theorem vec4_element_sum_add : forall a b : Vec4,
+  vec4_element_sum (vec4_add a b) = vec4_element_sum a + vec4_element_sum b.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec4_element_sum, vec4_add. simpl.
+  ring.
+Qed.
+
+(** Theorem 41: element product of zero vector is 0. *)
+Theorem vec4_element_product_zero :
+  vec4_element_product vec4_zero = 0.
+Proof.
+  unfold vec4_element_product, vec4_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 42: element sum of splat is 4*v. *)
+Theorem vec4_element_sum_splat : forall v : R,
+  vec4_element_sum (vec4_splat v) = 4 * v.
+Proof.
+  intros v.
+  unfold vec4_element_sum, vec4_splat. simpl.
+  ring.
+Qed.
+
+(** Theorem 43: splat(0) = zero vector. *)
+Theorem vec4_splat_zero :
+  vec4_splat 0 = vec4_zero.
+Proof.
+  unfold vec4_splat, vec4_zero. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 25+
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl
+    Total theorems: 43
+    Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl,
+      Rmin_comm, Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra
     Admits: 0
     Axioms: Standard Coq real number library only
 

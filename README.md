@@ -94,10 +94,10 @@ See [Performance Documentation](#performance-documentation) for the complete opt
 
 | Tool | Components | Theorems | Status |
 |------|------------|----------|--------|
-| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 151 theorems, 242+ VCs | ✅ Verified |
-| **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | 277 theorems | ✅ Zero admits |
-| **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Utils (extractable) | 184 theorems | ✅ Zero admits |
-| **Combined** | All 8 core math types | **612 theorems** | ✅ DUAL VERIFIED |
+| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 240 proof functions, 360+ VCs | ✅ Verified |
+| **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | 337 theorems | ✅ Zero admits |
+| **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Utils (extractable) | 219 theorems | ✅ Zero admits |
+| **Combined** | All 8 core math types | **796 theorems** | ✅ DUAL VERIFIED |
 
 Properties verified include: vector space axioms, dot/cross product laws, matrix multiplication associativity (critical for MVP transformations), ring structure, RGBA color blending/interpolation/luminance, rectangle containment/intersection/union, O(1) complexity bounds, and a complete Coq-to-WASM extraction pipeline.
 
@@ -529,7 +529,7 @@ rource/
 
 | Document | Description |
 |----------|-------------|
-| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 612 formally verified theorems (Verus + Coq) |
+| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 796 formally verified theorems (Verus + Coq) |
 | [docs/verification/SETUP_GUIDE.md](docs/verification/SETUP_GUIDE.md) | Formal verification environment setup (Verus, Coq, MetaCoq, wasm_of_ocaml) |
 | [docs/verification/CERTICOQ_WASM_ASSESSMENT.md](docs/verification/CERTICOQ_WASM_ASSESSMENT.md) | Coq-to-WASM pipeline: 9-path landscape assessment |
 

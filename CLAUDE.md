@@ -82,10 +82,10 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 | Documentation Quality | Expert | Academic | This document |
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
-- **Verus**: 151 theorems, 242+ verification conditions, 0 errors
-- **Coq (R-based)**: 277 theorems, 0 admits (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
-- **Coq (Z-based)**: 184 theorems, 0 admits (extractable computational bridge, 8 types)
-- **Combined**: 612 formally verified theorems across 8 types
+- **Verus**: 240 proof functions, 0 errors
+- **Coq (R-based)**: 337 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
+- **Coq (Z-based)**: 219 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
+- **Combined**: 796 formally verified theorems across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -404,6 +404,10 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | fqYWd | `zclamp_upper` requires `lo <= hi` precondition | Without `lo <= hi`, `v > hi` and `v < lo` possible (when `hi < lo`); clamp returns `lo` not `hi` | Add `lo <= hi` hypothesis to clamp theorems that assume ordered bounds | Yes |
 | 2026-01-29 | fqYWd | `remember` + `destruct` avoids `simpl`/`cbn` reduction issues | Complex boolean proofs corrupt when `simpl`/`cbn` reduce Z comparisons | Use `remember (expr) as c; destruct c` to abstract boolean expressions before case analysis | Yes |
 | 2026-01-29 | fqYWd | Color/Rect/Utils verification scales well | Same layered architecture (R→Z→Extract) works for all types | Color: 48 theorems, Rect: 42 theorems, Utils: 24 theorems, all 0 admits | Yes |
+| 2026-01-29 | KuTgE | **STANDARDS VIOLATION**: Coq proofs committed without machine-checking | Coq was not installed; proofs written by pattern-matching from existing files | **NEVER commit formal proofs without compiling them with coqc.** Install tools FIRST via `./scripts/setup-formal-verification.sh`, then write and verify proofs. "If it was not tested, it does not work." | Yes |
+| 2026-01-29 | KuTgE | `nra`/`nia` fail on sum-of-squares with subtraction | `nra` cannot prove `0 <= (x + -y)*(x + -y) + ...`; internal `-` representation blocks solver | R: `assert (H: forall r, 0 <= r*r) by (intro; nra). apply Rplus_le_le_0_compat; apply H.` Z: `apply Z.add_nonneg_nonneg; apply Z.square_nonneg.` | Yes |
+| 2026-01-29 | KuTgE | `simpl` + `lia` fails on Z constants like 1000 | `simpl` reduces Z constants to binary representation that `lia` cannot handle | Use `cbn [field_projections]` instead of `simpl` before `lia` with Z constants; or omit `simpl` entirely | Yes |
+| 2026-01-29 | KuTgE | `simpl` + `reflexivity` fails on `x * 0 / 1000 = 0` | `simpl` partially reduces but leaves `x * 0 / 1000` unreduced | Use `cbn [projections]` then `rewrite Z.mul_0_r; reflexivity` | Yes |
 
 ---
 
@@ -665,9 +669,13 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification status (452 theorems) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (796 theorems) |
+| `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (240 proof functions, 7 types) |
+| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 556 theorems, development workflow) |
+| `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
+| `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
-| `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment |
+| `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment (9-path survey) |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
 | `LICENSE` | GPL-3.0 license |
 
@@ -1301,16 +1309,16 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Total | Status |
 |-----------|-------|---------------|-----------------|-------|--------|
-| Vec2 | 23 theorems, 53 VCs | 31 theorems | 27 theorems | 81 | DUAL VERIFIED |
-| Vec3 | 24 theorems, 68 VCs | 39 theorems | 31 theorems | 94 | DUAL VERIFIED |
-| Vec4 | 22 theorems, 68 VCs | 29 theorems | 22 theorems | 73 | DUAL VERIFIED |
-| Mat3 | 18 theorems, 26 VCs | 23 theorems | 25 theorems | 66 | DUAL VERIFIED |
-| Mat4 | 18 theorems, 27 VCs | 39 theorems | 21 theorems | 78 | DUAL VERIFIED |
-| Color | 23 theorems | 26 theorems | 22 theorems | 71 | DUAL VERIFIED |
-| Rect | 23 theorems | 20 theorems | 22 theorems | 65 | DUAL VERIFIED |
-| Utils | — | 10 theorems | 14 theorems | 24 | VERIFIED |
+| Vec2 | 49 proof fns | 47 theorems | 38 theorems | 134 | DUAL VERIFIED |
+| Vec3 | 40 proof fns | 53 theorems | 42 theorems | 135 | DUAL VERIFIED |
+| Vec4 | 39 proof fns | 43 theorems | 33 theorems | 115 | DUAL VERIFIED |
+| Mat3 | 22 proof fns | 22 theorems | 25 theorems | 69 | DUAL VERIFIED |
+| Mat4 | 22 proof fns | 38 theorems | 21 theorems | 81 | DUAL VERIFIED |
+| Color | 35 proof fns | 36 theorems | 28 theorems | 99 | DUAL VERIFIED |
+| Rect | 33 proof fns | 28 theorems | 24 theorems | 85 | DUAL VERIFIED |
+| Utils | — | 10 theorems | 8 theorems | 18 | VERIFIED |
 | Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **151 theorems** | **277 theorems** | **184 theorems** | **612** | **ACADEMIC** |
+| **Total** | **240 proof fns** | **337 theorems** | **219 theorems** | **796** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1323,7 +1331,7 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Verus proofs (151 theorems)
+# Verus proofs (236 theorems)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs
@@ -1332,7 +1340,7 @@ approach provides maximum confidence suitable for top-tier academic publication.
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
-# Coq proofs (461 theorems, ~40s)
+# Coq proofs (556 theorems, ~45s)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specifications + proofs
@@ -1362,9 +1370,13 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | Dual Verification | Critical types (Vec2-4, Mat3-4) verified in BOTH tools |
 
 **Reference:**
+- Overview & Index: `docs/verification/FORMAL_VERIFICATION.md`
+- Verus Proofs: `docs/verification/VERUS_PROOFS.md`
+- Coq Proofs: `docs/verification/COQ_PROOFS.md`
+- Coverage & Limitations: `docs/verification/VERIFICATION_COVERAGE.md`
+- WASM Pipeline: `docs/verification/WASM_EXTRACTION_PIPELINE.md`
 - Setup Guide: `docs/verification/SETUP_GUIDE.md`
-- Full Details: `docs/verification/FORMAL_VERIFICATION.md`
-- WASM Pipeline: `docs/verification/CERTICOQ_WASM_ASSESSMENT.md`
+- 9-Path Survey: `docs/verification/CERTICOQ_WASM_ASSESSMENT.md`
 
 ---
 
@@ -1794,7 +1806,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq proofs (237+ theorems), zero admits, dual verification for Vec2-4, Mat3-4 |
+| **Formal Verification** | Verus + Coq proofs (796 theorems), zero admits, dual verification for Vec2-4, Mat3-4, Color, Rect |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1829,7 +1841,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  612 formally verified theorems across Verus + Coq                          │
+│  796 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1844,4 +1856,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 82 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 612 theorems (Verus: 151, Coq R-based: 277, Coq Z-based: 184)*
+*Formal Verification: 796 theorems (Verus: 240, Coq R-based: 337, Coq Z-based: 219)*

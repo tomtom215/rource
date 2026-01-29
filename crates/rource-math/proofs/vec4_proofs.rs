@@ -380,10 +380,227 @@ proof fn vec4_length_squared_zero_iff_zero(a: SpecVec4)
 }
 
 // =============================================================================
+// EXTENDED OPERATIONS (Spec Functions)
+// =============================================================================
+
+/// Creates a vector with all components set to the same value.
+pub open spec fn vec4_splat(value: int) -> SpecVec4 {
+    SpecVec4 { x: value, y: value, z: value, w: value }
+}
+
+/// Component-wise minimum of two vectors.
+pub open spec fn vec4_min(a: SpecVec4, b: SpecVec4) -> SpecVec4 {
+    SpecVec4 {
+        x: if a.x <= b.x { a.x } else { b.x },
+        y: if a.y <= b.y { a.y } else { b.y },
+        z: if a.z <= b.z { a.z } else { b.z },
+        w: if a.w <= b.w { a.w } else { b.w },
+    }
+}
+
+/// Component-wise maximum of two vectors.
+pub open spec fn vec4_max(a: SpecVec4, b: SpecVec4) -> SpecVec4 {
+    SpecVec4 {
+        x: if a.x >= b.x { a.x } else { b.x },
+        y: if a.y >= b.y { a.y } else { b.y },
+        z: if a.z >= b.z { a.z } else { b.z },
+        w: if a.w >= b.w { a.w } else { b.w },
+    }
+}
+
+/// Component-wise absolute value.
+pub open spec fn vec4_abs(v: SpecVec4) -> SpecVec4 {
+    SpecVec4 {
+        x: if v.x >= 0 { v.x } else { -v.x },
+        y: if v.y >= 0 { v.y } else { -v.y },
+        z: if v.z >= 0 { v.z } else { -v.z },
+        w: if v.w >= 0 { v.w } else { -v.w },
+    }
+}
+
+/// Sum of all components.
+pub open spec fn vec4_element_sum(v: SpecVec4) -> int {
+    v.x + v.y + v.z + v.w
+}
+
+/// Squared distance between two points.
+pub open spec fn vec4_distance_squared(a: SpecVec4, b: SpecVec4) -> int {
+    vec4_length_squared(vec4_sub(a, b))
+}
+
+// =============================================================================
+// SPLAT PROOFS
+// =============================================================================
+
+/// **Theorem 23**: Splat is equivalent to new(v, v, v, v).
+proof fn vec4_splat_is_new(value: int)
+    ensures
+        vec4_splat(value) == vec4_new(value, value, value, value),
+{
+}
+
+/// **Theorem 24**: Splat(0) is the zero vector.
+proof fn vec4_splat_zero()
+    ensures
+        vec4_splat(0) == vec4_zero(),
+{
+}
+
+// =============================================================================
+// MIN/MAX PROOFS
+// =============================================================================
+
+/// **Theorem 25**: Component-wise min is commutative.
+proof fn vec4_min_commutative(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_min(a, b) == vec4_min(b, a),
+{
+}
+
+/// **Theorem 26**: Component-wise max is commutative.
+proof fn vec4_max_commutative(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_max(a, b) == vec4_max(b, a),
+{
+}
+
+/// **Theorem 27**: min(a, a) = a (idempotent).
+proof fn vec4_min_idempotent(a: SpecVec4)
+    ensures
+        vec4_min(a, a) == a,
+{
+}
+
+/// **Theorem 28**: max(a, a) = a (idempotent).
+proof fn vec4_max_idempotent(a: SpecVec4)
+    ensures
+        vec4_max(a, a) == a,
+{
+}
+
+/// **Theorem 29**: min(a, b) + max(a, b) = a + b.
+proof fn vec4_min_max_sum(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_add(vec4_min(a, b), vec4_max(a, b)) == vec4_add(a, b),
+{
+}
+
+/// **Theorem 30**: min(a, b) is component-wise <= both operands.
+proof fn vec4_min_le_both(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_min(a, b).x <= a.x && vec4_min(a, b).x <= b.x,
+        vec4_min(a, b).y <= a.y && vec4_min(a, b).y <= b.y,
+        vec4_min(a, b).z <= a.z && vec4_min(a, b).z <= b.z,
+        vec4_min(a, b).w <= a.w && vec4_min(a, b).w <= b.w,
+{
+}
+
+// =============================================================================
+// ABS PROOFS
+// =============================================================================
+
+/// **Theorem 31**: Abs produces non-negative components.
+proof fn vec4_abs_nonneg(v: SpecVec4)
+    ensures
+        vec4_abs(v).x >= 0 && vec4_abs(v).y >= 0
+        && vec4_abs(v).z >= 0 && vec4_abs(v).w >= 0,
+{
+}
+
+/// **Theorem 32**: Abs is idempotent: abs(abs(v)) = abs(v).
+proof fn vec4_abs_idempotent(v: SpecVec4)
+    ensures
+        vec4_abs(vec4_abs(v)) == vec4_abs(v),
+{
+    let a = vec4_abs(v);
+    assert(a.x >= 0);
+    assert(a.y >= 0);
+    assert(a.z >= 0);
+    assert(a.w >= 0);
+}
+
+/// **Theorem 33**: Abs of negation equals abs: |−v| = |v|.
+proof fn vec4_abs_neg(v: SpecVec4)
+    ensures
+        vec4_abs(vec4_neg(v)) == vec4_abs(v),
+{
+}
+
+// =============================================================================
+// ELEMENT SUM PROOFS
+// =============================================================================
+
+/// **Theorem 34**: Element sum of zero is zero.
+proof fn vec4_element_sum_zero()
+    ensures
+        vec4_element_sum(vec4_zero()) == 0,
+{
+}
+
+/// **Theorem 35**: Element sum is additive: sum(a + b) = sum(a) + sum(b).
+proof fn vec4_element_sum_additive(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_element_sum(vec4_add(a, b)) == vec4_element_sum(a) + vec4_element_sum(b),
+{
+}
+
+/// **Theorem 36**: Element sum commutes with scaling.
+proof fn vec4_element_sum_scale(s: int, v: SpecVec4)
+    ensures
+        vec4_element_sum(vec4_scale(s, v)) == s * vec4_element_sum(v),
+{
+    assert(s * v.x + s * v.y + s * v.z + s * v.w
+           == s * (v.x + v.y + v.z + v.w)) by(nonlinear_arith);
+}
+
+// =============================================================================
+// DISTANCE SQUARED PROOFS
+// =============================================================================
+
+/// **Theorem 37**: Distance squared is non-negative.
+proof fn vec4_distance_squared_nonneg(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_distance_squared(a, b) >= 0,
+{
+    let d = vec4_sub(a, b);
+    vec4_length_squared_nonnegative(d);
+}
+
+/// **Theorem 38**: Distance squared is symmetric.
+proof fn vec4_distance_squared_symmetric(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_distance_squared(a, b) == vec4_distance_squared(b, a),
+{
+    let d1 = vec4_sub(a, b);
+    let d2 = vec4_sub(b, a);
+    // d1 = -d2 (linear arithmetic from vec4_sub definition)
+    assert(d1.x == -d2.x);
+    assert(d1.y == -d2.y);
+    assert(d1.z == -d2.z);
+    assert(d1.w == -d2.w);
+    // (-x)² = x²: feed linear relationship as prerequisite to nonlinear_arith
+    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith)
+        requires d1.x == -d2.x;
+    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith)
+        requires d1.y == -d2.y;
+    assert(d1.z * d1.z == d2.z * d2.z) by(nonlinear_arith)
+        requires d1.z == -d2.z;
+    assert(d1.w * d1.w == d2.w * d2.w) by(nonlinear_arith)
+        requires d1.w == -d2.w;
+}
+
+/// **Theorem 39**: Distance squared to self is zero.
+proof fn vec4_distance_squared_self(a: SpecVec4)
+    ensures
+        vec4_distance_squared(a, a) == 0,
+{
+}
+
+// =============================================================================
 // VECTOR SPACE STRUCTURE
 // =============================================================================
 
-/// **Theorem 22**: Vec4 forms a vector space.
+/// **Theorem 40**: Vec4 forms a vector space.
 ///
 /// This proof invokes all the vector space axioms to demonstrate Vec4
 /// satisfies the complete definition of a vector space over integers.

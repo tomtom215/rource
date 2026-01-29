@@ -236,6 +236,93 @@ Proof.
   - f_equal. apply Z.max_comm. apply Z.min_comm.
 Qed.
 
+(** * Additional Operations *)
+
+(** Intersection of two rectangles (non-negative dimensions guaranteed) *)
+Definition zrect_intersection (a b : ZRect) : ZRect :=
+  let x := Z.max (zrect_x a) (zrect_x b) in
+  let y0 := Z.max (zrect_y a) (zrect_y b) in
+  let right := Z.min (zrect_x a + zrect_w a) (zrect_x b + zrect_w b) in
+  let bottom := Z.min (zrect_y a + zrect_h a) (zrect_y b + zrect_h b) in
+  mkZRect x y0 (Z.max 0 (right - x)) (Z.max 0 (bottom - y0)).
+
+(** Create rectangle from center point and dimensions *)
+Definition zrect_from_center (cx cy w h : Z) : ZRect :=
+  mkZRect (cx - w / 2) (cy - h / 2) w h.
+
+(** Scale rectangle dimensions by a factor (fixed-point, 1000 = 1.0) *)
+Definition zrect_scale (r : ZRect) (factor : Z) : ZRect :=
+  mkZRect (zrect_x r) (zrect_y r)
+          (zrect_w r * factor / 1000) (zrect_h r * factor / 1000).
+
+(** ** From-Center Properties *)
+
+Theorem zrect_from_center_width : forall cx cy w h : Z,
+  zrect_w (zrect_from_center cx cy w h) = w.
+Proof.
+  intros. unfold zrect_from_center. simpl. reflexivity.
+Qed.
+
+Theorem zrect_from_center_height : forall cx cy w h : Z,
+  zrect_h (zrect_from_center cx cy w h) = h.
+Proof.
+  intros. unfold zrect_from_center. simpl. reflexivity.
+Qed.
+
+(** ** Scale Properties *)
+
+Theorem zrect_scale_identity : forall (r : ZRect),
+  zrect_scale r 1000 = r.
+Proof.
+  intros [x y0 w h]. unfold zrect_scale. simpl.
+  apply zrect_eq; try reflexivity; apply Z.div_mul; lia.
+Qed.
+
+Theorem zrect_scale_preserves_position : forall (r : ZRect) (factor : Z),
+  zrect_x (zrect_scale r factor) = zrect_x r /\
+  zrect_y (zrect_scale r factor) = zrect_y r.
+Proof.
+  intros [x y0 w h] factor. unfold zrect_scale. simpl. split; reflexivity.
+Qed.
+
+Theorem zrect_scale_zero : forall (r : ZRect),
+  zrect_w (zrect_scale r 0) = 0 /\ zrect_h (zrect_scale r 0) = 0.
+Proof.
+  intros [x y0 w h]. unfold zrect_scale.
+  cbn [zrect_w zrect_h zrect_x zrect_y].
+  split; rewrite Z.mul_0_r; reflexivity.
+Qed.
+
+(** ** Intersection Properties *)
+
+Theorem zrect_intersection_nonneg_w : forall (a b : ZRect),
+  0 <= zrect_w (zrect_intersection a b).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold zrect_intersection. simpl. apply Z.le_max_l.
+Qed.
+
+Theorem zrect_intersection_nonneg_h : forall (a b : ZRect),
+  0 <= zrect_h (zrect_intersection a b).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold zrect_intersection. simpl. apply Z.le_max_l.
+Qed.
+
+Theorem zrect_intersection_comm : forall (a b : ZRect),
+  zrect_intersection a b = zrect_intersection b a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold zrect_intersection. simpl.
+  apply zrect_eq.
+  - apply Z.max_comm.
+  - apply Z.max_comm.
+  - rewrite (Z.min_comm (ax + aw) (bx + bw)).
+    rewrite (Z.max_comm ax bx). reflexivity.
+  - rewrite (Z.min_comm (ay + ah) (by0 + bh)).
+    rewrite (Z.max_comm ay by0). reflexivity.
+Qed.
+
 (** * Computational Tests *)
 
 Example zrect_test_new :

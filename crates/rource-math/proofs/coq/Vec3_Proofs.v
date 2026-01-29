@@ -429,10 +429,156 @@ Proof.
   - apply vec3_scale_one.
 Qed.
 
+(** * Component-wise Operation Properties *)
+
+(** Theorem 37: min is commutative.
+    ∀ a b : Vec3, min(a, b) = min(b, a) *)
+Theorem vec3_min_comm : forall a b : Vec3,
+  vec3_min a b = vec3_min b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec3_min. simpl.
+  f_equal; apply Rmin_comm.
+Qed.
+
+(** Theorem 38: max is commutative.
+    ∀ a b : Vec3, max(a, b) = max(b, a) *)
+Theorem vec3_max_comm : forall a b : Vec3,
+  vec3_max a b = vec3_max b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec3_max. simpl.
+  f_equal; apply Rmax_comm.
+Qed.
+
+(** Theorem 39: min of a vector with itself is identity.
+    ∀ a : Vec3, min(a, a) = a *)
+Theorem vec3_min_self : forall a : Vec3,
+  vec3_min a a = a.
+Proof.
+  intros a. destruct a.
+  unfold vec3_min. simpl.
+  f_equal; unfold Rmin; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 40: max of a vector with itself is identity.
+    ∀ a : Vec3, max(a, a) = a *)
+Theorem vec3_max_self : forall a : Vec3,
+  vec3_max a a = a.
+Proof.
+  intros a. destruct a.
+  unfold vec3_max. simpl.
+  f_equal; unfold Rmax; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 41: abs produces non-negative components.
+    ∀ v : Vec3, |v|.x ≥ 0 ∧ |v|.y ≥ 0 ∧ |v|.z ≥ 0 *)
+Theorem vec3_abs_nonneg : forall v : Vec3,
+  0 <= vec3_x (vec3_abs v) /\ 0 <= vec3_y (vec3_abs v) /\ 0 <= vec3_z (vec3_abs v).
+Proof.
+  intros v. destruct v.
+  unfold vec3_abs. simpl.
+  repeat split; apply Rabs_pos.
+Qed.
+
+(** Theorem 42: abs of negation equals abs.
+    ∀ v : Vec3, |−v| = |v| *)
+Theorem vec3_abs_neg : forall v : Vec3,
+  vec3_abs (vec3_neg v) = vec3_abs v.
+Proof.
+  intros v. destruct v.
+  unfold vec3_abs, vec3_neg. simpl.
+  f_equal; apply Rabs_Ropp.
+Qed.
+
+(** Theorem 43: abs is idempotent.
+    ∀ v : Vec3, ||v|| = |v| *)
+Theorem vec3_abs_idempotent : forall v : Vec3,
+  vec3_abs (vec3_abs v) = vec3_abs v.
+Proof.
+  intros v. destruct v.
+  unfold vec3_abs. simpl.
+  f_equal; apply Rabs_pos_eq; apply Rabs_pos.
+Qed.
+
+(** * Distance Properties *)
+
+(** Theorem 44: distance squared from a point to itself is 0. *)
+Theorem vec3_distance_squared_self : forall a : Vec3,
+  vec3_distance_squared a a = 0.
+Proof.
+  intros a. destruct a.
+  unfold vec3_distance_squared, vec3_sub, vec3_length_squared, vec3_dot. simpl.
+  ring.
+Qed.
+
+(** Theorem 45: distance squared is symmetric. *)
+Theorem vec3_distance_squared_symmetric : forall a b : Vec3,
+  vec3_distance_squared a b = vec3_distance_squared b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec3_distance_squared, vec3_sub, vec3_length_squared, vec3_dot. simpl.
+  ring.
+Qed.
+
+(** Theorem 46: distance squared is non-negative. *)
+Theorem vec3_distance_squared_nonneg : forall a b : Vec3,
+  0 <= vec3_distance_squared a b.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec3_distance_squared, vec3_sub, vec3_length_squared, vec3_dot. simpl.
+  assert (H: forall r : R, 0 <= r * r) by (intro; nra).
+  apply Rplus_le_le_0_compat; [apply Rplus_le_le_0_compat |]; apply H.
+Qed.
+
+(** * Reduction Operation Properties *)
+
+(** Theorem 47: element sum of zero vector is 0. *)
+Theorem vec3_element_sum_zero :
+  vec3_element_sum vec3_zero = 0.
+Proof.
+  unfold vec3_element_sum, vec3_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 48: element sum distributes over addition. *)
+Theorem vec3_element_sum_add : forall a b : Vec3,
+  vec3_element_sum (vec3_add a b) = vec3_element_sum a + vec3_element_sum b.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec3_element_sum, vec3_add. simpl.
+  ring.
+Qed.
+
+(** Theorem 49: element product of zero vector is 0. *)
+Theorem vec3_element_product_zero :
+  vec3_element_product vec3_zero = 0.
+Proof.
+  unfold vec3_element_product, vec3_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 50: element sum of splat is 3*v. *)
+Theorem vec3_element_sum_splat : forall v : R,
+  vec3_element_sum (vec3_splat v) = 3 * v.
+Proof.
+  intros v.
+  unfold vec3_element_sum, vec3_splat. simpl.
+  ring.
+Qed.
+
+(** Theorem 51: splat(0) = zero vector. *)
+Theorem vec3_splat_zero :
+  vec3_splat 0 = vec3_zero.
+Proof.
+  unfold vec3_splat, vec3_zero. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 36
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl
+    Total theorems: 51
+    Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl,
+      Rmin_comm, Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra
     Admits: 0
     Axioms: Standard Coq real number library only
 
