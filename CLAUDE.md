@@ -83,8 +83,8 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 105 theorems, 242 verification conditions, 0 errors
-- **Coq**: 132+ theorems, 0 admits, machine-checked
-- **Combined**: 237+ formally verified theorems
+- **Coq**: 216 theorems, 0 admits, machine-checked (~16.3s compilation)
+- **Combined**: 321 formally verified theorems
 
 ### The Non-Negotiable Rules
 
@@ -360,6 +360,11 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-28 | SD81W | Coq installation via apt needs coq-theories | apt-get only installs coqc without theories | Use `apt-get install -y coq coq-theories` | Yes |
 | 2026-01-28 | SD81W | Mat3/Mat4 Coq proofs follow Vec2/Vec3/Vec4 pattern | Manual Coq specs work well | Added Mat3.v, Mat4.v, Mat3_Proofs.v, Mat4_Proofs.v (44 new theorems) | Yes |
 | 2026-01-28 | SD81W | Network issues can block apt-get | Transient DNS failures | Script should retry with exponential backoff | Yes |
+| 2026-01-28 | 4sbzk | ICC complexity proofs simpler for fixed-size types | Operations on Vec2-4, Mat3-4 have constant cost regardless of input values | Created Complexity.v with 60 theorems proving O(1) for all operations | Yes |
+| 2026-01-28 | 4sbzk | Coq lia tactic sufficient for O(1) bounds | Simple constant-cost proofs don't need ring/lra | Used `lia` for all complexity bounds; compilation under 1 second | Yes |
+| 2026-01-29 | 4sbzk | Coq `f_equal` causes exponential blowup on large records | `f_equal` on 16-field Mat4 creates nested terms causing `lra`/`ring` to time out | Use `apply mat4_eq` instead of `f_equal`; processes fields independently | Yes |
+| 2026-01-29 | 4sbzk | Coq `ring` times out on 16 simultaneous polynomial identities | 48 variables × 16 components = exponential term growth | Decompose into 16 component lemmas, each proven with `ring` separately | Yes |
+| 2026-01-29 | 4sbzk | Coq tactic selection critical for Mat4 proofs | Wrong tactic = 30+ min timeout; right tactic = ~6s | Established tactic guide: lra (linear), ring (polynomial), reflexivity (structural), mat4_eq (records), component decomposition (complex polynomial) | Yes |
 
 ---
 
@@ -1240,7 +1245,7 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | Vec4 | 22 theorems, 68 VCs | 26+ theorems | 48+ | DUAL VERIFIED |
 | Mat3 | 18 theorems, 26 VCs | 21 theorems | 39 | DUAL VERIFIED |
 | Mat4 | 18 theorems, 27 VCs | 21 theorems | 39 | DUAL VERIFIED |
-| **Total** | **105 theorems** | **132+ theorems** | **237+** | **ACADEMIC** |
+| **Total** | **105 theorems** | **216 theorems** | **321** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1741,7 +1746,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  237+ formally verified theorems across Verus + Coq                         │
+│  321 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1753,7 +1758,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 ---
 
-*Last updated: 2026-01-28*
+*Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 79 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 237+ theorems (Verus: 105, Coq: 132+)*
+*Optimization Phases: 80 (see docs/performance/CHRONOLOGY.md)*
+*Formal Verification: 321 theorems (Verus: 105, Coq: 216)*
