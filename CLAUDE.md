@@ -83,8 +83,8 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 105 theorems, 242 verification conditions, 0 errors
-- **Coq**: 241 theorems, 0 admits, machine-checked (~18.1s compilation)
-- **Combined**: 346 formally verified theorems
+- **Coq**: 347 theorems, 0 admits, machine-checked (~39.8s compilation, 22 files)
+- **Combined**: 452 formally verified theorems
 
 ### The Non-Negotiable Rules
 
@@ -376,6 +376,12 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | EnuTg | 9 distinct Coq-to-WASM paths exist (3 viable today) | Comprehensive survey: CertiCoq-WASM is only one option among many | Full landscape documented in CERTICOQ_WASM_ASSESSMENT.md | Yes |
 | 2026-01-29 | EnuTg | coq-rust-extraction (AU-COBRA) needs Coq 8.20+ | v0.1.1 (May 2025), built on MetaCoq erasure | Deferred; interesting for Rust integration but too early and wrong Coq version | Yes |
 | 2026-01-29 | EnuTg | WasmGC (browser GC) vs linear memory for Coq-extracted code | wasm_of_ocaml uses WasmGC (Chrome 119+, Firefox 122+, Safari 18.2+) | WasmGC ideal for pure functional Coq-extracted code (no C stubs) | Yes |
+| 2026-01-29 | T2LcJ | `cbn [projections]` essential for Z record proofs | `simpl` reduces Z arithmetic into match expressions; `ring` cannot handle them | Use `cbn [zm3_0 zm3_1 ...]` to reduce only record projections before `ring` | Yes |
+| 2026-01-29 | T2LcJ | Component decomposition scales to Mat4 over Z | Same pattern as R-based proofs works for Z computational bridge | 16 Local Lemmas for Mat4 mul_assoc, each proven with `ring` separately | Yes |
+| 2026-01-29 | T2LcJ | `Local Ltac reduce_projections` encapsulates cbn pattern | Repeated `cbn [field_names]` calls throughout Mat4_Compute.v | Created reusable tactic abbreviation for cleaner proof scripts | Yes |
+| 2026-01-29 | T2LcJ | ExtrOcamlZInt maps Z to native int | Coq Z type extracts to OCaml arbitrary-precision by default | Use `Require Import ExtrOcamlZInt` for efficient native int extraction | Yes |
+| 2026-01-29 | T2LcJ | MetaCoq blocked by Coq opam repo HTTP 503 | Repository infrastructure intermittently unavailable | Try alternative sources: rocq-prover.org/packages, opam.ocaml.org | Yes |
+| 2026-01-29 | T2LcJ | OCaml record syntax needed for matrix constructors | Coq record constructors don't extract as OCaml functions | Use `{ zm3_0 = 1; ... }` syntax in OCaml test driver, not `mkZMat3 ...` | Yes |
 
 ---
 
@@ -1249,14 +1255,15 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 **Verified Components:**
 
-| Component | Verus | Coq | Total Theorems | Status |
-|-----------|-------|-----|----------------|--------|
-| Vec2 | 23 theorems, 53 VCs | 29 theorems | 52 | DUAL VERIFIED |
-| Vec3 | 24 theorems, 68 VCs | 37 theorems | 61 | DUAL VERIFIED |
-| Vec4 | 22 theorems, 68 VCs | 26+ theorems | 48+ | DUAL VERIFIED |
-| Mat3 | 18 theorems, 26 VCs | 21 theorems | 39 | DUAL VERIFIED |
-| Mat4 | 18 theorems, 27 VCs | 21 theorems | 39 | DUAL VERIFIED |
-| **Total** | **105 theorems** | **216 theorems** | **321** | **ACADEMIC** |
+| Component | Verus | Coq (R-based) | Coq (Z-Compute) | Total | Status |
+|-----------|-------|---------------|-----------------|-------|--------|
+| Vec2 | 23 theorems, 53 VCs | 31 theorems | 27 theorems | 81 | DUAL VERIFIED |
+| Vec3 | 24 theorems, 68 VCs | 39 theorems | 31 theorems | 94 | DUAL VERIFIED |
+| Vec4 | 22 theorems, 68 VCs | 29 theorems | 22 theorems | 73 | DUAL VERIFIED |
+| Mat3 | 18 theorems, 26 VCs | 23 theorems | 25 theorems | 66 | DUAL VERIFIED |
+| Mat4 | 18 theorems, 27 VCs | 39 theorems | 21 theorems | 78 | DUAL VERIFIED |
+| Complexity | — | 60 theorems | — | 60 | VERIFIED |
+| **Total** | **105 theorems** | **221 theorems** | **126 theorems** | **452** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1757,7 +1764,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  346 formally verified theorems across Verus + Coq                          │
+│  452 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1771,5 +1778,5 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 81 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 346 theorems (Verus: 105, Coq: 241)*
+*Optimization Phases: 82 (see docs/performance/CHRONOLOGY.md)*
+*Formal Verification: 452 theorems (Verus: 105, Coq: 347)*

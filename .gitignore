@@ -27,3 +27,20 @@ crates/rource-render/tests/visual/output/
 # WASM build artifacts
 /pkg/
 /wasm-pack-logs/
+
+# Coq build artifacts
+*.vo
+*.vok
+*.vos
+*.glob
+.lia.cache
+.nia.cache
+
+# OCaml build artifacts
+*.cmo
+*.cmi
+*.cma
+*.cmx
+*.cmxa
+*.byte
+*.native

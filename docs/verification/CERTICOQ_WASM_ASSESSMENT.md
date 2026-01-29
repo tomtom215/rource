@@ -28,16 +28,16 @@ our Coq 8.18 infrastructure, and recommends the optimal pipeline.
 **Recommended Pipeline (Available Today):**
 
 ```
-Vec2_Compute.v (Z-based, 25 theorems)
+Vec2_Compute.v ... Mat4_Compute.v (Z-based, 126 theorems total)
     │
-    ▼  [Coq Standard Extraction]
-vec2_extracted.ml (OCaml)
+    ▼  [Coq Standard Extraction via RourceMath_Extract.v]
+rource_math_extracted.ml (OCaml, 23 KB)
     │
     ▼  [ocamlc]
-vec2_extracted.cmo (OCaml bytecode)
+rource_math_extracted.cmo (OCaml bytecode)
     │
-    ▼  [wasm_of_ocaml]
-vec2_verified.wasm (WebAssembly)
+    ▼  [wasm_of_ocaml v6.2.0]
+rource_math.wasm (WebAssembly, 6.8 KB)
 ```
 
 **Deliverables Completed:**
@@ -45,11 +45,18 @@ vec2_verified.wasm (WebAssembly)
 | Deliverable | Status | Details |
 |-------------|--------|---------|
 | Feasibility assessment (9 paths) | Done | This document |
-| Vec2_Compute.v | Done | 25 theorems, Z-based, extractable |
-| Vec2_Extract.v | Done | OCaml extraction demonstrated |
+| Vec2_Compute.v | Done | 27 theorems, Z-based, extractable |
+| Vec3_Compute.v | Done | 31 theorems, Z-based, extractable |
+| Vec4_Compute.v | Done | 22 theorems, Z-based, extractable |
+| Mat3_Compute.v | Done | 25 theorems (det, trace, mul assoc) |
+| Mat4_Compute.v | Done | 21 theorems + 16 component lemmas |
+| All Extract files | Done | 5 individual + 1 unified (RourceMath_Extract.v) |
+| OCaml test driver | Done | test_extracted.ml, all tests pass |
+| wasm_of_ocaml pipeline | Done | 6.8 KB WASM library via v6.2.0 |
 | Complexity.v warnings fixed | Done | Zero warnings (was 11) |
 | Architecture design | Done | Three-layer model documented |
 | Full landscape survey | Done | 9 paths evaluated |
+| MetaCoq investigation | Blocked | Coq opam repository HTTP 503 |
 
 ---
 
@@ -188,16 +195,21 @@ The specifications and the compiler serve fundamentally different purposes.
 │      Status: COMPLETE (321 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
-│  ├── Vec2_Compute.v (25 theorems, EXTRACTABLE)                          │
-│  ├── [Future: Vec3_Compute.v, Mat3_Compute.v, etc.]                     │
+│  ├── Vec2_Compute.v (27 theorems)                                       │
+│  ├── Vec3_Compute.v (31 theorems)                                       │
+│  ├── Vec4_Compute.v (22 theorems)                                       │
+│  ├── Mat3_Compute.v (25 theorems, determinant + trace)                  │
+│  ├── Mat4_Compute.v (21 theorems + 16 component lemmas)                 │
 │  └── Purpose: Computable operations with algebraic proofs               │
-│      Status: PROOF OF CONCEPT (Vec2 complete)                           │
+│      Status: COMPLETE (126 theorems, all 5 types)                       │
 │                                                                         │
 │  Layer 3: Extraction Pipeline                                           │
-│  ├── Vec2_Extract.v → vec2_extracted.ml (OCaml, working today)          │
+│  ├── RourceMath_Extract.v → rource_math_extracted.ml (OCaml, 23 KB)     │
+│  ├── wasm_of_ocaml v6.2.0 → rource_math.wasm (6.8 KB)                  │
+│  ├── test_extracted.ml → all tests pass                                 │
 │  ├── [Future: CertiCoq-WASM → verified .wasm (requires Coq 8.20)]      │
 │  └── Purpose: Generate executable code from verified specs              │
-│      Status: OCaml extraction demonstrated                              │
+│      Status: OPERATIONAL (Path 1 complete, 6.8 KB WASM)                 │
 │                                                                         │
 │  Cross-Layer Properties:                                                │
 │  • Layer 1 and Layer 2 prove the SAME algebraic properties              │
@@ -229,11 +241,13 @@ for all ring operations. The only properties that do NOT transfer are those
 requiring the field structure of R (division, square root, normalization) or
 the order completeness of R.
 
-### 4.3 Vec2_Compute.v Details
+### 4.3 Compute File Details
+
+#### Vec2_Compute.v
 
 **File**: `crates/rource-math/proofs/coq/Vec2_Compute.v`
 **Compilation time**: 1.472s
-**Theorems**: 25 (all machine-checked, zero admits)
+**Theorems**: 27 (all machine-checked, zero admits)
 
 | Theorem | Property | Tactic |
 |---------|----------|--------|
@@ -268,7 +282,33 @@ the order completeness of R.
 - Decidable equality (`zvec2_eq_dec`) for computational use
 - Full extraction support (demonstrated via Vec2_Extract.v)
 
-### 4.4 Extraction Results
+### 4.4 Additional Compute Files
+
+**Vec3_Compute.v** (31 theorems, 1.6s compilation, zero admits):
+- All Vec2 properties extended to 3D
+- Cross product (returns ZVec3, unlike Vec2 where it returns Z)
+- Cross product orthogonality: (a×b)·a = 0, (a×b)·b = 0
+- Right-hand rule: X×Y=Z, Y×Z=X, Z×X=Y
+- Scalar triple product cyclic and antisymmetry properties
+
+**Vec4_Compute.v** (22 theorems, 1.6s compilation, zero admits):
+- Vector space axioms over Z for 4D vectors
+- Dot product properties (commutativity, linearity, distribution)
+- Length squared non-negativity and zero-iff-zero
+
+**Mat3_Compute.v** (25 theorems, 3.0s compilation, zero admits):
+- Matrix addition, scaling, transpose properties
+- Multiplication identity and associativity (via `cbn [projections]; ring`)
+- Determinant properties: det(I)=1, det(0)=0, det(sA)=s³·det(A), det(Aᵀ)=det(A)
+- Trace properties: tr(I)=3, tr(0)=0, tr(A+B)=tr(A)+tr(B), tr(sA)=s·tr(A), tr(Aᵀ)=tr(A)
+
+**Mat4_Compute.v** (21 theorems + 16 component lemmas, 5.5s compilation, zero admits):
+- Same properties as Mat3 extended to 4×4
+- Uses `Local Ltac reduce_projections` for clean tactic abbreviation
+- Multiplication associativity decomposed into 16 component lemmas (one per output element)
+- Trace properties: tr(I)=4, tr(0)=0, etc.
+
+### 4.5 Extraction Results
 
 **Standard Coq extraction to OCaml** produces clean, compilable code:
 
@@ -288,6 +328,21 @@ The extracted code:
 - Uses OCaml native `int` for Z (via `ExtrOcamlZInt`)
 - Preserves the algebraic properties proven in Vec2_Compute.v
 - Is directly compilable without modification
+
+**Unified Extraction (RourceMath_Extract.v):**
+
+All 5 types are extracted into a single module `rource_math_extracted.ml` (23 KB):
+- ZVec2 (2D vectors): 15 operations
+- ZVec3 (3D vectors): 18 operations
+- ZVec4 (4D vectors): 17 operations
+- ZMat3 (3×3 matrices): 10 operations
+- ZMat4 (4×4 matrices): 18 operations
+
+**WASM Output (via wasm_of_ocaml v6.2.0):**
+- Library-only WASM: 6.8 KB
+- With test driver: 42.2 KB
+- Compilation: OCaml bytecode → wasm_of_ocaml → WASM (WasmGC target)
+- All OCaml tests pass before WASM compilation
 
 ---
 
@@ -585,26 +640,32 @@ let zvec2_add a b =
 
 - [x] CertiCoq-WASM feasibility assessment
 - [x] Full landscape survey (9 paths evaluated)
-- [x] Vec2_Compute.v — Z-based computational bridge (25 theorems)
+- [x] Vec2_Compute.v — Z-based computational bridge (27 theorems)
 - [x] Vec2_Extract.v — Standard Coq extraction to OCaml
 - [x] Complexity.v warning fixes (11 warnings eliminated)
 - [x] Layered verification architecture design
 
-### 7.2 Near-Term: Path 1 Pipeline (Q2 2026)
+### 7.2 Near-Term: Path 1 Pipeline (Q2 2026) ✅ COMPLETED
 
-- [ ] Install wasm_of_ocaml toolchain (OCaml + Dune + Binaryen)
-- [ ] Compile vec2_extracted.ml → WASM via wasm_of_ocaml
+- [x] Install wasm_of_ocaml toolchain (opam + wasm_of_ocaml-compiler v6.2.0 + Binaryen 119)
+- [x] Compile extracted OCaml → WASM via wasm_of_ocaml (library: 6.8 KB, test: 42.2 KB)
 - [ ] Benchmark extracted WASM vs wasm-pack WASM
-- [ ] Extend computational bridge: Vec3_Compute.v, Vec4_Compute.v
-- [ ] Extend computational bridge: Mat3_Compute.v, Mat4_Compute.v
-- [ ] Create extraction for all Compute modules
+- [x] Extend computational bridge: Vec3_Compute.v (31 thms), Vec4_Compute.v (22 thms)
+- [x] Extend computational bridge: Mat3_Compute.v (25 thms), Mat4_Compute.v (21 thms + 16 components)
+- [x] Create extraction for all Compute modules (5 individual + 1 unified)
+- [x] Create OCaml test driver (test_extracted.ml, all tests pass)
 
 ### 7.3 Medium-Term: Path 2 Pipeline (Q3 2026)
 
-- [ ] Install MetaCoq for Coq 8.18 (verified extraction)
+- [ ] Install MetaCoq for Coq 8.18 (blocked: Coq opam repository HTTP 503 on 2026-01-29)
 - [ ] Test MetaCoq verified extraction on Vec2_Compute.v
 - [ ] Compare verified vs unverified extraction output
 - [ ] Document TCB reduction for academic publication
+
+**Note (2026-01-29)**: MetaCoq installation was attempted but blocked by Coq opam
+repository infrastructure returning HTTP 503 errors. Alternative opam sources
+(https://rocq-prover.org/packages, https://opam.ocaml.org/packages/) should be
+tried when infrastructure is available.
 
 ### 7.4 Long-Term: Path 4 Pipeline (Q4 2026+, when Coq 8.20 available)
 
@@ -681,6 +742,6 @@ in the mathematical correctness of the operations.
 
 ---
 
-*Assessment completed: 2026-01-29*
+*Assessment completed: 2026-01-29 (initial survey), updated 2026-01-29 (full pipeline implementation)*
 *Assessor: Claude (automated formal verification pipeline)*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC*

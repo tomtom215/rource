@@ -530,23 +530,27 @@ architecture combining Verus with the Coq ecosystem.
 │       │         (105 theorems)   Vector space axioms, dot/cross         │
 │       │                          properties, matrix ring structure      │
 │       │                                                                 │
-│       ├──► Manual Coq Specs ───► Coq Proofs (241 theorems)             │
+│       ├──► Manual Coq Specs ───► Coq Proofs (347 theorems)             │
 │       │                                │                                │
 │       │                                ├──► ICC ──► Complexity Bounds   │
 │       │                                │            O(1) proofs (60)    │
 │       │                                │                                │
 │       │                                ├──► Z-based Computational Bridge│
-│       │                                │    Vec2_Compute.v (25 thms)    │
-│       │                                │         │                      │
-│       │                                │    Path 1: Coq Extraction      │
-│       │                                │         │                      │
-│       │                                │         ▼                      │
-│       │                                │    OCaml (vec2_extracted.ml)   │
-│       │                                │         │                      │
-│       │                                │    wasm_of_ocaml (production)  │
-│       │                                │         │                      │
-│       │                                │         ▼                      │
-│       │                                │    WASM (browser execution)    │
+│       │                                │    Vec2_Compute.v (27 thms)   │
+│       │                                │    Vec3_Compute.v (31 thms)   │
+│       │                                │    Vec4_Compute.v (22 thms)   │
+│       │                                │    Mat3_Compute.v (25 thms)   │
+│       │                                │    Mat4_Compute.v (21 thms)   │
+│       │                                │         │                     │
+│       │                                │    Path 1: Coq Extraction     │
+│       │                                │         │                     │
+│       │                                │         ▼                     │
+│       │                                │    OCaml (rource_math_extracted.ml)│
+│       │                                │         │                     │
+│       │                                │    wasm_of_ocaml v6.2.0       │
+│       │                                │         │                     │
+│       │                                │         ▼                     │
+│       │                                │    WASM (6.8 KB library)      │
 │       │                                │                                │
 │       │                                └──► [Future: CertiCoq-WASM]     │
 │       │                                     (Path 4, Coq 8.20+)        │
@@ -564,9 +568,9 @@ architecture combining Verus with the Coq ecosystem.
 | Tool | Purpose | Maturity | Integration |
 |------|---------|----------|-------------|
 | **Verus** | Algebraic properties | Production | ✅ Active |
-| **Coq** | Mathematical proofs, complexity | Production | ✅ Active (241 theorems) |
-| **wasm_of_ocaml** | OCaml → WASM compilation | Production (v6.2.0) | Recommended (Path 1) |
-| **MetaCoq Verified Extraction** | Verified Coq → OCaml | Research (PLDI'24) | Planned (Path 2) |
+| **Coq** | Mathematical proofs, complexity | Production | ✅ Active (347 theorems) |
+| **wasm_of_ocaml** | OCaml → WASM compilation | Production (v6.2.0) | ✅ Active (Path 1, 6.8 KB lib) |
+| **MetaCoq Verified Extraction** | Verified Coq → OCaml | Research (PLDI'24) | Blocked (Path 2, opam 503) |
 | **CertiCoq-WASM** | Coq → Verified WASM | Research (CPP 2025) | Deferred (Path 4, needs 8.20) |
 | **coq-rust-extraction** | Coq → Rust extraction | Early research (v0.1.1) | Deferred (needs 8.20+) |
 | **WasmCert-Coq** | WASM formalization | Production | CertiCoq-WASM dependency |
@@ -752,10 +756,11 @@ explosion.
 See `docs/performance/CHRONOLOGY.md` Phase 80 and `docs/performance/BENCHMARKS.md`
 for complete timing data and approach comparison.
 
-#### Phase 3: Coq-to-WASM Pipeline (Q1-Q3 2026) - ASSESSED + ALTERNATIVES SURVEYED
+#### Phase 3: Coq-to-WASM Pipeline (Q1-Q3 2026) - ASSESSED + PIPELINE OPERATIONAL
 
 **Status**: Full landscape survey complete. 9 paths evaluated, 3 viable today.
 Recommended pipeline: Standard Extraction + wasm_of_ocaml (production-ready).
+Pipeline operational: All 5 types (Vec2-4, Mat3-4) extracted to OCaml and compiled to WASM (6.8 KB library).
 
 **CertiCoq-WASM Blockers (3 independent):**
 1. **R type incompatible with extraction** - Coq Reals are axiomatized, non-extractable
@@ -775,8 +780,8 @@ Recommended pipeline: Standard Extraction + wasm_of_ocaml (production-ready).
 | Layer | File(s) | Type System | Purpose |
 |-------|---------|-------------|---------|
 | 1 (Abstract) | Vec2.v, Vec2_Proofs.v, etc. | R (reals) | Mathematical correctness |
-| 2 (Computational) | Vec2_Compute.v | Z (integers) | Extractable operations |
-| 3 (Extraction) | Vec2_Extract.v → wasm_of_ocaml | OCaml → WASM | Executable code |
+| 2 (Computational) | Vec2-4_Compute.v, Mat3-4_Compute.v | Z (integers) | Extractable operations (all 5 types) |
+| 3 (Extraction) | RourceMath_Extract.v → wasm_of_ocaml | OCaml → WASM | Executable code (6.8 KB WASM) |
 
 **Completed Deliverables:**
 - [x] CertiCoq-WASM feasibility assessment
@@ -788,16 +793,33 @@ Recommended pipeline: Standard Extraction + wasm_of_ocaml (production-ready).
 - [x] wasm_of_ocaml identified as production-ready Path 1 (v6.2.0, Jane Street)
 - [x] MetaCoq Verified Extraction identified as Path 2 (PLDI'24, Coq 8.18 compatible)
 
+**Phase 3 Continued Deliverables (wasm_of_ocaml Pipeline + Full Bridge):**
+
+| Deliverable | Status | Details |
+|-------------|--------|---------|
+| Vec3_Compute.v | Done | 31 theorems, Z-based, 1.6s compilation |
+| Vec4_Compute.v | Done | 22 theorems, Z-based, 1.6s compilation |
+| Mat3_Compute.v | Done | 25 theorems, Z-based, 3.0s compilation |
+| Mat4_Compute.v | Done | 21 theorems + 16 local component lemmas, 5.5s compilation |
+| Vec3_Extract.v - Mat4_Extract.v | Done | Individual extraction modules |
+| RourceMath_Extract.v | Done | Unified extraction of all 5 types |
+| test_extracted.ml | Done | OCaml test driver, all tests pass |
+| wasm_of_ocaml pipeline | Done | Library: 6.8 KB WASM, test: 42.2 KB WASM |
+| MetaCoq investigation | Blocked | Coq opam repository HTTP 503 |
+
 **Near-Term (Path 1 - wasm_of_ocaml):**
-- [ ] Install wasm_of_ocaml toolchain (OCaml + Dune + Binaryen)
-- [ ] Compile vec2_extracted.ml → WASM via wasm_of_ocaml
+- [x] Install wasm_of_ocaml toolchain (OCaml + Dune + Binaryen)
+- [x] Compile vec2_extracted.ml → WASM via wasm_of_ocaml
 - [ ] Benchmark extracted WASM vs wasm-pack WASM
-- [ ] Extend computational bridge to all types (Vec3/4, Mat3/4)
+- [x] Extend computational bridge to all types (Vec3/4, Mat3/4)
 
 **Medium-Term (Path 2 - MetaCoq Verified Extraction):**
-- [ ] Install MetaCoq for Coq 8.18
+- [ ] Install MetaCoq for Coq 8.18 (blocked: Coq opam repository HTTP 503)
 - [ ] Test verified extraction on Vec2_Compute.v
 - [ ] Document TCB reduction for academic publication
+
+> **Note**: MetaCoq installation was attempted but blocked by Coq opam repository
+> returning HTTP 503 errors. This path remains viable once opam infrastructure recovers.
 
 **Long-Term (Path 4 - CertiCoq-WASM, deferred to Coq 8.20):**
 - [ ] Upgrade Coq to 8.20 and verify all proofs
@@ -810,8 +832,17 @@ Recommended pipeline: Standard Extraction + wasm_of_ocaml (production-ready).
 **Verification Command (new files):**
 ```bash
 cd crates/rource-math/proofs/coq
-coqc -Q . RourceMath Vec2_Compute.v    # 25 theorems, ~1.5s
-coqc -Q . RourceMath Vec2_Extract.v    # OCaml extraction, ~1.1s
+coqc -Q . RourceMath Vec2_Compute.v    # 27 theorems, ~1.5s
+coqc -Q . RourceMath Vec3_Compute.v    # 31 theorems, ~1.6s
+coqc -Q . RourceMath Vec4_Compute.v    # 22 theorems, ~1.6s
+coqc -Q . RourceMath Mat3_Compute.v    # 25 theorems, ~3.0s
+coqc -Q . RourceMath Mat4_Compute.v    # 21 theorems, ~5.5s
+coqc -Q . RourceMath Vec2_Extract.v    # OCaml extraction
+coqc -Q . RourceMath Vec3_Extract.v    # OCaml extraction
+coqc -Q . RourceMath Vec4_Extract.v    # OCaml extraction
+coqc -Q . RourceMath Mat3_Extract.v    # OCaml extraction
+coqc -Q . RourceMath Mat4_Extract.v    # OCaml extraction
+coqc -Q . RourceMath RourceMath_Extract.v  # Unified extraction of all 5 types
 ```
 
 #### Phase 4: Publication (Q4 2026)
@@ -869,12 +900,11 @@ This hybrid approach would be novel in several ways:
 *Total verification conditions: 242 (Vec2: 53, Vec3: 68, Vec4: 68, Mat3: 26, Mat4: 27)*
 *Status: All proofs verified with 0 errors*
 
-**Coq Proofs (Phase 1 + Phase 2 + Phase 2b + Phase 3):**
+**Coq Proofs (Phase 1 + Phase 2 + Phase 2b + Phase 3 + Phase 3 Continued):**
 *Version: Coq 8.18*
-*Total theorems: 241 (Vec2: 30, Vec3: 38, Vec4: 28, Mat3: 22, Mat4: 38, Complexity: 60, Vec2_Compute: 25)*
+*Total theorems: 347 (Vec2: 31, Vec3: 39, Vec4: 29, Mat3: 23, Mat4: 39, Complexity: 60, Vec2_Compute: 27, Vec3_Compute: 31, Vec4_Compute: 22, Mat3_Compute: 25, Mat4_Compute: 21)*
 *Admits: 0*
-*Compilation time: ~17.9 seconds total*
-*Breakdown: Vec2_Proofs 1.6s, Vec3_Proofs 1.9s, Vec4_Proofs 1.7s, Mat3_Proofs 3.1s, Mat4_Proofs 5.8s, Complexity 1.4s, Vec2_Compute 1.5s, Vec2_Extract 1.1s*
+*Compilation time: ~39.8 seconds total (22 files)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**
@@ -882,17 +912,20 @@ This hybrid approach would be novel in several ways:
 *Cost model: Abstract operation counting (muls + adds)*
 *Status: All complexity bounds verified*
 
-**Computational Bridge (Phase 3):**
-*Vec2_Compute.v: 25 theorems over Z (integers), fully extractable*
-*Vec2_Extract.v: Standard Coq extraction to OCaml demonstrated*
+**Computational Bridge (Phase 3 + Phase 3 Continued):**
+*5 Compute files: Vec2(27), Vec3(31), Vec4(22), Mat3(25), Mat4(21) = 126 theorems over Z*
+*5 Extract files + 1 unified extraction (RourceMath_Extract.v)*
+*OCaml test driver: all tests pass*
+*WASM pipeline: Library 6.8 KB, test driver 42.2 KB (via wasm_of_ocaml v6.2.0)*
 *Architecture: Layered (R-abstract / Z-computational / extraction)*
 *Landscape Survey: 9 Coq-to-WASM paths evaluated (see CERTICOQ_WASM_ASSESSMENT.md)*
 *Recommended Path: Standard Extraction + wasm_of_ocaml (production-ready, Coq 8.18 compatible)*
 *Alternative Path: MetaCoq Verified Extraction (PLDI'24, partially verified, Coq 8.18 compatible)*
 *CertiCoq-WASM: Assessed, deferred to Coq 8.20 availability (strongest verification)*
-*Status: Assessment complete, multi-path architecture documented*
+*MetaCoq: Attempted, blocked by Coq opam repository HTTP 503*
+*Status: Full pipeline operational, all 5 types extractable to WASM*
 
 **Combined Verification:**
-*Total theorems: 346 across Verus and Coq*
+*Total theorems: 452 across Verus and Coq*
 *Total admits: 0*
-*Status: Dual-verification + complexity bounds + computational bridge*
+*Status: Dual-verification + complexity bounds + computational bridge + WASM pipeline*
