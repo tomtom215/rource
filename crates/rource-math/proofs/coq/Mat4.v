@@ -116,6 +116,31 @@ Definition mat4_mul (a b : Mat4) : Mat4 :=
     (m2 a * m12 b + m6 a * m13 b + m10 a * m14 b + m14 a * m15 b)
     (m3 a * m12 b + m7 a * m13 b + m11 a * m14 b + m15 a * m15 b).
 
+(** * Determinant *)
+
+(** The determinant of a 4x4 matrix via cofactor expansion along the first row.
+    Uses column-major layout: row 0 = [m0, m4, m8, m12]. *)
+Definition mat4_determinant (a : Mat4) : R :=
+  let c00 := m5 a * (m10 a * m15 a - m14 a * m11 a)
+            - m9 a * (m6 a * m15 a - m14 a * m7 a)
+            + m13 a * (m6 a * m11 a - m10 a * m7 a) in
+  let c01 := m1 a * (m10 a * m15 a - m14 a * m11 a)
+            - m9 a * (m2 a * m15 a - m14 a * m3 a)
+            + m13 a * (m2 a * m11 a - m10 a * m3 a) in
+  let c02 := m1 a * (m6 a * m15 a - m14 a * m7 a)
+            - m5 a * (m2 a * m15 a - m14 a * m3 a)
+            + m13 a * (m2 a * m7 a - m6 a * m3 a) in
+  let c03 := m1 a * (m6 a * m11 a - m10 a * m7 a)
+            - m5 a * (m2 a * m11 a - m10 a * m3 a)
+            + m9 a * (m2 a * m7 a - m6 a * m3 a) in
+  m0 a * c00 - m4 a * c01 + m8 a * c02 - m12 a * c03.
+
+(** * Trace *)
+
+(** The trace of a 4x4 matrix (sum of diagonal elements). *)
+Definition mat4_trace (a : Mat4) : R :=
+  m0 a + m5 a + m10 a + m15 a.
+
 (** * Equality Lemma *)
 
 (** Two matrices are equal iff all their components are equal. *)
@@ -157,9 +182,11 @@ Qed.
     - mat4_scale: Scalar multiplication
     - mat4_transpose: Matrix transpose
     - mat4_mul: Matrix multiplication
+    - mat4_determinant: 4x4 determinant (cofactor expansion)
+    - mat4_trace: Trace (sum of diagonal)
     - mat4_eq: Component-wise equality lemma
 
-    Total definitions: 9
+    Total definitions: 11
     Total lemmas: 1
     Admits: 0
 *)

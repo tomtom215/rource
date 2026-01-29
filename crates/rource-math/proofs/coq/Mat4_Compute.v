@@ -133,6 +133,24 @@ Definition zmat4_mul (a b : ZMat4) : ZMat4 :=
     (zm4_2 a * zm4_12 b + zm4_6 a * zm4_13 b + zm4_10 a * zm4_14 b + zm4_14 a * zm4_15 b)
     (zm4_3 a * zm4_12 b + zm4_7 a * zm4_13 b + zm4_11 a * zm4_14 b + zm4_15 a * zm4_15 b).
 
+(** * Determinant *)
+
+(** 4x4 determinant via cofactor expansion along first row (column-major). *)
+Definition zmat4_determinant (a : ZMat4) : Z :=
+  let c00 := zm4_5 a * (zm4_10 a * zm4_15 a - zm4_14 a * zm4_11 a)
+            - zm4_9 a * (zm4_6 a * zm4_15 a - zm4_14 a * zm4_7 a)
+            + zm4_13 a * (zm4_6 a * zm4_11 a - zm4_10 a * zm4_7 a) in
+  let c01 := zm4_1 a * (zm4_10 a * zm4_15 a - zm4_14 a * zm4_11 a)
+            - zm4_9 a * (zm4_2 a * zm4_15 a - zm4_14 a * zm4_3 a)
+            + zm4_13 a * (zm4_2 a * zm4_11 a - zm4_10 a * zm4_3 a) in
+  let c02 := zm4_1 a * (zm4_6 a * zm4_15 a - zm4_14 a * zm4_7 a)
+            - zm4_5 a * (zm4_2 a * zm4_15 a - zm4_14 a * zm4_3 a)
+            + zm4_13 a * (zm4_2 a * zm4_7 a - zm4_6 a * zm4_3 a) in
+  let c03 := zm4_1 a * (zm4_6 a * zm4_11 a - zm4_10 a * zm4_7 a)
+            - zm4_5 a * (zm4_2 a * zm4_11 a - zm4_10 a * zm4_3 a)
+            + zm4_9 a * (zm4_2 a * zm4_7 a - zm4_6 a * zm4_3 a) in
+  zm4_0 a * c00 - zm4_4 a * c01 + zm4_8 a * c02 - zm4_12 a * c03.
+
 (** * Trace *)
 
 Definition zmat4_trace (a : ZMat4) : Z :=
@@ -369,7 +387,37 @@ Proof.
   reduce_projections. ring.
 Qed.
 
+(** ** Determinant Properties *)
+
+Theorem zmat4_det_identity : zmat4_determinant zmat4_identity = 1.
+Proof. reflexivity. Qed.
+
+Theorem zmat4_det_zero : zmat4_determinant zmat4_zero = 0.
+Proof. reflexivity. Qed.
+
+Theorem zmat4_det_transpose : forall a : ZMat4,
+  zmat4_determinant (zmat4_transpose a) = zmat4_determinant a.
+Proof.
+  intros a. unfold zmat4_determinant, zmat4_transpose.
+  destruct a; simpl; ring.
+Qed.
+
+Theorem zmat4_det_neg : forall a : ZMat4,
+  zmat4_determinant (zmat4_neg a) = zmat4_determinant a.
+Proof.
+  intros a. unfold zmat4_determinant, zmat4_neg.
+  destruct a; simpl; ring.
+Qed.
+
 (** * Computational Tests *)
+
+Example zmat4_test_det_identity :
+  zmat4_determinant zmat4_identity = 1.
+Proof. reflexivity. Qed.
+
+Example zmat4_test_det_diag :
+  zmat4_determinant (mkZMat4 2 0 0 0  0 3 0 0  0 0 5 0  0 0 0 7) = 210.
+Proof. reflexivity. Qed.
 
 Example zmat4_test_identity_mul :
   zmat4_mul zmat4_identity (mkZMat4 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) =

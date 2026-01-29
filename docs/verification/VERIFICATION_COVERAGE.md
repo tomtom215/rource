@@ -14,12 +14,12 @@ For an overview of the complete verification effort (Verus + Coq), see
 | Vec2 | 42 | 11 (26%) | 42 (100%) | 26% |
 | Vec3 | 28 | 12 (43%) | 28 (100%) | 43% |
 | Vec4 | 24 | 12 (50%) | 24 (100%) | 50% |
-| Mat3 | 17 | 8 (47%) | 17 (100%) | 47% |
-| Mat4 | 26 | 7 (27%) | 26 (100%) | 27% |
+| Mat3 | 17 | 12 (71%) | 17 (100%) | 71% |
+| Mat4 | 26 | 9 (35%) | 26 (100%) | 35% |
 | Color | 38 | 14 (37%) | 38 (100%) | 37% |
-| Rect | 50 | 16 (32%) | 50 (100%) | 32% |
+| Rect | 50 | 17 (34%) | 50 (100%) | 34% |
 | Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
-| **Total** | **230** | **85 (37%)** | **230 (100%)** | **37%** |
+| **Total** | **230** | **92 (40%)** | **230 (100%)** | **40%** |
 
 ## Verified Operations by Module
 
@@ -42,13 +42,15 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 **Not verified**: Similar to Vec2/Vec3 plus 4D-specific operations
 
-### Mat3 (8 operations verified)
+### Mat3 (12 operations verified)
 - `new`, `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
+- `determinant`, `trace`, `translation`, `scaling`
 
-**Not verified**: `translation`, `rotation`, `scaling`, `inverse`, `determinant`, etc.
+**Not verified**: `rotation`, `inverse`, `transform_point`, `transform_vector`, etc.
 
-### Mat4 (7 operations verified)
+### Mat4 (9 operations verified)
 - `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
+- `determinant`, `trace`
 
 **Not verified**: `perspective`, `orthographic`, `look_at`, `rotation_*`, `inverse`, etc.
 
@@ -61,12 +63,13 @@ For an overview of the complete verification effort (Verus + Coq), see
 - `to_hex`, `from_hex`, `to_array`, `from_array`
 - Floating-point-specific: `approx_eq`, `is_finite`, `is_nan`
 
-### Rect (16 operations verified)
+### Rect (17 operations verified)
 - `new`, `zero`, `right`, `bottom`, `center_x`, `center_y`, `area`, `perimeter`
 - `contains_point`, `contains_rect`, `intersects`, `union`, `translate`, `expand`, `shrink`, `is_valid`
+- `intersection` (commutativity, self-intersection, area properties)
 
 **Not verified** (require floating-point or complex geometry):
-- `intersection` (computed intersection rect), `from_center`, `from_points`
+- `from_center`, `from_points`
 - `scale`, `normalize`, `merge_bounds`, `clip_to`
 - Floating-point-specific: `lerp`, `grow_to_contain`, iterator-based operations
 - Complex geometry: `transform_by_mat3`, `transform_by_mat4`
@@ -96,7 +99,7 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 | ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 23, Coq R: 26, Coq Z: 22) |
 | ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 23, Coq R: 20, Coq Z: 22) |
 | ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 10, Coq Z: 14) |
-| 4 | Mat3/Mat4 | `determinant` properties | Mathematical foundations | TODO |
+| 4 | Mat3/Mat4 | `determinant`, `trace` properties | Mathematical foundations | DONE (basic: det(I), det(0), det(A^T), det(-A), trace properties) |
 | 5 | Color | HSL <-> RGB conversion | Requires transcendentals | Blocked (floating-point) |
 
 ## Relationship to Testing
@@ -179,6 +182,6 @@ transcendentals) will remain covered by:
 ---
 
 *Last verified: 2026-01-29*
-*Formal verification coverage: 85/230 operations (37%)*
+*Formal verification coverage: 92/230 operations (40%)*
 *Unit test coverage: 230/230 operations (100%)*
-*Unverifiable operations: 145 (floating-point, transcendentals, type conversions)*
+*Unverifiable operations: 138 (floating-point, transcendentals, type conversions)*

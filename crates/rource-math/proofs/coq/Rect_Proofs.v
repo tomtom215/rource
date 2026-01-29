@@ -274,3 +274,48 @@ Proof.
   unfold rect_intersection, rect_right, rect_bottom. simpl.
   split; unfold Rmax; destruct (Rle_dec _ _); lra.
 Qed.
+
+(** Theorem 29: intersection is commutative (dimensions).
+    The width and height of intersection(a,b) equal those of intersection(b,a). *)
+Theorem rect_intersection_comm_dims : forall (a b : Rect),
+  rect_w (rect_intersection a b) = rect_w (rect_intersection b a) /\
+  rect_h (rect_intersection a b) = rect_h (rect_intersection b a).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_intersection, rect_right, rect_bottom. simpl.
+  split;
+    unfold Rmax, Rmin;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 30: intersection with itself preserves the rect (for valid rects). *)
+Theorem rect_intersection_self : forall (r : Rect),
+  rect_is_valid r ->
+  rect_intersection r r = r.
+Proof.
+  intros [x y0 w h] [Hw Hh]. simpl in *.
+  unfold rect_intersection, rect_right, rect_bottom. simpl.
+  unfold Rmax, Rmin. repeat (destruct (Rle_dec _ _)); try lra.
+  apply rect_eq; lra.
+Qed.
+
+(** Theorem 31: intersection area is commutative. *)
+Theorem rect_intersection_area_comm : forall (a b : Rect),
+  rect_area (rect_intersection a b) = rect_area (rect_intersection b a).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_area, rect_intersection, rect_right, rect_bottom. simpl.
+  unfold Rmax, Rmin.
+  repeat (destruct (Rle_dec _ _)); try nra.
+Qed.
+
+(** Theorem 32: intersection of non-overlapping rects has zero area. *)
+Theorem rect_disjoint_intersection_zero_area : forall (a b : Rect),
+  rect_x a + rect_w a <= rect_x b ->
+  rect_area (rect_intersection a b) = 0.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] Hdisj.
+  unfold rect_area, rect_intersection, rect_right, rect_bottom. simpl in *.
+  unfold Rmax, Rmin.
+  repeat (destruct (Rle_dec _ _)); try lra; nra.
+Qed.
