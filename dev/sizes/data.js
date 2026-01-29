@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769690028401,
+  "lastUpdate": 1769698646622,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4157,6 +4157,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/b126dd7008526a3e42701b244fb555acb9e8a272"
         },
         "date": 1769690027815,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9dd069f10dcc5421d22677fef9dca6d23a956ba1",
+          "message": "Merge pull request #227 from tomtom215/claude/certicoq-wasm-integration-fqYWd\n\nAdd formal verification for Color, Rect, and Utils types",
+          "timestamp": "2026-01-29T15:55:12+01:00",
+          "tree_id": "8c0eb51c5a6994e2ed7e77ec6857e0d05a17013a",
+          "url": "https://github.com/tomtom215/rource/commit/9dd069f10dcc5421d22677fef9dca6d23a956ba1"
+        },
+        "date": 1769698646090,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
