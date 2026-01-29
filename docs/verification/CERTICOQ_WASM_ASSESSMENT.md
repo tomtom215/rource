@@ -28,7 +28,7 @@ our Coq 8.18 infrastructure, and recommends the optimal pipeline.
 **Recommended Pipeline (Available Today):**
 
 ```
-Vec2_Compute.v ... Mat4_Compute.v (Z-based, 126 theorems total)
+Vec2_Compute.v ... Utils_Compute.v (Z-based, 184 theorems total)
     │
     ▼  [Coq Standard Extraction via RourceMath_Extract.v]
 rource_math_extracted.ml (OCaml, 23 KB)
@@ -50,7 +50,13 @@ rource_math.wasm (WebAssembly, 6.8 KB)
 | Vec4_Compute.v | Done | 22 theorems, Z-based, extractable |
 | Mat3_Compute.v | Done | 25 theorems (det, trace, mul assoc) |
 | Mat4_Compute.v | Done | 21 theorems + 16 component lemmas |
-| All Extract files | Done | 5 individual + 1 unified (RourceMath_Extract.v) |
+| Color_Compute.v | Done | 24 theorems, Z-based Color operations |
+| Rect_Compute.v | Done | 22 theorems, Z-based Rect operations |
+| Utils_Compute.v | Done | 12 theorems, lerp/clamp Z-based |
+| Color.v + Color_Proofs.v | Done | 25 R-based Color theorems |
+| Rect.v + Rect_Proofs.v | Done | 21 R-based Rect theorems |
+| Utils.v | Done | 12 R-based utility theorems |
+| All Extract files | Done | 7 individual + 1 unified (RourceMath_Extract.v) |
 | OCaml test driver | Done | test_extracted.ml, all tests pass |
 | wasm_of_ocaml pipeline | Done | 6.8 KB WASM library via v6.2.0 |
 | Complexity.v warnings fixed | Done | Zero warnings (was 11) |
@@ -115,7 +121,7 @@ Gallina (Coq source)
 
 ### Blocker 1: Reals Library Incompatibility (FUNDAMENTAL)
 
-All 11 Coq specification files use `Require Import Reals` and define types
+The R-based Coq specification files use `Require Import Reals` and define types
 using the `R` type:
 
 ```coq
@@ -157,7 +163,7 @@ types because:
 - CertiCoq-WASM: **Coq >= 8.20, < 8.21~** (exact requirement from opam)
 
 Upgrading from 8.18 to 8.20 would require:
-1. Verifying all 216 existing theorems still compile
+1. Verifying all 461 existing Coq theorems still compile
 2. Potential tactic behavior changes in `lra`, `ring`, `lia`
 3. Standard library API changes
 4. CI pipeline updates
@@ -189,10 +195,12 @@ The specifications and the compiler serve fundamentally different purposes.
 │                                                                         │
 │  Layer 1: Abstract Specification (R-based)                              │
 │  ├── Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v                            │
-│  ├── Vec2_Proofs.v ... Mat4_Proofs.v (216 theorems)                     │
+│  ├── Color.v, Rect.v, Utils.v                                          │
+│  ├── Vec2_Proofs.v ... Mat4_Proofs.v (161 theorems)                     │
+│  ├── Color_Proofs.v, Rect_Proofs.v (46 theorems)                       │
 │  ├── Complexity.v (60 theorems)                                         │
 │  └── Purpose: Mathematical correctness proofs                           │
-│      Status: COMPLETE (321 total with Verus)                            │
+│      Status: COMPLETE (428 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
 │  ├── Vec2_Compute.v (27 theorems)                                       │
@@ -200,8 +208,11 @@ The specifications and the compiler serve fundamentally different purposes.
 │  ├── Vec4_Compute.v (22 theorems)                                       │
 │  ├── Mat3_Compute.v (25 theorems, determinant + trace)                  │
 │  ├── Mat4_Compute.v (21 theorems + 16 component lemmas)                 │
+│  ├── Color_Compute.v (24 theorems, blend/lerp/clamp)                    │
+│  ├── Rect_Compute.v (22 theorems, intersection/containment)             │
+│  ├── Utils_Compute.v (12 theorems, lerp/clamp)                          │
 │  └── Purpose: Computable operations with algebraic proofs               │
-│      Status: COMPLETE (126 theorems, all 5 types)                       │
+│      Status: COMPLETE (184 theorems, all 8 types)                       │
 │                                                                         │
 │  Layer 3: Extraction Pipeline                                           │
 │  ├── RourceMath_Extract.v → rource_math_extracted.ml (OCaml, 23 KB)     │
@@ -331,12 +342,15 @@ The extracted code:
 
 **Unified Extraction (RourceMath_Extract.v):**
 
-All 5 types are extracted into a single module `rource_math_extracted.ml` (23 KB):
+All 8 types are extracted into a single module `rource_math_extracted.ml`:
 - ZVec2 (2D vectors): 15 operations
 - ZVec3 (3D vectors): 18 operations
 - ZVec4 (4D vectors): 17 operations
 - ZMat3 (3×3 matrices): 10 operations
 - ZMat4 (4×4 matrices): 18 operations
+- ZColor (RGBA color): blend, lerp, clamp, scale operations
+- ZRect (rectangle): intersection, containment, area, perimeter operations
+- Utils: lerp, clamp utility functions
 
 **WASM Output (via wasm_of_ocaml v6.2.0):**
 - Library-only WASM: 6.8 KB
@@ -670,7 +684,7 @@ tried when infrastructure is available.
 ### 7.4 Long-Term: Path 4 Pipeline (Q4 2026+, when Coq 8.20 available)
 
 - [ ] Upgrade Coq from 8.18 to 8.20
-- [ ] Verify all 241+ theorems compile on 8.20
+- [ ] Verify all 612 theorems compile on 8.20
 - [ ] Install CertiCoq-WASM via opam
 - [ ] Test CertiCoq-WASM extraction on Vec2_Compute.v
 - [ ] Benchmark CertiCoq-WASM output vs Path 1 output
@@ -678,7 +692,7 @@ tried when infrastructure is available.
 
 ### 7.5 Publication (Q4 2026+)
 
-- [ ] Complete all Compute modules (Vec2-4, Mat3-4)
+- [x] Complete all Compute modules (Vec2-4, Mat3-4, Color, Rect, Utils — 8 types, 184 Z-theorems)
 - [ ] Document multi-path architecture for CPP/PLDI submission
 - [ ] Demonstrate end-to-end: Coq proof → verified WASM → browser execution
 - [ ] Compare performance and TCB across all viable paths
@@ -713,8 +727,9 @@ Coq specifications provides:
 
 ### 8.4 Proof Artifact
 
-Vec2_Compute.v demonstrates that algebraic properties proven over R
-can be independently verified over Z with different proof techniques:
+All 8 Compute files (Vec2-4, Mat3-4, Color, Rect, Utils) demonstrate that
+algebraic properties proven over R can be independently verified over Z with
+different proof techniques:
 - R-based proofs use `lra` (linear real arithmetic)
 - Z-based proofs use `ring` (polynomial ring equations) and `lia` (linear integer arithmetic)
 
@@ -742,6 +757,6 @@ in the mathematical correctness of the operations.
 
 ---
 
-*Assessment completed: 2026-01-29 (initial survey), updated 2026-01-29 (full pipeline implementation)*
+*Assessment completed: 2026-01-29 (initial survey), updated 2026-01-29 (8 types, 184 Z-theorems, 612 total)*
 *Assessor: Claude (automated formal verification pipeline)*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC*

@@ -1152,10 +1152,11 @@ Layer 4: MetaCoq  → Vec2_VerifiedExtract.v (optional, requires MetaCoq install
 
 This hybrid approach would be novel in several ways:
 
-1. **First verified Rust graphics library**: rource-math with machine-checked proofs
-2. **Verus + Coq interoperability**: Demonstrating complementary strengths
+1. **First verified Rust graphics library**: rource-math with 612 machine-checked proofs across 8 types
+2. **Verus + Coq interoperability**: Demonstrating complementary strengths (151 Verus + 461 Coq)
 3. **ICC for graphics code**: Complexity bounds for visualization pipeline
-4. **End-to-end verified WASM**: From Rust source to verified WebAssembly
+4. **End-to-end verified WASM**: From Rust source to verified WebAssembly (8 types extracted)
+5. **Color and spatial correctness**: Formal proofs for RGBA blending, luminance, and rectangle operations
 
 ### References (Hybrid Architecture)
 

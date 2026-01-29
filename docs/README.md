@@ -52,7 +52,7 @@ Complete technical documentation for the Rource project.
 |----------|-------------|
 | [performance/README.md](./performance/README.md) | Performance documentation index |
 | [performance/OVERVIEW.md](./performance/OVERVIEW.md) | Executive summary and philosophy |
-| [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) | Timeline of all **77 optimization phases** |
+| [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) | Timeline of all **82 optimization phases** |
 | [performance/BENCHMARKS.md](./performance/BENCHMARKS.md) | Benchmark data with methodology |
 | [performance/SUCCESSFUL_OPTIMIZATIONS.md](./performance/SUCCESSFUL_OPTIMIZATIONS.md) | Implemented optimizations |
 | [performance/FUTURE_WORK.md](./performance/FUTURE_WORK.md) | **Expert+ roadmap** (active) |
@@ -92,6 +92,16 @@ Complete technical documentation for the Rource project.
 |----------|-------------|
 | [testing/MUTATION_TESTING.md](./testing/MUTATION_TESTING.md) | Mutation testing setup and results |
 | [testing/VISUAL_REGRESSION.md](./testing/VISUAL_REGRESSION.md) | Visual regression testing infrastructure |
+
+---
+
+### Verification Documentation (3 files)
+
+| Document | Description |
+|----------|-------------|
+| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification status (612 theorems, 8 types) |
+| [verification/SETUP_GUIDE.md](./verification/SETUP_GUIDE.md) | Verus, Coq, MetaCoq, wasm_of_ocaml setup |
+| [verification/CERTICOQ_WASM_ASSESSMENT.md](./verification/CERTICOQ_WASM_ASSESSMENT.md) | Coq-to-WASM pipeline (9 paths surveyed) |
 
 ---
 
@@ -152,7 +162,7 @@ Complete technical documentation for the Rource project.
 1. [performance/GUIDE.md](./performance/GUIDE.md) - General performance tips
 2. [performance/PROFILING.md](./performance/PROFILING.md) - Finding bottlenecks
 3. [performance/BENCHMARKS.md](./performance/BENCHMARKS.md) - Benchmark methodology
-4. [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) - 77 optimization phases
+4. [performance/CHRONOLOGY.md](./performance/CHRONOLOGY.md) - 82 optimization phases
 
 ### Expert+ Development
 1. [../CLAUDE.md](../CLAUDE.md) - Development standards
@@ -175,11 +185,12 @@ Complete technical documentation for the Rource project.
 
 | Metric | Value |
 |--------|-------|
-| Total documentation files | **61** |
+| Total documentation files | **64** |
 | Performance documents | 20 |
 | Operations documents | 6 |
 | Architecture/Design documents | 8 |
 | ADR documents | 6 |
+| Verification documents | 3 |
 | Security documents | 3 |
 | Testing documents | 2 |
 | UX/Accessibility documents | 2 |
@@ -193,12 +204,13 @@ Complete technical documentation for the Rource project.
 |----------|-------|------------------|
 | Performance | 19 | ~450 KB |
 | Root/Core | 14 | ~160 KB |
+| Verification | 3 | ~80 KB |
 | Operations | 6 | ~45 KB |
 | ADRs | 6 | ~25 KB |
 | Security | 3 | ~30 KB |
 | Testing | 2 | ~20 KB |
 | UX | 2 | ~40 KB |
-| **Total** | **62** | **~800 KB** |
+| **Total** | **65** | **~880 KB** |
 
 ---
 
@@ -242,4 +254,4 @@ done
 
 ---
 
-*Last updated: 2026-01-27*
+*Last updated: 2026-01-29*
