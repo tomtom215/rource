@@ -83,8 +83,8 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 105 theorems, 242 verification conditions, 0 errors
-- **Coq**: 241 theorems, 0 admits, machine-checked (~18.1s compilation)
-- **Combined**: 346 formally verified theorems
+- **Coq**: 347 theorems, 0 admits, machine-checked (~39.8s compilation, 22 files)
+- **Combined**: 452 formally verified theorems
 
 ### The Non-Negotiable Rules
 
@@ -376,6 +376,27 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | EnuTg | 9 distinct Coq-to-WASM paths exist (3 viable today) | Comprehensive survey: CertiCoq-WASM is only one option among many | Full landscape documented in CERTICOQ_WASM_ASSESSMENT.md | Yes |
 | 2026-01-29 | EnuTg | coq-rust-extraction (AU-COBRA) needs Coq 8.20+ | v0.1.1 (May 2025), built on MetaCoq erasure | Deferred; interesting for Rust integration but too early and wrong Coq version | Yes |
 | 2026-01-29 | EnuTg | WasmGC (browser GC) vs linear memory for Coq-extracted code | wasm_of_ocaml uses WasmGC (Chrome 119+, Firefox 122+, Safari 18.2+) | WasmGC ideal for pure functional Coq-extracted code (no C stubs) | Yes |
+| 2026-01-29 | T2LcJ | `cbn [projections]` essential for Z record proofs | `simpl` reduces Z arithmetic into match expressions; `ring` cannot handle them | Use `cbn [zm3_0 zm3_1 ...]` to reduce only record projections before `ring` | Yes |
+| 2026-01-29 | T2LcJ | Component decomposition scales to Mat4 over Z | Same pattern as R-based proofs works for Z computational bridge | 16 Local Lemmas for Mat4 mul_assoc, each proven with `ring` separately | Yes |
+| 2026-01-29 | T2LcJ | `Local Ltac reduce_projections` encapsulates cbn pattern | Repeated `cbn [field_names]` calls throughout Mat4_Compute.v | Created reusable tactic abbreviation for cleaner proof scripts | Yes |
+| 2026-01-29 | T2LcJ | ExtrOcamlZInt maps Z to native int | Coq Z type extracts to OCaml arbitrary-precision by default | Use `Require Import ExtrOcamlZInt` for efficient native int extraction | Yes |
+| 2026-01-29 | T2LcJ | MetaCoq blocked by Coq opam repo HTTP 503 | Repository infrastructure intermittently unavailable | Try alternative sources: rocq-prover.org/packages, opam.ocaml.org | Yes |
+| 2026-01-29 | T2LcJ | OCaml record syntax needed for matrix constructors | Coq record constructors don't extract as OCaml functions | Use `{ zm3_0 = 1; ... }` syntax in OCaml test driver, not `mkZMat3 ...` | Yes |
+| 2026-01-29 | T2LcJ | MetaCoq buildable from source despite opam 503 | All Coq opam repos (coq.inria.fr, rocq-prover.org) return HTTP 503 | Clone MetaCoq from GitHub, pin coq-equations from GitHub source | Yes |
+| 2026-01-29 | T2LcJ | coq-equations pinnable from GitHub source | opam pin bypasses broken opam repo infrastructure | `opam pin add coq-equations "git+https://github.com/mattam82/Coq-Equations.git#v1.3-8.18"` | Yes |
+| 2026-01-29 | T2LcJ | MetaCoq coq-8.18 branch != MetaRocq/rocq-verified-extraction | rocq-verified-extraction requires Coq 8.19+; MetaCoq core has 8.18 branch | Use `github.com/MetaCoq/metacoq#coq-8.18` for Coq 8.18 compatibility | Yes |
+| 2026-01-29 | T2LcJ | Setup scripts must pass shellcheck | Shell scripts can have subtle bugs; shellcheck catches them | Run `bash -n` + `shellcheck --severity=info` on all scripts before commit | Yes |
+| 2026-01-29 | T2LcJ | libgmp-dev required for zarith/MetaCoq build | zarith (MetaCoq dep) needs GMP development headers | Include `apt-get install -y libgmp-dev` in setup script | Yes |
+| 2026-01-29 | T2LcJ | Coq renamed to Rocq Prover (v9.0, March 2025) | Official rebranding; `coq` → `rocq-prover`, `From Coq` → `From Stdlib` | Stay on Coq 8.18 now; migrate to Rocq 9.x when opam repos stabilize | Yes |
+| 2026-01-29 | T2LcJ | Both Coq AND Rocq opam repos return HTTP 503 | Infrastructure issue affects entire ecosystem, not version-specific | Use default `opam.ocaml.org` for core packages + GitHub pins for extras | Yes |
+| 2026-01-29 | T2LcJ | MetaCoq → MetaRocq rename (v1.4 for Rocq 9.0) | `From MetaCoq` → `From MetaRocq`, `MCList` → `MRList` | For Coq 8.18: use MetaCoq/metacoq coq-8.18 branch; for Rocq 9.x: MetaRocq | Yes |
+| 2026-01-29 | T2LcJ | rocq-core 9.1.0 available on opam.ocaml.org | Default opam repo has Rocq core packages (no dedicated repo needed) | `opam pin add rocq-prover 9.0.0` works from default repo | Yes |
+| 2026-01-29 | T2LcJ | MetaRocq 1.4.1 is latest (Dec 2024, Rocq 9.1) | GitHub releases show clear version history per Rocq target | Use MetaRocq/metarocq releases page for version compatibility | Yes |
+| 2026-01-29 | T2LcJ | MetaCoq built from source bypasses opam 503 | All 8 components build in ~30 min from `MetaCoq/metacoq#coq-8.18` | Document build order: utils→common→template-coq→pcuic→template-pcuic→safechecker→erasure→erasure-plugin | Yes |
+| 2026-01-29 | T2LcJ | apt Coq vs opam Coq .vo file inconsistency | .vo compiled with apt Coq (`/usr/lib/coq`) incompatible with opam Coq (`~/.opam/default/lib/coq`) even at same version | After MetaCoq install: `rm -f *.vo *.vos *.vok *.glob` then recompile all layers with `eval $(opam env)` | Yes |
+| 2026-01-29 | T2LcJ | `make install` for MetaCoq takes ~15-20 min | Builds ToPCUIC and ToTemplate quotation theories, not just file copy | Budget time accordingly; monitor with verbose output | Yes |
+| 2026-01-29 | T2LcJ | Recompilation order matters for Coq .vo files | Layer dependencies: specs → proofs → complexity → compute → extraction → MetaCoq erasure | Always recompile in order; automated in `recompile_coq_proofs()` function | Yes |
+| 2026-01-29 | T2LcJ | `verify_coq_proofs()` has 4 layers | Layer 1: specs+proofs, Layer 2: compute, Layer 3: extraction, Layer 4: MetaCoq (optional) | Each layer depends on prior; MetaCoq layer is optional (not a failure if unavailable) | Yes |
 
 ---
 
@@ -631,12 +652,15 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/REVIEW_STANDARDS.md` | Code review requirements |
 | `STABILITY.md` | API stability policy |
 | `SECURITY.md` | Security policy |
-| `docs/performance/CHRONOLOGY.md` | Optimization history (77 phases) |
+| `docs/performance/CHRONOLOGY.md` | Optimization history (82 phases) |
 | `docs/performance/BENCHMARKS.md` | Raw benchmark data |
 | `docs/performance/NOT_APPLICABLE.md` | Algorithms evaluated as N/A |
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification status (452 theorems) |
+| `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
+| `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
 | `LICENSE` | GPL-3.0 license |
 
@@ -652,14 +676,28 @@ Before starting development, run the setup scripts:
 # 1. Basic session setup (Rust tooling, environment)
 source scripts/session-setup.sh
 
-# 2. Formal verification tools (Verus + Coq) - REQUIRED for math/core work
+# 2. Formal verification tools (ALL tools) - REQUIRED for math/core work
+#    This installs: Verus, Coq, opam, coq-equations, MetaCoq, wasm_of_ocaml
 ./scripts/setup-formal-verification.sh
+
+# 3. Check-only mode (verify everything is installed)
+./scripts/setup-formal-verification.sh --check
+
+# 4. Selective installation (if only one tool is needed)
+./scripts/setup-formal-verification.sh --verus        # Verus only
+./scripts/setup-formal-verification.sh --coq           # Coq + opam ecosystem
+./scripts/setup-formal-verification.sh --metacoq       # MetaCoq from source
+./scripts/setup-formal-verification.sh --wasm-of-ocaml # wasm_of_ocaml
 ```
 
 **IMPORTANT**: The formal verification setup is REQUIRED when working on:
 - `rource-math` (vector, matrix, color types)
 - `rource-core` (scene, physics, animation)
 - Any code that requires correctness proofs
+- Coq-to-WASM pipeline work
+
+**Setup Guide**: See `docs/verification/SETUP_GUIDE.md` for detailed manual
+installation instructions and troubleshooting.
 
 ### Session Checklist
 
@@ -676,8 +714,9 @@ cargo clippy -- -D warnings
 cargo fmt --check
 
 # 4. Formal verification tools available (if needed)
-which verus && verus --version
-which coqc && coqc --version
+/tmp/verus/verus --version
+coqc --version
+eval $(opam env)  # Activate opam environment
 
 # 5. Read the roadmaps to understand current priorities
 cat docs/performance/FUTURE_WORK.md
@@ -694,6 +733,10 @@ cat docs/ux/MOBILE_UX_ROADMAP.md
 | rustup | Latest | Toolchain management | `scripts/session-setup.sh` |
 | **Verus** | 0.2026.01.23+ | Formal verification (Rust) | `scripts/setup-formal-verification.sh` |
 | **Coq** | 8.18+ | Formal verification (proofs) | `scripts/setup-formal-verification.sh` |
+| **opam** | 2.x | OCaml package manager | `scripts/setup-formal-verification.sh` |
+| **coq-equations** | 1.3+8.18 | Dependent pattern matching | `scripts/setup-formal-verification.sh` |
+| **MetaCoq** | 8.18.dev | Verified extraction (Path 2) | `scripts/setup-formal-verification.sh` |
+| **wasm_of_ocaml** | 6.2.0+ | OCaml-to-WASM (Path 1) | `scripts/setup-formal-verification.sh` |
 | cargo-tarpaulin | Latest | Code coverage | `scripts/session-setup.sh` |
 
 ### Running the Project
@@ -1249,37 +1292,49 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 **Verified Components:**
 
-| Component | Verus | Coq | Total Theorems | Status |
-|-----------|-------|-----|----------------|--------|
-| Vec2 | 23 theorems, 53 VCs | 29 theorems | 52 | DUAL VERIFIED |
-| Vec3 | 24 theorems, 68 VCs | 37 theorems | 61 | DUAL VERIFIED |
-| Vec4 | 22 theorems, 68 VCs | 26+ theorems | 48+ | DUAL VERIFIED |
-| Mat3 | 18 theorems, 26 VCs | 21 theorems | 39 | DUAL VERIFIED |
-| Mat4 | 18 theorems, 27 VCs | 21 theorems | 39 | DUAL VERIFIED |
-| **Total** | **105 theorems** | **216 theorems** | **321** | **ACADEMIC** |
+| Component | Verus | Coq (R-based) | Coq (Z-Compute) | Total | Status |
+|-----------|-------|---------------|-----------------|-------|--------|
+| Vec2 | 23 theorems, 53 VCs | 31 theorems | 27 theorems | 81 | DUAL VERIFIED |
+| Vec3 | 24 theorems, 68 VCs | 39 theorems | 31 theorems | 94 | DUAL VERIFIED |
+| Vec4 | 22 theorems, 68 VCs | 29 theorems | 22 theorems | 73 | DUAL VERIFIED |
+| Mat3 | 18 theorems, 26 VCs | 23 theorems | 25 theorems | 66 | DUAL VERIFIED |
+| Mat4 | 18 theorems, 27 VCs | 39 theorems | 21 theorems | 78 | DUAL VERIFIED |
+| Complexity | — | 60 theorems | — | 60 | VERIFIED |
+| **Total** | **105 theorems** | **221 theorems** | **126 theorems** | **452** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
 ```bash
-# Option 1: Use the setup script (RECOMMENDED)
+# Option 1: Use the setup + verify script (RECOMMENDED)
+./scripts/setup-formal-verification.sh --verify
+
+# Option 2: Setup tools only
 ./scripts/setup-formal-verification.sh
 
-# Option 2: Manual verification
+# Option 3: Manual verification
 
-# Verus proofs
+# Verus proofs (105 theorems)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/mat3_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/mat4_proofs.rs
 
-# Coq proofs
+# Coq proofs (347 theorems, ~40s)
 cd crates/rource-math/proofs/coq
 
-# Build specifications
+# Layer 1: Specifications + proofs
 coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v
-
-# Build proofs
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
+coqc -Q . RourceMath Complexity.v
+
+# Layer 2: Computational bridge (Z-based, extractable)
+coqc -Q . RourceMath Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v
+coqc -Q . RourceMath Mat3_Compute.v Mat4_Compute.v
+
+# Layer 3: Extraction (OCaml output)
+coqc -Q . RourceMath RourceMath_Extract.v
 ```
 
 **Formal Verification Rules:**
@@ -1292,7 +1347,10 @@ coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
 | Documentation | Each theorem documented with mathematical statement |
 | Dual Verification | Critical types (Vec2-4, Mat3-4) verified in BOTH tools |
 
-**Reference:** See `docs/verification/FORMAL_VERIFICATION.md` for complete details.
+**Reference:**
+- Setup Guide: `docs/verification/SETUP_GUIDE.md`
+- Full Details: `docs/verification/FORMAL_VERIFICATION.md`
+- WASM Pipeline: `docs/verification/CERTICOQ_WASM_ASSESSMENT.md`
 
 ---
 
@@ -1757,7 +1815,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  346 formally verified theorems across Verus + Coq                          │
+│  452 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1771,5 +1829,5 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 81 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 346 theorems (Verus: 105, Coq: 241)*
+*Optimization Phases: 82 (see docs/performance/CHRONOLOGY.md)*
+*Formal Verification: 452 theorems (Verus: 105, Coq: 347)*
