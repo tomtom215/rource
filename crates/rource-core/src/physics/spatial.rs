@@ -923,8 +923,7 @@ mod tests {
     #[test]
     fn test_quadtree_iter_empty() {
         let tree: QuadTree<u32> = create_test_tree();
-        let items: Vec<_> = tree.iter().collect();
-        assert!(items.is_empty());
+        assert!(tree.iter().next().is_none());
     }
 
     #[test]

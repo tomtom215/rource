@@ -388,7 +388,7 @@ mod tests {
     #[test]
     fn test_generation_debug_format() {
         let gen = Generation::first();
-        let debug = format!("{:?}", gen);
+        let debug = format!("{gen:?}");
         assert!(debug.contains("Gen(1)"));
     }
 
@@ -415,7 +415,7 @@ mod tests {
     #[test]
     fn test_raw_entity_id_debug_format() {
         let id = RawEntityId::new(42, Generation::first());
-        let debug = format!("{:?}", id);
+        let debug = format!("{id:?}");
         assert!(debug.contains("Entity(42"));
     }
 
@@ -461,14 +461,14 @@ mod tests {
     #[test]
     fn test_typed_id_debug_format() {
         let dir_id = DirId::from_index(7);
-        let debug = format!("{:?}", dir_id);
+        let debug = format!("{dir_id:?}");
         assert!(debug.contains("Dir(7"));
     }
 
     #[test]
     fn test_typed_id_display_format() {
         let action_id = ActionId::from_index(3);
-        let display = format!("{}", action_id);
+        let display = format!("{action_id}");
         assert_eq!(display, "Action#3");
     }
 
@@ -501,7 +501,7 @@ mod tests {
     #[test]
     fn test_id_allocator_debug() {
         let alloc = IdAllocator::new();
-        let debug = format!("{:?}", alloc);
+        let debug = format!("{alloc:?}");
         assert!(debug.contains("IdAllocator"));
     }
 
@@ -514,7 +514,7 @@ mod tests {
         assert_eq!(alloc.len(), 5);
 
         // Free all
-        for id in ids.iter() {
+        for id in &ids {
             alloc.free(*id);
         }
         assert_eq!(alloc.len(), 0);

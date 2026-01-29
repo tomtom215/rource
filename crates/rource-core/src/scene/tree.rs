@@ -1303,11 +1303,7 @@ mod tests {
         let non_root_nodes: Vec<_> = tree.iter().filter(|n| !n.is_root()).collect();
         assert_eq!(non_root_nodes.len(), 3); // a, b, c
 
-        // Verify all have parent positions (unwrap will panic if None)
-        let parent_positions: Vec<_> = non_root_nodes
-            .iter()
-            .map(|n| n.parent_position().unwrap())
-            .collect();
-        assert_eq!(parent_positions.len(), 3);
+        // Verify all have parent positions
+        assert!(non_root_nodes.iter().all(|n| n.parent_position().is_some()));
     }
 }

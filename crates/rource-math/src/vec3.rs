@@ -911,7 +911,7 @@ mod tests {
 
     #[test]
     fn test_default_is_zero() {
-        let v: Vec3 = Default::default();
+        let v: Vec3 = Vec3::default();
         assert_eq!(v, Vec3::ZERO);
     }
 

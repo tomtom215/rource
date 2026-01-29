@@ -1250,7 +1250,7 @@ width = 1920
         let config = Args::sample_config();
         assert!(!config.is_empty());
         // Should contain TOML-style configuration
-        assert!(config.contains("="));
+        assert!(config.contains('='));
     }
 
     #[test]

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Tom F <https://github.com/tomtom215>
 
-//! Performance benchmark tests for render_phases module.
+//! Performance benchmark tests for `render_phases` module.
 //!
 //! These tests measure the performance impact of label collision detection
-//! and beam limiting. They use std::time::Instant for timing.
+//! and beam limiting. They use `std::time::Instant` for timing.
 //!
 //! Run with: cargo test -p rource-wasm bench_ --release -- --nocapture
 

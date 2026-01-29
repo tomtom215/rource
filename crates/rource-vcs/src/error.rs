@@ -204,7 +204,7 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("20"));
         assert!(msg.contains("action"));
-        assert!(msg.contains("X"));
+        assert!(msg.contains('X'));
     }
 
     #[test]
@@ -234,6 +234,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(invalid_from_utf8)]
     fn test_display_utf8_error() {
         // Create a UTF-8 error by trying to decode invalid bytes
         let invalid_utf8 = [0xFF, 0xFE];
@@ -258,6 +259,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(invalid_from_utf8)]
     fn test_source_utf8_error() {
         let invalid_utf8 = [0xFF, 0xFE];
         let utf8_err = std::str::from_utf8(&invalid_utf8).unwrap_err();
@@ -298,13 +300,13 @@ mod tests {
         for err in variants {
             assert!(
                 std::error::Error::source(&err).is_none(),
-                "Expected None source for: {:?}",
-                err
+                "Expected None source for: {err:?}",
             );
         }
     }
 
     #[test]
+    #[allow(invalid_from_utf8)]
     fn test_from_utf8_error() {
         let invalid_utf8 = [0xFF, 0xFE];
         let utf8_err = std::str::from_utf8(&invalid_utf8).unwrap_err();
@@ -315,7 +317,7 @@ mod tests {
     #[test]
     fn test_debug_impl() {
         let err = ParseError::Custom("test".to_string());
-        let debug_str = format!("{:?}", err);
+        let debug_str = format!("{err:?}");
         assert!(debug_str.contains("Custom"));
     }
 }
