@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769721742378,
+  "lastUpdate": 1769726187360,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4274,6 +4274,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/5018c6893f609022db55656015c1a13da9252a86"
         },
         "date": 1769721741276,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d80166235cd6a415c3fba1f6f8b5515ca0a021b9",
+          "message": "Merge pull request #230 from tomtom215/claude/resource-continuation-fqynP-vXZ54\n\nAdd determinant, trace, and transform proofs for Mat3/Mat4",
+          "timestamp": "2026-01-29T23:34:27+01:00",
+          "tree_id": "dbe75758299addd30ce76beb0e1a1c4000d15d96",
+          "url": "https://github.com/tomtom215/rource/commit/d80166235cd6a415c3fba1f6f8b5515ca0a021b9"
+        },
+        "date": 1769726186997,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
