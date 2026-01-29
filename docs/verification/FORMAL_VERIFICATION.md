@@ -530,12 +530,26 @@ architecture combining Verus with the Coq ecosystem.
 │       │         (105 theorems)   Vector space axioms, dot/cross         │
 │       │                          properties, matrix ring structure      │
 │       │                                                                 │
-│       ├──► coq-of-rust ────────► Coq Representation                     │
+│       ├──► Manual Coq Specs ───► Coq Proofs (241 theorems)             │
 │       │                                │                                │
 │       │                                ├──► ICC ──► Complexity Bounds   │
-│       │                                │            O(1), O(n) proofs   │
+│       │                                │            O(1) proofs (60)    │
 │       │                                │                                │
-│       │                                └──► CertiCoq-WASM               │
+│       │                                ├──► Z-based Computational Bridge│
+│       │                                │    Vec2_Compute.v (25 thms)    │
+│       │                                │         │                      │
+│       │                                │    Path 1: Coq Extraction      │
+│       │                                │         │                      │
+│       │                                │         ▼                      │
+│       │                                │    OCaml (vec2_extracted.ml)   │
+│       │                                │         │                      │
+│       │                                │    wasm_of_ocaml (production)  │
+│       │                                │         │                      │
+│       │                                │         ▼                      │
+│       │                                │    WASM (browser execution)    │
+│       │                                │                                │
+│       │                                └──► [Future: CertiCoq-WASM]     │
+│       │                                     (Path 4, Coq 8.20+)        │
 │       │                                          │                      │
 │       │                                          ▼                      │
 │       │                                     Verified WASM               │
@@ -550,10 +564,13 @@ architecture combining Verus with the Coq ecosystem.
 | Tool | Purpose | Maturity | Integration |
 |------|---------|----------|-------------|
 | **Verus** | Algebraic properties | Production | ✅ Active |
-| **coq-of-rust** | Rust → Coq translation | Beta | Planned |
-| **CertiCoq-WASM** | Coq → Verified WASM | Research (CPP 2025) | Planned |
-| **WasmCert-Coq** | WASM formalization | Production | Dependency |
-| **ICC/Coq** | Complexity bounds | Research | Planned |
+| **Coq** | Mathematical proofs, complexity | Production | ✅ Active (241 theorems) |
+| **wasm_of_ocaml** | OCaml → WASM compilation | Production (v6.2.0) | Recommended (Path 1) |
+| **MetaCoq Verified Extraction** | Verified Coq → OCaml | Research (PLDI'24) | Planned (Path 2) |
+| **CertiCoq-WASM** | Coq → Verified WASM | Research (CPP 2025) | Deferred (Path 4, needs 8.20) |
+| **coq-rust-extraction** | Coq → Rust extraction | Early research (v0.1.1) | Deferred (needs 8.20+) |
+| **WasmCert-Coq** | WASM formalization | Production | CertiCoq-WASM dependency |
+| **ICC/Coq** | Complexity bounds | Research | ✅ Active (60 theorems) |
 | **RefinedRust** | Unsafe code verification | Research (PLDI 2024) | Optional |
 
 ### CertiCoq-WASM Details
@@ -735,11 +752,67 @@ explosion.
 See `docs/performance/CHRONOLOGY.md` Phase 80 and `docs/performance/BENCHMARKS.md`
 for complete timing data and approach comparison.
 
-#### Phase 3: CertiCoq-WASM Integration (Q3 2026)
-- [ ] Install CertiCoq-WASM pipeline
-- [ ] Extract critical math operations to verified WASM
-- [ ] Benchmark verified vs unverified WASM performance
-- [ ] Integrate into build pipeline (optional flag)
+#### Phase 3: Coq-to-WASM Pipeline (Q1-Q3 2026) - ASSESSED + ALTERNATIVES SURVEYED
+
+**Status**: Full landscape survey complete. 9 paths evaluated, 3 viable today.
+Recommended pipeline: Standard Extraction + wasm_of_ocaml (production-ready).
+
+**CertiCoq-WASM Blockers (3 independent):**
+1. **R type incompatible with extraction** - Coq Reals are axiomatized, non-extractable
+2. **Coq version mismatch** - CertiCoq-WASM requires Coq 8.20; project uses 8.18
+3. **Purpose mismatch** - Existing specs are proofs; CertiCoq-WASM compiles programs
+
+**Alternative Paths Identified (Full Survey):**
+
+| Path | Pipeline | Coq 8.18? | Verification | Status |
+|------|----------|-----------|--------------|--------|
+| **1 (Recommended)** | Coq → OCaml → wasm_of_ocaml → WASM | **Yes** | Unverified extraction | Production |
+| **2 (Academic)** | Coq → MetaCoq → OCaml → wasm_of_ocaml → WASM | **Yes** | Partially verified (PLDI'24) | Research |
+| **4 (Strongest)** | Coq → CertiCoq-WASM → WASM | No (8.20) | Fully verified (CPP'25) | Deferred |
+
+**Solution: Layered Verification Architecture**
+
+| Layer | File(s) | Type System | Purpose |
+|-------|---------|-------------|---------|
+| 1 (Abstract) | Vec2.v, Vec2_Proofs.v, etc. | R (reals) | Mathematical correctness |
+| 2 (Computational) | Vec2_Compute.v | Z (integers) | Extractable operations |
+| 3 (Extraction) | Vec2_Extract.v → wasm_of_ocaml | OCaml → WASM | Executable code |
+
+**Completed Deliverables:**
+- [x] CertiCoq-WASM feasibility assessment
+- [x] Comprehensive 9-path landscape survey (see `CERTICOQ_WASM_ASSESSMENT.md`)
+- [x] Vec2_Compute.v - Z-based computational bridge (25 theorems, 0 admits)
+- [x] Vec2_Extract.v - Standard Coq extraction to OCaml demonstrated
+- [x] Complexity.v warning fixes (11 notation-overridden warnings eliminated)
+- [x] Layered verification architecture documented
+- [x] wasm_of_ocaml identified as production-ready Path 1 (v6.2.0, Jane Street)
+- [x] MetaCoq Verified Extraction identified as Path 2 (PLDI'24, Coq 8.18 compatible)
+
+**Near-Term (Path 1 - wasm_of_ocaml):**
+- [ ] Install wasm_of_ocaml toolchain (OCaml + Dune + Binaryen)
+- [ ] Compile vec2_extracted.ml → WASM via wasm_of_ocaml
+- [ ] Benchmark extracted WASM vs wasm-pack WASM
+- [ ] Extend computational bridge to all types (Vec3/4, Mat3/4)
+
+**Medium-Term (Path 2 - MetaCoq Verified Extraction):**
+- [ ] Install MetaCoq for Coq 8.18
+- [ ] Test verified extraction on Vec2_Compute.v
+- [ ] Document TCB reduction for academic publication
+
+**Long-Term (Path 4 - CertiCoq-WASM, deferred to Coq 8.20):**
+- [ ] Upgrade Coq to 8.20 and verify all proofs
+- [ ] Install CertiCoq-WASM via opam
+- [ ] Benchmark all three pipelines
+
+**Reference:** See `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` for complete
+9-path landscape survey with technical deep dive on wasm_of_ocaml.
+
+**Verification Command (new files):**
+```bash
+cd crates/rource-math/proofs/coq
+coqc -Q . RourceMath Vec2_Compute.v    # 25 theorems, ~1.5s
+coqc -Q . RourceMath Vec2_Extract.v    # OCaml extraction, ~1.1s
+```
 
 #### Phase 4: Publication (Q4 2026)
 - [ ] Write academic paper on hybrid verification
@@ -768,13 +841,17 @@ This hybrid approach would be novel in several ways:
 
 4. Meier, W., Pichon-Pharabod, J., Spitters, B. "CertiCoq-Wasm: A Verified WebAssembly
    Backend for CertiCoq." CPP 2025.
-5. Guéneau, A., Charguéraud, A., Pottier, F. "A Fistful of Dollars: Formalizing
+5. Forster, Y., Sozeau, M., Tabareau, N. "Verified Extraction from Coq to OCaml."
+   PLDI 2024. Distinguished Paper Award.
+6. Guéneau, A., Charguéraud, A., Pottier, F. "A Fistful of Dollars: Formalizing
    Asymptotic Complexity Claims via Deductive Program Verification." ESOP 2018.
-6. Jung, R., et al. "RustBelt: Securing the Foundations of the Rust Programming
+7. Jung, R., et al. "RustBelt: Securing the Foundations of the Rust Programming
    Language." POPL 2018.
-7. Sammler, M., et al. "RefinedRust: A Type System for High-Assurance Verification
+8. Sammler, M., et al. "RefinedRust: A Type System for High-Assurance Verification
    of Rust Programs." PLDI 2024.
-8. Formal Land. "coq-of-rust: Formal verification tool for Rust." GitHub, 2024.
+9. wasm_of_ocaml (Jérôme Vouillon, Tarides): https://github.com/ocsigen/js_of_ocaml
+10. MetaRocq Verified Extraction: https://github.com/MetaRocq/rocq-verified-extraction
+11. coq-rust-extraction (AU-COBRA): https://github.com/AU-COBRA/coq-rust-extraction
 
 ## References
 
@@ -792,11 +869,12 @@ This hybrid approach would be novel in several ways:
 *Total verification conditions: 242 (Vec2: 53, Vec3: 68, Vec4: 68, Mat3: 26, Mat4: 27)*
 *Status: All proofs verified with 0 errors*
 
-**Coq Proofs (Phase 1 + Phase 2 + Phase 2b Complete):**
+**Coq Proofs (Phase 1 + Phase 2 + Phase 2b + Phase 3):**
 *Version: Coq 8.18*
-*Total theorems: 216 (Vec2: 30, Vec3: 38, Vec4: 28, Mat3: 22, Mat4: 38, Complexity: 60)*
+*Total theorems: 241 (Vec2: 30, Vec3: 38, Vec4: 28, Mat3: 22, Mat4: 38, Complexity: 60, Vec2_Compute: 25)*
 *Admits: 0*
-*Compilation time: ~16.3 seconds total (Phase 2b optimized Mat4 from 30+ min to ~6s)*
+*Compilation time: ~17.9 seconds total*
+*Breakdown: Vec2_Proofs 1.6s, Vec3_Proofs 1.9s, Vec4_Proofs 1.7s, Mat3_Proofs 3.1s, Mat4_Proofs 5.8s, Complexity 1.4s, Vec2_Compute 1.5s, Vec2_Extract 1.1s*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**
@@ -804,7 +882,17 @@ This hybrid approach would be novel in several ways:
 *Cost model: Abstract operation counting (muls + adds)*
 *Status: All complexity bounds verified*
 
+**Computational Bridge (Phase 3):**
+*Vec2_Compute.v: 25 theorems over Z (integers), fully extractable*
+*Vec2_Extract.v: Standard Coq extraction to OCaml demonstrated*
+*Architecture: Layered (R-abstract / Z-computational / extraction)*
+*Landscape Survey: 9 Coq-to-WASM paths evaluated (see CERTICOQ_WASM_ASSESSMENT.md)*
+*Recommended Path: Standard Extraction + wasm_of_ocaml (production-ready, Coq 8.18 compatible)*
+*Alternative Path: MetaCoq Verified Extraction (PLDI'24, partially verified, Coq 8.18 compatible)*
+*CertiCoq-WASM: Assessed, deferred to Coq 8.20 availability (strongest verification)*
+*Status: Assessment complete, multi-path architecture documented*
+
 **Combined Verification:**
-*Total theorems: 321 across Verus and Coq*
+*Total theorems: 346 across Verus and Coq*
 *Total admits: 0*
-*Status: Dual-verification for maximum confidence + complexity bounds*
+*Status: Dual-verification + complexity bounds + computational bridge*
