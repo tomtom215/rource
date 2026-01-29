@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769706225574,
+  "lastUpdate": 1769721742378,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4235,6 +4235,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/0f596ce04812a5dbc8f25bfa33ed0e06ba09eb01"
         },
         "date": 1769706225045,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5018c6893f609022db55656015c1a13da9252a86",
+          "message": "Merge pull request #229 from tomtom215/claude/rource-continuation-fqynP\n\nRefactor: modernize Rust code style and add Mat3 extended proofs",
+          "timestamp": "2026-01-29T22:20:04+01:00",
+          "tree_id": "e428e6de00bf3710f62763b45797f16290a657e1",
+          "url": "https://github.com/tomtom215/rource/commit/5018c6893f609022db55656015c1a13da9252a86"
+        },
+        "date": 1769721741276,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
