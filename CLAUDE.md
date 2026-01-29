@@ -83,8 +83,8 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 105 theorems, 242 verification conditions, 0 errors
-- **Coq**: 216 theorems, 0 admits, machine-checked (~16.3s compilation)
-- **Combined**: 321 formally verified theorems
+- **Coq**: 241 theorems, 0 admits, machine-checked (~18.1s compilation)
+- **Combined**: 346 formally verified theorems
 
 ### The Non-Negotiable Rules
 
@@ -365,6 +365,17 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | 4sbzk | Coq `f_equal` causes exponential blowup on large records | `f_equal` on 16-field Mat4 creates nested terms causing `lra`/`ring` to time out | Use `apply mat4_eq` instead of `f_equal`; processes fields independently | Yes |
 | 2026-01-29 | 4sbzk | Coq `ring` times out on 16 simultaneous polynomial identities | 48 variables × 16 components = exponential term growth | Decompose into 16 component lemmas, each proven with `ring` separately | Yes |
 | 2026-01-29 | 4sbzk | Coq tactic selection critical for Mat4 proofs | Wrong tactic = 30+ min timeout; right tactic = ~6s | Established tactic guide: lra (linear), ring (polynomial), reflexivity (structural), mat4_eq (records), component decomposition (complex polynomial) | Yes |
+| 2026-01-29 | EnuTg | CertiCoq-WASM requires Coq 8.20, R type non-extractable | CertiCoq-WASM pinned to Coq >= 8.20 < 8.21~; Coq Reals are axiomatized | Designed layered architecture: R-abstract + Z-computational + extraction | Yes |
+| 2026-01-29 | EnuTg | Never use `simpl` before `ring` on Z multiplication | `simpl` reduces Z constants (1*x, (-1)*x) to match expressions `ring` cannot handle | Use `Z.mul_1_l` or `Z.mul_0_l` directly; omit `simpl` for `ring` proofs | Yes |
+| 2026-01-29 | EnuTg | `by` is reserved keyword in Coq 8.18 | Cannot use `by` as variable name in destructuring patterns `[bx by]` | Use `by0` or `b_y` as variable name instead | Yes |
+| 2026-01-29 | EnuTg | Z.square_nonneg uses `0 <= n*n` not `n*n >= 0` | `>=` form causes Coq unification error (different comparison direction) | Always use `0 <= n * n` form with `Z.square_nonneg` | Yes |
+| 2026-01-29 | EnuTg | R and Z share commutative ring properties | Both are commutative rings; algebraic proofs transfer | Z-based Vec2_Compute.v proves same 25 algebraic properties as R-based Vec2_Proofs.v | Yes |
+| 2026-01-29 | EnuTg | Coq notation-overridden warnings from multi-module import | Multiple modules define same notations (+v, -v, etc.) | Use `Set Warnings "-notation-overridden"` around imports | Yes |
+| 2026-01-29 | EnuTg | wasm_of_ocaml is production-ready for Coq→OCaml→WASM | v6.2.0, merged into js_of_ocaml, used by Jane Street | Recommended as Path 1 (production) for Coq-to-WASM pipeline | Yes |
+| 2026-01-29 | EnuTg | MetaCoq Verified Extraction works with Coq 8.18 | PLDI'24 Distinguished Paper; branches for 8.17/8.18 maintained | Identified as Path 2 (academic) for partially verified extraction | Yes |
+| 2026-01-29 | EnuTg | 9 distinct Coq-to-WASM paths exist (3 viable today) | Comprehensive survey: CertiCoq-WASM is only one option among many | Full landscape documented in CERTICOQ_WASM_ASSESSMENT.md | Yes |
+| 2026-01-29 | EnuTg | coq-rust-extraction (AU-COBRA) needs Coq 8.20+ | v0.1.1 (May 2025), built on MetaCoq erasure | Deferred; interesting for Rust integration but too early and wrong Coq version | Yes |
+| 2026-01-29 | EnuTg | WasmGC (browser GC) vs linear memory for Coq-extracted code | wasm_of_ocaml uses WasmGC (Chrome 119+, Firefox 122+, Safari 18.2+) | WasmGC ideal for pure functional Coq-extracted code (no C stubs) | Yes |
 
 ---
 
@@ -441,7 +452,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
 | Frame time | ~18-23 µs | <20 µs | Near target |
-| Optimization phases | 79 | Ongoing | Active |
+| Optimization phases | 81 | Ongoing | Active |
 | Algorithms evaluated | 79+ | Comprehensive | See ALGORITHM_CANDIDATES.md |
 
 ---
@@ -461,7 +472,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Precision | Picosecond/nanosecond measurements |
 | Frame Budget | Total render time < 20 µs |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (79 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (81 phases)
 
 ---
 
@@ -1746,7 +1757,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  321 formally verified theorems across Verus + Coq                          │
+│  346 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1760,5 +1771,5 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 80 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 321 theorems (Verus: 105, Coq: 216)*
+*Optimization Phases: 81 (see docs/performance/CHRONOLOGY.md)*
+*Formal Verification: 346 theorems (Verus: 105, Coq: 241)*

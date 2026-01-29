@@ -35,11 +35,16 @@
 
 Require Import Coq.Arith.Arith.
 Require Import Coq.micromega.Lia.
+
+(** Suppress notation-overridden warnings from importing multiple modules
+    that define the same operator notations (+v, -v, *v, etc.) *)
+Set Warnings "-notation-overridden".
 Require Import RourceMath.Vec2.
 Require Import RourceMath.Vec3.
 Require Import RourceMath.Vec4.
 Require Import RourceMath.Mat3.
 Require Import RourceMath.Mat4.
+Set Warnings "default".
 
 (** * Cost Type and Basic Definitions *)
 
