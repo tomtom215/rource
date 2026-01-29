@@ -1,4 +1,9 @@
 
+type comparison =
+| Eq
+| Lt
+| Gt
+
 module Pos :
  sig
   val succ : int -> int
@@ -10,6 +15,10 @@ module Pos :
   val pred_double : int -> int
 
   val mul : int -> int -> int
+
+  val compare_cont : comparison -> int -> int -> comparison
+
+  val compare : int -> int -> comparison
 
   val eq_dec : int -> int -> bool
  end
@@ -31,6 +40,24 @@ module Z :
   val sub : int -> int -> int
 
   val mul : int -> int -> int
+
+  val compare : int -> int -> comparison
+
+  val leb : int -> int -> bool
+
+  val ltb : int -> int -> bool
+
+  val gtb : int -> int -> bool
+
+  val max : int -> int -> int
+
+  val min : int -> int -> int
+
+  val pos_div_eucl : int -> int -> int * int
+
+  val div_eucl : int -> int -> int * int
+
+  val div : int -> int -> int
 
   val eq_dec : int -> int -> bool
  end
@@ -249,3 +276,93 @@ val zmat4_transpose : zMat4 -> zMat4
 val zmat4_mul : zMat4 -> zMat4 -> zMat4
 
 val zmat4_trace : zMat4 -> int
+
+type zColor = { zcolor_r : int; zcolor_g : int; zcolor_b : int; zcolor_a : int }
+
+val zcolor_r : zColor -> int
+
+val zcolor_g : zColor -> int
+
+val zcolor_b : zColor -> int
+
+val zcolor_a : zColor -> int
+
+val zcolor_eq_dec : zColor -> zColor -> bool
+
+val zcolor_new : int -> int -> int -> int -> zColor
+
+val zcolor_rgb : int -> int -> int -> zColor
+
+val zcolor_gray : int -> zColor
+
+val zcolor_transparent : zColor
+
+val zcolor_black : zColor
+
+val zcolor_white : zColor
+
+val zcolor_with_alpha : zColor -> int -> zColor
+
+val zcolor_fade : zColor -> int -> zColor
+
+val zcolor_lerp : zColor -> zColor -> int -> zColor
+
+val zcolor_premultiplied : zColor -> zColor
+
+val zcolor_blend_over : zColor -> zColor -> zColor
+
+val zcolor_luminance : zColor -> int
+
+val zclamp : int -> int -> int -> int
+
+val zcolor_clamp : zColor -> zColor
+
+type zRect = { zrect_x : int; zrect_y : int; zrect_w : int; zrect_h : int }
+
+val zrect_x : zRect -> int
+
+val zrect_y : zRect -> int
+
+val zrect_w : zRect -> int
+
+val zrect_h : zRect -> int
+
+val zrect_eq_dec : zRect -> zRect -> bool
+
+val zrect_new : int -> int -> int -> int -> zRect
+
+val zrect_zero : zRect
+
+val zrect_right : zRect -> int
+
+val zrect_bottom : zRect -> int
+
+val zrect_area : zRect -> int
+
+val zrect_perimeter : zRect -> int
+
+val zrect_center_x : zRect -> int
+
+val zrect_center_y : zRect -> int
+
+val zrect_is_valid : zRect -> bool
+
+val zrect_is_empty : zRect -> bool
+
+val zrect_contains_point : zRect -> int -> int -> bool
+
+val zrect_contains_rect : zRect -> zRect -> bool
+
+val zrect_intersects : zRect -> zRect -> bool
+
+val zrect_translate : zRect -> int -> int -> zRect
+
+val zrect_expand : zRect -> int -> zRect
+
+val zrect_shrink : zRect -> int -> zRect
+
+val zrect_union : zRect -> zRect -> zRect
+
+val zlerp : int -> int -> int -> int
+
+val zclamp0 : int -> int -> int -> int

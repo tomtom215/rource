@@ -82,9 +82,10 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 | Documentation Quality | Expert | Academic | This document |
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
-- **Verus**: 105 theorems, 242 verification conditions, 0 errors
-- **Coq**: 347 theorems, 0 admits, machine-checked (~39.8s compilation, 22 files)
-- **Combined**: 452 formally verified theorems
+- **Verus**: 151 theorems, 242+ verification conditions, 0 errors
+- **Coq (R-based)**: 277 theorems, 0 admits (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
+- **Coq (Z-based)**: 184 theorems, 0 admits (extractable computational bridge, 8 types)
+- **Combined**: 612 formally verified theorems across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -397,6 +398,12 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | T2LcJ | `make install` for MetaCoq takes ~15-20 min | Builds ToPCUIC and ToTemplate quotation theories, not just file copy | Budget time accordingly; monitor with verbose output | Yes |
 | 2026-01-29 | T2LcJ | Recompilation order matters for Coq .vo files | Layer dependencies: specs → proofs → complexity → compute → extraction → MetaCoq erasure | Always recompile in order; automated in `recompile_coq_proofs()` function | Yes |
 | 2026-01-29 | T2LcJ | `verify_coq_proofs()` has 4 layers | Layer 1: specs+proofs, Layer 2: compute, Layer 3: extraction, Layer 4: MetaCoq (optional) | Each layer depends on prior; MetaCoq layer is optional (not a failure if unavailable) | Yes |
+| 2026-01-29 | fqYWd | `simpl` destroys Z term structure for `lia`/`ring` | `simpl` reduces `Z.mul`, `Z.add` with variables into match expressions `lia`/`ring` cannot handle | Use `cbn -[Z.mul Z.div Z.add Z.sub]` to reduce only record projections; use `assert (H: 0/1000=0) by reflexivity; rewrite H` for ground divisions | Yes |
+| 2026-01-29 | fqYWd | `Z.div_mul` requires specific operand order | `Z.div_mul: a * b / b = a` matches second mult operand = divisor; `Z.mul_comm` breaks this | Don't use `Z.mul_comm` before `Z.div_mul`; use `rewrite Z.div_mul by lia` directly | Yes |
+| 2026-01-29 | fqYWd | `Z.gtb` not definitionally equal to `Z.ltb` with flipped args | `Z.gtb x y` defined as `match x ?= y with Gt => true | _ => false end`, NOT `Z.ltb y x` | Prove `Z_gtb_ltb: (x >? y) = (y <? x)` using `Z.compare_antisym` | Yes |
+| 2026-01-29 | fqYWd | `zclamp_upper` requires `lo <= hi` precondition | Without `lo <= hi`, `v > hi` and `v < lo` possible (when `hi < lo`); clamp returns `lo` not `hi` | Add `lo <= hi` hypothesis to clamp theorems that assume ordered bounds | Yes |
+| 2026-01-29 | fqYWd | `remember` + `destruct` avoids `simpl`/`cbn` reduction issues | Complex boolean proofs corrupt when `simpl`/`cbn` reduce Z comparisons | Use `remember (expr) as c; destruct c` to abstract boolean expressions before case analysis | Yes |
+| 2026-01-29 | fqYWd | Color/Rect/Utils verification scales well | Same layered architecture (R→Z→Extract) works for all types | Color: 48 theorems, Rect: 42 theorems, Utils: 24 theorems, all 0 admits | Yes |
 
 ---
 
@@ -1299,8 +1306,11 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | Vec4 | 22 theorems, 68 VCs | 29 theorems | 22 theorems | 73 | DUAL VERIFIED |
 | Mat3 | 18 theorems, 26 VCs | 23 theorems | 25 theorems | 66 | DUAL VERIFIED |
 | Mat4 | 18 theorems, 27 VCs | 39 theorems | 21 theorems | 78 | DUAL VERIFIED |
+| Color | 23 theorems | 26 theorems | 22 theorems | 71 | DUAL VERIFIED |
+| Rect | 23 theorems | 20 theorems | 22 theorems | 65 | DUAL VERIFIED |
+| Utils | — | 10 theorems | 14 theorems | 24 | VERIFIED |
 | Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **105 theorems** | **221 theorems** | **126 theorems** | **452** | **ACADEMIC** |
+| **Total** | **151 theorems** | **277 theorems** | **184 theorems** | **612** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1313,25 +1323,29 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Verus proofs (105 theorems)
+# Verus proofs (151 theorems)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/mat3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/mat4_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
-# Coq proofs (347 theorems, ~40s)
+# Coq proofs (461 theorems, ~40s)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specifications + proofs
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v
+coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
+coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v
 coqc -Q . RourceMath Complexity.v
 
 # Layer 2: Computational bridge (Z-based, extractable)
 coqc -Q . RourceMath Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v
 coqc -Q . RourceMath Mat3_Compute.v Mat4_Compute.v
+coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Utils_Compute.v
 
 # Layer 3: Extraction (OCaml output)
 coqc -Q . RourceMath RourceMath_Extract.v
@@ -1815,7 +1829,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  452 formally verified theorems across Verus + Coq                          │
+│  612 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1830,4 +1844,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 82 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 452 theorems (Verus: 105, Coq: 347)*
+*Formal Verification: 612 theorems (Verus: 151, Coq R-based: 277, Coq Z-based: 184)*
