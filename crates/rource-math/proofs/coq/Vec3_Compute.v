@@ -442,7 +442,8 @@ Theorem zvec3_distance_squared_nonneg : forall a b : ZVec3,
 Proof.
   intros [ax ay az] [bx by0 bz].
   unfold zvec3_distance_squared, zvec3_length_squared, zvec3_sub, zvec3_dot.
-  simpl. nia.
+  simpl.
+  apply Z.add_nonneg_nonneg; [apply Z.add_nonneg_nonneg |]; apply Z.square_nonneg.
 Qed.
 
 (** ** Element Sum/Product Properties *)

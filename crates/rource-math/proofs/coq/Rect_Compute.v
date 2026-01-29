@@ -288,7 +288,9 @@ Qed.
 Theorem zrect_scale_zero : forall (r : ZRect),
   zrect_w (zrect_scale r 0) = 0 /\ zrect_h (zrect_scale r 0) = 0.
 Proof.
-  intros [x y0 w h]. unfold zrect_scale. simpl. split; reflexivity.
+  intros [x y0 w h]. unfold zrect_scale.
+  cbn [zrect_w zrect_h zrect_x zrect_y].
+  split; rewrite Z.mul_0_r; reflexivity.
 Qed.
 
 (** ** Intersection Properties *)

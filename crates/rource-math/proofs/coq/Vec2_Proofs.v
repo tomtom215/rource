@@ -452,7 +452,8 @@ Theorem vec2_distance_squared_nonneg : forall a b : Vec2,
 Proof.
   intros a b. destruct a, b.
   unfold vec2_distance_squared, vec2_sub, vec2_length_squared, vec2_dot. simpl.
-  nra.
+  assert (H: forall r : R, 0 <= r * r) by (intro; nra).
+  apply Rplus_le_le_0_compat; apply H.
 Qed.
 
 (** * Reduction Operation Properties *)

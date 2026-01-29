@@ -527,7 +527,8 @@ Theorem vec3_distance_squared_nonneg : forall a b : Vec3,
 Proof.
   intros a b. destruct a, b.
   unfold vec3_distance_squared, vec3_sub, vec3_length_squared, vec3_dot. simpl.
-  nra.
+  assert (H: forall r : R, 0 <= r * r) by (intro; nra).
+  apply Rplus_le_le_0_compat; [apply Rplus_le_le_0_compat |]; apply H.
 Qed.
 
 (** * Reduction Operation Properties *)

@@ -301,7 +301,8 @@ Definition zcolor_mix (a b : ZColor) : ZColor :=
 Theorem zcolor_invert_involutive : forall (c : ZColor),
   zcolor_invert (zcolor_invert c) = c.
 Proof.
-  intros [r g b a]. unfold zcolor_invert. simpl.
+  intros [r g b a]. unfold zcolor_invert.
+  cbn [zcolor_r zcolor_g zcolor_b zcolor_a].
   apply zcolor_eq; lia.
 Qed.
 
@@ -371,7 +372,9 @@ Qed.
 Theorem zcolor_scale_zero : forall (c : ZColor),
   zcolor_scale c 0 = zcolor_transparent.
 Proof.
-  intros [r g b a]. unfold zcolor_scale, zcolor_transparent. simpl. reflexivity.
+  intros [r g b a]. unfold zcolor_scale, zcolor_transparent.
+  cbn [zcolor_r zcolor_g zcolor_b zcolor_a].
+  apply zcolor_eq; rewrite Z.mul_0_r; reflexivity.
 Qed.
 
 (** * Computational Tests *)
