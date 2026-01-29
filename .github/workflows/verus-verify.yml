@@ -58,6 +58,11 @@ jobs:
 
       - name: Verify Verus installation
         run: |
+          echo "Checking Verus binary..."
+          ls -la /tmp/verus/verus 2>&1 || true
+          ls -la /tmp/verus/verus-x86-linux/ 2>&1 || true
+          file /tmp/verus/verus-x86-linux/verus 2>&1 || true
+          ldd /tmp/verus/verus-x86-linux/verus 2>&1 || true
           /tmp/verus/verus --version
           echo "Verus version: $(/tmp/verus/verus --version | head -2 | tail -1)"
 
@@ -65,8 +70,19 @@ jobs:
         id: vec2
         run: |
           echo "Verifying Vec2 proofs..."
+          set +e
           OUTPUT=$(/tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs 2>&1)
+          EXIT_CODE=$?
+          set -e
           echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
+            echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
+            echo "This may indicate a missing shared library or incompatible binary."
+            echo "Checking binary dependencies..."
+            ldd /tmp/verus/verus-x86-linux/verus 2>&1 || true
+            file /tmp/verus/verus-x86-linux/verus 2>&1 || true
+            exit 1
+          fi
 
           # Extract verification counts
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
@@ -84,8 +100,15 @@ jobs:
         id: vec3
         run: |
           echo "Verifying Vec3 proofs..."
+          set +e
           OUTPUT=$(/tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs 2>&1)
+          EXIT_CODE=$?
+          set -e
           echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
+            echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
+            exit 1
+          fi
 
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
@@ -102,8 +125,15 @@ jobs:
         id: vec4
         run: |
           echo "Verifying Vec4 proofs..."
+          set +e
           OUTPUT=$(/tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs 2>&1)
+          EXIT_CODE=$?
+          set -e
           echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
+            echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
+            exit 1
+          fi
 
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
@@ -120,8 +150,15 @@ jobs:
         id: mat3
         run: |
           echo "Verifying Mat3 proofs..."
+          set +e
           OUTPUT=$(/tmp/verus/verus crates/rource-math/proofs/mat3_proofs.rs 2>&1)
+          EXIT_CODE=$?
+          set -e
           echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
+            echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
+            exit 1
+          fi
 
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
@@ -138,8 +175,15 @@ jobs:
         id: mat4
         run: |
           echo "Verifying Mat4 proofs..."
+          set +e
           OUTPUT=$(/tmp/verus/verus crates/rource-math/proofs/mat4_proofs.rs 2>&1)
+          EXIT_CODE=$?
+          set -e
           echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
+            echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
+            exit 1
+          fi
 
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
