@@ -98,6 +98,16 @@ impl SvnParser {
                 value: date_str.to_string(),
             })?;
 
+        // Validate year is in reasonable range to prevent integer overflow
+        // in days_since_epoch calculations (years_since * 365 can overflow i64
+        // for years beyond ~2.5e16, and no valid SVN commit has year > 9999)
+        if !(0..=9999).contains(&year) {
+            return Err(ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            });
+        }
+
         let month: i64 = date_parts
             .next()
             .ok_or_else(|| ParseError::InvalidTimestamp {
@@ -857,5 +867,105 @@ mod tests {
     #[test]
     fn test_svn_no_prefix_strip() {
         assert_eq!(SvnParser::strip_svn_prefix("src/main.rs"), "src/main.rs");
+    }
+
+    // ========================================================================
+    // Regression tests for fuzzer-discovered crashes
+    // ========================================================================
+
+    #[test]
+    fn test_fuzz_regression_large_year_overflow() {
+        // Regression test for CI fuzzing crash (libFuzzer: deadly signal).
+        // Dates with extremely large year values (e.g., 441111) caused integer
+        // overflow in days_since_epoch() where `years_since * 365` overflows i64
+        // in debug/fuzz builds. The fix validates year is in range 0..=9999.
+        let parser = SvnParser::new();
+
+        // Year 441111 - the approximate pattern from the fuzz corpus
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author>test</author>
+<date>441111-02-03T04:05:06.000000Z</date>
+<paths><path action="A">/trunk/file.txt</path></paths>
+</logentry>
+</log>"#;
+        let result = parser.parse_str(log);
+        assert!(result.is_err(), "year 441111 should be rejected");
+
+        // Year far beyond i64 overflow threshold (~2.5e16)
+        let log_huge = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author>test</author>
+<date>99999999999999999-01-01T00:00:00.000000Z</date>
+<paths><path action="A">/trunk/file.txt</path></paths>
+</logentry>
+</log>"#;
+        let result = parser.parse_str(log_huge);
+        assert!(result.is_err(), "huge year should be rejected");
+    }
+
+    #[test]
+    fn test_fuzz_regression_negative_year() {
+        // Negative years should also be rejected to prevent overflow
+        let parser = SvnParser::new();
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author>test</author>
+<date>-9999999-01-01T00:00:00.000000Z</date>
+<paths><path action="A">/trunk/file.txt</path></paths>
+</logentry>
+</log>"#;
+        let result = parser.parse_str(log);
+        assert!(result.is_err(), "negative year should be rejected");
+    }
+
+    #[test]
+    fn test_fuzz_regression_year_boundary_valid() {
+        // Year 9999 should still be accepted (maximum valid year)
+        let parser = SvnParser::new();
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author>test</author>
+<date>9999-12-31T23:59:59.000000Z</date>
+<paths><path action="A">/trunk/file.txt</path></paths>
+</logentry>
+</log>"#;
+        let result = parser.parse_str(log);
+        assert!(result.is_ok(), "year 9999 should be accepted");
+    }
+
+    #[test]
+    fn test_fuzz_regression_year_boundary_invalid() {
+        // Year 10000 should be rejected (just past boundary)
+        let parser = SvnParser::new();
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author>test</author>
+<date>10000-01-01T00:00:00.000000Z</date>
+<paths><path action="A">/trunk/file.txt</path></paths>
+</logentry>
+</log>"#;
+        let result = parser.parse_str(log);
+        assert!(result.is_err(), "year 10000 should be rejected");
+    }
+
+    #[test]
+    fn test_fuzz_regression_malformed_date_with_garbage() {
+        // Approximation of the actual fuzz corpus that caused the crash:
+        // Malformed XML with garbage bytes and embedded date-like patterns
+        let parser = SvnParser::new();
+        let malformed = "<log><logentry revision=\"1\">\
+            <author>x</author>\
+            <date>441111-2-3-\x004T1:11:1\x00</date>\
+            <paths><path action=\"A\">/trunk/f</path></paths>\
+            </logentry></log>";
+        let result = parser.parse_str(malformed);
+        // Should not panic - error is acceptable
+        assert!(result.is_err());
     }
 }
