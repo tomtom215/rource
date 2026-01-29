@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769698646622,
+  "lastUpdate": 1769706225574,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4196,6 +4196,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/9dd069f10dcc5421d22677fef9dca6d23a956ba1"
         },
         "date": 1769698646090,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f596ce04812a5dbc8f25bfa33ed0e06ba09eb01",
+          "message": "Merge pull request #228 from tomtom215/claude/certicoq-wasm-integration-KuTgE\n\nExpand formal verification: 796 theorems across Verus + Coq",
+          "timestamp": "2026-01-29T18:01:47+01:00",
+          "tree_id": "b03e582f09241f81afb532a6238873608afb84ff",
+          "url": "https://github.com/tomtom215/rource/commit/0f596ce04812a5dbc8f25bfa33ed0e06ba09eb01"
+        },
+        "date": 1769706225045,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
