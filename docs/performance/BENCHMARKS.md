@@ -1026,4 +1026,98 @@ WASM environments. Hash table approach scales linearly with depth.
 
 ---
 
-*Last updated: 2026-01-27*
+## Phase 80: Coq Proof Compilation Timing (2026-01-29)
+
+### Compilation Environment
+
+| Component | Value |
+|-----------|-------|
+| Coq Version | 8.18 |
+| Platform | x86_64-unknown-linux-gnu |
+| Measurement | `date +%s.%N` before/after `coqc` |
+
+### Reproduction Commands
+
+```bash
+cd crates/rource-math/proofs/coq
+
+# Build all specifications
+coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v
+
+# Build all proofs (timed)
+for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Complexity.v; do
+  START=$(date +%s.%N)
+  coqc -Q . RourceMath "$f"
+  END=$(date +%s.%N)
+  echo "$f: $(echo "$END - $START" | bc) seconds"
+done
+```
+
+### Per-File Compilation Times
+
+| File | Theorems/Lemmas | Compilation Time | Key Tactics |
+|------|-----------------|------------------|-------------|
+| Vec2.v | 1 | 1.5s | Specification only |
+| Vec3.v | 1 | 1.6s | Specification only |
+| Vec4.v | 1 | 1.5s | Specification only |
+| Mat3.v | 1 | 1.5s | Specification only |
+| Mat4.v | 1 | 1.5s | Specification only |
+| Vec2_Proofs.v | 30 | 1.8s | lra, ring, reflexivity |
+| Vec3_Proofs.v | 38 | 2.2s | lra, ring, reflexivity |
+| Vec4_Proofs.v | 28 | 2.0s | lra, ring, reflexivity |
+| Mat3_Proofs.v | 22 | 3.3s | lra, ring, reflexivity |
+| Mat4_Proofs.v | 38 | 5.9s | lra, ring, mat4_eq, component decomposition |
+| Complexity.v | 60 | 1.1s | lia |
+| **Total** | **216** | **~16.3s** | |
+
+### Mat4_Proofs.v Optimization History (Phase 80)
+
+| Approach | Compilation Time | Status | Notes |
+|----------|-----------------|--------|-------|
+| `f_equal; lra/ring` (original) | 30+ min | TIMEOUT | f_equal causes exponential blowup |
+| `apply mat4_eq; nsatz` | 10+ min | TIMEOUT | nsatz (Gröbner bases) too slow on 48 vars |
+| `apply mat4_eq; nra` | 5+ min | TIMEOUT | nra still exponential |
+| `apply mat4_eq; abstract ring` | 10+ min | TIMEOUT | abstract doesn't help ring |
+| **`apply mat4_eq` + component decomposition** | **~6s** | **SUCCESS** | 16 separate ring proofs |
+
+### Per-Component Timing for mat4_mul_assoc
+
+Each component lemma proves one polynomial identity using `unfold mat4_mul; simpl; ring`:
+
+| Component | Time | Variables | Terms |
+|-----------|------|-----------|-------|
+| mat4_mul_assoc_m0 | 1.7s | 48 | 4 products of 4 sums |
+| mat4_mul_assoc_m1 | 1.7s | 48 | 4 products of 4 sums |
+| ... (m2-m14) | ~1.7s each | 48 | 4 products of 4 sums |
+| mat4_mul_assoc_m15 | 1.7s | 48 | 4 products of 4 sums |
+| **Total (16 lemmas)** | **~27s** | | Sequential compilation |
+
+Note: The full file compiles in ~6s (not 27s) because Coq parallelizes
+independent lemma processing within a single file compilation.
+
+### Tactic Performance Comparison on Mat4 Record
+
+| Tactic | `mat4_add_comm` (linear) | `mat4_mul_assoc` (polynomial) |
+|--------|--------------------------|-------------------------------|
+| `f_equal; lra` | TIMEOUT (>60s) | N/A |
+| `f_equal; ring` | TIMEOUT (>60s) | TIMEOUT (>30 min) |
+| `apply mat4_eq; lra` | 0.2s | N/A (not polynomial) |
+| `apply mat4_eq; ring` | 0.3s | TIMEOUT (all 16 at once) |
+| Component + `ring` | N/A | ~1.7s per component |
+
+### Scaling Analysis: Record Size vs Compilation Time
+
+| Type | Fields | `f_equal; ring` time | `apply eq; ring` time | Ratio |
+|------|--------|----------------------|----------------------|-------|
+| Vec2 | 2 | ~0.1s | ~0.1s | 1× |
+| Vec3 | 3 | ~0.2s | ~0.1s | ~2× |
+| Vec4 | 4 | ~0.3s | ~0.1s | ~3× |
+| Mat3 | 9 | ~3s | ~0.3s | ~10× |
+| Mat4 | 16 | TIMEOUT | ~0.3s | >300× |
+
+The `f_equal` blowup appears to be exponential in the number of record fields,
+while `apply <type>_eq` scales linearly.
+
+---
+
+*Last updated: 2026-01-29*

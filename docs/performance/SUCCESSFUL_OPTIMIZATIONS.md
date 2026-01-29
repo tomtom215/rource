@@ -17,6 +17,7 @@ Organized by optimization category with implementation details and code location
 8. [Browser-Specific Optimizations](#browser-specific-optimizations)
 9. [Dependency Optimizations](#dependency-optimizations)
 10. [Compiler Optimizations](#compiler-optimizations)
+11. [Formal Verification Optimizations](#formal-verification-optimizations)
 
 ---
 
@@ -1230,6 +1231,96 @@ wasm-opt \
 
 ---
 
+## Formal Verification Optimizations
+
+### Coq Mat4 Proof Compilation Optimization
+
+**Phase**: 80
+**Location**: `crates/rource-math/proofs/coq/Mat4_Proofs.v`
+**Impact**: >300× compilation speedup (30+ min → ~6 seconds)
+
+Optimized Mat4_Proofs.v compilation by replacing exponentially slow proof tactics
+with efficient decomposition strategies.
+
+**Root Cause**: Two independent issues caused exponential compilation time:
+
+1. **`f_equal` on 16-field records**: Creates nested term structures causing
+   `lra`/`ring` to exhibit exponential behavior. A single `f_equal; lra` proof
+   timed out after 60 seconds.
+
+2. **Simultaneous polynomial processing**: `mat4_mul_assoc` requires 64 nonlinear
+   constraints across 48 variables. Processing all 16 simultaneously causes
+   exponential term growth.
+
+**Before** (exponential):
+```coq
+Theorem mat4_add_comm : forall a b : Mat4,
+  mat4_add a b = mat4_add b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold mat4_add. simpl.
+  f_equal; lra.       (* TIMEOUT: >60 seconds per theorem *)
+Qed.
+
+Theorem mat4_mul_assoc : forall a b c : Mat4,
+  mat4_mul (mat4_mul a b) c = mat4_mul a (mat4_mul b c).
+Proof.
+  intros. destruct a, b, c.
+  unfold mat4_mul. simpl.
+  f_equal; ring.       (* TIMEOUT: >30 minutes *)
+Qed.
+```
+
+**After** (linear):
+```coq
+(* Fix 1: apply mat4_eq instead of f_equal *)
+Theorem mat4_add_comm : forall a b : Mat4,
+  mat4_add a b = mat4_add b a.
+Proof.
+  intros a b.
+  apply mat4_eq; unfold mat4_add; simpl; lra.  (* ~0.2 seconds *)
+Qed.
+
+(* Fix 2: Decompose into 16 independent component lemmas *)
+Lemma mat4_mul_assoc_m0 : forall a b c : Mat4,
+  m0 (mat4_mul (mat4_mul a b) c) = m0 (mat4_mul a (mat4_mul b c)).
+Proof. intros. unfold mat4_mul; simpl; ring. Qed.
+(* ... 15 more component lemmas ... *)
+
+Theorem mat4_mul_assoc : forall a b c : Mat4,
+  mat4_mul (mat4_mul a b) c = mat4_mul a (mat4_mul b c).
+Proof.
+  intros a b c.
+  apply mat4_eq;
+    [ apply mat4_mul_assoc_m0 | ... | apply mat4_mul_assoc_m15 ].
+Qed.
+```
+
+**Benchmark Results**:
+
+| Approach | Time | Status |
+|----------|------|--------|
+| Original (`f_equal; ring/lra`) | 30+ min | TIMEOUT |
+| `nsatz` (Gröbner bases) | 10+ min | TIMEOUT |
+| `nra` (nonlinear real arithmetic) | 5+ min | TIMEOUT |
+| `abstract ring` | 10+ min | TIMEOUT |
+| **`mat4_eq` + component decomposition** | **~6s** | **SUCCESS** |
+
+**Tactic Selection Guide**:
+
+| Proof Type | Tactic | Example |
+|------------|--------|---------|
+| Linear arithmetic | `lra` | `a + b = b + a`, `1 * x = x` |
+| Polynomial identity | `ring` | `s * (a + b) = s*a + s*b` |
+| Structural identity | `reflexivity` | `transpose(transpose(A)) = A` |
+| Large record equality | `apply <type>_eq` | Any Mat3/Mat4 equality |
+| Complex polynomial (48 vars) | Component decomposition | `mat4_mul_assoc` |
+
+**Mathematical Validity**: Only proof strategies changed, not theorem statements.
+Zero admits, zero non-standard axioms, all proofs machine-checked.
+
+---
+
 ## Phases 1-26 Audit Resolutions
 
 **Audit Date**: 2026-01-23 | **Closed**: 2026-01-24
@@ -1306,4 +1397,4 @@ A comprehensive performance audit identified and resolved the following issues:
 
 ---
 
-*Last updated: 2026-01-27*
+*Last updated: 2026-01-29*
