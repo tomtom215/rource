@@ -1321,6 +1321,93 @@ Zero admits, zero non-standard axioms, all proofs machine-checked.
 
 ---
 
+### Verus Requires-Axiom Decomposition for Degree-3+ Polynomial Identities
+
+**Phase**: 83
+**Location**: `crates/rource-math/proofs/mat3_extended_proofs.rs`
+**Impact**: Unlocks previously Z3-intractable polynomial identities; 0 → 22 new Mat3 theorems
+
+Discovered that Z3's `by(nonlinear_arith)` operates in an **isolated context** that cannot
+expand Verus `open spec fn` definitions. For degree-3+ polynomial identities involving spec
+functions (e.g., `det(A^T) = det(A)` with 9 variables), Z3 must both expand the spec functions
+AND verify the polynomial equality — exceeding its resource limits.
+
+**Root Cause**: `by(nonlinear_arith)` does not inherit facts from helper lemma calls in the
+outer proof body. Distribution lemmas, commutativity facts, and associativity results are
+invisible inside `nonlinear_arith` blocks.
+
+**The 4-Phase Decomposition Pattern**:
+
+| Phase | Who Does the Work | What They Do |
+|-------|-------------------|--------------|
+| 1. EXPAND det(A) | Outer Z3 context | Uses distribution lemmas to expand spec functions; asserts expanded polynomial form |
+| 2. EXPAND det(A^T) | Outer Z3 context | Same for the other side of the equality |
+| 3. BRIDGE | Individual `nonlinear_arith` blocks | Each proves a single degree-2 commutativity fact (trivial) |
+| 4. CLOSE | `nonlinear_arith` with `requires` | Receives pre-expanded polynomials as axioms; only verifies raw integer equality |
+
+**Before** (intractable):
+```rust
+proof fn mat3_det_transpose(a: SpecMat3)
+    ensures mat3_determinant(mat3_transpose(a)) == mat3_determinant(a),
+{
+    // Z3 TIMEOUT: cannot expand two nested spec functions AND verify
+    // a degree-3 polynomial identity over 9 variables simultaneously
+    assert(mat3_determinant(mat3_transpose(a)) == mat3_determinant(a))
+        by(nonlinear_arith);
+}
+```
+
+**After** (verified in <1 second):
+```rust
+proof fn mat3_det_transpose(a: SpecMat3)
+    ensures mat3_determinant(mat3_transpose(a)) == mat3_determinant(a),
+{
+    let da = mat3_determinant(a);
+    let dat = mat3_determinant(mat3_transpose(a));
+
+    // Phase 1: Outer Z3 expands det(A) using distribution lemmas
+    distrib_sub(a.m0, a.m4 * a.m8, a.m5 * a.m7);
+    // ... (2 more distrib_sub calls)
+    assert(da == /* 6-term expanded polynomial */);
+
+    // Phase 2: Outer Z3 expands det(A^T)
+    distrib_sub(a.m0, a.m4 * a.m8, a.m7 * a.m5);
+    // ... (2 more distrib_sub calls)
+    assert(dat == /* 6-term expanded polynomial */);
+
+    // Phase 3: Trivial commutativity facts
+    assert(a.m0 * (a.m7 * a.m5) == a.m0 * (a.m5 * a.m7)) by(nonlinear_arith);
+    // ... (4 more)
+
+    // Phase 4: Close with pre-expanded axioms
+    assert(dat == da) by(nonlinear_arith)
+        requires da == /* expanded */, dat == /* expanded */;
+}
+```
+
+**Key Insight**: The `requires` clause feeds axioms directly to `nonlinear_arith`,
+decoupling spec-function expansion (outer Z3) from polynomial equality verification
+(inner `nonlinear_arith`). This is a **general technique** applicable to any degree-3+
+polynomial identity over Verus spec functions.
+
+**Future Applications**:
+- Mat4 determinant properties (degree-4, 16 variables)
+- Quaternion identities (degree-4, 4 variables)
+- Cross product triple product identities (degree-3, 9 variables)
+- Cayley-Hamilton theorem proofs
+
+**Verification Results**:
+```
+mat3_extended_proofs.rs: 45 verified, 0 errors
+Total Verus proof functions: 240 → 266 (+26)
+Total verified theorems: 796 → 822 (+26)
+```
+
+**Mathematical Validity**: Only proof strategies changed, not theorem statements.
+Zero admits, zero non-standard axioms, all proofs machine-checked.
+
+---
+
 ## Phases 1-26 Audit Resolutions
 
 **Audit Date**: 2026-01-23 | **Closed**: 2026-01-24

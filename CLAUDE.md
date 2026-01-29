@@ -82,10 +82,10 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 | Documentation Quality | Expert | Academic | This document |
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
-- **Verus**: 240 proof functions, 0 errors
+- **Verus**: 266 proof functions, 0 errors
 - **Coq (R-based)**: 337 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
 - **Coq (Z-based)**: 219 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
-- **Combined**: 796 formally verified theorems across 8 types
+- **Combined**: 822 formally verified theorems across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -408,6 +408,10 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | KuTgE | `nra`/`nia` fail on sum-of-squares with subtraction | `nra` cannot prove `0 <= (x + -y)*(x + -y) + ...`; internal `-` representation blocks solver | R: `assert (H: forall r, 0 <= r*r) by (intro; nra). apply Rplus_le_le_0_compat; apply H.` Z: `apply Z.add_nonneg_nonneg; apply Z.square_nonneg.` | Yes |
 | 2026-01-29 | KuTgE | `simpl` + `lia` fails on Z constants like 1000 | `simpl` reduces Z constants to binary representation that `lia` cannot handle | Use `cbn [field_projections]` instead of `simpl` before `lia` with Z constants; or omit `simpl` entirely | Yes |
 | 2026-01-29 | KuTgE | `simpl` + `reflexivity` fails on `x * 0 / 1000 = 0` | `simpl` partially reduces but leaves `x * 0 / 1000` unreduced | Use `cbn [projections]` then `rewrite Z.mul_0_r; reflexivity` | Yes |
+| 2026-01-29 | fqynP | **BREAKTHROUGH**: `by(nonlinear_arith)` requires-axiom pattern for degree-3+ polynomials | Z3 cannot prove degree-3 polynomial identities (e.g., det(A^T)=det(A)) even with helper lemma facts in context, because Z3's nonlinear_arith doesn't connect user-provided context facts to spec function expansions | **4-phase decomposition**: (1) Use distribution lemmas to expand spec functions into explicit polynomial terms, (2) Assert the expanded form with regular Z3 (which CAN expand spec functions), (3) Prove pairwise commutativity equalities with separate `by(nonlinear_arith)` assertions, (4) Close with `assert(result) by(nonlinear_arith) requires expanded_form_a, expanded_form_b;` — this decouples spec-function expansion (outer Z3 context) from polynomial equality verification (nonlinear_arith with axioms). **This is a general technique for ANY degree-3+ polynomial identity over spec functions.** | Yes |
+| 2026-01-29 | fqynP | Verus `by(nonlinear_arith)` has isolated context | `by(nonlinear_arith)` does NOT inherit facts from the outer proof context — it runs in an isolated Z3 context. Only `requires` clauses provide axioms to the solver. | Always use `assert(goal) by(nonlinear_arith) requires fact1, fact2, ...;` when the solver needs external facts. Helper lemma calls only add facts to the OUTER context, not to `nonlinear_arith` blocks. | Yes |
+| 2026-01-29 | fqynP | Verus file splitting for Z3 resource management | Combined mat3_proofs.rs (associativity with 200+ helper lemmas) + nonlinear_arith proofs exceeded Z3's resource limits | Split into mat3_proofs.rs (18 base theorems) and mat3_extended_proofs.rs (22 theorems + 4 helper lemmas). Each file verifies independently with duplicated spec types. Pattern applicable to any file that times out. | Yes |
+| 2026-01-29 | fqynP | Never remove theorems as "Z3-intractable" | Removing Theorems 21/23 (det_transpose/det_swap_cols01) violated PEER REVIEWED PUBLISHED ACADEMIC standards; the user correctly identified this as an unacceptable compromise | Always decompose proofs further rather than removing them. The requires-axiom pattern (above) unlocked det_transpose. If Z3 truly cannot handle a proof, document it as BLOCKED with a tracking issue, never silently remove. | Yes |
 
 ---
 
@@ -663,14 +667,14 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/REVIEW_STANDARDS.md` | Code review requirements |
 | `STABILITY.md` | API stability policy |
 | `SECURITY.md` | Security policy |
-| `docs/performance/CHRONOLOGY.md` | Optimization history (82 phases) |
+| `docs/performance/CHRONOLOGY.md` | Optimization history (83 phases) |
 | `docs/performance/BENCHMARKS.md` | Raw benchmark data |
 | `docs/performance/NOT_APPLICABLE.md` | Algorithms evaluated as N/A |
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (796 theorems) |
-| `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (240 proof functions, 7 types) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (822 theorems) |
+| `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (266 proof functions, 8 files) |
 | `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 556 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
 | `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
@@ -1312,13 +1316,13 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | Vec2 | 49 proof fns | 47 theorems | 38 theorems | 134 | DUAL VERIFIED |
 | Vec3 | 40 proof fns | 53 theorems | 42 theorems | 135 | DUAL VERIFIED |
 | Vec4 | 39 proof fns | 43 theorems | 33 theorems | 115 | DUAL VERIFIED |
-| Mat3 | 22 proof fns | 22 theorems | 25 theorems | 69 | DUAL VERIFIED |
+| Mat3 | 48 proof fns | 22 theorems | 25 theorems | 95 | DUAL VERIFIED |
 | Mat4 | 22 proof fns | 38 theorems | 21 theorems | 81 | DUAL VERIFIED |
 | Color | 35 proof fns | 36 theorems | 28 theorems | 99 | DUAL VERIFIED |
 | Rect | 33 proof fns | 28 theorems | 24 theorems | 85 | DUAL VERIFIED |
 | Utils | — | 10 theorems | 8 theorems | 18 | VERIFIED |
 | Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **240 proof fns** | **337 theorems** | **219 theorems** | **796** | **ACADEMIC** |
+| **Total** | **266 proof fns** | **337 theorems** | **219 theorems** | **822** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1806,7 +1810,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq proofs (796 theorems), zero admits, dual verification for Vec2-4, Mat3-4, Color, Rect |
+| **Formal Verification** | Verus + Coq proofs (822 theorems), zero admits, dual verification for Vec2-4, Mat3-4, Color, Rect |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1841,7 +1845,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  796 formally verified theorems across Verus + Coq                          │
+│  822 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1855,5 +1859,5 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 82 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 796 theorems (Verus: 240, Coq R-based: 337, Coq Z-based: 219)*
+*Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
+*Formal Verification: 822 theorems (Verus: 266, Coq R-based: 337, Coq Z-based: 219)*
