@@ -10,10 +10,10 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 
 | Verification System | Theorems | Admits | Types Covered | Status |
 |---------------------|----------|--------|---------------|--------|
-| **Verus** (SMT/Z3) | 240 proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified, 0 errors |
+| **Verus** (SMT/Z3) | 266 proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified, 0 errors |
 | **Coq** (R-based abstract) | 337 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | Machine-checked |
 | **Coq** (Z-based extractable) | 219 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | Machine-checked |
-| **Combined** | **796** | **0** | **8 types** | **PEER REVIEWED PUBLISHED ACADEMIC** |
+| **Combined** | **822** | **0** | **8 types** | **PEER REVIEWED PUBLISHED ACADEMIC** |
 
 ## Per-Type Verification Summary
 
@@ -22,19 +22,20 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 | Vec2 | 23 theorems, 53 VCs | 31 theorems | 27 theorems | 81 | DUAL VERIFIED |
 | Vec3 | 24 theorems, 68 VCs | 39 theorems | 31 theorems | 94 | DUAL VERIFIED |
 | Vec4 | 22 theorems, 68 VCs | 29 theorems | 22 theorems | 73 | DUAL VERIFIED |
-| Mat3 | 18 theorems, 26 VCs | 23 theorems | 25 theorems | 66 | DUAL VERIFIED |
+| Mat3 | 40 theorems, 71 VCs | 23 theorems | 25 theorems | 88 | DUAL VERIFIED |
 | Mat4 | 18 theorems, 27 VCs | 39 theorems | 21 theorems | 78 | DUAL VERIFIED |
 | Color | 23 theorems | 26 theorems | 22 theorems | 71 | DUAL VERIFIED |
 | Rect | 23 theorems | 20 theorems | 22 theorems | 65 | DUAL VERIFIED |
 | Utils | — | 10 theorems | 14 theorems | 24 | VERIFIED |
 | Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **151 theorems** | **277 theorems** | **184 theorems** | **796** | **ACADEMIC** |
+| **Total** | **173 theorems** | **277 theorems** | **184 theorems** | **822** | **ACADEMIC** |
 
-> **Note**: Verus counts 240 proof functions total because each proof file includes
+> **Note**: Verus counts 266 proof functions total because each proof file includes
 > helper lemmas and auxiliary proofs beyond the numbered theorems. The "theorems"
 > column above counts primary named theorems; "proof functions" counts all `proof fn`
-> declarations including helpers (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 22, Mat4: 22,
-> Color: 35, Rect: 33).
+> declarations including helpers (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22 base + 26 extended], Mat4: 22,
+> Color: 35, Rect: 33). Mat3 extended proofs are in a separate file (`mat3_extended_proofs.rs`)
+> due to Z3 resource limits when combined with the associativity proof.
 
 ## Verification Hierarchy
 
@@ -211,8 +212,8 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 
 **Verus Proofs:**
 *Version: 0.2026.01.23.1650a05*
-*Total proof functions: 240 (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 22, Mat4: 22, Color: 35, Rect: 33)*
-*Total verification conditions: 360+ (Vec2: 53+, Vec3: 68+, Vec4: 68+, Mat3: 26, Mat4: 27, Color: —, Rect: —)*
+*Total proof functions: 266 (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22+26], Mat4: 22, Color: 35, Rect: 33)*
+*Total verification conditions: 452 (Vec2: 87, Vec3: 89, Vec4: 90, Mat3: 71 [26+45], Mat4: 27, Color: 46, Rect: 42)*
 *Status: All proofs verified with 0 errors*
 
 **Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4):**
@@ -248,7 +249,7 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Status: Full pipeline operational, all 8 types extractable to WASM*
 
 **Combined Verification:**
-*Total theorems: 796 across Verus and Coq (Verus: 240, Coq R-based: 337, Coq Z-based: 219)*
+*Total theorems: 822 across Verus and Coq (Verus: 266, Coq R-based: 337, Coq Z-based: 219)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Utils*
 *Status: Dual-verification + complexity bounds + computational bridge + WASM pipeline*

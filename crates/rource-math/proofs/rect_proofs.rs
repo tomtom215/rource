@@ -384,7 +384,8 @@ proof fn rect_area_nonneg(r: SpecRect)
     ensures
         rect_area(r) >= 0,
 {
-    assert(r.width * r.height >= 0) by(nonlinear_arith);
+    assert(r.width * r.height >= 0) by(nonlinear_arith)
+        requires r.width >= 0 && r.height >= 0;
 }
 
 /// **Theorem 18**: Perimeter is non-negative for valid rects.
@@ -395,7 +396,8 @@ proof fn rect_perimeter_nonneg(r: SpecRect)
         rect_perimeter(r) >= 0,
 {
     assert(r.width + r.height >= 0);
-    assert(2 * (r.width + r.height) >= 0) by(nonlinear_arith);
+    assert(2 * (r.width + r.height) >= 0) by(nonlinear_arith)
+        requires r.width + r.height >= 0;
 }
 
 /// **Theorem 19**: Perimeter of a square is 4 * side length.
