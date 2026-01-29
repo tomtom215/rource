@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769639505608,
+  "lastUpdate": 1769648647066,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4040,6 +4040,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/c4f7eee0e07d6f27fbd6c3827c2b6cdf882b790a"
         },
         "date": 1769639504625,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d861ae0255af84c00d27d0913527298b6b54dc47",
+          "message": "Merge pull request #224 from tomtom215/claude/add-wasm-support-4sbzk\n\nAdd Phase 2: Complexity proofs with O(1) bounds for all operations",
+          "timestamp": "2026-01-29T02:01:55+01:00",
+          "tree_id": "b6ad3422f4b744f49d7baa016280c0683c9bbb01",
+          "url": "https://github.com/tomtom215/rource/commit/d861ae0255af84c00d27d0913527298b6b54dc47"
+        },
+        "date": 1769648646567,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
