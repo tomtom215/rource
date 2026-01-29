@@ -635,9 +635,17 @@ proof fn vec3_distance_squared_symmetric(a: SpecVec3, b: SpecVec3)
 {
     let d1 = vec3_sub(a, b);
     let d2 = vec3_sub(b, a);
-    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith);
-    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith);
-    assert(d1.z * d1.z == d2.z * d2.z) by(nonlinear_arith);
+    // d1 = -d2 (linear arithmetic from vec3_sub definition)
+    assert(d1.x == -d2.x);
+    assert(d1.y == -d2.y);
+    assert(d1.z == -d2.z);
+    // (-x)² = x²: feed linear relationship as prerequisite to nonlinear_arith
+    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith)
+        requires d1.x == -d2.x;
+    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith)
+        requires d1.y == -d2.y;
+    assert(d1.z * d1.z == d2.z * d2.z) by(nonlinear_arith)
+        requires d1.z == -d2.z;
 }
 
 /// **Theorem 41**: Distance squared to self is zero.

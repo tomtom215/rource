@@ -655,10 +655,14 @@ proof fn vec2_distance_squared_symmetric(a: SpecVec2, b: SpecVec2)
 {
     let d1 = vec2_sub(a, b);
     let d2 = vec2_sub(b, a);
-    // d1.x = a.x - b.x, d2.x = b.x - a.x = -(a.x - b.x) = -d1.x
-    // d1.x² = d2.x² since (-x)² = x²
-    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith);
-    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith);
+    // d1 = -d2 (linear arithmetic establishes this from vec2_sub definition)
+    assert(d1.x == -d2.x);
+    assert(d1.y == -d2.y);
+    // (-x)² = x²: feed the linear relationship as a prerequisite to nonlinear_arith
+    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith)
+        requires d1.x == -d2.x;
+    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith)
+        requires d1.y == -d2.y;
 }
 
 /// **Theorem 42**: Distance squared to self is zero.

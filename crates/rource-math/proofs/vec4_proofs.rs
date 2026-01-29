@@ -573,10 +573,20 @@ proof fn vec4_distance_squared_symmetric(a: SpecVec4, b: SpecVec4)
 {
     let d1 = vec4_sub(a, b);
     let d2 = vec4_sub(b, a);
-    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith);
-    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith);
-    assert(d1.z * d1.z == d2.z * d2.z) by(nonlinear_arith);
-    assert(d1.w * d1.w == d2.w * d2.w) by(nonlinear_arith);
+    // d1 = -d2 (linear arithmetic from vec4_sub definition)
+    assert(d1.x == -d2.x);
+    assert(d1.y == -d2.y);
+    assert(d1.z == -d2.z);
+    assert(d1.w == -d2.w);
+    // (-x)² = x²: feed linear relationship as prerequisite to nonlinear_arith
+    assert(d1.x * d1.x == d2.x * d2.x) by(nonlinear_arith)
+        requires d1.x == -d2.x;
+    assert(d1.y * d1.y == d2.y * d2.y) by(nonlinear_arith)
+        requires d1.y == -d2.y;
+    assert(d1.z * d1.z == d2.z * d2.z) by(nonlinear_arith)
+        requires d1.z == -d2.z;
+    assert(d1.w * d1.w == d2.w * d2.w) by(nonlinear_arith)
+        requires d1.w == -d2.w;
 }
 
 /// **Theorem 39**: Distance squared to self is zero.
