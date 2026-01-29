@@ -368,9 +368,92 @@ Proof.
   apply mat4_eq; unfold mat4_scale, mat4_zero; simpl; lra.
 Qed.
 
+(** * Determinant Properties *)
+
+(** Theorem 19: det(I) = 1. *)
+Theorem mat4_det_identity :
+  mat4_determinant mat4_identity = 1.
+Proof.
+  unfold mat4_determinant, mat4_identity. simpl. ring.
+Qed.
+
+(** Theorem 20: det(0) = 0. *)
+Theorem mat4_det_zero :
+  mat4_determinant mat4_zero = 0.
+Proof.
+  unfold mat4_determinant, mat4_zero. simpl. ring.
+Qed.
+
+(** Theorem 21: det(A^T) = det(A).
+    For 4x4 matrices, this requires ring over 16 variables with degree-4
+    polynomial terms. Destruct + ring handles this efficiently. *)
+Theorem mat4_det_transpose : forall a : Mat4,
+  mat4_determinant (mat4_transpose a) = mat4_determinant a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_determinant, mat4_transpose. simpl. ring.
+Qed.
+
+(** Theorem 22: det(-A) = det(A) for 4x4 matrices.
+    (-1)^4 * det(A) = det(A). *)
+Theorem mat4_det_neg : forall a : Mat4,
+  mat4_determinant (mat4_neg a) = mat4_determinant a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_determinant, mat4_neg. simpl. ring.
+Qed.
+
+(** Theorem 23: det(diag(d0, d1, d2, d3)) = d0 * d1 * d2 * d3. *)
+Theorem mat4_det_diagonal : forall d0 d1 d2 d3 : R,
+  mat4_determinant (mkMat4 d0 0 0 0  0 d1 0 0  0 0 d2 0  0 0 0 d3) =
+    d0 * d1 * d2 * d3.
+Proof.
+  intros. unfold mat4_determinant. simpl. ring.
+Qed.
+
+(** * Trace Properties *)
+
+(** Theorem 24: trace(I) = 4. *)
+Theorem mat4_trace_identity :
+  mat4_trace mat4_identity = 4.
+Proof.
+  unfold mat4_trace, mat4_identity. simpl. ring.
+Qed.
+
+(** Theorem 25: trace(0) = 0. *)
+Theorem mat4_trace_zero :
+  mat4_trace mat4_zero = 0.
+Proof.
+  unfold mat4_trace, mat4_zero. simpl. ring.
+Qed.
+
+(** Theorem 26: trace(A + B) = trace(A) + trace(B). *)
+Theorem mat4_trace_add : forall a b : Mat4,
+  mat4_trace (mat4_add a b) = mat4_trace a + mat4_trace b.
+Proof.
+  intros a b. destruct a, b.
+  unfold mat4_trace, mat4_add. simpl. ring.
+Qed.
+
+(** Theorem 27: trace(s * A) = s * trace(A). *)
+Theorem mat4_trace_scale : forall (s : R) (a : Mat4),
+  mat4_trace (mat4_scale s a) = s * mat4_trace a.
+Proof.
+  intros s a. destruct a.
+  unfold mat4_trace, mat4_scale. simpl. ring.
+Qed.
+
+(** Theorem 28: trace(A^T) = trace(A). *)
+Theorem mat4_trace_transpose : forall a : Mat4,
+  mat4_trace (mat4_transpose a) = mat4_trace a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_trace, mat4_transpose. simpl. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 21 + 16 component lemmas = 37
+    Total theorems: 31 + 16 component lemmas = 47
     - Theorems 1-4: Matrix addition properties (4)
     - Theorems 5-8: Matrix multiplication identity/zero (4)
     - Theorem 9: Matrix multiplication associativity (1 + 16 lemmas) [CRITICAL for MVP]
@@ -378,6 +461,8 @@ Qed.
     - Theorems 14-16: Transpose properties (3)
     - Theorems 17-18: Negation and ring structure (3)
     - Additional properties (2)
+    - Theorems 19-23: Determinant properties (5)
+    - Theorems 24-28: Trace properties (5)
 
     Total tactics used: lra, ring, reflexivity, destruct, apply, repeat split
     Admits: 0

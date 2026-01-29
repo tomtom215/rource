@@ -10,7 +10,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 ## Coq Version
 
 - **Coq**: 8.18
-- **Admits**: 0 (across all 556 theorems)
+- **Admits**: 0 (across all 596 theorems)
 - **Compilation time**: ~45 seconds total (32 .vo files)
 
 ## Layered Architecture
@@ -43,16 +43,16 @@ For an overview of the complete verification effort (Verus + Coq), see
 | Vec3_Proofs.v | 36 | VERIFIED | Cross product, scalar triple, right-hand rule |
 | Vec4.v | 1 | VERIFIED | Specification (equality lemma) |
 | Vec4_Proofs.v | 25+ | VERIFIED | Orthonormal basis, 4D vector space |
-| Mat3.v | 1 | VERIFIED | Specification (equality lemma) |
-| Mat3_Proofs.v | 21 | VERIFIED | Matrix addition, multiplication, transpose, ring structure |
-| Mat4.v | 1 | VERIFIED | Specification (equality lemma) |
-| Mat4_Proofs.v | 38 | VERIFIED | Matrix addition, multiplication, transpose, ring structure (optimized Phase 80) |
+| Mat3.v | 2 | VERIFIED | Specification (mat3_eq, vec2_eq), determinant, trace, translation, scaling, transform definitions |
+| Mat3_Proofs.v | 44 | VERIFIED | Matrix ring structure, determinant (6), trace (5), transform operations (11) |
+| Mat4.v | 1 | VERIFIED | Specification (equality lemma), determinant, trace definitions |
+| Mat4_Proofs.v | 48 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5), trace (5) |
 | Color.v | 1 | VERIFIED | RGBA color specification (equality lemma) |
 | Color_Proofs.v | 26 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance |
 | Rect.v | 1 | VERIFIED | Rectangle specification (equality lemma) |
-| Rect_Proofs.v | 20 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity |
+| Rect_Proofs.v | 32 | VERIFIED | Containment, intersection (commutativity, self-intersection, area), transformation, area/perimeter, validity |
 | Utils.v | 10 | VERIFIED | lerp (zero, one, same, midpoint, linear), clamp (range, identity, lower, upper, idempotent) |
-| **Total** | **190+** | VERIFIED | All proofs machine-checked, 0 admits |
+| **Total** | **230+** | VERIFIED | All proofs machine-checked, 0 admits |
 
 **Note on coq-of-rust:** The coq-of-rust/rocq-of-rust tool requires Rust nightly-2024-12-07
 (version 1.85), which is incompatible with rource-math's Rust 1.93 requirement. We proceeded
@@ -162,15 +162,15 @@ the gap between mathematical proofs (over R) and executable code.
 
 | Deliverable | Theorems | Compilation Time | Details |
 |-------------|----------|------------------|---------|
-| Vec2_Compute.v | 27 | ~1.5s | Z-based vector operations |
-| Vec3_Compute.v | 31 | ~1.6s | Z-based 3D vector operations |
-| Vec4_Compute.v | 22 | ~1.6s | Z-based 4D vector operations |
+| Vec2_Compute.v | 38 | ~1.5s | Z-based vector operations |
+| Vec3_Compute.v | 42 | ~1.6s | Z-based 3D vector operations |
+| Vec4_Compute.v | 33 | ~1.6s | Z-based 4D vector operations |
 | Mat3_Compute.v | 25 | ~3.0s | Z-based 3x3 matrix operations |
-| Mat4_Compute.v | 21 + 16 local | ~5.5s | Z-based 4x4 matrix operations |
-| Color_Compute.v | 22 | — | Z-based fixed-point (1000-scale) |
-| Rect_Compute.v | 22 | — | Z-based, boolean predicates |
-| Utils_Compute.v | 14 | — | zlerp/zclamp with computational examples |
-| **Total** | **219** | **~45s** | All 0 admits |
+| Mat4_Compute.v | 25 + 16 local | ~5.5s | Z-based 4x4 matrix operations + determinant |
+| Color_Compute.v | 28 | — | Z-based fixed-point (1000-scale) |
+| Rect_Compute.v | 24 | — | Z-based, boolean predicates |
+| Utils_Compute.v | 8 | — | zlerp/zclamp |
+| **Total** | **223** | **~45s** | All 0 admits |
 
 ### Verification Command (Layer 2)
 
@@ -260,13 +260,13 @@ These practices were established through hard-won experience across multiple ses
 
 **Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4):**
 *Version: Coq 8.18*
-*Total theorems: 337 (Vec2: 47, Vec3: 53, Vec4: 43, Mat3: 22, Mat4: 38, Complexity: 60, Color: 36, Rect: 28, Utils: 10)*
+*Total theorems: 373 (Vec2: 47, Vec3: 53, Vec4: 43, Mat3: 44, Mat4: 48, Complexity: 60, Color: 36, Rect: 32, Utils: 10)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4):**
 *Version: Coq 8.18*
-*Total theorems: 219 (Vec2: 38, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 21, Color: 28, Rect: 24, Utils: 8)*
+*Total theorems: 223 (Vec2: 38, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 25, Color: 28, Rect: 24, Utils: 8)*
 *Admits: 0*
 *Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*

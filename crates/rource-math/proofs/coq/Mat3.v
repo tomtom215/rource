@@ -106,7 +106,60 @@ Definition mat3_mul (a b : Mat3) : Mat3 :=
     (m1 a * m6 b + m4 a * m7 b + m7 a * m8 b)
     (m2 a * m6 b + m5 a * m7 b + m8 a * m8 b).
 
-(** * Equality Lemma *)
+(** * Determinant *)
+
+(** The determinant of a 3x3 matrix (Leibniz formula / cofactor expansion).
+    det(A) = a00*(a11*a22 - a12*a21) - a01*(a10*a22 - a12*a20) + a02*(a10*a21 - a11*a20) *)
+Definition mat3_determinant (a : Mat3) : R :=
+  m0 a * (m4 a * m8 a - m7 a * m5 a) -
+  m3 a * (m1 a * m8 a - m7 a * m2 a) +
+  m6 a * (m1 a * m5 a - m4 a * m2 a).
+
+(** * Trace *)
+
+(** The trace of a 3x3 matrix (sum of diagonal elements). *)
+Definition mat3_trace (a : Mat3) : R :=
+  m0 a + m4 a + m8 a.
+
+(** * Vec2 Type (for transform operations) *)
+
+(** A 2D vector. *)
+Record Vec2 : Type := mkVec2 {
+  vx : R;
+  vy : R
+}.
+
+(** * Transform Operations *)
+
+(** 2D translation matrix. *)
+Definition mat3_translation (tx ty : R) : Mat3 :=
+  mkMat3 1 0 0  0 1 0  tx ty 1.
+
+(** 2D scaling matrix. *)
+Definition mat3_scaling (sx sy : R) : Mat3 :=
+  mkMat3 sx 0 0  0 sy 0  0 0 1.
+
+(** Transform a point (homogeneous w=1). *)
+Definition mat3_transform_point (m : Mat3) (p : Vec2) : Vec2 :=
+  mkVec2
+    (m0 m * vx p + m3 m * vy p + m6 m)
+    (m1 m * vx p + m4 m * vy p + m7 m).
+
+(** Transform a vector (homogeneous w=0). *)
+Definition mat3_transform_vector (m : Mat3) (v : Vec2) : Vec2 :=
+  mkVec2
+    (m0 m * vx v + m3 m * vy v)
+    (m1 m * vx v + m4 m * vy v).
+
+(** * Equality Lemmas *)
+
+(** Two Vec2 are equal iff their components are equal. *)
+Lemma vec2_eq : forall a b : Vec2,
+  vx a = vx b -> vy a = vy b -> a = b.
+Proof.
+  intros a b Hx Hy.
+  destruct a, b. simpl in *. subst. reflexivity.
+Qed.
 
 (** Two matrices are equal iff all their components are equal. *)
 Lemma mat3_eq : forall a b : Mat3,
@@ -132,6 +185,7 @@ Qed.
 
     This file provides:
     - Mat3 record type definition (9 real components, column-major)
+    - Vec2 record type definition (2 real components)
     - mat3_zero: The zero matrix
     - mat3_identity: The identity matrix
     - mat3_add: Matrix addition
@@ -140,9 +194,16 @@ Qed.
     - mat3_scale: Scalar multiplication
     - mat3_transpose: Matrix transpose
     - mat3_mul: Matrix multiplication
-    - mat3_eq: Component-wise equality lemma
+    - mat3_determinant: 3x3 determinant (cofactor expansion)
+    - mat3_trace: Trace (sum of diagonal)
+    - mat3_translation: 2D translation matrix
+    - mat3_scaling: 2D scaling matrix
+    - mat3_transform_point: Point transformation (w=1)
+    - mat3_transform_vector: Vector transformation (w=0)
+    - mat3_eq: Component-wise matrix equality lemma
+    - vec2_eq: Component-wise Vec2 equality lemma
 
-    Total definitions: 9
-    Total lemmas: 1
+    Total definitions: 16
+    Total lemmas: 2
     Admits: 0
 *)

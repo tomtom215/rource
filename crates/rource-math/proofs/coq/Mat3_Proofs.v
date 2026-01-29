@@ -283,9 +283,195 @@ Proof.
   f_equal; ring.
 Qed.
 
+(** * Determinant Properties *)
+
+(** Theorem 19: det(I) = 1. *)
+Theorem mat3_det_identity :
+  mat3_determinant mat3_identity = 1.
+Proof.
+  unfold mat3_determinant, mat3_identity. simpl. ring.
+Qed.
+
+(** Theorem 20: det(0) = 0. *)
+Theorem mat3_det_zero :
+  mat3_determinant mat3_zero = 0.
+Proof.
+  unfold mat3_determinant, mat3_zero. simpl. ring.
+Qed.
+
+(** Theorem 21: det(A^T) = det(A). *)
+Theorem mat3_det_transpose : forall a : Mat3,
+  mat3_determinant (mat3_transpose a) = mat3_determinant a.
+Proof.
+  intros a. destruct a.
+  unfold mat3_determinant, mat3_transpose. simpl. ring.
+Qed.
+
+(** Theorem 22: det(s * A) = s^3 * det(A). *)
+Theorem mat3_det_scale : forall (s : R) (a : Mat3),
+  mat3_determinant (mat3_scale s a) = s * s * s * mat3_determinant a.
+Proof.
+  intros s a. destruct a.
+  unfold mat3_determinant, mat3_scale. simpl. ring.
+Qed.
+
+(** Theorem 23: det(diag(d0, d1, d2)) = d0 * d1 * d2. *)
+Theorem mat3_det_diagonal : forall d0 d1 d2 : R,
+  mat3_determinant (mkMat3 d0 0 0  0 d1 0  0 0 d2) = d0 * d1 * d2.
+Proof.
+  intros. unfold mat3_determinant. simpl. ring.
+Qed.
+
+(** Theorem 24: det(-A) = -det(A) for 3x3 matrices. *)
+Theorem mat3_det_neg : forall a : Mat3,
+  mat3_determinant (mat3_neg a) = - mat3_determinant a.
+Proof.
+  intros a. destruct a.
+  unfold mat3_determinant, mat3_neg. simpl. ring.
+Qed.
+
+(** * Trace Properties *)
+
+(** Theorem 25: trace(I) = 3. *)
+Theorem mat3_trace_identity :
+  mat3_trace mat3_identity = 3.
+Proof.
+  unfold mat3_trace, mat3_identity. simpl. ring.
+Qed.
+
+(** Theorem 26: trace(0) = 0. *)
+Theorem mat3_trace_zero :
+  mat3_trace mat3_zero = 0.
+Proof.
+  unfold mat3_trace, mat3_zero. simpl. ring.
+Qed.
+
+(** Theorem 27: trace(A + B) = trace(A) + trace(B). *)
+Theorem mat3_trace_add : forall a b : Mat3,
+  mat3_trace (mat3_add a b) = mat3_trace a + mat3_trace b.
+Proof.
+  intros a b. destruct a, b.
+  unfold mat3_trace, mat3_add. simpl. ring.
+Qed.
+
+(** Theorem 28: trace(s * A) = s * trace(A). *)
+Theorem mat3_trace_scale : forall (s : R) (a : Mat3),
+  mat3_trace (mat3_scale s a) = s * mat3_trace a.
+Proof.
+  intros s a. destruct a.
+  unfold mat3_trace, mat3_scale. simpl. ring.
+Qed.
+
+(** Theorem 29: trace(A^T) = trace(A). *)
+Theorem mat3_trace_transpose : forall a : Mat3,
+  mat3_trace (mat3_transpose a) = mat3_trace a.
+Proof.
+  intros a. destruct a.
+  unfold mat3_trace, mat3_transpose. simpl. ring.
+Qed.
+
+(** * Transform Properties *)
+
+(** Theorem 30: det(translation(tx, ty)) = 1. *)
+Theorem mat3_det_translation : forall tx ty : R,
+  mat3_determinant (mat3_translation tx ty) = 1.
+Proof.
+  intros. unfold mat3_determinant, mat3_translation. simpl. ring.
+Qed.
+
+(** Theorem 31: det(scaling(sx, sy)) = sx * sy. *)
+Theorem mat3_det_scaling : forall sx sy : R,
+  mat3_determinant (mat3_scaling sx sy) = sx * sy.
+Proof.
+  intros. unfold mat3_determinant, mat3_scaling. simpl. ring.
+Qed.
+
+(** Theorem 32: Identity transforms point to itself. *)
+Theorem mat3_identity_transforms_point : forall p : Vec2,
+  mat3_transform_point mat3_identity p = p.
+Proof.
+  intros [px py].
+  unfold mat3_transform_point, mat3_identity. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 33: Identity transforms vector to itself. *)
+Theorem mat3_identity_transforms_vector : forall v : Vec2,
+  mat3_transform_vector mat3_identity v = v.
+Proof.
+  intros [vx0 vy0].
+  unfold mat3_transform_vector, mat3_identity. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 34: Translation transforms point by adding offset. *)
+Theorem mat3_translation_transforms_point : forall tx ty : R, forall p : Vec2,
+  mat3_transform_point (mat3_translation tx ty) p =
+    mkVec2 (vx p + tx) (vy p + ty).
+Proof.
+  intros tx ty [px py].
+  unfold mat3_transform_point, mat3_translation. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 35: Translation preserves vectors (w=0). *)
+Theorem mat3_translation_preserves_vectors : forall tx ty : R, forall v : Vec2,
+  mat3_transform_vector (mat3_translation tx ty) v = v.
+Proof.
+  intros tx ty [vx0 vy0].
+  unfold mat3_transform_vector, mat3_translation. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 36: Scaling transforms points correctly. *)
+Theorem mat3_scaling_transforms_point : forall sx sy : R, forall p : Vec2,
+  mat3_transform_point (mat3_scaling sx sy) p =
+    mkVec2 (sx * vx p) (sy * vy p).
+Proof.
+  intros sx sy [px py].
+  unfold mat3_transform_point, mat3_scaling. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 37: Translating origin gives offset. *)
+Theorem mat3_translate_origin : forall tx ty : R,
+  mat3_transform_point (mat3_translation tx ty) (mkVec2 0 0) =
+    mkVec2 tx ty.
+Proof.
+  intros. unfold mat3_transform_point, mat3_translation. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 38: Translation composition is additive. *)
+Theorem mat3_translation_compose : forall tx1 ty1 tx2 ty2 : R,
+  mat3_mul (mat3_translation tx2 ty2) (mat3_translation tx1 ty1) =
+    mat3_translation (tx1 + tx2) (ty1 + ty2).
+Proof.
+  intros.
+  unfold mat3_mul, mat3_translation. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 39: Scaling composition is multiplicative. *)
+Theorem mat3_scaling_compose : forall sx1 sy1 sx2 sy2 : R,
+  mat3_mul (mat3_scaling sx2 sy2) (mat3_scaling sx1 sy1) =
+    mat3_scaling (sx1 * sx2) (sy1 * sy2).
+Proof.
+  intros.
+  unfold mat3_mul, mat3_scaling. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 40: scaling(1, 1) = identity. *)
+Theorem mat3_scaling_identity :
+  mat3_scaling 1 1 = mat3_identity.
+Proof.
+  unfold mat3_scaling, mat3_identity. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 21
+    Total theorems: 43
     - Theorems 1-4: Matrix addition properties (4)
     - Theorems 5-8: Matrix multiplication identity/zero (4)
     - Theorem 9: Matrix multiplication associativity (1) [CRITICAL]
@@ -293,13 +479,16 @@ Qed.
     - Theorems 14-16: Transpose properties (3)
     - Theorems 17-18: Negation and ring structure (3)
     - Additional properties (2)
+    - Theorems 19-24: Determinant properties (6)
+    - Theorems 25-29: Trace properties (5)
+    - Theorems 30-40: Transform properties (11)
 
-    Total tactics used: lra, ring, f_equal, reflexivity, destruct, apply, repeat split
+    Total tactics used: lra, ring, nra, f_equal, reflexivity, destruct, apply, repeat split
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
 
     OPTIMIZATION: Linear proofs use lra (fast) instead of ring.
-    Only nonlinear proofs (multiplication) use ring.
+    Only nonlinear proofs (multiplication, determinant) use ring.
 *)
