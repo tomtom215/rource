@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769648647066,
+  "lastUpdate": 1769675543143,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4079,6 +4079,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/d861ae0255af84c00d27d0913527298b6b54dc47"
         },
         "date": 1769648646567,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6d8b3e0b6844bc1ba4d5f548c222bf3842d8f675",
+          "message": "Merge pull request #225 from tomtom215/claude/certicoq-wasm-integration-EnuTg\n\nAdd computational Vec2 bridge and CertiCoq-WASM feasibility assessment",
+          "timestamp": "2026-01-29T09:30:04+01:00",
+          "tree_id": "387317366aba4c97d0f8be3833193c52c5a37ef7",
+          "url": "https://github.com/tomtom215/rource/commit/6d8b3e0b6844bc1ba4d5f548c222bf3842d8f675"
+        },
+        "date": 1769675542153,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
