@@ -574,11 +574,242 @@ Proof.
   unfold vec3_splat, vec3_zero. reflexivity.
 Qed.
 
+(** * Reflection Properties *)
+
+(** Helper: inner dot product in double reflection = -(v·n) when |n|²=1 *)
+Lemma reflect3_inner_dot : forall a b c nx ny nz : R,
+  nx * nx + ny * ny + nz * nz = 1 ->
+  (a - 2 * (a * nx + b * ny + c * nz) * nx) * nx +
+  (b - 2 * (a * nx + b * ny + c * nz) * ny) * ny +
+  (c - 2 * (a * nx + b * ny + c * nz) * nz) * nz = -(a * nx + b * ny + c * nz).
+Proof.
+  intros a b c nx ny nz Hn.
+  assert (H: (a - 2 * (a * nx + b * ny + c * nz) * nx) * nx +
+             (b - 2 * (a * nx + b * ny + c * nz) * ny) * ny +
+             (c - 2 * (a * nx + b * ny + c * nz) * nz) * nz =
+             (a * nx + b * ny + c * nz) - 2 * (a * nx + b * ny + c * nz) * (nx * nx + ny * ny + nz * nz)).
+  { ring. }
+  rewrite H. rewrite Hn. ring.
+Qed.
+
+(** Theorem 52: reflection is involutive for unit normals.
+    ∀ v n : Vec3, |n|² = 1 → reflect(reflect(v, n), n) = v *)
+Theorem vec3_reflect_involutive : forall v n : Vec3,
+  vec3_length_squared n = 1 ->
+  vec3_reflect (vec3_reflect v n) n = v.
+Proof.
+  intros [vx vy vz] [nx ny nz] Hn.
+  unfold vec3_length_squared, vec3_dot in Hn. simpl in Hn.
+  unfold vec3_reflect, vec3_sub, vec3_scale, vec3_dot. simpl.
+  assert (Hinner: (vx - 2 * (vx * nx + vy * ny + vz * nz) * nx) * nx +
+                  (vy - 2 * (vx * nx + vy * ny + vz * nz) * ny) * ny +
+                  (vz - 2 * (vx * nx + vy * ny + vz * nz) * nz) * nz =
+                  -(vx * nx + vy * ny + vz * nz)).
+  { apply reflect3_inner_dot. lra. }
+  f_equal; rewrite Hinner; ring.
+Qed.
+
+(** Theorem 53: reflecting the zero vector gives zero.
+    ∀ n : Vec3, reflect(0, n) = 0 *)
+Theorem vec3_reflect_zero : forall n : Vec3,
+  vec3_reflect vec3_zero n = vec3_zero.
+Proof.
+  intros [nx ny nz].
+  unfold vec3_reflect, vec3_sub, vec3_scale, vec3_dot, vec3_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Helper: reflection preserves length squared expansion *)
+Lemma reflect3_length_sq_expand : forall a b c nx ny nz : R,
+  nx * nx + ny * ny + nz * nz = 1 ->
+  (a - 2 * (a * nx + b * ny + c * nz) * nx) * (a - 2 * (a * nx + b * ny + c * nz) * nx) +
+  (b - 2 * (a * nx + b * ny + c * nz) * ny) * (b - 2 * (a * nx + b * ny + c * nz) * ny) +
+  (c - 2 * (a * nx + b * ny + c * nz) * nz) * (c - 2 * (a * nx + b * ny + c * nz) * nz) =
+  a * a + b * b + c * c.
+Proof.
+  intros a b c nx ny nz Hn.
+  assert (H: (a - 2 * (a * nx + b * ny + c * nz) * nx) * (a - 2 * (a * nx + b * ny + c * nz) * nx) +
+             (b - 2 * (a * nx + b * ny + c * nz) * ny) * (b - 2 * (a * nx + b * ny + c * nz) * ny) +
+             (c - 2 * (a * nx + b * ny + c * nz) * nz) * (c - 2 * (a * nx + b * ny + c * nz) * nz) =
+             (a * a + b * b + c * c) - 4 * (a * nx + b * ny + c * nz) * (a * nx + b * ny + c * nz) +
+             4 * (a * nx + b * ny + c * nz) * (a * nx + b * ny + c * nz) * (nx * nx + ny * ny + nz * nz)).
+  { ring. }
+  rewrite H. rewrite Hn. ring.
+Qed.
+
+(** Theorem 54: reflection preserves length squared for unit normal.
+    ∀ v n : Vec3, |n|² = 1 → |reflect(v, n)|² = |v|² *)
+Theorem vec3_reflect_preserves_length_sq : forall v n : Vec3,
+  vec3_length_squared n = 1 ->
+  vec3_length_squared (vec3_reflect v n) = vec3_length_squared v.
+Proof.
+  intros [vx vy vz] [nx ny nz] Hn.
+  unfold vec3_length_squared, vec3_dot in Hn. simpl in Hn.
+  unfold vec3_length_squared, vec3_reflect, vec3_sub, vec3_scale, vec3_dot. simpl.
+  apply reflect3_length_sq_expand. lra.
+Qed.
+
+(** * Projection Properties *)
+
+(** Theorem 55: projecting a vector onto itself gives itself.
+    ∀ v : Vec3, |v|² ≠ 0 → project(v, v) = v *)
+Theorem vec3_project_self : forall v : Vec3,
+  vec3_length_squared v <> 0 ->
+  vec3_project v v = v.
+Proof.
+  intros [vx vy vz] Hne.
+  unfold vec3_project, vec3_scale, vec3_dot, vec3_length_squared. simpl.
+  unfold vec3_dot. simpl.
+  f_equal; field;
+  unfold vec3_length_squared, vec3_dot in Hne; simpl in Hne; lra.
+Qed.
+
+(** Theorem 56: projection onto orthogonal vector is zero.
+    ∀ v w : Vec3, v · w = 0 → project(v, w) = 0 *)
+Theorem vec3_project_orthogonal : forall v w : Vec3,
+  vec3_dot v w = 0 ->
+  vec3_project v w = vec3_zero.
+Proof.
+  intros [vx vy vz] [wx wy wz] Hdot.
+  unfold vec3_project, vec3_scale, vec3_dot, vec3_length_squared, vec3_zero.
+  simpl. unfold vec3_dot. simpl.
+  unfold vec3_dot in Hdot. simpl in Hdot.
+  rewrite Hdot.
+  f_equal; unfold Rdiv; rewrite Rmult_0_l; apply Rmult_0_l.
+Qed.
+
+(** Theorem 57: projection is idempotent.
+    ∀ v w : Vec3, |w|² ≠ 0 → project(project(v, w), w) = project(v, w) *)
+Theorem vec3_project_idempotent : forall v w : Vec3,
+  vec3_length_squared w <> 0 ->
+  vec3_project (vec3_project v w) w = vec3_project v w.
+Proof.
+  intros [vx vy vz] [wx wy wz] Hne.
+  unfold vec3_project, vec3_scale, vec3_dot, vec3_length_squared. simpl.
+  unfold vec3_dot. simpl.
+  unfold vec3_length_squared, vec3_dot in Hne. simpl in Hne.
+  f_equal; field; lra.
+Qed.
+
+(** * Rejection Properties *)
+
+(** Theorem 58: reject is orthogonal to projection direction.
+    ∀ v w : Vec3, |w|² ≠ 0 → reject(v, w) · w = 0 *)
+Theorem vec3_reject_orthogonal : forall v w : Vec3,
+  vec3_length_squared w <> 0 ->
+  vec3_dot (vec3_reject v w) w = 0.
+Proof.
+  intros [vx vy vz] [wx wy wz] Hne.
+  unfold vec3_reject, vec3_sub, vec3_project, vec3_scale, vec3_dot, vec3_length_squared.
+  simpl. unfold vec3_dot. simpl.
+  unfold vec3_length_squared, vec3_dot in Hne. simpl in Hne.
+  field. lra.
+Qed.
+
+(** Theorem 59: project + reject = original.
+    ∀ v w : Vec3, project(v, w) + reject(v, w) = v *)
+Theorem vec3_project_reject_sum : forall v w : Vec3,
+  vec3_add (vec3_project v w) (vec3_reject v w) = v.
+Proof.
+  intros [vx vy vz] [wx wy wz].
+  unfold vec3_add, vec3_reject, vec3_sub, vec3_project, vec3_scale,
+         vec3_dot, vec3_length_squared. simpl.
+  set (k := (vx * wx + vy * wy + vz * wz) / (wx * wx + wy * wy + wz * wz)).
+  f_equal; ring.
+Qed.
+
+(** * Min/Max Element Properties *)
+
+(** Theorem 60: min_element is <= all components *)
+Theorem vec3_min_element_bound : forall v : Vec3,
+  vec3_min_element v <= vec3_x v /\ vec3_min_element v <= vec3_y v /\
+  vec3_min_element v <= vec3_z v.
+Proof.
+  intros [vx vy vz]. unfold vec3_min_element. simpl.
+  repeat split.
+  - apply Rle_trans with (Rmin vx vy). apply Rmin_l. apply Rmin_l.
+  - apply Rle_trans with (Rmin vx vy). apply Rmin_l. apply Rmin_r.
+  - apply Rmin_r.
+Qed.
+
+(** Theorem 61: max_element is >= all components *)
+Theorem vec3_max_element_bound : forall v : Vec3,
+  vec3_x v <= vec3_max_element v /\ vec3_y v <= vec3_max_element v /\
+  vec3_z v <= vec3_max_element v.
+Proof.
+  intros [vx vy vz]. unfold vec3_max_element. simpl.
+  repeat split.
+  - apply Rle_trans with (Rmax vx vy). apply Rmax_l. apply Rmax_l.
+  - apply Rle_trans with (Rmax vx vy). apply Rmax_r. apply Rmax_l.
+  - apply Rmax_r.
+Qed.
+
+(** Theorem 62: min_element <= max_element *)
+Theorem vec3_min_le_max_element : forall v : Vec3,
+  vec3_min_element v <= vec3_max_element v.
+Proof.
+  intros [vx vy vz]. unfold vec3_min_element, vec3_max_element. simpl.
+  apply Rle_trans with vx.
+  - apply Rle_trans with (Rmin vx vy). apply Rmin_l. apply Rmin_l.
+  - apply Rle_trans with (Rmax vx vy). apply Rmax_l. apply Rmax_l.
+Qed.
+
+(** Theorem 63: splat min_element = value *)
+Theorem vec3_splat_min_element : forall s : R,
+  vec3_min_element (vec3_splat s) = s.
+Proof.
+  intros s. unfold vec3_min_element, vec3_splat. simpl.
+  assert (Hs: Rmin s s = s).
+  { unfold Rmin. destruct (Rle_dec s s) as [_|n]. reflexivity. exfalso. apply n. lra. }
+  rewrite Hs. exact Hs.
+Qed.
+
+(** Theorem 64: splat max_element = value *)
+Theorem vec3_splat_max_element : forall s : R,
+  vec3_max_element (vec3_splat s) = s.
+Proof.
+  intros s. unfold vec3_max_element, vec3_splat. simpl.
+  assert (Hs: Rmax s s = s).
+  { unfold Rmax. destruct (Rle_dec s s) as [_|n]. reflexivity. exfalso. apply n. lra. }
+  rewrite Hs. exact Hs.
+Qed.
+
+(** * Division Properties *)
+
+(** Theorem 65: dividing by (1,1,1) is identity *)
+Theorem vec3_div_one : forall v : Vec3,
+  vec3_div v (mkVec3 1 1 1) = v.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_div. simpl.
+  f_equal; field.
+Qed.
+
+(** Theorem 66: dividing zero by anything gives zero *)
+Theorem vec3_div_zero_num : forall b : Vec3,
+  vec3_x b <> 0 -> vec3_y b <> 0 -> vec3_z b <> 0 ->
+  vec3_div vec3_zero b = vec3_zero.
+Proof.
+  intros [bx by0 bz] Hx Hy Hz. simpl in *.
+  unfold vec3_div, vec3_zero. simpl.
+  f_equal; field; assumption.
+Qed.
+
+(** Theorem 67: mul and div are inverse *)
+Theorem vec3_mul_div_cancel : forall v d : Vec3,
+  vec3_x d <> 0 -> vec3_y d <> 0 -> vec3_z d <> 0 ->
+  vec3_div (vec3_mul v d) d = v.
+Proof.
+  intros [vx vy vz] [dx dy dz] Hx Hy Hz. simpl in *.
+  unfold vec3_div, vec3_mul. simpl.
+  f_equal; field; assumption.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 51
+    Total theorems: 67
     Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl,
-      Rmin_comm, Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra
+      Rmin_comm, Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra, field, set
     Admits: 0
     Axioms: Standard Coq real number library only
 

@@ -524,11 +524,235 @@ Proof.
   unfold vec2_splat, vec2_zero. reflexivity.
 Qed.
 
+(** * Reflection Properties *)
+
+(** Theorem 46: reflect is involutive for unit normal.
+    ∀ v n : Vec2, |n|² = 1 → reflect(reflect(v, n), n) = v *)
+(** Helper: inner dot product in double reflection = -(v·n) when |n|²=1 *)
+Lemma reflect_inner_dot : forall a b nx ny : R,
+  nx * nx + ny * ny = 1 ->
+  (a - 2 * (a * nx + b * ny) * nx) * nx +
+  (b - 2 * (a * nx + b * ny) * ny) * ny = -(a * nx + b * ny).
+Proof.
+  intros a b nx ny Hn.
+  (* Expand and collect terms using nx²+ny²=1 *)
+  assert (H: (a - 2 * (a * nx + b * ny) * nx) * nx +
+             (b - 2 * (a * nx + b * ny) * ny) * ny =
+             (a * nx + b * ny) - 2 * (a * nx + b * ny) * (nx * nx + ny * ny)).
+  { ring. }
+  rewrite H. rewrite Hn. ring.
+Qed.
+
+Theorem vec2_reflect_involutive : forall v n : Vec2,
+  vec2_length_squared n = 1 ->
+  vec2_reflect (vec2_reflect v n) n = v.
+Proof.
+  intros [vx vy] [nx ny] Hn.
+  unfold vec2_length_squared, vec2_dot in Hn. simpl in Hn.
+  unfold vec2_reflect, vec2_sub, vec2_scale, vec2_dot. simpl.
+  assert (Hinner: (vx - 2 * (vx * nx + vy * ny) * nx) * nx +
+                  (vy - 2 * (vx * nx + vy * ny) * ny) * ny =
+                  -(vx * nx + vy * ny)).
+  { apply reflect_inner_dot. lra. }
+  f_equal; rewrite Hinner; ring.
+Qed.
+
+(** Theorem 47: reflecting the zero vector gives zero.
+    ∀ n : Vec2, reflect(0, n) = 0 *)
+Theorem vec2_reflect_zero : forall n : Vec2,
+  vec2_reflect vec2_zero n = vec2_zero.
+Proof.
+  intros [nx ny].
+  unfold vec2_reflect, vec2_sub, vec2_scale, vec2_dot, vec2_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 48: reflection preserves length squared for unit normal.
+    ∀ v n : Vec2, |n|² = 1 → |reflect(v, n)|² = |v|² *)
+Lemma reflect_length_sq_expand : forall a b nx ny : R,
+  nx * nx + ny * ny = 1 ->
+  (a - 2 * (a * nx + b * ny) * nx) * (a - 2 * (a * nx + b * ny) * nx) +
+  (b - 2 * (a * nx + b * ny) * ny) * (b - 2 * (a * nx + b * ny) * ny) =
+  a * a + b * b.
+Proof.
+  intros a b nx ny Hn.
+  (* Expand and collect: the cross terms cancel using nx²+ny²=1 *)
+  (* LHS = a²+b² - 4D² + 4D²(nx²+ny²) where D = a*nx+b*ny *)
+  assert (H: (a - 2 * (a * nx + b * ny) * nx) * (a - 2 * (a * nx + b * ny) * nx) +
+             (b - 2 * (a * nx + b * ny) * ny) * (b - 2 * (a * nx + b * ny) * ny) =
+             (a * a + b * b) - 4 * (a * nx + b * ny) * (a * nx + b * ny) +
+             4 * (a * nx + b * ny) * (a * nx + b * ny) * (nx * nx + ny * ny)).
+  { ring. }
+  rewrite H. rewrite Hn. ring.
+Qed.
+
+Theorem vec2_reflect_preserves_length_sq : forall v n : Vec2,
+  vec2_length_squared n = 1 ->
+  vec2_length_squared (vec2_reflect v n) = vec2_length_squared v.
+Proof.
+  intros [vx vy] [nx ny] Hn.
+  unfold vec2_length_squared, vec2_dot in Hn. simpl in Hn.
+  unfold vec2_length_squared, vec2_reflect, vec2_sub, vec2_scale, vec2_dot. simpl.
+  apply reflect_length_sq_expand. lra.
+Qed.
+
+(** * Projection Properties *)
+
+(** Theorem 49: projecting a vector onto itself gives itself.
+    ∀ v : Vec2, |v|² ≠ 0 → project(v, v) = v *)
+Theorem vec2_project_self : forall v : Vec2,
+  vec2_length_squared v <> 0 ->
+  vec2_project v v = v.
+Proof.
+  intros [vx vy] Hne.
+  unfold vec2_project, vec2_scale, vec2_dot, vec2_length_squared. simpl.
+  unfold vec2_dot. simpl.
+  f_equal; field;
+  unfold vec2_length_squared, vec2_dot in Hne; simpl in Hne; lra.
+Qed.
+
+(** Theorem 50: projection onto orthogonal vector is zero.
+    ∀ v w : Vec2, v · w = 0 → project(v, w) = 0 *)
+Theorem vec2_project_orthogonal : forall v w : Vec2,
+  vec2_dot v w = 0 ->
+  vec2_project v w = vec2_zero.
+Proof.
+  intros [vx vy] [wx wy] Hdot.
+  unfold vec2_project, vec2_scale, vec2_dot, vec2_length_squared, vec2_zero.
+  simpl. unfold vec2_dot. simpl.
+  unfold vec2_dot in Hdot. simpl in Hdot.
+  rewrite Hdot.
+  f_equal; unfold Rdiv; rewrite Rmult_0_l; apply Rmult_0_l.
+Qed.
+
+(** Theorem 51: projection is idempotent.
+    ∀ v w : Vec2, |w|² ≠ 0 → project(project(v, w), w) = project(v, w) *)
+Theorem vec2_project_idempotent : forall v w : Vec2,
+  vec2_length_squared w <> 0 ->
+  vec2_project (vec2_project v w) w = vec2_project v w.
+Proof.
+  intros [vx vy] [wx wy] Hne.
+  unfold vec2_project, vec2_scale, vec2_dot, vec2_length_squared. simpl.
+  unfold vec2_dot. simpl.
+  unfold vec2_length_squared, vec2_dot in Hne. simpl in Hne.
+  f_equal; field; lra.
+Qed.
+
+(** * Rejection Properties *)
+
+(** Theorem 52: reject is orthogonal to projection direction.
+    ∀ v w : Vec2, |w|² ≠ 0 → reject(v, w) · w = 0 *)
+Theorem vec2_reject_orthogonal : forall v w : Vec2,
+  vec2_length_squared w <> 0 ->
+  vec2_dot (vec2_reject v w) w = 0.
+Proof.
+  intros [vx vy] [wx wy] Hne.
+  unfold vec2_reject, vec2_sub, vec2_project, vec2_scale, vec2_dot, vec2_length_squared.
+  simpl. unfold vec2_dot. simpl.
+  unfold vec2_length_squared, vec2_dot in Hne. simpl in Hne.
+  field. lra.
+Qed.
+
+(** Theorem 53: project + reject = original.
+    ∀ v w : Vec2, project(v, w) + reject(v, w) = v *)
+Theorem vec2_project_reject_sum : forall v w : Vec2,
+  vec2_add (vec2_project v w) (vec2_reject v w) = v.
+Proof.
+  intros [vx vy] [wx wy].
+  unfold vec2_add, vec2_reject, vec2_sub, vec2_project, vec2_scale,
+         vec2_dot, vec2_length_squared. simpl.
+  (* Abstract the division term; then k*w + (v - k*w) = v by ring *)
+  set (k := (vx * wx + vy * wy) / (wx * wx + wy * wy)).
+  f_equal; ring.
+Qed.
+
+(** * Min/Max Element Properties *)
+
+(** Theorem 54: min_element is <= both components.
+    ∀ v : Vec2, min_element(v) ≤ v.x ∧ min_element(v) ≤ v.y *)
+Theorem vec2_min_element_bound : forall v : Vec2,
+  vec2_min_element v <= vec2_x v /\ vec2_min_element v <= vec2_y v.
+Proof.
+  intros [vx vy]. unfold vec2_min_element. simpl.
+  split; apply Rmin_l || apply Rmin_r.
+Qed.
+
+(** Theorem 55: max_element is >= both components.
+    ∀ v : Vec2, max_element(v) ≥ v.x ∧ max_element(v) ≥ v.y *)
+Theorem vec2_max_element_bound : forall v : Vec2,
+  vec2_x v <= vec2_max_element v /\ vec2_y v <= vec2_max_element v.
+Proof.
+  intros [vx vy]. unfold vec2_max_element. simpl.
+  split; apply Rmax_l || apply Rmax_r.
+Qed.
+
+(** Theorem 56: min_element ≤ max_element.
+    ∀ v : Vec2, min_element(v) ≤ max_element(v) *)
+Theorem vec2_min_le_max_element : forall v : Vec2,
+  vec2_min_element v <= vec2_max_element v.
+Proof.
+  intros [vx vy]. unfold vec2_min_element, vec2_max_element. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec vx vy); destruct (Rle_dec vx vy); lra.
+Qed.
+
+(** Theorem 57: for splat vectors, min_element = max_element = value.
+    ∀ s : R, min_element(splat(s)) = s *)
+Theorem vec2_splat_min_element : forall s : R,
+  vec2_min_element (vec2_splat s) = s.
+Proof.
+  intros s. unfold vec2_min_element, vec2_splat. simpl.
+  unfold Rmin. destruct (Rle_dec s s); reflexivity.
+Qed.
+
+(** Theorem 58: for splat vectors, max_element = value.
+    ∀ s : R, max_element(splat(s)) = s *)
+Theorem vec2_splat_max_element : forall s : R,
+  vec2_max_element (vec2_splat s) = s.
+Proof.
+  intros s. unfold vec2_max_element, vec2_splat. simpl.
+  unfold Rmax. destruct (Rle_dec s s); reflexivity.
+Qed.
+
+(** * Division Properties *)
+
+(** Theorem 59: dividing by (1,1) is identity.
+    ∀ v : Vec2, v / (1,1) = v *)
+Theorem vec2_div_one : forall v : Vec2,
+  vec2_div v (mkVec2 1 1) = v.
+Proof.
+  intros [vx vy].
+  unfold vec2_div. simpl.
+  f_equal; field.
+Qed.
+
+(** Theorem 60: dividing zero by anything gives zero (for non-zero divisor).
+    ∀ b : Vec2, 0 / b = 0 (component-wise) *)
+Theorem vec2_div_zero_num : forall b : Vec2,
+  vec2_x b <> 0 -> vec2_y b <> 0 ->
+  vec2_div vec2_zero b = vec2_zero.
+Proof.
+  intros [bx by0] Hx Hy. simpl in *.
+  unfold vec2_div, vec2_zero. simpl.
+  f_equal; field; assumption.
+Qed.
+
+(** Theorem 61: mul and div are inverse (for non-zero divisor).
+    ∀ v d : Vec2, d.x ≠ 0 → d.y ≠ 0 → (v .* d) / d = v *)
+Theorem vec2_mul_div_cancel : forall v d : Vec2,
+  vec2_x d <> 0 -> vec2_y d <> 0 ->
+  vec2_div (vec2_mul v d) d = v.
+Proof.
+  intros [vx vy] [dx dy] Hx Hy. simpl in *.
+  unfold vec2_div, vec2_mul. simpl.
+  f_equal; field; assumption.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 45
+    Total theorems: 61
     Total tactics used: ring, f_equal, reflexivity, destruct, apply, Rmin_comm,
-      Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra
+      Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra, field
     Admits: 0
     Axioms: Standard Coq real number library only
 

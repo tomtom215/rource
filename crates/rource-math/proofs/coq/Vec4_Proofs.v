@@ -479,11 +479,109 @@ Proof.
   unfold vec4_splat, vec4_zero. reflexivity.
 Qed.
 
+(** * Min/Max Element Properties *)
+
+(** Theorem 44: min_element is <= all components *)
+Theorem vec4_min_element_bound : forall v : Vec4,
+  vec4_min_element v <= vec4_x v /\ vec4_min_element v <= vec4_y v /\
+  vec4_min_element v <= vec4_z v /\ vec4_min_element v <= vec4_w v.
+Proof.
+  intros [vx vy vz vw]. unfold vec4_min_element. simpl.
+  repeat split.
+  - apply Rle_trans with (Rmin (Rmin vx vy) vz).
+    apply Rmin_l. apply Rle_trans with (Rmin vx vy). apply Rmin_l. apply Rmin_l.
+  - apply Rle_trans with (Rmin (Rmin vx vy) vz).
+    apply Rmin_l. apply Rle_trans with (Rmin vx vy). apply Rmin_l. apply Rmin_r.
+  - apply Rle_trans with (Rmin (Rmin vx vy) vz). apply Rmin_l. apply Rmin_r.
+  - apply Rmin_r.
+Qed.
+
+(** Theorem 45: max_element is >= all components *)
+Theorem vec4_max_element_bound : forall v : Vec4,
+  vec4_x v <= vec4_max_element v /\ vec4_y v <= vec4_max_element v /\
+  vec4_z v <= vec4_max_element v /\ vec4_w v <= vec4_max_element v.
+Proof.
+  intros [vx vy vz vw]. unfold vec4_max_element. simpl.
+  repeat split.
+  - apply Rle_trans with (Rmax (Rmax vx vy) vz).
+    apply Rle_trans with (Rmax vx vy). apply Rmax_l. apply Rmax_l.
+    apply Rmax_l.
+  - apply Rle_trans with (Rmax (Rmax vx vy) vz).
+    apply Rle_trans with (Rmax vx vy). apply Rmax_r. apply Rmax_l.
+    apply Rmax_l.
+  - apply Rle_trans with (Rmax (Rmax vx vy) vz). apply Rmax_r. apply Rmax_l.
+  - apply Rmax_r.
+Qed.
+
+(** Theorem 46: min_element <= max_element *)
+Theorem vec4_min_le_max_element : forall v : Vec4,
+  vec4_min_element v <= vec4_max_element v.
+Proof.
+  intros [vx vy vz vw]. unfold vec4_min_element, vec4_max_element. simpl.
+  apply Rle_trans with vx.
+  - apply Rle_trans with (Rmin (Rmin vx vy) vz).
+    apply Rmin_l. apply Rle_trans with (Rmin vx vy). apply Rmin_l. apply Rmin_l.
+  - apply Rle_trans with (Rmax (Rmax vx vy) vz).
+    apply Rle_trans with (Rmax vx vy). apply Rmax_l. apply Rmax_l.
+    apply Rmax_l.
+Qed.
+
+(** Theorem 47: splat min_element = value *)
+Theorem vec4_splat_min_element : forall s : R,
+  vec4_min_element (vec4_splat s) = s.
+Proof.
+  intros s. unfold vec4_min_element, vec4_splat. simpl.
+  assert (Hs: Rmin s s = s).
+  { unfold Rmin. destruct (Rle_dec s s) as [_|n]. reflexivity. exfalso. apply n. lra. }
+  rewrite Hs. rewrite Hs. exact Hs.
+Qed.
+
+(** Theorem 48: splat max_element = value *)
+Theorem vec4_splat_max_element : forall s : R,
+  vec4_max_element (vec4_splat s) = s.
+Proof.
+  intros s. unfold vec4_max_element, vec4_splat. simpl.
+  assert (Hs: Rmax s s = s).
+  { unfold Rmax. destruct (Rle_dec s s) as [_|n]. reflexivity. exfalso. apply n. lra. }
+  rewrite Hs. rewrite Hs. exact Hs.
+Qed.
+
+(** * Division Properties *)
+
+(** Theorem 49: dividing by (1,1,1,1) is identity *)
+Theorem vec4_div_one : forall v : Vec4,
+  vec4_div v (mkVec4 1 1 1 1) = v.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_div. simpl.
+  f_equal; field.
+Qed.
+
+(** Theorem 50: dividing zero by anything gives zero *)
+Theorem vec4_div_zero_num : forall b : Vec4,
+  vec4_x b <> 0 -> vec4_y b <> 0 -> vec4_z b <> 0 -> vec4_w b <> 0 ->
+  vec4_div vec4_zero b = vec4_zero.
+Proof.
+  intros [bx by0 bz bw] Hx Hy Hz Hw. simpl in *.
+  unfold vec4_div, vec4_zero. simpl.
+  f_equal; field; assumption.
+Qed.
+
+(** Theorem 51: mul and div are inverse *)
+Theorem vec4_mul_div_cancel : forall v d : Vec4,
+  vec4_x d <> 0 -> vec4_y d <> 0 -> vec4_z d <> 0 -> vec4_w d <> 0 ->
+  vec4_div (vec4_mul v d) d = v.
+Proof.
+  intros [vx vy vz vw] [dx dy dz dw] Hx Hy Hz Hw. simpl in *.
+  unfold vec4_div, vec4_mul. simpl.
+  f_equal; field; assumption.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 43
+    Total theorems: 51
     Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl,
-      Rmin_comm, Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra
+      Rmin_comm, Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra, field
     Admits: 0
     Axioms: Standard Coq real number library only
 

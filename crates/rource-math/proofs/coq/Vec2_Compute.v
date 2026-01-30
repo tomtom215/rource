@@ -438,6 +438,110 @@ Proof.
   unfold zvec2_element_sum, zvec2_zero. simpl. reflexivity.
 Qed.
 
+(** * Min/Max Element Operations *)
+
+Definition zvec2_min_element (v : ZVec2) : Z :=
+  Z.min (zvec2_x v) (zvec2_y v).
+
+Definition zvec2_max_element (v : ZVec2) : Z :=
+  Z.max (zvec2_x v) (zvec2_y v).
+
+(** Theorem 39: min_element is <= both components *)
+Theorem zvec2_min_element_bound : forall v : ZVec2,
+  zvec2_min_element v <= zvec2_x v /\ zvec2_min_element v <= zvec2_y v.
+Proof.
+  intros [vx vy]. unfold zvec2_min_element. simpl.
+  split; [apply Z.le_min_l | apply Z.le_min_r].
+Qed.
+
+(** Theorem 40: max_element is >= both components *)
+Theorem zvec2_max_element_bound : forall v : ZVec2,
+  zvec2_x v <= zvec2_max_element v /\ zvec2_y v <= zvec2_max_element v.
+Proof.
+  intros [vx vy]. unfold zvec2_max_element. simpl.
+  split; [apply Z.le_max_l | apply Z.le_max_r].
+Qed.
+
+(** Theorem 41: min_element <= max_element *)
+Theorem zvec2_min_le_max_element : forall v : ZVec2,
+  zvec2_min_element v <= zvec2_max_element v.
+Proof.
+  intros [vx vy]. unfold zvec2_min_element, zvec2_max_element. simpl.
+  apply Z.min_le_iff. left. apply Z.le_max_l.
+Qed.
+
+(** Theorem 42: splat min_element is the value *)
+Theorem zvec2_splat_min_element : forall s : Z,
+  zvec2_min_element (zvec2_splat s) = s.
+Proof.
+  intros s. unfold zvec2_min_element, zvec2_splat. simpl.
+  apply Z.min_id.
+Qed.
+
+(** Theorem 43: splat max_element is the value *)
+Theorem zvec2_splat_max_element : forall s : Z,
+  zvec2_max_element (zvec2_splat s) = s.
+Proof.
+  intros s. unfold zvec2_max_element, zvec2_splat. simpl.
+  apply Z.max_id.
+Qed.
+
+(** * Additional Algebraic Properties *)
+
+(** Theorem 44: negation is involutive *)
+Theorem zvec2_neg_involutive : forall v : ZVec2,
+  zvec2_neg (zvec2_neg v) = v.
+Proof.
+  intros [vx vy]. unfold zvec2_neg. simpl.
+  apply zvec2_eq; lia.
+Qed.
+
+(** Theorem 45: component-wise mul associativity *)
+Theorem zvec2_mul_assoc : forall a b c : ZVec2,
+  zvec2_mul (zvec2_mul a b) c = zvec2_mul a (zvec2_mul b c).
+Proof.
+  intros [ax ay] [bx by0] [cx cy]. unfold zvec2_mul. simpl.
+  apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 46: component-wise mul by (1,1) is identity *)
+Theorem zvec2_mul_one : forall v : ZVec2,
+  zvec2_mul v (mkZVec2 1 1) = v.
+Proof.
+  intros [vx vy]. unfold zvec2_mul. simpl.
+  apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 47: component-wise mul by zero is zero *)
+Theorem zvec2_mul_zero : forall v : ZVec2,
+  zvec2_mul v zvec2_zero = zvec2_zero.
+Proof.
+  intros [vx vy]. unfold zvec2_mul, zvec2_zero. simpl.
+  apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 48: dot with zero is zero *)
+Theorem zvec2_dot_zero_r : forall v : ZVec2,
+  zvec2_dot v zvec2_zero = 0.
+Proof.
+  intros [vx vy]. unfold zvec2_dot, zvec2_zero. simpl. ring.
+Qed.
+
+(** Theorem 49: scale by neg one gives negation *)
+Theorem zvec2_scale_neg_one : forall v : ZVec2,
+  zvec2_scale (-1) v = zvec2_neg v.
+Proof.
+  intros [vx vy]. unfold zvec2_scale, zvec2_neg.
+  apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 50: element sum additive *)
+Theorem zvec2_element_sum_add : forall a b : ZVec2,
+  zvec2_element_sum (zvec2_add a b) = zvec2_element_sum a + zvec2_element_sum b.
+Proof.
+  intros [ax ay] [bx by0]. unfold zvec2_element_sum, zvec2_add. simpl. ring.
+Qed.
+
 (** * Computational Tests (Extracted) *)
 
 (** These evaluate to concrete values, demonstrating computability. *)
