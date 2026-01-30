@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769802655638,
+  "lastUpdate": 1769811326396,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4508,6 +4508,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/fc9632086c68607330d85d1ebce03807904cbf46"
         },
         "date": 1769802655136,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "365ecce736321d8cff09df166d67ab21d802b92a",
+          "message": "Merge pull request #238 from tomtom215/claude/setup-rource-math-3gfZf\n\nReplace emoji indicators with text-based status labels in workflows and docs",
+          "timestamp": "2026-01-30T23:13:19+01:00",
+          "tree_id": "fb62b700ccb946d14b4efefcca61ffff12d834fa",
+          "url": "https://github.com/tomtom215/rource/commit/365ecce736321d8cff09df166d67ab21d802b92a"
+        },
+        "date": 1769811325861,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
