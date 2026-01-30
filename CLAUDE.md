@@ -85,8 +85,8 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 - **Verus**: 266 proof functions, 0 errors
 - **Coq (R-based)**: 446 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
 - **Coq (Z-based)**: 235 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
-- **Kani (CBMC)**: 45 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
-- **Combined**: 992 formally verified theorems/harnesses across 8 types
+- **Kani (CBMC)**: 110 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
+- **Combined**: 1057 formally verified theorems/harnesses across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -446,6 +446,11 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-30 | 9ENKM | Mat4 determinant harness takes ~60s due to 16 symbolic floats | 80 CBMC checks for 4×4 determinant with symbolic elements | Most harnesses verify in <2s; Mat4 determinant is the exception. Plan accordingly for CI timeout settings. | Yes |
 | 2026-01-30 | 9ENKM | Kani `cargo kani setup` installs nightly-2025-11-21 toolchain | Kani v0.67.0 needs its own Rust nightly with CBMC support | Does not conflict with stable/nightly used for development; `cargo kani` auto-selects correct toolchain | Yes |
 | 2026-01-30 | 9ENKM | Safe bounds for symbolic f32 vary by operation depth | `sqrt(MAX/n)` for n-component dot; `(MAX/k)^(1/d)` for degree-d polynomial with k terms | Vec: 1e18 (2 components), Mat3 det: 1e12 (degree 3), Mat4 det: 1e9 (degree 4). Document bound derivation in harness comments. | Yes |
+| 2026-01-30 | 9qF3t | Kani SIGSEGV when compiling 110+ harnesses at once | Kani compiler (kani-compiler) crashes with SIGSEGV when processing entire rource-math crate with 110 harnesses | Run harnesses individually: `cargo kani -p rource-math --harness <name>`. Full-crate `cargo kani -p rource-math` triggers memory issue in compiler. | Yes |
+| 2026-01-30 | 9qF3t | `Rect::intersects(self)` fails when `width < ULP(x)` | IEEE 754: `x + width > x` is FALSE when width < unit of least precision at x. At `|x|=1e6`, ULP ≈ 0.12 | Require `width > 1.0` and `|x| < 1e6` for self-intersection property. This is a genuine FP edge case where mathematical property `x + w > x for w > 0` fails. | Yes |
+| 2026-01-30 | 9qF3t | `Rect::from_center_size` center roundoff | `cx - w/2 + w/2 ≠ cx` due to catastrophic cancellation when `|cx| >> w` | Tighten bounds to `|cx| < 1e6`, `w < 1e6`; use tolerance 1.0 (roundoff ≈ 0.24). Document as genuine FP limitation. | Yes |
+| 2026-01-30 | 9qF3t | CBMC symbolic `sqrt()` is extremely expensive | `get_scale()` calls `sqrt()`, and CBMC takes >15 min for symbolic sqrt verification | Replace exact-value roundtrip assertions with finiteness checks for sqrt-based operations. Exact roundtrips verified algebraically in Verus/Coq instead. | Yes |
+| 2026-01-30 | 9qF3t | 65 new Kani harnesses scale well across 7 types | Same patterns (finiteness, NaN-freedom, postconditions, reflexivity) apply uniformly | Standard templates: `verify_<type>_<op>_finite`, `verify_<type>_<op>_no_nan`, `verify_<type>_approx_eq_reflexive`, `verify_<type>_<op>_componentwise`. Harness count: 45 → 110 (+65). | Yes |
 
 ---
 
@@ -707,7 +712,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (992 theorems/harnesses) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1057 theorems/harnesses) |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (266 proof functions, 8 files) |
 | `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 681 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
@@ -1351,16 +1356,16 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Kani (CBMC) | Total | Status |
 |-----------|-------|---------------|-----------------|-------------|-------|--------|
-| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 11 harnesses | 175 | TRIPLE VERIFIED |
-| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 6 harnesses | 159 | TRIPLE VERIFIED |
-| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 3 harnesses | 126 | TRIPLE VERIFIED |
-| Mat3 | 48 proof fns | 48 theorems | 25 theorems | 6 harnesses | 127 | TRIPLE VERIFIED |
-| Mat4 | 22 proof fns | 52 theorems | 25 theorems | 6 harnesses | 105 | TRIPLE VERIFIED |
-| Color | 35 proof fns | 46 theorems | 28 theorems | 5 harnesses | 114 | TRIPLE VERIFIED |
-| Rect | 33 proof fns | 43 theorems | 24 theorems | 3 harnesses | 103 | TRIPLE VERIFIED |
+| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 21 harnesses | 185 | TRIPLE VERIFIED |
+| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 18 harnesses | 171 | TRIPLE VERIFIED |
+| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 9 harnesses | 132 | TRIPLE VERIFIED |
+| Mat3 | 48 proof fns | 48 theorems | 25 theorems | 14 harnesses | 135 | TRIPLE VERIFIED |
+| Mat4 | 22 proof fns | 52 theorems | 25 theorems | 15 harnesses | 114 | TRIPLE VERIFIED |
+| Color | 35 proof fns | 46 theorems | 28 theorems | 15 harnesses | 124 | TRIPLE VERIFIED |
+| Rect | 33 proof fns | 43 theorems | 24 theorems | 13 harnesses | 113 | TRIPLE VERIFIED |
 | Utils | — | 10 theorems | 8 theorems | 5 harnesses | 23 | VERIFIED |
 | Complexity | — | 60 theorems | — | — | 60 | VERIFIED |
-| **Total** | **266 proof fns** | **446 theorems** | **235 theorems** | **45 harnesses** | **992** | **ACADEMIC** |
+| **Total** | **266 proof fns** | **446 theorems** | **235 theorems** | **110 harnesses** | **1057** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1373,9 +1378,9 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Kani proofs (45 harnesses, ~2min)
-cargo kani -p rource-math  # All harnesses
-# Or individually: cargo kani -p rource-math --harness verify_lerp_no_nan
+# Kani proofs (110 harnesses)
+# NOTE: Running all at once may SIGSEGV. Run individually:
+cargo kani -p rource-math --harness verify_lerp_no_nan
 
 # Verus proofs (266 proof functions)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
@@ -1853,7 +1858,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq + Kani proofs (992 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect |
+| **Formal Verification** | Verus + Coq + Kani proofs (1057 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1888,7 +1893,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  992 formally verified theorems/harnesses across Verus + Coq + Kani         │
+│  1057 formally verified theorems/harnesses across Verus + Coq + Kani        │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1903,4 +1908,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-30*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 992 theorems/harnesses (Verus: 266, Coq R-based: 446, Coq Z-based: 235, Kani: 45)*
+*Formal Verification: 1057 theorems/harnesses (Verus: 266, Coq R-based: 446, Coq Z-based: 235, Kani: 110)*
