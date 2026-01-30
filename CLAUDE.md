@@ -83,11 +83,11 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 | Documentation Quality | Expert | Academic | This document |
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
-- **Verus**: 266 proof functions, 0 errors
+- **Verus**: 327 proof functions, 0 errors
 - **Coq (R-based)**: 446 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
 - **Coq (Z-based)**: 251 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
-- **Kani (CBMC)**: 110 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
-- **Combined**: 1073 formally verified theorems/harnesses across 8 types
+- **Kani (CBMC)**: 134 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
+- **Combined**: 1158 formally verified theorems/harnesses across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -468,6 +468,11 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-30 | 9qF3t | Two-tier script architecture for doc automation | Verification counts (Verus/Coq/Kani) require source-file parsing; other metrics (tests, phases, MSRV) need different extraction | `update-verification-counts.sh` (formal verification) + `update-doc-metrics.sh` (everything else). The doc-metrics script calls the verification script internally. | Yes |
 | 2026-01-30 | 9qF3t | Ground truth must come from source files, never hardcoded | Hardcoded counts in update scripts become stale the moment a new theorem is added | Parse actual source: `grep -cE '^(Theorem\|Lemma\|Local Lemma)' *.v` for Coq, `grep -c 'proof fn'` for Verus, `grep -c '#\[kani::proof\]'` for Kani. JSON output in `metrics/*.json`. | Yes |
 | 2026-01-30 | 9qF3t | Per-file sed patterns scale linearly but are necessary | SETUP_GUIDE.md tables require 23 individual sed patterns (8 Verus + 7 Coq R + 8 Coq Z) | Each file in verification tables gets its own pattern. No shortcuts — generic patterns cause cross-contamination. Document pattern count in script comments. | Yes |
+| 2026-01-30 | Ja1ql | New Verus extended files must be added to update-verification-counts.sh | `mat4_extended_proofs.rs` (32 proofs) was not counted because script only knew about `mat4_proofs.rs` | Add `VERUS_MAT4_EXT` variable + `VERUS_MAT4_BASE + VERUS_MAT4_EXT` sum + SETUP_GUIDE.md sed patterns for every new proof file. Follow Mat3 extended pattern. | Yes |
+| 2026-01-30 | Ja1ql | 4-phase decomposition generalizes to Mat4 diagonal determinant | `det(diag(d0,d1,d2,d3)) = d0*d1*d2*d3` is degree-4; Z3 `nonlinear_arith` cannot expand spec functions | Expand minors as let bindings (s0=m0*m5, c5=m10*m15), assert in outer context, then `assert(s0*c5 == d0*d1*d2*d3) by(nonlinear_arith) requires s0==d0*d1, c5==d2*d3;` | Yes |
+| 2026-01-30 | Ja1ql | Mat4 T*S composite determinant needs all 16 elements + 12 minors | `det(T*S) = sx*sy*sz` requires expanding both mat4_mul and mat4_determinant | Assert all 16 elements of T*S product, then all 12 Laplace minors, then use requires-axiom for final step. Most minors are zero due to sparse structure. | Yes |
+| 2026-01-30 | Ja1ql | Verus `dst.r * 1000 / 1000 == dst.r` not automatic for Z3 | Integer division truncation: `x * k / k == x` only when `x * k` has no remainder (always true for integers, but Z3 needs hint) | Add explicit `assert(dst.r * 1000 / 1000 == dst.r) by(nonlinear_arith)` hints for each component in color blend proofs | Yes |
+| 2026-01-30 | Ja1ql | Kani harness name collisions cause compile errors | Two harnesses with same `#[kani::proof]` function name → duplicate symbol | Always check existing harness names before adding new ones. Use descriptive suffixes: `_finite`, `_no_nan`, `_componentwise`, `_reflexive` | Yes |
 
 ---
 
@@ -729,8 +734,8 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1073 theorems/harnesses) |
-| `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (266 proof functions, 8 files) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1158 theorems/harnesses) |
+| `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (327 proof functions, 9 files) |
 | `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 697 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
 | `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
@@ -1385,12 +1390,12 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | Vec3 | 40 proof fns | 71 theorems | 42 theorems | 18 harnesses | 171 | TRIPLE VERIFIED |
 | Vec4 | 39 proof fns | 51 theorems | 33 theorems | 9 harnesses | 132 | TRIPLE VERIFIED |
 | Mat3 | 48 proof fns | 48 theorems | 25 theorems | 14 harnesses | 135 | TRIPLE VERIFIED |
-| Mat4 | 22 proof fns | 52 theorems | 41 theorems | 15 harnesses | 130 | TRIPLE VERIFIED |
-| Color | 35 proof fns | 46 theorems | 28 theorems | 15 harnesses | 124 | TRIPLE VERIFIED |
-| Rect | 33 proof fns | 43 theorems | 24 theorems | 13 harnesses | 113 | TRIPLE VERIFIED |
+| Mat4 | 54 proof fns | 52 theorems | 41 theorems | 26 harnesses | 173 | TRIPLE VERIFIED |
+| Color | 45 proof fns | 46 theorems | 28 theorems | 21 harnesses | 140 | TRIPLE VERIFIED |
+| Rect | 52 proof fns | 43 theorems | 24 theorems | 20 harnesses | 139 | TRIPLE VERIFIED |
 | Utils | — | 10 theorems | 8 theorems | 5 harnesses | 23 | VERIFIED |
 | Complexity | — | 60 theorems | — | — | 60 | VERIFIED |
-| **Total** | **266 proof fns** | **446 theorems** | **251 theorems** | **110 harnesses** | **1073** | **ACADEMIC** |
+| **Total** | **327 proof fns** | **446 theorems** | **251 theorems** | **134 harnesses** | **1158** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1403,16 +1408,18 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Kani proofs (110 harnesses)
+# Kani proofs (134 harnesses)
 # NOTE: Running all at once may SIGSEGV. Run individually:
 cargo kani -p rource-math --harness verify_lerp_no_nan
 
-# Verus proofs (266 proof functions)
+# Verus proofs (327 proof functions)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/mat3_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/mat3_extended_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/mat4_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/mat4_extended_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
@@ -2029,7 +2036,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq + Kani proofs (1073 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect |
+| **Formal Verification** | Verus + Coq + Kani proofs (1158 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -2064,7 +2071,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  1073 formally verified theorems/harnesses across Verus + Coq + Kani        │
+│  1158 formally verified theorems/harnesses across Verus + Coq + Kani        │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -2079,4 +2086,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-30*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 1073 theorems/harnesses (Verus: 266, Coq R-based: 446, Coq Z-based: 251, Kani: 110)*
+*Formal Verification: 1158 theorems/harnesses (Verus: 327, Coq R-based: 446, Coq Z-based: 251, Kani: 134)*

@@ -14,7 +14,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 ## Verified Properties
 
-### Vec2 (23 Theorems, 53 Verification Conditions)
+### Vec2 (49 Proof Functions, 87 Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -61,7 +61,7 @@ All proofs verified with `0 errors`.
 | 22 | Negation as Scaling | -v = (-1) * v |
 | 23 | Vector Space Structure | Combined axiom verification |
 
-### Vec3 (24 Theorems, 68 Verification Conditions)
+### Vec3 (40 Proof Functions, 89 Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -111,7 +111,7 @@ All proofs verified with `0 errors`.
 |---------|----------|
 | 24 | Vector Space Structure | Combined axiom verification |
 
-### Vec4 (22 Theorems, 68 Verification Conditions)
+### Vec4 (39 Proof Functions, 90 Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -149,7 +149,7 @@ All proofs verified with `0 errors`.
 | 21 | Length Squared Zero iff Zero | \|a\|^2 = 0 <=> a = 0 |
 | 22 | Vector Space Structure | Combined axiom verification |
 
-### Mat3 (18 Theorems, 26 Verification Conditions)
+### Mat3 (22 Proof Functions, 26 Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -201,7 +201,7 @@ All proofs verified with `0 errors`.
 | 17 | Negation as Scaling | -A = (-1) * A |
 | 18 | Ring Structure | Mat3 forms a ring with identity |
 
-### Mat3 Extended (22 Theorems + 4 Helpers, 45 Verification Conditions)
+### Mat3 Extended (26 Proof Functions, 45 Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -269,7 +269,7 @@ when combined with the associativity proof's 200+ helper lemma calls)
 | 39 | Translation Point Transform | T(tx,ty) * p = (px+tx, py+ty) |
 | 40 | Shearing Point Transform | H(shx,shy) * p = (px+shx*py, shy*px+py) |
 
-### Mat4 (18 Theorems, 27 Verification Conditions)
+### Mat4 (22 Theorems, 27 Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -320,7 +320,73 @@ All proofs verified with `0 errors`.
 | 17 | Negation as Scaling | -A = (-1) * A |
 | 18 | Ring Structure | Mat4 forms a ring with identity |
 
-### Color (23 Theorems)
+### Mat4 Extended (32 Theorems, 55 Verification Conditions)
+
+All proofs verified with `0 errors`.
+
+#### Translation Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 19 | Translation Structure | T(tx,ty,tz) has I₃ in upper-left, translation in column 3 |
+| 20 | det(Translation) = 1 | det(T(tx,ty,tz)) = 1 |
+| 21 | Translate Origin | T(tx,ty,tz) * origin = (tx,ty,tz) |
+| 22 | Translation Preserves Vectors | T * v = v for direction vectors (w=0) |
+| 23 | Translation Composition | T(t2) * T(t1) = T(t1+t2) |
+| 24 | Zero Translation = Identity | T(0,0,0) = I |
+| 25 | Get Translation Roundtrip | get_translation(T(tx,ty,tz)) = (tx,ty,tz) |
+
+#### Scaling Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 26 | Scaling Structure | S(sx,sy,sz) is diagonal with (sx,sy,sz,1) |
+| 27 | det(Scaling) | det(S(sx,sy,sz)) = sx·sy·sz |
+| 28 | Unit Scaling = Identity | S(1,1,1) = I |
+| 29 | Scaling Composition | S(s2) * S(s1) = S(s1·s2) component-wise |
+| 30 | Scaling Transforms Point | S(sx,sy,sz) * p = (sx·px, sy·py, sz·pz) |
+| 31 | Uniform Scaling | uniform_scale(s) = S(s,s,s) |
+| 32 | det(Uniform Scaling) | det(uniform_scale(s)) = s³ |
+
+#### Transform Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 33 | Identity Point Transform | I * p = p |
+| 34 | Identity Vector Transform | I * v = v |
+| 35 | Translation Point Transform | T(tx,ty,tz) * p = p + (tx,ty,tz) |
+| 36 | Scaling Vector Transform | S(sx,sy,sz) * v = (sx·vx, sy·vy, sz·vz) |
+| 37 | Identity Vec4 Transform | I * v4 = v4 |
+| 38 | Zero Transforms to Origin | 0 * p = origin |
+
+#### Determinant Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 39 | det(I) = 1 | det(identity) = 1 |
+| 40 | det(0) = 0 | det(zero_matrix) = 0 |
+| 41 | det(Diagonal) | det(diag(d0,d1,d2,d3)) = d0·d1·d2·d3 |
+| 42 | det(-A) = det(A) | det(-A) = det(A) for 4×4 ((-1)⁴=1) |
+
+#### Trace Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 43 | tr(I) = 4 | Trace of identity is 4 |
+| 44 | tr(0) = 0 | Trace of zero matrix is 0 |
+| 45 | Trace Additive | tr(A+B) = tr(A) + tr(B) |
+| 46 | tr(Scaling) | tr(S(sx,sy,sz)) = sx + sy + sz + 1 |
+| 47 | tr(Aᵀ) = tr(A) | Trace invariant under transpose |
+| 48 | tr(Translation) = 4 | Translation has trace 4 |
+
+#### Composite Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 49 | Translation Roundtrip | get_translation(T(tx,ty,tz)) = (tx,ty,tz) |
+| 50 | det(T·S) = det(S) | det(T(t)·S(s)) = sx·sy·sz |
+
+### Color (45 Theorems)
 
 All proofs verified with `0 errors`.
 
@@ -382,7 +448,23 @@ All proofs verified with `0 errors`.
 | 22 | Gray Proportional | luminance(gray(v)) = 10000 * v |
 | 23 | White Maximum | luminance(white) = 10000000 |
 
-### Rect (23 Theorems)
+#### Extended Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 24-35 | (base theorems) | See color_proofs.rs Theorems 24-35 |
+| 36 | Scale Zero | scale(c, 0) = (0, 0, 0, 0) |
+| 37 | Scale Full | scale(c, 1.0) = c |
+| 38 | Scale Transparent | scale(transparent, s) = transparent |
+| 39 | Scale Preserves Zero | scale(c, s).component = 0 if c.component = 0 |
+| 40 | Gray Luminance Monotone | v1 ≤ v2 → lum(gray(v1)) ≤ lum(gray(v2)) |
+| 41 | Luminance Bounded | lum(c) ≤ 10000 × max(c.r, c.g, c.b) |
+| 42 | Green Dominates Luminance | Rec. 709: green coeff (7152) > red (2126) > blue (722) |
+| 43 | Mix Identity | mix(c, c) = c |
+| 44 | Invert Luminance | lum(c) + lum(invert(c)) = 10000000 for valid c |
+| 45 | Blend Transparent FG | blend_over(transparent, dst) = dst |
+
+### Rect (52 Theorems)
 
 All proofs verified with `0 errors`.
 
@@ -438,6 +520,56 @@ All proofs verified with `0 errors`.
 | 21 | Valid Implies Not Empty | is_valid(r) -> !is_empty(r) |
 | 22 | Zero Is Empty | is_empty(rect_zero) |
 | 23 | Expand Preserves Validity | is_valid(expand(r, a)) for valid r, a >= 0 |
+
+#### Extended Properties (Theorems 24-33)
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 24-33 | (base extended theorems) | See rect_proofs.rs Theorems 24-33 |
+
+#### Construction Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 34 | from_points Non-negative | from_points(x1,y1,x2,y2) has w,h ≥ 0 |
+| 35 | from_points Symmetric | from_points(x1,y1,x2,y2) = from_points(x2,y2,x1,y1) |
+| 36 | from_points Same Point | from_points(x,y,x,y) = zero-area rect at (x,y) |
+| 37 | from_points Contains Corners | Result contains both corner points |
+
+#### Normalization Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 38 | Normalize Non-negative | normalize(r) has w,h ≥ 0 |
+| 39 | Normalize Idempotent | normalize(normalize(r)) = normalize(r) |
+| 40 | Normalize Preserves Area | |area(normalize(r))| = |area(r)| |
+
+#### Expand/Scale Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 41 | expand_xy Identity | expand_xy(r, 0, 0) = r |
+| 42 | expand_xy Preserves Center | center(expand_xy(r, dx, dy)) = center(r) |
+| 43 | expand_xy Area Increase | area(expand_xy(r, dx, dy)) ≥ area(r) for dx,dy ≥ 0 |
+| 44 | scale_from_center(1) Identity | scale_from_center(r, 1) preserves w,h |
+| 45 | scale_from_center(0) Zero | scale_from_center(r, 0) has zero area |
+| 46 | scale_from_center Area | area(scale(r, f)) = f²·area(r) |
+
+#### Growth Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 47 | grow_to_contain Original | grow_to_contain(r, p) ⊇ r |
+| 48 | grow_to_contain Point | grow_to_contain(r, p) contains p |
+| 49 | Interior Identity | grow_to_contain(r, p) = r when p ∈ r |
+
+#### Interpolation Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 50 | lerp(0) = a | lerp(a, b, 0) = a |
+| 51 | lerp(1) = b | lerp(a, b, 1) = b |
+| 52 | lerp Same | lerp(r, r, t) = r |
 
 ## Verification Methodology
 
@@ -624,38 +756,43 @@ rustup install 1.92.0
 ./verus /path/to/rource/crates/rource-math/proofs/mat3_extended_proofs.rs
 # Expected: verification results:: 45 verified, 0 errors
 
-# Verify Mat4 proofs (requires higher rlimit for associativity)
+# Verify Mat4 base proofs (requires higher rlimit for associativity)
 ./verus --rlimit 30000000 /path/to/rource/crates/rource-math/proofs/mat4_proofs.rs
 # Expected: verification results:: 27 verified, 0 errors
 
+# Verify Mat4 extended proofs (translation, scaling, determinant, trace)
+./verus /path/to/rource/crates/rource-math/proofs/mat4_extended_proofs.rs
+# Expected: verification results:: 55 verified, 0 errors
+
 # Verify Color proofs
 ./verus /path/to/rource/crates/rource-math/proofs/color_proofs.rs
-# Expected: verification results:: verified, 0 errors
+# Expected: verification results:: 81 verified, 0 errors
 
 # Verify Rect proofs
 ./verus /path/to/rource/crates/rource-math/proofs/rect_proofs.rs
-# Expected: verification results:: verified, 0 errors
+# Expected: verification results:: 70 verified, 0 errors
 ```
 
 ## Verus Verification Coverage
 
-| Crate | Status | Theorems | VCs | Notes |
-|-------|--------|----------|-----|-------|
-| rource-math/Vec2 | VERIFIED | 23 | 53 | Complete vector space axioms |
-| rource-math/Vec3 | VERIFIED | 24 | 68 | Cross product + scalar triple product |
-| rource-math/Vec4 | VERIFIED | 22 | 68 | 4D vector space, basis orthonormality |
-| rource-math/Mat3 (base) | VERIFIED | 18 | 26 | Matrix multiplication associativity, ring structure |
-| rource-math/Mat3 (extended) | VERIFIED | 22 (+4 helpers) | 45 | Determinant, translation, scaling, shearing, transforms |
-| rource-math/Mat4 | VERIFIED | 18 | 27 | 3D transformation pipelines, ring structure |
-| rource-math/Color | VERIFIED | 35 | — | Constructor, alpha, interpolation, blending, clamping, luminance, inversion, mixing |
-| rource-math/Rect | VERIFIED | 33 | — | Containment, intersection, union, transformations, area/perimeter, validity, scaling |
+| Crate | Status | Proof Fns | VCs | Notes |
+|-------|--------|-----------|-----|-------|
+| rource-math/Vec2 | VERIFIED | 49 | 87 | Complete vector space axioms, geometric, length, projection |
+| rource-math/Vec3 | VERIFIED | 40 | 89 | Cross product, scalar triple product, reflect, project |
+| rource-math/Vec4 | VERIFIED | 39 | 90 | 4D vector space, basis orthonormality |
+| rource-math/Mat3 (base) | VERIFIED | 22 | 26 | Matrix multiplication associativity, ring structure |
+| rource-math/Mat3 (extended) | VERIFIED | 26 | 45 | Determinant, translation, scaling, shearing, transforms |
+| rource-math/Mat4 (base) | VERIFIED | 22 | 27 | 3D transformation pipelines, ring structure |
+| rource-math/Mat4 (extended) | VERIFIED | 32 | 55 | Translation, scaling, determinant, trace, composite |
+| rource-math/Color | VERIFIED | 45 | 81 | Constructor, alpha, lerp, blend, clamp, luminance, scale, mix, invert |
+| rource-math/Rect | VERIFIED | 52 | 70 | Containment, intersection, union, transforms, area, from_points, normalize, grow, lerp |
 
-**Total: 266 proof functions verified (Verus)**
+**Total: 327 proof functions verified (Verus)**
 
 ---
 
-*Last verified: 2026-01-29*
-*Version: 0.2026.01.29.e85fcd0*
-*Total proof functions: 266 (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22 base + 26 extended], Mat4: 22, Color: 35, Rect: 33)*
-*Total verification conditions: 452 (Vec2: 87, Vec3: 89, Vec4: 90, Mat3: 71 [26+45], Mat4: 27, Color: 46, Rect: 42)*
-*Status: All proofs verified with 0 errors across 8 files*
+*Last verified: 2026-01-30*
+*Version: 0.2026.01.30*
+*Total proof functions: 327 (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22+26], Mat4: 54 [22+32], Color: 45, Rect: 52)*
+*Total verification conditions: 558 (Vec2: 87, Vec3: 89, Vec4: 90, Mat3: 71 [26+45], Mat4: 82 [27+55], Color: 81, Rect: 70)*
+*Status: All proofs verified with 0 errors across 9 files*

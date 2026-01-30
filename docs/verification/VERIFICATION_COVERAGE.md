@@ -356,7 +356,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 1073 theorems, 50.4% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 1158 theorems, 50.4% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
@@ -376,10 +376,10 @@ that neither Verus nor Coq can directly offer.
 | Vec3 | 18 | length ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard + no-NaN, distance ≥ 0, distance_sq ≥ 0, lerp no-NaN, abs ≥ 0, floor/ceil/round finite, min/max componentwise, clamp bounded, reflect finite, approx_eq reflexive |
 | Vec4 | 9 | length ≥ 0, normalized no-NaN, dot finite, lerp no-NaN, abs ≥ 0, min/max componentwise, clamp bounded, approx_eq reflexive |
 | Mat3 | 14 | determinant finite, inverse(zero)=None, inverse(I)=Some, transform_point finite, rotation no-NaN, identity preserves point, transpose involutive, translation/scaling/shearing finite, transform_vector finite, get_translation roundtrip, get_scale finite, approx_eq reflexive |
-| Mat4 | 15 | determinant finite, inverse(zero)=None, inverse(I)=Some, orthographic finite, identity det=1, zero det=0, transpose involutive, translation/scaling finite, rotation_x/y/z no-NaN, transform_point finite, identity preserves point, approx_eq reflexive |
-| Color | 15 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN, clamp bounded, premultiplied no-NaN, fade no-NaN, with_alpha preserves RGB, to_argb8/abgr8 normalized, from_hex_alpha/rgba8 normalized, contrasting valid, approx_eq reflexive |
-| Rect | 13 | area ≥ 0, center finite, contains origin, perimeter ≥ 0, from_center_size center, translate preserves size, expand finite, is_valid positive dims, self-intersection, contains_self, scale_from_center finite, approx_eq reflexive, from_corners valid |
-| **Total** | **110** | **All verified, 0 failures** |
+| Mat4 | 26 | determinant finite, inverse(zero)=None, inverse(I)=Some, orthographic finite, identity det=1, zero det=0, transpose involutive, translation/scaling finite, rotation_x/y/z no-NaN, transform_point finite, identity preserves point, approx_eq reflexive, det_neg no-NaN, det_diagonal finite, trace operations finite, translation_compose componentwise, scaling_compose componentwise |
+| Color | 21 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN, clamp bounded, premultiplied no-NaN, fade no-NaN, with_alpha preserves RGB, to_argb8/abgr8 normalized, from_hex_alpha/rgba8 normalized, contrasting valid, approx_eq reflexive, scale finite, invert finite, mix no-NaN, add clamped, darken/lighten finite |
+| Rect | 20 | area ≥ 0, center finite, contains origin, perimeter ≥ 0, from_center_size center, translate preserves size, expand finite, is_valid positive dims, self-intersection, contains_self, scale_from_center finite/componentwise, approx_eq reflexive, from_corners valid, grow_to_contain finite, normalize finite, lerp finite, expand_xy finite |
+| **Total** | **134** | **All verified, 0 failures** |
 
 **Known limitation**: `Mat4::perspective()` uses `f32::tan()` which delegates to C `tanf` —
 unsupported by Kani's CBMC backend (tracked: github.com/model-checking/kani/issues/2423).
@@ -396,7 +396,7 @@ All edge cases are IEEE 754-compliant behavior requiring bounded input domains f
 
 *Last verified: 2026-01-30*
 *Formal verification coverage: 116/230 operations (50.4%)*
-*Kani IEEE 754 harnesses: 110 (all verified, 0 failures)*
+*Kani IEEE 754 harnesses: 134 (all verified, 0 failures)*
 *Unit test coverage: 230/230 operations (100%)*
 *Unverifiable operations: 114 (floating-point, transcendentals, type conversions)*
 *Landscape survey: 8 tools investigated (6 new + 2 current), Kani adopted*

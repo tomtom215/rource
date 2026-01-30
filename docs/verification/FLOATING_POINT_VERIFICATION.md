@@ -292,7 +292,7 @@ require composing single-operation proofs.
 
 | Phase | Coverage | Operations Verified | Total |
 |-------|----------|--------------------|----|
-| Current | 50.4% (116/230) | Algebraic properties | 1073 theorems |
+| Current | 50.4% (116/230) | Algebraic properties | 1158 theorems |
 | After Phase FP-1 | ~70% (162/230) | + sqrt, rounding, min/max, lerp, distance_sq | ~985 theorems |
 | After Phase FP-2 | ~83% (192/230) | + distance, conversions, batch, transcendental | ~1050 theorems |
 | After Phase FP-3 | ~92% (212/230) | + matrix transforms, color, complex geometry | ~1150 theorems |

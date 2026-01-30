@@ -94,7 +94,7 @@ See [Performance Documentation](#performance-documentation) for the complete opt
 
 | Tool | Components | Theorems | Status |
 |------|------------|----------|--------|
-| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 266 proof functions, 452+ VCs | ✅ Verified |
+| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 327 proof functions, 452+ VCs | ✅ Verified |
 | **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | 446 theorems | ✅ Zero admits |
 | **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Utils (extractable) | 251 theorems | ✅ Zero admits |
 | **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Utils | 110 harnesses | ✅ IEEE 754 verified |
@@ -530,7 +530,7 @@ rource/
 
 | Document | Description |
 |----------|-------------|
-| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 1073 formally verified theorems (Verus + Coq) |
+| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 1158 formally verified theorems (Verus + Coq) |
 | [docs/verification/SETUP_GUIDE.md](docs/verification/SETUP_GUIDE.md) | Formal verification environment setup (Verus, Coq, MetaCoq, wasm_of_ocaml) |
 | [docs/verification/CERTICOQ_WASM_ASSESSMENT.md](docs/verification/CERTICOQ_WASM_ASSESSMENT.md) | Coq-to-WASM pipeline: 9-path landscape assessment |
 

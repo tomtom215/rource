@@ -95,7 +95,9 @@ VERUS_VEC4=$(count_verus "$VERUS_DIR/vec4_proofs.rs")
 VERUS_MAT3_BASE=$(count_verus "$VERUS_DIR/mat3_proofs.rs")
 VERUS_MAT3_EXT=$(count_verus "$VERUS_DIR/mat3_extended_proofs.rs")
 VERUS_MAT3=$((VERUS_MAT3_BASE + VERUS_MAT3_EXT))
-VERUS_MAT4=$(count_verus "$VERUS_DIR/mat4_proofs.rs")
+VERUS_MAT4_BASE=$(count_verus "$VERUS_DIR/mat4_proofs.rs")
+VERUS_MAT4_EXT=$(count_verus "$VERUS_DIR/mat4_extended_proofs.rs")
+VERUS_MAT4=$((VERUS_MAT4_BASE + VERUS_MAT4_EXT))
 VERUS_COLOR=$(count_verus "$VERUS_DIR/color_proofs.rs")
 VERUS_RECT=$(count_verus "$VERUS_DIR/rect_proofs.rs")
 VERUS_TOTAL=$((VERUS_VEC2 + VERUS_VEC3 + VERUS_VEC4 + VERUS_MAT3 + VERUS_MAT4 + VERUS_COLOR + VERUS_RECT))
@@ -169,6 +171,8 @@ cat > "$COUNTS_FILE" << ENDJSON
     "mat3_base": $VERUS_MAT3_BASE,
     "mat3_extended": $VERUS_MAT3_EXT,
     "mat4": $VERUS_MAT4,
+    "mat4_base": $VERUS_MAT4_BASE,
+    "mat4_extended": $VERUS_MAT4_EXT,
     "color": $VERUS_COLOR,
     "rect": $VERUS_RECT
   },
@@ -553,7 +557,8 @@ if [[ -f "$SG" ]]; then
     sed -i -E "s/\`vec4_proofs\.rs\` \| [0-9]+/\`vec4_proofs.rs\` | $VERUS_VEC4/" "$SG"
     sed -i -E "s/\`mat3_proofs\.rs\` \| [0-9]+/\`mat3_proofs.rs\` | $VERUS_MAT3_BASE/" "$SG"
     sed -i -E "s/\`mat3_extended_proofs\.rs\` \| [0-9]+/\`mat3_extended_proofs.rs\` | $VERUS_MAT3_EXT/" "$SG"
-    sed -i -E "s/\`mat4_proofs\.rs\` \| [0-9]+/\`mat4_proofs.rs\` | $VERUS_MAT4/" "$SG"
+    sed -i -E "s/\`mat4_proofs\.rs\` \| [0-9]+/\`mat4_proofs.rs\` | $VERUS_MAT4_BASE/" "$SG"
+    sed -i -E "s/\`mat4_extended_proofs\.rs\` \| [0-9]+/\`mat4_extended_proofs.rs\` | $VERUS_MAT4_EXT/" "$SG"
     sed -i -E "s/\`color_proofs\.rs\` \| [0-9]+/\`color_proofs.rs\` | $VERUS_COLOR/" "$SG"
     sed -i -E "s/\`rect_proofs\.rs\` \| [0-9]+/\`rect_proofs.rs\` | $VERUS_RECT/" "$SG"
     # Coq table total row

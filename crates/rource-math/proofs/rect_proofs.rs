@@ -608,6 +608,303 @@ proof fn rect_scale_zero_area(r: SpecRect)
     assert(r.height * 0 == 0) by(nonlinear_arith);
 }
 
+// =============================================================================
+// ADDITIONAL SPEC FUNCTIONS
+// =============================================================================
+
+/// Construct a rect from two corner points.
+pub open spec fn rect_from_points(x1: int, y1: int, x2: int, y2: int) -> SpecRect {
+    let lx = min_int(x1, x2);
+    let ly = min_int(y1, y2);
+    let rx = max_int(x1, x2);
+    let ry = max_int(y1, y2);
+    SpecRect { x: lx, y: ly, width: rx - lx, height: ry - ly }
+}
+
+/// Normalize a rect: ensure width and height are non-negative.
+pub open spec fn rect_normalize(r: SpecRect) -> SpecRect {
+    let (x, w) = if r.width >= 0 { (r.x, r.width) } else { (r.x + r.width, -r.width) };
+    let (y, h) = if r.height >= 0 { (r.y, r.height) } else { (r.y + r.height, -r.height) };
+    SpecRect { x: x, y: y, width: w, height: h }
+}
+
+/// Expand rect independently in x and y.
+pub open spec fn rect_expand_xy(r: SpecRect, dx: int, dy: int) -> SpecRect {
+    SpecRect {
+        x: r.x - dx,
+        y: r.y - dy,
+        width: r.width + 2 * dx,
+        height: r.height + 2 * dy,
+    }
+}
+
+/// Scale from center: scale width/height by factor, adjust position.
+/// (In integer spec: center stays the same, dims scale.)
+pub open spec fn rect_scale_from_center(r: SpecRect, factor: int) -> SpecRect {
+    let new_w = r.width * factor;
+    let new_h = r.height * factor;
+    let cx = r.x + r.width / 2;
+    let cy = r.y + r.height / 2;
+    SpecRect {
+        x: cx - new_w / 2,
+        y: cy - new_h / 2,
+        width: new_w,
+        height: new_h,
+    }
+}
+
+/// Grow rect to contain a point.
+pub open spec fn rect_grow_to_contain(r: SpecRect, px: int, py: int) -> SpecRect {
+    let new_x = min_int(r.x, px);
+    let new_y = min_int(r.y, py);
+    let new_right = max_int(r.x + r.width, px);
+    let new_bottom = max_int(r.y + r.height, py);
+    SpecRect {
+        x: new_x,
+        y: new_y,
+        width: new_right - new_x,
+        height: new_bottom - new_y,
+    }
+}
+
+/// Integer lerp for scalars: a + t * (b - a)  (exact for integers when t divides evenly).
+pub open spec fn int_lerp(a: int, b: int, t_num: int, t_den: int) -> int {
+    a + t_num * (b - a) / t_den
+}
+
+/// Rect lerp: interpolate between two rects.
+pub open spec fn rect_lerp(a: SpecRect, b: SpecRect, t_num: int, t_den: int) -> SpecRect {
+    SpecRect {
+        x: int_lerp(a.x, b.x, t_num, t_den),
+        y: int_lerp(a.y, b.y, t_num, t_den),
+        width: int_lerp(a.width, b.width, t_num, t_den),
+        height: int_lerp(a.height, b.height, t_num, t_den),
+    }
+}
+
+// =============================================================================
+// FROM_POINTS PROOFS (Theorems 34-37)
+// =============================================================================
+
+/// **Theorem 34**: from_points produces non-negative dimensions.
+proof fn rect_from_points_nonneg(x1: int, y1: int, x2: int, y2: int)
+    ensures ({
+        let r = rect_from_points(x1, y1, x2, y2);
+        r.width >= 0 && r.height >= 0
+    }),
+{
+}
+
+/// **Theorem 35**: from_points is symmetric: swapping corner points gives same rect.
+proof fn rect_from_points_symmetric(x1: int, y1: int, x2: int, y2: int)
+    ensures
+        rect_from_points(x1, y1, x2, y2) == rect_from_points(x2, y2, x1, y1),
+{
+    // min_int and max_int are commutative
+    assert(min_int(x1, x2) == min_int(x2, x1));
+    assert(min_int(y1, y2) == min_int(y2, y1));
+    assert(max_int(x1, x2) == max_int(x2, x1));
+    assert(max_int(y1, y2) == max_int(y2, y1));
+}
+
+/// **Theorem 36**: from_points with same point gives zero-area rect.
+proof fn rect_from_points_same(x: int, y: int)
+    ensures ({
+        let r = rect_from_points(x, y, x, y);
+        r.width == 0 && r.height == 0 && r.x == x && r.y == y
+    }),
+{
+    assert(min_int(x, x) == x);
+    assert(max_int(x, x) == x);
+    assert(min_int(y, y) == y);
+    assert(max_int(y, y) == y);
+}
+
+/// **Theorem 37**: from_points contains both corner points.
+proof fn rect_from_points_contains_corners(x1: int, y1: int, x2: int, y2: int)
+    ensures
+        rect_contains(rect_from_points(x1, y1, x2, y2), SpecPoint { x: x1, y: y1 }),
+        rect_contains(rect_from_points(x1, y1, x2, y2), SpecPoint { x: x2, y: y2 }),
+{
+}
+
+// =============================================================================
+// NORMALIZE PROOFS (Theorems 38-40)
+// =============================================================================
+
+/// **Theorem 38**: normalize produces non-negative dimensions.
+proof fn rect_normalize_nonneg(r: SpecRect)
+    ensures ({
+        let n = rect_normalize(r);
+        n.width >= 0 && n.height >= 0
+    }),
+{
+}
+
+/// **Theorem 39**: normalize is idempotent.
+proof fn rect_normalize_idempotent(r: SpecRect)
+    ensures
+        rect_normalize(rect_normalize(r)) == rect_normalize(r),
+{
+    let n = rect_normalize(r);
+    assert(n.width >= 0);
+    assert(n.height >= 0);
+}
+
+/// **Theorem 40**: normalize preserves area magnitude.
+proof fn rect_normalize_area(r: SpecRect)
+    ensures ({
+        let n = rect_normalize(r);
+        rect_area(n) == rect_area(r) || rect_area(n) == -rect_area(r)
+    }),
+{
+    if r.width >= 0 && r.height >= 0 {
+        // no change
+    } else if r.width < 0 && r.height >= 0 {
+        // width negated: area negated
+        assert((-r.width) * r.height == -(r.width * r.height)) by(nonlinear_arith);
+    } else if r.width >= 0 && r.height < 0 {
+        assert(r.width * (-r.height) == -(r.width * r.height)) by(nonlinear_arith);
+    } else {
+        // both negative: area same (negative * negative = positive)
+        assert((-r.width) * (-r.height) == r.width * r.height) by(nonlinear_arith);
+    }
+}
+
+// =============================================================================
+// EXPAND_XY PROOFS (Theorems 41-43)
+// =============================================================================
+
+/// **Theorem 41**: expand_xy with (0, 0) is identity.
+proof fn rect_expand_xy_identity(r: SpecRect)
+    ensures
+        rect_expand_xy(r, 0, 0) == r,
+{
+}
+
+/// **Theorem 42**: expand_xy preserves center.
+proof fn rect_expand_xy_preserves_center(r: SpecRect, dx: int, dy: int)
+    requires
+        r.width >= 0 && r.height >= 0 && dx >= 0 && dy >= 0,
+    ensures ({
+        let e = rect_expand_xy(r, dx, dy);
+        rect_center_x(e) == rect_center_x(r) && rect_center_y(e) == rect_center_y(r)
+    }),
+{
+    let e = rect_expand_xy(r, dx, dy);
+    // center_x(e) = (r.x - dx) + (r.width + 2*dx) / 2
+    //             = r.x - dx + r.width/2 + dx = r.x + r.width/2 = center_x(r)
+}
+
+/// **Theorem 43**: expand_xy increases area for valid rect with positive amounts.
+proof fn rect_expand_xy_area(r: SpecRect, dx: int, dy: int)
+    requires
+        rect_is_valid(r) && dx >= 0 && dy >= 0,
+    ensures
+        rect_area(rect_expand_xy(r, dx, dy)) >= rect_area(r),
+{
+    let e = rect_expand_xy(r, dx, dy);
+    // e.area = (w + 2*dx) * (h + 2*dy) >= w*h when dx,dy >= 0 and w,h > 0
+    assert((r.width + 2 * dx) * (r.height + 2 * dy) >= r.width * r.height) by(nonlinear_arith)
+        requires r.width > 0, r.height > 0, dx >= 0, dy >= 0;
+}
+
+// =============================================================================
+// SCALE_FROM_CENTER PROOFS (Theorems 44-46)
+// =============================================================================
+
+/// **Theorem 44**: scale_from_center by 1 preserves dimensions.
+proof fn rect_scale_from_center_one_dims(r: SpecRect)
+    ensures ({
+        let s = rect_scale_from_center(r, 1);
+        s.width == r.width && s.height == r.height
+    }),
+{
+    assert(r.width * 1 == r.width) by(nonlinear_arith);
+    assert(r.height * 1 == r.height) by(nonlinear_arith);
+}
+
+/// **Theorem 45**: scale_from_center by 0 gives zero-area rect.
+proof fn rect_scale_from_center_zero(r: SpecRect)
+    ensures ({
+        let s = rect_scale_from_center(r, 0);
+        s.width == 0 && s.height == 0
+    }),
+{
+    assert(r.width * 0 == 0) by(nonlinear_arith);
+    assert(r.height * 0 == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 46**: scale_from_center area is factor² × original.
+proof fn rect_scale_from_center_area(r: SpecRect, factor: int)
+    ensures
+        rect_area(rect_scale_from_center(r, factor)) == factor * factor * rect_area(r),
+{
+    assert((r.width * factor) * (r.height * factor) == factor * factor * (r.width * r.height))
+        by(nonlinear_arith);
+}
+
+// =============================================================================
+// GROW_TO_CONTAIN PROOFS (Theorems 47-49)
+// =============================================================================
+
+/// **Theorem 47**: grow_to_contain includes the original rect.
+proof fn rect_grow_to_contain_includes_original(r: SpecRect, px: int, py: int)
+    requires
+        r.width >= 0 && r.height >= 0,
+    ensures
+        rect_contains_rect(rect_grow_to_contain(r, px, py), r),
+{
+}
+
+/// **Theorem 48**: grow_to_contain includes the point.
+proof fn rect_grow_to_contain_includes_point(r: SpecRect, px: int, py: int)
+    requires
+        r.width >= 0 && r.height >= 0,
+    ensures
+        rect_contains(rect_grow_to_contain(r, px, py), SpecPoint { x: px, y: py }),
+{
+}
+
+/// **Theorem 49**: grow_to_contain with interior point is identity.
+proof fn rect_grow_to_contain_interior_identity(r: SpecRect, px: int, py: int)
+    requires
+        r.width >= 0 && r.height >= 0 &&
+        px >= r.x && px <= r.x + r.width &&
+        py >= r.y && py <= r.y + r.height,
+    ensures
+        rect_grow_to_contain(r, px, py) == r,
+{
+    // px is within [r.x, r.x + r.width], so min(r.x, px) = r.x, max(r.right, px) = r.right
+}
+
+// =============================================================================
+// LERP PROOFS (Theorems 50-52)
+// =============================================================================
+
+/// **Theorem 50**: lerp at t=0 returns first rect.
+proof fn rect_lerp_zero(a: SpecRect, b: SpecRect)
+    ensures
+        rect_lerp(a, b, 0, 1) == a,
+{
+}
+
+/// **Theorem 51**: lerp at t=1 returns second rect.
+proof fn rect_lerp_one(a: SpecRect, b: SpecRect)
+    ensures
+        rect_lerp(a, b, 1, 1) == b,
+{
+}
+
+/// **Theorem 52**: lerp with same rect returns that rect.
+proof fn rect_lerp_same(r: SpecRect, t_num: int, t_den: int)
+    requires
+        t_den > 0,
+    ensures
+        rect_lerp(r, r, t_num, t_den) == r,
+{
+}
+
 fn main() {
     // Verification only
 }

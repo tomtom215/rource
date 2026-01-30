@@ -348,3 +348,130 @@ fn verify_color_approx_eq_reflexive() {
     let c = Color::new(r, g, b, a);
     assert!(c.approx_eq(c), "approx_eq not reflexive");
 }
+
+// ============================================================================
+// from_rgba8 / to_rgba8 roundtrip
+// ============================================================================
+
+/// **Roundtrip**: `from_rgba8(r, g, b, a).to_rgba8()` packs correctly.
+///
+/// The packed format is `(r << 24) | (g << 16) | (b << 8) | a` where each
+/// component is rounded from f32 back to u8.
+#[kani::proof]
+fn verify_color_from_rgba8_to_rgba8_roundtrip() {
+    let r: u8 = kani::any();
+    let g: u8 = kani::any();
+    let b: u8 = kani::any();
+    let a: u8 = kani::any();
+    let c = Color::from_rgba8(r, g, b, a);
+    let packed = c.to_rgba8();
+    // Extract components from packed value
+    let pr = ((packed >> 24) & 0xFF) as u8;
+    let pg = ((packed >> 16) & 0xFF) as u8;
+    let pb = ((packed >> 8) & 0xFF) as u8;
+    let pa = (packed & 0xFF) as u8;
+    assert!(pr == r, "rgba8 roundtrip: r mismatch");
+    assert!(pg == g, "rgba8 roundtrip: g mismatch");
+    assert!(pb == b, "rgba8 roundtrip: b mismatch");
+    assert!(pa == a, "rgba8 roundtrip: a mismatch");
+}
+
+// ============================================================================
+// from_hex / to_rgba8 consistency
+// ============================================================================
+
+/// **Consistency**: `from_hex(h)` followed by `to_rgba8()` should pack with
+/// the same RGB values (full alpha=255).
+#[kani::proof]
+fn verify_color_from_hex_to_rgba8_consistent() {
+    let hex: u32 = kani::any();
+    // from_hex extracts: r = (hex >> 16) & 0xFF, g = (hex >> 8) & 0xFF, b = hex & 0xFF
+    let expected_r = ((hex >> 16) & 0xFF) as u8;
+    let expected_g = ((hex >> 8) & 0xFF) as u8;
+    let expected_b = (hex & 0xFF) as u8;
+    let c = Color::from_hex(hex);
+    let packed = c.to_rgba8();
+    let pr = ((packed >> 24) & 0xFF) as u8;
+    let pg = ((packed >> 16) & 0xFF) as u8;
+    let pb = ((packed >> 8) & 0xFF) as u8;
+    let pa = (packed & 0xFF) as u8;
+    assert!(pr == expected_r, "hex->rgba8: r mismatch");
+    assert!(pg == expected_g, "hex->rgba8: g mismatch");
+    assert!(pb == expected_b, "hex->rgba8: b mismatch");
+    assert!(pa == 255, "hex->rgba8: alpha should be 255");
+}
+
+// ============================================================================
+// From<[f32; 4]> / Into<[f32; 4]>
+// ============================================================================
+
+/// **Roundtrip**: `Color::from([r,g,b,a])` -> `Into::<[f32;4]>` preserves values.
+#[kani::proof]
+fn verify_color_array_roundtrip() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    kani::assume(a.is_finite());
+    let c = Color::from([r, g, b, a]);
+    let arr: [f32; 4] = c.into();
+    assert!(arr[0] == r, "array roundtrip: r mismatch");
+    assert!(arr[1] == g, "array roundtrip: g mismatch");
+    assert!(arr[2] == b, "array roundtrip: b mismatch");
+    assert!(arr[3] == a, "array roundtrip: a mismatch");
+}
+
+/// **Roundtrip**: `Color::from([r,g,b])` gives alpha = 1.0.
+#[kani::proof]
+fn verify_color_rgb_array_alpha() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    let c = Color::from([r, g, b]);
+    assert!(c.a == 1.0, "Color from [r,g,b] should have alpha 1.0");
+    assert!(c.r == r, "Color from [r,g,b] r mismatch");
+    assert!(c.g == g, "Color from [r,g,b] g mismatch");
+    assert!(c.b == b, "Color from [r,g,b] b mismatch");
+}
+
+// ============================================================================
+// gray constructor
+// ============================================================================
+
+/// **Postcondition**: `gray(v)` has equal R=G=B components and alpha=1.0.
+#[kani::proof]
+fn verify_color_gray_equal_components() {
+    let v: f32 = kani::any();
+    kani::assume(v.is_finite());
+    let c = Color::gray(v);
+    assert!(c.r == v, "gray().r should equal value");
+    assert!(c.g == v, "gray().g should equal value");
+    assert!(c.b == v, "gray().b should equal value");
+    assert!(c.a == 1.0, "gray().a should be 1.0");
+}
+
+// ============================================================================
+// rgb constructor
+// ============================================================================
+
+/// **Postcondition**: `rgb(r,g,b)` has alpha=1.0.
+#[kani::proof]
+fn verify_color_rgb_has_full_alpha() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    let c = Color::rgb(r, g, b);
+    assert!(c.r == r, "rgb().r mismatch");
+    assert!(c.g == g, "rgb().g mismatch");
+    assert!(c.b == b, "rgb().b mismatch");
+    assert!(c.a == 1.0, "rgb() should have alpha 1.0");
+}
