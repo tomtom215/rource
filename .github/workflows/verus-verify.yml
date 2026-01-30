@@ -3,12 +3,8 @@ name: Verus Proof Verification
 on:
   push:
     branches: [main]
-    paths:
-      - 'crates/rource-math/proofs/**'
   pull_request:
     branches: [main]
-    paths:
-      - 'crates/rource-math/proofs/**'
   workflow_dispatch:  # Allow manual triggers for testing
 
 # Prevent concurrent verification runs on the same branch/PR
@@ -26,7 +22,7 @@ env:
 
 jobs:
   verify-proofs:
-    name: Verify Formal Proofs
+    name: Verify Verus Proofs
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -58,15 +54,14 @@ jobs:
 
       - name: Verify Verus installation
         run: |
-          echo "Checking Verus binary..."
-          ls -la /tmp/verus/verus 2>&1 || true
-          ls -la /tmp/verus/verus-x86-linux/ 2>&1 || true
-          file /tmp/verus/verus-x86-linux/verus 2>&1 || true
-          ldd /tmp/verus/verus-x86-linux/verus 2>&1 || true
           /tmp/verus/verus --version
           echo "Verus version: $(/tmp/verus/verus --version | head -2 | tail -1)"
 
-      - name: Verify Vec2 Proofs
+      # ================================================================
+      # Verify all 8 proof files (266 proof functions)
+      # ================================================================
+
+      - name: Verify Vec2 Proofs (49 proof fns)
         id: vec2
         run: |
           echo "Verifying Vec2 proofs..."
@@ -77,26 +72,19 @@ jobs:
           echo "$OUTPUT"
           if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
             echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
-            echo "This may indicate a missing shared library or incompatible binary."
-            echo "Checking binary dependencies..."
             ldd /tmp/verus/verus-x86-linux/verus 2>&1 || true
-            file /tmp/verus/verus-x86-linux/verus 2>&1 || true
             exit 1
           fi
-
-          # Extract verification counts
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
-
-          echo "vec2_vcs=$VCS" >> $GITHUB_OUTPUT
-          echo "vec2_errors=$ERRORS" >> $GITHUB_OUTPUT
-
+          echo "vcs=$VCS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           if [ "$ERRORS" != "0" ]; then
             echo "Vec2 verification failed with $ERRORS errors"
             exit 1
           fi
 
-      - name: Verify Vec3 Proofs
+      - name: Verify Vec3 Proofs (40 proof fns)
         id: vec3
         run: |
           echo "Verifying Vec3 proofs..."
@@ -109,19 +97,16 @@ jobs:
             echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
             exit 1
           fi
-
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
-
-          echo "vec3_vcs=$VCS" >> $GITHUB_OUTPUT
-          echo "vec3_errors=$ERRORS" >> $GITHUB_OUTPUT
-
+          echo "vcs=$VCS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           if [ "$ERRORS" != "0" ]; then
             echo "Vec3 verification failed with $ERRORS errors"
             exit 1
           fi
 
-      - name: Verify Vec4 Proofs
+      - name: Verify Vec4 Proofs (39 proof fns)
         id: vec4
         run: |
           echo "Verifying Vec4 proofs..."
@@ -134,19 +119,16 @@ jobs:
             echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
             exit 1
           fi
-
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
-
-          echo "vec4_vcs=$VCS" >> $GITHUB_OUTPUT
-          echo "vec4_errors=$ERRORS" >> $GITHUB_OUTPUT
-
+          echo "vcs=$VCS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           if [ "$ERRORS" != "0" ]; then
             echo "Vec4 verification failed with $ERRORS errors"
             exit 1
           fi
 
-      - name: Verify Mat3 Proofs
+      - name: Verify Mat3 Proofs (48 proof fns)
         id: mat3
         run: |
           echo "Verifying Mat3 proofs..."
@@ -159,19 +141,38 @@ jobs:
             echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
             exit 1
           fi
-
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
-
-          echo "mat3_vcs=$VCS" >> $GITHUB_OUTPUT
-          echo "mat3_errors=$ERRORS" >> $GITHUB_OUTPUT
-
+          echo "vcs=$VCS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           if [ "$ERRORS" != "0" ]; then
             echo "Mat3 verification failed with $ERRORS errors"
             exit 1
           fi
 
-      - name: Verify Mat4 Proofs
+      - name: Verify Mat3 Extended Proofs (det_transpose, det_mul)
+        id: mat3ext
+        run: |
+          echo "Verifying Mat3 extended proofs..."
+          set +e
+          OUTPUT=$(/tmp/verus/verus crates/rource-math/proofs/mat3_extended_proofs.rs 2>&1)
+          EXIT_CODE=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
+            echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
+            exit 1
+          fi
+          VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
+          ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
+          echo "vcs=$VCS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          if [ "$ERRORS" != "0" ]; then
+            echo "Mat3 Extended verification failed with $ERRORS errors"
+            exit 1
+          fi
+
+      - name: Verify Mat4 Proofs (22 proof fns)
         id: mat4
         run: |
           echo "Verifying Mat4 proofs..."
@@ -184,17 +185,62 @@ jobs:
             echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
             exit 1
           fi
-
           VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
           ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
-
-          echo "mat4_vcs=$VCS" >> $GITHUB_OUTPUT
-          echo "mat4_errors=$ERRORS" >> $GITHUB_OUTPUT
-
+          echo "vcs=$VCS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           if [ "$ERRORS" != "0" ]; then
             echo "Mat4 verification failed with $ERRORS errors"
             exit 1
           fi
+
+      - name: Verify Color Proofs (35 proof fns)
+        id: color
+        run: |
+          echo "Verifying Color proofs..."
+          set +e
+          OUTPUT=$(/tmp/verus/verus crates/rource-math/proofs/color_proofs.rs 2>&1)
+          EXIT_CODE=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
+            echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
+            exit 1
+          fi
+          VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
+          ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
+          echo "vcs=$VCS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          if [ "$ERRORS" != "0" ]; then
+            echo "Color verification failed with $ERRORS errors"
+            exit 1
+          fi
+
+      - name: Verify Rect Proofs (33 proof fns)
+        id: rect
+        run: |
+          echo "Verifying Rect proofs..."
+          set +e
+          OUTPUT=$(/tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs 2>&1)
+          EXIT_CODE=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] && [ -z "$OUTPUT" ]; then
+            echo "::error::Verus binary exited with code $EXIT_CODE but produced no output."
+            exit 1
+          fi
+          VCS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*:: \([0-9]*\) verified.*/\1/')
+          ERRORS=$(echo "$OUTPUT" | grep "verification results" | sed 's/.*, \([0-9]*\) errors/\1/')
+          echo "vcs=$VCS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          if [ "$ERRORS" != "0" ]; then
+            echo "Rect verification failed with $ERRORS errors"
+            exit 1
+          fi
+
+      # ================================================================
+      # Summary
+      # ================================================================
 
       - name: Generate Verification Summary
         if: always()
@@ -203,47 +249,39 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Formal proofs verified using [Verus](https://github.com/verus-lang/verus) v${{ env.VERUS_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Verification Conditions | Errors | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|------------------------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Verified | Errors | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
 
-          # Vec2
-          VEC2_STATUS="${{ steps.vec2.outcome == 'success' && 'Verified' || 'Failed' }}"
-          VEC2_ICON="${{ steps.vec2.outcome == 'success' && ':white_check_mark:' || ':x:' }}"
-          echo "| Vec2 | ${{ steps.vec2.outputs.vec2_vcs || 'N/A' }} | ${{ steps.vec2.outputs.vec2_errors || 'N/A' }} | $VEC2_ICON $VEC2_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          # Vec3
-          VEC3_STATUS="${{ steps.vec3.outcome == 'success' && 'Verified' || 'Failed' }}"
-          VEC3_ICON="${{ steps.vec3.outcome == 'success' && ':white_check_mark:' || ':x:' }}"
-          echo "| Vec3 | ${{ steps.vec3.outputs.vec3_vcs || 'N/A' }} | ${{ steps.vec3.outputs.vec3_errors || 'N/A' }} | $VEC3_ICON $VEC3_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          # Vec4
-          VEC4_STATUS="${{ steps.vec4.outcome == 'success' && 'Verified' || 'Failed' }}"
-          VEC4_ICON="${{ steps.vec4.outcome == 'success' && ':white_check_mark:' || ':x:' }}"
-          echo "| Vec4 | ${{ steps.vec4.outputs.vec4_vcs || 'N/A' }} | ${{ steps.vec4.outputs.vec4_errors || 'N/A' }} | $VEC4_ICON $VEC4_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          # Mat3
-          MAT3_STATUS="${{ steps.mat3.outcome == 'success' && 'Verified' || 'Failed' }}"
-          MAT3_ICON="${{ steps.mat3.outcome == 'success' && ':white_check_mark:' || ':x:' }}"
-          echo "| Mat3 | ${{ steps.mat3.outputs.mat3_vcs || 'N/A' }} | ${{ steps.mat3.outputs.mat3_errors || 'N/A' }} | $MAT3_ICON $MAT3_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          # Mat4
-          MAT4_STATUS="${{ steps.mat4.outcome == 'success' && 'Verified' || 'Failed' }}"
-          MAT4_ICON="${{ steps.mat4.outcome == 'success' && ':white_check_mark:' || ':x:' }}"
-          echo "| Mat4 | ${{ steps.mat4.outputs.mat4_vcs || 'N/A' }} | ${{ steps.mat4.outputs.mat4_errors || 'N/A' }} | $MAT4_ICON $MAT4_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Calculate totals
           TOTAL_VCS=0
           TOTAL_ERRORS=0
-          for vc in "${{ steps.vec2.outputs.vec2_vcs }}" "${{ steps.vec3.outputs.vec3_vcs }}" "${{ steps.vec4.outputs.vec4_vcs }}" "${{ steps.mat3.outputs.mat3_vcs }}" "${{ steps.mat4.outputs.mat4_vcs }}"; do
-            if [ -n "$vc" ]; then
-              TOTAL_VCS=$((TOTAL_VCS + vc))
+
+          for STEP_NAME in vec2 vec3 vec4 mat3 mat3ext mat4 color rect; do
+            case "$STEP_NAME" in
+              vec2) LABEL="Vec2"; OUTCOME="${{ steps.vec2.outcome }}"; VCS="${{ steps.vec2.outputs.vcs }}"; ERRS="${{ steps.vec2.outputs.errors }}" ;;
+              vec3) LABEL="Vec3"; OUTCOME="${{ steps.vec3.outcome }}"; VCS="${{ steps.vec3.outputs.vcs }}"; ERRS="${{ steps.vec3.outputs.errors }}" ;;
+              vec4) LABEL="Vec4"; OUTCOME="${{ steps.vec4.outcome }}"; VCS="${{ steps.vec4.outputs.vcs }}"; ERRS="${{ steps.vec4.outputs.errors }}" ;;
+              mat3) LABEL="Mat3"; OUTCOME="${{ steps.mat3.outcome }}"; VCS="${{ steps.mat3.outputs.vcs }}"; ERRS="${{ steps.mat3.outputs.errors }}" ;;
+              mat3ext) LABEL="Mat3 Extended"; OUTCOME="${{ steps.mat3ext.outcome }}"; VCS="${{ steps.mat3ext.outputs.vcs }}"; ERRS="${{ steps.mat3ext.outputs.errors }}" ;;
+              mat4) LABEL="Mat4"; OUTCOME="${{ steps.mat4.outcome }}"; VCS="${{ steps.mat4.outputs.vcs }}"; ERRS="${{ steps.mat4.outputs.errors }}" ;;
+              color) LABEL="Color"; OUTCOME="${{ steps.color.outcome }}"; VCS="${{ steps.color.outputs.vcs }}"; ERRS="${{ steps.color.outputs.errors }}" ;;
+              rect) LABEL="Rect"; OUTCOME="${{ steps.rect.outcome }}"; VCS="${{ steps.rect.outputs.vcs }}"; ERRS="${{ steps.rect.outputs.errors }}" ;;
+            esac
+
+            if [ "$OUTCOME" = "success" ]; then
+              ICON=":white_check_mark:"
+              STATUS="Verified"
+            else
+              ICON=":x:"
+              STATUS="Failed"
             fi
-          done
-          for err in "${{ steps.vec2.outputs.vec2_errors }}" "${{ steps.vec3.outputs.vec3_errors }}" "${{ steps.vec4.outputs.vec4_errors }}" "${{ steps.mat3.outputs.mat3_errors }}" "${{ steps.mat4.outputs.mat4_errors }}"; do
-            if [ -n "$err" ]; then
-              TOTAL_ERRORS=$((TOTAL_ERRORS + err))
+
+            echo "| $LABEL | ${VCS:-N/A} | ${ERRS:-N/A} | $ICON $STATUS |" >> $GITHUB_STEP_SUMMARY
+
+            if [ -n "$VCS" ] && [ "$VCS" != "N/A" ]; then
+              TOTAL_VCS=$((TOTAL_VCS + VCS))
+            fi
+            if [ -n "$ERRS" ] && [ "$ERRS" != "N/A" ]; then
+              TOTAL_ERRORS=$((TOTAL_ERRORS + ERRS))
             fi
           done
 
@@ -251,19 +289,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "$TOTAL_ERRORS" -eq 0 ]; then
-            echo "> :white_check_mark: **All formal proofs verified successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "> :white_check_mark: **All 266 Verus proof functions verified successfully!**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The mathematical correctness of vector and matrix operations has been machine-checked." >> $GITHUB_STEP_SUMMARY
+            echo "Mathematical correctness of all 8 types machine-checked: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect." >> $GITHUB_STEP_SUMMARY
           else
             echo "> :x: **Verification failed with $TOTAL_ERRORS errors**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Please review the verification output above for details." >> $GITHUB_STEP_SUMMARY
           fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Verified Properties" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Vector Space Axioms**: Commutativity, associativity, distributivity, identity" >> $GITHUB_STEP_SUMMARY
-          echo "- **Geometric Properties**: Dot product, cross product, triple product" >> $GITHUB_STEP_SUMMARY
-          echo "- **Matrix Algebra**: Addition, multiplication, identity, transpose" >> $GITHUB_STEP_SUMMARY
-          echo "- **Norm Properties**: Non-negativity, zero norm iff zero vector" >> $GITHUB_STEP_SUMMARY

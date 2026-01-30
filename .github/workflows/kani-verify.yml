@@ -1,0 +1,179 @@
+name: Kani CBMC Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggers for testing
+
+# Prevent concurrent verification runs on the same branch/PR
+concurrency:
+  group: kani-${{ github.ref }}
+  cancel-in-progress: true
+
+# Principle of least privilege
+permissions:
+  contents: read
+
+jobs:
+  verify-kani-proofs:
+    name: Verify Kani Proofs
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Kani installation
+        id: cache-kani
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/cargo-kani
+            ~/.cargo/bin/kani-*
+            ~/.kani
+          key: kani-0.67.0-${{ runner.os }}
+
+      - name: Install Kani
+        if: steps.cache-kani.outputs.cache-hit != 'true'
+        run: |
+          cargo install --locked kani-verifier
+          cargo kani setup
+
+      - name: Verify Kani installation
+        run: |
+          cargo kani --version
+
+      # ================================================================
+      # Discover and run all harnesses
+      # NOTE: Running all harnesses at once (cargo kani -p rource-math)
+      # causes SIGSEGV. Run individually per harness instead.
+      # ================================================================
+
+      - name: Discover harnesses
+        id: discover
+        run: |
+          # Extract all harness function names from Kani proof files
+          HARNESSES=$(grep -rh '#\[kani::proof\]' crates/rource-math/src/kani_proofs/*.rs -A1 | grep 'fn ' | sed 's/.*fn \([a-zA-Z_0-9]*\).*/\1/' | sort)
+          COUNT=$(echo "$HARNESSES" | wc -l)
+          echo "Found $COUNT Kani harnesses"
+          echo "$HARNESSES"
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+          # Group by type for reporting
+          VEC2_COUNT=$(echo "$HARNESSES" | grep -c "vec2" || echo "0")
+          VEC3_COUNT=$(echo "$HARNESSES" | grep -c "vec3" || echo "0")
+          VEC4_COUNT=$(echo "$HARNESSES" | grep -c "vec4" || echo "0")
+          MAT3_COUNT=$(echo "$HARNESSES" | grep -c "mat3" || echo "0")
+          MAT4_COUNT=$(echo "$HARNESSES" | grep -c "mat4" || echo "0")
+          COLOR_COUNT=$(echo "$HARNESSES" | grep -c "color" || echo "0")
+          RECT_COUNT=$(echo "$HARNESSES" | grep -c "rect" || echo "0")
+          UTILS_COUNT=$(echo "$HARNESSES" | grep -c "utils\|lerp\|clamp\|approx" || echo "0")
+
+          echo "vec2=$VEC2_COUNT" >> $GITHUB_OUTPUT
+          echo "vec3=$VEC3_COUNT" >> $GITHUB_OUTPUT
+          echo "vec4=$VEC4_COUNT" >> $GITHUB_OUTPUT
+          echo "mat3=$MAT3_COUNT" >> $GITHUB_OUTPUT
+          echo "mat4=$MAT4_COUNT" >> $GITHUB_OUTPUT
+          echo "color=$COLOR_COUNT" >> $GITHUB_OUTPUT
+          echo "rect=$RECT_COUNT" >> $GITHUB_OUTPUT
+          echo "utils=$UTILS_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Run all Kani harnesses
+        id: verify
+        run: |
+          # Extract harness names
+          HARNESSES=$(grep -rh '#\[kani::proof\]' crates/rource-math/src/kani_proofs/*.rs -A1 | grep 'fn ' | sed 's/.*fn \([a-zA-Z_0-9]*\).*/\1/' | sort)
+
+          TOTAL=0
+          PASSED=0
+          FAILED=0
+          FAILED_LIST=""
+
+          for HARNESS in $HARNESSES; do
+            TOTAL=$((TOTAL + 1))
+            echo "[$TOTAL] Verifying: $HARNESS"
+
+            if timeout 300 cargo kani -p rource-math --harness "$HARNESS" --output-format terse 2>&1; then
+              PASSED=$((PASSED + 1))
+            else
+              FAILED=$((FAILED + 1))
+              FAILED_LIST="$FAILED_LIST $HARNESS"
+              echo "::warning::Harness $HARNESS failed"
+            fi
+          done
+
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "failed_list=$FAILED_LIST" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "=== Kani Verification Summary ==="
+          echo "Total:  $TOTAL"
+          echo "Passed: $PASSED"
+          echo "Failed: $FAILED"
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED harnesses failed: $FAILED_LIST"
+            exit 1
+          fi
+
+      # ================================================================
+      # Summary
+      # ================================================================
+
+      - name: Generate Verification Summary
+        if: always()
+        run: |
+          echo "## Kani CBMC Verification Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Bit-precise IEEE 754 f32 verification using [Kani](https://model-checking.github.io/kani/) (CBMC-based bounded model checker)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Harness Distribution" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Type | Harnesses |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Vec2 | ${{ steps.discover.outputs.vec2 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Vec3 | ${{ steps.discover.outputs.vec3 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Vec4 | ${{ steps.discover.outputs.vec4 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Mat3 | ${{ steps.discover.outputs.mat3 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Mat4 | ${{ steps.discover.outputs.mat4 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Color | ${{ steps.discover.outputs.color }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rect | ${{ steps.discover.outputs.rect }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Utils | ${{ steps.discover.outputs.utils }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total** | **${{ steps.discover.outputs.count }}** |" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total harnesses | ${{ steps.verify.outputs.total || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Passed | ${{ steps.verify.outputs.passed || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Failed | ${{ steps.verify.outputs.failed || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          FAILED="${{ steps.verify.outputs.failed }}"
+          if [ "$FAILED" = "0" ]; then
+            echo "> :white_check_mark: **All Kani harnesses passed! Zero IEEE 754 edge-case failures.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "> :x: **$FAILED harnesses failed:** ${{ steps.verify.outputs.failed_list }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### What Kani Verifies" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **NaN freedom**: Operations on finite inputs produce finite results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Overflow safety**: No unexpected infinity from bounded inputs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Postconditions**: Reflexivity, commutativity, componentwise correctness" >> $GITHUB_STEP_SUMMARY
+          echo "- **IEEE 754 edge cases**: Denormalized numbers, ULP precision limits, catastrophic cancellation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Standard:** PEER REVIEWED PUBLISHED ACADEMIC (bit-precise CBMC model checking)" >> $GITHUB_STEP_SUMMARY

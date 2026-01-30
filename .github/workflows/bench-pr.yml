@@ -1,19 +1,17 @@
 name: Benchmark PR
 
-# TEMPORARILY DISABLED: Re-enable when iteration frequency decreases
-# To re-enable: uncomment pull_request trigger below
 on:
-  workflow_dispatch:  # Manual trigger only for now
-  # pull_request:
-  #   branches: [main]
-  #   paths:
-  #     # Only run benchmarks when performance-sensitive code changes
-  #     - 'crates/**/*.rs'
-  #     - 'rource-cli/**/*.rs'
-  #     - 'rource-wasm/**/*.rs'
-  #     - 'Cargo.toml'
-  #     - 'Cargo.lock'
-  #     - '.github/workflows/bench-pr.yml'
+  workflow_dispatch:  # Manual trigger
+  pull_request:
+    branches: [main]
+    paths:
+      # Only run benchmarks when performance-sensitive code changes
+      - 'crates/**/*.rs'
+      - 'rource-cli/**/*.rs'
+      - 'rource-wasm/**/*.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/bench-pr.yml'
 
 # Prevent concurrent benchmark runs on the same PR
 concurrency:
