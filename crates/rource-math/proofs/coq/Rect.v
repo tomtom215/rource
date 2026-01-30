@@ -99,3 +99,51 @@ Definition rect_from_center (cx cy w h : R) : Rect :=
 (** Scale rectangle dimensions by a factor (position preserved) *)
 Definition rect_scale (r : Rect) (factor : R) : Rect :=
   mkRect (rect_x r) (rect_y r) (rect_w r * factor) (rect_h r * factor).
+
+(** * Additional Accessors *)
+
+(** Left edge = x coordinate *)
+Definition rect_left (r : Rect) : R := rect_x r.
+
+(** Top edge = y coordinate *)
+Definition rect_top (r : Rect) : R := rect_y r.
+
+(** Minimum point (top-left) as a pair *)
+Definition rect_min_x (r : Rect) : R := rect_x r.
+Definition rect_min_y (r : Rect) : R := rect_y r.
+
+(** Maximum point (bottom-right) as a pair *)
+Definition rect_max_x (r : Rect) : R := rect_x r + rect_w r.
+Definition rect_max_y (r : Rect) : R := rect_y r + rect_h r.
+
+(** * Additional Predicates *)
+
+(** A rect is empty if width or height is non-positive.
+    Matches Rust: self.width <= 0.0 || self.height <= 0.0 *)
+Definition rect_is_empty (r : Rect) : Prop :=
+  rect_w r <= 0 \/ rect_h r <= 0.
+
+(** * Additional Constructors *)
+
+(** Create rectangle from two corner points (computes min/max).
+    Matches Rust: from_corners(a, b) *)
+Definition rect_from_corners (ax ay bx by0 : R) : Rect :=
+  mkRect (Rmin ax bx) (Rmin ay by0)
+         (Rmax ax bx - Rmin ax bx) (Rmax ay by0 - Rmin ay by0).
+
+(** * Additional Transformations *)
+
+(** Union of two rectangles (smallest rect containing both).
+    Matches Rust: self.union(other) *)
+Definition rect_union (a b : Rect) : Rect :=
+  let x := Rmin (rect_x a) (rect_x b) in
+  let y := Rmin (rect_y a) (rect_y b) in
+  let right := Rmax (rect_right a) (rect_right b) in
+  let bottom := Rmax (rect_bottom a) (rect_bottom b) in
+  mkRect x y (right - x) (bottom - y).
+
+(** Expand rectangle with separate x and y amounts.
+    Matches Rust: expand_xy(x_amount, y_amount) *)
+Definition rect_expand_xy (r : Rect) (x_amount y_amount : R) : Rect :=
+  mkRect (rect_x r - x_amount) (rect_y r - y_amount)
+         (rect_w r + 2 * x_amount) (rect_h r + 2 * y_amount).

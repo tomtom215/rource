@@ -118,7 +118,8 @@ COQ_R_COLOR=$(count_coq "$COQ_DIR/Color_Proofs.v")
 COQ_R_RECT=$(count_coq "$COQ_DIR/Rect_Proofs.v")
 COQ_R_COMPLEXITY=$(count_coq "$COQ_DIR/Complexity.v")
 COQ_R_UTILS=$(count_coq "$COQ_DIR/Utils.v")
-COQ_R_TOTAL=$((COQ_R_VEC2 + COQ_R_VEC3 + COQ_R_VEC4 + COQ_R_MAT3 + COQ_R_MAT4 + COQ_R_COLOR + COQ_R_RECT + COQ_R_COMPLEXITY + COQ_R_UTILS))
+COQ_R_CROSSTYPE=$(count_coq "$COQ_DIR/Vec_CrossType.v")
+COQ_R_TOTAL=$((COQ_R_VEC2 + COQ_R_VEC3 + COQ_R_VEC4 + COQ_R_MAT3 + COQ_R_MAT4 + COQ_R_COLOR + COQ_R_RECT + COQ_R_COMPLEXITY + COQ_R_UTILS + COQ_R_CROSSTYPE))
 
 # --- Coq Z-based theorems (Compute) ---
 COQ_Z_VEC2=$(count_coq "$COQ_DIR/Vec2_Compute.v")
@@ -194,7 +195,8 @@ cat > "$COUNTS_FILE" << ENDJSON
     "color": $COQ_R_COLOR,
     "rect": $COQ_R_RECT,
     "complexity": $COQ_R_COMPLEXITY,
-    "utils": $COQ_R_UTILS
+    "utils": $COQ_R_UTILS,
+    "crosstype": $COQ_R_CROSSTYPE
   },
   "coq_z": {
     "total": $COQ_Z_TOTAL,
@@ -274,6 +276,7 @@ printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Color" "$VERUS_COLOR" "$COQ_R_COLOR
 printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Rect" "$VERUS_RECT" "$COQ_R_RECT" "$COQ_Z_RECT" "$KANI_RECT" "$TOTAL_RECT"
 printf "  %-12s  %5s  %5d  %5d  %4d  %5d\n" "Utils" "—" "$COQ_R_UTILS" "$COQ_Z_UTILS" "$KANI_UTILS" "$TOTAL_UTILS"
 printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "Complexity" "—" "$COQ_R_COMPLEXITY" "—" "—" "$TOTAL_COMPLEXITY"
+printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "CrossType" "—" "$COQ_R_CROSSTYPE" "—" "—" "$COQ_R_CROSSTYPE"
 printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "TOTAL" "$VERUS_TOTAL" "$COQ_R_TOTAL" "$COQ_Z_TOTAL" "$KANI_TOTAL" "$GRAND_TOTAL"
 echo ""
 
