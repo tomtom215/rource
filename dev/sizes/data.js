@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769764680143,
+  "lastUpdate": 1769780550678,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4391,6 +4391,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/b47568c4849587541883ea9e364a2d0c2ed20bb4"
         },
         "date": 1769764679247,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cda404bbb7c287c65472fbb7db1a219033ec18d5",
+          "message": "Merge pull request #233 from tomtom215/claude/verify-rource-math-9qF3t\n\nAdd Kani CBMC verification harnesses: 45→110 proofs, CI integration",
+          "timestamp": "2026-01-30T14:40:21+01:00",
+          "tree_id": "9f81f58b684148e3df4dd68ea79b0ee59c1b1b39",
+          "url": "https://github.com/tomtom215/rource/commit/cda404bbb7c287c65472fbb7db1a219033ec18d5"
+        },
+        "date": 1769780549813,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
