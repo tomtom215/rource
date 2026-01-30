@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769799101812,
+  "lastUpdate": 1769802655638,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4469,6 +4469,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/5d3eefbeb5b8091b760702150282f05499eb87a8"
         },
         "date": 1769799101422,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fc9632086c68607330d85d1ebce03807904cbf46",
+          "message": "Merge pull request #237 from tomtom215/claude/rust-web-development-wBA4W\n\nAdd 51 new Coq theorems for vector, color, and rect operations",
+          "timestamp": "2026-01-30T20:48:56+01:00",
+          "tree_id": "79e3dd6d660f468eba079d79ab1ee454a4b2dd01",
+          "url": "https://github.com/tomtom215/rource/commit/fc9632086c68607330d85d1ebce03807904cbf46"
+        },
+        "date": 1769802655136,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
