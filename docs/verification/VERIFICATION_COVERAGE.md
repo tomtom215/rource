@@ -11,36 +11,39 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 | Module | Operations | Formally Verified | Unit Tested | Coverage |
 |--------|------------|-------------------|-------------|----------|
-| Vec2 | 42 | 11 (26%) | 42 (100%) | 26% |
-| Vec3 | 28 | 12 (43%) | 28 (100%) | 43% |
-| Vec4 | 24 | 12 (50%) | 24 (100%) | 50% |
+| Vec2 | 42 | 19 (45%) | 42 (100%) | 45% |
+| Vec3 | 28 | 19 (68%) | 28 (100%) | 68% |
+| Vec4 | 24 | 16 (67%) | 24 (100%) | 67% |
 | Mat3 | 17 | 12 (71%) | 17 (100%) | 71% |
 | Mat4 | 26 | 9 (35%) | 26 (100%) | 35% |
-| Color | 38 | 14 (37%) | 38 (100%) | 37% |
-| Rect | 50 | 17 (34%) | 50 (100%) | 34% |
+| Color | 38 | 17 (45%) | 38 (100%) | 45% |
+| Rect | 50 | 18 (36%) | 50 (100%) | 36% |
 | Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
-| **Total** | **230** | **92 (40%)** | **230 (100%)** | **40%** |
+| **Total** | **230** | **115 (50%)** | **230 (100%)** | **50%** |
 
 ## Verified Operations by Module
 
-### Vec2 (11 operations verified)
+### Vec2 (19 operations verified)
 - `new`, `zero`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `perp`, `length_squared`, `mul`
+- `reflect`, `project`, `rejection`, `min_element`, `max_element`, `div`, `splat`, `element_sum`
 
 **Not verified** (require floating-point or transcendentals):
-- `splat`, `from_angle`, `to_angle`, `rotate`, `length`, `normalized`, `lerp`, `min`, `max`
+- `from_angle`, `to_angle`, `rotate`, `length`, `normalized`, `lerp`, `min`, `max`
 - `abs`, `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`
-- `reflect`, `project`, `rejection`, `element_sum`, `element_product`, `min_element`, `max_element`
+- `element_product`
 - `is_finite`, `is_nan`, `as_ivec2`, `as_uvec2`, batch operations
 
-### Vec3 (12 operations verified)
+### Vec3 (19 operations verified)
 - `new`, `zero`, `x`, `y`, `z`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `length_squared`
+- `reflect`, `project`, `rejection`, `min_element`, `max_element`, `div`, `splat`
 
-**Not verified**: Similar to Vec2 plus 3D-specific operations
+**Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`, `element_sum`, `element_product`, floating-point operations
 
-### Vec4 (12 operations verified)
+### Vec4 (16 operations verified)
 - `new`, `zero`, `x`, `y`, `z`, `w`, `add`, `sub`, `scale`, `neg`, `dot`, `length_squared`, `mul`
+- `min_element`, `max_element`, `div`, `splat`
 
-**Not verified**: Similar to Vec2/Vec3 plus 4D-specific operations
+**Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, floating-point operations
 
 ### Mat3 (12 operations verified)
 - `new`, `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
@@ -54,23 +57,25 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 **Not verified**: `perspective`, `orthographic`, `look_at`, `rotation_*`, `inverse`, etc.
 
-### Color (14 operations verified)
+### Color (17 operations verified)
 - `new`, `rgb`, `gray`, `with_alpha`, `fade`, `lerp`, `premultiplied`, `blend_over`, `luminance`, `clamp`, `transparent`, `black`, `white`, `clamp_component`
+- `add`, `scale`, `invert`
 
 **Not verified** (require floating-point or HSL conversions):
 - `from_hsl`, `to_hsl`, `lighten`, `darken`, `saturate`, `desaturate`
-- `invert`, `mix`, `contrast_ratio`, `is_light`, `is_dark`
+- `mix`, `contrast_ratio`, `is_light`, `is_dark`
 - `to_hex`, `from_hex`, `to_array`, `from_array`
 - Floating-point-specific: `approx_eq`, `is_finite`, `is_nan`
 
-### Rect (17 operations verified)
+### Rect (18 operations verified)
 - `new`, `zero`, `right`, `bottom`, `center_x`, `center_y`, `area`, `perimeter`
 - `contains_point`, `contains_rect`, `intersects`, `union`, `translate`, `expand`, `shrink`, `is_valid`
 - `intersection` (commutativity, self-intersection, area properties)
+- `scale` (composition property)
 
 **Not verified** (require floating-point or complex geometry):
 - `from_center`, `from_points`
-- `scale`, `normalize`, `merge_bounds`, `clip_to`
+- `normalize`, `merge_bounds`, `clip_to`
 - Floating-point-specific: `lerp`, `grow_to_contain`, iterator-based operations
 - Complex geometry: `transform_by_mat3`, `transform_by_mat4`
 
@@ -96,9 +101,9 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 
 | Priority | Module | Operations | Rationale | Status |
 |----------|--------|------------|-----------|--------|
-| ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 23, Coq R: 26, Coq Z: 22) |
-| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 23, Coq R: 20, Coq Z: 22) |
-| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 10, Coq Z: 14) |
+| ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 35, Coq R: 46, Coq Z: 28) |
+| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 23, Coq R: 43, Coq Z: 24) |
+| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 10, Coq Z: 8) |
 | 4 | Mat3/Mat4 | `determinant`, `trace` properties | Mathematical foundations | DONE (basic: det(I), det(0), det(A^T), det(-A), trace properties) |
 | 5 | Color | HSL <-> RGB conversion | Requires transcendentals | Blocked (floating-point) |
 
@@ -173,7 +178,7 @@ For rource-math, we recommend:
 Our current approach of proving properties over `int` specifications and documenting
 the f32 translation assumptions is the recommended best practice per Verus maintainers.
 
-The 63% of operations not formally verified (those requiring floating-point or
+The 50% of operations not formally verified (those requiring floating-point or
 transcendentals) will remain covered by:
 - Unit tests (100% coverage)
 - Property-based testing
@@ -181,7 +186,7 @@ transcendentals) will remain covered by:
 
 ---
 
-*Last verified: 2026-01-29*
-*Formal verification coverage: 92/230 operations (40%)*
+*Last verified: 2026-01-30*
+*Formal verification coverage: 115/230 operations (50%)*
 *Unit test coverage: 230/230 operations (100%)*
-*Unverifiable operations: 138 (floating-point, transcendentals, type conversions)*
+*Unverifiable operations: 115 (floating-point, transcendentals, type conversions)*

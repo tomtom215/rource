@@ -83,9 +83,9 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 266 proof functions, 0 errors
-- **Coq (R-based)**: 373 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
-- **Coq (Z-based)**: 223 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
-- **Combined**: 862 formally verified theorems across 8 types
+- **Coq (R-based)**: 438 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
+- **Coq (Z-based)**: 235 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
+- **Combined**: 939 formally verified theorems across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -416,6 +416,10 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-29 | vXZ54 | `nra` needed for Rmax/Rmin multiplicative area proofs | `lra` cannot handle multiplicative terms in intersection area commutativity | Use `nra` (nonlinear real arithmetic) when proof involves products of Rmax/Rmin expressions (e.g., area = width × height) | Yes |
 | 2026-01-29 | vXZ54 | Mat3 transform proofs need Vec2 type in spec | Mat3 transform_point/vector operate on 2D points but Vec2 not defined in Mat3.v | Add `Record Vec2` + `vec2_eq` lemma directly in Mat3.v (separate from rource-math Vec2 which is in Vec2.v) | Yes |
 | 2026-01-29 | vXZ54 | Mat4 det(-A)=det(A) for even dimension | Unlike Mat3 where det(-A)=-det(A), Mat4 satisfies det(-A)=det(A) because (-1)^4=1 | Dimension parity matters: odd dim → det(-A)=-det(A), even dim → det(-A)=det(A). Mat3 uses `ring` with negative terms; Mat4 factors cancel. | Yes |
+| 2026-01-30 | wj6WE | `set` abstracts division for `ring` in project/reject proofs | `ring` cannot handle `/` (division); `lra` also fails to see through division | Use `set (k := expr / expr2)` to make term opaque, then `f_equal; ring` proves `k*w + (v - k*w) = v` | Yes |
+| 2026-01-30 | wj6WE | `Rmin_id`/`Rmax_id` not available in Coq 8.18 | Standard library lemma missing | Use `unfold Rmin; destruct (Rle_dec s s); reflexivity` for 2D; `assert (Hs: Rmin s s = s) {...}; rewrite Hs` pattern for 3D/4D nested cases | Yes |
+| 2026-01-30 | wj6WE | ring+rewrite decomposition for nonlinear constrained proofs | `ring` alone can't handle `nx²+ny²=1` constraint; `nra` times out on full expression | Factor expression with `ring` into `f(constraint_expr)`, then `rewrite Hconstraint`, then `ring` to close. Works for reflect_preserves_length_sq across Vec2/Vec3. | Yes |
+| 2026-01-30 | wj6WE | Verification coverage milestone: 50% operations formally verified | Added reflect, project, reject, min/max_element, div, splat, element_sum across Vec2-4, Color add/scale/invert, Rect scale | 115/230 operations (50%), up from 92/230 (40%); 939 total theorems (was 862, +77) | Yes |
 
 ---
 
@@ -677,9 +681,9 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (862 theorems) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (939 theorems) |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (266 proof functions, 8 files) |
-| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 596 theorems, development workflow) |
+| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 673 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
 | `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
@@ -1317,16 +1321,16 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Total | Status |
 |-----------|-------|---------------|-----------------|-------|--------|
-| Vec2 | 49 proof fns | 47 theorems | 38 theorems | 134 | DUAL VERIFIED |
-| Vec3 | 40 proof fns | 53 theorems | 42 theorems | 135 | DUAL VERIFIED |
-| Vec4 | 39 proof fns | 43 theorems | 33 theorems | 115 | DUAL VERIFIED |
+| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 164 | DUAL VERIFIED |
+| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 153 | DUAL VERIFIED |
+| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 123 | DUAL VERIFIED |
 | Mat3 | 48 proof fns | 44 theorems | 25 theorems | 117 | DUAL VERIFIED |
 | Mat4 | 22 proof fns | 48 theorems | 25 theorems | 95 | DUAL VERIFIED |
-| Color | 35 proof fns | 36 theorems | 28 theorems | 99 | DUAL VERIFIED |
-| Rect | 33 proof fns | 32 theorems | 24 theorems | 89 | DUAL VERIFIED |
+| Color | 35 proof fns | 46 theorems | 28 theorems | 109 | DUAL VERIFIED |
+| Rect | 33 proof fns | 43 theorems | 24 theorems | 100 | DUAL VERIFIED |
 | Utils | — | 10 theorems | 8 theorems | 18 | VERIFIED |
 | Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **266 proof fns** | **373 theorems** | **223 theorems** | **862** | **ACADEMIC** |
+| **Total** | **266 proof fns** | **438 theorems** | **235 theorems** | **939** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1348,7 +1352,7 @@ approach provides maximum confidence suitable for top-tier academic publication.
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
-# Coq proofs (596 theorems, ~45s)
+# Coq proofs (673 theorems, ~45s)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specifications + proofs
@@ -1814,7 +1818,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq proofs (862 theorems), zero admits, dual verification for Vec2-4, Mat3-4, Color, Rect |
+| **Formal Verification** | Verus + Coq proofs (939 theorems), zero admits, dual verification for Vec2-4, Mat3-4, Color, Rect |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1849,7 +1853,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  822 formally verified theorems across Verus + Coq                          │
+│  939 formally verified theorems across Verus + Coq                          │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1861,7 +1865,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 ---
 
-*Last updated: 2026-01-29*
+*Last updated: 2026-01-30*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 862 theorems (Verus: 266, Coq R-based: 373, Coq Z-based: 223)*
+*Formal Verification: 939 theorems (Verus: 266, Coq R-based: 438, Coq Z-based: 235)*

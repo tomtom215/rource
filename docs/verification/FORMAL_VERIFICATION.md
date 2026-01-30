@@ -4,38 +4,38 @@ This document describes the formal verification work performed on the `rource-ma
 
 ## Overview
 
-The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, and semantic properties of these types using a hybrid Verus + Coq architecture, achieving 862 machine-checked theorems with zero admits that can withstand academic peer review.
+The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, and semantic properties of these types using a hybrid Verus + Coq architecture, achieving 939 machine-checked theorems with zero admits that can withstand academic peer review.
 
 ## Summary Statistics
 
 | Verification System | Theorems | Admits | Types Covered | Status |
 |---------------------|----------|--------|---------------|--------|
 | **Verus** (SMT/Z3) | 266 proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified, 0 errors |
-| **Coq** (R-based abstract) | 373 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | Machine-checked |
-| **Coq** (Z-based extractable) | 223 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | Machine-checked |
-| **Combined** | **862** | **0** | **8 types** | **PEER REVIEWED PUBLISHED ACADEMIC** |
+| **Coq** (R-based abstract) | 438 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | Machine-checked |
+| **Coq** (Z-based extractable) | 235 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | Machine-checked |
+| **Combined** | **939** | **0** | **8 types** | **PEER REVIEWED PUBLISHED ACADEMIC** |
 
 ## Per-Type Verification Summary
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Total | Status |
 |-----------|-------|---------------|-----------------|-------|--------|
-| Vec2 | 23 theorems, 53 VCs | 31 theorems | 27 theorems | 81 | DUAL VERIFIED |
-| Vec3 | 24 theorems, 68 VCs | 39 theorems | 31 theorems | 94 | DUAL VERIFIED |
-| Vec4 | 22 theorems, 68 VCs | 29 theorems | 22 theorems | 73 | DUAL VERIFIED |
-| Mat3 | 40 theorems, 71 VCs | 46 theorems | 25 theorems | 111 | DUAL VERIFIED |
-| Mat4 | 18 theorems, 27 VCs | 49 theorems | 25 theorems | 92 | DUAL VERIFIED |
-| Color | 23 theorems | 26 theorems | 22 theorems | 71 | DUAL VERIFIED |
-| Rect | 23 theorems | 33 theorems | 22 theorems | 78 | DUAL VERIFIED |
-| Utils | — | 10 theorems | 14 theorems | 24 | VERIFIED |
+| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 164 | DUAL VERIFIED |
+| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 153 | DUAL VERIFIED |
+| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 123 | DUAL VERIFIED |
+| Mat3 | 48 proof fns | 44 theorems | 25 theorems | 117 | DUAL VERIFIED |
+| Mat4 | 22 proof fns | 48 theorems | 25 theorems | 95 | DUAL VERIFIED |
+| Color | 35 proof fns | 46 theorems | 28 theorems | 109 | DUAL VERIFIED |
+| Rect | 33 proof fns | 43 theorems | 24 theorems | 100 | DUAL VERIFIED |
+| Utils | — | 10 theorems | 8 theorems | 18 | VERIFIED |
 | Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **173 theorems** | **313 theorems** | **188 theorems** | **862** | **ACADEMIC** |
+| **Total** | **266 proof fns** | **438 theorems** | **235 theorems** | **939** | **ACADEMIC** |
 
-> **Note**: Verus counts 266 proof functions total because each proof file includes
-> helper lemmas and auxiliary proofs beyond the numbered theorems. The "theorems"
-> column above counts primary named theorems; "proof functions" counts all `proof fn`
-> declarations including helpers (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22 base + 26 extended], Mat4: 22,
+> **Note**: Verus "proof fns" counts all `proof fn` declarations including helpers
+> (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22 base + 26 extended], Mat4: 22,
 > Color: 35, Rect: 33). Mat3 extended proofs are in a separate file (`mat3_extended_proofs.rs`)
 > due to Z3 resource limits when combined with the associativity proof.
+> Coq "theorems" counts all `Theorem`, `Lemma`, and `Local Lemma` declarations
+> in the corresponding `_Proofs.v` or `_Compute.v` files.
 
 ## Verification Hierarchy
 
@@ -61,13 +61,13 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 |       |                          properties, matrix ring structure,       |
 |       |                          color operations, rect operations        |
 |       |                                                                   |
-|       +---> Manual Coq Specs --> Coq Proofs (596 theorems)               |
+|       +---> Manual Coq Specs --> Coq Proofs (673 theorems)               |
 |       |                                |                                  |
 |       |                                +---> ICC --> Complexity Bounds    |
 |       |                                |            O(1) proofs (60)     |
 |       |                                |                                  |
 |       |                                +---> Z-based Computational Bridge |
-|       |                                |    8 Compute files (223 thms)   |
+|       |                                |    8 Compute files (235 thms)   |
 |       |                                |         |                       |
 |       |                                |    Path 1: Coq Extraction       |
 |       |                                |         |                       |
@@ -138,17 +138,17 @@ quaternion algebra, cross product identities).
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
-# Coq proofs (596 theorems, ~45s total)
+# Coq proofs (673 theorems, ~45s total)
 cd crates/rource-math/proofs/coq
 
-# Layer 1: Specs + Proofs + Complexity (373 R-based theorems)
+# Layer 1: Specs + Proofs + Complexity (438 R-based theorems)
 coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
 coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v
 coqc -Q . RourceMath Complexity.v
 
-# Layer 2: Z-based Computational Bridge (223 theorems)
+# Layer 2: Z-based Computational Bridge (235 theorems)
 coqc -Q . RourceMath Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v
 coqc -Q . RourceMath Mat3_Compute.v Mat4_Compute.v
 coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Utils_Compute.v
@@ -186,8 +186,8 @@ The proofs demonstrate:
 
 This hybrid approach would be novel in several ways:
 
-1. **First verified Rust graphics library**: rource-math with 862 machine-checked proofs across 8 types
-2. **Verus + Coq interoperability**: Demonstrating complementary strengths (266 Verus + 596 Coq)
+1. **First verified Rust graphics library**: rource-math with 939 machine-checked proofs across 8 types
+2. **Verus + Coq interoperability**: Demonstrating complementary strengths (266 Verus + 673 Coq)
 3. **ICC for graphics code**: Complexity bounds for visualization pipeline
 4. **End-to-end verified WASM**: From Rust source to verified WebAssembly (8 types extracted)
 5. **Color and spatial correctness**: Formal proofs for RGBA blending, luminance, and rectangle operations
@@ -245,7 +245,7 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 
 ---
 
-*Last verified: 2026-01-29*
+*Last verified: 2026-01-30*
 
 **Verus Proofs:**
 *Version: 0.2026.01.23.1650a05*
@@ -253,15 +253,15 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Total verification conditions: 452 (Vec2: 87, Vec3: 89, Vec4: 90, Mat3: 71 [26+45], Mat4: 27, Color: 46, Rect: 42)*
 *Status: All proofs verified with 0 errors*
 
-**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4):**
+**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5):**
 *Version: Coq 8.18*
-*Total theorems: 373 (Vec2: 47, Vec3: 53, Vec4: 43, Mat3: 44, Mat4: 48, Complexity: 60, Color: 36, Rect: 32, Utils: 10)*
+*Total theorems: 438 (Vec2: 65, Vec3: 71, Vec4: 51, Mat3: 44, Mat4: 48, Complexity: 60, Color: 46, Rect: 43, Utils: 10)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
-**Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4):**
+**Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5):**
 *Version: Coq 8.18*
-*Total theorems: 223 (Vec2: 38, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 25, Color: 28, Rect: 24, Utils: 8)*
+*Total theorems: 235 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 25, Color: 28, Rect: 24, Utils: 8)*
 *Admits: 0*
 *Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
@@ -271,8 +271,8 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Cost model: Abstract operation counting (muls + adds)*
 *Status: All complexity bounds verified*
 
-**Computational Bridge (Phase 3 + Phase 3 Continued + Phase 4):**
-*8 Compute files: Vec2(38), Vec3(42), Vec4(33), Mat3(25), Mat4(21), Color(28), Rect(24), Utils(8) = 219 theorems over Z*
+**Computational Bridge (Phase 3 + Phase 3 Continued + Phase 4 + Phase 5):**
+*8 Compute files: Vec2(50), Vec3(42), Vec4(33), Mat3(25), Mat4(25), Color(28), Rect(24), Utils(8) = 235 theorems over Z*
 *8 Extract files + 1 unified extraction (RourceMath_Extract.v)*
 *OCaml test driver: all tests pass*
 *WASM pipeline: Library 6.8 KB, test driver 42.2 KB (via wasm_of_ocaml v6.2.0)*
@@ -286,7 +286,8 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Status: Full pipeline operational, all 8 types extractable to WASM*
 
 **Combined Verification:**
-*Total theorems: 862 across Verus and Coq (Verus: 266, Coq R-based: 373, Coq Z-based: 223)*
+*Total theorems: 939 across Verus and Coq (Verus: 266, Coq R-based: 438, Coq Z-based: 235)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Utils*
+*Verified operations: 115/230 (50%) — up from 92/230 (40%)*
 *Status: Dual-verification + complexity bounds + computational bridge + WASM pipeline*
