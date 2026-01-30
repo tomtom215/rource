@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769726187360,
+  "lastUpdate": 1769736911589,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4313,6 +4313,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/d80166235cd6a415c3fba1f6f8b5515ca0a021b9"
         },
         "date": 1769726186997,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "57c0510005867411f0888cfdab18576b007cb0be",
+          "message": "Merge pull request #231 from tomtom215/claude/verify-rource-math-wj6WE\n\nFormal verification milestone: 50% operations verified (939 theorems)",
+          "timestamp": "2026-01-30T02:33:07+01:00",
+          "tree_id": "c097d21be56ae59b987690e36973873e5401fac5",
+          "url": "https://github.com/tomtom215/rource/commit/57c0510005867411f0888cfdab18576b007cb0be"
+        },
+        "date": 1769736911019,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
