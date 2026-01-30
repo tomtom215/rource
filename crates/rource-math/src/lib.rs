@@ -32,6 +32,9 @@ mod vec2;
 mod vec3;
 mod vec4;
 
+#[cfg(kani)]
+mod kani_proofs;
+
 pub use color::{Color, Hsl, Rgb};
 pub use mat3::Mat3;
 pub use mat4::Mat4;

@@ -83,9 +83,10 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 266 proof functions, 0 errors
-- **Coq (R-based)**: 438 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
+- **Coq (R-based)**: 446 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
 - **Coq (Z-based)**: 235 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
-- **Combined**: 939 formally verified theorems across 8 types
+- **Kani (CBMC)**: 45 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
+- **Combined**: 992 formally verified theorems/harnesses across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -423,6 +424,28 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-30 | wj6WE | rocq-of-rust generates monadic shallow embedding, not algebraic specs | Rust→Rocq translation models memory (alloc/read/deref), not math (a+b=b+a) | NOT VIABLE for rource-math: f32 literals → `UnsupportedLiteral`, structural `Admitted` axioms, fundamentally different representation from our algebraic proofs. Better suited for systems-level verification (smart contracts, protocols). | Yes |
 | 2026-01-30 | wj6WE | rocq-of-rust requires Rocq 9.0 + nightly-2024-12-07 | Binary builds fine, translation succeeds, but output requires RocqOfRust library (coq-coqutil, coq-hammer, rocq-smpl) from opam repos returning HTTP 503 | Two blockers: (1) opam infra unavailable, (2) Rocq 9.0 vs our Coq 8.18. Even if infra was available, bridging monadic output to algebraic proofs would require enormous refinement proof effort. | Yes |
 | 2026-01-30 | wj6WE | `RUSTUP_TOOLCHAIN=nightly-2024-12-07` needed for rocq-of-rust | Tool uses rustc internals via `extern crate rustc_*`; needs matching sysroot | Set `RUSTUP_TOOLCHAIN` env var + `LD_LIBRARY_PATH=$(rustc +nightly-2024-12-07 --print sysroot)/lib` for dynamic linking | Yes |
+| 2026-01-30 | 9ENKM | Stainless FP paper (arXiv:2601.14059) not applicable to rource-math | Scala-only tool; no Coq proofs; no error bounds; Z3 worst at FP (78–85% vs cvc5 89–100%) | Paper valuable as landscape survey; confirms Coq+Flocq+VCFloat2 is better path. Created FLOATING_POINT_VERIFICATION.md | Yes |
+| 2026-01-30 | 9ENKM | Coq FP ecosystem (Flocq+VCFloat2+Gappa) all Coq 8.18 compatible | Flocq 4.1.3, VCFloat2 2.1.1, Gappa 1.5.4, CoqInterval 4.8.1 all in Coq Platform 8.18 | Recommended path for FP verification: Flocq for IEEE 754 formalization, VCFloat2 for automated error bounds, Gappa for interval proofs | Yes |
+| 2026-01-30 | 9ENKM | FP verification proves error bounds, not algebraic properties | FP proofs show "result within N ULPs of exact" — complementary to R-based algebraic proofs, not replacement | Two-layer architecture: R-based proofs (mathematical correctness) + FP proofs (numerical accuracy). LAProof/VCFloat2 designed for this pattern. | Yes |
+| 2026-01-30 | 9ENKM | ~46 of 114 FP operations immediately achievable with Flocq+VCFloat2 | sqrt-based (12), rounding (12), min/max/abs/clamp (16), lerp (6) are well-studied | Phase FP-1 could reach ~70% coverage (162/230); requires Flocq installation and spec writing | Yes |
+| 2026-01-30 | 9ENKM | LAProof (ARITH 2023) verifies FP matrix-vector products | Kellison, Appel, Tekriwal, Bindel at Princeton/VeriNum; formal accuracy proofs for linear algebra | Directly applicable to Mat3/Mat4 transform_point/transform_vector; L2 norm proof applicable to Vec length() | Yes |
+| 2026-01-30 | 9ENKM | Z3 is weakest SMT solver for floating-point queries | Stainless paper: Z3 78–85% vs cvc5 89–100% vs Bitwuzla 67–85% | If Verus ever adds FP support, portfolio solving (Z3+cvc5+Bitwuzla) would be needed. For now, Coq approach avoids this limitation entirely. | Yes |
+| 2026-01-30 | 9ENKM | No existing formalization of HSL color space in any proof assistant | Surveyed Flocq, VCFloat, LAProof, CompCert — none formalize color space conversions | HSL verification requires novel proof engineering; lowest priority in FP roadmap (Phase FP-3) | Yes |
+| 2026-01-30 | 9ENKM | det(A*B)=det(A)*det(B) provable with `ring` for both Mat3 AND Mat4 | Mat3: 18 variables (degree 3), compiles instantly. Mat4: 32 variables (degree 4), compiles in ~8s. No component decomposition needed. | Unlike mul_assoc (which needs 16 component lemmas for Mat4), det_mul is a scalar identity — `ring` handles it directly even for Mat4. Added +8 theorems (4 per type: det_mul, det_square, det_mul_comm, det_scale). | Yes |
+| 2026-01-30 | 9ENKM | Kani (Amazon) is only Rust tool with bit-precise FP verification | CBMC-based bounded model checker, verifies NaN/overflow/infinity at bit level | ADOPT as Layer 2 for edge-case safety verification of f32 operations; complements Verus (algebra) + Coq (proofs). Created RUST_VERIFICATION_LANDSCAPE.md | Yes |
+| 2026-01-30 | 9ENKM | Aeneas produces pure functional code (not monadic like rocq-of-rust) | MIR → LLBC → pure lambda calculus; value-based, no memory model | Most promising spec-to-impl bridge tool; MONITOR pending f32 support confirmation. Charon tracking issue #142 doesn't list f32 as unsupported. | Yes |
+| 2026-01-30 | 9ENKM | Creusot leverages Why3 which has comprehensive ieee_float theory | Why3's Float32/Float64 types axiomatize full IEEE 754 (all rounding modes, NaN, specials) | MONITOR — potentially enables f32 deductive verification via CVC5 (89-100% FP success vs Z3's 78-85%). Creusot→Why3→CVC5 could outperform Verus→Z3 for FP. | Yes |
+| 2026-01-30 | 9ENKM | hax (formerly hacspec v2) backends do NOT support floating-point | Paper explicitly states "most backends do not have any support for floats" (VSTTE 2024) | NOT APPLICABLE for rource-math; designed for cryptographic integer code, not numerical/graphics math | Yes |
+| 2026-01-30 | 9ENKM | 8 Rust verification tools now surveyed for rource-math | Verus, Coq, Kani, Aeneas, Creusot, hax, rocq-of-rust, Stainless | Comprehensive landscape documented in RUST_VERIFICATION_LANDSCAPE.md; 4-layer architecture proposed: Verus+Coq (algebra) + Kani (edge cases) + Flocq (FP accuracy) | Yes |
+| 2026-01-30 | 9ENKM | Kani `#[cfg(kani)]` requires workspace check-cfg | `cargo check` warns `unexpected cfg condition name: kani` | Add `unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }` to `[workspace.lints.rust]` in root Cargo.toml | Yes |
+| 2026-01-30 | 9ENKM | Kani has built-in NaN checks on every float operation | Default checks fire even for `kani::any()` inputs that include NaN/inf bit patterns | Use `kani::assume(v.is_finite() && v.abs() < SAFE_BOUND)` to restrict symbolic search space. Do NOT use unbounded `kani::any::<f32>()` without preconditions. | Yes |
+| 2026-01-30 | 9ENKM | `lerp(f32::MAX, -f32::MAX, 0.0)` produces NaN | `(b-a) = -MAX - MAX` overflows to `-inf`; `-inf * 0.0 = NaN` (IEEE 754) | Standard `a + (b-a)*t` formula requires bounded inputs; use `SAFE_BOUND = 1e18` to prevent intermediate overflow. Affects ALL math libraries. | Yes |
+| 2026-01-30 | 9ENKM | `Vec2::project()` NaN for denormalized onto vectors | `length_squared > 0.0` passes for tiny denormals but `dot / length_squared` overflows to `±inf`; `inf * 0.0 = NaN` | Require `onto.length_squared() > f32::MIN_POSITIVE` in Kani precondition; division overflow occurs even with nonzero denominator | Yes |
+| 2026-01-30 | 9ENKM | Kani does not support C `tanf` foreign function | `Mat4::perspective()` calls `f32::tan()` → C `tanf` → Kani failure | Remove perspective harness; document as known limitation (Kani issue #2423). Verify perspective algebraically via Verus/Coq instead. | Yes |
+| 2026-01-30 | 9ENKM | Kani models `sinf`/`cosf` but not `tanf` | `Mat3::rotation()` (uses sin/cos) passes; `Mat4::perspective()` (uses tan) fails | Likely CBMC math stubs include sin/cos but not tan. Transcendental coverage is partial. | Yes |
+| 2026-01-30 | 9ENKM | Mat4 determinant harness takes ~60s due to 16 symbolic floats | 80 CBMC checks for 4×4 determinant with symbolic elements | Most harnesses verify in <2s; Mat4 determinant is the exception. Plan accordingly for CI timeout settings. | Yes |
+| 2026-01-30 | 9ENKM | Kani `cargo kani setup` installs nightly-2025-11-21 toolchain | Kani v0.67.0 needs its own Rust nightly with CBMC support | Does not conflict with stable/nightly used for development; `cargo kani` auto-selects correct toolchain | Yes |
+| 2026-01-30 | 9ENKM | Safe bounds for symbolic f32 vary by operation depth | `sqrt(MAX/n)` for n-component dot; `(MAX/k)^(1/d)` for degree-d polynomial with k terms | Vec: 1e18 (2 components), Mat3 det: 1e12 (degree 3), Mat4 det: 1e9 (degree 4). Document bound derivation in harness comments. | Yes |
 
 ---
 
@@ -684,12 +707,14 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (939 theorems) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (992 theorems/harnesses) |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (266 proof functions, 8 files) |
-| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 673 theorems, development workflow) |
+| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 681 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
 | `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
+| `docs/verification/FLOATING_POINT_VERIFICATION.md` | FP verification feasibility: Stainless paper, Flocq+VCFloat2 roadmap |
+| `docs/verification/RUST_VERIFICATION_LANDSCAPE.md` | 8-tool landscape survey: Kani (ADOPT), Aeneas/Creusot (MONITOR), hax (N/A) |
 | `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment (9-path survey) |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
 | `LICENSE` | GPL-3.0 license |
@@ -761,6 +786,7 @@ cat docs/ux/MOBILE_UX_ROADMAP.md
 | Cargo | Latest | Package manager | `scripts/session-setup.sh` |
 | wasm-pack | 0.12+ | WASM bundling | `scripts/session-setup.sh` |
 | rustup | Latest | Toolchain management | `scripts/session-setup.sh` |
+| **Kani** | 0.67.0+ | Bounded model checking (IEEE 754 f32) | `cargo install --locked kani-verifier && cargo kani setup` |
 | **Verus** | 0.2026.01.23+ | Formal verification (Rust) | `scripts/setup-formal-verification.sh` |
 | **Coq** | 8.18+ | Formal verification (proofs) | `scripts/setup-formal-verification.sh` |
 | **opam** | 2.x | OCaml package manager | `scripts/setup-formal-verification.sh` |
@@ -1318,22 +1344,23 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | 2 | BENCHMARKED | Performance measured with statistical rigor | Criterion with 95% CI |
 | 3 | FORMALLY VERIFIED | Correctness proven mathematically | Verus/Coq proofs compile |
 | 4 | **DUAL VERIFIED** | Proven in BOTH Verus AND Coq | Vec2, Vec3, Vec4, Mat3, Mat4 |
-| 5 | **PUBLISHED ACADEMIC** | Suitable for PLDI/POPL/CAV review | Zero admits, reproducible |
+| 5 | **TRIPLE VERIFIED** | Dual + Kani IEEE 754 edge-case safety | All 7 primary types |
+| 6 | **PUBLISHED ACADEMIC** | Suitable for PLDI/POPL/CAV review | Zero admits, reproducible |
 
 **Verified Components:**
 
-| Component | Verus | Coq (R-based) | Coq (Z-Compute) | Total | Status |
-|-----------|-------|---------------|-----------------|-------|--------|
-| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 164 | DUAL VERIFIED |
-| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 153 | DUAL VERIFIED |
-| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 123 | DUAL VERIFIED |
-| Mat3 | 48 proof fns | 44 theorems | 25 theorems | 117 | DUAL VERIFIED |
-| Mat4 | 22 proof fns | 48 theorems | 25 theorems | 95 | DUAL VERIFIED |
-| Color | 35 proof fns | 46 theorems | 28 theorems | 109 | DUAL VERIFIED |
-| Rect | 33 proof fns | 43 theorems | 24 theorems | 100 | DUAL VERIFIED |
-| Utils | — | 10 theorems | 8 theorems | 18 | VERIFIED |
-| Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **266 proof fns** | **438 theorems** | **235 theorems** | **939** | **ACADEMIC** |
+| Component | Verus | Coq (R-based) | Coq (Z-Compute) | Kani (CBMC) | Total | Status |
+|-----------|-------|---------------|-----------------|-------------|-------|--------|
+| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 11 harnesses | 175 | TRIPLE VERIFIED |
+| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 6 harnesses | 159 | TRIPLE VERIFIED |
+| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 3 harnesses | 126 | TRIPLE VERIFIED |
+| Mat3 | 48 proof fns | 48 theorems | 25 theorems | 6 harnesses | 127 | TRIPLE VERIFIED |
+| Mat4 | 22 proof fns | 52 theorems | 25 theorems | 6 harnesses | 105 | TRIPLE VERIFIED |
+| Color | 35 proof fns | 46 theorems | 28 theorems | 5 harnesses | 114 | TRIPLE VERIFIED |
+| Rect | 33 proof fns | 43 theorems | 24 theorems | 3 harnesses | 103 | TRIPLE VERIFIED |
+| Utils | — | 10 theorems | 8 theorems | 5 harnesses | 23 | VERIFIED |
+| Complexity | — | 60 theorems | — | — | 60 | VERIFIED |
+| **Total** | **266 proof fns** | **446 theorems** | **235 theorems** | **45 harnesses** | **992** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1346,7 +1373,11 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Verus proofs (236 theorems)
+# Kani proofs (45 harnesses, ~2min)
+cargo kani -p rource-math  # All harnesses
+# Or individually: cargo kani -p rource-math --harness verify_lerp_no_nan
+
+# Verus proofs (266 proof functions)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs
@@ -1382,7 +1413,8 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | Complete Specs | Specifications must capture full behavior |
 | Reproducibility | All proofs must verify from clean state |
 | Documentation | Each theorem documented with mathematical statement |
-| Dual Verification | Critical types (Vec2-4, Mat3-4) verified in BOTH tools |
+| Dual Verification | Critical types (Vec2-4, Mat3-4) verified in BOTH Verus and Coq |
+| Triple Verification | All 7 primary types additionally verified with Kani (IEEE 754 f32 edge cases) |
 
 **Reference:**
 - Overview & Index: `docs/verification/FORMAL_VERIFICATION.md`
@@ -1821,7 +1853,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq proofs (939 theorems), zero admits, dual verification for Vec2-4, Mat3-4, Color, Rect |
+| **Formal Verification** | Verus + Coq + Kani proofs (992 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1856,7 +1888,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  939 formally verified theorems across Verus + Coq                          │
+│  992 formally verified theorems/harnesses across Verus + Coq + Kani         │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1871,4 +1903,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-30*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 939 theorems (Verus: 266, Coq R-based: 438, Coq Z-based: 235)*
+*Formal Verification: 992 theorems/harnesses (Verus: 266, Coq R-based: 446, Coq Z-based: 235, Kani: 45)*

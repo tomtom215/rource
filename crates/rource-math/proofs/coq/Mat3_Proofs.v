@@ -469,9 +469,54 @@ Proof.
   unfold mat3_scaling, mat3_identity. reflexivity.
 Qed.
 
+(** * Determinant Multiplicativity *)
+
+(** Theorem 41: det(A * B) = det(A) * det(B).
+    This is the fundamental multiplicativity property of the determinant.
+    It proves that the determinant is a ring homomorphism from
+    (Mat3, ×) to (R, ×). This is critical for:
+    - Proving invertibility: det(A) ≠ 0 iff A is invertible
+    - Computing det of products: det(A₁ * A₂ * ... * Aₙ) = det(A₁) * det(A₂) * ... * det(Aₙ)
+    - Proving area scaling: transformations scale areas by det(M) *)
+Theorem mat3_det_mul : forall a b : Mat3,
+  mat3_determinant (mat3_mul a b) = mat3_determinant a * mat3_determinant b.
+Proof.
+  intros a b. destruct a, b.
+  unfold mat3_determinant, mat3_mul. simpl.
+  ring.
+Qed.
+
+(** Theorem 42: det(A^n) = det(A)^n (special case: n=2).
+    Follows immediately from det multiplicativity. *)
+Theorem mat3_det_square : forall a : Mat3,
+  mat3_determinant (mat3_mul a a) = mat3_determinant a * mat3_determinant a.
+Proof.
+  intros a. apply mat3_det_mul.
+Qed.
+
+(** Theorem 43: det(A * B) = det(B * A).
+    While matrix multiplication is not commutative (A*B ≠ B*A in general),
+    their determinants are always equal. *)
+Theorem mat3_det_mul_comm : forall a b : Mat3,
+  mat3_determinant (mat3_mul a b) = mat3_determinant (mat3_mul b a).
+Proof.
+  intros a b.
+  rewrite mat3_det_mul. rewrite mat3_det_mul. ring.
+Qed.
+
+(** Theorem 44: det(scaling(sx,sy)) * det(translation(tx,ty)) = sx * sy.
+    Scaling and translation compose multiplicatively in determinant. *)
+Theorem mat3_det_scaling_translation : forall sx sy tx ty : R,
+  mat3_determinant (mat3_mul (mat3_scaling sx sy) (mat3_translation tx ty)) =
+  sx * sy.
+Proof.
+  intros. rewrite mat3_det_mul.
+  rewrite mat3_det_scaling. rewrite mat3_det_translation. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 43
+    Total theorems: 44
     - Theorems 1-4: Matrix addition properties (4)
     - Theorems 5-8: Matrix multiplication identity/zero (4)
     - Theorem 9: Matrix multiplication associativity (1) [CRITICAL]
@@ -482,6 +527,8 @@ Qed.
     - Theorems 19-24: Determinant properties (6)
     - Theorems 25-29: Trace properties (5)
     - Theorems 30-40: Transform properties (11)
+    - Theorem 41: Determinant multiplicativity det(A*B) = det(A)*det(B) [CRITICAL]
+    - Theorems 42-44: Det multiplicativity corollaries (3)
 
     Total tactics used: lra, ring, nra, f_equal, reflexivity, destruct, apply, repeat split
     Admits: 0

@@ -161,6 +161,7 @@ For rource-math, we recommend:
 2. **Bit-level properties only**: Use `FloatBitsProperties` for verifying representation invariants
 3. **Refinement types**: Document the integer->f32 translation assumptions explicitly
 4. **Monitor Verus development**: Check quarterly for improved floating-point support
+5. **Coq + Flocq + VCFloat2 for FP accuracy**: See [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md) for the recommended path to verifying floating-point operations via Coq's mature FP ecosystem (all Coq 8.18 compatible)
 
 ### What CAN Be Verified with Floating-Point
 
@@ -183,6 +184,22 @@ transcendentals) will remain covered by:
 - Unit tests (100% coverage)
 - Property-based testing
 - Manual review for IEEE 754 compliance
+
+### Stainless Paper Investigation (2026-01-30)
+
+We investigated "Verifying Floating-Point Programs in Stainless" (Gilot et al.,
+arXiv:2601.14059, January 2026) which extends the Stainless verifier with IEEE 754
+floating-point support using Z3 + cvc5 + Bitwuzla portfolio solving.
+
+**Key findings**: The paper is **not directly applicable** to rource-math because:
+(1) it is Scala-only, (2) Z3 is the weakest solver for FP queries (78–85% vs cvc5's
+89–100%), (3) it does not verify error bounds (only NaN/safety), (4) it cannot prove
+algebraic properties over floating-point, and (5) it produces no Coq proof certificates.
+
+The paper's value for our project is as a landscape survey confirming that **Coq + Flocq +
+VCFloat2** is the more appropriate path for rource-math's needs. See
+[FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md) for the full analysis
+and recommended roadmap to reach ~70–75% coverage.
 
 ## rocq-of-rust Investigation (2026-01-30)
 
@@ -304,9 +321,80 @@ limitation and mitigated by:
 - A "mathematical extraction" mode is added (bypassing the monadic embedding)
 - Rocq 9.x migration is undertaken for our proof base
 
+## Rust Verification Landscape Survey (2026-01-30)
+
+We investigated four additional Rust formal verification tools to assess whether they
+address any capability gaps in our current Verus + Coq architecture. See
+[RUST_VERIFICATION_LANDSCAPE.md](RUST_VERIFICATION_LANDSCAPE.md) for the full assessment.
+
+### Tools Investigated
+
+| Tool | Category | FP Support | Recommendation |
+|------|----------|------------|----------------|
+| **Kani** (Amazon) | Bounded model checker (CBMC) | YES (bit-precise) | **ADOPT** for edge-case safety |
+| **Aeneas** (Inria) | MIR → pure functional translation | Unknown | **MONITOR** for spec-to-impl bridge |
+| **Creusot** (Inria) | MIR → Why3 → SMT portfolio | Via Why3 ieee_float | **MONITOR** for FP via Why3 |
+| **hax** (Cryspen) | THIR → F*/Rocq/Lean | No (backends lack FP) | NOT APPLICABLE (crypto-focused) |
+
+### Key Findings
+
+1. **Kani** is the only tool that directly verifies floating-point edge cases
+   (NaN, overflow, infinity) at the bit level. It complements our algebraic proofs
+   (Verus/Coq) with runtime safety guarantees for f32 operations.
+
+2. **Aeneas** produces **pure functional** code (unlike rocq-of-rust's monadic
+   embedding), making it the most promising tool for closing the spec-to-impl gap.
+   However, f32 support is unconfirmed.
+
+3. **Creusot** overlaps with Verus for algebraic proofs but offers portfolio SMT
+   solving (CVC5 outperforms Z3 on FP queries) and potential Coq proof export.
+   FP support via Why3's `ieee_float` theory is undocumented.
+
+4. **hax** explicitly states "most backends do not have any support for floats"
+   (VSTTE 2024 paper). Not applicable to graphics math verification.
+
+### Updated Verification Architecture
+
+```
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 992 theorems, 50.4% ops
+Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
+Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
+```
+
+### Kani Integration (2026-01-30)
+
+Kani (Amazon's CBMC-based bounded model checker) was adopted as the third
+verification layer, providing bit-precise IEEE 754 edge-case verification
+that neither Verus nor Coq can directly offer.
+
+**Kani Harness Summary:**
+
+| Module | Harnesses | Properties Verified |
+|--------|-----------|---------------------|
+| Utils | 5 | lerp NaN-freedom, clamp bounded, approx_eq reflexive, deg/rad finite |
+| Vec2 | 11 | length ≥ 0, length_sq ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard + no-NaN, distance ≥ 0, rotate no-NaN, from_angle no-NaN, lerp no-NaN |
+| Vec3 | 6 | length ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard, distance ≥ 0 |
+| Vec4 | 3 | length ≥ 0, normalized no-NaN, dot finite |
+| Mat3 | 6 | determinant finite, inverse(zero)=None, inverse(I)=Some, transform finite, rotation no-NaN, identity preserves point |
+| Mat4 | 6 | determinant finite, inverse(zero)=None, inverse(I)=Some, orthographic finite, identity det=1, zero det=0 |
+| Color | 5 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN |
+| Rect | 3 | area ≥ 0, center finite, contains origin |
+| **Total** | **45** | **All verified, 0 failures** |
+
+**Known limitation**: `Mat4::perspective()` uses `f32::tan()` which delegates to C `tanf` —
+unsupported by Kani's CBMC backend (tracked: github.com/model-checking/kani/issues/2423).
+
+**IEEE 754 edge cases discovered during Kani development:**
+1. `lerp(f32::MAX, -f32::MAX, 0.0)` → NaN: intermediate `(b-a)` overflows to `-inf`, then `-inf * 0.0 = NaN`
+2. `Vec2::project()` with denormalized onto vector → NaN: `length_squared > 0.0` passes but `dot / length_squared` overflows to `±inf`, then `inf * 0.0 = NaN`
+
+Both edge cases are IEEE 754-compliant behavior requiring bounded input domains for guaranteed safety.
+
 ---
 
 *Last verified: 2026-01-30*
 *Formal verification coverage: 116/230 operations (50.4%)*
+*Kani IEEE 754 harnesses: 45 (all verified, 0 failures)*
 *Unit test coverage: 230/230 operations (100%)*
 *Unverifiable operations: 114 (floating-point, transcendentals, type conversions)*
+*Landscape survey: 8 tools investigated (6 new + 2 current), Kani adopted*
