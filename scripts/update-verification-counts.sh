@@ -131,11 +131,19 @@ COQ_Z_RECT=$(count_coq "$COQ_DIR/Rect_Compute.v")
 COQ_Z_UTILS=$(count_coq "$COQ_DIR/Utils_Compute.v")
 COQ_Z_TOTAL=$((COQ_Z_VEC2 + COQ_Z_VEC3 + COQ_Z_VEC4 + COQ_Z_MAT3 + COQ_Z_MAT4 + COQ_Z_COLOR + COQ_Z_RECT + COQ_Z_UTILS))
 
+# --- Coq FP error bounds theorems (Flocq-based) ---
+COQ_FP_COMMON=$(count_coq "$COQ_DIR/FP_Common.v")
+COQ_FP_ROUNDING=$(count_coq "$COQ_DIR/FP_Rounding.v")
+COQ_FP_ERRORBOUNDS=$(count_coq "$COQ_DIR/FP_ErrorBounds.v")
+COQ_FP_VEC=$(count_coq "$COQ_DIR/FP_Vec.v")
+COQ_FP_TOTAL=$((COQ_FP_COMMON + COQ_FP_ROUNDING + COQ_FP_ERRORBOUNDS + COQ_FP_VEC))
+
 # --- Coq combined ---
 COQ_COMBINED=$((COQ_R_TOTAL + COQ_Z_TOTAL))
+COQ_ALL=$((COQ_COMBINED + COQ_FP_TOTAL))
 
-# --- Grand total ---
-GRAND_TOTAL=$((VERUS_TOTAL + COQ_R_TOTAL + COQ_Z_TOTAL + KANI_TOTAL))
+# --- Grand total (includes FP layer) ---
+GRAND_TOTAL=$((VERUS_TOTAL + COQ_R_TOTAL + COQ_Z_TOTAL + COQ_FP_TOTAL + KANI_TOTAL))
 
 # --- Per-type totals ---
 TOTAL_VEC2=$((VERUS_VEC2 + COQ_R_VEC2 + COQ_Z_VEC2 + KANI_VEC2))
@@ -199,7 +207,15 @@ cat > "$COUNTS_FILE" << ENDJSON
     "rect": $COQ_Z_RECT,
     "utils": $COQ_Z_UTILS
   },
+  "coq_fp": {
+    "total": $COQ_FP_TOTAL,
+    "common": $COQ_FP_COMMON,
+    "rounding": $COQ_FP_ROUNDING,
+    "error_bounds": $COQ_FP_ERRORBOUNDS,
+    "vec": $COQ_FP_VEC
+  },
   "coq_combined": $COQ_COMBINED,
+  "coq_all": $COQ_ALL,
   "kani": {
     "total": $KANI_TOTAL,
     "vec2": $KANI_VEC2,
@@ -237,6 +253,7 @@ echo "║                                                             ║"
 printf "║  Verus proof functions:  %4d                               ║\n" "$VERUS_TOTAL"
 printf "║  Coq R-based theorems:  %4d                               ║\n" "$COQ_R_TOTAL"
 printf "║  Coq Z-based theorems:  %4d                               ║\n" "$COQ_Z_TOTAL"
+printf "║  Coq FP error bounds:   %4d                               ║\n" "$COQ_FP_TOTAL"
 printf "║  Kani CBMC harnesses:   %4d                               ║\n" "$KANI_TOTAL"
 echo "║  ─────────────────────────────                              ║"
 printf "║  GRAND TOTAL:           %4d                               ║\n" "$GRAND_TOTAL"
@@ -305,6 +322,8 @@ CHECKS=(
     "docs/verification/FORMAL_VERIFICATION.md|$KANI_TOTAL proof harnesses|Kani summary row"
     # FORMAL_VERIFICATION.md - combined row
     "docs/verification/FORMAL_VERIFICATION.md|**$GRAND_TOTAL**|Combined total row"
+    # FORMAL_VERIFICATION.md - FP row
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_FP_TOTAL theorems|Coq FP row"
     # FORMAL_VERIFICATION.md - Coq combined comment
     "docs/verification/FORMAL_VERIFICATION.md|$COQ_COMBINED theorems|Coq combined comment"
     # FORMAL_VERIFICATION.md - architecture diagram Coq count
@@ -337,7 +356,7 @@ CHECKS=(
     # CLAUDE.md - per-type table totals
     "CLAUDE.md|**$GRAND_TOTAL**|Per-type table total"
     # CLAUDE.md - footer
-    "CLAUDE.md|Formal Verification: $GRAND_TOTAL theorems/harnesses|Footer metadata"
+    "CLAUDE.md|Formal Verification: $GRAND_TOTAL theorems/harnesses (Verus: $VERUS_TOTAL|Footer metadata"
     # CLAUDE.md - COQ_PROOFS.md doc reference
     "CLAUDE.md|R + Z, $COQ_COMBINED theorems|CLAUDE COQ_PROOFS ref"
     # README.md - verification table (Verus row)
@@ -416,8 +435,8 @@ if [[ -f "$FV" ]]; then
     sed -i -E "s/[0-9]+ machine-checked theorems\/harnesses/$GRAND_TOTAL machine-checked theorems\/harnesses/g" "$FV"
     # Kani summary row total
     sed -i -E "s/[0-9]+ proof harnesses \| 0/$KANI_TOTAL proof harnesses | 0/" "$FV"
-    # Combined total row
-    sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*8 types\*\*/**$GRAND_TOTAL** | **0** | **8 types**/" "$FV"
+    # Combined total row (matches both "8 types" and "8 types + FP")
+    sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*8 types[^|]*\*\*/**$GRAND_TOTAL** | **0** | **8 types + FP**/" "$FV"
     # Coq combined comment
     sed -i -E "s/[0-9]+ theorems, ~45s/$COQ_COMBINED theorems, ~45s/" "$FV"
     # Per-type Kani counts in the table
@@ -451,6 +470,18 @@ if [[ -f "$FV" ]]; then
     # Footer: Coq R-based total
     sed -i -E "s/Total theorems: [0-9]+ \(Vec2: $COQ_R_VEC2/Total theorems: $COQ_R_TOTAL (Vec2: $COQ_R_VEC2/" "$FV"
     # (Z-based per-type is handled above by context-aware sed anchored to "Z-based Computational Bridge")
+    # Per-type table Total row (update Verus, Kani, and grand totals)
+    sed -i -E "s/\| \*\*[0-9]+ proof fns\*\* \| \*\*446 theorems\*\* \| \*\*251 theorems\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ harnesses\*\* \| \*\*[0-9]+\*\* \| \*\*ACADEMIC\*\*/| **$VERUS_TOTAL proof fns** | **$COQ_R_TOTAL theorems** | **$COQ_Z_TOTAL theorems** | **$COQ_FP_TOTAL theorems** | **$KANI_TOTAL harnesses** | **$GRAND_TOTAL** | **ACADEMIC**/" "$FV"
+    # Per-type table: update individual Verus counts per type that changed
+    sed -i -E "s/\| Mat4 \| [0-9]+ proof fns \|/| Mat4 | $VERUS_MAT4 proof fns |/" "$FV"
+    sed -i -E "s/\| Color \| [0-9]+ proof fns \|/| Color | $VERUS_COLOR proof fns |/" "$FV"
+    sed -i -E "s/\| Rect \| [0-9]+ proof fns \|/| Rect | $VERUS_RECT proof fns |/" "$FV"
+    # Per-type table: update Kani harness counts per type
+    sed -i -E "/\| Mat4 \|.*\| [0-9]+ harnesses/{s/[0-9]+ harnesses \| [0-9]+ \|/$KANI_MAT4 harnesses | $TOTAL_MAT4 |/}" "$FV"
+    sed -i -E "/\| Color \|.*\| [0-9]+ harnesses/{s/[0-9]+ harnesses \| [0-9]+ \|/$KANI_COLOR harnesses | $TOTAL_COLOR |/}" "$FV"
+    sed -i -E "/\| Rect \|.*\| [0-9]+ harnesses/{s/[0-9]+ harnesses \| [0-9]+ \|/$KANI_RECT harnesses | $TOTAL_RECT |/}" "$FV"
+    # Summary Statistics Verus row
+    sed -i -E "s/[0-9]+ proof functions \| 0 \| Vec2-4, Mat3-4, Color, Rect \| All verified/$VERUS_TOTAL proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified/" "$FV"
     # Academic contribution - total
     sed -i -E "s/rource-math with [0-9]+ machine-checked/rource-math with $GRAND_TOTAL machine-checked/" "$FV"
     # All harnesses verified line
@@ -498,12 +529,16 @@ if [[ -f "$CM" ]]; then
     sed -i -E "s/\| \*\*[0-9]+ harnesses\*\* \| \*\*[0-9]+\*\* \| \*\*ACADEMIC\*\*/| **$KANI_TOTAL harnesses** | **$GRAND_TOTAL** | **ACADEMIC**/" "$CM"
     # Kani comment in verification commands
     sed -i -E "s/# Kani proofs \([0-9]+ harnesses/# Kani proofs ($KANI_TOTAL harnesses/" "$CM"
+    # FP status line
+    sed -i -E "s/\*\*Coq \(FP error bounds\)\*\*: [0-9]+ theorems/**Coq (FP error bounds)**: $COQ_FP_TOTAL theorems/" "$CM"
+    # Verus status line
+    sed -i -E "s/\*\*Verus\*\*: [0-9]+ proof functions/**Verus**: $VERUS_TOTAL proof functions/" "$CM"
     # Formal Verification in summary table
     sed -i -E "s/Verus \+ Coq \+ Kani proofs \([0-9]+ theorems\/harnesses\)/Verus + Coq + Kani proofs ($GRAND_TOTAL theorems\/harnesses)/" "$CM"
     # ASCII box
     sed -i -E "s/[0-9]+ formally verified theorems\/harnesses across Verus/$GRAND_TOTAL formally verified theorems\/harnesses across Verus/" "$CM"
-    # Footer metadata
-    sed -i -E "s/Formal Verification: [0-9]+ theorems\/harnesses \(Verus: [0-9]+, Coq R-based: [0-9]+, Coq Z-based: [0-9]+, Kani: [0-9]+\)/Formal Verification: $GRAND_TOTAL theorems\/harnesses (Verus: $VERUS_TOTAL, Coq R-based: $COQ_R_TOTAL, Coq Z-based: $COQ_Z_TOTAL, Kani: $KANI_TOTAL)/" "$CM"
+    # Footer metadata (matches both with and without "Coq FP: N" field)
+    sed -i -E "s/Formal Verification: [0-9]+ theorems\/harnesses \(Verus: [0-9]+, Coq R-based: [0-9]+, Coq Z-based: [0-9]+, (Coq FP: [0-9]+, )?Kani: [0-9]+\)/Formal Verification: $GRAND_TOTAL theorems\/harnesses (Verus: $VERUS_TOTAL, Coq R-based: $COQ_R_TOTAL, Coq Z-based: $COQ_Z_TOTAL, Coq FP: $COQ_FP_TOTAL, Kani: $KANI_TOTAL)/" "$CM"
     # Optimization phases
     sed -i -E "s/Optimization Phases: [0-9]+/Optimization Phases: $OPT_PHASES/" "$CM"
     # Coq Z-based status line

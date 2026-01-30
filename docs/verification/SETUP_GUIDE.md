@@ -506,7 +506,7 @@ done
 | Coq (R-based) | 446 theorems | 0 | 0 |
 | Coq (Z-based) | 251 theorems | 0 | 0 |
 | Kani (CBMC) | 134 harnesses | 0 | 0 |
-| **Combined** | **1158** | **0** | **0** |
+| **Combined** | **1257** | **0** | **0** |
 
 ---
 

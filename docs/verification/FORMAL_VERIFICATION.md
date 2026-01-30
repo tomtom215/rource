@@ -4,18 +4,18 @@ This document describes the formal verification work performed on the `rource-ma
 
 ## Overview
 
-The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, semantic, and floating-point error bound properties of these types using a hybrid Verus + Coq + Kani architecture, achieving 1172 machine-checked theorems/harnesses with zero admits that can withstand academic peer review.
+The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, semantic, and floating-point error bound properties of these types using a hybrid Verus + Coq + Kani architecture, achieving 1257 machine-checked theorems/harnesses with zero admits that can withstand academic peer review.
 
 ## Summary Statistics
 
 | Verification System | Theorems | Admits | Types Covered | Status |
 |---------------------|----------|--------|---------------|--------|
-| **Verus** (SMT/Z3) | 266 proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified, 0 errors |
+| **Verus** (SMT/Z3) | 327 proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified, 0 errors |
 | **Coq** (R-based abstract) | 446 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | Machine-checked |
 | **Coq** (Z-based extractable) | 251 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | Machine-checked |
 | **Coq** (FP error bounds) | 99 theorems | 0 | IEEE 754 binary32 error analysis (Flocq) | Machine-checked |
-| **Kani** (CBMC bounded model checking) | 110 proof harnesses | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | All verified, 0 failures |
-| **Combined** | **1172** | **0** | **8 types + FP** | **PEER REVIEWED PUBLISHED ACADEMIC** |
+| **Kani** (CBMC bounded model checking) | 134 proof harnesses | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | All verified, 0 failures |
+| **Combined** | **1257** | **0** | **8 types + FP** | **PEER REVIEWED PUBLISHED ACADEMIC** |
 
 ## Per-Type Verification Summary
 
@@ -25,13 +25,13 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 | Vec3 | 40 proof fns | 71 theorems | 42 theorems | — | 18 harnesses | 171 | TRIPLE VERIFIED |
 | Vec4 | 39 proof fns | 51 theorems | 33 theorems | — | 9 harnesses | 132 | TRIPLE VERIFIED |
 | Mat3 | 48 proof fns | 48 theorems | 25 theorems | — | 14 harnesses | 135 | TRIPLE VERIFIED |
-| Mat4 | 22 proof fns | 52 theorems | 41 theorems | — | 15 harnesses | 130 | TRIPLE VERIFIED |
-| Color | 35 proof fns | 46 theorems | 28 theorems | — | 15 harnesses | 124 | TRIPLE VERIFIED |
-| Rect | 33 proof fns | 43 theorems | 24 theorems | — | 13 harnesses | 113 | TRIPLE VERIFIED |
+| Mat4 | 54 proof fns | 52 theorems | 41 theorems | — | 26 harnesses | 173 | TRIPLE VERIFIED |
+| Color | 45 proof fns | 46 theorems | 28 theorems | — | 21 harnesses | 140 | TRIPLE VERIFIED |
+| Rect | 52 proof fns | 43 theorems | 24 theorems | — | 20 harnesses | 139 | TRIPLE VERIFIED |
 | Utils | — | 10 theorems | 8 theorems | — | 5 harnesses | 23 | VERIFIED |
 | Complexity | — | 60 theorems | — | — | — | 60 | VERIFIED |
 | FP Foundations | — | — | — | 99 theorems | — | 99 | MACHINE-CHECKED |
-| **Total** | **266 proof fns** | **446 theorems** | **251 theorems** | **99 theorems** | **110 harnesses** | **1172** | **ACADEMIC** |
+| **Total** | **327 proof fns** | **446 theorems** | **251 theorems** | **99 theorems** | **134 harnesses** | **1257** | **ACADEMIC** |
 
 > **Note**: Verus "proof fns" counts all `proof fn` declarations including helpers
 > (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22 base + 26 extended], Mat4: 22,
@@ -216,7 +216,7 @@ The proofs demonstrate:
 
 This hybrid approach would be novel in several ways:
 
-1. **First triple-verified Rust graphics library**: rource-math with 1158 machine-checked proofs/harnesses across 8 types (Verus + Coq + Kani)
+1. **First triple-verified Rust graphics library**: rource-math with 1257 machine-checked proofs/harnesses across 8 types (Verus + Coq + Kani)
 2. **Verus + Coq + Kani synergy**: Three complementary verification approaches (algebraic + machine-checked + bit-precise IEEE 754)
 3. **ICC for graphics code**: Complexity bounds for visualization pipeline
 4. **End-to-end verified WASM**: From Rust source to verified WebAssembly (8 types extracted)
@@ -339,7 +339,7 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Status: All 134 harnesses verified, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Combined Verification:**
-*Total theorems/harnesses: 1158 across Verus, Coq, and Kani (Verus: 266, Coq R-based: 446, Coq Z-based: 251, Kani: 134)*
+*Total theorems/harnesses: 1257 across Verus, Coq, and Kani (Verus: 266, Coq R-based: 446, Coq Z-based: 251, Kani: 134)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Utils*
 *Verified operations: 116/230 (50.4%) — up from 92/230 (40%)*
