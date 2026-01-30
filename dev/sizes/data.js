@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769811326396,
+  "lastUpdate": 1769816173646,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4547,6 +4547,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/365ecce736321d8cff09df166d67ab21d802b92a"
         },
         "date": 1769811325861,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a936b8bf17fedd0cf0c7b1db0b21348c6ac15434",
+          "message": "Merge pull request #239 from tomtom215/claude/rource-math-dev-JWJga\n\nAdd CrossType verification + expand Mat3/Mat4/Rect theorem coverage",
+          "timestamp": "2026-01-31T00:34:09+01:00",
+          "tree_id": "936014ba64750d60985acab0342566ac061b8470",
+          "url": "https://github.com/tomtom215/rource/commit/a936b8bf17fedd0cf0c7b1db0b21348c6ac15434"
+        },
+        "date": 1769816172771,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
