@@ -577,11 +577,223 @@ Proof.
   f_equal; field; assumption.
 Qed.
 
+(** * Length Properties *)
+
+(** Helper: sqrt is non-negative for non-negative input *)
+Local Lemma sqrt_nonneg : forall x : R, 0 <= x -> 0 <= sqrt x.
+Proof.
+  intros x Hx.
+  destruct (Req_dec x 0) as [H0 | Hpos].
+  - subst. rewrite sqrt_0. lra.
+  - left. apply sqrt_lt_R0. lra.
+Qed.
+
+(** Theorem 52: length is non-negative.
+    ∀ v : Vec4, |v| ≥ 0 *)
+Theorem vec4_length_nonneg : forall v : Vec4,
+  0 <= vec4_length v.
+Proof.
+  intro v. unfold vec4_length.
+  apply sqrt_nonneg.
+  apply vec4_length_squared_nonneg.
+Qed.
+
+(** Theorem 53: length of zero vector is 0.
+    |0| = 0 *)
+Theorem vec4_length_zero :
+  vec4_length vec4_zero = 0.
+Proof.
+  unfold vec4_length, vec4_length_squared, vec4_dot, vec4_zero. simpl.
+  replace (0 * 0 + 0 * 0 + 0 * 0 + 0 * 0) with 0 by ring.
+  apply sqrt_0.
+Qed.
+
+(** Theorem 54: length squared of normalized vector is 1 (for non-zero vectors).
+    ∀ v : Vec4, |v|² ≠ 0 → |normalized(v)|² = 1 *)
+Theorem vec4_normalized_length_sq : forall v : Vec4,
+  vec4_length_squared v <> 0 ->
+  vec4_length_squared (vec4_normalized v) = 1.
+Proof.
+  intros [vx vy vz vw] Hne.
+  unfold vec4_normalized, vec4_length, vec4_length_squared, vec4_dot, vec4_scale.
+  simpl.
+  unfold vec4_length_squared, vec4_dot in Hne. simpl in Hne.
+  assert (Hls_pos: 0 < vx * vx + vy * vy + vz * vz + vw * vw).
+  { destruct (Req_dec (vx * vx + vy * vy + vz * vz + vw * vw) 0) as [H0|H0];
+      [exfalso; exact (Hne H0) | nra]. }
+  set (s := sqrt (vx * vx + vy * vy + vz * vz + vw * vw)).
+  assert (Hs_pos: 0 < s) by (unfold s; apply sqrt_lt_R0; lra).
+  assert (Hsq: s * s = vx * vx + vy * vy + vz * vz + vw * vw)
+    by (unfold s; apply sqrt_sqrt; lra).
+  (* Step 1: Rewrite as sum-of-squares / s² *)
+  assert (Hstep: 1/s * vx * (1/s * vx) + 1/s * vy * (1/s * vy) +
+                 1/s * vz * (1/s * vz) + 1/s * vw * (1/s * vw) =
+                 (vx * vx + vy * vy + vz * vz + vw * vw) / (s * s)).
+  { field. lra. }
+  rewrite Hstep.
+  (* Step 2: Substitute s² = sum-of-squares and simplify *)
+  rewrite <- Hsq.
+  field. lra.
+Qed.
+
+(** * Distance Properties (length-based) *)
+
+(** Theorem 55: distance is non-negative.
+    ∀ a b : Vec4, dist(a, b) ≥ 0 *)
+Theorem vec4_distance_nonneg : forall a b : Vec4,
+  0 <= vec4_distance a b.
+Proof.
+  intros a b. unfold vec4_distance.
+  apply sqrt_nonneg.
+  apply vec4_distance_squared_nonneg.
+Qed.
+
+(** Theorem 56: distance from a point to itself is 0.
+    ∀ a : Vec4, dist(a, a) = 0 *)
+Theorem vec4_distance_self : forall a : Vec4,
+  vec4_distance a a = 0.
+Proof.
+  intro a. unfold vec4_distance.
+  rewrite vec4_distance_squared_self.
+  apply sqrt_0.
+Qed.
+
+(** Theorem 57: distance is symmetric.
+    ∀ a b : Vec4, dist(a, b) = dist(b, a) *)
+Theorem vec4_distance_symmetric : forall a b : Vec4,
+  vec4_distance a b = vec4_distance b a.
+Proof.
+  intros a b. unfold vec4_distance.
+  rewrite vec4_distance_squared_symmetric.
+  reflexivity.
+Qed.
+
+(** * Clamp Properties *)
+
+(** Theorem 58: clamp preserves x-component bounds.
+    ∀ v lo hi : Vec4, lo.x ≤ hi.x → lo.x ≤ clamp(v,lo,hi).x ≤ hi.x *)
+Theorem vec4_clamp_x_bounds : forall v lo hi : Vec4,
+  vec4_x lo <= vec4_x hi ->
+  vec4_x lo <= vec4_x (vec4_clamp v lo hi) /\
+  vec4_x (vec4_clamp v lo hi) <= vec4_x hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec4_clamp, vec4_min, vec4_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec4_x v) (vec4_x lo));
+  destruct (Rle_dec (vec4_x lo) (vec4_x hi));
+  destruct (Rle_dec (vec4_x v) (vec4_x hi));
+  split; lra.
+Qed.
+
+(** Theorem 59: clamp preserves y-component bounds.
+    ∀ v lo hi : Vec4, lo.y ≤ hi.y → lo.y ≤ clamp(v,lo,hi).y ≤ hi.y *)
+Theorem vec4_clamp_y_bounds : forall v lo hi : Vec4,
+  vec4_y lo <= vec4_y hi ->
+  vec4_y lo <= vec4_y (vec4_clamp v lo hi) /\
+  vec4_y (vec4_clamp v lo hi) <= vec4_y hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec4_clamp, vec4_min, vec4_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec4_y v) (vec4_y lo));
+  destruct (Rle_dec (vec4_y lo) (vec4_y hi));
+  destruct (Rle_dec (vec4_y v) (vec4_y hi));
+  split; lra.
+Qed.
+
+(** Theorem 60: clamp preserves z-component bounds.
+    ∀ v lo hi : Vec4, lo.z ≤ hi.z → lo.z ≤ clamp(v,lo,hi).z ≤ hi.z *)
+Theorem vec4_clamp_z_bounds : forall v lo hi : Vec4,
+  vec4_z lo <= vec4_z hi ->
+  vec4_z lo <= vec4_z (vec4_clamp v lo hi) /\
+  vec4_z (vec4_clamp v lo hi) <= vec4_z hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec4_clamp, vec4_min, vec4_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec4_z v) (vec4_z lo));
+  destruct (Rle_dec (vec4_z lo) (vec4_z hi));
+  destruct (Rle_dec (vec4_z v) (vec4_z hi));
+  split; lra.
+Qed.
+
+(** Theorem 61: clamp preserves w-component bounds.
+    ∀ v lo hi : Vec4, lo.w ≤ hi.w → lo.w ≤ clamp(v,lo,hi).w ≤ hi.w *)
+Theorem vec4_clamp_w_bounds : forall v lo hi : Vec4,
+  vec4_w lo <= vec4_w hi ->
+  vec4_w lo <= vec4_w (vec4_clamp v lo hi) /\
+  vec4_w (vec4_clamp v lo hi) <= vec4_w hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec4_clamp, vec4_min, vec4_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec4_w v) (vec4_w lo));
+  destruct (Rle_dec (vec4_w lo) (vec4_w hi));
+  destruct (Rle_dec (vec4_w v) (vec4_w hi));
+  split; lra.
+Qed.
+
+(** * Lerp Range Properties *)
+
+(** Theorem 62: lerp stays within x-bounds.
+    For 0 ≤ t ≤ 1: min(a.x, b.x) ≤ lerp(a,b,t).x ≤ max(a.x, b.x) *)
+Theorem vec4_lerp_x_range : forall (a b : Vec4) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec4_x a) (vec4_x b) <= vec4_x (vec4_lerp a b t) /\
+  vec4_x (vec4_lerp a b t) <= Rmax (vec4_x a) (vec4_x b).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw] t Ht0 Ht1.
+  unfold vec4_lerp, vec4_add, vec4_sub, vec4_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ax bx); split; nra.
+Qed.
+
+(** Theorem 63: lerp stays within y-bounds.
+    For 0 ≤ t ≤ 1: min(a.y, b.y) ≤ lerp(a,b,t).y ≤ max(a.y, b.y) *)
+Theorem vec4_lerp_y_range : forall (a b : Vec4) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec4_y a) (vec4_y b) <= vec4_y (vec4_lerp a b t) /\
+  vec4_y (vec4_lerp a b t) <= Rmax (vec4_y a) (vec4_y b).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw] t Ht0 Ht1.
+  unfold vec4_lerp, vec4_add, vec4_sub, vec4_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ay by0); split; nra.
+Qed.
+
+(** Theorem 64: lerp stays within z-bounds.
+    For 0 ≤ t ≤ 1: min(a.z, b.z) ≤ lerp(a,b,t).z ≤ max(a.z, b.z) *)
+Theorem vec4_lerp_z_range : forall (a b : Vec4) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec4_z a) (vec4_z b) <= vec4_z (vec4_lerp a b t) /\
+  vec4_z (vec4_lerp a b t) <= Rmax (vec4_z a) (vec4_z b).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw] t Ht0 Ht1.
+  unfold vec4_lerp, vec4_add, vec4_sub, vec4_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec az bz); split; nra.
+Qed.
+
+(** Theorem 65: lerp stays within w-bounds.
+    For 0 ≤ t ≤ 1: min(a.w, b.w) ≤ lerp(a,b,t).w ≤ max(a.w, b.w) *)
+Theorem vec4_lerp_w_range : forall (a b : Vec4) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec4_w a) (vec4_w b) <= vec4_w (vec4_lerp a b t) /\
+  vec4_w (vec4_lerp a b t) <= Rmax (vec4_w a) (vec4_w b).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw] t Ht0 Ht1.
+  unfold vec4_lerp, vec4_add, vec4_sub, vec4_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec aw bw); split; nra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 51
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl,
-      Rmin_comm, Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra, field
+    Total theorems: 65 (51 original + 14 new)
+    New theorems: length nonneg/zero, normalized length_sq,
+      distance nonneg/self/symmetric, clamp x/y/z/w bounds,
+      lerp x/y/z/w range
     Admits: 0
     Axioms: Standard Coq real number library only
 

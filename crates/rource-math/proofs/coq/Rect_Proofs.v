@@ -426,11 +426,106 @@ Proof.
   intros [rx ry rw rh]. unfold rect_perimeter. simpl. ring.
 Qed.
 
+(** * From-Center Validity *)
+
+(** Theorem 44: from_center with positive dimensions is valid.
+    ∀ cx cy w h, w > 0 → h > 0 → is_valid(from_center(cx, cy, w, h)) *)
+Theorem rect_from_center_valid : forall cx cy w h : R,
+  w > 0 -> h > 0 ->
+  rect_is_valid (rect_from_center cx cy w h).
+Proof.
+  intros cx cy w h Hw Hh.
+  unfold rect_is_valid, rect_from_center. simpl. lra.
+Qed.
+
+(** * Expand Composition *)
+
+(** Theorem 45: expand composition.
+    ∀ r a b, expand(expand(r, a), b) = expand(r, a + b) *)
+Theorem rect_expand_compose : forall (r : Rect) (a b : R),
+  rect_expand (rect_expand r a) b = rect_expand r (a + b).
+Proof.
+  intros [rx ry rw rh] a b.
+  unfold rect_expand. simpl.
+  apply rect_eq; lra.
+Qed.
+
+(** * Translate Validity *)
+
+(** Theorem 46: translate preserves validity.
+    ∀ r dx dy, is_valid(r) → is_valid(translate(r, dx, dy)) *)
+Theorem rect_translate_preserves_valid : forall (r : Rect) (dx dy : R),
+  rect_is_valid r ->
+  rect_is_valid (rect_translate r dx dy).
+Proof.
+  intros [rx ry rw rh] dx dy [Hw Hh]. simpl in *.
+  unfold rect_is_valid, rect_translate. simpl. lra.
+Qed.
+
+(** * Scale Validity *)
+
+(** Theorem 47: scale with positive factor preserves validity.
+    ∀ r f, is_valid(r) → f > 0 → is_valid(scale(r, f)) *)
+Theorem rect_scale_preserves_valid : forall (r : Rect) (f : R),
+  rect_is_valid r -> f > 0 ->
+  rect_is_valid (rect_scale r f).
+Proof.
+  intros [rx ry rw rh] f [Hw Hh] Hf. simpl in *.
+  unfold rect_is_valid, rect_scale. simpl. split; nra.
+Qed.
+
+(** * Expand Area *)
+
+(** Theorem 48: expand area formula.
+    ∀ r a, area(expand(r, a)) = (w + 2a)(h + 2a) *)
+Theorem rect_expand_area : forall (r : Rect) (a : R),
+  rect_area (rect_expand r a) = (rect_w r + 2 * a) * (rect_h r + 2 * a).
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_area, rect_expand. simpl. ring.
+Qed.
+
+(** * Contains-point Boundary *)
+
+(** Theorem 49: expand by positive amount creates a larger rect that contains original.
+    ∀ r a, a ≥ 0 → contains_rect(expand(r, a), r) *)
+Theorem rect_expand_contains_original : forall (r : Rect) (a : R),
+  a >= 0 ->
+  rect_contains_rect (rect_expand r a) r.
+Proof.
+  intros [rx ry rw rh] a Ha.
+  unfold rect_contains_rect, rect_expand. simpl. lra.
+Qed.
+
+(** Theorem 50: center of from_center round-trips.
+    ∀ r : Rect, from_center(center_x(r), center_y(r), w(r), h(r)) = r *)
+Theorem rect_from_center_roundtrip : forall (r : Rect),
+  rect_from_center (rect_center_x r) (rect_center_y r) (rect_w r) (rect_h r) = r.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_from_center, rect_center_x, rect_center_y. simpl.
+  apply rect_eq; lra.
+Qed.
+
+(** Theorem 51: intersection is contained by the first rect (for valid intersections). *)
+Theorem rect_intersection_area_le_first : forall (a b : Rect),
+  rect_w a >= 0 -> rect_h a >= 0 -> rect_w b >= 0 -> rect_h b >= 0 ->
+  rect_area (rect_intersection a b) <= rect_area a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] Haw Hah Hbw Hbh.
+  simpl in *.
+  unfold rect_area, rect_intersection, rect_right, rect_bottom. simpl.
+  unfold Rmax, Rmin.
+  repeat (destruct (Rle_dec _ _)); nra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 43
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl,
-      lra, nra, rect_eq
+    Total theorems: 51 (43 original + 8 new)
+    New theorems: from_center valid, expand compose,
+      translate/scale preserves valid, expand area,
+      expand contains original, from_center roundtrip,
+      intersection area ≤ first
     Admits: 0
     Axioms: Standard Coq real number library only
 

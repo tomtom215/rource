@@ -254,13 +254,13 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 1 (Spec) | `Color.v` | 1 | R-based Color specification |
 | 1 (Spec) | `Rect.v` | 1 | R-based Rect specification |
 | 1 (Spec) | `Utils.v` | 10 | R-based utilities (lerp, clamp) |
-| 1 (Proof) | `Vec2_Proofs.v` | 65 | Vec2 algebraic properties |
-| 1 (Proof) | `Vec3_Proofs.v` | 71 | Vec3 algebraic properties |
-| 1 (Proof) | `Vec4_Proofs.v` | 51 | Vec4 algebraic properties |
+| 1 (Proof) | `Vec2_Proofs.v` | 76 | Vec2 algebraic properties |
+| 1 (Proof) | `Vec3_Proofs.v` | 78 | Vec3 algebraic properties |
+| 1 (Proof) | `Vec4_Proofs.v` | 66 | Vec4 algebraic properties |
 | 1 (Proof) | `Mat3_Proofs.v` | 48 | Mat3 algebraic properties |
 | 1 (Proof) | `Mat4_Proofs.v` | 52 | Mat4 algebraic properties |
-| 1 (Proof) | `Color_Proofs.v` | 46 | Color alpha, blend, lerp, luminance |
-| 1 (Proof) | `Rect_Proofs.v` | 43 | Rect containment, intersection, union |
+| 1 (Proof) | `Color_Proofs.v` | 56 | Color alpha, blend, lerp, luminance |
+| 1 (Proof) | `Rect_Proofs.v` | 51 | Rect containment, intersection, union |
 | 1 (Proof) | `Complexity.v` | 60 | O(1) complexity bounds |
 | 2 (Compute) | `Vec2_Compute.v` | 50 | Z-based Vec2 (extractable) |
 | 2 (Compute) | `Vec3_Compute.v` | 42 | Z-based Vec3 (extractable) |
@@ -274,7 +274,7 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 3 (Extract) | `Rect_Extract.v` | 0 | Rect OCaml extraction |
 | 3 (Extract) | `RourceMath_Extract.v` | 0 | Unified OCaml extraction (8 types) |
 | 3 (Verified) | `Vec2_VerifiedExtract.v` | 0 | MetaCoq verified erasure (Path 2) |
-| **Total** | **32 files** | **697** | **Zero admits** |
+| **Total** | **32 files** | **748** | **Zero admits** |
 
 ---
 
@@ -503,10 +503,10 @@ done
 | Tool | Theorems/Proofs | Errors | Admits |
 |------|-----------------|--------|--------|
 | Verus | 327 proof functions | 0 | 0 |
-| Coq (R-based) | 446 theorems | 0 | 0 |
+| Coq (R-based) | 497 theorems | 0 | 0 |
 | Coq (Z-based) | 251 theorems | 0 | 0 |
 | Kani (CBMC) | 134 harnesses | 0 | 0 |
-| **Combined** | **1257** | **0** | **0** |
+| **Combined** | **1308** | **0** | **0** |
 
 ---
 

@@ -805,11 +805,86 @@ Proof.
   f_equal; field; assumption.
 Qed.
 
+(** * Length Properties *)
+
+(** Helper: sqrt is non-negative for non-negative input *)
+Local Lemma sqrt_nonneg : forall x : R, 0 <= x -> 0 <= sqrt x.
+Proof.
+  intros x Hx.
+  destruct (Req_dec x 0) as [H0 | Hpos].
+  - subst. rewrite sqrt_0. lra.
+  - left. apply sqrt_lt_R0. lra.
+Qed.
+
+(** Theorem 68: length is non-negative.
+    ∀ v : Vec3, |v| ≥ 0 *)
+Theorem vec3_length_nonneg : forall v : Vec3,
+  0 <= vec3_length v.
+Proof.
+  intro v. unfold vec3_length.
+  apply sqrt_nonneg.
+  apply vec3_length_squared_nonneg.
+Qed.
+
+(** Theorem 69: length of zero vector is 0.
+    |0| = 0 *)
+Theorem vec3_length_zero :
+  vec3_length vec3_zero = 0.
+Proof.
+  unfold vec3_length, vec3_length_squared, vec3_dot, vec3_zero. simpl.
+  replace (0 * 0 + 0 * 0 + 0 * 0) with 0 by ring.
+  apply sqrt_0.
+Qed.
+
+(** Theorem 70: distance is non-negative.
+    ∀ a b : Vec3, dist(a, b) ≥ 0 *)
+Theorem vec3_distance_nonneg : forall a b : Vec3,
+  0 <= vec3_distance a b.
+Proof.
+  intros a b. unfold vec3_distance.
+  apply sqrt_nonneg.
+  apply vec3_distance_squared_nonneg.
+Qed.
+
+(** Theorem 71: distance from a point to itself is 0.
+    ∀ a : Vec3, dist(a, a) = 0 *)
+Theorem vec3_distance_self : forall a : Vec3,
+  vec3_distance a a = 0.
+Proof.
+  intro a. unfold vec3_distance.
+  rewrite vec3_distance_squared_self.
+  apply sqrt_0.
+Qed.
+
+(** Theorem 72: distance is symmetric.
+    ∀ a b : Vec3, dist(a, b) = dist(b, a) *)
+Theorem vec3_distance_symmetric : forall a b : Vec3,
+  vec3_distance a b = vec3_distance b a.
+Proof.
+  intros a b. unfold vec3_distance.
+  rewrite vec3_distance_squared_symmetric.
+  reflexivity.
+Qed.
+
+(** Theorem 73: lerp stays within x-bounds.
+    For 0 ≤ t ≤ 1: min(a.x, b.x) ≤ lerp(a,b,t).x ≤ max(a.x, b.x) *)
+Theorem vec3_lerp_x_range : forall (a b : Vec3) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec3_x a) (vec3_x b) <= vec3_x (vec3_lerp a b t) /\
+  vec3_x (vec3_lerp a b t) <= Rmax (vec3_x a) (vec3_x b).
+Proof.
+  intros [ax ay az] [bx by0 bz] t Ht0 Ht1.
+  unfold vec3_lerp, vec3_add, vec3_sub, vec3_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ax bx); split; nra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 67
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl,
-      Rmin_comm, Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra, field, set
+    Total theorems: 73 (67 original + 6 new)
+    New theorems: length nonneg/zero, distance nonneg/self/symmetric,
+      lerp x_range
+    Note: lerp_zero and lerp_one already exist as Theorems 28-29.
     Admits: 0
     Axioms: Standard Coq real number library only
 

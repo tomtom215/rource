@@ -356,7 +356,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 1257 theorems, 50.4% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 1308 theorems, 50.4% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
