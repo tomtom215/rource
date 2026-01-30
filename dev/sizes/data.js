@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769736911589,
+  "lastUpdate": 1769764680143,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4352,6 +4352,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/57c0510005867411f0888cfdab18576b007cb0be"
         },
         "date": 1769736911019,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b47568c4849587541883ea9e364a2d0c2ed20bb4",
+          "message": "Merge pull request #232 from tomtom215/claude/verify-resource-math-continued-9ENKM\n\nAdd Kani (CBMC) IEEE 754 f32 verification layer with 45 harnesses",
+          "timestamp": "2026-01-30T10:15:55+01:00",
+          "tree_id": "3a1c0bec1a56e7b22a013d302135c04c6b963e79",
+          "url": "https://github.com/tomtom215/rource/commit/b47568c4849587541883ea9e364a2d0c2ed20bb4"
+        },
+        "date": 1769764679247,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
