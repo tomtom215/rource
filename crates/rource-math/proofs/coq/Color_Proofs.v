@@ -458,11 +458,136 @@ Proof.
   destruct (Rle_dec x 0); destruct (Rle_dec 1 x); lra.
 Qed.
 
+(** * Clamp Properties *)
+
+(** Theorem 47: clamped color has all components in [0,1]. *)
+Theorem color_clamp_bounds : forall (c : Color),
+  0 <= color_r (color_clamp c) <= 1 /\
+  0 <= color_g (color_clamp c) <= 1 /\
+  0 <= color_b (color_clamp c) <= 1 /\
+  0 <= color_a (color_clamp c) <= 1.
+Proof.
+  intros [r g b a].
+  unfold color_clamp. simpl.
+  repeat split; (apply clamp01_bounds || (destruct (clamp01_bounds r); lra)
+    || (destruct (clamp01_bounds g); lra)
+    || (destruct (clamp01_bounds b); lra)
+    || (destruct (clamp01_bounds a); lra)).
+Qed.
+
+(** Theorem 48: clamp is idempotent.
+    ∀ c : Color, clamp(clamp(c)) = clamp(c) *)
+Theorem color_clamp_idempotent : forall (c : Color),
+  color_clamp (color_clamp c) = color_clamp c.
+Proof.
+  intros [r g b a].
+  unfold color_clamp. simpl.
+  apply color_eq; apply clamp01_idempotent.
+Qed.
+
+(** Theorem 49: clamp preserves already-valid colors.
+    ∀ c : Color, 0 ≤ r,g,b,a ≤ 1 → clamp(c) = c *)
+Theorem color_clamp_valid_noop : forall (c : Color),
+  0 <= color_r c <= 1 -> 0 <= color_g c <= 1 ->
+  0 <= color_b c <= 1 -> 0 <= color_a c <= 1 ->
+  color_clamp c = c.
+Proof.
+  intros [r g b a] [Hr0 Hr1] [Hg0 Hg1] [Hb0 Hb1] [Ha0 Ha1].
+  simpl in *.
+  unfold color_clamp. simpl.
+  apply color_eq; unfold clamp01;
+    destruct (Rle_dec _ _); try lra;
+    destruct (Rle_dec _ _); lra.
+Qed.
+
+(** * Lerp Range Properties *)
+
+(** Theorem 50: lerp keeps r component in [min, max].
+    For 0 ≤ t ≤ 1: min(a.r, b.r) ≤ lerp(a,b,t).r ≤ max(a.r, b.r) *)
+Theorem color_lerp_r_range : forall (a b : Color) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (color_r a) (color_r b) <= color_r (color_lerp a b t) /\
+  color_r (color_lerp a b t) <= Rmax (color_r a) (color_r b).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] t Ht0 Ht1.
+  unfold color_lerp. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ar br); split; nra.
+Qed.
+
+(** Theorem 51: lerp keeps g component in [min, max]. *)
+Theorem color_lerp_g_range : forall (a b : Color) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (color_g a) (color_g b) <= color_g (color_lerp a b t) /\
+  color_g (color_lerp a b t) <= Rmax (color_g a) (color_g b).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] t Ht0 Ht1.
+  unfold color_lerp. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ag bg); split; nra.
+Qed.
+
+(** Theorem 52: lerp keeps b component in [min, max]. *)
+Theorem color_lerp_b_range : forall (a b : Color) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (color_b a) (color_b b) <= color_b (color_lerp a b t) /\
+  color_b (color_lerp a b t) <= Rmax (color_b a) (color_b b).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] t Ht0 Ht1.
+  unfold color_lerp. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ab0 bb); split; nra.
+Qed.
+
+(** Theorem 53: lerp keeps a (alpha) component in [min, max]. *)
+Theorem color_lerp_a_range : forall (a b : Color) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (color_a a) (color_a b) <= color_a (color_lerp a b t) /\
+  color_a (color_lerp a b t) <= Rmax (color_a a) (color_a b).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] t Ht0 Ht1.
+  unfold color_lerp. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec aa ba); split; nra.
+Qed.
+
+(** Theorem 54: mix equals lerp at t=0.5.
+    ∀ a b : Color, mix(a, b) = lerp(a, b, 1/2) *)
+Theorem color_mix_is_lerp_half : forall (a b : Color),
+  color_mix a b = color_lerp a b (1/2).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_mix, color_lerp. simpl.
+  apply color_eq; field.
+Qed.
+
+(** Theorem 55: luminance is bounded by [0,1] for valid colors.
+    ∀ c : Color, 0 ≤ r,g,b ≤ 1 → 0 ≤ luminance(c) ≤ 1 *)
+Theorem color_luminance_bounded : forall (c : Color),
+  0 <= color_r c <= 1 -> 0 <= color_g c <= 1 -> 0 <= color_b c <= 1 ->
+  0 <= color_luminance c <= 1.
+Proof.
+  intros [r g b a] [Hr0 Hr1] [Hg0 Hg1] [Hb0 Hb1]. simpl in *.
+  unfold color_luminance. simpl. split; nra.
+Qed.
+
+(** Theorem 56: blend alpha is at least source alpha.
+    ∀ src dst : Color, 0 ≤ src.a ≤ 1 → 0 ≤ dst.a ≤ 1 →
+    color_a src ≤ color_a (blend_over src dst) *)
+Theorem color_blend_alpha_lower_bound : forall (src dst : Color),
+  0 <= color_a src <= 1 -> 0 <= color_a dst <= 1 ->
+  color_a src <= color_a (color_blend_over src dst).
+Proof.
+  intros [sr sg sb sa] [dr dg db da] [Hsa0 Hsa1] [Hda0 Hda1].
+  simpl in *. unfold color_blend_over. simpl. nra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 46
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, unfold, simpl,
-      lra, nra, color_eq, field
+    Total theorems: 56 (46 original + 10 new)
+    New theorems: clamp bounds/idempotent/valid_noop,
+      lerp r/g/b/a range, mix_is_lerp_half,
+      luminance bounded, blend alpha lower bound
     Admits: 0
     Axioms: Standard Coq real number library only
 

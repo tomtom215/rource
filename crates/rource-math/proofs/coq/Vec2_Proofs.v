@@ -748,11 +748,161 @@ Proof.
   f_equal; field; assumption.
 Qed.
 
+(** * Length Properties *)
+
+(** Helper: sqrt is non-negative for non-negative input *)
+Local Lemma sqrt_nonneg : forall x : R, 0 <= x -> 0 <= sqrt x.
+Proof.
+  intros x Hx.
+  destruct (Req_dec x 0) as [H0 | Hpos].
+  - subst. rewrite sqrt_0. lra.
+  - left. apply sqrt_lt_R0. lra.
+Qed.
+
+(** Theorem 62: length is non-negative.
+    ∀ v : Vec2, |v| ≥ 0 *)
+Theorem vec2_length_nonneg : forall v : Vec2,
+  0 <= vec2_length v.
+Proof.
+  intro v. unfold vec2_length.
+  apply sqrt_nonneg.
+  apply vec2_length_squared_nonneg.
+Qed.
+
+(** Theorem 63: length of zero vector is 0.
+    |0| = 0 *)
+Theorem vec2_length_zero :
+  vec2_length vec2_zero = 0.
+Proof.
+  unfold vec2_length, vec2_length_squared, vec2_dot, vec2_zero. simpl.
+  replace (0 * 0 + 0 * 0) with 0 by ring.
+  apply sqrt_0.
+Qed.
+
+(** Theorem 64: length squared of normalized vector is 1 (for non-zero vectors).
+    ∀ v : Vec2, |v|² ≠ 0 → |normalized(v)|² = 1 *)
+Theorem vec2_normalized_length_sq : forall v : Vec2,
+  vec2_length_squared v <> 0 ->
+  vec2_length_squared (vec2_normalized v) = 1.
+Proof.
+  intros [vx vy] Hne.
+  unfold vec2_normalized, vec2_length, vec2_length_squared, vec2_dot, vec2_scale.
+  simpl.
+  unfold vec2_length_squared, vec2_dot in Hne. simpl in Hne.
+  assert (Hls_pos: 0 < vx * vx + vy * vy).
+  { destruct (Req_dec (vx * vx + vy * vy) 0) as [H0|H0]; [exfalso; exact (Hne H0) | nra]. }
+  set (s := sqrt (vx * vx + vy * vy)).
+  assert (Hs_pos: 0 < s) by (unfold s; apply sqrt_lt_R0; lra).
+  assert (Hsq: s * s = vx * vx + vy * vy) by (unfold s; apply sqrt_sqrt; lra).
+  (* Step 1: Rewrite as (vx²+vy²) / s² *)
+  assert (Hstep: 1/s * vx * (1/s * vx) + 1/s * vy * (1/s * vy) =
+                 (vx * vx + vy * vy) / (s * s)).
+  { field. lra. }
+  rewrite Hstep.
+  (* Step 2: Substitute s² = vx²+vy² and simplify *)
+  rewrite <- Hsq.
+  field. lra.
+Qed.
+
+(** * Distance Properties (length-based) *)
+
+(** Theorem 65: distance is non-negative.
+    ∀ a b : Vec2, dist(a, b) ≥ 0 *)
+Theorem vec2_distance_nonneg : forall a b : Vec2,
+  0 <= vec2_distance a b.
+Proof.
+  intros a b. unfold vec2_distance.
+  apply sqrt_nonneg.
+  apply vec2_distance_squared_nonneg.
+Qed.
+
+(** Theorem 66: distance from a point to itself is 0.
+    ∀ a : Vec2, dist(a, a) = 0 *)
+Theorem vec2_distance_self : forall a : Vec2,
+  vec2_distance a a = 0.
+Proof.
+  intro a. unfold vec2_distance.
+  rewrite vec2_distance_squared_self.
+  apply sqrt_0.
+Qed.
+
+(** Theorem 67: distance is symmetric.
+    ∀ a b : Vec2, dist(a, b) = dist(b, a) *)
+Theorem vec2_distance_symmetric : forall a b : Vec2,
+  vec2_distance a b = vec2_distance b a.
+Proof.
+  intros a b. unfold vec2_distance.
+  rewrite vec2_distance_squared_symmetric.
+  reflexivity.
+Qed.
+
+(** * Clamp Properties *)
+
+(** Theorem 68: clamp preserves x-component bounds.
+    ∀ v lo hi : Vec2, lo.x ≤ hi.x → lo.x ≤ clamp(v,lo,hi).x ≤ hi.x *)
+Theorem vec2_clamp_x_bounds : forall v lo hi : Vec2,
+  vec2_x lo <= vec2_x hi ->
+  vec2_x lo <= vec2_x (vec2_clamp v lo hi) /\
+  vec2_x (vec2_clamp v lo hi) <= vec2_x hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec2_clamp, vec2_min, vec2_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec2_x v) (vec2_x lo));
+  destruct (Rle_dec (vec2_x lo) (vec2_x hi));
+  destruct (Rle_dec (vec2_x v) (vec2_x hi));
+  split; lra.
+Qed.
+
+(** Theorem 69: clamp preserves y-component bounds.
+    ∀ v lo hi : Vec2, lo.y ≤ hi.y → lo.y ≤ clamp(v,lo,hi).y ≤ hi.y *)
+Theorem vec2_clamp_y_bounds : forall v lo hi : Vec2,
+  vec2_y lo <= vec2_y hi ->
+  vec2_y lo <= vec2_y (vec2_clamp v lo hi) /\
+  vec2_y (vec2_clamp v lo hi) <= vec2_y hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec2_clamp, vec2_min, vec2_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec2_y v) (vec2_y lo));
+  destruct (Rle_dec (vec2_y lo) (vec2_y hi));
+  destruct (Rle_dec (vec2_y v) (vec2_y hi));
+  split; lra.
+Qed.
+
+(** * Lerp Range Properties *)
+
+(** Theorem 70: lerp stays within bounds (x-component).
+    For 0 ≤ t ≤ 1: min(a.x, b.x) ≤ lerp(a,b,t).x ≤ max(a.x, b.x) *)
+Theorem vec2_lerp_x_range : forall (a b : Vec2) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec2_x a) (vec2_x b) <= vec2_x (vec2_lerp a b t) /\
+  vec2_x (vec2_lerp a b t) <= Rmax (vec2_x a) (vec2_x b).
+Proof.
+  intros [ax ay] [bx by0] t Ht0 Ht1.
+  unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ax bx); split; nra.
+Qed.
+
+(** Theorem 71: lerp stays within bounds (y-component).
+    For 0 ≤ t ≤ 1: min(a.y, b.y) ≤ lerp(a,b,t).y ≤ max(a.y, b.y) *)
+Theorem vec2_lerp_y_range : forall (a b : Vec2) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec2_y a) (vec2_y b) <= vec2_y (vec2_lerp a b t) /\
+  vec2_y (vec2_lerp a b t) <= Rmax (vec2_y a) (vec2_y b).
+Proof.
+  intros [ax ay] [bx by0] t Ht0 Ht1.
+  unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ay by0); split; nra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 61
-    Total tactics used: ring, f_equal, reflexivity, destruct, apply, Rmin_comm,
-      Rmax_comm, Rabs_pos, Rabs_Ropp, Rabs_pos_eq, nra, lra, field
+    Total theorems: 71 (61 original + 10 new)
+    New theorems: length nonneg, length zero, normalized length_sq,
+      distance nonneg/self/symmetric, clamp x/y bounds, lerp x/y range
     Admits: 0
     Axioms: Standard Coq real number library only
 
