@@ -632,6 +632,144 @@ proof fn color_add_associative(a: SpecColor, b: SpecColor, c: SpecColor)
 {
 }
 
+// =============================================================================
+// COLOR SCALE PROOFS (Theorems 36-39)
+// =============================================================================
+
+/// **Theorem 36**: Scaling by 0 produces zero-RGB (alpha also zeroed).
+proof fn color_scale_zero(c: SpecColor)
+    ensures ({
+        let s = color_scale(c, 0);
+        s.r == 0 && s.g == 0 && s.b == 0 && s.a == 0
+    }),
+{
+    assert(c.r * 0 == 0) by(nonlinear_arith);
+    assert(c.g * 0 == 0) by(nonlinear_arith);
+    assert(c.b * 0 == 0) by(nonlinear_arith);
+    assert(c.a * 0 == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 37**: Scaling by 1000 (= 1.0) is identity.
+proof fn color_scale_full(c: SpecColor)
+    ensures
+        color_scale(c, 1000) == c,
+{
+    assert(c.r * 1000 / 1000 == c.r) by(nonlinear_arith);
+    assert(c.g * 1000 / 1000 == c.g) by(nonlinear_arith);
+    assert(c.b * 1000 / 1000 == c.b) by(nonlinear_arith);
+    assert(c.a * 1000 / 1000 == c.a) by(nonlinear_arith);
+}
+
+/// **Theorem 38**: Scaling transparent produces transparent.
+proof fn color_scale_transparent(s: int)
+    ensures
+        color_scale(color_transparent(), s) == color_transparent(),
+{
+    assert(0 * s == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 39**: Scale preserves zero components.
+proof fn color_scale_preserves_zero(c: SpecColor, s: int)
+    ensures
+        c.r == 0 ==> color_scale(c, s).r == 0,
+        c.g == 0 ==> color_scale(c, s).g == 0,
+        c.b == 0 ==> color_scale(c, s).b == 0,
+{
+    assert(0 * s == 0) by(nonlinear_arith);
+}
+
+// =============================================================================
+// LUMINANCE ORDERING PROOFS (Theorems 40-42)
+// =============================================================================
+
+/// **Theorem 40**: Gray luminance is monotone: if v1 <= v2, then luminance(gray(v1)) <= luminance(gray(v2)).
+proof fn color_luminance_gray_monotone(v1: int, v2: int)
+    requires
+        v1 <= v2 && v1 >= 0 && v2 >= 0,
+    ensures
+        color_luminance_scaled(color_gray(v1)) <= color_luminance_scaled(color_gray(v2)),
+{
+    // luminance(gray(v)) = 10000 * v
+    assert(2126 * v1 + 7152 * v1 + 722 * v1 == 10000 * v1) by(nonlinear_arith);
+    assert(2126 * v2 + 7152 * v2 + 722 * v2 == 10000 * v2) by(nonlinear_arith);
+    assert(10000 * v1 <= 10000 * v2) by(nonlinear_arith)
+        requires v1 <= v2, v1 >= 0, v2 >= 0;
+}
+
+/// **Theorem 41**: Luminance of a color is bounded by its max component.
+proof fn color_luminance_bounded(c: SpecColor)
+    requires
+        c.r >= 0 && c.g >= 0 && c.b >= 0,
+    ensures ({
+        let max_comp = if c.r >= c.g && c.r >= c.b { c.r }
+                       else if c.g >= c.b { c.g }
+                       else { c.b };
+        color_luminance_scaled(c) <= 10000 * max_comp
+    }),
+{
+    // luminance = 2126*r + 7152*g + 722*b <= (2126+7152+722)*max = 10000*max
+    let max_comp = if c.r >= c.g && c.r >= c.b { c.r }
+                   else if c.g >= c.b { c.g }
+                   else { c.b };
+    assert(2126 * c.r <= 2126 * max_comp) by(nonlinear_arith)
+        requires c.r >= 0, c.r <= max_comp, max_comp >= 0;
+    assert(7152 * c.g <= 7152 * max_comp) by(nonlinear_arith)
+        requires c.g >= 0, c.g <= max_comp, max_comp >= 0;
+    assert(722 * c.b <= 722 * max_comp) by(nonlinear_arith)
+        requires c.b >= 0, c.b <= max_comp, max_comp >= 0;
+    assert(2126 + 7152 + 722 == 10000);
+}
+
+/// **Theorem 42**: Green contributes most to luminance (Rec. 709 property).
+proof fn color_green_dominates_luminance()
+    ensures
+        7152 > 2126 && 7152 > 722,
+{
+}
+
+// =============================================================================
+// MIX WITH CONSTANTS PROOFS (Theorems 43-45)
+// =============================================================================
+
+/// **Theorem 43**: Mix with self is identity.
+proof fn color_mix_identity(c: SpecColor)
+    ensures
+        color_mix(c, c) == c,
+{
+    color_mix_same(c);
+}
+
+/// **Theorem 44**: Inversion and luminance: invert flips light/dark.
+proof fn color_invert_luminance(c: SpecColor)
+    requires
+        c.r >= 0 && c.r <= 1000 && c.g >= 0 && c.g <= 1000 && c.b >= 0 && c.b <= 1000,
+    ensures ({
+        color_luminance_scaled(c) + color_luminance_scaled(color_invert(c)) == 10000000
+    }),
+{
+    // lum(c) + lum(invert(c)) = 2126*r + 7152*g + 722*b + 2126*(1000-r) + 7152*(1000-g) + 722*(1000-b)
+    // = 2126*1000 + 7152*1000 + 722*1000 = 10000*1000 = 10000000
+    assert(2126 * c.r + 2126 * (1000 - c.r) == 2126 * 1000) by(nonlinear_arith);
+    assert(7152 * c.g + 7152 * (1000 - c.g) == 7152 * 1000) by(nonlinear_arith);
+    assert(722 * c.b + 722 * (1000 - c.b) == 722 * 1000) by(nonlinear_arith);
+    assert(2126 * 1000 + 7152 * 1000 + 722 * 1000 == 10000000);
+}
+
+/// **Theorem 45**: Blend over with transparent constant is identity.
+proof fn color_blend_transparent_constant_fg(dst: SpecColor)
+    ensures
+        color_blend_over(color_transparent(), dst) == dst,
+{
+    // src = (0,0,0,0), inv_alpha = 1000 - 0 = 1000
+    // r = (0*0 + dst.r * 1000) / 1000 = dst.r
+    assert(0 * 0 == 0) by(nonlinear_arith);
+    assert(0 * 1000 == 0) by(nonlinear_arith);
+    assert(dst.r * 1000 / 1000 == dst.r) by(nonlinear_arith);
+    assert(dst.g * 1000 / 1000 == dst.g) by(nonlinear_arith);
+    assert(dst.b * 1000 / 1000 == dst.b) by(nonlinear_arith);
+    assert(dst.a * 1000 / 1000 == dst.a) by(nonlinear_arith);
+}
+
 fn main() {
     // Verification only
 }

@@ -124,7 +124,11 @@ rustup install 1.92.0
 /tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/mat3_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/mat3_extended_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/mat4_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/mat4_extended_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 ```
 
 **Expected output**: Each file reports "0 errors" and verification conditions pass.
@@ -138,10 +142,11 @@ rustup install 1.92.0
 | `vec4_proofs.rs` | 39 | Vec4 |
 | `mat3_proofs.rs` | 22 | Mat3 (base) |
 | `mat3_extended_proofs.rs` | 26 | Mat3 (extended) |
-| `mat4_proofs.rs` | 22 | Mat4 |
-| `color_proofs.rs` | 35 | Color |
-| `rect_proofs.rs` | 33 | Rect |
-| **Total** | **266** | **7 types** |
+| `mat4_proofs.rs` | 22 | Mat4 (base) |
+| `mat4_extended_proofs.rs` | 32 | Mat4 (extended) |
+| `color_proofs.rs` | 45 | Color |
+| `rect_proofs.rs` | 52 | Rect |
+| **Total** | **327** | **7 types** |
 
 ---
 
@@ -497,11 +502,11 @@ done
 
 | Tool | Theorems/Proofs | Errors | Admits |
 |------|-----------------|--------|--------|
-| Verus | 266 proof functions | 0 | 0 |
+| Verus | 327 proof functions | 0 | 0 |
 | Coq (R-based) | 446 theorems | 0 | 0 |
 | Coq (Z-based) | 251 theorems | 0 | 0 |
-| Kani (CBMC) | 110 harnesses | 0 | 0 |
-| **Combined** | **1073** | **0** | **0** |
+| Kani (CBMC) | 134 harnesses | 0 | 0 |
+| **Combined** | **1257** | **0** | **0** |
 
 ---
 
@@ -702,13 +707,15 @@ cannot handle.
 
 ```
 crates/rource-math/proofs/
-  |-- vec2_proofs.rs          # Verus: Vec2 (23 theorems, 53 VCs)
-  |-- vec3_proofs.rs          # Verus: Vec3 (24 theorems, 68 VCs)
-  |-- vec4_proofs.rs          # Verus: Vec4 (22 theorems, 68 VCs)
-  |-- mat3_proofs.rs          # Verus: Mat3 (18 theorems, 26 VCs)
-  |-- mat4_proofs.rs          # Verus: Mat4 (18 theorems, 27 VCs)
-  |-- color_proofs.rs         # Verus: Color (23 theorems)
-  |-- rect_proofs.rs          # Verus: Rect (23 theorems)
+  |-- vec2_proofs.rs          # Verus: Vec2 (49 proof fns)
+  |-- vec3_proofs.rs          # Verus: Vec3 (40 proof fns)
+  |-- vec4_proofs.rs          # Verus: Vec4 (39 proof fns)
+  |-- mat3_proofs.rs          # Verus: Mat3 base (22 proof fns)
+  |-- mat3_extended_proofs.rs # Verus: Mat3 extended (26 proof fns)
+  |-- mat4_proofs.rs          # Verus: Mat4 base (22 proof fns)
+  |-- mat4_extended_proofs.rs # Verus: Mat4 extended (32 proof fns)
+  |-- color_proofs.rs         # Verus: Color (45 proof fns)
+  |-- rect_proofs.rs          # Verus: Rect (52 proof fns)
   |
   +-- coq/
        |-- Vec2.v             # Layer 1: R-based specification

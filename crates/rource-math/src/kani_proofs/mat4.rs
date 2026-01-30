@@ -301,3 +301,216 @@ fn verify_mat4_approx_eq_reflexive() {
     let mat = Mat4 { m };
     assert!(mat.approx_eq(mat), "approx_eq not reflexive");
 }
+
+// ============================================================================
+// transform_vector
+// ============================================================================
+
+/// **Finiteness**: `transform_vector()` with bounded inputs is finite.
+#[kani::proof]
+fn verify_mat4_transform_vector_finite() {
+    let mat = Mat4::IDENTITY;
+    let vx: f32 = kani::any();
+    let vy: f32 = kani::any();
+    let vz: f32 = kani::any();
+    kani::assume(vx.is_finite() && vx.abs() < DET_BOUND);
+    kani::assume(vy.is_finite() && vy.abs() < DET_BOUND);
+    kani::assume(vz.is_finite() && vz.abs() < DET_BOUND);
+    let result = mat.transform_vector(crate::Vec3::new(vx, vy, vz));
+    assert!(result.x.is_finite(), "transform_vector().x non-finite");
+    assert!(result.y.is_finite(), "transform_vector().y non-finite");
+    assert!(result.z.is_finite(), "transform_vector().z non-finite");
+}
+
+/// **Identity preservation**: Identity transform_vector preserves input.
+#[kani::proof]
+fn verify_mat4_identity_preserves_vector() {
+    let vx: f32 = kani::any();
+    let vy: f32 = kani::any();
+    let vz: f32 = kani::any();
+    kani::assume(vx.is_finite());
+    kani::assume(vy.is_finite());
+    kani::assume(vz.is_finite());
+    let v = crate::Vec3::new(vx, vy, vz);
+    let result = Mat4::IDENTITY.transform_vector(v);
+    assert!(result.x == vx, "identity should preserve vector x");
+    assert!(result.y == vy, "identity should preserve vector y");
+    assert!(result.z == vz, "identity should preserve vector z");
+}
+
+// ============================================================================
+// get_translation
+// ============================================================================
+
+/// **Postcondition**: `get_translation()` of a translation matrix returns
+/// the original translation values.
+#[kani::proof]
+fn verify_mat4_get_translation_roundtrip() {
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    let tz: f32 = kani::any();
+    kani::assume(tx.is_finite());
+    kani::assume(ty.is_finite());
+    kani::assume(tz.is_finite());
+    let mat = Mat4::translation(tx, ty, tz);
+    let t = mat.get_translation();
+    assert!(t.x == tx, "get_translation().x mismatch");
+    assert!(t.y == ty, "get_translation().y mismatch");
+    assert!(t.z == tz, "get_translation().z mismatch");
+}
+
+// ============================================================================
+// uniform_scaling
+// ============================================================================
+
+/// **Postcondition**: `uniform_scaling(s)` equals `scaling(s, s, s)`.
+#[kani::proof]
+fn verify_mat4_uniform_scaling_equals_scaling() {
+    let s: f32 = kani::any();
+    kani::assume(s.is_finite());
+    let u = Mat4::uniform_scaling(s);
+    let d = Mat4::scaling(s, s, s);
+    for i in 0..16 {
+        assert!(
+            u.m[i] == d.m[i],
+            "uniform_scaling should equal scaling(s,s,s)"
+        );
+    }
+}
+
+// ============================================================================
+// from_translation
+// ============================================================================
+
+/// **Postcondition**: `from_translation(v)` equals `translation(v.x, v.y, v.z)`.
+#[kani::proof]
+fn verify_mat4_from_translation_equals_translation() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(z.is_finite());
+    let v = crate::Vec3::new(x, y, z);
+    let ft = Mat4::from_translation(v);
+    let t = Mat4::translation(x, y, z);
+    for i in 0..16 {
+        assert!(
+            ft.m[i] == t.m[i],
+            "from_translation should equal translation"
+        );
+    }
+}
+
+// ============================================================================
+// translation determinant
+// ============================================================================
+
+/// **Postcondition**: `translation().determinant()` is exactly 1.0.
+#[kani::proof]
+fn verify_mat4_translation_det_is_one() {
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    let tz: f32 = kani::any();
+    kani::assume(tx.is_finite() && tx.abs() < 1e6);
+    kani::assume(ty.is_finite() && ty.abs() < 1e6);
+    kani::assume(tz.is_finite() && tz.abs() < 1e6);
+    let mat = Mat4::translation(tx, ty, tz);
+    let det = mat.determinant();
+    assert!(det == 1.0, "translation det should be 1.0");
+}
+
+// ============================================================================
+// col / row
+// ============================================================================
+
+/// **Postcondition**: `col(i)` returns the correct column elements.
+#[kani::proof]
+fn verify_mat4_col_correct() {
+    let mat = Mat4::IDENTITY;
+    let c0 = mat.col(0);
+    assert!(c0.x == 1.0 && c0.y == 0.0 && c0.z == 0.0 && c0.w == 0.0);
+    let c1 = mat.col(1);
+    assert!(c1.x == 0.0 && c1.y == 1.0 && c1.z == 0.0 && c1.w == 0.0);
+    let c2 = mat.col(2);
+    assert!(c2.x == 0.0 && c2.y == 0.0 && c2.z == 1.0 && c2.w == 0.0);
+    let c3 = mat.col(3);
+    assert!(c3.x == 0.0 && c3.y == 0.0 && c3.z == 0.0 && c3.w == 1.0);
+}
+
+/// **Postcondition**: `row(i)` returns the correct row elements.
+#[kani::proof]
+fn verify_mat4_row_correct() {
+    let mat = Mat4::IDENTITY;
+    let r0 = mat.row(0);
+    assert!(r0.x == 1.0 && r0.y == 0.0 && r0.z == 0.0 && r0.w == 0.0);
+    let r1 = mat.row(1);
+    assert!(r1.x == 0.0 && r1.y == 1.0 && r1.z == 0.0 && r1.w == 0.0);
+    let r2 = mat.row(2);
+    assert!(r2.x == 0.0 && r2.y == 0.0 && r2.z == 1.0 && r2.w == 0.0);
+    let r3 = mat.row(3);
+    assert!(r3.x == 0.0 && r3.y == 0.0 && r3.z == 0.0 && r3.w == 1.0);
+}
+
+// ============================================================================
+// from_cols
+// ============================================================================
+
+/// **Postcondition**: `from_cols()` correctly assembles columns.
+#[kani::proof]
+fn verify_mat4_from_cols_assembles_correctly() {
+    let col0 = crate::Vec4::new(1.0, 2.0, 3.0, 4.0);
+    let col1 = crate::Vec4::new(5.0, 6.0, 7.0, 8.0);
+    let col2 = crate::Vec4::new(9.0, 10.0, 11.0, 12.0);
+    let col3 = crate::Vec4::new(13.0, 14.0, 15.0, 16.0);
+    let mat = Mat4::from_cols(col0, col1, col2, col3);
+    assert!(mat.m[0] == 1.0 && mat.m[1] == 2.0 && mat.m[2] == 3.0 && mat.m[3] == 4.0);
+    assert!(mat.m[4] == 5.0 && mat.m[5] == 6.0 && mat.m[6] == 7.0 && mat.m[7] == 8.0);
+    assert!(mat.m[8] == 9.0 && mat.m[9] == 10.0 && mat.m[10] == 11.0 && mat.m[11] == 12.0);
+    assert!(mat.m[12] == 13.0 && mat.m[13] == 14.0 && mat.m[14] == 15.0 && mat.m[15] == 16.0);
+}
+
+// ============================================================================
+// translation transforms
+// ============================================================================
+
+/// **Postcondition**: Translation moves point by (tx,ty,tz).
+#[kani::proof]
+fn verify_mat4_translation_transforms_point() {
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    let tz: f32 = kani::any();
+    kani::assume(tx.is_finite() && tx.abs() < 1e6);
+    kani::assume(ty.is_finite() && ty.abs() < 1e6);
+    kani::assume(tz.is_finite() && tz.abs() < 1e6);
+    let mat = Mat4::translation(tx, ty, tz);
+    let origin = crate::Vec3::new(0.0, 0.0, 0.0);
+    let result = mat.transform_point(origin);
+    // For identity-like translation: w = m[3]*0 + m[7]*0 + m[11]*0 + m[15] = 1.0
+    assert!((result.x - tx).abs() < 1e-5, "translation should move x");
+    assert!((result.y - ty).abs() < 1e-5, "translation should move y");
+    assert!((result.z - tz).abs() < 1e-5, "translation should move z");
+}
+
+/// **Postcondition**: Translation preserves vectors (w=0 means no translation).
+#[kani::proof]
+fn verify_mat4_translation_preserves_vector() {
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    let tz: f32 = kani::any();
+    let vx: f32 = kani::any();
+    let vy: f32 = kani::any();
+    let vz: f32 = kani::any();
+    kani::assume(tx.is_finite());
+    kani::assume(ty.is_finite());
+    kani::assume(tz.is_finite());
+    kani::assume(vx.is_finite());
+    kani::assume(vy.is_finite());
+    kani::assume(vz.is_finite());
+    let mat = Mat4::translation(tx, ty, tz);
+    let v = crate::Vec3::new(vx, vy, vz);
+    let result = mat.transform_vector(v);
+    assert!(result.x == vx, "translation should preserve vector x");
+    assert!(result.y == vy, "translation should preserve vector y");
+    assert!(result.z == vz, "translation should preserve vector z");
+}

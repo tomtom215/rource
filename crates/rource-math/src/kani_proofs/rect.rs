@@ -309,3 +309,143 @@ fn verify_rect_from_corners_valid() {
     assert!(r.x.is_finite(), "from_corners().x non-finite");
     assert!(r.y.is_finite(), "from_corners().y non-finite");
 }
+
+// ============================================================================
+// from_center_size
+// ============================================================================
+
+/// **Postcondition**: `from_center_size()` produces finite rect with correct center.
+#[kani::proof]
+fn verify_rect_from_center_size_finite() {
+    let cx: f32 = kani::any();
+    let cy: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(cx.is_finite() && cx.abs() < SAFE_BOUND);
+    kani::assume(cy.is_finite() && cy.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w >= 0.0 && w < SAFE_BOUND);
+    kani::assume(h.is_finite() && h >= 0.0 && h < SAFE_BOUND);
+    let r = Rect::from_center_size(Vec2::new(cx, cy), Vec2::new(w, h));
+    assert!(r.x.is_finite(), "from_center_size().x non-finite");
+    assert!(r.y.is_finite(), "from_center_size().y non-finite");
+    assert!(r.width.is_finite(), "from_center_size().width non-finite");
+    assert!(r.height.is_finite(), "from_center_size().height non-finite");
+}
+
+// ============================================================================
+// is_valid / is_empty
+// ============================================================================
+
+/// **Postcondition**: `is_valid()` and `is_empty()` are complementary for positive-sized rects.
+#[kani::proof]
+fn verify_rect_valid_empty_complement() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(w.is_finite() && w > 0.0);
+    kani::assume(h.is_finite() && h > 0.0);
+    let r = Rect::new(x, y, w, h);
+    assert!(r.is_valid(), "positive-sized rect should be valid");
+    assert!(!r.is_empty(), "positive-sized rect should not be empty");
+}
+
+/// **Postcondition**: Zero-sized rect is empty.
+#[kani::proof]
+fn verify_rect_zero_is_empty() {
+    let r = Rect::new(0.0, 0.0, 0.0, 0.0);
+    assert!(r.is_empty(), "zero rect should be empty");
+}
+
+// ============================================================================
+// expand_xy
+// ============================================================================
+
+/// **Finiteness**: `expand_xy()` with finite inputs produces finite rect.
+#[kani::proof]
+fn verify_rect_expand_xy_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    let xa: f32 = kani::any();
+    let ya: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w >= 0.0 && w < SAFE_BOUND);
+    kani::assume(h.is_finite() && h >= 0.0 && h < SAFE_BOUND);
+    kani::assume(xa.is_finite() && xa.abs() < SAFE_BOUND);
+    kani::assume(ya.is_finite() && ya.abs() < SAFE_BOUND);
+    let r = Rect::new(x, y, w, h).expand_xy(xa, ya);
+    assert!(r.x.is_finite(), "expand_xy().x non-finite");
+    assert!(r.y.is_finite(), "expand_xy().y non-finite");
+    assert!(r.width.is_finite(), "expand_xy().width non-finite");
+    assert!(r.height.is_finite(), "expand_xy().height non-finite");
+}
+
+// ============================================================================
+// scale_from_center (componentwise)
+// ============================================================================
+
+/// **Componentwise**: `scale_from_center()` returns finite components and correct dimensions.
+#[kani::proof]
+fn verify_rect_scale_from_center_componentwise() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    let factor: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w >= 0.0 && w < SAFE_BOUND);
+    kani::assume(h.is_finite() && h >= 0.0 && h < SAFE_BOUND);
+    kani::assume(factor.is_finite() && factor >= 0.0 && factor < SAFE_BOUND);
+    let r = Rect::new(x, y, w, h).scale_from_center(factor);
+    assert!(r.x.is_finite(), "scale_from_center().x non-finite");
+    assert!(r.y.is_finite(), "scale_from_center().y non-finite");
+    assert!(r.width.is_finite(), "scale_from_center().width non-finite");
+    assert!(
+        r.height.is_finite(),
+        "scale_from_center().height non-finite"
+    );
+}
+
+// ============================================================================
+// position / size / center
+// ============================================================================
+
+/// **Postcondition**: `position()` returns (x, y) of the rect.
+#[kani::proof]
+fn verify_rect_position_correct() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(w.is_finite());
+    kani::assume(h.is_finite());
+    let r = Rect::new(x, y, w, h);
+    let pos = r.position();
+    assert!(pos.x == x, "position().x should be x");
+    assert!(pos.y == y, "position().y should be y");
+}
+
+/// **Postcondition**: `size()` returns (width, height) of the rect.
+#[kani::proof]
+fn verify_rect_size_correct() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(w.is_finite());
+    kani::assume(h.is_finite());
+    let r = Rect::new(x, y, w, h);
+    let sz = r.size();
+    assert!(sz.x == w, "size().x should be width");
+    assert!(sz.y == h, "size().y should be height");
+}
