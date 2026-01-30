@@ -51,9 +51,9 @@ jobs:
             echo "Some files need formatting. Run \`cargo fmt\` locally." >> $GITHUB_STEP_SUMMARY
           fi
 
-  # Verification counts consistency check - pure bash, no Rust needed
+  # Documentation metrics consistency check - pure bash + python3, no Rust needed
   verification-counts:
-    name: Verification Counts
+    name: Doc Metrics
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -62,19 +62,26 @@ jobs:
       - name: Check verification counts consistency
         run: ./scripts/update-verification-counts.sh --check
 
+      - name: Check documentation metrics consistency
+        run: ./scripts/update-doc-metrics.sh --check
+
       - name: Generate verification summary
         if: always()
         run: |
-          echo "## Verification Counts" >> $GITHUB_STEP_SUMMARY
+          echo "## Documentation Metrics" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if ./scripts/update-verification-counts.sh --json 2>/dev/null | grep -q "GRAND TOTAL"; then
-            TOTAL=$(grep '"grand_total"' metrics/verification-counts.json | grep -oE '[0-9]+')
+          if ./scripts/update-doc-metrics.sh --json 2>/dev/null; then
             echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
             echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Total theorems/harnesses | **$TOTAL** |" >> $GITHUB_STEP_SUMMARY
+            TOTAL=$(python3 -c "import json; print(json.load(open('metrics/doc-metrics.json'))['verification']['grand_total'])" 2>/dev/null || echo "?")
+            PHASES=$(python3 -c "import json; print(json.load(open('metrics/doc-metrics.json'))['optimization_phases'])" 2>/dev/null || echo "?")
+            MSRV=$(python3 -c "import json; print(json.load(open('metrics/doc-metrics.json'))['msrv'])" 2>/dev/null || echo "?")
+            echo "| Verified theorems/harnesses | **$TOTAL** |" >> $GITHUB_STEP_SUMMARY
+            echo "| Optimization phases | **$PHASES** |" >> $GITHUB_STEP_SUMMARY
+            echo "| MSRV | **$MSRV** |" >> $GITHUB_STEP_SUMMARY
             echo "| Documentation consistency | Verified |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "Failed to parse verification counts." >> $GITHUB_STEP_SUMMARY
+            echo "Failed to parse documentation metrics." >> $GITHUB_STEP_SUMMARY
           fi
 
   # Clippy lint check - depends on format passing

@@ -364,6 +364,16 @@ CHECKS=(
     "docs/verification/RUST_VERIFICATION_LANDSCAPE.md|$KANI_TOTAL harnesses for|LANDSCAPE Kani count"
     # kani_proofs/mod.rs - harness count in doc
     "crates/rource-math/src/kani_proofs/mod.rs|$KANI_TOTAL total|mod.rs harness count"
+    # SETUP_GUIDE.md - Verus total in table
+    "docs/verification/SETUP_GUIDE.md|**$VERUS_TOTAL**|SETUP_GUIDE Verus total"
+    # SETUP_GUIDE.md - Coq combined total in table
+    "docs/verification/SETUP_GUIDE.md|**$COQ_COMBINED**|SETUP_GUIDE Coq combined total"
+    # SETUP_GUIDE.md - Combined total
+    "docs/verification/SETUP_GUIDE.md|**$GRAND_TOTAL**|SETUP_GUIDE combined total"
+    # FLOATING_POINT_VERIFICATION.md - grand total
+    "docs/verification/FLOATING_POINT_VERIFICATION.md|$GRAND_TOTAL theorems|FP_VERIFICATION total"
+    # CERTICOQ_WASM_ASSESSMENT.md - Layer 2 Z total
+    "docs/verification/CERTICOQ_WASM_ASSESSMENT.md|$COQ_Z_TOTAL theorems, all 8|CERTICOQ Layer 2 total"
 )
 
 if [[ "$MODE" == "check" ]]; then
@@ -535,13 +545,78 @@ fi
 SG="$PROJECT_ROOT/docs/verification/SETUP_GUIDE.md"
 if [[ -f "$SG" ]]; then
     echo "Updating SETUP_GUIDE.md..."
-    # Verus references
-    sed -i -E "s/151 theorems/$VERUS_TOTAL proof functions/g" "$SG"
-    sed -i -E "s/240 proof functions/$VERUS_TOTAL proof functions/g" "$SG"
-    # Coq references
-    sed -i -E "s/461 theorems/$COQ_COMBINED theorems/g" "$SG"
-    # Footer
-    sed -i -E "s/[0-9]+ formally verified \(Verus: [0-9]+, Coq: [0-9]+\)/$GRAND_TOTAL formally verified (Verus: $VERUS_TOTAL, Coq: $COQ_COMBINED, Kani: $KANI_TOTAL)/" "$SG"
+    # Verus table total row
+    sed -i -E "s/\*\*Total\*\* \| \*\*[0-9]+\*\* \|/\*\*Total\*\* | \*\*$VERUS_TOTAL\*\* |/" "$SG"
+    # Verus per-file counts
+    sed -i -E "s/\`vec2_proofs\.rs\` \| [0-9]+/\`vec2_proofs.rs\` | $VERUS_VEC2/" "$SG"
+    sed -i -E "s/\`vec3_proofs\.rs\` \| [0-9]+/\`vec3_proofs.rs\` | $VERUS_VEC3/" "$SG"
+    sed -i -E "s/\`vec4_proofs\.rs\` \| [0-9]+/\`vec4_proofs.rs\` | $VERUS_VEC4/" "$SG"
+    sed -i -E "s/\`mat3_proofs\.rs\` \| [0-9]+/\`mat3_proofs.rs\` | $VERUS_MAT3_BASE/" "$SG"
+    sed -i -E "s/\`mat3_extended_proofs\.rs\` \| [0-9]+/\`mat3_extended_proofs.rs\` | $VERUS_MAT3_EXT/" "$SG"
+    sed -i -E "s/\`mat4_proofs\.rs\` \| [0-9]+/\`mat4_proofs.rs\` | $VERUS_MAT4/" "$SG"
+    sed -i -E "s/\`color_proofs\.rs\` \| [0-9]+/\`color_proofs.rs\` | $VERUS_COLOR/" "$SG"
+    sed -i -E "s/\`rect_proofs\.rs\` \| [0-9]+/\`rect_proofs.rs\` | $VERUS_RECT/" "$SG"
+    # Coq table total row
+    sed -i -E "s/\*\*32 files\*\* \| \*\*[0-9]+\*\*/\*\*32 files\*\* | \*\*$COQ_COMBINED\*\*/" "$SG"
+    # Coq per-file counts (R-based proofs)
+    sed -i -E "s/\`Vec2_Proofs\.v\` \| [0-9]+/\`Vec2_Proofs.v\` | $COQ_R_VEC2/" "$SG"
+    sed -i -E "s/\`Vec3_Proofs\.v\` \| [0-9]+/\`Vec3_Proofs.v\` | $COQ_R_VEC3/" "$SG"
+    sed -i -E "s/\`Vec4_Proofs\.v\` \| [0-9]+/\`Vec4_Proofs.v\` | $COQ_R_VEC4/" "$SG"
+    sed -i -E "s/\`Mat3_Proofs\.v\` \| [0-9]+/\`Mat3_Proofs.v\` | $COQ_R_MAT3/" "$SG"
+    sed -i -E "s/\`Mat4_Proofs\.v\` \| [0-9]+/\`Mat4_Proofs.v\` | $COQ_R_MAT4/" "$SG"
+    sed -i -E "s/\`Color_Proofs\.v\` \| [0-9]+/\`Color_Proofs.v\` | $COQ_R_COLOR/" "$SG"
+    sed -i -E "s/\`Rect_Proofs\.v\` \| [0-9]+/\`Rect_Proofs.v\` | $COQ_R_RECT/" "$SG"
+    # Coq per-file counts (Z-based compute)
+    sed -i -E "s/\`Vec2_Compute\.v\` \| [0-9]+/\`Vec2_Compute.v\` | $COQ_Z_VEC2/" "$SG"
+    sed -i -E "s/\`Vec3_Compute\.v\` \| [0-9]+/\`Vec3_Compute.v\` | $COQ_Z_VEC3/" "$SG"
+    sed -i -E "s/\`Vec4_Compute\.v\` \| [0-9]+/\`Vec4_Compute.v\` | $COQ_Z_VEC4/" "$SG"
+    sed -i -E "s/\`Mat3_Compute\.v\` \| [0-9]+/\`Mat3_Compute.v\` | $COQ_Z_MAT3/" "$SG"
+    sed -i -E "s/\`Mat4_Compute\.v\` \| [0-9]+/\`Mat4_Compute.v\` | $COQ_Z_MAT4/" "$SG"
+    sed -i -E "s/\`Color_Compute\.v\` \| [0-9]+/\`Color_Compute.v\` | $COQ_Z_COLOR/" "$SG"
+    sed -i -E "s/\`Rect_Compute\.v\` \| [0-9]+/\`Rect_Compute.v\` | $COQ_Z_RECT/" "$SG"
+    sed -i -E "s/\`Utils_Compute\.v\` \| [0-9]+/\`Utils_Compute.v\` | $COQ_Z_UTILS/" "$SG"
+    # Expected Results table
+    sed -i -E "s/Verus \| [0-9]+ proof functions/Verus | $VERUS_TOTAL proof functions/" "$SG"
+    sed -i -E "s/Coq \(R-based\) \| [0-9]+ theorems/Coq (R-based) | $COQ_R_TOTAL theorems/" "$SG"
+    sed -i -E "s/Coq \(Z-based\) \| [0-9]+ theorems/Coq (Z-based) | $COQ_Z_TOTAL theorems/" "$SG"
+    sed -i -E "s/Kani \(CBMC\) \| [0-9]+ harnesses/Kani (CBMC) | $KANI_TOTAL harnesses/" "$SG"
+    sed -i -E "s/\*\*Combined\*\* \| \*\*[0-9]+\*\*/\*\*Combined\*\* | \*\*$GRAND_TOTAL\*\*/" "$SG"
+    echo "  Done."
+fi
+
+# --- FLOATING_POINT_VERIFICATION.md ---
+FPV="$PROJECT_ROOT/docs/verification/FLOATING_POINT_VERIFICATION.md"
+if [[ -f "$FPV" ]]; then
+    echo "Updating FLOATING_POINT_VERIFICATION.md..."
+    # Coverage trajectory table: current total
+    sed -i -E "s/Algebraic properties \| [0-9]+ theorems/Algebraic properties | $GRAND_TOTAL theorems/" "$FPV"
+    echo "  Done."
+fi
+
+# --- CERTICOQ_WASM_ASSESSMENT.md ---
+CW="$PROJECT_ROOT/docs/verification/CERTICOQ_WASM_ASSESSMENT.md"
+if [[ -f "$CW" ]]; then
+    echo "Updating CERTICOQ_WASM_ASSESSMENT.md..."
+    # Architecture diagram Layer 2 per-type counts
+    sed -i -E "s/Vec2_Compute\.v \([0-9]+ theorems\)/Vec2_Compute.v ($COQ_Z_VEC2 theorems)/" "$CW"
+    sed -i -E "s/Vec3_Compute\.v \([0-9]+ theorems\)/Vec3_Compute.v ($COQ_Z_VEC3 theorems)/" "$CW"
+    sed -i -E "s/Vec4_Compute\.v \([0-9]+ theorems\)/Vec4_Compute.v ($COQ_Z_VEC4 theorems)/" "$CW"
+    sed -i -E "s/Mat3_Compute\.v \([0-9]+ theorems/Mat3_Compute.v ($COQ_Z_MAT3 theorems/" "$CW"
+    sed -i -E "s/Mat4_Compute\.v \([0-9]+ theorems/Mat4_Compute.v ($COQ_Z_MAT4 theorems/" "$CW"
+    sed -i -E "s/Color_Compute\.v \([0-9]+ theorems/Color_Compute.v ($COQ_Z_COLOR theorems/" "$CW"
+    sed -i -E "s/Rect_Compute\.v \([0-9]+ theorems/Rect_Compute.v ($COQ_Z_RECT theorems/" "$CW"
+    sed -i -E "s/Utils_Compute\.v \([0-9]+ theorems/Utils_Compute.v ($COQ_Z_UTILS theorems/" "$CW"
+    # Layer 2 total
+    sed -i -E "s/COMPLETE \([0-9]+ theorems, all 8 types\)/COMPLETE ($COQ_Z_TOTAL theorems, all 8 types)/" "$CW"
+    # Layer 1 R-based proof file ranges
+    PROOFS_TOTAL=$((COQ_R_VEC2 + COQ_R_VEC3 + COQ_R_VEC4 + COQ_R_MAT3 + COQ_R_MAT4))
+    COLOR_RECT_TOTAL=$((COQ_R_COLOR + COQ_R_RECT))
+    LAYER1_WITH_VERUS=$((VERUS_TOTAL + COQ_R_TOTAL))
+    sed -i -E "s/Mat4_Proofs\.v \([0-9]+ theorems\)/Mat4_Proofs.v ($PROOFS_TOTAL theorems)/" "$CW"
+    sed -i -E "s/Rect_Proofs\.v \([0-9]+ theorems\)/Rect_Proofs.v ($COLOR_RECT_TOTAL theorems)/" "$CW"
+    sed -i -E "s/COMPLETE \([0-9]+ total with Verus\)/COMPLETE ($LAYER1_WITH_VERUS total with Verus)/" "$CW"
+    # Vec2_Compute.v detail section heading
+    sed -i -E "s/\*\*Theorems\*\*: [0-9]+ \(all machine-checked/\*\*Theorems\*\*: $COQ_Z_VEC2 (all machine-checked/" "$CW"
     echo "  Done."
 fi
 

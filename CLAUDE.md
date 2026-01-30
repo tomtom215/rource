@@ -547,7 +547,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Precision | Picosecond/nanosecond measurements |
 | Frame Budget | Total render time < 20 µs |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (81 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (83 phases)
 
 ---
 
@@ -827,7 +827,7 @@ rource/
 └── rource-wasm/           # WebAssembly application
 ```
 
-**Test Count**: 2,100+ tests total across all crates.
+**Test Count**: 2700+ tests total across all crates.
 
 ### Rendering Backends
 
@@ -881,7 +881,7 @@ Every change MUST follow this workflow:
 │     └─ Add tests for new functionality                                  │
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
-│     └─ cargo test (all 2,100+ tests pass)                               │
+│     └─ cargo test (all 2700+ tests pass)                               │
 │     └─ cargo clippy -- -D warnings (zero warnings)                      │
 │     └─ cargo fmt --check (formatted)                                    │
 │     └─ Mobile Safari test (if UI change)                                │
@@ -989,7 +989,7 @@ Every optimization MUST follow this exact process:
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
 | **Documented** | Added to ALL THREE docs/performance/ files |
-| **Correct** | All 2,100+ tests must pass |
+| **Correct** | All 2700+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
 | **Mathematical** | Include complexity analysis and/or mathematical proof |
@@ -1317,10 +1317,10 @@ Some code CANNOT be covered by unit tests:
 
 | Test Type | Requirement | Status |
 |-----------|-------------|--------|
-| Unit tests | All public functions | Yes (2,076 tests) |
+| Unit tests | All public functions | Yes (2719 tests) |
 | Property tests | Math crate invariants | Yes (Implemented) |
 | Chaos tests | Edge cases, unicode, boundaries | Yes (Implemented) |
-| Benchmarks | Critical paths | Yes (13 benchmark suites) |
+| Benchmarks | Critical paths | Yes (15 benchmark suites) |
 | Mutation testing | 80%+ score | TODO |
 | Visual regression | Rendering consistency | TODO |
 | Cross-browser | Chrome, Firefox, Safari, Edge | TODO |
