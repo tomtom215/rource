@@ -60,8 +60,8 @@ which wasm_of_ocaml 2>/dev/null
 
 | Tool | Version | Purpose | Install Location |
 |------|---------|---------|------------------|
-| **Verus** | Latest | Rust formal verification (151 theorems) | `/tmp/verus/` |
-| **Coq** | 8.18.0 | Proof assistant (461 theorems) | System (`apt`) + opam (see Rocq migration) |
+| **Verus** | Latest | Rust formal verification (266 proof functions) | `/tmp/verus/` |
+| **Coq** | 8.18.0 | Proof assistant (697 theorems) | System (`apt`) + opam (see Rocq migration) |
 | **coq-equations** | 1.3+8.18 | Dependent pattern matching for Coq | opam |
 | **MetaCoq** | 8.18.dev | Verified erasure/extraction (Path 2) | `/tmp/metacoq/` + opam |
 | **wasm_of_ocaml** | 6.2.0+ | OCaml-to-WASM compiler (Path 1) | opam |
@@ -131,16 +131,17 @@ rustup install 1.92.0
 
 ### Verus Proof Files
 
-| File | Theorems | VCs | Types Verified |
-|------|----------|-----|----------------|
-| `vec2_proofs.rs` | 23 | 53 | Vec2 |
-| `vec3_proofs.rs` | 24 | 68 | Vec3 |
-| `vec4_proofs.rs` | 22 | 68 | Vec4 |
-| `mat3_proofs.rs` | 18 | 26 | Mat3 |
-| `mat4_proofs.rs` | 18 | 27 | Mat4 |
-| `color_proofs.rs` | 23 | — | Color |
-| `rect_proofs.rs` | 23 | — | Rect |
-| **Total** | **151** | **242+** | **7 types** |
+| File | Proof Functions | Types Verified |
+|------|----------------|----------------|
+| `vec2_proofs.rs` | 49 | Vec2 |
+| `vec3_proofs.rs` | 40 | Vec3 |
+| `vec4_proofs.rs` | 39 | Vec4 |
+| `mat3_proofs.rs` | 22 | Mat3 (base) |
+| `mat3_extended_proofs.rs` | 26 | Mat3 (extended) |
+| `mat4_proofs.rs` | 22 | Mat4 |
+| `color_proofs.rs` | 35 | Color |
+| `rect_proofs.rs` | 33 | Rect |
+| **Total** | **266** | **7 types** |
 
 ---
 
@@ -240,35 +241,35 @@ coqc -Q . RourceMath RourceMath_Extract.v
 
 | Layer | File | Theorems | Description |
 |-------|------|----------|-------------|
-| 1 (Spec) | `Vec2.v` | 3 | R-based Vec2 specification |
+| 1 (Spec) | `Vec2.v` | 1 | R-based Vec2 specification |
 | 1 (Spec) | `Vec3.v` | 1 | R-based Vec3 specification |
 | 1 (Spec) | `Vec4.v` | 1 | R-based Vec4 specification |
-| 1 (Spec) | `Mat3.v` | 0 | R-based Mat3 specification |
-| 1 (Spec) | `Mat4.v` | 0 | R-based Mat4 specification |
+| 1 (Spec) | `Mat3.v` | 2 | R-based Mat3 specification |
+| 1 (Spec) | `Mat4.v` | 1 | R-based Mat4 specification |
 | 1 (Spec) | `Color.v` | 1 | R-based Color specification |
 | 1 (Spec) | `Rect.v` | 1 | R-based Rect specification |
 | 1 (Spec) | `Utils.v` | 10 | R-based utilities (lerp, clamp) |
-| 1 (Proof) | `Vec2_Proofs.v` | 25 | Vec2 algebraic properties |
-| 1 (Proof) | `Vec3_Proofs.v` | 37 | Vec3 algebraic properties |
-| 1 (Proof) | `Vec4_Proofs.v` | 24 | Vec4 algebraic properties |
-| 1 (Proof) | `Mat3_Proofs.v` | 21 | Mat3 algebraic properties |
-| 1 (Proof) | `Mat4_Proofs.v` | 21 | Mat4 algebraic properties |
-| 1 (Proof) | `Color_Proofs.v` | 26 | Color alpha, blend, lerp, luminance |
-| 1 (Proof) | `Rect_Proofs.v` | 20 | Rect containment, intersection, union |
+| 1 (Proof) | `Vec2_Proofs.v` | 65 | Vec2 algebraic properties |
+| 1 (Proof) | `Vec3_Proofs.v` | 71 | Vec3 algebraic properties |
+| 1 (Proof) | `Vec4_Proofs.v` | 51 | Vec4 algebraic properties |
+| 1 (Proof) | `Mat3_Proofs.v` | 48 | Mat3 algebraic properties |
+| 1 (Proof) | `Mat4_Proofs.v` | 52 | Mat4 algebraic properties |
+| 1 (Proof) | `Color_Proofs.v` | 46 | Color alpha, blend, lerp, luminance |
+| 1 (Proof) | `Rect_Proofs.v` | 43 | Rect containment, intersection, union |
 | 1 (Proof) | `Complexity.v` | 60 | O(1) complexity bounds |
-| 2 (Compute) | `Vec2_Compute.v` | 27 | Z-based Vec2 (extractable) |
-| 2 (Compute) | `Vec3_Compute.v` | 31 | Z-based Vec3 (extractable) |
-| 2 (Compute) | `Vec4_Compute.v` | 22 | Z-based Vec4 (extractable) |
+| 2 (Compute) | `Vec2_Compute.v` | 50 | Z-based Vec2 (extractable) |
+| 2 (Compute) | `Vec3_Compute.v` | 42 | Z-based Vec3 (extractable) |
+| 2 (Compute) | `Vec4_Compute.v` | 33 | Z-based Vec4 (extractable) |
 | 2 (Compute) | `Mat3_Compute.v` | 25 | Z-based Mat3 (extractable) |
-| 2 (Compute) | `Mat4_Compute.v` | 21 | Z-based Mat4 (extractable) |
-| 2 (Compute) | `Color_Compute.v` | 22 | Z-based Color (extractable) |
-| 2 (Compute) | `Rect_Compute.v` | 22 | Z-based Rect (extractable) |
-| 2 (Compute) | `Utils_Compute.v` | 14 | Z-based Utils (extractable) |
+| 2 (Compute) | `Mat4_Compute.v` | 41 | Z-based Mat4 (extractable) |
+| 2 (Compute) | `Color_Compute.v` | 28 | Z-based Color (extractable) |
+| 2 (Compute) | `Rect_Compute.v` | 24 | Z-based Rect (extractable) |
+| 2 (Compute) | `Utils_Compute.v` | 8 | Z-based Utils (extractable) |
 | 3 (Extract) | `Color_Extract.v` | 0 | Color OCaml extraction |
 | 3 (Extract) | `Rect_Extract.v` | 0 | Rect OCaml extraction |
 | 3 (Extract) | `RourceMath_Extract.v` | 0 | Unified OCaml extraction (8 types) |
 | 3 (Verified) | `Vec2_VerifiedExtract.v` | 0 | MetaCoq verified erasure (Path 2) |
-| **Total** | **32 files** | **461** | **Zero admits** |
+| **Total** | **32 files** | **697** | **Zero admits** |
 
 ---
 
@@ -462,12 +463,12 @@ ls -la rource_math.wasm  # Should be ~6.8 KB
 ### Manual Verification
 
 ```bash
-# Verus (151 theorems, ~seconds)
+# Verus (266 proof functions, ~seconds)
 for f in crates/rource-math/proofs/*_proofs.rs; do
   /tmp/verus/verus "$f"
 done
 
-# Coq (461 theorems, ~40 seconds)
+# Coq (697 theorems, ~40 seconds)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specs
@@ -494,11 +495,13 @@ done
 
 ### Expected Results
 
-| Tool | Theorems | VCs | Errors | Admits |
-|------|----------|-----|--------|--------|
-| Verus | 151 | 242+ | 0 | 0 |
-| Coq | 461 | N/A | 0 | 0 |
-| **Combined** | **612** | **242+** | **0** | **0** |
+| Tool | Theorems/Proofs | Errors | Admits |
+|------|-----------------|--------|--------|
+| Verus | 266 proof functions | 0 | 0 |
+| Coq (R-based) | 446 theorems | 0 | 0 |
+| Coq (Z-based) | 251 theorems | 0 | 0 |
+| Kani (CBMC) | 110 harnesses | 0 | 0 |
+| **Combined** | **1073** | **0** | **0** |
 
 ---
 

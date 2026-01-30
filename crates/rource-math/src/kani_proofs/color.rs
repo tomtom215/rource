@@ -144,3 +144,207 @@ fn verify_color_lerp_no_nan() {
     assert!(!result.b.is_nan(), "lerp().b is NaN");
     assert!(!result.a.is_nan(), "lerp().a is NaN");
 }
+
+// ============================================================================
+// clamp
+// ============================================================================
+
+/// **Postcondition**: `clamp()` of any finite color produces components in [0, 1].
+#[kani::proof]
+fn verify_color_clamp_bounded() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    kani::assume(a.is_finite());
+    let c = Color::new(r, g, b, a).clamp();
+    assert!(c.r >= 0.0 && c.r <= 1.0, "clamp().r out of [0,1]");
+    assert!(c.g >= 0.0 && c.g <= 1.0, "clamp().g out of [0,1]");
+    assert!(c.b >= 0.0 && c.b <= 1.0, "clamp().b out of [0,1]");
+    assert!(c.a >= 0.0 && c.a <= 1.0, "clamp().a out of [0,1]");
+}
+
+// ============================================================================
+// premultiplied
+// ============================================================================
+
+/// **NaN-freedom**: `premultiplied()` with normalized color produces non-NaN.
+///
+/// Premultiply: `(r*a, g*a, b*a, a)`. For [0,1] inputs, all products ∈ [0,1].
+#[kani::proof]
+fn verify_color_premultiplied_no_nan() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    let c = Color::new(r, g, b, a).premultiplied();
+    assert!(!c.r.is_nan(), "premultiplied().r is NaN");
+    assert!(!c.g.is_nan(), "premultiplied().g is NaN");
+    assert!(!c.b.is_nan(), "premultiplied().b is NaN");
+    assert!(!c.a.is_nan(), "premultiplied().a is NaN");
+}
+
+// ============================================================================
+// fade
+// ============================================================================
+
+/// **NaN-freedom**: `fade()` with normalized color and finite factor.
+#[kani::proof]
+fn verify_color_fade_no_nan() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    let factor: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    kani::assume(factor >= 0.0 && factor <= 1.0);
+    let c = Color::new(r, g, b, a).fade(factor);
+    assert!(!c.r.is_nan(), "fade().r is NaN");
+    assert!(!c.g.is_nan(), "fade().g is NaN");
+    assert!(!c.b.is_nan(), "fade().b is NaN");
+    assert!(!c.a.is_nan(), "fade().a is NaN");
+}
+
+// ============================================================================
+// with_alpha
+// ============================================================================
+
+/// **Postcondition**: `with_alpha()` preserves RGB channels exactly.
+#[kani::proof]
+fn verify_color_with_alpha_preserves_rgb() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    let new_alpha: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    kani::assume(a.is_finite());
+    kani::assume(new_alpha.is_finite());
+    let c = Color::new(r, g, b, a);
+    let c2 = c.with_alpha(new_alpha);
+    assert!(c2.r == r, "with_alpha should preserve r");
+    assert!(c2.g == g, "with_alpha should preserve g");
+    assert!(c2.b == b, "with_alpha should preserve b");
+    assert!(c2.a == new_alpha, "with_alpha should set alpha");
+}
+
+// ============================================================================
+// to_argb8 / to_abgr8
+// ============================================================================
+
+/// **NaN-freedom**: `to_argb8()` with normalized color doesn't panic.
+#[kani::proof]
+fn verify_color_to_argb8_normalized() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let _packed = c.to_argb8();
+}
+
+/// **NaN-freedom**: `to_abgr8()` with normalized color doesn't panic.
+#[kani::proof]
+fn verify_color_to_abgr8_normalized() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let _packed = c.to_abgr8();
+}
+
+// ============================================================================
+// from_hex_alpha
+// ============================================================================
+
+/// **Postcondition**: `from_hex_alpha()` produces components in [0, 1].
+#[kani::proof]
+fn verify_color_from_hex_alpha_normalized() {
+    let hex: u32 = kani::any();
+    let c = Color::from_hex_alpha(hex);
+    assert!(c.r >= 0.0 && c.r <= 1.0, "from_hex_alpha().r out of [0,1]");
+    assert!(c.g >= 0.0 && c.g <= 1.0, "from_hex_alpha().g out of [0,1]");
+    assert!(c.b >= 0.0 && c.b <= 1.0, "from_hex_alpha().b out of [0,1]");
+    assert!(c.a >= 0.0 && c.a <= 1.0, "from_hex_alpha().a out of [0,1]");
+}
+
+// ============================================================================
+// from_rgba8
+// ============================================================================
+
+/// **Postcondition**: `from_rgba8()` produces components in [0, 1].
+#[kani::proof]
+fn verify_color_from_rgba8_normalized() {
+    let r: u8 = kani::any();
+    let g: u8 = kani::any();
+    let b: u8 = kani::any();
+    let a: u8 = kani::any();
+    let c = Color::from_rgba8(r, g, b, a);
+    assert!(c.r >= 0.0 && c.r <= 1.0, "from_rgba8().r out of [0,1]");
+    assert!(c.g >= 0.0 && c.g <= 1.0, "from_rgba8().g out of [0,1]");
+    assert!(c.b >= 0.0 && c.b <= 1.0, "from_rgba8().b out of [0,1]");
+    assert!(c.a >= 0.0 && c.a <= 1.0, "from_rgba8().a out of [0,1]");
+}
+
+// ============================================================================
+// contrasting
+// ============================================================================
+
+/// **Postcondition**: `contrasting()` returns BLACK or WHITE.
+#[kani::proof]
+fn verify_color_contrasting_valid() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    let c = Color::rgb(r, g, b).contrasting();
+    // contrasting() should return either BLACK or WHITE
+    let is_black = c.r == 0.0 && c.g == 0.0 && c.b == 0.0;
+    let is_white = c.r == 1.0 && c.g == 1.0 && c.b == 1.0;
+    assert!(
+        is_black || is_white,
+        "contrasting should return BLACK or WHITE"
+    );
+}
+
+// ============================================================================
+// approx_eq
+// ============================================================================
+
+/// **Reflexivity**: `approx_eq(c, c)` is true for all normalized colors.
+#[kani::proof]
+fn verify_color_approx_eq_reflexive() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    kani::assume(a.is_finite());
+    let c = Color::new(r, g, b, a);
+    assert!(c.approx_eq(c), "approx_eq not reflexive");
+}

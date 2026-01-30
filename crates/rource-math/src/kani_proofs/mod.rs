@@ -32,13 +32,16 @@
 //! algebraic proofs which verify mathematical identities but cannot
 //! reason about IEEE 754 special values.
 //!
+//! # Harness Count (110 total)
+//!
+//! - Vec2: 21, Vec3: 18, Vec4: 9
+//! - Mat3: 14, Mat4: 15
+//! - Color: 15, Rect: 13, Utils: 5
+//!
 //! # Running
 //!
 //! ```bash
-//! # Run all Kani harnesses
-//! cargo kani -p rource-math
-//!
-//! # Run a specific harness
+//! # Run a specific harness (recommended - running all at once may SIGSEGV)
 //! cargo kani -p rource-math --harness verify_vec2_length_non_negative
 //! ```
 

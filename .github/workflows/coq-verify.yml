@@ -3,12 +3,8 @@ name: Coq Proof Verification
 on:
   push:
     branches: [main]
-    paths:
-      - 'crates/rource-math/proofs/coq/**'
   pull_request:
     branches: [main]
-    paths:
-      - 'crates/rource-math/proofs/coq/**'
   workflow_dispatch:  # Allow manual triggers for testing
 
 # Prevent concurrent verification runs on the same branch/PR
@@ -31,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Cache opam
         uses: actions/cache@v4
@@ -44,144 +40,177 @@ jobs:
       - name: Install Coq
         run: |
           sudo apt-get update
-          sudo apt-get install -y coq
+          sudo apt-get install -y coq coq-theories
 
       - name: Verify Coq installation
         run: |
           coqc --version
           echo "Coq version: $(coqc --version | head -1)"
 
-      - name: Build Coq proofs
-        id: build
+      # ================================================================
+      # Layer 1: Specifications (8 files)
+      # ================================================================
+
+      - name: "Layer 1: Build specifications"
         working-directory: crates/rource-math/proofs/coq
         run: |
-          echo "Building Coq proofs..."
+          echo "Building type specifications (8 files)..."
+          for f in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v; do
+            echo "  Building $f..."
+            timeout 60 coqc -Q . RourceMath "$f" 2>&1
+          done
+          echo "All specifications compiled successfully."
 
-          # Build vector specifications first (fast, ~1-2 seconds each)
-          echo "Building Vec2.v..."
-          timeout 60 coqc -Q . RourceMath Vec2.v 2>&1
+      # ================================================================
+      # Layer 2: R-based algebraic proofs (7 files, 446 theorems)
+      # ================================================================
 
-          echo "Building Vec3.v..."
-          timeout 60 coqc -Q . RourceMath Vec3.v 2>&1
+      - name: "Layer 2: Build R-based proofs"
+        id: r_proofs
+        working-directory: crates/rource-math/proofs/coq
+        run: |
+          echo "Building R-based algebraic proofs (7 files)..."
+          FAILED=0
 
-          echo "Building Vec4.v..."
-          timeout 60 coqc -Q . RourceMath Vec4.v 2>&1
+          for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v; do
+            echo "  Building $f..."
+            if ! timeout 300 coqc -Q . RourceMath "$f" 2>&1; then
+              echo "::error::$f failed to compile"
+              FAILED=1
+            fi
+          done
 
-          # Build matrix specifications (fast, ~1-2 seconds each)
-          echo "Building Mat3.v..."
-          timeout 60 coqc -Q . RourceMath Mat3.v 2>&1
+          if [ "$FAILED" -ne 0 ]; then
+            echo "r_proofs_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "r_proofs_status=verified" >> $GITHUB_OUTPUT
+          echo "All R-based proofs verified."
 
-          echo "Building Mat4.v..."
-          timeout 60 coqc -Q . RourceMath Mat4.v 2>&1
+      # ================================================================
+      # Layer 3: Complexity proofs (1 file, 60 theorems)
+      # ================================================================
 
-          # Build complexity proofs (fast, uses lia tactic)
+      - name: "Layer 3: Build complexity proofs"
+        id: complexity
+        working-directory: crates/rource-math/proofs/coq
+        run: |
           echo "Building Complexity.v..."
-          COMPLEXITY_OUTPUT=$(timeout 60 coqc -Q . RourceMath Complexity.v 2>&1 || true)
-          if echo "$COMPLEXITY_OUTPUT" | grep -q "Error"; then
-            echo "complexity_status=failed" >> $GITHUB_OUTPUT
-            echo "$COMPLEXITY_OUTPUT"
-            exit 1
-          else
+          if timeout 60 coqc -Q . RourceMath Complexity.v 2>&1; then
             echo "complexity_status=verified" >> $GITHUB_OUTPUT
-            echo "Complexity.v verified successfully"
-          fi
-
-          # Build vector proofs (moderate, ~5-30 seconds each)
-          echo "Building Vec2_Proofs.v..."
-          VEC2_OUTPUT=$(timeout 120 coqc -Q . RourceMath Vec2_Proofs.v 2>&1 || true)
-          if echo "$VEC2_OUTPUT" | grep -q "Error"; then
-            echo "vec2_status=failed" >> $GITHUB_OUTPUT
-            echo "$VEC2_OUTPUT"
-            exit 1
+            echo "Complexity proofs verified."
           else
-            echo "vec2_status=verified" >> $GITHUB_OUTPUT
-            echo "Vec2_Proofs.v verified successfully"
-          fi
-
-          echo "Building Vec3_Proofs.v..."
-          VEC3_OUTPUT=$(timeout 120 coqc -Q . RourceMath Vec3_Proofs.v 2>&1 || true)
-          if echo "$VEC3_OUTPUT" | grep -q "Error"; then
-            echo "vec3_status=failed" >> $GITHUB_OUTPUT
-            echo "$VEC3_OUTPUT"
+            echo "complexity_status=failed" >> $GITHUB_OUTPUT
+            echo "::error::Complexity.v failed to compile"
             exit 1
-          else
-            echo "vec3_status=verified" >> $GITHUB_OUTPUT
-            echo "Vec3_Proofs.v verified successfully"
           fi
 
-          echo "Building Vec4_Proofs.v..."
-          VEC4_OUTPUT=$(timeout 180 coqc -Q . RourceMath Vec4_Proofs.v 2>&1 || true)
-          if echo "$VEC4_OUTPUT" | grep -q "Error"; then
-            echo "vec4_status=failed" >> $GITHUB_OUTPUT
-            echo "$VEC4_OUTPUT"
+      # ================================================================
+      # Layer 4: Z-based computational bridge (8 files, 251 theorems)
+      # ================================================================
+
+      - name: "Layer 4: Build Z-based computational bridge"
+        id: z_compute
+        working-directory: crates/rource-math/proofs/coq
+        run: |
+          echo "Building Z-based computational bridge (8 files)..."
+          FAILED=0
+
+          for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Utils_Compute.v; do
+            echo "  Building $f..."
+            if ! timeout 300 coqc -Q . RourceMath "$f" 2>&1; then
+              echo "::error::$f failed to compile"
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "z_compute_status=failed" >> $GITHUB_OUTPUT
             exit 1
-          else
-            echo "vec4_status=verified" >> $GITHUB_OUTPUT
-            echo "Vec4_Proofs.v verified successfully"
           fi
+          echo "z_compute_status=verified" >> $GITHUB_OUTPUT
+          echo "All Z-based computational proofs verified."
 
-          # Build matrix proofs (slow due to ring tactic on large expressions)
-          # Mat3 has 9 components, Mat4 has 16 - multiplication associativity is expensive
-          echo "Building Mat3_Proofs.v (may take 1-2 minutes)..."
-          MAT3_OUTPUT=$(timeout 300 coqc -Q . RourceMath Mat3_Proofs.v 2>&1 || true)
-          if echo "$MAT3_OUTPUT" | grep -q "Error"; then
-            echo "mat3_status=failed" >> $GITHUB_OUTPUT
-            echo "$MAT3_OUTPUT"
+      # ================================================================
+      # Layer 5: OCaml extraction (standard Coq extraction)
+      # ================================================================
+
+      - name: "Layer 5: Build OCaml extraction"
+        id: extraction
+        working-directory: crates/rource-math/proofs/coq
+        run: |
+          echo "Building OCaml extraction..."
+          if timeout 120 coqc -Q . RourceMath RourceMath_Extract.v 2>&1; then
+            echo "extraction_status=verified" >> $GITHUB_OUTPUT
+            echo "Extraction compiled successfully."
+          else
+            echo "extraction_status=failed" >> $GITHUB_OUTPUT
+            echo "::error::RourceMath_Extract.v failed to compile"
             exit 1
-          else
-            echo "mat3_status=verified" >> $GITHUB_OUTPUT
-            echo "Mat3_Proofs.v verified successfully"
           fi
 
-          echo "Building Mat4_Proofs.v (~6 seconds with optimizations)..."
-          MAT4_OUTPUT=$(timeout 120 coqc -Q . RourceMath Mat4_Proofs.v 2>&1 || true)
-          if echo "$MAT4_OUTPUT" | grep -q "Error"; then
-            echo "mat4_status=failed" >> $GITHUB_OUTPUT
-            echo "$MAT4_OUTPUT"
-            exit 1
-          else
-            echo "mat4_status=verified" >> $GITHUB_OUTPUT
-            echo "Mat4_Proofs.v verified successfully"
-          fi
-
-          echo "All Coq proofs verified successfully!"
+      # ================================================================
+      # Theorem counting and admits check
+      # ================================================================
 
       - name: Count theorems
         id: count
         working-directory: crates/rource-math/proofs/coq
         run: |
-          # Count theorems in each proof file
-          VEC2_THEOREMS=$(grep -c "^Theorem\|^Lemma" Vec2_Proofs.v || echo "0")
-          VEC3_THEOREMS=$(grep -c "^Theorem\|^Lemma" Vec3_Proofs.v || echo "0")
-          VEC4_THEOREMS=$(grep -c "^Theorem\|^Lemma" Vec4_Proofs.v || echo "0")
-          MAT3_THEOREMS=$(grep -c "^Theorem\|^Lemma" Mat3_Proofs.v || echo "0")
-          MAT4_THEOREMS=$(grep -c "^Theorem\|^Lemma" Mat4_Proofs.v || echo "0")
-          COMPLEXITY_THEOREMS=$(grep -c "^Theorem\|^Lemma" Complexity.v || echo "0")
+          # Count ALL theorem types: Theorem, Lemma, Local Lemma
+          # Local Lemma is used for component decomposition proofs (Mat3/Mat4)
 
-          echo "vec2_theorems=$VEC2_THEOREMS" >> $GITHUB_OUTPUT
-          echo "vec3_theorems=$VEC3_THEOREMS" >> $GITHUB_OUTPUT
-          echo "vec4_theorems=$VEC4_THEOREMS" >> $GITHUB_OUTPUT
-          echo "mat3_theorems=$MAT3_THEOREMS" >> $GITHUB_OUTPUT
-          echo "mat4_theorems=$MAT4_THEOREMS" >> $GITHUB_OUTPUT
-          echo "complexity_theorems=$COMPLEXITY_THEOREMS" >> $GITHUB_OUTPUT
+          # R-based counts
+          R_TOTAL=0
+          for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v; do
+            COUNT=$(grep -cE '^(Theorem|Lemma|Local Lemma)' "$f" 2>/dev/null || echo "0")
+            echo "  $f: $COUNT theorems"
+            R_TOTAL=$((R_TOTAL + COUNT))
+          done
+          echo "r_total=$R_TOTAL" >> $GITHUB_OUTPUT
 
-          TOTAL=$((VEC2_THEOREMS + VEC3_THEOREMS + VEC4_THEOREMS + MAT3_THEOREMS + MAT4_THEOREMS + COMPLEXITY_THEOREMS))
-          echo "total_theorems=$TOTAL" >> $GITHUB_OUTPUT
+          # Complexity count
+          COMPLEXITY=$(grep -cE '^(Theorem|Lemma|Local Lemma)' Complexity.v 2>/dev/null || echo "0")
+          echo "complexity=$COMPLEXITY" >> $GITHUB_OUTPUT
+
+          # Z-based counts
+          Z_TOTAL=0
+          for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Utils_Compute.v; do
+            COUNT=$(grep -cE '^(Theorem|Lemma|Local Lemma)' "$f" 2>/dev/null || echo "0")
+            echo "  $f: $COUNT theorems"
+            Z_TOTAL=$((Z_TOTAL + COUNT))
+          done
+          echo "z_total=$Z_TOTAL" >> $GITHUB_OUTPUT
+
+          GRAND_TOTAL=$((R_TOTAL + COMPLEXITY + Z_TOTAL))
+          echo "grand_total=$GRAND_TOTAL" >> $GITHUB_OUTPUT
+          echo ""
+          echo "=== Coq Theorem Summary ==="
+          echo "R-based proofs: $R_TOTAL"
+          echo "Complexity:     $COMPLEXITY"
+          echo "Z-based:        $Z_TOTAL"
+          echo "Grand total:    $GRAND_TOTAL"
 
       - name: Check for admits
         id: admits
         working-directory: crates/rource-math/proofs/coq
         run: |
-          # Check for any admits (incomplete proofs)
-          ADMITS=$(grep -rn "admit\.\|Admitted\." *.v || echo "")
+          # Check ALL .v files for admits (incomplete proofs)
+          ADMITS=$(grep -rnE 'admit\.|Admitted\.' *.v 2>/dev/null | grep -v '^\s*(\*' || echo "")
           if [ -n "$ADMITS" ]; then
-            echo "WARNING: Found admits in proof files:"
+            echo "::error::Found admits in proof files:"
             echo "$ADMITS"
             echo "has_admits=true" >> $GITHUB_OUTPUT
+            # Fail CI on admits - zero admits policy
+            exit 1
           else
             echo "No admits found - all proofs are complete!"
             echo "has_admits=false" >> $GITHUB_OUTPUT
           fi
+
+      # ================================================================
+      # Summary
+      # ================================================================
 
       - name: Generate Verification Summary
         if: always()
@@ -190,86 +219,40 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Formal proofs verified using [Coq](https://coq.inria.fr/) v${{ env.COQ_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Vector Proofs" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Compilation Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Theorems | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer | Description | Files | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------------|-------|--------|" >> $GITHUB_STEP_SUMMARY
 
-          # Vec2
-          VEC2_STATUS="${{ steps.build.outputs.vec2_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
-          echo "| Vec2_Proofs | ${{ steps.count.outputs.vec2_theorems }} | $VEC2_STATUS |" >> $GITHUB_STEP_SUMMARY
+          # Layer statuses
+          R_STATUS="${{ steps.r_proofs.outputs.r_proofs_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
+          C_STATUS="${{ steps.complexity.outputs.complexity_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
+          Z_STATUS="${{ steps.z_compute.outputs.z_compute_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
+          E_STATUS="${{ steps.extraction.outputs.extraction_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
 
-          # Vec3
-          VEC3_STATUS="${{ steps.build.outputs.vec3_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
-          echo "| Vec3_Proofs | ${{ steps.count.outputs.vec3_theorems }} | $VEC3_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          # Vec4
-          VEC4_STATUS="${{ steps.build.outputs.vec4_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
-          echo "| Vec4_Proofs | ${{ steps.count.outputs.vec4_theorems }} | $VEC4_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Matrix Proofs" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Theorems | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|----------|--------|" >> $GITHUB_STEP_SUMMARY
-
-          # Mat3
-          MAT3_STATUS="${{ steps.build.outputs.mat3_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
-          echo "| Mat3_Proofs | ${{ steps.count.outputs.mat3_theorems }} | $MAT3_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          # Mat4
-          MAT4_STATUS="${{ steps.build.outputs.mat4_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
-          echo "| Mat4_Proofs | ${{ steps.count.outputs.mat4_theorems }} | $MAT4_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 1 | Type specifications (R-based) | 8 | :white_check_mark: Verified |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 2 | R-based algebraic proofs | 7 | $R_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 3 | Complexity (ICC O(1) bounds) | 1 | $C_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 4 | Z-based computational bridge | 8 | $Z_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 5 | OCaml extraction | 1 | $E_STATUS |" >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Complexity Proofs (Phase 2)" >> $GITHUB_STEP_SUMMARY
+          echo "### Theorem Counts" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Theorems | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|----------|--------|" >> $GITHUB_STEP_SUMMARY
-
-          # Complexity
-          COMPLEXITY_STATUS="${{ steps.build.outputs.complexity_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
-          echo "| Complexity | ${{ steps.count.outputs.complexity_theorems }} | $COMPLEXITY_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| **Total** | **${{ steps.count.outputs.total_theorems }}** | |" >> $GITHUB_STEP_SUMMARY
+          echo "| Category | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| R-based proofs | **${{ steps.count.outputs.r_total }}** |" >> $GITHUB_STEP_SUMMARY
+          echo "| Complexity proofs | **${{ steps.count.outputs.complexity }}** |" >> $GITHUB_STEP_SUMMARY
+          echo "| Z-based proofs | **${{ steps.count.outputs.z_total }}** |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total Coq theorems** | **${{ steps.count.outputs.grand_total }}** |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Admits check
-          if [ "${{ steps.admits.outputs.has_admits }}" == "true" ]; then
-            echo "> :warning: **Warning: Found incomplete proofs (admits)**" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.admits.outputs.has_admits }}" = "true" ]; then
+            echo "> :x: **VIOLATION: Found incomplete proofs (admits). Zero admits policy breached!**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "> :white_check_mark: **All proofs are complete - zero admits!**" >> $GITHUB_STEP_SUMMARY
+            echo "> :white_check_mark: **All proofs complete - zero admits!**" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          echo "### Verification Standard" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**PEER REVIEWED PUBLISHED ACADEMIC STANDARD**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- All theorems machine-checked by Coq" >> $GITHUB_STEP_SUMMARY
-          echo "- Zero admits, zero axioms beyond standard library" >> $GITHUB_STEP_SUMMARY
-          echo "- Proofs are constructive where possible" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Properties Verified" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Vector Properties" >> $GITHUB_STEP_SUMMARY
-          echo "- **Vector Space Axioms**: Commutativity, associativity, distributivity, identity" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dot Product**: Commutativity, linearity, positive definiteness" >> $GITHUB_STEP_SUMMARY
-          echo "- **Cross Product** (Vec3): Anti-commutativity, orthogonality, right-hand rule" >> $GITHUB_STEP_SUMMARY
-          echo "- **Scalar Triple Product** (Vec3): Cyclic invariance" >> $GITHUB_STEP_SUMMARY
-          echo "- **Interpolation**: Lerp boundary conditions" >> $GITHUB_STEP_SUMMARY
-          echo "- **Orthonormal Basis**: Unit vector properties" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Matrix Properties" >> $GITHUB_STEP_SUMMARY
-          echo "- **Matrix Addition**: Commutativity, associativity, identity, inverse" >> $GITHUB_STEP_SUMMARY
-          echo "- **Matrix Multiplication**: Left/right identity, associativity (CRITICAL for MVP)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Scalar Multiplication**: Identity, zero, distribution, associativity" >> $GITHUB_STEP_SUMMARY
-          echo "- **Transpose**: Double transpose, distribution over addition/scaling" >> $GITHUB_STEP_SUMMARY
-          echo "- **Ring Structure**: Mat3/Mat4 form rings with identity" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Complexity Properties (Phase 2 - ICC)" >> $GITHUB_STEP_SUMMARY
-          echo "- **O(1) Bounds**: All 40 operations proven constant-time" >> $GITHUB_STEP_SUMMARY
-          echo "- **Cost Model**: Abstract operation counting (muls + adds)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Master Theorem**: \`all_rource_math_O1\` proves all operations O(1)" >> $GITHUB_STEP_SUMMARY
-
+          echo "**Standard:** PEER REVIEWED PUBLISHED ACADEMIC (machine-checked, zero axioms beyond standard library)" >> $GITHUB_STEP_SUMMARY

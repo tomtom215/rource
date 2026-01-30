@@ -1,13 +1,13 @@
 name: Benchmark PR
 
-# TEMPORARILY DISABLED: Re-enable when iteration frequency decreases
-# To re-enable: uncomment pull_request trigger below
+# ON-DEMAND ONLY: Full A/B criterion benchmarks require ~60+ min (build+bench
+# both PR and main branches). Re-enable pull_request trigger when actively
+# optimizing performance-sensitive code paths.
 on:
-  workflow_dispatch:  # Manual trigger only for now
+  workflow_dispatch:  # Manual trigger only
   # pull_request:
   #   branches: [main]
   #   paths:
-  #     # Only run benchmarks when performance-sensitive code changes
   #     - 'crates/**/*.rs'
   #     - 'rource-cli/**/*.rs'
   #     - 'rource-wasm/**/*.rs'
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: check-label
     if: needs.check-label.outputs.should_skip != 'true'
-    timeout-minutes: 45
+    timeout-minutes: 120
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v6

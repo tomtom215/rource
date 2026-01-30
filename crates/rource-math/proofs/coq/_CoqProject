@@ -1,22 +1,68 @@
 -R . RourceMath
 
-# Vector type specifications
+# ================================================================
+# Layer 1: Type specifications (8 files)
+# ================================================================
+
 Vec2.v
 Vec3.v
 Vec4.v
+Mat3.v
+Mat4.v
+Color.v
+Rect.v
+Utils.v
 
-# Vector algebraic property proofs
+# ================================================================
+# Layer 2: R-based algebraic proofs (7 files, 446 theorems)
+# ================================================================
+
 Vec2_Proofs.v
 Vec3_Proofs.v
 Vec4_Proofs.v
-
-# Matrix type specifications
-Mat3.v
-Mat4.v
-
-# Matrix algebraic property proofs
 Mat3_Proofs.v
 Mat4_Proofs.v
+Color_Proofs.v
+Rect_Proofs.v
 
-# Complexity bounds (ICC) - PLANNED: Phase 2
-# Complexity.v
+# ================================================================
+# Layer 3: Complexity bounds (ICC O(1), 1 file, 60 theorems)
+# ================================================================
+
+Complexity.v
+
+# ================================================================
+# Layer 4: Z-based computational bridge (8 files, 251 theorems)
+# ================================================================
+
+Vec2_Compute.v
+Vec3_Compute.v
+Vec4_Compute.v
+Mat3_Compute.v
+Mat4_Compute.v
+Color_Compute.v
+Rect_Compute.v
+Utils_Compute.v
+
+# ================================================================
+# Layer 5: Per-type OCaml extraction (7 files)
+# ================================================================
+
+Vec2_Extract.v
+Vec3_Extract.v
+Vec4_Extract.v
+Mat3_Extract.v
+Mat4_Extract.v
+Color_Extract.v
+Rect_Extract.v
+
+# ================================================================
+# Layer 6: Unified OCaml extraction (1 file)
+# ================================================================
+
+RourceMath_Extract.v
+
+# ================================================================
+# MetaCoq verified extraction (requires MetaCoq, not in CI)
+# ================================================================
+# Vec2_VerifiedExtract.v

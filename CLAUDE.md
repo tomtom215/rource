@@ -20,15 +20,16 @@ This document provides context and guidance for Claude (AI assistant) when worki
 12. [Security Standards](#security-standards)
 13. [Accessibility Standards](#accessibility-standards)
 14. [Documentation Standards](#documentation-standards)
-15. [Common Tasks](#common-tasks)
-16. [CI/CD Pipeline](#cicd-pipeline)
-17. [Debugging](#debugging)
-18. [Dependencies Philosophy](#dependencies-philosophy)
-19. [Git Workflow](#git-workflow)
-20. [Troubleshooting](#troubleshooting)
-21. [Reference Links](#reference-links)
-22. [Roadmap Documents](#roadmap-documents)
-23. [Session Best Practices](#session-best-practices)
+15. [Documentation Automation Standards](#documentation-automation-standards)
+16. [Common Tasks](#common-tasks)
+17. [CI/CD Pipeline](#cicd-pipeline)
+18. [Debugging](#debugging)
+19. [Dependencies Philosophy](#dependencies-philosophy)
+20. [Git Workflow](#git-workflow)
+21. [Troubleshooting](#troubleshooting)
+22. [Reference Links](#reference-links)
+23. [Roadmap Documents](#roadmap-documents)
+24. [Session Best Practices](#session-best-practices)
 
 ---
 
@@ -84,9 +85,9 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 266 proof functions, 0 errors
 - **Coq (R-based)**: 446 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
-- **Coq (Z-based)**: 235 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
-- **Kani (CBMC)**: 45 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
-- **Combined**: 992 formally verified theorems/harnesses across 8 types
+- **Coq (Z-based)**: 251 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
+- **Kani (CBMC)**: 110 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
+- **Combined**: 1073 formally verified theorems/harnesses across 8 types
 
 ### The Non-Negotiable Rules
 
@@ -348,6 +349,11 @@ The following events MUST trigger a CLAUDE.md update:
 | New technique discovered | Document with examples |
 | User had to ask for CLAUDE.md update | Add automatic trigger for similar situations |
 | Standard violation identified | Add to Lessons Learned with prevention rule |
+| Documentation drift detected | Run `./scripts/update-doc-metrics.sh` and verify with `--check` |
+| New metric type introduced | Add extraction + update logic to `update-doc-metrics.sh` |
+| New documentation file created with metrics | Add sed patterns to appropriate update script |
+| Shell script error encountered | Add to Shell Scripting Standards table with example |
+| Automation gap identified | Create or extend scripts; add `--check` enforcement to CI |
 
 #### Lessons Learned Log
 
@@ -446,6 +452,22 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-30 | 9ENKM | Mat4 determinant harness takes ~60s due to 16 symbolic floats | 80 CBMC checks for 4×4 determinant with symbolic elements | Most harnesses verify in <2s; Mat4 determinant is the exception. Plan accordingly for CI timeout settings. | Yes |
 | 2026-01-30 | 9ENKM | Kani `cargo kani setup` installs nightly-2025-11-21 toolchain | Kani v0.67.0 needs its own Rust nightly with CBMC support | Does not conflict with stable/nightly used for development; `cargo kani` auto-selects correct toolchain | Yes |
 | 2026-01-30 | 9ENKM | Safe bounds for symbolic f32 vary by operation depth | `sqrt(MAX/n)` for n-component dot; `(MAX/k)^(1/d)` for degree-d polynomial with k terms | Vec: 1e18 (2 components), Mat3 det: 1e12 (degree 3), Mat4 det: 1e9 (degree 4). Document bound derivation in harness comments. | Yes |
+| 2026-01-30 | 9qF3t | Kani SIGSEGV when compiling 110+ harnesses at once | Kani compiler (kani-compiler) crashes with SIGSEGV when processing entire rource-math crate with 110 harnesses | Run harnesses individually: `cargo kani -p rource-math --harness <name>`. Full-crate `cargo kani -p rource-math` triggers memory issue in compiler. | Yes |
+| 2026-01-30 | 9qF3t | `Rect::intersects(self)` fails when `width < ULP(x)` | IEEE 754: `x + width > x` is FALSE when width < unit of least precision at x. At `|x|=1e6`, ULP ≈ 0.12 | Require `width > 1.0` and `|x| < 1e6` for self-intersection property. This is a genuine FP edge case where mathematical property `x + w > x for w > 0` fails. | Yes |
+| 2026-01-30 | 9qF3t | `Rect::from_center_size` center roundoff | `cx - w/2 + w/2 ≠ cx` due to catastrophic cancellation when `|cx| >> w` | Tighten bounds to `|cx| < 1e6`, `w < 1e6`; use tolerance 1.0 (roundoff ≈ 0.24). Document as genuine FP limitation. | Yes |
+| 2026-01-30 | 9qF3t | CBMC symbolic `sqrt()` is extremely expensive | `get_scale()` calls `sqrt()`, and CBMC takes >15 min for symbolic sqrt verification | Replace exact-value roundtrip assertions with finiteness checks for sqrt-based operations. Exact roundtrips verified algebraically in Verus/Coq instead. | Yes |
+| 2026-01-30 | 9qF3t | 65 new Kani harnesses scale well across 7 types | Same patterns (finiteness, NaN-freedom, postconditions, reflexivity) apply uniformly | Standard templates: `verify_<type>_<op>_finite`, `verify_<type>_<op>_no_nan`, `verify_<type>_approx_eq_reflexive`, `verify_<type>_<op>_componentwise`. Harness count: 45 → 110 (+65). | Yes |
+| 2026-01-30 | 9qF3t | GNU sed only supports POSIX ERE — Perl-style regex fails | `(?![\w])` negative lookahead in `sed -E` causes `Invalid preceding regular expression` | **NEVER** use Perl-style features in sed: no `(?!...)`, `(?=...)`, `(?:...)`, `\b`. Use POSIX ERE only. For word boundaries, use context (surrounding literal text) instead. | Yes |
+| 2026-01-30 | 9qF3t | `local` keyword only valid inside bash functions | `local VAR=...` at script top-level causes `local: can only be used in a function` | Use plain `VAR=...` assignment outside functions. `local` is function-scoped only. `shellcheck` catches this. | Yes |
+| 2026-01-30 | 9qF3t | Context-aware sed patterns prevent cross-contamination | Generic `s/[0-9]+/NEW/` matches wrong numbers in similar-looking tables across files | Use line-context anchors: `sed '/unique_context/{n;s/old/new/}'` or more specific patterns like `s/\`file\.rs\` \| [0-9]+/\`file.rs\` | NEW/` to match only the intended line | Yes |
+| 2026-01-30 | 9qF3t | Idempotency verification essential for doc update scripts | Running a script once may succeed but running twice may corrupt data if patterns match their own output | Always test: `./script.sh && ./script.sh && ./script.sh --check`. If --check fails after double-run, the script has an idempotency bug. | Yes |
+| 2026-01-30 | 9qF3t | Cargo package names differ from directory names | `rource-cli/` directory has package name `rource` in Cargo.toml; `cargo test -p rource` not `cargo test -p rource-cli` | Always check `Cargo.toml` `[package] name` field. The `-p` flag uses package name, not directory name. | Yes |
+| 2026-01-30 | 9qF3t | Rounded display strings resist minor fluctuations | Test count "2700+" remains valid across small test additions/removals; exact "2719" would break immediately | For volatile metrics displayed to users, use rounded form with `+` suffix. Reserve exact counts for machine-readable JSON (`metrics/doc-metrics.json`). | Yes |
+| 2026-01-30 | 9qF3t | Peripheral docs need same automation as primary docs | SETUP_GUIDE.md, CERTICOQ_WASM_ASSESSMENT.md, FLOATING_POINT_VERIFICATION.md all had stale counts despite primary docs being correct | Automation scripts must cover ALL files containing metrics, not just the "main" docs. Use `--check` mode to catch any file that drifts. | Yes |
+| 2026-01-30 | 9qF3t | Documentation drift is inevitable without CI enforcement | Within a single session, counts went from correct to stale as new theorems were added but not all docs updated | **CI must enforce**: `./scripts/update-verification-counts.sh --check && ./scripts/update-doc-metrics.sh --check`. Without automated enforcement, drift will recur. | Yes |
+| 2026-01-30 | 9qF3t | Two-tier script architecture for doc automation | Verification counts (Verus/Coq/Kani) require source-file parsing; other metrics (tests, phases, MSRV) need different extraction | `update-verification-counts.sh` (formal verification) + `update-doc-metrics.sh` (everything else). The doc-metrics script calls the verification script internally. | Yes |
+| 2026-01-30 | 9qF3t | Ground truth must come from source files, never hardcoded | Hardcoded counts in update scripts become stale the moment a new theorem is added | Parse actual source: `grep -cE '^(Theorem\|Lemma\|Local Lemma)' *.v` for Coq, `grep -c 'proof fn'` for Verus, `grep -c '#\[kani::proof\]'` for Kani. JSON output in `metrics/*.json`. | Yes |
+| 2026-01-30 | 9qF3t | Per-file sed patterns scale linearly but are necessary | SETUP_GUIDE.md tables require 23 individual sed patterns (8 Verus + 7 Coq R + 8 Coq Z) | Each file in verification tables gets its own pattern. No shortcuts — generic patterns cause cross-contamination. Document pattern count in script comments. | Yes |
 
 ---
 
@@ -522,7 +544,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
 | Frame time | ~18-23 µs | <20 µs | Near target |
-| Optimization phases | 81 | Ongoing | Active |
+| Optimization phases | 83 | Ongoing | Active |
 | Algorithms evaluated | 79+ | Comprehensive | See ALGORITHM_CANDIDATES.md |
 
 ---
@@ -542,7 +564,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Precision | Picosecond/nanosecond measurements |
 | Frame Budget | Total render time < 20 µs |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (81 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (83 phases)
 
 ---
 
@@ -707,9 +729,9 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (992 theorems/harnesses) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1073 theorems/harnesses) |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (266 proof functions, 8 files) |
-| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 681 theorems, development workflow) |
+| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 697 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
 | `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
@@ -717,6 +739,10 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/verification/RUST_VERIFICATION_LANDSCAPE.md` | 8-tool landscape survey: Kani (ADOPT), Aeneas/Creusot (MONITOR), hax (N/A) |
 | `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment (9-path survey) |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
+| `metrics/verification-counts.json` | Machine-readable verification counts (auto-generated) |
+| `metrics/doc-metrics.json` | Machine-readable documentation metrics (auto-generated) |
+| `scripts/update-verification-counts.sh` | Automated verification count propagation + CI check |
+| `scripts/update-doc-metrics.sh` | Automated documentation metrics propagation + CI check |
 | `LICENSE` | GPL-3.0 license |
 
 ---
@@ -822,7 +848,7 @@ rource/
 └── rource-wasm/           # WebAssembly application
 ```
 
-**Test Count**: 2,100+ tests total across all crates.
+**Test Count**: 2700+ tests total across all crates.
 
 ### Rendering Backends
 
@@ -876,7 +902,7 @@ Every change MUST follow this workflow:
 │     └─ Add tests for new functionality                                  │
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
-│     └─ cargo test (all 2,100+ tests pass)                               │
+│     └─ cargo test (all 2700+ tests pass)                               │
 │     └─ cargo clippy -- -D warnings (zero warnings)                      │
 │     └─ cargo fmt --check (formatted)                                    │
 │     └─ Mobile Safari test (if UI change)                                │
@@ -984,7 +1010,7 @@ Every optimization MUST follow this exact process:
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
 | **Documented** | Added to ALL THREE docs/performance/ files |
-| **Correct** | All 2,100+ tests must pass |
+| **Correct** | All 2700+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
 | **Mathematical** | Include complexity analysis and/or mathematical proof |
@@ -1019,7 +1045,7 @@ Mathematical Proof:
 
 ### Current Optimization History
 
-See `docs/performance/CHRONOLOGY.md` for complete history (77 phases).
+See `docs/performance/CHRONOLOGY.md` for complete history (83 phases).
 
 ### MANDATORY: Benchmark Before Committing Performance-Sensitive Code
 
@@ -1181,7 +1207,11 @@ cargo build --release
 # 5. WASM build works (if WASM changes)
 wasm-pack build --target web --release
 
-# 6. Mobile Safari test (if UI changes)
+# 6. Documentation metrics are consistent (if docs/proofs/tests changed)
+./scripts/update-verification-counts.sh --check
+./scripts/update-doc-metrics.sh --check
+
+# 7. Mobile Safari test (if UI changes)
 # Manual test required
 ```
 
@@ -1312,10 +1342,10 @@ Some code CANNOT be covered by unit tests:
 
 | Test Type | Requirement | Status |
 |-----------|-------------|--------|
-| Unit tests | All public functions | Yes (2,076 tests) |
+| Unit tests | All public functions | Yes (2719 tests) |
 | Property tests | Math crate invariants | Yes (Implemented) |
 | Chaos tests | Edge cases, unicode, boundaries | Yes (Implemented) |
-| Benchmarks | Critical paths | Yes (13 benchmark suites) |
+| Benchmarks | Critical paths | Yes (15 benchmark suites) |
 | Mutation testing | 80%+ score | TODO |
 | Visual regression | Rendering consistency | TODO |
 | Cross-browser | Chrome, Firefox, Safari, Edge | TODO |
@@ -1351,16 +1381,16 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Kani (CBMC) | Total | Status |
 |-----------|-------|---------------|-----------------|-------------|-------|--------|
-| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 11 harnesses | 175 | TRIPLE VERIFIED |
-| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 6 harnesses | 159 | TRIPLE VERIFIED |
-| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 3 harnesses | 126 | TRIPLE VERIFIED |
-| Mat3 | 48 proof fns | 48 theorems | 25 theorems | 6 harnesses | 127 | TRIPLE VERIFIED |
-| Mat4 | 22 proof fns | 52 theorems | 25 theorems | 6 harnesses | 105 | TRIPLE VERIFIED |
-| Color | 35 proof fns | 46 theorems | 28 theorems | 5 harnesses | 114 | TRIPLE VERIFIED |
-| Rect | 33 proof fns | 43 theorems | 24 theorems | 3 harnesses | 103 | TRIPLE VERIFIED |
+| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 21 harnesses | 185 | TRIPLE VERIFIED |
+| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 18 harnesses | 171 | TRIPLE VERIFIED |
+| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 9 harnesses | 132 | TRIPLE VERIFIED |
+| Mat3 | 48 proof fns | 48 theorems | 25 theorems | 14 harnesses | 135 | TRIPLE VERIFIED |
+| Mat4 | 22 proof fns | 52 theorems | 41 theorems | 15 harnesses | 130 | TRIPLE VERIFIED |
+| Color | 35 proof fns | 46 theorems | 28 theorems | 15 harnesses | 124 | TRIPLE VERIFIED |
+| Rect | 33 proof fns | 43 theorems | 24 theorems | 13 harnesses | 113 | TRIPLE VERIFIED |
 | Utils | — | 10 theorems | 8 theorems | 5 harnesses | 23 | VERIFIED |
 | Complexity | — | 60 theorems | — | — | 60 | VERIFIED |
-| **Total** | **266 proof fns** | **446 theorems** | **235 theorems** | **45 harnesses** | **992** | **ACADEMIC** |
+| **Total** | **266 proof fns** | **446 theorems** | **251 theorems** | **110 harnesses** | **1073** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1373,9 +1403,9 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Kani proofs (45 harnesses, ~2min)
-cargo kani -p rource-math  # All harnesses
-# Or individually: cargo kani -p rource-math --harness verify_lerp_no_nan
+# Kani proofs (110 harnesses)
+# NOTE: Running all at once may SIGSEGV. Run individually:
+cargo kani -p rource-math --harness verify_lerp_no_nan
 
 # Verus proofs (266 proof functions)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
@@ -1386,7 +1416,7 @@ cargo kani -p rource-math  # All harnesses
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
-# Coq proofs (673 theorems, ~45s)
+# Coq proofs (697 theorems, ~45s)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specifications + proofs
@@ -1522,6 +1552,119 @@ Addresses: L1, L7, L8 in MOBILE_UX_ROADMAP.md
 
 ---
 
+## Documentation Automation Standards
+
+### The Documentation Consistency Problem
+
+Documentation containing metrics (verification counts, test counts, optimization phases)
+**will drift from ground truth** unless automatically enforced. This project has experienced
+this repeatedly: counts go stale within a single session when new proofs or tests are added.
+
+### Automation Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DOCUMENTATION AUTOMATION                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  TWO-TIER SCRIPT ARCHITECTURE:                                              │
+│                                                                             │
+│  Tier 1: update-verification-counts.sh                                      │
+│     └─ Parses Verus, Coq (R+Z), Kani source files for ground truth         │
+│     └─ Updates 20+ documentation files with per-type/per-file counts        │
+│     └─ Generates metrics/verification-counts.json                           │
+│     └─ 43+ consistency checks in --check mode                               │
+│                                                                             │
+│  Tier 2: update-doc-metrics.sh                                              │
+│     └─ Extracts tests (cargo test), phases, MSRV, unsafe blocks, benchmarks│
+│     └─ Calls Tier 1 internally for verification counts                      │
+│     └─ Updates 20+ documentation files                                      │
+│     └─ Generates metrics/doc-metrics.json                                   │
+│     └─ CI-enforced via --check mode                                         │
+│                                                                             │
+│  Ground Truth Sources:                                                      │
+│     Coq:   grep -cE '^(Theorem|Lemma|Local Lemma)' *.v                     │
+│     Verus: grep -c 'proof fn' *.rs                                          │
+│     Kani:  grep -c '#\[kani::proof\]' kani_proofs.rs                        │
+│     Tests: cargo test --workspace 2>&1 | grep 'test result'                 │
+│     MSRV:  grep 'rust-version' Cargo.toml                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Running Documentation Updates
+
+```bash
+# Update all documentation metrics (runs both tiers)
+./scripts/update-doc-metrics.sh
+
+# Update verification counts only
+./scripts/update-verification-counts.sh
+
+# Check mode (CI enforcement — exits non-zero if stale)
+./scripts/update-verification-counts.sh --check
+./scripts/update-doc-metrics.sh --check
+
+# JSON output only (machine-readable)
+./scripts/update-doc-metrics.sh --json
+
+# Full update + check cycle (recommended before commit)
+./scripts/update-doc-metrics.sh --full
+```
+
+### Machine-Readable Metrics
+
+| File | Contents | Updated By |
+|------|----------|-----------|
+| `metrics/verification-counts.json` | Per-tool, per-type, per-file verification counts | `update-verification-counts.sh` |
+| `metrics/doc-metrics.json` | Tests, phases, MSRV, unsafe, benchmarks, verification | `update-doc-metrics.sh` |
+
+### When to Run
+
+| Trigger | Action |
+|---------|--------|
+| Added/removed Coq theorems | `./scripts/update-verification-counts.sh` |
+| Added/removed Verus proof functions | `./scripts/update-verification-counts.sh` |
+| Added/removed Kani harnesses | `./scripts/update-verification-counts.sh` |
+| Added/removed unit tests | `./scripts/update-doc-metrics.sh` |
+| Changed MSRV or optimization phases | `./scripts/update-doc-metrics.sh` |
+| Before any commit touching docs | `./scripts/update-doc-metrics.sh --check` |
+| CI (automated) | Both `--check` modes run in `verification-counts` job |
+
+### Shell Scripting Standards
+
+Scripts in this project MUST follow these rules:
+
+| Rule | Requirement | Why |
+|------|-------------|-----|
+| **POSIX ERE only in sed** | No `(?!...)`, `(?=...)`, `(?:...)`, `\b` | GNU sed does not support Perl regex features |
+| **shellcheck clean** | `shellcheck --severity=info` with zero warnings | Catches `local` outside functions, unquoted variables, etc. |
+| **bash -n syntax check** | `bash -n script.sh` passes | Catches syntax errors before execution |
+| **Idempotent** | Running twice produces same result as once | `./script.sh && ./script.sh && ./script.sh --check` must pass |
+| **Context-aware sed** | Use unique surrounding text to anchor patterns | Prevents cross-contamination between similar-looking data |
+| **No `local` outside functions** | Use plain `VAR=...` at top level | `local` is bash function-scoped only |
+
+**Sed Pattern Best Practices:**
+
+```bash
+# WRONG: Generic pattern matches wrong numbers
+sed -i -E "s/[0-9]+ theorems/NEW theorems/" file.md
+
+# RIGHT: Context-aware pattern matches only intended line
+sed -i -E "s/\`Vec2_Proofs\.v\` \| [0-9]+/\`Vec2_Proofs.v\` | $NEW_COUNT/" file.md
+
+# WRONG: Perl-style negative lookahead
+sed -i -E "s/[0-9,]+(?![\w])\+ tests/$DISPLAY tests/" file.md
+
+# RIGHT: POSIX ERE with surrounding context
+sed -i -E "s/[0-9,]+\+ tests/$DISPLAY tests/g" file.md
+
+# Multi-line context anchoring for tables
+sed -i -E "/unique_header/{n;s/old_value/new_value/}" file.md
+```
+
+---
+
 ## Common Tasks
 
 ### Adding a New VCS Parser
@@ -1547,6 +1690,25 @@ Addresses: L1, L7, L8 in MOBILE_UX_ROADMAP.md
 3. Add environment variable in `rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/wasm_api/settings.rs`
 5. Update documentation (README, CLAUDE.md if significant)
+
+### Updating Documentation Metrics
+
+When verification counts, test counts, or other metrics change:
+
+1. Run `./scripts/update-doc-metrics.sh` to update all 20+ documentation files
+2. Run `./scripts/update-doc-metrics.sh --check` to verify consistency
+3. Review `metrics/doc-metrics.json` and `metrics/verification-counts.json` for correctness
+4. If adding a new documentation file with metrics, add sed patterns to the appropriate script
+5. If adding a new metric type, add extraction logic to `update-doc-metrics.sh`
+
+### Adding a New Verification Proof File
+
+1. Write proof in `crates/rource-math/proofs/` (Verus) or `crates/rource-math/proofs/coq/` (Coq)
+2. Verify proof compiles: `/tmp/verus/verus file.rs` or `coqc -Q . RourceMath file.v`
+3. Add per-file sed pattern to `scripts/update-verification-counts.sh`
+4. Run `./scripts/update-verification-counts.sh` to propagate new counts
+5. Run `./scripts/update-verification-counts.sh --check` to verify all 43+ checks pass
+6. Update `docs/verification/` documentation as needed
 
 ---
 
@@ -1574,6 +1736,7 @@ Addresses: L1, L7, L8 in MOBILE_UX_ROADMAP.md
 | Build Native | Release binary with size report |
 | Build WASM | WebAssembly with gzip size check |
 | Documentation | Rustdoc with warning-as-error |
+| Doc Metrics | Verification counts + doc metrics consistency (`--check` mode) |
 
 ### Local CI Verification
 
@@ -1583,6 +1746,8 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all
 cargo doc --no-deps --all-features
 cargo build --release
+./scripts/update-verification-counts.sh --check  # if proofs changed
+./scripts/update-doc-metrics.sh --check           # if metrics changed
 ```
 
 ---
@@ -1754,6 +1919,11 @@ See individual roadmap documents for complete priority order.
 │     cargo tarpaulin -p <crate> --engine Llvm --out Stdout | grep "coverage" │
 │     Record percentage BEFORE making changes                                 │
 │                                                                             │
+│  5. VERIFY DOCUMENTATION CONSISTENCY (if proofs/tests exist)                │
+│     ./scripts/update-verification-counts.sh --check                         │
+│     ./scripts/update-doc-metrics.sh --check                                 │
+│     Fix any staleness BEFORE starting new work                              │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1778,9 +1948,15 @@ See individual roadmap documents for complete priority order.
    cargo tarpaulin -p <crate> --engine Llvm --out Stdout | grep "coverage"
    # Coverage should NOT decrease from baseline (MUST use --engine Llvm)
    ```
-3. **Update documentation**: CHRONOLOGY.md, NOT_APPLICABLE.md as needed
-4. **Commit with metrics**: Include exact measurements AND coverage in commit message
-5. **Push to branch**: Ensure all changes are pushed
+3. **Verify documentation consistency (if proofs/tests/metrics changed)**:
+   ```bash
+   ./scripts/update-doc-metrics.sh        # Update all metrics from ground truth
+   ./scripts/update-doc-metrics.sh --check # Verify consistency
+   ```
+4. **Update documentation**: CHRONOLOGY.md, NOT_APPLICABLE.md as needed
+5. **Update CLAUDE.md**: Add Lessons Learned entries for session discoveries
+6. **Commit with metrics**: Include exact measurements AND coverage in commit message
+7. **Push to branch**: Ensure all changes are pushed
 
 ### Tips for Expert+ Quality
 
@@ -1853,7 +2029,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq + Kani proofs (992 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect |
+| **Formal Verification** | Verus + Coq + Kani proofs (1073 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1888,7 +2064,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  992 formally verified theorems/harnesses across Verus + Coq + Kani         │
+│  1073 formally verified theorems/harnesses across Verus + Coq + Kani        │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1903,4 +2079,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-30*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 992 theorems/harnesses (Verus: 266, Coq R-based: 446, Coq Z-based: 235, Kani: 45)*
+*Formal Verification: 1073 theorems/harnesses (Verus: 266, Coq R-based: 446, Coq Z-based: 251, Kani: 110)*

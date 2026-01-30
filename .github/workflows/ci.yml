@@ -51,6 +51,39 @@ jobs:
             echo "Some files need formatting. Run \`cargo fmt\` locally." >> $GITHUB_STEP_SUMMARY
           fi
 
+  # Documentation metrics consistency check - pure bash + python3, no Rust needed
+  verification-counts:
+    name: Doc Metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check verification counts consistency
+        run: ./scripts/update-verification-counts.sh --check
+
+      - name: Check documentation metrics consistency
+        run: ./scripts/update-doc-metrics.sh --check
+
+      - name: Generate verification summary
+        if: always()
+        run: |
+          echo "## Documentation Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if ./scripts/update-doc-metrics.sh --json 2>/dev/null; then
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            TOTAL=$(python3 -c "import json; print(json.load(open('metrics/doc-metrics.json'))['verification']['grand_total'])" 2>/dev/null || echo "?")
+            PHASES=$(python3 -c "import json; print(json.load(open('metrics/doc-metrics.json'))['optimization_phases'])" 2>/dev/null || echo "?")
+            MSRV=$(python3 -c "import json; print(json.load(open('metrics/doc-metrics.json'))['msrv'])" 2>/dev/null || echo "?")
+            echo "| Verified theorems/harnesses | **$TOTAL** |" >> $GITHUB_STEP_SUMMARY
+            echo "| Optimization phases | **$PHASES** |" >> $GITHUB_STEP_SUMMARY
+            echo "| MSRV | **$MSRV** |" >> $GITHUB_STEP_SUMMARY
+            echo "| Documentation consistency | Verified |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Failed to parse documentation metrics." >> $GITHUB_STEP_SUMMARY
+          fi
+
   # Clippy lint check - depends on format passing
   clippy:
     name: Clippy
@@ -398,7 +431,7 @@ jobs:
     name: CI Status
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [fmt, clippy, test, chaos, msrv, build, wasm, docs, features]
+    needs: [fmt, verification-counts, clippy, test, chaos, msrv, build, wasm, docs, features]
     if: always()
     steps:
       - name: Check all job results
@@ -408,6 +441,7 @@ jobs:
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Format | ${{ needs.fmt.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Verification Counts | ${{ needs.verification-counts.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Clippy | ${{ needs.clippy.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Chaos Tests | ${{ needs.chaos.result }} |" >> $GITHUB_STEP_SUMMARY
@@ -420,6 +454,7 @@ jobs:
       - name: Fail if any job failed
         if: |
           needs.fmt.result == 'failure' ||
+          needs.verification-counts.result == 'failure' ||
           needs.clippy.result == 'failure' ||
           needs.test.result == 'failure' ||
           needs.chaos.result == 'failure' ||

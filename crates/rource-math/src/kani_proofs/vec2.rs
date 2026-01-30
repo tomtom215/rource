@@ -241,3 +241,195 @@ fn verify_vec2_lerp_no_nan() {
     assert!(!r.x.is_nan(), "lerp().x is NaN");
     assert!(!r.y.is_nan(), "lerp().y is NaN");
 }
+
+// ============================================================================
+// distance_squared
+// ============================================================================
+
+/// **Non-negativity + finiteness**: `distance_squared()` with bounded inputs
+/// is ≥ 0 and finite.
+///
+/// Mathematical basis: `(ax-bx)² + (ay-by)² ≥ 0` for all real values.
+#[kani::proof]
+fn verify_vec2_distance_squared_non_negative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    let a = Vec2::new(ax, ay);
+    let b = Vec2::new(bx, by);
+    let d = a.distance_squared(b);
+    assert!(d >= 0.0, "distance_squared() returned negative value");
+    assert!(!d.is_nan(), "distance_squared() produced NaN");
+    assert!(
+        d.is_finite(),
+        "distance_squared() produced non-finite output"
+    );
+}
+
+// ============================================================================
+// abs
+// ============================================================================
+
+/// **Non-negativity**: `abs()` with finite inputs produces non-negative components.
+#[kani::proof]
+fn verify_vec2_abs_non_negative() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let a = v.abs();
+    assert!(a.x >= 0.0, "abs().x should be non-negative");
+    assert!(a.y >= 0.0, "abs().y should be non-negative");
+    assert!(!a.x.is_nan(), "abs().x is NaN");
+    assert!(!a.y.is_nan(), "abs().y is NaN");
+}
+
+// ============================================================================
+// floor / ceil / round
+// ============================================================================
+
+/// **Finiteness**: `floor()` with finite inputs produces finite output.
+#[kani::proof]
+fn verify_vec2_floor_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let f = v.floor();
+    assert!(f.x.is_finite(), "floor().x non-finite");
+    assert!(f.y.is_finite(), "floor().y non-finite");
+}
+
+/// **Finiteness**: `ceil()` with finite inputs produces finite output.
+#[kani::proof]
+fn verify_vec2_ceil_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let c = v.ceil();
+    assert!(c.x.is_finite(), "ceil().x non-finite");
+    assert!(c.y.is_finite(), "ceil().y non-finite");
+}
+
+/// **Finiteness**: `round()` with finite inputs produces finite output.
+#[kani::proof]
+fn verify_vec2_round_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let r = v.round();
+    assert!(r.x.is_finite(), "round().x non-finite");
+    assert!(r.y.is_finite(), "round().y non-finite");
+}
+
+// ============================================================================
+// min / max
+// ============================================================================
+
+/// **Postcondition**: `min(a, b)` components are ≤ both `a` and `b` components.
+#[kani::proof]
+fn verify_vec2_min_componentwise() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    kani::assume(ax.is_finite());
+    kani::assume(ay.is_finite());
+    kani::assume(bx.is_finite());
+    kani::assume(by.is_finite());
+    let a = Vec2::new(ax, ay);
+    let b = Vec2::new(bx, by);
+    let m = a.min(b);
+    assert!(m.x <= ax && m.x <= bx, "min().x not minimum");
+    assert!(m.y <= ay && m.y <= by, "min().y not minimum");
+}
+
+/// **Postcondition**: `max(a, b)` components are ≥ both `a` and `b` components.
+#[kani::proof]
+fn verify_vec2_max_componentwise() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    kani::assume(ax.is_finite());
+    kani::assume(ay.is_finite());
+    kani::assume(bx.is_finite());
+    kani::assume(by.is_finite());
+    let a = Vec2::new(ax, ay);
+    let b = Vec2::new(bx, by);
+    let m = a.max(b);
+    assert!(m.x >= ax && m.x >= bx, "max().x not maximum");
+    assert!(m.y >= ay && m.y >= by, "max().y not maximum");
+}
+
+// ============================================================================
+// clamp
+// ============================================================================
+
+/// **Postcondition**: `clamp(v, min, max)` result is within [min, max] bounds.
+#[kani::proof]
+fn verify_vec2_clamp_bounded() {
+    let vx: f32 = kani::any();
+    let vy: f32 = kani::any();
+    let minx: f32 = kani::any();
+    let miny: f32 = kani::any();
+    let maxx: f32 = kani::any();
+    let maxy: f32 = kani::any();
+    kani::assume(vx.is_finite());
+    kani::assume(vy.is_finite());
+    kani::assume(minx.is_finite());
+    kani::assume(miny.is_finite());
+    kani::assume(maxx.is_finite());
+    kani::assume(maxy.is_finite());
+    kani::assume(minx <= maxx);
+    kani::assume(miny <= maxy);
+    let v = Vec2::new(vx, vy);
+    let lo = Vec2::new(minx, miny);
+    let hi = Vec2::new(maxx, maxy);
+    let c = v.clamp(lo, hi);
+    assert!(c.x >= minx && c.x <= maxx, "clamp().x out of bounds");
+    assert!(c.y >= miny && c.y <= maxy, "clamp().y out of bounds");
+}
+
+// ============================================================================
+// perp
+// ============================================================================
+
+/// **Finiteness**: `perp()` with finite inputs produces finite output.
+#[kani::proof]
+fn verify_vec2_perp_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let p = v.perp();
+    assert!(p.x.is_finite(), "perp().x non-finite");
+    assert!(p.y.is_finite(), "perp().y non-finite");
+}
+
+// ============================================================================
+// approx_eq
+// ============================================================================
+
+/// **Reflexivity**: `approx_eq(v, v)` is true for all finite vectors.
+#[kani::proof]
+fn verify_vec2_approx_eq_reflexive() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    assert!(v.approx_eq(v), "approx_eq not reflexive");
+}

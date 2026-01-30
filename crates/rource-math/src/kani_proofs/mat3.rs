@@ -118,3 +118,173 @@ fn verify_mat3_identity_preserves_point() {
     assert!(result.x == px, "identity should preserve x");
     assert!(result.y == py, "identity should preserve y");
 }
+
+// ============================================================================
+// transpose involutive
+// ============================================================================
+
+/// **Involution**: `transpose(transpose(M)) == M` for all bounded matrices.
+#[kani::proof]
+fn verify_mat3_transpose_involutive() {
+    let m: [f32; 9] = [
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+    ];
+    for i in 0..9 {
+        kani::assume(m[i].is_finite());
+    }
+    let mat = Mat3 { m };
+    let tt = mat.transpose().transpose();
+    for i in 0..9 {
+        assert!(tt.m[i] == mat.m[i], "transpose should be involutive");
+    }
+}
+
+// ============================================================================
+// translation
+// ============================================================================
+
+/// **Finiteness**: `translation()` with bounded inputs produces finite matrix.
+#[kani::proof]
+fn verify_mat3_translation_finite() {
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    kani::assume(tx.is_finite());
+    kani::assume(ty.is_finite());
+    let mat = Mat3::translation(tx, ty);
+    for i in 0..9 {
+        assert!(mat.m[i].is_finite(), "translation() element non-finite");
+    }
+}
+
+// ============================================================================
+// scaling
+// ============================================================================
+
+/// **Finiteness**: `scaling()` with bounded inputs produces finite matrix.
+#[kani::proof]
+fn verify_mat3_scaling_finite() {
+    let sx: f32 = kani::any();
+    let sy: f32 = kani::any();
+    kani::assume(sx.is_finite());
+    kani::assume(sy.is_finite());
+    let mat = Mat3::scaling(sx, sy);
+    for i in 0..9 {
+        assert!(mat.m[i].is_finite(), "scaling() element non-finite");
+    }
+}
+
+// ============================================================================
+// shearing
+// ============================================================================
+
+/// **Finiteness**: `shearing()` with bounded inputs produces finite matrix.
+#[kani::proof]
+fn verify_mat3_shearing_finite() {
+    let shx: f32 = kani::any();
+    let shy: f32 = kani::any();
+    kani::assume(shx.is_finite());
+    kani::assume(shy.is_finite());
+    let mat = Mat3::shearing(shx, shy);
+    for i in 0..9 {
+        assert!(mat.m[i].is_finite(), "shearing() element non-finite");
+    }
+}
+
+// ============================================================================
+// transform_vector
+// ============================================================================
+
+/// **Finiteness**: `transform_vector()` with bounded inputs is finite.
+#[kani::proof]
+fn verify_mat3_transform_vector_finite() {
+    let m: [f32; 9] = [
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+    ];
+    for i in 0..9 {
+        kani::assume(m[i].is_finite() && m[i].abs() < TRANSFORM_BOUND);
+    }
+    let mat = Mat3 { m };
+    let vx: f32 = kani::any();
+    let vy: f32 = kani::any();
+    kani::assume(vx.is_finite() && vx.abs() < TRANSFORM_BOUND);
+    kani::assume(vy.is_finite() && vy.abs() < TRANSFORM_BOUND);
+    let result = mat.transform_vector(Vec2::new(vx, vy));
+    assert!(result.x.is_finite(), "transform_vector().x non-finite");
+    assert!(result.y.is_finite(), "transform_vector().y non-finite");
+}
+
+// ============================================================================
+// get_translation / get_scale
+// ============================================================================
+
+/// **Postcondition**: `get_translation()` of a translation matrix matches input.
+#[kani::proof]
+fn verify_mat3_get_translation_roundtrip() {
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    kani::assume(tx.is_finite());
+    kani::assume(ty.is_finite());
+    let mat = Mat3::translation(tx, ty);
+    let t = mat.get_translation();
+    assert!(t.x == tx, "get_translation().x should match");
+    assert!(t.y == ty, "get_translation().y should match");
+}
+
+/// **Finiteness**: `get_scale()` with bounded inputs produces finite output.
+///
+/// Note: Exact value matching (get_scale(scaling(s)) == s) is too expensive
+/// for CBMC due to symbolic sqrt(). We verify finiteness instead, which
+/// catches NaN/overflow edge cases. The exact roundtrip property is verified
+/// algebraically in Verus/Coq.
+#[kani::proof]
+fn verify_mat3_get_scale_finite() {
+    let sx: f32 = kani::any();
+    let sy: f32 = kani::any();
+    kani::assume(sx.is_finite() && sx.abs() < TRANSFORM_BOUND);
+    kani::assume(sy.is_finite() && sy.abs() < TRANSFORM_BOUND);
+    let mat = Mat3::scaling(sx, sy);
+    let s = mat.get_scale();
+    assert!(s.x.is_finite(), "get_scale().x non-finite");
+    assert!(s.y.is_finite(), "get_scale().y non-finite");
+}
+
+// ============================================================================
+// approx_eq
+// ============================================================================
+
+/// **Reflexivity**: `approx_eq(M, M)` is true for all finite matrices.
+#[kani::proof]
+fn verify_mat3_approx_eq_reflexive() {
+    let m: [f32; 9] = [
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+    ];
+    for i in 0..9 {
+        kani::assume(m[i].is_finite());
+    }
+    let mat = Mat3 { m };
+    assert!(mat.approx_eq(mat), "approx_eq not reflexive");
+}
