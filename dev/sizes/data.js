@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769780550678,
+  "lastUpdate": 1769799101812,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4430,6 +4430,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/cda404bbb7c287c65472fbb7db1a219033ec18d5"
         },
         "date": 1769780549813,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5d3eefbeb5b8091b760702150282f05499eb87a8",
+          "message": "Merge pull request #234 from tomtom215/claude/rource-continuation-Ja1ql\n\nAdd Flocq-based FP error bounds layer (99 theorems) + extended Verus proofs",
+          "timestamp": "2026-01-30T19:49:39+01:00",
+          "tree_id": "927ab15be16f68e01bac531e4347586069cbaaac",
+          "url": "https://github.com/tomtom215/rource/commit/5d3eefbeb5b8091b760702150282f05499eb87a8"
+        },
+        "date": 1769799101422,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
