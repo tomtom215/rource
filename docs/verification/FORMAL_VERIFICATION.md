@@ -163,7 +163,7 @@ coqc -Q . RourceMath RourceMath_Extract.v
 |----------|---------|-------|
 | [VERUS_PROOFS.md](VERUS_PROOFS.md) | Verus theorem tables (all 7 types), methodology, reproducibility | ~470 |
 | [COQ_PROOFS.md](COQ_PROOFS.md) | Coq proofs (R-based + Z-based), complexity, compilation optimization, development workflow | ~350 |
-| [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) | Per-module coverage metrics, verification limitations, floating-point assessment, testing relationship | ~200 |
+| [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) | Per-module coverage metrics, verification limitations, floating-point assessment, rocq-of-rust investigation, testing relationship | ~320 |
 | [WASM_EXTRACTION_PIPELINE.md](WASM_EXTRACTION_PIPELINE.md) | Coq-to-WASM pipeline, tool ecosystem, CertiCoq assessment, Rocq migration, ICC | ~250 |
 | [CERTICOQ_WASM_ASSESSMENT.md](CERTICOQ_WASM_ASSESSMENT.md) | Comprehensive 9-path landscape survey for Coq-to-WASM compilation | Existing |
 | [SETUP_GUIDE.md](SETUP_GUIDE.md) | Manual installation and troubleshooting for Verus, Coq, MetaCoq, wasm_of_ocaml | Existing |
@@ -228,6 +228,7 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 10. ~~**Determinant properties (basic)**~~ - COMPLETED (det(I), det(0), det(A^T), det(-A), det(diagonal), trace properties for Mat3/Mat4)
 11. **Determinant multiplicativity** - Prove det(A*B) = det(A)*det(B) for Mat3/Mat4
 12. **HSL color space** - Requires transcendental functions (blocked by floating-point)
+13. ~~**rocq-of-rust spec-to-impl bridge**~~ - INVESTIGATED (not viable — monadic embedding incompatible with algebraic proofs, f32 unsupported; see [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md))
 
 ## References
 
@@ -242,6 +243,7 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 9. wasm_of_ocaml (Jérôme Vouillon, Tarides): https://github.com/ocsigen/js_of_ocaml
 10. MetaRocq Verified Extraction: https://github.com/MetaRocq/rocq-verified-extraction
 11. coq-rust-extraction (AU-COBRA): https://github.com/AU-COBRA/coq-rust-extraction
+12. rocq-of-rust (Formal Land): https://github.com/formal-land/rocq-of-rust
 
 ---
 

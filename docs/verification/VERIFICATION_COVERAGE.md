@@ -184,6 +184,126 @@ transcendentals) will remain covered by:
 - Property-based testing
 - Manual review for IEEE 754 compliance
 
+## rocq-of-rust Investigation (2026-01-30)
+
+### Investigation Summary
+
+We investigated [rocq-of-rust](https://github.com/formal-land/rocq-of-rust) (formerly
+coq-of-rust) as a potential tool to close the specification-to-implementation gap by
+machine-translating Rust source code to Rocq (Coq) for verification.
+
+### Tool Profile
+
+| Property | Value |
+|----------|-------|
+| Repository | github.com/formal-land/rocq-of-rust |
+| Commits | 3,005+ |
+| Stars | 1.1k+ |
+| Rust toolchain | nightly-2024-12-07 (Rust ~1.85) |
+| Rocq version | 9.0.x (rocq-core >= 9.0 & < 9.1) |
+| Translation level | THIR (Typed High-Level IR) |
+| Embedding style | Shallow (monadic) |
+
+### Test Results
+
+We successfully built the translator binary and ran it on a minimal Vec2 subset
+(10 functions: new, zero, splat, add, sub, scale, neg, dot, cross, length_squared
+plus Add/Sub/Neg operator traits).
+
+| Step | Result |
+|------|--------|
+| Build translator binary | Success (nightly-2024-12-07 + rustc-dev) |
+| rource-math compiles with nightly-2024-12-07 | Yes (no 1.93-specific features) |
+| Translation of Vec2 subset | Success (619-line Rocq file in 91ms) |
+| Output compilation in Rocq 9.0 | **BLOCKED** (opam repos return HTTP 503) |
+| Bridge to existing Coq 8.18 proofs | **NOT FEASIBLE** (see below) |
+
+### Critical Blockers
+
+**1. Fundamentally different representation**
+
+Our Coq proofs use clean algebraic specifications:
+```coq
+Record Vec2 := { vx: R; vy: R }.
+Definition vec2_add a b := mk_vec2 (vx a + vx b) (vy a + vy b).
+```
+
+rocq-of-rust generates a monadic shallow embedding modeling Rust's memory model:
+```coq
+Definition add (ε : list Value.t) (τ : list Ty.t) (α : list Value.t) : M :=
+  ltac:(M.monadic
+    (let self := M.alloc (| Ty.path "lib::Vec2", self |) in
+     Value.mkStructRecord "lib::Vec2" [] []
+       [("x", M.call_closure (| Ty.path "f32", BinOp.Wrap.add, [...] |)); ...]))
+```
+
+Bridging these representations would require writing refinement proofs showing the
+monadic operations reduce to algebraic operations — requiring deep expertise in
+rocq-of-rust's monad semantics and enormous proof engineering effort.
+
+**2. f32 literals are `UnsupportedLiteral`**
+
+All floating-point constants (0.0, 1.0, etc.) translate to opaque `UnsupportedLiteral`
+placeholders. The tool cannot represent f32 values, making mathematical property
+verification impossible at the generated level.
+
+**3. Structural `Admitted` axioms**
+
+Every function association binding uses `Admitted`:
+```coq
+Global Instance AssociatedFunction_new : M.IsAssociatedFunction.C Self "new" new.
+Admitted.
+```
+While these are structural (not mathematical) axioms about Rust's type system,
+they mean the generated code is NOT zero-admits — violating our PEER REVIEWED
+PUBLISHED ACADEMIC standard.
+
+**4. Dependency infrastructure unavailable**
+
+The generated code requires `RocqOfRust.RocqOfRust` which depends on:
+- `coq-coqutil` (MIT bedrock2), `coq-hammer`, `rocq-smpl`
+- All require Coq/Rocq opam repos (coq.inria.fr, rocq-prover.org) which return HTTP 503
+
+**5. Version mismatch: Rocq 9.0 vs Coq 8.18**
+
+Our 673 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
+Bridging requires migrating one or both sides.
+
+### Comparison: rocq-of-rust vs Our Approach
+
+| Criterion | rocq-of-rust | Our Manual Specs |
+|-----------|-------------|-----------------|
+| Spec-to-impl correspondence | Machine-generated | Manual (trusted) |
+| Representation | Monadic (memory model) | Algebraic (mathematical) |
+| f32 support | `UnsupportedLiteral` | Modeled as R (reals) or Z (integers) |
+| Admits | Structural `Admitted` axioms | Zero admits |
+| Proof style | Systems-level | Mathematical properties |
+| Compilability | Blocked (infra) | All 673 theorems compile |
+| Best suited for | Smart contracts, protocols | Pure math functions |
+
+### Recommendation
+
+**rocq-of-rust is NOT viable for rource-math** due to:
+1. The monadic representation is unsuitable for algebraic property verification
+2. f32 literals are unsupported
+3. The dependency infrastructure is unavailable
+4. The bridging effort would be enormous with uncertain feasibility
+
+**Our current approach remains optimal**: clean algebraic specifications in Coq 8.18
+with manual correspondence to Rust implementations, verified by 939 machine-checked
+theorems with zero admits. The spec-to-implementation gap is documented as a known
+limitation and mitigated by:
+- Systematic specification writing following Rust implementation structure
+- 100% unit test coverage verifying runtime behavior
+- Dual verification (Verus + Coq) providing cross-validation
+- Code review of specification correspondence
+
+**Future monitoring**: Re-evaluate when:
+- rocq-of-rust adds f32 literal support
+- Coq/Rocq opam infrastructure stabilizes
+- A "mathematical extraction" mode is added (bypassing the monadic embedding)
+- Rocq 9.x migration is undertaken for our proof base
+
 ---
 
 *Last verified: 2026-01-30*
