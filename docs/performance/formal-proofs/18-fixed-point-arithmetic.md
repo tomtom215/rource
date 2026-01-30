@@ -138,7 +138,7 @@ new_r = ((255 × 128 + 0 × 128) >> 8)
       = 127
 
 Expected: 255 × 0.5 = 127.5 → 127 or 128
-Result: 127 ✓
+Result: 127 [Confirmed]
 ```
 
 Maximum error: ±1 color level (see Proof 5: Alpha Blending Correctness)

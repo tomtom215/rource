@@ -186,13 +186,13 @@ fn attraction_force(&self, delta: Vec2, distance: f32, target_distance: f32) -> 
 
 | Theorem/Equation | Code Location | Line(s) | Verification |
 |------------------|---------------|---------|--------------|
-| Theorem 4.1: Energy dissipation d < 1 | `node.velocity() * self.config.damping` | 412 | ✓ DEFAULT_DAMPING = 0.9 |
-| Update rule: v(t+1) = d × (v(t) + F × dt) | `add_velocity` then `* damping` | 397, 412 | ✓ Semi-implicit Euler |
-| Position: r(t+1) = r(t) + v(t+1) × dt | `node.position() + node.velocity() * dt` | 415-416 | ✓ Exact match |
-| Repulsion: F = k/d² | `repulsion / (safe_distance² × distance)` | 298 | ✓ Inverse square with safe distance |
-| Attraction: F = k × (d - L) | `excess × attraction` | 321 | ✓ Linear spring |
-| Theorem 4.2: Stability k × dt < 2 | `MAX_VELOCITY` clamp | 400-406 | ✓ Velocity clamping ensures stability |
-| Convergence detection | `kinetic_energy < 0.1` | 262-264 | ✓ `has_converged()` method |
+| Theorem 4.1: Energy dissipation d < 1 | `node.velocity() * self.config.damping` | 412 | Confirmed: DEFAULT_DAMPING = 0.9 |
+| Update rule: v(t+1) = d × (v(t) + F × dt) | `add_velocity` then `* damping` | 397, 412 | Confirmed: Semi-implicit Euler |
+| Position: r(t+1) = r(t) + v(t+1) × dt | `node.position() + node.velocity() * dt` | 415-416 | Confirmed: Exact match |
+| Repulsion: F = k/d² | `repulsion / (safe_distance² × distance)` | 298 | Confirmed: Inverse square with safe distance |
+| Attraction: F = k × (d - L) | `excess × attraction` | 321 | Confirmed: Linear spring |
+| Theorem 4.2: Stability k × dt < 2 | `MAX_VELOCITY` clamp | 400-406 | Confirmed: Velocity clamping ensures stability |
+| Convergence detection | `kinetic_energy < 0.1` | 262-264 | Confirmed: `has_converged()` method |
 
 ### Verification Commands
 

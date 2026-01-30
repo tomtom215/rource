@@ -13,6 +13,7 @@
 
 Require Import Reals.
 Require Import Lra.
+Require Import Psatz.
 Open Scope R_scope.
 
 Set Warnings "-notation-overridden".
@@ -519,13 +520,124 @@ Proof.
   repeat (destruct (Rle_dec _ _)); nra.
 Qed.
 
+(** Theorem 52: valid rect has positive area. *)
+Theorem rect_valid_positive_area : forall (r : Rect),
+  rect_is_valid r -> 0 < rect_area r.
+Proof.
+  intros [x y w h] [Hw Hh]. simpl in *.
+  unfold rect_area. simpl.
+  apply Rmult_lt_0_compat; lra.
+Qed.
+
+(** Theorem 53: contains_rect implies area inequality. *)
+Theorem rect_contains_implies_area : forall (outer inner : Rect),
+  rect_is_valid inner ->
+  rect_contains_rect outer inner ->
+  rect_area inner <= rect_area outer.
+Proof.
+  intros [ox oy ow oh] [ix iy iw ih] [Hiw Hih] [Hx [Hy [Hr Hb]]].
+  simpl in *.
+  unfold rect_area. simpl.
+  apply Rmult_le_compat; lra.
+Qed.
+
+(** Theorem 54: intersection is contained in first argument. *)
+Theorem rect_intersection_contained_in_first : forall (a b : Rect),
+  rect_x a <= rect_x (rect_intersection a b) /\
+  rect_y a <= rect_y (rect_intersection a b).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_intersection, rect_right, rect_bottom. simpl.
+  split; apply Rmax_l.
+Qed.
+
+(** Theorem 55: translate preserves area. *)
+Theorem rect_translate_preserves_area : forall (r : Rect) (dx dy : R),
+  rect_area (rect_translate r dx dy) = rect_area r.
+Proof.
+  intros [x y w h] dx dy.
+  unfold rect_translate, rect_area. simpl. ring.
+Qed.
+
+(** Theorem 56: expand by positive amount increases all dimensions. *)
+Theorem rect_expand_positive_dims : forall (r : Rect) (a : R),
+  0 <= a ->
+  rect_w r <= rect_w (rect_expand r a) /\
+  rect_h r <= rect_h (rect_expand r a).
+Proof.
+  intros [x y w h] a Ha.
+  unfold rect_expand. simpl.
+  split; lra.
+Qed.
+
+(** Theorem 57: scale preserves non-negative area. *)
+Theorem rect_scale_nonneg_area : forall (r : Rect) (f : R),
+  0 <= rect_area r -> 0 <= f ->
+  0 <= rect_area (rect_scale r f).
+Proof.
+  intros [x y w h] f Ha Hf.
+  unfold rect_scale, rect_area. simpl. unfold rect_area in Ha. simpl in Ha.
+  assert (Heq: w * f * (h * f) = (w * h) * (f * f)) by ring.
+  rewrite Heq.
+  apply Rmult_le_pos; [lra | apply Rle_0_sqr].
+Qed.
+
+(** Theorem 58: shrink by amount expands by negative amount. *)
+Theorem rect_shrink_is_neg_expand : forall (r : Rect) (a : R),
+  rect_shrink r a = rect_expand r (- a).
+Proof.
+  intros. unfold rect_shrink. reflexivity.
+Qed.
+
+(** Theorem 59: union-like property: expand contains translated rect.
+    If translate offset <= expand amount, expanded rect contains translated rect. *)
+Theorem rect_expand_contains_translated : forall (r : Rect) (a dx dy : R),
+  rect_is_valid r -> a >= 0 ->
+  Rabs dx <= a -> Rabs dy <= a ->
+  rect_contains_rect (rect_expand r a) (rect_translate r dx dy).
+Proof.
+  intros [x y w h] a dx dy [Hw Hh] Ha Hdx Hdy.
+  unfold rect_contains_rect, rect_expand, rect_translate. simpl.
+  assert (Hdx_bound: - a <= dx /\ dx <= a).
+  { split; unfold Rabs in Hdx; destruct (Rcase_abs dx) in Hdx; lra. }
+  assert (Hdy_bound: - a <= dy /\ dy <= a).
+  { split; unfold Rabs in Hdy; destruct (Rcase_abs dy) in Hdy; lra. }
+  repeat split; lra.
+Qed.
+
+(** Theorem 60: center_x of translated rect. *)
+Theorem rect_translate_center_x : forall (r : Rect) (dx dy : R),
+  rect_center_x (rect_translate r dx dy) = rect_center_x r + dx.
+Proof.
+  intros [x y w h] dx dy.
+  unfold rect_translate, rect_center_x. simpl. ring.
+Qed.
+
+(** Theorem 61: center_y of translated rect. *)
+Theorem rect_translate_center_y : forall (r : Rect) (dx dy : R),
+  rect_center_y (rect_translate r dx dy) = rect_center_y r + dy.
+Proof.
+  intros [x y w h] dx dy.
+  unfold rect_translate, rect_center_y. simpl. ring.
+Qed.
+
+(** Theorem 62: from_center width correctness. *)
+Theorem rect_from_center_w : forall (cx cy w h : R),
+  rect_w (rect_from_center cx cy w h) = w.
+Proof.
+  intros. unfold rect_from_center. simpl. lra.
+Qed.
+
+(** Theorem 63: from_center height correctness. *)
+Theorem rect_from_center_h : forall (cx cy w h : R),
+  rect_h (rect_from_center cx cy w h) = h.
+Proof.
+  intros. unfold rect_from_center. simpl. lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 51 (43 original + 8 new)
-    New theorems: from_center valid, expand compose,
-      translate/scale preserves valid, expand area,
-      expand contains original, from_center roundtrip,
-      intersection area ≤ first
+    Total theorems: 63 (51 original + 12 new)
     Admits: 0
     Axioms: Standard Coq real number library only
 

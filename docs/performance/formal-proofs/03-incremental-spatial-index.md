@@ -104,10 +104,10 @@ pub fn visible_entities_into(
 
 | Theorem/Equation | Code Location | Line(s) | Verification |
 |------------------|---------------|---------|--------------|
-| Theorem 3.1: Full rebuild O(n log n) | `rebuild_spatial_index` | 16-34 | ✓ Clears tree, inserts all n entities |
-| Incremental O(k log n) | Not yet implemented | - | ⏳ Planned for Phase 61 |
-| Zero-allocation query | `visible_entities_into` | 152-169 | ✓ Uses visitor pattern with reusable buffers |
-| Throttled rebuild (n/5) | Scene::update() | - | ✓ Rebuilds every 5 frames |
+| Theorem 3.1: Full rebuild O(n log n) | `rebuild_spatial_index` | 16-34 | Confirmed: Clears tree, inserts all n entities |
+| Incremental O(k log n) | Not yet implemented | - | Planned for Phase 61 |
+| Zero-allocation query | `visible_entities_into` | 152-169 | Confirmed: Uses visitor pattern with reusable buffers |
+| Throttled rebuild (n/5) | Scene::update() | - | Confirmed: Rebuilds every 5 frames |
 
 ### Verification Commands
 

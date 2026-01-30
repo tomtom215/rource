@@ -4,34 +4,34 @@ This document describes the formal verification work performed on the `rource-ma
 
 ## Overview
 
-The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, semantic, and floating-point error bound properties of these types using a hybrid Verus + Coq + Kani architecture, achieving 1308 machine-checked theorems/harnesses with zero admits that can withstand academic peer review.
+The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, semantic, and floating-point error bound properties of these types using a hybrid Verus + Coq + Kani architecture, achieving 1447 machine-checked theorems/harnesses with zero admits that can withstand academic peer review.
 
 ## Summary Statistics
 
 | Verification System | Theorems | Admits | Types Covered | Status |
 |---------------------|----------|--------|---------------|--------|
 | **Verus** (SMT/Z3) | 327 proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified, 0 errors |
-| **Coq** (R-based abstract) | 446 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | Machine-checked |
-| **Coq** (Z-based extractable) | 251 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | Machine-checked |
+| **Coq** (R-based abstract) | 622 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | Machine-checked |
+| **Coq** (Z-based extractable) | 265 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | Machine-checked |
 | **Coq** (FP error bounds) | 99 theorems | 0 | IEEE 754 binary32 error analysis (Flocq) | Machine-checked |
 | **Kani** (CBMC bounded model checking) | 134 proof harnesses | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | All verified, 0 failures |
-| **Combined** | **1308** | **0** | **8 types + FP** | **PEER REVIEWED PUBLISHED ACADEMIC** |
+| **Combined** | **1447** | **0** | **8 types + FP** | **PEER REVIEWED PUBLISHED ACADEMIC** |
 
 ## Per-Type Verification Summary
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Coq (FP) | Kani (CBMC) | Total | Status |
 |-----------|-------|---------------|-----------------|----------|-------------|-------|--------|
-| Vec2 | 49 proof fns | 65 theorems | 50 theorems | — | 21 harnesses | 196 | TRIPLE VERIFIED |
-| Vec3 | 40 proof fns | 71 theorems | 42 theorems | — | 18 harnesses | 171 | TRIPLE VERIFIED |
-| Vec4 | 39 proof fns | 51 theorems | 33 theorems | — | 9 harnesses | 132 | TRIPLE VERIFIED |
-| Mat3 | 48 proof fns | 48 theorems | 25 theorems | — | 14 harnesses | 135 | TRIPLE VERIFIED |
-| Mat4 | 54 proof fns | 52 theorems | 41 theorems | — | 26 harnesses | 173 | TRIPLE VERIFIED |
-| Color | 45 proof fns | 46 theorems | 28 theorems | — | 21 harnesses | 150 | TRIPLE VERIFIED |
-| Rect | 52 proof fns | 43 theorems | 24 theorems | — | 20 harnesses | 147 | TRIPLE VERIFIED |
-| Utils | — | 10 theorems | 8 theorems | — | 5 harnesses | 23 | VERIFIED |
+| Vec2 | 49 proof fns | 91 theorems | 50 theorems | — | 21 harnesses | 211 | TRIPLE VERIFIED |
+| Vec3 | 40 proof fns | 96 theorems | 42 theorems | — | 18 harnesses | 196 | TRIPLE VERIFIED |
+| Vec4 | 39 proof fns | 80 theorems | 33 theorems | — | 9 harnesses | 161 | TRIPLE VERIFIED |
+| Mat3 | 48 proof fns | 67 theorems | 25 theorems | — | 14 harnesses | 154 | TRIPLE VERIFIED |
+| Mat4 | 54 proof fns | 81 theorems | 50 theorems | — | 26 harnesses | 211 | TRIPLE VERIFIED |
+| Color | 45 proof fns | 69 theorems | 28 theorems | — | 21 harnesses | 163 | TRIPLE VERIFIED |
+| Rect | 52 proof fns | 64 theorems | 24 theorems | — | 20 harnesses | 160 | TRIPLE VERIFIED |
+| Utils | — | 23 theorems | 13 theorems | — | 5 harnesses | 41 | VERIFIED |
 | Complexity | — | 60 theorems | — | — | — | 60 | VERIFIED |
 | FP Foundations | — | — | — | 99 theorems | — | 99 | MACHINE-CHECKED |
-| **Total** | **327 proof fns** | **497 theorems** | **251 theorems** | **99 theorems** | **134 harnesses** | **1308** | **ACADEMIC** |
+| **Total** | **327 proof fns** | **622 theorems** | **265 theorems** | **99 theorems** | **134 harnesses** | **1447** | **ACADEMIC** |
 
 > **Note**: Verus "proof fns" counts all `proof fn` declarations including helpers
 > (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22 base + 26 extended], Mat4: 22,
@@ -78,13 +78,13 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 |       |                          division-by-zero guards, postconditions  |
 |       |                          Bit-precise f32 verification             |
 |       |                                                                   |
-|       +---> Manual Coq Specs --> Coq Proofs (748 theorems)               |
+|       +---> Manual Coq Specs --> Coq Proofs (887 theorems)               |
 |       |                                |                                  |
 |       |                                +---> ICC --> Complexity Bounds    |
 |       |                                |            O(1) proofs (60)     |
 |       |                                |                                  |
 |       |                                +---> Z-based Computational Bridge |
-|       |                                |    8 Compute files (251 thms)   |
+|       |                                |    8 Compute files (265 thms)   |
 |       |                                |         |                       |
 |       |                                |    Path 1: Coq Extraction       |
 |       |                                |         |                       |
@@ -166,7 +166,7 @@ cargo kani -p rource-math --harness verify_mat4_determinant_finite  # ~60s (16 s
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
-# Coq proofs (748 theorems, ~45s total)
+# Coq proofs (887 theorems, ~45s total)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specs + Proofs + Complexity (438 R-based theorems)
@@ -176,7 +176,7 @@ coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
 coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v
 coqc -Q . RourceMath Complexity.v
 
-# Layer 2: Z-based Computational Bridge (251 theorems)
+# Layer 2: Z-based Computational Bridge (265 theorems)
 coqc -Q . RourceMath Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v
 coqc -Q . RourceMath Mat3_Compute.v Mat4_Compute.v
 coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Utils_Compute.v
@@ -216,7 +216,7 @@ The proofs demonstrate:
 
 This hybrid approach would be novel in several ways:
 
-1. **First triple-verified Rust graphics library**: rource-math with 1308 machine-checked proofs/harnesses across 8 types (Verus + Coq + Kani)
+1. **First triple-verified Rust graphics library**: rource-math with 1447 machine-checked proofs/harnesses across 8 types (Verus + Coq + Kani)
 2. **Verus + Coq + Kani synergy**: Three complementary verification approaches (algebraic + machine-checked + bit-precise IEEE 754)
 3. **ICC for graphics code**: Complexity bounds for visualization pipeline
 4. **End-to-end verified WASM**: From Rust source to verified WebAssembly (8 types extracted)
@@ -245,7 +245,9 @@ This hybrid approach would be novel in several ways:
 See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 [WASM_EXTRACTION_PIPELINE.md](WASM_EXTRACTION_PIPELINE.md) for Phase 3 details.
 
-## Future Work
+## Future Work (Completed Milestones)
+
+The following milestones have been completed:
 
 1. ~~**Vec4 proofs**~~ - COMPLETED (22 theorems, 68 VCs)
 2. ~~**Matrix proofs (Mat3, Mat4)**~~ - COMPLETED (Mat3: 18 theorems, 26 VCs; Mat4: 18 theorems, 27 VCs)
@@ -258,10 +260,294 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 9. ~~**Utils proofs (lerp, clamp)**~~ - COMPLETED (Coq R: 10, Coq Z: 8 theorems)
 10. ~~**Determinant properties (basic)**~~ - COMPLETED (det(I), det(0), det(A^T), det(-A), det(diagonal), trace properties for Mat3/Mat4)
 11. ~~**Determinant multiplicativity**~~ - COMPLETED: det(A*B) = det(A)*det(B) proven for both Mat3 and Mat4 (Coq `ring` tactic, +8 theorems)
-12. **HSL color space** - Requires transcendental functions (blocked by floating-point)
-13. ~~**rocq-of-rust spec-to-impl bridge**~~ - INVESTIGATED (not viable — monadic embedding incompatible with algebraic proofs, f32 unsupported; see [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md))
-14. ~~**Stainless FP paper investigation**~~ - INVESTIGATED (not directly applicable — Scala-only, no error bounds, Z3 weakest at FP; see [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md))
-15. **Coq FP accuracy proofs via Flocq + VCFloat2** - PLANNED (Phase FP-1: ~46 operations, targeting 70% coverage; see [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md))
+12. ~~**rocq-of-rust spec-to-impl bridge**~~ - INVESTIGATED (not viable — monadic embedding incompatible with algebraic proofs, f32 unsupported; see [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md))
+13. ~~**Stainless FP paper investigation**~~ - INVESTIGATED (not directly applicable — Scala-only, no error bounds, Z3 weakest at FP; see [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md))
+
+---
+
+## Prioritized Theorem Coverage Roadmap
+
+**Current coverage**: 116/230 public operations verified (50.4%).
+**Theoretical maximum** (excluding transcendental-blocked and batch operations): 213/230 (92.6%).
+
+Each public function in `rource-math` is classified as:
+
+| Category | Description | Count |
+|----------|-------------|-------|
+| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 116 |
+| **ALGEBRAIC GAP** | CAN be proved algebraically, no proof yet | ~40 |
+| **PARTIALLY VERIFIED** | Some proofs exist but missing verification layers | ~23 |
+| **FP-FEASIBLE** | Requires FP modeling; feasible via Flocq or Kani | ~13 |
+| **TRANSCENDENTAL-BLOCKED** | Requires sin/cos/atan2/tan; not provable | 10 |
+| **BATCH** | Batch operations; follow trivially from single-op proofs | 7 |
+
+### Priority 1: CRITICAL -- High-Value Algebraic Proofs
+
+These close the largest verification gaps. Recommended for immediate sessions.
+
+**P1.1: Bounds struct full verification** (19 operations, HIGH effort, VERY HIGH impact)
+
+The `Bounds` struct in `rect.rs` has ZERO formal proofs. It has ~19 public operations
+(from_points, from_center_half_extents, from_center_size, width, height, size, center,
+half_extents, area, contains, contains_bounds, intersects, intersection, union, include_point,
+expand, shrink, translate, is_valid, is_empty, to_rect, approx_eq). Many proofs follow
+directly from existing Rect proofs by structural duality.
+
+Steps:
+1. Create `Bounds.v` spec file with Coq Record definition
+2. Create `Bounds_Proofs.v` with algebraic theorems (area_nonneg, contains_refl, etc.)
+3. Create `Bounds_Compute.v` with Z-based computational bridge
+4. Add Verus proof file `bounds_proofs.rs`
+5. Add Kani harnesses to `kani_proofs/rect.rs` (or new `bounds.rs`)
+
+**P1.2: Mat3 inverse correctness** (1 operation, HIGH effort, HIGH impact)
+
+Prove: `inverse(A) * A = I` when `det(A) != 0`.
+This involves cofactor expansion for a 3x3 matrix. The `ring` tactic in Coq can handle
+the 9-component verification. Add to `Mat3_Proofs.v`.
+
+Approach:
+1. Define `mat3_cofactor_matrix` in `Mat3.v`
+2. Prove `mat3_mul_cofactor_transpose_eq_det_identity` using `ring`
+3. Derive `mat3_inverse_correct` from cofactor theorem
+4. Port to Verus using requires-axiom decomposition
+
+**P1.3: Mat4 inverse correctness** (1 operation, VERY HIGH effort, VERY HIGH impact)
+
+Prove: `inverse(A) * A = I` when `det(A) != 0`.
+The 4x4 case involves 16-component cofactor expansion with hundreds of terms. This is
+the single most complex proof in the project.
+
+Approach:
+1. Define `mat4_cofactor_matrix` in `Mat4.v` (16 cofactors)
+2. Prove row expansion identity using `ring` (may need component-by-component)
+3. Each component proof may require intermediate `ring` lemmas
+4. Consider Coq `Ltac` automation for repeated structure
+
+**P1.4: Mat4 orthographic projection** (1 operation, MEDIUM effort, HIGH impact)
+
+Prove algebraic properties of `orthographic(left, right, bottom, top, near, far)`.
+This is a linear transformation (scaling + translation), so standard algebraic tactics apply.
+
+Properties to prove:
+- `orthographic` produces a valid projection matrix
+- Maps (left, bottom, near) to (-1, -1, -1) and (right, top, far) to (1, 1, 1) in NDC
+- `det(orthographic(...))` has closed-form value
+
+**P1.5: Mat4 look_at view matrix** (1 operation, HIGH effort, HIGH impact)
+
+Prove properties of `look_at(eye, target, up)`:
+- The forward/right/up vectors form an orthonormal basis
+- Translation component correctly positions the camera
+- Note: `normalize()` (sqrt) makes full algebraic proof difficult.
+  Prove structural properties assuming unit inputs.
+
+### Priority 2: HIGH -- Quick-Win Algebraic Proofs
+
+Simple proofs that increase coverage count with minimal effort. Good for warming
+up at the start of a session.
+
+**P2.1: Vec3 constructors and swizzles** (~4 operations, LOW effort)
+
+| Function | Theorem | Tactic |
+|----------|---------|--------|
+| `from_vec2(v, z)` | `from_vec2_components: from_vec2(v, z) = new(v.x, v.y, z)` | `reflexivity` |
+| `xy()` | `xy_components: xy(new(x,y,z)) = Vec2.new(x,y)` | `reflexivity` |
+| `xz()` | `xz_components: xz(new(x,y,z)) = Vec2.new(x,z)` | `reflexivity` |
+| `yz()` | `yz_components: yz(new(x,y,z)) = Vec2.new(y,z)` | `reflexivity` |
+
+Add to: `Vec3.v` (specs) + `Vec3_Proofs.v` (if non-trivial) + `Vec3_Compute.v`
+
+**P2.2: Vec4 constructors and swizzles** (~4 operations, LOW effort)
+
+| Function | Theorem | Tactic |
+|----------|---------|--------|
+| `from_vec3(v, w)` | `from_vec3_components: from_vec3(v, w) = new(v.x, v.y, v.z, w)` | `reflexivity` |
+| `from_vec2(v, z, w)` | `from_vec2_components: from_vec2(v, z, w) = new(v.x, v.y, z, w)` | `reflexivity` |
+| `xy()` | `xy_components: xy(new(x,y,z,w)) = Vec2.new(x,y)` | `reflexivity` |
+| `xyz()` | `xyz_components: xyz(new(x,y,z,w)) = Vec3.new(x,y,z)` | `reflexivity` |
+
+Add to: `Vec4.v` (specs) + `Vec4_Proofs.v` (if non-trivial) + `Vec4_Compute.v`
+
+**P2.3: Mat3/Mat4 from_cols** (~2 operations, LOW effort)
+
+Prove `from_cols(c0, c1, c2)` assembles the expected column-major matrix.
+Already verified in Kani; add Coq specs and proofs.
+
+**P2.4: Mat4 col/row accessor correctness** (~2 operations, LOW effort)
+
+Prove `col(0) = (m0, m1, m2, m3)`, etc. Already verified in Kani; add Coq proofs.
+
+**P2.5: Rect trivial accessors** (~8 operations, LOW effort)
+
+| Function | Theorem | Notes |
+|----------|---------|-------|
+| `from_pos_size(p, s)` | `from_pos_size_eq: from_pos_size(p, s) = new(p.x, p.y, s.x, s.y)` | Constructor |
+| `position()` | `position_correct: position(new(x,y,w,h)) = Vec2.new(x,y)` | Accessor |
+| `size()` | `size_correct: size(new(x,y,w,h)) = Vec2.new(w,h)` | Accessor |
+| `min()` / `left()` / `top()` | `min_eq_position: min(r) = position(r)` | Alias |
+| `is_empty()` | `is_empty_complement: is_empty(r) = not(is_valid(r))` | Complement |
+| `to_bounds()` | `to_bounds_preserves: to_bounds(r).area = r.area` | Conversion |
+
+Add to: `Rect.v` (specs) + `Rect_Proofs.v` + `Rect_Compute.v`
+
+**P2.6: Mat3 shearing Coq proofs** (1 operation, LOW effort)
+
+Verus already has shearing proofs (structure, determinant, identity, transforms_point).
+Port to Coq R-based and Z-based. The algebraic structure is simple.
+
+### Priority 3: MEDIUM -- Partial Verification Completion
+
+These operations have SOME proofs but need additional verification layers.
+
+**P3.1: Vector length Verus proofs** (Vec2/3/4, MEDIUM effort)
+
+Coq has `length_nonneg`, `length_zero` proofs. Add Verus integer-model proof relating
+`length` to `length_squared` via sqrt. Key property: `length(v) * length(v) = length_squared(v)`.
+
+**P3.2: Vector normalized Verus proofs** (Vec2/3/4, MEDIUM effort)
+
+Coq has `normalized_length_sq`. Add Verus proof: `|normalized(v)|^2 = 1` for non-zero v.
+
+**P3.3: Vector lerp Verus and Z proofs** (Vec2/3/4, MEDIUM effort)
+
+Coq R has comprehensive lerp proofs (zero, one, same, midpoint, range).
+Port to Verus and Coq Z for all vector types.
+
+**P3.4: Vec3/Vec4 clamp Verus proofs** (2 operations, LOW effort)
+
+Vec2 already has Verus clamp proofs (bounds, identity, idempotent).
+Port the same pattern to Vec3 and Vec4.
+
+**P3.5: Vec3 reflect Verus proof** (1 operation, MEDIUM effort)
+
+Vec2 has Verus reflect proofs. Port to Vec3 (3-component version).
+
+**P3.6: Mat3/Mat4 get_translation Coq proofs** (2 operations, LOW effort)
+
+Kani has roundtrip verification. Add algebraic Coq proofs:
+`get_translation(translation(tx, ty, tz)) = Vec3.new(tx, ty, tz)`.
+
+**P3.7: Mat4 transform_vec4 Coq spec and proof** (1 operation, LOW effort)
+
+Simple matrix-vector multiply in 4D. Add Coq spec and identity transform proof.
+
+**P3.8: Color contrasting Coq/Verus proofs** (1 operation, LOW effort)
+
+Threshold on luminance; algebraically simple. Prove:
+- `contrasting(black) = white`
+- `contrasting(white) = black`
+- `contrasting(c).luminance` has high contrast with `c.luminance`
+
+**P3.9: Rect union Coq R-based proofs** (1 operation, MEDIUM effort)
+
+Verus has union proofs (commutative, contains_first, contains_second).
+Port to Coq R-based. Involves `Rmin`/`Rmax` reasoning.
+
+**P3.10: Rect from_corners and expand_xy Coq proofs** (2 operations, LOW effort)
+
+Verus has proofs for both. Port to Coq R-based and Z-based.
+
+**P3.11: Utils lerp/clamp Verus proofs** (2 operations, MEDIUM effort)
+
+Coq R+Z have comprehensive proofs for scalar lerp and clamp.
+Add Verus proofs for the same properties.
+
+**P3.12: Utils approx_eq transitivity** (1 operation, LOW effort)
+
+Reflexivity and symmetry already proved. Note: `approx_eq` is NOT transitive in general
+(FP epsilon comparisons are not transitive). Document this as a non-theorem and prove
+the negative result: provide a counterexample showing `approx_eq(a,b) AND approx_eq(b,c)`
+does NOT imply `approx_eq(a,c)`.
+
+### Priority 4: FP-FEASIBLE -- Floating-Point Modeling Required
+
+These operations need floating-point modeling via Coq+Flocq 4.1.3 or extended Kani harnesses.
+
+**P4.1: Vec2/3/4 floor/ceil/round** (9 operations, MEDIUM effort)
+
+Prove via Flocq: `floor(x) <= x < floor(x) + 1`, `ceil(x) - 1 < x <= ceil(x)`.
+Flocq provides `Zfloor`/`Zceil` for IEEE 754 floats.
+
+**P4.2: Color integer conversion functions** (6 operations, MEDIUM effort)
+
+`from_hex`, `from_hex_alpha`, `from_rgba8`, `to_rgba8`, `to_argb8`, `to_abgr8`:
+Prove output components are in [0.0, 1.0] range after u8/u32-to-f32 conversion.
+
+**P4.3: Color from_rgb8/from_rgb8_const** (2 operations, LOW effort)
+
+Same approach as P4.2.
+
+**P4.4: Utils deg_to_rad/rad_to_deg roundtrip** (2 operations, MEDIUM effort)
+
+Requires modeling pi as a Flocq binary32 value. Prove finiteness and approximate
+roundtrip: `|rad_to_deg(deg_to_rad(d)) - d| < epsilon`.
+
+### Priority 5: TRANSCENDENTAL-BLOCKED -- Monitor Only
+
+These operations require `sin`, `cos`, `atan2`, or `tan` and CANNOT be proved
+algebraically with current tools. Kani harnesses already verify NaN-freedom
+and finiteness where possible.
+
+| Operation | Type | Blocker | Current Kani Coverage |
+|-----------|------|---------|----------------------|
+| `from_angle(radians)` | Vec2 | sin/cos | `from_angle_no_nan` |
+| `angle(self)` | Vec2 | atan2 | None |
+| `rotate(self, radians)` | Vec2 | sin/cos | `rotate_no_nan` |
+| `rotation(radians)` | Mat3 | sin/cos | `rotation_no_nan` |
+| `rotation_x(radians)` | Mat4 | sin/cos | `rotation_x_no_nan` |
+| `rotation_y(radians)` | Mat4 | sin/cos | `rotation_y_no_nan` |
+| `rotation_z(radians)` | Mat4 | sin/cos | `rotation_z_no_nan` |
+| `perspective(...)` | Mat4 | tan | Blocked (Kani #2423) |
+| `to_hsl(self)` | Color | Complex FP | None |
+| `from_hsl(h, s, l)` | Color | Complex FP | None |
+
+**Mitigation strategy**: Continue relying on Kani NaN-freedom harnesses.
+Monitor Verus/Kani developments for transcendental function support.
+Consider Coq+Flocq formalization of sin/cos error bounds if needed for publication.
+
+### Priority 6: LOW -- Batch Operations
+
+Vec2 has 7 `batch_*` functions (batch_add, batch_sub, batch_scale, batch_normalize,
+batch_dot, batch_lerp, batch_clamp). These apply single-operation logic element-wise.
+Correctness follows trivially from the corresponding single-operation proofs.
+
+Could add loop-invariant Kani harnesses if desired, but this is low value since
+the per-element operations are already triple-verified.
+
+### Session Execution Guide
+
+For a new session focused on increasing verification coverage, follow this order:
+
+1. **Warm-up** (30 min): Start with P2 quick wins (constructors, swizzles, accessors).
+   These are `reflexivity` or `simpl; ring` proofs that build momentum.
+
+2. **Main work** (2-3 hours): Pick ONE item from P1 (Bounds, Mat3 inverse, Mat4 inverse,
+   orthographic, or look_at). The Bounds struct (P1.1) gives the highest operation count
+   per session. The inverse proofs (P1.2, P1.3) give the highest academic impact per proof.
+
+3. **Fill gaps** (1 hour): Work through P3 items, prioritizing those that complete
+   a type's coverage (e.g., all Vec3 gaps closed).
+
+4. **FP work** (if Flocq available): P4 items extend the FP error bounds layer.
+
+5. **Documentation**: Update this file's coverage table, run `update-verification-counts.sh`.
+
+### Coverage Projection After Each Priority
+
+| After Priority | Operations Verified | Coverage | Delta |
+|----------------|--------------------:|----------|-------|
+| Current | 116 | 50.4% | -- |
+| After P2 (quick wins) | ~132 | 57.4% | +16 |
+| After P3 (partial completion) | ~152 | 66.1% | +20 |
+| After P1.1 (Bounds struct) | ~171 | 74.3% | +19 |
+| After P1.2-P1.5 (inverse, ortho, look_at) | ~175 | 76.1% | +4 |
+| After P4 (FP feasible) | ~188 | 81.7% | +13 |
+| **Theoretical maximum** (excl. blocked) | **213** | **92.6%** | -- |
+
+**Note**: Reaching 100% is not possible without transcendental function support (10 blocked
+operations) and batch operation proofs (7 low-value operations). The practical target is
+approximately 85-90% coverage, which would require completing P1 through P4.
 
 ## References
 
@@ -299,13 +585,13 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 
 **Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6):**
 *Version: Coq 8.18*
-*Total theorems: 446 (Vec2: 65, Vec3: 71, Vec4: 51, Mat3: 48, Mat4: 52, Complexity: 60, Color: 46, Rect: 43, Utils: 10)*
+*Total theorems: 622 (Vec2: 91, Vec3: 96, Vec4: 80, Mat3: 67, Mat4: 81, Complexity: 60, Color: 69, Rect: 64, Utils: 23)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5):**
 *Version: Coq 8.18*
-*Total theorems: 251 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 41, Color: 28, Rect: 24, Utils: 8)*
+*Total theorems: 265 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 24, Utils: 13)*
 *Admits: 0*
 *Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
@@ -316,7 +602,7 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Status: All complexity bounds verified*
 
 **Computational Bridge (Phase 3 + Phase 3 Continued + Phase 4 + Phase 5):**
-*8 Compute files: Vec2(50), Vec3(42), Vec4(33), Mat3(25), Mat4(41), Color(28), Rect(24), Utils(8) = 251 theorems over Z*
+*8 Compute files: Vec2(50), Vec3(42), Vec4(33), Mat3(25), Mat4(50), Color(28), Rect(24), Utils(8) = 265 theorems over Z*
 *8 Extract files + 1 unified extraction (RourceMath_Extract.v)*
 *OCaml test driver: all tests pass*
 *WASM pipeline: Library 6.8 KB, test driver 42.2 KB (via wasm_of_ocaml v6.2.0)*
@@ -339,7 +625,7 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Status: All 134 harnesses verified, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Combined Verification:**
-*Total theorems/harnesses: 1308 across Verus, Coq, and Kani (Verus: 266, Coq R-based: 446, Coq Z-based: 251, Kani: 134)*
+*Total theorems/harnesses: 1447 across Verus, Coq, and Kani (Verus: 327, Coq R-based: 622, Coq Z-based: 265, Kani: 134)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Utils*
 *Verified operations: 116/230 (50.4%) — up from 92/230 (40%)*

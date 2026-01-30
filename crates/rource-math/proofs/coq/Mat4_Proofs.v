@@ -500,29 +500,253 @@ Proof.
   unfold mat4_determinant, mat4_scale. simpl. ring.
 Qed.
 
+(** * Additional Algebraic Properties *)
+
+(** Theorem 33: Negation is involutive: --A = A. *)
+Theorem mat4_neg_involutive : forall a : Mat4,
+  mat4_neg (mat4_neg a) = a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_neg. simpl.
+  apply mat4_eq; simpl; lra.
+Qed.
+
+(** Theorem 34: Subtraction is self-inverse: A - A = 0. *)
+Theorem mat4_sub_self : forall a : Mat4,
+  mat4_sub a a = mat4_zero.
+Proof.
+  intros a. destruct a.
+  unfold mat4_sub, mat4_add, mat4_neg, mat4_zero. simpl.
+  apply mat4_eq; simpl; lra.
+Qed.
+
+(** Theorem 35: Scaling by -1 equals negation. *)
+Theorem mat4_scale_neg_one : forall a : Mat4,
+  mat4_scale (-1) a = mat4_neg a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_scale, mat4_neg. simpl.
+  apply mat4_eq; simpl; lra.
+Qed.
+
+(** Theorem 36: Transpose of identity is identity. *)
+Theorem mat4_transpose_identity :
+  mat4_transpose mat4_identity = mat4_identity.
+Proof.
+  unfold mat4_transpose, mat4_identity. simpl.
+  apply mat4_eq; simpl; lra.
+Qed.
+
+(** Theorem 37: Transpose of zero is zero. *)
+Theorem mat4_transpose_zero :
+  mat4_transpose mat4_zero = mat4_zero.
+Proof.
+  unfold mat4_transpose, mat4_zero. simpl.
+  apply mat4_eq; simpl; lra.
+Qed.
+
+(** Theorem 38: Scaling distributes over multiplication on the left. *)
+Theorem mat4_scale_mul_left : forall (s : R) (a b : Mat4),
+  mat4_mul (mat4_scale s a) b = mat4_scale s (mat4_mul a b).
+Proof.
+  intros s a b. destruct a, b.
+  unfold mat4_mul, mat4_scale. simpl.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 39: Negation distributes over multiplication on the left. *)
+Theorem mat4_neg_mul_left : forall a b : Mat4,
+  mat4_mul (mat4_neg a) b = mat4_neg (mat4_mul a b).
+Proof.
+  intros a b. destruct a, b.
+  unfold mat4_mul, mat4_neg. simpl.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 40: Negation distributes over multiplication on the right. *)
+Theorem mat4_neg_mul_right : forall a b : Mat4,
+  mat4_mul a (mat4_neg b) = mat4_neg (mat4_mul a b).
+Proof.
+  intros a b. destruct a, b.
+  unfold mat4_mul, mat4_neg. simpl.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 41: Multiplication distributes over addition on the left. *)
+Theorem mat4_mul_add_distr_l : forall a b c : Mat4,
+  mat4_mul a (mat4_add b c) = mat4_add (mat4_mul a b) (mat4_mul a c).
+Proof.
+  intros a b c. destruct a, b, c.
+  unfold mat4_mul, mat4_add. simpl.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 42: Multiplication distributes over addition on the right. *)
+Theorem mat4_mul_add_distr_r : forall a b c : Mat4,
+  mat4_mul (mat4_add a b) c = mat4_add (mat4_mul a c) (mat4_mul b c).
+Proof.
+  intros a b c. destruct a, b, c.
+  unfold mat4_mul, mat4_add. simpl.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 43: Trace of neg: trace(-A) = -trace(A). *)
+Theorem mat4_trace_neg : forall a : Mat4,
+  mat4_trace (mat4_neg a) = - mat4_trace a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_trace, mat4_neg. simpl. ring.
+Qed.
+
+(** Theorem 44: Trace of scalar of identity: trace(s * I) = 4s. *)
+Theorem mat4_trace_scalar_identity : forall s : R,
+  mat4_trace (mat4_scale s mat4_identity) = 4 * s.
+Proof.
+  intros s. unfold mat4_trace, mat4_scale, mat4_identity. simpl. ring.
+Qed.
+
+(** * Transform Properties *)
+
+(** Theorem 45: Determinant of translation matrix is 1. *)
+Theorem mat4_det_translation : forall tx ty tz : R,
+  mat4_determinant (mat4_translation tx ty tz) = 1.
+Proof.
+  intros. unfold mat4_determinant, mat4_translation. simpl. ring.
+Qed.
+
+(** Theorem 46: Determinant of scaling matrix is sx * sy * sz. *)
+Theorem mat4_det_scaling : forall sx sy sz : R,
+  mat4_determinant (mat4_scaling sx sy sz) = sx * sy * sz.
+Proof.
+  intros. unfold mat4_determinant, mat4_scaling. simpl. ring.
+Qed.
+
+(** Theorem 47: Identity transforms point to itself. *)
+Theorem mat4_identity_transforms_point : forall p : Vec3,
+  mat4_transform_point mat4_identity p = p.
+Proof.
+  intros [px py pz].
+  unfold mat4_transform_point, mat4_identity. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 48: Identity transforms vector to itself. *)
+Theorem mat4_identity_transforms_vector : forall v : Vec3,
+  mat4_transform_vector mat4_identity v = v.
+Proof.
+  intros [vx0 vy0 vz0].
+  unfold mat4_transform_vector, mat4_identity. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 49: Translation transforms point by offset. *)
+Theorem mat4_translation_transforms_point : forall tx ty tz : R, forall p : Vec3,
+  mat4_transform_point (mat4_translation tx ty tz) p =
+  mkVec3 (v3x p + tx) (v3y p + ty) (v3z p + tz).
+Proof.
+  intros tx ty tz [px py pz].
+  unfold mat4_transform_point, mat4_translation. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 50: Translation preserves vectors (w=0). *)
+Theorem mat4_translation_preserves_vectors : forall tx ty tz : R, forall v : Vec3,
+  mat4_transform_vector (mat4_translation tx ty tz) v = v.
+Proof.
+  intros tx ty tz [vx0 vy0 vz0].
+  unfold mat4_transform_vector, mat4_translation. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 51: Scaling transforms point correctly. *)
+Theorem mat4_scaling_transforms_point : forall sx sy sz : R, forall p : Vec3,
+  mat4_transform_point (mat4_scaling sx sy sz) p =
+  mkVec3 (sx * v3x p) (sy * v3y p) (sz * v3z p).
+Proof.
+  intros sx sy sz [px py pz].
+  unfold mat4_transform_point, mat4_scaling. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 52: Scaling transforms vector correctly. *)
+Theorem mat4_scaling_transforms_vector : forall sx sy sz : R, forall v : Vec3,
+  mat4_transform_vector (mat4_scaling sx sy sz) v =
+  mkVec3 (sx * v3x v) (sy * v3y v) (sz * v3z v).
+Proof.
+  intros sx sy sz [vx0 vy0 vz0].
+  unfold mat4_transform_vector, mat4_scaling. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 53: Translation composition: T(a) * T(b) = T(a+b). *)
+Theorem mat4_translation_compose : forall tx1 ty1 tz1 tx2 ty2 tz2 : R,
+  mat4_mul (mat4_translation tx1 ty1 tz1) (mat4_translation tx2 ty2 tz2) =
+  mat4_translation (tx1 + tx2) (ty1 + ty2) (tz1 + tz2).
+Proof.
+  intros.
+  unfold mat4_mul, mat4_translation. simpl.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 54: Scaling composition: S(a) * S(b) = S(a*b). *)
+Theorem mat4_scaling_compose : forall sx1 sy1 sz1 sx2 sy2 sz2 : R,
+  mat4_mul (mat4_scaling sx1 sy1 sz1) (mat4_scaling sx2 sy2 sz2) =
+  mat4_scaling (sx1 * sx2) (sy1 * sy2) (sz1 * sz2).
+Proof.
+  intros.
+  unfold mat4_mul, mat4_scaling. simpl.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 55: Translation of origin. *)
+Theorem mat4_translate_origin : forall tx ty tz : R,
+  mat4_transform_point (mat4_translation tx ty tz) (mkVec3 0 0 0) =
+  mkVec3 tx ty tz.
+Proof.
+  intros.
+  unfold mat4_transform_point, mat4_translation. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 56: Scaling identity is identity. *)
+Theorem mat4_scaling_identity :
+  mat4_scaling 1 1 1 = mat4_identity.
+Proof.
+  unfold mat4_scaling, mat4_identity.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 57: Uniform scaling is scaling. *)
+Theorem mat4_uniform_scaling_eq : forall s : R,
+  mat4_uniform_scaling s = mat4_scaling s s s.
+Proof.
+  intros. unfold mat4_uniform_scaling. reflexivity.
+Qed.
+
+(** Theorem 58: Det of scaling * translation = sx * sy * sz. *)
+Theorem mat4_det_scaling_translation : forall sx sy sz tx ty tz : R,
+  mat4_determinant (mat4_mul (mat4_scaling sx sy sz) (mat4_translation tx ty tz)) =
+  sx * sy * sz.
+Proof.
+  intros. rewrite mat4_det_mul.
+  rewrite mat4_det_scaling. rewrite mat4_det_translation. ring.
+Qed.
+
+(** Theorem 59: Scaling + translation compose correctly on a point. *)
+Theorem mat4_scaling_translation_point : forall sx sy sz tx ty tz : R, forall p : Vec3,
+  mat4_transform_point (mat4_mul (mat4_translation tx ty tz) (mat4_scaling sx sy sz)) p =
+  mkVec3 (sx * v3x p + tx) (sy * v3y p + ty) (sz * v3z p + tz).
+Proof.
+  intros sx sy sz tx ty tz [px py pz].
+  unfold mat4_transform_point, mat4_mul, mat4_translation, mat4_scaling. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 35 + 16 component lemmas = 51
-    - Theorems 1-4: Matrix addition properties (4)
-    - Theorems 5-8: Matrix multiplication identity/zero (4)
-    - Theorem 9: Matrix multiplication associativity (1 + 16 lemmas) [CRITICAL for MVP]
-    - Theorems 10-13: Scalar multiplication properties (4)
-    - Theorems 14-16: Transpose properties (3)
-    - Theorems 17-18: Negation and ring structure (3)
-    - Additional properties (2)
-    - Theorems 19-23: Determinant basic properties (5)
-    - Theorems 24-28: Trace properties (5)
-    - Theorem 29: Determinant multiplicativity det(A*B) = det(A)*det(B) [CRITICAL]
-    - Theorems 30-32: Det multiplicativity corollaries (3)
-
-    Total tactics used: lra, ring, reflexivity, destruct, apply, repeat split
+    Total theorems: 59 + 16 component lemmas = 75 (52 original + 23 new)
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
-
-    OPTIMIZATION: Uses `apply mat4_eq; all:` pattern instead of `f_equal`
-    to avoid exponential blowup. Uses lra for linear proofs.
-    mat4_mul_assoc decomposed into 16 component lemmas.
-    Compilation time reduced from 30+ minutes to under 1 minute.
 *)

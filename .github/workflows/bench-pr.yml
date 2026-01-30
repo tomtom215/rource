@@ -138,7 +138,7 @@ jobs:
           REGRESSIONS=$(grep -ic "regress" critcmp-output.txt 2>/dev/null || echo "0")
 
           if [ "$REGRESSIONS" -gt 0 ]; then
-            echo "### ⚠️ Performance Regressions Detected" >> comparison.md
+            echo "### WARN: Performance Regressions Detected" >> comparison.md
             echo "" >> comparison.md
             echo "Found **$REGRESSIONS** benchmark(s) that regressed by more than ${{ env.REGRESSION_THRESHOLD }}%." >> comparison.md
             echo "" >> comparison.md
@@ -147,7 +147,7 @@ jobs:
             echo "has_regressions=true" >> $GITHUB_OUTPUT
             echo "regression_count=$REGRESSIONS" >> $GITHUB_OUTPUT
           else
-            echo "### ✅ No Significant Regressions" >> comparison.md
+            echo "### PASS: No Significant Regressions" >> comparison.md
             echo "" >> comparison.md
             echo "All benchmarks are within the ${{ env.REGRESSION_THRESHOLD }}% tolerance threshold." >> comparison.md
             echo "" >> comparison.md
@@ -240,11 +240,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.check-label.outputs.should_skip }}" == "true" ]; then
-            echo "✅ Skipped due to \`allow-perf-regression\` label" >> $GITHUB_STEP_SUMMARY
+            echo "PASS: Skipped due to \`allow-perf-regression\` label" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.benchmark-comparison.result }}" == "success" ]; then
-            echo "✅ All benchmarks passed regression checks" >> $GITHUB_STEP_SUMMARY
+            echo "PASS: All benchmarks passed regression checks" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.benchmark-comparison.result }}" == "failure" ]; then
-            echo "❌ Performance regression detected (>${{ env.REGRESSION_THRESHOLD }}%)" >> $GITHUB_STEP_SUMMARY
+            echo "FAIL: Performance regression detected (>${{ env.REGRESSION_THRESHOLD }}%)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ Benchmark comparison: ${{ needs.benchmark-comparison.result }}" >> $GITHUB_STEP_SUMMARY
+            echo "WARN: Benchmark comparison: ${{ needs.benchmark-comparison.result }}" >> $GITHUB_STEP_SUMMARY
           fi

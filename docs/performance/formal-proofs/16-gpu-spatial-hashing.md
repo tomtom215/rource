@@ -133,7 +133,7 @@ Down-sweep propagates partial sums to produce exclusive scan.
 For array [3, 1, 4, 1, 5]:
 - After up-sweep: [3, 4, 4, 10, 5] (last = total = 14)
 - After clearing: [3, 4, 4, 0, 5]
-- After down-sweep: [0, 3, 4, 8, 9] (exclusive scan) ✓
+- After down-sweep: [0, 3, 4, 8, 9] (exclusive scan) [Confirmed]
 
 **GPU Implementation**:
 - Local scan within workgroups (256 elements)

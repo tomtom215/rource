@@ -196,23 +196,23 @@ The specifications and the compiler serve fundamentally different purposes.
 │  Layer 1: Abstract Specification (R-based)                              │
 │  ├── Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v                            │
 │  ├── Color.v, Rect.v, Utils.v                                          │
-│  ├── Vec2_Proofs.v ... Mat4_Proofs.v (320 theorems)                     │
-│  ├── Color_Proofs.v, Rect_Proofs.v (107 theorems)                       │
+│  ├── Vec2_Proofs.v ... Mat4_Proofs.v (408 theorems)                     │
+│  ├── Color_Proofs.v, Rect_Proofs.v (131 theorems)                       │
 │  ├── Complexity.v (60 theorems)                                         │
 │  └── Purpose: Mathematical correctness proofs                           │
-│      Status: COMPLETE (824 total with Verus)                            │
+│      Status: COMPLETE (949 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
 │  ├── Vec2_Compute.v (50 theorems)                                       │
 │  ├── Vec3_Compute.v (42 theorems)                                       │
 │  ├── Vec4_Compute.v (33 theorems)                                       │
 │  ├── Mat3_Compute.v (25 theorems, determinant + trace)                  │
-│  ├── Mat4_Compute.v (41 theorems, incl. 16 component lemmas)            │
+│  ├── Mat4_Compute.v (50 theorems, incl. 16 component lemmas)            │
 │  ├── Color_Compute.v (28 theorems, blend/lerp/clamp)                    │
 │  ├── Rect_Compute.v (24 theorems, intersection/containment)             │
-│  ├── Utils_Compute.v (8 theorems, lerp/clamp)                           │
+│  ├── Utils_Compute.v (13 theorems, lerp/clamp)                           │
 │  └── Purpose: Computable operations with algebraic proofs               │
-│      Status: COMPLETE (251 theorems, all 8 types)                       │
+│      Status: COMPLETE (265 theorems, all 8 types)                       │
 │                                                                         │
 │  Layer 3: Extraction Pipeline                                           │
 │  ├── RourceMath_Extract.v → rource_math_extracted.ml (OCaml, 23 KB)     │
@@ -659,7 +659,7 @@ let zvec2_add a b =
 - [x] Complexity.v warning fixes (11 warnings eliminated)
 - [x] Layered verification architecture design
 
-### 7.2 Near-Term: Path 1 Pipeline (Q2 2026) ✅ COMPLETED
+### 7.2 Near-Term: Path 1 Pipeline (Q2 2026) -- COMPLETED
 
 - [x] Install wasm_of_ocaml toolchain (opam + wasm_of_ocaml-compiler v6.2.0 + Binaryen 119)
 - [x] Compile extracted OCaml → WASM via wasm_of_ocaml (library: 6.8 KB, test: 42.2 KB)

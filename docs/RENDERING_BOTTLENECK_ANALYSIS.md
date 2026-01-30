@@ -203,7 +203,7 @@ renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);  // Was 2.0
 | 1.5× | 2.25× main | -44% |
 | 1.25× | 1.56× main | -61% |
 
-### 4. SIMD Vectorization (Medium Effort) ✓ Implemented (Phase 71, 72)
+### 4. SIMD Vectorization (Medium Effort) -- Implemented (Phase 71, 72)
 
 Process 4 pixels simultaneously using SIMD-friendly batch blending:
 

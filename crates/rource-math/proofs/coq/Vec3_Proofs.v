@@ -879,12 +879,206 @@ Proof.
   destruct (Rle_dec ax bx); split; nra.
 Qed.
 
+(** Theorem 74: normalized vector has length squared 1 (for non-zero vectors).
+    ∀ v : Vec3, |v|² ≠ 0 → |normalized(v)|² = 1 *)
+Theorem vec3_normalized_length_sq : forall v : Vec3,
+  vec3_length_squared v <> 0 ->
+  vec3_length_squared (vec3_normalized v) = 1.
+Proof.
+  intros [vx vy vz] Hne.
+  unfold vec3_normalized, vec3_length, vec3_length_squared, vec3_dot, vec3_scale.
+  simpl.
+  unfold vec3_length_squared, vec3_dot in Hne. simpl in Hne.
+  assert (Hls_pos: 0 < vx * vx + vy * vy + vz * vz).
+  { destruct (Req_dec (vx * vx + vy * vy + vz * vz) 0) as [H0|H0];
+    [exfalso; exact (Hne H0) | nra]. }
+  set (s := sqrt (vx * vx + vy * vy + vz * vz)).
+  assert (Hs_pos: 0 < s) by (unfold s; apply sqrt_lt_R0; lra).
+  assert (Hsq: s * s = vx * vx + vy * vy + vz * vz) by (unfold s; apply sqrt_sqrt; lra).
+  assert (Hstep: 1/s * vx * (1/s * vx) + 1/s * vy * (1/s * vy) + 1/s * vz * (1/s * vz) =
+                 (vx * vx + vy * vy + vz * vz) / (s * s)).
+  { field. lra. }
+  rewrite Hstep.
+  rewrite <- Hsq.
+  field. lra.
+Qed.
+
+(** Theorem 75: clamp preserves x-component bounds.
+    ∀ v lo hi : Vec3, lo.x ≤ hi.x → lo.x ≤ clamp(v,lo,hi).x ≤ hi.x *)
+Theorem vec3_clamp_x_bounds : forall v lo hi : Vec3,
+  vec3_x lo <= vec3_x hi ->
+  vec3_x lo <= vec3_x (vec3_clamp v lo hi) /\
+  vec3_x (vec3_clamp v lo hi) <= vec3_x hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec3_clamp, vec3_min, vec3_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec3_x v) (vec3_x lo));
+  destruct (Rle_dec (vec3_x lo) (vec3_x hi));
+  destruct (Rle_dec (vec3_x v) (vec3_x hi));
+  split; lra.
+Qed.
+
+(** Theorem 76: clamp preserves y-component bounds. *)
+Theorem vec3_clamp_y_bounds : forall v lo hi : Vec3,
+  vec3_y lo <= vec3_y hi ->
+  vec3_y lo <= vec3_y (vec3_clamp v lo hi) /\
+  vec3_y (vec3_clamp v lo hi) <= vec3_y hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec3_clamp, vec3_min, vec3_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec3_y v) (vec3_y lo));
+  destruct (Rle_dec (vec3_y lo) (vec3_y hi));
+  destruct (Rle_dec (vec3_y v) (vec3_y hi));
+  split; lra.
+Qed.
+
+(** Theorem 77: clamp preserves z-component bounds. *)
+Theorem vec3_clamp_z_bounds : forall v lo hi : Vec3,
+  vec3_z lo <= vec3_z hi ->
+  vec3_z lo <= vec3_z (vec3_clamp v lo hi) /\
+  vec3_z (vec3_clamp v lo hi) <= vec3_z hi.
+Proof.
+  intros v lo hi Hbnd.
+  unfold vec3_clamp, vec3_min, vec3_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec (vec3_z v) (vec3_z lo));
+  destruct (Rle_dec (vec3_z lo) (vec3_z hi));
+  destruct (Rle_dec (vec3_z v) (vec3_z hi));
+  split; lra.
+Qed.
+
+(** Theorem 78: lerp stays within y-bounds. *)
+Theorem vec3_lerp_y_range : forall (a b : Vec3) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec3_y a) (vec3_y b) <= vec3_y (vec3_lerp a b t) /\
+  vec3_y (vec3_lerp a b t) <= Rmax (vec3_y a) (vec3_y b).
+Proof.
+  intros [ax ay az] [bx by0 bz] t Ht0 Ht1.
+  unfold vec3_lerp, vec3_add, vec3_sub, vec3_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec ay by0); split; nra.
+Qed.
+
+(** Theorem 79: lerp stays within z-bounds. *)
+Theorem vec3_lerp_z_range : forall (a b : Vec3) (t : R),
+  0 <= t -> t <= 1 ->
+  Rmin (vec3_z a) (vec3_z b) <= vec3_z (vec3_lerp a b t) /\
+  vec3_z (vec3_lerp a b t) <= Rmax (vec3_z a) (vec3_z b).
+Proof.
+  intros [ax ay az] [bx by0 bz] t Ht0 Ht1.
+  unfold vec3_lerp, vec3_add, vec3_sub, vec3_scale. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec az bz); split; nra.
+Qed.
+
+(** Theorem 80: lerp of a vector with itself gives itself. *)
+Theorem vec3_lerp_same : forall (v : Vec3) (t : R),
+  vec3_lerp v v t = v.
+Proof.
+  intros [vx vy vz] t.
+  unfold vec3_lerp, vec3_add, vec3_sub, vec3_scale. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 81: negation is involutive. *)
+Theorem vec3_neg_involutive : forall v : Vec3,
+  vec3_neg (vec3_neg v) = v.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 82: component-wise multiplication is commutative. *)
+Theorem vec3_mul_comm : forall a b : Vec3,
+  vec3_mul a b = vec3_mul b a.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_mul. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 83: component-wise multiplication by zero gives zero. *)
+Theorem vec3_mul_zero : forall v : Vec3,
+  vec3_mul v vec3_zero = vec3_zero.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_mul, vec3_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 84: element product of splat is v³. *)
+Theorem vec3_element_product_splat : forall v : R,
+  vec3_element_product (vec3_splat v) = v * v * v.
+Proof.
+  intros v.
+  unfold vec3_element_product, vec3_splat. simpl.
+  ring.
+Qed.
+
+(** Theorem 85: splat produces equal components. *)
+Theorem vec3_splat_components : forall v : R,
+  vec3_x (vec3_splat v) = v /\ vec3_y (vec3_splat v) = v /\ vec3_z (vec3_splat v) = v.
+Proof.
+  intros v. unfold vec3_splat. simpl. repeat split; reflexivity.
+Qed.
+
+(** Theorem 86: lerp midpoint. *)
+Theorem vec3_lerp_midpoint : forall a b : Vec3,
+  vec3_lerp a b (1/2) = mkVec3 ((vec3_x a + vec3_x b) / 2)
+                                 ((vec3_y a + vec3_y b) / 2)
+                                 ((vec3_z a + vec3_z b) / 2).
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_lerp, vec3_add, vec3_sub, vec3_scale. simpl.
+  f_equal; field.
+Qed.
+
+(** Theorem 87: scale by -1 is negation. *)
+Theorem vec3_scale_neg_one : forall v : Vec3,
+  vec3_scale (-1) v = vec3_neg v.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_scale, vec3_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 88: sub self is zero. *)
+Theorem vec3_sub_self : forall v : Vec3,
+  vec3_sub v v = vec3_zero.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_sub, vec3_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 89: mul is associative. *)
+Theorem vec3_mul_assoc : forall a b c : Vec3,
+  vec3_mul (vec3_mul a b) c = vec3_mul a (vec3_mul b c).
+Proof.
+  intros [ax ay az] [bx by0 bz] [cx cy cz].
+  unfold vec3_mul. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 90: mul one (splat 1) is identity. *)
+Theorem vec3_mul_one : forall v : Vec3,
+  vec3_mul v (vec3_splat 1) = v.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_mul, vec3_splat. simpl.
+  f_equal; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 73 (67 original + 6 new)
-    New theorems: length nonneg/zero, distance nonneg/self/symmetric,
-      lerp x_range
-    Note: lerp_zero and lerp_one already exist as Theorems 28-29.
+    Total theorems: 90 (78 original + 12 new)
+    New theorems: normalized_length_sq, clamp x/y/z bounds,
+      lerp y/z range, lerp_same, neg_involutive, mul_comm, mul_zero,
+      element_product_splat, splat_components, lerp_midpoint,
+      scale_neg_one, sub_self, mul_assoc, mul_one
     Admits: 0
     Axioms: Standard Coq real number library only
 

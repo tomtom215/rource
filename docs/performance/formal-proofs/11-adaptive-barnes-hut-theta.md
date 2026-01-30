@@ -42,7 +42,7 @@ From [Barnes-Hut Algorithm](./01-barnes-hut-algorithm.md) Section 1.3, relative 
 | 5000    | 0.8  | 16.0%        | 12.3%             |
 | 10000   | 1.0  | 25.0%        | 19.1%             |
 
-All empirical errors below theoretical bounds. ✓
+All empirical errors below theoretical bounds. [Confirmed]
 
 **Speedup Analysis**:
 

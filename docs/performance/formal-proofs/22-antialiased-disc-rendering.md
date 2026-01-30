@@ -69,8 +69,8 @@ f(d) = { 1       if d ≤ -0.5
        { 0       if d ≥ 0.5
 ```
 
-At d = -0.5: left limit = 1, right limit = 0.5 - (-0.5) = 1 ✓
-At d = 0.5: left limit = 0.5 - 0.5 = 0, right limit = 0 ✓
+At d = -0.5: left limit = 1, right limit = 0.5 - (-0.5) = 1 [Confirmed]
+At d = 0.5: left limit = 0.5 - 0.5 = 0, right limit = 0 [Confirmed]
 
 The function is continuous everywhere. ∎
 

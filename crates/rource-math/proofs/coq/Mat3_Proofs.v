@@ -514,28 +514,165 @@ Proof.
   rewrite mat3_det_scaling. rewrite mat3_det_translation. ring.
 Qed.
 
+(** * Additional Algebraic Properties *)
+
+(** Theorem 49: Negation is involutive: --A = A. *)
+Theorem mat3_neg_involutive : forall a : Mat3,
+  mat3_neg (mat3_neg a) = a.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8].
+  unfold mat3_neg. simpl.
+  apply mat3_eq; simpl; lra.
+Qed.
+
+(** Theorem 50: Subtraction is self-inverse: A - A = 0. *)
+Theorem mat3_sub_self : forall a : Mat3,
+  mat3_sub a a = mat3_zero.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8].
+  unfold mat3_sub, mat3_add, mat3_neg, mat3_zero. simpl.
+  apply mat3_eq; simpl; lra.
+Qed.
+
+(** Theorem 51: Scaling by -1 equals negation. *)
+Theorem mat3_scale_neg_one : forall a : Mat3,
+  mat3_scale (-1) a = mat3_neg a.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8].
+  unfold mat3_scale, mat3_neg. simpl.
+  apply mat3_eq; simpl; lra.
+Qed.
+
+(** Theorem 52: Transpose of multiplication: (A*B)^T = B^T * A^T. *)
+Theorem mat3_transpose_mul : forall a b : Mat3,
+  mat3_transpose (mat3_mul a b) = mat3_mul (mat3_transpose b) (mat3_transpose a).
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] [b0 b1 b2 b3 b4 b5 b6 b7 b8].
+  unfold mat3_transpose, mat3_mul. simpl.
+  apply mat3_eq; simpl; ring.
+Qed.
+
+(** Theorem 53: Transpose of identity is identity. *)
+Theorem mat3_transpose_identity :
+  mat3_transpose mat3_identity = mat3_identity.
+Proof.
+  unfold mat3_transpose, mat3_identity. simpl.
+  apply mat3_eq; simpl; lra.
+Qed.
+
+(** Theorem 54: Transpose of zero is zero. *)
+Theorem mat3_transpose_zero :
+  mat3_transpose mat3_zero = mat3_zero.
+Proof.
+  unfold mat3_transpose, mat3_zero. simpl.
+  apply mat3_eq; simpl; lra.
+Qed.
+
+(** Theorem 55: Uniform scaling determinant: det(S(s,s)) = s^2. *)
+Theorem mat3_det_uniform_scaling : forall s : R,
+  mat3_determinant (mat3_scaling s s) = s * s.
+Proof.
+  intros s.
+  unfold mat3_determinant, mat3_scaling. simpl. ring.
+Qed.
+
+(** Theorem 56: Scaling distributes over multiplication. *)
+Theorem mat3_scale_mul_left : forall (s : R) (a b : Mat3),
+  mat3_mul (mat3_scale s a) b = mat3_scale s (mat3_mul a b).
+Proof.
+  intros s [a0 a1 a2 a3 a4 a5 a6 a7 a8] [b0 b1 b2 b3 b4 b5 b6 b7 b8].
+  unfold mat3_mul, mat3_scale. simpl.
+  apply mat3_eq; simpl; ring.
+Qed.
+
+(** Theorem 57: Translation composes with scaling. *)
+Theorem mat3_scaling_translation_point : forall sx sy tx ty : R, forall p : Vec2,
+  mat3_transform_point (mat3_mul (mat3_translation tx ty) (mat3_scaling sx sy)) p =
+  mkVec2 (sx * vx p + tx) (sy * vy p + ty).
+Proof.
+  intros sx sy tx ty [px py].
+  unfold mat3_transform_point, mat3_mul, mat3_translation, mat3_scaling. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 58: Transform vector ignores translation component. *)
+Theorem mat3_transform_vector_ignores_translation : forall tx ty : R, forall v : Vec2,
+  mat3_transform_vector (mat3_translation tx ty) v = v.
+Proof.
+  intros tx ty [vx0 vy0].
+  unfold mat3_transform_vector, mat3_translation. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 59: Scaling vector works correctly. *)
+Theorem mat3_scaling_transforms_vector : forall sx sy : R, forall v : Vec2,
+  mat3_transform_vector (mat3_scaling sx sy) v =
+  mkVec2 (sx * vx v) (sy * vy v).
+Proof.
+  intros sx sy [vx0 vy0].
+  unfold mat3_transform_vector, mat3_scaling. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 60: Trace is linear: trace(A + B) already proven.
+    Trace of scalar multiply: trace(s * I) = 3s. *)
+Theorem mat3_trace_scalar_identity : forall s : R,
+  mat3_trace (mat3_scale s mat3_identity) = 3 * s.
+Proof.
+  intros s. unfold mat3_trace, mat3_scale, mat3_identity. simpl. ring.
+Qed.
+
+(** Theorem 61: Negation distributes over multiplication on the left. *)
+Theorem mat3_neg_mul_left : forall a b : Mat3,
+  mat3_mul (mat3_neg a) b = mat3_neg (mat3_mul a b).
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] [b0 b1 b2 b3 b4 b5 b6 b7 b8].
+  unfold mat3_mul, mat3_neg. simpl.
+  apply mat3_eq; simpl; ring.
+Qed.
+
+(** Theorem 62: Negation distributes over multiplication on the right. *)
+Theorem mat3_neg_mul_right : forall a b : Mat3,
+  mat3_mul a (mat3_neg b) = mat3_neg (mat3_mul a b).
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] [b0 b1 b2 b3 b4 b5 b6 b7 b8].
+  unfold mat3_mul, mat3_neg. simpl.
+  apply mat3_eq; simpl; ring.
+Qed.
+
+(** Theorem 63: Multiplication distributes over addition on the left. *)
+Theorem mat3_mul_add_distr_l : forall a b c : Mat3,
+  mat3_mul a (mat3_add b c) = mat3_add (mat3_mul a b) (mat3_mul a c).
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] [b0 b1 b2 b3 b4 b5 b6 b7 b8]
+         [c0 c1 c2 c3 c4 c5 c6 c7 c8].
+  unfold mat3_mul, mat3_add. simpl.
+  apply mat3_eq; simpl; ring.
+Qed.
+
+(** Theorem 64: Multiplication distributes over addition on the right. *)
+Theorem mat3_mul_add_distr_r : forall a b c : Mat3,
+  mat3_mul (mat3_add a b) c = mat3_add (mat3_mul a c) (mat3_mul b c).
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] [b0 b1 b2 b3 b4 b5 b6 b7 b8]
+         [c0 c1 c2 c3 c4 c5 c6 c7 c8].
+  unfold mat3_mul, mat3_add. simpl.
+  apply mat3_eq; simpl; ring.
+Qed.
+
+(** Theorem 65: Trace of neg: trace(-A) = -trace(A). *)
+Theorem mat3_trace_neg : forall a : Mat3,
+  mat3_trace (mat3_neg a) = - mat3_trace a.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8].
+  unfold mat3_trace, mat3_neg. simpl. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 44
-    - Theorems 1-4: Matrix addition properties (4)
-    - Theorems 5-8: Matrix multiplication identity/zero (4)
-    - Theorem 9: Matrix multiplication associativity (1) [CRITICAL]
-    - Theorems 10-13: Scalar multiplication properties (4)
-    - Theorems 14-16: Transpose properties (3)
-    - Theorems 17-18: Negation and ring structure (3)
-    - Additional properties (2)
-    - Theorems 19-24: Determinant properties (6)
-    - Theorems 25-29: Trace properties (5)
-    - Theorems 30-40: Transform properties (11)
-    - Theorem 41: Determinant multiplicativity det(A*B) = det(A)*det(B) [CRITICAL]
-    - Theorems 42-44: Det multiplicativity corollaries (3)
-
-    Total tactics used: lra, ring, nra, f_equal, reflexivity, destruct, apply, repeat split
+    Total theorems: 65 (48 original + 17 new)
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
-
-    OPTIMIZATION: Linear proofs use lra (fast) instead of ring.
-    Only nonlinear proofs (multiplication, determinant) use ring.
 *)

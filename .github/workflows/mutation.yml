@@ -116,10 +116,10 @@ jobs:
             echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
             echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
             echo "| Total Mutants | ${{ steps.mutants.outputs.total }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Killed ✅ | ${{ steps.mutants.outputs.killed }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Survived ❌ | ${{ steps.mutants.outputs.survived }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Timeout ⏱️ | ${{ steps.mutants.outputs.timeout }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Unviable ⚠️ | ${{ steps.mutants.outputs.unviable }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Killed PASS | ${{ steps.mutants.outputs.killed }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Survived FAIL | ${{ steps.mutants.outputs.survived }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Timeout TIMEOUT | ${{ steps.mutants.outputs.timeout }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Unviable WARN | ${{ steps.mutants.outputs.unviable }} |" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Mutation Score: ${SCORE}%**" >> $GITHUB_STEP_SUMMARY
 
@@ -128,14 +128,14 @@ jobs:
               THRESHOLD=80
               if (( $(echo "$SCORE >= $THRESHOLD" | bc -l) )); then
                 echo "" >> $GITHUB_STEP_SUMMARY
-                echo "✅ Score meets threshold (≥${THRESHOLD}%)" >> $GITHUB_STEP_SUMMARY
+                echo "PASS Score meets threshold (≥${THRESHOLD}%)" >> $GITHUB_STEP_SUMMARY
               else
                 echo "" >> $GITHUB_STEP_SUMMARY
-                echo "⚠️ Score below threshold (<${THRESHOLD}%)" >> $GITHUB_STEP_SUMMARY
+                echo "WARN Score below threshold (<${THRESHOLD}%)" >> $GITHUB_STEP_SUMMARY
               fi
             fi
           else
-            echo "❌ Mutation test results not found" >> $GITHUB_STEP_SUMMARY
+            echo "FAIL Mutation test results not found" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Check mutation score threshold
@@ -230,12 +230,12 @@ jobs:
             echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
             echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
             echo "| Total Mutants | ${{ steps.mutants.outputs.total }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Killed ✅ | ${{ steps.mutants.outputs.killed }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Survived ❌ | ${{ steps.mutants.outputs.survived }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Timeout ⏱️ | ${{ steps.mutants.outputs.timeout }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Unviable ⚠️ | ${{ steps.mutants.outputs.unviable }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Killed PASS | ${{ steps.mutants.outputs.killed }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Survived FAIL | ${{ steps.mutants.outputs.survived }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Timeout TIMEOUT | ${{ steps.mutants.outputs.timeout }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Unviable WARN | ${{ steps.mutants.outputs.unviable }} |" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Mutation Score: ${SCORE}%**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Mutation test results not found" >> $GITHUB_STEP_SUMMARY
+            echo "FAIL Mutation test results not found" >> $GITHUB_STEP_SUMMARY
           fi

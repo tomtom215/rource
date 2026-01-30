@@ -428,11 +428,11 @@ for typical visualizations.
 
 Based on comprehensive research, Rource has implemented or evaluated:
 
-**Spatial Algorithms**: QuadTree, Barnes-Hut, Spatial Hash, BVH variants ✓
-**Cache Optimization**: Generation counter, FxHashMap, LUT ✓
-**SIMD**: SIMD128 enabled, auto-vectorization active ✓
-**Complexity Reduction**: O(n²)→O(n log n) physics, O(n)→O(1) lookups ✓
-**GPU Offloading**: 9-pass spatial hash, visibility culling ✓
+**Spatial Algorithms**: QuadTree, Barnes-Hut, Spatial Hash, BVH variants (implemented)
+**Cache Optimization**: Generation counter, FxHashMap, LUT (implemented)
+**SIMD**: SIMD128 enabled, auto-vectorization active (implemented)
+**Complexity Reduction**: O(n^2) to O(n log n) physics, O(n) to O(1) lookups (implemented)
+**GPU Offloading**: 9-pass spatial hash, visibility culling (implemented)
 
 ### Remaining Opportunities
 

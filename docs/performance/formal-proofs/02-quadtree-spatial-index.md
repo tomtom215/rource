@@ -182,11 +182,11 @@ fn query_for_each_recursive(&self, bounds: &Bounds, visitor: &mut impl FnMut(&T)
 
 | Theorem/Equation | Code Location | Line(s) | Verification |
 |------------------|---------------|---------|--------------|
-| Theorem 2.1: Query O(log n + k) | `query_recursive` | 278-296 | ✓ Bounds intersection prunes non-overlapping subtrees |
-| Theorem 2.2: Insert O(log n) | `insert` | 116-134 | ✓ Single path to leaf, max depth bounded |
-| Space O(n) | `items: Vec<(Vec2, T)>` | 27 | ✓ Each item stored once |
-| MAX_ITEMS subdivision | `self.items.len() > self.max_items` | 131 | ✓ Triggers subdivision |
-| Depth bound | `self.depth < self.max_depth` | 131 | ✓ Prevents infinite recursion |
+| Theorem 2.1: Query O(log n + k) | `query_recursive` | 278-296 | Confirmed: Bounds intersection prunes non-overlapping subtrees |
+| Theorem 2.2: Insert O(log n) | `insert` | 116-134 | Confirmed: Single path to leaf, max depth bounded |
+| Space O(n) | `items: Vec<(Vec2, T)>` | 27 | Confirmed: Each item stored once |
+| MAX_ITEMS subdivision | `self.items.len() > self.max_items` | 131 | Confirmed: Triggers subdivision |
+| Depth bound | `self.depth < self.max_depth` | 131 | Confirmed: Prevents infinite recursion |
 
 ### Verification Commands
 

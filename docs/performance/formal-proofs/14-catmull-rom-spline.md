@@ -42,7 +42,7 @@ a₁(0) = 1
 a₂(0) = 0
 a₃(0) = 0
 
-C(0) = P₀·0 + P₁·1 + P₂·0 + P₃·0 = P₁ ✓
+C(0) = P₀·0 + P₁·1 + P₂·0 + P₃·0 = P₁ [Confirmed]
 ```
 
 **At t = 1** (end of segment):
@@ -52,7 +52,7 @@ a₁(1) = (2-τ) + (τ-3) + 1 = 0
 a₂(1) = (τ-2) + (3-2τ) + τ = 1
 a₃(1) = τ - τ = 0
 
-C(1) = P₀·0 + P₁·0 + P₂·1 + P₃·0 = P₂ ✓
+C(1) = P₀·0 + P₁·0 + P₂·1 + P₃·0 = P₂ [Confirmed]
 ```
 
 The spline passes exactly through P₁ at t=0 and P₂ at t=1. ∎

@@ -200,11 +200,11 @@ fn calculate_force(
 
 | Theorem/Equation | Code Location | Line(s) | Verification |
 |------------------|---------------|---------|--------------|
-| Theorem 1.2: O(n log n) complexity | `calculate_force` recursion | 409-418 | ✓ Traverses tree depth O(log n), visits O(1/θ²) nodes per level |
-| Cell opening criterion: s/d < θ | `use_approximation` check | 385-389 | ✓ Uses s²/d² < θ² to avoid sqrt |
-| Center-of-mass approximation | Force calculation | 396-406 | ✓ Uses `self.center_of_mass` and `self.total_mass` |
-| Theorem 1.3: Error O(θ²) | θ comparison | 385-389 | ✓ Opening criterion bounds multipole error |
-| MAX_TREE_DEPTH = 16 | Depth limit | 56 | ✓ Bounds log₄(D/ε) ≤ 16 |
+| Theorem 1.2: O(n log n) complexity | `calculate_force` recursion | 409-418 | Confirmed: Traverses tree depth O(log n), visits O(1/θ²) nodes per level |
+| Cell opening criterion: s/d < θ | `use_approximation` check | 385-389 | Confirmed: Uses s²/d² < θ² to avoid sqrt |
+| Center-of-mass approximation | Force calculation | 396-406 | Confirmed: Uses `self.center_of_mass` and `self.total_mass` |
+| Theorem 1.3: Error O(θ²) | θ comparison | 385-389 | Confirmed: Opening criterion bounds multipole error |
+| MAX_TREE_DEPTH = 16 | Depth limit | 56 | Confirmed: Bounds log₄(D/ε) ≤ 16 |
 
 ### Verification Commands
 

@@ -105,3 +105,109 @@ Proof.
   destruct H as [Hlo Hhi].
   apply rclamp_identity; assumption.
 Qed.
+
+(** * Additional Lerp Properties *)
+
+(** Theorem 11: lerp is affine: lerp(a,b,t) = (1-t)*a + t*b. *)
+Theorem rlerp_affine : forall (a b t : R),
+  rlerp a b t = (1 - t) * a + t * b.
+Proof.
+  intros. unfold rlerp. lra.
+Qed.
+
+(** Theorem 12: lerp commutes under symmetry: lerp(a,b,t) = lerp(b,a,1-t). *)
+Theorem rlerp_symmetric : forall (a b t : R),
+  rlerp a b t = rlerp b a (1 - t).
+Proof.
+  intros. unfold rlerp. lra.
+Qed.
+
+(** Theorem 13: lerp is monotone in t when a <= b. *)
+Theorem rlerp_monotone : forall (a b s t : R),
+  a <= b -> s <= t -> rlerp a b s <= rlerp a b t.
+Proof.
+  intros. unfold rlerp. nra.
+Qed.
+
+(** Theorem 14: lerp at quarter. *)
+Theorem rlerp_quarter : forall (a b : R),
+  rlerp a b (1/4) = (3 * a + b) / 4.
+Proof.
+  intros. unfold rlerp. lra.
+Qed.
+
+(** Theorem 15: lerp at three-quarters. *)
+Theorem rlerp_three_quarter : forall (a b : R),
+  rlerp a b (3/4) = (a + 3 * b) / 4.
+Proof.
+  intros. unfold rlerp. lra.
+Qed.
+
+(** Theorem 16: lerp difference: lerp(a,b,t) - lerp(a,b,s) = (b-a)*(t-s). *)
+Theorem rlerp_diff : forall (a b s t : R),
+  rlerp a b t - rlerp a b s = (b - a) * (t - s).
+Proof.
+  intros. unfold rlerp. lra.
+Qed.
+
+(** Theorem 17: lerp distributes addition: lerp(a+c, b+c, t) = lerp(a,b,t) + c. *)
+Theorem rlerp_add_const : forall (a b c t : R),
+  rlerp (a + c) (b + c) t = rlerp a b t + c.
+Proof.
+  intros. unfold rlerp. lra.
+Qed.
+
+(** Theorem 18: lerp scales: lerp(s*a, s*b, t) = s * lerp(a, b, t). *)
+Theorem rlerp_scale : forall (a b s t : R),
+  rlerp (s * a) (s * b) t = s * rlerp a b t.
+Proof.
+  intros. unfold rlerp. ring.
+Qed.
+
+(** * Additional Clamp Properties *)
+
+(** Theorem 19: clamp monotone: if u <= v, clamp(u) <= clamp(v). *)
+Theorem rclamp_monotone : forall (u v lo hi : R),
+  lo <= hi -> u <= v ->
+  rclamp u lo hi <= rclamp v lo hi.
+Proof.
+  intros u v lo hi Hle Huv.
+  unfold rclamp.
+  destruct (Rlt_dec u lo); destruct (Rlt_dec hi u);
+  destruct (Rlt_dec v lo); destruct (Rlt_dec hi v); lra.
+Qed.
+
+(** Theorem 20: clamp of lo is lo. *)
+Theorem rclamp_at_lo : forall (lo hi : R),
+  lo <= hi -> rclamp lo lo hi = lo.
+Proof.
+  intros lo hi Hle. apply rclamp_identity; lra.
+Qed.
+
+(** Theorem 21: clamp of hi is hi. *)
+Theorem rclamp_at_hi : forall (lo hi : R),
+  lo <= hi -> rclamp hi lo hi = hi.
+Proof.
+  intros lo hi Hle. apply rclamp_identity; lra.
+Qed.
+
+(** * Approximate Equality Properties *)
+
+(** Theorem 22: approx_eq is reflexive for positive eps. *)
+Theorem rapprox_eq_refl : forall (a eps : R),
+  eps > 0 -> rapprox_eq a a eps.
+Proof.
+  intros a eps Heps.
+  unfold rapprox_eq.
+  replace (a - a) with 0 by lra.
+  rewrite Rabs_R0. lra.
+Qed.
+
+(** Theorem 23: approx_eq is symmetric. *)
+Theorem rapprox_eq_sym : forall (a b eps : R),
+  rapprox_eq a b eps -> rapprox_eq b a eps.
+Proof.
+  intros a b eps H.
+  unfold rapprox_eq in *.
+  rewrite Rabs_minus_sym. exact H.
+Qed.

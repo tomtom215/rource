@@ -154,14 +154,14 @@ render_pass.draw_indirect(&indirect_buffer, 0);
 - The AABB test returns false
 - `atomicAdd` is not called
 - Instance is not written to output
-- Instance is not rendered ✓
+- Instance is not rendered [Confirmed]
 
 *Completeness* (no false negatives): If an instance intersects view bounds:
 - The AABB test returns true
 - `atomicAdd` gives unique output slot
 - Instance data is copied to output
 - `draw_indirect` uses updated count
-- Instance is rendered ✓
+- Instance is rendered [Confirmed]
 
 ∎
 
