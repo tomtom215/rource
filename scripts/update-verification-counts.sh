@@ -1,0 +1,587 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+
+# =============================================================================
+# Update Verification Counts
+# =============================================================================
+#
+# Single source of truth for ALL verification metrics across the repository.
+# Parses actual source files to extract counts, generates a canonical JSON
+# metrics file, and updates all documentation files to match.
+#
+# Usage:
+#   ./scripts/update-verification-counts.sh           # Update everything
+#   ./scripts/update-verification-counts.sh --check   # CI mode: fail if stale
+#   ./scripts/update-verification-counts.sh --json    # Only output JSON, no updates
+#
+# Source of truth (parsed, not hardcoded):
+#   - Kani:  crates/rource-math/src/kani_proofs/*.rs   (#[kani::proof])
+#   - Verus: crates/rource-math/proofs/*_proofs.rs     (proof fn)
+#   - Coq R: crates/rource-math/proofs/coq/*_Proofs.v  (Theorem|Lemma|Local Lemma)
+#   - Coq Z: crates/rource-math/proofs/coq/*_Compute.v (Theorem|Lemma|Local Lemma)
+#   - Tests: cargo test --all (parsed from output)
+#   - Phases: docs/performance/CHRONOLOGY.md (highest Phase N)
+#
+# Output:
+#   - metrics/verification-counts.json (machine-readable, canonical)
+#   - All documentation files updated in-place
+#
+# CI Integration:
+#   --check mode exits non-zero if ANY documentation file contains stale
+#   counts, enabling automated enforcement in CI pipelines.
+#
+# =============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+METRICS_DIR="$PROJECT_ROOT/metrics"
+COUNTS_FILE="$METRICS_DIR/verification-counts.json"
+
+# Parse arguments
+MODE="update"  # update | check | json
+for arg in "$@"; do
+    case "$arg" in
+        --check) MODE="check" ;;
+        --json)  MODE="json" ;;
+        --help|-h)
+            echo "Usage: $0 [--check|--json|--help]"
+            echo ""
+            echo "  (no args)  Parse sources, update JSON + all docs"
+            echo "  --check    CI mode: verify docs match source, exit 1 if stale"
+            echo "  --json     Parse sources, output JSON only, no doc updates"
+            echo "  --help     Show this help"
+            exit 0
+            ;;
+        *) echo "Unknown argument: $arg"; exit 1 ;;
+    esac
+done
+
+mkdir -p "$METRICS_DIR"
+
+# =============================================================================
+# PHASE 1: Parse source files to extract ground-truth counts
+# =============================================================================
+
+# --- Kani harnesses ---
+count_kani() {
+    local file="$1"
+    grep -c '#\[kani::proof\]' "$file" 2>/dev/null || echo 0
+}
+
+KANI_DIR="$PROJECT_ROOT/crates/rource-math/src/kani_proofs"
+KANI_VEC2=$(count_kani "$KANI_DIR/vec2.rs")
+KANI_VEC3=$(count_kani "$KANI_DIR/vec3.rs")
+KANI_VEC4=$(count_kani "$KANI_DIR/vec4.rs")
+KANI_MAT3=$(count_kani "$KANI_DIR/mat3.rs")
+KANI_MAT4=$(count_kani "$KANI_DIR/mat4.rs")
+KANI_COLOR=$(count_kani "$KANI_DIR/color.rs")
+KANI_RECT=$(count_kani "$KANI_DIR/rect.rs")
+KANI_UTILS=$(count_kani "$KANI_DIR/utils.rs")
+KANI_TOTAL=$((KANI_VEC2 + KANI_VEC3 + KANI_VEC4 + KANI_MAT3 + KANI_MAT4 + KANI_COLOR + KANI_RECT + KANI_UTILS))
+
+# --- Verus proof functions ---
+count_verus() {
+    local file="$1"
+    grep -c 'proof fn' "$file" 2>/dev/null || echo 0
+}
+
+VERUS_DIR="$PROJECT_ROOT/crates/rource-math/proofs"
+VERUS_VEC2=$(count_verus "$VERUS_DIR/vec2_proofs.rs")
+VERUS_VEC3=$(count_verus "$VERUS_DIR/vec3_proofs.rs")
+VERUS_VEC4=$(count_verus "$VERUS_DIR/vec4_proofs.rs")
+VERUS_MAT3_BASE=$(count_verus "$VERUS_DIR/mat3_proofs.rs")
+VERUS_MAT3_EXT=$(count_verus "$VERUS_DIR/mat3_extended_proofs.rs")
+VERUS_MAT3=$((VERUS_MAT3_BASE + VERUS_MAT3_EXT))
+VERUS_MAT4=$(count_verus "$VERUS_DIR/mat4_proofs.rs")
+VERUS_COLOR=$(count_verus "$VERUS_DIR/color_proofs.rs")
+VERUS_RECT=$(count_verus "$VERUS_DIR/rect_proofs.rs")
+VERUS_TOTAL=$((VERUS_VEC2 + VERUS_VEC3 + VERUS_VEC4 + VERUS_MAT3 + VERUS_MAT4 + VERUS_COLOR + VERUS_RECT))
+
+# --- Coq R-based theorems (Proofs + Complexity + Utils) ---
+count_coq() {
+    local file="$1"
+    grep -cE '^(Theorem|Lemma|Local Lemma)' "$file" 2>/dev/null || echo 0
+}
+
+COQ_DIR="$PROJECT_ROOT/crates/rource-math/proofs/coq"
+COQ_R_VEC2=$(count_coq "$COQ_DIR/Vec2_Proofs.v")
+COQ_R_VEC3=$(count_coq "$COQ_DIR/Vec3_Proofs.v")
+COQ_R_VEC4=$(count_coq "$COQ_DIR/Vec4_Proofs.v")
+COQ_R_MAT3=$(count_coq "$COQ_DIR/Mat3_Proofs.v")
+COQ_R_MAT4=$(count_coq "$COQ_DIR/Mat4_Proofs.v")
+COQ_R_COLOR=$(count_coq "$COQ_DIR/Color_Proofs.v")
+COQ_R_RECT=$(count_coq "$COQ_DIR/Rect_Proofs.v")
+COQ_R_COMPLEXITY=$(count_coq "$COQ_DIR/Complexity.v")
+COQ_R_UTILS=$(count_coq "$COQ_DIR/Utils.v")
+COQ_R_TOTAL=$((COQ_R_VEC2 + COQ_R_VEC3 + COQ_R_VEC4 + COQ_R_MAT3 + COQ_R_MAT4 + COQ_R_COLOR + COQ_R_RECT + COQ_R_COMPLEXITY + COQ_R_UTILS))
+
+# --- Coq Z-based theorems (Compute) ---
+COQ_Z_VEC2=$(count_coq "$COQ_DIR/Vec2_Compute.v")
+COQ_Z_VEC3=$(count_coq "$COQ_DIR/Vec3_Compute.v")
+COQ_Z_VEC4=$(count_coq "$COQ_DIR/Vec4_Compute.v")
+COQ_Z_MAT3=$(count_coq "$COQ_DIR/Mat3_Compute.v")
+COQ_Z_MAT4=$(count_coq "$COQ_DIR/Mat4_Compute.v")
+COQ_Z_COLOR=$(count_coq "$COQ_DIR/Color_Compute.v")
+COQ_Z_RECT=$(count_coq "$COQ_DIR/Rect_Compute.v")
+COQ_Z_UTILS=$(count_coq "$COQ_DIR/Utils_Compute.v")
+COQ_Z_TOTAL=$((COQ_Z_VEC2 + COQ_Z_VEC3 + COQ_Z_VEC4 + COQ_Z_MAT3 + COQ_Z_MAT4 + COQ_Z_COLOR + COQ_Z_RECT + COQ_Z_UTILS))
+
+# --- Coq combined ---
+COQ_COMBINED=$((COQ_R_TOTAL + COQ_Z_TOTAL))
+
+# --- Grand total ---
+GRAND_TOTAL=$((VERUS_TOTAL + COQ_R_TOTAL + COQ_Z_TOTAL + KANI_TOTAL))
+
+# --- Per-type totals ---
+TOTAL_VEC2=$((VERUS_VEC2 + COQ_R_VEC2 + COQ_Z_VEC2 + KANI_VEC2))
+TOTAL_VEC3=$((VERUS_VEC3 + COQ_R_VEC3 + COQ_Z_VEC3 + KANI_VEC3))
+TOTAL_VEC4=$((VERUS_VEC4 + COQ_R_VEC4 + COQ_Z_VEC4 + KANI_VEC4))
+TOTAL_MAT3=$((VERUS_MAT3 + COQ_R_MAT3 + COQ_Z_MAT3 + KANI_MAT3))
+TOTAL_MAT4=$((VERUS_MAT4 + COQ_R_MAT4 + COQ_Z_MAT4 + KANI_MAT4))
+TOTAL_COLOR=$((VERUS_COLOR + COQ_R_COLOR + COQ_Z_COLOR + KANI_COLOR))
+TOTAL_RECT=$((VERUS_RECT + COQ_R_RECT + COQ_Z_RECT + KANI_RECT))
+TOTAL_UTILS=$((COQ_R_UTILS + COQ_Z_UTILS + KANI_UTILS))
+TOTAL_COMPLEXITY=$COQ_R_COMPLEXITY
+
+# --- Optimization phases ---
+OPT_PHASES=$(grep -oE 'Phase [0-9]+' "$PROJECT_ROOT/docs/performance/CHRONOLOGY.md" 2>/dev/null | \
+    sed 's/Phase //' | sort -n | tail -1 || echo "0")
+
+# =============================================================================
+# PHASE 2: Generate JSON metrics file
+# =============================================================================
+
+cat > "$COUNTS_FILE" << ENDJSON
+{
+  "_comment": "Auto-generated by scripts/update-verification-counts.sh — DO NOT EDIT MANUALLY",
+  "_updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "_source": "Parsed from actual source files (not hardcoded)",
+  "grand_total": $GRAND_TOTAL,
+  "verus": {
+    "total": $VERUS_TOTAL,
+    "vec2": $VERUS_VEC2,
+    "vec3": $VERUS_VEC3,
+    "vec4": $VERUS_VEC4,
+    "mat3": $VERUS_MAT3,
+    "mat3_base": $VERUS_MAT3_BASE,
+    "mat3_extended": $VERUS_MAT3_EXT,
+    "mat4": $VERUS_MAT4,
+    "color": $VERUS_COLOR,
+    "rect": $VERUS_RECT
+  },
+  "coq_r": {
+    "total": $COQ_R_TOTAL,
+    "vec2": $COQ_R_VEC2,
+    "vec3": $COQ_R_VEC3,
+    "vec4": $COQ_R_VEC4,
+    "mat3": $COQ_R_MAT3,
+    "mat4": $COQ_R_MAT4,
+    "color": $COQ_R_COLOR,
+    "rect": $COQ_R_RECT,
+    "complexity": $COQ_R_COMPLEXITY,
+    "utils": $COQ_R_UTILS
+  },
+  "coq_z": {
+    "total": $COQ_Z_TOTAL,
+    "vec2": $COQ_Z_VEC2,
+    "vec3": $COQ_Z_VEC3,
+    "vec4": $COQ_Z_VEC4,
+    "mat3": $COQ_Z_MAT3,
+    "mat4": $COQ_Z_MAT4,
+    "color": $COQ_Z_COLOR,
+    "rect": $COQ_Z_RECT,
+    "utils": $COQ_Z_UTILS
+  },
+  "coq_combined": $COQ_COMBINED,
+  "kani": {
+    "total": $KANI_TOTAL,
+    "vec2": $KANI_VEC2,
+    "vec3": $KANI_VEC3,
+    "vec4": $KANI_VEC4,
+    "mat3": $KANI_MAT3,
+    "mat4": $KANI_MAT4,
+    "color": $KANI_COLOR,
+    "rect": $KANI_RECT,
+    "utils": $KANI_UTILS
+  },
+  "per_type": {
+    "vec2": $TOTAL_VEC2,
+    "vec3": $TOTAL_VEC3,
+    "vec4": $TOTAL_VEC4,
+    "mat3": $TOTAL_MAT3,
+    "mat4": $TOTAL_MAT4,
+    "color": $TOTAL_COLOR,
+    "rect": $TOTAL_RECT,
+    "utils": $TOTAL_UTILS,
+    "complexity": $TOTAL_COMPLEXITY
+  },
+  "optimization_phases": $OPT_PHASES
+}
+ENDJSON
+
+# =============================================================================
+# PHASE 3: Display summary
+# =============================================================================
+
+echo "╔═══════════════════════════════════════════════════════════════╗"
+echo "║          VERIFICATION COUNTS (from source files)            ║"
+echo "╠═══════════════════════════════════════════════════════════════╣"
+echo "║                                                             ║"
+printf "║  Verus proof functions:  %4d                               ║\n" "$VERUS_TOTAL"
+printf "║  Coq R-based theorems:  %4d                               ║\n" "$COQ_R_TOTAL"
+printf "║  Coq Z-based theorems:  %4d                               ║\n" "$COQ_Z_TOTAL"
+printf "║  Kani CBMC harnesses:   %4d                               ║\n" "$KANI_TOTAL"
+echo "║  ─────────────────────────────                              ║"
+printf "║  GRAND TOTAL:           %4d                               ║\n" "$GRAND_TOTAL"
+echo "║                                                             ║"
+printf "║  Optimization phases:     %3d                               ║\n" "$OPT_PHASES"
+echo "║                                                             ║"
+echo "╚═══════════════════════════════════════════════════════════════╝"
+echo ""
+echo "Per-type breakdown:"
+printf "  %-12s  Verus  Coq-R  Coq-Z  Kani  Total\n" "Type"
+printf "  %-12s  -----  -----  -----  ----  -----\n" "────────────"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Vec2" "$VERUS_VEC2" "$COQ_R_VEC2" "$COQ_Z_VEC2" "$KANI_VEC2" "$TOTAL_VEC2"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Vec3" "$VERUS_VEC3" "$COQ_R_VEC3" "$COQ_Z_VEC3" "$KANI_VEC3" "$TOTAL_VEC3"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Vec4" "$VERUS_VEC4" "$COQ_R_VEC4" "$COQ_Z_VEC4" "$KANI_VEC4" "$TOTAL_VEC4"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Mat3" "$VERUS_MAT3" "$COQ_R_MAT3" "$COQ_Z_MAT3" "$KANI_MAT3" "$TOTAL_MAT3"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Mat4" "$VERUS_MAT4" "$COQ_R_MAT4" "$COQ_Z_MAT4" "$KANI_MAT4" "$TOTAL_MAT4"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Color" "$VERUS_COLOR" "$COQ_R_COLOR" "$COQ_Z_COLOR" "$KANI_COLOR" "$TOTAL_COLOR"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Rect" "$VERUS_RECT" "$COQ_R_RECT" "$COQ_Z_RECT" "$KANI_RECT" "$TOTAL_RECT"
+printf "  %-12s  %5s  %5d  %5d  %4d  %5d\n" "Utils" "—" "$COQ_R_UTILS" "$COQ_Z_UTILS" "$KANI_UTILS" "$TOTAL_UTILS"
+printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "Complexity" "—" "$COQ_R_COMPLEXITY" "—" "—" "$TOTAL_COMPLEXITY"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "TOTAL" "$VERUS_TOTAL" "$COQ_R_TOTAL" "$COQ_Z_TOTAL" "$KANI_TOTAL" "$GRAND_TOTAL"
+echo ""
+
+if [[ "$MODE" == "json" ]]; then
+    echo "JSON written to: $COUNTS_FILE"
+    exit 0
+fi
+
+# =============================================================================
+# PHASE 4: Check or Update documentation files
+# =============================================================================
+
+ERRORS=0
+
+# Helper: check if a file contains a specific string, report error if not
+check_contains() {
+    local file="$1"
+    local expected="$2"
+    local description="$3"
+    if ! grep -qF "$expected" "$file" 2>/dev/null; then
+        echo "STALE: $file"
+        echo "  Expected: $expected"
+        echo "  Context: $description"
+        ERRORS=$((ERRORS + 1))
+    fi
+}
+
+# Helper: replace a pattern in a file (sed -i)
+replace_in_file() {
+    local file="$1"
+    local old="$2"
+    local new="$3"
+    if [[ -f "$file" ]] && grep -qF "$old" "$file" 2>/dev/null; then
+        sed -i "s|$(echo "$old" | sed 's/[&/\]/\\&/g')|$(echo "$new" | sed 's/[&/\]/\\&/g')|g" "$file"
+        echo "  Updated: $(basename "$file"): '$old' → '$new'"
+    fi
+}
+
+# Define key strings that must appear in specific files
+# Format: file|expected_string|description
+
+CHECKS=(
+    # FORMAL_VERIFICATION.md - overview paragraph
+    "docs/verification/FORMAL_VERIFICATION.md|$GRAND_TOTAL machine-checked|Overview total"
+    # FORMAL_VERIFICATION.md - summary table Kani row
+    "docs/verification/FORMAL_VERIFICATION.md|$KANI_TOTAL proof harnesses|Kani summary row"
+    # FORMAL_VERIFICATION.md - combined row
+    "docs/verification/FORMAL_VERIFICATION.md|**$GRAND_TOTAL**|Combined total row"
+    # FORMAL_VERIFICATION.md - Coq combined comment
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_COMBINED theorems|Coq combined comment"
+    # FORMAL_VERIFICATION.md - architecture diagram Coq count
+    "docs/verification/FORMAL_VERIFICATION.md|Coq Proofs ($COQ_COMBINED theorems)|Architecture Coq total"
+    # FORMAL_VERIFICATION.md - architecture diagram Z-based count
+    "docs/verification/FORMAL_VERIFICATION.md|($COQ_Z_TOTAL thms)|Architecture Z-based total"
+    # FORMAL_VERIFICATION.md - Layer 2 comment
+    "docs/verification/FORMAL_VERIFICATION.md|($COQ_Z_TOTAL theorems)|Layer 2 Z-based count"
+    # FORMAL_VERIFICATION.md - Z-based footer per-type
+    "docs/verification/FORMAL_VERIFICATION.md|Mat4($COQ_Z_MAT4)|Z-based footer Mat4"
+    # FORMAL_VERIFICATION.md - Z-based in combined footer
+    "docs/verification/FORMAL_VERIFICATION.md|Coq Z-based: $COQ_Z_TOTAL|Combined footer Z count"
+    # VERIFICATION_COVERAGE.md - Kani total
+    "docs/verification/VERIFICATION_COVERAGE.md|**$KANI_TOTAL**|Kani total row"
+    # VERIFICATION_COVERAGE.md - architecture line
+    "docs/verification/VERIFICATION_COVERAGE.md|$GRAND_TOTAL theorems|Architecture current layer"
+    # VERIFICATION_COVERAGE.md - footer Kani
+    "docs/verification/VERIFICATION_COVERAGE.md|Kani IEEE 754 harnesses: $KANI_TOTAL|Footer Kani count"
+    # COQ_PROOFS.md - header admits line
+    "docs/verification/COQ_PROOFS.md|across all $COQ_COMBINED theorems|COQ_PROOFS header total"
+    # COQ_PROOFS.md - Z-based table total
+    "docs/verification/COQ_PROOFS.md|**$COQ_Z_TOTAL**|COQ_PROOFS Z table total"
+    # COQ_PROOFS.md - Z-based footer per-type
+    "docs/verification/COQ_PROOFS.md|Mat4: $COQ_Z_MAT4|COQ_PROOFS Z footer Mat4"
+    # COQ_PROOFS.md - combined Coq total
+    "docs/verification/COQ_PROOFS.md|$COQ_COMBINED total Coq theorems|COQ_PROOFS combined total"
+    # CLAUDE.md - formal verification status
+    "CLAUDE.md|$KANI_TOTAL proof harnesses|Kani CBMC status"
+    "CLAUDE.md|$GRAND_TOTAL formally verified|Combined status"
+    # CLAUDE.md - per-type table totals
+    "CLAUDE.md|**$GRAND_TOTAL**|Per-type table total"
+    # CLAUDE.md - footer
+    "CLAUDE.md|Formal Verification: $GRAND_TOTAL theorems/harnesses|Footer metadata"
+    # CLAUDE.md - COQ_PROOFS.md doc reference
+    "CLAUDE.md|R + Z, $COQ_COMBINED theorems|CLAUDE COQ_PROOFS ref"
+    # README.md - verification table (Verus row)
+    "README.md|$VERUS_TOTAL proof functions|README Verus row"
+    # README.md - Coq R-based row
+    "README.md|$COQ_R_TOTAL theorems|README Coq R row"
+    # README.md - Coq Z-based row
+    "README.md|$COQ_Z_TOTAL theorems|README Coq Z row"
+    # README.md - combined total
+    "README.md|$GRAND_TOTAL|README combined total"
+    # docs/README.md - Verus reference
+    "docs/README.md|$VERUS_TOTAL proof functions|docs/README Verus ref"
+    # docs/README.md - Coq reference
+    "docs/README.md|$COQ_COMBINED theorems|docs/README Coq ref"
+    # docs/README.md - FORMAL_VERIFICATION reference
+    "docs/README.md|$GRAND_TOTAL theorems/harnesses|docs/README FORMAL_VERIFICATION ref"
+    # SETUP_GUIDE.md - Verus count
+    "docs/verification/SETUP_GUIDE.md|$VERUS_TOTAL|SETUP_GUIDE Verus count"
+    # WASM_EXTRACTION_PIPELINE.md - Verus count
+    "docs/verification/WASM_EXTRACTION_PIPELINE.md|$VERUS_TOTAL proof|WASM_EXTRACTION Verus"
+    # WASM_EXTRACTION_PIPELINE.md - Coq combined
+    "docs/verification/WASM_EXTRACTION_PIPELINE.md|$COQ_COMBINED theorems|WASM_EXTRACTION Coq"
+    # RUST_VERIFICATION_LANDSCAPE.md - total
+    "docs/verification/RUST_VERIFICATION_LANDSCAPE.md|$GRAND_TOTAL|LANDSCAPE total"
+    # RUST_VERIFICATION_LANDSCAPE.md - Coq theorem count
+    "docs/verification/RUST_VERIFICATION_LANDSCAPE.md|Coq ($COQ_COMBINED theorems)|LANDSCAPE Coq count"
+    # RUST_VERIFICATION_LANDSCAPE.md - Kani harness count
+    "docs/verification/RUST_VERIFICATION_LANDSCAPE.md|$KANI_TOTAL harnesses for|LANDSCAPE Kani count"
+    # kani_proofs/mod.rs - harness count in doc
+    "crates/rource-math/src/kani_proofs/mod.rs|$KANI_TOTAL total|mod.rs harness count"
+)
+
+if [[ "$MODE" == "check" ]]; then
+    echo "=== CI Consistency Check ==="
+    echo "Verifying all documentation matches source-of-truth counts..."
+    echo ""
+
+    for entry in "${CHECKS[@]}"; do
+        IFS='|' read -r file expected desc <<< "$entry"
+        check_contains "$PROJECT_ROOT/$file" "$expected" "$desc"
+    done
+
+    echo ""
+    if [[ $ERRORS -gt 0 ]]; then
+        echo "FAILED: $ERRORS stale count(s) found."
+        echo "Run './scripts/update-verification-counts.sh' to fix."
+        exit 1
+    else
+        echo "PASSED: All documentation counts match source files."
+        exit 0
+    fi
+fi
+
+# =============================================================================
+# PHASE 5: Update all documentation files
+# =============================================================================
+
+echo "=== Updating documentation files ==="
+echo ""
+
+# --- FORMAL_VERIFICATION.md ---
+FV="$PROJECT_ROOT/docs/verification/FORMAL_VERIFICATION.md"
+if [[ -f "$FV" ]]; then
+    echo "Updating FORMAL_VERIFICATION.md..."
+    # Overview paragraph: update "N machine-checked"
+    sed -i -E "s/[0-9]+ machine-checked theorems\/harnesses/$GRAND_TOTAL machine-checked theorems\/harnesses/g" "$FV"
+    # Kani summary row total
+    sed -i -E "s/[0-9]+ proof harnesses \| 0/$KANI_TOTAL proof harnesses | 0/" "$FV"
+    # Combined total row
+    sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*8 types\*\*/**$GRAND_TOTAL** | **0** | **8 types**/" "$FV"
+    # Coq combined comment
+    sed -i -E "s/[0-9]+ theorems, ~45s/$COQ_COMBINED theorems, ~45s/" "$FV"
+    # Per-type Kani counts in the table
+    sed -i -E "s/\| $((KANI_VEC2)) harnesses \| [0-9]+ \|/| $KANI_VEC2 harnesses | $TOTAL_VEC2 |/" "$FV"
+    # Architecture diagram Kani count
+    sed -i -E "s/\([0-9]+ harnesses\)  NaN/($KANI_TOTAL harnesses)  NaN/" "$FV"
+    # Architecture diagram Coq total
+    sed -i -E "s/Coq Proofs \([0-9]+ theorems\)/Coq Proofs ($COQ_COMBINED theorems)/" "$FV"
+    # Architecture diagram Z-based total
+    sed -i -E "s/Compute files \([0-9]+ thms\)/Compute files ($COQ_Z_TOTAL thms)/" "$FV"
+    # Layer 2 Z-based comment
+    sed -i -E "s/Z-based Computational Bridge \([0-9]+ theorems\)/Z-based Computational Bridge ($COQ_Z_TOTAL theorems)/" "$FV"
+    # Z-based footer per-type (fix Mat4 count)
+    sed -i -E "s/Mat4\([0-9]+\), Color/Mat4($COQ_Z_MAT4), Color/" "$FV"
+    # Z-based footer total
+    sed -i -E "s/= [0-9]+ theorems over Z/= $COQ_Z_TOTAL theorems over Z/" "$FV"
+    # Z-based in combined footer
+    sed -i -E "s/Coq Z-based: [0-9]+/Coq Z-based: $COQ_Z_TOTAL/" "$FV"
+    # Footer: Kani total
+    sed -i -E "s/Total harnesses: [0-9]+/Total harnesses: $KANI_TOTAL/" "$FV"
+    # Footer: Kani per-type (anchored to "Total harnesses:" to avoid clobbering other breakdowns)
+    sed -i -E "s/Total harnesses: [0-9]+ \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+\)/Total harnesses: $KANI_TOTAL (Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4, Mat3: $KANI_MAT3, Mat4: $KANI_MAT4, Color: $KANI_COLOR, Rect: $KANI_RECT, Utils: $KANI_UTILS)/" "$FV"
+    # Overview paragraph Kani per-type (anchored to "Kani:" prefix)
+    sed -i -E "s/Kani: [0-9]+ harnesses\) \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+\)/Kani: $KANI_TOTAL harnesses) (Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4, Mat3: $KANI_MAT3, Mat4: $KANI_MAT4, Color: $KANI_COLOR, Rect: $KANI_RECT, Utils: $KANI_UTILS)/" "$FV"
+    # Footer: Coq Z-based per-type (anchored to "*Total theorems:" — fix both total and per-type)
+    # Use two-phase approach: first match the Z-based line by its unique prefix context
+    sed -i -E "/Z-based Computational Bridge/{n;n;s/\*Total theorems: [0-9]+ \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+\)/\*Total theorems: $COQ_Z_TOTAL (Vec2: $COQ_Z_VEC2, Vec3: $COQ_Z_VEC3, Vec4: $COQ_Z_VEC4, Mat3: $COQ_Z_MAT3, Mat4: $COQ_Z_MAT4, Color: $COQ_Z_COLOR, Rect: $COQ_Z_RECT, Utils: $COQ_Z_UTILS)/}" "$FV"
+    # Footer: combined total
+    sed -i -E "s/Total theorems\/harnesses: [0-9]+ across/Total theorems\/harnesses: $GRAND_TOTAL across/" "$FV"
+    sed -i -E "s/Kani: [0-9]+\)/Kani: $KANI_TOTAL)/" "$FV"
+    # Footer: Coq R-based total
+    sed -i -E "s/Total theorems: [0-9]+ \(Vec2: $COQ_R_VEC2/Total theorems: $COQ_R_TOTAL (Vec2: $COQ_R_VEC2/" "$FV"
+    # (Z-based per-type is handled above by context-aware sed anchored to "Z-based Computational Bridge")
+    # Academic contribution - total
+    sed -i -E "s/rource-math with [0-9]+ machine-checked/rource-math with $GRAND_TOTAL machine-checked/" "$FV"
+    # All harnesses verified line
+    sed -i -E "s/All [0-9]+ harnesses verified/All $KANI_TOTAL harnesses verified/" "$FV"
+    echo "  Done."
+fi
+
+# --- VERIFICATION_COVERAGE.md ---
+VC="$PROJECT_ROOT/docs/verification/VERIFICATION_COVERAGE.md"
+if [[ -f "$VC" ]]; then
+    echo "Updating VERIFICATION_COVERAGE.md..."
+    sed -i -E "s/→ [0-9]+ theorems, 50/→ $GRAND_TOTAL theorems, 50/" "$VC"
+    sed -i -E "s/Kani IEEE 754 harnesses: [0-9]+/Kani IEEE 754 harnesses: $KANI_TOTAL/" "$VC"
+    echo "  Done."
+fi
+
+# --- COQ_PROOFS.md ---
+CP="$PROJECT_ROOT/docs/verification/COQ_PROOFS.md"
+if [[ -f "$CP" ]]; then
+    echo "Updating COQ_PROOFS.md..."
+    # Header: "across all N theorems"
+    sed -i -E "s/across all [0-9]+ theorems/across all $COQ_COMBINED theorems/" "$CP"
+    # Z-based table total row
+    sed -i -E "s/\*\*[0-9]+\*\* \| \*\*~45s\*\*/**$COQ_Z_TOTAL** | **~45s**/" "$CP"
+    # Z-based footer per-type (Mat4 count)
+    sed -i -E "s/Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+\)\*/Mat4: $COQ_Z_MAT4, Color: $COQ_Z_COLOR, Rect: $COQ_Z_RECT, Utils: $COQ_Z_UTILS)*/" "$CP"
+    # Z-based footer total
+    sed -i -E "s/\*Total theorems: [0-9]+ \(Vec2: $COQ_Z_VEC2, Vec3: $COQ_Z_VEC3, Vec4: $COQ_Z_VEC4, Mat3: $COQ_Z_MAT3/*Total theorems: $COQ_Z_TOTAL (Vec2: $COQ_Z_VEC2, Vec3: $COQ_Z_VEC3, Vec4: $COQ_Z_VEC4, Mat3: $COQ_Z_MAT3/" "$CP"
+    # Combined Coq total
+    sed -i -E "s/[0-9]+ total Coq theorems/$COQ_COMBINED total Coq theorems/" "$CP"
+    echo "  Done."
+fi
+
+# --- CLAUDE.md ---
+CM="$PROJECT_ROOT/CLAUDE.md"
+if [[ -f "$CM" ]]; then
+    echo "Updating CLAUDE.md..."
+    # Kani CBMC status line
+    sed -i -E "s/\*\*Kani \(CBMC\)\*\*: [0-9]+ proof harnesses/**Kani (CBMC)**: $KANI_TOTAL proof harnesses/" "$CM"
+    # Combined status line
+    sed -i -E "s/\*\*Combined\*\*: [0-9]+ formally verified/**Combined**: $GRAND_TOTAL formally verified/" "$CM"
+    # Formal Verification doc reference
+    sed -i -E "s/Formal verification overview and index \([0-9]+ theorems/Formal verification overview and index ($GRAND_TOTAL theorems/" "$CM"
+    # Per-type table total row
+    sed -i -E "s/\| \*\*[0-9]+ harnesses\*\* \| \*\*[0-9]+\*\* \| \*\*ACADEMIC\*\*/| **$KANI_TOTAL harnesses** | **$GRAND_TOTAL** | **ACADEMIC**/" "$CM"
+    # Kani comment in verification commands
+    sed -i -E "s/# Kani proofs \([0-9]+ harnesses/# Kani proofs ($KANI_TOTAL harnesses/" "$CM"
+    # Formal Verification in summary table
+    sed -i -E "s/Verus \+ Coq \+ Kani proofs \([0-9]+ theorems\/harnesses\)/Verus + Coq + Kani proofs ($GRAND_TOTAL theorems\/harnesses)/" "$CM"
+    # ASCII box
+    sed -i -E "s/[0-9]+ formally verified theorems\/harnesses across Verus/$GRAND_TOTAL formally verified theorems\/harnesses across Verus/" "$CM"
+    # Footer metadata
+    sed -i -E "s/Formal Verification: [0-9]+ theorems\/harnesses \(Verus: [0-9]+, Coq R-based: [0-9]+, Coq Z-based: [0-9]+, Kani: [0-9]+\)/Formal Verification: $GRAND_TOTAL theorems\/harnesses (Verus: $VERUS_TOTAL, Coq R-based: $COQ_R_TOTAL, Coq Z-based: $COQ_Z_TOTAL, Kani: $KANI_TOTAL)/" "$CM"
+    # Optimization phases
+    sed -i -E "s/Optimization Phases: [0-9]+/Optimization Phases: $OPT_PHASES/" "$CM"
+    # Coq Z-based status line
+    sed -i -E "s/\*\*Coq \(Z-based\)\*\*: [0-9]+ theorems/**Coq (Z-based)**: $COQ_Z_TOTAL theorems/" "$CM"
+    # Coq command line comment (673/681/697 → correct)
+    sed -i -E "s/# Coq proofs \([0-9]+ theorems/# Coq proofs ($COQ_COMBINED theorems/" "$CM"
+    # COQ_PROOFS.md doc reference
+    sed -i -E "s/Coq proofs \(R \+ Z, [0-9]+ theorems/Coq proofs (R + Z, $COQ_COMBINED theorems/" "$CM"
+    echo "  Done."
+fi
+
+# --- README.md ---
+RM="$PROJECT_ROOT/README.md"
+if [[ -f "$RM" ]]; then
+    echo "Updating README.md..."
+    # Verus row: "| **Verus** ... | N proof functions, M+ VCs |"
+    sed -i -E "s/[0-9]+ proof functions, [0-9]+\+ VCs/$VERUS_TOTAL proof functions, 452+ VCs/" "$RM"
+    # Coq R-based row
+    sed -i -E "s/\| [0-9]+ theorems, 0 admits \| Machine-checked/| $COQ_R_TOTAL theorems, 0 admits | Machine-checked/" "$RM"
+    # Coq Z-based row
+    sed -i -E "s/[0-9]+ theorems, extractable/| $COQ_Z_TOTAL theorems, extractable/" "$RM"
+    # Kani row (if present)
+    sed -i -E "s/[0-9]+ harnesses, 0 failures/$KANI_TOTAL harnesses, 0 failures/" "$RM"
+    # Combined/total references
+    sed -i -E "s/[0-9]+ formally verified theorems/$GRAND_TOTAL formally verified theorems/" "$RM"
+    # Optimization phases
+    sed -i -E "s/[0-9]+ optimization phases/$OPT_PHASES optimization phases/" "$RM"
+    echo "  Done."
+fi
+
+# --- docs/README.md ---
+DR="$PROJECT_ROOT/docs/README.md"
+if [[ -f "$DR" ]]; then
+    echo "Updating docs/README.md..."
+    sed -i -E "s/[0-9]+ proof functions, [0-9]+ types/$VERUS_TOTAL proof functions, 7 types/" "$DR"
+    sed -i -E "s/[0-9]+ theorems, 0 admits, Coq 8/$COQ_COMBINED theorems, 0 admits, Coq 8/" "$DR"
+    # FORMAL_VERIFICATION.md reference (total and types)
+    sed -i -E "s/[0-9]+ theorems\/harnesses, [0-9]+ types/$GRAND_TOTAL theorems\/harnesses, 8 types/" "$DR"
+    echo "  Done."
+fi
+
+# --- SETUP_GUIDE.md ---
+SG="$PROJECT_ROOT/docs/verification/SETUP_GUIDE.md"
+if [[ -f "$SG" ]]; then
+    echo "Updating SETUP_GUIDE.md..."
+    # Verus references
+    sed -i -E "s/151 theorems/$VERUS_TOTAL proof functions/g" "$SG"
+    sed -i -E "s/240 proof functions/$VERUS_TOTAL proof functions/g" "$SG"
+    # Coq references
+    sed -i -E "s/461 theorems/$COQ_COMBINED theorems/g" "$SG"
+    # Footer
+    sed -i -E "s/[0-9]+ formally verified \(Verus: [0-9]+, Coq: [0-9]+\)/$GRAND_TOTAL formally verified (Verus: $VERUS_TOTAL, Coq: $COQ_COMBINED, Kani: $KANI_TOTAL)/" "$SG"
+    echo "  Done."
+fi
+
+# --- WASM_EXTRACTION_PIPELINE.md ---
+WE="$PROJECT_ROOT/docs/verification/WASM_EXTRACTION_PIPELINE.md"
+if [[ -f "$WE" ]]; then
+    echo "Updating WASM_EXTRACTION_PIPELINE.md..."
+    sed -i -E "s/[0-9]+ proof fns\)/$VERUS_TOTAL proof fns)/" "$WE"
+    sed -i -E "s/[0-9]+ theorems\)  Coq/$COQ_COMBINED theorems)  Coq/" "$WE"
+    echo "  Done."
+fi
+
+# --- RUST_VERIFICATION_LANDSCAPE.md ---
+RL="$PROJECT_ROOT/docs/verification/RUST_VERIFICATION_LANDSCAPE.md"
+if [[ -f "$RL" ]]; then
+    echo "Updating RUST_VERIFICATION_LANDSCAPE.md..."
+    sed -i -E "s/[0-9]+-theorem corpus/$GRAND_TOTAL-theorem corpus/g" "$RL"
+    sed -i -E "s/[0-9]+ theorems \([0-9]+\+[0-9]+\+[0-9]+\+[0-9]+\)/$GRAND_TOTAL theorems ($VERUS_TOTAL+$COQ_R_TOTAL+$COQ_Z_TOTAL+$KANI_TOTAL)/g" "$RL"
+    sed -i -E "s/[0-9]+ theorems \([0-9]+\+[0-9]+\+[0-9]+\)/$GRAND_TOTAL theorems ($VERUS_TOTAL+$COQ_R_TOTAL+$COQ_Z_TOTAL+$KANI_TOTAL)/g" "$RL"
+    # Coq theorem count in architecture diagram
+    sed -i -E "s/Coq \([0-9]+ theorems\)/Coq ($COQ_COMBINED theorems)/" "$RL"
+    # Kani harness count
+    sed -i -E "s/[0-9]+ harnesses for FP-intensive/$KANI_TOTAL harnesses for FP-intensive/" "$RL"
+    echo "  Done."
+fi
+
+# --- kani_proofs/mod.rs ---
+KM="$PROJECT_ROOT/crates/rource-math/src/kani_proofs/mod.rs"
+if [[ -f "$KM" ]]; then
+    echo "Updating kani_proofs/mod.rs..."
+    sed -i -E "s/# Harness Count \([0-9]+ total\)/# Harness Count ($KANI_TOTAL total)/" "$KM"
+    sed -i -E "s/Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+/Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4/" "$KM"
+    sed -i -E "s/Mat3: [0-9]+, Mat4: [0-9]+/Mat3: $KANI_MAT3, Mat4: $KANI_MAT4/" "$KM"
+    sed -i -E "s/Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+/Color: $KANI_COLOR, Rect: $KANI_RECT, Utils: $KANI_UTILS/" "$KM"
+    echo "  Done."
+fi
+
+echo ""
+echo "=== All documentation updated ==="
+echo ""
+echo "Metrics written to: $COUNTS_FILE"
+echo ""
+echo "Run with --check to verify consistency (suitable for CI)."

@@ -82,7 +82,7 @@
 - **68% memory savings** on large repositories via string interning and compact storage
 - **GPU acceleration** in browsers via WebGPU or WebGL2 (with automatic CPU fallback)
 - **Tested with 100k+ commit repos** (Home Assistant: 103,533 commits, 533,366 file changes)
-- **82 optimization phases** documented with picosecond/nanosecond-level measurements
+- **83 optimization phases** documented with picosecond/nanosecond-level measurements
 - **50,000 FPS target** on test hardware (20 µs frame budget)
 - **132 WASM functions profiled** with criterion benchmarks (100+ samples, 95% CI)
 
@@ -94,10 +94,11 @@ See [Performance Documentation](#performance-documentation) for the complete opt
 
 | Tool | Components | Theorems | Status |
 |------|------------|----------|--------|
-| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 240 proof functions, 360+ VCs | ✅ Verified |
-| **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | 337 theorems | ✅ Zero admits |
-| **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Utils (extractable) | 219 theorems | ✅ Zero admits |
-| **Combined** | All 8 core math types | **796 theorems** | ✅ DUAL VERIFIED |
+| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 266 proof functions, 452+ VCs | ✅ Verified |
+| **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | 446 theorems | ✅ Zero admits |
+| **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Utils (extractable) | 251 theorems | ✅ Zero admits |
+| **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Utils | 110 harnesses | ✅ IEEE 754 verified |
+| **Combined** | All 8 core math types | **1073 theorems** | ✅ TRIPLE VERIFIED |
 
 Properties verified include: vector space axioms, dot/cross product laws, matrix multiplication associativity (critical for MVP transformations), ring structure, RGBA color blending/interpolation/luminance, rectangle containment/intersection/union, O(1) complexity bounds, and a complete Coq-to-WASM extraction pipeline.
 
@@ -508,7 +509,7 @@ rource/
 
 | Document | Description |
 |----------|-------------|
-| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 82 optimization phases with measurements |
+| [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 83 optimization phases with measurements |
 | [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) | Raw benchmark data and methodology |
 | [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of algorithms |
 | [docs/performance/FORMAL_PROOFS.md](docs/performance/FORMAL_PROOFS.md) | Mathematical proofs for optimizations |
@@ -529,7 +530,7 @@ rource/
 
 | Document | Description |
 |----------|-------------|
-| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 796 formally verified theorems (Verus + Coq) |
+| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 1073 formally verified theorems (Verus + Coq) |
 | [docs/verification/SETUP_GUIDE.md](docs/verification/SETUP_GUIDE.md) | Formal verification environment setup (Verus, Coq, MetaCoq, wasm_of_ocaml) |
 | [docs/verification/CERTICOQ_WASM_ASSESSMENT.md](docs/verification/CERTICOQ_WASM_ASSESSMENT.md) | Coq-to-WASM pipeline: 9-path landscape assessment |
 

@@ -24,7 +24,7 @@ For floating-point feasibility, see [FLOATING_POINT_VERIFICATION.md](FLOATING_PO
 
 ## Current Capability Gaps
 
-Our verification architecture (Verus + Coq) achieves 947 theorems across 8 types
+Our verification architecture (Verus + Coq) achieves 1073 theorems across 8 types
 with zero admits. The identified gaps are:
 
 | Gap | Description | Blocked Operations | Impact |
@@ -107,7 +107,7 @@ fn verify_vec2_length_no_nan() {
 | **Bounded** — only checks inputs up to a bound | Cannot prove universal properties (∀ x, P(x)) |
 | **No algebraic proofs** — checks assertions, not theorems | Complements but doesn't replace Verus/Coq |
 | **Scalability** — complex FP expressions may timeout | Mat4 determinant (16 fields) may be challenging |
-| **No proof certificates** — verification result, not Coq term | Cannot extend our 947-theorem corpus |
+| **No proof certificates** — verification result, not Coq term | Cannot extend our 1073-theorem corpus |
 
 ### Recommendation: **ADOPT**
 
@@ -373,13 +373,13 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 │  Layer 1: Algebraic Correctness (CURRENT)                           │
 │  ├── Verus (266 proof functions)                                    │
 │  │   └── Int specs → Z3 → algebraic properties                     │
-│  └── Coq (681 theorems)                                             │
+│  └── Coq (697 theorems)                                             │
 │      └── R-based + Z-based → machine-checked proofs                │
 │                                                                     │
 │  Layer 2: Edge Case Safety (NEW — Kani)                             │
 │  └── Kani (bounded model checker)                                   │
 │      └── f32 bit-precise → NaN/overflow/infinity checking          │
-│      └── ~40 harnesses for FP-intensive operations                 │
+│      └── 110 harnesses for FP-intensive operations                 │
 │                                                                     │
 │  Layer 3: Floating-Point Accuracy (PLANNED — Flocq)                │
 │  └── Coq + Flocq + VCFloat2                                        │

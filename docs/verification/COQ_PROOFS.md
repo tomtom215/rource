@@ -10,7 +10,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 ## Coq Version
 
 - **Coq**: 8.18
-- **Admits**: 0 (across all 681 theorems)
+- **Admits**: 0 (across all 697 theorems)
 - **Compilation time**: ~45 seconds total (32 .vo files)
 
 ## Layered Architecture
@@ -166,11 +166,11 @@ the gap between mathematical proofs (over R) and executable code.
 | Vec3_Compute.v | 42 | ~1.6s | Z-based 3D vector operations |
 | Vec4_Compute.v | 33 | ~1.6s | Z-based 4D vector operations |
 | Mat3_Compute.v | 25 | ~3.0s | Z-based 3x3 matrix operations |
-| Mat4_Compute.v | 25 + 16 local | ~5.5s | Z-based 4x4 matrix operations + determinant |
+| Mat4_Compute.v | 41 (25 + 16 local) | ~5.5s | Z-based 4x4 matrix operations + determinant |
 | Color_Compute.v | 28 | — | Z-based fixed-point (1000-scale) |
 | Rect_Compute.v | 24 | — | Z-based, boolean predicates |
 | Utils_Compute.v | 8 | — | zlerp/zclamp |
-| **Total** | **235** | **~45s** | All 0 admits |
+| **Total** | **251** | **~45s** | All 0 admits |
 
 ### Verification Command (Layer 2)
 
@@ -266,9 +266,9 @@ These practices were established through hard-won experience across multiple ses
 
 **Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5):**
 *Version: Coq 8.18*
-*Total theorems: 235 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 25, Color: 28, Rect: 24, Utils: 8)*
+*Total theorems: 251 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 41, Color: 28, Rect: 24, Utils: 8)*
 *Admits: 0*
-*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 681 total Coq theorems)*
+*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 697 total Coq theorems)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**

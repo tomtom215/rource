@@ -60,8 +60,8 @@ which wasm_of_ocaml 2>/dev/null
 
 | Tool | Version | Purpose | Install Location |
 |------|---------|---------|------------------|
-| **Verus** | Latest | Rust formal verification (151 theorems) | `/tmp/verus/` |
-| **Coq** | 8.18.0 | Proof assistant (461 theorems) | System (`apt`) + opam (see Rocq migration) |
+| **Verus** | Latest | Rust formal verification (266 proof functions) | `/tmp/verus/` |
+| **Coq** | 8.18.0 | Proof assistant (697 theorems) | System (`apt`) + opam (see Rocq migration) |
 | **coq-equations** | 1.3+8.18 | Dependent pattern matching for Coq | opam |
 | **MetaCoq** | 8.18.dev | Verified erasure/extraction (Path 2) | `/tmp/metacoq/` + opam |
 | **wasm_of_ocaml** | 6.2.0+ | OCaml-to-WASM compiler (Path 1) | opam |
@@ -462,12 +462,12 @@ ls -la rource_math.wasm  # Should be ~6.8 KB
 ### Manual Verification
 
 ```bash
-# Verus (151 theorems, ~seconds)
+# Verus (266 proof functions, ~seconds)
 for f in crates/rource-math/proofs/*_proofs.rs; do
   /tmp/verus/verus "$f"
 done
 
-# Coq (461 theorems, ~40 seconds)
+# Coq (697 theorems, ~40 seconds)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specs

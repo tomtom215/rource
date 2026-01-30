@@ -99,9 +99,9 @@ Complete technical documentation for the Rource project.
 
 | Document | Description |
 |----------|-------------|
-| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (796 theorems, 8 types) |
-| [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (240 proof functions, 7 types) |
-| [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (R-based + Z-based, 556 theorems, development workflow) |
+| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (1073 theorems/harnesses, 8 types) |
+| [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (266 proof functions, 7 types) |
+| [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (R-based + Z-based, 697 theorems, development workflow) |
 | [verification/VERIFICATION_COVERAGE.md](./verification/VERIFICATION_COVERAGE.md) | Coverage metrics, limitations, floating-point assessment |
 | [verification/WASM_EXTRACTION_PIPELINE.md](./verification/WASM_EXTRACTION_PIPELINE.md) | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | [verification/SETUP_GUIDE.md](./verification/SETUP_GUIDE.md) | Verus, Coq, MetaCoq, wasm_of_ocaml setup |
