@@ -289,5 +289,5 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Total theorems: 939 across Verus and Coq (Verus: 266, Coq R-based: 438, Coq Z-based: 235)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Utils*
-*Verified operations: 115/230 (50%) — up from 92/230 (40%)*
+*Verified operations: 116/230 (50.4%) — up from 92/230 (40%)*
 *Status: Dual-verification + complexity bounds + computational bridge + WASM pipeline*

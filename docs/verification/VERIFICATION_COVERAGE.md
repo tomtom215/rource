@@ -13,13 +13,13 @@ For an overview of the complete verification effort (Verus + Coq), see
 |--------|------------|-------------------|-------------|----------|
 | Vec2 | 42 | 19 (45%) | 42 (100%) | 45% |
 | Vec3 | 28 | 19 (68%) | 28 (100%) | 68% |
-| Vec4 | 24 | 16 (67%) | 24 (100%) | 67% |
+| Vec4 | 24 | 17 (71%) | 24 (100%) | 71% |
 | Mat3 | 17 | 12 (71%) | 17 (100%) | 71% |
 | Mat4 | 26 | 9 (35%) | 26 (100%) | 35% |
 | Color | 38 | 17 (45%) | 38 (100%) | 45% |
 | Rect | 50 | 18 (36%) | 50 (100%) | 36% |
 | Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
-| **Total** | **230** | **115 (50%)** | **230 (100%)** | **50%** |
+| **Total** | **230** | **116 (50.4%)** | **230 (100%)** | **50.4%** |
 
 ## Verified Operations by Module
 
@@ -39,7 +39,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 **Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`, `element_sum`, `element_product`, floating-point operations
 
-### Vec4 (16 operations verified)
+### Vec4 (17 operations verified)
 - `new`, `zero`, `x`, `y`, `z`, `w`, `add`, `sub`, `scale`, `neg`, `dot`, `length_squared`, `mul`
 - `min_element`, `max_element`, `div`, `splat`
 
@@ -102,7 +102,7 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 | Priority | Module | Operations | Rationale | Status |
 |----------|--------|------------|-----------|--------|
 | ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 35, Coq R: 46, Coq Z: 28) |
-| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 23, Coq R: 43, Coq Z: 24) |
+| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 33, Coq R: 43, Coq Z: 24) |
 | ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 10, Coq Z: 8) |
 | 4 | Mat3/Mat4 | `determinant`, `trace` properties | Mathematical foundations | DONE (basic: det(I), det(0), det(A^T), det(-A), trace properties) |
 | 5 | Color | HSL <-> RGB conversion | Requires transcendentals | Blocked (floating-point) |
@@ -178,7 +178,7 @@ For rource-math, we recommend:
 Our current approach of proving properties over `int` specifications and documenting
 the f32 translation assumptions is the recommended best practice per Verus maintainers.
 
-The 50% of operations not formally verified (those requiring floating-point or
+The 49.6% of operations not formally verified (those requiring floating-point or
 transcendentals) will remain covered by:
 - Unit tests (100% coverage)
 - Property-based testing
@@ -187,6 +187,6 @@ transcendentals) will remain covered by:
 ---
 
 *Last verified: 2026-01-30*
-*Formal verification coverage: 115/230 operations (50%)*
+*Formal verification coverage: 116/230 operations (50.4%)*
 *Unit test coverage: 230/230 operations (100%)*
-*Unverifiable operations: 115 (floating-point, transcendentals, type conversions)*
+*Unverifiable operations: 114 (floating-point, transcendentals, type conversions)*
