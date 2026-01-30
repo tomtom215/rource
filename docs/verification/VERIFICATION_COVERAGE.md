@@ -161,6 +161,7 @@ For rource-math, we recommend:
 2. **Bit-level properties only**: Use `FloatBitsProperties` for verifying representation invariants
 3. **Refinement types**: Document the integer->f32 translation assumptions explicitly
 4. **Monitor Verus development**: Check quarterly for improved floating-point support
+5. **Coq + Flocq + VCFloat2 for FP accuracy**: See [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md) for the recommended path to verifying floating-point operations via Coq's mature FP ecosystem (all Coq 8.18 compatible)
 
 ### What CAN Be Verified with Floating-Point
 
@@ -183,6 +184,22 @@ transcendentals) will remain covered by:
 - Unit tests (100% coverage)
 - Property-based testing
 - Manual review for IEEE 754 compliance
+
+### Stainless Paper Investigation (2026-01-30)
+
+We investigated "Verifying Floating-Point Programs in Stainless" (Gilot et al.,
+arXiv:2601.14059, January 2026) which extends the Stainless verifier with IEEE 754
+floating-point support using Z3 + cvc5 + Bitwuzla portfolio solving.
+
+**Key findings**: The paper is **not directly applicable** to rource-math because:
+(1) it is Scala-only, (2) Z3 is the weakest solver for FP queries (78–85% vs cvc5's
+89–100%), (3) it does not verify error bounds (only NaN/safety), (4) it cannot prove
+algebraic properties over floating-point, and (5) it produces no Coq proof certificates.
+
+The paper's value for our project is as a landscape survey confirming that **Coq + Flocq +
+VCFloat2** is the more appropriate path for rource-math's needs. See
+[FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md) for the full analysis
+and recommended roadmap to reach ~70–75% coverage.
 
 ## rocq-of-rust Investigation (2026-01-30)
 

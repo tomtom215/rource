@@ -4,16 +4,16 @@ This document describes the formal verification work performed on the `rource-ma
 
 ## Overview
 
-The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, and semantic properties of these types using a hybrid Verus + Coq architecture, achieving 939 machine-checked theorems with zero admits that can withstand academic peer review.
+The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, and semantic properties of these types using a hybrid Verus + Coq architecture, achieving 947 machine-checked theorems with zero admits that can withstand academic peer review.
 
 ## Summary Statistics
 
 | Verification System | Theorems | Admits | Types Covered | Status |
 |---------------------|----------|--------|---------------|--------|
 | **Verus** (SMT/Z3) | 266 proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified, 0 errors |
-| **Coq** (R-based abstract) | 438 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | Machine-checked |
+| **Coq** (R-based abstract) | 446 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | Machine-checked |
 | **Coq** (Z-based extractable) | 235 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Utils | Machine-checked |
-| **Combined** | **939** | **0** | **8 types** | **PEER REVIEWED PUBLISHED ACADEMIC** |
+| **Combined** | **947** | **0** | **8 types** | **PEER REVIEWED PUBLISHED ACADEMIC** |
 
 ## Per-Type Verification Summary
 
@@ -22,13 +22,13 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 | Vec2 | 49 proof fns | 65 theorems | 50 theorems | 164 | DUAL VERIFIED |
 | Vec3 | 40 proof fns | 71 theorems | 42 theorems | 153 | DUAL VERIFIED |
 | Vec4 | 39 proof fns | 51 theorems | 33 theorems | 123 | DUAL VERIFIED |
-| Mat3 | 48 proof fns | 44 theorems | 25 theorems | 117 | DUAL VERIFIED |
-| Mat4 | 22 proof fns | 48 theorems | 25 theorems | 95 | DUAL VERIFIED |
+| Mat3 | 48 proof fns | 48 theorems | 25 theorems | 121 | DUAL VERIFIED |
+| Mat4 | 22 proof fns | 52 theorems | 25 theorems | 99 | DUAL VERIFIED |
 | Color | 35 proof fns | 46 theorems | 28 theorems | 109 | DUAL VERIFIED |
 | Rect | 33 proof fns | 43 theorems | 24 theorems | 100 | DUAL VERIFIED |
 | Utils | — | 10 theorems | 8 theorems | 18 | VERIFIED |
 | Complexity | — | 60 theorems | — | 60 | VERIFIED |
-| **Total** | **266 proof fns** | **438 theorems** | **235 theorems** | **939** | **ACADEMIC** |
+| **Total** | **266 proof fns** | **446 theorems** | **235 theorems** | **947** | **ACADEMIC** |
 
 > **Note**: Verus "proof fns" counts all `proof fn` declarations including helpers
 > (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22 base + 26 extended], Mat4: 22,
@@ -61,7 +61,7 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 |       |                          properties, matrix ring structure,       |
 |       |                          color operations, rect operations        |
 |       |                                                                   |
-|       +---> Manual Coq Specs --> Coq Proofs (673 theorems)               |
+|       +---> Manual Coq Specs --> Coq Proofs (681 theorems)               |
 |       |                                |                                  |
 |       |                                +---> ICC --> Complexity Bounds    |
 |       |                                |            O(1) proofs (60)     |
@@ -165,6 +165,7 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | [COQ_PROOFS.md](COQ_PROOFS.md) | Coq proofs (R-based + Z-based), complexity, compilation optimization, development workflow | ~350 |
 | [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) | Per-module coverage metrics, verification limitations, floating-point assessment, rocq-of-rust investigation, testing relationship | ~320 |
 | [WASM_EXTRACTION_PIPELINE.md](WASM_EXTRACTION_PIPELINE.md) | Coq-to-WASM pipeline, tool ecosystem, CertiCoq assessment, Rocq migration, ICC | ~250 |
+| [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md) | FP verification feasibility: Stainless paper analysis, Flocq+VCFloat2 roadmap | ~250 |
 | [CERTICOQ_WASM_ASSESSMENT.md](CERTICOQ_WASM_ASSESSMENT.md) | Comprehensive 9-path landscape survey for Coq-to-WASM compilation | Existing |
 | [SETUP_GUIDE.md](SETUP_GUIDE.md) | Manual installation and troubleshooting for Verus, Coq, MetaCoq, wasm_of_ocaml | Existing |
 
@@ -186,8 +187,8 @@ The proofs demonstrate:
 
 This hybrid approach would be novel in several ways:
 
-1. **First verified Rust graphics library**: rource-math with 939 machine-checked proofs across 8 types
-2. **Verus + Coq interoperability**: Demonstrating complementary strengths (266 Verus + 673 Coq)
+1. **First verified Rust graphics library**: rource-math with 947 machine-checked proofs across 8 types
+2. **Verus + Coq interoperability**: Demonstrating complementary strengths (266 Verus + 681 Coq)
 3. **ICC for graphics code**: Complexity bounds for visualization pipeline
 4. **End-to-end verified WASM**: From Rust source to verified WebAssembly (8 types extracted)
 5. **Color and spatial correctness**: Formal proofs for RGBA blending, luminance, and rectangle operations
@@ -219,16 +220,18 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 1. ~~**Vec4 proofs**~~ - COMPLETED (22 theorems, 68 VCs)
 2. ~~**Matrix proofs (Mat3, Mat4)**~~ - COMPLETED (Mat3: 18 theorems, 26 VCs; Mat4: 18 theorems, 27 VCs)
 3. ~~**Complexity bounds**~~ - COMPLETED (60 Coq theorems, O(1) for 40 operations)
-4. ~~**Floating-point refinement**~~ - INVESTIGATED (see [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) - not feasible with current Verus)
+4. ~~**Floating-point refinement**~~ - INVESTIGATED (Verus FP not feasible; Coq + Flocq + VCFloat2 recommended — see [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md))
 5. ~~**CI integration**~~ - COMPLETED (`.github/workflows/verus-verify.yml`)
 6. ~~**Proof coverage metrics**~~ - COMPLETED (see [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md))
 7. ~~**Color proofs**~~ - COMPLETED (Verus: 23, Coq R: 26, Coq Z: 22 theorems)
 8. ~~**Rect proofs**~~ - COMPLETED (Verus: 23, Coq R: 32, Coq Z: 24 theorems)
 9. ~~**Utils proofs (lerp, clamp)**~~ - COMPLETED (Coq R: 10, Coq Z: 8 theorems)
 10. ~~**Determinant properties (basic)**~~ - COMPLETED (det(I), det(0), det(A^T), det(-A), det(diagonal), trace properties for Mat3/Mat4)
-11. **Determinant multiplicativity** - Prove det(A*B) = det(A)*det(B) for Mat3/Mat4
+11. ~~**Determinant multiplicativity**~~ - COMPLETED: det(A*B) = det(A)*det(B) proven for both Mat3 and Mat4 (Coq `ring` tactic, +8 theorems)
 12. **HSL color space** - Requires transcendental functions (blocked by floating-point)
 13. ~~**rocq-of-rust spec-to-impl bridge**~~ - INVESTIGATED (not viable — monadic embedding incompatible with algebraic proofs, f32 unsupported; see [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md))
+14. ~~**Stainless FP paper investigation**~~ - INVESTIGATED (not directly applicable — Scala-only, no error bounds, Z3 weakest at FP; see [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md))
+15. **Coq FP accuracy proofs via Flocq + VCFloat2** - PLANNED (Phase FP-1: ~46 operations, targeting 70% coverage; see [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md))
 
 ## References
 
@@ -244,6 +247,10 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 10. MetaRocq Verified Extraction: https://github.com/MetaRocq/rocq-verified-extraction
 11. coq-rust-extraction (AU-COBRA): https://github.com/AU-COBRA/coq-rust-extraction
 12. rocq-of-rust (Formal Land): https://github.com/formal-land/rocq-of-rust
+13. Gilot, A., Bergström, A., & Darulova, E. "Verifying Floating-Point Programs in Stainless." arXiv:2601.14059, January 2026.
+14. Boldo, S. & Melquiond, G. "Flocq: A Unified Library for Proving Floating-Point Algorithms in Coq." IEEE ARITH, 2011.
+15. Kellison, A. & Appel, A. "VCFloat2: Floating-point Error Analysis in Coq." CPP 2024.
+16. Kellison, A. et al. "LAProof: A Library of Formal Proofs of Accuracy and Correctness for Linear Algebra Programs." IEEE ARITH, 2023.
 
 ---
 
@@ -255,9 +262,9 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Total verification conditions: 452 (Vec2: 87, Vec3: 89, Vec4: 90, Mat3: 71 [26+45], Mat4: 27, Color: 46, Rect: 42)*
 *Status: All proofs verified with 0 errors*
 
-**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5):**
+**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6):**
 *Version: Coq 8.18*
-*Total theorems: 438 (Vec2: 65, Vec3: 71, Vec4: 51, Mat3: 44, Mat4: 48, Complexity: 60, Color: 46, Rect: 43, Utils: 10)*
+*Total theorems: 446 (Vec2: 65, Vec3: 71, Vec4: 51, Mat3: 48, Mat4: 52, Complexity: 60, Color: 46, Rect: 43, Utils: 10)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
@@ -288,7 +295,7 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 *Status: Full pipeline operational, all 8 types extractable to WASM*
 
 **Combined Verification:**
-*Total theorems: 939 across Verus and Coq (Verus: 266, Coq R-based: 438, Coq Z-based: 235)*
+*Total theorems: 947 across Verus and Coq (Verus: 266, Coq R-based: 446, Coq Z-based: 235)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Utils*
 *Verified operations: 116/230 (50.4%) — up from 92/230 (40%)*

@@ -451,9 +451,58 @@ Proof.
   unfold mat4_trace, mat4_transpose. simpl. ring.
 Qed.
 
+(** * Determinant Multiplicativity *)
+
+(** Theorem 29: det(A * B) = det(A) * det(B).
+    This is the fundamental multiplicativity property of the determinant
+    for 4x4 matrices. It proves that the determinant is a ring homomorphism
+    from (Mat4, ×) to (R, ×).
+
+    This is critical for 3D graphics:
+    - det(Model * View * Proj) = det(Model) * det(View) * det(Proj)
+    - Invertibility check: det(A) ≠ 0 iff A is invertible
+    - Volume scaling: transformations scale volumes by |det(M)|
+
+    The proof uses ring over 32 variables (16 from each matrix).
+    The polynomial identity involves degree-4 terms with hundreds of monomials.
+    Coq's ring tactic handles this directly without decomposition. *)
+Theorem mat4_det_mul : forall a b : Mat4,
+  mat4_determinant (mat4_mul a b) = mat4_determinant a * mat4_determinant b.
+Proof.
+  intros a b. destruct a, b.
+  unfold mat4_determinant, mat4_mul. simpl.
+  ring.
+Qed.
+
+(** Theorem 30: det(A^n) = det(A)^n (special case: n=2). *)
+Theorem mat4_det_square : forall a : Mat4,
+  mat4_determinant (mat4_mul a a) = mat4_determinant a * mat4_determinant a.
+Proof.
+  intros a. apply mat4_det_mul.
+Qed.
+
+(** Theorem 31: det(A * B) = det(B * A).
+    While A*B ≠ B*A for general 4x4 matrices,
+    det(A*B) = det(A)*det(B) = det(B)*det(A) = det(B*A) always. *)
+Theorem mat4_det_mul_comm : forall a b : Mat4,
+  mat4_determinant (mat4_mul a b) = mat4_determinant (mat4_mul b a).
+Proof.
+  intros a b.
+  rewrite mat4_det_mul. rewrite mat4_det_mul. ring.
+Qed.
+
+(** Theorem 32: det(s * A) = s^4 * det(A) for 4x4 matrices.
+    s^4 because the determinant is a degree-4 polynomial in the entries. *)
+Theorem mat4_det_scale : forall (s : R) (a : Mat4),
+  mat4_determinant (mat4_scale s a) = s * s * s * s * mat4_determinant a.
+Proof.
+  intros s a. destruct a.
+  unfold mat4_determinant, mat4_scale. simpl. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 31 + 16 component lemmas = 47
+    Total theorems: 35 + 16 component lemmas = 51
     - Theorems 1-4: Matrix addition properties (4)
     - Theorems 5-8: Matrix multiplication identity/zero (4)
     - Theorem 9: Matrix multiplication associativity (1 + 16 lemmas) [CRITICAL for MVP]
@@ -461,8 +510,10 @@ Qed.
     - Theorems 14-16: Transpose properties (3)
     - Theorems 17-18: Negation and ring structure (3)
     - Additional properties (2)
-    - Theorems 19-23: Determinant properties (5)
+    - Theorems 19-23: Determinant basic properties (5)
     - Theorems 24-28: Trace properties (5)
+    - Theorem 29: Determinant multiplicativity det(A*B) = det(A)*det(B) [CRITICAL]
+    - Theorems 30-32: Det multiplicativity corollaries (3)
 
     Total tactics used: lra, ring, reflexivity, destruct, apply, repeat split
     Admits: 0

@@ -10,7 +10,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 ## Coq Version
 
 - **Coq**: 8.18
-- **Admits**: 0 (across all 673 theorems)
+- **Admits**: 0 (across all 681 theorems)
 - **Compilation time**: ~45 seconds total (32 .vo files)
 
 ## Layered Architecture
@@ -44,15 +44,15 @@ For an overview of the complete verification effort (Verus + Coq), see
 | Vec4.v | 1 | VERIFIED | Specification (equality lemma) |
 | Vec4_Proofs.v | 51 | VERIFIED | Orthonormal basis, 4D vector space, min/max element, div |
 | Mat3.v | 2 | VERIFIED | Specification (mat3_eq, vec2_eq), determinant, trace, translation, scaling, transform definitions |
-| Mat3_Proofs.v | 44 | VERIFIED | Matrix ring structure, determinant (6), trace (5), transform operations (11) |
+| Mat3_Proofs.v | 48 | VERIFIED | Matrix ring structure, determinant (6+4), trace (5), transform operations (11) |
 | Mat4.v | 1 | VERIFIED | Specification (equality lemma), determinant, trace definitions |
-| Mat4_Proofs.v | 48 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5), trace (5) |
+| Mat4_Proofs.v | 52 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5+4), trace (5) |
 | Color.v | 1 | VERIFIED | RGBA color specification (equality lemma) |
 | Color_Proofs.v | 46 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance, add, scale, invert, clamp01 |
 | Rect.v | 1 | VERIFIED | Rectangle specification (equality lemma) |
 | Rect_Proofs.v | 43 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity, scale compose |
 | Utils.v | 10 | VERIFIED | lerp (zero, one, same, midpoint, linear), clamp (range, identity, lower, upper, idempotent) |
-| **Total** | **438** | VERIFIED | All proofs machine-checked, 0 admits |
+| **Total** | **446** | VERIFIED | All proofs machine-checked, 0 admits |
 
 **Note on coq-of-rust:** The coq-of-rust/rocq-of-rust tool requires Rust nightly-2024-12-07
 (version 1.85), which is incompatible with rource-math's Rust 1.93 requirement. We proceeded
@@ -260,7 +260,7 @@ These practices were established through hard-won experience across multiple ses
 
 **Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5):**
 *Version: Coq 8.18*
-*Total theorems: 438 (Vec2: 65, Vec3: 71, Vec4: 51, Mat3: 44, Mat4: 48, Complexity: 60, Color: 46, Rect: 43, Utils: 10)*
+*Total theorems: 446 (Vec2: 65, Vec3: 71, Vec4: 51, Mat3: 48, Mat4: 52, Complexity: 60, Color: 46, Rect: 43, Utils: 10)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
@@ -268,7 +268,7 @@ These practices were established through hard-won experience across multiple ses
 *Version: Coq 8.18*
 *Total theorems: 235 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 25, Color: 28, Rect: 24, Utils: 8)*
 *Admits: 0*
-*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v)*
+*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 681 total Coq theorems)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**
