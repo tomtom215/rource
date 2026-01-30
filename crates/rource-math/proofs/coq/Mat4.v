@@ -170,10 +170,66 @@ Proof.
   reflexivity.
 Qed.
 
+(** * Vec3 Type (for transform operations) *)
+
+(** A 3D vector. *)
+Record Vec3 : Type := mkVec3 {
+  v3x : R;
+  v3y : R;
+  v3z : R
+}.
+
+(** * Transform Operations *)
+
+(** 3D translation matrix.
+    | 1 0 0 tx |
+    | 0 1 0 ty |
+    | 0 0 1 tz |
+    | 0 0 0 1  | *)
+Definition mat4_translation (tx ty tz : R) : Mat4 :=
+  mkMat4 1 0 0 0  0 1 0 0  0 0 1 0  tx ty tz 1.
+
+(** 3D scaling matrix.
+    | sx 0  0  0 |
+    | 0  sy 0  0 |
+    | 0  0  sz 0 |
+    | 0  0  0  1 | *)
+Definition mat4_scaling (sx sy sz : R) : Mat4 :=
+  mkMat4 sx 0 0 0  0 sy 0 0  0 0 sz 0  0 0 0 1.
+
+(** Uniform scaling matrix. *)
+Definition mat4_uniform_scaling (s : R) : Mat4 :=
+  mat4_scaling s s s.
+
+(** Transform a point (homogeneous w=1). *)
+Definition mat4_transform_point (mat : Mat4) (p : Vec3) : Vec3 :=
+  mkVec3
+    (m0 mat * v3x p + m4 mat * v3y p + m8 mat  * v3z p + m12 mat)
+    (m1 mat * v3x p + m5 mat * v3y p + m9 mat  * v3z p + m13 mat)
+    (m2 mat * v3x p + m6 mat * v3y p + m10 mat * v3z p + m14 mat).
+
+(** Transform a vector (homogeneous w=0). *)
+Definition mat4_transform_vector (mat : Mat4) (v : Vec3) : Vec3 :=
+  mkVec3
+    (m0 mat * v3x v + m4 mat * v3y v + m8 mat  * v3z v)
+    (m1 mat * v3x v + m5 mat * v3y v + m9 mat  * v3z v)
+    (m2 mat * v3x v + m6 mat * v3y v + m10 mat * v3z v).
+
+(** * Vec3 Equality Lemma *)
+
+(** Two Vec3 are equal iff their components are equal. *)
+Lemma vec3_eq : forall a b : Vec3,
+  v3x a = v3x b -> v3y a = v3y b -> v3z a = v3z b -> a = b.
+Proof.
+  intros a b Hx Hy Hz.
+  destruct a, b. simpl in *. subst. reflexivity.
+Qed.
+
 (** * Specification Verification Summary
 
     This file provides:
     - Mat4 record type definition (16 real components, column-major)
+    - Vec3 record type definition (3 real components)
     - mat4_zero: The zero matrix
     - mat4_identity: The identity matrix
     - mat4_add: Matrix addition
@@ -184,9 +240,15 @@ Qed.
     - mat4_mul: Matrix multiplication
     - mat4_determinant: 4x4 determinant (cofactor expansion)
     - mat4_trace: Trace (sum of diagonal)
+    - mat4_translation: 3D translation matrix
+    - mat4_scaling: 3D scaling matrix
+    - mat4_uniform_scaling: Uniform scaling matrix
+    - mat4_transform_point: Point transformation (w=1)
+    - mat4_transform_vector: Vector transformation (w=0)
     - mat4_eq: Component-wise equality lemma
+    - vec3_eq: Component-wise Vec3 equality lemma
 
-    Total definitions: 11
-    Total lemmas: 1
+    Total definitions: 17
+    Total lemmas: 2
     Admits: 0
 *)

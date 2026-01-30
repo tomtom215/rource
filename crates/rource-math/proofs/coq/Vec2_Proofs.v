@@ -898,11 +898,150 @@ Proof.
   destruct (Rle_dec ay by0); split; nra.
 Qed.
 
+(** Theorem 72: lerp of a vector with itself gives itself. *)
+Theorem vec2_lerp_same : forall (v : Vec2) (t : R),
+  vec2_lerp v v t = v.
+Proof.
+  intros [vx vy] t.
+  unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 73: lerp midpoint. *)
+Theorem vec2_lerp_midpoint : forall a b : Vec2,
+  vec2_lerp a b (1/2) = mkVec2 ((vec2_x a + vec2_x b) / 2)
+                                 ((vec2_y a + vec2_y b) / 2).
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
+  f_equal; field.
+Qed.
+
+(** Theorem 74: negation is involutive. *)
+Theorem vec2_neg_involutive : forall v : Vec2,
+  vec2_neg (vec2_neg v) = v.
+Proof.
+  intros [vx vy].
+  unfold vec2_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 75: component-wise multiplication is commutative. *)
+Theorem vec2_mul_comm : forall a b : Vec2,
+  vec2_mul a b = vec2_mul b a.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_mul. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 76: component-wise multiplication by zero gives zero. *)
+Theorem vec2_mul_zero : forall v : Vec2,
+  vec2_mul v vec2_zero = vec2_zero.
+Proof.
+  intros [vx vy].
+  unfold vec2_mul, vec2_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 77: sub self is zero. *)
+Theorem vec2_sub_self : forall v : Vec2,
+  vec2_sub v v = vec2_zero.
+Proof.
+  intros [vx vy].
+  unfold vec2_sub, vec2_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 78: mul is associative. *)
+Theorem vec2_mul_assoc : forall a b c : Vec2,
+  vec2_mul (vec2_mul a b) c = vec2_mul a (vec2_mul b c).
+Proof.
+  intros [ax ay] [bx by0] [cx cy].
+  unfold vec2_mul. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 79: mul splat(1) is identity. *)
+Theorem vec2_mul_one : forall v : Vec2,
+  vec2_mul v (vec2_splat 1) = v.
+Proof.
+  intros [vx vy].
+  unfold vec2_mul, vec2_splat. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 80: scale by -1 equals negation. *)
+Theorem vec2_scale_neg_one : forall v : Vec2,
+  vec2_scale (-1) v = vec2_neg v.
+Proof.
+  intros [vx vy].
+  unfold vec2_scale, vec2_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 81: clamp of value within bounds is identity. *)
+Theorem vec2_clamp_identity : forall v lo hi : Vec2,
+  vec2_x lo <= vec2_x v -> vec2_x v <= vec2_x hi ->
+  vec2_y lo <= vec2_y v -> vec2_y v <= vec2_y hi ->
+  vec2_clamp v lo hi = v.
+Proof.
+  intros [vx vy] [lx ly] [hx hy] Hxl Hxh Hyl Hyh. simpl in *.
+  unfold vec2_clamp, vec2_min, vec2_max. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec vx lx); destruct (Rle_dec lx hx);
+  destruct (Rle_dec vy ly); destruct (Rle_dec ly hy);
+  destruct (Rle_dec vx hx); destruct (Rle_dec vy hy);
+  f_equal; lra.
+Qed.
+
+(** Theorem 82: length of scaled vector. *)
+Theorem vec2_length_squared_scale : forall (s : R) (v : Vec2),
+  vec2_length_squared (vec2_scale s v) = s * s * vec2_length_squared v.
+Proof.
+  intros s [vx vy].
+  unfold vec2_length_squared, vec2_scale, vec2_dot. simpl.
+  ring.
+Qed.
+
+(** Theorem 83: dot product with zero is 0. *)
+Theorem vec2_dot_zero_r : forall v : Vec2,
+  vec2_dot v vec2_zero = 0.
+Proof.
+  intros [vx vy].
+  unfold vec2_dot, vec2_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 84: dot product with zero (left) is 0. *)
+Theorem vec2_dot_zero_l : forall v : Vec2,
+  vec2_dot vec2_zero v = 0.
+Proof.
+  intros [vx vy].
+  unfold vec2_dot, vec2_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 85: Cauchy-Schwarz (squared form).
+    (a · b)² ≤ |a|² * |b|² *)
+Theorem vec2_cauchy_schwarz_sq : forall a b : Vec2,
+  (vec2_dot a b) * (vec2_dot a b) <=
+  vec2_length_squared a * vec2_length_squared b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_dot, vec2_length_squared. simpl. unfold vec2_dot. simpl.
+  (* (ax*bx+ay*by)^2 ≤ (ax^2+ay^2)(bx^2+by^2)
+     Difference = (ax*by - ay*bx)^2 ≥ 0 *)
+  assert (Hsq: 0 <= (ax*by0 - ay*bx)*(ax*by0 - ay*bx)).
+  { apply Rle_0_sqr. }
+  assert (Hid: (ax*ax + ay*ay)*(bx*bx + by0*by0) - (ax*bx + ay*by0)*(ax*bx + ay*by0) =
+               (ax*by0 - ay*bx)*(ax*by0 - ay*bx)) by ring.
+  lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 71 (61 original + 10 new)
-    New theorems: length nonneg, length zero, normalized length_sq,
-      distance nonneg/self/symmetric, clamp x/y bounds, lerp x/y range
+    Total theorems: 85 (76 original + 14 new)
     Admits: 0
     Axioms: Standard Coq real number library only
 

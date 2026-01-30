@@ -84,11 +84,11 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
 - **Verus**: 327 proof functions, 0 errors
-- **Coq (R-based)**: 446 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
-- **Coq (Z-based)**: 251 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
+- **Coq (R-based)**: 622 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
+- **Coq (Z-based)**: 265 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
 - **Coq (FP error bounds)**: 99 theorems, 0 admits, machine-checked (Flocq 4.1.3 IEEE 754 binary32 error analysis)
 - **Kani (CBMC)**: 134 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
-- **Combined**: 1308 formally verified theorems/harnesses across 8 types + FP layer
+- **Combined**: 1447 formally verified theorems/harnesses across 8 types + FP layer
 
 ### The Non-Negotiable Rules
 
@@ -625,9 +625,9 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1308 theorems/harnesses) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1447 theorems/harnesses) |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (327 proof functions, 9 files) |
-| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 748 theorems, development workflow) |
+| `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 887 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
 | `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
@@ -1277,17 +1277,17 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Kani (CBMC) | Total | Status |
 |-----------|-------|---------------|-----------------|-------------|-------|--------|
-| Vec2 | 49 proof fns | 65 theorems | 50 theorems | 21 harnesses | 185 | TRIPLE VERIFIED |
-| Vec3 | 40 proof fns | 71 theorems | 42 theorems | 18 harnesses | 171 | TRIPLE VERIFIED |
-| Vec4 | 39 proof fns | 51 theorems | 33 theorems | 9 harnesses | 132 | TRIPLE VERIFIED |
-| Mat3 | 48 proof fns | 48 theorems | 25 theorems | 14 harnesses | 135 | TRIPLE VERIFIED |
-| Mat4 | 54 proof fns | 52 theorems | 41 theorems | 26 harnesses | 173 | TRIPLE VERIFIED |
-| Color | 45 proof fns | 46 theorems | 28 theorems | 21 harnesses | 140 | TRIPLE VERIFIED |
-| Rect | 52 proof fns | 43 theorems | 24 theorems | 20 harnesses | 139 | TRIPLE VERIFIED |
-| Utils | — | 10 theorems | 8 theorems | 5 harnesses | 23 | VERIFIED |
+| Vec2 | 49 proof fns | 91 theorems | 50 theorems | 21 harnesses | 211 | TRIPLE VERIFIED |
+| Vec3 | 40 proof fns | 96 theorems | 42 theorems | 18 harnesses | 196 | TRIPLE VERIFIED |
+| Vec4 | 39 proof fns | 80 theorems | 33 theorems | 9 harnesses | 161 | TRIPLE VERIFIED |
+| Mat3 | 48 proof fns | 67 theorems | 25 theorems | 14 harnesses | 154 | TRIPLE VERIFIED |
+| Mat4 | 54 proof fns | 81 theorems | 50 theorems | 26 harnesses | 211 | TRIPLE VERIFIED |
+| Color | 45 proof fns | 69 theorems | 28 theorems | 21 harnesses | 163 | TRIPLE VERIFIED |
+| Rect | 52 proof fns | 64 theorems | 24 theorems | 20 harnesses | 160 | TRIPLE VERIFIED |
+| Utils | — | 23 theorems | 13 theorems | 5 harnesses | 41 | VERIFIED |
 | Complexity | — | 60 theorems | — | — | 60 | VERIFIED |
 | FP Foundations | — | — (FP layer) | — | — | 99 | MACHINE-CHECKED |
-| **Total** | **266 proof fns** | **446 theorems** | **251 theorems** | **134 harnesses** | **1308** | **ACADEMIC** |
+| **Total** | **327 proof fns** | **622 theorems** | **265 theorems** | **134 harnesses** | **1447** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1315,7 +1315,7 @@ cargo kani -p rource-math --harness verify_lerp_no_nan
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
 
-# Coq proofs (748 theorems, ~45s)
+# Coq proofs (887 theorems, ~45s)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specifications + proofs
@@ -1934,7 +1934,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq + Kani proofs (1308 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect + FP error bounds |
+| **Formal Verification** | Verus + Coq + Kani proofs (1447 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect + FP error bounds |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1969,7 +1969,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  1308 formally verified theorems/harnesses across Verus + Coq + Kani        │
+│  1447 formally verified theorems/harnesses across Verus + Coq + Kani        │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1984,4 +1984,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-30*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 1308 theorems/harnesses (Verus: 327, Coq R-based: 497, Coq Z-based: 251, Coq FP: 99, Kani: 134)*
+*Formal Verification: 1447 theorems/harnesses (Verus: 327, Coq R-based: 622, Coq Z-based: 265, Coq FP: 99, Kani: 134)*

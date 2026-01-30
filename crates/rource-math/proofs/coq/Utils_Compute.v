@@ -136,3 +136,58 @@ Proof. reflexivity. Qed.
 Example zclamp_test_above :
   zclamp 2000 0 1000 = 1000.
 Proof. reflexivity. Qed.
+
+(** * Additional Lerp Properties *)
+
+(** Theorem: lerp difference formula. *)
+Theorem zlerp_diff : forall (a b s t : Z),
+  zlerp a b t - zlerp a b s = (b - a) * t / 1000 - (b - a) * s / 1000.
+Proof.
+  intros. unfold zlerp. lia.
+Qed.
+
+(** Theorem: lerp with shifted endpoints. *)
+Theorem zlerp_add_const : forall (a b c t : Z),
+  zlerp (a + c) (b + c) t = zlerp a b t + c.
+Proof.
+  intros. unfold zlerp.
+  replace ((b + c) - (a + c)) with (b - a) by lia. lia.
+Qed.
+
+(** * Additional Clamp Properties *)
+
+(** Theorem: clamp at lo returns lo. *)
+Theorem zclamp_at_lo : forall (lo hi : Z),
+  lo <= hi -> zclamp lo lo hi = lo.
+Proof.
+  intros lo hi Hle. apply zclamp_identity; lia.
+Qed.
+
+(** Theorem: clamp at hi returns hi. *)
+Theorem zclamp_at_hi : forall (lo hi : Z),
+  lo <= hi -> zclamp hi lo hi = hi.
+Proof.
+  intros lo hi Hle. apply zclamp_identity; lia.
+Qed.
+
+(** Theorem: clamp is monotone. *)
+Theorem zclamp_monotone : forall (u v lo hi : Z),
+  lo <= hi -> u <= v ->
+  zclamp u lo hi <= zclamp v lo hi.
+Proof.
+  intros u v lo hi Hle Huv.
+  unfold zclamp.
+  destruct (u <? lo) eqn:E1; destruct (v <? lo) eqn:E3.
+  - lia.
+  - apply Z.ltb_ge in E3.
+    destruct (hi <? v) eqn:E4.
+    + apply Z.ltb_lt in E4. lia.
+    + apply Z.ltb_ge in E4. lia.
+  - apply Z.ltb_ge in E1. apply Z.ltb_lt in E3. lia.
+  - apply Z.ltb_ge in E1. apply Z.ltb_ge in E3.
+    destruct (hi <? u) eqn:E2; destruct (hi <? v) eqn:E4.
+    + lia.
+    + apply Z.ltb_lt in E2. apply Z.ltb_ge in E4. lia.
+    + apply Z.ltb_ge in E2. apply Z.ltb_lt in E4. lia.
+    + apply Z.ltb_ge in E2. apply Z.ltb_ge in E4. lia.
+Qed.

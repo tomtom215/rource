@@ -443,3 +443,106 @@ Example zmat4_test_scale :
   zmat4_scale 2 (mkZMat4 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) =
   mkZMat4 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32.
 Proof. reflexivity. Qed.
+
+(** * Translation and Scaling (Z-based) *)
+
+(** 3D translation matrix (Z-based). *)
+Definition zmat4_translation (tx ty tz : Z) : ZMat4 :=
+  mkZMat4 1 0 0 0  0 1 0 0  0 0 1 0  tx ty tz 1.
+
+(** 3D scaling matrix (Z-based). *)
+Definition zmat4_scaling (sx sy sz : Z) : ZMat4 :=
+  mkZMat4 sx 0 0 0  0 sy 0 0  0 0 sz 0  0 0 0 1.
+
+(** Theorem: Determinant of translation matrix is 1. *)
+Theorem zmat4_det_translation : forall tx ty tz : Z,
+  zmat4_determinant (zmat4_translation tx ty tz) = 1.
+Proof.
+  intros. unfold zmat4_determinant, zmat4_translation.
+  cbn [zm4_0 zm4_1 zm4_2 zm4_3 zm4_4 zm4_5 zm4_6 zm4_7 zm4_8 zm4_9 zm4_10 zm4_11 zm4_12 zm4_13 zm4_14 zm4_15].
+  ring.
+Qed.
+
+(** Theorem: Determinant of scaling matrix is sx * sy * sz. *)
+Theorem zmat4_det_scaling : forall sx sy sz : Z,
+  zmat4_determinant (zmat4_scaling sx sy sz) = sx * sy * sz.
+Proof.
+  intros. unfold zmat4_determinant, zmat4_scaling.
+  cbn [zm4_0 zm4_1 zm4_2 zm4_3 zm4_4 zm4_5 zm4_6 zm4_7 zm4_8 zm4_9 zm4_10 zm4_11 zm4_12 zm4_13 zm4_14 zm4_15].
+  ring.
+Qed.
+
+(** Theorem: Translation composition: T(a) * T(b) = T(a+b). *)
+Theorem zmat4_translation_compose : forall tx1 ty1 tz1 tx2 ty2 tz2 : Z,
+  zmat4_mul (zmat4_translation tx1 ty1 tz1) (zmat4_translation tx2 ty2 tz2) =
+  zmat4_translation (tx1 + tx2) (ty1 + ty2) (tz1 + tz2).
+Proof.
+  intros.
+  unfold zmat4_mul, zmat4_translation.
+  apply zmat4_eq; cbn [zm4_0 zm4_1 zm4_2 zm4_3 zm4_4 zm4_5 zm4_6 zm4_7 zm4_8 zm4_9 zm4_10 zm4_11 zm4_12 zm4_13 zm4_14 zm4_15]; ring.
+Qed.
+
+(** Theorem: Scaling composition: S(a) * S(b) = S(a*b). *)
+Theorem zmat4_scaling_compose : forall sx1 sy1 sz1 sx2 sy2 sz2 : Z,
+  zmat4_mul (zmat4_scaling sx1 sy1 sz1) (zmat4_scaling sx2 sy2 sz2) =
+  zmat4_scaling (sx1 * sx2) (sy1 * sy2) (sz1 * sz2).
+Proof.
+  intros.
+  unfold zmat4_mul, zmat4_scaling.
+  apply zmat4_eq; cbn [zm4_0 zm4_1 zm4_2 zm4_3 zm4_4 zm4_5 zm4_6 zm4_7 zm4_8 zm4_9 zm4_10 zm4_11 zm4_12 zm4_13 zm4_14 zm4_15]; ring.
+Qed.
+
+(** Theorem: Scaling identity is identity. *)
+Theorem zmat4_scaling_identity :
+  zmat4_scaling 1 1 1 = zmat4_identity.
+Proof.
+  unfold zmat4_scaling, zmat4_identity. reflexivity.
+Qed.
+
+(** Theorem: Negation is involutive: --A = A. *)
+Theorem zmat4_neg_involutive : forall a : ZMat4,
+  zmat4_neg (zmat4_neg a) = a.
+Proof.
+  intros a. destruct a.
+  unfold zmat4_neg.
+  apply zmat4_eq; cbn [zm4_0 zm4_1 zm4_2 zm4_3 zm4_4 zm4_5 zm4_6 zm4_7 zm4_8 zm4_9 zm4_10 zm4_11 zm4_12 zm4_13 zm4_14 zm4_15]; ring.
+Qed.
+
+(** Theorem: Subtraction self-inverse: A - A = 0. *)
+Theorem zmat4_sub_self : forall a : ZMat4,
+  zmat4_sub a a = zmat4_zero.
+Proof.
+  intros a. destruct a.
+  unfold zmat4_sub, zmat4_add, zmat4_neg, zmat4_zero.
+  apply zmat4_eq; cbn [zm4_0 zm4_1 zm4_2 zm4_3 zm4_4 zm4_5 zm4_6 zm4_7 zm4_8 zm4_9 zm4_10 zm4_11 zm4_12 zm4_13 zm4_14 zm4_15]; ring.
+Qed.
+
+(** Theorem: Multiplication distributes over addition (left). *)
+Theorem zmat4_mul_add_distr_l : forall a b c : ZMat4,
+  zmat4_mul a (zmat4_add b c) = zmat4_add (zmat4_mul a b) (zmat4_mul a c).
+Proof.
+  intros a b c. destruct a, b, c.
+  unfold zmat4_mul, zmat4_add.
+  apply zmat4_eq; cbn [zm4_0 zm4_1 zm4_2 zm4_3 zm4_4 zm4_5 zm4_6 zm4_7 zm4_8 zm4_9 zm4_10 zm4_11 zm4_12 zm4_13 zm4_14 zm4_15]; ring.
+Qed.
+
+(** Theorem: Multiplication distributes over addition (right). *)
+Theorem zmat4_mul_add_distr_r : forall a b c : ZMat4,
+  zmat4_mul (zmat4_add a b) c = zmat4_add (zmat4_mul a c) (zmat4_mul b c).
+Proof.
+  intros a b c. destruct a, b, c.
+  unfold zmat4_mul, zmat4_add.
+  apply zmat4_eq; cbn [zm4_0 zm4_1 zm4_2 zm4_3 zm4_4 zm4_5 zm4_6 zm4_7 zm4_8 zm4_9 zm4_10 zm4_11 zm4_12 zm4_13 zm4_14 zm4_15]; ring.
+Qed.
+
+(** Computational test: translation. *)
+Example zmat4_test_translation :
+  zmat4_translation 10 20 30 =
+  mkZMat4 1 0 0 0  0 1 0 0  0 0 1 0  10 20 30 1.
+Proof. reflexivity. Qed.
+
+(** Computational test: scaling. *)
+Example zmat4_test_scaling :
+  zmat4_scaling 2 3 4 =
+  mkZMat4 2 0 0 0  0 3 0 0  0 0 4 0  0 0 0 1.
+Proof. reflexivity. Qed.

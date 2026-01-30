@@ -10,7 +10,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 ## Coq Version
 
 - **Coq**: 8.18
-- **Admits**: 0 (across all 748 theorems)
+- **Admits**: 0 (across all 887 theorems)
 - **Compilation time**: ~45 seconds total (32 .vo files)
 
 ## Layered Architecture
@@ -38,21 +38,21 @@ For an overview of the complete verification effort (Verus + Coq), see
 | File | Theorems | Status | Key Properties |
 |------|----------|--------|----------------|
 | Vec2.v | 1 | VERIFIED | Specification (equality lemma) |
-| Vec2_Proofs.v | 65 | VERIFIED | Vector space axioms, dot/cross, perp, lerp, reflect, project, reject, min/max element, div |
+| Vec2_Proofs.v | 90 | VERIFIED | Vector space axioms, dot/cross, perp, lerp, reflect, project, reject, min/max element, div, Cauchy-Schwarz |
 | Vec3.v | 1 | VERIFIED | Specification (equality lemma) |
-| Vec3_Proofs.v | 71 | VERIFIED | Cross product, scalar triple, right-hand rule, reflect, project, reject, min/max element, div |
+| Vec3_Proofs.v | 95 | VERIFIED | Cross product, scalar triple, right-hand rule, reflect, project, reject, min/max element, div, normalized_length_sq, clamp bounds |
 | Vec4.v | 1 | VERIFIED | Specification (equality lemma) |
-| Vec4_Proofs.v | 51 | VERIFIED | Orthonormal basis, 4D vector space, min/max element, div |
+| Vec4_Proofs.v | 79 | VERIFIED | Orthonormal basis, 4D vector space, min/max element, div, lerp, mul algebraic properties |
 | Mat3.v | 2 | VERIFIED | Specification (mat3_eq, vec2_eq), determinant, trace, translation, scaling, transform definitions |
-| Mat3_Proofs.v | 48 | VERIFIED | Matrix ring structure, determinant (6+4), trace (5), transform operations (11) |
-| Mat4.v | 1 | VERIFIED | Specification (equality lemma), determinant, trace definitions |
-| Mat4_Proofs.v | 52 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5+4), trace (5) |
+| Mat3_Proofs.v | 65 | VERIFIED | Matrix ring structure, determinant (6+4), trace (5+2), transform operations (11+6), distributivity, transpose_mul |
+| Mat4.v | 2 | VERIFIED | Specification (mat4_eq, vec3_eq), determinant, trace, translation, scaling, transform definitions |
+| Mat4_Proofs.v | 79 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5+4+3), trace (5+2), transform operations (15) |
 | Color.v | 1 | VERIFIED | RGBA color specification (equality lemma) |
-| Color_Proofs.v | 46 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance, add, scale, invert, clamp01 |
+| Color_Proofs.v | 68 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance, add, scale, invert, clamp01, luminance_lerp, luminance_monotone |
 | Rect.v | 1 | VERIFIED | Rectangle specification (equality lemma) |
-| Rect_Proofs.v | 43 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity, scale compose |
-| Utils.v | 10 | VERIFIED | lerp (zero, one, same, midpoint, linear), clamp (range, identity, lower, upper, idempotent) |
-| **Total** | **446** | VERIFIED | All proofs machine-checked, 0 admits |
+| Rect_Proofs.v | 63 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity, scale compose, from_center, translate_center |
+| Utils.v | 23 | VERIFIED | lerp (zero, one, same, midpoint, linear, affine, symmetric, monotone, quarter, diff, add_const, scale), clamp (range, identity, lower, upper, idempotent, monotone, at_lo, at_hi), approx_eq (refl, sym) |
+| **Total** | **631** | VERIFIED | All proofs machine-checked, 0 admits |
 
 **Note on coq-of-rust:** The coq-of-rust/rocq-of-rust tool requires Rust nightly-2024-12-07
 (version 1.85), which is incompatible with rource-math's Rust 1.93 requirement. We proceeded
@@ -166,11 +166,11 @@ the gap between mathematical proofs (over R) and executable code.
 | Vec3_Compute.v | 42 | ~1.6s | Z-based 3D vector operations |
 | Vec4_Compute.v | 33 | ~1.6s | Z-based 4D vector operations |
 | Mat3_Compute.v | 25 | ~3.0s | Z-based 3x3 matrix operations |
-| Mat4_Compute.v | 41 (25 + 16 local) | ~5.5s | Z-based 4x4 matrix operations + determinant |
+| Mat4_Compute.v | 50 (34 + 16 local) | ~5.5s | Z-based 4x4 matrix operations + determinant + translation/scaling |
 | Color_Compute.v | 28 | — | Z-based fixed-point (1000-scale) |
 | Rect_Compute.v | 24 | — | Z-based, boolean predicates |
-| Utils_Compute.v | 8 | — | zlerp/zclamp |
-| **Total** | **251** | **~45s** | All 0 admits |
+| Utils_Compute.v | 13 | — | zlerp/zclamp + additional properties |
+| **Total** | **265** | **~45s** | All 0 admits |
 
 ### Verification Command (Layer 2)
 
@@ -258,17 +258,17 @@ These practices were established through hard-won experience across multiple ses
 
 *Last verified: 2026-01-30*
 
-**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5):**
+**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6):**
 *Version: Coq 8.18*
-*Total theorems: 446 (Vec2: 65, Vec3: 71, Vec4: 51, Mat3: 48, Mat4: 52, Complexity: 60, Color: 46, Rect: 43, Utils: 10)*
+*Total theorems: 631 (Vec2: 91, Vec3: 96, Vec4: 80, Mat3: 67, Mat4: 81, Complexity: 60, Color: 69, Rect: 64, Utils: 23)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
-**Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5):**
+**Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5 + Phase 6):**
 *Version: Coq 8.18*
-*Total theorems: 251 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 41, Color: 28, Rect: 24, Utils: 8)*
+*Total theorems: 265 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 24, Utils: 13)*
 *Admits: 0*
-*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 748 total Coq theorems)*
+*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 887 total Coq theorems)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**

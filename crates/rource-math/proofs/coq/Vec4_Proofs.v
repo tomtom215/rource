@@ -788,12 +788,128 @@ Proof.
   destruct (Rle_dec aw bw); split; nra.
 Qed.
 
+(** Theorem 66: lerp of a vector with itself gives itself. *)
+Theorem vec4_lerp_same : forall (v : Vec4) (t : R),
+  vec4_lerp v v t = v.
+Proof.
+  intros [vx vy vz vw] t.
+  unfold vec4_lerp, vec4_add, vec4_sub, vec4_scale. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 67: negation is involutive. *)
+Theorem vec4_neg_involutive : forall v : Vec4,
+  vec4_neg (vec4_neg v) = v.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 68: component-wise multiplication is commutative. *)
+Theorem vec4_mul_comm : forall a b : Vec4,
+  vec4_mul a b = vec4_mul b a.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold vec4_mul. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 69: component-wise multiplication by zero gives zero. *)
+Theorem vec4_mul_zero : forall v : Vec4,
+  vec4_mul v vec4_zero = vec4_zero.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_mul, vec4_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 70: sub self is zero. *)
+Theorem vec4_sub_self : forall v : Vec4,
+  vec4_sub v v = vec4_zero.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_sub, vec4_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 71: mul is associative. *)
+Theorem vec4_mul_assoc : forall a b c : Vec4,
+  vec4_mul (vec4_mul a b) c = vec4_mul a (vec4_mul b c).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw] [cx cy cz cw].
+  unfold vec4_mul. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 72: mul splat(1) is identity. *)
+Theorem vec4_mul_one : forall v : Vec4,
+  vec4_mul v (vec4_splat 1) = v.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_mul, vec4_splat. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 73: scale by -1 equals negation. *)
+Theorem vec4_scale_neg_one : forall v : Vec4,
+  vec4_scale (-1) v = vec4_neg v.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_scale, vec4_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 74: lerp midpoint. *)
+Theorem vec4_lerp_midpoint : forall a b : Vec4,
+  vec4_lerp a b (1/2) = mkVec4 ((vec4_x a + vec4_x b) / 2)
+                                 ((vec4_y a + vec4_y b) / 2)
+                                 ((vec4_z a + vec4_z b) / 2)
+                                 ((vec4_w a + vec4_w b) / 2).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold vec4_lerp, vec4_add, vec4_sub, vec4_scale. simpl.
+  f_equal; field.
+Qed.
+
+(** Theorem 75: element product of splat is v⁴. *)
+Theorem vec4_element_product_splat : forall v : R,
+  vec4_element_product (vec4_splat v) = v * v * v * v.
+Proof.
+  intros v.
+  unfold vec4_element_product, vec4_splat. simpl.
+  ring.
+Qed.
+
+(** Theorem 76: splat produces equal components. *)
+Theorem vec4_splat_components : forall v : R,
+  vec4_x (vec4_splat v) = v /\ vec4_y (vec4_splat v) = v /\
+  vec4_z (vec4_splat v) = v /\ vec4_w (vec4_splat v) = v.
+Proof.
+  intros v. unfold vec4_splat. simpl. repeat split; reflexivity.
+Qed.
+
+(** Theorem 77: length squared of scaled vector. *)
+Theorem vec4_length_squared_scale : forall (s : R) (v : Vec4),
+  vec4_length_squared (vec4_scale s v) = s * s * vec4_length_squared v.
+Proof.
+  intros s [vx vy vz vw].
+  unfold vec4_length_squared, vec4_scale, vec4_dot. simpl.
+  ring.
+Qed.
+
+(** Theorem 78: dot product with zero is 0. *)
+Theorem vec4_dot_zero_r : forall v : Vec4,
+  vec4_dot v vec4_zero = 0.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_dot, vec4_zero. simpl.
+  ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 65 (51 original + 14 new)
-    New theorems: length nonneg/zero, normalized length_sq,
-      distance nonneg/self/symmetric, clamp x/y/z/w bounds,
-      lerp x/y/z/w range
+    Total theorems: 78 (66 original + 13 new)
     Admits: 0
     Axioms: Standard Coq real number library only
 

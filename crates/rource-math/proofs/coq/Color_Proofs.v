@@ -582,12 +582,122 @@ Proof.
   simpl in *. unfold color_blend_over. simpl. nra.
 Qed.
 
+(** Theorem 57: blend alpha has upper bound.
+    ∀ src dst : Color, 0 ≤ src.a,dst.a ≤ 1 →
+    color_a (blend_over src dst) ≤ 1 *)
+Theorem color_blend_alpha_upper_bound : forall (src dst : Color),
+  0 <= color_a src <= 1 -> 0 <= color_a dst <= 1 ->
+  color_a (color_blend_over src dst) <= 1.
+Proof.
+  intros [sr sg sb sa] [dr dg db da] [Hsa0 Hsa1] [Hda0 Hda1].
+  simpl in *. unfold color_blend_over. simpl. nra.
+Qed.
+
+(** Theorem 58: fade compose.
+    fade(fade(c, a), b) = fade(c, a*b) *)
+Theorem color_fade_compose : forall (c : Color) (a b : R),
+  color_fade (color_fade c a) b = color_fade c (a * b).
+Proof.
+  intros [cr cg cb ca] a b.
+  unfold color_fade. simpl.
+  apply color_eq; try reflexivity. ring.
+Qed.
+
+(** Theorem 59: luminance of lerp is lerp of luminances (for valid colors). *)
+Theorem color_luminance_lerp : forall (a b : Color) (t : R),
+  color_luminance (color_lerp a b t) =
+  color_luminance a + (color_luminance b - color_luminance a) * t.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] t.
+  unfold color_luminance, color_lerp. simpl.
+  ring.
+Qed.
+
+(** Theorem 60: scale distributes over add. *)
+Theorem color_add_scale_dist : forall (a b : Color) (s : R),
+  color_scale (color_add a b) s = color_add (color_scale a s) (color_scale b s).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] s.
+  unfold color_scale, color_add. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 61: with_alpha is idempotent on alpha. *)
+Theorem color_with_alpha_alpha : forall (c : Color) (alpha : R),
+  color_a (color_with_alpha c alpha) = alpha.
+Proof.
+  intros [cr cg cb ca] alpha.
+  unfold color_with_alpha. simpl. reflexivity.
+Qed.
+
+(** Theorem 62: with_alpha applied twice uses the latest alpha. *)
+Theorem color_with_alpha_compose : forall (c : Color) (a1 a2 : R),
+  color_with_alpha (color_with_alpha c a1) a2 = color_with_alpha c a2.
+Proof.
+  intros [cr cg cb ca] a1 a2.
+  unfold color_with_alpha. simpl. reflexivity.
+Qed.
+
+(** Theorem 63: blending with transparent source preserves destination. *)
+Theorem color_blend_transparent_src : forall (dst : Color),
+  color_blend_over color_transparent dst = dst.
+Proof.
+  intros [dr dg db da].
+  unfold color_blend_over, color_transparent. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 64: lerp at t=0.5 equals mix.
+    ∀ a b : Color, lerp(a, b, 0.5) = mix(a, b) *)
+Theorem color_lerp_half_is_mix : forall (a b : Color),
+  color_lerp a b (1/2) = color_mix a b.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_lerp, color_mix. simpl.
+  apply color_eq; field.
+Qed.
+
+(** Theorem 65: color gray is symmetric (all components equal). *)
+Theorem color_gray_components : forall v : R,
+  color_r (color_gray v) = v /\ color_g (color_gray v) = v /\ color_b (color_gray v) = v.
+Proof.
+  intros v. unfold color_gray. simpl. repeat split; reflexivity.
+Qed.
+
+(** Theorem 66: add is right identity with transparent. *)
+Theorem color_add_transparent : forall (c : Color),
+  color_add c color_transparent = c.
+Proof.
+  intros [cr cg cb ca].
+  unfold color_add, color_transparent. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 67: premultiplied of premultiplied (idempotent for alpha=1). *)
+Theorem color_premultiplied_opaque_idempotent : forall (c : Color),
+  color_a c = 1 ->
+  color_premultiplied (color_premultiplied c) = color_premultiplied c.
+Proof.
+  intros [cr cg cb ca] Ha. simpl in Ha. subst.
+  unfold color_premultiplied. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 68: luminance is monotonic in all channels.
+    If r1 ≤ r2, g1 ≤ g2, b1 ≤ b2, then luminance(c1) ≤ luminance(c2) *)
+Theorem color_luminance_monotone : forall (c1 c2 : Color),
+  color_r c1 <= color_r c2 ->
+  color_g c1 <= color_g c2 ->
+  color_b c1 <= color_b c2 ->
+  color_luminance c1 <= color_luminance c2.
+Proof.
+  intros [r1 g1 b1 a1] [r2 g2 b2 a2] Hr Hg Hb. simpl in *.
+  unfold color_luminance. simpl. nra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 56 (46 original + 10 new)
-    New theorems: clamp bounds/idempotent/valid_noop,
-      lerp r/g/b/a range, mix_is_lerp_half,
-      luminance bounded, blend alpha lower bound
+    Total theorems: 68 (56 original + 12 new)
     Admits: 0
     Axioms: Standard Coq real number library only
 
