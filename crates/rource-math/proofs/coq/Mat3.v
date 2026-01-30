@@ -151,6 +151,25 @@ Definition mat3_transform_vector (m : Mat3) (v : Vec2) : Vec2 :=
     (m0 m * vx v + m3 m * vy v)
     (m1 m * vx v + m4 m * vy v).
 
+(** * Shearing Operations *)
+
+(** 2D shear matrix (shear along X by sy, along Y by sx). *)
+Definition mat3_shearing (sx sy : R) : Mat3 :=
+  mkMat3 1 sy 0  sx 1 0  0 0 1.
+
+(** * Accessor Operations *)
+
+(** Extract the translation from a 2D transform matrix.
+    The translation is stored in column 2 (elements m6, m7).
+    Matches Rust: self.m[6], self.m[7] *)
+Definition mat3_get_translation (mat : Mat3) : Vec2 :=
+  mkVec2 (m6 mat) (m7 mat).
+
+(** Construct a matrix from three column vectors (given as tuples).
+    mat3_from_cols (c0_0, c0_1, c0_2) (c1_0, c1_1, c1_2) (c2_0, c2_1, c2_2) *)
+Definition mat3_from_cols (c00 c01 c02 c10 c11 c12 c20 c21 c22 : R) : Mat3 :=
+  mkMat3 c00 c01 c02 c10 c11 c12 c20 c21 c22.
+
 (** * Equality Lemmas *)
 
 (** Two Vec2 are equal iff their components are equal. *)
@@ -200,10 +219,13 @@ Qed.
     - mat3_scaling: 2D scaling matrix
     - mat3_transform_point: Point transformation (w=1)
     - mat3_transform_vector: Vector transformation (w=0)
+    - mat3_shearing: 2D shear matrix
+    - mat3_get_translation: Extract translation from 2D transform
+    - mat3_from_cols: Constructor from column values
     - mat3_eq: Component-wise matrix equality lemma
     - vec2_eq: Component-wise Vec2 equality lemma
 
-    Total definitions: 16
+    Total definitions: 19
     Total lemmas: 2
     Admits: 0
 *)

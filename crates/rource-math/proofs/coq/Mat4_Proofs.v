@@ -742,11 +742,236 @@ Proof.
   apply vec3_eq; simpl; ring.
 Qed.
 
+(** * Get Translation Properties *)
+
+(** Theorem 60: get_translation extracts m12, m13, m14 from translation matrix. *)
+Theorem mat4_get_translation_of_translation : forall tx ty tz : R,
+  mat4_get_translation (mat4_translation tx ty tz) = mkVec3 tx ty tz.
+Proof.
+  intros. unfold mat4_get_translation, mat4_translation. simpl. reflexivity.
+Qed.
+
+(** Theorem 61: get_translation of identity is origin. *)
+Theorem mat4_get_translation_identity :
+  mat4_get_translation mat4_identity = mkVec3 0 0 0.
+Proof.
+  unfold mat4_get_translation, mat4_identity. simpl. reflexivity.
+Qed.
+
+(** Theorem 62: get_translation of zero matrix is origin. *)
+Theorem mat4_get_translation_zero :
+  mat4_get_translation mat4_zero = mkVec3 0 0 0.
+Proof.
+  unfold mat4_get_translation, mat4_zero. simpl. reflexivity.
+Qed.
+
+(** Theorem 63: get_translation of scaling matrix is origin. *)
+Theorem mat4_get_translation_scaling : forall sx sy sz : R,
+  mat4_get_translation (mat4_scaling sx sy sz) = mkVec3 0 0 0.
+Proof.
+  intros. unfold mat4_get_translation, mat4_scaling. simpl. reflexivity.
+Qed.
+
+(** Theorem 64: Composing translations then extracting = vector sum. *)
+Theorem mat4_get_translation_compose : forall tx1 ty1 tz1 tx2 ty2 tz2 : R,
+  mat4_get_translation
+    (mat4_mul (mat4_translation tx1 ty1 tz1) (mat4_translation tx2 ty2 tz2)) =
+  mkVec3 (tx1 + tx2) (ty1 + ty2) (tz1 + tz2).
+Proof.
+  intros. unfold mat4_get_translation, mat4_mul, mat4_translation. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** * Column Accessor Properties *)
+
+(** Theorem 65: col0 of identity = (1,0,0,0). *)
+Theorem mat4_col0_identity :
+  mat4_col0 mat4_identity = (1, 0, 0, 0).
+Proof.
+  unfold mat4_col0, mat4_identity. simpl. reflexivity.
+Qed.
+
+(** Theorem 66: col1 of identity = (0,1,0,0). *)
+Theorem mat4_col1_identity :
+  mat4_col1 mat4_identity = (0, 1, 0, 0).
+Proof.
+  unfold mat4_col1, mat4_identity. simpl. reflexivity.
+Qed.
+
+(** Theorem 67: col2 of identity = (0,0,1,0). *)
+Theorem mat4_col2_identity :
+  mat4_col2 mat4_identity = (0, 0, 1, 0).
+Proof.
+  unfold mat4_col2, mat4_identity. simpl. reflexivity.
+Qed.
+
+(** Theorem 68: col3 of identity = (0,0,0,1). *)
+Theorem mat4_col3_identity :
+  mat4_col3 mat4_identity = (0, 0, 0, 1).
+Proof.
+  unfold mat4_col3, mat4_identity. simpl. reflexivity.
+Qed.
+
+(** Theorem 69: col0 of scaling = (sx,0,0,0). *)
+Theorem mat4_col0_scaling : forall sx sy sz : R,
+  mat4_col0 (mat4_scaling sx sy sz) = (sx, 0, 0, 0).
+Proof.
+  intros. unfold mat4_col0, mat4_scaling. simpl. reflexivity.
+Qed.
+
+(** Theorem 70: col3 of translation = (tx,ty,tz,1). *)
+Theorem mat4_col3_translation : forall tx ty tz : R,
+  mat4_col3 (mat4_translation tx ty tz) = (tx, ty, tz, 1).
+Proof.
+  intros. unfold mat4_col3, mat4_translation. simpl. reflexivity.
+Qed.
+
+(** * Row Accessor Properties *)
+
+(** Theorem 71: row0 of identity = (1,0,0,0). *)
+Theorem mat4_row0_identity :
+  mat4_row0 mat4_identity = (1, 0, 0, 0).
+Proof.
+  unfold mat4_row0, mat4_identity. simpl. reflexivity.
+Qed.
+
+(** Theorem 72: row3 of identity = (0,0,0,1). *)
+Theorem mat4_row3_identity :
+  mat4_row3 mat4_identity = (0, 0, 0, 1).
+Proof.
+  unfold mat4_row3, mat4_identity. simpl. reflexivity.
+Qed.
+
+(** Theorem 73: Transpose swaps col0 and row0. *)
+Theorem mat4_transpose_col0_row0 : forall a : Mat4,
+  mat4_col0 (mat4_transpose a) = mat4_row0 a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_col0, mat4_row0, mat4_transpose. simpl. reflexivity.
+Qed.
+
+(** Theorem 74: Transpose swaps col1 and row1. *)
+Theorem mat4_transpose_col1_row1 : forall a : Mat4,
+  mat4_col1 (mat4_transpose a) = mat4_row1 a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_col1, mat4_row1, mat4_transpose. simpl. reflexivity.
+Qed.
+
+(** Theorem 75: Transpose swaps col2 and row2. *)
+Theorem mat4_transpose_col2_row2 : forall a : Mat4,
+  mat4_col2 (mat4_transpose a) = mat4_row2 a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_col2, mat4_row2, mat4_transpose. simpl. reflexivity.
+Qed.
+
+(** Theorem 76: Transpose swaps col3 and row3. *)
+Theorem mat4_transpose_col3_row3 : forall a : Mat4,
+  mat4_col3 (mat4_transpose a) = mat4_row3 a.
+Proof.
+  intros a. destruct a.
+  unfold mat4_col3, mat4_row3, mat4_transpose. simpl. reflexivity.
+Qed.
+
+(** * From Cols Properties *)
+
+(** Theorem 77: from_cols is equivalent to mkMat4. *)
+Theorem mat4_from_cols_is_mkMat4 :
+  forall c00 c01 c02 c03 c10 c11 c12 c13 c20 c21 c22 c23 c30 c31 c32 c33 : R,
+  mat4_from_cols c00 c01 c02 c03 c10 c11 c12 c13 c20 c21 c22 c23 c30 c31 c32 c33 =
+  mkMat4 c00 c01 c02 c03 c10 c11 c12 c13 c20 c21 c22 c23 c30 c31 c32 c33.
+Proof.
+  intros. unfold mat4_from_cols. reflexivity.
+Qed.
+
+(** Theorem 78: from_cols identity columns gives identity matrix. *)
+Theorem mat4_from_cols_identity :
+  mat4_from_cols 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 = mat4_identity.
+Proof.
+  unfold mat4_from_cols, mat4_identity. reflexivity.
+Qed.
+
+(** Theorem 79: from_cols zero columns gives zero matrix. *)
+Theorem mat4_from_cols_zero :
+  mat4_from_cols 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 = mat4_zero.
+Proof.
+  unfold mat4_from_cols, mat4_zero. reflexivity.
+Qed.
+
+(** * Orthographic Projection Properties *)
+
+(** Theorem 80: Orthographic matrix is symmetric about near-far swap. *)
+Theorem mat4_orthographic_identity_trace : forall l r b t n f : R,
+  r <> l -> t <> b -> f <> n ->
+  mat4_trace (mat4_orthographic l r b t n f) =
+  2 / (r - l) + 2 / (t - b) + -(2) / (f - n) + 1.
+Proof.
+  intros.
+  unfold mat4_trace, mat4_orthographic. simpl. ring.
+Qed.
+
+(** Theorem 81: Orthographic projects origin to translation-dependent point. *)
+Theorem mat4_orthographic_transforms_origin : forall l r b t n f : R,
+  mat4_transform_point (mat4_orthographic l r b t n f) (mkVec3 0 0 0) =
+  mkVec3 (-(r + l) / (r - l)) (-(t + b) / (t - b)) (-(f + n) / (f - n)).
+Proof.
+  intros.
+  unfold mat4_transform_point, mat4_orthographic. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 82: Orthographic is a diagonal + translation structure.
+    The upper-left 3x3 is diagonal (off-diagonal zeros). *)
+Theorem mat4_orthographic_diagonal_structure : forall l r b t n f : R,
+  m1 (mat4_orthographic l r b t n f) = 0 /\
+  m2 (mat4_orthographic l r b t n f) = 0 /\
+  m3 (mat4_orthographic l r b t n f) = 0 /\
+  m4 (mat4_orthographic l r b t n f) = 0 /\
+  m6 (mat4_orthographic l r b t n f) = 0 /\
+  m7 (mat4_orthographic l r b t n f) = 0 /\
+  m8 (mat4_orthographic l r b t n f) = 0 /\
+  m9 (mat4_orthographic l r b t n f) = 0 /\
+  m11 (mat4_orthographic l r b t n f) = 0 /\
+  m15 (mat4_orthographic l r b t n f) = 1.
+Proof.
+  intros. unfold mat4_orthographic. simpl.
+  repeat split; reflexivity.
+Qed.
+
+(** Theorem 83: Symmetric orthographic simplifies.
+    When left = -right and bottom = -top: translation components become 0. *)
+Theorem mat4_orthographic_symmetric : forall r t n f : R,
+  r <> 0 -> t <> 0 -> f <> n ->
+  m12 (mat4_orthographic (-r) r (-t) t n f) = 0 /\
+  m13 (mat4_orthographic (-r) r (-t) t n f) = 0.
+Proof.
+  intros.
+  unfold mat4_orthographic. simpl.
+  split; field; lra.
+Qed.
+
+(** Theorem 84: get_translation from orthographic matrix. *)
+Theorem mat4_orthographic_get_translation : forall l r b t n f : R,
+  mat4_get_translation (mat4_orthographic l r b t n f) =
+  mkVec3 (-(r + l) / (r - l)) (-(t + b) / (t - b)) (-(f + n) / (f - n)).
+Proof.
+  intros.
+  unfold mat4_get_translation, mat4_orthographic. simpl. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 59 + 16 component lemmas = 75 (52 original + 23 new)
+    Total theorems: 84 + 16 component lemmas = 100 (59 original + 25 new)
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
+
+    New theorems added:
+    - Theorems 60-64: get_translation properties
+    - Theorems 65-70: column accessor properties
+    - Theorems 71-76: row accessor properties
+    - Theorems 77-79: from_cols properties
+    - Theorems 80-84: orthographic projection properties
 *)

@@ -668,11 +668,143 @@ Proof.
   unfold mat3_trace, mat3_neg. simpl. ring.
 Qed.
 
+(** * Get Translation Properties *)
+
+(** Theorem 66: get_translation extracts m6, m7 from translation matrix. *)
+Theorem mat3_get_translation_of_translation : forall tx ty : R,
+  mat3_get_translation (mat3_translation tx ty) = mkVec2 tx ty.
+Proof.
+  intros. unfold mat3_get_translation, mat3_translation. simpl. reflexivity.
+Qed.
+
+(** Theorem 67: get_translation of identity is origin. *)
+Theorem mat3_get_translation_identity :
+  mat3_get_translation mat3_identity = mkVec2 0 0.
+Proof.
+  unfold mat3_get_translation, mat3_identity. simpl. reflexivity.
+Qed.
+
+(** Theorem 68: get_translation of zero matrix is origin. *)
+Theorem mat3_get_translation_zero :
+  mat3_get_translation mat3_zero = mkVec2 0 0.
+Proof.
+  unfold mat3_get_translation, mat3_zero. simpl. reflexivity.
+Qed.
+
+(** Theorem 69: get_translation of scaling matrix is origin. *)
+Theorem mat3_get_translation_scaling : forall sx sy : R,
+  mat3_get_translation (mat3_scaling sx sy) = mkVec2 0 0.
+Proof.
+  intros. unfold mat3_get_translation, mat3_scaling. simpl. reflexivity.
+Qed.
+
+(** Theorem 70: Translating then extracting recovers the translation. *)
+Theorem mat3_get_translation_compose : forall tx1 ty1 tx2 ty2 : R,
+  mat3_get_translation (mat3_mul (mat3_translation tx2 ty2) (mat3_translation tx1 ty1)) =
+  mkVec2 (tx1 + tx2) (ty1 + ty2).
+Proof.
+  intros. unfold mat3_get_translation, mat3_mul, mat3_translation. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** * From Cols Properties *)
+
+(** Theorem 71: from_cols is equivalent to mkMat3. *)
+Theorem mat3_from_cols_is_mkMat3 : forall c00 c01 c02 c10 c11 c12 c20 c21 c22 : R,
+  mat3_from_cols c00 c01 c02 c10 c11 c12 c20 c21 c22 =
+  mkMat3 c00 c01 c02 c10 c11 c12 c20 c21 c22.
+Proof.
+  intros. unfold mat3_from_cols. reflexivity.
+Qed.
+
+(** Theorem 72: from_cols identity columns gives identity matrix. *)
+Theorem mat3_from_cols_identity :
+  mat3_from_cols 1 0 0 0 1 0 0 0 1 = mat3_identity.
+Proof.
+  unfold mat3_from_cols, mat3_identity. reflexivity.
+Qed.
+
+(** Theorem 73: from_cols zero columns gives zero matrix. *)
+Theorem mat3_from_cols_zero :
+  mat3_from_cols 0 0 0 0 0 0 0 0 0 = mat3_zero.
+Proof.
+  unfold mat3_from_cols, mat3_zero. reflexivity.
+Qed.
+
+(** * Shearing Properties *)
+
+(** Theorem 74: Shearing by (0, 0) is identity. *)
+Theorem mat3_shearing_zero :
+  mat3_shearing 0 0 = mat3_identity.
+Proof.
+  unfold mat3_shearing, mat3_identity. reflexivity.
+Qed.
+
+(** Theorem 75: det(shear(sx, sy)) = 1 - sx*sy. *)
+Theorem mat3_det_shearing : forall sx sy : R,
+  mat3_determinant (mat3_shearing sx sy) = 1 - sx * sy.
+Proof.
+  intros. unfold mat3_determinant, mat3_shearing. simpl. ring.
+Qed.
+
+(** Theorem 76: Shearing preserves the last row (m2=0, m5=0, m8=1). *)
+Theorem mat3_shearing_last_row : forall sx sy : R,
+  m2 (mat3_shearing sx sy) = 0 /\
+  m5 (mat3_shearing sx sy) = 0 /\
+  m8 (mat3_shearing sx sy) = 1.
+Proof.
+  intros. unfold mat3_shearing. simpl. repeat split; reflexivity.
+Qed.
+
+(** Theorem 77: Shearing transforms point correctly. *)
+Theorem mat3_shearing_transforms_point : forall sx sy : R, forall p : Vec2,
+  mat3_transform_point (mat3_shearing sx sy) p =
+  mkVec2 (vx p + sx * vy p) (sy * vx p + vy p).
+Proof.
+  intros sx sy [px py].
+  unfold mat3_transform_point, mat3_shearing. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 78: Shearing transforms vector correctly. *)
+Theorem mat3_shearing_transforms_vector : forall sx sy : R, forall v : Vec2,
+  mat3_transform_vector (mat3_shearing sx sy) v =
+  mkVec2 (vx v + sx * vy v) (sy * vx v + vy v).
+Proof.
+  intros sx sy [vx0 vy0].
+  unfold mat3_transform_vector, mat3_shearing. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 79: trace(shear(sx, sy)) = 3. *)
+Theorem mat3_trace_shearing : forall sx sy : R,
+  mat3_trace (mat3_shearing sx sy) = 3.
+Proof.
+  intros. unfold mat3_trace, mat3_shearing. simpl. ring.
+Qed.
+
+(** Theorem 80: Shearing composition. *)
+Theorem mat3_shearing_compose : forall sx1 sy1 sx2 sy2 : R,
+  mat3_mul (mat3_shearing sx2 sy2) (mat3_shearing sx1 sy1) =
+  mkMat3 (1 + sx2 * sy1) (sy2 + sy1) 0
+         (sx1 + sx2) (sx1 * sy2 + 1) 0
+         0 0 1.
+Proof.
+  intros.
+  unfold mat3_mul, mat3_shearing. simpl.
+  apply mat3_eq; simpl; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 65 (48 original + 17 new)
+    Total theorems: 80 (65 original + 15 new)
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
+
+    New theorems added:
+    - Theorems 66-70: get_translation properties
+    - Theorems 71-73: from_cols properties
+    - Theorems 74-80: shearing properties
 *)

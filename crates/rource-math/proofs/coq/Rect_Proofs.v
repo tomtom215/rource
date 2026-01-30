@@ -635,9 +635,337 @@ Proof.
   intros. unfold rect_from_center. simpl. lra.
 Qed.
 
+(** * Accessor Properties *)
+
+(** Theorem 64: left = x.
+    ∀ r : Rect, left(r) = x(r) *)
+Theorem rect_left_def : forall (r : Rect),
+  rect_left r = rect_x r.
+Proof.
+  intros. unfold rect_left. reflexivity.
+Qed.
+
+(** Theorem 65: top = y.
+    ∀ r : Rect, top(r) = y(r) *)
+Theorem rect_top_def : forall (r : Rect),
+  rect_top r = rect_y r.
+Proof.
+  intros. unfold rect_top. reflexivity.
+Qed.
+
+(** Theorem 66: min_x = x.
+    ∀ r : Rect, min_x(r) = x(r) *)
+Theorem rect_min_x_def : forall (r : Rect),
+  rect_min_x r = rect_x r.
+Proof.
+  intros. unfold rect_min_x. reflexivity.
+Qed.
+
+(** Theorem 67: min_y = y.
+    ∀ r : Rect, min_y(r) = y(r) *)
+Theorem rect_min_y_def : forall (r : Rect),
+  rect_min_y r = rect_y r.
+Proof.
+  intros. unfold rect_min_y. reflexivity.
+Qed.
+
+(** Theorem 68: max_x = x + w = right.
+    ∀ r : Rect, max_x(r) = right(r) *)
+Theorem rect_max_x_is_right : forall (r : Rect),
+  rect_max_x r = rect_right r.
+Proof.
+  intros. unfold rect_max_x, rect_right. reflexivity.
+Qed.
+
+(** Theorem 69: max_y = y + h = bottom.
+    ∀ r : Rect, max_y(r) = bottom(r) *)
+Theorem rect_max_y_is_bottom : forall (r : Rect),
+  rect_max_y r = rect_bottom r.
+Proof.
+  intros. unfold rect_max_y, rect_bottom. reflexivity.
+Qed.
+
+(** * Emptiness Properties *)
+
+(** Theorem 70: zero rect is empty.
+    is_empty(rect_zero) *)
+Theorem rect_zero_is_empty :
+  rect_is_empty rect_zero.
+Proof.
+  unfold rect_is_empty, rect_zero. simpl. left. lra.
+Qed.
+
+(** Theorem 71: valid rect is not empty.
+    ∀ r : Rect, is_valid(r) -> ~is_empty(r) *)
+Theorem rect_valid_not_empty : forall (r : Rect),
+  rect_is_valid r -> ~ rect_is_empty r.
+Proof.
+  intros [x y w h] [Hw Hh]. simpl in *.
+  unfold rect_is_empty. simpl. lra.
+Qed.
+
+(** Theorem 72: negative dimension rect is empty.
+    ∀ r : Rect, w(r) < 0 -> is_empty(r) *)
+Theorem rect_neg_width_is_empty : forall (r : Rect),
+  rect_w r < 0 -> rect_is_empty r.
+Proof.
+  intros [x y w h] Hw. simpl in *.
+  unfold rect_is_empty. simpl. left. lra.
+Qed.
+
+(** * From-Corners Properties *)
+
+(** Theorem 73: from_corners with identical points gives zero-area rect.
+    ∀ x y : R, area(from_corners(x, y, x, y)) = 0 *)
+Theorem rect_from_corners_same_point : forall (x y : R),
+  rect_area (rect_from_corners x y x y) = 0.
+Proof.
+  intros x y.
+  unfold rect_from_corners, rect_area. simpl.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec x x); destruct (Rle_dec y y); lra.
+Qed.
+
+(** Theorem 74: from_corners has non-negative dimensions.
+    ∀ ax ay bx by : R, w(from_corners(...)) >= 0 ∧ h(from_corners(...)) >= 0 *)
+Theorem rect_from_corners_nonneg_dims : forall (ax ay bx by0 : R),
+  rect_w (rect_from_corners ax ay bx by0) >= 0 /\
+  rect_h (rect_from_corners ax ay bx by0) >= 0.
+Proof.
+  intros ax ay bx by0.
+  unfold rect_from_corners. simpl.
+  split; unfold Rmin, Rmax; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 75: from_corners is symmetric in its corner arguments.
+    ∀ ax ay bx by : R, from_corners(ax,ay,bx,by) = from_corners(bx,by,ax,ay) *)
+Theorem rect_from_corners_symmetric : forall (ax ay bx by0 : R),
+  rect_from_corners ax ay bx by0 = rect_from_corners bx by0 ax ay.
+Proof.
+  intros ax ay bx by0.
+  unfold rect_from_corners.
+  apply rect_eq; unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 76: from_corners with ordered corners is just rect_new.
+    ∀ ax ay bx by : R, ax <= bx -> ay <= by ->
+    from_corners(ax,ay,bx,by) = rect_new ax ay (bx-ax) (by-ay) *)
+Theorem rect_from_corners_ordered : forall (ax ay bx by0 : R),
+  ax <= bx -> ay <= by0 ->
+  rect_from_corners ax ay bx by0 = rect_new ax ay (bx - ax) (by0 - ay).
+Proof.
+  intros ax ay bx by0 Hx Hy.
+  unfold rect_from_corners, rect_new.
+  apply rect_eq; unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** * Expand-XY Properties *)
+
+(** Theorem 77: expand_xy with equal amounts is expand.
+    ∀ r a : Rect, expand_xy(r, a, a) = expand(r, a) *)
+Theorem rect_expand_xy_equal_is_expand : forall (r : Rect) (a : R),
+  rect_expand_xy r a a = rect_expand r a.
+Proof.
+  intros [x y w h] a.
+  unfold rect_expand_xy, rect_expand. simpl.
+  apply rect_eq; lra.
+Qed.
+
+(** Theorem 78: expand_xy by (0, 0) is identity.
+    ∀ r : Rect, expand_xy(r, 0, 0) = r *)
+Theorem rect_expand_xy_zero : forall (r : Rect),
+  rect_expand_xy r 0 0 = r.
+Proof.
+  intros [x y w h].
+  unfold rect_expand_xy. simpl.
+  apply rect_eq; lra.
+Qed.
+
+(** Theorem 79: expand_xy preserves center_x.
+    ∀ r xa ya, center_x(expand_xy(r, xa, ya)) = center_x(r) *)
+Theorem rect_expand_xy_preserves_center_x : forall (r : Rect) (xa ya : R),
+  rect_center_x (rect_expand_xy r xa ya) = rect_center_x r.
+Proof.
+  intros [x y w h] xa ya.
+  unfold rect_expand_xy, rect_center_x. simpl. lra.
+Qed.
+
+(** Theorem 80: expand_xy preserves center_y.
+    ∀ r xa ya, center_y(expand_xy(r, xa, ya)) = center_y(r) *)
+Theorem rect_expand_xy_preserves_center_y : forall (r : Rect) (xa ya : R),
+  rect_center_y (rect_expand_xy r xa ya) = rect_center_y r.
+Proof.
+  intros [x y w h] xa ya.
+  unfold rect_expand_xy, rect_center_y. simpl. lra.
+Qed.
+
+(** Theorem 81: expand_xy composition.
+    ∀ r xa1 ya1 xa2 ya2,
+    expand_xy(expand_xy(r, xa1, ya1), xa2, ya2) = expand_xy(r, xa1+xa2, ya1+ya2) *)
+Theorem rect_expand_xy_compose : forall (r : Rect) (xa1 ya1 xa2 ya2 : R),
+  rect_expand_xy (rect_expand_xy r xa1 ya1) xa2 ya2 =
+  rect_expand_xy r (xa1 + xa2) (ya1 + ya2).
+Proof.
+  intros [x y w h] xa1 ya1 xa2 ya2.
+  unfold rect_expand_xy. simpl.
+  apply rect_eq; lra.
+Qed.
+
+(** * Union Properties *)
+
+(** Theorem 82: union is commutative (dimensions).
+    ∀ a b : Rect, w(union(a,b)) = w(union(b,a)) ∧ h(union(a,b)) = h(union(b,a)) *)
+Theorem rect_union_comm_dims : forall (a b : Rect),
+  rect_w (rect_union a b) = rect_w (rect_union b a) /\
+  rect_h (rect_union a b) = rect_h (rect_union b a).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_union, rect_right, rect_bottom. simpl.
+  split; unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 83: union with itself is identity (for non-negative dims).
+    ∀ r : Rect, w(r) >= 0 -> h(r) >= 0 -> union(r, r) = r *)
+Theorem rect_union_self : forall (r : Rect),
+  rect_w r >= 0 -> rect_h r >= 0 ->
+  rect_union r r = r.
+Proof.
+  intros [x y w h] Hw Hh. simpl in *.
+  unfold rect_union, rect_right, rect_bottom. simpl.
+  unfold Rmin, Rmax.
+  repeat (destruct (Rle_dec _ _)); try lra.
+  apply rect_eq; lra.
+Qed.
+
+(** Theorem 84: union contains both rects (first).
+    ∀ a b : Rect, w(a) >= 0 -> h(a) >= 0 -> contains_rect(union(a,b), a) *)
+Theorem rect_union_contains_first : forall (a b : Rect),
+  rect_w a >= 0 -> rect_h a >= 0 ->
+  rect_contains_rect (rect_union a b) a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] Haw Hah. simpl in *.
+  unfold rect_contains_rect, rect_union, rect_right, rect_bottom. simpl.
+  repeat split;
+    unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 85: union contains both rects (second).
+    ∀ a b : Rect, w(b) >= 0 -> h(b) >= 0 -> contains_rect(union(a,b), b) *)
+Theorem rect_union_contains_second : forall (a b : Rect),
+  rect_w b >= 0 -> rect_h b >= 0 ->
+  rect_contains_rect (rect_union a b) b.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] Hbw Hbh. simpl in *.
+  unfold rect_contains_rect, rect_union, rect_right, rect_bottom. simpl.
+  repeat split;
+    unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 86: union has non-negative dimensions (for valid inputs).
+    ∀ a b : Rect, w(a) >= 0 -> h(a) >= 0 -> w(b) >= 0 -> h(b) >= 0 ->
+    w(union(a,b)) >= 0 ∧ h(union(a,b)) >= 0 *)
+Theorem rect_union_nonneg_dims : forall (a b : Rect),
+  rect_w a >= 0 -> rect_h a >= 0 ->
+  rect_w b >= 0 -> rect_h b >= 0 ->
+  rect_w (rect_union a b) >= 0 /\
+  rect_h (rect_union a b) >= 0.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] Haw Hah Hbw Hbh.
+  simpl in *.
+  unfold rect_union, rect_right, rect_bottom. simpl.
+  split; unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 87: union area >= max(area(a), area(b)) for valid inputs.
+    ∀ a b : Rect, valid -> area(union(a,b)) >= area(a) *)
+Theorem rect_union_area_ge_first : forall (a b : Rect),
+  rect_w a >= 0 -> rect_h a >= 0 ->
+  rect_w b >= 0 -> rect_h b >= 0 ->
+  rect_area (rect_union a b) >= rect_area a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] Haw Hah Hbw Hbh.
+  simpl in *.
+  unfold rect_area, rect_union, rect_right, rect_bottom. simpl.
+  unfold Rmin, Rmax.
+  repeat (destruct (Rle_dec _ _)); nra.
+Qed.
+
+(** Theorem 88: from_corners contains both corner points (non-negative dims).
+    ∀ ax ay bx by : R, w(from_corners) >= 0 -> h(from_corners) >= 0 ->
+    contains_point(from_corners(ax,ay,bx,by), ax, ay) *)
+Theorem rect_from_corners_contains_first : forall (ax ay bx by0 : R),
+  rect_contains_point (rect_from_corners ax ay bx by0) ax ay.
+Proof.
+  intros ax ay bx by0.
+  unfold rect_contains_point, rect_from_corners. simpl.
+  repeat split; unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 89: from_corners contains second corner point.
+    ∀ ax ay bx by : R, contains_point(from_corners(ax,ay,bx,by), bx, by) *)
+Theorem rect_from_corners_contains_second : forall (ax ay bx by0 : R),
+  rect_contains_point (rect_from_corners ax ay bx by0) bx by0.
+Proof.
+  intros ax ay bx by0.
+  unfold rect_contains_point, rect_from_corners. simpl.
+  repeat split; unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 90: expand_xy by positive amounts contains original.
+    ∀ r xa ya, xa >= 0 -> ya >= 0 -> contains_rect(expand_xy(r, xa, ya), r) *)
+Theorem rect_expand_xy_contains_original : forall (r : Rect) (xa ya : R),
+  xa >= 0 -> ya >= 0 ->
+  rect_contains_rect (rect_expand_xy r xa ya) r.
+Proof.
+  intros [x y w h] xa ya Hxa Hya.
+  unfold rect_contains_rect, rect_expand_xy. simpl. lra.
+Qed.
+
+(** Theorem 91: union is the smallest rect containing both (minimality).
+    ∀ a b c : Rect, contains_rect(c, a) -> contains_rect(c, b) ->
+    contains_rect(c, union(a, b)) *)
+Theorem rect_union_minimal : forall (a b c : Rect),
+  rect_w a >= 0 -> rect_h a >= 0 ->
+  rect_w b >= 0 -> rect_h b >= 0 ->
+  rect_contains_rect c a -> rect_contains_rect c b ->
+  rect_contains_rect c (rect_union a b).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] [cx cy cw ch]
+    Haw Hah Hbw Hbh [Ha1 [Ha2 [Ha3 Ha4]]] [Hb1 [Hb2 [Hb3 Hb4]]].
+  simpl in *.
+  unfold rect_contains_rect, rect_union, rect_right, rect_bottom. simpl.
+  repeat split; unfold Rmin, Rmax;
+    repeat (destruct (Rle_dec _ _)); lra.
+Qed.
+
+(** Theorem 92: from_corners area formula.
+    ∀ ax ay bx by : R, area(from_corners(ax,ay,bx,by)) = |bx-ax| * |by-ay| *)
+Theorem rect_from_corners_area : forall (ax ay bx by0 : R),
+  rect_area (rect_from_corners ax ay bx by0) = Rabs (bx - ax) * Rabs (by0 - ay).
+Proof.
+  intros ax ay bx by0.
+  unfold rect_area, rect_from_corners. simpl.
+  unfold Rmin, Rmax, Rabs.
+  repeat (destruct (Rle_dec _ _)); repeat (destruct (Rcase_abs _)); lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 63 (51 original + 12 new)
+    Total theorems: 92 (63 original + 29 new)
+    New theorem groups:
+      - Accessor properties (64-69): left, top, min_x, min_y, max_x, max_y
+      - Emptiness (70-72): zero_is_empty, valid_not_empty, neg_width_empty
+      - From-corners (73-76, 88-89, 92): same_point, nonneg_dims, symmetric, ordered, contains, area
+      - Expand-XY (77-81, 90): equal_is_expand, zero, preserves_center, compose, contains
+      - Union (82-87, 91): comm_dims, self, contains_first/second, nonneg_dims, area_ge, minimal
     Admits: 0
     Axioms: Standard Coq real number library only
 

@@ -215,6 +215,80 @@ Definition mat4_transform_vector (mat : Mat4) (v : Vec3) : Vec3 :=
     (m1 mat * v3x v + m5 mat * v3y v + m9 mat  * v3z v)
     (m2 mat * v3x v + m6 mat * v3y v + m10 mat * v3z v).
 
+(** * Accessor Operations *)
+
+(** Extract the translation from a 4x4 transform matrix.
+    The translation is stored in column 3 (elements m12, m13, m14).
+    Matches Rust: self.m[12], self.m[13], self.m[14] *)
+Definition mat4_get_translation (mat : Mat4) : Vec3 :=
+  mkVec3 (m12 mat) (m13 mat) (m14 mat).
+
+(** * Column and Row Accessors *)
+
+(** Extract column 0: [m0, m1, m2, m3] *)
+Definition mat4_col0 (mat : Mat4) : (R * R * R * R) :=
+  (m0 mat, m1 mat, m2 mat, m3 mat).
+
+(** Extract column 1: [m4, m5, m6, m7] *)
+Definition mat4_col1 (mat : Mat4) : (R * R * R * R) :=
+  (m4 mat, m5 mat, m6 mat, m7 mat).
+
+(** Extract column 2: [m8, m9, m10, m11] *)
+Definition mat4_col2 (mat : Mat4) : (R * R * R * R) :=
+  (m8 mat, m9 mat, m10 mat, m11 mat).
+
+(** Extract column 3: [m12, m13, m14, m15] *)
+Definition mat4_col3 (mat : Mat4) : (R * R * R * R) :=
+  (m12 mat, m13 mat, m14 mat, m15 mat).
+
+(** Extract row 0: [m0, m4, m8, m12] *)
+Definition mat4_row0 (mat : Mat4) : (R * R * R * R) :=
+  (m0 mat, m4 mat, m8 mat, m12 mat).
+
+(** Extract row 1: [m1, m5, m9, m13] *)
+Definition mat4_row1 (mat : Mat4) : (R * R * R * R) :=
+  (m1 mat, m5 mat, m9 mat, m13 mat).
+
+(** Extract row 2: [m2, m6, m10, m14] *)
+Definition mat4_row2 (mat : Mat4) : (R * R * R * R) :=
+  (m2 mat, m6 mat, m10 mat, m14 mat).
+
+(** Extract row 3: [m3, m7, m11, m15] *)
+Definition mat4_row3 (mat : Mat4) : (R * R * R * R) :=
+  (m3 mat, m7 mat, m11 mat, m15 mat).
+
+(** * Constructor Operations *)
+
+(** Construct a matrix from 16 values (column-major order).
+    Matches Rust: Mat4::from_cols_array *)
+Definition mat4_from_cols (c00 c01 c02 c03
+                           c10 c11 c12 c13
+                           c20 c21 c22 c23
+                           c30 c31 c32 c33 : R) : Mat4 :=
+  mkMat4 c00 c01 c02 c03 c10 c11 c12 c13 c20 c21 c22 c23 c30 c31 c32 c33.
+
+(** * Projection Matrices *)
+
+(** Orthographic projection matrix.
+    Maps (left,right) x (bottom,top) x (near,far) to the canonical view volume.
+    Assumes right <> left, top <> bottom, far <> near.
+    Matches Rust: Mat4::orthographic(left, right, bottom, top, near, far)
+
+    Column-major layout:
+    | 2/(r-l)    0          0           -(r+l)/(r-l) |
+    |   0      2/(t-b)      0           -(t+b)/(t-b) |
+    |   0        0        -2/(f-n)      -(f+n)/(f-n) |
+    |   0        0          0                1        | *)
+Definition mat4_orthographic (left right bottom top near far : R) : Mat4 :=
+  let rml := right - left in
+  let tmb := top - bottom in
+  let fmn := far - near in
+  mkMat4
+    (2 / rml) 0 0 0
+    0 (2 / tmb) 0 0
+    0 0 (-(2) / fmn) 0
+    (-(right + left) / rml) (-(top + bottom) / tmb) (-(far + near) / fmn) 1.
+
 (** * Vec3 Equality Lemma *)
 
 (** Two Vec3 are equal iff their components are equal. *)
@@ -245,10 +319,15 @@ Qed.
     - mat4_uniform_scaling: Uniform scaling matrix
     - mat4_transform_point: Point transformation (w=1)
     - mat4_transform_vector: Vector transformation (w=0)
+    - mat4_get_translation: Extract translation from transform matrix
+    - mat4_col0..col3: Column accessor operations
+    - mat4_row0..row3: Row accessor operations
+    - mat4_from_cols: Constructor from column values
+    - mat4_orthographic: Orthographic projection matrix
     - mat4_eq: Component-wise equality lemma
     - vec3_eq: Component-wise Vec3 equality lemma
 
-    Total definitions: 17
+    Total definitions: 29
     Total lemmas: 2
     Admits: 0
 *)
