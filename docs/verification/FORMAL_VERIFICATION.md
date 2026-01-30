@@ -166,6 +166,7 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) | Per-module coverage metrics, verification limitations, floating-point assessment, rocq-of-rust investigation, testing relationship | ~320 |
 | [WASM_EXTRACTION_PIPELINE.md](WASM_EXTRACTION_PIPELINE.md) | Coq-to-WASM pipeline, tool ecosystem, CertiCoq assessment, Rocq migration, ICC | ~250 |
 | [FLOATING_POINT_VERIFICATION.md](FLOATING_POINT_VERIFICATION.md) | FP verification feasibility: Stainless paper analysis, Flocq+VCFloat2 roadmap | ~250 |
+| [RUST_VERIFICATION_LANDSCAPE.md](RUST_VERIFICATION_LANDSCAPE.md) | 8-tool landscape survey: Kani (ADOPT), Aeneas/Creusot (MONITOR), hax (N/A) | ~350 |
 | [CERTICOQ_WASM_ASSESSMENT.md](CERTICOQ_WASM_ASSESSMENT.md) | Comprehensive 9-path landscape survey for Coq-to-WASM compilation | Existing |
 | [SETUP_GUIDE.md](SETUP_GUIDE.md) | Manual installation and troubleshooting for Verus, Coq, MetaCoq, wasm_of_ocaml | Existing |
 
@@ -251,6 +252,11 @@ See [COQ_PROOFS.md](COQ_PROOFS.md) for Phase 1-2b details and
 14. Boldo, S. & Melquiond, G. "Flocq: A Unified Library for Proving Floating-Point Algorithms in Coq." IEEE ARITH, 2011.
 15. Kellison, A. & Appel, A. "VCFloat2: Floating-point Error Analysis in Coq." CPP 2024.
 16. Kellison, A. et al. "LAProof: A Library of Formal Proofs of Accuracy and Correctness for Linear Algebra Programs." IEEE ARITH, 2023.
+17. Ho, S. & Protzenko, J. "Aeneas: Rust Verification by Functional Translation." ICFP 2022.
+18. Denis, X. "Creusot: A Foundry for the Deductive Verification of Rust Programs." Inria/CNRS.
+19. Bhargavan, K. et al. "hax: Verifying Security-Critical Rust Software using Multiple Provers." VSTTE 2024.
+20. Kani Rust Verifier (Amazon): https://github.com/model-checking/kani
+21. CBMC: C Bounded Model Checker: https://github.com/diffblue/cbmc
 
 ---
 

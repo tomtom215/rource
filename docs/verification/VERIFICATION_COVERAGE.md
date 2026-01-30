@@ -321,9 +321,50 @@ limitation and mitigated by:
 - A "mathematical extraction" mode is added (bypassing the monadic embedding)
 - Rocq 9.x migration is undertaken for our proof base
 
+## Rust Verification Landscape Survey (2026-01-30)
+
+We investigated four additional Rust formal verification tools to assess whether they
+address any capability gaps in our current Verus + Coq architecture. See
+[RUST_VERIFICATION_LANDSCAPE.md](RUST_VERIFICATION_LANDSCAPE.md) for the full assessment.
+
+### Tools Investigated
+
+| Tool | Category | FP Support | Recommendation |
+|------|----------|------------|----------------|
+| **Kani** (Amazon) | Bounded model checker (CBMC) | YES (bit-precise) | **ADOPT** for edge-case safety |
+| **Aeneas** (Inria) | MIR → pure functional translation | Unknown | **MONITOR** for spec-to-impl bridge |
+| **Creusot** (Inria) | MIR → Why3 → SMT portfolio | Via Why3 ieee_float | **MONITOR** for FP via Why3 |
+| **hax** (Cryspen) | THIR → F*/Rocq/Lean | No (backends lack FP) | NOT APPLICABLE (crypto-focused) |
+
+### Key Findings
+
+1. **Kani** is the only tool that directly verifies floating-point edge cases
+   (NaN, overflow, infinity) at the bit level. It complements our algebraic proofs
+   (Verus/Coq) with runtime safety guarantees for f32 operations.
+
+2. **Aeneas** produces **pure functional** code (unlike rocq-of-rust's monadic
+   embedding), making it the most promising tool for closing the spec-to-impl gap.
+   However, f32 support is unconfirmed.
+
+3. **Creusot** overlaps with Verus for algebraic proofs but offers portfolio SMT
+   solving (CVC5 outperforms Z3 on FP queries) and potential Coq proof export.
+   FP support via Why3's `ieee_float` theory is undocumented.
+
+4. **hax** explicitly states "most backends do not have any support for floats"
+   (VSTTE 2024 paper). Not applicable to graphics math verification.
+
+### Updated Verification Architecture
+
+```
+Current (2-layer):  Verus (algebra) + Coq (proofs)        → 947 theorems, 50.4% ops
+Target (4-layer):   + Kani (edge cases) + Flocq (FP)      → ~1100+ theorems, ~75% ops
+Future (5-layer):   + Aeneas (spec-to-impl bridge)        → machine-generated specs
+```
+
 ---
 
 *Last verified: 2026-01-30*
 *Formal verification coverage: 116/230 operations (50.4%)*
 *Unit test coverage: 230/230 operations (100%)*
 *Unverifiable operations: 114 (floating-point, transcendentals, type conversions)*
+*Landscape survey: 8 tools investigated (6 new + 2 current)*

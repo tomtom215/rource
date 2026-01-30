@@ -431,6 +431,11 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-30 | 9ENKM | Z3 is weakest SMT solver for floating-point queries | Stainless paper: Z3 78–85% vs cvc5 89–100% vs Bitwuzla 67–85% | If Verus ever adds FP support, portfolio solving (Z3+cvc5+Bitwuzla) would be needed. For now, Coq approach avoids this limitation entirely. | Yes |
 | 2026-01-30 | 9ENKM | No existing formalization of HSL color space in any proof assistant | Surveyed Flocq, VCFloat, LAProof, CompCert — none formalize color space conversions | HSL verification requires novel proof engineering; lowest priority in FP roadmap (Phase FP-3) | Yes |
 | 2026-01-30 | 9ENKM | det(A*B)=det(A)*det(B) provable with `ring` for both Mat3 AND Mat4 | Mat3: 18 variables (degree 3), compiles instantly. Mat4: 32 variables (degree 4), compiles in ~8s. No component decomposition needed. | Unlike mul_assoc (which needs 16 component lemmas for Mat4), det_mul is a scalar identity — `ring` handles it directly even for Mat4. Added +8 theorems (4 per type: det_mul, det_square, det_mul_comm, det_scale). | Yes |
+| 2026-01-30 | 9ENKM | Kani (Amazon) is only Rust tool with bit-precise FP verification | CBMC-based bounded model checker, verifies NaN/overflow/infinity at bit level | ADOPT as Layer 2 for edge-case safety verification of f32 operations; complements Verus (algebra) + Coq (proofs). Created RUST_VERIFICATION_LANDSCAPE.md | Yes |
+| 2026-01-30 | 9ENKM | Aeneas produces pure functional code (not monadic like rocq-of-rust) | MIR → LLBC → pure lambda calculus; value-based, no memory model | Most promising spec-to-impl bridge tool; MONITOR pending f32 support confirmation. Charon tracking issue #142 doesn't list f32 as unsupported. | Yes |
+| 2026-01-30 | 9ENKM | Creusot leverages Why3 which has comprehensive ieee_float theory | Why3's Float32/Float64 types axiomatize full IEEE 754 (all rounding modes, NaN, specials) | MONITOR — potentially enables f32 deductive verification via CVC5 (89-100% FP success vs Z3's 78-85%). Creusot→Why3→CVC5 could outperform Verus→Z3 for FP. | Yes |
+| 2026-01-30 | 9ENKM | hax (formerly hacspec v2) backends do NOT support floating-point | Paper explicitly states "most backends do not have any support for floats" (VSTTE 2024) | NOT APPLICABLE for rource-math; designed for cryptographic integer code, not numerical/graphics math | Yes |
+| 2026-01-30 | 9ENKM | 8 Rust verification tools now surveyed for rource-math | Verus, Coq, Kani, Aeneas, Creusot, hax, rocq-of-rust, Stainless | Comprehensive landscape documented in RUST_VERIFICATION_LANDSCAPE.md; 4-layer architecture proposed: Verus+Coq (algebra) + Kani (edge cases) + Flocq (FP accuracy) | Yes |
 
 ---
 
@@ -699,6 +704,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | `docs/verification/SETUP_GUIDE.md` | Formal verification environment setup |
 | `docs/verification/FLOATING_POINT_VERIFICATION.md` | FP verification feasibility: Stainless paper, Flocq+VCFloat2 roadmap |
+| `docs/verification/RUST_VERIFICATION_LANDSCAPE.md` | 8-tool landscape survey: Kani (ADOPT), Aeneas/Creusot (MONITOR), hax (N/A) |
 | `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment (9-path survey) |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
 | `LICENSE` | GPL-3.0 license |
