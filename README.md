@@ -530,7 +530,7 @@ rource/
 
 | Document | Description |
 |----------|-------------|
-| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 1158 formally verified theorems (Verus + Coq) |
+| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | 1257 formally verified theorems (Verus + Coq) |
 | [docs/verification/SETUP_GUIDE.md](docs/verification/SETUP_GUIDE.md) | Formal verification environment setup (Verus, Coq, MetaCoq, wasm_of_ocaml) |
 | [docs/verification/CERTICOQ_WASM_ASSESSMENT.md](docs/verification/CERTICOQ_WASM_ASSESSMENT.md) | Coq-to-WASM pipeline: 9-path landscape assessment |
 
