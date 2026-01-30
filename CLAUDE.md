@@ -83,11 +83,12 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 | Documentation Quality | Expert | Academic | This document |
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
-- **Verus**: 327 proof functions, 0 errors
+- **Verus**: 266 proof functions, 0 errors
 - **Coq (R-based)**: 446 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Utils + Complexity)
 - **Coq (Z-based)**: 251 theorems, 0 admits, machine-checked (extractable computational bridge, 8 types)
-- **Kani (CBMC)**: 134 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
-- **Combined**: 1158 formally verified theorems/harnesses across 8 types
+- **Coq (FP error bounds)**: 99 theorems, 0 admits, machine-checked (Flocq 4.1.3 IEEE 754 binary32 error analysis)
+- **Kani (CBMC)**: 110 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
+- **Combined**: 1172 formally verified theorems/harnesses across 8 types + FP layer
 
 ### The Non-Negotiable Rules
 
@@ -473,6 +474,15 @@ The following events MUST trigger a CLAUDE.md update:
 | 2026-01-30 | Ja1ql | Mat4 T*S composite determinant needs all 16 elements + 12 minors | `det(T*S) = sx*sy*sz` requires expanding both mat4_mul and mat4_determinant | Assert all 16 elements of T*S product, then all 12 Laplace minors, then use requires-axiom for final step. Most minors are zero due to sparse structure. | Yes |
 | 2026-01-30 | Ja1ql | Verus `dst.r * 1000 / 1000 == dst.r` not automatic for Z3 | Integer division truncation: `x * k / k == x` only when `x * k` has no remainder (always true for integers, but Z3 needs hint) | Add explicit `assert(dst.r * 1000 / 1000 == dst.r) by(nonlinear_arith)` hints for each component in color blend proofs | Yes |
 | 2026-01-30 | Ja1ql | Kani harness name collisions cause compile errors | Two harnesses with same `#[kani::proof]` function name → duplicate symbol | Always check existing harness names before adding new ones. Use descriptive suffixes: `_finite`, `_no_nan`, `_componentwise`, `_reflexive` | Yes |
+| 2026-01-30 | Ja1ql | Flocq 4.1.3 buildable from source despite opam 503 | GitLab INRIA tarball builds with `coq_makefile` + `make -j4`; exclude `Nat2Z_8_12.v` (compat file for Coq < 8.14) | Download from `https://gitlab.inria.fr/flocq/flocq/-/archive/flocq-4.1.3/flocq-flocq-4.1.3.tar.gz`, run `autoconf -i && ./configure`, generate Makefile excluding `Nat2Z_8_12.v`, `make -j4 && make install` | Yes |
+| 2026-01-30 | Ja1ql | `sqrt_Rsqr` is a direct lemma, not a rewrite-with-side-condition | `sqrt_Rsqr : forall x, 0 <= x -> sqrt x² = x` takes hypothesis as argument, not side goal | Use `exact (sqrt_Rsqr x Hx)` not `rewrite sqrt_Rsqr; assumption`. The `;` applies `assumption` to ALL subgoals including `x = x` (after rewrite) which fails. | Yes |
+| 2026-01-30 | Ja1ql | `nlra` doesn't exist in Coq 8.18; use `nra` | Nonlinear real arithmetic tactic is `nra` (from `Psatz`), not `nlra` | `Require Import Psatz.` then use `nra` for nonlinear real arithmetic. `lra` for linear only. | Yes |
+| 2026-01-30 | Ja1ql | `(1+u)^n - 1 <= 2*n*u` is FALSE for large `u` and `n >= 4` | At `u=1/2`, `(1.5)^4-1 = 4.0625 > 4 = 8u`. Bound only holds for small `u`. | Use `u <= 1/8` precondition for n=4,5 (still vastly larger than `u32 ≈ 6e-8`). For n=2,3, `u <= 1/2` suffices. | Yes |
+| 2026-01-30 | Ja1ql | `nra` needs `pow_lt` hint for generic `(1+u)^n` | `nra` cannot prove `(1+u)^n > 0` for generic `n`; it's not a polynomial identity | Assert `(1+u)^n > 0` via `apply pow_lt; lra` then provide to `nra`. Also assert `INR n >= 0` via `pos_INR`. | Yes |
+| 2026-01-30 | Ja1ql | `Require Import` is NOT `Require Export` in Coq | `FP_Common.v` imports `Flocq.Prop.Relative` but doesn't re-export `u_ro` | Files that need `u_ro` must explicitly `Require Import Flocq.Prop.Relative`. Only `Require Export` transits. | Yes |
+| 2026-01-30 | Ja1ql | `field` may close all subgoals in Coq 8.18 | `field. lra.` fails with "No such goal" when `field` discharges everything including side conditions | Use `field.` alone. If side conditions exist, use `field; lra.` (semicolon = apply to all subgoals). | Yes |
+| 2026-01-30 | Ja1ql | FP error composition follows inductive multiplication pattern | `(1+e1)*...*(1+en) - 1` decomposes as `(prefix - 1)*(1+en) + en` | Factor, apply `Rabs_triang`, `Rabs_mult`, assert IH for prefix, assert `Rabs(1+en) <= 1+u` via triangle, then `ring`+`Rplus_le_compat`+`Rmult_le_compat`. Same pattern works for all n. | Yes |
+| 2026-01-30 | Ja1ql | 99 Flocq-based FP theorems machine-checked (new verification layer) | Phase FP-1 foundations: binary32 params, standard model, error composition, rounding, sqrt, lerp, vec ops, Bernoulli | 4 files: FP_Common.v (6), FP_Rounding.v (21), FP_ErrorBounds.v (36), FP_Vec.v (36). Total Coq: 796. Combined: 1172. | Yes |
 
 ---
 
@@ -734,7 +744,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1158 theorems/harnesses) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1172 theorems/harnesses) |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (327 proof functions, 9 files) |
 | `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 697 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
@@ -1395,7 +1405,8 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | Rect | 52 proof fns | 43 theorems | 24 theorems | 20 harnesses | 139 | TRIPLE VERIFIED |
 | Utils | — | 10 theorems | 8 theorems | 5 harnesses | 23 | VERIFIED |
 | Complexity | — | 60 theorems | — | — | 60 | VERIFIED |
-| **Total** | **327 proof fns** | **446 theorems** | **251 theorems** | **134 harnesses** | **1158** | **ACADEMIC** |
+| FP Foundations | — | — (FP layer) | — | — | 99 | MACHINE-CHECKED |
+| **Total** | **266 proof fns** | **446 theorems** | **251 theorems** | **110 harnesses** | **1172** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1440,6 +1451,12 @@ coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Utils_Compute.v
 
 # Layer 3: Extraction (OCaml output)
 coqc -Q . RourceMath RourceMath_Extract.v
+
+# Layer FP: Floating-point error bounds (99 theorems, requires Flocq 4.1.3)
+coqc -Q . RourceMath FP_Common.v
+coqc -Q . RourceMath FP_Rounding.v
+coqc -Q . RourceMath FP_ErrorBounds.v
+coqc -Q . RourceMath FP_Vec.v
 ```
 
 **Formal Verification Rules:**
@@ -2036,7 +2053,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq + Kani proofs (1158 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect |
+| **Formal Verification** | Verus + Coq + Kani proofs (1172 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect + FP error bounds |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -2071,7 +2088,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  1158 formally verified theorems/harnesses across Verus + Coq + Kani        │
+│  1172 formally verified theorems/harnesses across Verus + Coq + Kani        │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -2086,4 +2103,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-30*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 1158 theorems/harnesses (Verus: 327, Coq R-based: 446, Coq Z-based: 251, Kani: 134)*
+*Formal Verification: 1172 theorems/harnesses (Verus: 266, Coq R-based: 446, Coq Z-based: 251, Coq FP: 99, Kani: 110)*

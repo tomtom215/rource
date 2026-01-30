@@ -293,9 +293,22 @@ require composing single-operation proofs.
 | Phase | Coverage | Operations Verified | Total |
 |-------|----------|--------------------|----|
 | Current | 50.4% (116/230) | Algebraic properties | 1158 theorems |
-| After Phase FP-1 | ~70% (162/230) | + sqrt, rounding, min/max, lerp, distance_sq | ~985 theorems |
-| After Phase FP-2 | ~83% (192/230) | + distance, conversions, batch, transcendental | ~1050 theorems |
-| After Phase FP-3 | ~92% (212/230) | + matrix transforms, color, complex geometry | ~1150 theorems |
+| **Phase FP-1 IN PROGRESS** | **~55%** | **+ FP foundations, error bounds, rounding, vec ops** | **1172 theorems** |
+| After Phase FP-1 complete | ~70% (162/230) | + sqrt, rounding, min/max, lerp, distance_sq | ~1250 theorems |
+| After Phase FP-2 | ~83% (192/230) | + distance, conversions, batch, transcendental | ~1350 theorems |
+| After Phase FP-3 | ~92% (212/230) | + matrix transforms, color, complex geometry | ~1450 theorems |
+
+### Phase FP-1 Progress (In Progress)
+
+**Flocq 4.1.3 installed and operational.** 99 FP theorems machine-checked.
+
+| File | Theorems | Description | Status |
+|------|----------|-------------|--------|
+| `FP_Common.v` | 6 | binary32 parameters, unit roundoff, standard model, error composition | Machine-checked |
+| `FP_Rounding.v` | 21 | floor/ceil/round/fract properties via Flocq's Zfloor/Zceil/Znearest | Machine-checked |
+| `FP_ErrorBounds.v` | 36 | Single/multi-op error, sqrt, lerp, angle conversion, approx_eq, comparison | Machine-checked |
+| `FP_Vec.v` | 36 | Vec2/3/4 length_sq, length, distance_sq, distance, normalized, min/max/clamp, lerp, Bernoulli | Machine-checked |
+| **Total** | **99** | **Phase FP-1 foundations complete** | **Zero admits** |
 
 ### What Floating-Point Verification Proves (and Does NOT Prove)
 
@@ -554,5 +567,6 @@ Do NOT pursue Verus FP extension for rource-math. Instead:
 *Last updated: 2026-01-30*
 *Investigation: Stainless FP paper (arXiv:2601.14059) — NOT directly applicable*
 *Recommended path: Coq + Flocq 4.1.3 + VCFloat2 2.1.1 + Gappa 1.5.4*
+*Flocq 4.1.3 installed and operational — 99 FP theorems machine-checked*
 *All recommended tools are Coq 8.18 compatible*
-*Estimated coverage improvement: 50.4% → 70–75% (Phase FP-1)*
+*Phase FP-1 in progress: 99/~250 FP theorems completed*
