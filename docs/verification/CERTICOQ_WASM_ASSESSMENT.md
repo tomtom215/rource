@@ -659,7 +659,7 @@ let zvec2_add a b =
 - [x] Complexity.v warning fixes (11 warnings eliminated)
 - [x] Layered verification architecture design
 
-### 7.2 Near-Term: Path 1 Pipeline (Q2 2026) ✅ COMPLETED
+### 7.2 Near-Term: Path 1 Pipeline (Q2 2026) -- COMPLETED
 
 - [x] Install wasm_of_ocaml toolchain (opam + wasm_of_ocaml-compiler v6.2.0 + Binaryen 119)
 - [x] Compile extracted OCaml → WASM via wasm_of_ocaml (library: 6.8 KB, test: 42.2 KB)

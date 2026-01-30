@@ -540,8 +540,8 @@ proof fn vec2_min_max_sum(a: SpecVec2, b: SpecVec2)
         vec2_add(vec2_min(a, b), vec2_max(a, b)) == vec2_add(a, b),
 {
     // For each component: min(a,b) + max(a,b) = a + b
-    // Case a.x <= b.x: a.x + b.x = a.x + b.x ✓
-    // Case a.x > b.x:  b.x + a.x = a.x + b.x ✓
+    // Case a.x <= b.x: a.x + b.x = a.x + b.x (confirmed)
+    // Case a.x > b.x:  b.x + a.x = a.x + b.x (confirmed)
 }
 
 /// **Theorem 31**: min(a, b) is component-wise <= a and <= b.

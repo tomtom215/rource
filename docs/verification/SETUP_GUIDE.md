@@ -519,7 +519,7 @@ version 9.0 (March 2025). This affects tooling, package names, and namespaces.
 
 | Package Source | Coq 8.18 | Rocq 9.0 | Rocq 9.1 | Status |
 |----------------|----------|----------|----------|--------|
-| `opam.ocaml.org` (default) | `coq.8.18.0` ✅ | `rocq-core.9.0.0` ✅ | `rocq-core.9.1.0` ✅ | Working |
+| `opam.ocaml.org` (default) | `coq.8.18.0` | `rocq-core.9.0.0` | `rocq-core.9.1.0` | Working |
 | `coq.inria.fr/opam/released` | N/A | N/A | N/A | **HTTP 503** |
 | `rocq-prover.org/opam/released` | N/A | N/A | N/A | **HTTP 503** |
 

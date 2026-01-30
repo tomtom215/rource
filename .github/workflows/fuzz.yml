@@ -187,13 +187,13 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.fuzz.outputs.total_crashes }}" -gt 0 ]; then
-            echo "### ⚠️ Crashes Found" >> $GITHUB_STEP_SUMMARY
+            echo "### WARN: Crashes Found" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Total crashes: **${{ steps.fuzz.outputs.total_crashes }}**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "${{ steps.fuzz.outputs.crash_details }}" >> $GITHUB_STEP_SUMMARY
           else
-            echo "### ✅ No Crashes Found" >> $GITHUB_STEP_SUMMARY
+            echo "### PASS: No Crashes Found" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "All fuzz targets completed without finding crashes." >> $GITHUB_STEP_SUMMARY
           fi

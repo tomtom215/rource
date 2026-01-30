@@ -555,15 +555,15 @@ fn load_test_30min_100k_commits() {
     let frame_ok = p99_ratio < 2.0;
 
     println!(
-        "✓ Duration ≥ 30 min:        {}",
+        "[OK] Duration ≥ 30 min:        {}",
         if duration_ok { "PASS" } else { "FAIL" }
     );
     println!(
-        "✓ Memory growth < 5%:       {} ({growth:.2}%)",
+        "[OK] Memory growth < 5%:       {} ({growth:.2}%)",
         if memory_ok { "PASS" } else { "FAIL" },
     );
     println!(
-        "✓ P99 < 2x P50:             {} ({p99_ratio:.2}x)",
+        "[OK] P99 < 2x P50:             {} ({p99_ratio:.2}x)",
         if frame_ok { "PASS" } else { "FAIL" },
     );
 
@@ -572,7 +572,7 @@ fn load_test_30min_100k_commits() {
     assert!(memory_ok, "Memory growth exceeded 5%: {growth:.2}%");
     assert!(frame_ok, "P99/P50 ratio exceeded 2x: {p99_ratio:.2}x");
 
-    println!("\n✓ All success criteria met!");
+    println!("\n[OK] All success criteria met!");
 }
 
 /// Shorter 5-minute smoke test for CI verification.
@@ -682,7 +682,7 @@ fn load_test_smoke_5min_10k_commits() {
         "P99/P50 ratio exceeded 2x"
     );
 
-    println!("\n✓ Smoke test passed!");
+    println!("\n[OK] Smoke test passed!");
 }
 
 /// Quick 1-minute sanity check.

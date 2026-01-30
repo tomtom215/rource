@@ -51,7 +51,7 @@ print_status() {
     local desc=$3
 
     if [[ "$status" == "installed" ]]; then
-        echo -e "  ${GREEN}✓${NC} ${name} - ${desc}"
+        echo -e "  ${GREEN}[OK]${NC} ${name} - ${desc}"
     elif [[ "$status" == "missing" ]]; then
         echo -e "  ${RED}✗${NC} ${name} - ${desc}"
     elif [[ "$status" == "optional" ]]; then

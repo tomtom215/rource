@@ -144,7 +144,7 @@ if [ "$RUN_WASM" = true ]; then
 
     if [ "$VERBOSE" = true ]; then
         if cargo test "$TEST_ARGS" --no-fail-fast -- --nocapture 2>&1; then
-            echo -e "${GREEN}✓ All WASM chaos tests passed${NC}"
+            echo -e "${GREEN}[OK] All WASM chaos tests passed${NC}"
         else
             echo -e "${RED}✗ Some WASM chaos tests failed${NC}"
             WASM_FAILED=1
@@ -152,7 +152,7 @@ if [ "$RUN_WASM" = true ]; then
     else
         if cargo test "$TEST_ARGS" --no-fail-fast 2>&1 | tee /tmp/chaos-wasm-output.txt; then
             WASM_PASSED=$(grep -c "test result: ok" /tmp/chaos-wasm-output.txt 2>/dev/null || echo "0")
-            echo -e "${GREEN}✓ WASM chaos tests completed${NC}"
+            echo -e "${GREEN}[OK] WASM chaos tests completed${NC}"
         else
             WASM_FAILED=1
             echo -e "${RED}✗ Some WASM chaos tests failed${NC}"
@@ -228,7 +228,7 @@ NODERUNNER
         NODE_ARGS="$NODE_ARGS --seed=$SEED"
 
         if node --experimental-vm-modules /tmp/run-ui-chaos.mjs $NODE_ARGS 2>&1; then
-            echo -e "${GREEN}✓ UI chaos tests completed${NC}"
+            echo -e "${GREEN}[OK] UI chaos tests completed${NC}"
         else
             UI_FAILED=1
             echo -e "${RED}✗ Some UI chaos tests failed${NC}"

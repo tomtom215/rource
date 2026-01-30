@@ -94,11 +94,11 @@ See [Performance Documentation](#performance-documentation) for the complete opt
 
 | Tool | Components | Theorems | Status |
 |------|------------|----------|--------|
-| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 327 proof functions, 452+ VCs | ✅ Verified |
-| **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | 622 theorems | ✅ Zero admits |
-| **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Utils (extractable) | 265 theorems | ✅ Zero admits |
-| **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Utils | 134 harnesses | ✅ IEEE 754 verified |
-| **Combined** | All 8 core math types + FP layer | **1308 theorems/harnesses** | ✅ TRIPLE VERIFIED |
+| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 327 proof functions, 452+ VCs | Verified |
+| **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Utils + Complexity | 622 theorems | Zero admits |
+| **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Utils (extractable) | 265 theorems | Zero admits |
+| **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Utils | 134 harnesses | IEEE 754 verified |
+| **Combined** | All 8 core math types + FP layer | **1308 theorems/harnesses** | **TRIPLE VERIFIED** |
 
 Properties verified include: vector space axioms, dot/cross product laws, matrix multiplication associativity (critical for MVP transformations), ring structure, RGBA color blending/interpolation/luminance, rectangle containment/intersection/union, O(1) complexity bounds, and a complete Coq-to-WASM extraction pipeline.
 

@@ -38,7 +38,7 @@ e(t) = { 2t²           if t < 0.5
 **Proof of C0 Continuity at t = 0.5**:
 ```
 Left:  lim(t→0.5⁻) 2t² = 2(0.25) = 0.5
-Right: lim(t→0.5⁺) 1 - (-2×0.5+2)²/2 = 1 - 1²/2 = 0.5 ✓
+Right: lim(t→0.5⁺) 1 - (-2×0.5+2)²/2 = 1 - 1²/2 = 0.5 [Confirmed]
 ```
 
 ### Cubic (n = 3)
@@ -59,10 +59,10 @@ e_out(t) = 1 - (1-t)ⁿ
 
 **Proof of Boundary Conditions**:
 ```
-e_in(0) = 0ⁿ = 0 ✓
-e_in(1) = 1ⁿ = 1 ✓
-e_out(0) = 1 - 1ⁿ = 0 ✓
-e_out(1) = 1 - 0ⁿ = 1 ✓
+e_in(0) = 0ⁿ = 0 [Confirmed]
+e_in(1) = 1ⁿ = 1 [Confirmed]
+e_out(0) = 1 - 1ⁿ = 0 [Confirmed]
+e_out(1) = 1 - 0ⁿ = 1 [Confirmed]
 ```
 
 ---
@@ -83,10 +83,10 @@ The function is infinitely differentiable (C∞) because cos is C∞.
 
 At boundaries:
 ```
-e(0) = (1 - cos(0))/2 = 0 ✓
-e(1) = (1 - cos(π))/2 = (1-(-1))/2 = 1 ✓
-e'(0) = (π × sin(0))/2 = 0 ✓ (starts slow)
-e'(1) = (π × sin(π))/2 = 0 ✓ (ends slow)
+e(0) = (1 - cos(0))/2 = 0 [Confirmed]
+e(1) = (1 - cos(π))/2 = (1-(-1))/2 = 1 [Confirmed]
+e'(0) = (π × sin(0))/2 = 0 [Confirmed] (starts slow)
+e'(1) = (π × sin(π))/2 = 0 [Confirmed] (ends slow)
 ```
 
 ---

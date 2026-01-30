@@ -110,7 +110,7 @@ r_w = 5.0 px (typical file radius)
 r_s = 5.0 × 0.05 = 0.25 px
 τ_file = 0.1 px
 
-r_s = 0.25 px > τ_file = 0.1 px ✓
+r_s = 0.25 px > τ_file = 0.1 px [Confirmed]
 ```
 
 For users:
@@ -119,7 +119,7 @@ r_w = 15.0 px (typical user radius)
 r_s = 15.0 × 0.05 = 0.75 px
 τ_user = 0.3 px
 
-r_s = 0.75 px > τ_user = 0.3 px ✓
+r_s = 0.75 px > τ_user = 0.3 px [Confirmed]
 ```
 
 **Safety Margin**:
