@@ -15,7 +15,7 @@ For floating-point feasibility, see [FLOATING_POINT_VERIFICATION.md](FLOATING_PO
 |------|----------|------------|---------------------|----------------|
 | **Verus** (current) | SMT/Z3 | No (int specs) | Manual specs | KEEP (algebraic proofs) |
 | **Coq** (current) | Proof assistant | Via Flocq (planned) | Manual specs | KEEP (machine-checked proofs) |
-| **Kani** | Bounded model checker | YES (bit-precise) | No (assertion-based) | **ADOPT** (edge cases) |
+| **Kani** (adopted) | Bounded model checker | YES (bit-precise) | No (assertion-based) | **ADOPTED** (45 harnesses, 0 failures) |
 | **Aeneas** | Functional translation | Unknown | YES (pure functional) | **MONITOR** (spec-to-impl) |
 | **Creusot** | Deductive verifier | Via Why3 ieee_float | Inline annotations | **MONITOR** (Why3 FP) |
 | **hax** | Extraction tool | No (backends lack FP) | YES (THIR extraction) | NOT APPLICABLE |

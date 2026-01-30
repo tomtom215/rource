@@ -356,15 +356,45 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (2-layer):  Verus (algebra) + Coq (proofs)        → 947 theorems, 50.4% ops
-Target (4-layer):   + Kani (edge cases) + Flocq (FP)      → ~1100+ theorems, ~75% ops
-Future (5-layer):   + Aeneas (spec-to-impl bridge)        → machine-generated specs
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 992 theorems, 50.4% ops
+Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
+Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
+
+### Kani Integration (2026-01-30)
+
+Kani (Amazon's CBMC-based bounded model checker) was adopted as the third
+verification layer, providing bit-precise IEEE 754 edge-case verification
+that neither Verus nor Coq can directly offer.
+
+**Kani Harness Summary:**
+
+| Module | Harnesses | Properties Verified |
+|--------|-----------|---------------------|
+| Utils | 5 | lerp NaN-freedom, clamp bounded, approx_eq reflexive, deg/rad finite |
+| Vec2 | 11 | length ≥ 0, length_sq ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard + no-NaN, distance ≥ 0, rotate no-NaN, from_angle no-NaN, lerp no-NaN |
+| Vec3 | 6 | length ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard, distance ≥ 0 |
+| Vec4 | 3 | length ≥ 0, normalized no-NaN, dot finite |
+| Mat3 | 6 | determinant finite, inverse(zero)=None, inverse(I)=Some, transform finite, rotation no-NaN, identity preserves point |
+| Mat4 | 6 | determinant finite, inverse(zero)=None, inverse(I)=Some, orthographic finite, identity det=1, zero det=0 |
+| Color | 5 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN |
+| Rect | 3 | area ≥ 0, center finite, contains origin |
+| **Total** | **45** | **All verified, 0 failures** |
+
+**Known limitation**: `Mat4::perspective()` uses `f32::tan()` which delegates to C `tanf` —
+unsupported by Kani's CBMC backend (tracked: github.com/model-checking/kani/issues/2423).
+
+**IEEE 754 edge cases discovered during Kani development:**
+1. `lerp(f32::MAX, -f32::MAX, 0.0)` → NaN: intermediate `(b-a)` overflows to `-inf`, then `-inf * 0.0 = NaN`
+2. `Vec2::project()` with denormalized onto vector → NaN: `length_squared > 0.0` passes but `dot / length_squared` overflows to `±inf`, then `inf * 0.0 = NaN`
+
+Both edge cases are IEEE 754-compliant behavior requiring bounded input domains for guaranteed safety.
 
 ---
 
 *Last verified: 2026-01-30*
 *Formal verification coverage: 116/230 operations (50.4%)*
+*Kani IEEE 754 harnesses: 45 (all verified, 0 failures)*
 *Unit test coverage: 230/230 operations (100%)*
 *Unverifiable operations: 114 (floating-point, transcendentals, type conversions)*
-*Landscape survey: 8 tools investigated (6 new + 2 current)*
+*Landscape survey: 8 tools investigated (6 new + 2 current), Kani adopted*
