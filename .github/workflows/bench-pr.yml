@@ -1,17 +1,19 @@
 name: Benchmark PR
 
+# ON-DEMAND ONLY: Full A/B criterion benchmarks require ~60+ min (build+bench
+# both PR and main branches). Re-enable pull_request trigger when actively
+# optimizing performance-sensitive code paths.
 on:
-  workflow_dispatch:  # Manual trigger
-  pull_request:
-    branches: [main]
-    paths:
-      # Only run benchmarks when performance-sensitive code changes
-      - 'crates/**/*.rs'
-      - 'rource-cli/**/*.rs'
-      - 'rource-wasm/**/*.rs'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - '.github/workflows/bench-pr.yml'
+  workflow_dispatch:  # Manual trigger only
+  # pull_request:
+  #   branches: [main]
+  #   paths:
+  #     - 'crates/**/*.rs'
+  #     - 'rource-cli/**/*.rs'
+  #     - 'rource-wasm/**/*.rs'
+  #     - 'Cargo.toml'
+  #     - 'Cargo.lock'
+  #     - '.github/workflows/bench-pr.yml'
 
 # Prevent concurrent benchmark runs on the same PR
 concurrency:
