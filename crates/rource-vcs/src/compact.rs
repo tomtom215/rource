@@ -591,7 +591,7 @@ mod tests {
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: CommitId::index() → return 0 or return 1
+    /// Kill mutant: `CommitId::index()` → return 0 or return 1
     #[test]
     fn test_commit_id_index_returns_correct_value() {
         let id0 = CommitId::from_index(0);
@@ -608,7 +608,7 @@ mod tests {
         assert_eq!(id99.index(), 99);
     }
 
-    /// Kill mutant: CommitStore::with_capacity → return Default
+    /// Kill mutant: `CommitStore::with_capacity` → return Default
     #[test]
     fn test_commit_store_with_capacity_allocates() {
         let store = CommitStore::with_capacity(100, 500);
@@ -622,7 +622,7 @@ mod tests {
         );
     }
 
-    /// Kill mutant: commits() → return empty iterator
+    /// Kill mutant: `commits()` → return empty iterator
     #[test]
     fn test_commits_iterator_non_empty() {
         let mut store = CommitStore::new();
@@ -637,7 +637,7 @@ mod tests {
         assert_eq!(ids, vec![0, 1]);
     }
 
-    /// Kill mutant: file_changes || → &&
+    /// Kill mutant: `file_changes` || → &&
     /// Need a case where start is valid but end exceeds bounds.
     #[test]
     fn test_file_changes_partial_overlap() {
@@ -664,7 +664,7 @@ mod tests {
         assert!(files.is_empty());
     }
 
-    /// Kill mutant: file_changes > → == and > → >=
+    /// Kill mutant: `file_changes` > → == and > → >=
     /// Test with start exactly at len boundary.
     #[test]
     fn test_file_changes_start_at_boundary() {
@@ -692,7 +692,7 @@ mod tests {
         assert!(files.is_empty());
     }
 
-    /// Kill mutant: stats() arithmetic *→+, *→/, +→-, +→*
+    /// Kill mutant: `stats()` arithmetic *→+, *→/, +→-, +→*
     #[test]
     fn test_commit_store_stats_arithmetic() {
         let mut store = CommitStore::with_capacity(10, 50);
@@ -728,7 +728,7 @@ mod tests {
         assert_eq!(stats.author_bytes, 8);
     }
 
-    /// Kill mutant: CommitStoreStats::total_bytes → return 0/1, +→-, +→*
+    /// Kill mutant: `CommitStoreStats::total_bytes` → return 0/1, +→-, +→*
     #[test]
     fn test_commit_store_stats_total_bytes() {
         let mut store = CommitStore::with_capacity(10, 50);
@@ -736,8 +736,10 @@ mod tests {
         store.add_file_change(id, "src/main.rs", FileAction::Create);
 
         let stats = store.stats();
-        let expected =
-            stats.author_bytes + stats.path_segment_bytes + stats.struct_bytes + stats.overhead_bytes;
+        let expected = stats.author_bytes
+            + stats.path_segment_bytes
+            + stats.struct_bytes
+            + stats.overhead_bytes;
         assert_eq!(stats.total_bytes(), expected);
         assert!(stats.total_bytes() > 1, "total_bytes must not be 0 or 1");
         // Ensure addition: total >= each component
@@ -745,7 +747,7 @@ mod tests {
         assert!(stats.total_bytes() >= stats.struct_bytes);
     }
 
-    /// Kill mutant: CommitStoreStats::display() → return ""/xyzzy
+    /// Kill mutant: `CommitStoreStats::display()` → return ""/xyzzy
     #[test]
     fn test_commit_store_stats_display() {
         let mut store = CommitStore::new();
@@ -761,15 +763,14 @@ mod tests {
         assert!(display.contains("Unique authors: 1"));
     }
 
-    /// Kill mutant: estimate_standard_memory arithmetic (+=→-=, +=→*=, *→+, *→/, +→-, +→*)
+    /// Kill mutant: `estimate_standard_memory` arithmetic (+=→-=, +=→*=, *→+, *→/, +→-, +→*)
     #[test]
     fn test_estimate_standard_memory_arithmetic() {
         let commits = vec![
             Commit::new("abc123def456", 100, "Alice")
                 .with_file(FileChange::create("src/main.rs"))
                 .with_file(FileChange::modify("src/lib.rs")),
-            Commit::new("def456789012", 200, "Bob")
-                .with_file(FileChange::delete("old.txt")),
+            Commit::new("def456789012", 200, "Bob").with_file(FileChange::delete("old.txt")),
         ];
 
         let estimate = estimate_standard_memory(&commits);
@@ -792,29 +793,26 @@ mod tests {
         assert!(estimate.struct_bytes > 2 + commit_size);
     }
 
-    /// Kill mutant: StandardMemoryEstimate::total_bytes → return 0/1, +→-, +→*
+    /// Kill mutant: `StandardMemoryEstimate::total_bytes` → return 0/1, +→-, +→*
     #[test]
     fn test_standard_memory_estimate_total_bytes() {
-        let commits = vec![
-            Commit::new("abcdef", 100, "Alice")
-                .with_file(FileChange::create("file.txt")),
-        ];
+        let commits =
+            vec![Commit::new("abcdef", 100, "Alice").with_file(FileChange::create("file.txt"))];
         let estimate = estimate_standard_memory(&commits);
-        let expected = estimate.hash_bytes + estimate.author_bytes
-            + estimate.path_bytes + estimate.struct_bytes;
+        let expected = estimate.hash_bytes
+            + estimate.author_bytes
+            + estimate.path_bytes
+            + estimate.struct_bytes;
         assert_eq!(estimate.total_bytes(), expected);
         assert!(estimate.total_bytes() > 1);
         assert!(estimate.total_bytes() >= estimate.hash_bytes);
         assert!(estimate.total_bytes() >= estimate.struct_bytes);
     }
 
-    /// Kill mutant: StandardMemoryEstimate::display() → return ""/xyzzy
+    /// Kill mutant: `StandardMemoryEstimate::display()` → return ""/xyzzy
     #[test]
     fn test_standard_memory_estimate_display() {
-        let commits = vec![
-            Commit::new("abc", 100, "Alice")
-                .with_file(FileChange::create("f.txt")),
-        ];
+        let commits = vec![Commit::new("abc", 100, "Alice").with_file(FileChange::create("f.txt"))];
         let estimate = estimate_standard_memory(&commits);
         let display = estimate.display();
         assert!(!display.is_empty());

@@ -583,6 +583,7 @@ pub const fn cache_min_version() -> u16 {
 mod tests {
     use super::*;
     use crate::commit::FileAction;
+    use crate::CommitId;
 
     fn create_test_store() -> CommitStore {
         let mut store = CommitStore::new();
@@ -930,10 +931,7 @@ mod tests {
         // Loading with any expected hash should succeed when stored hash is 0
         let expected = hash_repo_id("any-repo");
         let result = VisualizationCache::from_bytes_with_repo_check(&bytes, Some(expected));
-        assert!(
-            result.is_ok(),
-            "zero repo_hash should pass any repo check"
-        );
+        assert!(result.is_ok(), "zero repo_hash should pass any repo check");
     }
 
     /// Kill mutant: repo_hash != 0 → == 0 (line 365)
@@ -942,7 +940,10 @@ mod tests {
     fn test_nonzero_repo_hash_returned_as_some() {
         let store = CommitStore::new();
         let hash = hash_repo_id("specific-repo");
-        assert!(hash != 0, "hash_repo_id should not return 0 for non-empty input");
+        assert!(
+            hash != 0,
+            "hash_repo_id should not return 0 for non-empty input"
+        );
 
         let cache = VisualizationCache::from_store_with_hash(store, hash);
         let bytes = cache.to_bytes().unwrap();
@@ -968,7 +969,10 @@ mod tests {
         // With |= instead of ^=, repeated bytes would converge toward all-ones
         let h_aaa = hash_repo_id("aaa");
         let h_aaaa = hash_repo_id("aaaa");
-        assert_ne!(h_aaa, h_aaaa, "different length inputs must produce different hashes");
+        assert_ne!(
+            h_aaa, h_aaaa,
+            "different length inputs must produce different hashes"
+        );
 
         // Empty string should return FNV_OFFSET (no bytes to process)
         let h_empty = hash_repo_id("");
@@ -979,7 +983,10 @@ mod tests {
     #[test]
     fn test_cache_version_nonzero() {
         assert!(cache_version() > 0, "cache_version must be positive");
-        assert!(cache_min_version() > 0, "cache_min_version must be positive");
+        assert!(
+            cache_min_version() > 0,
+            "cache_min_version must be positive"
+        );
         assert_eq!(cache_version(), 1);
         assert_eq!(cache_min_version(), 1);
     }
@@ -1138,10 +1145,7 @@ mod tests {
         // Exactly 4 bytes with correct magic but no payload
         let result = VisualizationCache::from_bytes(&CACHE_MAGIC);
         // Should fail on deserialization (no payload), not on length check
-        assert!(matches!(
-            result,
-            Err(CacheError::DeserializationFailed(_))
-        ));
+        assert!(matches!(result, Err(CacheError::DeserializationFailed(_))));
     }
 
     /// Kill mutant: bytes[..CACHE_MAGIC.len()] != CACHE_MAGIC → ==
@@ -1152,9 +1156,6 @@ mod tests {
         bytes.extend_from_slice(b"not-valid-bitcode");
         let result = VisualizationCache::from_bytes(&bytes);
         // Should fail on deserialization, NOT on magic check
-        assert!(matches!(
-            result,
-            Err(CacheError::DeserializationFailed(_))
-        ));
+        assert!(matches!(result, Err(CacheError::DeserializationFailed(_))));
     }
 }

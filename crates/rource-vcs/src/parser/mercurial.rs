@@ -771,7 +771,7 @@ files:       file1.rs file2.rs file3.rs
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: parse_month → delete match arms Mar through Nov
+    /// Kill mutant: `parse_month` → delete match arms Mar through Nov
     /// Each month must return its correct number.
     #[test]
     fn test_hg_parse_month_all_arms() {
@@ -790,7 +790,7 @@ files:       file1.rs file2.rs file3.rs
         assert_eq!(parse_month("xyz"), None);
     }
 
-    /// Kill mutant: days_since_unix_epoch arithmetic
+    /// Kill mutant: `days_since_unix_epoch` arithmetic
     /// +=→-=, -→+, -→/, &&→||, ==→!=
     #[test]
     fn test_hg_days_since_unix_epoch_exact_values() {
@@ -807,34 +807,30 @@ files:       file1.rs file2.rs file3.rs
         assert_eq!(days_since_unix_epoch(1973, 1, 1), Some(1096));
     }
 
-    /// Kill mutant: days_since_unix_epoch ==→!= on m==2 leap check
+    /// Kill mutant: `days_since_unix_epoch` ==→!= on m==2 leap check
     #[test]
     fn test_hg_days_since_epoch_leap_february() {
         assert_eq!(days_since_unix_epoch(1972, 2, 15), Some(775));
         assert_eq!(days_since_unix_epoch(1971, 3, 1), Some(424));
     }
 
-    /// Kill mutant: days_since_unix_epoch +=→*= in year loop
+    /// Kill mutant: `days_since_unix_epoch` +=→*= in year loop
     #[test]
     fn test_hg_days_since_epoch_year_accumulation() {
         assert_eq!(days_since_unix_epoch(1972, 1, 1), Some(730));
     }
 
-    /// Kill mutant: with_options → Default
+    /// Kill mutant: `with_options` → Default
     #[test]
     fn test_hg_with_options_preserved() {
         let opts = ParseOptions::default().with_max_commits(1);
         let parser = MercurialParser::with_options(opts);
         let log = "1704067200|Alice|A|src/main.rs\n1704067300|Bob|M|src/lib.rs\n";
         let commits = parser.parse_str(log).unwrap();
-        assert_eq!(
-            commits.len(),
-            1,
-            "with_max_commits(1) should limit to 1"
-        );
+        assert_eq!(commits.len(), 1, "with_max_commits(1) should limit to 1");
     }
 
-    /// Kill mutant: can_parse &&→|| on 4-part check
+    /// Kill mutant: `can_parse` &&→|| on 4-part check
     /// Input with < 4 pipe-separated parts should not match.
     #[test]
     fn test_hg_can_parse_insufficient_parts() {
@@ -845,7 +841,7 @@ files:       file1.rs file2.rs file3.rs
         assert!(!parser.can_parse("1704067200 -18000|Alice\n"));
     }
 
-    /// Kill mutant: can_parse whitespace_parts.next().is_some() check
+    /// Kill mutant: `can_parse` `whitespace_parts.next().is_some()` check
     /// Timestamp without offset should NOT be mercurial format.
     #[test]
     fn test_hg_can_parse_no_offset() {
@@ -856,7 +852,7 @@ files:       file1.rs file2.rs file3.rs
         assert!(parser.can_parse("1704067200 -18000|Alice|A|src/main.rs"));
     }
 
-    /// Kill mutant: parse_verbose &&→|| on timestamp_in_range check
+    /// Kill mutant: `parse_verbose` &&→|| on `timestamp_in_range` check
     #[test]
     fn test_hg_parse_verbose_time_range() {
         let opts = ParseOptions::default().with_time_range(2_000_000_000, 0);
@@ -874,7 +870,7 @@ files:       src/main.rs
         );
     }
 
-    /// Kill mutant: parse_template +=→*= on limit counting
+    /// Kill mutant: `parse_template` +=→*= on limit counting
     #[test]
     fn test_hg_parse_template_limit() {
         let opts = ParseOptions::default().with_max_commits(2);
@@ -893,7 +889,7 @@ files:       src/main.rs
         );
     }
 
-    /// Kill mutant: skip_day_name all day names
+    /// Kill mutant: `skip_day_name` all day names
     #[test]
     fn test_hg_skip_day_name_all_days() {
         assert_eq!(skip_day_name("Mon Jan 01"), "Jan 01");
@@ -906,15 +902,15 @@ files:       src/main.rs
         assert_eq!(skip_day_name("Mon"), "Mon");
     }
 
-    /// Kill mutant: parse_verbose_date time arithmetic (h*3600+m*60+s)
+    /// Kill mutant: `parse_verbose_date` time arithmetic (h*3600+m*60+s)
     #[test]
     fn test_hg_parse_verbose_date_time_components() {
         // "Jan 01 01:02:03 1970" → 0 days + 3723 seconds
         let ts = parse_verbose_date("Jan 01 01:02:03 1970 +0000").unwrap();
-        assert_eq!(ts, 1 * 3600 + 2 * 60 + 3);
+        assert_eq!(ts, 3600 + 2 * 60 + 3);
 
         // "01 Jan 1970 01:02:03" (RFC 822 variant)
         let ts = parse_verbose_date("01 Jan 1970 01:02:03 +0000").unwrap();
-        assert_eq!(ts, 1 * 3600 + 2 * 60 + 3);
+        assert_eq!(ts, 3600 + 2 * 60 + 3);
     }
 }

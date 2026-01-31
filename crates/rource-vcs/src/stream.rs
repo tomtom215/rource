@@ -373,6 +373,7 @@ impl<R: Read> Iterator for CustomLogGrouper<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write;
     use std::io::Cursor;
 
     #[test]
@@ -454,7 +455,7 @@ mod tests {
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: parse_numstat_line match guard r != "0" → true/false, !=→==
+    /// Kill mutant: `parse_numstat_line` match guard r != "0" -> true/false, !=->==
     /// When added="0" and removed="5", action should be Delete (not Modify).
     #[test]
     fn test_parse_numstat_delete_action() {
@@ -463,7 +464,7 @@ mod tests {
         assert_eq!(fc.action, FileAction::Delete, "0 added, 5 removed = Delete");
     }
 
-    /// Kill mutant: parse_numstat_line match guard a != "0" → true/false, !=→==
+    /// Kill mutant: `parse_numstat_line` match guard a != "0" -> true/false, !=->==
     /// When added="5" and removed="0", action should be Create (not Modify).
     #[test]
     fn test_parse_numstat_create_action() {
@@ -472,7 +473,7 @@ mod tests {
         assert_eq!(fc.action, FileAction::Create, "5 added, 0 removed = Create");
     }
 
-    /// Kill mutant: parse_numstat_line ensure Modify for both-nonzero
+    /// Kill mutant: `parse_numstat_line` ensure Modify for both-nonzero
     #[test]
     fn test_parse_numstat_modify_action() {
         let line = "10\t5\tsrc/changed.rs";
@@ -484,7 +485,7 @@ mod tests {
         );
     }
 
-    /// Kill mutant: parse_numstat_line ensure both zeros = Modify
+    /// Kill mutant: `parse_numstat_line` ensure both zeros = Modify
     #[test]
     fn test_parse_numstat_both_zero_is_modify() {
         let line = "0\t0\tsrc/touched.rs";
@@ -492,7 +493,7 @@ mod tests {
         assert_eq!(fc.action, FileAction::Modify, "0 added, 0 removed = Modify");
     }
 
-    /// Kill mutant: parse_numstat_line binary files
+    /// Kill mutant: `parse_numstat_line` binary files
     #[test]
     fn test_parse_numstat_binary() {
         let line = "-\t-\tbinary.png";
@@ -500,16 +501,16 @@ mod tests {
         assert_eq!(fc.action, FileAction::Modify, "binary files = Modify");
     }
 
-    /// Kill mutant: load_with_progress +=→-= (commit_count), +=→*= (commit_count)
-    /// Kill mutant: load_with_progress +=→-= (file_count), +=→*= (file_count)
-    /// Kill mutant: load_with_progress ==→!= (%→/, %→+)
+    /// Kill mutant: `load_with_progress` +=->-= (`commit_count`), +=->*= (`commit_count`)
+    /// Kill mutant: `load_with_progress` +=->-= (`file_count`), +=->*= (`file_count`)
+    /// Kill mutant: `load_with_progress` ==->!= (%->/, %->+)
     #[test]
     fn test_load_with_progress_counting() {
         // Create a log with multiple commits
         let mut log_lines = String::new();
         for i in 0..5 {
-            log_lines.push_str(&format!("{}|Author{}|hash{}\n", 1000 + i, i, i));
-            log_lines.push_str(&format!("{}\t{}\tfile_{}.rs\n", i + 1, i, i));
+            writeln!(log_lines, "{}|Author{}|hash{}", 1000 + i, i, i).unwrap();
+            writeln!(log_lines, "{}\t{}\tfile_{}.rs", i + 1, i, i).unwrap();
             log_lines.push('\n');
         }
 
@@ -533,11 +534,11 @@ mod tests {
         assert_eq!(store.commit_count(), 5);
         assert_eq!(last_commit_count, 5);
         assert_eq!(last_file_count, 5); // 1 file per commit
-        // At least 1 progress callback (the final one)
+                                        // At least 1 progress callback (the final one)
         assert!(callback_count >= 1);
     }
 
-    /// Kill mutant: CustomLogStream line.is_empty() || line.starts_with('#') → &&
+    /// Kill mutant: `CustomLogStream` `line.is_empty()` || `line.starts_with('#')` -> &&
     /// Ensure both empty lines and comment lines are skipped independently.
     #[test]
     fn test_custom_log_stream_skips_comments_and_empty() {
@@ -554,7 +555,7 @@ mod tests {
         assert_eq!(entries[0].author, "Alice");
     }
 
-    /// Kill mutant: CustomLogStream || → && (line 285)
+    /// Kill mutant: `CustomLogStream` || -> && (line 285)
     /// Test that a non-empty non-comment line is NOT skipped.
     #[test]
     fn test_custom_log_stream_does_not_skip_data() {
@@ -563,12 +564,12 @@ mod tests {
 
         let reader = BufReader::new(Cursor::new(log));
         let stream = CustomLogStream::new(reader);
-        let entries: Vec<_> = stream.collect();
+        let count = stream.count();
 
-        assert_eq!(entries.len(), 2);
+        assert_eq!(count, 2);
     }
 
-    /// Kill mutant: CustomLogGrouper && → || (line 354)
+    /// Kill mutant: `CustomLogGrouper` && -> || (line 354)
     /// Same timestamp AND same author should be grouped; different author or timestamp should not.
     #[test]
     fn test_custom_log_grouper_grouping_logic() {

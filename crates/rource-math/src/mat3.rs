@@ -716,7 +716,7 @@ mod tests {
     // Mutation Testing: Kill MISSED mutants in mat3.rs
     // =========================================================================
 
-    /// Kill mutants in Mat3::determinant (arithmetic operator swaps)
+    /// Kill mutants in `Mat3::determinant` (arithmetic operator swaps)
     /// Use a matrix with known, asymmetric values where +/- swaps change the result.
     #[test]
     fn test_determinant_specific_values() {
@@ -747,7 +747,7 @@ mod tests {
         );
     }
 
-    /// Kill mutants in Mat3::inverse (arithmetic operator swaps, * -> /)
+    /// Kill mutants in `Mat3::inverse` (arithmetic operator swaps, * -> /)
     /// Test inverse with a known non-trivial matrix and verify each element.
     #[test]
     fn test_inverse_specific_values() {
@@ -760,10 +760,7 @@ mod tests {
 
         // Verify M * M^-1 = I
         let product = m * inv;
-        assert!(
-            product.approx_eq(Mat3::IDENTITY),
-            "M * M^-1 should equal I"
-        );
+        assert!(product.approx_eq(Mat3::IDENTITY), "M * M^-1 should equal I");
 
         // Also verify M^-1 * M = I
         let product2 = inv * m;
@@ -787,39 +784,19 @@ mod tests {
         );
     }
 
-    /// Kill mutants in Mat3::inverse for < with <= on det check
+    /// Kill mutants in `Mat3::inverse` for < with <= on det check
     #[test]
     fn test_inverse_det_at_epsilon_boundary() {
         // Matrix with determinant exactly at EPSILON threshold
         // Should return None when |det| < EPSILON
-        let tiny_det = Mat3::new(
-            crate::EPSILON * 0.5,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-        );
+        let tiny_det = Mat3::new(crate::EPSILON * 0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
         assert!(
             tiny_det.inverse().is_none(),
             "Matrix with det < EPSILON should not be invertible"
         );
 
         // Matrix with determinant just above EPSILON
-        let small_det = Mat3::new(
-            crate::EPSILON * 2.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-        );
+        let small_det = Mat3::new(crate::EPSILON * 2.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
         assert!(
             small_det.inverse().is_some(),
             "Matrix with det > EPSILON should be invertible"
@@ -898,10 +875,10 @@ mod tests {
     /// Additional inverse test with transform roundtrip using combined transforms
     #[test]
     fn test_inverse_combined_transforms() {
-        let m = Mat3::translation(7.0, -3.0)
-            * Mat3::rotation(1.2)
-            * Mat3::scaling(2.5, 0.8);
-        let inv = m.inverse().expect("Combined transform should be invertible");
+        let m = Mat3::translation(7.0, -3.0) * Mat3::rotation(1.2) * Mat3::scaling(2.5, 0.8);
+        let inv = m
+            .inverse()
+            .expect("Combined transform should be invertible");
 
         // Multiple point roundtrips
         for (px, py) in [(1.0, 0.0), (0.0, 1.0), (-3.0, 7.0), (100.0, -50.0)] {

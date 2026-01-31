@@ -505,8 +505,8 @@ mod tests {
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: replace StringInterner::with_capacity body with Default::default()
-    /// Default has zero capacity; with_capacity(100) allocates, visible via stats().
+    /// Kill mutant: replace `StringInterner::with_capacity` body with `Default::default()`
+    /// Default has zero capacity; `with_capacity(100)` allocates, visible via `stats()`.
     #[test]
     fn test_string_interner_with_capacity_allocates() {
         let interner = StringInterner::with_capacity(100);
@@ -519,8 +519,8 @@ mod tests {
         );
     }
 
-    /// Kill mutant: replace is_empty body with `true`
-    /// After interning a string, is_empty must return false.
+    /// Kill mutant: replace `is_empty` body with `true`
+    /// After interning a string, `is_empty` must return false.
     #[test]
     fn test_string_interner_is_empty_false_after_intern() {
         let mut interner = StringInterner::new();
@@ -531,7 +531,7 @@ mod tests {
         );
     }
 
-    /// Kill mutant: stats() arithmetic *→+, *→/, +→-, +→*
+    /// Kill mutant: `stats()` arithmetic *→+, *→/, +→-, +→*
     /// Verify stats values are computed correctly with known data.
     #[test]
     fn test_string_interner_stats_arithmetic() {
@@ -558,7 +558,7 @@ mod tests {
         );
     }
 
-    /// Kill mutant: InternerStats::total_bytes return 0/1, +→-, +→*
+    /// Kill mutant: `InternerStats::total_bytes` return 0/1, +→-, +→*
     #[test]
     fn test_interner_stats_total_bytes_arithmetic() {
         let mut interner = StringInterner::with_capacity(10);
@@ -578,7 +578,7 @@ mod tests {
         assert!(stats.total_bytes() >= stats.overhead_bytes);
     }
 
-    /// Kill mutant: PathInterner::is_empty → return true
+    /// Kill mutant: `PathInterner::is_empty` → return true
     #[test]
     fn test_path_interner_is_empty_false_after_intern() {
         let mut interner = PathInterner::new();
@@ -589,7 +589,7 @@ mod tests {
         );
     }
 
-    /// Kill mutant: PathInterner::new → return Default (equivalent, test basics)
+    /// Kill mutant: `PathInterner::new` → return Default (equivalent, test basics)
     #[test]
     fn test_path_interner_new_is_empty() {
         let interner = PathInterner::new();
@@ -597,7 +597,7 @@ mod tests {
         assert_eq!(interner.len(), 0);
     }
 
-    /// Kill mutant: PathInterner::stats() arithmetic *→+, *→/, +→-, +→*
+    /// Kill mutant: `PathInterner::stats()` arithmetic *→+, *→/, +→-, +→*
     #[test]
     fn test_path_interner_stats_arithmetic() {
         let mut interner = PathInterner::new();
@@ -607,14 +607,14 @@ mod tests {
         let stats = interner.stats();
         assert_eq!(stats.unique_paths, 2);
         assert!(stats.unique_segments >= 3); // src, main.rs, lib.rs
-        // segment_bytes = sum of segment string lengths
-        // "src" (3) + "main.rs" (7) + "lib.rs" (6) = 16
+                                             // segment_bytes = sum of segment string lengths
+                                             // "src" (3) + "main.rs" (7) + "lib.rs" (6) = 16
         assert_eq!(stats.segment_bytes, 16);
         // overhead should be > 0
         assert!(stats.overhead_bytes > 0);
     }
 
-    /// Kill mutant: PathInternerStats overhead + path_overhead arithmetic
+    /// Kill mutant: `PathInternerStats` overhead + `path_overhead` arithmetic
     #[test]
     fn test_path_interner_stats_overhead_components() {
         let mut interner = PathInterner::new();

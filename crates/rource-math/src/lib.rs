@@ -251,8 +251,8 @@ mod tests {
         assert_eq!(result, 10.0, "Value just above max should be clamped");
     }
 
-    /// Kill mutant: replace < with <= in approx_eq (line 126)
-    /// approx_eq uses `(a - b).abs() < EPSILON`
+    /// Kill mutant: replace < with <= in `approx_eq` (line 126)
+    /// `approx_eq` uses `(a - b).abs() < EPSILON`
     /// If mutated to `<=`, then values exactly EPSILON apart would be "equal".
     #[test]
     fn test_approx_eq_at_epsilon_boundary() {

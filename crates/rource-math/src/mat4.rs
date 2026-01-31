@@ -1054,7 +1054,7 @@ mod tests {
     // Mutation Testing: Kill mutants for Mat4 functions
     // =========================================================================
 
-    /// Kill return-Default mutant for from_translation
+    /// Kill return-Default mutant for `from_translation`
     #[test]
     fn test_from_translation_not_default() {
         let v = Vec3::new(5.0, 10.0, 15.0);
@@ -1093,11 +1093,23 @@ mod tests {
         let f = 1.0 / tan_half;
         let nf = 1.0 / (near - far);
 
-        assert!((proj.m[0] - f / aspect).abs() < 1e-5, "m[0]=f/aspect got {}", proj.m[0]);
+        assert!(
+            (proj.m[0] - f / aspect).abs() < 1e-5,
+            "m[0]=f/aspect got {}",
+            proj.m[0]
+        );
         assert!((proj.m[5] - f).abs() < 1e-5, "m[5]=f got {}", proj.m[5]);
-        assert!((proj.m[10] - (far + near) * nf).abs() < 1e-5, "m[10] got {}", proj.m[10]);
+        assert!(
+            (proj.m[10] - (far + near) * nf).abs() < 1e-5,
+            "m[10] got {}",
+            proj.m[10]
+        );
         assert!((proj.m[11] - (-1.0)).abs() < 1e-5, "m[11]=-1");
-        assert!((proj.m[14] - 2.0 * far * near * nf).abs() < 1e-5, "m[14] got {}", proj.m[14]);
+        assert!(
+            (proj.m[14] - 2.0 * far * near * nf).abs() < 1e-5,
+            "m[14] got {}",
+            proj.m[14]
+        );
         assert!(proj.m[15].abs() < 1e-6, "m[15]=0");
     }
 
@@ -1106,11 +1118,13 @@ mod tests {
     fn test_perspective_aspect_scaling() {
         let proj1 = Mat4::perspective(PI / 4.0, 1.0, 0.1, 100.0);
         let proj2 = Mat4::perspective(PI / 4.0, 2.0, 0.1, 100.0);
-        assert!((proj2.m[0] - proj1.m[0] / 2.0).abs() < 1e-5,
-            "Doubling aspect should halve m[0]");
+        assert!(
+            (proj2.m[0] - proj1.m[0] / 2.0).abs() < 1e-5,
+            "Doubling aspect should halve m[0]"
+        );
     }
 
-    /// Kill negation mutants in look_at
+    /// Kill negation mutants in `look_at`
     #[test]
     fn test_look_at_specific_elements() {
         // Non-axis-aligned camera
@@ -1129,8 +1143,16 @@ mod tests {
         assert!((view.m[8] - 1.0).abs() < 1e-5, "s.z");
         assert!((view.m[10] - 0.0).abs() < 1e-5, "-f.z");
 
-        assert!((view.m[12] - (-3.0)).abs() < 1e-5, "-s.dot(eye)={}", view.m[12]);
-        assert!((view.m[13] - (-0.4)).abs() < 1e-5, "-u.dot(eye)={}", view.m[13]);
+        assert!(
+            (view.m[12] - (-3.0)).abs() < 1e-5,
+            "-s.dot(eye)={}",
+            view.m[12]
+        );
+        assert!(
+            (view.m[13] - (-0.4)).abs() < 1e-5,
+            "-u.dot(eye)={}",
+            view.m[13]
+        );
         assert!((view.m[14] - 2.2).abs() < 1e-5, "f.dot(eye)={}", view.m[14]);
     }
 
@@ -1139,16 +1161,21 @@ mod tests {
     fn test_determinant_non_trivial() {
         // Combined rotation * scaling: det = det(R) * det(S) = 1 * 30 = 30
         let m = Mat4::rotation_z(1.0) * Mat4::scaling(2.0, 3.0, 5.0);
-        assert!((m.determinant() - 30.0).abs() < 1e-3, "det={}", m.determinant());
+        assert!(
+            (m.determinant() - 30.0).abs() < 1e-3,
+            "det={}",
+            m.determinant()
+        );
 
         // Upper triangular: det = product of diagonal = 2*3*7*11 = 462
         let upper = Mat4::new(
-            2.0, 0.0, 0.0, 0.0,
-            1.0, 3.0, 0.0, 0.0,
-            4.0, 5.0, 7.0, 0.0,
-            1.0, 2.0, 3.0, 11.0,
+            2.0, 0.0, 0.0, 0.0, 1.0, 3.0, 0.0, 0.0, 4.0, 5.0, 7.0, 0.0, 1.0, 2.0, 3.0, 11.0,
         );
-        assert!((upper.determinant() - 462.0).abs() < 1e-2, "det={}", upper.determinant());
+        assert!(
+            (upper.determinant() - 462.0).abs() < 1e-2,
+            "det={}",
+            upper.determinant()
+        );
 
         // Reflection: det = -1
         assert!((Mat4::scaling(-1.0, 1.0, 1.0).determinant() - (-1.0)).abs() < 1e-6);
@@ -1170,7 +1197,8 @@ mod tests {
         assert!((t_inv.m[14] - (-13.0)).abs() < 1e-6);
 
         // Dense matrix roundtrip
-        let m = Mat4::rotation_x(0.7) * Mat4::scaling(2.0, 3.0, 5.0) * Mat4::translation(1.0, 2.0, 3.0);
+        let m =
+            Mat4::rotation_x(0.7) * Mat4::scaling(2.0, 3.0, 5.0) * Mat4::translation(1.0, 2.0, 3.0);
         let m_inv = m.inverse().unwrap();
         assert!((m * m_inv).approx_eq(Mat4::IDENTITY));
 
@@ -1180,7 +1208,7 @@ mod tests {
         }
     }
 
-    /// Kill boundary mutant: det.abs() < EPSILON
+    /// Kill boundary mutant: `det.abs() < EPSILON`
     #[test]
     fn test_inverse_det_boundary() {
         assert!(Mat4::ZERO.inverse().is_none());
@@ -1194,7 +1222,7 @@ mod tests {
         assert!(below_epsilon.inverse().is_none());
     }
 
-    /// Kill arithmetic mutants in transform_point
+    /// Kill arithmetic mutants in `transform_point`
     #[test]
     fn test_transform_point_dense() {
         let m = Mat4::scaling(2.0, 3.0, 4.0) * Mat4::translation(1.0, 2.0, 3.0);
@@ -1205,7 +1233,7 @@ mod tests {
         assert!((result.z - 16.0).abs() < 1e-5);
     }
 
-    /// Kill arithmetic mutants in transform_vector
+    /// Kill arithmetic mutants in `transform_vector`
     #[test]
     fn test_transform_vector_dense() {
         let s = Mat4::scaling(2.0, 3.0, 4.0);
@@ -1214,17 +1242,17 @@ mod tests {
 
         // Translation must NOT affect vectors
         let t = Mat4::translation(100.0, 200.0, 300.0);
-        assert_eq!(t.transform_vector(Vec3::new(1.0, 2.0, 3.0)), Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(
+            t.transform_vector(Vec3::new(1.0, 2.0, 3.0)),
+            Vec3::new(1.0, 2.0, 3.0)
+        );
     }
 
-    /// Kill arithmetic mutants in transform_vec4 - verify all 4 components
+    /// Kill arithmetic mutants in `transform_vec4` - verify all 4 components
     #[test]
     fn test_transform_vec4_all_components() {
         let m = Mat4::new(
-            1.0, 5.0, 9.0, 13.0,
-            2.0, 6.0, 10.0, 14.0,
-            3.0, 7.0, 11.0, 15.0,
-            4.0, 8.0, 12.0, 16.0,
+            1.0, 5.0, 9.0, 13.0, 2.0, 6.0, 10.0, 14.0, 3.0, 7.0, 11.0, 15.0, 4.0, 8.0, 12.0, 16.0,
         );
         let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
         let result = m.transform_vec4(v);
@@ -1242,10 +1270,7 @@ mod tests {
     #[test]
     fn test_col_all_indices() {
         let m = Mat4::new(
-            1.0, 2.0, 3.0, 4.0,
-            5.0, 6.0, 7.0, 8.0,
-            9.0, 10.0, 11.0, 12.0,
-            13.0, 14.0, 15.0, 16.0,
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         );
         assert_eq!(m.col(0), Vec4::new(1.0, 2.0, 3.0, 4.0));
         assert_eq!(m.col(1), Vec4::new(5.0, 6.0, 7.0, 8.0));
@@ -1253,13 +1278,13 @@ mod tests {
         assert_eq!(m.col(3), Vec4::new(13.0, 14.0, 15.0, 16.0));
     }
 
-    /// Kill return-true mutant in approx_eq
+    /// Kill return-true mutant in `approx_eq`
     #[test]
     fn test_approx_eq_returns_false() {
         assert!(!Mat4::IDENTITY.approx_eq(Mat4::scaling(2.0, 3.0, 4.0)));
     }
 
-    /// Kill return-() mutant in MulAssign
+    /// Kill return-() mutant in `MulAssign`
     #[test]
     fn test_mul_assign_modifies() {
         let mut m = Mat4::IDENTITY;
@@ -1274,16 +1299,10 @@ mod tests {
     #[test]
     fn test_mul_specific_elements() {
         let a = Mat4::new(
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 2.0, 0.0, 0.0,
-            0.0, 0.0, 3.0, 0.0,
-            4.0, 5.0, 6.0, 1.0,
+            1.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0, 4.0, 5.0, 6.0, 1.0,
         );
         let b = Mat4::new(
-            7.0, 0.0, 0.0, 0.0,
-            0.0, 8.0, 0.0, 0.0,
-            0.0, 0.0, 9.0, 0.0,
-            10.0, 11.0, 12.0, 1.0,
+            7.0, 0.0, 0.0, 0.0, 0.0, 8.0, 0.0, 0.0, 0.0, 0.0, 9.0, 0.0, 10.0, 11.0, 12.0, 1.0,
         );
         let c = a * b;
         assert_eq!(c.m[0], 7.0);

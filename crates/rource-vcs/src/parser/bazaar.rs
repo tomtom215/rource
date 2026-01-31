@@ -1115,7 +1115,7 @@ added:
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: parse_month → delete match arms for Mar through Nov
+    /// Kill mutant: `parse_month` → delete match arms for Mar through Nov
     /// Each month arm must return its correct number.
     #[test]
     fn test_parse_month_all_arms() {
@@ -1134,7 +1134,7 @@ added:
         assert_eq!(parse_month("xyz"), None);
     }
 
-    /// Kill mutant: days_since_unix_epoch arithmetic
+    /// Kill mutant: `days_since_unix_epoch` arithmetic
     /// +=→-=, -→+, -→/, &&→||, ==→!=
     /// Use exact known values to detect any arithmetic mutation.
     #[test]
@@ -1168,7 +1168,7 @@ added:
         assert_eq!(days_since_unix_epoch(1973, 1, 1), Some(1096));
     }
 
-    /// Kill mutant: days_since_unix_epoch == → != on leap year check
+    /// Kill mutant: `days_since_unix_epoch` == → != on leap year check
     /// In a leap year, month=2 date tests the m==2 branch.
     #[test]
     fn test_days_since_unix_epoch_leap_february() {
@@ -1181,7 +1181,7 @@ added:
         assert_eq!(days_since_unix_epoch(1971, 3, 1), Some(424));
     }
 
-    /// Kill mutant: days_since_unix_epoch +=→*= in year loop
+    /// Kill mutant: `days_since_unix_epoch` +=→*= in year loop
     /// Second year (1971) would produce 365*365 instead of 365+365.
     #[test]
     fn test_days_since_epoch_year_accumulation() {
@@ -1189,7 +1189,7 @@ added:
         assert_eq!(days_since_unix_epoch(1972, 1, 1), Some(730));
     }
 
-    /// Kill mutant: skip_day_name for all day names
+    /// Kill mutant: `skip_day_name` for all day names
     #[test]
     fn test_skip_day_name_all_days() {
         assert_eq!(skip_day_name("Mon 2024-01-01"), "2024-01-01");
@@ -1207,7 +1207,7 @@ added:
         assert_eq!(skip_day_name("Mon"), "Mon");
     }
 
-    /// Kill mutant: parse_date_only arithmetic/None propagation
+    /// Kill mutant: `parse_date_only` arithmetic/None propagation
     #[test]
     fn test_parse_date_only_exact() {
         // 1970-01-01 = 0 days * 86400 = 0
@@ -1219,7 +1219,7 @@ added:
         assert_eq!(parse_date_only("abc"), None);
     }
 
-    /// Kill mutant: CommitBuilder::reset — deletion of field clearing
+    /// Kill mutant: `CommitBuilder::reset` — deletion of field clearing
     /// Files from an incomplete commit should not leak into the next commit.
     #[test]
     fn test_builder_reset_no_file_leak() {
@@ -1250,18 +1250,15 @@ added:
             1,
             "Files from incomplete commit should not leak"
         );
-        assert_eq!(
-            commits[0].files[0].path.to_str().unwrap(),
-            "bobs_file.rs"
-        );
+        assert_eq!(commits[0].files[0].path.to_str().unwrap(), "bobs_file.rs");
     }
 
-    /// Kill mutant: parse_bzr_date time arithmetic (h*3600, m*60)
+    /// Kill mutant: `parse_bzr_date` time arithmetic (h*3600, m*60)
     #[test]
     fn test_parse_bzr_date_time_components() {
         // 1970-01-01 at 01:02:03 → 0 days + 3723 seconds
         let ts = parse_bzr_date("1970-01-01 01:02:03 +0000").unwrap();
-        assert_eq!(ts, 1 * 3600 + 2 * 60 + 3);
+        assert_eq!(ts, 3600 + 2 * 60 + 3);
 
         // Month-first format: "Jan 15 14:30:00 2024"
         let ts = parse_bzr_date("Jan 15 14:30:00 2024 +0000").unwrap();
@@ -1270,7 +1267,7 @@ added:
         assert_eq!(ts, expected);
     }
 
-    /// Kill mutant: with_options → Default
+    /// Kill mutant: `with_options` → `Default`
     #[test]
     fn test_bzr_with_options_preserved() {
         let opts = ParseOptions::default().with_max_commits(1);
@@ -1290,14 +1287,10 @@ modified:
   b.rs
 ";
         let commits = parser.parse_str(log).unwrap();
-        assert_eq!(
-            commits.len(),
-            1,
-            "with_max_commits(1) should limit to 1"
-        );
+        assert_eq!(commits.len(), 1, "with_max_commits(1) should limit to 1");
     }
 
-    /// Kill mutant: parse_short with valid short format lines
+    /// Kill mutant: `parse_short` with valid short format lines
     #[test]
     fn test_parse_short_format() {
         let opts = ParseOptions {
@@ -1311,7 +1304,7 @@ modified:
         assert_eq!(commits.len(), 2);
     }
 
-    /// Kill mutant: is_date_format boundary — extra segments
+    /// Kill mutant: `is_date_format` boundary — extra segments
     #[test]
     fn test_is_date_format_extra_segments() {
         assert!(!is_date_format("2024-01-01-extra"));

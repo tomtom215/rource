@@ -992,7 +992,7 @@ mod tests {
         assert_eq!(result, Vec3::new(12.0, 20.0, 28.0));
     }
 
-    /// Kill *=→+= in MulAssign<f32> with distinguishable values
+    /// Kill *=→+= in `MulAssign<f32>` with distinguishable values
     #[test]
     fn test_mul_assign_scalar_distinguishable() {
         let mut v = Vec3::new(3.0, 5.0, 7.0);
@@ -1000,7 +1000,7 @@ mod tests {
         assert_eq!(v, Vec3::new(12.0, 20.0, 28.0));
     }
 
-    /// Kill /=→%= in DivAssign<f32>
+    /// Kill /=→%= in `DivAssign<f32>`
     #[test]
     fn test_div_assign_scalar() {
         let mut v = Vec3::new(12.0, 20.0, 28.0);
@@ -1016,7 +1016,7 @@ mod tests {
         assert_eq!(a.distance(b), 3.0);
     }
 
-    /// Kill -→+ in distance_squared with non-zero origin
+    /// Kill -→+ in `distance_squared` with non-zero origin
     #[test]
     fn test_distance_squared_non_origin() {
         let a = Vec3::new(1.0, 0.0, 0.0);

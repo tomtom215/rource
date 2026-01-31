@@ -109,7 +109,7 @@ jobs:
       - name: Run benchmarks
         run: |
           # Run benchmarks, capture output cleanly
-          cargo bench --workspace -- --noplot 2>&1 | tee benchmark-raw.txt
+          cargo bench --workspace --benches -- --noplot 2>&1 | tee benchmark-raw.txt
 
           # Create a clean summary (filter out noise, keep results)
           echo "=== Benchmark Results ===" > benchmark-results.txt

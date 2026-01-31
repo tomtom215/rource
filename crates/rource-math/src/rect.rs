@@ -1208,7 +1208,7 @@ mod tests {
     // Mutation Testing: Kill boundary and logic mutants
     // =========================================================================
 
-    /// Kill &&→|| mutant in contains_rect: one dimension fits, other overflows
+    /// Kill &&→|| mutant in `contains_rect`: one dimension fits, other overflows
     #[test]
     fn test_contains_rect_partial_overflow() {
         let outer = Rect::new(0.0, 0.0, 100.0, 100.0);
@@ -1229,25 +1229,31 @@ mod tests {
         assert!(!outer.contains_rect(shifted_y), "negative y should fail");
     }
 
-    /// Kill <→<= and >→>= mutants in intersects: edge-touching rects
+    /// Kill <→<= and >→>= mutants in `intersects`: edge-touching rects
     #[test]
     fn test_intersects_touching_edges() {
         let a = Rect::new(0.0, 0.0, 10.0, 10.0);
 
         // Touching at right edge: a.x + a.width == b.x
         let right = Rect::new(10.0, 0.0, 10.0, 10.0);
-        assert!(!a.intersects(right), "touching right edge should not intersect");
+        assert!(
+            !a.intersects(right),
+            "touching right edge should not intersect"
+        );
 
         // Touching at bottom edge
         let bottom = Rect::new(0.0, 10.0, 10.0, 10.0);
-        assert!(!a.intersects(bottom), "touching bottom edge should not intersect");
+        assert!(
+            !a.intersects(bottom),
+            "touching bottom edge should not intersect"
+        );
 
         // Just barely overlapping
         let overlap = Rect::new(9.999, 0.0, 10.0, 10.0);
         assert!(a.intersects(overlap), "slight overlap should intersect");
     }
 
-    /// Kill &&→|| mutant in intersects: only one axis overlaps
+    /// Kill &&→|| mutant in `intersects`: only one axis overlaps
     #[test]
     fn test_intersects_one_axis_only() {
         let a = Rect::new(0.0, 0.0, 10.0, 10.0);
@@ -1261,13 +1267,16 @@ mod tests {
         assert!(!a.intersects(y_only));
     }
 
-    /// Kill >→>= mutant in intersection validity check
+    /// Kill >→>= mutant in `intersection` validity check
     #[test]
     fn test_intersection_zero_overlap() {
         let a = Rect::new(0.0, 0.0, 10.0, 10.0);
         // Touching edge produces right==x, so right > x is false → None
         let b = Rect::new(10.0, 0.0, 10.0, 10.0);
-        assert!(a.intersection(b).is_none(), "zero-width intersection should be None");
+        assert!(
+            a.intersection(b).is_none(),
+            "zero-width intersection should be None"
+        );
 
         // Verify non-zero overlap works
         let c = Rect::new(5.0, 5.0, 10.0, 10.0);
@@ -1276,7 +1285,7 @@ mod tests {
         assert_eq!(inter.height, 5.0);
     }
 
-    /// Kill &&→|| in is_valid and ||→&& in is_empty
+    /// Kill &&→|| in `is_valid` and ||→&& in `is_empty`
     #[test]
     fn test_validity_one_zero_dimension() {
         // Zero width, positive height
@@ -1295,7 +1304,7 @@ mod tests {
         assert!(!valid.is_empty());
     }
 
-    /// Kill &&→|| in Bounds::intersects
+    /// Kill &&→|| in `Bounds::intersects`
     #[test]
     fn test_bounds_intersects_one_axis_only() {
         let a = Bounds::new(Vec2::ZERO, Vec2::new(10.0, 10.0));
@@ -1307,7 +1316,7 @@ mod tests {
         assert!(!a.intersects(y_only), "y-only overlap should not intersect");
     }
 
-    /// Kill <→<= and >→>= in Bounds::intersects: edge touching
+    /// Kill <→<= and >→>= in `Bounds::intersects`: edge touching
     #[test]
     fn test_bounds_intersects_edge_touching() {
         let a = Bounds::new(Vec2::ZERO, Vec2::new(10.0, 10.0));
@@ -1315,10 +1324,13 @@ mod tests {
         assert!(!a.intersects(right), "edge-touching should not intersect");
 
         let slight_overlap = Bounds::new(Vec2::new(9.999, 0.0), Vec2::new(20.0, 10.0));
-        assert!(a.intersects(slight_overlap), "slight overlap should intersect");
+        assert!(
+            a.intersects(slight_overlap),
+            "slight overlap should intersect"
+        );
     }
 
-    /// Kill <→<= in Bounds::intersection validity
+    /// Kill <→<= in `Bounds::intersection` validity
     #[test]
     fn test_bounds_intersection_zero_overlap() {
         let a = Bounds::new(Vec2::ZERO, Vec2::new(10.0, 10.0));
@@ -1326,7 +1338,7 @@ mod tests {
         assert!(a.intersection(b).is_none());
     }
 
-    /// Kill &&→|| in Bounds::is_valid and ||→&& in Bounds::is_empty
+    /// Kill &&→|| in `Bounds::is_valid` and ||→&& in `Bounds::is_empty`
     #[test]
     fn test_bounds_validity_one_zero_dimension() {
         let zero_w = Bounds::new(Vec2::new(5.0, 0.0), Vec2::new(5.0, 10.0));
@@ -1338,7 +1350,7 @@ mod tests {
         assert!(zero_h.is_empty());
     }
 
-    /// Kill &&→|| in Rect::contains: test each condition independently
+    /// Kill &&→|| in `Rect::contains`: test each condition independently
     #[test]
     fn test_rect_contains_each_boundary() {
         let r = Rect::new(10.0, 20.0, 100.0, 50.0);
@@ -1356,7 +1368,7 @@ mod tests {
         assert!(r.contains(Vec2::new(60.0, 69.999)));
     }
 
-    /// Kill &&→|| in Bounds::contains
+    /// Kill &&→|| in `Bounds::contains`
     #[test]
     fn test_bounds_contains_each_boundary() {
         let b = Bounds::new(Vec2::new(10.0, 20.0), Vec2::new(100.0, 70.0));
@@ -1370,7 +1382,7 @@ mod tests {
         assert!(b.contains(Vec2::new(99.999, 45.0)));
     }
 
-    /// Kill &&→|| in Bounds::contains_bounds
+    /// Kill &&→|| in `Bounds::contains_bounds`
     #[test]
     fn test_bounds_contains_bounds_each_edge() {
         let outer = Bounds::new(Vec2::ZERO, Vec2::new(100.0, 100.0));
@@ -1392,17 +1404,23 @@ mod tests {
         assert!(!outer.contains_bounds(bad_maxy));
     }
 
-    /// Kill Rect::approx_eq &&→|| mutant
+    /// Kill `Rect::approx_eq` &&→|| mutant
     #[test]
     fn test_rect_approx_eq_each_field() {
         let r = Rect::new(1.0, 2.0, 3.0, 4.0);
         assert!(!r.approx_eq(Rect::new(100.0, 2.0, 3.0, 4.0)), "different x");
         assert!(!r.approx_eq(Rect::new(1.0, 100.0, 3.0, 4.0)), "different y");
-        assert!(!r.approx_eq(Rect::new(1.0, 2.0, 100.0, 4.0)), "different width");
-        assert!(!r.approx_eq(Rect::new(1.0, 2.0, 3.0, 100.0)), "different height");
+        assert!(
+            !r.approx_eq(Rect::new(1.0, 2.0, 100.0, 4.0)),
+            "different width"
+        );
+        assert!(
+            !r.approx_eq(Rect::new(1.0, 2.0, 3.0, 100.0)),
+            "different height"
+        );
     }
 
-    /// Kill Bounds::approx_eq &&→|| mutant
+    /// Kill `Bounds::approx_eq` &&→|| mutant
     #[test]
     fn test_bounds_approx_eq_each_field() {
         let b = Bounds::new(Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0));

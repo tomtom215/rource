@@ -973,7 +973,7 @@ mod tests {
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: days_since_epoch arithmetic
+    /// Kill mutant: `days_since_epoch` arithmetic
     /// Verify exact day counts against known Unix timestamps.
     #[test]
     fn test_svn_days_since_epoch_exact() {
@@ -995,7 +995,7 @@ mod tests {
         assert_eq!(SvnParser::days_since_epoch(2024, 1, 1), 19723);
     }
 
-    /// Kill mutant: days_since_epoch leap_years formula arithmetic
+    /// Kill mutant: `days_since_epoch` `leap_years` formula arithmetic
     /// The formula: (year-1969)/4 - (year-1901)/100 + (year-1601)/400
     #[test]
     fn test_svn_days_since_epoch_leap_formula() {
@@ -1013,7 +1013,7 @@ mod tests {
         assert_eq!(d1901 - d1900, 365);
     }
 
-    /// Kill mutant: parse_svn_date arithmetic (*→+, *→/, +→-, +→*)
+    /// Kill mutant: `parse_svn_date` arithmetic (*→+, *→/, +→-, +→*)
     /// Verify exact timestamp for a known date with specific time.
     #[test]
     fn test_svn_parse_date_time_arithmetic() {
@@ -1030,7 +1030,7 @@ mod tests {
         assert_eq!(ts, 36000);
     }
 
-    /// Kill mutant: with_options → Default
+    /// Kill mutant: `with_options` → Default
     #[test]
     fn test_svn_with_options_preserved() {
         let opts = ParseOptions::default().with_max_commits(1);
@@ -1052,7 +1052,7 @@ mod tests {
         assert_eq!(commits.len(), 1, "with_max_commits(1) should limit to 1");
     }
 
-    /// Kill mutant: can_parse &&→|| on logentry + revision check
+    /// Kill mutant: `can_parse` &&→|| on logentry + revision check
     #[test]
     fn test_svn_can_parse_partial_match() {
         let parser = SvnParser::new();
@@ -1063,24 +1063,22 @@ mod tests {
         // Neither starts with <?xml nor <log
         assert!(!parser.can_parse("<data><logentry revision=\"1\"></logentry></data>"));
         // Valid
-        assert!(parser.can_parse(
-            "<?xml version=\"1.0\"?><log><logentry revision=\"1\"></logentry></log>"
-        ));
+        assert!(parser
+            .can_parse("<?xml version=\"1.0\"?><log><logentry revision=\"1\"></logentry></log>"));
     }
 
-    /// Kill mutant: extract_log_entries content_start > content_end check
+    /// Kill mutant: `extract_log_entries` `content_start` > `content_end` check
     #[test]
     fn test_svn_extract_log_entries_bounds() {
         let parser = SvnParser::new();
         // Malformed: closing tag immediately after opening
-        let result = parser.parse_str(
-            "<?xml version=\"1.0\"?><log><logentry revision=\"1\"></logentry></log>",
-        );
+        let result = parser
+            .parse_str("<?xml version=\"1.0\"?><log><logentry revision=\"1\"></logentry></log>");
         // Should either parse empty or error, not panic
         assert!(result.is_err() || result.unwrap().is_empty());
     }
 
-    /// Kill mutant: parse_svn_date month/day validation boundaries
+    /// Kill mutant: `parse_svn_date` month/day validation boundaries
     #[test]
     fn test_svn_parse_date_invalid_month_day() {
         // Month 0
@@ -1093,7 +1091,7 @@ mod tests {
         assert!(SvnParser::parse_svn_date("2024-06-32T00:00:00.000000Z", 1).is_err());
     }
 
-    /// Kill mutant: parse_paths search_start advancement
+    /// Kill mutant: `parse_paths` `search_start` advancement
     /// Multiple path elements must all be parsed.
     #[test]
     fn test_svn_parse_paths_multiple() {

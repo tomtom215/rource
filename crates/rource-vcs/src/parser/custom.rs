@@ -822,7 +822,7 @@ mod tests {
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: parse_str line_number +=→*= and +=→-=
+    /// Kill mutant: `parse_str` `line_number` +=→*= and +=→-=
     /// Line counting must increment monotonically for error reporting.
     #[test]
     fn test_parse_str_line_counting() {
@@ -839,7 +839,7 @@ mod tests {
         assert_eq!(commits.len(), 3);
     }
 
-    /// Kill mutant: parse_str error_count tracking
+    /// Kill mutant: `parse_str` `error_count` tracking
     /// Lenient mode should track errors and still produce commits.
     #[test]
     fn test_parse_str_error_count_lenient() {
@@ -854,7 +854,7 @@ another bad line
         assert_eq!(commits.len(), 2, "Valid lines should parse despite errors");
     }
 
-    /// Kill mutant: can_parse &&→|| on action validation
+    /// Kill mutant: `can_parse` &&→|| on action validation
     /// Input with valid parts but invalid action should not match.
     #[test]
     fn test_can_parse_invalid_action() {
@@ -873,7 +873,7 @@ another bad line
         assert!(parser.can_parse("1234567890|User|A|file.txt"));
     }
 
-    /// Kill mutant: can_parse early return on non-matching first data line
+    /// Kill mutant: `can_parse` early return on non-matching first data line
     #[test]
     fn test_can_parse_first_line_mismatch() {
         let parser = CustomParser::new();
@@ -886,7 +886,7 @@ another bad line
         );
     }
 
-    /// Kill mutant: with_options → Default
+    /// Kill mutant: `with_options` → Default
     #[test]
     fn test_custom_with_options_preserved() {
         let opts = ParseOptions::default().with_max_commits(1);
@@ -897,10 +897,6 @@ another bad line
 1234567892|User3|D|file3.txt
 ";
         let commits = parser.parse_str(input).unwrap();
-        assert_eq!(
-            commits.len(),
-            1,
-            "with_max_commits(1) should limit to 1"
-        );
+        assert_eq!(commits.len(), 1, "with_max_commits(1) should limit to 1");
     }
 }

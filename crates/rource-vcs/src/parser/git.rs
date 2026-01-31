@@ -976,7 +976,7 @@ A\tfile.rs
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: is_git_action_char → replace with true
+    /// Kill mutant: `is_git_action_char` → replace with true
     /// Non-action characters must return false.
     #[test]
     fn test_is_git_action_char_false_cases() {
@@ -1001,7 +1001,7 @@ A\tfile.rs
         assert!(is_git_action_char('u'));
     }
 
-    /// Kill mutant: parse_file_status line.len() < 3 boundary
+    /// Kill mutant: `parse_file_status` `line.len()` < 3 boundary
     /// A 2-character space-separated line should return None.
     #[test]
     fn test_parse_file_status_short_line() {
@@ -1016,7 +1016,7 @@ A\tfile.rs
         assert!(result.is_some());
     }
 
-    /// Kill mutant: parse_file_status !is_git_action_char → delete !
+    /// Kill mutant: `parse_file_status` `!is_git_action_char` → delete !
     /// Non-action first char in space-separated format should return None.
     #[test]
     fn test_parse_file_status_non_action_char_space() {
@@ -1026,7 +1026,7 @@ A\tfile.rs
         assert!(result.is_none());
     }
 
-    /// Kill mutant: parse_author_line email_end > email_start → >=
+    /// Kill mutant: `parse_author_line` `email_end` > `email_start` → >=
     /// Malformed brackets where > comes before or at < position.
     #[test]
     fn test_parse_author_line_malformed_brackets() {
@@ -1040,15 +1040,12 @@ A\tfile.rs
         assert_eq!(email.unwrap(), "john@test.com");
     }
 
-    /// Kill mutant: can_parse && → || and >= 7 → >= boundary
+    /// Kill mutant: `can_parse` && → || and >= 7 → >= boundary
     /// Short hash (< 7 chars) or non-hex must NOT match.
     #[test]
     fn test_can_parse_short_hash() {
         let parser = GitParser::new();
-        assert!(
-            !parser.can_parse("commit abcde\n"),
-            "5-char hash too short"
-        );
+        assert!(!parser.can_parse("commit abcde\n"), "5-char hash too short");
         assert!(
             parser.can_parse("commit abcdef0\n"),
             "7-char hex hash should match"
@@ -1059,7 +1056,7 @@ A\tfile.rs
         );
     }
 
-    /// Kill mutant: can_parse line.len() > 10 boundary
+    /// Kill mutant: `can_parse` `line.len()` > 10 boundary
     #[test]
     fn test_can_parse_line_length_boundary() {
         let parser = GitParser::new();
@@ -1069,7 +1066,7 @@ A\tfile.rs
         assert!(parser.can_parse("commit abcdef0"));
     }
 
-    /// Kill mutant: parse_str +=→*= on line counting
+    /// Kill mutant: `parse_str` +=→*= on line counting
     #[test]
     fn test_parse_str_multiple_commits_line_tracking() {
         let parser = GitParser::new();
@@ -1092,7 +1089,7 @@ M\tfile2.rs
         assert_eq!(commits[1].files[0].action, FileAction::Modify);
     }
 
-    /// Kill mutant: with_options → Default
+    /// Kill mutant: `with_options` → Default
     #[test]
     fn test_with_options_preserves_options() {
         let opts = ParseOptions::default().with_max_commits(3);
