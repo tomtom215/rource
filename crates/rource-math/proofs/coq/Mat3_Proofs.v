@@ -795,16 +795,186 @@ Proof.
   apply mat3_eq; simpl; ring.
 Qed.
 
+(** * Inverse Properties *)
+
+(** Theorem 81: inverse(I) = I.
+    The identity matrix is its own inverse. *)
+Theorem mat3_inverse_identity :
+  mat3_inverse mat3_identity = mat3_identity.
+Proof.
+  unfold mat3_inverse, mat3_determinant, mat3_identity. simpl.
+  apply mat3_eq; simpl; field.
+Qed.
+
+(** Theorem 82: inverse(A) * A = I when det(A) ≠ 0 (left inverse).
+    This is the fundamental inverse correctness property.
+    Each component reduces to cofactor expansion of det(A)/det(A) = 1
+    on the diagonal, and 0 off-diagonal (Laplace expansion with
+    repeated column). *)
+Theorem mat3_inverse_correct : forall a : Mat3,
+  mat3_determinant a <> 0 ->
+  mat3_mul (mat3_inverse a) a = mat3_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] Hdet.
+  unfold mat3_mul, mat3_inverse, mat3_determinant, mat3_identity in *.
+  simpl in *.
+  apply mat3_eq; simpl; field; exact Hdet.
+Qed.
+
+(** Theorem 83: A * inverse(A) = I when det(A) ≠ 0 (right inverse).
+    Together with Theorem 82, this establishes that mat3_inverse
+    computes the true two-sided inverse. *)
+Theorem mat3_inverse_correct_right : forall a : Mat3,
+  mat3_determinant a <> 0 ->
+  mat3_mul a (mat3_inverse a) = mat3_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] Hdet.
+  unfold mat3_mul, mat3_inverse, mat3_determinant, mat3_identity in *.
+  simpl in *.
+  apply mat3_eq; simpl; field; exact Hdet.
+Qed.
+
+(** Theorem 84: det(inverse(A)) = 1/det(A) when det(A) ≠ 0.
+    The determinant of the inverse is the reciprocal of the determinant.
+    Proof strategy: det(inv(A)) * det(A) = det(inv(A) * A) = det(I) = 1,
+    so det(inv(A)) = 1/det(A). *)
+Theorem mat3_det_inverse : forall a : Mat3,
+  mat3_determinant a <> 0 ->
+  mat3_determinant (mat3_inverse a) = / (mat3_determinant a).
+Proof.
+  intros a Hdet.
+  assert (H : mat3_determinant (mat3_inverse a) * mat3_determinant a = 1).
+  { rewrite <- mat3_det_mul.
+    rewrite mat3_inverse_correct; auto.
+    apply mat3_det_identity. }
+  apply Rmult_eq_reg_r with (r := mat3_determinant a); auto.
+  rewrite H. field. exact Hdet.
+Qed.
+
+(** Theorem 85: inverse(inverse(A)) = A when det(A) ≠ 0.
+    The inverse operation is involutive on invertible matrices.
+    Algebraic proof using uniqueness of inverse. *)
+Theorem mat3_inverse_involutive : forall a : Mat3,
+  mat3_determinant a <> 0 ->
+  mat3_determinant (mat3_inverse a) <> 0 ->
+  mat3_inverse (mat3_inverse a) = a.
+Proof.
+  intros a Hdet Hdet_inv.
+  (* inv(inv(A)) = inv(inv(A)) * I = inv(inv(A)) * (inv(A) * A)
+                  = (inv(inv(A)) * inv(A)) * A = I * A = A *)
+  rewrite <- (mat3_mul_right_identity (mat3_inverse (mat3_inverse a))).
+  rewrite <- (mat3_inverse_correct a Hdet).
+  rewrite <- mat3_mul_assoc.
+  rewrite (mat3_inverse_correct (mat3_inverse a) Hdet_inv).
+  apply mat3_mul_left_identity.
+Qed.
+
+(** Theorem 86: det(A) * det(inverse(A)) = 1 when det(A) ≠ 0.
+    Follows from det multiplicativity and inverse correctness. *)
+Theorem mat3_det_mul_inverse : forall a : Mat3,
+  mat3_determinant a <> 0 ->
+  mat3_determinant a * mat3_determinant (mat3_inverse a) = 1.
+Proof.
+  intros a Hdet.
+  rewrite mat3_det_inverse; auto.
+  field. exact Hdet.
+Qed.
+
+(** Theorem 87: inverse(A * B) = inverse(B) * inverse(A) when both invertible.
+    The inverse reverses the order of multiplication. *)
+Theorem mat3_inverse_mul : forall a b : Mat3,
+  mat3_determinant a <> 0 ->
+  mat3_determinant b <> 0 ->
+  mat3_determinant (mat3_mul a b) <> 0 ->
+  mat3_inverse (mat3_mul a b) = mat3_mul (mat3_inverse b) (mat3_inverse a).
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] [b0 b1 b2 b3 b4 b5 b6 b7 b8]
+         Hdet_a Hdet_b Hdet_ab.
+  unfold mat3_inverse, mat3_mul, mat3_determinant in *.
+  simpl in *.
+  apply mat3_eq; simpl; field; auto.
+Qed.
+
+(** Theorem 88: inverse(s * A) = (1/s) * inverse(A) when s ≠ 0 and det(A) ≠ 0.
+    Scalar factors invert independently. *)
+Theorem mat3_inverse_scale : forall (s : R) (a : Mat3),
+  s <> 0 ->
+  mat3_determinant a <> 0 ->
+  mat3_determinant (mat3_scale s a) <> 0 ->
+  mat3_inverse (mat3_scale s a) = mat3_scale (/ s) (mat3_inverse a).
+Proof.
+  intros s [a0 a1 a2 a3 a4 a5 a6 a7 a8] Hs Hdet Hdet_s.
+  unfold mat3_inverse, mat3_scale, mat3_determinant in *.
+  simpl in *.
+  apply mat3_eq; simpl; field;
+  auto with real.
+Qed.
+
+(** Theorem 89: inverse(A^T) = (inverse(A))^T when det(A) ≠ 0.
+    Transpose and inverse commute. *)
+Theorem mat3_inverse_transpose : forall a : Mat3,
+  mat3_determinant a <> 0 ->
+  mat3_determinant (mat3_transpose a) <> 0 ->
+  mat3_inverse (mat3_transpose a) = mat3_transpose (mat3_inverse a).
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8] Hdet Hdet_t.
+  unfold mat3_inverse, mat3_transpose, mat3_determinant in *.
+  simpl in *.
+  apply mat3_eq; simpl; field; auto.
+Qed.
+
+(** Theorem 90: inverse(translation(tx, ty)) = translation(-tx, -ty).
+    Translation inverse is the negation of the translation. *)
+Theorem mat3_inverse_translation : forall tx ty : R,
+  mat3_inverse (mat3_translation tx ty) = mat3_translation (-tx) (-ty).
+Proof.
+  intros tx ty.
+  unfold mat3_inverse, mat3_translation, mat3_determinant. simpl.
+  apply mat3_eq; simpl; field.
+Qed.
+
+(** Theorem 91: inverse(scaling(sx, sy)) = scaling(1/sx, 1/sy) when sx, sy ≠ 0.
+    Scaling inverse is the reciprocal scaling. *)
+Theorem mat3_inverse_scaling : forall sx sy : R,
+  sx <> 0 ->
+  sy <> 0 ->
+  mat3_inverse (mat3_scaling sx sy) = mat3_scaling (/ sx) (/ sy).
+Proof.
+  intros sx sy Hsx Hsy.
+  unfold mat3_inverse, mat3_scaling, mat3_determinant. simpl.
+  apply mat3_eq; simpl; field; split; assumption.
+Qed.
+
+(** Theorem 92: inverse(shear(sx, sy)) correctness when det ≠ 0.
+    For shear matrix, det = 1 - sx*sy, so invertible when sx*sy ≠ 1. *)
+Theorem mat3_inverse_shearing_correct : forall sx sy : R,
+  1 - sx * sy <> 0 ->
+  mat3_mul (mat3_inverse (mat3_shearing sx sy)) (mat3_shearing sx sy) = mat3_identity.
+Proof.
+  intros sx sy Hdet.
+  unfold mat3_mul, mat3_inverse, mat3_shearing, mat3_determinant, mat3_identity. simpl.
+  apply mat3_eq; simpl; field; exact Hdet.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 80 (65 original + 15 new)
+    Total theorems: 92 (80 original + 12 inverse properties)
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
 
-    New theorems added:
-    - Theorems 66-70: get_translation properties
-    - Theorems 71-73: from_cols properties
-    - Theorems 74-80: shearing properties
+    Inverse theorems added:
+    - Theorem 81: inverse(I) = I
+    - Theorem 82: inverse(A) * A = I (left inverse correctness)
+    - Theorem 83: A * inverse(A) = I (right inverse correctness)
+    - Theorem 84: det(inverse(A)) = 1/det(A)
+    - Theorem 85: inverse(inverse(A)) = A (involutive)
+    - Theorem 86: det(A) * det(inverse(A)) = 1
+    - Theorem 87: inverse(A * B) = inverse(B) * inverse(A)
+    - Theorem 88: inverse(s * A) = (1/s) * inverse(A)
+    - Theorem 89: inverse(A^T) = (inverse(A))^T
+    - Theorem 90: inverse(translation) = translation(-tx, -ty)
+    - Theorem 91: inverse(scaling) = scaling(1/sx, 1/sy)
+    - Theorem 92: inverse(shearing) correctness
 *)

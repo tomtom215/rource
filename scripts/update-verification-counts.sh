@@ -413,6 +413,46 @@ CHECKS=(
     "docs/verification/FLOATING_POINT_VERIFICATION.md|$GRAND_TOTAL theorems|FP_VERIFICATION total"
     # CERTICOQ_WASM_ASSESSMENT.md - Layer 2 Z total
     "docs/verification/CERTICOQ_WASM_ASSESSMENT.md|$COQ_Z_TOTAL theorems, all 8|CERTICOQ Layer 2 total"
+    # FORMAL_VERIFICATION.md - Summary Statistics Coq R-based row
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_TOTAL theorems|Summary Coq R-based row"
+    # FORMAL_VERIFICATION.md - per-type table Coq R column (Mat4)
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_MAT4 theorems|Per-type Mat4 Coq R"
+    # FORMAL_VERIFICATION.md - per-type table Coq R column (Color)
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_COLOR theorems|Per-type Color Coq R"
+    # FORMAL_VERIFICATION.md - per-type table Coq R column (Rect)
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_RECT theorems|Per-type Rect Coq R"
+    # FORMAL_VERIFICATION.md - per-type table Coq R column (Bounds)
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_BOUNDS theorems|Per-type Bounds Coq R"
+    # FORMAL_VERIFICATION.md - per-type table Coq R column (Utils)
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_UTILS theorems|Per-type Utils Coq R"
+    # FORMAL_VERIFICATION.md - footer Coq R-based per-type (Mat4)
+    "docs/verification/FORMAL_VERIFICATION.md|Mat4: $COQ_R_MAT4|Footer Coq R Mat4"
+    # FORMAL_VERIFICATION.md - footer Coq R-based total
+    "docs/verification/FORMAL_VERIFICATION.md|Coq R-based: $COQ_R_TOTAL|Footer Coq R total"
+    # FORMAL_VERIFICATION.md - Layer 1 R-based comment
+    "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_TOTAL R-based theorems|Layer 1 R-based comment"
+    # COQ_PROOFS.md - per-file Mat4_Proofs.v count
+    "docs/verification/COQ_PROOFS.md|Mat4_Proofs.v | $COQ_R_MAT4|COQ_PROOFS Mat4_Proofs count"
+    # COQ_PROOFS.md - per-file Color_Proofs.v count
+    "docs/verification/COQ_PROOFS.md|Color_Proofs.v | $COQ_R_COLOR|COQ_PROOFS Color_Proofs count"
+    # COQ_PROOFS.md - per-file Rect_Proofs.v count
+    "docs/verification/COQ_PROOFS.md|Rect_Proofs.v | $COQ_R_RECT|COQ_PROOFS Rect_Proofs count"
+    # COQ_PROOFS.md - per-file Bounds_Proofs.v count
+    "docs/verification/COQ_PROOFS.md|Bounds_Proofs.v | $COQ_R_BOUNDS|COQ_PROOFS Bounds_Proofs count"
+    # COQ_PROOFS.md - per-file Utils.v count
+    "docs/verification/COQ_PROOFS.md|Utils.v | $COQ_R_UTILS|COQ_PROOFS Utils count"
+    # COQ_PROOFS.md - R-based footer total
+    "docs/verification/COQ_PROOFS.md|Total theorems: $COQ_R_TOTAL|COQ_PROOFS R-based footer total"
+    # kani_proofs/mod.rs - Verus count in narrative
+    "crates/rource-math/src/kani_proofs/mod.rs|Verus ($VERUS_TOTAL proof functions)|mod.rs Verus count"
+    # kani_proofs/mod.rs - Coq count in narrative
+    "crates/rource-math/src/kani_proofs/mod.rs|Coq ($COQ_ALL theorems)|mod.rs Coq count"
+    # VERIFICATION_COVERAGE.md - Coq all count
+    "docs/verification/VERIFICATION_COVERAGE.md|$COQ_ALL|VERIFICATION_COVERAGE Coq all"
+    # SETUP_GUIDE.md - Coq all count
+    "docs/verification/SETUP_GUIDE.md|$COQ_ALL theorems|SETUP_GUIDE Coq all count"
+    # SETUP_GUIDE.md - Verus count in tool table
+    "docs/verification/SETUP_GUIDE.md|$VERUS_TOTAL proof functions|SETUP_GUIDE Verus tool table"
 )
 
 if [[ "$MODE" == "check" ]]; then
@@ -503,6 +543,25 @@ if [[ -f "$FV" ]]; then
     sed -i -E "s/rource-math with [0-9]+ machine-checked/rource-math with $GRAND_TOTAL machine-checked/" "$FV"
     # All harnesses verified line
     sed -i -E "s/All [0-9]+ harnesses verified/All $KANI_TOTAL harnesses verified/" "$FV"
+    # Summary Statistics Coq R-based row
+    sed -i -E "s/[0-9]+ theorems \| 0 \| Vec2-4, Mat3-4, Color, Rect, Bounds, Utils \+ Complexity \+ CrossType \| Machine-checked/$COQ_R_TOTAL theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + Complexity + CrossType | Machine-checked/" "$FV"
+    # Summary Statistics Combined row
+    sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*10 types \+ FP\*\*/**$GRAND_TOTAL** | **0** | **10 types + FP**/" "$FV"
+    # Per-type table: Coq R-based column per type (context-aware)
+    sed -i -E "/\| Mat4 \|/{s/\| [0-9]+ theorems \| $COQ_Z_MAT4 theorems/| $COQ_R_MAT4 theorems | $COQ_Z_MAT4 theorems/}" "$FV"
+    sed -i -E "/\| Color \|/{s/\| [0-9]+ theorems \| $COQ_Z_COLOR theorems/| $COQ_R_COLOR theorems | $COQ_Z_COLOR theorems/}" "$FV"
+    sed -i -E "/\| Rect \|/{s/\| [0-9]+ theorems \| $COQ_Z_RECT theorems/| $COQ_R_RECT theorems | $COQ_Z_RECT theorems/}" "$FV"
+    sed -i -E "/\| Bounds \|/{s/\| [0-9]+ theorems \| $COQ_Z_BOUNDS theorems/| $COQ_R_BOUNDS theorems | $COQ_Z_BOUNDS theorems/}" "$FV"
+    sed -i -E "/\| Utils \|/{s/\| [0-9]+ theorems \| $COQ_Z_UTILS theorems/| $COQ_R_UTILS theorems | $COQ_Z_UTILS theorems/}" "$FV"
+    # Per-type table: Total column per type
+    sed -i -E "/\| Bounds \|/{s/\| [0-9]+ \| TRIPLE/| $TOTAL_BOUNDS | TRIPLE/}" "$FV"
+    sed -i -E "/\| Utils \|/{s/\| [0-9]+ \| TRIPLE/| $TOTAL_UTILS | TRIPLE/}" "$FV"
+    # Footer: Coq R-based per-type (full breakdown)
+    sed -i -E "s/Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Bounds: [0-9]+, Complexity: 60, CrossType: 51, Utils: [0-9]+/Mat4: $COQ_R_MAT4, Color: $COQ_R_COLOR, Rect: $COQ_R_RECT, Bounds: $COQ_R_BOUNDS, Complexity: 60, CrossType: 51, Utils: $COQ_R_UTILS/" "$FV"
+    # Footer: Coq R-based total
+    sed -i -E "s/Coq R-based: [0-9]+/Coq R-based: $COQ_R_TOTAL/" "$FV"
+    # Layer 1 R-based comment
+    sed -i -E "s/[0-9]+ R-based theorems/$COQ_R_TOTAL R-based theorems/" "$FV"
     echo "  Done."
 fi
 
@@ -514,6 +573,11 @@ if [[ -f "$VC" ]]; then
     sed -i -E "s/Kani IEEE 754 harnesses: [0-9]+/Kani IEEE 754 harnesses: $KANI_TOTAL/" "$VC"
     # Kani total row in bold
     sed -i -E "s/\| \*\*Total\*\* \| \*\*[0-9]+\*\* \| \*\*All verified/| **Total** | **$KANI_TOTAL** | **All verified/" "$VC"
+    # Coq-all narrative counts (R + Z + FP)
+    sed -i -E "s/[0-9]+ existing Coq theorems/$COQ_ALL existing Coq theorems/g" "$VC"
+    sed -i -E "s/[0-9]+ Coq theorems compile/$COQ_ALL Coq theorems compile/g" "$VC"
+    sed -i -E "s/[0-9]+ machine-checked/$COQ_ALL machine-checked/g" "$VC"
+    sed -i -E "s/[0-9]+ R-based \+ [0-9]+ Z-based \+ [0-9]+ FP/$COQ_R_TOTAL R-based + $COQ_Z_TOTAL Z-based + $COQ_FP_TOTAL FP/g" "$VC"
     echo "  Done."
 fi
 
@@ -531,6 +595,19 @@ if [[ -f "$CP" ]]; then
     sed -i -E "s/\*Total theorems: [0-9]+ \(Vec2: $COQ_Z_VEC2, Vec3: $COQ_Z_VEC3, Vec4: $COQ_Z_VEC4, Mat3: $COQ_Z_MAT3/*Total theorems: $COQ_Z_TOTAL (Vec2: $COQ_Z_VEC2, Vec3: $COQ_Z_VEC3, Vec4: $COQ_Z_VEC4, Mat3: $COQ_Z_MAT3/" "$CP"
     # Combined Coq total
     sed -i -E "s/[0-9]+ total Coq theorems/$COQ_COMBINED total Coq theorems/" "$CP"
+    # R-based per-file counts in table (context-aware by file name)
+    sed -i -E "/Mat4_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_MAT4 | VERIFIED/}" "$CP"
+    sed -i -E "/Color_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_COLOR | VERIFIED/}" "$CP"
+    sed -i -E "/Rect_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_RECT | VERIFIED/}" "$CP"
+    sed -i -E "/Bounds_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_BOUNDS | VERIFIED/}" "$CP"
+    sed -i -E "/\| Utils\.v \| [0-9]+ \| VERIFIED/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_UTILS | VERIFIED/}" "$CP"
+    # R-based total row: update both counts (with and without spec lemmas)
+    COQ_R_WITH_SPECS=$((COQ_R_TOTAL + 10))
+    sed -i -E "s/\| \*\*Total\*\* \| \*\*[0-9]+\*\* \| VERIFIED/| **Total** | **$COQ_R_WITH_SPECS** | VERIFIED/" "$CP"
+    sed -i -E "s/Canonical R-based count: [0-9]+/Canonical R-based count: $COQ_R_TOTAL/" "$CP"
+    sed -i -E "s/Complexity: 60, CrossType: 51 included in [0-9]+/Complexity: 60, CrossType: 51 included in $COQ_R_TOTAL/" "$CP"
+    # R-based footer per-type
+    sed -i -E "s/Total theorems: [0-9]+ \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Bounds: [0-9]+, Complexity: 60, CrossType: 51, Utils: [0-9]+\)/Total theorems: $COQ_R_TOTAL (Vec2: $COQ_R_VEC2, Vec3: $COQ_R_VEC3, Vec4: $COQ_R_VEC4, Mat3: $COQ_R_MAT3, Mat4: $COQ_R_MAT4, Color: $COQ_R_COLOR, Rect: $COQ_R_RECT, Bounds: $COQ_R_BOUNDS, Complexity: 60, CrossType: 51, Utils: $COQ_R_UTILS)/" "$CP"
     echo "  Done."
 fi
 
@@ -735,6 +812,24 @@ if [[ -f "$KM" ]]; then
     sed -i -E "s/Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+/Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4/" "$KM"
     sed -i -E "s/Mat3: [0-9]+, Mat4: [0-9]+/Mat3: $KANI_MAT3, Mat4: $KANI_MAT4/" "$KM"
     sed -i -E "s/Color: [0-9]+, Rect: [0-9]+(, Bounds: [0-9]+)?, Utils: [0-9]+/Color: $KANI_COLOR, Rect: $KANI_RECT, Bounds: $KANI_BOUNDS, Utils: $KANI_UTILS/" "$KM"
+    # Verus and Coq counts in narrative comment
+    sed -i -E "s/Verus \([0-9]+ proof functions\)/Verus ($VERUS_TOTAL proof functions)/" "$KM"
+    sed -i -E "s/Coq \([0-9]+ theorems\)/Coq ($COQ_ALL theorems)/" "$KM"
+    echo "  Done."
+fi
+
+# --- SETUP_GUIDE.md (narrative) ---
+SG="$PROJECT_ROOT/docs/verification/SETUP_GUIDE.md"
+if [[ -f "$SG" ]]; then
+    echo "Updating SETUP_GUIDE.md narrative counts..."
+    # Tool table Coq-all count
+    sed -i -E "s/Proof assistant \([0-9]+ theorems: [0-9]+ R-based \+ [0-9]+ Z-based \+ [0-9]+ FP\)/Proof assistant ($COQ_ALL theorems: $COQ_R_TOTAL R-based + $COQ_Z_TOTAL Z-based + $COQ_FP_TOTAL FP)/" "$SG"
+    # Coq heading count
+    sed -i -E "s/# Coq \([0-9]+ theorems/# Coq ($COQ_ALL theorems/" "$SG"
+    # Footer combined
+    sed -i -E "s/[0-9]+ formally verified theorems\/harnesses \(Verus: [0-9]+, Coq: [0-9]+, Kani: [0-9]+\)/$GRAND_TOTAL formally verified theorems\/harnesses (Verus: $VERUS_TOTAL, Coq: $COQ_ALL, Kani: $KANI_TOTAL)/" "$SG"
+    # Tool table Verus count
+    sed -i -E "s/Rust formal verification \([0-9]+ proof functions\)/Rust formal verification ($VERUS_TOTAL proof functions)/" "$SG"
     echo "  Done."
 fi
 

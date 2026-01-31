@@ -669,3 +669,4 @@ Proof.
   intros [a1 a2 a3 a4] amount px py Ha [H1 [H2 [H3 H4]]].
   unfold bounds_contains, bounds_expand in *. simpl in *. lra.
 Qed.
+

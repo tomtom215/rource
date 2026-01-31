@@ -493,6 +493,11 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 165 | 2026-01-31 | b9iYZ | Darken/lighten composition follows `1-(1-a1)*(1-a2)` pattern | Both `color_darken` and `color_lighten` compose multiplicatively | `ring` solves automatically; mathematically: `f(f(x,a1),a2) = f(x, 1-(1-a1)(1-a2))` |
 | 166 | 2026-01-31 | b9iYZ | `Rle_dec` case-split required for `color_contrasting` proofs | `color_contrasting` uses `if Rle_dec (luminance c) (1/2) then white else black` | `destruct (Rle_dec _ _) as [H\|H]` to case-split, then each branch resolves by `reflexivity` or `exfalso; lra` |
 
+| 167 | 2026-01-31 | 6qbb3 | `field; exact Hdet` fails when `field` generates conjunction side conditions | `field` on inverse expressions produces `det(A) <> 0 /\ det(inv(A)) <> 0`; single `exact` can't satisfy conjunction | Use `field; auto` or `field; split; assumption` to discharge conjunction side conditions |
+| 168 | 2026-01-31 | 6qbb3 | Algebraic proof chains avoid brute-force `field` on nested inverses | `inverse(inverse(A)) = A` proof via component-wise `field` requires both `det(A)` AND `det(inv(A))` side conditions | Chain rewrites: `rewrite <- mat3_mul_right_identity`, `rewrite <- mat3_inverse_correct`, `rewrite <- mat3_mul_assoc`, `rewrite mat3_inverse_correct` — 5-line proof vs. fragile `field` |
+| 169 | 2026-01-31 | 6qbb3 | `mat3_det_inverse` requires algebraic proof, not direct `field` | `field` on fully-unfolded `det(inverse(A))` produces "not a valid field equation" | Use `mat3_det_mul` + `mat3_inverse_correct` + `Rmult_eq_reg_r` to prove `det(inv(A)) * det(A) = 1` algebraically, then derive `det(inv(A)) = /det(A)` |
+| 170 | 2026-01-31 | 6qbb3 | Rect_Proofs.v and Bounds_Proofs.v are more comprehensive than theorem number suggests | 120/86 theorems already cover ALL obvious properties including compositions, inverses, center preservation | Always grep ALL existing theorem names before proposing additions; output is available via `grep '^Theorem\\|^Lemma' file.v \| sort` |
+
 ---
 
-*Last updated: 2026-01-31 | 166 entries | 14 categories*
+*Last updated: 2026-01-31 | 170 entries | 14 categories*
