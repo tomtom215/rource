@@ -14,12 +14,13 @@ For an overview of the complete verification effort (Verus + Coq), see
 | Vec2 | 42 | 19 (45%) | 42 (100%) | 45% |
 | Vec3 | 28 | 19 (68%) | 28 (100%) | 68% |
 | Vec4 | 24 | 17 (71%) | 24 (100%) | 71% |
-| Mat3 | 17 | 12 (71%) | 17 (100%) | 71% |
-| Mat4 | 26 | 9 (35%) | 26 (100%) | 35% |
+| Mat3 | 17 | 15 (88%) | 17 (100%) | 88% |
+| Mat4 | 26 | 14 (54%) | 26 (100%) | 54% |
 | Color | 38 | 17 (45%) | 38 (100%) | 45% |
-| Rect | 50 | 18 (36%) | 50 (100%) | 36% |
+| Rect | 50 | 23 (46%) | 50 (100%) | 46% |
+| Bounds | 23 | 21 (91%) | 23 (100%) | 91% |
 | Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
-| **Total** | **230** | **116 (50.4%)** | **230 (100%)** | **50.4%** |
+| **Total** | **253** | **150 (59.3%)** | **253 (100%)** | **59.3%** |
 
 ## Verified Operations by Module
 
@@ -45,17 +46,19 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 **Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, floating-point operations
 
-### Mat3 (12 operations verified)
+### Mat3 (15 operations verified)
 - `new`, `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
 - `determinant`, `trace`, `translation`, `scaling`
+- `get_translation`, `shearing`, `from_cols`
 
-**Not verified**: `rotation`, `inverse`, `transform_point`, `transform_vector`, etc.
+**Not verified**: `rotation`, `inverse`, `transform_point`, `transform_vector`
 
-### Mat4 (9 operations verified)
+### Mat4 (14 operations verified)
 - `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
-- `determinant`, `trace`
+- `determinant`, `trace`, `from_cols`
+- `col` (col0-3), `row` (row0-3), `orthographic`, `get_translation`
 
-**Not verified**: `perspective`, `orthographic`, `look_at`, `rotation_*`, `inverse`, etc.
+**Not verified**: `perspective`, `look_at`, `rotation_*`, `inverse`, `transform_point`, etc.
 
 ### Color (17 operations verified)
 - `new`, `rgb`, `gray`, `with_alpha`, `fade`, `lerp`, `premultiplied`, `blend_over`, `luminance`, `clamp`, `transparent`, `black`, `white`, `clamp_component`
@@ -67,17 +70,29 @@ For an overview of the complete verification effort (Verus + Coq), see
 - `to_hex`, `from_hex`, `to_array`, `from_array`
 - Floating-point-specific: `approx_eq`, `is_finite`, `is_nan`
 
-### Rect (18 operations verified)
+### Rect (23 operations verified)
 - `new`, `zero`, `right`, `bottom`, `center_x`, `center_y`, `area`, `perimeter`
 - `contains_point`, `contains_rect`, `intersects`, `union`, `translate`, `expand`, `shrink`, `is_valid`
 - `intersection` (commutativity, self-intersection, area properties)
 - `scale` (composition property)
+- `left`, `top`, `is_empty`, `from_corners`, `expand_xy`
 
 **Not verified** (require floating-point or complex geometry):
 - `from_center`, `from_points`
 - `normalize`, `merge_bounds`, `clip_to`
 - Floating-point-specific: `lerp`, `grow_to_contain`, iterator-based operations
 - Complex geometry: `transform_by_mat3`, `transform_by_mat4`
+
+### Bounds (21 operations verified)
+- `new`, `from_points`, `from_center_half_extents`, `from_center_size`
+- `width`, `height`, `size`, `center`, `half_extents`, `area`
+- `contains`, `contains_bounds`, `intersects`, `intersection`, `union`
+- `include_point`, `expand`, `shrink`, `translate`
+- `is_valid`, `is_empty`
+
+**Not verified**:
+- `to_rect` (type conversion)
+- `approx_eq` (floating-point epsilon comparison)
 
 ### Utils (5 operations verified)
 - `lerp`, `clamp` (both R-based and Z-based proofs)
@@ -101,9 +116,9 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 
 | Priority | Module | Operations | Rationale | Status |
 |----------|--------|------------|-----------|--------|
-| ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 35, Coq R: 46, Coq Z: 28) |
-| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 33, Coq R: 43, Coq Z: 24) |
-| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 10, Coq Z: 8) |
+| ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 45, Coq R: 88, Coq Z: 28) |
+| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 52, Coq R: 112, Coq Z: 43) |
+| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 23, Coq Z: 13) |
 | 4 | Mat3/Mat4 | `determinant`, `trace` properties | Mathematical foundations | DONE (basic: det(I), det(0), det(A^T), det(-A), trace properties) |
 | 5 | Color | HSL <-> RGB conversion | Requires transcendentals | Blocked (floating-point) |
 
@@ -179,7 +194,7 @@ For rource-math, we recommend:
 Our current approach of proving properties over `int` specifications and documenting
 the f32 translation assumptions is the recommended best practice per Verus maintainers.
 
-The 49.6% of operations not formally verified (those requiring floating-point or
+The 40.7% of operations not formally verified (those requiring floating-point or
 transcendentals) will remain covered by:
 - Unit tests (100% coverage)
 - Property-based testing
@@ -283,7 +298,7 @@ The generated code requires `RocqOfRust.RocqOfRust` which depends on:
 
 **5. Version mismatch: Rocq 9.0 vs Coq 8.18**
 
-Our 673 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
+Our 1354 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
 Bridging requires migrating one or both sides.
 
 ### Comparison: rocq-of-rust vs Our Approach
@@ -295,7 +310,7 @@ Bridging requires migrating one or both sides.
 | f32 support | `UnsupportedLiteral` | Modeled as R (reals) or Z (integers) |
 | Admits | Structural `Admitted` axioms | Zero admits |
 | Proof style | Systems-level | Mathematical properties |
-| Compilability | Blocked (infra) | All 673 theorems compile |
+| Compilability | Blocked (infra) | All 1354 Coq theorems compile |
 | Best suited for | Smart contracts, protocols | Pure math functions |
 
 ### Recommendation
@@ -307,8 +322,8 @@ Bridging requires migrating one or both sides.
 4. The bridging effort would be enormous with uncertain feasibility
 
 **Our current approach remains optimal**: clean algebraic specifications in Coq 8.18
-with manual correspondence to Rust implementations, verified by 939 machine-checked
-theorems with zero admits. The spec-to-implementation gap is documented as a known
+with manual correspondence to Rust implementations, verified by 1354 machine-checked
+Coq theorems (909 R-based + 346 Z-based + 99 FP) with zero admits. The spec-to-implementation gap is documented as a known
 limitation and mitigated by:
 - Systematic specification writing following Rust implementation structure
 - 100% unit test coverage verifying runtime behavior
@@ -356,7 +371,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 1815 theorems, 50.4% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 1864 theorems, 59.3% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
@@ -379,7 +394,8 @@ that neither Verus nor Coq can directly offer.
 | Mat4 | 26 | determinant finite, inverse(zero)=None, inverse(I)=Some, orthographic finite, identity det=1, zero det=0, transpose involutive, translation/scaling finite, rotation_x/y/z no-NaN, transform_point finite, identity preserves point, approx_eq reflexive, det_neg no-NaN, det_diagonal finite, trace operations finite, translation_compose componentwise, scaling_compose componentwise |
 | Color | 21 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN, clamp bounded, premultiplied no-NaN, fade no-NaN, with_alpha preserves RGB, to_argb8/abgr8 normalized, from_hex_alpha/rgba8 normalized, contrasting valid, approx_eq reflexive, scale finite, invert finite, mix no-NaN, add clamped, darken/lighten finite |
 | Rect | 20 | area ≥ 0, center finite, contains origin, perimeter ≥ 0, from_center_size center, translate preserves size, expand finite, is_valid positive dims, self-intersection, contains_self, scale_from_center finite/componentwise, approx_eq reflexive, from_corners valid, grow_to_contain finite, normalize finite, lerp finite, expand_xy finite |
-| **Total** | **134** | **All verified, 0 failures** |
+| Bounds | 20 | area ≥ 0, width/height ≥ 0, center finite, size finite, contains min, contains_bounds self, intersects self, translate preserves size, expand/shrink finite, from_points valid, from_center_half_extents finite, is_valid/is_empty complementarity, include_point contains, union contains both, approx_eq reflexive, to_rect finite, from_center_size finite |
+| **Total** | **154** | **All verified, 0 failures** |
 
 **Known limitation**: `Mat4::perspective()` uses `f32::tan()` which delegates to C `tanf` —
 unsupported by Kani's CBMC backend (tracked: github.com/model-checking/kani/issues/2423).
@@ -394,9 +410,9 @@ All edge cases are IEEE 754-compliant behavior requiring bounded input domains f
 
 ---
 
-*Last verified: 2026-01-30*
-*Formal verification coverage: 116/230 operations (50.4%)*
-*Kani IEEE 754 harnesses: 134 (all verified, 0 failures)*
-*Unit test coverage: 230/230 operations (100%)*
-*Unverifiable operations: 114 (floating-point, transcendentals, type conversions)*
+*Last verified: 2026-01-31*
+*Formal verification coverage: 150/253 operations (59.3%)*
+*Kani IEEE 754 harnesses: 154 (all verified, 0 failures)*
+*Unit test coverage: 253/253 operations (100%)*
+*Unverifiable operations: ~103 (floating-point, transcendentals, type conversions)*
 *Landscape survey: 8 tools investigated (6 new + 2 current), Kani adopted*

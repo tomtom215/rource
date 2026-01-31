@@ -28,15 +28,15 @@
 //! Kani operates via CBMC (C Bounded Model Checker) and symbolically
 //! explores ALL 2^32 bit patterns for each `kani::any::<f32>()` call.
 //! This provides exhaustive verification within the bounded domain,
-//! complementing our Verus (266 proof functions) and Coq (681 theorems)
+//! complementing our Verus (327 proof functions) and Coq (1354 theorems)
 //! algebraic proofs which verify mathematical identities but cannot
 //! reason about IEEE 754 special values.
 //!
-//! # Harness Count (134 total)
+//! # Harness Count (154 total)
 //!
 //! - Vec2: 21, Vec3: 18, Vec4: 9
 //! - Mat3: 14, Mat4: 26
-//! - Color: 21, Rect: 20, Utils: 5
+//! - Color: 21, Rect: 20, Bounds: 20, Utils: 5
 //!
 //! # Running
 //!
@@ -45,6 +45,7 @@
 //! cargo kani -p rource-math --harness verify_vec2_length_non_negative
 //! ```
 
+mod bounds;
 mod color;
 mod mat3;
 mod mat4;

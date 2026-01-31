@@ -78,7 +78,7 @@
 |------|------|--------|
 | Algebraic correctness (Rust) | Verus | ADOPT (327 proofs) |
 | Mathematical theorems | Coq | ADOPT (796 theorems) |
-| IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (134 harnesses) |
+| IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (154 harnesses) |
 | FP error bounds | Coq + Flocq | ADOPT (99 theorems) |
 | Pure functional extraction | Aeneas | MONITOR (no f32 yet) |
 | Deductive FP via Why3/CVC5 | Creusot | MONITOR |
@@ -155,6 +155,9 @@
 | 96 | Kani SIGSEGV when compiling 110+ harnesses at once | Compiler memory issue | Run individually: `cargo kani --harness <name>` |
 | 100 | 65 new harnesses scale well across 7 types | Same patterns apply uniformly | Standard templates: `verify_<type>_<op>_finite`, etc. |
 | 116 | Harness name collisions cause compile errors | Duplicate symbols | Use descriptive suffixes |
+| 138 | Adding new Kani module requires 6-place script update | Script has per-file vars, TOTAL, JSON, display, sed | Checklist: count var, TOTAL sum, per-type total, JSON, printf, sed |
+| 139 | `mod` declaration easily missed for new Kani file | Created file but forgot `mod bounds;` | Verify module registration immediately after file creation |
+| 141 | Bounds `intersects` self-check needs strict inequality gap | `intersects()` uses `<` not `<=` | Require `width > 1.0` for self-intersection |
 
 ---
 
@@ -253,6 +256,7 @@
 | 108 | Documentation drift inevitable without CI enforcement | Counts go stale within a single session | CI must enforce `--check` mode on both scripts |
 | 109 | Two-tier script architecture for doc automation | Verification counts vs other metrics need different extraction | `update-verification-counts.sh` + `update-doc-metrics.sh` |
 | 110 | Ground truth must come from source files | Hardcoded counts go stale immediately | Parse actual source: `grep -cE` patterns |
+| 140 | Sed patterns with hardcoded old counts become stale | Script used `**446 theorems**` literal | Use `[0-9]+` patterns for numbers; never hardcode previous values |
 
 ---
 
@@ -440,7 +444,11 @@ All 123 entries in chronological order. Entry numbers match category table refer
 | 135 | 2026-01-31 | GlDgV | Mutation test doc comments need backticks for clippy `doc_markdown` | `/// Kill mutant: foo_bar` triggers doc_markdown lint | Wrap all identifiers: `` /// Kill mutant: `foo_bar` `` |
 | 136 | 2026-01-31 | GlDgV | Equivalent mutants: `ParseOptions::strict()` → Default identical | Both produce same struct field values | Document as equivalent; don't write tests for impossible-to-kill mutants |
 | 137 | 2026-01-31 | GlDgV | Docker glibc mismatch: Trixie builder (glibc 2.39) vs distroless cc-debian12 (glibc 2.36) | All Docker stages must use same Debian generation | Upgrade distroless to cc-debian13; never mix Debian generations in multi-stage builds |
+| 138 | 2026-01-31 | pnY2l | Adding new Kani module requires script update in 6 places | `update-verification-counts.sh` has per-file variables, TOTAL sum, JSON output, display row, sed patterns, and consistency checks | Checklist: (1) count variable, (2) TOTAL sum, (3) per-type total, (4) JSON, (5) display printf, (6) sed patterns for docs |
+| 139 | 2026-01-31 | pnY2l | `mod` declaration easily missed when creating new Kani file | Created bounds.rs but forgot `mod bounds;` in mod.rs | Always verify module registration immediately after file creation; add to checklist |
+| 140 | 2026-01-31 | pnY2l | Documentation sed patterns with hardcoded old counts become stale | Script used `**446 theorems**` as literal match; broke when counts changed | Use `[0-9]+` patterns for numbers, not hardcoded values |
+| 141 | 2026-01-31 | pnY2l | Kani Bounds `intersects` self-check requires strict inequality gap | `intersects()` uses `<` not `<=`; degenerate bounds fail self-intersection | Require `width > 1.0` to ensure `min + width > min` in IEEE 754 |
 
 ---
 
-*Last updated: 2026-01-31 | 137 entries | 14 categories*
+*Last updated: 2026-01-31 | 141 entries | 14 categories*

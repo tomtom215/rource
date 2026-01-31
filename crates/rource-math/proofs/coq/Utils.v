@@ -211,3 +211,67 @@ Proof.
   unfold rapprox_eq in *.
   rewrite Rabs_minus_sym. exact H.
 Qed.
+
+(** Theorem 24: triangle inequality for approx_eq.
+    If |a - b| < eps1 and |b - c| < eps2 then |a - c| < eps1 + eps2. *)
+Theorem rapprox_eq_triangle : forall (a b c eps1 eps2 : R),
+  rapprox_eq a b eps1 -> rapprox_eq b c eps2 ->
+  rapprox_eq a c (eps1 + eps2).
+Proof.
+  intros a b c eps1 eps2 Hab Hbc.
+  unfold rapprox_eq in *.
+  assert (Hac : a - c = (a - b) + (b - c)) by lra.
+  rewrite Hac.
+  eapply Rle_lt_trans. apply Rabs_triang.
+  lra.
+Qed.
+
+(** Theorem 25: approx_eq is monotone in epsilon. *)
+Theorem rapprox_eq_monotone_eps : forall (a b eps1 eps2 : R),
+  eps1 <= eps2 -> rapprox_eq a b eps1 -> rapprox_eq a b eps2.
+Proof.
+  intros a b eps1 eps2 Hle Hab.
+  unfold rapprox_eq in *. lra.
+Qed.
+
+(** Theorem 26: lerp is bounded between endpoints when 0 <= t <= 1 and a <= b. *)
+Theorem rlerp_bounded : forall (a b t : R),
+  a <= b -> 0 <= t -> t <= 1 ->
+  a <= rlerp a b t /\ rlerp a b t <= b.
+Proof.
+  intros a b t Hab Ht0 Ht1. unfold rlerp. nra.
+Qed.
+
+(** Theorem 27: lerp nesting: lerp(a, b, lerp(0, 1, t)) = lerp(a, b, t). *)
+Theorem rlerp_nesting_unit : forall (a b t : R),
+  rlerp a b (rlerp 0 1 t) = rlerp a b t.
+Proof.
+  intros. unfold rlerp. lra.
+Qed.
+
+(** Theorem 28: clamp distance from center bounded by half-width. *)
+Theorem rclamp_center_distance : forall (v lo hi : R),
+  lo <= hi ->
+  Rabs (rclamp v lo hi - (lo + hi) / 2) <= (hi - lo) / 2.
+Proof.
+  intros v lo hi Hle. unfold rclamp.
+  destruct (Rlt_dec v lo); [|destruct (Rlt_dec hi v)];
+  (apply Rabs_le; lra).
+Qed.
+
+(** Theorem 29: clamp preserves ordering within range. *)
+Theorem rclamp_preserves_le : forall (u v lo hi : R),
+  lo <= hi -> u <= v ->
+  rclamp u lo hi <= rclamp v lo hi.
+Proof.
+  intros u v lo hi Hle Huv. unfold rclamp.
+  destruct (Rlt_dec u lo); destruct (Rlt_dec hi u);
+  destruct (Rlt_dec v lo); destruct (Rlt_dec hi v); lra.
+Qed.
+
+(** Theorem 30: lerp composition: lerp(a, lerp(a, b, s), t) = lerp(a, b, s*t). *)
+Theorem rlerp_compose : forall (a b s t : R),
+  rlerp a (rlerp a b s) t = rlerp a b (s * t).
+Proof.
+  intros. unfold rlerp. ring.
+Qed.

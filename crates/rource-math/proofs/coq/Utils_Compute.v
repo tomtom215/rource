@@ -191,3 +191,82 @@ Proof.
     + apply Z.ltb_ge in E2. apply Z.ltb_lt in E4. lia.
     + apply Z.ltb_ge in E2. apply Z.ltb_ge in E4. lia.
 Qed.
+
+(** * Approximate Equality (Z-based) *)
+
+(** Approximate equality: |a - b| < eps *)
+Definition zapprox_eq (a b eps : Z) : Prop :=
+  Z.abs (a - b) < eps.
+
+(** Theorem: triangle inequality for approx_eq. *)
+Theorem zapprox_eq_triangle : forall (a b c eps1 eps2 : Z),
+  zapprox_eq a b eps1 -> zapprox_eq b c eps2 ->
+  zapprox_eq a c (eps1 + eps2).
+Proof.
+  intros a b c eps1 eps2 Hab Hbc.
+  unfold zapprox_eq in *.
+  assert (Hac : a - c = (a - b) + (b - c)) by lia.
+  rewrite Hac.
+  eapply Z.le_lt_trans.
+  - apply Z.abs_triangle.
+  - lia.
+Qed.
+
+(** Theorem: approx_eq is monotone in epsilon. *)
+Theorem zapprox_eq_monotone_eps : forall (a b eps1 eps2 : Z),
+  eps1 <= eps2 -> zapprox_eq a b eps1 -> zapprox_eq a b eps2.
+Proof.
+  intros a b eps1 eps2 Hle Hab.
+  unfold zapprox_eq in *. lia.
+Qed.
+
+(** * Additional Lerp Boundedness *)
+
+(** Theorem: lerp is bounded between endpoints when 0 <= t <= 1000 and a <= b. *)
+Theorem zlerp_bounded : forall (a b t : Z),
+  a <= b -> 0 <= t -> t <= 1000 ->
+  a <= zlerp a b t /\ zlerp a b t <= b.
+Proof.
+  intros a b t Hab Ht0 Ht1. unfold zlerp.
+  assert (Hba : 0 <= b - a) by lia.
+  assert (Hprod : 0 <= (b - a) * t).
+  { apply Z.mul_nonneg_nonneg; lia. }
+  split.
+  - assert (Hdiv : 0 <= (b - a) * t / 1000).
+    { apply Z.div_pos; lia. }
+    lia.
+  - assert (Hle : (b - a) * t <= (b - a) * 1000).
+    { apply Z.mul_le_mono_nonneg_l; lia. }
+    assert (Hdiv : (b - a) * t / 1000 <= (b - a) * 1000 / 1000).
+    { apply Z.div_le_mono; lia. }
+    rewrite Z.div_mul in Hdiv by lia. lia.
+Qed.
+
+(** Theorem: lerp nesting with unit interval: zlerp(a, b, zlerp(0, 1000, t)) = zlerp(a, b, t). *)
+Theorem zlerp_nesting_unit : forall (a b t : Z),
+  zlerp a b (zlerp 0 1000 t) = zlerp a b t.
+Proof.
+  intros.
+  assert (H: zlerp 0 1000 t = t).
+  { unfold zlerp.
+    replace (1000 - 0) with 1000 by lia.
+    rewrite Z.mul_comm.
+    rewrite Z.div_mul by lia.
+    lia. }
+  rewrite H. reflexivity.
+Qed.
+
+(** * Additional Clamp Distance Properties *)
+
+(** Theorem: clamp distance from midpoint bounded (scaled by 2 to avoid Z division). *)
+(** That is: |lo + hi - 2 * clamp(v, lo, hi)| <= hi - lo. *)
+Theorem zclamp_center_distance_2x : forall (v lo hi : Z),
+  lo <= hi ->
+  Z.abs (lo + hi - 2 * zclamp v lo hi) <= hi - lo.
+Proof.
+  intros v lo hi Hle.
+  assert (H := zclamp_in_range v lo hi Hle).
+  destruct H as [Hlo Hhi].
+  destruct (Z.abs_spec (lo + hi - 2 * zclamp v lo hi)) as [[_ Heq] | [_ Heq]];
+  rewrite Heq; lia.
+Qed.

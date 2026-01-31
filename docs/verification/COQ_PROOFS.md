@@ -10,7 +10,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 ## Coq Version
 
 - **Coq**: 8.18
-- **Admits**: 0 (across all 1255 theorems)
+- **Admits**: 0 (across all 1284 theorems, R+Z+FP)
 - **Compilation time**: ~45 seconds total (32 .vo files)
 
 ## Layered Architecture
@@ -38,23 +38,23 @@ For an overview of the complete verification effort (Verus + Coq), see
 | File | Theorems | Status | Key Properties |
 |------|----------|--------|----------------|
 | Vec2.v | 1 | VERIFIED | Specification (equality lemma) |
-| Vec2_Proofs.v | 105 | VERIFIED | Vector space axioms, dot/cross, perp, lerp, reflect, project, reject, min/max element, div, Cauchy-Schwarz, neg, sub, from_angle, distance, normalize, angle_between |
+| Vec2_Proofs.v | 110 | VERIFIED | Vector space axioms, dot/cross, perp, lerp, reflect, project, reject, min/max element, div, Cauchy-Schwarz, neg, sub, from_angle, distance, normalize, angle_between |
 | Vec3.v | 1 | VERIFIED | Specification (equality lemma) |
-| Vec3_Proofs.v | 109 | VERIFIED | Cross product, scalar triple, right-hand rule, reflect, project, reject, min/max element, div, normalized_length_sq, clamp bounds, neg, sub, from_spherical, distance, normalize |
+| Vec3_Proofs.v | 115 | VERIFIED | Cross product, scalar triple, right-hand rule, reflect, project, reject, min/max element, div, normalized_length_sq, clamp bounds, neg, sub, from_spherical, distance, normalize |
 | Vec4.v | 1 | VERIFIED | Specification (equality lemma) |
-| Vec4_Proofs.v | 91 | VERIFIED | Orthonormal basis, 4D vector space, min/max element, div, lerp, mul algebraic properties, neg, sub, from_vec3, distance, normalize |
+| Vec4_Proofs.v | 96 | VERIFIED | Orthonormal basis, 4D vector space, min/max element, div, lerp, mul algebraic properties, neg, sub, from_vec3, distance, normalize |
 | Mat3.v | 2 | VERIFIED | Specification (mat3_eq, vec2_eq), determinant, trace, translation, scaling, transform definitions |
 | Mat3_Proofs.v | 80 | VERIFIED | Matrix ring structure, determinant (6+4), trace (5+2), transform operations (11+6), distributivity, transpose_mul, rotation, shearing |
 | Mat4.v | 2 | VERIFIED | Specification (mat4_eq, vec3_eq), determinant, trace, translation, scaling, transform definitions |
 | Mat4_Proofs.v | 104 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5+4+3), trace (5+2), transform operations (15), rotation, perspective, look_at |
 | Color.v | 1 | VERIFIED | RGBA color specification (equality lemma) |
-| Color_Proofs.v | 110 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance, add, scale, invert, clamp01, luminance_lerp, luminance_monotone, from_hex, to_hex, gamma, srgb, hsv |
+| Color_Proofs.v | 88 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance, add, scale, invert, clamp01, luminance_lerp, luminance_monotone, from_hex, to_hex, gamma, srgb, hsv |
 | Rect.v | 1 | VERIFIED | Rectangle specification (equality lemma) |
-| Rect_Proofs.v | 120 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity, scale compose, from_center, translate_center, lerp, normalize, from_pos_size, from_corners, expand, to_bounds |
+| Rect_Proofs.v | 112 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity, scale compose, from_center, translate_center, lerp, normalize, from_pos_size, from_corners, expand, to_bounds |
 | Bounds.v | 1 | VERIFIED | Bounding box specification (equality lemma) |
-| Bounds_Proofs.v | 78 | VERIFIED | Union, intersection, containment, expansion, translation, include_point, from_points, from_center_half_extents, area, validity |
+| Bounds_Proofs.v | 70 | VERIFIED | Union, intersection, containment, expansion, translation, include_point, from_points, from_center_half_extents, area, validity |
 | Utils.v | 23 | VERIFIED | lerp (zero, one, same, midpoint, linear, affine, symmetric, monotone, quarter, diff, add_const, scale), clamp (range, identity, lower, upper, idempotent, monotone, at_lo, at_hi), approx_eq (refl, sym) |
-| **Total** | **931** | VERIFIED | All proofs machine-checked, 0 admits (includes Complexity: 60, CrossType: 51) |
+| **Total** | **919** | VERIFIED | All proofs machine-checked, 0 admits. Includes spec-file equality lemmas (10). Canonical R-based count: 909 (proof files only, excludes spec-file lemmas). Complexity: 60, CrossType: 51 included in 909. |
 
 **Note on coq-of-rust:** The coq-of-rust/rocq-of-rust tool requires Rust nightly-2024-12-07
 (version 1.85), which is incompatible with rource-math's Rust 1.93 requirement. We proceeded
@@ -170,9 +170,10 @@ the gap between mathematical proofs (over R) and executable code.
 | Mat3_Compute.v | 25 | ~3.0s | Z-based 3x3 matrix operations |
 | Mat4_Compute.v | 50 (34 + 16 local) | ~5.5s | Z-based 4x4 matrix operations + determinant + translation/scaling |
 | Color_Compute.v | 28 | — | Z-based fixed-point (1000-scale) |
-| Rect_Compute.v | 24 | — | Z-based, boolean predicates |
+| Rect_Compute.v | 43 | — | Z-based, boolean predicates, union, from_corners, expand_xy |
+| Bounds_Compute.v | 62 | — | Z-based bounds operations, containment, union, intersection |
 | Utils_Compute.v | 13 | — | zlerp/zclamp + additional properties |
-| **Total** | **346** | **~45s** | All 0 admits |
+| **Total** | **359** | **~45s** | All 0 admits |
 
 ### Verification Command (Layer 2)
 
@@ -212,10 +213,10 @@ coqc -Q . RourceMath Vec2_VerifiedExtract.v  # Requires MetaCoq installed (optio
 ## Compilation Layer Order (MANDATORY)
 
 ```
-Layer 1: Specs    -> Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v
-Layer 1: Proofs   -> Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v
-Layer 1: Complex  -> Complexity.v
-Layer 2: Compute  -> Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Utils_Compute.v
+Layer 1: Specs    -> Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v
+Layer 1: Proofs   -> Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v
+Layer 1: Complex  -> Complexity.v Vec_CrossType.v
+Layer 2: Compute  -> Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Bounds_Compute.v Utils_Compute.v
 Layer 3: Extract  -> Vec2_Extract.v ... Mat4_Extract.v Color_Extract.v Rect_Extract.v RourceMath_Extract.v
 Layer 4: MetaCoq  -> Vec2_VerifiedExtract.v (optional, requires MetaCoq installed)
 ```
@@ -259,19 +260,19 @@ These practices were established through hard-won experience across multiple ses
 
 ---
 
-*Last verified: 2026-01-30*
+*Last verified: 2026-01-31*
 
-**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6):**
+**Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6 + Phase 7 + Phase 8):**
 *Version: Coq 8.18*
-*Total theorems: 631 (Vec2: 91, Vec3: 96, Vec4: 80, Mat3: 67, Mat4: 81, Complexity: 60, Color: 69, Rect: 64, Utils: 23)*
+*Total theorems: 909 (Vec2: 110, Vec3: 115, Vec4: 96, Mat3: 80, Mat4: 104, Color: 88, Rect: 112, Bounds: 70, Complexity: 60, CrossType: 51, Utils: 23)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
-**Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5 + Phase 6):**
+**Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7):**
 *Version: Coq 8.18*
-*Total theorems: 346 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 43, Utils: 13)*
+*Total theorems: 359 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 43, Bounds: 62, Utils: 13)*
 *Admits: 0*
-*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1255 total Coq theorems)*
+*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1284 total Coq theorems incl. FP)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**

@@ -523,3 +523,85 @@ Proof.
   pose proof (Rmin_le_l a1 b1). pose proof (Rmin_le_l a2 b2).
   split; lra.
 Qed.
+
+(** * Center Translation Properties *)
+
+Theorem bounds_translate_center_x : forall b dx dy,
+  bounds_center_x (bounds_translate b dx dy) = bounds_center_x b + dx.
+Proof.
+  intros [mnx mny mxx mxy] dx dy.
+  unfold bounds_center_x, bounds_translate. simpl. lra.
+Qed.
+
+Theorem bounds_translate_center_y : forall b dx dy,
+  bounds_center_y (bounds_translate b dx dy) = bounds_center_y b + dy.
+Proof.
+  intros [mnx mny mxx mxy] dx dy.
+  unfold bounds_center_y, bounds_translate. simpl. lra.
+Qed.
+
+(** * Containment Antisymmetry *)
+
+Theorem bounds_contains_bounds_antisymm : forall a b : Bounds,
+  bounds_contains_bounds a b -> bounds_contains_bounds b a -> a = b.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4]
+         [H1 [H2 [H3 H4]]] [H5 [H6 [H7 H8]]].
+  unfold bounds_contains_bounds in *. simpl in *.
+  f_equal; lra.
+Qed.
+
+(** * Union Width/Height Monotonicity *)
+
+Theorem bounds_union_width_ge_left : forall a b : Bounds,
+  bounds_width (bounds_union a b) >= bounds_width a.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4].
+  unfold bounds_width, bounds_union. simpl.
+  pose proof (Rmin_le_l a1 b1). pose proof (Rle_max_l a3 b3). lra.
+Qed.
+
+Theorem bounds_union_width_ge_right : forall a b : Bounds,
+  bounds_width (bounds_union a b) >= bounds_width b.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4].
+  unfold bounds_width, bounds_union. simpl.
+  pose proof (Rmin_le_r a1 b1). pose proof (Rle_max_r a3 b3). lra.
+Qed.
+
+Theorem bounds_union_height_ge_left : forall a b : Bounds,
+  bounds_height (bounds_union a b) >= bounds_height a.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4].
+  unfold bounds_height, bounds_union. simpl.
+  pose proof (Rmin_le_l a2 b2). pose proof (Rle_max_l a4 b4). lra.
+Qed.
+
+Theorem bounds_union_height_ge_right : forall a b : Bounds,
+  bounds_height (bounds_union a b) >= bounds_height b.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4].
+  unfold bounds_height, bounds_union. simpl.
+  pose proof (Rmin_le_r a2 b2). pose proof (Rle_max_r a4 b4). lra.
+Qed.
+
+(** * from_che Contains Center *)
+
+Theorem bounds_from_che_contains_center : forall cx cy hx hy,
+  hx >= 0 -> hy >= 0 ->
+  bounds_contains (bounds_from_che cx cy hx hy) cx cy.
+Proof.
+  intros. unfold bounds_contains, bounds_from_che. simpl. lra.
+Qed.
+
+(** * Expand Area Formula *)
+
+(** Area after expansion: A' = A + 2a*h + 2a*w + 4a^2 *)
+Theorem bounds_expand_area_formula : forall b amount,
+  bounds_area (bounds_expand b amount) =
+  bounds_area b + 2 * amount * bounds_height b +
+  2 * amount * bounds_width b + 4 * amount * amount.
+Proof.
+  intros [mnx mny mxx mxy] amount.
+  unfold bounds_area, bounds_width, bounds_height, bounds_expand. simpl. ring.
+Qed.
