@@ -58,7 +58,8 @@ RUN cargo build --release --package rource && \
 # =============================================================================
 # Using Google's distroless base with glibc for maximum security
 # Only contains the runtime libraries needed to run the binary
-FROM gcr.io/distroless/cc-debian12:nonroot AS runtime-distroless
+# Must use cc-debian13 to match glibc 2.39 from Trixie build stage
+FROM gcr.io/distroless/cc-debian13:nonroot AS runtime-distroless
 
 # Copy the binary (distroless has no shell, so we use COPY directly)
 COPY --from=builder /build/target/release/rource /usr/local/bin/rource
@@ -110,10 +111,11 @@ CMD ["--help"]
 # =============================================================================
 # Default target - Use distroless for minimal attack surface
 # =============================================================================
-# The default image uses Google Distroless (cc-debian12) which contains ONLY:
+# The default image uses Google Distroless (cc-debian13) which contains ONLY:
 #   - glibc runtime, libgcc, libstdc++, ca-certificates
 #   - NO shell, NO package manager, NO unnecessary OS packages
 #
+# Uses Debian 13 (Trixie) distroless to match the build stage's glibc 2.39.
 # This eliminates the vast majority of OS-level CVEs (openldap, pam, ncurses,
 # util-linux, libtasn1, curl, expat, git, zlib) that are present in full
 # Debian images. For git support, build with: --target runtime-with-git
@@ -130,5 +132,5 @@ LABEL org.opencontainers.image.url="https://github.com/tomtom215/rource"
 LABEL org.opencontainers.image.source="https://github.com/tomtom215/rource"
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 LABEL org.opencontainers.image.authors="Rource Contributors"
-LABEL org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12"
+LABEL org.opencontainers.image.base.name="gcr.io/distroless/cc-debian13"
 LABEL org.opencontainers.image.version="0.1.0"
