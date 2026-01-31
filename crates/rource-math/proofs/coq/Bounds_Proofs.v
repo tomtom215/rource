@@ -605,3 +605,67 @@ Proof.
   intros [mnx mny mxx mxy] amount.
   unfold bounds_area, bounds_width, bounds_height, bounds_expand. simpl. ring.
 Qed.
+
+(** * Advanced Proofs *)
+
+(** Theorem 80: from_che half_extent_x recovers hx. *)
+Theorem bounds_from_che_recovers_half_x : forall cx cy hx hy,
+  bounds_half_extent_x (bounds_from_che cx cy hx hy) = hx.
+Proof.
+  intros. unfold bounds_half_extent_x, bounds_width, bounds_from_che. simpl. field.
+Qed.
+
+(** Theorem 81: from_che half_extent_y recovers hy. *)
+Theorem bounds_from_che_recovers_half_y : forall cx cy hx hy,
+  bounds_half_extent_y (bounds_from_che cx cy hx hy) = hy.
+Proof.
+  intros. unfold bounds_half_extent_y, bounds_height, bounds_from_che. simpl. field.
+Qed.
+
+(** Theorem 82: include_point with interior point is identity. *)
+Theorem bounds_include_interior_point_identity : forall b px py,
+  bounds_contains b px py ->
+  bounds_include_point b px py = b.
+Proof.
+  intros [a1 a2 a3 a4] px py [H1 [H2 [H3 H4]]].
+  unfold bounds_include_point, bounds_contains in *. simpl in *.
+  f_equal;
+  [ unfold Rmin; destruct (Rle_dec a1 px); lra
+  | unfold Rmin; destruct (Rle_dec a2 py); lra
+  | unfold Rmax; destruct (Rle_dec a3 px); lra
+  | unfold Rmax; destruct (Rle_dec a4 py); lra ].
+Qed.
+
+(** Theorem 83: valid bounds has positive area. *)
+Theorem bounds_valid_positive_area : forall b : Bounds,
+  bounds_is_valid b -> bounds_area b > 0.
+Proof.
+  intros [a1 a2 a3 a4] [Hx Hy].
+  unfold bounds_area, bounds_width, bounds_height, bounds_is_valid in *. simpl in *.
+  apply Rmult_gt_0_compat; lra.
+Qed.
+
+(** Theorem 84: valid bounds has positive width. *)
+Theorem bounds_valid_positive_width : forall b : Bounds,
+  bounds_is_valid b -> bounds_width b > 0.
+Proof.
+  intros [a1 a2 a3 a4] [Hx Hy].
+  unfold bounds_width, bounds_is_valid in *. simpl in *. lra.
+Qed.
+
+(** Theorem 85: valid bounds has positive height. *)
+Theorem bounds_valid_positive_height : forall b : Bounds,
+  bounds_is_valid b -> bounds_height b > 0.
+Proof.
+  intros [a1 a2 a3 a4] [Hx Hy].
+  unfold bounds_height, bounds_is_valid in *. simpl in *. lra.
+Qed.
+
+(** Theorem 86: expanding preserves containment of points. *)
+Theorem bounds_expand_contains_original_point : forall b amount px py,
+  amount >= 0 -> bounds_contains b px py ->
+  bounds_contains (bounds_expand b amount) px py.
+Proof.
+  intros [a1 a2 a3 a4] amount px py Ha [H1 [H2 [H3 H4]]].
+  unfold bounds_contains, bounds_expand in *. simpl in *. lra.
+Qed.

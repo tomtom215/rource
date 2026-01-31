@@ -960,18 +960,123 @@ Proof.
   unfold mat4_get_translation, mat4_orthographic. simpl. reflexivity.
 Qed.
 
+(** * Transform Vec4 Properties *)
+
+(** Theorem 85: Identity transforms Vec4 to itself. *)
+Theorem mat4_transform_vec4_identity : forall v : Vec4,
+  mat4_transform_vec4 mat4_identity v = v.
+Proof.
+  intros v. destruct v.
+  unfold mat4_transform_vec4, mat4_identity. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 86: Zero matrix transforms any Vec4 to zero. *)
+Theorem mat4_transform_vec4_zero_matrix : forall v : Vec4,
+  mat4_transform_vec4 mat4_zero v = mkVec4 0 0 0 0.
+Proof.
+  intros v. destruct v.
+  unfold mat4_transform_vec4, mat4_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 87: Transform of zero Vec4 is zero. *)
+Theorem mat4_transform_vec4_zero_vec : forall m : Mat4,
+  mat4_transform_vec4 m (mkVec4 0 0 0 0) = mkVec4 0 0 0 0.
+Proof.
+  intros m. destruct m.
+  unfold mat4_transform_vec4. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 88: Transform distributes over Vec4 addition (linearity).
+    M * (u + v) = M * u + M * v *)
+Theorem mat4_transform_vec4_additive : forall m : Mat4, forall u v : Vec4,
+  mat4_transform_vec4 m (mkVec4 (vec4_x u + vec4_x v)
+                                 (vec4_y u + vec4_y v)
+                                 (vec4_z u + vec4_z v)
+                                 (vec4_w u + vec4_w v)) =
+  let ru := mat4_transform_vec4 m u in
+  let rv := mat4_transform_vec4 m v in
+  mkVec4 (vec4_x ru + vec4_x rv) (vec4_y ru + vec4_y rv)
+         (vec4_z ru + vec4_z rv) (vec4_w ru + vec4_w rv).
+Proof.
+  intros m u v. destruct m, u, v.
+  unfold mat4_transform_vec4. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 89: Scalar multiplication commutes with transform.
+    M * (s * v) = s * (M * v) *)
+Theorem mat4_transform_vec4_scalar : forall m : Mat4, forall s : R, forall v : Vec4,
+  mat4_transform_vec4 m (mkVec4 (s * vec4_x v) (s * vec4_y v)
+                                 (s * vec4_z v) (s * vec4_w v)) =
+  let r := mat4_transform_vec4 m v in
+  mkVec4 (s * vec4_x r) (s * vec4_y r) (s * vec4_z r) (s * vec4_w r).
+Proof.
+  intros m s v. destruct m, v.
+  unfold mat4_transform_vec4. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 90: Translation transforms homogeneous point (w=1).
+    T(tx,ty,tz) * (x,y,z,1) = (x+tx, y+ty, z+tz, 1) *)
+Theorem mat4_transform_vec4_translation_point : forall tx ty tz x y z : R,
+  mat4_transform_vec4 (mat4_translation tx ty tz) (mkVec4 x y z 1) =
+  mkVec4 (x + tx) (y + ty) (z + tz) 1.
+Proof.
+  intros.
+  unfold mat4_transform_vec4, mat4_translation. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 91: Translation preserves direction vectors (w=0).
+    T(tx,ty,tz) * (x,y,z,0) = (x,y,z,0) *)
+Theorem mat4_transform_vec4_translation_vector : forall tx ty tz x y z : R,
+  mat4_transform_vec4 (mat4_translation tx ty tz) (mkVec4 x y z 0) =
+  mkVec4 x y z 0.
+Proof.
+  intros.
+  unfold mat4_transform_vec4, mat4_translation. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 92: Scaling transforms Vec4 component-wise.
+    S(sx,sy,sz) * (x,y,z,w) = (sx*x, sy*y, sz*z, w) *)
+Theorem mat4_transform_vec4_scaling : forall sx sy sz x y z w : R,
+  mat4_transform_vec4 (mat4_scaling sx sy sz) (mkVec4 x y z w) =
+  mkVec4 (sx * x) (sy * y) (sz * z) w.
+Proof.
+  intros.
+  unfold mat4_transform_vec4, mat4_scaling. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 93: Composition compatibility: (A*B)*v = A*(B*v).
+    This is the key property that justifies pre-multiplying transformation matrices. *)
+Theorem mat4_transform_vec4_mul_compat : forall a b : Mat4, forall v : Vec4,
+  mat4_transform_vec4 (mat4_mul a b) v =
+  mat4_transform_vec4 a (mat4_transform_vec4 b v).
+Proof.
+  intros a b v. destruct a, b, v.
+  unfold mat4_transform_vec4, mat4_mul. simpl.
+  f_equal; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 84 + 16 component lemmas = 100 (59 original + 25 new)
+    Total theorems: 93 + 16 component lemmas = 109
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
 
-    New theorems added:
+    Theorem groups:
+    - Theorems 1-59: Core matrix algebra (add, mul, scalar, transpose, det, trace, transforms)
     - Theorems 60-64: get_translation properties
     - Theorems 65-70: column accessor properties
     - Theorems 71-76: row accessor properties
     - Theorems 77-79: from_cols properties
     - Theorems 80-84: orthographic projection properties
+    - Theorems 85-93: transform_vec4 properties (identity, zero, linearity, scalar, translation, scaling, composition)
 *)

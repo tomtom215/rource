@@ -262,9 +262,9 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 1 (Proof) | `Vec3_Proofs.v` | 115 | Vec3 algebraic properties |
 | 1 (Proof) | `Vec4_Proofs.v` | 96 | Vec4 algebraic properties |
 | 1 (Proof) | `Mat3_Proofs.v` | 80 | Mat3 algebraic properties |
-| 1 (Proof) | `Mat4_Proofs.v` | 104 | Mat4 algebraic properties |
-| 1 (Proof) | `Color_Proofs.v` | 88 | Color alpha, blend, lerp, luminance |
-| 1 (Proof) | `Rect_Proofs.v` | 112 | Rect containment, intersection, union |
+| 1 (Proof) | `Mat4_Proofs.v` | 113 | Mat4 algebraic properties |
+| 1 (Proof) | `Color_Proofs.v` | 100 | Color alpha, blend, lerp, luminance |
+| 1 (Proof) | `Rect_Proofs.v` | 120 | Rect containment, intersection, union |
 | 1 (Proof) | `Complexity.v` | 60 | O(1) complexity bounds |
 | 2 (Compute) | `Vec2_Compute.v` | 50 | Z-based Vec2 (extractable) |
 | 2 (Compute) | `Vec3_Compute.v` | 42 | Z-based Vec3 (extractable) |
@@ -278,7 +278,7 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 3 (Extract) | `Rect_Extract.v` | 0 | Rect OCaml extraction |
 | 3 (Extract) | `RourceMath_Extract.v` | 0 | Unified OCaml extraction (8 types) |
 | 3 (Verified) | `Vec2_VerifiedExtract.v` | 0 | MetaCoq verified erasure (Path 2) |
-| **Total** | **32 files** | **1284** | **Zero admits** |
+| **Total** | **32 files** | **1327** | **Zero admits** |
 
 ---
 
@@ -508,10 +508,10 @@ done
 | Tool | Theorems/Proofs | Errors | Admits |
 |------|-----------------|--------|--------|
 | Verus | 475 proof functions | 0 | 0 |
-| Coq (R-based) | 925 theorems | 0 | 0 |
+| Coq (R-based) | 968 theorems | 0 | 0 |
 | Coq (Z-based) | 359 theorems | 0 | 0 |
 | Kani (CBMC) | 172 harnesses | 0 | 0 |
-| **Combined** | **2030** | **0** | **0** |
+| **Combined** | **2073** | **0** | **0** |
 
 ---
 
