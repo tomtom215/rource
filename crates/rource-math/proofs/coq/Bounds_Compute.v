@@ -605,3 +605,89 @@ Example zbounds_shrink_test :
   zbounds_shrink (zbounds_new 100 200 500 600) 10 =
   zbounds_new 110 210 490 590.
 Proof. reflexivity. Qed.
+
+(** * Center Translation Properties *)
+
+Theorem zbounds_translate_center_x : forall b dx dy,
+  zbounds_center_x (zbounds_translate b dx dy) = zbounds_center_x b + dx.
+Proof.
+  intros [mnx mny mxx mxy] dx dy.
+  unfold zbounds_center_x, zbounds_translate. simpl.
+  replace (mnx + dx + (mxx + dx)) with (dx * 2 + (mnx + mxx)) by lia.
+  rewrite Z.div_add_l by lia.
+  lia.
+Qed.
+
+Theorem zbounds_translate_center_y : forall b dx dy,
+  zbounds_center_y (zbounds_translate b dx dy) = zbounds_center_y b + dy.
+Proof.
+  intros [mnx mny mxx mxy] dx dy.
+  unfold zbounds_center_y, zbounds_translate. simpl.
+  replace (mny + dy + (mxy + dy)) with (dy * 2 + (mny + mxy)) by lia.
+  rewrite Z.div_add_l by lia.
+  lia.
+Qed.
+
+(** * Containment Antisymmetry *)
+
+Theorem zbounds_contains_bounds_antisymm : forall a b : ZBounds,
+  zbounds_contains_bounds a b -> zbounds_contains_bounds b a -> a = b.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4]
+         [H1 [H2 [H3 H4]]] [H5 [H6 [H7 H8]]].
+  unfold zbounds_contains_bounds in *. simpl in *.
+  f_equal; lia.
+Qed.
+
+(** * Union Width/Height Monotonicity *)
+
+Theorem zbounds_union_wider : forall a b : ZBounds,
+  zbounds_width (zbounds_union a b) >= zbounds_width a /\
+  zbounds_width (zbounds_union a b) >= zbounds_width b.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4].
+  unfold zbounds_width, zbounds_union. simpl.
+  split; lia.
+Qed.
+
+Theorem zbounds_union_taller : forall a b : ZBounds,
+  zbounds_height (zbounds_union a b) >= zbounds_height a /\
+  zbounds_height (zbounds_union a b) >= zbounds_height b.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4].
+  unfold zbounds_height, zbounds_union. simpl.
+  split; lia.
+Qed.
+
+(** * from_che Area and Contains Center *)
+
+Theorem zbounds_from_che_area : forall cx cy hx hy,
+  zbounds_area (zbounds_from_che cx cy hx hy) = 4 * hx * hy.
+Proof.
+  intros cx cy hx hy.
+  unfold zbounds_area.
+  rewrite zbounds_from_che_width.
+  rewrite zbounds_from_che_height.
+  ring.
+Qed.
+
+Theorem zbounds_from_che_contains_center : forall cx cy hx hy,
+  hx >= 0 -> hy >= 0 ->
+  zbounds_contains (zbounds_from_che cx cy hx hy) cx cy.
+Proof.
+  intros cx cy hx hy Hhx Hhy.
+  unfold zbounds_contains, zbounds_from_che. simpl. lia.
+Qed.
+
+(** * Expand Area Formula *)
+
+Theorem zbounds_expand_area_formula : forall b amount,
+  zbounds_area (zbounds_expand b amount) =
+  zbounds_area b + 2 * amount * zbounds_height b +
+  2 * amount * zbounds_width b + 4 * amount * amount.
+Proof.
+  intros b amount. unfold zbounds_area at 1.
+  rewrite zbounds_expand_width.
+  rewrite zbounds_expand_height.
+  unfold zbounds_area. ring.
+Qed.

@@ -200,7 +200,7 @@ The specifications and the compiler serve fundamentally different purposes.
 │  ├── Color_Proofs.v, Rect_Proofs.v (200 theorems)                       │
 │  ├── Complexity.v (60 theorems)                                         │
 │  └── Purpose: Mathematical correctness proofs                           │
-│      Status: COMPLETE (1236 total with Verus)                            │
+│      Status: COMPLETE (1252 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
 │  ├── Vec2_Compute.v (50 theorems)                                       │
@@ -210,9 +210,9 @@ The specifications and the compiler serve fundamentally different purposes.
 │  ├── Mat4_Compute.v (50 theorems, incl. 16 component lemmas)            │
 │  ├── Color_Compute.v (28 theorems, blend/lerp/clamp)                    │
 │  ├── Rect_Compute.v (43 theorems, intersection/containment)             │
-│  ├── Utils_Compute.v (13 theorems, lerp/clamp)                           │
+│  ├── Utils_Compute.v (18 theorems, lerp/clamp)                           │
 │  └── Purpose: Computable operations with algebraic proofs               │
-│      Status: COMPLETE (346 theorems, all 8 types)                       │
+│      Status: COMPLETE (359 theorems, all 8 types)                       │
 │                                                                         │
 │  Layer 3: Extraction Pipeline                                           │
 │  ├── RourceMath_Extract.v → rource_math_extracted.ml (OCaml, 23 KB)     │

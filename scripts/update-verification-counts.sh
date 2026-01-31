@@ -79,8 +79,9 @@ KANI_MAT3=$(count_kani "$KANI_DIR/mat3.rs")
 KANI_MAT4=$(count_kani "$KANI_DIR/mat4.rs")
 KANI_COLOR=$(count_kani "$KANI_DIR/color.rs")
 KANI_RECT=$(count_kani "$KANI_DIR/rect.rs")
+KANI_BOUNDS=$(count_kani "$KANI_DIR/bounds.rs")
 KANI_UTILS=$(count_kani "$KANI_DIR/utils.rs")
-KANI_TOTAL=$((KANI_VEC2 + KANI_VEC3 + KANI_VEC4 + KANI_MAT3 + KANI_MAT4 + KANI_COLOR + KANI_RECT + KANI_UTILS))
+KANI_TOTAL=$((KANI_VEC2 + KANI_VEC3 + KANI_VEC4 + KANI_MAT3 + KANI_MAT4 + KANI_COLOR + KANI_RECT + KANI_BOUNDS + KANI_UTILS))
 
 # --- Verus proof functions ---
 count_verus() {
@@ -157,7 +158,7 @@ TOTAL_MAT4=$((VERUS_MAT4 + COQ_R_MAT4 + COQ_Z_MAT4 + KANI_MAT4))
 TOTAL_COLOR=$((VERUS_COLOR + COQ_R_COLOR + COQ_Z_COLOR + KANI_COLOR))
 TOTAL_RECT=$((VERUS_RECT + COQ_R_RECT + COQ_Z_RECT + KANI_RECT))
 TOTAL_UTILS=$((COQ_R_UTILS + COQ_Z_UTILS + KANI_UTILS))
-TOTAL_BOUNDS=$((COQ_R_BOUNDS + COQ_Z_BOUNDS))
+TOTAL_BOUNDS=$((COQ_R_BOUNDS + COQ_Z_BOUNDS + KANI_BOUNDS))
 TOTAL_COMPLEXITY=$COQ_R_COMPLEXITY
 
 # --- Optimization phases ---
@@ -232,6 +233,7 @@ cat > "$COUNTS_FILE" << ENDJSON
     "mat4": $KANI_MAT4,
     "color": $KANI_COLOR,
     "rect": $KANI_RECT,
+    "bounds": $KANI_BOUNDS,
     "utils": $KANI_UTILS
   },
   "per_type": {
@@ -283,7 +285,7 @@ printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Rect" "$VERUS_RECT" "$COQ_R_RECT" "
 printf "  %-12s  %5s  %5d  %5d  %4d  %5d\n" "Utils" "—" "$COQ_R_UTILS" "$COQ_Z_UTILS" "$KANI_UTILS" "$TOTAL_UTILS"
 printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "Complexity" "—" "$COQ_R_COMPLEXITY" "—" "—" "$TOTAL_COMPLEXITY"
 printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "CrossType" "—" "$COQ_R_CROSSTYPE" "—" "—" "$COQ_R_CROSSTYPE"
-printf "  %-12s  %5s  %5d  %5d  %4s  %5d\n" "Bounds" "—" "$COQ_R_BOUNDS" "$COQ_Z_BOUNDS" "—" "$TOTAL_BOUNDS"
+printf "  %-12s  %5s  %5d  %5d  %4d  %5d\n" "Bounds" "—" "$COQ_R_BOUNDS" "$COQ_Z_BOUNDS" "$KANI_BOUNDS" "$TOTAL_BOUNDS"
 printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "TOTAL" "$VERUS_TOTAL" "$COQ_R_TOTAL" "$COQ_Z_TOTAL" "$KANI_TOTAL" "$GRAND_TOTAL"
 echo ""
 
@@ -468,9 +470,10 @@ if [[ -f "$FV" ]]; then
     # Footer: Kani total
     sed -i -E "s/Total harnesses: [0-9]+/Total harnesses: $KANI_TOTAL/" "$FV"
     # Footer: Kani per-type (anchored to "Total harnesses:" to avoid clobbering other breakdowns)
-    sed -i -E "s/Total harnesses: [0-9]+ \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+\)/Total harnesses: $KANI_TOTAL (Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4, Mat3: $KANI_MAT3, Mat4: $KANI_MAT4, Color: $KANI_COLOR, Rect: $KANI_RECT, Utils: $KANI_UTILS)/" "$FV"
+    # Match both old format (without Bounds) and new format (with Bounds)
+    sed -i -E "s/Total harnesses: [0-9]+ \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+(, Bounds: [0-9]+)?, Utils: [0-9]+\)/Total harnesses: $KANI_TOTAL (Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4, Mat3: $KANI_MAT3, Mat4: $KANI_MAT4, Color: $KANI_COLOR, Rect: $KANI_RECT, Bounds: $KANI_BOUNDS, Utils: $KANI_UTILS)/" "$FV"
     # Overview paragraph Kani per-type (anchored to "Kani:" prefix)
-    sed -i -E "s/Kani: [0-9]+ harnesses\) \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+\)/Kani: $KANI_TOTAL harnesses) (Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4, Mat3: $KANI_MAT3, Mat4: $KANI_MAT4, Color: $KANI_COLOR, Rect: $KANI_RECT, Utils: $KANI_UTILS)/" "$FV"
+    sed -i -E "s/Kani: [0-9]+ harnesses\) \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+(, Bounds: [0-9]+)?, Utils: [0-9]+\)/Kani: $KANI_TOTAL harnesses) (Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4, Mat3: $KANI_MAT3, Mat4: $KANI_MAT4, Color: $KANI_COLOR, Rect: $KANI_RECT, Bounds: $KANI_BOUNDS, Utils: $KANI_UTILS)/" "$FV"
     # Footer: Coq Z-based per-type (anchored to "*Total theorems:" — fix both total and per-type)
     # Use two-phase approach: first match the Z-based line by its unique prefix context
     sed -i -E "/Z-based Computational Bridge/{n;n;s/\*Total theorems: [0-9]+ \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+, Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+\)/\*Total theorems: $COQ_Z_TOTAL (Vec2: $COQ_Z_VEC2, Vec3: $COQ_Z_VEC3, Vec4: $COQ_Z_VEC4, Mat3: $COQ_Z_MAT3, Mat4: $COQ_Z_MAT4, Color: $COQ_Z_COLOR, Rect: $COQ_Z_RECT, Utils: $COQ_Z_UTILS)/}" "$FV"
@@ -481,7 +484,7 @@ if [[ -f "$FV" ]]; then
     sed -i -E "s/Total theorems: [0-9]+ \(Vec2: $COQ_R_VEC2/Total theorems: $COQ_R_TOTAL (Vec2: $COQ_R_VEC2/" "$FV"
     # (Z-based per-type is handled above by context-aware sed anchored to "Z-based Computational Bridge")
     # Per-type table Total row (update Verus, Kani, and grand totals)
-    sed -i -E "s/\| \*\*[0-9]+ proof fns\*\* \| \*\*446 theorems\*\* \| \*\*251 theorems\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ harnesses\*\* \| \*\*[0-9]+\*\* \| \*\*ACADEMIC\*\*/| **$VERUS_TOTAL proof fns** | **$COQ_R_TOTAL theorems** | **$COQ_Z_TOTAL theorems** | **$COQ_FP_TOTAL theorems** | **$KANI_TOTAL harnesses** | **$GRAND_TOTAL** | **ACADEMIC**/" "$FV"
+    sed -i -E "s/\| \*\*[0-9]+ proof fns\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ harnesses\*\* \| \*\*[0-9]+\*\* \| \*\*ACADEMIC\*\*/| **$VERUS_TOTAL proof fns** | **$COQ_R_TOTAL theorems** | **$COQ_Z_TOTAL theorems** | **$COQ_FP_TOTAL theorems** | **$KANI_TOTAL harnesses** | **$GRAND_TOTAL** | **ACADEMIC**/" "$FV"
     # Per-type table: update individual Verus counts per type that changed
     sed -i -E "s/\| Mat4 \| [0-9]+ proof fns \|/| Mat4 | $VERUS_MAT4 proof fns |/" "$FV"
     sed -i -E "s/\| Color \| [0-9]+ proof fns \|/| Color | $VERUS_COLOR proof fns |/" "$FV"
@@ -503,8 +506,10 @@ fi
 VC="$PROJECT_ROOT/docs/verification/VERIFICATION_COVERAGE.md"
 if [[ -f "$VC" ]]; then
     echo "Updating VERIFICATION_COVERAGE.md..."
-    sed -i -E "s/→ [0-9]+ theorems, 50/→ $GRAND_TOTAL theorems, 50/" "$VC"
+    sed -i -E "s/→ [0-9]+ theorems, [0-9]+\.[0-9]+% ops/→ $GRAND_TOTAL theorems, 59.3% ops/" "$VC"
     sed -i -E "s/Kani IEEE 754 harnesses: [0-9]+/Kani IEEE 754 harnesses: $KANI_TOTAL/" "$VC"
+    # Kani total row in bold
+    sed -i -E "s/\| \*\*Total\*\* \| \*\*[0-9]+\*\* \| \*\*All verified/| **Total** | **$KANI_TOTAL** | **All verified/" "$VC"
     echo "  Done."
 fi
 
@@ -551,8 +556,16 @@ if [[ -f "$CM" ]]; then
     sed -i -E "s/Formal Verification: [0-9]+ theorems\/harnesses \(Verus: [0-9]+, Coq R-based: [0-9]+, Coq Z-based: [0-9]+, (Coq FP: [0-9]+, )?Kani: [0-9]+\)/Formal Verification: $GRAND_TOTAL theorems\/harnesses (Verus: $VERUS_TOTAL, Coq R-based: $COQ_R_TOTAL, Coq Z-based: $COQ_Z_TOTAL, Coq FP: $COQ_FP_TOTAL, Kani: $KANI_TOTAL)/" "$CM"
     # Optimization phases
     sed -i -E "s/Optimization Phases: [0-9]+/Optimization Phases: $OPT_PHASES/" "$CM"
+    # Coq R-based status line
+    sed -i -E "s/\*\*Coq \(R-based\)\*\*: [0-9]+ theorems/**Coq (R-based)**: $COQ_R_TOTAL theorems/" "$CM"
     # Coq Z-based status line
     sed -i -E "s/\*\*Coq \(Z-based\)\*\*: [0-9]+ theorems/**Coq (Z-based)**: $COQ_Z_TOTAL theorems/" "$CM"
+    # Per-type table total row (Coq R and Z columns)
+    sed -i -E "s/\| \*\*[0-9]+ proof fns\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ theorems\*\*/| **$VERUS_TOTAL proof fns** | **$COQ_R_TOTAL theorems** | **$COQ_Z_TOTAL theorems**/" "$CM"
+    # Per-type table: Bounds row
+    sed -i -E "/\| Bounds \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_BOUNDS theorems | $COQ_Z_BOUNDS theorems | $KANI_BOUNDS harnesses | $TOTAL_BOUNDS/" "$CM"
+    # Per-type table: Utils row
+    sed -i -E "/\| Utils \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_UTILS theorems | $COQ_Z_UTILS theorems | $KANI_UTILS harnesses | $TOTAL_UTILS/" "$CM"
     # Coq command line comment (673/681/697 → correct)
     sed -i -E "s/# Coq proofs \([0-9]+ theorems/# Coq proofs ($COQ_COMBINED theorems/" "$CM"
     # COQ_PROOFS.md doc reference
@@ -566,13 +579,15 @@ if [[ -f "$RM" ]]; then
     echo "Updating README.md..."
     # Verus row: "| **Verus** ... | N proof functions, M+ VCs |"
     sed -i -E "s/[0-9]+ proof functions, [0-9]+\+ VCs/$VERUS_TOTAL proof functions, 452+ VCs/" "$RM"
-    # Coq R-based row
-    sed -i -E "s/\| [0-9]+ theorems, 0 admits \| Machine-checked/| $COQ_R_TOTAL theorems, 0 admits | Machine-checked/" "$RM"
-    # Coq Z-based row
-    sed -i -E "s/[0-9]+ theorems, extractable/| $COQ_Z_TOTAL theorems, extractable/" "$RM"
+    # Coq R-based row (matches "N theorems" on Coq R-based line)
+    sed -i -E "/Coq \(R-based\)/s/[0-9]+ theorems/$COQ_R_TOTAL theorems/" "$RM"
+    # Coq Z-based row (matches "N theorems" on Coq Z-based line)
+    sed -i -E "/Coq \(Z-based\)/s/[0-9]+ theorems/$COQ_Z_TOTAL theorems/" "$RM"
     # Kani row (if present)
     sed -i -E "s/[0-9]+ harnesses, 0 failures/$KANI_TOTAL harnesses, 0 failures/" "$RM"
-    # Combined/total references
+    # Combined/total bold references "**N theorems/harnesses**"
+    sed -i -E "s/\*\*[0-9]+ theorems\/harnesses\*\*/**$GRAND_TOTAL theorems\/harnesses**/" "$RM"
+    # Combined/total non-bold references
     sed -i -E "s/[0-9]+ formally verified theorems/$GRAND_TOTAL formally verified theorems/" "$RM"
     # Optimization phases
     sed -i -E "s/[0-9]+ optimization phases/$OPT_PHASES optimization phases/" "$RM"
@@ -585,8 +600,21 @@ if [[ -f "$DR" ]]; then
     echo "Updating docs/README.md..."
     sed -i -E "s/[0-9]+ proof functions, [0-9]+ types/$VERUS_TOTAL proof functions, 7 types/" "$DR"
     sed -i -E "s/[0-9]+ theorems, 0 admits, Coq 8/$COQ_COMBINED theorems, 0 admits, Coq 8/" "$DR"
+    # COQ_PROOFS.md reference (R-based + Z-based, N theorems)
+    sed -i -E "s/R-based \+ Z-based, [0-9]+ theorems/R-based + Z-based, $COQ_COMBINED theorems/" "$DR"
     # FORMAL_VERIFICATION.md reference (total and types)
     sed -i -E "s/[0-9]+ theorems\/harnesses, [0-9]+ types/$GRAND_TOTAL theorems\/harnesses, 8 types/" "$DR"
+    echo "  Done."
+fi
+
+# --- WASM_EXTRACTION_PIPELINE.md ---
+WE="$PROJECT_ROOT/docs/verification/WASM_EXTRACTION_PIPELINE.md"
+if [[ -f "$WE" ]]; then
+    echo "Updating WASM_EXTRACTION_PIPELINE.md..."
+    # Coq active count "Active (N theorems)"
+    sed -i -E "s/Active \([0-9]+ theorems\)/Active ($COQ_COMBINED theorems)/" "$WE"
+    # Working/tested count "tested, N theorems compile"
+    sed -i -E "s/tested, [0-9]+ theorems compile/tested, $COQ_COMBINED theorems compile/" "$WE"
     echo "  Done."
 fi
 
@@ -700,7 +728,7 @@ if [[ -f "$KM" ]]; then
     sed -i -E "s/# Harness Count \([0-9]+ total\)/# Harness Count ($KANI_TOTAL total)/" "$KM"
     sed -i -E "s/Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+/Vec2: $KANI_VEC2, Vec3: $KANI_VEC3, Vec4: $KANI_VEC4/" "$KM"
     sed -i -E "s/Mat3: [0-9]+, Mat4: [0-9]+/Mat3: $KANI_MAT3, Mat4: $KANI_MAT4/" "$KM"
-    sed -i -E "s/Color: [0-9]+, Rect: [0-9]+, Utils: [0-9]+/Color: $KANI_COLOR, Rect: $KANI_RECT, Utils: $KANI_UTILS/" "$KM"
+    sed -i -E "s/Color: [0-9]+, Rect: [0-9]+(, Bounds: [0-9]+)?, Utils: [0-9]+/Color: $KANI_COLOR, Rect: $KANI_RECT, Bounds: $KANI_BOUNDS, Utils: $KANI_UTILS/" "$KM"
     echo "  Done."
 fi
 
