@@ -170,6 +170,29 @@ Definition mat3_get_translation (mat : Mat3) : Vec2 :=
 Definition mat3_from_cols (c00 c01 c02 c10 c11 c12 c20 c21 c22 : R) : Mat3 :=
   mkMat3 c00 c01 c02 c10 c11 c12 c20 c21 c22.
 
+(** * Inverse Operation *)
+
+(** The inverse of a 3x3 matrix using cofactor expansion.
+    inverse(A) = (1/det(A)) * adj(A)
+    where adj(A) is the adjugate (transpose of cofactor matrix).
+    Matches Rust: mat3.rs lines 190-211 *)
+Definition mat3_inverse (a : Mat3) : Mat3 :=
+  let det := mat3_determinant a in
+  let inv_det := / det in
+  mkMat3
+    (* Column 0: cofactors of row 0, transposed *)
+    ((m4 a * m8 a - m5 a * m7 a) * inv_det)
+    ((m2 a * m7 a - m1 a * m8 a) * inv_det)
+    ((m1 a * m5 a - m2 a * m4 a) * inv_det)
+    (* Column 1: cofactors of row 1, transposed *)
+    ((m5 a * m6 a - m3 a * m8 a) * inv_det)
+    ((m0 a * m8 a - m2 a * m6 a) * inv_det)
+    ((m2 a * m3 a - m0 a * m5 a) * inv_det)
+    (* Column 2: cofactors of row 2, transposed *)
+    ((m3 a * m7 a - m4 a * m6 a) * inv_det)
+    ((m1 a * m6 a - m0 a * m7 a) * inv_det)
+    ((m0 a * m4 a - m1 a * m3 a) * inv_det).
+
 (** * Equality Lemmas *)
 
 (** Two Vec2 are equal iff their components are equal. *)

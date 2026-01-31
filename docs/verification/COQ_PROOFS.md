@@ -10,7 +10,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 ## Coq Version
 
 - **Coq**: 8.18
-- **Admits**: 0 (across all 1327 theorems, R+Z+FP)
+- **Admits**: 0 (across all 1339 theorems, R+Z+FP)
 - **Compilation time**: ~45 seconds total (32 .vo files)
 
 ## Layered Architecture
@@ -46,15 +46,15 @@ For an overview of the complete verification effort (Verus + Coq), see
 | Mat3.v | 2 | VERIFIED | Specification (mat3_eq, vec2_eq), determinant, trace, translation, scaling, transform definitions |
 | Mat3_Proofs.v | 80 | VERIFIED | Matrix ring structure, determinant (6+4), trace (5+2), transform operations (11+6), distributivity, transpose_mul, rotation, shearing |
 | Mat4.v | 2 | VERIFIED | Specification (mat4_eq, vec3_eq), determinant, trace, translation, scaling, transform definitions |
-| Mat4_Proofs.v | 104 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5+4+3), trace (5+2), transform operations (15), rotation, perspective, look_at |
+| Mat4_Proofs.v | 113 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5+4+3), trace (5+2), transform operations (15), rotation, perspective, look_at, from_cols, col/row accessors, orthographic, get_translation |
 | Color.v | 1 | VERIFIED | RGBA color specification (equality lemma) |
-| Color_Proofs.v | 88 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance, add, scale, invert, clamp01, luminance_lerp, luminance_monotone, from_hex, to_hex, gamma, srgb, hsv |
+| Color_Proofs.v | 100 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance, add, scale, invert, clamp01, luminance_lerp, luminance_monotone, from_hex, to_hex, gamma, srgb, hsv, darken, lighten, contrasting |
 | Rect.v | 1 | VERIFIED | Rectangle specification (equality lemma) |
-| Rect_Proofs.v | 112 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity, scale compose, from_center, translate_center, lerp, normalize, from_pos_size, from_corners, expand, to_bounds |
+| Rect_Proofs.v | 120 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity, scale compose, from_center, translate_center, lerp, normalize, from_pos_size, from_corners, expand, to_bounds, union |
 | Bounds.v | 1 | VERIFIED | Bounding box specification (equality lemma) |
-| Bounds_Proofs.v | 79 | VERIFIED | Union, intersection, containment, expansion, translation, include_point, from_points, from_center_half_extents, area, validity |
-| Utils.v | 30 | VERIFIED | lerp (zero, one, same, midpoint, linear, affine, symmetric, monotone, quarter, diff, add_const, scale), clamp (range, identity, lower, upper, idempotent, monotone, at_lo, at_hi), approx_eq (refl, sym, triangle_counterexample) |
-| **Total** | **935** | VERIFIED | All proofs machine-checked, 0 admits. Includes spec-file equality lemmas (10). Canonical R-based count: 925 (proof files only, excludes spec-file lemmas). Complexity: 60, CrossType: 51 included in 925. |
+| Bounds_Proofs.v | 86 | VERIFIED | Union, intersection, containment, expansion, translation, include_point, from_points, from_center_half_extents, area, validity, shrink, merge |
+| Utils.v | 37 | VERIFIED | lerp (zero, one, same, midpoint, linear, affine, symmetric, monotone, quarter, diff, add_const, scale), clamp (range, identity, lower, upper, idempotent, monotone, at_lo, at_hi), approx_eq (refl, sym, triangle_counterexample), remap, step, smoothstep |
+| **Total** | **990** | VERIFIED | All proofs machine-checked, 0 admits. Includes spec-file equality lemmas (10). Canonical R-based count: 980 (proof files only, excludes spec-file lemmas). Complexity: 60, CrossType: 51 included in 980. |
 
 **Note on coq-of-rust:** The coq-of-rust/rocq-of-rust tool requires Rust nightly-2024-12-07
 (version 1.85), which is incompatible with rource-math's Rust 1.93 requirement. We proceeded
@@ -264,7 +264,7 @@ These practices were established through hard-won experience across multiple ses
 
 **Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6 + Phase 7 + Phase 8):**
 *Version: Coq 8.18*
-*Total theorems: 925 (Vec2: 110, Vec3: 115, Vec4: 96, Mat3: 80, Mat4: 104, Color: 88, Rect: 112, Bounds: 79, Complexity: 60, CrossType: 51, Utils: 30)*
+*Total theorems: 980 (Vec2: 110, Vec3: 115, Vec4: 96, Mat3: 92, Mat4: 113, Color: 100, Rect: 120, Bounds: 86, Complexity: 60, CrossType: 51, Utils: 37)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
@@ -272,7 +272,7 @@ These practices were established through hard-won experience across multiple ses
 *Version: Coq 8.18*
 *Total theorems: 359 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 43, Bounds: 70, Utils: 18)*
 *Admits: 0*
-*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1327 total Coq theorems incl. FP)*
+*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1339 total Coq theorems incl. FP)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**
