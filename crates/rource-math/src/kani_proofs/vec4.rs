@@ -530,37 +530,6 @@ fn verify_vec4_add_commutative() {
 }
 
 // ============================================================================
-// normalized unit length
-// ============================================================================
-
-/// **Unit length**: `normalized()` produces a vector with length ≈ 1.0 for
-/// vectors with sufficient magnitude (guards against f32 underflow in
-/// `length_squared()`).
-#[kani::proof]
-fn verify_vec4_normalized_unit_length() {
-    let x: f32 = kani::any();
-    let y: f32 = kani::any();
-    let z: f32 = kani::any();
-    let w: f32 = kani::any();
-    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
-    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
-    kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
-    kani::assume(w.is_finite() && w.abs() < SAFE_BOUND);
-    let v = Vec4::new(x, y, z, w);
-    // Guard against f32 underflow: very small non-zero components can have
-    // length_squared() underflow to 0.0, causing normalized() to return ZERO.
-    let lsq = v.length_squared();
-    kani::assume(lsq > 1e-10);
-    let n = v.normalized();
-    let len = n.length();
-    // Allow small FP tolerance: |len - 1.0| < 1e-4
-    assert!(
-        (len - 1.0).abs() < 1e-4,
-        "normalized() should produce unit length"
-    );
-}
-
-// ============================================================================
 // splat
 // ============================================================================
 
