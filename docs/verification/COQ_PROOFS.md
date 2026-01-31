@@ -10,7 +10,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 ## Coq Version
 
 - **Coq**: 8.18
-- **Admits**: 0 (across all 1383 theorems, R+Z+FP)
+- **Admits**: 0 (across all 1393 theorems, R+Z+FP)
 - **Compilation time**: ~45 seconds total (32 .vo files)
 
 ## Layered Architecture
@@ -173,7 +173,7 @@ the gap between mathematical proofs (over R) and executable code.
 | Rect_Compute.v | 43 | — | Z-based, boolean predicates, union, from_corners, expand_xy |
 | Bounds_Compute.v | 70 | — | Z-based bounds operations, containment, union, intersection |
 | Utils_Compute.v | 18 | — | zlerp/zclamp + additional properties |
-| **Total** | **359** | **~45s** | All 0 admits |
+| **Total** | **369** | **~45s** | All 0 admits |
 
 ### Verification Command (Layer 2)
 
@@ -270,9 +270,9 @@ These practices were established through hard-won experience across multiple ses
 
 **Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7):**
 *Version: Coq 8.18*
-*Total theorems: 359 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 43, Bounds: 70, Utils: 18)*
+*Total theorems: 369 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 43, Bounds: 70, Utils: 18)*
 *Admits: 0*
-*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1383 total Coq theorems incl. FP)*
+*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1393 total Coq theorems incl. FP)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**

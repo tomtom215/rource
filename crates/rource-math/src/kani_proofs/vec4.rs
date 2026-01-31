@@ -472,3 +472,155 @@ fn verify_vec4_lerp_endpoint_one() {
     assert!(r.z.is_finite(), "lerp(a,b,1).z should be finite");
     assert!(r.w.is_finite(), "lerp(a,b,1).w should be finite");
 }
+
+// ============================================================================
+// neg involution
+// ============================================================================
+
+/// **Involution**: `-(-v) == v` for all finite vectors (IEEE 754 sign-bit flip).
+#[kani::proof]
+fn verify_vec4_neg_involution() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    let w: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(z.is_finite());
+    kani::assume(w.is_finite());
+    let v = Vec4::new(x, y, z, w);
+    let r = -(-v);
+    assert!(r.x == x, "-(-v).x should equal v.x");
+    assert!(r.y == y, "-(-v).y should equal v.y");
+    assert!(r.z == z, "-(-v).z should equal v.z");
+    assert!(r.w == w, "-(-v).w should equal v.w");
+}
+
+// ============================================================================
+// add commutativity
+// ============================================================================
+
+/// **Commutativity**: `a + b == b + a` for all finite bounded vectors (IEEE 754).
+#[kani::proof]
+fn verify_vec4_add_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let aw: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    let bw: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(aw.is_finite() && aw.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    kani::assume(bw.is_finite() && bw.abs() < SAFE_BOUND);
+    let a = Vec4::new(ax, ay, az, aw);
+    let b = Vec4::new(bx, by, bz, bw);
+    let ab = a + b;
+    let ba = b + a;
+    assert!(ab.x == ba.x, "(a+b).x should equal (b+a).x");
+    assert!(ab.y == ba.y, "(a+b).y should equal (b+a).y");
+    assert!(ab.z == ba.z, "(a+b).z should equal (b+a).z");
+    assert!(ab.w == ba.w, "(a+b).w should equal (b+a).w");
+}
+
+// ============================================================================
+// dot commutativity
+// ============================================================================
+
+/// **Commutativity**: `a.dot(b) == b.dot(a)` for all finite bounded vectors (IEEE 754).
+#[kani::proof]
+fn verify_vec4_dot_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let aw: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    let bw: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(aw.is_finite() && aw.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    kani::assume(bw.is_finite() && bw.abs() < SAFE_BOUND);
+    let a = Vec4::new(ax, ay, az, aw);
+    let b = Vec4::new(bx, by, bz, bw);
+    let d1 = a.dot(b);
+    let d2 = b.dot(a);
+    assert!(d1 == d2, "dot() should be commutative");
+}
+
+// ============================================================================
+// normalized unit length
+// ============================================================================
+
+/// **Unit length**: `normalized()` produces a vector with length ≈ 1.0 for non-zero input.
+#[kani::proof]
+fn verify_vec4_normalized_unit_length() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    let w: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w.abs() < SAFE_BOUND);
+    // Require non-zero length to avoid the zero-vector branch
+    kani::assume(x != 0.0 || y != 0.0 || z != 0.0 || w != 0.0);
+    let v = Vec4::new(x, y, z, w);
+    let n = v.normalized();
+    let len = n.length();
+    // Allow small FP tolerance: |len - 1.0| < 1e-4
+    assert!(
+        (len - 1.0).abs() < 1e-4,
+        "normalized() should produce unit length"
+    );
+}
+
+// ============================================================================
+// splat
+// ============================================================================
+
+/// **Uniformity**: `splat(x)` produces a vector with all components equal to `x`.
+#[kani::proof]
+fn verify_vec4_splat_all_equal() {
+    let x: f32 = kani::any();
+    kani::assume(x.is_finite());
+    let v = Vec4::splat(x);
+    assert!(v.x == x, "splat(x).x should equal x");
+    assert!(v.y == x, "splat(x).y should equal x");
+    assert!(v.z == x, "splat(x).z should equal x");
+    assert!(v.w == x, "splat(x).w should equal x");
+}
+
+// ============================================================================
+// from_vec3
+// ============================================================================
+
+/// **Component preservation**: `from_vec3(v3, w)` preserves xyz and sets w.
+#[kani::proof]
+fn verify_vec4_from_vec3_preserves() {
+    let vx: f32 = kani::any();
+    let vy: f32 = kani::any();
+    let vz: f32 = kani::any();
+    let w: f32 = kani::any();
+    kani::assume(vx.is_finite());
+    kani::assume(vy.is_finite());
+    kani::assume(vz.is_finite());
+    kani::assume(w.is_finite());
+    let v3 = crate::Vec3::new(vx, vy, vz);
+    let v4 = Vec4::from_vec3(v3, w);
+    assert!(v4.x == vx, "from_vec3 should preserve x");
+    assert!(v4.y == vy, "from_vec3 should preserve y");
+    assert!(v4.z == vz, "from_vec3 should preserve z");
+    assert!(v4.w == w, "from_vec3 should set w");
+}
