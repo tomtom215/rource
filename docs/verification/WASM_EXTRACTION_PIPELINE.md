@@ -22,7 +22,7 @@ architecture combining Verus with the Coq ecosystem.
 
 | Tool | Purpose | Maturity | Integration |
 |------|---------|----------|-------------|
-| **Verus** | Algebraic properties | Production | Active (327 proof fns) |
+| **Verus** | Algebraic properties | Production | Active (426 proof fns) |
 | **Coq** | Mathematical proofs, complexity | Production | Active (1284 theorems) |
 | **wasm_of_ocaml** | OCaml -> WASM compilation | Production (v6.2.0) | Active (Path 1, 6.8 KB lib) |
 | **MetaCoq Verified Extraction** | Verified Coq -> OCaml | Research (PLDI'24) | Built from source (Path 2) |
@@ -64,7 +64,7 @@ Pipeline operational: All 8 types (Vec2-4, Mat3-4, Color, Rect + Utils) extracte
 
 - [x] CertiCoq-WASM feasibility assessment
 - [x] Comprehensive 9-path landscape survey (see `CERTICOQ_WASM_ASSESSMENT.md`)
-- [x] Vec2_Compute.v - Z-based computational bridge (25 theorems, 0 admits)
+- [x] Vec2_Compute.v - Z-based computational bridge (50 theorems, 0 admits)
 - [x] Vec2_Extract.v - Standard Coq extraction to OCaml demonstrated
 - [x] Complexity.v warning fixes (11 notation-overridden warnings eliminated)
 - [x] Layered verification architecture documented
@@ -75,13 +75,14 @@ Pipeline operational: All 8 types (Vec2-4, Mat3-4, Color, Rect + Utils) extracte
 
 | Deliverable | Status | Details |
 |-------------|--------|---------|
-| Vec3_Compute.v | Done | 31 theorems, Z-based, 1.6s compilation |
-| Vec4_Compute.v | Done | 22 theorems, Z-based, 1.6s compilation |
+| Vec3_Compute.v | Done | 42 theorems, Z-based, 1.6s compilation |
+| Vec4_Compute.v | Done | 33 theorems, Z-based, 1.6s compilation |
 | Mat3_Compute.v | Done | 25 theorems, Z-based, 3.0s compilation |
-| Mat4_Compute.v | Done | 21 theorems + 16 local component lemmas, 5.5s compilation |
-| Color_Compute.v | Done | 22 theorems, Z-based fixed-point (1000-scale) |
-| Rect_Compute.v | Done | 22 theorems, Z-based, boolean predicates |
-| Utils_Compute.v | Done | 14 theorems, zlerp/zclamp with computational examples |
+| Mat4_Compute.v | Done | 50 theorems (34 + 16 local), Z-based, 5.5s compilation |
+| Color_Compute.v | Done | 28 theorems, Z-based fixed-point (1000-scale) |
+| Rect_Compute.v | Done | 43 theorems, Z-based, boolean predicates, union, from_corners, expand_xy |
+| Utils_Compute.v | Done | 18 theorems, zlerp/zclamp with computational examples |
+| Bounds_Compute.v | Done | 70 theorems, Z-based bounds operations, containment, union, intersection |
 | Vec3_Extract.v - Mat4_Extract.v | Done | Individual extraction modules |
 | Color_Extract.v | Done | Extracts ZColor operations to OCaml |
 | Rect_Extract.v | Done | Extracts ZRect operations to OCaml |
@@ -272,7 +273,7 @@ From MetaRocq.ErasurePlugin Require Import Loader.
 *Last verified: 2026-01-29*
 
 **Computational Bridge (Phase 3 + Phase 3 Continued + Phase 4):**
-*8 Compute files: Vec2(38), Vec3(42), Vec4(33), Mat3(25), Mat4(21), Color(28), Rect(24), Utils(8) = 219 theorems over Z*
+*9 Compute files: Vec2(50), Vec3(42), Vec4(33), Mat3(25), Mat4(50), Color(28), Rect(43), Bounds(70), Utils(18) = 359 theorems over Z*
 *8 Extract files + 1 unified extraction (RourceMath_Extract.v)*
 *OCaml test driver: all tests pass*
 *WASM pipeline: Library 6.8 KB, test driver 42.2 KB (via wasm_of_ocaml v6.2.0)*

@@ -60,8 +60,8 @@ which wasm_of_ocaml 2>/dev/null
 
 | Tool | Version | Purpose | Install Location |
 |------|---------|---------|------------------|
-| **Verus** | Latest | Rust formal verification (266 proof functions) | `/tmp/verus/` |
-| **Coq** | 8.18.0 | Proof assistant (697 theorems) | System (`apt`) + opam (see Rocq migration) |
+| **Verus** | Latest | Rust formal verification (426 proof functions) | `/tmp/verus/` |
+| **Coq** | 8.18.0 | Proof assistant (1383 theorems: 925 R-based + 359 Z-based + 99 FP) | System (`apt`) + opam (see Rocq migration) |
 | **coq-equations** | 1.3+8.18 | Dependent pattern matching for Coq | opam |
 | **MetaCoq** | 8.18.dev | Verified erasure/extraction (Path 2) | `/tmp/metacoq/` + opam |
 | **wasm_of_ocaml** | 6.2.0+ | OCaml-to-WASM compiler (Path 1) | opam |
@@ -129,6 +129,8 @@ rustup install 1.92.0
 /tmp/verus/verus crates/rource-math/proofs/mat4_extended_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/color_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/bounds_proofs.rs
+/tmp/verus/verus crates/rource-math/proofs/utils_proofs.rs
 ```
 
 **Expected output**: Each file reports "0 errors" and verification conditions pass.
@@ -146,7 +148,9 @@ rustup install 1.92.0
 | `mat4_extended_proofs.rs` | 32 | Mat4 (extended) |
 | `color_proofs.rs` | 45 | Color |
 | `rect_proofs.rs` | 52 | Rect |
-| **Total** | **327** | **7 types** |
+| `bounds_proofs.rs` | 66 | Bounds |
+| `utils_proofs.rs` | 33 | Utils |
+| **Total** | **426** | **9 types** |
 
 ---
 
@@ -468,27 +472,28 @@ ls -la rource_math.wasm  # Should be ~6.8 KB
 ### Manual Verification
 
 ```bash
-# Verus (266 proof functions, ~seconds)
+# Verus (426 proof functions, ~seconds)
 for f in crates/rource-math/proofs/*_proofs.rs; do
   /tmp/verus/verus "$f"
 done
 
-# Coq (697 theorems, ~40 seconds)
+# Coq (1383 theorems, ~45 seconds)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specs
-for f in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v; do
+for f in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v; do
   coqc -Q . RourceMath "$f"
 done
 
 # Layer 1: Proofs
-for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v; do
+for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v; do
   coqc -Q . RourceMath "$f"
 done
 coqc -Q . RourceMath Complexity.v
+coqc -Q . RourceMath Vec_CrossType.v
 
 # Layer 2: Compute
-for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Utils_Compute.v; do
+for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Bounds_Compute.v Utils_Compute.v; do
   coqc -Q . RourceMath "$f"
 done
 
@@ -502,11 +507,11 @@ done
 
 | Tool | Theorems/Proofs | Errors | Admits |
 |------|-----------------|--------|--------|
-| Verus | 327 proof functions | 0 | 0 |
+| Verus | 426 proof functions | 0 | 0 |
 | Coq (R-based) | 925 theorems | 0 | 0 |
 | Coq (Z-based) | 359 theorems | 0 | 0 |
 | Kani (CBMC) | 154 harnesses | 0 | 0 |
-| **Combined** | **1864** | **0** | **0** |
+| **Combined** | **1963** | **0** | **0** |
 
 ---
 
@@ -716,6 +721,8 @@ crates/rource-math/proofs/
   |-- mat4_extended_proofs.rs # Verus: Mat4 extended (32 proof fns)
   |-- color_proofs.rs         # Verus: Color (45 proof fns)
   |-- rect_proofs.rs          # Verus: Rect (52 proof fns)
+  |-- bounds_proofs.rs        # Verus: Bounds (66 proof fns)
+  |-- utils_proofs.rs         # Verus: Utils (33 proof fns)
   |
   +-- coq/
        |-- Vec2.v             # Layer 1: R-based specification
@@ -783,6 +790,6 @@ crates/rource-math/proofs/
 
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC*
-*612 formally verified theorems (Verus: 151, Coq: 461)*
-*8 verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Utils*
+*1963 formally verified theorems/harnesses (Verus: 426, Coq: 1383, Kani: 154)*
+*9 verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, Utils*
 *Current: Coq 8.18 + MetaCoq (from source) | Future: Rocq 9.x + MetaRocq (when opam repos stabilize)*

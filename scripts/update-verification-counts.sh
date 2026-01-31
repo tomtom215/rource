@@ -101,7 +101,9 @@ VERUS_MAT4_EXT=$(count_verus "$VERUS_DIR/mat4_extended_proofs.rs")
 VERUS_MAT4=$((VERUS_MAT4_BASE + VERUS_MAT4_EXT))
 VERUS_COLOR=$(count_verus "$VERUS_DIR/color_proofs.rs")
 VERUS_RECT=$(count_verus "$VERUS_DIR/rect_proofs.rs")
-VERUS_TOTAL=$((VERUS_VEC2 + VERUS_VEC3 + VERUS_VEC4 + VERUS_MAT3 + VERUS_MAT4 + VERUS_COLOR + VERUS_RECT))
+VERUS_BOUNDS=$(count_verus "$VERUS_DIR/bounds_proofs.rs")
+VERUS_UTILS=$(count_verus "$VERUS_DIR/utils_proofs.rs")
+VERUS_TOTAL=$((VERUS_VEC2 + VERUS_VEC3 + VERUS_VEC4 + VERUS_MAT3 + VERUS_MAT4 + VERUS_COLOR + VERUS_RECT + VERUS_BOUNDS + VERUS_UTILS))
 
 # --- Coq R-based theorems (Proofs + Complexity + Utils) ---
 count_coq() {
@@ -157,8 +159,8 @@ TOTAL_MAT3=$((VERUS_MAT3 + COQ_R_MAT3 + COQ_Z_MAT3 + KANI_MAT3))
 TOTAL_MAT4=$((VERUS_MAT4 + COQ_R_MAT4 + COQ_Z_MAT4 + KANI_MAT4))
 TOTAL_COLOR=$((VERUS_COLOR + COQ_R_COLOR + COQ_Z_COLOR + KANI_COLOR))
 TOTAL_RECT=$((VERUS_RECT + COQ_R_RECT + COQ_Z_RECT + KANI_RECT))
-TOTAL_UTILS=$((COQ_R_UTILS + COQ_Z_UTILS + KANI_UTILS))
-TOTAL_BOUNDS=$((COQ_R_BOUNDS + COQ_Z_BOUNDS + KANI_BOUNDS))
+TOTAL_UTILS=$((VERUS_UTILS + COQ_R_UTILS + COQ_Z_UTILS + KANI_UTILS))
+TOTAL_BOUNDS=$((VERUS_BOUNDS + COQ_R_BOUNDS + COQ_Z_BOUNDS + KANI_BOUNDS))
 TOTAL_COMPLEXITY=$COQ_R_COMPLEXITY
 
 # --- Optimization phases ---
@@ -187,7 +189,9 @@ cat > "$COUNTS_FILE" << ENDJSON
     "mat4_base": $VERUS_MAT4_BASE,
     "mat4_extended": $VERUS_MAT4_EXT,
     "color": $VERUS_COLOR,
-    "rect": $VERUS_RECT
+    "rect": $VERUS_RECT,
+    "bounds": $VERUS_BOUNDS,
+    "utils": $VERUS_UTILS
   },
   "coq_r": {
     "total": $COQ_R_TOTAL,
@@ -282,10 +286,10 @@ printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Mat3" "$VERUS_MAT3" "$COQ_R_MAT3" "
 printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Mat4" "$VERUS_MAT4" "$COQ_R_MAT4" "$COQ_Z_MAT4" "$KANI_MAT4" "$TOTAL_MAT4"
 printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Color" "$VERUS_COLOR" "$COQ_R_COLOR" "$COQ_Z_COLOR" "$KANI_COLOR" "$TOTAL_COLOR"
 printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Rect" "$VERUS_RECT" "$COQ_R_RECT" "$COQ_Z_RECT" "$KANI_RECT" "$TOTAL_RECT"
-printf "  %-12s  %5s  %5d  %5d  %4d  %5d\n" "Utils" "—" "$COQ_R_UTILS" "$COQ_Z_UTILS" "$KANI_UTILS" "$TOTAL_UTILS"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Utils" "$VERUS_UTILS" "$COQ_R_UTILS" "$COQ_Z_UTILS" "$KANI_UTILS" "$TOTAL_UTILS"
 printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "Complexity" "—" "$COQ_R_COMPLEXITY" "—" "—" "$TOTAL_COMPLEXITY"
 printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "CrossType" "—" "$COQ_R_CROSSTYPE" "—" "—" "$COQ_R_CROSSTYPE"
-printf "  %-12s  %5s  %5d  %5d  %4d  %5d\n" "Bounds" "—" "$COQ_R_BOUNDS" "$COQ_Z_BOUNDS" "$KANI_BOUNDS" "$TOTAL_BOUNDS"
+printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Bounds" "$VERUS_BOUNDS" "$COQ_R_BOUNDS" "$COQ_Z_BOUNDS" "$KANI_BOUNDS" "$TOTAL_BOUNDS"
 printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "TOTAL" "$VERUS_TOTAL" "$COQ_R_TOTAL" "$COQ_Z_TOTAL" "$KANI_TOTAL" "$GRAND_TOTAL"
 echo ""
 
@@ -493,8 +497,8 @@ if [[ -f "$FV" ]]; then
     sed -i -E "/\| Mat4 \|.*\| [0-9]+ harnesses/{s/[0-9]+ harnesses \| [0-9]+ \|/$KANI_MAT4 harnesses | $TOTAL_MAT4 |/}" "$FV"
     sed -i -E "/\| Color \|.*\| [0-9]+ harnesses/{s/[0-9]+ harnesses \| [0-9]+ \|/$KANI_COLOR harnesses | $TOTAL_COLOR |/}" "$FV"
     sed -i -E "/\| Rect \|.*\| [0-9]+ harnesses/{s/[0-9]+ harnesses \| [0-9]+ \|/$KANI_RECT harnesses | $TOTAL_RECT |/}" "$FV"
-    # Summary Statistics Verus row
-    sed -i -E "s/[0-9]+ proof functions \| 0 \| Vec2-4, Mat3-4, Color, Rect \| All verified/$VERUS_TOTAL proof functions | 0 | Vec2-4, Mat3-4, Color, Rect | All verified/" "$FV"
+    # Summary Statistics Verus row (flexible type list)
+    sed -i -E "s/[0-9]+ proof functions \| 0 \| Vec2-4, Mat3-4, Color, Rect[^|]* \| All verified/$VERUS_TOTAL proof functions | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | All verified/" "$FV"
     # Academic contribution - total
     sed -i -E "s/rource-math with [0-9]+ machine-checked/rource-math with $GRAND_TOTAL machine-checked/" "$FV"
     # All harnesses verified line
@@ -634,6 +638,8 @@ if [[ -f "$SG" ]]; then
     sed -i -E "s/\`mat4_extended_proofs\.rs\` \| [0-9]+/\`mat4_extended_proofs.rs\` | $VERUS_MAT4_EXT/" "$SG"
     sed -i -E "s/\`color_proofs\.rs\` \| [0-9]+/\`color_proofs.rs\` | $VERUS_COLOR/" "$SG"
     sed -i -E "s/\`rect_proofs\.rs\` \| [0-9]+/\`rect_proofs.rs\` | $VERUS_RECT/" "$SG"
+    sed -i -E "s/\`bounds_proofs\.rs\` \| [0-9]+/\`bounds_proofs.rs\` | $VERUS_BOUNDS/" "$SG"
+    sed -i -E "s/\`utils_proofs\.rs\` \| [0-9]+/\`utils_proofs.rs\` | $VERUS_UTILS/" "$SG"
     # Coq table total row
     sed -i -E "s/\*\*32 files\*\* \| \*\*[0-9]+\*\*/\*\*32 files\*\* | \*\*$COQ_COMBINED\*\*/" "$SG"
     # Coq per-file counts (R-based proofs)
