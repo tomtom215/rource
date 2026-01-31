@@ -711,4 +711,186 @@ mod tests {
         assert!(debug.contains("Mat3"), "Debug should contain Mat3");
         assert!(debug.contains("m:"), "Debug should contain m field");
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill MISSED mutants in mat3.rs
+    // =========================================================================
+
+    /// Kill mutants in `Mat3::determinant` (arithmetic operator swaps)
+    /// Use a matrix with known, asymmetric values where +/- swaps change the result.
+    #[test]
+    fn test_determinant_specific_values() {
+        // Use a matrix where determinant is known analytically
+        // | 2  3  1 |
+        // | 1  4  2 |   (column-major: col0=[2,1,0], col1=[3,4,0], col2=[1,2,1])
+        // | 0  0  1 |
+        let m = Mat3::new(2.0, 1.0, 0.0, 3.0, 4.0, 0.0, 1.0, 2.0, 1.0);
+        // det = 2*(4*1 - 0*2) - 3*(1*1 - 0*0) + 1*(1*0 - 4*0) = 2*4 - 3*1 + 0 = 5
+        let det = m.determinant();
+        assert!(
+            (det - 5.0).abs() < 1e-6,
+            "Determinant should be 5.0, got {det}"
+        );
+
+        // Another matrix with all non-zero elements
+        // | 1  2  3 |
+        // | 4  5  6 |
+        // | 7  8  10 |
+        let m2 = Mat3::new(1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 10.0);
+        // det = 1*(5*10 - 6*8) - 2*(4*10 - 6*7) + 3*(4*8 - 5*7)
+        //     = 1*(50-48) - 2*(40-42) + 3*(32-35)
+        //     = 2 + 4 - 9 = -3
+        let det2 = m2.determinant();
+        assert!(
+            (det2 - (-3.0)).abs() < 1e-6,
+            "Determinant should be -3.0, got {det2}"
+        );
+    }
+
+    /// Kill mutants in `Mat3::inverse` (arithmetic operator swaps, * -> /)
+    /// Test inverse with a known non-trivial matrix and verify each element.
+    #[test]
+    fn test_inverse_specific_values() {
+        // Use a matrix with known inverse
+        // | 2  1  0 |
+        // | 0  2  1 |  column-major: col0=[2,0,0], col1=[1,2,0], col2=[0,1,1]
+        // | 0  0  1 |
+        let m = Mat3::new(2.0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, 1.0, 1.0);
+        let inv = m.inverse().expect("Matrix should be invertible");
+
+        // Verify M * M^-1 = I
+        let product = m * inv;
+        assert!(product.approx_eq(Mat3::IDENTITY), "M * M^-1 should equal I");
+
+        // Also verify M^-1 * M = I
+        let product2 = inv * m;
+        assert!(
+            product2.approx_eq(Mat3::IDENTITY),
+            "M^-1 * M should equal I"
+        );
+
+        // Verify specific inverse values
+        // For upper triangular matrix, det = 2*2*1 = 4
+        let det = m.determinant();
+        assert!((det - 4.0).abs() < 1e-6, "Det should be 4, got {det}");
+
+        // Transform a point through M and then M^-1 to verify roundtrip
+        let p = Vec2::new(3.0, 7.0);
+        let transformed = m.transform_point(p);
+        let recovered = inv.transform_point(transformed);
+        assert!(
+            recovered.approx_eq(p),
+            "Roundtrip should preserve point: {p:?} -> {transformed:?} -> {recovered:?}"
+        );
+    }
+
+    /// Kill mutants in `Mat3::inverse` for < with <= on det check
+    #[test]
+    fn test_inverse_det_at_epsilon_boundary() {
+        // Matrix with determinant exactly at EPSILON threshold
+        // Should return None when |det| < EPSILON
+        let tiny_det = Mat3::new(crate::EPSILON * 0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+        assert!(
+            tiny_det.inverse().is_none(),
+            "Matrix with det < EPSILON should not be invertible"
+        );
+
+        // Matrix with determinant just above EPSILON
+        let small_det = Mat3::new(crate::EPSILON * 2.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+        assert!(
+            small_det.inverse().is_some(),
+            "Matrix with det > EPSILON should be invertible"
+        );
+    }
+
+    /// Kill mutants in Mat3 Mul (arithmetic + and * swaps)
+    /// Use matrices with all-distinct, non-trivial values.
+    #[test]
+    fn test_mul_specific_values() {
+        // Two non-trivial matrices with known product
+        let a = Mat3::new(1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0);
+        let b = Mat3::new(9.0, 6.0, 3.0, 8.0, 5.0, 2.0, 7.0, 4.0, 1.0);
+
+        let c = a * b;
+
+        // Manually compute expected result (column-major multiplication)
+        // c[0] = a[0]*b[0] + a[3]*b[1] + a[6]*b[2] = 1*9 + 2*6 + 3*3 = 9+12+9 = 30
+        // c[1] = a[1]*b[0] + a[4]*b[1] + a[7]*b[2] = 4*9 + 5*6 + 6*3 = 36+30+18 = 84
+        // c[2] = a[2]*b[0] + a[5]*b[1] + a[8]*b[2] = 7*9 + 8*6 + 9*3 = 63+48+27 = 138
+        assert!(
+            (c.m[0] - 30.0).abs() < 1e-6,
+            "c[0] = {}, expected 30",
+            c.m[0]
+        );
+        assert!(
+            (c.m[1] - 84.0).abs() < 1e-6,
+            "c[1] = {}, expected 84",
+            c.m[1]
+        );
+        assert!(
+            (c.m[2] - 138.0).abs() < 1e-6,
+            "c[2] = {}, expected 138",
+            c.m[2]
+        );
+
+        // c[3] = a[0]*b[3] + a[3]*b[4] + a[6]*b[5] = 1*8 + 2*5 + 3*2 = 8+10+6 = 24
+        // c[4] = a[1]*b[3] + a[4]*b[4] + a[7]*b[5] = 4*8 + 5*5 + 6*2 = 32+25+12 = 69
+        // c[5] = a[2]*b[3] + a[5]*b[4] + a[8]*b[5] = 7*8 + 8*5 + 9*2 = 56+40+18 = 114
+        assert!(
+            (c.m[3] - 24.0).abs() < 1e-6,
+            "c[3] = {}, expected 24",
+            c.m[3]
+        );
+        assert!(
+            (c.m[4] - 69.0).abs() < 1e-6,
+            "c[4] = {}, expected 69",
+            c.m[4]
+        );
+        assert!(
+            (c.m[5] - 114.0).abs() < 1e-6,
+            "c[5] = {}, expected 114",
+            c.m[5]
+        );
+
+        // c[6] = a[0]*b[6] + a[3]*b[7] + a[6]*b[8] = 1*7 + 2*4 + 3*1 = 7+8+3 = 18
+        // c[7] = a[1]*b[6] + a[4]*b[7] + a[7]*b[8] = 4*7 + 5*4 + 6*1 = 28+20+6 = 54
+        // c[8] = a[2]*b[6] + a[5]*b[7] + a[8]*b[8] = 7*7 + 8*4 + 9*1 = 49+32+9 = 90
+        assert!(
+            (c.m[6] - 18.0).abs() < 1e-6,
+            "c[6] = {}, expected 18",
+            c.m[6]
+        );
+        assert!(
+            (c.m[7] - 54.0).abs() < 1e-6,
+            "c[7] = {}, expected 54",
+            c.m[7]
+        );
+        assert!(
+            (c.m[8] - 90.0).abs() < 1e-6,
+            "c[8] = {}, expected 90",
+            c.m[8]
+        );
+    }
+
+    /// Additional inverse test with transform roundtrip using combined transforms
+    #[test]
+    fn test_inverse_combined_transforms() {
+        let m = Mat3::translation(7.0, -3.0) * Mat3::rotation(1.2) * Mat3::scaling(2.5, 0.8);
+        let inv = m
+            .inverse()
+            .expect("Combined transform should be invertible");
+
+        // Multiple point roundtrips
+        for (px, py) in [(1.0, 0.0), (0.0, 1.0), (-3.0, 7.0), (100.0, -50.0)] {
+            let p = Vec2::new(px, py);
+            let transformed = m.transform_point(p);
+            let recovered = inv.transform_point(transformed);
+            assert!(
+                (recovered.x - p.x).abs() < 1e-3 && (recovered.y - p.y).abs() < 1e-3,
+                "Roundtrip failed for ({px}, {py}): got ({}, {})",
+                recovered.x,
+                recovered.y
+            );
+        }
+    }
 }

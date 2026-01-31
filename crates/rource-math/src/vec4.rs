@@ -754,4 +754,32 @@ mod tests {
         let s = 2.5;
         assert_eq!(v * s, s * v);
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill operator mutants
+    // =========================================================================
+
+    /// Kill *→/ and *→+ in f32 * Vec4
+    #[test]
+    fn test_scalar_mul_vec4_non_trivial() {
+        let v = Vec4::new(3.0, 5.0, 7.0, 11.0);
+        let result = 4.0 * v;
+        assert_eq!(result, Vec4::new(12.0, 20.0, 28.0, 44.0));
+    }
+
+    /// Kill *=→+= in `MulAssign<f32>` with distinguishable values
+    #[test]
+    fn test_mul_assign_scalar_distinguishable() {
+        let mut v = Vec4::new(3.0, 5.0, 7.0, 11.0);
+        v *= 4.0;
+        assert_eq!(v, Vec4::new(12.0, 20.0, 28.0, 44.0));
+    }
+
+    /// Kill /=→%= in `DivAssign<f32>`
+    #[test]
+    fn test_div_assign_scalar() {
+        let mut v = Vec4::new(12.0, 20.0, 28.0, 44.0);
+        v /= 4.0;
+        assert_eq!(v, Vec4::new(3.0, 5.0, 7.0, 11.0));
+    }
 }

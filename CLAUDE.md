@@ -144,6 +144,8 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 | "It works on desktop" | Desktop bias | Mobile-first development required |
 | **"Pre-existing issue"** | **Abdication of responsibility** | **Fix it NOW** |
 | **"Unrelated to my changes"** | **Destroys trust and quality** | **You touched it, you own it** |
+| **"It's a base image issue"** | **Assumption that issues self-resolve** | **Minimize attack surface; fix root cause** |
+| **"It'll resolve after next merge"** | **Speculation, not action** | **Fix it NOW; never assume future resolution** |
 
 ### CRITICAL: The "Pre-Existing Issue" Fallacy
 
@@ -355,12 +357,14 @@ The following events MUST trigger a CLAUDE.md update:
 | New documentation file created with metrics | Add sed patterns to appropriate update script |
 | Shell script error encountered | Add to Shell Scripting Standards table with example |
 | Automation gap identified | Create or extend scripts; add `--check` enforcement to CI |
+| Security scan alerts appeared/increased | Investigate root cause; fix Dockerfile/dependencies; never dismiss |
+| Feature-gated code missed by linting | Add `--all-features` to clippy/test commands |
 
 #### Lessons Learned Log
 
 > **Refactored to external document**: See [`docs/LESSONS_LEARNED.md`](docs/LESSONS_LEARNED.md)
 > for the full categorized knowledge base with decision tables, domain-organized
-> lessons, and chronological audit log (123+ entries).
+> lessons, and chronological audit log (136+ entries).
 >
 > New entries should be added to BOTH the appropriate category section AND the
 > chronological log in that document.
@@ -684,8 +688,8 @@ installation instructions and troubleshooting.
 # 1. Tests pass
 cargo test
 
-# 2. No warnings
-cargo clippy -- -D warnings
+# 2. No warnings (MUST include --all-features to catch feature-gated modules like cache)
+cargo clippy --all-targets --all-features -- -D warnings
 
 # 3. Formatted
 cargo fmt --check
@@ -799,7 +803,7 @@ Every change MUST follow this workflow:
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
 │     └─ cargo test (all 2700+ tests pass)                               │
-│     └─ cargo clippy -- -D warnings (zero warnings)                      │
+│     └─ cargo clippy --all-targets --all-features -- -D warnings (zero)   │
 │     └─ cargo fmt --check (formatted)                                    │
 │     └─ Mobile Safari test (if UI change)                                │
 │                                                                         │
@@ -823,7 +827,7 @@ Every change MUST follow this workflow:
 ### Code Style
 
 - Use `cargo fmt` before committing
-- Run `cargo clippy -- -D warnings` and fix ALL warnings
+- Run `cargo clippy --all-targets --all-features -- -D warnings` and fix ALL warnings
 - Follow Rust API guidelines: https://rust-lang.github.io/api-guidelines/
 
 ### Building
@@ -880,7 +884,7 @@ Every optimization MUST follow this exact process:
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
 │     └─ Run ALL tests: cargo test                                        │
-│     └─ Run clippy: cargo clippy -- -D warnings                          │
+│     └─ Run clippy: cargo clippy --all-targets --all-features -- -D warnings │
 │     └─ Run rustfmt: cargo fmt --check                                   │
 │                                                                         │
 │  5. BENCHMARK OPTIMIZED                                                 │
@@ -1091,8 +1095,8 @@ See `docs/ux/MOBILE_UX_ROADMAP.md` for complete tracking (46 issues).
 # 1. All tests pass
 cargo test
 
-# 2. No clippy warnings
-cargo clippy -- -D warnings
+# 2. No clippy warnings (MUST use --all-targets --all-features to catch feature-gated code)
+cargo clippy --all-targets --all-features -- -D warnings
 
 # 3. Code is formatted
 cargo fmt --check
@@ -1809,7 +1813,7 @@ See individual roadmap documents for complete priority order.
 │                                                                             │
 │  1. RUN VERIFICATION                                                        │
 │     cargo test                          # All tests must pass               │
-│     cargo clippy -- -D warnings         # Zero warnings allowed             │
+│     cargo clippy --all-targets --all-features -- -D warnings  # Zero warnings │
 │     cargo fmt --check                   # Must be formatted                 │
 │     cargo doc --no-deps --all-features  # Zero doc warnings                 │
 │                                                                             │
@@ -1848,7 +1852,7 @@ See individual roadmap documents for complete priority order.
 
 1. **Verify clean state**:
    ```bash
-   cargo test && cargo clippy -- -D warnings && cargo doc --no-deps --all-features
+   cargo test && cargo clippy --all-targets --all-features -- -D warnings && cargo doc --no-deps --all-features
    ```
 2. **Verify coverage (if code was added/modified)**:
    ```bash

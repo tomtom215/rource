@@ -373,6 +373,7 @@ impl<R: Read> Iterator for CustomLogGrouper<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write;
     use std::io::Cursor;
 
     #[test]
@@ -448,5 +449,147 @@ mod tests {
         assert_eq!(commits[0].files.len(), 2);
         assert_eq!(commits[1].author, "Bob");
         assert_eq!(commits[1].files.len(), 1);
+    }
+
+    // =========================================================================
+    // Mutation Testing: Kill missed mutants
+    // =========================================================================
+
+    /// Kill mutant: `parse_numstat_line` match guard r != "0" -> true/false, !=->==
+    /// When added="0" and removed="5", action should be Delete (not Modify).
+    #[test]
+    fn test_parse_numstat_delete_action() {
+        let line = "0\t5\tsrc/old.rs";
+        let fc = GitLogStream::<std::io::Empty>::parse_numstat_line(line).unwrap();
+        assert_eq!(fc.action, FileAction::Delete, "0 added, 5 removed = Delete");
+    }
+
+    /// Kill mutant: `parse_numstat_line` match guard a != "0" -> true/false, !=->==
+    /// When added="5" and removed="0", action should be Create (not Modify).
+    #[test]
+    fn test_parse_numstat_create_action() {
+        let line = "5\t0\tsrc/new.rs";
+        let fc = GitLogStream::<std::io::Empty>::parse_numstat_line(line).unwrap();
+        assert_eq!(fc.action, FileAction::Create, "5 added, 0 removed = Create");
+    }
+
+    /// Kill mutant: `parse_numstat_line` ensure Modify for both-nonzero
+    #[test]
+    fn test_parse_numstat_modify_action() {
+        let line = "10\t5\tsrc/changed.rs";
+        let fc = GitLogStream::<std::io::Empty>::parse_numstat_line(line).unwrap();
+        assert_eq!(
+            fc.action,
+            FileAction::Modify,
+            "10 added, 5 removed = Modify"
+        );
+    }
+
+    /// Kill mutant: `parse_numstat_line` ensure both zeros = Modify
+    #[test]
+    fn test_parse_numstat_both_zero_is_modify() {
+        let line = "0\t0\tsrc/touched.rs";
+        let fc = GitLogStream::<std::io::Empty>::parse_numstat_line(line).unwrap();
+        assert_eq!(fc.action, FileAction::Modify, "0 added, 0 removed = Modify");
+    }
+
+    /// Kill mutant: `parse_numstat_line` binary files
+    #[test]
+    fn test_parse_numstat_binary() {
+        let line = "-\t-\tbinary.png";
+        let fc = GitLogStream::<std::io::Empty>::parse_numstat_line(line).unwrap();
+        assert_eq!(fc.action, FileAction::Modify, "binary files = Modify");
+    }
+
+    /// Kill mutant: `load_with_progress` +=->-= (`commit_count`), +=->*= (`commit_count`)
+    /// Kill mutant: `load_with_progress` +=->-= (`file_count`), +=->*= (`file_count`)
+    /// Kill mutant: `load_with_progress` ==->!= (%->/, %->+)
+    #[test]
+    fn test_load_with_progress_counting() {
+        // Create a log with multiple commits
+        let mut log_lines = String::new();
+        for i in 0..5 {
+            writeln!(log_lines, "{}|Author{}|hash{}", 1000 + i, i, i).unwrap();
+            writeln!(log_lines, "{}\t{}\tfile_{}.rs", i + 1, i, i).unwrap();
+            log_lines.push('\n');
+        }
+
+        let reader = BufReader::new(Cursor::new(log_lines));
+        let loader = StreamingCommitLoader::new(reader);
+
+        let mut last_commit_count = 0;
+        let mut last_file_count = 0;
+        let mut callback_count = 0;
+
+        let store = loader.load_with_progress(|cc, fc| {
+            callback_count += 1;
+            // commit_count must increase (not decrease or multiply)
+            assert!(cc >= last_commit_count, "commit_count must not decrease");
+            assert!(fc >= last_file_count, "file_count must not decrease");
+            last_commit_count = cc;
+            last_file_count = fc;
+        });
+
+        // Final callback should have correct counts
+        assert_eq!(store.commit_count(), 5);
+        assert_eq!(last_commit_count, 5);
+        assert_eq!(last_file_count, 5); // 1 file per commit
+                                        // At least 1 progress callback (the final one)
+        assert!(callback_count >= 1);
+    }
+
+    /// Kill mutant: `CustomLogStream` `line.is_empty()` || `line.starts_with('#')` -> &&
+    /// Ensure both empty lines and comment lines are skipped independently.
+    #[test]
+    fn test_custom_log_stream_skips_comments_and_empty() {
+        let log = "\n\
+                   # comment\n\
+                   1234567890|Alice|A|file.txt\n";
+
+        let reader = BufReader::new(Cursor::new(log));
+        let stream = CustomLogStream::new(reader);
+        let entries: Vec<_> = stream.collect();
+
+        // Should skip empty line and comment, parse only the data line
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].author, "Alice");
+    }
+
+    /// Kill mutant: `CustomLogStream` || -> && (line 285)
+    /// Test that a non-empty non-comment line is NOT skipped.
+    #[test]
+    fn test_custom_log_stream_does_not_skip_data() {
+        let log = "1234567890|Alice|A|file1.txt\n\
+                   1234567891|Bob|M|file2.txt\n";
+
+        let reader = BufReader::new(Cursor::new(log));
+        let stream = CustomLogStream::new(reader);
+        let count = stream.count();
+
+        assert_eq!(count, 2);
+    }
+
+    /// Kill mutant: `CustomLogGrouper` && -> || (line 354)
+    /// Same timestamp AND same author should be grouped; different author or timestamp should not.
+    #[test]
+    fn test_custom_log_grouper_grouping_logic() {
+        // Same timestamp, same author: grouped
+        let log = "1234567890|Alice|A|file1.txt\n\
+                   1234567890|Alice|M|file2.txt\n\
+                   1234567890|Bob|A|file3.txt\n\
+                   1234567891|Alice|A|file4.txt\n";
+
+        let reader = BufReader::new(Cursor::new(log));
+        let grouper = CustomLogGrouper::new(reader);
+        let commits: Vec<_> = grouper.collect();
+
+        // Alice@1234567890 (2 files), Bob@1234567890 (1 file), Alice@1234567891 (1 file)
+        assert_eq!(commits.len(), 3);
+        assert_eq!(commits[0].author, "Alice");
+        assert_eq!(commits[0].files.len(), 2);
+        assert_eq!(commits[1].author, "Bob");
+        assert_eq!(commits[1].files.len(), 1);
+        assert_eq!(commits[2].author, "Alice");
+        assert_eq!(commits[2].files.len(), 1);
     }
 }

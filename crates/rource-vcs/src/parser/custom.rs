@@ -817,4 +817,86 @@ mod tests {
         let commits = parser.parse_str(input).unwrap();
         assert_eq!(commits[0].timestamp, 32503680000);
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill missed mutants
+    // =========================================================================
+
+    /// Kill mutant: `parse_str` `line_number` +=→*= and +=→-=
+    /// Line counting must increment monotonically for error reporting.
+    #[test]
+    fn test_parse_str_line_counting() {
+        let parser = CustomParser::new();
+        // Valid multi-line input with blank lines
+        let input = "\
+1234567890|User1|A|file1.txt
+
+1234567891|User2|M|file2.txt
+
+1234567892|User3|D|file3.txt
+";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits.len(), 3);
+    }
+
+    /// Kill mutant: `parse_str` `error_count` tracking
+    /// Lenient mode should track errors and still produce commits.
+    #[test]
+    fn test_parse_str_error_count_lenient() {
+        let parser = CustomParser::with_options(ParseOptions::lenient());
+        let input = "\
+bad line 1
+1234567890|User|A|file.txt
+another bad line
+1234567891|User|M|file2.txt
+";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits.len(), 2, "Valid lines should parse despite errors");
+    }
+
+    /// Kill mutant: `can_parse` &&→|| on action validation
+    /// Input with valid parts but invalid action should not match.
+    #[test]
+    fn test_can_parse_invalid_action() {
+        let parser = CustomParser::new();
+        // All parts present but action is "X" (invalid)
+        assert!(
+            !parser.can_parse("1234567890|User|X|file.txt"),
+            "invalid action should not match"
+        );
+        // Action has more than 1 char
+        assert!(
+            !parser.can_parse("1234567890|User|AM|file.txt"),
+            "multi-char action should not match"
+        );
+        // Valid action
+        assert!(parser.can_parse("1234567890|User|A|file.txt"));
+    }
+
+    /// Kill mutant: `can_parse` early return on non-matching first data line
+    #[test]
+    fn test_can_parse_first_line_mismatch() {
+        let parser = CustomParser::new();
+        // First data line doesn't match format, second would
+        // But can_parse returns false after first non-matching data line
+        let input = "random text\n1234567890|User|A|file.txt\n";
+        assert!(
+            !parser.can_parse(input),
+            "should reject after first data line mismatch"
+        );
+    }
+
+    /// Kill mutant: `with_options` → Default
+    #[test]
+    fn test_custom_with_options_preserved() {
+        let opts = ParseOptions::default().with_max_commits(1);
+        let parser = CustomParser::with_options(opts);
+        let input = "\
+1234567890|User1|A|file1.txt
+1234567891|User2|M|file2.txt
+1234567892|User3|D|file3.txt
+";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits.len(), 1, "with_max_commits(1) should limit to 1");
+    }
 }

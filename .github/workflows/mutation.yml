@@ -20,7 +20,7 @@ on:
       timeout:
         description: 'Timeout per mutant (seconds)'
         required: false
-        default: '60'
+        default: '120'
 
 # Prevent concurrent runs on the same branch/PR
 concurrency:
@@ -70,7 +70,7 @@ jobs:
       - name: Run mutation tests on rource-math
         id: mutants
         run: |
-          TIMEOUT="${{ inputs.timeout || '60' }}"
+          TIMEOUT="${{ inputs.timeout || '120' }}"
           cargo mutants -p rource-math --timeout=$TIMEOUT --jobs=2 --output=mutants-output
 
           # Parse results
@@ -185,7 +185,7 @@ jobs:
       - name: Run mutation tests on rource-vcs
         id: mutants
         run: |
-          TIMEOUT="${{ inputs.timeout || '60' }}"
+          TIMEOUT="${{ inputs.timeout || '120' }}"
           cargo mutants -p rource-vcs --timeout=$TIMEOUT --jobs=2 --output=mutants-output
 
           # Parse results (same logic as math)

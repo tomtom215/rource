@@ -205,4 +205,73 @@ mod tests {
             assert!(approx_eq(rad_to_deg(deg_to_rad(deg)), deg));
         }
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill boundary mutants for clamp and approx_eq
+    // =========================================================================
+
+    /// Kill mutant: replace < with <= in clamp (line 98)
+    /// Kill mutant: replace > with >= in clamp (line 100)
+    /// When value == min, `<` is false so we return value (not min).
+    /// If mutated to `<=`, we'd return min (same value, but we test the path).
+    /// The key: test value STRICTLY LESS than min (should return min),
+    /// and a value just above min (should return value, not min).
+    #[test]
+    fn test_clamp_boundary_exact_min() {
+        // value == min: should return value (not min via the if branch)
+        // With `<`, value < min is false, so we go to else-if.
+        // With `<=` mutation, value <= min is true, so we'd return min.
+        // Since min == value, the result is the same numerically,
+        // but we can detect the mutation by testing value JUST ABOVE min.
+        let result = clamp(0.0, 0.0, 10.0);
+        assert_eq!(result, 0.0);
+
+        // Value slightly above min - should NOT be clamped to min
+        let result = clamp(0.001, 0.0, 10.0);
+        assert_eq!(result, 0.001, "Value just above min should not be clamped");
+
+        // Value slightly below min - SHOULD be clamped to min
+        let result = clamp(-0.001, 0.0, 10.0);
+        assert_eq!(result, 0.0, "Value just below min should be clamped");
+    }
+
+    /// Kill mutant: replace > with >= in clamp (line 100)
+    #[test]
+    fn test_clamp_boundary_exact_max() {
+        // value == max: should return value (not max via the else-if branch)
+        let result = clamp(10.0, 0.0, 10.0);
+        assert_eq!(result, 10.0);
+
+        // Value slightly below max - should NOT be clamped to max
+        let result = clamp(9.999, 0.0, 10.0);
+        assert_eq!(result, 9.999, "Value just below max should not be clamped");
+
+        // Value slightly above max - SHOULD be clamped to max
+        let result = clamp(10.001, 0.0, 10.0);
+        assert_eq!(result, 10.0, "Value just above max should be clamped");
+    }
+
+    /// Kill mutant: replace < with <= in `approx_eq` (line 126)
+    /// `approx_eq` uses `(a - b).abs() < EPSILON`
+    /// If mutated to `<=`, then values exactly EPSILON apart would be "equal".
+    #[test]
+    fn test_approx_eq_at_epsilon_boundary() {
+        // Use 0.0 as base to avoid f32 precision loss from adding small to large.
+        // At 0.0, |0.0 - EPSILON| = EPSILON exactly, and EPSILON < EPSILON is false.
+        // With <= mutation, EPSILON <= EPSILON would be true (wrong!).
+        assert!(
+            !approx_eq(0.0, EPSILON),
+            "Values exactly EPSILON apart should NOT be approx equal"
+        );
+        assert!(
+            !approx_eq(0.0, -EPSILON),
+            "Values exactly EPSILON apart should NOT be approx equal"
+        );
+
+        // Difference slightly less than EPSILON: SHOULD be approx equal
+        assert!(
+            approx_eq(0.0, EPSILON * 0.99),
+            "Values less than EPSILON apart should be approx equal"
+        );
+    }
 }

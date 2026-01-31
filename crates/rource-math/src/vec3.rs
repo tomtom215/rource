@@ -979,4 +979,60 @@ mod tests {
         // Either returns normalized vector or zero depending on precision
         assert!(tiny_normalized.length() <= 1.0 + f32::EPSILON || tiny_normalized == Vec3::ZERO);
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill operator mutants
+    // =========================================================================
+
+    /// Kill *→/ and *→+ in f32 * Vec3
+    #[test]
+    fn test_scalar_mul_vec3_non_trivial() {
+        let v = Vec3::new(3.0, 5.0, 7.0);
+        let result = 4.0 * v;
+        assert_eq!(result, Vec3::new(12.0, 20.0, 28.0));
+    }
+
+    /// Kill *=→+= in `MulAssign<f32>` with distinguishable values
+    #[test]
+    fn test_mul_assign_scalar_distinguishable() {
+        let mut v = Vec3::new(3.0, 5.0, 7.0);
+        v *= 4.0;
+        assert_eq!(v, Vec3::new(12.0, 20.0, 28.0));
+    }
+
+    /// Kill /=→%= in `DivAssign<f32>`
+    #[test]
+    fn test_div_assign_scalar() {
+        let mut v = Vec3::new(12.0, 20.0, 28.0);
+        v /= 4.0;
+        assert_eq!(v, Vec3::new(3.0, 5.0, 7.0));
+    }
+
+    /// Kill -→+ in distance with non-zero origin
+    #[test]
+    fn test_distance_non_origin() {
+        let a = Vec3::new(1.0, 0.0, 0.0);
+        let b = Vec3::new(4.0, 0.0, 0.0);
+        assert_eq!(a.distance(b), 3.0);
+    }
+
+    /// Kill -→+ in `distance_squared` with non-zero origin
+    #[test]
+    fn test_distance_squared_non_origin() {
+        let a = Vec3::new(1.0, 0.0, 0.0);
+        let b = Vec3::new(4.0, 0.0, 0.0);
+        assert_eq!(a.distance_squared(b), 9.0);
+    }
+
+    /// Kill /→* in project with non-unit onto
+    #[test]
+    fn test_project_non_unit_onto() {
+        let v = Vec3::new(3.0, 4.0, 5.0);
+        let onto = Vec3::new(2.0, 0.0, 0.0);
+        // dot=6, len_sq=4, result = (2,0,0)*(6/4) = (3,0,0)
+        let result = v.project(onto);
+        assert!((result.x - 3.0).abs() < 1e-6);
+        assert!((result.y).abs() < 1e-6);
+        assert!((result.z).abs() < 1e-6);
+    }
 }

@@ -367,4 +367,38 @@ mod tests {
         assert!(format!("{commit}").contains("John"));
         assert!(format!("{commit}").contains("1 files"));
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill missed mutants
+    // =========================================================================
+
+    /// Kill mutant: replace `is_empty` body with `false`
+    /// An empty commit (no files) must return true from `is_empty`.
+    #[test]
+    fn test_is_empty_true_for_empty_commit() {
+        let commit = Commit::new("abc", 100, "Alice");
+        assert!(commit.is_empty(), "commit with no files must be empty");
+    }
+
+    /// Kill mutant: replace > with >= in `short_hash` (line 232)
+    /// With exactly 7 chars, `len > 7` is false, `len >= 7` is true.
+    /// Both return the same result (&hash[..7] == &hash for a 7-char string),
+    /// so this is an equivalent mutant. We still test the boundary for coverage.
+    #[test]
+    fn test_short_hash_boundary_seven() {
+        let commit = Commit::new("abcdefg", 100, "Alice");
+        // Exactly 7 chars: both > and >= produce the same observable result
+        assert_eq!(commit.short_hash(), "abcdefg");
+        assert_eq!(commit.short_hash().len(), 7);
+
+        // 8 chars: must truncate
+        let commit8 = Commit::new("abcdefgh", 100, "Alice");
+        assert_eq!(commit8.short_hash(), "abcdefg");
+        assert_eq!(commit8.short_hash().len(), 7);
+
+        // 6 chars: must return full hash
+        let commit6 = Commit::new("abcdef", 100, "Alice");
+        assert_eq!(commit6.short_hash(), "abcdef");
+        assert_eq!(commit6.short_hash().len(), 6);
+    }
 }
