@@ -208,11 +208,11 @@ The specifications and the compiler serve fundamentally different purposes.
 │  ├── Vec4_Compute.v (33 theorems)                                       │
 │  ├── Mat3_Compute.v (25 theorems, determinant + trace)                  │
 │  ├── Mat4_Compute.v (50 theorems, incl. 16 component lemmas)            │
-│  ├── Color_Compute.v (28 theorems, blend/lerp/clamp)                    │
+│  ├── Color_Compute.v (38 theorems, blend/lerp/clamp)                    │
 │  ├── Rect_Compute.v (43 theorems, intersection/containment)             │
 │  ├── Utils_Compute.v (18 theorems, lerp/clamp)                           │
 │  └── Purpose: Computable operations with algebraic proofs               │
-│      Status: COMPLETE (359 theorems, all 8 types)                       │
+│      Status: COMPLETE (369 theorems, all 8 types)                       │
 │                                                                         │
 │  Layer 3: Extraction Pipeline                                           │
 │  ├── RourceMath_Extract.v → rource_math_extracted.ml (OCaml, 23 KB)     │

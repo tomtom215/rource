@@ -377,6 +377,128 @@ Proof.
   apply zcolor_eq; rewrite Z.mul_0_r; reflexivity.
 Qed.
 
+(** * Darken / Lighten / Contrasting *)
+
+(** Darken a color by an amount (0-1000 scale).
+    darken(c, 0) = c, darken(c, 1000) = black (alpha preserved).
+    Z-compute analog of: color_darken c amount = c * (1 - amount). *)
+Definition zcolor_darken (c : ZColor) (amount : Z) : ZColor :=
+  mkZColor
+    (zcolor_r c * (1000 - amount) / 1000)
+    (zcolor_g c * (1000 - amount) / 1000)
+    (zcolor_b c * (1000 - amount) / 1000)
+    (zcolor_a c).
+
+(** Lighten a color by an amount (0-1000 scale).
+    lighten(c, 0) = c, lighten(c, 1000) = white (alpha preserved).
+    Z-compute analog of: color_lighten c amount = c + (1 - c) * amount. *)
+Definition zcolor_lighten (c : ZColor) (amount : Z) : ZColor :=
+  mkZColor
+    (zcolor_r c + (1000 - zcolor_r c) * amount / 1000)
+    (zcolor_g c + (1000 - zcolor_g c) * amount / 1000)
+    (zcolor_b c + (1000 - zcolor_b c) * amount / 1000)
+    (zcolor_a c).
+
+(** Contrasting color: returns black or white for maximum contrast.
+    Uses luminance threshold of 5000000 (= 0.5 * 10000000, i.e., half of white luminance).
+    Z-compute analog of: if luminance <= 0.5 then white else black. *)
+Definition zcolor_contrasting (c : ZColor) : ZColor :=
+  if zcolor_luminance c <=? 5000000 then zcolor_white else zcolor_black.
+
+(** ** Darken Properties *)
+
+Theorem zcolor_darken_zero : forall (c : ZColor),
+  zcolor_r c >= 0 -> zcolor_g c >= 0 -> zcolor_b c >= 0 ->
+  zcolor_darken c 0 = c.
+Proof.
+  intros [r g b a] Hr Hg Hb. cbn [zcolor_r zcolor_g zcolor_b] in *.
+  unfold zcolor_darken. cbn [zcolor_r zcolor_g zcolor_b zcolor_a].
+  apply zcolor_eq.
+  - replace (r * (1000 - 0)) with (r * 1000) by ring.
+    apply Z.div_mul. lia.
+  - replace (g * (1000 - 0)) with (g * 1000) by ring.
+    apply Z.div_mul. lia.
+  - replace (b * (1000 - 0)) with (b * 1000) by ring.
+    apply Z.div_mul. lia.
+  - reflexivity.
+Qed.
+
+Theorem zcolor_darken_full : forall (c : ZColor),
+  zcolor_darken c 1000 = mkZColor 0 0 0 (zcolor_a c).
+Proof.
+  intros [r g b a]. unfold zcolor_darken.
+  cbn [zcolor_r zcolor_g zcolor_b zcolor_a].
+  apply zcolor_eq; try (rewrite Z.mul_0_r; reflexivity).
+  reflexivity.
+Qed.
+
+Theorem zcolor_darken_preserves_alpha : forall (c : ZColor) (amount : Z),
+  zcolor_a (zcolor_darken c amount) = zcolor_a c.
+Proof.
+  intros [r g b a] amount. unfold zcolor_darken. simpl. reflexivity.
+Qed.
+
+(** ** Lighten Properties *)
+
+Theorem zcolor_lighten_zero : forall (c : ZColor),
+  zcolor_lighten c 0 = c.
+Proof.
+  intros [r g b a]. unfold zcolor_lighten.
+  cbn [zcolor_r zcolor_g zcolor_b zcolor_a].
+  apply zcolor_eq; try reflexivity.
+  - replace ((1000 - r) * 0 / 1000) with 0
+      by (rewrite Z.mul_0_r; reflexivity). lia.
+  - replace ((1000 - g) * 0 / 1000) with 0
+      by (rewrite Z.mul_0_r; reflexivity). lia.
+  - replace ((1000 - b) * 0 / 1000) with 0
+      by (rewrite Z.mul_0_r; reflexivity). lia.
+Qed.
+
+Theorem zcolor_lighten_full : forall (c : ZColor),
+  zcolor_lighten c 1000 = mkZColor 1000 1000 1000 (zcolor_a c).
+Proof.
+  intros [r g b a]. unfold zcolor_lighten.
+  cbn [zcolor_r zcolor_g zcolor_b zcolor_a].
+  apply zcolor_eq; try reflexivity.
+  - rewrite Z.div_mul by lia. lia.
+  - rewrite Z.div_mul by lia. lia.
+  - rewrite Z.div_mul by lia. lia.
+Qed.
+
+Theorem zcolor_lighten_preserves_alpha : forall (c : ZColor) (amount : Z),
+  zcolor_a (zcolor_lighten c amount) = zcolor_a c.
+Proof.
+  intros [r g b a] amount. unfold zcolor_lighten. simpl. reflexivity.
+Qed.
+
+(** ** Contrasting Properties *)
+
+Theorem zcolor_contrasting_black :
+  zcolor_contrasting zcolor_black = zcolor_white.
+Proof.
+  unfold zcolor_contrasting, zcolor_luminance, zcolor_black. simpl. reflexivity.
+Qed.
+
+Theorem zcolor_contrasting_white :
+  zcolor_contrasting zcolor_white = zcolor_black.
+Proof.
+  unfold zcolor_contrasting, zcolor_luminance, zcolor_white. simpl. reflexivity.
+Qed.
+
+Theorem zcolor_contrasting_binary : forall (c : ZColor),
+  zcolor_contrasting c = zcolor_white \/ zcolor_contrasting c = zcolor_black.
+Proof.
+  intros c. unfold zcolor_contrasting.
+  destruct (zcolor_luminance c <=? 5000000); [left | right]; reflexivity.
+Qed.
+
+Theorem zcolor_contrasting_opaque : forall (c : ZColor),
+  zcolor_a (zcolor_contrasting c) = 1000.
+Proof.
+  intros c. unfold zcolor_contrasting.
+  destruct (zcolor_luminance c <=? 5000000); reflexivity.
+Qed.
+
 (** * Computational Tests *)
 
 Example zcolor_test_new :
