@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769876878937,
+  "lastUpdate": 1769881329209,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4781,6 +4781,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/58b029b6e4081a52c578b7c723e18c3933ea13b9"
         },
         "date": 1769876877875,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4a9494859fc90c028c983e1eb94554ec2716968e",
+          "message": "Merge pull request #245 from tomtom215/claude/resource-continuation-SdlU8-b9iYZ\n\nAdd 43 new Coq theorems: Bounds, Color, Mat4, Rect, Utils",
+          "timestamp": "2026-01-31T18:40:11+01:00",
+          "tree_id": "0acccf8e05baa4751e65eecc745606cde9c3162a",
+          "url": "https://github.com/tomtom215/rource/commit/4a9494859fc90c028c983e1eb94554ec2716968e"
+        },
+        "date": 1769881328708,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
