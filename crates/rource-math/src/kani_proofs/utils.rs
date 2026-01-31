@@ -111,3 +111,36 @@ fn verify_rad_to_deg_finite() {
     let result = crate::rad_to_deg(radians);
     assert!(result.is_finite(), "rad_to_deg produced non-finite output");
 }
+
+// ============================================================================
+// lerp endpoints
+// ============================================================================
+
+/// **Endpoint property**: `lerp(a, b, 0.0)` returns exactly `a` for bounded inputs.
+///
+/// Since lerp(a, b, 0) = a + (b - a) * 0 = a + 0 = a, the result should be exact.
+#[kani::proof]
+fn verify_lerp_endpoint_zero() {
+    let a: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(a.is_finite() && a.abs() < SAFE_BOUND);
+    kani::assume(b.is_finite() && b.abs() < SAFE_BOUND);
+    let result = crate::lerp(a, b, 0.0);
+    assert!(result == a, "lerp(a, b, 0.0) should return exactly a");
+}
+
+// ============================================================================
+// approx_eq symmetry
+// ============================================================================
+
+/// **Symmetry**: `approx_eq(a, b) == approx_eq(b, a)` for all finite values.
+#[kani::proof]
+fn verify_approx_eq_symmetry() {
+    let a: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(a.is_finite());
+    kani::assume(b.is_finite());
+    let ab = crate::approx_eq(a, b);
+    let ba = crate::approx_eq(b, a);
+    assert!(ab == ba, "approx_eq should be symmetric");
+}

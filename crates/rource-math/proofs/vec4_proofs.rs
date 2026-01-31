@@ -633,6 +633,215 @@ proof fn vec4_is_vector_space(a: SpecVec4, b: SpecVec4, c: SpecVec4, s: int, t: 
     vec4_scale_identity(a);
 }
 
+// =============================================================================
+// CLAMP OPERATIONS (Spec Functions)
+// =============================================================================
+
+/// Component-wise clamp.
+pub open spec fn vec4_clamp(v: SpecVec4, lo: SpecVec4, hi: SpecVec4) -> SpecVec4 {
+    SpecVec4 {
+        x: if v.x < lo.x { lo.x } else if v.x > hi.x { hi.x } else { v.x },
+        y: if v.y < lo.y { lo.y } else if v.y > hi.y { hi.y } else { v.y },
+        z: if v.z < lo.z { lo.z } else if v.z > hi.z { hi.z } else { v.z },
+        w: if v.w < lo.w { lo.w } else if v.w > hi.w { hi.w } else { v.w },
+    }
+}
+
+/// Product of all components.
+pub open spec fn vec4_element_product(v: SpecVec4) -> int {
+    v.x * v.y * v.z * v.w
+}
+
+/// Reflection of v off surface with normal n: v - 2*(v·n)*n.
+pub open spec fn vec4_reflect(v: SpecVec4, n: SpecVec4) -> SpecVec4 {
+    vec4_sub(v, vec4_scale(2 * vec4_dot(v, n), n))
+}
+
+// =============================================================================
+// CLAMP PROOFS
+// =============================================================================
+
+/// **Theorem 41**: Clamp produces values within bounds (when lo <= hi).
+proof fn vec4_clamp_bounds(v: SpecVec4, lo: SpecVec4, hi: SpecVec4)
+    requires
+        lo.x <= hi.x && lo.y <= hi.y && lo.z <= hi.z && lo.w <= hi.w,
+    ensures ({
+        let c = vec4_clamp(v, lo, hi);
+        c.x >= lo.x && c.x <= hi.x
+        && c.y >= lo.y && c.y <= hi.y
+        && c.z >= lo.z && c.z <= hi.z
+        && c.w >= lo.w && c.w <= hi.w
+    }),
+{
+}
+
+/// **Theorem 42**: Clamp of in-range value is identity.
+proof fn vec4_clamp_identity(v: SpecVec4, lo: SpecVec4, hi: SpecVec4)
+    requires
+        v.x >= lo.x && v.x <= hi.x
+        && v.y >= lo.y && v.y <= hi.y
+        && v.z >= lo.z && v.z <= hi.z
+        && v.w >= lo.w && v.w <= hi.w,
+    ensures
+        vec4_clamp(v, lo, hi) == v,
+{
+}
+
+/// **Theorem 43**: Clamp is idempotent (when lo <= hi).
+proof fn vec4_clamp_idempotent(v: SpecVec4, lo: SpecVec4, hi: SpecVec4)
+    requires
+        lo.x <= hi.x && lo.y <= hi.y && lo.z <= hi.z && lo.w <= hi.w,
+    ensures
+        vec4_clamp(vec4_clamp(v, lo, hi), lo, hi) == vec4_clamp(v, lo, hi),
+{
+    let c = vec4_clamp(v, lo, hi);
+    assert(c.x >= lo.x && c.x <= hi.x);
+    assert(c.y >= lo.y && c.y <= hi.y);
+    assert(c.z >= lo.z && c.z <= hi.z);
+    assert(c.w >= lo.w && c.w <= hi.w);
+}
+
+/// **Theorem 44**: Clamping to [v, v] always returns v (squeeze property).
+proof fn vec4_clamp_squeeze(v: SpecVec4, target: SpecVec4)
+    ensures
+        vec4_clamp(v, target, target) == target,
+{
+}
+
+// =============================================================================
+// ELEMENT PRODUCT PROOFS
+// =============================================================================
+
+/// **Theorem 45**: Element product of zero vector is zero.
+proof fn vec4_element_product_zero()
+    ensures
+        vec4_element_product(vec4_zero()) == 0,
+{
+}
+
+/// **Theorem 46**: Element product of splat(v) is v⁴.
+proof fn vec4_element_product_splat(v: int)
+    ensures
+        vec4_element_product(vec4_splat(v)) == v * v * v * v,
+{
+    assert(v * v * v * v == v * v * v * v) by(nonlinear_arith);
+}
+
+/// **Theorem 47**: Element product of unit basis vectors is zero.
+proof fn vec4_element_product_basis_zero()
+    ensures
+        vec4_element_product(vec4_x()) == 0,
+        vec4_element_product(vec4_y()) == 0,
+        vec4_element_product(vec4_z()) == 0,
+        vec4_element_product(vec4_w()) == 0,
+{
+}
+
+// =============================================================================
+// REFLECT PROOFS
+// =============================================================================
+
+/// **Theorem 48**: Reflecting a vector perpendicular to normal preserves it.
+///
+/// If v · n = 0, then reflect(v, n) = v.
+proof fn vec4_reflect_perpendicular(v: SpecVec4, n: SpecVec4)
+    requires
+        vec4_dot(v, n) == 0,
+    ensures
+        vec4_reflect(v, n) == v,
+{
+    assert(2 * 0 == 0);
+    assert(0 * n.x == 0) by(nonlinear_arith);
+    assert(0 * n.y == 0) by(nonlinear_arith);
+    assert(0 * n.z == 0) by(nonlinear_arith);
+    assert(0 * n.w == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 49**: Reflecting along a unit normal negates the vector.
+proof fn vec4_reflect_along_unit_normal(n: SpecVec4)
+    requires
+        vec4_dot(n, n) == 1,
+    ensures
+        vec4_reflect(n, n) == vec4_neg(n),
+{
+    assert(2 * vec4_dot(n, n) == 2);
+    assert(2 * n.x == 2 * 1 * n.x) by(nonlinear_arith);
+    assert(2 * n.y == 2 * 1 * n.y) by(nonlinear_arith);
+    assert(2 * n.z == 2 * 1 * n.z) by(nonlinear_arith);
+    assert(2 * n.w == 2 * 1 * n.w) by(nonlinear_arith);
+}
+
+/// **Theorem 50**: max(a, b) is component-wise >= both operands.
+proof fn vec4_max_ge_both(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_max(a, b).x >= a.x && vec4_max(a, b).x >= b.x,
+        vec4_max(a, b).y >= a.y && vec4_max(a, b).y >= b.y,
+        vec4_max(a, b).z >= a.z && vec4_max(a, b).z >= b.z,
+        vec4_max(a, b).w >= a.w && vec4_max(a, b).w >= b.w,
+{
+}
+
+/// **Theorem 51**: Abs of zero is zero.
+proof fn vec4_abs_zero()
+    ensures
+        vec4_abs(vec4_zero()) == vec4_zero(),
+{
+}
+
+// =============================================================================
+// LERP PROOFS
+// =============================================================================
+
+/// Integer model of linear interpolation: lerp(a, b, t) = a + (b - a) * t.
+pub open spec fn vec4_lerp(a: SpecVec4, b: SpecVec4, t: int) -> SpecVec4 {
+    SpecVec4 {
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        z: a.z + (b.z - a.z) * t,
+        w: a.w + (b.w - a.w) * t,
+    }
+}
+
+/// **Theorem 52**: lerp(a, b, 0) = a.
+proof fn vec4_lerp_zero(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_lerp(a, b, 0) == a,
+{
+}
+
+/// **Theorem 53**: lerp(a, b, 1) = b.
+proof fn vec4_lerp_one(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_lerp(a, b, 1) == b,
+{
+}
+
+/// **Theorem 54**: lerp(v, v, t) = v for any t.
+proof fn vec4_lerp_identity(v: SpecVec4, t: int)
+    ensures
+        vec4_lerp(v, v, t) == v,
+{
+    assert((v.x - v.x) * t == 0) by(nonlinear_arith);
+    assert((v.y - v.y) * t == 0) by(nonlinear_arith);
+    assert((v.z - v.z) * t == 0) by(nonlinear_arith);
+    assert((v.w - v.w) * t == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 55**: lerp at t=2 extrapolates: lerp(a, b, 2) = 2b - a.
+proof fn vec4_lerp_two(a: SpecVec4, b: SpecVec4)
+    ensures
+        vec4_lerp(a, b, 2) == vec4_sub(vec4_scale(2, b), a),
+{
+}
+
+/// **Theorem 56**: lerp of zero endpoints gives zero: lerp(zero, zero, t) = zero.
+proof fn vec4_lerp_zero_zero(t: int)
+    ensures
+        vec4_lerp(vec4_zero(), vec4_zero(), t) == vec4_zero(),
+{
+    vec4_lerp_identity(vec4_zero(), t);
+}
+
 fn main() {
     // Verification only
 }

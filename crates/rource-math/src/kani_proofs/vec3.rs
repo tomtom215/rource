@@ -438,3 +438,118 @@ fn verify_vec3_project_no_nan() {
     assert!(!result.y.is_nan(), "project().y is NaN");
     assert!(!result.z.is_nan(), "project().z is NaN");
 }
+
+// ============================================================================
+// length_squared
+// ============================================================================
+
+/// **Non-negativity**: `length_squared()` with bounded inputs is non-negative.
+#[kani::proof]
+fn verify_vec3_length_squared_non_negative() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
+    let v = Vec3::new(x, y, z);
+    let lsq = v.length_squared();
+    assert!(!lsq.is_nan(), "length_squared() produced NaN");
+    assert!(lsq >= 0.0, "length_squared() returned negative value");
+}
+
+// ============================================================================
+// sub (via operator overloading)
+// ============================================================================
+
+/// **Finiteness**: `a - b` with bounded inputs produces finite output.
+#[kani::proof]
+fn verify_vec3_sub_finite() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    let a = Vec3::new(ax, ay, az);
+    let b = Vec3::new(bx, by, bz);
+    let r = a - b;
+    assert!(r.x.is_finite(), "sub result x is not finite");
+    assert!(r.y.is_finite(), "sub result y is not finite");
+    assert!(r.z.is_finite(), "sub result z is not finite");
+}
+
+// ============================================================================
+// add (via operator overloading)
+// ============================================================================
+
+/// **Finiteness**: `a + b` with bounded inputs produces finite output.
+#[kani::proof]
+fn verify_vec3_add_finite() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    let a = Vec3::new(ax, ay, az);
+    let b = Vec3::new(bx, by, bz);
+    let r = a + b;
+    assert!(r.x.is_finite(), "add result x is not finite");
+    assert!(r.y.is_finite(), "add result y is not finite");
+    assert!(r.z.is_finite(), "add result z is not finite");
+}
+
+// ============================================================================
+// neg
+// ============================================================================
+
+/// **Finiteness**: `-v` with finite inputs produces finite output.
+#[kani::proof]
+fn verify_vec3_neg_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(z.is_finite());
+    let v = Vec3::new(x, y, z);
+    let r = -v;
+    assert!(r.x.is_finite(), "neg result x is not finite");
+    assert!(r.y.is_finite(), "neg result y is not finite");
+    assert!(r.z.is_finite(), "neg result z is not finite");
+}
+
+// ============================================================================
+// scale
+// ============================================================================
+
+/// **Finiteness**: `v * scalar` with bounded inputs produces finite output.
+#[kani::proof]
+fn verify_vec3_scale_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    let s: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < 1e18);
+    kani::assume(y.is_finite() && y.abs() < 1e18);
+    kani::assume(z.is_finite() && z.abs() < 1e18);
+    kani::assume(s.is_finite() && s.abs() < 1e18);
+    let v = Vec3::new(x, y, z);
+    let r = v * s;
+    assert!(r.x.is_finite(), "scale result x is not finite");
+    assert!(r.y.is_finite(), "scale result y is not finite");
+    assert!(r.z.is_finite(), "scale result z is not finite");
+}

@@ -83,12 +83,12 @@ Every domain must achieve **PEER REVIEWED PUBLISHED ACADEMIC** standard:
 | Documentation Quality | Expert | Academic | This document |
 
 **Formal Verification Status (PEER REVIEWED PUBLISHED ACADEMIC):**
-- **Verus**: 426 proof functions, 0 errors
+- **Verus**: 475 proof functions, 0 errors
 - **Coq (R-based)**: 925 theorems, 0 admits, machine-checked (Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + Complexity + CrossType)
 - **Coq (Z-based)**: 359 theorems, 0 admits, machine-checked (extractable computational bridge, 9 types)
 - **Coq (FP error bounds)**: 99 theorems, 0 admits, machine-checked (Flocq 4.1.3 IEEE 754 binary32 error analysis)
-- **Kani (CBMC)**: 154 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
-- **Combined**: 1963 formally verified theorems/harnesses across 10 types + FP layer
+- **Kani (CBMC)**: 172 proof harnesses, 0 failures, bit-precise IEEE 754 f32 verification
+- **Combined**: 2030 formally verified theorems/harnesses across 10 types + FP layer
 
 ### The Non-Negotiable Rules
 
@@ -629,7 +629,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
-| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (1963 theorems/harnesses) |
+| `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (2030 theorems/harnesses) |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (426 proof functions, 11 files) |
 | `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 1284 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
@@ -1289,11 +1289,11 @@ approach provides maximum confidence suitable for top-tier academic publication.
 | Color | 45 proof fns | 88 theorems | 28 theorems | 21 harnesses | 182 | TRIPLE VERIFIED |
 | Rect | 52 proof fns | 112 theorems | 43 theorems | 20 harnesses | 227 | TRIPLE VERIFIED |
 | Bounds | 66 proof fns | 79 theorems | 70 theorems | 20 harnesses | 235 | TRIPLE VERIFIED |
-| Utils | 33 proof fns | 30 theorems | 18 theorems | 5 harnesses | 86 | TRIPLE VERIFIED |
+| Utils | 33 proof fns | 30 theorems | 18 theorems | 7 harnesses | 88 | TRIPLE VERIFIED |
 | Complexity | — | 60 theorems | — | — | 60 | VERIFIED |
 | CrossType | — | 51 theorems | — | — | 51 | VERIFIED |
 | FP Foundations | — | — (FP layer) | — | — | 99 | MACHINE-CHECKED |
-| **Total** | **426 proof fns** | **925 theorems** | **359 theorems** | **154 harnesses** | **1963** | **ACADEMIC** |
+| **Total** | **475 proof fns** | **925 theorems** | **359 theorems** | **172 harnesses** | **2030** | **ACADEMIC** |
 
 **Running Formal Verification:**
 
@@ -1306,7 +1306,7 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Kani proofs (154 harnesses)
+# Kani proofs (172 harnesses)
 # NOTE: Running all at once may SIGSEGV. Run individually:
 cargo kani -p rource-math --harness verify_lerp_no_nan
 
@@ -1942,7 +1942,7 @@ Every session, every commit, every line of code must meet this standard:
 |--------|-------------|
 | **Performance** | Picosecond/nanosecond precision, <20µs frame budget, criterion benchmarks |
 | **Measurement** | BEFORE and AFTER benchmarks mandatory, exact percentages required |
-| **Formal Verification** | Verus + Coq + Kani proofs (1963 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + FP error bounds |
+| **Formal Verification** | Verus + Coq + Kani proofs (2030 theorems/harnesses), zero admits, triple verification for Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + FP error bounds |
 | **UI/UX** | Mobile-first, 44px touch targets, 12px fonts, 4.5:1 contrast |
 | **Testing** | All tests pass, mutations killed, cross-browser verified |
 | **Security** | Audited, fuzzed, minimal unsafe, SBOM generated |
@@ -1977,7 +1977,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 │  1 µs = 5% of frame budget = 3,000 CPU cycles                               │
 │  Every nanosecond matters.                                                  │
 │                                                                             │
-│  1963 formally verified theorems/harnesses across Verus + Coq + Kani        │
+│  2030 formally verified theorems/harnesses across Verus + Coq + Kani        │
 │  Zero admits. Zero compromises.                                             │
 │                                                                             │
 │  Never guess. Never assume. Never overstate. Always measure. Always prove.  │
@@ -1992,4 +1992,4 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 *Last updated: 2026-01-31*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
-*Formal Verification: 1963 theorems/harnesses (Verus: 426, Coq R-based: 925, Coq Z-based: 359, Coq FP: 99, Kani: 154)*
+*Formal Verification: 2030 theorems/harnesses (Verus: 475, Coq R-based: 925, Coq Z-based: 359, Coq FP: 99, Kani: 172)*

@@ -143,6 +143,9 @@
 | 113 | 4-phase decomposition generalizes to Mat4 | `det(diag(d0,d1,d2,d3)) = d0*d1*d2*d3` is degree-4 | Expand minors as let bindings, assert in outer context |
 | 114 | Mat4 T*S composite determinant needs all 16 elements + 12 minors | Both `mat4_mul` and `mat4_determinant` must be expanded | Assert all 16 elements + 12 Laplace minors; most are zero (sparse) |
 | 115 | `dst.r * 1000 / 1000 == dst.r` not automatic for Z3 | Integer division truncation needs hint | Explicit `assert` per component |
+| 156 | Verus `lerp_scale` proofs fail: struct equality after `by(nonlinear_arith)` | Z3 proves component-level facts in isolated nonlinear context but cannot connect them to struct-equality postcondition across function compositions | Avoid postconditions that compose two spec functions with nonlinear parameters; use concrete-value proofs (t=0,1,2) or trivially-reducible compositions instead |
+| 157 | Adding proofs to a file can break previously-passing Z3 proofs | Z3 resource contention — more proofs consume Z3's resource budget, causing timeouts on complex proofs | Use `#[verifier::rlimit(20)]` on resource-intensive proofs (e.g., cross product orthogonality); default rlimit=10 may be insufficient for files with 50+ proof functions |
+| 158 | Verus lerp spec function works best with boundary-value proofs | `lerp(a,b,0)=a`, `lerp(a,b,1)=b`, `lerp(v,v,t)=v` all verify with empty bodies; parametric compositions like `lerp(neg(a),neg(b),t)=neg(lerp(a,b,t))` do NOT verify | Stick to boundary values (t=0,1,2,-1) and algebraic identities (lerp(v,v,t)=v) for lerp proofs; these are the most valuable mathematically anyway |
 
 ---
 
@@ -164,6 +167,8 @@
 | 138 | Adding new Kani module requires 6-place script update | Script has per-file vars, TOTAL, JSON, display, sed | Checklist: count var, TOTAL sum, per-type total, JSON, printf, sed |
 | 139 | `mod` declaration easily missed for new Kani file | Created file but forgot `mod bounds;` | Verify module registration immediately after file creation |
 | 141 | Bounds `intersects` self-check needs strict inequality gap | `intersects()` uses `<` not `<=` | Require `width > 1.0` for self-intersection |
+| 159 | Kani harnesses for operator overloads require matching trait syntax | `v * s` compiles but tests `Mul<f32>` impl; `-v` tests `Neg` impl | Test operators directly (e.g., `a + b`, `a - b`, `-v`) — Kani will find the trait impl automatically |
+| 160 | Kani `verify_color_fade_preserves_rgb` validates separation of concerns | `fade()` modifies alpha while preserving RGB — a common source of bugs | Property-based harnesses can catch field-mutation bugs that unit tests miss |
 
 ---
 
@@ -471,7 +476,12 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 153 | 2026-01-31 | 6mS3R | Adding new Verus proof file requires script update in 8 places | `update-verification-counts.sh` needs: count variable, TOTAL sum, per-type total, JSON output, display printf row, sed patterns for each doc file, CHECKS array entries | Created checklist: same pattern as Kani lesson #138 but with Verus-specific sed patterns |
 | 154 | 2026-01-31 | 6mS3R | GMP must be built from source when apt DNS fails | `apt install libgmp-dev` fails in sandboxed environments with no DNS | Download GMP 6.3.0 from gmplib.org, `./configure && make && make install`, create symlinks for `/usr/include/gmp.h` and `/usr/lib/x86_64-linux-gnu/libgmp.so` |
 | 155 | 2026-01-31 | 6mS3R | Flocq build requires excluding incompatible files | `PrimFloat.v`, `Int63Compat.v`, `Int63Copy.v`, `Pff2Flocq.v`, `Nat2Z_compat.v` fail on Coq 8.18 | Edit `_CoqProject` to exclude these 5 files before running `coq_makefile` |
+| 156 | 2026-01-31 | SdlU8 | Verus `lerp_scale` proofs fail: struct equality after nonlinear_arith | Z3 proves component facts in isolated context but can't connect to struct-equality postcondition | Use concrete-value proofs (t=0,1,2) instead of parametric compositions |
+| 157 | 2026-01-31 | SdlU8 | Adding proofs to a file breaks previously-passing Z3 proofs | Z3 resource contention from more proofs in the file | Add `#[verifier::rlimit(20)]` to resource-intensive proofs; default rlimit=10 insufficient for 50+ proof files |
+| 158 | 2026-01-31 | SdlU8 | Verus lerp spec function works best with boundary-value proofs | Parametric compositions fail but boundary values (t=0,1,2,-1) verify with empty bodies | Boundary-value lerp proofs are both most reliable and most mathematically valuable |
+| 159 | 2026-01-31 | SdlU8 | Kani operator overload harnesses work directly | `a + b`, `a - b`, `-v` compile directly testing trait impls | No special syntax needed for operator trait verification |
+| 160 | 2026-01-31 | SdlU8 | Kani property harnesses catch field-mutation bugs | `fade()` preserves RGB while modifying alpha — unit tests often miss this | Add separation-of-concern harnesses for methods that modify some fields but not others |
 
 ---
 
-*Last updated: 2026-01-31 | 155 entries | 14 categories*
+*Last updated: 2026-01-31 | 160 entries | 14 categories*
