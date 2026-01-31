@@ -419,7 +419,12 @@ All 123 entries in chronological order. Entry numbers match category table refer
 | 121 | 2026-01-30 | Ja1ql | `field` may close all subgoals in Coq 8.18 | Side conditions auto-discharged | `field.` alone or `field; lra.` |
 | 122 | 2026-01-30 | Ja1ql | FP error composition: inductive multiplication | `(prefix-1)*(1+en) + en` | Factor, Rabs_triang, IH, ring |
 | 123 | 2026-01-30 | Ja1ql | 99 Flocq-based FP theorems machine-checked | Phase FP-1 foundations | 4 files, total Coq: 796, combined: 1257 |
+| 124 | 2026-01-31 | OnmS0 | New Bounds.v type requires script update | Script had no Bounds entries | Add per-file variables + sed patterns + JSON + display row |
+| 125 | 2026-01-31 | OnmS0 | Script README sed patterns must match actual file format | "N theorems, 0 admits" didn't match actual "N theorems \| Zero admits" | Use context-anchored per-row sed: `/Coq (R-based)/{s/pattern/}` |
+| 126 | 2026-01-31 | OnmS0 | VERIFICATION_COVERAGE.md sed pattern had stale anchor | `50` percent no longer in the line | Use `[0-9]+` to match any percentage |
+| 127 | 2026-01-31 | OnmS0 | Per-file R-based proof table in COQ_PROOFS.md was stale | Not updated by script | Manual update; consider adding per-file sed patterns |
+| 128 | 2026-01-31 | OnmS0 | "Breakthrough" language inappropriate for axiom injection technique | Well-known in Dafny/F*/Verus communities | Use "Proof Engineering Pattern"; add Related Work |
 
 ---
 
-*Last updated: 2026-01-30 | 123 entries | 14 categories*
+*Last updated: 2026-01-31 | 128 entries | 14 categories*

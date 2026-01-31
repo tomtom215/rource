@@ -957,15 +957,189 @@ Proof.
   repeat (destruct (Rle_dec _ _)); repeat (destruct (Rcase_abs _)); lra.
 Qed.
 
+(** Theorem 93: shrink width formula. *)
+Theorem rect_shrink_width : forall (r : Rect) (a : R),
+  rect_w (rect_shrink r a) = rect_w r - 2 * a.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_shrink, rect_expand. simpl.
+  ring.
+Qed.
+
+(** Theorem 94: shrink height formula. *)
+Theorem rect_shrink_height : forall (r : Rect) (a : R),
+  rect_h (rect_shrink r a) = rect_h r - 2 * a.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_shrink, rect_expand. simpl.
+  ring.
+Qed.
+
+(** Theorem 95: shrink preserves center_x. *)
+Theorem rect_shrink_preserves_center_x : forall (r : Rect) (a : R),
+  rect_center_x (rect_shrink r a) = rect_center_x r.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_shrink, rect_expand, rect_center_x. simpl.
+  field.
+Qed.
+
+(** Theorem 96: shrink preserves center_y. *)
+Theorem rect_shrink_preserves_center_y : forall (r : Rect) (a : R),
+  rect_center_y (rect_shrink r a) = rect_center_y r.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_shrink, rect_expand, rect_center_y. simpl.
+  field.
+Qed.
+
+(** Theorem 97: scale by 1 is identity. *)
+Theorem rect_scale_one : forall r : Rect,
+  rect_scale r 1 = r.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_scale. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 98: scale by 0 produces zero dimensions. *)
+Theorem rect_scale_zero : forall r : Rect,
+  rect_scale r 0 = mkRect (rect_x r) (rect_y r) 0 0.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_scale. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 99: right edge after expand. *)
+Theorem rect_right_expand : forall (r : Rect) (a : R),
+  rect_right (rect_expand r a) = rect_right r + a.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_right, rect_expand. simpl.
+  ring.
+Qed.
+
+(** Theorem 100: bottom edge after expand. *)
+Theorem rect_bottom_expand : forall (r : Rect) (a : R),
+  rect_bottom (rect_expand r a) = rect_bottom r + a.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_bottom, rect_expand. simpl.
+  ring.
+Qed.
+
+(** Theorem 101: translate preserves width. *)
+Theorem rect_translate_preserves_w : forall (r : Rect) (dx dy : R),
+  rect_w (rect_translate r dx dy) = rect_w r.
+Proof.
+  intros [rx ry rw rh] dx dy.
+  unfold rect_translate. simpl.
+  reflexivity.
+Qed.
+
+(** Theorem 102: translate preserves height. *)
+Theorem rect_translate_preserves_h : forall (r : Rect) (dx dy : R),
+  rect_h (rect_translate r dx dy) = rect_h r.
+Proof.
+  intros [rx ry rw rh] dx dy.
+  unfold rect_translate. simpl.
+  reflexivity.
+Qed.
+
+(** Theorem 103: right edge after translate. *)
+Theorem rect_right_translate : forall (r : Rect) (dx dy : R),
+  rect_right (rect_translate r dx dy) = rect_right r + dx.
+Proof.
+  intros [rx ry rw rh] dx dy.
+  unfold rect_right, rect_translate. simpl.
+  ring.
+Qed.
+
+(** Theorem 104: bottom edge after translate. *)
+Theorem rect_bottom_translate : forall (r : Rect) (dx dy : R),
+  rect_bottom (rect_translate r dx dy) = rect_bottom r + dy.
+Proof.
+  intros [rx ry rw rh] dx dy.
+  unfold rect_bottom, rect_translate. simpl.
+  ring.
+Qed.
+
+(** Theorem 105: translate preserves perimeter. *)
+Theorem rect_translate_preserves_perimeter : forall (r : Rect) (dx dy : R),
+  rect_perimeter (rect_translate r dx dy) = rect_perimeter r.
+Proof.
+  intros [rx ry rw rh] dx dy.
+  unfold rect_perimeter, rect_translate. simpl.
+  ring.
+Qed.
+
+(** Theorem 106: expand preserves center_x. *)
+Theorem rect_expand_preserves_center_x : forall (r : Rect) (amount : R),
+  rect_center_x (rect_expand r amount) = rect_center_x r.
+Proof.
+  intros [rx ry rw rh] amount.
+  unfold rect_center_x, rect_expand. simpl.
+  field.
+Qed.
+
+(** Theorem 107: expand preserves center_y. *)
+Theorem rect_expand_preserves_center_y : forall (r : Rect) (amount : R),
+  rect_center_y (rect_expand r amount) = rect_center_y r.
+Proof.
+  intros [rx ry rw rh] amount.
+  unfold rect_center_y, rect_expand. simpl.
+  field.
+Qed.
+
+(** Theorem 108: translate by negation returns to original. *)
+Theorem rect_translate_neg : forall (r : Rect) (dx dy : R),
+  rect_translate (rect_translate r dx dy) (- dx) (- dy) = r.
+Proof.
+  intros [rx ry rw rh] dx dy.
+  unfold rect_translate. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 109: translate by zero is identity. *)
+Theorem rect_translate_zero : forall r : Rect,
+  rect_translate r 0 0 = r.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_translate. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 110: expand perimeter formula. *)
+Theorem rect_expand_perimeter : forall (r : Rect) (a : R),
+  rect_perimeter (rect_expand r a) = rect_perimeter r + 8 * a.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_perimeter, rect_expand. simpl.
+  ring.
+Qed.
+
+(** Theorem 111: shrink composes additively. *)
+Theorem rect_shrink_compose : forall (r : Rect) (a1 a2 : R),
+  rect_shrink (rect_shrink r a1) a2 = rect_shrink r (a1 + a2).
+Proof.
+  intros [rx ry rw rh] a1 a2.
+  unfold rect_shrink, rect_expand. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 112: scale distributes over perimeter. *)
+Theorem rect_scale_perimeter : forall (r : Rect) (s : R),
+  rect_perimeter (rect_scale r s) = rect_perimeter r * s.
+Proof.
+  intros [rx ry rw rh] s.
+  unfold rect_perimeter, rect_scale. simpl.
+  ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 92 (63 original + 29 new)
-    New theorem groups:
-      - Accessor properties (64-69): left, top, min_x, min_y, max_x, max_y
-      - Emptiness (70-72): zero_is_empty, valid_not_empty, neg_width_empty
-      - From-corners (73-76, 88-89, 92): same_point, nonneg_dims, symmetric, ordered, contains, area
-      - Expand-XY (77-81, 90): equal_is_expand, zero, preserves_center, compose, contains
-      - Union (82-87, 91): comm_dims, self, contains_first/second, nonneg_dims, area_ge, minimal
+    Total theorems: 112
     Admits: 0
     Axioms: Standard Coq real number library only
 
