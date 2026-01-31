@@ -139,18 +139,18 @@ rustup install 1.92.0
 
 | File | Proof Functions | Types Verified |
 |------|----------------|----------------|
-| `vec2_proofs.rs` | 49 | Vec2 |
-| `vec3_proofs.rs` | 40 | Vec3 |
-| `vec4_proofs.rs` | 39 | Vec4 |
+| `vec2_proofs.rs` | 55 | Vec2 |
+| `vec3_proofs.rs` | 55 | Vec3 |
+| `vec4_proofs.rs` | 55 | Vec4 |
 | `mat3_proofs.rs` | 22 | Mat3 (base) |
 | `mat3_extended_proofs.rs` | 26 | Mat3 (extended) |
 | `mat4_proofs.rs` | 22 | Mat4 (base) |
 | `mat4_extended_proofs.rs` | 32 | Mat4 (extended) |
-| `color_proofs.rs` | 45 | Color |
+| `color_proofs.rs` | 57 | Color |
 | `rect_proofs.rs` | 52 | Rect |
 | `bounds_proofs.rs` | 66 | Bounds |
 | `utils_proofs.rs` | 33 | Utils |
-| **Total** | **426** | **9 types** |
+| **Total** | **475** | **9 types** |
 
 ---
 
@@ -507,11 +507,11 @@ done
 
 | Tool | Theorems/Proofs | Errors | Admits |
 |------|-----------------|--------|--------|
-| Verus | 426 proof functions | 0 | 0 |
+| Verus | 475 proof functions | 0 | 0 |
 | Coq (R-based) | 925 theorems | 0 | 0 |
 | Coq (Z-based) | 359 theorems | 0 | 0 |
-| Kani (CBMC) | 154 harnesses | 0 | 0 |
-| **Combined** | **1963** | **0** | **0** |
+| Kani (CBMC) | 172 harnesses | 0 | 0 |
+| **Combined** | **2030** | **0** | **0** |
 
 ---
 

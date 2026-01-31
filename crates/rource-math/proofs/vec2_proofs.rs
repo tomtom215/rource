@@ -753,10 +753,67 @@ proof fn vec2_reflect_perpendicular(v: SpecVec2, n: SpecVec2)
 }
 
 // =============================================================================
+// LERP PROOFS
+// =============================================================================
+
+/// Integer model of linear interpolation: lerp(a, b, t) = a + (b - a) * t.
+pub open spec fn vec2_lerp(a: SpecVec2, b: SpecVec2, t: int) -> SpecVec2 {
+    SpecVec2 {
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+    }
+}
+
+/// **Theorem 50**: lerp(a, b, 0) = a.
+proof fn vec2_lerp_zero(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_lerp(a, b, 0) == a,
+{
+}
+
+/// **Theorem 51**: lerp(a, b, 1) = b.
+proof fn vec2_lerp_one(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_lerp(a, b, 1) == b,
+{
+}
+
+/// **Theorem 52**: lerp(v, v, t) = v for any t.
+proof fn vec2_lerp_identity(v: SpecVec2, t: int)
+    ensures
+        vec2_lerp(v, v, t) == v,
+{
+    assert((v.x - v.x) * t == 0) by(nonlinear_arith);
+    assert((v.y - v.y) * t == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 53**: lerp at t=2 extrapolates: lerp(a, b, 2) = 2b - a.
+proof fn vec2_lerp_two(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_lerp(a, b, 2) == vec2_sub(vec2_scale(2, b), a),
+{
+}
+
+/// **Theorem 54**: lerp at t=-1 extrapolates: lerp(a, b, -1) = 2a - b.
+proof fn vec2_lerp_neg_one(a: SpecVec2, b: SpecVec2)
+    ensures
+        vec2_lerp(a, b, -1 as int) == vec2_sub(vec2_scale(2, a), b),
+{
+}
+
+/// **Theorem 55**: lerp of zero endpoints gives zero: lerp(zero, zero, t) = zero.
+proof fn vec2_lerp_zero_zero(t: int)
+    ensures
+        vec2_lerp(vec2_zero(), vec2_zero(), t) == vec2_zero(),
+{
+    vec2_lerp_identity(vec2_zero(), t);
+}
+
+// =============================================================================
 // VECTOR SPACE STRUCTURE
 // =============================================================================
 
-/// **Theorem 50**: Vec2 forms a vector space.
+/// **Theorem 56**: Vec2 forms a vector space.
 ///
 /// This proof invokes all the vector space axioms to demonstrate Vec2
 /// satisfies the complete definition of a vector space over integers.

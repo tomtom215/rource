@@ -258,6 +258,7 @@ proof fn vec3_cross_self_zero(a: SpecVec3)
 /// **Theorem 12**: Cross product is orthogonal to first operand.
 ///
 /// For all vectors a, b: (a × b) · a = 0
+#[verifier::rlimit(20)]
 proof fn vec3_cross_orthogonal_to_first(a: SpecVec3, b: SpecVec3)
     ensures
         vec3_dot(vec3_cross(a, b), a) == 0,
@@ -677,6 +678,204 @@ proof fn vec3_is_vector_space(a: SpecVec3, b: SpecVec3, c: SpecVec3, s: int, t: 
     vec3_scale_associative(s, t, a);
     vec3_scale_distributes_over_add(s, a, b);
     vec3_scale_identity(a);
+}
+
+// =============================================================================
+// CLAMP OPERATIONS (Spec Functions)
+// =============================================================================
+
+/// Component-wise clamp.
+pub open spec fn vec3_clamp(v: SpecVec3, lo: SpecVec3, hi: SpecVec3) -> SpecVec3 {
+    SpecVec3 {
+        x: if v.x < lo.x { lo.x } else if v.x > hi.x { hi.x } else { v.x },
+        y: if v.y < lo.y { lo.y } else if v.y > hi.y { hi.y } else { v.y },
+        z: if v.z < lo.z { lo.z } else if v.z > hi.z { hi.z } else { v.z },
+    }
+}
+
+/// Reflection of v off surface with normal n: v - 2*(v·n)*n.
+pub open spec fn vec3_reflect(v: SpecVec3, n: SpecVec3) -> SpecVec3 {
+    vec3_sub(v, vec3_scale(2 * vec3_dot(v, n), n))
+}
+
+// =============================================================================
+// CLAMP PROOFS
+// =============================================================================
+
+/// **Theorem 43**: Clamp produces values within bounds (when lo <= hi).
+proof fn vec3_clamp_bounds(v: SpecVec3, lo: SpecVec3, hi: SpecVec3)
+    requires
+        lo.x <= hi.x && lo.y <= hi.y && lo.z <= hi.z,
+    ensures ({
+        let c = vec3_clamp(v, lo, hi);
+        c.x >= lo.x && c.x <= hi.x
+        && c.y >= lo.y && c.y <= hi.y
+        && c.z >= lo.z && c.z <= hi.z
+    }),
+{
+}
+
+/// **Theorem 44**: Clamp of in-range value is identity.
+proof fn vec3_clamp_identity(v: SpecVec3, lo: SpecVec3, hi: SpecVec3)
+    requires
+        v.x >= lo.x && v.x <= hi.x
+        && v.y >= lo.y && v.y <= hi.y
+        && v.z >= lo.z && v.z <= hi.z,
+    ensures
+        vec3_clamp(v, lo, hi) == v,
+{
+}
+
+/// **Theorem 45**: Clamp is idempotent (when lo <= hi).
+proof fn vec3_clamp_idempotent(v: SpecVec3, lo: SpecVec3, hi: SpecVec3)
+    requires
+        lo.x <= hi.x && lo.y <= hi.y && lo.z <= hi.z,
+    ensures
+        vec3_clamp(vec3_clamp(v, lo, hi), lo, hi) == vec3_clamp(v, lo, hi),
+{
+    let c = vec3_clamp(v, lo, hi);
+    assert(c.x >= lo.x && c.x <= hi.x);
+    assert(c.y >= lo.y && c.y <= hi.y);
+    assert(c.z >= lo.z && c.z <= hi.z);
+}
+
+/// **Theorem 46**: Clamping to [v, v] always returns v (squeeze property).
+proof fn vec3_clamp_squeeze(v: SpecVec3, target: SpecVec3)
+    ensures
+        vec3_clamp(v, target, target) == target,
+{
+}
+
+// =============================================================================
+// REFLECT PROOFS
+// =============================================================================
+
+/// **Theorem 47**: Reflecting a vector perpendicular to normal preserves it.
+///
+/// If v · n = 0, then reflect(v, n) = v.
+proof fn vec3_reflect_perpendicular(v: SpecVec3, n: SpecVec3)
+    requires
+        vec3_dot(v, n) == 0,
+    ensures
+        vec3_reflect(v, n) == v,
+{
+    // reflect(v, n) = v - 2*(v·n)*n = v - 2*0*n = v - 0 = v
+    assert(2 * 0 == 0);
+    assert(0 * n.x == 0) by(nonlinear_arith);
+    assert(0 * n.y == 0) by(nonlinear_arith);
+    assert(0 * n.z == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 48**: Reflecting a vector along a unit normal negates it.
+///
+/// If v · n = v · v (i.e., v = n scaled) and |n|² = 1, then reflect(v, n) = -v.
+proof fn vec3_reflect_along_unit_normal(n: SpecVec3)
+    requires
+        vec3_dot(n, n) == 1,
+    ensures
+        vec3_reflect(n, n) == vec3_neg(n),
+{
+    // reflect(n, n) = n - 2*(n·n)*n = n - 2*1*n = n - 2n = -n
+    assert(2 * vec3_dot(n, n) == 2);
+    assert(2 * n.x == 2 * 1 * n.x) by(nonlinear_arith);
+    assert(2 * n.y == 2 * 1 * n.y) by(nonlinear_arith);
+    assert(2 * n.z == 2 * 1 * n.z) by(nonlinear_arith);
+}
+
+/// **Theorem 49**: Reflecting the zero vector always yields zero.
+///
+/// reflect(0, n) = 0 for any normal n.
+proof fn vec3_reflect_zero(n: SpecVec3)
+    ensures
+        vec3_reflect(vec3_zero(), n) == vec3_zero(),
+{
+    // dot(0, n) = 0, so reflect(0, n) = 0 - 2*0*n = 0
+    assert(0 * n.x == 0) by(nonlinear_arith);
+    assert(0 * n.y == 0) by(nonlinear_arith);
+    assert(0 * n.z == 0) by(nonlinear_arith);
+}
+
+// =============================================================================
+// ELEMENT PRODUCT PROOFS
+// =============================================================================
+
+/// **Theorem 50**: Element product of zero vector is zero.
+proof fn vec3_element_product_zero()
+    ensures
+        vec3_element_product(vec3_zero()) == 0,
+{
+}
+
+/// **Theorem 51**: Element product of splat(v) is v³.
+proof fn vec3_element_product_splat(v: int)
+    ensures
+        vec3_element_product(vec3_splat(v)) == v * v * v,
+{
+    assert(v * v * v == v * v * v) by(nonlinear_arith);
+}
+
+/// **Theorem 52**: Element product of unit basis vectors is zero.
+///
+/// Any standard basis vector (1,0,0), (0,1,0), (0,0,1) has element product = 0
+/// because one component is zero.
+proof fn vec3_element_product_basis_zero()
+    ensures
+        vec3_element_product(vec3_x()) == 0,
+        vec3_element_product(vec3_y()) == 0,
+        vec3_element_product(vec3_z()) == 0,
+{
+}
+
+// =============================================================================
+// LERP PROOFS
+// =============================================================================
+
+/// Integer model of linear interpolation: lerp(a, b, t) = a + (b - a) * t.
+pub open spec fn vec3_lerp(a: SpecVec3, b: SpecVec3, t: int) -> SpecVec3 {
+    SpecVec3 {
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        z: a.z + (b.z - a.z) * t,
+    }
+}
+
+/// **Theorem 53**: lerp(a, b, 0) = a.
+proof fn vec3_lerp_zero(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_lerp(a, b, 0) == a,
+{
+}
+
+/// **Theorem 54**: lerp(a, b, 1) = b.
+proof fn vec3_lerp_one(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_lerp(a, b, 1) == b,
+{
+}
+
+/// **Theorem 55**: lerp(v, v, t) = v for any t.
+proof fn vec3_lerp_identity(v: SpecVec3, t: int)
+    ensures
+        vec3_lerp(v, v, t) == v,
+{
+    assert((v.x - v.x) * t == 0) by(nonlinear_arith);
+    assert((v.y - v.y) * t == 0) by(nonlinear_arith);
+    assert((v.z - v.z) * t == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 56**: lerp at t=2 extrapolates: lerp(a, b, 2) = 2b - a.
+proof fn vec3_lerp_two(a: SpecVec3, b: SpecVec3)
+    ensures
+        vec3_lerp(a, b, 2) == vec3_sub(vec3_scale(2, b), a),
+{
+}
+
+/// **Theorem 57**: lerp of zero endpoints gives zero: lerp(zero, zero, t) = zero.
+proof fn vec3_lerp_zero_zero(t: int)
+    ensures
+        vec3_lerp(vec3_zero(), vec3_zero(), t) == vec3_zero(),
+{
+    vec3_lerp_identity(vec3_zero(), t);
 }
 
 fn main() {

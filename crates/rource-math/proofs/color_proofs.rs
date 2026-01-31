@@ -770,6 +770,181 @@ proof fn color_blend_transparent_constant_fg(dst: SpecColor)
     assert(dst.a * 1000 / 1000 == dst.a) by(nonlinear_arith);
 }
 
+// =============================================================================
+// CONTRASTING COLOR OPERATIONS
+// =============================================================================
+
+/// Contrasting color: returns black for light colors, white for dark colors.
+/// A color is "light" if its luminance > 5000000 (50% of white).
+pub open spec fn color_contrasting(c: SpecColor) -> SpecColor {
+    if color_is_light(c) {
+        color_black()
+    } else {
+        color_white()
+    }
+}
+
+/// Darken a color by a factor: rgb * (1000 - amount) / 1000.
+pub open spec fn color_darken(c: SpecColor, amount: int) -> SpecColor {
+    SpecColor {
+        r: c.r * (1000 - amount) / 1000,
+        g: c.g * (1000 - amount) / 1000,
+        b: c.b * (1000 - amount) / 1000,
+        a: c.a,
+    }
+}
+
+/// Lighten a color by mixing toward white: c + (white - c) * amount / 1000.
+pub open spec fn color_lighten(c: SpecColor, amount: int) -> SpecColor {
+    SpecColor {
+        r: c.r + (1000 - c.r) * amount / 1000,
+        g: c.g + (1000 - c.g) * amount / 1000,
+        b: c.b + (1000 - c.b) * amount / 1000,
+        a: c.a,
+    }
+}
+
+// =============================================================================
+// CONTRASTING PROOFS
+// =============================================================================
+
+/// **Theorem 46**: Contrasting color of black is white.
+///
+/// Black has luminance 0 (dark), so contrasting returns white.
+proof fn color_contrasting_black()
+    ensures
+        color_contrasting(color_black()) == color_white(),
+{
+    // luminance(black) = 0 <= 5000000, so is_dark = true, is_light = false
+    // contrasting returns white for dark colors
+}
+
+/// **Theorem 47**: Contrasting color of white is black.
+///
+/// White has luminance 10000000 (light), so contrasting returns black.
+proof fn color_contrasting_white()
+    ensures
+        color_contrasting(color_white()) == color_black(),
+{
+    // luminance(white) = 10000000 > 5000000, so is_light = true
+    // contrasting returns black for light colors
+}
+
+/// **Theorem 48**: Contrasting always returns either black or white.
+proof fn color_contrasting_binary(c: SpecColor)
+    ensures
+        color_contrasting(c) == color_black() || color_contrasting(c) == color_white(),
+{
+}
+
+/// **Theorem 49**: Contrasting of contrasting black has high luminance contrast.
+///
+/// |luminance(black) - luminance(contrasting(black))| = 10000000.
+proof fn color_contrasting_black_high_contrast()
+    ensures ({
+        let cb = color_contrasting(color_black());
+        color_luminance_scaled(cb) == 10000000
+    }),
+{
+    // contrasting(black) = white
+    // luminance(white) = 10000000
+}
+
+/// **Theorem 50**: Contrasting of contrasting white has high luminance contrast.
+///
+/// |luminance(white) - luminance(contrasting(white))| = 10000000.
+proof fn color_contrasting_white_high_contrast()
+    ensures ({
+        let cw = color_contrasting(color_white());
+        color_luminance_scaled(cw) == 0
+    }),
+{
+    // contrasting(white) = black
+    // luminance(black) = 0
+}
+
+/// **Theorem 51**: Contrasting always has high contrast with the original.
+///
+/// For valid colors in [0, 1000]: the luminance difference between a color
+/// and its contrasting partner is always >= 5000000 (50% of max).
+proof fn color_contrasting_high_contrast(c: SpecColor)
+    requires
+        c.r >= 0 && c.r <= 1000 && c.g >= 0 && c.g <= 1000 && c.b >= 0 && c.b <= 1000,
+    ensures ({
+        let lum_c = color_luminance_scaled(c);
+        let lum_cc = color_luminance_scaled(color_contrasting(c));
+        // If c is light (lum > 5000000): cc = black (lum = 0), so diff = lum_c > 5000000
+        // If c is dark (lum <= 5000000): cc = white (lum = 10000000), so diff = 10000000 - lum_c >= 5000000
+        (lum_c > 5000000 ==> lum_cc == 0) &&
+        (lum_c <= 5000000 ==> lum_cc == 10000000)
+    }),
+{
+}
+
+// =============================================================================
+// DARKEN / LIGHTEN PROOFS
+// =============================================================================
+
+/// **Theorem 52**: Darken by 0 is identity.
+proof fn color_darken_zero(c: SpecColor)
+    ensures
+        color_darken(c, 0) == c,
+{
+    assert(c.r * 1000 / 1000 == c.r) by(nonlinear_arith);
+    assert(c.g * 1000 / 1000 == c.g) by(nonlinear_arith);
+    assert(c.b * 1000 / 1000 == c.b) by(nonlinear_arith);
+}
+
+/// **Theorem 53**: Darken by 1000 (= 100%) produces black.
+proof fn color_darken_full(c: SpecColor)
+    ensures ({
+        let d = color_darken(c, 1000);
+        d.r == 0 && d.g == 0 && d.b == 0 && d.a == c.a
+    }),
+{
+    assert(c.r * 0 == 0) by(nonlinear_arith);
+    assert(c.g * 0 == 0) by(nonlinear_arith);
+    assert(c.b * 0 == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 54**: Darken preserves alpha.
+proof fn color_darken_preserves_alpha(c: SpecColor, amount: int)
+    ensures
+        color_darken(c, amount).a == c.a,
+{
+}
+
+/// **Theorem 55**: Lighten by 0 is identity.
+proof fn color_lighten_zero(c: SpecColor)
+    ensures
+        color_lighten(c, 0) == c,
+{
+    assert((1000 - c.r) * 0 == 0) by(nonlinear_arith);
+    assert((1000 - c.g) * 0 == 0) by(nonlinear_arith);
+    assert((1000 - c.b) * 0 == 0) by(nonlinear_arith);
+}
+
+/// **Theorem 56**: Lighten by 1000 (= 100%) produces white (with original alpha).
+proof fn color_lighten_full(c: SpecColor)
+    ensures ({
+        let l = color_lighten(c, 1000);
+        l.r == c.r + (1000 - c.r) && l.g == c.g + (1000 - c.g)
+        && l.b == c.b + (1000 - c.b) && l.a == c.a
+    }),
+{
+    // lighten(c, 1000).r = c.r + (1000 - c.r) * 1000 / 1000 = c.r + (1000 - c.r)
+    assert((1000 - c.r) * 1000 / 1000 == 1000 - c.r) by(nonlinear_arith);
+    assert((1000 - c.g) * 1000 / 1000 == 1000 - c.g) by(nonlinear_arith);
+    assert((1000 - c.b) * 1000 / 1000 == 1000 - c.b) by(nonlinear_arith);
+}
+
+/// **Theorem 57**: Lighten preserves alpha.
+proof fn color_lighten_preserves_alpha(c: SpecColor, amount: int)
+    ensures
+        color_lighten(c, amount).a == c.a,
+{
+}
+
 fn main() {
     // Verification only
 }

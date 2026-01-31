@@ -475,3 +475,73 @@ fn verify_color_rgb_has_full_alpha() {
     assert!(c.b == b, "rgb().b mismatch");
     assert!(c.a == 1.0, "rgb() should have alpha 1.0");
 }
+
+// ============================================================================
+// fade
+// ============================================================================
+
+/// **Postcondition**: `fade(factor)` modifies alpha while preserving RGB.
+#[kani::proof]
+fn verify_color_fade_preserves_rgb() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    let factor: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    kani::assume(factor >= 0.0 && factor <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let faded = c.fade(factor);
+    assert!(faded.r == r, "fade() should preserve r");
+    assert!(faded.g == g, "fade() should preserve g");
+    assert!(faded.b == b, "fade() should preserve b");
+}
+
+// ============================================================================
+// clamp (Color)
+// ============================================================================
+
+/// **Postcondition**: `clamp()` keeps all components in [0.0, 1.0].
+#[kani::proof]
+fn verify_color_clamp_in_unit_interval() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    kani::assume(a.is_finite());
+    let c = Color::new(r, g, b, a);
+    let cl = c.clamp();
+    assert!(cl.r >= 0.0 && cl.r <= 1.0, "clamp().r out of [0,1]");
+    assert!(cl.g >= 0.0 && cl.g <= 1.0, "clamp().g out of [0,1]");
+    assert!(cl.b >= 0.0 && cl.b <= 1.0, "clamp().b out of [0,1]");
+    assert!(cl.a >= 0.0 && cl.a <= 1.0, "clamp().a out of [0,1]");
+}
+
+// ============================================================================
+// premultiplied
+// ============================================================================
+
+/// **Postcondition**: `premultiplied()` with normalized inputs stays in [0,1].
+#[kani::proof]
+fn verify_color_premultiplied_bounded() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let p = c.premultiplied();
+    assert!(p.r >= 0.0 && p.r <= 1.0, "premultiplied().r out of [0,1]");
+    assert!(p.g >= 0.0 && p.g <= 1.0, "premultiplied().g out of [0,1]");
+    assert!(p.b >= 0.0 && p.b <= 1.0, "premultiplied().b out of [0,1]");
+    assert!(p.a >= 0.0 && p.a <= 1.0, "premultiplied().a out of [0,1]");
+}
