@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769854658328,
+  "lastUpdate": 1769866265696,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4664,6 +4664,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/0510837d45cdb1e246d42c893aa330b23575cc75"
         },
         "date": 1769854657816,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f116046c08cab7579bae2dd4fba56950c4ecf3c7",
+          "message": "Merge pull request #242 from tomtom215/claude/expand-verification-coverage-pnY2l\n\nAdd Bounds Kani proofs and expand Coq theorem coverage",
+          "timestamp": "2026-01-31T14:29:06+01:00",
+          "tree_id": "9dbe6beb106276df5394df737524eaac97329022",
+          "url": "https://github.com/tomtom215/rource/commit/f116046c08cab7579bae2dd4fba56950c4ecf3c7"
+        },
+        "date": 1769866265316,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
