@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769888494240,
+  "lastUpdate": 1769896030407,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4859,6 +4859,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/5a572ce3f68405ab877ad1f68e66c20c7767a86b"
         },
         "date": 1769888493718,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "63709428c7fbf938203f7a033a8c6d1c5fff8af9",
+          "message": "Merge pull request #247 from tomtom215/claude/resourc-verification-anvW7\n\nExpand FP error bounds: +44 Coq theorems, +78 FP proofs (2085→2207)",
+          "timestamp": "2026-01-31T22:44:39+01:00",
+          "tree_id": "83c8d4f515470032ac674c0dc7067f53d93a8582",
+          "url": "https://github.com/tomtom215/rource/commit/63709428c7fbf938203f7a033a8c6d1c5fff8af9"
+        },
+        "date": 1769896030020,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
