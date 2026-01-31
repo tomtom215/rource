@@ -32,9 +32,9 @@
 //! algebraic proofs which verify mathematical identities but cannot
 //! reason about IEEE 754 special values.
 //!
-//! # Harness Count (178 total)
+//! # Harness Count (177 total)
 //!
-//! - Vec2: 21, Vec3: 23, Vec4: 23
+//! - Vec2: 21, Vec3: 23, Vec4: 22
 //! - Mat3: 14, Mat4: 26
 //! - Color: 24, Rect: 20, Bounds: 20, Utils: 7
 //!

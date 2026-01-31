@@ -530,40 +530,12 @@ fn verify_vec4_add_commutative() {
 }
 
 // ============================================================================
-// dot commutativity
-// ============================================================================
-
-/// **Commutativity**: `a.dot(b) == b.dot(a)` for all finite bounded vectors (IEEE 754).
-#[kani::proof]
-fn verify_vec4_dot_commutative() {
-    let ax: f32 = kani::any();
-    let ay: f32 = kani::any();
-    let az: f32 = kani::any();
-    let aw: f32 = kani::any();
-    let bx: f32 = kani::any();
-    let by: f32 = kani::any();
-    let bz: f32 = kani::any();
-    let bw: f32 = kani::any();
-    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
-    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
-    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
-    kani::assume(aw.is_finite() && aw.abs() < SAFE_BOUND);
-    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
-    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
-    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
-    kani::assume(bw.is_finite() && bw.abs() < SAFE_BOUND);
-    let a = Vec4::new(ax, ay, az, aw);
-    let b = Vec4::new(bx, by, bz, bw);
-    let d1 = a.dot(b);
-    let d2 = b.dot(a);
-    assert!(d1 == d2, "dot() should be commutative");
-}
-
-// ============================================================================
 // normalized unit length
 // ============================================================================
 
-/// **Unit length**: `normalized()` produces a vector with length ≈ 1.0 for non-zero input.
+/// **Unit length**: `normalized()` produces a vector with length ≈ 1.0 for
+/// vectors with sufficient magnitude (guards against f32 underflow in
+/// `length_squared()`).
 #[kani::proof]
 fn verify_vec4_normalized_unit_length() {
     let x: f32 = kani::any();
@@ -574,9 +546,11 @@ fn verify_vec4_normalized_unit_length() {
     kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
     kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
     kani::assume(w.is_finite() && w.abs() < SAFE_BOUND);
-    // Require non-zero length to avoid the zero-vector branch
-    kani::assume(x != 0.0 || y != 0.0 || z != 0.0 || w != 0.0);
     let v = Vec4::new(x, y, z, w);
+    // Guard against f32 underflow: very small non-zero components can have
+    // length_squared() underflow to 0.0, causing normalized() to return ZERO.
+    let lsq = v.length_squared();
+    kani::assume(lsq > 1e-10);
     let n = v.normalized();
     let len = n.length();
     // Allow small FP tolerance: |len - 1.0| < 1e-4

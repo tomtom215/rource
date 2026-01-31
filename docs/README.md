@@ -99,7 +99,7 @@ Complete technical documentation for the Rource project.
 
 | Document | Description |
 |----------|-------------|
-| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2223 theorems/harnesses, 8 types) |
+| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2222 theorems/harnesses, 8 types) |
 | [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (475 proof functions, 7 types) |
 | [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (R-based + Z-based, 1393 theorems, development workflow) |
 | [verification/VERIFICATION_COVERAGE.md](./verification/VERIFICATION_COVERAGE.md) | Coverage metrics, limitations, floating-point assessment |

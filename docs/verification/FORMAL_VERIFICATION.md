@@ -4,7 +4,7 @@ This document describes the formal verification work performed on the `rource-ma
 
 ## Overview
 
-The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, semantic, and floating-point error bound properties of these types using a hybrid Verus + Coq + Kani architecture, achieving 2223 machine-checked theorems/harnesses with zero admits that can withstand academic peer review.
+The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Color`, `Rect`, and utility functions) used throughout the Rource project. We have formally verified key algebraic, geometric, semantic, and floating-point error bound properties of these types using a hybrid Verus + Coq + Kani architecture, achieving 2222 machine-checked theorems/harnesses with zero admits that can withstand academic peer review.
 
 ## Summary Statistics
 
@@ -14,8 +14,8 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 | **Coq** (R-based abstract) | 1024 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + Complexity + CrossType | Machine-checked |
 | **Coq** (Z-based extractable) | 359 theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | Machine-checked |
 | **Coq** (FP error bounds) | 177 theorems | 0 | IEEE 754 binary32 error analysis (Flocq) | Machine-checked |
-| **Kani** (CBMC bounded model checking) | 178 proof harnesses | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | All verified, 0 failures |
-| **Combined** | **2223** | **0** | **10 types + FP** | **PEER REVIEWED PUBLISHED ACADEMIC** |
+| **Kani** (CBMC bounded model checking) | 177 proof harnesses | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | All verified, 0 failures |
+| **Combined** | **2222** | **0** | **10 types + FP** | **PEER REVIEWED PUBLISHED ACADEMIC** |
 
 ## Per-Type Verification Summary
 
@@ -23,7 +23,7 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 |-----------|-------|---------------|-----------------|----------|-------------|-------|--------|
 | Vec2 | 55 proof fns | 110 theorems | 50 theorems | — | 21 harnesses | 236 | TRIPLE VERIFIED |
 | Vec3 | 55 proof fns | 115 theorems | 42 theorems | — | 23 harnesses | 235 | TRIPLE VERIFIED |
-| Vec4 | 55 proof fns | 96 theorems | 33 theorems | — | 23 harnesses | 207 | TRIPLE VERIFIED |
+| Vec4 | 55 proof fns | 96 theorems | 33 theorems | — | 22 harnesses | 206 | TRIPLE VERIFIED |
 | Mat3 | 48 proof fns | 92 theorems | 25 theorems | — | 14 harnesses | 179 | TRIPLE VERIFIED |
 | Mat4 | 54 proof fns | 157 theorems | 50 theorems | — | 26 harnesses | 287 | TRIPLE VERIFIED |
 | Color | 57 proof fns | 100 theorems | 38 theorems | — | 24 harnesses | 219 | TRIPLE VERIFIED |
@@ -33,7 +33,7 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 | Complexity | — | 60 theorems | — | — | — | 60 | VERIFIED |
 | CrossType | — | 51 theorems | — | — | — | 51 | VERIFIED |
 | FP Foundations | — | — | — | 177 theorems | — | 177 | MACHINE-CHECKED |
-| **Total** | **475 proof fns** | **1024 theorems** | **369 theorems** | **177 theorems** | **178 harnesses** | **2223** | **ACADEMIC** |
+| **Total** | **475 proof fns** | **1024 theorems** | **369 theorems** | **177 theorems** | **177 harnesses** | **2222** | **ACADEMIC** |
 
 > **Note**: Verus "proof fns" counts all `proof fn` declarations including helpers
 > (Vec2: 55, Vec3: 55, Vec4: 55, Mat3: 48 [22 base + 26 extended], Mat4: 54 [22 base + 32 extended],
@@ -42,7 +42,7 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 > Coq "theorems" counts all `Theorem`, `Lemma`, and `Local Lemma` declarations
 > in the corresponding `_Proofs.v`, `_Compute.v`, `Complexity.v`, or `Vec_CrossType.v` files.
 > Kani "harnesses" counts all `#[kani::proof]` functions in `crates/rource-math/src/kani_proofs/`
-> (Vec2: 21, Vec3: 23, Vec4: 23, Mat3: 14, Mat4: 26, Color: 24, Rect: 20, Bounds: 20, Utils: 7).
+> (Vec2: 21, Vec3: 23, Vec4: 22, Mat3: 14, Mat4: 26, Color: 24, Rect: 20, Bounds: 20, Utils: 7).
 > Each harness verifies IEEE 754 safety properties (NaN-freedom, finiteness, postconditions)
 > via CBMC bounded model checking over all 2^32 f32 bit patterns within bounded domains.
 > Coq FP "theorems" counts all `Theorem` and `Lemma` declarations in `FP_*.v` files.
@@ -76,7 +76,7 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 |       |                          color operations, rect operations        |
 |       |                                                                   |
 |       +---> Kani (CBMC) -----> IEEE 754 Edge-Case Safety                 |
-|       |         (178 harnesses)  NaN-freedom, overflow, finiteness,      |
+|       |         (177 harnesses)  NaN-freedom, overflow, finiteness,      |
 |       |                          division-by-zero guards, postconditions  |
 |       |                          Bit-precise f32 verification             |
 |       |                                                                   |
@@ -222,7 +222,7 @@ The proofs demonstrate:
 
 This hybrid approach would be novel in several ways:
 
-1. **First triple-verified Rust graphics library**: rource-math with 2223 machine-checked proofs/harnesses across 10 types + cross-type (Verus + Coq + Kani)
+1. **First triple-verified Rust graphics library**: rource-math with 2222 machine-checked proofs/harnesses across 10 types + cross-type (Verus + Coq + Kani)
 2. **Verus + Coq + Kani synergy**: Three complementary verification approaches (algebraic + machine-checked + bit-precise IEEE 754)
 3. **ICC for graphics code**: Complexity bounds for visualization pipeline
 4. **End-to-end verified WASM**: From Rust source to verified WebAssembly (8 types extracted)
@@ -658,15 +658,15 @@ target is approximately 85-90% coverage, which would require completing P1 throu
 
 **Kani Proofs (CBMC bounded model checking):**
 *Version: Kani 0.67.0 (CBMC backend)*
-*Total harnesses: 178 (Vec2: 21, Vec3: 23, Vec4: 23, Mat3: 14, Mat4: 26, Color: 24, Rect: 20, Bounds: 20, Utils: 7)*
+*Total harnesses: 177 (Vec2: 21, Vec3: 23, Vec4: 22, Mat3: 14, Mat4: 26, Color: 24, Rect: 20, Bounds: 20, Utils: 7)*
 *Failures: 0*
 *Known limitation: `perspective()` blocked by unsupported `tanf` C foreign function (Kani issue #2423)*
 *Known limitation: `get_scale()` exact roundtrip too expensive for CBMC due to symbolic sqrt(); verified finiteness instead*
 *IEEE 754 edge cases discovered: lerp(MAX, -MAX, 0.0) → NaN via intermediate overflow; project() NaN for denormalized onto vectors; intersects(self) fails when width < ULP(x); from_center_size roundoff when |cx| >> w*
-*Status: All 178 harnesses verified, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
+*Status: All 177 harnesses verified, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Combined Verification:**
-*Total theorems/harnesses: 2223 across Verus, Coq, and Kani (Verus: 475, Coq R-based: 1024, Coq Z-based: 369, Coq FP: 177, Kani: 178)*
+*Total theorems/harnesses: 2222 across Verus, Coq, and Kani (Verus: 475, Coq R-based: 1024, Coq Z-based: 369, Coq FP: 177, Kani: 177)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, Utils + CrossType*
 *Verified operations: 157/253 (62.1%) — see VERIFICATION_COVERAGE.md for per-module breakdown*
