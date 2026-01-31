@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769848764189,
+  "lastUpdate": 1769854658328,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4625,6 +4625,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/cae3e01cc6bc9538c3ed0e4bee5265f0894ace10"
         },
         "date": 1769848763862,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0510837d45cdb1e246d42c893aa330b23575cc75",
+          "message": "Merge pull request #241 from tomtom215/claude/fix-mutation-testing-timeout-GlDgV\n\nAdd comprehensive mutation tests and increase CI timeouts",
+          "timestamp": "2026-01-31T11:15:34+01:00",
+          "tree_id": "e81c4328621742fd47ff442775b1eb6a64b98049",
+          "url": "https://github.com/tomtom215/rource/commit/0510837d45cdb1e246d42c893aa330b23575cc75"
+        },
+        "date": 1769854657816,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
