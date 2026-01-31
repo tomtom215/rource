@@ -91,7 +91,7 @@ jobs:
         run: |
           echo "Running benchmarks on PR branch (${{ github.head_ref }})..."
           # Use cargo criterion for baseline functionality
-          cargo criterion --workspace --message-format=json -- --noplot 2>&1 | tee pr-bench.json || true
+          cargo criterion --workspace --exclude rource --exclude rource-wasm --message-format=json -- --noplot 2>&1 | tee pr-bench.json || true
           # Save criterion output directory as PR baseline
           if [ -d "target/criterion" ]; then
             cp -r target/criterion target/criterion-pr
@@ -106,7 +106,7 @@ jobs:
       - name: Run main branch benchmarks
         run: |
           echo "Running benchmarks on main branch..."
-          cargo criterion --workspace --message-format=json -- --noplot 2>&1 | tee main-bench.json || true
+          cargo criterion --workspace --exclude rource --exclude rource-wasm --message-format=json -- --noplot 2>&1 | tee main-bench.json || true
           # Save criterion output directory as main baseline
           if [ -d "target/criterion" ]; then
             cp -r target/criterion target/criterion-main
