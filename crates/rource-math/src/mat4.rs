@@ -1049,4 +1049,276 @@ mod tests {
         use std::f32::consts::PI;
         let _ = Mat4::perspective(PI / 4.0, 1.0, 100.0, 10.0);
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill mutants for Mat4 functions
+    // =========================================================================
+
+    /// Kill return-Default mutant for from_translation
+    #[test]
+    fn test_from_translation_not_default() {
+        let v = Vec3::new(5.0, 10.0, 15.0);
+        let m = Mat4::from_translation(v);
+        assert_ne!(m, Mat4::default());
+        assert_eq!(m.m[12], 5.0);
+        assert_eq!(m.m[13], 10.0);
+        assert_eq!(m.m[14], 15.0);
+    }
+
+    /// Kill arithmetic mutants in orthographic (2.0/rml, -(right+left)/rml, etc.)
+    #[test]
+    fn test_orthographic_specific_elements() {
+        // Non-symmetric bounds: left=1, right=5, bottom=2, top=8, near=0, far=10
+        let proj = Mat4::orthographic(1.0, 5.0, 2.0, 8.0, 0.0, 10.0);
+        // rml=4, tmb=6, fmn=10
+        assert!((proj.m[0] - 0.5).abs() < 1e-6, "m[0]=2/rml=0.5");
+        assert!((proj.m[5] - 2.0 / 6.0).abs() < 1e-6, "m[5]=2/tmb");
+        assert!((proj.m[10] - (-0.2)).abs() < 1e-6, "m[10]=-2/fmn");
+        assert!((proj.m[12] - (-1.5)).abs() < 1e-6, "m[12]=-(5+1)/4");
+        assert!((proj.m[13] - (-10.0 / 6.0)).abs() < 1e-6, "m[13]=-(8+2)/6");
+        assert!((proj.m[14] - (-1.0)).abs() < 1e-6, "m[14]=-(10+0)/10");
+        assert!((proj.m[15] - 1.0).abs() < 1e-6, "m[15]=1");
+    }
+
+    /// Kill arithmetic mutants in perspective
+    #[test]
+    fn test_perspective_specific_elements() {
+        let fov_y = PI / 3.0;
+        let aspect = 1.5_f32;
+        let near = 1.0_f32;
+        let far = 100.0_f32;
+        let proj = Mat4::perspective(fov_y, aspect, near, far);
+
+        let tan_half = (fov_y / 2.0).tan();
+        let f = 1.0 / tan_half;
+        let nf = 1.0 / (near - far);
+
+        assert!((proj.m[0] - f / aspect).abs() < 1e-5, "m[0]=f/aspect got {}", proj.m[0]);
+        assert!((proj.m[5] - f).abs() < 1e-5, "m[5]=f got {}", proj.m[5]);
+        assert!((proj.m[10] - (far + near) * nf).abs() < 1e-5, "m[10] got {}", proj.m[10]);
+        assert!((proj.m[11] - (-1.0)).abs() < 1e-5, "m[11]=-1");
+        assert!((proj.m[14] - 2.0 * far * near * nf).abs() < 1e-5, "m[14] got {}", proj.m[14]);
+        assert!(proj.m[15].abs() < 1e-6, "m[15]=0");
+    }
+
+    /// Kill boundary mutants in perspective guards
+    #[test]
+    fn test_perspective_aspect_scaling() {
+        let proj1 = Mat4::perspective(PI / 4.0, 1.0, 0.1, 100.0);
+        let proj2 = Mat4::perspective(PI / 4.0, 2.0, 0.1, 100.0);
+        assert!((proj2.m[0] - proj1.m[0] / 2.0).abs() < 1e-5,
+            "Doubling aspect should halve m[0]");
+    }
+
+    /// Kill negation mutants in look_at
+    #[test]
+    fn test_look_at_specific_elements() {
+        // Non-axis-aligned camera
+        let eye = Vec3::new(1.0, 2.0, 3.0);
+        let target = Vec3::new(4.0, 6.0, 3.0);
+        let view = Mat4::look_at(eye, target, Vec3::Y);
+
+        // f=(0.6,0.8,0), s=(0,0,1), u=(-0.8,0.6,0)
+        assert!((view.m[0] - 0.0).abs() < 1e-5, "s.x");
+        assert!((view.m[1] - (-0.8)).abs() < 1e-5, "u.x={}", view.m[1]);
+        assert!((view.m[2] - (-0.6)).abs() < 1e-5, "-f.x={}", view.m[2]);
+
+        assert!((view.m[5] - 0.6).abs() < 1e-5, "u.y={}", view.m[5]);
+        assert!((view.m[6] - (-0.8)).abs() < 1e-5, "-f.y={}", view.m[6]);
+
+        assert!((view.m[8] - 1.0).abs() < 1e-5, "s.z");
+        assert!((view.m[10] - 0.0).abs() < 1e-5, "-f.z");
+
+        assert!((view.m[12] - (-3.0)).abs() < 1e-5, "-s.dot(eye)={}", view.m[12]);
+        assert!((view.m[13] - (-0.4)).abs() < 1e-5, "-u.dot(eye)={}", view.m[13]);
+        assert!((view.m[14] - 2.2).abs() < 1e-5, "f.dot(eye)={}", view.m[14]);
+    }
+
+    /// Kill arithmetic mutants in determinant with non-trivial matrices
+    #[test]
+    fn test_determinant_non_trivial() {
+        // Combined rotation * scaling: det = det(R) * det(S) = 1 * 30 = 30
+        let m = Mat4::rotation_z(1.0) * Mat4::scaling(2.0, 3.0, 5.0);
+        assert!((m.determinant() - 30.0).abs() < 1e-3, "det={}", m.determinant());
+
+        // Upper triangular: det = product of diagonal = 2*3*7*11 = 462
+        let upper = Mat4::new(
+            2.0, 0.0, 0.0, 0.0,
+            1.0, 3.0, 0.0, 0.0,
+            4.0, 5.0, 7.0, 0.0,
+            1.0, 2.0, 3.0, 11.0,
+        );
+        assert!((upper.determinant() - 462.0).abs() < 1e-2, "det={}", upper.determinant());
+
+        // Reflection: det = -1
+        assert!((Mat4::scaling(-1.0, 1.0, 1.0).determinant() - (-1.0)).abs() < 1e-6);
+    }
+
+    /// Kill arithmetic mutants in inverse - verify specific elements and roundtrips
+    #[test]
+    fn test_inverse_specific_elements() {
+        let s = Mat4::scaling(2.0, 3.0, 5.0);
+        let s_inv = s.inverse().unwrap();
+        assert!((s_inv.m[0] - 0.5).abs() < 1e-6);
+        assert!((s_inv.m[5] - 1.0 / 3.0).abs() < 1e-6);
+        assert!((s_inv.m[10] - 0.2).abs() < 1e-6);
+
+        let t = Mat4::translation(7.0, 11.0, 13.0);
+        let t_inv = t.inverse().unwrap();
+        assert!((t_inv.m[12] - (-7.0)).abs() < 1e-6);
+        assert!((t_inv.m[13] - (-11.0)).abs() < 1e-6);
+        assert!((t_inv.m[14] - (-13.0)).abs() < 1e-6);
+
+        // Dense matrix roundtrip
+        let m = Mat4::rotation_x(0.7) * Mat4::scaling(2.0, 3.0, 5.0) * Mat4::translation(1.0, 2.0, 3.0);
+        let m_inv = m.inverse().unwrap();
+        assert!((m * m_inv).approx_eq(Mat4::IDENTITY));
+
+        for p in [Vec3::new(1.0, 2.0, 3.0), Vec3::new(-5.0, 7.0, -11.0)] {
+            let recovered = m_inv.transform_point(m.transform_point(p));
+            assert!(recovered.approx_eq(p), "roundtrip failed for {p:?}");
+        }
+    }
+
+    /// Kill boundary mutant: det.abs() < EPSILON
+    #[test]
+    fn test_inverse_det_boundary() {
+        assert!(Mat4::ZERO.inverse().is_none());
+
+        // det = 0.01^3 = 1e-6 = EPSILON, strict < means invertible
+        let at_epsilon = Mat4::scaling(0.01, 0.01, 0.01);
+        assert!(at_epsilon.inverse().is_some());
+
+        // det = 0.001^3 = 1e-9 < EPSILON, not invertible
+        let below_epsilon = Mat4::scaling(0.001, 0.001, 0.001);
+        assert!(below_epsilon.inverse().is_none());
+    }
+
+    /// Kill arithmetic mutants in transform_point
+    #[test]
+    fn test_transform_point_dense() {
+        let m = Mat4::scaling(2.0, 3.0, 4.0) * Mat4::translation(1.0, 2.0, 3.0);
+        // Translation first: (1,1,1)→(2,3,4), then scale: (4,9,16)
+        let result = m.transform_point(Vec3::ONE);
+        assert!((result.x - 4.0).abs() < 1e-5);
+        assert!((result.y - 9.0).abs() < 1e-5);
+        assert!((result.z - 16.0).abs() < 1e-5);
+    }
+
+    /// Kill arithmetic mutants in transform_vector
+    #[test]
+    fn test_transform_vector_dense() {
+        let s = Mat4::scaling(2.0, 3.0, 4.0);
+        let result = s.transform_vector(Vec3::ONE);
+        assert_eq!(result, Vec3::new(2.0, 3.0, 4.0));
+
+        // Translation must NOT affect vectors
+        let t = Mat4::translation(100.0, 200.0, 300.0);
+        assert_eq!(t.transform_vector(Vec3::new(1.0, 2.0, 3.0)), Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    /// Kill arithmetic mutants in transform_vec4 - verify all 4 components
+    #[test]
+    fn test_transform_vec4_all_components() {
+        let m = Mat4::new(
+            1.0, 5.0, 9.0, 13.0,
+            2.0, 6.0, 10.0, 14.0,
+            3.0, 7.0, 11.0, 15.0,
+            4.0, 8.0, 12.0, 16.0,
+        );
+        let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        let result = m.transform_vec4(v);
+        // x = 1*1+2*2+3*3+4*4 = 30
+        // y = 5*1+6*2+7*3+8*4 = 70
+        // z = 9*1+10*2+11*3+12*4 = 110
+        // w = 13*1+14*2+15*3+16*4 = 150
+        assert_eq!(result.x, 30.0);
+        assert_eq!(result.y, 70.0);
+        assert_eq!(result.z, 110.0);
+        assert_eq!(result.w, 150.0);
+    }
+
+    /// Kill *→/ mutant in col (index * 4)
+    #[test]
+    fn test_col_all_indices() {
+        let m = Mat4::new(
+            1.0, 2.0, 3.0, 4.0,
+            5.0, 6.0, 7.0, 8.0,
+            9.0, 10.0, 11.0, 12.0,
+            13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq!(m.col(0), Vec4::new(1.0, 2.0, 3.0, 4.0));
+        assert_eq!(m.col(1), Vec4::new(5.0, 6.0, 7.0, 8.0));
+        assert_eq!(m.col(2), Vec4::new(9.0, 10.0, 11.0, 12.0));
+        assert_eq!(m.col(3), Vec4::new(13.0, 14.0, 15.0, 16.0));
+    }
+
+    /// Kill return-true mutant in approx_eq
+    #[test]
+    fn test_approx_eq_returns_false() {
+        assert!(!Mat4::IDENTITY.approx_eq(Mat4::scaling(2.0, 3.0, 4.0)));
+    }
+
+    /// Kill return-() mutant in MulAssign
+    #[test]
+    fn test_mul_assign_modifies() {
+        let mut m = Mat4::IDENTITY;
+        m *= Mat4::scaling(2.0, 3.0, 4.0);
+        assert_ne!(m, Mat4::IDENTITY);
+        assert_eq!(m.m[0], 2.0);
+        assert_eq!(m.m[5], 3.0);
+        assert_eq!(m.m[10], 4.0);
+    }
+
+    /// Kill Mul arithmetic mutants with verifiable product
+    #[test]
+    fn test_mul_specific_elements() {
+        let a = Mat4::new(
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 2.0, 0.0, 0.0,
+            0.0, 0.0, 3.0, 0.0,
+            4.0, 5.0, 6.0, 1.0,
+        );
+        let b = Mat4::new(
+            7.0, 0.0, 0.0, 0.0,
+            0.0, 8.0, 0.0, 0.0,
+            0.0, 0.0, 9.0, 0.0,
+            10.0, 11.0, 12.0, 1.0,
+        );
+        let c = a * b;
+        assert_eq!(c.m[0], 7.0);
+        assert_eq!(c.m[5], 16.0);
+        assert_eq!(c.m[10], 27.0);
+        assert_eq!(c.m[12], 14.0);
+        assert_eq!(c.m[13], 27.0);
+        assert_eq!(c.m[14], 42.0);
+        assert_eq!(c.m[15], 1.0);
+    }
+
+    /// Kill dense Mul mutants via transform equivalence
+    #[test]
+    fn test_mul_dense_equivalence() {
+        let a = Mat4::rotation_x(0.3) * Mat4::rotation_y(0.5);
+        let b = Mat4::rotation_y(0.7) * Mat4::rotation_z(1.1);
+        let c = a * b;
+        let p = Vec3::new(1.0, 2.0, 3.0);
+        // Column-major: c = a * b means c*p = a*(b*p), so apply b first, then a.
+        let via_separate = a.transform_point(b.transform_point(p));
+        let via_product = c.transform_point(p);
+        assert!(via_separate.approx_eq(via_product));
+    }
+
+    /// Kill Debug/Display return-Default mutants
+    #[test]
+    fn test_mat4_debug_display_not_empty() {
+        let m = Mat4::scaling(2.0, 3.0, 4.0);
+        let debug_str = format!("{m:?}");
+        assert!(debug_str.contains("Mat4"));
+        assert!(debug_str.contains("2.0"));
+
+        let display_str = format!("{m}");
+        assert!(!display_str.is_empty());
+        assert!(display_str.contains("2.0"));
+        assert!(display_str.contains("3.0"));
+    }
 }

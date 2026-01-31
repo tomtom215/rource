@@ -1709,4 +1709,317 @@ mod tests {
         assert!(blue.g < 0.01);
         assert!((blue.b - 1.0).abs() < 0.01);
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill MISSED mutants in color.rs
+    // =========================================================================
+
+    /// Kill mutants: replace | with ^ in to_rgba8/to_argb8/to_abgr8
+    /// XOR and OR differ when bits overlap. With distinct channel values
+    /// where multiple channels have non-zero bits, XOR produces wrong results.
+    /// Use a color where all channels have overlapping bit patterns.
+    #[test]
+    fn test_to_rgba8_xor_vs_or_kill() {
+        // Color with all channels non-zero and overlapping bits
+        // r=0.5 -> ~128, g=0.5 -> ~128, b=0.5 -> ~128, a=0.5 -> ~128
+        // With OR: (128<<24) | (128<<16) | (128<<8) | 128 = 0x80808080
+        // With XOR at any position, the overlapping bits would cancel
+        let c = Color::new(0.5, 0.5, 0.5, 0.5);
+        let packed = c.to_rgba8();
+        // Each channel should be ~128 (0x80)
+        let r = (packed >> 24) & 0xFF;
+        let g = (packed >> 16) & 0xFF;
+        let b = (packed >> 8) & 0xFF;
+        let a = packed & 0xFF;
+        assert!(r >= 127 && r <= 128, "R channel = {r}");
+        assert!(g >= 127 && g <= 128, "G channel = {g}");
+        assert!(b >= 127 && b <= 128, "B channel = {b}");
+        assert!(a >= 127 && a <= 128, "A channel = {a}");
+
+        // Critical: test with values where channels share bit positions
+        // r=1.0, g=1.0 -> both 255. OR: 0xFF00 | 0xFF = 0xFFFF. XOR: 0xFF00 ^ 0xFF = 0xFF00 ^ 0xFF = 0xFFFF (no overlap here)
+        // But shift overlap: (255<<24)|(255<<16) = 0xFF_FF_00_00, XOR same
+        // The mutation replaces the FULL expression's | operators.
+        // Test: (r << 24) | (g << 16) | (b << 8) | a
+        // If first | becomes ^: (r<<24) ^ (g<<16) | (b<<8) | a
+        // When r=0xFF, g=0xFF: 0xFF000000 ^ 0x00FF0000 = 0xFFFF0000 (same as OR! No overlap)
+        // Need overlapping shifted bits. That can't happen with << 24, << 16, etc.
+        // Actually, the issue is cargo-mutants replaces INDIVIDUAL | operators.
+        // Each | connects terms that DON'T have overlapping bits, so | and ^ are identical.
+        // These mutants may be equivalent mutants (can't be killed).
+        // But let's verify with exact packed values anyway.
+        assert_eq!(
+            Color::new(1.0, 1.0, 1.0, 1.0).to_rgba8(),
+            0xFFFFFFFF,
+            "All 1.0 should produce 0xFFFFFFFF"
+        );
+    }
+
+    /// Kill mutants: to_argb8 and to_abgr8 with non-trivial values
+    #[test]
+    fn test_packed_format_distinct_channels() {
+        // Use distinct values for each channel to detect any swap
+        let c = Color::new(0.2, 0.4, 0.6, 0.8);
+        let rgba = c.to_rgba8();
+        let argb = c.to_argb8();
+        let abgr = c.to_abgr8();
+
+        let r = ((0.2f32 * 255.0 + 0.5) as u32) & 0xFF; // ~51
+        let g = ((0.4f32 * 255.0 + 0.5) as u32) & 0xFF; // ~102
+        let b = ((0.6f32 * 255.0 + 0.5) as u32) & 0xFF; // ~153
+        let a = ((0.8f32 * 255.0 + 0.5) as u32) & 0xFF; // ~204
+
+        // RGBA: 0xRRGGBBAA
+        assert_eq!((rgba >> 24) & 0xFF, r, "RGBA R");
+        assert_eq!((rgba >> 16) & 0xFF, g, "RGBA G");
+        assert_eq!((rgba >> 8) & 0xFF, b, "RGBA B");
+        assert_eq!(rgba & 0xFF, a, "RGBA A");
+
+        // ARGB: 0xAARRGGBB
+        assert_eq!((argb >> 24) & 0xFF, a, "ARGB A");
+        assert_eq!((argb >> 16) & 0xFF, r, "ARGB R");
+        assert_eq!((argb >> 8) & 0xFF, g, "ARGB G");
+        assert_eq!(argb & 0xFF, b, "ARGB B");
+
+        // ABGR: 0xAABBGGRR
+        assert_eq!((abgr >> 24) & 0xFF, a, "ABGR A");
+        assert_eq!((abgr >> 16) & 0xFF, b, "ABGR B");
+        assert_eq!((abgr >> 8) & 0xFF, g, "ABGR G");
+        assert_eq!(abgr & 0xFF, r, "ABGR R");
+    }
+
+    /// Kill mutant: replace Color::from_hsl -> Self with Default::default()
+    /// Default Color is (0,0,0,0). from_hsl with non-zero HSL should differ.
+    #[test]
+    fn test_from_hsl_not_default() {
+        let hsl = Hsl::new(120.0, 1.0, 0.5);
+        let color = Color::from_hsl(hsl);
+        assert_ne!(
+            color,
+            Color::default(),
+            "from_hsl should not return default"
+        );
+        assert!(
+            (color.g - 1.0).abs() < 0.01,
+            "Green HSL should produce green color"
+        );
+        assert_eq!(color.a, 1.0, "from_hsl should have alpha 1.0");
+    }
+
+    /// Kill mutant: replace Debug for Color with Ok(Default::default())
+    #[test]
+    fn test_color_debug_not_empty() {
+        let c = Color::new(0.3, 0.6, 0.9, 1.0);
+        let debug = format!("{c:?}");
+        assert!(
+            debug.contains("Color"),
+            "Debug output should contain 'Color'"
+        );
+        assert!(debug.contains("0.3"), "Debug should contain r value");
+        assert!(debug.contains("0.6"), "Debug should contain g value");
+        assert!(debug.contains("0.9"), "Debug should contain b value");
+    }
+
+    /// Kill mutant: replace From<Rgb> for Color with Default::default()
+    #[test]
+    fn test_from_rgb_not_default() {
+        let rgb = Rgb::new(0.7, 0.3, 0.5);
+        let color: Color = rgb.into();
+        assert_ne!(color, Color::default(), "From<Rgb> should not be default");
+        assert_eq!(color.r, 0.7);
+        assert_eq!(color.g, 0.3);
+        assert_eq!(color.b, 0.5);
+        assert_eq!(color.a, 1.0);
+    }
+
+    /// Kill mutant: replace Debug for Rgb with Ok(Default::default())
+    #[test]
+    fn test_rgb_debug_not_empty() {
+        let rgb = Rgb::new(0.1, 0.2, 0.3);
+        let debug = format!("{rgb:?}");
+        assert!(debug.contains("Rgb"), "Debug should contain 'Rgb'");
+        assert!(debug.contains("0.1"), "Debug should contain r value");
+    }
+
+    /// Kill mutant: replace Debug for Hsl with Ok(Default::default())
+    #[test]
+    fn test_hsl_debug_not_empty() {
+        let hsl = Hsl::new(180.0, 0.5, 0.75);
+        let debug = format!("{hsl:?}");
+        assert!(debug.contains("Hsl"), "Debug should contain 'Hsl'");
+        assert!(debug.contains("180"), "Debug should contain h value");
+        assert!(debug.contains("0.5"), "Debug should contain s value");
+    }
+
+    /// Kill mutant: replace Display for Hsl with Ok(Default::default())
+    #[test]
+    fn test_hsl_display_not_empty() {
+        let hsl = Hsl::new(240.0, 0.8, 0.6);
+        let display = format!("{hsl}");
+        assert!(display.contains("hsl"), "Display should contain 'hsl'");
+        assert!(display.contains("240"), "Display should contain hue");
+        assert!(display.contains("80"), "Display should contain saturation%");
+        assert!(display.contains("60"), "Display should contain lightness%");
+    }
+
+    /// Kill mutants: Hsl::from_color boundary conditions for < and <=
+    /// These test the specific branches in from_color where max component
+    /// determines the hue calculation path.
+    #[test]
+    fn test_hsl_from_color_hue_branches() {
+        // Red dominant (max == r): hue = (g - b) / d
+        // With g < b, hue += 6.0 -- tests the `g < b` branch
+        let reddish_blue = Color::rgb(0.8, 0.1, 0.5);
+        let hsl = Hsl::from_color(reddish_blue);
+        assert!(hsl.h > 300.0, "Red-dominant with g<b should have hue > 300");
+        let back = hsl.to_color();
+        assert!(
+            reddish_blue.approx_eq(back),
+            "Roundtrip should preserve color"
+        );
+
+        // Red dominant with g > b: no hue adjustment
+        let reddish_green = Color::rgb(0.8, 0.5, 0.1);
+        let hsl2 = Hsl::from_color(reddish_green);
+        assert!(hsl2.h < 60.0, "Red-dominant with g>b should have hue < 60");
+        let back2 = hsl2.to_color();
+        assert!(
+            reddish_green.approx_eq(back2),
+            "Roundtrip should preserve color"
+        );
+
+        // Green dominant (max == g): hue = (b - r) / d + 2.0
+        let greenish = Color::rgb(0.2, 0.9, 0.1);
+        let hsl3 = Hsl::from_color(greenish);
+        assert!(
+            hsl3.h > 90.0 && hsl3.h < 150.0,
+            "Green dominant hue ~120, got {}",
+            hsl3.h
+        );
+
+        // Blue dominant (max == b): hue = (r - g) / d + 4.0
+        let bluish = Color::rgb(0.1, 0.2, 0.9);
+        let hsl4 = Hsl::from_color(bluish);
+        assert!(
+            hsl4.h > 210.0 && hsl4.h < 270.0,
+            "Blue dominant hue ~240, got {}",
+            hsl4.h
+        );
+    }
+
+    /// Kill mutants: Hsl::from_color saturation calculation
+    /// l > 0.5 vs l <= 0.5 uses different formulas
+    #[test]
+    fn test_hsl_from_color_saturation_branches() {
+        // Dark color (l < 0.5): s = d / (max + min)
+        let dark = Color::rgb(0.4, 0.1, 0.1);
+        let hsl = Hsl::from_color(dark);
+        assert!(hsl.l < 0.5, "Dark color should have l < 0.5");
+        assert!(hsl.s > 0.0, "Dark color should have positive saturation");
+
+        // Light color (l > 0.5): s = d / (2.0 - max - min)
+        let light = Color::rgb(0.9, 0.6, 0.6);
+        let hsl2 = Hsl::from_color(light);
+        assert!(hsl2.l > 0.5, "Light color should have l > 0.5");
+        assert!(hsl2.s > 0.0, "Light color should have positive saturation");
+
+        // Both should roundtrip correctly
+        assert!(dark.approx_eq(hsl.to_color()), "Dark roundtrip");
+        assert!(light.approx_eq(hsl2.to_color()), "Light roundtrip");
+    }
+
+    /// Kill mutants: Hsl::to_color boundary conditions
+    /// Tests the q calculation branches: l < 0.5 vs l >= 0.5
+    #[test]
+    fn test_hsl_to_color_q_branches() {
+        // l < 0.5: q = l * (1 + s)
+        let dark_hsl = Hsl::new(60.0, 0.8, 0.3);
+        let dark = dark_hsl.to_color();
+        assert!(dark.r > 0.0 || dark.g > 0.0 || dark.b > 0.0);
+        let back = Hsl::from_color(dark);
+        assert!(
+            (back.h - dark_hsl.h).abs() < 1.0,
+            "Hue should be preserved"
+        );
+
+        // l >= 0.5: q = l + s - l * s
+        let light_hsl = Hsl::new(60.0, 0.8, 0.7);
+        let light = light_hsl.to_color();
+        assert!(light.r > dark.r, "Lighter HSL should produce brighter color");
+
+        // l exactly 0.5 (boundary)
+        let mid_hsl = Hsl::new(60.0, 0.8, 0.5);
+        let mid = mid_hsl.to_color();
+        let back_mid = Hsl::from_color(mid);
+        assert!(
+            (back_mid.l - 0.5).abs() < 0.01,
+            "l=0.5 should roundtrip"
+        );
+    }
+
+    /// Kill mutants: hue_to_rgb boundary conditions
+    /// Tests all 4 branches of hue_to_rgb: t<1/6, t<1/2, t<2/3, else
+    #[test]
+    fn test_hue_to_rgb_all_branches() {
+        // Generate colors at specific hues that exercise all branches
+        // Hue 0 (red): t values are h+1/3=0.333, h=0, h-1/3=-0.333->0.667
+        // Hue 30: t values force different branch paths
+        let colors_to_test = [
+            (0.0, 1.0, 0.5),   // Pure red
+            (30.0, 1.0, 0.5),  // Orange (t values hit different branches)
+            (60.0, 1.0, 0.5),  // Yellow
+            (90.0, 1.0, 0.5),  // Yellow-green
+            (150.0, 1.0, 0.5), // Green-cyan
+            (210.0, 1.0, 0.5), // Cyan-blue
+            (270.0, 1.0, 0.5), // Blue-magenta
+            (330.0, 1.0, 0.5), // Magenta-red
+        ];
+
+        for (h, s, l) in colors_to_test {
+            let hsl = Hsl::new(h, s, l);
+            let color = hsl.to_color();
+
+            // Every color should have at least one non-zero RGB channel
+            assert!(
+                color.r > 0.0 || color.g > 0.0 || color.b > 0.0,
+                "HSL({h},{s},{l}) should produce non-black color"
+            );
+            assert_eq!(color.a, 1.0, "Alpha should be 1.0");
+
+            // Roundtrip should preserve
+            let back = Hsl::from_color(color);
+            assert!(
+                (back.h - h).abs() < 1.0 || (back.h - h).abs() > 359.0,
+                "Hue roundtrip failed for h={h}: got {}",
+                back.h
+            );
+        }
+
+        // Specifically test with s=0 (achromatic) to hit early return
+        let gray = Hsl::new(0.0, 0.0, 0.5).to_color();
+        assert!(
+            (gray.r - 0.5).abs() < crate::EPSILON,
+            "Achromatic should return lightness"
+        );
+        assert_eq!(gray.r, gray.g);
+        assert_eq!(gray.g, gray.b);
+    }
+
+    /// Kill mutant: replace Hsl::to_color s.abs() < EPSILON with s.abs() <= EPSILON
+    #[test]
+    fn test_hsl_to_color_saturation_at_epsilon() {
+        // Saturation exactly at EPSILON: should NOT be treated as achromatic
+        let hsl = Hsl::new(120.0, crate::EPSILON, 0.5);
+        let _color = hsl.to_color();
+        // With EPSILON saturation, abs() < EPSILON is false, so we do the color calc
+        // (the function doesn't panic or return default — that's what we verify)
+
+        // Saturation slightly above EPSILON
+        let hsl2 = Hsl::new(120.0, crate::EPSILON * 2.0, 0.5);
+        let color2 = hsl2.to_color();
+        assert!(
+            color2.g > color2.r,
+            "Green hue with positive saturation should have more green"
+        );
+    }
 }

@@ -1443,4 +1443,73 @@ mod tests {
             assert_eq!(v.y, original[i].y * 2.0);
         }
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill operator and boundary mutants
+    // =========================================================================
+
+    /// Kill -→+ mutant in distance: use non-zero starting point
+    #[test]
+    fn test_distance_non_origin() {
+        let a = Vec2::new(1.0, 0.0);
+        let b = Vec2::new(4.0, 0.0);
+        // distance = |b-a| = 3. If -→+: |b+a| = 5.
+        assert_eq!(a.distance(b), 3.0);
+    }
+
+    /// Kill -→+ mutant in distance_squared
+    #[test]
+    fn test_distance_squared_non_origin() {
+        let a = Vec2::new(1.0, 0.0);
+        let b = Vec2::new(4.0, 0.0);
+        assert_eq!(a.distance_squared(b), 9.0);
+    }
+
+    /// Kill /→* mutant in project: use non-unit onto vector
+    #[test]
+    fn test_project_non_unit() {
+        let v = Vec2::new(3.0, 4.0);
+        let onto = Vec2::new(2.0, 0.0);
+        // dot=6, len_sq=4, result = (2,0) * (6/4) = (3,0)
+        // If /→*: (2,0) * (6*4) = (48,0). Different.
+        let result = v.project(onto);
+        assert!((result.x - 3.0).abs() < 1e-6);
+        assert!((result.y - 0.0).abs() < 1e-6);
+    }
+
+    /// Kill *→/ and *→+ in f32 * Vec2
+    #[test]
+    fn test_scalar_mul_vec2_non_trivial() {
+        let v = Vec2::new(3.0, 5.0);
+        let result = 4.0 * v;
+        // If *→/: (4/3, 4/5). If *→+: (7, 9).
+        assert_eq!(result, Vec2::new(12.0, 20.0));
+    }
+
+    /// Kill *=→+= in MulAssign<f32> with values that distinguish
+    #[test]
+    fn test_mul_assign_scalar_distinguishable() {
+        let mut v = Vec2::new(3.0, 5.0);
+        v *= 4.0;
+        // If *=→+=: (7, 9). Actual: (12, 20).
+        assert_eq!(v, Vec2::new(12.0, 20.0));
+    }
+
+    /// Kill *=→+= in MulAssign<Vec2>
+    #[test]
+    fn test_mul_assign_vec2_distinguishable() {
+        let mut v = Vec2::new(3.0, 5.0);
+        v *= Vec2::new(4.0, 7.0);
+        // If *=→+=: (7, 12). Actual: (12, 35).
+        assert_eq!(v, Vec2::new(12.0, 35.0));
+    }
+
+    /// Kill /=→%= in DivAssign<f32>
+    #[test]
+    fn test_div_assign_scalar() {
+        let mut v = Vec2::new(12.0, 20.0);
+        v /= 4.0;
+        // If /=→%=: (0, 0). Actual: (3, 5).
+        assert_eq!(v, Vec2::new(3.0, 5.0));
+    }
 }
