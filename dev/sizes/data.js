@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769872364405,
+  "lastUpdate": 1769876878937,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4742,6 +4742,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/48e69a1aa8fcc41c0af7d1da9423f9c018a44f30"
         },
         "date": 1769872364064,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58b029b6e4081a52c578b7c723e18c3933ea13b9",
+          "message": "Merge pull request #244 from tomtom215/claude/rource-continuation-SdlU8\n\nAdd 67 new formal verification proofs across Verus, Coq, and Kani",
+          "timestamp": "2026-01-31T17:25:51+01:00",
+          "tree_id": "67986d85ff06258a01c2fe6ff621936b7e6d164f",
+          "url": "https://github.com/tomtom215/rource/commit/58b029b6e4081a52c578b7c723e18c3933ea13b9"
+        },
+        "date": 1769876877875,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
