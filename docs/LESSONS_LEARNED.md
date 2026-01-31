@@ -46,6 +46,8 @@
 | Sum-of-squares `0 <= (x-y)² + ...` | R: `apply Rplus_le_le_0_compat; nra.` Z: `apply Z.add_nonneg_nonneg; apply Z.square_nonneg.` | `nra`/`nia` fail with subtraction |
 | Z record projections before `ring` | `cbn [field1 field2 ...]` | `simpl` destroys Z term structure |
 | Never before `ring` on Z | `simpl` | Reduces Z constants to binary match expressions |
+| Z area/expand with nested `Z.sub` in constructors | `rewrite` proven width/height lemmas, then `ring` | `zb_unfold` + `ring` fails on nested `Z.sub` |
+| Z center translation `(a + dx + b + dx) / 2` | Factor as `dx * 2 + (a + b)`, `rewrite Z.div_add_l` | `lia` can't handle division directly |
 | Generic `(1+u)^n > 0` | `apply pow_lt; lra` then provide to `nra` | `nra` can't prove non-polynomial positivity |
 
 ### Verus Proof Strategy
@@ -121,6 +123,10 @@
 | 122 | `Require Import` is NOT `Require Export` | `FP_Common.v` imports don't re-export | Files must explicitly import what they need |
 | 123 | `field` may close all subgoals in Coq 8.18 | Side conditions auto-discharged | Use `field.` alone or `field; lra.` (semicolon) |
 | 124 | FP error composition follows inductive multiplication pattern | `(1+e1)*...*(1+en) - 1` decomposes as `(prefix-1)*(1+en) + en` | Factor, `Rabs_triang`, `Rabs_mult`, IH, then `ring`+`Rplus_le_compat` |
+| 142 | Z-based `ring` fails after `zb_unfold` on Bounds_Compute.v | `zb_unfold` exposes nested `Z.sub` in constructors | Rewrite with proven width/height lemmas first, then `ring` |
+| 143 | `Z.abs_triangle` for approximate-equality triangle inequality | Transitive approximate equality via triangle inequality | Factor difference via `lia`, `eapply Z.le_lt_trans`, `apply Z.abs_triangle` |
+| 144 | `Z.div_add_l` enables center-translation proofs | `(a*b + c)/b = a + c/b` | Factor sum, then `rewrite Z.div_add_l by lia` |
+| 148 | `zlerp_bounded` requires careful Z division reasoning | Division monotonicity chain for bounded interpolation | `Z.mul_le_mono_nonneg_l` → `Z.div_le_mono` → `Z.div_mul` |
 
 ---
 
@@ -257,6 +263,9 @@
 | 109 | Two-tier script architecture for doc automation | Verification counts vs other metrics need different extraction | `update-verification-counts.sh` + `update-doc-metrics.sh` |
 | 110 | Ground truth must come from source files | Hardcoded counts go stale immediately | Parse actual source: `grep -cE` patterns |
 | 140 | Sed patterns with hardcoded old counts become stale | Script used `**446 theorems**` literal | Use `[0-9]+` patterns for numbers; never hardcode previous values |
+| 145 | README.md sed patterns must match actual Markdown table format | Expected `N theorems, 0 admits | Machine-checked` vs actual `N theorems | Zero admits` | Row-anchored: `/Coq \(R-based\)/s/[0-9]+ theorems/$N theorems/` |
+| 146 | WASM_EXTRACTION_PIPELINE.md had no update rule in script | File with Coq counts was created without script entry | When creating doc files with metrics, ALWAYS add sed patterns to update script |
+| 147 | CLAUDE.md per-type verification table needs automated updates | Per-type Bounds/Utils rows went stale | Added per-type row patterns to `update-verification-counts.sh` |
 
 ---
 
@@ -303,7 +312,7 @@
 
 ## Chronological Audit Log
 
-All 123 entries in chronological order. Entry numbers match category table references.
+All 148 entries in chronological order. Entry numbers match category table references.
 
 | # | Date | Session | Issue | Root Cause | Fix Applied |
 |---|------|---------|-------|-----------|-------------|
@@ -448,7 +457,14 @@ All 123 entries in chronological order. Entry numbers match category table refer
 | 139 | 2026-01-31 | pnY2l | `mod` declaration easily missed when creating new Kani file | Created bounds.rs but forgot `mod bounds;` in mod.rs | Always verify module registration immediately after file creation; add to checklist |
 | 140 | 2026-01-31 | pnY2l | Documentation sed patterns with hardcoded old counts become stale | Script used `**446 theorems**` as literal match; broke when counts changed | Use `[0-9]+` patterns for numbers, not hardcoded values |
 | 141 | 2026-01-31 | pnY2l | Kani Bounds `intersects` self-check requires strict inequality gap | `intersects()` uses `<` not `<=`; degenerate bounds fail self-intersection | Require `width > 1.0` to ensure `min + width > min` in IEEE 754 |
+| 142 | 2026-01-31 | pnY2l | Z-based `ring` fails after `zb_unfold` on Bounds_Compute.v | `zb_unfold` exposes `Z.sub` in constructor args; `ring` can't handle nested Z.sub | NEVER use `zb_unfold` + `ring` for area/expand; rewrite with proven lemmas first |
+| 143 | 2026-01-31 | pnY2l | `Z.abs_triangle` for Z approximate-equality triangle inequality | `Z.abs (a - c) <= Z.abs (a - b) + Z.abs (b - c)` | Factor `a - c = (a - b) + (b - c)` via `lia`, then `eapply Z.le_lt_trans` with `Z.abs_triangle` |
+| 144 | 2026-01-31 | pnY2l | `Z.div_add_l` enables center-translation proofs | `(a * b + c) / b = a + c / b` for `b <> 0` | Factor sum as `dx * 2 + (mnx + mxx)`, then `rewrite Z.div_add_l by lia` |
+| 145 | 2026-01-31 | pnY2l | Script README.md sed patterns must match actual Markdown table format | Pattern expected `N theorems, 0 admits | Machine-checked` but actual was `N theorems | Zero admits` | Use row-anchored patterns: `/Coq \(R-based\)/s/[0-9]+ theorems/$N theorems/` |
+| 146 | 2026-01-31 | pnY2l | WASM_EXTRACTION_PIPELINE.md had no update rule in script | New file with Coq counts was not in any script | When creating doc files with metrics, ALWAYS add sed patterns to update script |
+| 147 | 2026-01-31 | pnY2l | CLAUDE.md per-type verification table needs automated updates | Bounds (70→79, 62→70) and Utils (23→30, 13→18) went stale | Added per-type row patterns to `update-verification-counts.sh` |
+| 148 | 2026-01-31 | pnY2l | `zlerp_bounded` requires careful Z division reasoning | `(b-a)*t/1000 <= (b-a)` needs `Z.div_le_mono` + `Z.div_mul` | Factor: `Z.mul_le_mono_nonneg_l` for `t <= 1000`, then `Z.div_le_mono`, then `Z.div_mul` |
 
 ---
 
-*Last updated: 2026-01-31 | 141 entries | 14 categories*
+*Last updated: 2026-01-31 | 148 entries | 14 categories*
