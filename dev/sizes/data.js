@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769866265696,
+  "lastUpdate": 1769872364405,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4703,6 +4703,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/f116046c08cab7579bae2dd4fba56950c4ecf3c7"
         },
         "date": 1769866265316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "48e69a1aa8fcc41c0af7d1da9423f9c018a44f30",
+          "message": "Merge pull request #243 from tomtom215/claude/rource-academic-project-6mS3R\n\nAdd Verus proofs for Bounds and Utils types (66+33 proof functions)",
+          "timestamp": "2026-01-31T16:10:48+01:00",
+          "tree_id": "376a22bfeed94cf634f765fe39f61abcebba2406",
+          "url": "https://github.com/tomtom215/rource/commit/48e69a1aa8fcc41c0af7d1da9423f9c018a44f30"
+        },
+        "date": 1769872364064,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
