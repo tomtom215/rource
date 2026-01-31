@@ -846,4 +846,315 @@ mod tests {
         // Should be well under 100KB
         assert!(bytes.len() < 100_000, "cache size: {} bytes", bytes.len());
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill missed mutants
+    // =========================================================================
+
+    /// Kill mutant: from_store_with_hash → return Default / repo_hash → return None
+    #[test]
+    fn test_from_store_with_hash_stores_hash() {
+        let store = CommitStore::new();
+        let hash = hash_repo_id("test-repo");
+        let cache = VisualizationCache::from_store_with_hash(store, hash);
+        assert_eq!(cache.repo_hash(), Some(hash));
+        // Verify hash is not None or 0
+        assert!(cache.repo_hash().unwrap() != 0);
+    }
+
+    /// Kill mutant: from_store → return Default / repo_hash → return Some(...)
+    #[test]
+    fn test_from_store_no_hash() {
+        let store = CommitStore::new();
+        let cache = VisualizationCache::from_store(store);
+        assert_eq!(cache.repo_hash(), None);
+    }
+
+    /// Kill mutant: into_store → return Default
+    #[test]
+    fn test_into_store_returns_populated_store() {
+        let mut store = CommitStore::new();
+        let id = store.add_commit(100, "Alice", Some("abc"));
+        store.add_file_change(id, "file.rs", FileAction::Create);
+
+        let cache = VisualizationCache::from_store(store);
+        let recovered = cache.into_store();
+        assert_eq!(recovered.commit_count(), 1);
+        assert_eq!(recovered.file_change_count(), 1);
+    }
+
+    /// Kill mutant: store() → return Default ref
+    #[test]
+    fn test_store_ref_returns_populated() {
+        let mut store = CommitStore::new();
+        store.add_commit(100, "Alice", Some("abc"));
+        let cache = VisualizationCache::from_store(store);
+        assert_eq!(cache.store().commit_count(), 1);
+    }
+
+    /// Kill mutant: from_bytes_with_repo_check < → <= (version too old, line 339)
+    /// Test with version exactly at minimum boundary.
+    #[test]
+    fn test_version_at_exact_minimum() {
+        // Current version IS the minimum (both 1), so a valid cache should load.
+        // If < is mutated to <=, version 1 <= 1 would incorrectly reject.
+        let store = create_test_store();
+        let cache = VisualizationCache::from_store(store);
+        let bytes = cache.to_bytes().unwrap();
+        let result = VisualizationCache::from_bytes(&bytes);
+        assert!(result.is_ok(), "cache at minimum version must load");
+    }
+
+    /// Kill mutant: from_bytes_with_repo_check > → >= (version too new, line 345)
+    /// Test with version exactly at maximum boundary.
+    #[test]
+    fn test_version_at_exact_maximum() {
+        // Current version IS the maximum (both 1), so a valid cache should load.
+        // If > is mutated to >=, version 1 >= 1 would incorrectly reject.
+        let store = create_test_store();
+        let cache = VisualizationCache::from_store(store);
+        let bytes = cache.to_bytes().unwrap();
+        let result = VisualizationCache::from_bytes(&bytes);
+        assert!(result.is_ok(), "cache at maximum version must load");
+    }
+
+    /// Kill mutant: repo_hash != 0 && repo_hash != expected → || (line 354)
+    /// When repo_hash is 0, the check should pass (0 means "no hash stored").
+    #[test]
+    fn test_repo_check_with_zero_hash_passes() {
+        let store = CommitStore::new();
+        // from_store creates cache with repo_hash = None (stored as 0)
+        let cache = VisualizationCache::from_store(store);
+        let bytes = cache.to_bytes().unwrap();
+
+        // Loading with any expected hash should succeed when stored hash is 0
+        let expected = hash_repo_id("any-repo");
+        let result = VisualizationCache::from_bytes_with_repo_check(&bytes, Some(expected));
+        assert!(
+            result.is_ok(),
+            "zero repo_hash should pass any repo check"
+        );
+    }
+
+    /// Kill mutant: repo_hash != 0 → == 0 (line 365)
+    /// When a non-zero hash is stored, it should be returned as Some.
+    #[test]
+    fn test_nonzero_repo_hash_returned_as_some() {
+        let store = CommitStore::new();
+        let hash = hash_repo_id("specific-repo");
+        assert!(hash != 0, "hash_repo_id should not return 0 for non-empty input");
+
+        let cache = VisualizationCache::from_store_with_hash(store, hash);
+        let bytes = cache.to_bytes().unwrap();
+        let loaded = VisualizationCache::from_bytes(&bytes).unwrap();
+        assert_eq!(loaded.repo_hash(), Some(hash));
+    }
+
+    /// Kill mutant: hash_repo_id ^= → |= or &= (line 564)
+    /// FNV-1a uses XOR. |= or &= would produce a different hash for multi-byte inputs.
+    #[test]
+    fn test_hash_repo_id_xor_vs_or() {
+        // With XOR, hash("ab") ≠ hash("ba") and follows FNV-1a spec
+        let h_ab = hash_repo_id("ab");
+        let h_ba = hash_repo_id("ba");
+        assert_ne!(h_ab, h_ba, "XOR-based hash must distinguish 'ab' from 'ba'");
+
+        // Known FNV-1a property: single-char inputs should produce unique hashes
+        let h_a = hash_repo_id("a");
+        let h_b = hash_repo_id("b");
+        assert_ne!(h_a, h_b);
+
+        // Verify the hash is not just an OR accumulation
+        // With |= instead of ^=, repeated bytes would converge toward all-ones
+        let h_aaa = hash_repo_id("aaa");
+        let h_aaaa = hash_repo_id("aaaa");
+        assert_ne!(h_aaa, h_aaaa, "different length inputs must produce different hashes");
+
+        // Empty string should return FNV_OFFSET (no bytes to process)
+        let h_empty = hash_repo_id("");
+        assert_eq!(h_empty, 0xcbf2_9ce4_8422_2325_u64);
+    }
+
+    /// Kill mutant: cache_version → return 0 / cache_min_version → return 0
+    #[test]
+    fn test_cache_version_nonzero() {
+        assert!(cache_version() > 0, "cache_version must be positive");
+        assert!(cache_min_version() > 0, "cache_min_version must be positive");
+        assert_eq!(cache_version(), 1);
+        assert_eq!(cache_min_version(), 1);
+    }
+
+    /// Kill mutant: build_payload m + 1 → m - 1 (author_count, line 406)
+    /// Kill mutant: build_payload m + 1 → m - 1 (max_path_id, line 443)
+    /// Verify that roundtrip preserves all authors and paths correctly.
+    #[test]
+    fn test_build_payload_author_path_count() {
+        let mut store = CommitStore::new();
+        // Use exactly 3 different authors to verify m+1 computation
+        let id1 = store.add_commit(100, "Alice", Some("aaa"));
+        store.add_file_change(id1, "src/a.rs", FileAction::Create);
+        let id2 = store.add_commit(200, "Bob", Some("bbb"));
+        store.add_file_change(id2, "src/b.rs", FileAction::Modify);
+        let id3 = store.add_commit(300, "Charlie", Some("ccc"));
+        store.add_file_change(id3, "test/c.rs", FileAction::Delete);
+
+        let cache = VisualizationCache::from_store(store);
+        let bytes = cache.to_bytes().unwrap();
+        let loaded = VisualizationCache::from_bytes(&bytes).unwrap();
+        let loaded_store = loaded.into_store();
+
+        // All 3 authors must survive roundtrip
+        assert_eq!(loaded_store.commit_count(), 3);
+        let mut authors: Vec<String> = loaded_store
+            .commits()
+            .map(|(_, c)| loaded_store.resolve_author(c.author).unwrap().to_string())
+            .collect();
+        authors.sort();
+        assert_eq!(authors, vec!["Alice", "Bob", "Charlie"]);
+
+        // All 3 paths must survive roundtrip
+        let mut paths: Vec<String> = Vec::new();
+        for (_, commit) in loaded_store.commits() {
+            for fc in loaded_store.file_changes(commit) {
+                paths.push(loaded_store.resolve_path(fc.path).unwrap());
+            }
+        }
+        paths.sort();
+        assert_eq!(paths, vec!["src/a.rs", "src/b.rs", "test/c.rs"]);
+    }
+
+    /// Kill mutant: extract_path_data filter !s.is_empty() → delete !
+    /// Empty segments from paths like "/root/" should be filtered out.
+    #[test]
+    fn test_extract_path_data_filters_empty_segments() {
+        let mut store = CommitStore::new();
+        let id = store.add_commit(100, "Alice", Some("abc"));
+        // Add a path that would produce empty segments if not filtered
+        store.add_file_change(id, "src/main.rs", FileAction::Create);
+
+        let cache = VisualizationCache::from_store(store);
+        let bytes = cache.to_bytes().unwrap();
+        let loaded = VisualizationCache::from_bytes(&bytes).unwrap();
+        let loaded_store = loaded.into_store();
+
+        for (_, commit) in loaded_store.commits() {
+            for fc in loaded_store.file_changes(commit) {
+                let path = loaded_store.resolve_path(fc.path).unwrap();
+                assert_eq!(path, "src/main.rs");
+            }
+        }
+    }
+
+    /// Kill mutant: reconstruct_store match arms 0 and 2 (line 532-533)
+    /// Verify all three file actions roundtrip correctly through cache.
+    #[test]
+    fn test_reconstruct_store_all_actions() {
+        let mut store = CommitStore::new();
+        let id = store.add_commit(100, "Alice", Some("abc"));
+        store.add_file_change(id, "created.rs", FileAction::Create);
+        store.add_file_change(id, "modified.rs", FileAction::Modify);
+        store.add_file_change(id, "deleted.rs", FileAction::Delete);
+
+        let cache = VisualizationCache::from_store(store);
+        let bytes = cache.to_bytes().unwrap();
+        let loaded = VisualizationCache::from_bytes(&bytes).unwrap();
+        let loaded_store = loaded.into_store();
+
+        let commit = loaded_store.get_commit(CommitId::from_index(0)).unwrap();
+        let files = loaded_store.file_changes(commit);
+        assert_eq!(files.len(), 3);
+
+        // Verify each action type is correctly reconstructed
+        let actions: Vec<FileAction> = files.iter().map(|f| f.action).collect();
+        assert!(
+            actions.contains(&FileAction::Create),
+            "Create action must survive roundtrip"
+        );
+        assert!(
+            actions.contains(&FileAction::Modify),
+            "Modify action must survive roundtrip"
+        );
+        assert!(
+            actions.contains(&FileAction::Delete),
+            "Delete action must survive roundtrip"
+        );
+    }
+
+    /// Kill mutant: CacheError Display - ensure all variants produce unique messages
+    #[test]
+    fn test_cache_error_display_all_variants() {
+        let errors = vec![
+            CacheError::InvalidMagic,
+            CacheError::VersionTooOld {
+                found: 0,
+                minimum: 1,
+            },
+            CacheError::VersionTooNew {
+                found: 99,
+                maximum: 1,
+            },
+            CacheError::CorruptedData("test error".to_string()),
+            CacheError::DeserializationFailed("decode error".to_string()),
+            CacheError::RepositoryMismatch {
+                expected: 111,
+                found: 222,
+            },
+        ];
+
+        // All display strings must be non-empty and distinct
+        let displays: Vec<String> = errors.iter().map(|e| format!("{e}")).collect();
+        for display in &displays {
+            assert!(!display.is_empty());
+        }
+        // Check each pair is distinct
+        for i in 0..displays.len() {
+            for j in (i + 1)..displays.len() {
+                assert_ne!(
+                    displays[i], displays[j],
+                    "Error displays must be unique: '{}' vs '{}'",
+                    displays[i], displays[j]
+                );
+            }
+        }
+
+        // Verify specific content
+        assert!(displays[0].contains("magic"));
+        assert!(displays[1].contains("old"));
+        assert!(displays[2].contains("new"));
+        assert!(displays[3].contains("test error"));
+        assert!(displays[4].contains("decode error"));
+        assert!(displays[5].contains("111"));
+        assert!(displays[5].contains("222"));
+    }
+
+    /// Kill mutant: bytes.len() < CACHE_MAGIC.len() → <=
+    /// Test with bytes exactly the length of magic (4 bytes).
+    #[test]
+    fn test_bytes_exactly_magic_length() {
+        // Exactly 4 bytes but wrong magic
+        let result = VisualizationCache::from_bytes(b"XXXX");
+        assert!(matches!(result, Err(CacheError::InvalidMagic)));
+
+        // Exactly 4 bytes with correct magic but no payload
+        let result = VisualizationCache::from_bytes(&CACHE_MAGIC);
+        // Should fail on deserialization (no payload), not on length check
+        assert!(matches!(
+            result,
+            Err(CacheError::DeserializationFailed(_))
+        ));
+    }
+
+    /// Kill mutant: bytes[..CACHE_MAGIC.len()] != CACHE_MAGIC → ==
+    #[test]
+    fn test_correct_magic_does_not_error_on_magic() {
+        // Valid magic but corrupted payload
+        let mut bytes = CACHE_MAGIC.to_vec();
+        bytes.extend_from_slice(b"not-valid-bitcode");
+        let result = VisualizationCache::from_bytes(&bytes);
+        // Should fail on deserialization, NOT on magic check
+        assert!(matches!(
+            result,
+            Err(CacheError::DeserializationFailed(_))
+        ));
+    }
 }

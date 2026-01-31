@@ -971,4 +971,163 @@ A\tfile.rs
         assert_eq!(commits[0].files.len(), 1);
         assert_eq!(commits[0].files[0].path.to_str().unwrap(), "file.rs");
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill missed mutants
+    // =========================================================================
+
+    /// Kill mutant: is_git_action_char → replace with true
+    /// Non-action characters must return false.
+    #[test]
+    fn test_is_git_action_char_false_cases() {
+        assert!(!is_git_action_char('X'));
+        assert!(!is_git_action_char('Z'));
+        assert!(!is_git_action_char('1'));
+        assert!(!is_git_action_char(' '));
+        assert!(!is_git_action_char('\t'));
+        assert!(is_git_action_char('A'));
+        assert!(is_git_action_char('M'));
+        assert!(is_git_action_char('D'));
+        assert!(is_git_action_char('R'));
+        assert!(is_git_action_char('C'));
+        assert!(is_git_action_char('T'));
+        assert!(is_git_action_char('U'));
+        assert!(is_git_action_char('a'));
+        assert!(is_git_action_char('m'));
+        assert!(is_git_action_char('d'));
+        assert!(is_git_action_char('r'));
+        assert!(is_git_action_char('c'));
+        assert!(is_git_action_char('t'));
+        assert!(is_git_action_char('u'));
+    }
+
+    /// Kill mutant: parse_file_status line.len() < 3 boundary
+    /// A 2-character space-separated line should return None.
+    #[test]
+    fn test_parse_file_status_short_line() {
+        // Exactly 2 chars: too short, should return None
+        let result = GitParser::parse_file_status("A ", 1).unwrap();
+        assert!(result.is_none(), "2-char line should return None");
+        // Exactly 3 chars with space format: "A f" should parse
+        let result = GitParser::parse_file_status("A f", 1).unwrap();
+        assert!(result.is_some(), "3-char 'A f' should parse");
+        // Tab format works regardless of length
+        let result = GitParser::parse_file_status("M\tx", 1).unwrap();
+        assert!(result.is_some());
+    }
+
+    /// Kill mutant: parse_file_status !is_git_action_char → delete !
+    /// Non-action first char in space-separated format should return None.
+    #[test]
+    fn test_parse_file_status_non_action_char_space() {
+        let result = GitParser::parse_file_status("X  file.rs", 1).unwrap();
+        assert!(result.is_none(), "non-action char should return None");
+        let result = GitParser::parse_file_status("Z  file.rs", 1).unwrap();
+        assert!(result.is_none());
+    }
+
+    /// Kill mutant: parse_author_line email_end > email_start → >=
+    /// Malformed brackets where > comes before or at < position.
+    #[test]
+    fn test_parse_author_line_malformed_brackets() {
+        // "><" case: rfind('<') = 1, rfind('>') = 0 → not after <
+        let (name, email) = GitParser::parse_author_line("Author: ><");
+        assert_eq!(name, "><");
+        assert!(email.is_none());
+        // Normal case
+        let (name, email) = GitParser::parse_author_line("Author: John <john@test.com>");
+        assert_eq!(name, "John");
+        assert_eq!(email.unwrap(), "john@test.com");
+    }
+
+    /// Kill mutant: can_parse && → || and >= 7 → >= boundary
+    /// Short hash (< 7 chars) or non-hex must NOT match.
+    #[test]
+    fn test_can_parse_short_hash() {
+        let parser = GitParser::new();
+        assert!(
+            !parser.can_parse("commit abcde\n"),
+            "5-char hash too short"
+        );
+        assert!(
+            parser.can_parse("commit abcdef0\n"),
+            "7-char hex hash should match"
+        );
+        assert!(
+            !parser.can_parse("commit abcdefghij\n"),
+            "non-hex chars should not match"
+        );
+    }
+
+    /// Kill mutant: can_parse line.len() > 10 boundary
+    #[test]
+    fn test_can_parse_line_length_boundary() {
+        let parser = GitParser::new();
+        // "commit abc" = 10 chars total, len() > 10 is false
+        assert!(!parser.can_parse("commit abc"));
+        // "commit abcdef0" = 14 chars, 7 hex chars
+        assert!(parser.can_parse("commit abcdef0"));
+    }
+
+    /// Kill mutant: parse_str +=→*= on line counting
+    #[test]
+    fn test_parse_str_multiple_commits_line_tracking() {
+        let parser = GitParser::new();
+        let log = "\
+commit abc1234567890123456789012345678901234567
+Author: A <a@t.com>
+Date: 100
+
+A\tfile1.rs
+
+commit def4567890123456789012345678901234567890
+Author: B <b@t.com>
+Date: 200
+
+M\tfile2.rs
+";
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].files[0].action, FileAction::Create);
+        assert_eq!(commits[1].files[0].action, FileAction::Modify);
+    }
+
+    /// Kill mutant: with_options → Default
+    #[test]
+    fn test_with_options_preserves_options() {
+        let opts = ParseOptions::default().with_max_commits(3);
+        let parser = GitParser::with_options(opts);
+        // Parse log with 3+ commits, should stop at 3
+        let log = "\
+commit aaa1234567890123456789012345678901234567
+Author: A <a@t.com>
+Date: 100
+
+A\tfile1.rs
+
+commit bbb4567890123456789012345678901234567890
+Author: B <b@t.com>
+Date: 200
+
+M\tfile2.rs
+
+commit ccc4567890123456789012345678901234567890
+Author: C <c@t.com>
+Date: 300
+
+A\tfile3.rs
+
+commit ddd4567890123456789012345678901234567890
+Author: D <d@t.com>
+Date: 400
+
+A\tfile4.rs
+";
+        let commits = parser.parse_str(log).unwrap();
+        assert!(
+            commits.len() <= 3,
+            "with_max_commits(3) should limit to 3, got {}",
+            commits.len()
+        );
+    }
 }

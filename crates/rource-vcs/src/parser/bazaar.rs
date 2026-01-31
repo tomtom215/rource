@@ -1110,4 +1110,212 @@ added:
         assert_eq!(parse_month("DEC"), Some(12));
         assert!(parse_month("invalid").is_none());
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill missed mutants
+    // =========================================================================
+
+    /// Kill mutant: parse_month → delete match arms for Mar through Nov
+    /// Each month arm must return its correct number.
+    #[test]
+    fn test_parse_month_all_arms() {
+        assert_eq!(parse_month("jan"), Some(1));
+        assert_eq!(parse_month("feb"), Some(2));
+        assert_eq!(parse_month("mar"), Some(3));
+        assert_eq!(parse_month("apr"), Some(4));
+        assert_eq!(parse_month("may"), Some(5));
+        assert_eq!(parse_month("jun"), Some(6));
+        assert_eq!(parse_month("jul"), Some(7));
+        assert_eq!(parse_month("aug"), Some(8));
+        assert_eq!(parse_month("sep"), Some(9));
+        assert_eq!(parse_month("oct"), Some(10));
+        assert_eq!(parse_month("nov"), Some(11));
+        assert_eq!(parse_month("dec"), Some(12));
+        assert_eq!(parse_month("xyz"), None);
+    }
+
+    /// Kill mutant: days_since_unix_epoch arithmetic
+    /// +=→-=, -→+, -→/, &&→||, ==→!=
+    /// Use exact known values to detect any arithmetic mutation.
+    #[test]
+    fn test_days_since_unix_epoch_exact_values() {
+        // 1970-01-01 = 0 (base case)
+        assert_eq!(days_since_unix_epoch(1970, 1, 1), Some(0));
+
+        // 1970-02-01: Jan=31 days, day-1=0 → 31
+        assert_eq!(days_since_unix_epoch(1970, 2, 1), Some(31));
+
+        // 1970-03-01: Jan(31)+Feb(28)=59, day-1=0 → 59
+        assert_eq!(days_since_unix_epoch(1970, 3, 1), Some(59));
+
+        // 1970-06-15: Jan(31)+Feb(28)+Mar(31)+Apr(30)+May(31)=151, day-1=14 → 165
+        assert_eq!(days_since_unix_epoch(1970, 6, 15), Some(165));
+
+        // 1971-01-01: 365
+        assert_eq!(days_since_unix_epoch(1971, 1, 1), Some(365));
+
+        // 1972-01-01: 365+365=730 (1970, 1971 are non-leap)
+        assert_eq!(days_since_unix_epoch(1972, 1, 1), Some(730));
+
+        // 1972-03-01: 730+Jan(31)+Feb(28+1 leap)=730+60=790
+        // Kills &&→|| (would add leap for m=1 too → 791)
+        assert_eq!(days_since_unix_epoch(1972, 3, 1), Some(790));
+
+        // 1972-03-15: 790 + 14 = 804 (kills -→+ on day-1, would give 806)
+        assert_eq!(days_since_unix_epoch(1972, 3, 15), Some(804));
+
+        // 1973-01-01: 730+366=1096
+        assert_eq!(days_since_unix_epoch(1973, 1, 1), Some(1096));
+    }
+
+    /// Kill mutant: days_since_unix_epoch == → != on leap year check
+    /// In a leap year, month=2 date tests the m==2 branch.
+    #[test]
+    fn test_days_since_unix_epoch_leap_february() {
+        // 1972-02-15: 730 + Jan(31) + day-1(14) = 775
+        // The loop runs for m=1 only. m==2 check doesn't trigger.
+        assert_eq!(days_since_unix_epoch(1972, 2, 15), Some(775));
+
+        // Non-leap year 1971-03-01: 365 + Jan(31) + Feb(28) = 424
+        // No leap day added (is_leap_year(1971) is false)
+        assert_eq!(days_since_unix_epoch(1971, 3, 1), Some(424));
+    }
+
+    /// Kill mutant: days_since_unix_epoch +=→*= in year loop
+    /// Second year (1971) would produce 365*365 instead of 365+365.
+    #[test]
+    fn test_days_since_epoch_year_accumulation() {
+        // 1972-01-01 = 730 (365+365), if *= → 365*365=133225 (very wrong)
+        assert_eq!(days_since_unix_epoch(1972, 1, 1), Some(730));
+    }
+
+    /// Kill mutant: skip_day_name for all day names
+    #[test]
+    fn test_skip_day_name_all_days() {
+        assert_eq!(skip_day_name("Mon 2024-01-01"), "2024-01-01");
+        assert_eq!(skip_day_name("Tue 2024-01-01"), "2024-01-01");
+        assert_eq!(skip_day_name("Wed 2024-01-01"), "2024-01-01");
+        assert_eq!(skip_day_name("Thu 2024-01-01"), "2024-01-01");
+        assert_eq!(skip_day_name("Fri 2024-01-01"), "2024-01-01");
+        assert_eq!(skip_day_name("Sat 2024-01-01"), "2024-01-01");
+        assert_eq!(skip_day_name("Sun 2024-01-01"), "2024-01-01");
+        // With comma
+        assert_eq!(skip_day_name("Mon, 2024-01-01"), "2024-01-01");
+        // No day name
+        assert_eq!(skip_day_name("2024-01-01"), "2024-01-01");
+        // Day name only (length equals day.len(), s.len() > day.len() is false)
+        assert_eq!(skip_day_name("Mon"), "Mon");
+    }
+
+    /// Kill mutant: parse_date_only arithmetic/None propagation
+    #[test]
+    fn test_parse_date_only_exact() {
+        // 1970-01-01 = 0 days * 86400 = 0
+        assert_eq!(parse_date_only("1970-01-01"), Some(0));
+        // 1970-01-02 = 1 day * 86400 = 86400
+        assert_eq!(parse_date_only("1970-01-02"), Some(86400));
+        // Invalid
+        assert_eq!(parse_date_only("1969-01-01"), None);
+        assert_eq!(parse_date_only("abc"), None);
+    }
+
+    /// Kill mutant: CommitBuilder::reset — deletion of field clearing
+    /// Files from an incomplete commit should not leak into the next commit.
+    #[test]
+    fn test_builder_reset_no_file_leak() {
+        // First "commit" has no committer — build() returns None.
+        // After reset, files should be cleared.
+        // Second commit should only have its own files.
+        let log = r"------------------------------------------------------------
+revno: 1
+timestamp: Mon 2024-01-01 12:00:00 +0000
+added:
+  leaked_file.rs
+
+------------------------------------------------------------
+revno: 2
+committer: Bob
+timestamp: Tue 2024-01-02 12:00:00 +0000
+added:
+  bobs_file.rs
+";
+        let parser = BazaarParser::new();
+        let commits = parser.parse_str(log).unwrap();
+        // First commit has no author → should be skipped
+        // Second commit should have exactly 1 file, not 2
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].author, "Bob");
+        assert_eq!(
+            commits[0].files.len(),
+            1,
+            "Files from incomplete commit should not leak"
+        );
+        assert_eq!(
+            commits[0].files[0].path.to_str().unwrap(),
+            "bobs_file.rs"
+        );
+    }
+
+    /// Kill mutant: parse_bzr_date time arithmetic (h*3600, m*60)
+    #[test]
+    fn test_parse_bzr_date_time_components() {
+        // 1970-01-01 at 01:02:03 → 0 days + 3723 seconds
+        let ts = parse_bzr_date("1970-01-01 01:02:03 +0000").unwrap();
+        assert_eq!(ts, 1 * 3600 + 2 * 60 + 3);
+
+        // Month-first format: "Jan 15 14:30:00 2024"
+        let ts = parse_bzr_date("Jan 15 14:30:00 2024 +0000").unwrap();
+        let expected_days = days_since_unix_epoch(2024, 1, 15).unwrap();
+        let expected = i64::from(expected_days) * 86400 + 14 * 3600 + 30 * 60;
+        assert_eq!(ts, expected);
+    }
+
+    /// Kill mutant: with_options → Default
+    #[test]
+    fn test_bzr_with_options_preserved() {
+        let opts = ParseOptions::default().with_max_commits(1);
+        let parser = BazaarParser::with_options(opts);
+        let log = r"------------------------------------------------------------
+revno: 1
+committer: A
+timestamp: Mon 2024-01-01 00:00:00 +0000
+modified:
+  a.rs
+
+------------------------------------------------------------
+revno: 2
+committer: B
+timestamp: Tue 2024-01-02 00:00:00 +0000
+modified:
+  b.rs
+";
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(
+            commits.len(),
+            1,
+            "with_max_commits(1) should limit to 1"
+        );
+    }
+
+    /// Kill mutant: parse_short with valid short format lines
+    #[test]
+    fn test_parse_short_format() {
+        let opts = ParseOptions {
+            skip_empty_commits: false,
+            ..ParseOptions::default()
+        };
+        let parser = BazaarParser::with_options(opts);
+        // Use single-word authors so splitn(4) puts date in its own part
+        let input = "1 John 2024-01-15 Initial commit\n2 Jane 2024-01-16 Second commit\n";
+        let commits = parser.parse_str(input).unwrap();
+        assert_eq!(commits.len(), 2);
+    }
+
+    /// Kill mutant: is_date_format boundary — extra segments
+    #[test]
+    fn test_is_date_format_extra_segments() {
+        assert!(!is_date_format("2024-01-01-extra"));
+        assert!(is_date_format("2024-06-15"));
+        assert!(!is_date_format("abc-01-01"));
+    }
 }

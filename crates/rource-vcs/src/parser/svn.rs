@@ -968,4 +968,155 @@ mod tests {
         // Should not panic - error is acceptable
         assert!(result.is_err());
     }
+
+    // =========================================================================
+    // Mutation Testing: Kill missed mutants
+    // =========================================================================
+
+    /// Kill mutant: days_since_epoch arithmetic
+    /// Verify exact day counts against known Unix timestamps.
+    #[test]
+    fn test_svn_days_since_epoch_exact() {
+        // 1970-01-01 = 0
+        assert_eq!(SvnParser::days_since_epoch(1970, 1, 1), 0);
+        // 1970-01-02 = 1
+        assert_eq!(SvnParser::days_since_epoch(1970, 1, 2), 1);
+        // 1970-02-01 = 31
+        assert_eq!(SvnParser::days_since_epoch(1970, 2, 1), 31);
+        // 1970-03-01 = 59
+        assert_eq!(SvnParser::days_since_epoch(1970, 3, 1), 59);
+        // 1971-01-01 = 365
+        assert_eq!(SvnParser::days_since_epoch(1971, 1, 1), 365);
+        // 1972-01-01 = 730
+        assert_eq!(SvnParser::days_since_epoch(1972, 1, 1), 730);
+        // 1972-03-01 = 790 (leap year: Feb has 29 days, month>2 adds 1)
+        assert_eq!(SvnParser::days_since_epoch(1972, 3, 1), 790);
+        // 2024-01-01 = 19723 (known from Unix timestamp 1704067200/86400)
+        assert_eq!(SvnParser::days_since_epoch(2024, 1, 1), 19723);
+    }
+
+    /// Kill mutant: days_since_epoch leap_years formula arithmetic
+    /// The formula: (year-1969)/4 - (year-1901)/100 + (year-1601)/400
+    #[test]
+    fn test_svn_days_since_epoch_leap_formula() {
+        // 2000-03-01: Leap year (divisible by 400)
+        // 2000-01-01 = days
+        let d2000 = SvnParser::days_since_epoch(2000, 1, 1);
+        let d2001 = SvnParser::days_since_epoch(2001, 1, 1);
+        // 2000 is leap → 366 days gap
+        assert_eq!(d2001 - d2000, 366);
+
+        // 1900-03-01: NOT leap (divisible by 100 but not 400)
+        let d1900 = SvnParser::days_since_epoch(1900, 1, 1);
+        let d1901 = SvnParser::days_since_epoch(1901, 1, 1);
+        // 1900 is not leap → 365 days gap
+        assert_eq!(d1901 - d1900, 365);
+    }
+
+    /// Kill mutant: parse_svn_date arithmetic (*→+, *→/, +→-, +→*)
+    /// Verify exact timestamp for a known date with specific time.
+    #[test]
+    fn test_svn_parse_date_time_arithmetic() {
+        // 1970-01-01T01:02:03.000000Z → 0 days + 1*3600 + 2*60 + 3 = 3723
+        let ts = SvnParser::parse_svn_date("1970-01-01T01:02:03.000000Z", 1).unwrap();
+        assert_eq!(ts, 3723);
+
+        // 1970-01-02T00:00:00.000000Z → 1 day * 86400 = 86400
+        let ts = SvnParser::parse_svn_date("1970-01-02T00:00:00.000000Z", 1).unwrap();
+        assert_eq!(ts, 86400);
+
+        // 1970-01-01T10:00:00.000000Z → 10*3600 = 36000
+        let ts = SvnParser::parse_svn_date("1970-01-01T10:00:00.000000Z", 1).unwrap();
+        assert_eq!(ts, 36000);
+    }
+
+    /// Kill mutant: with_options → Default
+    #[test]
+    fn test_svn_with_options_preserved() {
+        let opts = ParseOptions::default().with_max_commits(1);
+        let parser = SvnParser::with_options(opts);
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author>alice</author>
+<date>2024-01-01T00:00:00.000000Z</date>
+<paths><path action="A">/trunk/a.rs</path></paths>
+</logentry>
+<logentry revision="2">
+<author>bob</author>
+<date>2024-01-02T00:00:00.000000Z</date>
+<paths><path action="M">/trunk/b.rs</path></paths>
+</logentry>
+</log>"#;
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(commits.len(), 1, "with_max_commits(1) should limit to 1");
+    }
+
+    /// Kill mutant: can_parse &&→|| on logentry + revision check
+    #[test]
+    fn test_svn_can_parse_partial_match() {
+        let parser = SvnParser::new();
+        // Has <logentry but no revision=
+        assert!(!parser.can_parse("<?xml version=\"1.0\"?><log><logentry></logentry></log>"));
+        // Has revision= but no <logentry
+        assert!(!parser.can_parse("<?xml version=\"1.0\"?><log>revision=\"1\"</log>"));
+        // Neither starts with <?xml nor <log
+        assert!(!parser.can_parse("<data><logentry revision=\"1\"></logentry></data>"));
+        // Valid
+        assert!(parser.can_parse(
+            "<?xml version=\"1.0\"?><log><logentry revision=\"1\"></logentry></log>"
+        ));
+    }
+
+    /// Kill mutant: extract_log_entries content_start > content_end check
+    #[test]
+    fn test_svn_extract_log_entries_bounds() {
+        let parser = SvnParser::new();
+        // Malformed: closing tag immediately after opening
+        let result = parser.parse_str(
+            "<?xml version=\"1.0\"?><log><logentry revision=\"1\"></logentry></log>",
+        );
+        // Should either parse empty or error, not panic
+        assert!(result.is_err() || result.unwrap().is_empty());
+    }
+
+    /// Kill mutant: parse_svn_date month/day validation boundaries
+    #[test]
+    fn test_svn_parse_date_invalid_month_day() {
+        // Month 0
+        assert!(SvnParser::parse_svn_date("2024-00-15T00:00:00.000000Z", 1).is_err());
+        // Month 13
+        assert!(SvnParser::parse_svn_date("2024-13-15T00:00:00.000000Z", 1).is_err());
+        // Day 0
+        assert!(SvnParser::parse_svn_date("2024-06-00T00:00:00.000000Z", 1).is_err());
+        // Day 32
+        assert!(SvnParser::parse_svn_date("2024-06-32T00:00:00.000000Z", 1).is_err());
+    }
+
+    /// Kill mutant: parse_paths search_start advancement
+    /// Multiple path elements must all be parsed.
+    #[test]
+    fn test_svn_parse_paths_multiple() {
+        let parser = SvnParser::new();
+        let log = r#"<?xml version="1.0"?>
+<log>
+<logentry revision="1">
+<author>multi</author>
+<date>2024-01-01T00:00:00.000000Z</date>
+<paths>
+<path action="A">/trunk/file1.rs</path>
+<path action="M">/trunk/file2.rs</path>
+<path action="D">/trunk/file3.rs</path>
+<path action="A">/trunk/file4.rs</path>
+<path action="M">/trunk/file5.rs</path>
+</paths>
+</logentry>
+</log>"#;
+        let commits = parser.parse_str(log).unwrap();
+        assert_eq!(
+            commits[0].files.len(),
+            5,
+            "All 5 path elements should be parsed"
+        );
+    }
 }
