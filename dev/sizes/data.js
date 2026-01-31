@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769896030407,
+  "lastUpdate": 1769903192516,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4898,6 +4898,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/63709428c7fbf938203f7a033a8c6d1c5fff8af9"
         },
         "date": 1769896030020,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b368b5983a9479d69c81576573dd1e0bf23d2f3b",
+          "message": "Merge pull request #248 from tomtom215/claude/academic-peer-review-NQWQv\n\nUpdate verification counts: 2207→2223 theorems, add Color/Vec4 proofs",
+          "timestamp": "2026-02-01T00:44:24+01:00",
+          "tree_id": "1a2a39192cce4c2b151c3c190765803fc848aae9",
+          "url": "https://github.com/tomtom215/rource/commit/b368b5983a9479d69c81576573dd1e0bf23d2f3b"
+        },
+        "date": 1769903191490,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
