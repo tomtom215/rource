@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769881329209,
+  "lastUpdate": 1769888494240,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4820,6 +4820,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/4a9494859fc90c028c983e1eb94554ec2716968e"
         },
         "date": 1769881328708,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a572ce3f68405ab877ad1f68e66c20c7767a86b",
+          "message": "Merge pull request #246 from tomtom215/claude/resource-continuation-6qbb3\n\nAdd Mat3 inverse theorems and update verification counts to 2085",
+          "timestamp": "2026-01-31T20:39:36+01:00",
+          "tree_id": "25a6571a82a6a77a2eb64682346f4575966be8f8",
+          "url": "https://github.com/tomtom215/rource/commit/5a572ce3f68405ab877ad1f68e66c20c7767a86b"
+        },
+        "date": 1769888493718,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
