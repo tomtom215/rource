@@ -142,7 +142,9 @@ COQ_FP_COMMON=$(count_coq "$COQ_DIR/FP_Common.v")
 COQ_FP_ROUNDING=$(count_coq "$COQ_DIR/FP_Rounding.v")
 COQ_FP_ERRORBOUNDS=$(count_coq "$COQ_DIR/FP_ErrorBounds.v")
 COQ_FP_VEC=$(count_coq "$COQ_DIR/FP_Vec.v")
-COQ_FP_TOTAL=$((COQ_FP_COMMON + COQ_FP_ROUNDING + COQ_FP_ERRORBOUNDS + COQ_FP_VEC))
+COQ_FP_MAT=$(count_coq "$COQ_DIR/FP_Mat.v")
+COQ_FP_COLOR=$(count_coq "$COQ_DIR/FP_Color.v")
+COQ_FP_TOTAL=$((COQ_FP_COMMON + COQ_FP_ROUNDING + COQ_FP_ERRORBOUNDS + COQ_FP_VEC + COQ_FP_MAT + COQ_FP_COLOR))
 
 # --- Coq combined ---
 COQ_COMBINED=$((COQ_R_TOTAL + COQ_Z_TOTAL))
@@ -224,7 +226,9 @@ cat > "$COUNTS_FILE" << ENDJSON
     "common": $COQ_FP_COMMON,
     "rounding": $COQ_FP_ROUNDING,
     "error_bounds": $COQ_FP_ERRORBOUNDS,
-    "vec": $COQ_FP_VEC
+    "vec": $COQ_FP_VEC,
+    "mat": $COQ_FP_MAT,
+    "color": $COQ_FP_COLOR
   },
   "coq_combined": $COQ_COMBINED,
   "coq_all": $COQ_ALL,

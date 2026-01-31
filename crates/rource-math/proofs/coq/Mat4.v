@@ -141,6 +141,52 @@ Definition mat4_determinant (a : Mat4) : R :=
 Definition mat4_trace (a : Mat4) : R :=
   m0 a + m5 a + m10 a + m15 a.
 
+(** * Inverse *)
+
+(** The inverse of a 4x4 matrix using cofactor expansion.
+    inverse(A) = (1/det(A)) * adj(A)
+    where adj(A) is the adjugate (transpose of cofactor matrix).
+    Uses the 2x2 minor factoring from the Rust implementation
+    (mat4.rs lines 406-451) for both determinant and adjugate.
+    Matches the column-major storage order. *)
+Definition mat4_inverse (a : Mat4) : Mat4 :=
+  let inv_det := / (mat4_determinant a) in
+  (* 2x2 sub-determinants from top-left 4x2 block *)
+  let s0 := m0 a * m5 a - m4 a * m1 a in
+  let s1 := m0 a * m6 a - m4 a * m2 a in
+  let s2 := m0 a * m7 a - m4 a * m3 a in
+  let s3 := m1 a * m6 a - m5 a * m2 a in
+  let s4 := m1 a * m7 a - m5 a * m3 a in
+  let s5 := m2 a * m7 a - m6 a * m3 a in
+  (* 2x2 sub-determinants from bottom-right 4x2 block *)
+  let c0 := m8 a * m13 a - m12 a * m9 a in
+  let c1 := m8 a * m14 a - m12 a * m10 a in
+  let c2 := m8 a * m15 a - m12 a * m11 a in
+  let c3 := m9 a * m14 a - m13 a * m10 a in
+  let c4 := m9 a * m15 a - m13 a * m11 a in
+  let c5 := m10 a * m15 a - m14 a * m11 a in
+  mkMat4
+    (* Column 0: adjugate row 0 *)
+    (( m5 a * c5 - m6 a * c4 + m7 a * c3) * inv_det)
+    ((- m1 a * c5 + m2 a * c4 - m3 a * c3) * inv_det)
+    (( m13 a * s5 - m14 a * s4 + m15 a * s3) * inv_det)
+    ((- m9 a * s5 + m10 a * s4 - m11 a * s3) * inv_det)
+    (* Column 1: adjugate row 1 *)
+    ((- m4 a * c5 + m6 a * c2 - m7 a * c1) * inv_det)
+    (( m0 a * c5 - m2 a * c2 + m3 a * c1) * inv_det)
+    ((- m12 a * s5 + m14 a * s2 - m15 a * s1) * inv_det)
+    (( m8 a * s5 - m10 a * s2 + m11 a * s1) * inv_det)
+    (* Column 2: adjugate row 2 *)
+    (( m4 a * c4 - m5 a * c2 + m7 a * c0) * inv_det)
+    ((- m0 a * c4 + m1 a * c2 - m3 a * c0) * inv_det)
+    (( m12 a * s4 - m13 a * s2 + m15 a * s0) * inv_det)
+    ((- m8 a * s4 + m9 a * s2 - m11 a * s0) * inv_det)
+    (* Column 3: adjugate row 3 *)
+    ((- m4 a * c3 + m5 a * c1 - m6 a * c0) * inv_det)
+    (( m0 a * c3 - m1 a * c1 + m2 a * c0) * inv_det)
+    ((- m12 a * s3 + m13 a * s1 - m14 a * s0) * inv_det)
+    (( m8 a * s3 - m9 a * s1 + m10 a * s0) * inv_det).
+
 (** * Equality Lemma *)
 
 (** Two matrices are equal iff all their components are equal. *)
@@ -354,13 +400,14 @@ Qed.
     - mat4_col0..col3: Column accessor operations
     - mat4_row0..row3: Row accessor operations
     - mat4_from_cols: Constructor from column values
+    - mat4_inverse: Matrix inverse via cofactor expansion (adjugate/det)
     - mat4_orthographic: Orthographic projection matrix
     - mat4_transform_vec4: Full 4D matrix-vector multiply
     - mat4_eq: Component-wise equality lemma
     - vec4_eq: Component-wise Vec4 equality lemma
     - vec3_eq: Component-wise Vec3 equality lemma
 
-    Total definitions: 31
+    Total definitions: 32
     Total lemmas: 3
     Admits: 0
 *)

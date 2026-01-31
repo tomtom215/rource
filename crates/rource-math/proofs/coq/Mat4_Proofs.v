@@ -1063,9 +1063,474 @@ Proof.
   f_equal; ring.
 Qed.
 
+(** * Inverse Properties *)
+
+(** Theorem 94: inverse(I) = I.
+    The identity matrix is its own inverse. *)
+Theorem mat4_inverse_identity :
+  mat4_inverse mat4_identity = mat4_identity.
+Proof.
+  unfold mat4_inverse, mat4_determinant, mat4_identity. simpl.
+  apply mat4_eq; simpl; field.
+Qed.
+
+(** Theorem 95: inverse(A) * A = I when det(A) ≠ 0 (left inverse correctness).
+    Each component reduces to the Laplace expansion identity:
+    sum of cofactors times elements along a row equals det (diagonal)
+    or 0 (off-diagonal). Uses 16-component decomposition per Lesson #14/15
+    to avoid exponential blowup with field on 16-field records. *)
+
+(** Component lemmas for mat4_inverse_correct.
+    Each proves one entry of inv(A)*A = I independently. *)
+Local Lemma mat4_inv_left_m0 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m0 (mat4_mul (mat4_inverse a) a) = m0 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m1 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m1 (mat4_mul (mat4_inverse a) a) = m1 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m2 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m2 (mat4_mul (mat4_inverse a) a) = m2 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m3 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m3 (mat4_mul (mat4_inverse a) a) = m3 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m4 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m4 (mat4_mul (mat4_inverse a) a) = m4 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m5 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m5 (mat4_mul (mat4_inverse a) a) = m5 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m6 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m6 (mat4_mul (mat4_inverse a) a) = m6 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m7 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m7 (mat4_mul (mat4_inverse a) a) = m7 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m8 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m8 (mat4_mul (mat4_inverse a) a) = m8 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m9 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m9 (mat4_mul (mat4_inverse a) a) = m9 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m10 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m10 (mat4_mul (mat4_inverse a) a) = m10 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m11 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m11 (mat4_mul (mat4_inverse a) a) = m11 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m12 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m12 (mat4_mul (mat4_inverse a) a) = m12 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m13 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m13 (mat4_mul (mat4_inverse a) a) = m13 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m14 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m14 (mat4_mul (mat4_inverse a) a) = m14 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_left_m15 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m15 (mat4_mul (mat4_inverse a) a) = m15 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Theorem mat4_inverse_correct : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  mat4_mul (mat4_inverse a) a = mat4_identity.
+Proof.
+  intros a Hdet.
+  apply mat4_eq;
+    [ apply mat4_inv_left_m0
+    | apply mat4_inv_left_m1
+    | apply mat4_inv_left_m2
+    | apply mat4_inv_left_m3
+    | apply mat4_inv_left_m4
+    | apply mat4_inv_left_m5
+    | apply mat4_inv_left_m6
+    | apply mat4_inv_left_m7
+    | apply mat4_inv_left_m8
+    | apply mat4_inv_left_m9
+    | apply mat4_inv_left_m10
+    | apply mat4_inv_left_m11
+    | apply mat4_inv_left_m12
+    | apply mat4_inv_left_m13
+    | apply mat4_inv_left_m14
+    | apply mat4_inv_left_m15 ]; exact Hdet.
+Qed.
+
+(** Theorem 96: A * inverse(A) = I when det(A) ≠ 0 (right inverse).
+    Together with Theorem 95, establishes that mat4_inverse computes
+    the true two-sided inverse. *)
+
+Local Lemma mat4_inv_right_m0 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m0 (mat4_mul a (mat4_inverse a)) = m0 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m1 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m1 (mat4_mul a (mat4_inverse a)) = m1 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m2 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m2 (mat4_mul a (mat4_inverse a)) = m2 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m3 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m3 (mat4_mul a (mat4_inverse a)) = m3 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m4 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m4 (mat4_mul a (mat4_inverse a)) = m4 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m5 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m5 (mat4_mul a (mat4_inverse a)) = m5 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m6 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m6 (mat4_mul a (mat4_inverse a)) = m6 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m7 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m7 (mat4_mul a (mat4_inverse a)) = m7 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m8 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m8 (mat4_mul a (mat4_inverse a)) = m8 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m9 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m9 (mat4_mul a (mat4_inverse a)) = m9 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m10 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m10 (mat4_mul a (mat4_inverse a)) = m10 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m11 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m11 (mat4_mul a (mat4_inverse a)) = m11 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m12 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m12 (mat4_mul a (mat4_inverse a)) = m12 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m13 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m13 (mat4_mul a (mat4_inverse a)) = m13 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m14 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m14 (mat4_mul a (mat4_inverse a)) = m14 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Local Lemma mat4_inv_right_m15 : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  m15 (mat4_mul a (mat4_inverse a)) = m15 mat4_identity.
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet.
+  unfold mat4_mul, mat4_inverse, mat4_determinant, mat4_identity in *. simpl in *.
+  field. exact Hdet.
+Qed.
+
+Theorem mat4_inverse_correct_right : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  mat4_mul a (mat4_inverse a) = mat4_identity.
+Proof.
+  intros a Hdet.
+  apply mat4_eq;
+    [ apply mat4_inv_right_m0
+    | apply mat4_inv_right_m1
+    | apply mat4_inv_right_m2
+    | apply mat4_inv_right_m3
+    | apply mat4_inv_right_m4
+    | apply mat4_inv_right_m5
+    | apply mat4_inv_right_m6
+    | apply mat4_inv_right_m7
+    | apply mat4_inv_right_m8
+    | apply mat4_inv_right_m9
+    | apply mat4_inv_right_m10
+    | apply mat4_inv_right_m11
+    | apply mat4_inv_right_m12
+    | apply mat4_inv_right_m13
+    | apply mat4_inv_right_m14
+    | apply mat4_inv_right_m15 ]; exact Hdet.
+Qed.
+
+(** Theorem 97: det(inverse(A)) = 1/det(A) when det(A) ≠ 0.
+    Proof strategy: det(inv(A)) * det(A) = det(inv(A) * A) = det(I) = 1,
+    so det(inv(A)) = 1/det(A). Uses algebraic derivation (Lesson #169). *)
+Theorem mat4_det_inverse : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  mat4_determinant (mat4_inverse a) = / (mat4_determinant a).
+Proof.
+  intros a Hdet.
+  assert (H : mat4_determinant (mat4_inverse a) * mat4_determinant a = 1).
+  { rewrite <- mat4_det_mul.
+    rewrite mat4_inverse_correct; auto.
+    apply mat4_det_identity. }
+  apply Rmult_eq_reg_r with (r := mat4_determinant a); auto.
+  rewrite H. field. exact Hdet.
+Qed.
+
+(** Theorem 98: inverse(inverse(A)) = A when both A and inverse(A) are invertible.
+    Uses algebraic rewrite chain (Lesson #168):
+    inv(inv(A)) * I = inv(inv(A)) * (inv(A) * A) = (inv(inv(A)) * inv(A)) * A = I * A = A *)
+Theorem mat4_inverse_involutive : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  mat4_determinant (mat4_inverse a) <> 0 ->
+  mat4_inverse (mat4_inverse a) = a.
+Proof.
+  intros a Hdet Hdet_inv.
+  rewrite <- (mat4_mul_right_identity (mat4_inverse (mat4_inverse a))).
+  rewrite <- (mat4_inverse_correct a Hdet).
+  rewrite <- mat4_mul_assoc.
+  rewrite (mat4_inverse_correct (mat4_inverse a) Hdet_inv).
+  apply mat4_mul_left_identity.
+Qed.
+
+(** Theorem 99: det(A) * det(inverse(A)) = 1 when det(A) ≠ 0.
+    Follows from det multiplicativity and inverse correctness. *)
+Theorem mat4_det_mul_inverse : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  mat4_determinant a * mat4_determinant (mat4_inverse a) = 1.
+Proof.
+  intros a Hdet.
+  rewrite mat4_det_inverse; auto.
+  field. exact Hdet.
+Qed.
+
+(** Theorem 100: inverse(translation(tx,ty,tz)) = translation(-tx,-ty,-tz).
+    Translation inverse is the negation of the translation vector. *)
+Theorem mat4_inverse_translation : forall tx ty tz : R,
+  mat4_inverse (mat4_translation tx ty tz) = mat4_translation (-tx) (-ty) (-tz).
+Proof.
+  intros tx ty tz.
+  unfold mat4_inverse, mat4_translation, mat4_determinant. simpl.
+  apply mat4_eq; simpl; field.
+Qed.
+
+(** Theorem 101: inverse(scaling(sx,sy,sz)) = scaling(1/sx,1/sy,1/sz) when all nonzero.
+    Scaling inverse is the reciprocal scaling. *)
+Theorem mat4_inverse_scaling : forall sx sy sz : R,
+  sx <> 0 -> sy <> 0 -> sz <> 0 ->
+  mat4_inverse (mat4_scaling sx sy sz) = mat4_scaling (/ sx) (/ sy) (/ sz).
+Proof.
+  intros sx sy sz Hsx Hsy Hsz.
+  unfold mat4_inverse, mat4_scaling, mat4_determinant. simpl.
+  apply mat4_eq; simpl; field; auto.
+Qed.
+
+(** Theorem 102: inverse(A^T) = (inverse(A))^T when det(A) ≠ 0.
+    Transpose and inverse commute. Uses component-wise field. *)
+Theorem mat4_inverse_transpose : forall a : Mat4,
+  mat4_determinant a <> 0 ->
+  mat4_determinant (mat4_transpose a) <> 0 ->
+  mat4_inverse (mat4_transpose a) = mat4_transpose (mat4_inverse a).
+Proof.
+  intros [a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15] Hdet Hdet_t.
+  unfold mat4_inverse, mat4_transpose, mat4_determinant in *.
+  simpl in *.
+  apply mat4_eq; simpl; field; auto.
+Qed.
+
+(** Theorem 103: inverse(uniform_scaling(s)) = uniform_scaling(1/s) when s ≠ 0. *)
+Theorem mat4_inverse_uniform_scaling : forall s : R,
+  s <> 0 ->
+  mat4_inverse (mat4_uniform_scaling s) = mat4_uniform_scaling (/ s).
+Proof.
+  intros s Hs.
+  unfold mat4_uniform_scaling.
+  apply mat4_inverse_scaling; exact Hs.
+Qed.
+
+(** Theorem 104: Determinant of translation is 1, so translation is always invertible. *)
+Theorem mat4_translation_invertible : forall tx ty tz : R,
+  mat4_determinant (mat4_translation tx ty tz) <> 0.
+Proof.
+  intros. rewrite mat4_det_translation. lra.
+Qed.
+
+(** Theorem 105: Inverse of translation composition.
+    inverse(T(a) * T(b)) = T(-b) * T(-a) = T(-(a+b)). *)
+Theorem mat4_inverse_translation_compose : forall tx1 ty1 tz1 tx2 ty2 tz2 : R,
+  mat4_inverse (mat4_mul (mat4_translation tx1 ty1 tz1) (mat4_translation tx2 ty2 tz2)) =
+  mat4_translation (-(tx1 + tx2)) (-(ty1 + ty2)) (-(tz1 + tz2)).
+Proof.
+  intros.
+  rewrite mat4_translation_compose.
+  rewrite mat4_inverse_translation.
+  apply mat4_eq; unfold mat4_translation; simpl; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 93 + 16 component lemmas = 109
+    Total theorems: 105 + 16 + 16 + 16 component lemmas = 153
     Admits: 0
     Axioms: Standard Coq real number library only
 
@@ -1079,4 +1544,6 @@ Qed.
     - Theorems 77-79: from_cols properties
     - Theorems 80-84: orthographic projection properties
     - Theorems 85-93: transform_vec4 properties (identity, zero, linearity, scalar, translation, scaling, composition)
+    - Theorems 94-105: inverse properties (identity, left/right correctness, det(inv), involutive,
+      det product, translation inv, scaling inv, transpose comm, uniform scaling, invertibility, compose)
 *)
