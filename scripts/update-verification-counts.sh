@@ -119,7 +119,8 @@ COQ_R_RECT=$(count_coq "$COQ_DIR/Rect_Proofs.v")
 COQ_R_COMPLEXITY=$(count_coq "$COQ_DIR/Complexity.v")
 COQ_R_UTILS=$(count_coq "$COQ_DIR/Utils.v")
 COQ_R_CROSSTYPE=$(count_coq "$COQ_DIR/Vec_CrossType.v")
-COQ_R_TOTAL=$((COQ_R_VEC2 + COQ_R_VEC3 + COQ_R_VEC4 + COQ_R_MAT3 + COQ_R_MAT4 + COQ_R_COLOR + COQ_R_RECT + COQ_R_COMPLEXITY + COQ_R_UTILS + COQ_R_CROSSTYPE))
+COQ_R_BOUNDS=$(count_coq "$COQ_DIR/Bounds_Proofs.v")
+COQ_R_TOTAL=$((COQ_R_VEC2 + COQ_R_VEC3 + COQ_R_VEC4 + COQ_R_MAT3 + COQ_R_MAT4 + COQ_R_COLOR + COQ_R_RECT + COQ_R_COMPLEXITY + COQ_R_UTILS + COQ_R_CROSSTYPE + COQ_R_BOUNDS))
 
 # --- Coq Z-based theorems (Compute) ---
 COQ_Z_VEC2=$(count_coq "$COQ_DIR/Vec2_Compute.v")
@@ -130,7 +131,8 @@ COQ_Z_MAT4=$(count_coq "$COQ_DIR/Mat4_Compute.v")
 COQ_Z_COLOR=$(count_coq "$COQ_DIR/Color_Compute.v")
 COQ_Z_RECT=$(count_coq "$COQ_DIR/Rect_Compute.v")
 COQ_Z_UTILS=$(count_coq "$COQ_DIR/Utils_Compute.v")
-COQ_Z_TOTAL=$((COQ_Z_VEC2 + COQ_Z_VEC3 + COQ_Z_VEC4 + COQ_Z_MAT3 + COQ_Z_MAT4 + COQ_Z_COLOR + COQ_Z_RECT + COQ_Z_UTILS))
+COQ_Z_BOUNDS=$(count_coq "$COQ_DIR/Bounds_Compute.v")
+COQ_Z_TOTAL=$((COQ_Z_VEC2 + COQ_Z_VEC3 + COQ_Z_VEC4 + COQ_Z_MAT3 + COQ_Z_MAT4 + COQ_Z_COLOR + COQ_Z_RECT + COQ_Z_UTILS + COQ_Z_BOUNDS))
 
 # --- Coq FP error bounds theorems (Flocq-based) ---
 COQ_FP_COMMON=$(count_coq "$COQ_DIR/FP_Common.v")
@@ -155,6 +157,7 @@ TOTAL_MAT4=$((VERUS_MAT4 + COQ_R_MAT4 + COQ_Z_MAT4 + KANI_MAT4))
 TOTAL_COLOR=$((VERUS_COLOR + COQ_R_COLOR + COQ_Z_COLOR + KANI_COLOR))
 TOTAL_RECT=$((VERUS_RECT + COQ_R_RECT + COQ_Z_RECT + KANI_RECT))
 TOTAL_UTILS=$((COQ_R_UTILS + COQ_Z_UTILS + KANI_UTILS))
+TOTAL_BOUNDS=$((COQ_R_BOUNDS + COQ_Z_BOUNDS))
 TOTAL_COMPLEXITY=$COQ_R_COMPLEXITY
 
 # --- Optimization phases ---
@@ -196,7 +199,8 @@ cat > "$COUNTS_FILE" << ENDJSON
     "rect": $COQ_R_RECT,
     "complexity": $COQ_R_COMPLEXITY,
     "utils": $COQ_R_UTILS,
-    "crosstype": $COQ_R_CROSSTYPE
+    "crosstype": $COQ_R_CROSSTYPE,
+    "bounds": $COQ_R_BOUNDS
   },
   "coq_z": {
     "total": $COQ_Z_TOTAL,
@@ -207,7 +211,8 @@ cat > "$COUNTS_FILE" << ENDJSON
     "mat4": $COQ_Z_MAT4,
     "color": $COQ_Z_COLOR,
     "rect": $COQ_Z_RECT,
-    "utils": $COQ_Z_UTILS
+    "utils": $COQ_Z_UTILS,
+    "bounds": $COQ_Z_BOUNDS
   },
   "coq_fp": {
     "total": $COQ_FP_TOTAL,
@@ -238,6 +243,7 @@ cat > "$COUNTS_FILE" << ENDJSON
     "color": $TOTAL_COLOR,
     "rect": $TOTAL_RECT,
     "utils": $TOTAL_UTILS,
+    "bounds": $TOTAL_BOUNDS,
     "complexity": $TOTAL_COMPLEXITY
   },
   "optimization_phases": $OPT_PHASES
@@ -277,6 +283,7 @@ printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "Rect" "$VERUS_RECT" "$COQ_R_RECT" "
 printf "  %-12s  %5s  %5d  %5d  %4d  %5d\n" "Utils" "—" "$COQ_R_UTILS" "$COQ_Z_UTILS" "$KANI_UTILS" "$TOTAL_UTILS"
 printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "Complexity" "—" "$COQ_R_COMPLEXITY" "—" "—" "$TOTAL_COMPLEXITY"
 printf "  %-12s  %5s  %5d  %5s  %4s  %5d\n" "CrossType" "—" "$COQ_R_CROSSTYPE" "—" "—" "$COQ_R_CROSSTYPE"
+printf "  %-12s  %5s  %5d  %5d  %4s  %5d\n" "Bounds" "—" "$COQ_R_BOUNDS" "$COQ_Z_BOUNDS" "—" "$TOTAL_BOUNDS"
 printf "  %-12s  %5d  %5d  %5d  %4d  %5d\n" "TOTAL" "$VERUS_TOTAL" "$COQ_R_TOTAL" "$COQ_Z_TOTAL" "$KANI_TOTAL" "$GRAND_TOTAL"
 echo ""
 

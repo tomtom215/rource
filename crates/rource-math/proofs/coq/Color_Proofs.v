@@ -695,9 +695,187 @@ Proof.
   unfold color_luminance. simpl. nra.
 Qed.
 
+(** * Additional Algebraic Properties *)
+
+(** Theorem 69: left identity with transparent. *)
+Theorem color_add_zero_l : forall (c : Color),
+  color_add color_transparent c = c.
+Proof.
+  intros [r g b a].
+  unfold color_add, color_transparent. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 70: scale by -1 and back. *)
+Theorem color_scale_neg_one_involutive : forall (c : Color),
+  color_scale (color_scale c (-1)) (-1) = c.
+Proof.
+  intros [r g b a].
+  unfold color_scale. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 71: luminance is linear with scale. *)
+Theorem color_luminance_scale : forall (c : Color) (s : R),
+  color_luminance (color_scale c s) = s * color_luminance c.
+Proof.
+  intros [r g b a] s.
+  unfold color_luminance, color_scale. simpl. ring.
+Qed.
+
+(** Theorem 72: luminance of sum is sum of luminances. *)
+Theorem color_luminance_add : forall (a b : Color),
+  color_luminance (color_add a b) = color_luminance a + color_luminance b.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_luminance, color_add. simpl. ring.
+Qed.
+
+(** Theorem 73: luminance of inversion is 1 - luminance (for valid colors). *)
+Theorem color_luminance_invert : forall (c : Color),
+  color_luminance (color_invert c) = 1 - color_luminance c.
+Proof.
+  intros [r g b a].
+  unfold color_luminance, color_invert. simpl. lra.
+Qed.
+
+(** Theorem 74: clamp black is black. *)
+Theorem color_clamp_black :
+  color_clamp color_black = color_black.
+Proof.
+  unfold color_clamp, color_black. simpl.
+  apply color_eq; unfold clamp01;
+    repeat (destruct (Rle_dec _ _)); try reflexivity; lra.
+Qed.
+
+(** Theorem 75: clamp white is white. *)
+Theorem color_clamp_white :
+  color_clamp color_white = color_white.
+Proof.
+  unfold color_clamp, color_white. simpl.
+  apply color_eq; unfold clamp01;
+    repeat (destruct (Rle_dec _ _)); try reflexivity; lra.
+Qed.
+
+(** Theorem 76: clamp transparent is transparent. *)
+Theorem color_clamp_transparent :
+  color_clamp color_transparent = color_transparent.
+Proof.
+  unfold color_clamp, color_transparent. simpl.
+  apply color_eq; unfold clamp01;
+    repeat (destruct (Rle_dec _ _)); try reflexivity; lra.
+Qed.
+
+(** Theorem 77: premultiplied of transparent is transparent. *)
+Theorem color_premultiplied_transparent :
+  color_premultiplied color_transparent = color_transparent.
+Proof.
+  unfold color_premultiplied, color_transparent. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 78: rgb constructor sets components correctly. *)
+Theorem color_rgb_components : forall r g b : R,
+  color_r (color_rgb r g b) = r /\
+  color_g (color_rgb r g b) = g /\
+  color_b (color_rgb r g b) = b.
+Proof.
+  intros. unfold color_rgb. simpl. repeat split; reflexivity.
+Qed.
+
+(** Theorem 79: fade identity (full equality). *)
+Theorem color_fade_identity : forall (c : Color),
+  color_fade c 1 = c.
+Proof.
+  intros [r g b a].
+  unfold color_fade. simpl.
+  apply color_eq; try reflexivity; ring.
+Qed.
+
+(** Theorem 80: blend with transparent destination gives premultiplied. *)
+Theorem color_blend_transparent_dst : forall (src : Color),
+  color_blend_over src color_transparent =
+  mkColor (color_r src * color_a src) (color_g src * color_a src)
+          (color_b src * color_a src) (color_a src).
+Proof.
+  intros [sr sg sb sa].
+  unfold color_blend_over, color_transparent. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 81: invert of rgb constructor. *)
+Theorem color_invert_rgb : forall r g b : R,
+  color_invert (color_rgb r g b) = mkColor (1 - r) (1 - g) (1 - b) 1.
+Proof.
+  intros. unfold color_invert, color_rgb. simpl. reflexivity.
+Qed.
+
+(** Theorem 82: black constant components. *)
+Theorem color_black_components :
+  color_r color_black = 0 /\ color_g color_black = 0 /\
+  color_b color_black = 0 /\ color_a color_black = 1.
+Proof.
+  unfold color_black. simpl. repeat split; reflexivity.
+Qed.
+
+(** Theorem 83: white constant components. *)
+Theorem color_white_components :
+  color_r color_white = 1 /\ color_g color_white = 1 /\
+  color_b color_white = 1 /\ color_a color_white = 1.
+Proof.
+  unfold color_white. simpl. repeat split; reflexivity.
+Qed.
+
+(** Theorem 84: color_add distributes with color_scale. *)
+Theorem color_add_scale_distr : forall (c : Color) (s t : R),
+  color_add (color_scale c s) (color_scale c t) = color_scale c (s + t).
+Proof.
+  intros [cr cg cb ca] s t.
+  unfold color_add, color_scale. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 85: fade and with_alpha compose predictably. *)
+Theorem color_fade_with_alpha : forall (c : Color) (alpha factor : R),
+  color_fade (color_with_alpha c alpha) factor =
+  color_with_alpha c (alpha * factor).
+Proof.
+  intros [cr cg cb ca] alpha factor.
+  unfold color_fade, color_with_alpha. simpl.
+  apply color_eq; try reflexivity; ring.
+Qed.
+
+(** Theorem 86: luminance of mix is average of luminances. *)
+Theorem color_luminance_mix : forall (a b : Color),
+  color_luminance (color_mix a b) =
+  (color_luminance a + color_luminance b) / 2.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_luminance, color_mix. simpl. field.
+Qed.
+
+(** Theorem 87: scale preserves proportions between components. *)
+Theorem color_scale_proportional : forall (c : Color) (s : R),
+  s <> 0 ->
+  color_r c * color_g (color_scale c s) = color_g c * color_r (color_scale c s).
+Proof.
+  intros [cr cg cb ca] s Hs.
+  unfold color_scale. simpl. ring.
+Qed.
+
+(** Theorem 88: lerp linearity.
+    lerp(a, b, s+t) = lerp(lerp(a, b, s), b, t/(1-s)) when s < 1, s+t <= 1 *)
+Theorem color_lerp_at_half_twice : forall (a b : Color),
+  color_lerp (color_lerp a b (1/2)) b (1/2) = color_lerp a b (3/4).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_lerp. simpl.
+  apply color_eq; field.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 68 (56 original + 12 new)
+    Total theorems: 88
     Admits: 0
     Axioms: Standard Coq real number library only
 

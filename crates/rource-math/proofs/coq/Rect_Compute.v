@@ -323,6 +323,166 @@ Proof.
     rewrite (Z.max_comm ay by0). reflexivity.
 Qed.
 
+(** ** Expand Properties *)
+
+Theorem zrect_expand_zero : forall (r : ZRect),
+  zrect_expand r 0 = r.
+Proof.
+  intros [x y0 w h]. unfold zrect_expand.
+  cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq; lia.
+Qed.
+
+Theorem zrect_expand_compose : forall (r : ZRect) (a1 a2 : Z),
+  zrect_expand (zrect_expand r a1) a2 = zrect_expand r (a1 + a2).
+Proof.
+  intros [x y0 w h] a1 a2.
+  unfold zrect_expand. cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq; lia.
+Qed.
+
+Theorem zrect_expand_width : forall (r : ZRect) (amount : Z),
+  zrect_w (zrect_expand r amount) = zrect_w r + 2 * amount.
+Proof.
+  intros [x y0 w h] amount. simpl. lia.
+Qed.
+
+Theorem zrect_expand_height : forall (r : ZRect) (amount : Z),
+  zrect_h (zrect_expand r amount) = zrect_h r + 2 * amount.
+Proof.
+  intros [x y0 w h] amount. simpl. lia.
+Qed.
+
+(** ** Translate Additional Properties *)
+
+Theorem zrect_translate_neg : forall (r : ZRect) (dx dy : Z),
+  zrect_translate (zrect_translate r dx dy) (-dx) (-dy) = r.
+Proof.
+  intros [x y0 w h] dx dy.
+  unfold zrect_translate. simpl.
+  apply zrect_eq; lia.
+Qed.
+
+Theorem zrect_translate_commute : forall (r : ZRect) (dx1 dy1 dx2 dy2 : Z),
+  zrect_translate (zrect_translate r dx1 dy1) dx2 dy2 =
+  zrect_translate (zrect_translate r dx2 dy2) dx1 dy1.
+Proof.
+  intros [x y0 w h] dx1 dy1 dx2 dy2.
+  unfold zrect_translate. simpl.
+  apply zrect_eq; lia.
+Qed.
+
+Theorem zrect_translate_preserves_area : forall (r : ZRect) (dx dy : Z),
+  zrect_area (zrect_translate r dx dy) = zrect_area r.
+Proof.
+  intros [x y0 w h] dx dy.
+  unfold zrect_area, zrect_translate. simpl. reflexivity.
+Qed.
+
+Theorem zrect_translate_preserves_perimeter : forall (r : ZRect) (dx dy : Z),
+  zrect_perimeter (zrect_translate r dx dy) = zrect_perimeter r.
+Proof.
+  intros [x y0 w h] dx dy.
+  unfold zrect_perimeter, zrect_translate. simpl. reflexivity.
+Qed.
+
+(** ** Accessor Properties *)
+
+Theorem zrect_right_correct : forall (r : ZRect),
+  zrect_right r = zrect_x r + zrect_w r.
+Proof.
+  intros [x y0 w h]. unfold zrect_right. simpl. reflexivity.
+Qed.
+
+Theorem zrect_bottom_correct : forall (r : ZRect),
+  zrect_bottom r = zrect_y r + zrect_h r.
+Proof.
+  intros [x y0 w h]. unfold zrect_bottom. simpl. reflexivity.
+Qed.
+
+Theorem zrect_translate_right : forall (r : ZRect) (dx dy : Z),
+  zrect_right (zrect_translate r dx dy) = zrect_right r + dx.
+Proof.
+  intros [x y0 w h] dx dy.
+  unfold zrect_right, zrect_translate. simpl. lia.
+Qed.
+
+Theorem zrect_translate_bottom : forall (r : ZRect) (dx dy : Z),
+  zrect_bottom (zrect_translate r dx dy) = zrect_bottom r + dy.
+Proof.
+  intros [x y0 w h] dx dy.
+  unfold zrect_bottom, zrect_translate. simpl. lia.
+Qed.
+
+(** ** Self-Containment Properties *)
+
+Theorem zrect_union_self : forall (r : ZRect),
+  zrect_w r >= 0 -> zrect_h r >= 0 ->
+  zrect_union r r = r.
+Proof.
+  intros [x y0 w h] Hw Hh.
+  unfold zrect_union. cbn -[Z.min Z.max Z.add Z.sub].
+  apply zrect_eq.
+  - apply Z.min_id.
+  - apply Z.min_id.
+  - rewrite Z.max_id. lia.
+  - rewrite Z.max_id. lia.
+Qed.
+
+Theorem zrect_intersection_self : forall (r : ZRect),
+  zrect_w r >= 0 -> zrect_h r >= 0 ->
+  zrect_intersection r r = r.
+Proof.
+  intros [x y0 w h] Hw Hh.
+  simpl in Hw, Hh.
+  unfold zrect_intersection. cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq.
+  - apply Z.max_id.
+  - apply Z.max_id.
+  - rewrite Z.min_id. rewrite Z.max_id.
+    rewrite Z.max_r by lia. lia.
+  - rewrite Z.min_id. rewrite Z.max_id.
+    rewrite Z.max_r by lia. lia.
+Qed.
+
+(** ** Area/Valid Properties *)
+
+Theorem zrect_area_positive : forall (r : ZRect),
+  zrect_w r > 0 -> zrect_h r > 0 -> zrect_area r > 0.
+Proof.
+  intros [x y0 w h] Hw Hh. simpl in *. unfold zrect_area. simpl. nia.
+Qed.
+
+Theorem zrect_zero_is_empty :
+  zrect_is_empty zrect_zero = true.
+Proof.
+  unfold zrect_is_empty, zrect_zero. simpl. reflexivity.
+Qed.
+
+Theorem zrect_zero_not_valid :
+  zrect_is_valid zrect_zero = false.
+Proof.
+  unfold zrect_is_valid, zrect_zero. simpl. reflexivity.
+Qed.
+
+Theorem zrect_expand_translate_comm : forall (r : ZRect) (dx dy amount : Z),
+  zrect_expand (zrect_translate r dx dy) amount =
+  zrect_translate (zrect_expand r amount) dx dy.
+Proof.
+  intros [x y0 w h] dx dy amount.
+  unfold zrect_expand, zrect_translate.
+  cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq; lia.
+Qed.
+
+(** ** From-Center Additional Properties *)
+
+Theorem zrect_from_center_area : forall cx cy w h : Z,
+  zrect_area (zrect_from_center cx cy w h) = w * h.
+Proof.
+  intros. unfold zrect_area, zrect_from_center. simpl. reflexivity.
+Qed.
+
 (** * Computational Tests *)
 
 Example zrect_test_new :

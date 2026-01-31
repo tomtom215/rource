@@ -1072,13 +1072,189 @@ Proof.
   f_equal; ring.
 Qed.
 
+(** Theorem 91: cross product anti-commutativity. *)
+Theorem vec3_cross_anti : forall a b : Vec3,
+  vec3_cross a b = vec3_neg (vec3_cross b a).
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_cross, vec3_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 92: cross product with negation (left). *)
+Theorem vec3_cross_neg_l : forall a b : Vec3,
+  vec3_cross (vec3_neg a) b = vec3_neg (vec3_cross a b).
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_cross, vec3_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 93: cross product is orthogonal to first operand. *)
+Theorem vec3_cross_orthogonal_l : forall a b : Vec3,
+  vec3_dot a (vec3_cross a b) = 0.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_dot, vec3_cross. simpl.
+  ring.
+Qed.
+
+(** Theorem 94: cross product is orthogonal to second operand. *)
+Theorem vec3_cross_orthogonal_r : forall a b : Vec3,
+  vec3_dot b (vec3_cross a b) = 0.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_dot, vec3_cross. simpl.
+  ring.
+Qed.
+
+(** Theorem 95: add left inverse. *)
+Theorem vec3_add_neg_l : forall v : Vec3,
+  vec3_add (vec3_neg v) v = vec3_zero.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_add, vec3_neg, vec3_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 96: subtraction by zero on right. *)
+Theorem vec3_sub_zero_r : forall v : Vec3,
+  vec3_sub v vec3_zero = v.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_sub, vec3_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 97: subtraction from zero gives negation. *)
+Theorem vec3_sub_zero_l : forall v : Vec3,
+  vec3_sub vec3_zero v = vec3_neg v.
+Proof.
+  intros [vx vy vz].
+  unfold vec3_sub, vec3_zero, vec3_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 98: subtraction anti-symmetry. *)
+Theorem vec3_sub_antisym : forall a b : Vec3,
+  vec3_sub a b = vec3_neg (vec3_sub b a).
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_sub, vec3_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 99: dot product with negation on the left. *)
+Theorem vec3_dot_neg_l : forall a b : Vec3,
+  vec3_dot (vec3_neg a) b = - vec3_dot a b.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_dot, vec3_neg. simpl.
+  ring.
+Qed.
+
+(** Theorem 100: dot product with negation on the right. *)
+Theorem vec3_dot_neg_r : forall a b : Vec3,
+  vec3_dot a (vec3_neg b) = - vec3_dot a b.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold vec3_dot, vec3_neg. simpl.
+  ring.
+Qed.
+
+(** Theorem 101: length squared of zero vector is zero. *)
+Theorem vec3_length_squared_zero :
+  vec3_length_squared vec3_zero = 0.
+Proof.
+  unfold vec3_length_squared, vec3_dot, vec3_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 102: splat distributes over addition. *)
+Theorem vec3_splat_add : forall a b : R,
+  vec3_splat (a + b) = vec3_add (vec3_splat a) (vec3_splat b).
+Proof.
+  intros a b.
+  unfold vec3_splat, vec3_add. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 103: scale of splat is splat of product. *)
+Theorem vec3_splat_scale : forall v s : R,
+  vec3_scale s (vec3_splat v) = vec3_splat (s * v).
+Proof.
+  intros v s.
+  unfold vec3_scale, vec3_splat. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 104: element sum distributes over scale. *)
+Theorem vec3_element_sum_scale : forall (s : R) (v : Vec3),
+  vec3_element_sum (vec3_scale s v) = s * vec3_element_sum v.
+Proof.
+  intros s [vx vy vz].
+  unfold vec3_element_sum, vec3_scale. simpl.
+  ring.
+Qed.
+
+(** Theorem 105: componentwise mul distributes over add (left). *)
+Theorem vec3_mul_add_distr_l : forall v a b : Vec3,
+  vec3_mul v (vec3_add a b) = vec3_add (vec3_mul v a) (vec3_mul v b).
+Proof.
+  intros [vx vy vz] [ax ay az] [bx by0 bz].
+  unfold vec3_mul, vec3_add. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 106: componentwise mul distributes over add (right). *)
+Theorem vec3_mul_add_distr_r : forall a b v : Vec3,
+  vec3_mul (vec3_add a b) v = vec3_add (vec3_mul a v) (vec3_mul b v).
+Proof.
+  intros [ax ay az] [bx by0 bz] [vx vy vz].
+  unfold vec3_mul, vec3_add. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 107: distance squared is translation-invariant. *)
+Theorem vec3_distance_squared_translate : forall a b t : Vec3,
+  vec3_distance_squared (vec3_add a t) (vec3_add b t) = vec3_distance_squared a b.
+Proof.
+  intros [ax ay az] [bx by0 bz] [tx ty tz].
+  unfold vec3_distance_squared, vec3_length_squared, vec3_dot, vec3_sub, vec3_add.
+  simpl. ring.
+Qed.
+
+(** Theorem 108: scale distributes over subtraction. *)
+Theorem vec3_scale_sub_distr : forall (s : R) (a b : Vec3),
+  vec3_scale s (vec3_sub a b) = vec3_sub (vec3_scale s a) (vec3_scale s b).
+Proof.
+  intros s [ax ay az] [bx by0 bz].
+  unfold vec3_scale, vec3_sub. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 109: dot product with scaled vector (right). *)
+Theorem vec3_dot_scale_r : forall (a b : Vec3) (s : R),
+  vec3_dot a (vec3_scale s b) = s * vec3_dot a b.
+Proof.
+  intros [ax ay az] [bx by0 bz] s.
+  unfold vec3_dot, vec3_scale. simpl.
+  ring.
+Qed.
+
+(** Theorem 110: scalar triple product is cyclic.
+    [a,b,c] = [b,c,a] = [c,a,b] *)
+Theorem vec3_scalar_triple_cyclic : forall a b c : Vec3,
+  vec3_scalar_triple a b c = vec3_scalar_triple b c a.
+Proof.
+  intros [ax ay az] [bx by0 bz] [cx cy cz].
+  unfold vec3_scalar_triple, vec3_dot, vec3_cross. simpl.
+  ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 90 (78 original + 12 new)
-    New theorems: normalized_length_sq, clamp x/y/z bounds,
-      lerp y/z range, lerp_same, neg_involutive, mul_comm, mul_zero,
-      element_product_splat, splat_components, lerp_midpoint,
-      scale_neg_one, sub_self, mul_assoc, mul_one
+    Total theorems: 110
     Admits: 0
     Axioms: Standard Coq real number library only
 

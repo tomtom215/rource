@@ -907,9 +907,146 @@ Proof.
   ring.
 Qed.
 
+(** * Additional Algebraic Properties *)
+
+(** Theorem 79: dot product with zero on left is 0. *)
+Theorem vec4_dot_zero_l : forall v : Vec4,
+  vec4_dot vec4_zero v = 0.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_dot, vec4_zero. simpl. ring.
+Qed.
+
+(** Theorem 80: left additive inverse. *)
+Theorem vec4_add_neg_l : forall a : Vec4,
+  vec4_add (vec4_neg a) a = vec4_zero.
+Proof.
+  intros a. rewrite vec4_add_comm. apply vec4_add_neg.
+Qed.
+
+(** Theorem 81: sub zero is identity. *)
+Theorem vec4_sub_zero_r : forall a : Vec4,
+  vec4_sub a vec4_zero = a.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_sub, vec4_zero. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 82: sub from zero is negation. *)
+Theorem vec4_sub_zero_l : forall a : Vec4,
+  vec4_sub vec4_zero a = vec4_neg a.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_sub, vec4_zero, vec4_neg. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 83: a - b = -(b - a). *)
+Theorem vec4_sub_antisym : forall a b : Vec4,
+  vec4_sub a b = vec4_neg (vec4_sub b a).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold vec4_sub, vec4_neg. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 84: dot product of negation on left. *)
+Theorem vec4_dot_neg_l : forall a b : Vec4,
+  vec4_dot (vec4_neg a) b = - vec4_dot a b.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold vec4_dot, vec4_neg. simpl. ring.
+Qed.
+
+(** Theorem 85: dot product of negation on right. *)
+Theorem vec4_dot_neg_r : forall a b : Vec4,
+  vec4_dot a (vec4_neg b) = - vec4_dot a b.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold vec4_dot, vec4_neg. simpl. ring.
+Qed.
+
+(** Theorem 86: length squared of zero is 0. *)
+Theorem vec4_length_squared_zero :
+  vec4_length_squared vec4_zero = 0.
+Proof.
+  unfold vec4_length_squared, vec4_dot, vec4_zero. simpl. ring.
+Qed.
+
+(** Theorem 87: splat(a+b) = splat(a) + splat(b). *)
+Theorem vec4_splat_add : forall a b : R,
+  vec4_splat (a + b) = vec4_add (vec4_splat a) (vec4_splat b).
+Proof.
+  intros a b. unfold vec4_splat, vec4_add. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 88: scale(splat(v), s) = splat(s*v). *)
+Theorem vec4_splat_scale : forall s v : R,
+  vec4_scale s (vec4_splat v) = vec4_splat (s * v).
+Proof.
+  intros s v. unfold vec4_scale, vec4_splat. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 89: element sum of scale = scale of element sum. *)
+Theorem vec4_element_sum_scale : forall (s : R) (v : Vec4),
+  vec4_element_sum (vec4_scale s v) = s * vec4_element_sum v.
+Proof.
+  intros s [vx vy vz vw].
+  unfold vec4_element_sum, vec4_scale. simpl. ring.
+Qed.
+
+(** Theorem 90: mul with splat(1) on left is identity. *)
+Theorem vec4_mul_one_l : forall v : Vec4,
+  vec4_mul (vec4_splat 1) v = v.
+Proof.
+  intros [vx vy vz vw].
+  unfold vec4_mul, vec4_splat. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 91: mul distributes over add on the left. *)
+Theorem vec4_mul_add_distr_l : forall a b c : Vec4,
+  vec4_mul a (vec4_add b c) = vec4_add (vec4_mul a b) (vec4_mul a c).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw] [cx cy cz cw].
+  unfold vec4_mul, vec4_add. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 92: mul distributes over add on the right. *)
+Theorem vec4_mul_add_distr_r : forall a b c : Vec4,
+  vec4_mul (vec4_add a b) c = vec4_add (vec4_mul a c) (vec4_mul b c).
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw] [cx cy cz cw].
+  unfold vec4_mul, vec4_add. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 93: distance squared satisfies triangle inequality prerequisite.
+    d²(a,c) relates to d²(a,b) and d²(b,c) via Cauchy-Schwarz. *)
+Theorem vec4_distance_squared_translate : forall a b d : Vec4,
+  vec4_distance_squared (vec4_add a d) (vec4_add b d) =
+  vec4_distance_squared a b.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw] [dx dy dz dw].
+  unfold vec4_distance_squared, vec4_sub, vec4_add,
+         vec4_length_squared, vec4_dot. simpl. ring.
+Qed.
+
+(** Theorem 94: scale distributes over sub. *)
+Theorem vec4_scale_sub_distr : forall (s : R) (a b : Vec4),
+  vec4_scale s (vec4_sub a b) = vec4_sub (vec4_scale s a) (vec4_scale s b).
+Proof.
+  intros s [ax ay az aw] [bx by0 bz bw].
+  unfold vec4_scale, vec4_sub. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 95: dot product is bilinear (right argument). *)
+Theorem vec4_dot_scale_r : forall (s : R) (a b : Vec4),
+  vec4_dot a (vec4_scale s b) = s * vec4_dot a b.
+Proof.
+  intros s [ax ay az aw] [bx by0 bz bw].
+  unfold vec4_dot, vec4_scale. simpl. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 78 (66 original + 13 new)
+    Total theorems: 95
     Admits: 0
     Axioms: Standard Coq real number library only
 

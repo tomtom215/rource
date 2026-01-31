@@ -1039,9 +1039,189 @@ Proof.
   lra.
 Qed.
 
+(** Theorem 91: cross product anti-commutativity. *)
+Theorem vec2_cross_anti : forall a b : Vec2,
+  vec2_cross a b = - vec2_cross b a.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_cross. simpl.
+  ring.
+Qed.
+
+(** Theorem 92: cross product distributes over add (right).
+    cross(a, b+c) = cross(a,b) + cross(a,c) *)
+Theorem vec2_cross_add_distr_r : forall a b c : Vec2,
+  vec2_cross a (vec2_add b c) = vec2_cross a b + vec2_cross a c.
+Proof.
+  intros [ax ay] [bx by0] [cx cy].
+  unfold vec2_cross, vec2_add. simpl.
+  ring.
+Qed.
+
+(** Theorem 93: perp preserves length squared. *)
+Theorem vec2_perp_length_squared : forall v : Vec2,
+  vec2_length_squared (vec2_perp v) = vec2_length_squared v.
+Proof.
+  intros [vx vy].
+  unfold vec2_length_squared, vec2_dot, vec2_perp. simpl.
+  ring.
+Qed.
+
+(** Theorem 94: perp distributes over negation. *)
+Theorem vec2_perp_neg : forall v : Vec2,
+  vec2_perp (vec2_neg v) = vec2_neg (vec2_perp v).
+Proof.
+  intros [vx vy].
+  unfold vec2_perp, vec2_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 95: perp distributes over addition. *)
+Theorem vec2_perp_add : forall a b : Vec2,
+  vec2_perp (vec2_add a b) = vec2_add (vec2_perp a) (vec2_perp b).
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_perp, vec2_add. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 96: add left inverse. *)
+Theorem vec2_add_neg_l : forall v : Vec2,
+  vec2_add (vec2_neg v) v = vec2_zero.
+Proof.
+  intros [vx vy].
+  unfold vec2_add, vec2_neg, vec2_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 97: subtraction by zero on right. *)
+Theorem vec2_sub_zero_r : forall v : Vec2,
+  vec2_sub v vec2_zero = v.
+Proof.
+  intros [vx vy].
+  unfold vec2_sub, vec2_zero. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 98: subtraction from zero gives negation. *)
+Theorem vec2_sub_zero_l : forall v : Vec2,
+  vec2_sub vec2_zero v = vec2_neg v.
+Proof.
+  intros [vx vy].
+  unfold vec2_sub, vec2_zero, vec2_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 99: subtraction anti-symmetry. *)
+Theorem vec2_sub_antisym : forall a b : Vec2,
+  vec2_sub a b = vec2_neg (vec2_sub b a).
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_sub, vec2_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 100: dot product with negation on the left. *)
+Theorem vec2_dot_neg_l : forall a b : Vec2,
+  vec2_dot (vec2_neg a) b = - vec2_dot a b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_dot, vec2_neg. simpl.
+  ring.
+Qed.
+
+(** Theorem 101: dot product with negation on the right. *)
+Theorem vec2_dot_neg_r : forall a b : Vec2,
+  vec2_dot a (vec2_neg b) = - vec2_dot a b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_dot, vec2_neg. simpl.
+  ring.
+Qed.
+
+(** Theorem 102: length squared of zero vector is zero. *)
+Theorem vec2_length_squared_zero :
+  vec2_length_squared vec2_zero = 0.
+Proof.
+  unfold vec2_length_squared, vec2_dot, vec2_zero. simpl.
+  ring.
+Qed.
+
+(** Theorem 103: splat distributes over addition. *)
+Theorem vec2_splat_add : forall a b : R,
+  vec2_splat (a + b) = vec2_add (vec2_splat a) (vec2_splat b).
+Proof.
+  intros a b.
+  unfold vec2_splat, vec2_add. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 104: scale of splat is splat of product. *)
+Theorem vec2_splat_scale : forall v s : R,
+  vec2_scale s (vec2_splat v) = vec2_splat (s * v).
+Proof.
+  intros v s.
+  unfold vec2_scale, vec2_splat. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 105: element sum distributes over scale. *)
+Theorem vec2_element_sum_scale : forall (s : R) (v : Vec2),
+  vec2_element_sum (vec2_scale s v) = s * vec2_element_sum v.
+Proof.
+  intros s [vx vy].
+  unfold vec2_element_sum, vec2_scale. simpl.
+  ring.
+Qed.
+
+(** Theorem 106: componentwise mul distributes over add (left). *)
+Theorem vec2_mul_add_distr_l : forall v a b : Vec2,
+  vec2_mul v (vec2_add a b) = vec2_add (vec2_mul v a) (vec2_mul v b).
+Proof.
+  intros [vx vy] [ax ay] [bx by0].
+  unfold vec2_mul, vec2_add. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 107: componentwise mul distributes over add (right). *)
+Theorem vec2_mul_add_distr_r : forall a b v : Vec2,
+  vec2_mul (vec2_add a b) v = vec2_add (vec2_mul a v) (vec2_mul b v).
+Proof.
+  intros [ax ay] [bx by0] [vx vy].
+  unfold vec2_mul, vec2_add. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 108: distance squared is translation-invariant. *)
+Theorem vec2_distance_squared_translate : forall a b t : Vec2,
+  vec2_distance_squared (vec2_add a t) (vec2_add b t) = vec2_distance_squared a b.
+Proof.
+  intros [ax ay] [bx by0] [tx ty].
+  unfold vec2_distance_squared, vec2_length_squared, vec2_dot, vec2_sub, vec2_add. simpl.
+  ring.
+Qed.
+
+(** Theorem 109: scale distributes over subtraction. *)
+Theorem vec2_scale_sub_distr : forall (s : R) (a b : Vec2),
+  vec2_scale s (vec2_sub a b) = vec2_sub (vec2_scale s a) (vec2_scale s b).
+Proof.
+  intros s [ax ay] [bx by0].
+  unfold vec2_scale, vec2_sub. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 110: dot product with scaled vector (right). *)
+Theorem vec2_dot_scale_r : forall (a b : Vec2) (s : R),
+  vec2_dot a (vec2_scale s b) = s * vec2_dot a b.
+Proof.
+  intros [ax ay] [bx by0] s.
+  unfold vec2_dot, vec2_scale. simpl.
+  ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 85 (76 original + 14 new)
+    Total theorems: 110
     Admits: 0
     Axioms: Standard Coq real number library only
 

@@ -254,13 +254,13 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 1 (Spec) | `Color.v` | 1 | R-based Color specification |
 | 1 (Spec) | `Rect.v` | 1 | R-based Rect specification |
 | 1 (Spec) | `Utils.v` | 10 | R-based utilities (lerp, clamp) |
-| 1 (Proof) | `Vec2_Proofs.v` | 90 | Vec2 algebraic properties |
-| 1 (Proof) | `Vec3_Proofs.v` | 95 | Vec3 algebraic properties |
-| 1 (Proof) | `Vec4_Proofs.v` | 79 | Vec4 algebraic properties |
+| 1 (Proof) | `Vec2_Proofs.v` | 110 | Vec2 algebraic properties |
+| 1 (Proof) | `Vec3_Proofs.v` | 115 | Vec3 algebraic properties |
+| 1 (Proof) | `Vec4_Proofs.v` | 96 | Vec4 algebraic properties |
 | 1 (Proof) | `Mat3_Proofs.v` | 80 | Mat3 algebraic properties |
 | 1 (Proof) | `Mat4_Proofs.v` | 104 | Mat4 algebraic properties |
-| 1 (Proof) | `Color_Proofs.v` | 68 | Color alpha, blend, lerp, luminance |
-| 1 (Proof) | `Rect_Proofs.v` | 92 | Rect containment, intersection, union |
+| 1 (Proof) | `Color_Proofs.v` | 88 | Color alpha, blend, lerp, luminance |
+| 1 (Proof) | `Rect_Proofs.v` | 112 | Rect containment, intersection, union |
 | 1 (Proof) | `Complexity.v` | 60 | O(1) complexity bounds |
 | 2 (Compute) | `Vec2_Compute.v` | 50 | Z-based Vec2 (extractable) |
 | 2 (Compute) | `Vec3_Compute.v` | 42 | Z-based Vec3 (extractable) |
@@ -268,13 +268,13 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 2 (Compute) | `Mat3_Compute.v` | 25 | Z-based Mat3 (extractable) |
 | 2 (Compute) | `Mat4_Compute.v` | 50 | Z-based Mat4 (extractable) |
 | 2 (Compute) | `Color_Compute.v` | 28 | Z-based Color (extractable) |
-| 2 (Compute) | `Rect_Compute.v` | 24 | Z-based Rect (extractable) |
+| 2 (Compute) | `Rect_Compute.v` | 43 | Z-based Rect (extractable) |
 | 2 (Compute) | `Utils_Compute.v` | 13 | Z-based Utils (extractable) |
 | 3 (Extract) | `Color_Extract.v` | 0 | Color OCaml extraction |
 | 3 (Extract) | `Rect_Extract.v` | 0 | Rect OCaml extraction |
 | 3 (Extract) | `RourceMath_Extract.v` | 0 | Unified OCaml extraction (8 types) |
 | 3 (Verified) | `Vec2_VerifiedExtract.v` | 0 | MetaCoq verified erasure (Path 2) |
-| **Total** | **32 files** | **1007** | **Zero admits** |
+| **Total** | **32 files** | **1255** | **Zero admits** |
 
 ---
 
@@ -503,10 +503,10 @@ done
 | Tool | Theorems/Proofs | Errors | Admits |
 |------|-----------------|--------|--------|
 | Verus | 327 proof functions | 0 | 0 |
-| Coq (R-based) | 742 theorems | 0 | 0 |
-| Coq (Z-based) | 265 theorems | 0 | 0 |
+| Coq (R-based) | 909 theorems | 0 | 0 |
+| Coq (Z-based) | 346 theorems | 0 | 0 |
 | Kani (CBMC) | 134 harnesses | 0 | 0 |
-| **Combined** | **1567** | **0** | **0** |
+| **Combined** | **1815** | **0** | **0** |
 
 ---
 
