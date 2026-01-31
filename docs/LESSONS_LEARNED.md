@@ -79,7 +79,7 @@
 | Need | Tool | Status |
 |------|------|--------|
 | Algebraic correctness (Rust) | Verus | ADOPT (327 proofs) |
-| Mathematical theorems | Coq | ADOPT (796 theorems) |
+| Mathematical theorems | Coq | ADOPT (1284 theorems: 925 R-based + 359 Z-based) |
 | IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (154 harnesses) |
 | FP error bounds | Coq + Flocq | ADOPT (99 theorems) |
 | Pure functional extraction | Aeneas | MONITOR (no f32 yet) |
@@ -464,7 +464,14 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 146 | 2026-01-31 | pnY2l | WASM_EXTRACTION_PIPELINE.md had no update rule in script | New file with Coq counts was not in any script | When creating doc files with metrics, ALWAYS add sed patterns to update script |
 | 147 | 2026-01-31 | pnY2l | CLAUDE.md per-type verification table needs automated updates | Bounds (70→79, 62→70) and Utils (23→30, 13→18) went stale | Added per-type row patterns to `update-verification-counts.sh` |
 | 148 | 2026-01-31 | pnY2l | `zlerp_bounded` requires careful Z division reasoning | `(b-a)*t/1000 <= (b-a)` needs `Z.div_le_mono` + `Z.div_mul` | Factor: `Z.mul_le_mono_nonneg_l` for `t <= 1000`, then `Z.div_le_mono`, then `Z.div_mul` |
+| 149 | 2026-01-31 | 6mS3R | Verus `lerp_simple(a,b,t) = a + (b-a)*t` fails for properties using `t*(b-a)` | Z3 linear arithmetic cannot prove `(b-a)*t == t*(b-a)` (multiplication commutativity is nonlinear) | Add `assert((b - a) * t == t * (b - a)) by(nonlinear_arith);` for commutativity, `by(nonlinear_arith)` for distributivity |
+| 150 | 2026-01-31 | 6mS3R | Verus `by(nonlinear_arith)` assertions must match spec function's operand order | Spec used `(b-a)*t` but assertions proved `t*(b-a)` — Z3 couldn't connect them even with `nonlinear_arith` hints on the wrong term | Always match the exact term order from the spec function definition in `assert()` statements |
+| 151 | 2026-01-31 | 6mS3R | `coqc` only accepts ONE `.v` file argument at a time | `coqc -Q . RourceMath A.v B.v` fails with "More than one file to compile" | Use `for f in *.v; do coqc -Q . RourceMath "$f"; done` or compile files individually |
+| 152 | 2026-01-31 | 6mS3R | Coq proof files must compile AFTER their spec dependencies | `Vec2_Proofs.v` depends on `Vec2.v`; compiling out of order fails | Compile spec files (`.v`) before proof files (`_Proofs.v`) before compute files (`_Compute.v`) |
+| 153 | 2026-01-31 | 6mS3R | Adding new Verus proof file requires script update in 8 places | `update-verification-counts.sh` needs: count variable, TOTAL sum, per-type total, JSON output, display printf row, sed patterns for each doc file, CHECKS array entries | Created checklist: same pattern as Kani lesson #138 but with Verus-specific sed patterns |
+| 154 | 2026-01-31 | 6mS3R | GMP must be built from source when apt DNS fails | `apt install libgmp-dev` fails in sandboxed environments with no DNS | Download GMP 6.3.0 from gmplib.org, `./configure && make && make install`, create symlinks for `/usr/include/gmp.h` and `/usr/lib/x86_64-linux-gnu/libgmp.so` |
+| 155 | 2026-01-31 | 6mS3R | Flocq build requires excluding incompatible files | `PrimFloat.v`, `Int63Compat.v`, `Int63Copy.v`, `Pff2Flocq.v`, `Nat2Z_compat.v` fail on Coq 8.18 | Edit `_CoqProject` to exclude these 5 files before running `coq_makefile` |
 
 ---
 
-*Last updated: 2026-01-31 | 148 entries | 14 categories*
+*Last updated: 2026-01-31 | 155 entries | 14 categories*

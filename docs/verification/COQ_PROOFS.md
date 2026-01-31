@@ -52,9 +52,9 @@ For an overview of the complete verification effort (Verus + Coq), see
 | Rect.v | 1 | VERIFIED | Rectangle specification (equality lemma) |
 | Rect_Proofs.v | 112 | VERIFIED | Containment, intersection, transformation, area/perimeter, validity, scale compose, from_center, translate_center, lerp, normalize, from_pos_size, from_corners, expand, to_bounds |
 | Bounds.v | 1 | VERIFIED | Bounding box specification (equality lemma) |
-| Bounds_Proofs.v | 70 | VERIFIED | Union, intersection, containment, expansion, translation, include_point, from_points, from_center_half_extents, area, validity |
-| Utils.v | 23 | VERIFIED | lerp (zero, one, same, midpoint, linear, affine, symmetric, monotone, quarter, diff, add_const, scale), clamp (range, identity, lower, upper, idempotent, monotone, at_lo, at_hi), approx_eq (refl, sym) |
-| **Total** | **919** | VERIFIED | All proofs machine-checked, 0 admits. Includes spec-file equality lemmas (10). Canonical R-based count: 909 (proof files only, excludes spec-file lemmas). Complexity: 60, CrossType: 51 included in 909. |
+| Bounds_Proofs.v | 79 | VERIFIED | Union, intersection, containment, expansion, translation, include_point, from_points, from_center_half_extents, area, validity |
+| Utils.v | 30 | VERIFIED | lerp (zero, one, same, midpoint, linear, affine, symmetric, monotone, quarter, diff, add_const, scale), clamp (range, identity, lower, upper, idempotent, monotone, at_lo, at_hi), approx_eq (refl, sym, triangle_counterexample) |
+| **Total** | **935** | VERIFIED | All proofs machine-checked, 0 admits. Includes spec-file equality lemmas (10). Canonical R-based count: 925 (proof files only, excludes spec-file lemmas). Complexity: 60, CrossType: 51 included in 925. |
 
 **Note on coq-of-rust:** The coq-of-rust/rocq-of-rust tool requires Rust nightly-2024-12-07
 (version 1.85), which is incompatible with rource-math's Rust 1.93 requirement. We proceeded
@@ -171,8 +171,8 @@ the gap between mathematical proofs (over R) and executable code.
 | Mat4_Compute.v | 50 (34 + 16 local) | ~5.5s | Z-based 4x4 matrix operations + determinant + translation/scaling |
 | Color_Compute.v | 28 | — | Z-based fixed-point (1000-scale) |
 | Rect_Compute.v | 43 | — | Z-based, boolean predicates, union, from_corners, expand_xy |
-| Bounds_Compute.v | 62 | — | Z-based bounds operations, containment, union, intersection |
-| Utils_Compute.v | 13 | — | zlerp/zclamp + additional properties |
+| Bounds_Compute.v | 70 | — | Z-based bounds operations, containment, union, intersection |
+| Utils_Compute.v | 18 | — | zlerp/zclamp + additional properties |
 | **Total** | **359** | **~45s** | All 0 admits |
 
 ### Verification Command (Layer 2)
@@ -264,13 +264,13 @@ These practices were established through hard-won experience across multiple ses
 
 **Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6 + Phase 7 + Phase 8):**
 *Version: Coq 8.18*
-*Total theorems: 909 (Vec2: 110, Vec3: 115, Vec4: 96, Mat3: 80, Mat4: 104, Color: 88, Rect: 112, Bounds: 70, Complexity: 60, CrossType: 51, Utils: 23)*
+*Total theorems: 925 (Vec2: 110, Vec3: 115, Vec4: 96, Mat3: 80, Mat4: 104, Color: 88, Rect: 112, Bounds: 79, Complexity: 60, CrossType: 51, Utils: 30)*
 *Admits: 0*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7):**
 *Version: Coq 8.18*
-*Total theorems: 359 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 43, Bounds: 62, Utils: 13)*
+*Total theorems: 359 (Vec2: 50, Vec3: 42, Vec4: 33, Mat3: 25, Mat4: 50, Color: 28, Rect: 43, Bounds: 70, Utils: 18)*
 *Admits: 0*
 *Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1284 total Coq theorems incl. FP)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*

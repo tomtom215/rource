@@ -786,13 +786,15 @@ rustup install 1.92.0
 | rource-math/Mat4 (extended) | VERIFIED | 32 | 55 | Translation, scaling, determinant, trace, composite |
 | rource-math/Color | VERIFIED | 45 | 81 | Constructor, alpha, lerp, blend, clamp, luminance, scale, mix, invert |
 | rource-math/Rect | VERIFIED | 52 | 70 | Containment, intersection, union, transforms, area, from_points, normalize, grow, lerp |
+| rource-math/Bounds | VERIFIED | 66 | — | Bounds struct: area, containment, union, intersection, expand, shrink, translate, include_point |
+| rource-math/Utils | VERIFIED | 33 | — | Scalar lerp, clamp, approx_eq properties |
 
-**Total: 327 proof functions verified (Verus)**
+**Total: 426 proof functions verified (Verus)**
 
 ---
 
-*Last verified: 2026-01-30*
+*Last verified: 2026-01-31*
 *Version: 0.2026.01.30*
-*Total proof functions: 327 (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22+26], Mat4: 54 [22+32], Color: 45, Rect: 52)*
-*Total verification conditions: 558 (Vec2: 87, Vec3: 89, Vec4: 90, Mat3: 71 [26+45], Mat4: 82 [27+55], Color: 81, Rect: 70)*
-*Status: All proofs verified with 0 errors across 9 files*
+*Total proof functions: 426 (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22+26], Mat4: 54 [22+32], Color: 45, Rect: 52, Bounds: 66, Utils: 33)*
+*Total verification conditions: 558+ (Vec2: 87, Vec3: 89, Vec4: 90, Mat3: 71 [26+45], Mat4: 82 [27+55], Color: 81, Rect: 70, Bounds: TBD, Utils: TBD)*
+*Status: All proofs verified with 0 errors across 11 files*
