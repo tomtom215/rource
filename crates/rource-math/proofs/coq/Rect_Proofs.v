@@ -1137,9 +1137,81 @@ Proof.
   ring.
 Qed.
 
+(** * Advanced Proofs *)
+
+(** Theorem 113: scale right edge formula. *)
+Theorem rect_scale_right_edge : forall (r : Rect) (s : R),
+  rect_right (rect_scale r s) = rect_x r + rect_w r * s.
+Proof.
+  intros [rx ry rw rh] s.
+  unfold rect_right, rect_scale. simpl. ring.
+Qed.
+
+(** Theorem 114: from_center area formula. *)
+Theorem rect_from_center_area_formula : forall (cx cy w h : R),
+  rect_area (rect_from_center cx cy w h) = w * h.
+Proof.
+  intros. unfold rect_area, rect_from_center. simpl. ring.
+Qed.
+
+(** Theorem 115: union is fully commutative (rect equality). *)
+Theorem rect_union_comm : forall (a b : Rect),
+  rect_union a b = rect_union b a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_union, rect_right, rect_bottom. simpl.
+  f_equal; [apply Rmin_comm | apply Rmin_comm | | ].
+  - rewrite Rmax_comm. rewrite Rmin_comm. ring.
+  - rewrite Rmax_comm. rewrite Rmin_comm. ring.
+Qed.
+
+(** Theorem 116: translate then scale preserves scaled dimensions. *)
+Theorem rect_translate_then_scale_dims : forall (r : Rect) (dx dy s : R),
+  rect_w (rect_scale (rect_translate r dx dy) s) = rect_w r * s /\
+  rect_h (rect_scale (rect_translate r dx dy) s) = rect_h r * s.
+Proof.
+  intros [rx ry rw rh] dx dy s.
+  unfold rect_scale, rect_translate. simpl. split; ring.
+Qed.
+
+(** Theorem 117: containment is preserved under translation. *)
+Theorem rect_contains_point_translate : forall (r : Rect) (px py dx dy : R),
+  rect_contains_point r px py ->
+  rect_contains_point (rect_translate r dx dy) (px + dx) (py + dy).
+Proof.
+  intros [rx ry rw rh] px py dx dy H.
+  unfold rect_contains_point, rect_translate in *. simpl in *. lra.
+Qed.
+
+(** Theorem 118: intersection always has non-negative area. *)
+Theorem rect_intersection_area_nonneg : forall (a b : Rect),
+  0 <= rect_area (rect_intersection a b).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_area, rect_intersection, rect_right, rect_bottom. simpl.
+  apply Rmult_le_pos; apply (Rmax_l 0).
+Qed.
+
+(** Theorem 119: valid rectangle has positive perimeter. *)
+Theorem rect_valid_positive_perimeter : forall (r : Rect),
+  rect_is_valid r -> rect_perimeter r > 0.
+Proof.
+  intros [rx ry rw rh] [Hw Hh].
+  unfold rect_perimeter, rect_is_valid in *. simpl in *. lra.
+Qed.
+
+(** Theorem 120: expand_xy area formula. *)
+Theorem rect_expand_xy_area_formula : forall (r : Rect) (xa ya : R),
+  rect_area (rect_expand_xy r xa ya) =
+  rect_area r + 2 * xa * rect_h r + 2 * ya * rect_w r + 4 * xa * ya.
+Proof.
+  intros [rx ry rw rh] xa ya.
+  unfold rect_area, rect_expand_xy. simpl. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 112
+    Total theorems: 120
     Admits: 0
     Axioms: Standard Coq real number library only
 

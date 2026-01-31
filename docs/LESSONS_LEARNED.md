@@ -49,6 +49,11 @@
 | Z area/expand with nested `Z.sub` in constructors | `rewrite` proven width/height lemmas, then `ring` | `zb_unfold` + `ring` fails on nested `Z.sub` |
 | Z center translation `(a + dx + b + dx) / 2` | Factor as `dx * 2 + (a + b)`, `rewrite Z.div_add_l` | `lia` can't handle division directly |
 | Generic `(1+u)^n > 0` | `apply pow_lt; lra` then provide to `nra` | `nra` can't prove non-polynomial positivity |
+| `Rmin_left`/`Rmax_left` unavailable (Coq 8.18) | `unfold Rmin; destruct (Rle_dec ...); lra` | Named lemmas may not exist in 8.18; inline unfold always works |
+| Record field accessors in hypotheses (`bounds_min_x (mkBounds ...)`) | `unfold ..., ... in *. simpl in *.` BEFORE `lra`/`f_equal` | `lra` cannot connect unsimplified field accessors to bare variables |
+| Existential `Rabs` witness (counterexample) | `Rabs_def1` to prove, `Rabs_def2` to destructure hypothesis | Standard library pair; `Rabs_def1: -a < x < a → Rabs x < a` |
+| `if Rle_dec _ _ then ... else ...` in definition | `destruct (Rle_dec _ _) as [H|H]` + handle both branches | Case-split the decision to expose concrete branch |
+| Composition `f(f(x,a1),a2) = f(x, combined)` | Factor as `1 - (1-a1)*(1-a2)`, then `ring` | Both darken and lighten follow this multiplicative pattern |
 
 ### Verus Proof Strategy
 
@@ -78,9 +83,9 @@
 
 | Need | Tool | Status |
 |------|------|--------|
-| Algebraic correctness (Rust) | Verus | ADOPT (327 proofs) |
-| Mathematical theorems | Coq | ADOPT (1284 theorems: 925 R-based + 359 Z-based) |
-| IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (154 harnesses) |
+| Algebraic correctness (Rust) | Verus | ADOPT (475 proofs) |
+| Mathematical theorems | Coq | ADOPT (1327 theorems: 968 R-based + 359 Z-based) |
+| IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (172 harnesses) |
 | FP error bounds | Coq + Flocq | ADOPT (99 theorems) |
 | Pure functional extraction | Aeneas | MONITOR (no f32 yet) |
 | Deductive FP via Why3/CVC5 | Creusot | MONITOR |
@@ -481,7 +486,13 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 158 | 2026-01-31 | SdlU8 | Verus lerp spec function works best with boundary-value proofs | Parametric compositions fail but boundary values (t=0,1,2,-1) verify with empty bodies | Boundary-value lerp proofs are both most reliable and most mathematically valuable |
 | 159 | 2026-01-31 | SdlU8 | Kani operator overload harnesses work directly | `a + b`, `a - b`, `-v` compile directly testing trait impls | No special syntax needed for operator trait verification |
 | 160 | 2026-01-31 | SdlU8 | Kani property harnesses catch field-mutation bugs | `fade()` preserves RGB while modifying alpha — unit tests often miss this | Add separation-of-concern harnesses for methods that modify some fields but not others |
+| 161 | 2026-01-31 | b9iYZ | Always `grep` for existing theorem names before adding new ones | Added theorems to Rect_Proofs.v/Bounds_Proofs.v that already existed, causing `already exists` errors | Run `grep '^Theorem\|^Lemma' file.v` before writing new proofs; deduplicate against full name list |
+| 162 | 2026-01-31 | b9iYZ | `Rmin_left`/`Rmax_left` unavailable in Coq 8.18 | Used `apply Rmin_left` which doesn't exist | Use `unfold Rmin; destruct (Rle_dec ...); lra` pattern — always works regardless of stdlib version |
+| 163 | 2026-01-31 | b9iYZ | Record destructuring hypotheses need `simpl in *` before `lra` | `bounds_contains` destruct gave `bounds_min_x (mkBounds a1 a2 a3 a4) <= px` — `lra` couldn't connect | Add `unfold ..., ... in *. simpl in *.` to reduce field accessors in ALL hypotheses before arithmetic tactics |
+| 164 | 2026-01-31 | b9iYZ | `Rabs_def1`/`Rabs_def2` pair for existential counterexamples | Non-transitivity proof needs both constructing and destructuring `Rabs < eps` | `Rabs_def1: -a < x < a → |x| < a` (prove); `Rabs_def2: |x| < a → -a < x < a` (use as hyp) |
+| 165 | 2026-01-31 | b9iYZ | Darken/lighten composition follows `1-(1-a1)*(1-a2)` pattern | Both `color_darken` and `color_lighten` compose multiplicatively | `ring` solves automatically; mathematically: `f(f(x,a1),a2) = f(x, 1-(1-a1)(1-a2))` |
+| 166 | 2026-01-31 | b9iYZ | `Rle_dec` case-split required for `color_contrasting` proofs | `color_contrasting` uses `if Rle_dec (luminance c) (1/2) then white else black` | `destruct (Rle_dec _ _) as [H\|H]` to case-split, then each branch resolves by `reflexivity` or `exfalso; lra` |
 
 ---
 
-*Last updated: 2026-01-31 | 160 entries | 14 categories*
+*Last updated: 2026-01-31 | 166 entries | 14 categories*

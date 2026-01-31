@@ -275,3 +275,79 @@ Theorem rlerp_compose : forall (a b s t : R),
 Proof.
   intros. unfold rlerp. ring.
 Qed.
+
+(** * Non-Transitivity and Advanced Properties *)
+
+(** Theorem 31: approx_eq is NOT transitive — fundamental counterexample.
+    This is mathematically important: floating-point approximate equality
+    lacks transitivity, unlike exact equality. This theorem provides
+    a concrete witness demonstrating the failure of transitivity. *)
+Theorem rapprox_eq_not_transitive :
+  exists a b c eps : R,
+    eps > 0 /\ rapprox_eq a b eps /\ rapprox_eq b c eps /\ ~ rapprox_eq a c eps.
+Proof.
+  exists 0, (3/4), (3/2), 1.
+  unfold rapprox_eq.
+  repeat split.
+  - lra.
+  - apply Rabs_def1; lra.
+  - apply Rabs_def1; lra.
+  - intro H. apply Rabs_def2 in H. lra.
+Qed.
+
+(** Theorem 32: lerp chaining — lerp from an intermediate result to b.
+    lerp(lerp(a,b,s), b, t) = lerp(a, b, s + (1-s)*t). *)
+Theorem rlerp_chain : forall (a b s t : R),
+  rlerp (rlerp a b s) b t = rlerp a b (s + (1 - s) * t).
+Proof.
+  intros. unfold rlerp. ring.
+Qed.
+
+(** Theorem 33: lerp is injective in t when a ≠ b. *)
+Theorem rlerp_injective_in_t : forall (a b t1 t2 : R),
+  a <> b -> rlerp a b t1 = rlerp a b t2 -> t1 = t2.
+Proof.
+  intros a b t1 t2 Hab Heq.
+  unfold rlerp in Heq.
+  assert (Hne: b - a <> 0) by lra.
+  assert (Hmul: (b - a) * t1 = (b - a) * t2) by lra.
+  exact (Rmult_eq_reg_l (b - a) t1 t2 Hmul Hne).
+Qed.
+
+(** Theorem 34: approx_eq is translation-invariant.
+    Adding a constant to both arguments preserves approximate equality. *)
+Theorem rapprox_eq_add_const : forall (a b c eps : R),
+  rapprox_eq a b eps <-> rapprox_eq (a + c) (b + c) eps.
+Proof.
+  intros. unfold rapprox_eq.
+  replace (a + c - (b + c)) with (a - b) by ring.
+  tauto.
+Qed.
+
+(** Theorem 35: approx_eq is negation-invariant.
+    Negating both arguments preserves approximate equality. *)
+Theorem rapprox_eq_neg_iff : forall (a b eps : R),
+  rapprox_eq a b eps <-> rapprox_eq (-a) (-b) eps.
+Proof.
+  intros. unfold rapprox_eq.
+  replace (-a - -b) with (-(a - b)) by ring.
+  rewrite Rabs_Ropp. tauto.
+Qed.
+
+(** Theorem 36: lerp subtraction — difference of two lerps at the same t.
+    lerp(a,b,t) - lerp(c,d,t) = lerp(a-c, b-d, t). *)
+Theorem rlerp_sub : forall (a b c d t : R),
+  rlerp a b t - rlerp c d t = rlerp (a - c) (b - d) t.
+Proof.
+  intros. unfold rlerp. ring.
+Qed.
+
+(** Theorem 37: lerp absolute difference formula.
+    |lerp(a,b,t) - lerp(a,b,s)| = |b-a| * |t-s|. *)
+Theorem rlerp_abs_diff : forall (a b s t : R),
+  Rabs (rlerp a b t - rlerp a b s) = Rabs (b - a) * Rabs (t - s).
+Proof.
+  intros. unfold rlerp.
+  replace (a + (b - a) * t - (a + (b - a) * s)) with ((b - a) * (t - s)) by ring.
+  apply Rabs_mult.
+Qed.

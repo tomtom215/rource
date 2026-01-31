@@ -873,9 +873,127 @@ Proof.
   apply color_eq; field.
 Qed.
 
+(** * Contrasting Proofs *)
+
+(** Theorem 89: contrasting black yields white (luminance 0 ≤ 1/2). *)
+Theorem color_contrasting_black :
+  color_contrasting color_black = color_white.
+Proof.
+  unfold color_contrasting, color_luminance, color_black. simpl.
+  destruct (Rle_dec _ _) as [H | H].
+  - reflexivity.
+  - exfalso. apply H. lra.
+Qed.
+
+(** Theorem 90: contrasting white yields black (luminance 1 > 1/2). *)
+Theorem color_contrasting_white :
+  color_contrasting color_white = color_black.
+Proof.
+  unfold color_contrasting, color_luminance, color_white. simpl.
+  destruct (Rle_dec _ _) as [H | H].
+  - exfalso. lra.
+  - reflexivity.
+Qed.
+
+(** Theorem 91: contrasting always returns black or white. *)
+Theorem color_contrasting_binary : forall c : Color,
+  color_contrasting c = color_white \/ color_contrasting c = color_black.
+Proof.
+  intros c. unfold color_contrasting.
+  destruct (Rle_dec _ _).
+  - left. reflexivity.
+  - right. reflexivity.
+Qed.
+
+(** Theorem 92: contrasting always produces an opaque color (alpha = 1). *)
+Theorem color_contrasting_opaque : forall c : Color,
+  color_a (color_contrasting c) = 1.
+Proof.
+  intros c. unfold color_contrasting.
+  destruct (Rle_dec _ _); reflexivity.
+Qed.
+
+(** * Darken Proofs *)
+
+(** Theorem 93: darken by 0 is the identity. *)
+Theorem color_darken_zero : forall c : Color,
+  color_darken c 0 = c.
+Proof.
+  intros [cr cg cb ca].
+  unfold color_darken. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 94: darken by 1 yields black (preserving alpha). *)
+Theorem color_darken_full : forall c : Color,
+  color_darken c 1 = mkColor 0 0 0 (color_a c).
+Proof.
+  intros [cr cg cb ca].
+  unfold color_darken. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 95: darken preserves the alpha channel. *)
+Theorem color_darken_preserves_alpha : forall (c : Color) (amount : R),
+  color_a (color_darken c amount) = color_a c.
+Proof.
+  intros [cr cg cb ca] amount.
+  unfold color_darken. simpl. reflexivity.
+Qed.
+
+(** Theorem 96: darken composition — two successive darkens combine multiplicatively.
+    darken(darken(c, a1), a2) = darken(c, 1 - (1-a1)*(1-a2)). *)
+Theorem color_darken_composition : forall (c : Color) (a1 a2 : R),
+  color_darken (color_darken c a1) a2 =
+  color_darken c (1 - (1 - a1) * (1 - a2)).
+Proof.
+  intros [cr cg cb ca] a1 a2.
+  unfold color_darken. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** * Lighten Proofs *)
+
+(** Theorem 97: lighten by 0 is the identity. *)
+Theorem color_lighten_zero : forall c : Color,
+  color_lighten c 0 = c.
+Proof.
+  intros [cr cg cb ca].
+  unfold color_lighten. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 98: lighten by 1 yields white (preserving alpha). *)
+Theorem color_lighten_full : forall c : Color,
+  color_lighten c 1 = mkColor 1 1 1 (color_a c).
+Proof.
+  intros [cr cg cb ca].
+  unfold color_lighten. simpl.
+  apply color_eq; ring.
+Qed.
+
+(** Theorem 99: lighten preserves the alpha channel. *)
+Theorem color_lighten_preserves_alpha : forall (c : Color) (amount : R),
+  color_a (color_lighten c amount) = color_a c.
+Proof.
+  intros [cr cg cb ca] amount.
+  unfold color_lighten. simpl. reflexivity.
+Qed.
+
+(** Theorem 100: lighten composition — two successive lightens combine multiplicatively.
+    lighten(lighten(c, a1), a2) = lighten(c, 1 - (1-a1)*(1-a2)). *)
+Theorem color_lighten_composition : forall (c : Color) (a1 a2 : R),
+  color_lighten (color_lighten c a1) a2 =
+  color_lighten c (1 - (1 - a1) * (1 - a2)).
+Proof.
+  intros [cr cg cb ca] a1 a2.
+  unfold color_lighten. simpl.
+  apply color_eq; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 88
+    Total theorems: 100
     Admits: 0
     Axioms: Standard Coq real number library only
 

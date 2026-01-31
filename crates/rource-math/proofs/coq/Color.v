@@ -125,6 +125,27 @@ Definition color_mix (a b : Color) : Color :=
   mkColor ((color_r a + color_r b) / 2) ((color_g a + color_g b) / 2)
           ((color_b a + color_b b) / 2) ((color_a a + color_a b) / 2).
 
+(** Color contrasting: returns black or white for maximum contrast.
+    Uses luminance threshold of 0.5 (Rec. 709 luminance). *)
+Definition color_contrasting (c : Color) : Color :=
+  if Rle_dec (color_luminance c) (1/2) then color_white else color_black.
+
+(** Darken a color by a factor in [0, 1].
+    darken(c, 0) = c, darken(c, 1) = black (preserving alpha). *)
+Definition color_darken (c : Color) (amount : R) : Color :=
+  mkColor (color_r c * (1 - amount))
+          (color_g c * (1 - amount))
+          (color_b c * (1 - amount))
+          (color_a c).
+
+(** Lighten a color by a factor in [0, 1].
+    lighten(c, 0) = c, lighten(c, 1) = white (preserving alpha). *)
+Definition color_lighten (c : Color) (amount : R) : Color :=
+  mkColor (color_r c + (1 - color_r c) * amount)
+          (color_g c + (1 - color_g c) * amount)
+          (color_b c + (1 - color_b c) * amount)
+          (color_a c).
+
 (** * Notations *)
 
 Notation "+c" := color_new (at level 0).

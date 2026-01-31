@@ -289,6 +289,37 @@ Definition mat4_orthographic (left right bottom top near far : R) : Mat4 :=
     0 0 (-(2) / fmn) 0
     (-(right + left) / rml) (-(top + bottom) / tmb) (-(far + near) / fmn) 1.
 
+(** * Vec4 Type and Transform *)
+
+(** A 4D vector for homogeneous transforms. *)
+Record Vec4 : Type := mkVec4 {
+  vec4_x : R;
+  vec4_y : R;
+  vec4_z : R;
+  vec4_w : R
+}.
+
+(** Transform a Vec4 by a Mat4 (full 4x4 matrix-vector multiply).
+    result.x = m0*x + m4*y + m8*z  + m12*w
+    result.y = m1*x + m5*y + m9*z  + m13*w
+    result.z = m2*x + m6*y + m10*z + m14*w
+    result.w = m3*x + m7*y + m11*z + m15*w *)
+Definition mat4_transform_vec4 (mat : Mat4) (v : Vec4) : Vec4 :=
+  mkVec4
+    (m0 mat * vec4_x v + m4 mat * vec4_y v + m8 mat  * vec4_z v + m12 mat * vec4_w v)
+    (m1 mat * vec4_x v + m5 mat * vec4_y v + m9 mat  * vec4_z v + m13 mat * vec4_w v)
+    (m2 mat * vec4_x v + m6 mat * vec4_y v + m10 mat * vec4_z v + m14 mat * vec4_w v)
+    (m3 mat * vec4_x v + m7 mat * vec4_y v + m11 mat * vec4_z v + m15 mat * vec4_w v).
+
+(** Vec4 equality lemma. *)
+Lemma vec4_eq : forall a b : Vec4,
+  vec4_x a = vec4_x b -> vec4_y a = vec4_y b ->
+  vec4_z a = vec4_z b -> vec4_w a = vec4_w b -> a = b.
+Proof.
+  intros a b Hx Hy Hz Hw.
+  destruct a, b. simpl in *. subst. reflexivity.
+Qed.
+
 (** * Vec3 Equality Lemma *)
 
 (** Two Vec3 are equal iff their components are equal. *)
@@ -324,10 +355,12 @@ Qed.
     - mat4_row0..row3: Row accessor operations
     - mat4_from_cols: Constructor from column values
     - mat4_orthographic: Orthographic projection matrix
+    - mat4_transform_vec4: Full 4D matrix-vector multiply
     - mat4_eq: Component-wise equality lemma
+    - vec4_eq: Component-wise Vec4 equality lemma
     - vec3_eq: Component-wise Vec3 equality lemma
 
-    Total definitions: 29
-    Total lemmas: 2
+    Total definitions: 31
+    Total lemmas: 3
     Admits: 0
 *)

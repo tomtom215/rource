@@ -14,7 +14,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 ## Verified Properties
 
-### Vec2 (49 Proof Functions, 87 Verification Conditions)
+### Vec2 (55 Proof Functions, 87+ Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -61,7 +61,74 @@ All proofs verified with `0 errors`.
 | 22 | Negation as Scaling | -v = (-1) * v |
 | 23 | Vector Space Structure | Combined axiom verification |
 
-### Vec3 (40 Proof Functions, 89 Verification Conditions)
+#### Min/Max/Abs Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 24 | Splat Zero | splat(0) = zero vector |
+| 25 | Min Commutativity | min(a, b) = min(b, a) |
+| 26 | Max Commutativity | max(a, b) = max(b, a) |
+| 27 | Min Idempotent | min(a, a) = a |
+| 28 | Max Idempotent | max(a, a) = a |
+| 29 | Min-Max Sum | min(a,b) + max(a,b) = a + b |
+| 30 | Min ≤ Both | min(a,b) ≤ a and min(a,b) ≤ b |
+| 31 | Max ≥ Both | max(a,b) ≥ a and max(a,b) ≥ b |
+
+#### Abs Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 32 | Abs Non-negative | abs(v) ≥ 0 component-wise |
+| 33 | Abs Idempotent | abs(abs(v)) = abs(v) |
+| 34 | Abs Zero | abs(0) = 0 |
+| 35 | Abs Negation | abs(-v) = abs(v) |
+
+#### Clamp Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 36 | Clamp Bounds | lo ≤ clamp(v, lo, hi) ≤ hi |
+| 37 | Clamp Identity | clamp(v, lo, hi) = v when lo ≤ v ≤ hi |
+| 38 | Clamp Idempotent | clamp(clamp(v, lo, hi), lo, hi) = clamp(v, lo, hi) |
+
+#### Distance Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 39 | Distance Squared Non-negative | dist²(a, b) ≥ 0 |
+| 40 | Distance Squared Symmetric | dist²(a, b) = dist²(b, a) |
+| 41 | Distance Squared Self | dist²(a, a) = 0 |
+
+#### Element-wise Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 42 | Element Sum Zero | element_sum(0) = 0 |
+| 43 | Element Sum Additive | element_sum(a + b) = element_sum(a) + element_sum(b) |
+| 44 | Element Sum Scale | element_sum(s * v) = s * element_sum(v) |
+| 45 | Element Product Splat | element_product(splat(v)) = v² |
+| 46 | Element Product Commutative | element_product(v) is symmetric in components |
+
+#### Reflect Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 47 | Reflect Along Unit Normal | reflect(n, n) = -n for unit n |
+| 48 | Reflect Perpendicular | reflect(v, n) = v when v ⊥ n |
+
+#### Lerp Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 49 | Lerp Zero | lerp(a, b, 0) = a |
+| 50 | Lerp One | lerp(a, b, 1) = b |
+| 51 | Lerp Identity | lerp(v, v, t) = v |
+| 52 | Lerp Two | lerp(a, b, 2) = 2b - a |
+| 53 | Lerp Neg One | lerp(a, b, -1) = 2a - b |
+| 54 | Lerp Zero Zero | lerp(0, 0, t) = 0 |
+| 55 | Vector Space Structure | Combined axiom verification (extended) |
+
+### Vec3 (55 Proof Functions, 89+ Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -111,7 +178,78 @@ All proofs verified with `0 errors`.
 |---------|----------|
 | 24 | Vector Space Structure | Combined axiom verification |
 
-### Vec4 (39 Proof Functions, 90 Verification Conditions)
+#### Min/Max Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 25 | Min Commutativity | min(a, b) = min(b, a) |
+| 26 | Max Commutativity | max(a, b) = max(b, a) |
+| 27 | Min Idempotent | min(a, a) = a |
+| 28 | Max Idempotent | max(a, a) = a |
+| 29 | Min-Max Sum | min(a,b) + max(a,b) = a + b |
+| 30 | Min ≤ Both | min(a,b) ≤ a and min(a,b) ≤ b |
+
+#### Abs Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 31 | Abs Non-negative | abs(v) ≥ 0 component-wise |
+| 32 | Abs Idempotent | abs(abs(v)) = abs(v) |
+| 33 | Abs Negation | abs(-v) = abs(v) |
+
+#### Element-wise Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 34 | Element Sum Zero | element_sum(0) = 0 |
+| 35 | Element Sum Additive | element_sum(a + b) = element_sum(a) + element_sum(b) |
+| 36 | Element Sum Scale | element_sum(s * v) = s * element_sum(v) |
+
+#### Distance Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 37 | Distance Squared Non-negative | dist²(a, b) ≥ 0 |
+| 38 | Distance Squared Symmetric | dist²(a, b) = dist²(b, a) |
+| 39 | Distance Squared Self | dist²(a, a) = 0 |
+| 40 | Vector Space Structure | Combined axiom verification (extended) |
+
+#### Clamp Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 41 | Clamp Bounds | lo ≤ clamp(v, lo, hi) ≤ hi |
+| 42 | Clamp Identity | clamp(v, lo, hi) = v when lo ≤ v ≤ hi |
+| 43 | Clamp Idempotent | clamp(clamp(v, lo, hi), lo, hi) = clamp(v, lo, hi) |
+| 44 | Clamp Squeeze | clamp(v, target, target) = target |
+
+#### Reflect Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 45 | Reflect Perpendicular | reflect(v, n) = v when v ⊥ n |
+| 46 | Reflect Along Unit Normal | reflect(n, n) = -n for unit n |
+| 47 | Reflect Zero | reflect(0, n) = 0 |
+
+#### Element Product Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 48 | Element Product Zero | element_product(0) = 0 |
+| 49 | Element Product Splat | element_product(splat(v)) = v³ |
+| 50 | Element Product Basis Zero | element_product(basis_i) = 0 |
+
+#### Lerp Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 51 | Lerp Zero | lerp(a, b, 0) = a |
+| 52 | Lerp One | lerp(a, b, 1) = b |
+| 53 | Lerp Identity | lerp(v, v, t) = v |
+| 54 | Lerp Two | lerp(a, b, 2) = 2b - a |
+| 55 | Lerp Zero Zero | lerp(0, 0, t) = 0 |
+
+### Vec4 (55 Proof Functions, 90+ Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -148,6 +286,84 @@ All proofs verified with `0 errors`.
 | 20 | Negation as Scaling | -v = (-1) * v |
 | 21 | Length Squared Zero iff Zero | \|a\|^2 = 0 <=> a = 0 |
 | 22 | Vector Space Structure | Combined axiom verification |
+
+#### Min/Max/Splat Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 23 | Splat Zero | splat(0) = zero vector |
+| 24 | Min Commutativity | min(a, b) = min(b, a) |
+| 25 | Max Commutativity | max(a, b) = max(b, a) |
+| 26 | Min Idempotent | min(a, a) = a |
+| 27 | Max Idempotent | max(a, a) = a |
+| 28 | Min-Max Sum | min(a,b) + max(a,b) = a + b |
+| 29 | Min ≤ Both | min(a,b) ≤ a and min(a,b) ≤ b |
+
+#### Abs Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 30 | Abs Non-negative | abs(v) ≥ 0 component-wise |
+| 31 | Abs Idempotent | abs(abs(v)) = abs(v) |
+| 32 | Abs Negation | abs(-v) = abs(v) |
+
+#### Element-wise Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 33 | Element Sum Zero | element_sum(0) = 0 |
+| 34 | Element Sum Additive | element_sum(a + b) = element_sum(a) + element_sum(b) |
+| 35 | Element Sum Scale | element_sum(s * v) = s * element_sum(v) |
+
+#### Distance Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 36 | Distance Squared Non-negative | dist²(a, b) ≥ 0 |
+| 37 | Distance Squared Symmetric | dist²(a, b) = dist²(b, a) |
+| 38 | Distance Squared Self | dist²(a, a) = 0 |
+| 39 | Vector Space Structure | Combined axiom verification (extended) |
+
+#### Clamp Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 40 | Clamp Bounds | lo ≤ clamp(v, lo, hi) ≤ hi |
+| 41 | Clamp Identity | clamp(v, lo, hi) = v when lo ≤ v ≤ hi |
+| 42 | Clamp Idempotent | clamp(clamp(v, lo, hi), lo, hi) = clamp(v, lo, hi) |
+| 43 | Clamp Squeeze | clamp(v, target, target) = target |
+
+#### Element Product Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 44 | Element Product Zero | element_product(0) = 0 |
+| 45 | Element Product Splat | element_product(splat(v)) = v⁴ |
+| 46 | Element Product Basis Zero | element_product(basis_i) = 0 |
+
+#### Reflect Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 47 | Reflect Perpendicular | reflect(v, n) = v when v ⊥ n |
+| 48 | Reflect Along Unit Normal | reflect(n, n) = -n for unit n |
+
+#### Additional Properties (Extended)
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 49 | Max ≥ Both | max(a,b) ≥ a and max(a,b) ≥ b |
+| 50 | Abs Zero | abs(0) = 0 |
+
+#### Lerp Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 51 | Lerp Zero | lerp(a, b, 0) = a |
+| 52 | Lerp One | lerp(a, b, 1) = b |
+| 53 | Lerp Identity | lerp(v, v, t) = v |
+| 54 | Lerp Two | lerp(a, b, 2) = 2b - a |
+| 55 | Lerp Zero Zero | lerp(0, 0, t) = 0 |
 
 ### Mat3 (22 Proof Functions, 26 Verification Conditions)
 
@@ -386,7 +602,7 @@ All proofs verified with `0 errors`.
 | 49 | Translation Roundtrip | get_translation(T(tx,ty,tz)) = (tx,ty,tz) |
 | 50 | det(T·S) = det(S) | det(T(t)·S(s)) = sx·sy·sz |
 
-### Color (45 Theorems)
+### Color (57 Proof Functions)
 
 All proofs verified with `0 errors`.
 
@@ -463,6 +679,28 @@ All proofs verified with `0 errors`.
 | 43 | Mix Identity | mix(c, c) = c |
 | 44 | Invert Luminance | lum(c) + lum(invert(c)) = 10000000 for valid c |
 | 45 | Blend Transparent FG | blend_over(transparent, dst) = dst |
+
+#### Contrasting Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 46 | Contrasting Black | contrasting(black) = white |
+| 47 | Contrasting White | contrasting(white) = black |
+| 48 | Contrasting Binary | contrasting returns black or white |
+| 49 | Contrasting Black High Contrast | contrasting(black) has luminance > 5000 |
+| 50 | Contrasting White High Contrast | contrasting(white) has luminance < 5000 |
+| 51 | Contrasting High Contrast | contrasting(c) differs from c in luminance |
+
+#### Darken/Lighten Properties
+
+| Theorem | Property | Mathematical Statement |
+|---------|----------|------------------------|
+| 52 | Darken Zero | darken(c, 0) = c |
+| 53 | Darken Full | darken(c, 1).rgb = (0, 0, 0) |
+| 54 | Darken Preserves Alpha | darken(c, amount).a = c.a |
+| 55 | Lighten Zero | lighten(c, 0) = c |
+| 56 | Lighten Full | lighten(c, 1).rgb = (1, 1, 1) |
+| 57 | Lighten Preserves Alpha | lighten(c, amount).a = c.a |
 
 ### Rect (52 Theorems)
 
@@ -777,24 +1015,24 @@ rustup install 1.92.0
 
 | Crate | Status | Proof Fns | VCs | Notes |
 |-------|--------|-----------|-----|-------|
-| rource-math/Vec2 | VERIFIED | 49 | 87 | Complete vector space axioms, geometric, length, projection |
-| rource-math/Vec3 | VERIFIED | 40 | 89 | Cross product, scalar triple product, reflect, project |
-| rource-math/Vec4 | VERIFIED | 39 | 90 | 4D vector space, basis orthonormality |
+| rource-math/Vec2 | VERIFIED | 55 | 87+ | Complete vector space axioms, geometric, length, min/max, abs, clamp, distance, reflect, lerp |
+| rource-math/Vec3 | VERIFIED | 55 | 89+ | Cross product, scalar triple product, reflect, clamp, distance, element product, lerp |
+| rource-math/Vec4 | VERIFIED | 55 | 90+ | 4D vector space, basis orthonormality, min/max, abs, clamp, reflect, element product, lerp |
 | rource-math/Mat3 (base) | VERIFIED | 22 | 26 | Matrix multiplication associativity, ring structure |
 | rource-math/Mat3 (extended) | VERIFIED | 26 | 45 | Determinant, translation, scaling, shearing, transforms |
 | rource-math/Mat4 (base) | VERIFIED | 22 | 27 | 3D transformation pipelines, ring structure |
 | rource-math/Mat4 (extended) | VERIFIED | 32 | 55 | Translation, scaling, determinant, trace, composite |
-| rource-math/Color | VERIFIED | 45 | 81 | Constructor, alpha, lerp, blend, clamp, luminance, scale, mix, invert |
+| rource-math/Color | VERIFIED | 57 | 81+ | Constructor, alpha, lerp, blend, clamp, luminance, scale, mix, invert, contrasting, darken, lighten |
 | rource-math/Rect | VERIFIED | 52 | 70 | Containment, intersection, union, transforms, area, from_points, normalize, grow, lerp |
 | rource-math/Bounds | VERIFIED | 66 | — | Bounds struct: area, containment, union, intersection, expand, shrink, translate, include_point |
 | rource-math/Utils | VERIFIED | 33 | — | Scalar lerp, clamp, approx_eq properties |
 
-**Total: 426 proof functions verified (Verus)**
+**Total: 475 proof functions verified (Verus)**
 
 ---
 
 *Last verified: 2026-01-31*
 *Version: 0.2026.01.30*
-*Total proof functions: 426 (Vec2: 49, Vec3: 40, Vec4: 39, Mat3: 48 [22+26], Mat4: 54 [22+32], Color: 45, Rect: 52, Bounds: 66, Utils: 33)*
-*Total verification conditions: 558+ (Vec2: 87, Vec3: 89, Vec4: 90, Mat3: 71 [26+45], Mat4: 82 [27+55], Color: 81, Rect: 70, Bounds: TBD, Utils: TBD)*
+*Total proof functions: 475 (Vec2: 55, Vec3: 55, Vec4: 55, Mat3: 48 [22+26], Mat4: 54 [22+32], Color: 57, Rect: 52, Bounds: 66, Utils: 33)*
+*Total verification conditions: 558+ (Vec2: 87+, Vec3: 89+, Vec4: 90+, Mat3: 71 [26+45], Mat4: 82 [27+55], Color: 81+, Rect: 70, Bounds: TBD, Utils: TBD)*
 *Status: All proofs verified with 0 errors across 11 files*
