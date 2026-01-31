@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769816173646,
+  "lastUpdate": 1769848764189,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4586,6 +4586,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/a936b8bf17fedd0cf0c7b1db0b21348c6ac15434"
         },
         "date": 1769816172771,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cae3e01cc6bc9538c3ed0e4bee5265f0894ace10",
+          "message": "Merge pull request #240 from tomtom215/claude/rource-continuation-OnmS0\n\nAdd Bounds type with 132 formally verified theorems (Coq R+Z)",
+          "timestamp": "2026-01-31T09:37:17+01:00",
+          "tree_id": "8d7a5c84956d6e44a785274e9e0ece45e68ab2ba",
+          "url": "https://github.com/tomtom215/rource/commit/cae3e01cc6bc9538c3ed0e4bee5265f0894ace10"
+        },
+        "date": 1769848763862,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
