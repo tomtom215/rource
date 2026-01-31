@@ -852,7 +852,7 @@ mod tests {
     // Mutation Testing: Kill missed mutants
     // =========================================================================
 
-    /// Kill mutant: from_store_with_hash → return Default / repo_hash → return None
+    /// Kill mutant: `from_store_with_hash` → return Default / `repo_hash` → return None
     #[test]
     fn test_from_store_with_hash_stores_hash() {
         let store = CommitStore::new();
@@ -863,7 +863,7 @@ mod tests {
         assert!(cache.repo_hash().unwrap() != 0);
     }
 
-    /// Kill mutant: from_store → return Default / repo_hash → return Some(...)
+    /// Kill mutant: `from_store` → return Default / `repo_hash` → return Some(...)
     #[test]
     fn test_from_store_no_hash() {
         let store = CommitStore::new();
@@ -871,7 +871,7 @@ mod tests {
         assert_eq!(cache.repo_hash(), None);
     }
 
-    /// Kill mutant: into_store → return Default
+    /// Kill mutant: `into_store` → return Default
     #[test]
     fn test_into_store_returns_populated_store() {
         let mut store = CommitStore::new();
@@ -884,7 +884,7 @@ mod tests {
         assert_eq!(recovered.file_change_count(), 1);
     }
 
-    /// Kill mutant: store() → return Default ref
+    /// Kill mutant: `store()` → return Default ref
     #[test]
     fn test_store_ref_returns_populated() {
         let mut store = CommitStore::new();
@@ -893,7 +893,7 @@ mod tests {
         assert_eq!(cache.store().commit_count(), 1);
     }
 
-    /// Kill mutant: from_bytes_with_repo_check < → <= (version too old, line 339)
+    /// Kill mutant: `from_bytes_with_repo_check` < → <= (version too old, line 339)
     /// Test with version exactly at minimum boundary.
     #[test]
     fn test_version_at_exact_minimum() {
@@ -906,7 +906,7 @@ mod tests {
         assert!(result.is_ok(), "cache at minimum version must load");
     }
 
-    /// Kill mutant: from_bytes_with_repo_check > → >= (version too new, line 345)
+    /// Kill mutant: `from_bytes_with_repo_check` > → >= (version too new, line 345)
     /// Test with version exactly at maximum boundary.
     #[test]
     fn test_version_at_exact_maximum() {
@@ -919,8 +919,8 @@ mod tests {
         assert!(result.is_ok(), "cache at maximum version must load");
     }
 
-    /// Kill mutant: repo_hash != 0 && repo_hash != expected → || (line 354)
-    /// When repo_hash is 0, the check should pass (0 means "no hash stored").
+    /// Kill mutant: `repo_hash` != 0 && `repo_hash` != expected → || (line 354)
+    /// When `repo_hash` is 0, the check should pass (0 means "no hash stored").
     #[test]
     fn test_repo_check_with_zero_hash_passes() {
         let store = CommitStore::new();
@@ -934,7 +934,7 @@ mod tests {
         assert!(result.is_ok(), "zero repo_hash should pass any repo check");
     }
 
-    /// Kill mutant: repo_hash != 0 → == 0 (line 365)
+    /// Kill mutant: `repo_hash` != 0 → == 0 (line 365)
     /// When a non-zero hash is stored, it should be returned as Some.
     #[test]
     fn test_nonzero_repo_hash_returned_as_some() {
@@ -951,7 +951,7 @@ mod tests {
         assert_eq!(loaded.repo_hash(), Some(hash));
     }
 
-    /// Kill mutant: hash_repo_id ^= → |= or &= (line 564)
+    /// Kill mutant: `hash_repo_id` ^= → |= or &= (line 564)
     /// FNV-1a uses XOR. |= or &= would produce a different hash for multi-byte inputs.
     #[test]
     fn test_hash_repo_id_xor_vs_or() {
@@ -979,7 +979,7 @@ mod tests {
         assert_eq!(h_empty, 0xcbf2_9ce4_8422_2325_u64);
     }
 
-    /// Kill mutant: cache_version → return 0 / cache_min_version → return 0
+    /// Kill mutant: `cache_version` → return 0 / `cache_min_version` → return 0
     #[test]
     fn test_cache_version_nonzero() {
         assert!(cache_version() > 0, "cache_version must be positive");
@@ -991,8 +991,8 @@ mod tests {
         assert_eq!(cache_min_version(), 1);
     }
 
-    /// Kill mutant: build_payload m + 1 → m - 1 (author_count, line 406)
-    /// Kill mutant: build_payload m + 1 → m - 1 (max_path_id, line 443)
+    /// Kill mutant: `build_payload` m + 1 → m - 1 (`author_count`, line 406)
+    /// Kill mutant: `build_payload` m + 1 → m - 1 (`max_path_id`, line 443)
     /// Verify that roundtrip preserves all authors and paths correctly.
     #[test]
     fn test_build_payload_author_path_count() {
@@ -1030,7 +1030,7 @@ mod tests {
         assert_eq!(paths, vec!["src/a.rs", "src/b.rs", "test/c.rs"]);
     }
 
-    /// Kill mutant: extract_path_data filter !s.is_empty() → delete !
+    /// Kill mutant: `extract_path_data` filter `!s.is_empty()` → delete !
     /// Empty segments from paths like "/root/" should be filtered out.
     #[test]
     fn test_extract_path_data_filters_empty_segments() {
@@ -1052,7 +1052,7 @@ mod tests {
         }
     }
 
-    /// Kill mutant: reconstruct_store match arms 0 and 2 (line 532-533)
+    /// Kill mutant: `reconstruct_store` match arms 0 and 2 (line 532-533)
     /// Verify all three file actions roundtrip correctly through cache.
     #[test]
     fn test_reconstruct_store_all_actions() {
@@ -1087,10 +1087,10 @@ mod tests {
         );
     }
 
-    /// Kill mutant: CacheError Display - ensure all variants produce unique messages
+    /// Kill mutant: `CacheError` Display - ensure all variants produce unique messages
     #[test]
     fn test_cache_error_display_all_variants() {
-        let errors = vec![
+        let errors = [
             CacheError::InvalidMagic,
             CacheError::VersionTooOld {
                 found: 0,
@@ -1130,11 +1130,12 @@ mod tests {
         assert!(displays[2].contains("new"));
         assert!(displays[3].contains("test error"));
         assert!(displays[4].contains("decode error"));
-        assert!(displays[5].contains("111"));
-        assert!(displays[5].contains("222"));
+        // RepositoryMismatch formats as hex: 111 = 6f, 222 = de
+        assert!(displays[5].contains("000000000000006f"));
+        assert!(displays[5].contains("00000000000000de"));
     }
 
-    /// Kill mutant: bytes.len() < CACHE_MAGIC.len() → <=
+    /// Kill mutant: `bytes.len()` < `CACHE_MAGIC.len()` → <=
     /// Test with bytes exactly the length of magic (4 bytes).
     #[test]
     fn test_bytes_exactly_magic_length() {
@@ -1148,7 +1149,7 @@ mod tests {
         assert!(matches!(result, Err(CacheError::DeserializationFailed(_))));
     }
 
-    /// Kill mutant: bytes[..CACHE_MAGIC.len()] != CACHE_MAGIC → ==
+    /// Kill mutant: `bytes[..CACHE_MAGIC.len()]` != `CACHE_MAGIC` → ==
     #[test]
     fn test_correct_magic_does_not_error_on_magic() {
         // Valid magic but corrupted payload

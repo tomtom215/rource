@@ -108,9 +108,20 @@ ENTRYPOINT ["rource"]
 CMD ["--help"]
 
 # =============================================================================
-# Default target - Use the version with git support
+# Default target - Use distroless for minimal attack surface
 # =============================================================================
-FROM runtime-with-git AS runtime
+# The default image uses Google Distroless (cc-debian12) which contains ONLY:
+#   - glibc runtime, libgcc, libstdc++, ca-certificates
+#   - NO shell, NO package manager, NO unnecessary OS packages
+#
+# This eliminates the vast majority of OS-level CVEs (openldap, pam, ncurses,
+# util-linux, libtasn1, curl, expat, git, zlib) that are present in full
+# Debian images. For git support, build with: --target runtime-with-git
+#
+# Usage:
+#   Default (distroless):  docker build -t rource .
+#   With git support:      docker build --target runtime-with-git -t rource:git .
+FROM runtime-distroless AS runtime
 
 # Metadata labels
 LABEL org.opencontainers.image.title="Rource"
@@ -119,5 +130,5 @@ LABEL org.opencontainers.image.url="https://github.com/tomtom215/rource"
 LABEL org.opencontainers.image.source="https://github.com/tomtom215/rource"
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 LABEL org.opencontainers.image.authors="Rource Contributors"
-LABEL org.opencontainers.image.base.name="debian:trixie-slim"
+LABEL org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12"
 LABEL org.opencontainers.image.version="0.1.0"

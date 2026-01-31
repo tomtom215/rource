@@ -234,6 +234,12 @@
 |---|-------|-----------|-----|
 | 7 | Windows CI benchmark timeout | Threshold too tight for CI variability | Increased threshold 100µs→150µs |
 | 105 | Cargo package names differ from directory names | `rource-cli/` has package name `rource` | Check `Cargo.toml` `[package] name`; `-p` uses package name |
+| 129 | `cargo bench --workspace` fails with `--noplot` | Binary targets use default harness, not criterion | Add `--benches` flag: `cargo bench --workspace --benches -- --noplot` |
+| 130 | Mutation testing timeout too low for CI | Complex mutants need >60s on CI runners | Default timeout 60s→120s in `mutation.yml` |
+| 131 | Feature-gated modules skip clippy unless `--all-features` | `cache` module behind `#[cfg(feature = "cache")]` | Always run `cargo clippy --all-targets --all-features -- -D warnings` |
+| 132 | Display format hex vs decimal causes cross-platform test failure | `CacheError::RepositoryMismatch` formats `{:016x}` | Test assertions must match actual Display format, not assumed format |
+| 133 | Docker Trivy scanning 138 OS-level CVEs from `debian:trixie-slim` | `runtime-with-git` pulls git + transitive deps (openldap, pam, ncurses, curl, etc.) | Switch default Docker target to `runtime-distroless` (cc-debian12); git stage opt-in |
+| 134 | NEVER dismiss security alerts as "pre-existing" or "base image issue" | Assumption that alerts auto-resolve proved wrong | Fix root cause: minimize attack surface; never assume issues resolve themselves |
 
 ---
 
@@ -424,7 +430,15 @@ All 123 entries in chronological order. Entry numbers match category table refer
 | 126 | 2026-01-31 | OnmS0 | VERIFICATION_COVERAGE.md sed pattern had stale anchor | `50` percent no longer in the line | Use `[0-9]+` to match any percentage |
 | 127 | 2026-01-31 | OnmS0 | Per-file R-based proof table in COQ_PROOFS.md was stale | Not updated by script | Manual update; consider adding per-file sed patterns |
 | 128 | 2026-01-31 | OnmS0 | "Breakthrough" language inappropriate for axiom injection technique | Well-known in Dafny/F*/Verus communities | Use "Proof Engineering Pattern"; add Related Work |
+| 129 | 2026-01-31 | GlDgV | `cargo bench --workspace -- --noplot` fails on binary targets | Default bench harness doesn't understand criterion's `--noplot` | Use `--benches` flag to target only `[[bench]]` targets |
+| 130 | 2026-01-31 | GlDgV | Mutation testing timeout 60s insufficient for CI | Complex mutants (cache serialization, parser state machines) exceed 60s | Increase to 120s in all 3 locations in `mutation.yml` |
+| 131 | 2026-01-31 | GlDgV | Feature-gated tests invisible to default clippy | `#[cfg(feature = "cache")]` modules not compiled without `--all-features` | ALWAYS use `--all-features` in local AND CI clippy runs |
+| 132 | 2026-01-31 | GlDgV | Test assumed decimal Display format, actual was hex | `RepositoryMismatch` uses `{:016x}` format | Read Display impl before writing assertions; never assume format |
+| 133 | 2026-01-31 | GlDgV | 138 Trivy alerts from Docker `debian:trixie-slim` + git transitive deps | git pulls openldap, pam, ncurses, curl, expat, libtasn1, util-linux | Switch default target to `runtime-distroless` (cc-debian12:nonroot) |
+| 134 | 2026-01-31 | GlDgV | Dismissing security alerts as "base image issue" is a VIOLATION | Assumed alerts would auto-resolve after image bump; proved wrong | NEVER dismiss; fix root cause by minimizing attack surface |
+| 135 | 2026-01-31 | GlDgV | Mutation test doc comments need backticks for clippy `doc_markdown` | `/// Kill mutant: foo_bar` triggers doc_markdown lint | Wrap all identifiers: `` /// Kill mutant: `foo_bar` `` |
+| 136 | 2026-01-31 | GlDgV | Equivalent mutants: `ParseOptions::strict()` → Default identical | Both produce same struct field values | Document as equivalent; don't write tests for impossible-to-kill mutants |
 
 ---
 
-*Last updated: 2026-01-31 | 128 entries | 14 categories*
+*Last updated: 2026-01-31 | 136 entries | 14 categories*
