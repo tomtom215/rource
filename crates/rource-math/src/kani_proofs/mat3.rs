@@ -288,3 +288,122 @@ fn verify_mat3_approx_eq_reflexive() {
     let mat = Mat3 { m };
     assert!(mat.approx_eq(mat), "approx_eq not reflexive");
 }
+
+// ============================================================================
+// mul (matrix multiplication)
+// ============================================================================
+
+/// **Right identity**: `M * IDENTITY == M` for all finite matrices.
+#[kani::proof]
+fn verify_mat3_mul_identity_right() {
+    let m: [f32; 9] = [
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+    ];
+    for i in 0..9 {
+        kani::assume(m[i].is_finite());
+    }
+    let mat = Mat3 { m };
+    let result = mat * Mat3::IDENTITY;
+    for i in 0..9 {
+        assert!(result.m[i] == mat.m[i], "M * I should equal M");
+    }
+}
+
+/// **Left identity**: `IDENTITY * M == M` for all finite matrices.
+#[kani::proof]
+fn verify_mat3_mul_identity_left() {
+    let m: [f32; 9] = [
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+    ];
+    for i in 0..9 {
+        kani::assume(m[i].is_finite());
+    }
+    let mat = Mat3 { m };
+    let result = Mat3::IDENTITY * mat;
+    for i in 0..9 {
+        assert!(result.m[i] == mat.m[i], "I * M should equal M");
+    }
+}
+
+// ============================================================================
+// uniform_scaling
+// ============================================================================
+
+/// **Finiteness**: `uniform_scaling()` with bounded input produces finite matrix.
+#[kani::proof]
+fn verify_mat3_uniform_scaling_finite() {
+    let s: f32 = kani::any();
+    kani::assume(s.is_finite());
+    let mat = Mat3::uniform_scaling(s);
+    for i in 0..9 {
+        assert!(mat.m[i].is_finite(), "uniform_scaling() element non-finite");
+    }
+}
+
+/// **Diagonal structure**: `uniform_scaling(s)` has `s` on diagonal, `0` off-diagonal.
+#[kani::proof]
+fn verify_mat3_uniform_scaling_structure() {
+    let s: f32 = kani::any();
+    kani::assume(s.is_finite());
+    let mat = Mat3::uniform_scaling(s);
+    // Diagonal elements should be s
+    assert!(mat.m[0] == s, "uniform_scaling diagonal[0] should be s");
+    assert!(mat.m[4] == s, "uniform_scaling diagonal[1] should be s");
+    // m[8] is the homogeneous coordinate, should be 1.0
+    assert!(mat.m[8] == 1.0, "uniform_scaling m[8] should be 1.0");
+    // Off-diagonal should be 0
+    assert!(mat.m[1] == 0.0, "off-diagonal should be 0");
+    assert!(mat.m[2] == 0.0, "off-diagonal should be 0");
+    assert!(mat.m[3] == 0.0, "off-diagonal should be 0");
+    assert!(mat.m[5] == 0.0, "off-diagonal should be 0");
+}
+
+// ============================================================================
+// from_translation
+// ============================================================================
+
+/// **Finiteness**: `from_translation()` with finite Vec2 produces finite matrix.
+#[kani::proof]
+fn verify_mat3_from_translation_finite() {
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    kani::assume(tx.is_finite());
+    kani::assume(ty.is_finite());
+    let mat = Mat3::from_translation(Vec2::new(tx, ty));
+    for i in 0..9 {
+        assert!(
+            mat.m[i].is_finite(),
+            "from_translation() element non-finite"
+        );
+    }
+}
+
+// ============================================================================
+// Default
+// ============================================================================
+
+/// **Default is identity**: `Default::default()` returns IDENTITY.
+#[kani::proof]
+fn verify_mat3_default_is_identity() {
+    let def = Mat3::default();
+    let id = Mat3::IDENTITY;
+    for i in 0..9 {
+        assert!(def.m[i] == id.m[i], "default should be identity");
+    }
+}

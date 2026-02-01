@@ -197,10 +197,10 @@ The specifications and the compiler serve fundamentally different purposes.
 │  ├── Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v                            │
 │  ├── Color.v, Rect.v, Utils.v                                          │
 │  ├── Vec2_Proofs.v ... Mat4_Proofs.v (570 theorems)                     │
-│  ├── Color_Proofs.v, Rect_Proofs.v (220 theorems)                       │
+│  ├── Color_Proofs.v, Rect_Proofs.v (241 theorems)                       │
 │  ├── Complexity.v (60 theorems)                                         │
 │  └── Purpose: Mathematical correctness proofs                           │
-│      Status: COMPLETE (1499 total with Verus)                            │
+│      Status: COMPLETE (1520 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
 │  ├── Vec2_Compute.v (50 theorems)                                       │
@@ -208,11 +208,11 @@ The specifications and the compiler serve fundamentally different purposes.
 │  ├── Vec4_Compute.v (33 theorems)                                       │
 │  ├── Mat3_Compute.v (25 theorems, determinant + trace)                  │
 │  ├── Mat4_Compute.v (50 theorems, incl. 16 component lemmas)            │
-│  ├── Color_Compute.v (38 theorems, blend/lerp/clamp)                    │
+│  ├── Color_Compute.v (60 theorems, blend/lerp/clamp)                    │
 │  ├── Rect_Compute.v (43 theorems, intersection/containment)             │
 │  ├── Utils_Compute.v (18 theorems, lerp/clamp)                           │
 │  └── Purpose: Computable operations with algebraic proofs               │
-│      Status: COMPLETE (369 theorems, all 8 types)                       │
+│      Status: COMPLETE (391 theorems, all 8 types)                       │
 │                                                                         │
 │  Layer 3: Extraction Pipeline                                           │
 │  ├── RourceMath_Extract.v → rource_math_extracted.ml (OCaml, 23 KB)     │

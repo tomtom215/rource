@@ -991,9 +991,168 @@ Proof.
   apply color_eq; ring.
 Qed.
 
+(** * Integer Conversion Properties *)
+
+(** Theorem 101: u8_to_f32 maps 0 to 0. *)
+Theorem u8_to_f32_zero : u8_to_f32 0 = 0.
+Proof.
+  unfold u8_to_f32. lra.
+Qed.
+
+(** Theorem 102: u8_to_f32 maps 255 to 1. *)
+Theorem u8_to_f32_max : u8_to_f32 255 = 1.
+Proof.
+  unfold u8_to_f32. lra.
+Qed.
+
+(** Theorem 103: u8_to_f32 is non-negative for non-negative input. *)
+Theorem u8_to_f32_nonneg : forall n : R, 0 <= n -> 0 <= u8_to_f32 n.
+Proof.
+  intros n Hn. unfold u8_to_f32. lra.
+Qed.
+
+(** Theorem 104: u8_to_f32 is at most 1 for input at most 255. *)
+Theorem u8_to_f32_le_one : forall n : R, n <= 255 -> u8_to_f32 n <= 1.
+Proof.
+  intros n Hn. unfold u8_to_f32. lra.
+Qed.
+
+(** Theorem 105: u8_to_f32 range [0, 1] for input in [0, 255]. *)
+Theorem u8_to_f32_range : forall n : R, 0 <= n <= 255 ->
+  0 <= u8_to_f32 n <= 1.
+Proof.
+  intros n [Hn0 Hn255]. unfold u8_to_f32. lra.
+Qed.
+
+(** Theorem 106: u8_to_f32 is monotone. *)
+Theorem u8_to_f32_monotone : forall m n : R, m <= n -> u8_to_f32 m <= u8_to_f32 n.
+Proof.
+  intros m n Hmn. unfold u8_to_f32. lra.
+Qed.
+
+(** Theorem 107: u8_to_f32 is injective. *)
+Theorem u8_to_f32_injective : forall m n : R, u8_to_f32 m = u8_to_f32 n -> m = n.
+Proof.
+  intros m n H. unfold u8_to_f32 in H. lra.
+Qed.
+
+(** Theorem 108: from_u8 all components in [0, 1] for valid byte inputs. *)
+Theorem color_from_u8_range : forall r g b a : R,
+  0 <= r <= 255 -> 0 <= g <= 255 -> 0 <= b <= 255 -> 0 <= a <= 255 ->
+  let c := color_from_u8 r g b a in
+  0 <= color_r c <= 1 /\ 0 <= color_g c <= 1 /\
+  0 <= color_b c <= 1 /\ 0 <= color_a c <= 1.
+Proof.
+  intros r g b a Hr Hg Hb Ha. simpl.
+  unfold color_from_u8, u8_to_f32. simpl. lra.
+Qed.
+
+(** Theorem 109: from_u8(0, 0, 0, 255) = black. *)
+Theorem color_from_u8_black : color_from_u8 0 0 0 255 = color_black.
+Proof.
+  unfold color_from_u8, u8_to_f32, color_black.
+  apply color_eq; lra.
+Qed.
+
+(** Theorem 110: from_u8(255, 255, 255, 255) = white. *)
+Theorem color_from_u8_white : color_from_u8 255 255 255 255 = color_white.
+Proof.
+  unfold color_from_u8, u8_to_f32, color_white.
+  apply color_eq; lra.
+Qed.
+
+(** Theorem 111: from_rgb8 produces opaque colors (alpha = 1). *)
+Theorem color_from_rgb8_opaque : forall r g b : R,
+  color_a (color_from_rgb8 r g b) = 1.
+Proof.
+  intros. unfold color_from_rgb8, color_from_u8, u8_to_f32. simpl. lra.
+Qed.
+
+(** Theorem 112: from_hex produces opaque colors (alpha = 1). *)
+Theorem color_from_hex_opaque : forall r g b : R,
+  color_a (color_from_hex r g b) = 1.
+Proof.
+  intros. unfold color_from_hex. simpl. reflexivity.
+Qed.
+
+(** Theorem 113: from_hex and from_hex_alpha are consistent when alpha byte = 255. *)
+Theorem color_from_hex_alpha_consistency : forall r g b : R,
+  color_from_hex r g b = color_from_hex_alpha r g b 255.
+Proof.
+  intros. unfold color_from_hex, color_from_hex_alpha, u8_to_f32.
+  apply color_eq; lra.
+Qed.
+
+(** Theorem 114: from_rgb8 is equivalent to from_u8 with alpha = 255. *)
+Theorem color_from_rgb8_eq_from_u8 : forall r g b : R,
+  color_from_rgb8 r g b = color_from_u8 r g b 255.
+Proof.
+  intros. unfold color_from_rgb8. reflexivity.
+Qed.
+
+(** Theorem 115: f32_to_u8 maps 0 to 0. *)
+Theorem f32_to_u8_zero : f32_to_u8 0 = 0.
+Proof.
+  unfold f32_to_u8, clamp01.
+  destruct (Rle_dec 0 0) as [_|H]; [| exfalso; lra].
+  ring.
+Qed.
+
+(** Theorem 116: f32_to_u8 maps 1 to 255. *)
+Theorem f32_to_u8_one : f32_to_u8 1 = 255.
+Proof.
+  unfold f32_to_u8, clamp01.
+  destruct (Rle_dec 1 0) as [H|_]; [exfalso; lra |].
+  destruct (Rle_dec 1 1) as [_|H]; [ring | exfalso; lra].
+Qed.
+
+(** Theorem 117: f32_to_u8 output is non-negative. *)
+Theorem f32_to_u8_nonneg : forall v : R, 0 <= f32_to_u8 v.
+Proof.
+  intros v. unfold f32_to_u8, clamp01.
+  destruct (Rle_dec v 0) as [H|H]; [lra |].
+  destruct (Rle_dec 1 v) as [H1|H1]; lra.
+Qed.
+
+(** Theorem 118: f32_to_u8 output is at most 255. *)
+Theorem f32_to_u8_le_255 : forall v : R, f32_to_u8 v <= 255.
+Proof.
+  intros v. unfold f32_to_u8, clamp01.
+  destruct (Rle_dec v 0) as [H|H]; [lra |].
+  destruct (Rle_dec 1 v) as [H1|H1]; lra.
+Qed.
+
+(** Theorem 119: f32_to_u8 range [0, 255] for all inputs. *)
+Theorem f32_to_u8_range : forall v : R, 0 <= f32_to_u8 v <= 255.
+Proof.
+  intros v. split; [apply f32_to_u8_nonneg | apply f32_to_u8_le_255].
+Qed.
+
+(** Theorem 120: Roundtrip u8 -> f32 -> u8 is exact for valid byte values.
+    u8_to_f32 n * 255 = n for all n. *)
+Theorem u8_f32_roundtrip : forall n : R,
+  u8_to_f32 n * 255 = n.
+Proof.
+  intros n. unfold u8_to_f32. lra.
+Qed.
+
+(** Theorem 121: f32_to_u8 of u8_to_f32 is identity for valid byte range.
+    f32_to_u8(u8_to_f32(n)) = n when 0 <= n <= 255. *)
+Theorem f32_u8_roundtrip : forall n : R,
+  0 <= n -> n <= 255 ->
+  f32_to_u8 (u8_to_f32 n) = n.
+Proof.
+  intros n Hn0 Hn255. unfold f32_to_u8, u8_to_f32, clamp01.
+  destruct (Rle_dec (n / 255) 0) as [H|H].
+  - assert (n = 0) by lra. subst. lra.
+  - destruct (Rle_dec 1 (n / 255)) as [H1|H1].
+    + assert (n = 255) by lra. subst. lra.
+    + lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 100
+    Total theorems: 121
     Admits: 0
     Axioms: Standard Coq real number library only
 

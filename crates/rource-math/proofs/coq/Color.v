@@ -146,6 +146,37 @@ Definition color_lighten (c : Color) (amount : R) : Color :=
           (color_b c + (1 - color_b c) * amount)
           (color_a c).
 
+(** * Integer Conversion Operations *)
+
+(** Convert a natural number in [0, 255] to its real-valued [0, 1] equivalent. *)
+Definition u8_to_f32 (n : R) : R := n / 255.
+
+(** Convert from 8-bit RGBA values to Color.
+    Models Rust's from_rgba8(r, g, b, a) where each argument is u8. *)
+Definition color_from_u8 (r g b a : R) : Color :=
+  mkColor (u8_to_f32 r) (u8_to_f32 g) (u8_to_f32 b) (u8_to_f32 a).
+
+(** Convert from 8-bit RGB values to Color (alpha = 1.0).
+    Models Rust's from_rgb8(r, g, b). *)
+Definition color_from_rgb8 (r g b : R) : Color :=
+  color_from_u8 r g b 255.
+
+(** Convert from hex RGB value (alpha = 1.0).
+    Models Rust's from_hex(0xRRGGBB). *)
+Definition color_from_hex (r_byte g_byte b_byte : R) : Color :=
+  mkColor (u8_to_f32 r_byte) (u8_to_f32 g_byte) (u8_to_f32 b_byte) 1.
+
+(** Convert from hex RGBA value.
+    Models Rust's from_hex_alpha(0xRRGGBBAA). *)
+Definition color_from_hex_alpha (r_byte g_byte b_byte a_byte : R) : Color :=
+  mkColor (u8_to_f32 r_byte) (u8_to_f32 g_byte)
+          (u8_to_f32 b_byte) (u8_to_f32 a_byte).
+
+(** Convert a [0, 1] real to its [0, 255] integer equivalent (with rounding).
+    Models Rust's `(v.clamp(0.0, 1.0) * 255.0 + 0.5) as u32`.
+    In exact arithmetic over R, this simplifies to v * 255. *)
+Definition f32_to_u8 (v : R) : R := clamp01 v * 255.
+
 (** * Notations *)
 
 Notation "+c" := color_new (at level 0).
