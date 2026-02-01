@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769942053392,
+  "lastUpdate": 1769955381940,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5015,6 +5015,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/0ee86b06c2bb9d6973b1100305bb50e34546506b"
         },
         "date": 1769942052317,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "305b8e3cfabd925eb6265a71b58eb76c08f7599c",
+          "message": "Merge pull request #251 from tomtom215/claude/rource-math-verification-aKa8F\n\nExpand Coq FP error bounds: +77 theorems across 6 modules",
+          "timestamp": "2026-02-01T15:14:11+01:00",
+          "tree_id": "77f5ebec8af5637dba646425c3da5058e7a4cb25",
+          "url": "https://github.com/tomtom215/rource/commit/305b8e3cfabd925eb6265a71b58eb76c08f7599c"
+        },
+        "date": 1769955381055,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
