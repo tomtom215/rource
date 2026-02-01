@@ -61,7 +61,7 @@ which wasm_of_ocaml 2>/dev/null
 | Tool | Version | Purpose | Install Location |
 |------|---------|---------|------------------|
 | **Verus** | Latest | Rust formal verification (475 proof functions) | `/tmp/verus/` |
-| **Coq** | 8.18.0 | Proof assistant (1570 theorems: 1024 R-based + 369 Z-based + 177 FP) | System (`apt`) + opam (see Rocq migration) |
+| **Coq** | 8.18.0 | Proof assistant (1613 theorems: 1045 R-based + 391 Z-based + 177 FP) | System (`apt`) + opam (see Rocq migration) |
 | **coq-equations** | 1.3+8.18 | Dependent pattern matching for Coq | opam |
 | **MetaCoq** | 8.18.dev | Verified erasure/extraction (Path 2) | `/tmp/metacoq/` + opam |
 | **wasm_of_ocaml** | 6.2.0+ | OCaml-to-WASM compiler (Path 1) | opam |
@@ -263,7 +263,7 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 1 (Proof) | `Vec4_Proofs.v` | 96 | Vec4 algebraic properties |
 | 1 (Proof) | `Mat3_Proofs.v` | 92 | Mat3 algebraic properties |
 | 1 (Proof) | `Mat4_Proofs.v` | 157 | Mat4 algebraic properties |
-| 1 (Proof) | `Color_Proofs.v` | 100 | Color alpha, blend, lerp, luminance |
+| 1 (Proof) | `Color_Proofs.v` | 121 | Color alpha, blend, lerp, luminance |
 | 1 (Proof) | `Rect_Proofs.v` | 120 | Rect containment, intersection, union |
 | 1 (Proof) | `Complexity.v` | 60 | O(1) complexity bounds |
 | 2 (Compute) | `Vec2_Compute.v` | 50 | Z-based Vec2 (extractable) |
@@ -271,14 +271,14 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 2 (Compute) | `Vec4_Compute.v` | 33 | Z-based Vec4 (extractable) |
 | 2 (Compute) | `Mat3_Compute.v` | 25 | Z-based Mat3 (extractable) |
 | 2 (Compute) | `Mat4_Compute.v` | 50 | Z-based Mat4 (extractable) |
-| 2 (Compute) | `Color_Compute.v` | 38 | Z-based Color (extractable) |
+| 2 (Compute) | `Color_Compute.v` | 60 | Z-based Color (extractable) |
 | 2 (Compute) | `Rect_Compute.v` | 43 | Z-based Rect (extractable) |
 | 2 (Compute) | `Utils_Compute.v` | 18 | Z-based Utils (extractable) |
 | 3 (Extract) | `Color_Extract.v` | 0 | Color OCaml extraction |
 | 3 (Extract) | `Rect_Extract.v` | 0 | Rect OCaml extraction |
 | 3 (Extract) | `RourceMath_Extract.v` | 0 | Unified OCaml extraction (8 types) |
 | 3 (Verified) | `Vec2_VerifiedExtract.v` | 0 | MetaCoq verified erasure (Path 2) |
-| **Total** | **32 files** | **1393** | **Zero admits** |
+| **Total** | **32 files** | **1436** | **Zero admits** |
 
 ---
 
@@ -477,7 +477,7 @@ for f in crates/rource-math/proofs/*_proofs.rs; do
   /tmp/verus/verus "$f"
 done
 
-# Coq (1570 theorems, ~45 seconds)
+# Coq (1613 theorems, ~45 seconds)
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specs
@@ -508,10 +508,10 @@ done
 | Tool | Theorems/Proofs | Errors | Admits |
 |------|-----------------|--------|--------|
 | Verus | 475 proof functions | 0 | 0 |
-| Coq (R-based) | 1024 theorems | 0 | 0 |
-| Coq (Z-based) | 369 theorems | 0 | 0 |
-| Kani (CBMC) | 176 harnesses | 0 | 0 |
-| **Combined** | **2221** | **0** | **0** |
+| Coq (R-based) | 1045 theorems | 0 | 0 |
+| Coq (Z-based) | 391 theorems | 0 | 0 |
+| Kani (CBMC) | 182 harnesses | 0 | 0 |
+| **Combined** | **2270** | **0** | **0** |
 
 ---
 
@@ -790,6 +790,6 @@ crates/rource-math/proofs/
 
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC*
-*2221 formally verified theorems/harnesses (Verus: 475, Coq: 1570, Kani: 176)*
+*2270 formally verified theorems/harnesses (Verus: 475, Coq: 1613, Kani: 182)*
 *9 verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, Utils*
 *Current: Coq 8.18 + MetaCoq (from source) | Future: Rocq 9.x + MetaRocq (when opam repos stabilize)*

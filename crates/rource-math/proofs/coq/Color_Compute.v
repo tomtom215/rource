@@ -9,7 +9,7 @@
  *
  * LAYERED VERIFICATION ARCHITECTURE:
  *
- *   Layer 1 (Abstract):      Color.v / Color_Proofs.v     (R-based, 26 theorems)
+ *   Layer 1 (Abstract):      Color.v / Color_Proofs.v     (R-based, 121 theorems)
  *   Layer 2 (Computational): Color_Compute.v              (Z-based, extractable)
  *   Layer 3 (Extraction):    Color_Extract.v              (OCaml/WASM output)
  *
@@ -499,6 +499,180 @@ Proof.
   destruct (zcolor_luminance c <=? 5000000); reflexivity.
 Qed.
 
+(** * Integer Conversion Operations *)
+
+(** Convert a [0, 255_000] scaled integer to [0, 1000] range.
+    Z-compute analog of u8_to_f32: n/255 ≈ n*1000/255000.
+    We use scale factor 1000 to match ZColor component range. *)
+Definition zu8_to_z1000 (n : Z) : Z := n * 1000 / 255.
+
+(** Convert from scaled 8-bit RGBA values to ZColor.
+    Input range: [0, 255] for each component.
+    Output range: [0, 1000] (fixed-point [0.0, 1.0]). *)
+Definition zcolor_from_u8 (r g b a : Z) : ZColor :=
+  mkZColor (zu8_to_z1000 r) (zu8_to_z1000 g) (zu8_to_z1000 b) (zu8_to_z1000 a).
+
+(** Convert from scaled 8-bit RGB values (alpha = full opacity = 1000). *)
+Definition zcolor_from_rgb8 (r g b : Z) : ZColor :=
+  mkZColor (zu8_to_z1000 r) (zu8_to_z1000 g) (zu8_to_z1000 b) 1000.
+
+(** Convert from hex RGB byte values (alpha = full opacity = 1000). *)
+Definition zcolor_from_hex (r_byte g_byte b_byte : Z) : ZColor :=
+  mkZColor (zu8_to_z1000 r_byte) (zu8_to_z1000 g_byte)
+           (zu8_to_z1000 b_byte) 1000.
+
+(** Convert from hex RGBA byte values. *)
+Definition zcolor_from_hex_alpha (r_byte g_byte b_byte a_byte : Z) : ZColor :=
+  mkZColor (zu8_to_z1000 r_byte) (zu8_to_z1000 g_byte)
+           (zu8_to_z1000 b_byte) (zu8_to_z1000 a_byte).
+
+(** Convert a [0, 1000] scaled value to [0, 255] range.
+    Z-compute analog of f32_to_u8: clamp01(v) * 255. *)
+Definition zf32_to_u8 (v : Z) : Z := zclamp v 0 1000 * 255 / 1000.
+
+(** ** zu8_to_z1000 Properties *)
+
+Theorem zu8_to_z1000_zero : zu8_to_z1000 0 = 0.
+Proof. reflexivity. Qed.
+
+Theorem zu8_to_z1000_max : zu8_to_z1000 255 = 1000.
+Proof. reflexivity. Qed.
+
+Theorem zu8_to_z1000_nonneg : forall n : Z,
+  0 <= n -> 0 <= zu8_to_z1000 n.
+Proof.
+  intros n Hn. unfold zu8_to_z1000.
+  apply Z.div_pos; lia.
+Qed.
+
+Theorem zu8_to_z1000_monotone : forall m n : Z,
+  0 <= m -> m <= n -> zu8_to_z1000 m <= zu8_to_z1000 n.
+Proof.
+  intros m n Hm Hmn. unfold zu8_to_z1000.
+  apply Z.div_le_mono; lia.
+Qed.
+
+(** ** zcolor_from_u8 Properties *)
+
+Theorem zcolor_from_u8_black :
+  zcolor_from_u8 0 0 0 255 = zcolor_black.
+Proof. reflexivity. Qed.
+
+Theorem zcolor_from_u8_white :
+  zcolor_from_u8 255 255 255 255 = zcolor_white.
+Proof. reflexivity. Qed.
+
+(** ** zcolor_from_rgb8 Properties *)
+
+Theorem zcolor_from_rgb8_opaque : forall r g b : Z,
+  zcolor_a (zcolor_from_rgb8 r g b) = 1000.
+Proof. intros. reflexivity. Qed.
+
+Theorem zcolor_from_rgb8_eq_from_u8 : forall r g b : Z,
+  zcolor_from_rgb8 r g b =
+  mkZColor (zu8_to_z1000 r) (zu8_to_z1000 g) (zu8_to_z1000 b) 1000.
+Proof. intros. reflexivity. Qed.
+
+(** ** zcolor_from_hex Properties *)
+
+Theorem zcolor_from_hex_opaque : forall r g b : Z,
+  zcolor_a (zcolor_from_hex r g b) = 1000.
+Proof. intros. reflexivity. Qed.
+
+Theorem zcolor_from_hex_alpha_consistency : forall r g b : Z,
+  zcolor_from_hex r g b =
+  mkZColor (zcolor_r (zcolor_from_hex_alpha r g b 255))
+           (zcolor_g (zcolor_from_hex_alpha r g b 255))
+           (zcolor_b (zcolor_from_hex_alpha r g b 255))
+           1000.
+Proof.
+  intros. unfold zcolor_from_hex, zcolor_from_hex_alpha.
+  simpl. reflexivity.
+Qed.
+
+(** ** zf32_to_u8 Properties *)
+
+Theorem zf32_to_u8_zero : zf32_to_u8 0 = 0.
+Proof. reflexivity. Qed.
+
+Theorem zf32_to_u8_one : zf32_to_u8 1000 = 255.
+Proof. reflexivity. Qed.
+
+Lemma zclamp_ge_lo : forall v lo hi : Z,
+  lo <= hi -> lo <= zclamp v lo hi.
+Proof.
+  intros v lo hi Hle. unfold zclamp.
+  destruct (v <? lo) eqn:E1; [lia|].
+  destruct (hi <? v) eqn:E2; [lia|].
+  apply Z.ltb_ge in E1. lia.
+Qed.
+
+Lemma zclamp_nonneg : forall v lo hi : Z,
+  0 <= lo -> lo <= hi -> 0 <= zclamp v lo hi.
+Proof.
+  intros v lo hi Hlo Hle.
+  assert (H := zclamp_ge_lo v lo hi Hle). lia.
+Qed.
+
+Lemma zclamp_le_hi : forall v lo hi : Z,
+  lo <= hi -> zclamp v lo hi <= hi.
+Proof.
+  intros v lo hi Hle. unfold zclamp.
+  destruct (v <? lo) eqn:E1; [lia|].
+  destruct (hi <? v) eqn:E2; [lia|].
+  apply Z.ltb_ge in E2. lia.
+Qed.
+
+Theorem zf32_to_u8_nonneg : forall v : Z,
+  0 <= zf32_to_u8 v.
+Proof.
+  intros v. unfold zf32_to_u8.
+  apply Z.div_pos.
+  - apply Z.mul_nonneg_nonneg.
+    + apply zclamp_nonneg; lia.
+    + lia.
+  - lia.
+Qed.
+
+Theorem zf32_to_u8_le_255 : forall v : Z,
+  zf32_to_u8 v <= 255.
+Proof.
+  intros v. unfold zf32_to_u8.
+  apply Z.div_le_upper_bound; [lia|].
+  assert (H: zclamp v 0 1000 <= 1000) by (apply zclamp_le_hi; lia).
+  nia.
+Qed.
+
+Theorem zf32_to_u8_range : forall v : Z,
+  0 <= zf32_to_u8 v <= 255.
+Proof.
+  intros v. split.
+  - apply zf32_to_u8_nonneg.
+  - apply zf32_to_u8_le_255.
+Qed.
+
+(** ** Roundtrip Properties *)
+
+(** Note: exact roundtrip does NOT hold in Z due to integer division truncation.
+    For example, zu8_to_z1000(128)=501, zf32_to_u8(501)=127 ≠ 128.
+    We prove boundary cases and approximate bounds instead. *)
+
+Theorem zu8_z1000_roundtrip_zero :
+  zf32_to_u8 (zu8_to_z1000 0) = 0.
+Proof. reflexivity. Qed.
+
+Theorem zu8_z1000_roundtrip_max :
+  zf32_to_u8 (zu8_to_z1000 255) = 255.
+Proof. reflexivity. Qed.
+
+Theorem zf32_u8_z1000_roundtrip_zero :
+  zu8_to_z1000 (zf32_to_u8 0) = 0.
+Proof. reflexivity. Qed.
+
+Theorem zf32_u8_z1000_roundtrip_max :
+  zu8_to_z1000 (zf32_to_u8 1000) = 1000.
+Proof. reflexivity. Qed.
+
 (** * Computational Tests *)
 
 Example zcolor_test_new :
@@ -515,4 +689,16 @@ Proof. reflexivity. Qed.
 
 Example zcolor_test_luminance :
   zcolor_luminance (mkZColor 1000 0 0 1000) = 2126000.
+Proof. reflexivity. Qed.
+
+Example zcolor_test_u8_to_z1000_128 :
+  zu8_to_z1000 128 = 501.
+Proof. reflexivity. Qed.
+
+Example zcolor_test_from_u8_mid :
+  zcolor_from_u8 128 128 128 255 = mkZColor 501 501 501 1000.
+Proof. reflexivity. Qed.
+
+Example zcolor_test_f32_to_u8_500 :
+  zf32_to_u8 500 = 127.
 Proof. reflexivity. Qed.
