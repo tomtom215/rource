@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769928212759,
+  "lastUpdate": 1769942053392,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4976,6 +4976,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/f26b166eaab0d6531d5dbf39322d20084cb6a7e0"
         },
         "date": 1769928212275,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ee86b06c2bb9d6973b1100305bb50e34546506b",
+          "message": "Merge pull request #250 from tomtom215/claude/rource-math-verification-r1GdR\n\nExpand FP error bounds verification: +102 theorems, 2413 total",
+          "timestamp": "2026-02-01T11:32:05+01:00",
+          "tree_id": "885f6b31d35273c8bcc93972b2c221708c62f444",
+          "url": "https://github.com/tomtom215/rource/commit/0ee86b06c2bb9d6973b1100305bb50e34546506b"
+        },
+        "date": 1769942052317,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
