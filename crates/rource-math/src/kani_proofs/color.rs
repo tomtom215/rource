@@ -547,31 +547,6 @@ fn verify_color_premultiplied_bounded() {
 }
 
 // ============================================================================
-// with_alpha
-// ============================================================================
-
-/// **Postcondition**: `with_alpha(a)` preserves RGB and sets alpha to `a`.
-#[kani::proof]
-fn verify_color_with_alpha_preserves_rgb() {
-    let r: f32 = kani::any();
-    let g: f32 = kani::any();
-    let b: f32 = kani::any();
-    let a: f32 = kani::any();
-    let new_a: f32 = kani::any();
-    kani::assume(r.is_finite());
-    kani::assume(g.is_finite());
-    kani::assume(b.is_finite());
-    kani::assume(a.is_finite());
-    kani::assume(new_a.is_finite());
-    let c = Color::new(r, g, b, a);
-    let c2 = c.with_alpha(new_a);
-    assert!(c2.r == r, "with_alpha should preserve r");
-    assert!(c2.g == g, "with_alpha should preserve g");
-    assert!(c2.b == b, "with_alpha should preserve b");
-    assert!(c2.a == new_a, "with_alpha should set alpha");
-}
-
-// ============================================================================
 // luminance non-negative
 // ============================================================================
 

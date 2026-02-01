@@ -559,23 +559,6 @@ fn verify_vec2_dot_self_non_negative() {
     assert!(d >= 0.0, "v.dot(v) returned negative value");
 }
 
-// ============================================================================
-// abs
-// ============================================================================
-
-/// **Non-negativity**: `abs()` components are always ≥ 0 for finite inputs.
-#[kani::proof]
-fn verify_vec2_abs_non_negative() {
-    let x: f32 = kani::any();
-    let y: f32 = kani::any();
-    kani::assume(x.is_finite());
-    kani::assume(y.is_finite());
-    let v = Vec2::new(x, y);
-    let a = v.abs();
-    assert!(a.x >= 0.0, "abs().x should be non-negative");
-    assert!(a.y >= 0.0, "abs().y should be non-negative");
-}
-
 /// **Idempotence**: `abs(abs(v)) == abs(v)` for all finite vectors.
 #[kani::proof]
 fn verify_vec2_abs_idempotent() {

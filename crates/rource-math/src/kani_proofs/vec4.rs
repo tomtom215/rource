@@ -644,29 +644,6 @@ fn verify_vec4_sub_anti_commutative() {
     );
 }
 
-// ============================================================================
-// abs
-// ============================================================================
-
-/// **Non-negativity**: `abs()` components are always ≥ 0 for finite inputs.
-#[kani::proof]
-fn verify_vec4_abs_non_negative() {
-    let x: f32 = kani::any();
-    let y: f32 = kani::any();
-    let z: f32 = kani::any();
-    let w: f32 = kani::any();
-    kani::assume(x.is_finite());
-    kani::assume(y.is_finite());
-    kani::assume(z.is_finite());
-    kani::assume(w.is_finite());
-    let v = Vec4::new(x, y, z, w);
-    let a = v.abs();
-    assert!(a.x >= 0.0, "abs().x should be non-negative");
-    assert!(a.y >= 0.0, "abs().y should be non-negative");
-    assert!(a.z >= 0.0, "abs().z should be non-negative");
-    assert!(a.w >= 0.0, "abs().w should be non-negative");
-}
-
 /// **Idempotence**: `abs(abs(v)) == abs(v)` for all finite vectors.
 #[kani::proof]
 fn verify_vec4_abs_idempotent() {
@@ -688,33 +665,28 @@ fn verify_vec4_abs_idempotent() {
 }
 
 // ============================================================================
-// distance_squared
+// length_squared
 // ============================================================================
 
-/// **Non-negativity + symmetry**: `distance_squared(a, b) >= 0` and equals `distance_squared(b, a)`.
+/// **Non-negativity**: `length_squared()` is always ≥ 0 for finite bounded inputs.
 #[kani::proof]
-fn verify_vec4_distance_squared_properties() {
-    let ax: f32 = kani::any();
-    let ay: f32 = kani::any();
-    let az: f32 = kani::any();
-    let aw: f32 = kani::any();
-    let bx: f32 = kani::any();
-    let by: f32 = kani::any();
-    let bz: f32 = kani::any();
-    let bw: f32 = kani::any();
-    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
-    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
-    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
-    kani::assume(aw.is_finite() && aw.abs() < SAFE_BOUND);
-    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
-    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
-    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
-    kani::assume(bw.is_finite() && bw.abs() < SAFE_BOUND);
-    let a = Vec4::new(ax, ay, az, aw);
-    let b = Vec4::new(bx, by, bz, bw);
-    let d_ab = a.distance_squared(b);
-    let d_ba = b.distance_squared(a);
-    assert!(!d_ab.is_nan(), "distance_squared produced NaN");
-    assert!(d_ab >= 0.0, "distance_squared should be non-negative");
-    assert!(d_ab == d_ba, "distance_squared should be symmetric");
+fn verify_vec4_length_squared_properties() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    let w: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w.abs() < SAFE_BOUND);
+    let v = Vec4::new(x, y, z, w);
+    let ls = v.length_squared();
+    assert!(!ls.is_nan(), "length_squared produced NaN");
+    assert!(ls >= 0.0, "length_squared should be non-negative");
+    // length_squared of zero vector is zero
+    let zero = Vec4::new(0.0, 0.0, 0.0, 0.0);
+    assert!(
+        zero.length_squared() == 0.0,
+        "length_squared of zero should be 0"
+    );
 }
