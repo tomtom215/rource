@@ -144,3 +144,48 @@ fn verify_approx_eq_symmetry() {
     let ba = crate::approx_eq(b, a);
     assert!(ab == ba, "approx_eq should be symmetric");
 }
+
+// ============================================================================
+// lerp endpoint t=1
+// ============================================================================
+
+/// **Endpoint property**: `lerp(a, b, 1.0)` returns `a + (b - a) * 1.0`.
+///
+/// For bounded inputs where `b - a` is exact, the result should equal `b`.
+/// We verify finiteness and NaN-freedom rather than exact equality
+/// because floating-point `a + (b - a)` may differ from `b` by 1 ULP.
+///
+/// Precondition: `|a| < 1e18`, `|b| < 1e18`.
+/// Postcondition: result is finite.
+#[kani::proof]
+fn verify_lerp_endpoint_one() {
+    let a: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(a.is_finite() && a.abs() < SAFE_BOUND);
+    kani::assume(b.is_finite() && b.abs() < SAFE_BOUND);
+    let result = crate::lerp(a, b, 1.0);
+    assert!(!result.is_nan(), "lerp(a, b, 1.0) produced NaN");
+    assert!(result.is_finite(), "lerp(a, b, 1.0) non-finite");
+}
+
+// ============================================================================
+// clamp idempotent
+// ============================================================================
+
+/// **Idempotence**: `clamp(clamp(v, min, max), min, max) == clamp(v, min, max)`.
+///
+/// Precondition: finite value and ordered bounds.
+/// Postcondition: double-clamp equals single clamp.
+#[kani::proof]
+fn verify_clamp_idempotent() {
+    let value: f32 = kani::any();
+    let min: f32 = kani::any();
+    let max: f32 = kani::any();
+    kani::assume(value.is_finite());
+    kani::assume(min.is_finite());
+    kani::assume(max.is_finite());
+    kani::assume(min <= max);
+    let once = crate::clamp(value, min, max);
+    let twice = crate::clamp(once, min, max);
+    assert!(once == twice, "clamp should be idempotent");
+}

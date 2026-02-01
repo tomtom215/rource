@@ -144,7 +144,10 @@ COQ_FP_ERRORBOUNDS=$(count_coq "$COQ_DIR/FP_ErrorBounds.v")
 COQ_FP_VEC=$(count_coq "$COQ_DIR/FP_Vec.v")
 COQ_FP_MAT=$(count_coq "$COQ_DIR/FP_Mat.v")
 COQ_FP_COLOR=$(count_coq "$COQ_DIR/FP_Color.v")
-COQ_FP_TOTAL=$((COQ_FP_COMMON + COQ_FP_ROUNDING + COQ_FP_ERRORBOUNDS + COQ_FP_VEC + COQ_FP_MAT + COQ_FP_COLOR))
+COQ_FP_RECT=$(count_coq "$COQ_DIR/FP_Rect.v")
+COQ_FP_BOUNDS=$(count_coq "$COQ_DIR/FP_Bounds.v")
+COQ_FP_UTILS=$(count_coq "$COQ_DIR/FP_Utils.v")
+COQ_FP_TOTAL=$((COQ_FP_COMMON + COQ_FP_ROUNDING + COQ_FP_ERRORBOUNDS + COQ_FP_VEC + COQ_FP_MAT + COQ_FP_COLOR + COQ_FP_RECT + COQ_FP_BOUNDS + COQ_FP_UTILS))
 
 # --- Coq combined ---
 COQ_COMBINED=$((COQ_R_TOTAL + COQ_Z_TOTAL))
@@ -228,7 +231,10 @@ cat > "$COUNTS_FILE" << ENDJSON
     "error_bounds": $COQ_FP_ERRORBOUNDS,
     "vec": $COQ_FP_VEC,
     "mat": $COQ_FP_MAT,
-    "color": $COQ_FP_COLOR
+    "color": $COQ_FP_COLOR,
+    "rect": $COQ_FP_RECT,
+    "bounds": $COQ_FP_BOUNDS,
+    "utils": $COQ_FP_UTILS
   },
   "coq_combined": $COQ_COMBINED,
   "coq_all": $COQ_ALL,
@@ -435,6 +441,14 @@ CHECKS=(
     "docs/verification/FORMAL_VERIFICATION.md|Coq R-based: $COQ_R_TOTAL|Footer Coq R total"
     # FORMAL_VERIFICATION.md - Layer 1 R-based comment
     "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_TOTAL R-based theorems|Layer 1 R-based comment"
+    # COQ_PROOFS.md - per-file Vec2_Proofs.v count
+    "docs/verification/COQ_PROOFS.md|Vec2_Proofs.v | $COQ_R_VEC2|COQ_PROOFS Vec2_Proofs count"
+    # COQ_PROOFS.md - per-file Vec3_Proofs.v count
+    "docs/verification/COQ_PROOFS.md|Vec3_Proofs.v | $COQ_R_VEC3|COQ_PROOFS Vec3_Proofs count"
+    # COQ_PROOFS.md - per-file Vec4_Proofs.v count
+    "docs/verification/COQ_PROOFS.md|Vec4_Proofs.v | $COQ_R_VEC4|COQ_PROOFS Vec4_Proofs count"
+    # COQ_PROOFS.md - per-file Mat3_Proofs.v count
+    "docs/verification/COQ_PROOFS.md|Mat3_Proofs.v | $COQ_R_MAT3|COQ_PROOFS Mat3_Proofs count"
     # COQ_PROOFS.md - per-file Mat4_Proofs.v count
     "docs/verification/COQ_PROOFS.md|Mat4_Proofs.v | $COQ_R_MAT4|COQ_PROOFS Mat4_Proofs count"
     # COQ_PROOFS.md - per-file Color_Proofs.v count
@@ -551,15 +565,18 @@ if [[ -f "$FV" ]]; then
     sed -i -E "s/[0-9]+ theorems \| 0 \| Vec2-4, Mat3-4, Color, Rect, Bounds, Utils \+ Complexity \+ CrossType \| Machine-checked/$COQ_R_TOTAL theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + Complexity + CrossType | Machine-checked/" "$FV"
     # Summary Statistics Combined row
     sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*10 types \+ FP\*\*/**$GRAND_TOTAL** | **0** | **10 types + FP**/" "$FV"
-    # Per-type table: Coq R-based column per type (context-aware)
-    sed -i -E "/\| Mat4 \|/{s/\| [0-9]+ theorems \| $COQ_Z_MAT4 theorems/| $COQ_R_MAT4 theorems | $COQ_Z_MAT4 theorems/}" "$FV"
-    sed -i -E "/\| Color \|/{s/\| [0-9]+ theorems \| $COQ_Z_COLOR theorems/| $COQ_R_COLOR theorems | $COQ_Z_COLOR theorems/}" "$FV"
-    sed -i -E "/\| Rect \|/{s/\| [0-9]+ theorems \| $COQ_Z_RECT theorems/| $COQ_R_RECT theorems | $COQ_Z_RECT theorems/}" "$FV"
-    sed -i -E "/\| Bounds \|/{s/\| [0-9]+ theorems \| $COQ_Z_BOUNDS theorems/| $COQ_R_BOUNDS theorems | $COQ_Z_BOUNDS theorems/}" "$FV"
-    sed -i -E "/\| Utils \|/{s/\| [0-9]+ theorems \| $COQ_Z_UTILS theorems/| $COQ_R_UTILS theorems | $COQ_Z_UTILS theorems/}" "$FV"
-    # Per-type table: Total column per type
-    sed -i -E "/\| Bounds \|/{s/\| [0-9]+ \| TRIPLE/| $TOTAL_BOUNDS | TRIPLE/}" "$FV"
-    sed -i -E "/\| Utils \|/{s/\| [0-9]+ \| TRIPLE/| $TOTAL_UTILS | TRIPLE/}" "$FV"
+    # Per-type table: full row updates (Coq R, Coq Z, Kani, Total)
+    sed -i -E "/\| Vec2 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC2 theorems | $COQ_Z_VEC2 theorems | — | $KANI_VEC2 harnesses | $TOTAL_VEC2 | TRIPLE/" "$FV"
+    sed -i -E "/\| Vec3 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC3 theorems | $COQ_Z_VEC3 theorems | — | $KANI_VEC3 harnesses | $TOTAL_VEC3 | TRIPLE/" "$FV"
+    sed -i -E "/\| Vec4 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC4 theorems | $COQ_Z_VEC4 theorems | — | $KANI_VEC4 harnesses | $TOTAL_VEC4 | TRIPLE/" "$FV"
+    sed -i -E "/\| Mat3 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_MAT3 theorems | $COQ_Z_MAT3 theorems | — | $KANI_MAT3 harnesses | $TOTAL_MAT3 | TRIPLE/" "$FV"
+    sed -i -E "/\| Mat4 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_MAT4 theorems | $COQ_Z_MAT4 theorems | — | $KANI_MAT4 harnesses | $TOTAL_MAT4 | TRIPLE/" "$FV"
+    sed -i -E "/\| Color \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_COLOR theorems | $COQ_Z_COLOR theorems | — | $KANI_COLOR harnesses | $TOTAL_COLOR | TRIPLE/" "$FV"
+    sed -i -E "/\| Rect \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_RECT theorems | $COQ_Z_RECT theorems | — | $KANI_RECT harnesses | $TOTAL_RECT | TRIPLE/" "$FV"
+    sed -i -E "/\| Bounds \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_BOUNDS theorems | $COQ_Z_BOUNDS theorems | — | $KANI_BOUNDS harnesses | $TOTAL_BOUNDS | TRIPLE/" "$FV"
+    sed -i -E "/\| Utils \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_UTILS theorems | $COQ_Z_UTILS theorems | — | $KANI_UTILS harnesses | $TOTAL_UTILS | TRIPLE/" "$FV"
+    # FP Foundations row
+    sed -i -E "/\| FP Foundations \|/s/[0-9]+ theorems \| . \| [0-9]+ \| MACHINE/$COQ_FP_TOTAL theorems | — | $COQ_FP_TOTAL | MACHINE/" "$FV"
     # Footer: Coq R-based per-type (full breakdown)
     sed -i -E "s/Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Bounds: [0-9]+, Complexity: 60, CrossType: 51, Utils: [0-9]+/Mat4: $COQ_R_MAT4, Color: $COQ_R_COLOR, Rect: $COQ_R_RECT, Bounds: $COQ_R_BOUNDS, Complexity: 60, CrossType: 51, Utils: $COQ_R_UTILS/" "$FV"
     # Footer: Coq R-based total
@@ -600,6 +617,10 @@ if [[ -f "$CP" ]]; then
     # Combined Coq total
     sed -i -E "s/[0-9]+ total Coq theorems/$COQ_COMBINED total Coq theorems/" "$CP"
     # R-based per-file counts in table (context-aware by file name)
+    sed -i -E "/Vec2_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_VEC2 | VERIFIED/}" "$CP"
+    sed -i -E "/Vec3_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_VEC3 | VERIFIED/}" "$CP"
+    sed -i -E "/Vec4_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_VEC4 | VERIFIED/}" "$CP"
+    sed -i -E "/Mat3_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_MAT3 | VERIFIED/}" "$CP"
     sed -i -E "/Mat4_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_MAT4 | VERIFIED/}" "$CP"
     sed -i -E "/Color_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_COLOR | VERIFIED/}" "$CP"
     sed -i -E "/Rect_Proofs\.v/{s/\| [0-9]+ \| VERIFIED/| $COQ_R_RECT | VERIFIED/}" "$CP"
@@ -647,10 +668,26 @@ if [[ -f "$CM" ]]; then
     sed -i -E "s/\*\*Coq \(Z-based\)\*\*: [0-9]+ theorems/**Coq (Z-based)**: $COQ_Z_TOTAL theorems/" "$CM"
     # Per-type table total row (Coq R and Z columns)
     sed -i -E "s/\| \*\*[0-9]+ proof fns\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ theorems\*\*/| **$VERUS_TOTAL proof fns** | **$COQ_R_TOTAL theorems** | **$COQ_Z_TOTAL theorems**/" "$CM"
+    # Per-type table: Vec2 row
+    sed -i -E "/\| Vec2 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_VEC2 theorems | $COQ_Z_VEC2 theorems | $KANI_VEC2 harnesses | $TOTAL_VEC2/" "$CM"
+    # Per-type table: Vec3 row
+    sed -i -E "/\| Vec3 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_VEC3 theorems | $COQ_Z_VEC3 theorems | $KANI_VEC3 harnesses | $TOTAL_VEC3/" "$CM"
+    # Per-type table: Vec4 row
+    sed -i -E "/\| Vec4 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_VEC4 theorems | $COQ_Z_VEC4 theorems | $KANI_VEC4 harnesses | $TOTAL_VEC4/" "$CM"
+    # Per-type table: Mat3 row
+    sed -i -E "/\| Mat3 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_MAT3 theorems | $COQ_Z_MAT3 theorems | $KANI_MAT3 harnesses | $TOTAL_MAT3/" "$CM"
+    # Per-type table: Mat4 row
+    sed -i -E "/\| Mat4 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_MAT4 theorems | $COQ_Z_MAT4 theorems | $KANI_MAT4 harnesses | $TOTAL_MAT4/" "$CM"
+    # Per-type table: Color row
+    sed -i -E "/\| Color \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_COLOR theorems | $COQ_Z_COLOR theorems | $KANI_COLOR harnesses | $TOTAL_COLOR/" "$CM"
+    # Per-type table: Rect row
+    sed -i -E "/\| Rect \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_RECT theorems | $COQ_Z_RECT theorems | $KANI_RECT harnesses | $TOTAL_RECT/" "$CM"
     # Per-type table: Bounds row
     sed -i -E "/\| Bounds \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_BOUNDS theorems | $COQ_Z_BOUNDS theorems | $KANI_BOUNDS harnesses | $TOTAL_BOUNDS/" "$CM"
     # Per-type table: Utils row
     sed -i -E "/\| Utils \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_UTILS theorems | $COQ_Z_UTILS theorems | $KANI_UTILS harnesses | $TOTAL_UTILS/" "$CM"
+    # Per-type table: FP Foundations row
+    sed -i -E "/\| FP Foundations \|/s/\| [0-9]+ \| MACHINE-CHECKED/| $COQ_FP_TOTAL | MACHINE-CHECKED/" "$CM"
     # Coq command line comment (673/681/697 → correct)
     sed -i -E "s/# Coq proofs \([0-9]+ theorems/# Coq proofs ($COQ_COMBINED theorems/" "$CM"
     # COQ_PROOFS.md doc reference

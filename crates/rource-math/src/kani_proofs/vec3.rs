@@ -553,3 +553,66 @@ fn verify_vec3_scale_finite() {
     assert!(r.y.is_finite(), "scale result y is not finite");
     assert!(r.z.is_finite(), "scale result z is not finite");
 }
+
+// ============================================================================
+// splat
+// ============================================================================
+
+/// **Uniformity**: `splat(x)` produces a vector with all components equal to `x`.
+#[kani::proof]
+fn verify_vec3_splat_all_equal() {
+    let x: f32 = kani::any();
+    kani::assume(x.is_finite());
+    let v = Vec3::splat(x);
+    assert!(v.x == x, "splat(x).x should equal x");
+    assert!(v.y == x, "splat(x).y should equal x");
+    assert!(v.z == x, "splat(x).z should equal x");
+}
+
+// ============================================================================
+// neg involution
+// ============================================================================
+
+/// **Involution**: `-(-v) == v` for all finite vectors (IEEE 754 sign-bit flip).
+#[kani::proof]
+fn verify_vec3_neg_involution() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(z.is_finite());
+    let v = Vec3::new(x, y, z);
+    let r = -(-v);
+    assert!(r.x == x, "-(-v).x should equal v.x");
+    assert!(r.y == y, "-(-v).y should equal v.y");
+    assert!(r.z == z, "-(-v).z should equal v.z");
+}
+
+// ============================================================================
+// add commutativity
+// ============================================================================
+
+/// **Commutativity**: `a + b == b + a` for all finite bounded vectors (IEEE 754).
+#[kani::proof]
+fn verify_vec3_add_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    let a = Vec3::new(ax, ay, az);
+    let b = Vec3::new(bx, by, bz);
+    let ab = a + b;
+    let ba = b + a;
+    assert!(ab.x == ba.x, "(a+b).x should equal (b+a).x");
+    assert!(ab.y == ba.y, "(a+b).y should equal (b+a).y");
+    assert!(ab.z == ba.z, "(a+b).z should equal (b+a).z");
+}

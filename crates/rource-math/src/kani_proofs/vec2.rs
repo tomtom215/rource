@@ -433,3 +433,77 @@ fn verify_vec2_approx_eq_reflexive() {
     let v = Vec2::new(x, y);
     assert!(v.approx_eq(v), "approx_eq not reflexive");
 }
+
+// ============================================================================
+// neg involution
+// ============================================================================
+
+/// **Involution**: `-(-v) == v` for all finite vectors (IEEE 754 sign-bit flip).
+#[kani::proof]
+fn verify_vec2_neg_involution() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let r = -(-v);
+    assert!(r.x == x, "-(-v).x should equal v.x");
+    assert!(r.y == y, "-(-v).y should equal v.y");
+}
+
+// ============================================================================
+// add commutativity
+// ============================================================================
+
+/// **Commutativity**: `a + b == b + a` for all finite bounded vectors (IEEE 754).
+#[kani::proof]
+fn verify_vec2_add_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    let a = Vec2::new(ax, ay);
+    let b = Vec2::new(bx, by);
+    let ab = a + b;
+    let ba = b + a;
+    assert!(ab.x == ba.x, "(a+b).x should equal (b+a).x");
+    assert!(ab.y == ba.y, "(a+b).y should equal (b+a).y");
+}
+
+// ============================================================================
+// splat
+// ============================================================================
+
+/// **Uniformity**: `splat(x)` produces a vector with all components equal to `x`.
+#[kani::proof]
+fn verify_vec2_splat_all_equal() {
+    let x: f32 = kani::any();
+    kani::assume(x.is_finite());
+    let v = Vec2::splat(x);
+    assert!(v.x == x, "splat(x).x should equal x");
+    assert!(v.y == x, "splat(x).y should equal x");
+}
+
+// ============================================================================
+// angle
+// ============================================================================
+
+/// **Finiteness**: `angle()` with finite inputs produces finite output.
+///
+/// Mathematical basis: `atan2(y, x)` is defined for all finite (x, y) except (0, 0),
+/// where IEEE 754 specifies `atan2(0, 0) = 0`. Returns value in [-pi, pi].
+#[kani::proof]
+fn verify_vec2_angle_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let a = v.angle();
+    assert!(!a.is_nan(), "angle() produced NaN");
+    assert!(a.is_finite(), "angle() produced non-finite output");
+}

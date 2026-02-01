@@ -1219,9 +1219,103 @@ Proof.
   ring.
 Qed.
 
+(** * Reflection and Projection Properties *)
+
+(** Theorem 111: negation is self-inverse (involution). *)
+Theorem vec2_neg_involution : forall v : Vec2,
+  vec2_neg (vec2_neg v) = v.
+Proof.
+  intros [vx vy].
+  unfold vec2_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 112: element product of splat is square. *)
+Theorem vec2_element_product_splat : forall v : R,
+  vec2_element_product (vec2_splat v) = v * v.
+Proof.
+  intros v.
+  unfold vec2_element_product, vec2_splat. simpl. ring.
+Qed.
+
+(** Theorem 113: min_element is <= max_element. *)
+Theorem vec2_min_le_max_element : forall v : Vec2,
+  vec2_min_element v <= vec2_max_element v.
+Proof.
+  intros [vx vy].
+  unfold vec2_min_element, vec2_max_element. simpl.
+  apply Rmin_Rmax.
+Qed.
+
+(** Theorem 114: element sum equals dot with (1,1). *)
+Theorem vec2_element_sum_dot_ones : forall v : Vec2,
+  vec2_element_sum v = vec2_dot v (mkVec2 1 1).
+Proof.
+  intros [vx vy].
+  unfold vec2_element_sum, vec2_dot. simpl. ring.
+Qed.
+
+(** Theorem 115: componentwise div is inverse of componentwise mul. *)
+Theorem vec2_div_mul_cancel : forall (a b : Vec2),
+  vec2_x b <> 0 -> vec2_y b <> 0 ->
+  vec2_mul (vec2_div a b) b = a.
+Proof.
+  intros [ax ay] [bx by0] Hx Hy.
+  unfold vec2_mul, vec2_div. simpl in *.
+  f_equal; field; assumption.
+Qed.
+
+(** Theorem 116: lerp is affine in first argument. *)
+Theorem vec2_lerp_affine_a : forall (a1 a2 b : Vec2) (t s1 s2 : R),
+  s1 + s2 = 1 ->
+  vec2_lerp (vec2_add (vec2_scale s1 a1) (vec2_scale s2 a2)) b t =
+  vec2_add
+    (vec2_scale s1 (vec2_lerp a1 b t))
+    (vec2_scale s2 (vec2_lerp a2 b t)).
+Proof.
+  intros [a1x a1y] [a2x a2y] [bx by0] t s1 s2 Hs.
+  unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
+  f_equal; nlra.
+Qed.
+
+(** Theorem 117: abs of negation is abs. *)
+Theorem vec2_abs_neg : forall v : Vec2,
+  vec2_abs (vec2_neg v) = vec2_abs v.
+Proof.
+  intros [vx vy].
+  unfold vec2_abs, vec2_neg. simpl.
+  f_equal; apply Rabs_Ropp.
+Qed.
+
+(** Theorem 118: abs is idempotent. *)
+Theorem vec2_abs_idempotent : forall v : Vec2,
+  vec2_abs (vec2_abs v) = vec2_abs v.
+Proof.
+  intros [vx vy].
+  unfold vec2_abs. simpl.
+  f_equal; rewrite Rabs_right; try apply Rabs_pos; reflexivity.
+Qed.
+
+(** Theorem 119: distance squared is non-negative. *)
+Theorem vec2_distance_squared_nonneg : forall a b : Vec2,
+  0 <= vec2_distance_squared a b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_distance_squared, vec2_length_squared, vec2_dot, vec2_sub. simpl.
+  nlra.
+Qed.
+
+(** Theorem 120: element product distributes over scale (squared). *)
+Theorem vec2_element_product_scale : forall (s : R) (v : Vec2),
+  vec2_element_product (vec2_scale s v) = s * s * vec2_element_product v.
+Proof.
+  intros s [vx vy].
+  unfold vec2_element_product, vec2_scale. simpl. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 110
+    Total theorems: 120
     Admits: 0
     Axioms: Standard Coq real number library only
 

@@ -407,3 +407,34 @@ fn verify_mat3_default_is_identity() {
         assert!(def.m[i] == id.m[i], "default should be identity");
     }
 }
+
+// ============================================================================
+// from_cols
+// ============================================================================
+
+/// **Correctness**: `from_cols` stores columns in correct order.
+///
+/// Precondition: three finite column arrays.
+/// Postcondition: `m[0..3] == col0`, `m[3..6] == col1`, `m[6..9] == col2`.
+#[kani::proof]
+fn verify_mat3_from_cols_correct() {
+    let c0: [f32; 3] = [kani::any(), kani::any(), kani::any()];
+    let c1: [f32; 3] = [kani::any(), kani::any(), kani::any()];
+    let c2: [f32; 3] = [kani::any(), kani::any(), kani::any()];
+    for v in c0.iter().chain(c1.iter()).chain(c2.iter()) {
+        kani::assume(v.is_finite());
+    }
+    let mat = Mat3::from_cols(c0, c1, c2);
+    // Column 0
+    assert!(mat.m[0] == c0[0], "from_cols: m[0] != col0[0]");
+    assert!(mat.m[1] == c0[1], "from_cols: m[1] != col0[1]");
+    assert!(mat.m[2] == c0[2], "from_cols: m[2] != col0[2]");
+    // Column 1
+    assert!(mat.m[3] == c1[0], "from_cols: m[3] != col1[0]");
+    assert!(mat.m[4] == c1[1], "from_cols: m[4] != col1[1]");
+    assert!(mat.m[5] == c1[2], "from_cols: m[5] != col1[2]");
+    // Column 2
+    assert!(mat.m[6] == c2[0], "from_cols: m[6] != col2[0]");
+    assert!(mat.m[7] == c2[1], "from_cols: m[7] != col2[1]");
+    assert!(mat.m[8] == c2[2], "from_cols: m[8] != col2[2]");
+}

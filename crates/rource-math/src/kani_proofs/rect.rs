@@ -449,3 +449,145 @@ fn verify_rect_size_correct() {
     assert!(sz.x == w, "size().x should be width");
     assert!(sz.y == h, "size().y should be height");
 }
+
+// ============================================================================
+// shrink
+// ============================================================================
+
+/// **Finiteness**: `shrink(amount)` with bounded inputs produces finite Rect.
+///
+/// Precondition: finite rect with non-negative dims, finite non-negative amount.
+/// Postcondition: all output components are finite.
+#[kani::proof]
+fn verify_rect_shrink_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    let amount: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w >= 0.0 && w < SAFE_BOUND);
+    kani::assume(h.is_finite() && h >= 0.0 && h < SAFE_BOUND);
+    kani::assume(amount.is_finite() && amount >= 0.0 && amount < SAFE_BOUND);
+    let r = Rect::new(x, y, w, h).shrink(amount);
+    assert!(r.x.is_finite(), "shrink().x non-finite");
+    assert!(r.y.is_finite(), "shrink().y non-finite");
+    assert!(r.width.is_finite(), "shrink().width non-finite");
+    assert!(r.height.is_finite(), "shrink().height non-finite");
+}
+
+// ============================================================================
+// right / bottom
+// ============================================================================
+
+/// **Correctness**: `right()` returns `x + width`, `bottom()` returns `y + height`.
+///
+/// Precondition: finite rect components with bounded values.
+/// Postcondition: `right() == x + width`, `bottom() == y + height`, both finite.
+#[kani::proof]
+fn verify_rect_right_bottom_correct() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w >= 0.0 && w < SAFE_BOUND);
+    kani::assume(h.is_finite() && h >= 0.0 && h < SAFE_BOUND);
+    let r = Rect::new(x, y, w, h);
+    let right = r.right();
+    let bottom = r.bottom();
+    assert!(right.is_finite(), "right() non-finite");
+    assert!(bottom.is_finite(), "bottom() non-finite");
+    assert!(right == x + w, "right() should equal x + width");
+    assert!(bottom == y + h, "bottom() should equal y + height");
+}
+
+// ============================================================================
+// to_bounds
+// ============================================================================
+
+/// **Finiteness**: `to_bounds()` with finite rect produces finite Bounds.
+///
+/// Precondition: finite rect with non-negative dimensions.
+/// Postcondition: all Bounds min/max components are finite.
+#[kani::proof]
+fn verify_rect_to_bounds_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w >= 0.0 && w < SAFE_BOUND);
+    kani::assume(h.is_finite() && h >= 0.0 && h < SAFE_BOUND);
+    let b = Rect::new(x, y, w, h).to_bounds();
+    assert!(b.min.x.is_finite(), "to_bounds().min.x non-finite");
+    assert!(b.min.y.is_finite(), "to_bounds().min.y non-finite");
+    assert!(b.max.x.is_finite(), "to_bounds().max.x non-finite");
+    assert!(b.max.y.is_finite(), "to_bounds().max.y non-finite");
+}
+
+// ============================================================================
+// from_corners
+// ============================================================================
+
+/// **Correctness**: `from_corners(a, b)` produces a rect containing both points.
+///
+/// Precondition: finite corner points.
+/// Postcondition: all output components finite, width/height non-negative.
+#[kani::proof]
+fn verify_rect_from_corners_valid() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    let r = Rect::from_corners(Vec2::new(ax, ay), Vec2::new(bx, by));
+    assert!(r.x.is_finite(), "from_corners().x non-finite");
+    assert!(r.y.is_finite(), "from_corners().y non-finite");
+    assert!(r.width.is_finite(), "from_corners().width non-finite");
+    assert!(r.height.is_finite(), "from_corners().height non-finite");
+    assert!(
+        r.width >= 0.0,
+        "from_corners().width should be non-negative"
+    );
+    assert!(
+        r.height >= 0.0,
+        "from_corners().height should be non-negative"
+    );
+}
+
+// ============================================================================
+// translate
+// ============================================================================
+
+/// **Correctness**: `translate(offset)` shifts position by offset, preserves size.
+///
+/// Precondition: finite rect and offset.
+/// Postcondition: `translated.x == x + offset.x`, `translated.y == y + offset.y`,
+///   width and height unchanged.
+#[kani::proof]
+fn verify_rect_translate_preserves_size() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    let ox: f32 = kani::any();
+    let oy: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w >= 0.0 && w < SAFE_BOUND);
+    kani::assume(h.is_finite() && h >= 0.0 && h < SAFE_BOUND);
+    kani::assume(ox.is_finite() && ox.abs() < SAFE_BOUND);
+    kani::assume(oy.is_finite() && oy.abs() < SAFE_BOUND);
+    let r = Rect::new(x, y, w, h).translate(Vec2::new(ox, oy));
+    assert!(r.width == w, "translate should preserve width");
+    assert!(r.height == h, "translate should preserve height");
+    assert!(r.x == x + ox, "translate should shift x by offset.x");
+    assert!(r.y == y + oy, "translate should shift y by offset.y");
+}
