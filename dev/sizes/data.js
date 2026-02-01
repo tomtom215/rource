@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769903192516,
+  "lastUpdate": 1769928212759,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -4937,6 +4937,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/b368b5983a9479d69c81576573dd1e0bf23d2f3b"
         },
         "date": 1769903191490,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f26b166eaab0d6531d5dbf39322d20084cb6a7e0",
+          "message": "Merge pull request #249 from tomtom215/claude/rource-math-verification-ykSJI\n\nExpand Color integer conversion proofs: +21 R-based, +22 Z-based theorems",
+          "timestamp": "2026-02-01T07:41:37+01:00",
+          "tree_id": "04465a60139f52d8beac9564dd5323aab9f0aad4",
+          "url": "https://github.com/tomtom215/rource/commit/f26b166eaab0d6531d5dbf39322d20084cb6a7e0"
+        },
+        "date": 1769928212275,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
