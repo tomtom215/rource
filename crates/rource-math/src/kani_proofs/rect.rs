@@ -533,12 +533,12 @@ fn verify_rect_to_bounds_finite() {
 // from_corners
 // ============================================================================
 
-/// **Correctness**: `from_corners(a, b)` produces a rect containing both points.
+/// **Correctness**: `from_corners(a, b)` produces a rect with all finite components.
 ///
 /// Precondition: finite corner points.
 /// Postcondition: all output components finite, width/height non-negative.
 #[kani::proof]
-fn verify_rect_from_corners_valid() {
+fn verify_rect_from_corners_all_finite() {
     let ax: f32 = kani::any();
     let ay: f32 = kani::any();
     let bx: f32 = kani::any();
@@ -572,7 +572,7 @@ fn verify_rect_from_corners_valid() {
 /// Postcondition: `translated.x == x + offset.x`, `translated.y == y + offset.y`,
 ///   width and height unchanged.
 #[kani::proof]
-fn verify_rect_translate_preserves_size() {
+fn verify_rect_translate_correctness() {
     let x: f32 = kani::any();
     let y: f32 = kani::any();
     let w: f32 = kani::any();

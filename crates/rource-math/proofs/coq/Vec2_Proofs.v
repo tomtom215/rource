@@ -1258,7 +1258,7 @@ Theorem vec2_lerp_affine_a : forall (a1 a2 b : Vec2) (t s1 s2 : R),
 Proof.
   intros [a1x a1y] [a2x a2y] [bx by0] t s1 s2 Hs.
   unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
-  f_equal; nlra.
+  f_equal; nra.
 Qed.
 
 (** Theorem 115: element product distributes over scale (squared). *)

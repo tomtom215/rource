@@ -1235,8 +1235,8 @@ Theorem rect_empty_zero_area : forall (r : Rect),
   rect_is_empty r -> rect_area r = 0.
 Proof.
   intros [rx ry rw rh] [Hw | Hh].
-  - unfold rect_area, rect_is_empty in *. simpl in *. nlra.
-  - unfold rect_area, rect_is_empty in *. simpl in *. nlra.
+  - unfold rect_area, rect_is_empty in *. simpl in *. nra.
+  - unfold rect_area, rect_is_empty in *. simpl in *. nra.
 Qed.
 
 (** Theorem 124: containment is transitive for points. *)

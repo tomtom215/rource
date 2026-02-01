@@ -472,12 +472,13 @@ fn verify_bounds_half_extents_finite() {
 // include_point
 // ============================================================================
 
-/// **Postcondition**: `include_point(p)` produces bounds that contain `p`.
+/// **Postcondition**: `include_point(p)` produces bounds where `min <= p` and `max >= p`
+/// component-wise.
 ///
 /// Precondition: finite bounds and point.
 /// Postcondition: result `min <= p` and `max >= p` component-wise.
 #[kani::proof]
-fn verify_bounds_include_point_contains() {
+fn verify_bounds_include_point_componentwise() {
     let min_x: f32 = kani::any();
     let min_y: f32 = kani::any();
     let max_x: f32 = kani::any();
