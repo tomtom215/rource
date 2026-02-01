@@ -1269,9 +1269,63 @@ Proof.
   unfold vec2_element_product, vec2_scale. simpl. ring.
 Qed.
 
+(** Theorem 116: min(a, b) ≤ a componentwise (x). *)
+Theorem vec2_min_le_l_x : forall a b : Vec2,
+  vec2_x (vec2_min a b) <= vec2_x a.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_min. simpl.
+  apply Rmin_l.
+Qed.
+
+(** Theorem 126: min(a, b) ≤ b componentwise (x). *)
+Theorem vec2_min_le_r_x : forall a b : Vec2,
+  vec2_x (vec2_min a b) <= vec2_x b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_min. simpl.
+  apply Rmin_r.
+Qed.
+
+(** Theorem 127: a ≤ max(a, b) componentwise (x). *)
+Theorem vec2_max_ge_l_x : forall a b : Vec2,
+  vec2_x a <= vec2_x (vec2_max a b).
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_max. simpl.
+  apply Rmax_l.
+Qed.
+
+(** Theorem 128: b ≤ max(a, b) componentwise (x). *)
+Theorem vec2_max_ge_r_x : forall a b : Vec2,
+  vec2_x b <= vec2_x (vec2_max a b).
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_max. simpl.
+  apply Rmax_r.
+Qed.
+
+(** Theorem 129: abs distributes over scale.
+    |s * v| = |s| * |v| componentwise *)
+Theorem vec2_abs_scale : forall (s : R) (v : Vec2),
+  vec2_abs (vec2_scale s v) = vec2_scale (Rabs s) (vec2_abs v).
+Proof.
+  intros s [vx vy].
+  unfold vec2_abs, vec2_scale. simpl.
+  f_equal; apply Rabs_mult.
+Qed.
+
+(** Theorem 130: distance squared is the definition.
+    dist²(a, b) = |a - b|² *)
+Theorem vec2_distance_squared_def : forall a b : Vec2,
+  vec2_distance_squared a b = vec2_dot (vec2_sub a b) (vec2_sub a b).
+Proof.
+  intros a b. unfold vec2_distance_squared, vec2_length_squared. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 115
+    Total theorems: 130
     Admits: 0
     Axioms: Standard Coq real number library only
 

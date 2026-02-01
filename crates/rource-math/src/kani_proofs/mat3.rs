@@ -407,3 +407,44 @@ fn verify_mat3_default_is_identity() {
         assert!(def.m[i] == id.m[i], "default should be identity");
     }
 }
+
+// ============================================================================
+// identity determinant
+// ============================================================================
+
+/// **Exact value**: Identity determinant is exactly 1.0.
+#[kani::proof]
+fn verify_mat3_identity_determinant() {
+    let det = Mat3::IDENTITY.determinant();
+    assert!(det == 1.0, "identity determinant should be 1.0");
+}
+
+// ============================================================================
+// zero determinant
+// ============================================================================
+
+/// **Exact value**: Zero matrix determinant is exactly 0.0.
+#[kani::proof]
+fn verify_mat3_zero_determinant() {
+    let det = Mat3::ZERO.determinant();
+    assert!(det == 0.0, "zero matrix determinant should be 0.0");
+}
+
+// ============================================================================
+// translation determinant
+// ============================================================================
+
+/// **Postcondition**: `translation().determinant()` is exactly 1.0.
+///
+/// Translation matrices have the form [[1,0,tx],[0,1,ty],[0,0,1]] (column-major),
+/// so det = 1*1*1 + 0*0*0 + 0*0*0 - 0*1*0 - 1*0*0 - 0*0*1 = 1.
+#[kani::proof]
+fn verify_mat3_translation_det_is_one() {
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    kani::assume(tx.is_finite() && tx.abs() < 1e6);
+    kani::assume(ty.is_finite() && ty.abs() < 1e6);
+    let mat = Mat3::translation(tx, ty);
+    let det = mat.determinant();
+    assert!(det == 1.0, "translation det should be 1.0");
+}

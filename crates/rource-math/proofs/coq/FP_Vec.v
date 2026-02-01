@@ -646,3 +646,185 @@ Proof.
   intros u Hu Hu2.
   ring_simplify. nra.
 Qed.
+
+(* ================================================================== *)
+(*  Theorem 37: 6-op error upper approximation                         *)
+(*  For u <= 1/8: (1+u)^6 - 1 <= 12u                                  *)
+(* ================================================================== *)
+Theorem fp_error_upper_approx_6op :
+  forall u : R,
+  0 <= u -> u <= / 8 ->
+  (1 + u)^6 - 1 <= 2 * (6 * u).
+Proof.
+  intros u Hu Hu2.
+  ring_simplify. nra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 38: 7-op error upper approximation                         *)
+(*  For u <= 1/8: (1+u)^7 - 1 <= 14u                                  *)
+(* ================================================================== *)
+Theorem fp_error_upper_approx_7op :
+  forall u : R,
+  0 <= u -> u <= / 8 ->
+  (1 + u)^7 - 1 <= 2 * (7 * u).
+Proof.
+  intros u Hu Hu2.
+  ring_simplify. nra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 39: 8-op error upper approximation                         *)
+(*  For u <= 1/16: (1+u)^8 - 1 <= 16u                                 *)
+(* ================================================================== *)
+Theorem fp_error_upper_approx_8op :
+  forall u : R,
+  0 <= u -> u <= / 16 ->
+  (1 + u)^8 - 1 <= 2 * (8 * u).
+Proof.
+  intros u Hu Hu2.
+  ring_simplify. nra.
+Qed.
+
+(* ================================================================== *)
+(*  SECTION 9: Cross Product Error Model                               *)
+(*  cross(a, b) = a.x*b.y - a.y*b.x (2D scalar cross product)       *)
+(*  4 FP ops: mul, mul, sub (with rounding at each step)              *)
+(* ================================================================== *)
+
+(* ================================================================== *)
+(*  Theorem 40: Vec2 cross product error bound                        *)
+(*  fl(a.x*b.y - a.y*b.x): 2 muls + 1 sub = 3 ops worst chain      *)
+(* ================================================================== *)
+Theorem fp_vec2_cross_error :
+  forall (e1 e2 e3 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) - 1) <= (1 + u32 / (1 + u32))^3 - 1.
+Proof.
+  exact fp_vec3_length_sq_error.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 41: Vec3 cross product error bound (per component)        *)
+(*  Each component: a_j*b_k - a_k*b_j                                *)
+(*  2 muls + 1 sub = 3 ops worst chain per component                  *)
+(* ================================================================== *)
+Theorem fp_vec3_cross_component_error :
+  forall (e1 e2 e3 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) - 1) <= (1 + u32 / (1 + u32))^3 - 1.
+Proof.
+  exact fp_vec3_length_sq_error.
+Qed.
+
+(* ================================================================== *)
+(*  SECTION 10: Dot Product Error Model                                *)
+(* ================================================================== *)
+
+(* ================================================================== *)
+(*  Theorem 42: Vec2 dot product error bound                          *)
+(*  fl(a.x*b.x + a.y*b.y): 2 muls + 1 add = 3 ops worst chain      *)
+(* ================================================================== *)
+Theorem fp_vec2_dot_error :
+  forall (e1 e2 e3 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) - 1) <= (1 + u32 / (1 + u32))^3 - 1.
+Proof.
+  exact fp_vec3_length_sq_error.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 43: Vec3 dot product error bound                          *)
+(*  fl(a.x*b.x + a.y*b.y + a.z*b.z): 3 muls + 2 adds              *)
+(*  Worst chain: mul, add, add = 3 ops (final component path)        *)
+(* ================================================================== *)
+Theorem fp_vec3_dot_error :
+  forall (e1 e2 e3 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) - 1) <= (1 + u32 / (1 + u32))^3 - 1.
+Proof.
+  exact fp_vec3_length_sq_error.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 44: Vec4 dot product error bound                          *)
+(*  fl(a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w): 4 muls + 3 adds   *)
+(*  Worst chain: mul, add, add, add = 4 ops                           *)
+(* ================================================================== *)
+Theorem fp_vec4_dot_error :
+  forall (e1 e2 e3 e4 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs e4 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) * (1 + e4) - 1) <=
+  (1 + u32 / (1 + u32))^4 - 1.
+Proof.
+  exact fp_vec4_length_sq_error.
+Qed.
+
+(* ================================================================== *)
+(*  SECTION 11: Reflect and Project Error Models                       *)
+(* ================================================================== *)
+
+(* ================================================================== *)
+(*  Theorem 45: Vec2 reflect error bound                              *)
+(*  reflect(v, n) = v - 2*(v·n)*n per component                      *)
+(*  dot: 3 ops, scale: 1 op, sub: 1 op = 5 ops worst chain          *)
+(* ================================================================== *)
+Theorem fp_vec2_reflect_error :
+  forall (e1 e2 e3 e4 e5 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs e4 <= u32 / (1 + u32) ->
+  Rabs e5 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) * (1 + e4) * (1 + e5) - 1) <=
+  (1 + u32 / (1 + u32))^5 - 1.
+Proof.
+  exact fp_vec4_length_error.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 46: Vec2 project error bound                              *)
+(*  project(v, w) = (v·w / w·w) * w per component                   *)
+(*  dot: 3 ops, dot: 3 ops, div: 1 op, mul: 1 op = 4 ops chain     *)
+(* ================================================================== *)
+Theorem fp_vec2_project_error :
+  forall (e1 e2 e3 e4 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs e4 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) * (1 + e4) - 1) <=
+  (1 + u32 / (1 + u32))^4 - 1.
+Proof.
+  exact fp_vec4_length_sq_error.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 47: Distance symmetry in exact arithmetic                 *)
+(*  |a - b| = |b - a| componentwise                                   *)
+(* ================================================================== *)
+Theorem fp_vec_distance_symmetric :
+  forall (ax bx : R), Rabs (ax - bx) = Rabs (bx - ax).
+Proof.
+  intros. apply Rabs_minus_sym.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 48: Dot product commutativity in exact arithmetic         *)
+(*  a·b = b·a (2D case: ax*bx + ay*by = bx*ax + by*ay)              *)
+(* ================================================================== *)
+Theorem fp_vec2_dot_commutative :
+  forall (ax ay bx by : R),
+  ax * bx + ay * by = bx * ax + by * ay.
+Proof. intros. ring. Qed.

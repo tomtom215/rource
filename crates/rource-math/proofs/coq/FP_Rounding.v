@@ -242,3 +242,96 @@ Theorem fp_round_floor_or_ceil :
 Proof.
   intros choice x. apply Znearest_DN_or_UP.
 Qed.
+
+(* ================================================================== *)
+(*  Theorem 22: Floor of negation                                      *)
+(*  floor(-x) = -ceil(x)                                               *)
+(* ================================================================== *)
+Theorem fp_floor_neg :
+  forall x : R, Zfloor (- x) = (- Zceil x)%Z.
+Proof.
+  intro x. unfold Zceil. lia.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 23: Ceil of negation                                       *)
+(*  ceil(-x) = -floor(x)                                               *)
+(* ================================================================== *)
+Theorem fp_ceil_neg :
+  forall x : R, Zceil (- x) = (- Zfloor x)%Z.
+Proof.
+  intro x. unfold Zceil.
+  replace (- - x) with x by ring.
+  reflexivity.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 24: Floor of non-negative is non-negative                  *)
+(* ================================================================== *)
+Theorem fp_floor_nonneg :
+  forall x : R, 0 <= x -> (0 <= Zfloor x)%Z.
+Proof.
+  intros x Hx. apply le_IZR. simpl.
+  apply Rle_trans with 0; [lra|].
+  apply Zfloor_lb.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 25: Ceil of non-positive is non-positive                   *)
+(* ================================================================== *)
+Theorem fp_ceil_nonpos :
+  forall x : R, x <= 0 -> (Zceil x <= 0)%Z.
+Proof.
+  intros x Hx. apply le_IZR. simpl.
+  apply Rle_trans with x; [apply Zceil_ub | lra].
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 26: Fractional part of sum with integer                    *)
+(*  fract(x + n) = fract(x) for integer n                             *)
+(* ================================================================== *)
+Theorem fp_fract_add_integer :
+  forall (x : R) (n : Z),
+  (x + IZR n) - IZR (Zfloor (x + IZR n)) = x - IZR (Zfloor x).
+Proof.
+  intros x n.
+  rewrite fp_floor_add_integer. rewrite plus_IZR. ring.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 27: Round monotonicity                                     *)
+(*  x <= y => round(x) <= round(y)                                    *)
+(* ================================================================== *)
+Theorem fp_round_monotone :
+  forall (choice : Z -> bool) (x y : R),
+  x <= y -> (Znearest choice x <= Znearest choice y)%Z.
+Proof.
+  intros choice x y Hxy.
+  apply Znearest_monotone. lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 28: Floor-ceil distance is at most 1                       *)
+(*  ceil(x) - floor(x) <= 1                                            *)
+(* ================================================================== *)
+Theorem fp_ceil_floor_distance :
+  forall x : R, (Zceil x - Zfloor x <= 1)%Z.
+Proof.
+  intro x.
+  generalize (Zfloor_lb x). intro Hlb.
+  generalize (Zfloor_ub x). intro Hub.
+  generalize (Zceil_ub x). intro Hcub.
+  generalize (Zceil_lb x). intro Hclb.
+  apply le_IZR. rewrite minus_IZR. simpl.
+  lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 29: Floor of 0 is 0                                        *)
+(* ================================================================== *)
+Theorem fp_floor_zero :
+  Zfloor 0 = 0%Z.
+Proof.
+  replace 0 with (IZR 0) by reflexivity.
+  apply Zfloor_IZR.
+Qed.

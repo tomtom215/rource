@@ -616,3 +616,59 @@ fn verify_vec3_add_commutative() {
     assert!(ab.y == ba.y, "(a+b).y should equal (b+a).y");
     assert!(ab.z == ba.z, "(a+b).z should equal (b+a).z");
 }
+
+// ============================================================================
+// dot self non-negative
+// ============================================================================
+
+/// **Non-negativity**: `v.dot(v)` is always non-negative for finite bounded vectors.
+#[kani::proof]
+fn verify_vec3_dot_self_non_negative() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
+    let v = Vec3::new(x, y, z);
+    let d = v.dot(v);
+    assert!(!d.is_nan(), "v.dot(v) produced NaN");
+    assert!(d >= 0.0, "v.dot(v) returned negative value");
+}
+
+// ============================================================================
+// sub anti-commutativity
+// ============================================================================
+
+/// **Anti-commutativity**: `a - b == -(b - a)` for all finite bounded vectors.
+#[kani::proof]
+fn verify_vec3_sub_anti_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    let a = Vec3::new(ax, ay, az);
+    let b = Vec3::new(bx, by, bz);
+    let a_minus_b = a - b;
+    let neg_b_minus_a = -(b - a);
+    assert!(
+        a_minus_b.x == neg_b_minus_a.x,
+        "(a-b).x should equal -(b-a).x"
+    );
+    assert!(
+        a_minus_b.y == neg_b_minus_a.y,
+        "(a-b).y should equal -(b-a).y"
+    );
+    assert!(
+        a_minus_b.z == neg_b_minus_a.z,
+        "(a-b).z should equal -(b-a).z"
+    );
+}

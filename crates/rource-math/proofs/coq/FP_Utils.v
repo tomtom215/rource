@@ -398,3 +398,80 @@ Theorem fp_utils_error_expansion_4 :
   forall (u : R),
   (1 + u)^4 - 1 = 4 * u + 6 * u^2 + 4 * u^3 + u^4.
 Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 29: Five-op expansion                                      *)
+(*  (1+u)^5 - 1 = 5u + 10u^2 + 10u^3 + 5u^4 + u^5                   *)
+(* ================================================================== *)
+Theorem fp_utils_error_expansion_5 :
+  forall (u : R),
+  (1 + u)^5 - 1 = 5 * u + 10 * u^2 + 10 * u^3 + 5 * u^4 + u^5.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 30: Six-op expansion                                       *)
+(*  (1+u)^6 - 1 = 6u + 15u^2 + 20u^3 + 15u^4 + 6u^5 + u^6          *)
+(* ================================================================== *)
+Theorem fp_utils_error_expansion_6 :
+  forall (u : R),
+  (1 + u)^6 - 1 = 6 * u + 15 * u^2 + 20 * u^3 + 15 * u^4 + 6 * u^5 + u^6.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 31: Seven-op expansion                                     *)
+(*  (1+u)^7 - 1 = binomial(7,k) u^k summed                            *)
+(* ================================================================== *)
+Theorem fp_utils_error_expansion_7 :
+  forall (u : R),
+  (1 + u)^7 - 1 = 7 * u + 21 * u^2 + 35 * u^3 + 35 * u^4
+                   + 21 * u^5 + 7 * u^6 + u^7.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 32: Eight-op expansion                                     *)
+(* ================================================================== *)
+Theorem fp_utils_error_expansion_8 :
+  forall (u : R),
+  (1 + u)^8 - 1 = 8 * u + 28 * u^2 + 56 * u^3 + 70 * u^4
+                   + 56 * u^5 + 28 * u^6 + 8 * u^7 + u^8.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 33: Subtraction of (1+u)^n terms factors cleanly           *)
+(*  (1+u)^3 - (1+u)^2 = u * (1+u)^2                                   *)
+(* ================================================================== *)
+Theorem fp_utils_expansion_diff_3_2 :
+  forall (u : R),
+  (1 + u)^3 - (1 + u)^2 = u * (1 + u)^2.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 34: (1+u)^n >= 1 for u >= 0, instantiated for n=2         *)
+(* ================================================================== *)
+Theorem fp_utils_expansion_ge_one_2 :
+  forall (u : R), 0 <= u -> 1 <= (1 + u)^2.
+Proof. intros u Hu. nra. Qed.
+
+(* ================================================================== *)
+(*  Theorem 35: (1+u)^n >= 1 for u >= 0, instantiated for n=3         *)
+(* ================================================================== *)
+Theorem fp_utils_expansion_ge_one_3 :
+  forall (u : R), 0 <= u -> 1 <= (1 + u)^3.
+Proof. intros u Hu. nra. Qed.
+
+(* ================================================================== *)
+(*  Theorem 36: Product of (1+e_i) two-term expansion                  *)
+(*  (1+a)(1+b) = 1 + a + b + ab                                       *)
+(* ================================================================== *)
+Theorem fp_utils_product_two :
+  forall (a b : R), (1 + a) * (1 + b) = 1 + a + b + a * b.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 37: Three-term product expansion                           *)
+(*  (1+a)(1+b)(1+c) = 1 + a + b + c + ab + ac + bc + abc             *)
+(* ================================================================== *)
+Theorem fp_utils_product_three :
+  forall (a b c : R),
+  (1 + a) * (1 + b) * (1 + c) = 1 + a + b + c + a*b + a*c + b*c + a*b*c.
+Proof. intros. ring. Qed.

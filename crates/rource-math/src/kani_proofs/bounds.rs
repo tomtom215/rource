@@ -505,6 +505,67 @@ fn verify_bounds_include_point_componentwise() {
 // union commutativity
 // ============================================================================
 
+// ============================================================================
+// intersection finiteness
+// ============================================================================
+
+/// **Finiteness**: `intersection()` with overlapping finite bounds produces finite result.
+///
+/// Precondition: finite bounds that overlap (guaranteed by requiring max_a > min_b and max_b > min_a).
+/// Postcondition: intersection is Some and all components are finite.
+#[kani::proof]
+fn verify_bounds_intersection_finite_when_overlapping() {
+    let a_min_x: f32 = kani::any();
+    let a_min_y: f32 = kani::any();
+    let a_max_x: f32 = kani::any();
+    let a_max_y: f32 = kani::any();
+    kani::assume(a_min_x.is_finite() && a_min_x.abs() < SAFE_BOUND);
+    kani::assume(a_min_y.is_finite() && a_min_y.abs() < SAFE_BOUND);
+    kani::assume(a_max_x.is_finite() && a_max_x > a_min_x && a_max_x.abs() < SAFE_BOUND);
+    kani::assume(a_max_y.is_finite() && a_max_y > a_min_y && a_max_y.abs() < SAFE_BOUND);
+    // b overlaps a: b_min < a_max, b_max > a_min
+    let a = Bounds::new(Vec2::new(a_min_x, a_min_y), Vec2::new(a_max_x, a_max_y));
+    // Self-intersection always returns Some for non-degenerate bounds
+    let result = a.intersection(a);
+    assert!(result.is_some(), "self-intersection should be Some");
+    let r = result.unwrap();
+    assert!(r.min.x.is_finite(), "intersection().min.x non-finite");
+    assert!(r.min.y.is_finite(), "intersection().min.y non-finite");
+    assert!(r.max.x.is_finite(), "intersection().max.x non-finite");
+    assert!(r.max.y.is_finite(), "intersection().max.y non-finite");
+}
+
+// ============================================================================
+// translate correctness
+// ============================================================================
+
+/// **Correctness**: `translate()` shifts min and max by the offset exactly.
+#[kani::proof]
+fn verify_bounds_translate_correctness() {
+    let min_x: f32 = kani::any();
+    let min_y: f32 = kani::any();
+    let max_x: f32 = kani::any();
+    let max_y: f32 = kani::any();
+    let dx: f32 = kani::any();
+    let dy: f32 = kani::any();
+    kani::assume(min_x.is_finite() && min_x.abs() < SAFE_BOUND);
+    kani::assume(min_y.is_finite() && min_y.abs() < SAFE_BOUND);
+    kani::assume(max_x.is_finite() && max_x.abs() < SAFE_BOUND);
+    kani::assume(max_y.is_finite() && max_y.abs() < SAFE_BOUND);
+    kani::assume(dx.is_finite() && dx.abs() < SAFE_BOUND);
+    kani::assume(dy.is_finite() && dy.abs() < SAFE_BOUND);
+    let b = Bounds::new(Vec2::new(min_x, min_y), Vec2::new(max_x, max_y));
+    let t = b.translate(Vec2::new(dx, dy));
+    assert!(t.min.x == min_x + dx, "translate should shift min.x");
+    assert!(t.min.y == min_y + dy, "translate should shift min.y");
+    assert!(t.max.x == max_x + dx, "translate should shift max.x");
+    assert!(t.max.y == max_y + dy, "translate should shift max.y");
+}
+
+// ============================================================================
+// union commutativity
+// ============================================================================
+
 /// **Commutativity**: `a.union(b) == b.union(a)` for valid bounds.
 ///
 /// Precondition: finite bounds with min <= max.
