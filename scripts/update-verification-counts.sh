@@ -566,17 +566,18 @@ if [[ -f "$FV" ]]; then
     # Summary Statistics Combined row
     sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*10 types \+ FP\*\*/**$GRAND_TOTAL** | **0** | **10 types + FP**/" "$FV"
     # Per-type table: full row updates (Coq R, Coq Z, Kani, Total)
-    sed -i -E "/\| Vec2 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC2 theorems | $COQ_Z_VEC2 theorems | — | $KANI_VEC2 harnesses | $TOTAL_VEC2 | TRIPLE/" "$FV"
-    sed -i -E "/\| Vec3 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC3 theorems | $COQ_Z_VEC3 theorems | — | $KANI_VEC3 harnesses | $TOTAL_VEC3 | TRIPLE/" "$FV"
-    sed -i -E "/\| Vec4 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC4 theorems | $COQ_Z_VEC4 theorems | — | $KANI_VEC4 harnesses | $TOTAL_VEC4 | TRIPLE/" "$FV"
-    sed -i -E "/\| Mat3 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_MAT3 theorems | $COQ_Z_MAT3 theorems | — | $KANI_MAT3 harnesses | $TOTAL_MAT3 | TRIPLE/" "$FV"
-    sed -i -E "/\| Mat4 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_MAT4 theorems | $COQ_Z_MAT4 theorems | — | $KANI_MAT4 harnesses | $TOTAL_MAT4 | TRIPLE/" "$FV"
-    sed -i -E "/\| Color \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_COLOR theorems | $COQ_Z_COLOR theorems | — | $KANI_COLOR harnesses | $TOTAL_COLOR | TRIPLE/" "$FV"
-    sed -i -E "/\| Rect \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_RECT theorems | $COQ_Z_RECT theorems | — | $KANI_RECT harnesses | $TOTAL_RECT | TRIPLE/" "$FV"
-    sed -i -E "/\| Bounds \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_BOUNDS theorems | $COQ_Z_BOUNDS theorems | — | $KANI_BOUNDS harnesses | $TOTAL_BOUNDS | TRIPLE/" "$FV"
-    sed -i -E "/\| Utils \|/s/[0-9]+ theorems \| [0-9]+ theorems \| . \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_UTILS theorems | $COQ_Z_UTILS theorems | — | $KANI_UTILS harnesses | $TOTAL_UTILS | TRIPLE/" "$FV"
+    # Note: [^|]+ matches em dash (—) which is multi-byte UTF-8, where . would fail
+    sed -i -E "/\| Vec2 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC2 theorems | $COQ_Z_VEC2 theorems | — | $KANI_VEC2 harnesses | $TOTAL_VEC2 | TRIPLE/" "$FV"
+    sed -i -E "/\| Vec3 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC3 theorems | $COQ_Z_VEC3 theorems | — | $KANI_VEC3 harnesses | $TOTAL_VEC3 | TRIPLE/" "$FV"
+    sed -i -E "/\| Vec4 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_VEC4 theorems | $COQ_Z_VEC4 theorems | — | $KANI_VEC4 harnesses | $TOTAL_VEC4 | TRIPLE/" "$FV"
+    sed -i -E "/\| Mat3 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_MAT3 theorems | $COQ_Z_MAT3 theorems | — | $KANI_MAT3 harnesses | $TOTAL_MAT3 | TRIPLE/" "$FV"
+    sed -i -E "/\| Mat4 \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_MAT4 theorems | $COQ_Z_MAT4 theorems | — | $KANI_MAT4 harnesses | $TOTAL_MAT4 | TRIPLE/" "$FV"
+    sed -i -E "/\| Color \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_COLOR theorems | $COQ_Z_COLOR theorems | — | $KANI_COLOR harnesses | $TOTAL_COLOR | TRIPLE/" "$FV"
+    sed -i -E "/\| Rect \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_RECT theorems | $COQ_Z_RECT theorems | — | $KANI_RECT harnesses | $TOTAL_RECT | TRIPLE/" "$FV"
+    sed -i -E "/\| Bounds \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_BOUNDS theorems | $COQ_Z_BOUNDS theorems | — | $KANI_BOUNDS harnesses | $TOTAL_BOUNDS | TRIPLE/" "$FV"
+    sed -i -E "/\| Utils \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [^|]+ \| [0-9]+ harnesses \| [0-9]+ \| TRIPLE/$COQ_R_UTILS theorems | $COQ_Z_UTILS theorems | — | $KANI_UTILS harnesses | $TOTAL_UTILS | TRIPLE/" "$FV"
     # FP Foundations row
-    sed -i -E "/\| FP Foundations \|/s/[0-9]+ theorems \| . \| [0-9]+ \| MACHINE/$COQ_FP_TOTAL theorems | — | $COQ_FP_TOTAL | MACHINE/" "$FV"
+    sed -i -E "/\| FP Foundations \|/s/[0-9]+ theorems \| [^|]+ \| [0-9]+ \| MACHINE/$COQ_FP_TOTAL theorems | — | $COQ_FP_TOTAL | MACHINE/" "$FV"
     # Footer: Coq R-based per-type (full breakdown)
     sed -i -E "s/Mat4: [0-9]+, Color: [0-9]+, Rect: [0-9]+, Bounds: [0-9]+, Complexity: 60, CrossType: 51, Utils: [0-9]+/Mat4: $COQ_R_MAT4, Color: $COQ_R_COLOR, Rect: $COQ_R_RECT, Bounds: $COQ_R_BOUNDS, Complexity: 60, CrossType: 51, Utils: $COQ_R_UTILS/" "$FV"
     # Footer: Coq R-based total

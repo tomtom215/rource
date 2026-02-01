@@ -196,11 +196,11 @@ The specifications and the compiler serve fundamentally different purposes.
 │  Layer 1: Abstract Specification (R-based)                              │
 │  ├── Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v                            │
 │  ├── Color.v, Rect.v, Utils.v                                          │
-│  ├── Vec2_Proofs.v ... Mat4_Proofs.v (580 theorems)                     │
-│  ├── Color_Proofs.v, Rect_Proofs.v (251 theorems)                       │
+│  ├── Vec2_Proofs.v ... Mat4_Proofs.v (575 theorems)                     │
+│  ├── Color_Proofs.v, Rect_Proofs.v (248 theorems)                       │
 │  ├── Complexity.v (60 theorems)                                         │
 │  └── Purpose: Mathematical correctness proofs                           │
-│      Status: COMPLETE (1540 total with Verus)                            │
+│      Status: COMPLETE (1532 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
 │  ├── Vec2_Compute.v (50 theorems)                                       │

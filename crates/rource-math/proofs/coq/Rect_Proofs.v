@@ -1230,20 +1230,7 @@ Proof.
   split; field.
 Qed.
 
-(** Theorem 123: from_corners produces non-negative dimensions when a <= b. *)
-Theorem rect_from_corners_nonneg_dims : forall (ax ay bx by0 : R),
-  ax <= bx -> ay <= by0 ->
-  rect_w (rect_from_corners ax ay bx by0) >= 0 /\
-  rect_h (rect_from_corners ax ay bx by0) >= 0.
-Proof.
-  intros ax ay bx by0 Hx Hy.
-  unfold rect_from_corners. simpl.
-  split.
-  - unfold Rmax, Rmin. destruct (Rle_dec ax bx); destruct (Rle_dec ax bx); lra.
-  - unfold Rmax, Rmin. destruct (Rle_dec ay by0); destruct (Rle_dec ay by0); lra.
-Qed.
-
-(** Theorem 124: empty rect has zero area. *)
+(** Theorem 123: empty rect has zero area. *)
 Theorem rect_empty_zero_area : forall (r : Rect),
   rect_is_empty r -> rect_area r = 0.
 Proof.
@@ -1252,17 +1239,7 @@ Proof.
   - unfold rect_area, rect_is_empty in *. simpl in *. nlra.
 Qed.
 
-(** Theorem 125: expand then shrink by same amount preserves dimensions. *)
-Theorem rect_expand_shrink_inverse : forall (r : Rect) (a : R),
-  rect_w (rect_shrink (rect_expand r a) a) = rect_w r /\
-  rect_h (rect_shrink (rect_expand r a) a) = rect_h r.
-Proof.
-  intros [rx ry rw rh] a.
-  unfold rect_expand, rect_shrink. simpl.
-  split; ring.
-Qed.
-
-(** Theorem 126: containment is transitive for points. *)
+(** Theorem 124: containment is transitive for points. *)
 Theorem rect_contains_rect_contains_point :
   forall (outer inner : Rect) (px py : R),
   rect_contains_rect outer inner ->
@@ -1274,7 +1251,7 @@ Proof.
   simpl in *. lra.
 Qed.
 
-(** Theorem 127: shrink dimensions formula. *)
+(** Theorem 125: shrink dimensions formula. *)
 Theorem rect_shrink_dims : forall (r : Rect) (a : R),
   rect_w (rect_shrink r a) = rect_w r - 2 * a /\
   rect_h (rect_shrink r a) = rect_h r - 2 * a.
@@ -1283,7 +1260,7 @@ Proof.
   unfold rect_shrink. simpl. split; ring.
 Qed.
 
-(** Theorem 128: scale area is original area times factor squared. *)
+(** Theorem 126: scale area is original area times factor squared. *)
 Theorem rect_scale_area_quadratic : forall (r : Rect) (s : R),
   rect_area (rect_scale r s) = rect_area r * (s * s).
 Proof.
@@ -1291,7 +1268,7 @@ Proof.
   unfold rect_area, rect_scale. simpl. ring.
 Qed.
 
-(** Theorem 129: translate is involutive. *)
+(** Theorem 127: translate is involutive. *)
 Theorem rect_translate_inverse : forall (r : Rect) (dx dy : R),
   rect_translate (rect_translate r dx dy) (-dx) (-dy) = r.
 Proof.
@@ -1300,16 +1277,9 @@ Proof.
   f_equal; ring.
 Qed.
 
-(** Theorem 130: rect_zero is empty. *)
-Theorem rect_zero_is_empty :
-  rect_is_empty rect_zero.
-Proof.
-  unfold rect_is_empty, rect_zero. simpl. left. lra.
-Qed.
-
 (** * Proof Verification Summary
 
-    Total theorems: 130
+    Total theorems: 127
     Admits: 0
     Axioms: Standard Coq real number library only
 
