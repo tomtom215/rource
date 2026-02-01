@@ -545,3 +545,47 @@ fn verify_color_premultiplied_bounded() {
     assert!(p.b >= 0.0 && p.b <= 1.0, "premultiplied().b out of [0,1]");
     assert!(p.a >= 0.0 && p.a <= 1.0, "premultiplied().a out of [0,1]");
 }
+
+// ============================================================================
+// with_alpha
+// ============================================================================
+
+/// **Postcondition**: `with_alpha(a)` preserves RGB and sets alpha to `a`.
+#[kani::proof]
+fn verify_color_with_alpha_preserves_rgb() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    let new_a: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    kani::assume(a.is_finite());
+    kani::assume(new_a.is_finite());
+    let c = Color::new(r, g, b, a);
+    let c2 = c.with_alpha(new_a);
+    assert!(c2.r == r, "with_alpha should preserve r");
+    assert!(c2.g == g, "with_alpha should preserve g");
+    assert!(c2.b == b, "with_alpha should preserve b");
+    assert!(c2.a == new_a, "with_alpha should set alpha");
+}
+
+// ============================================================================
+// luminance non-negative
+// ============================================================================
+
+/// **Non-negativity**: `luminance()` with non-negative inputs is ≥ 0.
+#[kani::proof]
+fn verify_color_luminance_non_negative() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    let c = Color::new(r, g, b, 1.0);
+    let lum = c.luminance();
+    assert!(!lum.is_nan(), "luminance should not be NaN");
+    assert!(lum >= 0.0, "luminance should be non-negative");
+}

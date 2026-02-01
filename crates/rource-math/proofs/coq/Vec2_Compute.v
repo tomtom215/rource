@@ -105,6 +105,11 @@ Definition zvec2_perp (v : ZVec2) : ZVec2 :=
 Definition zvec2_length_squared (v : ZVec2) : Z :=
   zvec2_dot v v.
 
+(** * Lerp (Linear Interpolation) *)
+
+Definition zvec2_lerp (t : Z) (a b : ZVec2) : ZVec2 :=
+  zvec2_add a (zvec2_scale t (zvec2_sub b a)).
+
 (** * Equality Lemma *)
 
 Lemma zvec2_eq : forall x1 y1 x2 y2 : Z,
@@ -540,6 +545,36 @@ Theorem zvec2_element_sum_add : forall a b : ZVec2,
   zvec2_element_sum (zvec2_add a b) = zvec2_element_sum a + zvec2_element_sum b.
 Proof.
   intros [ax ay] [bx by0]. unfold zvec2_element_sum, zvec2_add. simpl. ring.
+Qed.
+
+(** ** Lerp Properties *)
+
+(** Theorem 51: lerp at t=0 returns first argument *)
+Theorem zvec2_lerp_zero : forall a b : ZVec2,
+  zvec2_lerp 0 a b = a.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold zvec2_lerp, zvec2_add, zvec2_scale, zvec2_sub. simpl.
+  apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 52: lerp at t=1 returns second argument *)
+Theorem zvec2_lerp_one : forall a b : ZVec2,
+  zvec2_lerp 1 a b = b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold zvec2_lerp, zvec2_add, zvec2_scale, zvec2_sub.
+  cbn [zvec2_x zvec2_y].
+  apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 53: lerp with same endpoints is identity *)
+Theorem zvec2_lerp_same : forall (t : Z) (a : ZVec2),
+  zvec2_lerp t a a = a.
+Proof.
+  intros t [ax ay].
+  unfold zvec2_lerp, zvec2_add, zvec2_scale, zvec2_sub. simpl.
+  apply zvec2_eq; ring.
 Qed.
 
 (** * Computational Tests (Extracted) *)

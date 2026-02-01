@@ -46,20 +46,20 @@ Extraction "rource_math_extracted"
   zvec2_new zvec2_zero zvec2_splat zvec2_unit_x zvec2_unit_y
   zvec2_add zvec2_sub zvec2_neg zvec2_scale zvec2_mul
   zvec2_dot zvec2_cross zvec2_perp zvec2_length_squared
-  zvec2_eq_dec
+  zvec2_lerp zvec2_eq_dec
   (* Vec3 *)
   ZVec3 mkZVec3 zvec3_x zvec3_y zvec3_z
   zvec3_new zvec3_zero zvec3_splat zvec3_unit_x zvec3_unit_y zvec3_unit_z
   zvec3_add zvec3_sub zvec3_neg zvec3_scale zvec3_mul
   zvec3_dot zvec3_cross zvec3_length_squared zvec3_scalar_triple
-  zvec3_eq_dec
+  zvec3_lerp zvec3_eq_dec
   (* Vec4 *)
   ZVec4 mkZVec4 zvec4_x zvec4_y zvec4_z zvec4_w
   zvec4_new zvec4_zero zvec4_one zvec4_splat
   zvec4_unit_x zvec4_unit_y zvec4_unit_z zvec4_unit_w
   zvec4_add zvec4_sub zvec4_neg zvec4_scale zvec4_mul
   zvec4_dot zvec4_length_squared
-  zvec4_eq_dec
+  zvec4_lerp zvec4_eq_dec
   (* Mat3 *)
   ZMat3 mkZMat3 zm3_0 zm3_1 zm3_2 zm3_3 zm3_4 zm3_5 zm3_6 zm3_7 zm3_8
   zmat3_zero zmat3_identity zmat3_add zmat3_neg zmat3_sub

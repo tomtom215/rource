@@ -45,4 +45,5 @@ Extraction "vec4_extracted"
   zvec4_mul
   zvec4_dot
   zvec4_length_squared
+  zvec4_lerp
   zvec4_eq_dec.

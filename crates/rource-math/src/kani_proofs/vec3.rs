@@ -672,3 +672,68 @@ fn verify_vec3_sub_anti_commutative() {
         "(a-b).z should equal -(b-a).z"
     );
 }
+
+// ============================================================================
+// abs
+// ============================================================================
+
+/// **Non-negativity**: `abs()` components are always ≥ 0 for finite inputs.
+#[kani::proof]
+fn verify_vec3_abs_non_negative() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(z.is_finite());
+    let v = Vec3::new(x, y, z);
+    let a = v.abs();
+    assert!(a.x >= 0.0, "abs().x should be non-negative");
+    assert!(a.y >= 0.0, "abs().y should be non-negative");
+    assert!(a.z >= 0.0, "abs().z should be non-negative");
+}
+
+/// **Idempotence**: `abs(abs(v)) == abs(v)` for all finite vectors.
+#[kani::proof]
+fn verify_vec3_abs_idempotent() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(z.is_finite());
+    let v = Vec3::new(x, y, z);
+    let once = v.abs();
+    let twice = once.abs();
+    assert!(once.x == twice.x, "abs should be idempotent for x");
+    assert!(once.y == twice.y, "abs should be idempotent for y");
+    assert!(once.z == twice.z, "abs should be idempotent for z");
+}
+
+// ============================================================================
+// distance_squared
+// ============================================================================
+
+/// **Non-negativity + symmetry**: `distance_squared(a, b) >= 0` and equals `distance_squared(b, a)`.
+#[kani::proof]
+fn verify_vec3_distance_squared_properties() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    let a = Vec3::new(ax, ay, az);
+    let b = Vec3::new(bx, by, bz);
+    let d_ab = a.distance_squared(b);
+    let d_ba = b.distance_squared(a);
+    assert!(!d_ab.is_nan(), "distance_squared produced NaN");
+    assert!(d_ab >= 0.0, "distance_squared should be non-negative");
+    assert!(d_ab == d_ba, "distance_squared should be symmetric");
+}

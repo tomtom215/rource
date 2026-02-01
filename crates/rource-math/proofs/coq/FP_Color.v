@@ -345,7 +345,7 @@ Proof. apply sqrt_1. Qed.
 (* ================================================================== *)
 (*  Theorem 27: Rect area error (1-op)                                 *)
 (* ================================================================== *)
-Theorem fp_rect_area_error :
+Theorem fp_color_area_error :
   forall (e1 : R),
   Rabs e1 <= u32 / (1 + u32) ->
   Rabs e1 <= u32 / (1 + u32).
@@ -354,7 +354,7 @@ Proof. intros e1 He1. exact He1. Qed.
 (* ================================================================== *)
 (*  Theorem 28: Rect perimeter error (2-op: add + mul)                *)
 (* ================================================================== *)
-Theorem fp_rect_perimeter_error :
+Theorem fp_color_perimeter_error :
   forall (e1 e2 : R),
   Rabs e1 <= u32 / (1 + u32) ->
   Rabs e2 <= u32 / (1 + u32) ->

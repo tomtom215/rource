@@ -302,3 +302,8 @@ let zvec4_dot a b =
 
 let zvec4_length_squared v =
   zvec4_dot v v
+
+(** val zvec4_lerp : int -> zVec4 -> zVec4 -> zVec4 **)
+
+let zvec4_lerp t a b =
+  zvec4_add a (zvec4_scale t (zvec4_sub b a))

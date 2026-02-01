@@ -373,6 +373,11 @@ let zvec2_perp v =
 let zvec2_length_squared v =
   zvec2_dot v v
 
+(** val zvec2_lerp : int -> zVec2 -> zVec2 -> zVec2 **)
+
+let zvec2_lerp t a b =
+  zvec2_add a (zvec2_scale t (zvec2_sub b a))
+
 type zVec3 = { zvec3_x : int; zvec3_y : int; zvec3_z : int }
 
 (** val zvec3_x : zVec3 -> int **)
@@ -481,6 +486,11 @@ let zvec3_cross a b =
 
 let zvec3_length_squared v =
   zvec3_dot v v
+
+(** val zvec3_lerp : int -> zVec3 -> zVec3 -> zVec3 **)
+
+let zvec3_lerp t a b =
+  zvec3_add a (zvec3_scale t (zvec3_sub b a))
 
 (** val zvec3_scalar_triple : zVec3 -> zVec3 -> zVec3 -> int **)
 
@@ -611,6 +621,11 @@ let zvec4_dot a b =
 
 let zvec4_length_squared v =
   zvec4_dot v v
+
+(** val zvec4_lerp : int -> zVec4 -> zVec4 -> zVec4 **)
+
+let zvec4_lerp t a b =
+  zvec4_add a (zvec4_scale t (zvec4_sub b a))
 
 type zMat3 = { zm3_0 : int; zm3_1 : int; zm3_2 : int; zm3_3 : int;
                zm3_4 : int; zm3_5 : int; zm3_6 : int; zm3_7 : int; zm3_8 : 

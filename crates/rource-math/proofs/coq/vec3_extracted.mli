@@ -73,4 +73,6 @@ val zvec3_cross : zVec3 -> zVec3 -> zVec3
 
 val zvec3_length_squared : zVec3 -> int
 
+val zvec3_lerp : int -> zVec3 -> zVec3 -> zVec3
+
 val zvec3_scalar_triple : zVec3 -> zVec3 -> zVec3 -> int

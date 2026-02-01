@@ -189,3 +189,42 @@ fn verify_clamp_idempotent() {
     let twice = crate::clamp(once, min, max);
     assert!(once == twice, "clamp should be idempotent");
 }
+
+// ============================================================================
+// lerp same endpoints
+// ============================================================================
+
+/// **Identity**: `lerp(a, a, t)` returns `a` for any t (modulo f32 rounding).
+///
+/// Since lerp(a, a, t) = a + (a - a) * t = a + 0 * t = a.
+/// For finite a and 0 * t = 0, this should hold exactly.
+#[kani::proof]
+fn verify_lerp_same_endpoints() {
+    let a: f32 = kani::any();
+    let t: f32 = kani::any();
+    kani::assume(a.is_finite() && a.abs() < SAFE_BOUND);
+    kani::assume(t.is_finite() && t >= 0.0 && t <= 1.0);
+    let result = crate::lerp(a, a, t);
+    assert!(result == a, "lerp(a, a, t) should return exactly a");
+}
+
+// ============================================================================
+// clamp within bounds is identity
+// ============================================================================
+
+/// **Identity**: `clamp(v, min, max) == v` when `min <= v <= max`.
+#[kani::proof]
+fn verify_clamp_identity_in_range() {
+    let value: f32 = kani::any();
+    let min: f32 = kani::any();
+    let max: f32 = kani::any();
+    kani::assume(value.is_finite());
+    kani::assume(min.is_finite());
+    kani::assume(max.is_finite());
+    kani::assume(min <= value && value <= max);
+    let result = crate::clamp(value, min, max);
+    assert!(
+        result == value,
+        "clamp should be identity when value is in range"
+    );
+}

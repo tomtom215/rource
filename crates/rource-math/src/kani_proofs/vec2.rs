@@ -558,3 +558,58 @@ fn verify_vec2_dot_self_non_negative() {
     assert!(!d.is_nan(), "v.dot(v) produced NaN");
     assert!(d >= 0.0, "v.dot(v) returned negative value");
 }
+
+// ============================================================================
+// abs
+// ============================================================================
+
+/// **Non-negativity**: `abs()` components are always ≥ 0 for finite inputs.
+#[kani::proof]
+fn verify_vec2_abs_non_negative() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let a = v.abs();
+    assert!(a.x >= 0.0, "abs().x should be non-negative");
+    assert!(a.y >= 0.0, "abs().y should be non-negative");
+}
+
+/// **Idempotence**: `abs(abs(v)) == abs(v)` for all finite vectors.
+#[kani::proof]
+fn verify_vec2_abs_idempotent() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let once = v.abs();
+    let twice = once.abs();
+    assert!(once.x == twice.x, "abs should be idempotent for x");
+    assert!(once.y == twice.y, "abs should be idempotent for y");
+}
+
+// ============================================================================
+// distance_squared
+// ============================================================================
+
+/// **Non-negativity + symmetry**: `distance_squared(a, b) >= 0` and equals `distance_squared(b, a)`.
+#[kani::proof]
+fn verify_vec2_distance_squared_properties() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    let a = Vec2::new(ax, ay);
+    let b = Vec2::new(bx, by);
+    let d_ab = a.distance_squared(b);
+    let d_ba = b.distance_squared(a);
+    assert!(!d_ab.is_nan(), "distance_squared produced NaN");
+    assert!(d_ab >= 0.0, "distance_squared should be non-negative");
+    assert!(d_ab == d_ba, "distance_squared should be symmetric");
+}

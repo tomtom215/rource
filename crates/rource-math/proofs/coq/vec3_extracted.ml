@@ -287,6 +287,11 @@ let zvec3_cross a b =
 let zvec3_length_squared v =
   zvec3_dot v v
 
+(** val zvec3_lerp : int -> zVec3 -> zVec3 -> zVec3 **)
+
+let zvec3_lerp t a b =
+  zvec3_add a (zvec3_scale t (zvec3_sub b a))
+
 (** val zvec3_scalar_triple : zVec3 -> zVec3 -> zVec3 -> int **)
 
 let zvec3_scalar_triple a b c =

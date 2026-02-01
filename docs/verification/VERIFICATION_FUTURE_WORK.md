@@ -25,14 +25,14 @@ For completed work history, see [VERIFICATION_CHRONOLOGY.md](VERIFICATION_CHRONO
 
 ## Coverage Status
 
-**Current coverage**: 163/253 public operations verified (64.4%).
-**Theoretical maximum** (excluding transcendental-blocked and batch operations): ~236/253 (93.3%).
+**Current coverage**: 169/255 public operations verified (66.3%).
+**Theoretical maximum** (excluding transcendental-blocked and batch operations): ~238/255 (93.3%).
 
 ## Operation Classification
 
 | Category | Description | Count |
 |----------|-------------|-------|
-| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 163 |
+| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 169 |
 | **ALGEBRAIC GAP** | CAN be proved algebraically, no proof yet | ~13 |
 | **PARTIALLY VERIFIED** | Some proofs exist but missing verification layers | ~17 |
 | **FP-FEASIBLE** | Requires FP modeling; feasible via Flocq or Kani | ~13 |
@@ -202,19 +202,19 @@ For a new session focused on increasing verification coverage, follow this order
 
 | After Priority | Operations Verified | Coverage | Delta |
 |----------------|--------------------:|----------|-------|
-| **Current** | **163** | **64.4% (of 253)** | — |
-| After remaining P3 | ~170 | 67.2% | +13 |
-| After P1.4-P1.5 (ortho, look_at) | ~172 | 68.0% | +2 |
-| After P4 (FP feasible) | ~185 | 73.1% | +13 |
-| **Theoretical maximum** (excl. blocked) | **~236** | **93.3%** | — |
+| **Current** | **169** | **66.3% (of 255)** | — |
+| After remaining P3 | ~177 | 69.4% | +8 |
+| After P1.4-P1.5 (ortho, look_at) | ~179 | 70.2% | +2 |
+| After P4 (FP feasible) | ~192 | 75.3% | +13 |
+| **Theoretical maximum** (excl. blocked) | **~238** | **93.3%** | — |
 
-**Note**: The operation count is 253 (including 23 Bounds operations). Reaching 100%
+**Note**: The operation count is 255 (including 23 Bounds operations). Reaching 100%
 is not possible without transcendental function support (10 blocked operations) and
 batch operation proofs (7 low-value operations). The practical target is approximately
 85–90% coverage, which would require completing P1 through P4.
 
 ---
 
-*Last updated: 2026-01-31*
-*Current coverage: 163/253 (64.4%)*
+*Last updated: 2026-02-01*
+*Current coverage: 169/255 (66.3%)*
 *Remaining P1–P4 items: 6 priority items*
