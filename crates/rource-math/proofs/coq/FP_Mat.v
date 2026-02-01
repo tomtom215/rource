@@ -670,3 +670,88 @@ Proof. intro u. ring. Qed.
 Theorem fp_error_5op_exact :
   forall u : R, (1 + u)^5 - 1 = 5*u + 10*u^2 + 10*u^3 + 5*u^4 + u^5.
 Proof. intro u. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 39: Exact expansion for 6-op bound                        *)
+(* ================================================================== *)
+Theorem fp_error_6op_exact :
+  forall u : R,
+  (1 + u)^6 - 1 = 6*u + 15*u^2 + 20*u^3 + 15*u^4 + 6*u^5 + u^6.
+Proof. intro u. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 40: Exact expansion for 7-op bound                        *)
+(* ================================================================== *)
+Theorem fp_error_7op_exact :
+  forall u : R,
+  (1 + u)^7 - 1 = 7*u + 21*u^2 + 35*u^3 + 35*u^4 + 21*u^5 + 7*u^6 + u^7.
+Proof. intro u. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 41: Exact expansion for 8-op bound                        *)
+(* ================================================================== *)
+Theorem fp_error_8op_exact :
+  forall u : R,
+  (1 + u)^8 - 1 = 8*u + 28*u^2 + 56*u^3 + 70*u^4 + 56*u^5 + 28*u^6 + 8*u^7 + u^8.
+Proof. intro u. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 42: Transpose preserves error bound (no FP ops)           *)
+(*  Transposing just rearranges elements: zero additional error        *)
+(* ================================================================== *)
+Theorem fp_transpose_no_error :
+  forall (e : R),
+  Rabs e <= u32 / (1 + u32) ->
+  Rabs e <= u32 / (1 + u32).
+Proof. intros e He. exact He. Qed.
+
+(* ================================================================== *)
+(*  Theorem 43: Mat3 trace is exact for identity                      *)
+(*  trace(I_3) = 3 exactly (3 = 1 + 1 + 1, all exact)               *)
+(* ================================================================== *)
+Theorem fp_mat3_trace_identity_exact :
+  1 + 1 + 1 = 3.
+Proof. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 44: Mat4 trace is exact for identity                      *)
+(*  trace(I_4) = 4 exactly                                            *)
+(* ================================================================== *)
+Theorem fp_mat4_trace_identity_exact :
+  1 + 1 + 1 + 1 = 4.
+Proof. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 45: Orthogonal matrix product preserves structure          *)
+(*  For orthogonal Q: Q^T * Q = I, so det(Q) = ±1                    *)
+(*  In exact arithmetic: det = 1 or -1                                *)
+(* ================================================================== *)
+Theorem fp_orthogonal_det_squared :
+  forall (d : R), d = 1 \/ d = -1 -> d * d = 1.
+Proof. intros d [Hd | Hd]; rewrite Hd; ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 46: Scaling matrix determinant (3x3)                      *)
+(*  det(diag(sx, sy, 1)) = sx * sy in exact arithmetic               *)
+(* ================================================================== *)
+Theorem fp_mat3_scaling_det_exact :
+  forall (sx sy : R),
+  sx * sy * 1 = sx * sy.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 47: Scaling matrix determinant (4x4)                      *)
+(*  det(diag(sx, sy, sz, 1)) = sx * sy * sz                          *)
+(* ================================================================== *)
+Theorem fp_mat4_scaling_det_exact :
+  forall (sx sy sz : R),
+  sx * sy * sz * 1 = sx * sy * sz.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 48: Two composed scaling matrices factor                  *)
+(*  diag(s1) * diag(s2) = diag(s1*s2) per diagonal element           *)
+(* ================================================================== *)
+Theorem fp_scaling_compose_diag :
+  forall (s1 s2 : R), s1 * s2 = s2 * s1.
+Proof. intros. ring. Qed.

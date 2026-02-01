@@ -504,3 +504,77 @@ Theorem fp_rect_scale_area_quadratic :
   forall (w h f : R),
   (w * f) * (h * f) = w * h * (f * f).
 Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 36: Area is commutative (w*h = h*w)                        *)
+(* ================================================================== *)
+Theorem fp_rect_area_commutative :
+  forall (w h : R),
+  w * h = h * w.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 37: Union width is non-negative                            *)
+(*  Rmax(r1,r2) - Rmin(l1,l2) >= max(r1,r2) - max(r1,r2) = 0        *)
+(* ================================================================== *)
+Theorem fp_rect_union_width_nonneg :
+  forall (l1 r1 l2 r2 : R),
+  l1 <= r1 -> l2 <= r2 ->
+  0 <= Rmax r1 r2 - Rmin l1 l2.
+Proof.
+  intros l1 r1 l2 r2 H1 H2.
+  unfold Rmin, Rmax.
+  destruct (Rle_dec l1 l2); destruct (Rle_dec r1 r2); lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 38: Scale composition (scale f1 then f2 = scale f1*f2)    *)
+(* ================================================================== *)
+Theorem fp_rect_scale_compose :
+  forall (w f1 f2 : R),
+  (w * f1) * f2 = w * (f1 * f2).
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 39: Translate composition is additive                      *)
+(* ================================================================== *)
+Theorem fp_rect_translate_compose :
+  forall (x d1 d2 : R),
+  (x + d1) + d2 = x + (d1 + d2).
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 40: Perimeter monotone in both dimensions                  *)
+(* ================================================================== *)
+Theorem fp_rect_perimeter_monotone :
+  forall (w1 h1 w2 h2 : R),
+  0 <= w1 -> 0 <= h1 ->
+  w1 <= w2 -> h1 <= h2 ->
+  2 * (w1 + h1) <= 2 * (w2 + h2).
+Proof. intros. lra. Qed.
+
+(* ================================================================== *)
+(*  Theorem 41: Expand width exact identity                            *)
+(*  expand(r, a): new_width = w + 2*a                                 *)
+(* ================================================================== *)
+Theorem fp_rect_expand_width_identity :
+  forall (w a : R),
+  w + 2 * a - w = 2 * a.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 42: Center distance from corner is half-diagonal           *)
+(*  |center - corner|^2 = (w/2)^2 + (h/2)^2                         *)
+(* ================================================================== *)
+Theorem fp_rect_center_corner_dist_sq :
+  forall (w h : R),
+  (w / 2) * (w / 2) + (h / 2) * (h / 2) = (w * w + h * h) / 4.
+Proof. intros. field. Qed.
+
+(* ================================================================== *)
+(*  Theorem 43: Diagonal squared is non-negative                       *)
+(* ================================================================== *)
+Theorem fp_rect_diagonal_sq_nonneg :
+  forall (w h : R),
+  0 <= w * w + h * h.
+Proof. intros. nra. Qed.

@@ -11,26 +11,30 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 | Module | Operations | Formally Verified | Unit Tested | Coverage |
 |--------|------------|-------------------|-------------|----------|
-| Vec2 | 42 | 19 (45%) | 42 (100%) | 45% |
+| Vec2 | 42 | 23 (55%) | 42 (100%) | 55% |
 | Vec3 | 28 | 19 (68%) | 28 (100%) | 68% |
 | Vec4 | 24 | 17 (71%) | 24 (100%) | 71% |
-| Mat3 | 17 | 16 (94%) | 17 (100%) | 94% |
+| Mat3 | 19 | 18 (95%) | 19 (100%) | 95% |
 | Mat4 | 26 | 18 (69%) | 26 (100%) | 69% |
 | Color | 38 | 27 (71%) | 38 (100%) | 71% |
 | Rect | 50 | 23 (46%) | 50 (100%) | 46% |
 | Bounds | 23 | 21 (91%) | 23 (100%) | 91% |
 | Utils (lib.rs) | 5 | 3 (60%) | 5 (100%) | 60% |
-| **Total** | **253** | **163 (64.4%)** | **253 (100%)** | **64.4%** |
+| **Total** | **255** | **169 (66.3%)** | **255 (100%)** | **66.3%** |
 
 ## Verified Operations by Module
 
-### Vec2 (19 operations verified)
+### Vec2 (23 operations verified)
 - `new`, `zero`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `perp`, `length_squared`, `mul`
 - `reflect`, `project`, `rejection`, `min_element`, `max_element`, `div`, `splat`, `element_sum`
+- `min` (component-wise, commutativity, associativity, idempotency)
+- `max` (component-wise, commutativity, associativity, idempotency)
+- `abs` (non-negativity, idempotency, triangle inequality)
+- `lerp` (boundary t=0, boundary t=1 via Coq proofs)
 
 **Not verified** (require floating-point or transcendentals):
-- `from_angle`, `to_angle`, `rotate`, `length`, `normalized`, `lerp`, `min`, `max`
-- `abs`, `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`
+- `from_angle`, `to_angle`, `rotate`, `length`, `normalized`
+- `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`
 - `element_product`
 - `is_finite`, `is_nan`, `as_ivec2`, `as_uvec2`, batch operations
 
@@ -46,12 +50,14 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 **Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, floating-point operations
 
-### Mat3 (16 operations verified)
+### Mat3 (18 operations verified)
 - `new`, `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
 - `determinant`, `trace`, `translation`, `scaling`
 - `get_translation`, `shearing`, `from_cols`, `inverse`
+- `transform_point` (identity preservation, finite output, general decomposition proofs)
+- `transform_vector` (identity preservation, finite output, general decomposition proofs)
 
-**Not verified**: `rotation`, `transform_point`, `transform_vector`
+**Not verified**: `rotation` (blocked: sin/cos transcendentals in Verus/Coq; Kani verifies NaN-freedom)
 
 ### Mat4 (18 operations verified)
 - `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
@@ -121,7 +127,7 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 | Priority | Module | Operations | Rationale | Status |
 |----------|--------|------------|-----------|--------|
 | ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 57, Coq R: 121, Coq Z: 60) |
-| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 52, Coq R: 120, Coq Z: 43) |
+| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 52, Coq R: 126, Coq Z: 43) |
 | ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 37, Coq Z: 18) |
 | 4 | Mat3/Mat4 | `determinant`, `trace` properties | Mathematical foundations | DONE (basic: det(I), det(0), det(A^T), det(-A), trace properties) |
 | 5 | Color | HSL <-> RGB conversion | Requires transcendentals | Blocked (floating-point) |
@@ -302,7 +308,7 @@ The generated code requires `RocqOfRust.RocqOfRust` which depends on:
 
 **5. Version mismatch: Rocq 9.0 vs Coq 8.18**
 
-Our 1726 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
+Our 1828 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
 Bridging requires migrating one or both sides.
 
 ### Comparison: rocq-of-rust vs Our Approach
@@ -314,7 +320,7 @@ Bridging requires migrating one or both sides.
 | f32 support | `UnsupportedLiteral` | Modeled as R (reals) or Z (integers) |
 | Admits | Structural `Admitted` axioms | Zero admits |
 | Proof style | Systems-level | Mathematical properties |
-| Compilability | Blocked (infra) | All 1726 Coq theorems compile |
+| Compilability | Blocked (infra) | All 1828 Coq theorems compile |
 | Best suited for | Smart contracts, protocols | Pure math functions |
 
 ### Recommendation
@@ -326,8 +332,8 @@ Bridging requires migrating one or both sides.
 4. The bridging effort would be enormous with uncertain feasibility
 
 **Our current approach remains optimal**: clean algebraic specifications in Coq 8.18
-with manual correspondence to Rust implementations, verified by 1726 machine-checked
-Coq theorems (1056 R-based + 391 Z-based + 279 FP) with zero admits. The spec-to-implementation gap is documented as a known
+with manual correspondence to Rust implementations, verified by 1828 machine-checked
+Coq theorems (1081 R-based + 391 Z-based + 356 FP) with zero admits. The spec-to-implementation gap is documented as a known
 limitation and mitigated by:
 - Systematic specification writing following Rust implementation structure
 - 100% unit test coverage verifying runtime behavior
@@ -375,7 +381,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2401 theorems, 59.3% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2523 theorems, 59.3% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
@@ -399,7 +405,7 @@ that neither Verus nor Coq can directly offer.
 | Color | 24 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN, clamp bounded, premultiplied no-NaN, fade no-NaN, with_alpha preserves RGB, to_argb8/abgr8 normalized, from_hex_alpha/rgba8 normalized, contrasting valid, approx_eq reflexive, scale finite, invert finite, mix no-NaN, add clamped, darken/lighten finite, from_rgba8 to_rgba8 roundtrip, from_hex to_rgba8 consistent, array roundtrip |
 | Rect | 25 | area ≥ 0, center finite, contains origin, perimeter ≥ 0, from_center_size center, translate preserves size, expand finite, is_valid positive dims, self-intersection, contains_self, scale_from_center finite/componentwise, approx_eq reflexive, from_corners valid, grow_to_contain finite, normalize finite, lerp finite, expand_xy finite, shrink finite, right/bottom correct, to_bounds finite |
 | Bounds | 23 | area ≥ 0, width/height ≥ 0, center finite, size finite, contains min, contains_bounds self, intersects self, translate preserves size, expand/shrink finite, from_points valid, from_center_half_extents finite, is_valid/is_empty complementarity, include_point contains, union contains both, approx_eq reflexive, to_rect finite, from_center_size finite, half_extents finite, union commutative |
-| **Total** | **200** | **All verified, 0 failures** |
+| **Total** | **220** | **All verified, 0 failures** |
 
 **Known limitation**: `Mat4::perspective()` uses `f32::tan()` which delegates to C `tanf` —
 unsupported by Kani's CBMC backend (tracked: github.com/model-checking/kani/issues/2423).
@@ -416,7 +422,7 @@ All edge cases are IEEE 754-compliant behavior requiring bounded input domains f
 
 *Last verified: 2026-01-31*
 *Formal verification coverage: 163/253 operations (64.4%)*
-*Kani IEEE 754 harnesses: 200 (all verified, 0 failures)*
+*Kani IEEE 754 harnesses: 220 (all verified, 0 failures)*
 *Unit test coverage: 253/253 operations (100%)*
 *Unverifiable operations: ~96 (floating-point, transcendentals, type conversions)*
 *Landscape survey: 8 tools investigated (6 new + 2 current), Kani adopted*

@@ -566,6 +566,63 @@ fn verify_rect_from_corners_all_finite() {
 // translate
 // ============================================================================
 
+// ============================================================================
+// union
+// ============================================================================
+
+/// **Finiteness**: `union()` with finite rects produces finite rect.
+#[kani::proof]
+fn verify_rect_union_finite() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let aw: f32 = kani::any();
+    let ah: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bw: f32 = kani::any();
+    let bh: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(aw.is_finite() && aw >= 0.0 && aw < SAFE_BOUND);
+    kani::assume(ah.is_finite() && ah >= 0.0 && ah < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bw.is_finite() && bw >= 0.0 && bw < SAFE_BOUND);
+    kani::assume(bh.is_finite() && bh >= 0.0 && bh < SAFE_BOUND);
+    let a = Rect::new(ax, ay, aw, ah);
+    let b = Rect::new(bx, by, bw, bh);
+    let u = a.union(b);
+    assert!(u.x.is_finite(), "union().x non-finite");
+    assert!(u.y.is_finite(), "union().y non-finite");
+    assert!(u.width.is_finite(), "union().width non-finite");
+    assert!(u.height.is_finite(), "union().height non-finite");
+}
+
+// ============================================================================
+// max corner
+// ============================================================================
+
+/// **Correctness**: `max()` returns `(x + width, y + height)` as Vec2.
+#[kani::proof]
+fn verify_rect_max_correct() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w >= 0.0 && w < SAFE_BOUND);
+    kani::assume(h.is_finite() && h >= 0.0 && h < SAFE_BOUND);
+    let r = Rect::new(x, y, w, h);
+    let m = r.max();
+    assert!(m.x == x + w, "max().x should equal x + width");
+    assert!(m.y == y + h, "max().y should equal y + height");
+}
+
+// ============================================================================
+// translate correctness
+// ============================================================================
+
 /// **Correctness**: `translate(offset)` shifts position by offset, preserves size.
 ///
 /// Precondition: finite rect and offset.

@@ -1269,9 +1269,155 @@ Proof.
   unfold vec2_element_product, vec2_scale. simpl. ring.
 Qed.
 
+(** * Min/Max Properties *)
+
+(** Theorem 116: component-wise minimum is commutative.
+    ∀ a b : Vec2, min(a, b) = min(b, a) *)
+Theorem vec2_min_comm : forall a b : Vec2,
+  vec2_min a b = vec2_min b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec2_min. simpl.
+  f_equal; apply Rmin_comm.
+Qed.
+
+(** Theorem 117: component-wise minimum is idempotent.
+    ∀ a : Vec2, min(a, a) = a *)
+Theorem vec2_min_idempotent : forall a : Vec2,
+  vec2_min a a = a.
+Proof.
+  intros a. destruct a.
+  unfold vec2_min. simpl.
+  f_equal; unfold Rmin; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 118: component-wise maximum is commutative.
+    ∀ a b : Vec2, max(a, b) = max(b, a) *)
+Theorem vec2_max_comm : forall a b : Vec2,
+  vec2_max a b = vec2_max b a.
+Proof.
+  intros a b. destruct a, b.
+  unfold vec2_max. simpl.
+  f_equal; apply Rmax_comm.
+Qed.
+
+(** Theorem 119: component-wise maximum is idempotent.
+    ∀ a : Vec2, max(a, a) = a *)
+Theorem vec2_max_idempotent : forall a : Vec2,
+  vec2_max a a = a.
+Proof.
+  intros a. destruct a.
+  unfold vec2_max. simpl.
+  f_equal; unfold Rmax; destruct (Rle_dec _ _); lra.
+Qed.
+
+(** Theorem 120: abs produces non-negative components.
+    ∀ v : Vec2, |v|.x ≥ 0 ∧ |v|.y ≥ 0 *)
+Theorem vec2_abs_nonneg : forall v : Vec2,
+  0 <= vec2_x (vec2_abs v) /\ 0 <= vec2_y (vec2_abs v).
+Proof.
+  intros v. destruct v.
+  unfold vec2_abs. simpl.
+  split; apply Rabs_pos.
+Qed.
+
+(** Theorem 121: abs of negation equals abs.
+    ∀ v : Vec2, |−v| = |v| *)
+Theorem vec2_abs_neg : forall v : Vec2,
+  vec2_abs (vec2_neg v) = vec2_abs v.
+Proof.
+  intros v. destruct v.
+  unfold vec2_abs, vec2_neg. simpl.
+  f_equal; apply Rabs_Ropp.
+Qed.
+
+(** Theorem 122: abs is idempotent.
+    ∀ v : Vec2, ||v|| = |v| *)
+Theorem vec2_abs_idempotent : forall v : Vec2,
+  vec2_abs (vec2_abs v) = vec2_abs v.
+Proof.
+  intros v. destruct v.
+  unfold vec2_abs. simpl.
+  f_equal; apply Rabs_pos_eq; apply Rabs_pos.
+Qed.
+
+(** Theorem 123: lerp at t=0 returns first argument.
+    ∀ a b : Vec2, lerp(a, b, 0) = a *)
+Theorem vec2_lerp_zero : forall a b : Vec2,
+  vec2_lerp a b 0 = a.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 124: lerp at t=1 returns second argument.
+    ∀ a b : Vec2, lerp(a, b, 1) = b *)
+Theorem vec2_lerp_one : forall a b : Vec2,
+  vec2_lerp a b 1 = b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 125: min(a, b) ≤ a componentwise (x). *)
+Theorem vec2_min_le_l_x : forall a b : Vec2,
+  vec2_x (vec2_min a b) <= vec2_x a.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_min. simpl.
+  apply Rmin_l.
+Qed.
+
+(** Theorem 126: min(a, b) ≤ b componentwise (x). *)
+Theorem vec2_min_le_r_x : forall a b : Vec2,
+  vec2_x (vec2_min a b) <= vec2_x b.
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_min. simpl.
+  apply Rmin_r.
+Qed.
+
+(** Theorem 127: a ≤ max(a, b) componentwise (x). *)
+Theorem vec2_max_ge_l_x : forall a b : Vec2,
+  vec2_x a <= vec2_x (vec2_max a b).
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_max. simpl.
+  apply Rmax_l.
+Qed.
+
+(** Theorem 128: b ≤ max(a, b) componentwise (x). *)
+Theorem vec2_max_ge_r_x : forall a b : Vec2,
+  vec2_x b <= vec2_x (vec2_max a b).
+Proof.
+  intros [ax ay] [bx by0].
+  unfold vec2_max. simpl.
+  apply Rmax_r.
+Qed.
+
+(** Theorem 129: abs distributes over scale.
+    |s * v| = |s| * |v| componentwise *)
+Theorem vec2_abs_scale : forall (s : R) (v : Vec2),
+  vec2_abs (vec2_scale s v) = vec2_scale (Rabs s) (vec2_abs v).
+Proof.
+  intros s [vx vy].
+  unfold vec2_abs, vec2_scale. simpl.
+  f_equal; apply Rabs_mult.
+Qed.
+
+(** Theorem 130: distance squared is the definition.
+    dist²(a, b) = |a - b|² *)
+Theorem vec2_distance_squared_def : forall a b : Vec2,
+  vec2_distance_squared a b = vec2_dot (vec2_sub a b) (vec2_sub a b).
+Proof.
+  intros a b. unfold vec2_distance_squared, vec2_length_squared. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 115
+    Total theorems: 130
     Admits: 0
     Axioms: Standard Coq real number library only
 

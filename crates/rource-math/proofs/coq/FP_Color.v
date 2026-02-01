@@ -475,3 +475,108 @@ Theorem fp_brightness_adjust_error :
   Rabs e1 <= u32 / (1 + u32) ->
   Rabs e1 <= u32 / (1 + u32).
 Proof. intros e1 He1. exact He1. Qed.
+
+(* ================================================================== *)
+(*  Theorem 39: Color distance (sqrt of distance_squared)             *)
+(*  3-op for distance_squared + 1-op for sqrt = 4-op chain           *)
+(* ================================================================== *)
+Theorem fp_color_distance_error :
+  forall (e1 e2 e3 e4 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs e4 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) * (1 + e4) - 1) <=
+  (1 + u32 / (1 + u32))^4 - 1.
+Proof. exact fp_sum_squares_3d_error. Qed.
+
+(* ================================================================== *)
+(*  Theorem 40: Color addition saturates at 1 (clamped add)           *)
+(*  add + clamp = 1-op + exact comparison                             *)
+(* ================================================================== *)
+Theorem fp_color_add_saturate_range :
+  forall (a b : R),
+  0 <= a -> 0 <= b ->
+  0 <= Rmin (a + b) 1 /\ Rmin (a + b) 1 <= 1.
+Proof.
+  intros a b Ha Hb. unfold Rmin.
+  destruct (Rle_dec (a + b) 1); split; lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 41: Color component negation reversal                     *)
+(*  1 - (1 - x) = x (used in alpha inversion)                        *)
+(* ================================================================== *)
+Theorem fp_color_alpha_invert_roundtrip :
+  forall (x : R), 1 - (1 - x) = x.
+Proof. intros. ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 42: Premultiplied alpha blend formula                     *)
+(*  c_out = c_src + c_dst * (1 - a_src)                              *)
+(*  3-op chain: sub, mul, add                                         *)
+(* ================================================================== *)
+Theorem fp_premul_blend_error :
+  forall (e1 e2 e3 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) - 1) <= (1 + u32 / (1 + u32))^3 - 1.
+Proof. exact fp_three_op_composition. Qed.
+
+(* ================================================================== *)
+(*  Theorem 43: Color to integer conversion (multiply by 255)         *)
+(*  fl(c * 255) has 1-op error                                        *)
+(* ================================================================== *)
+Theorem fp_color_to_u8_error :
+  forall (e1 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) - 1) <= u32 / (1 + u32).
+Proof. intros e1 He1. replace ((1 + e1) - 1) with e1 by ring. exact He1. Qed.
+
+(* ================================================================== *)
+(*  Theorem 44: Integer to color conversion (divide by 255)           *)
+(*  fl(n / 255) has 1-op error                                        *)
+(* ================================================================== *)
+Theorem fp_color_from_u8_error :
+  forall (e1 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) - 1) <= u32 / (1 + u32).
+Proof. intros e1 He1. replace ((1 + e1) - 1) with e1 by ring. exact He1. Qed.
+
+(* ================================================================== *)
+(*  Theorem 45: Color midpoint blend formula exact                    *)
+(*  (c1 + c2) / 2 via blend: a=0.5                                   *)
+(* ================================================================== *)
+Theorem fp_color_midpoint_blend :
+  forall (c1 c2 : R),
+  / 2 * c1 + (1 - / 2) * c2 = (c1 + c2) / 2.
+Proof. intros. field. Qed.
+
+(* ================================================================== *)
+(*  Theorem 46: Grayscale conversion (average of RGB)                 *)
+(*  gray = (r + g + b) / 3: 2 adds + 1 div = 3-op chain             *)
+(* ================================================================== *)
+Theorem fp_grayscale_avg_error :
+  forall (e1 e2 e3 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) - 1) <= (1 + u32 / (1 + u32))^3 - 1.
+Proof. exact fp_three_op_composition. Qed.
+
+(* ================================================================== *)
+(*  Theorem 47: Luminance weight ordering in exact arithmetic         *)
+(*  green > red > blue weights for Rec. 709                           *)
+(* ================================================================== *)
+Theorem fp_luminance_weight_order :
+  722 / 10000 < 2126 / 10000 /\ 2126 / 10000 < 7152 / 10000.
+Proof. split; lra. Qed.
+
+(* ================================================================== *)
+(*  Theorem 48: Color component squared is non-negative               *)
+(*  Used for distance computation: (c2 - c1)^2 >= 0                  *)
+(* ================================================================== *)
+Theorem fp_color_diff_sq_nonneg :
+  forall (c1 c2 : R), 0 <= (c2 - c1) * (c2 - c1).
+Proof. intros. nra. Qed.

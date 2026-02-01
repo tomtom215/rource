@@ -487,3 +487,116 @@ fn verify_vec2_splat_all_equal() {
     assert!(v.x == x, "splat(x).x should equal x");
     assert!(v.y == x, "splat(x).y should equal x");
 }
+
+// ============================================================================
+// reflect
+// ============================================================================
+
+/// **Finiteness**: `reflect()` with bounded inputs produces finite output.
+///
+/// Reflect formula: `self - normal * 2.0 * self.dot(normal)`.
+/// With bounded inputs and unit-like normal, all intermediate values stay finite.
+#[kani::proof]
+fn verify_vec2_reflect_finite() {
+    let vx: f32 = kani::any();
+    let vy: f32 = kani::any();
+    let nx: f32 = kani::any();
+    let ny: f32 = kani::any();
+    kani::assume(vx.is_finite() && vx.abs() < SAFE_BOUND);
+    kani::assume(vy.is_finite() && vy.abs() < SAFE_BOUND);
+    kani::assume(nx.is_finite() && nx.abs() < 2.0);
+    kani::assume(ny.is_finite() && ny.abs() < 2.0);
+    let v = Vec2::new(vx, vy);
+    let n = Vec2::new(nx, ny);
+    let r = v.reflect(n);
+    assert!(r.x.is_finite(), "reflect().x non-finite");
+    assert!(r.y.is_finite(), "reflect().y non-finite");
+}
+
+// ============================================================================
+// sub anti-commutativity
+// ============================================================================
+
+/// **Anti-commutativity**: `a - b == -(b - a)` for all finite bounded vectors.
+#[kani::proof]
+fn verify_vec2_sub_anti_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    let a = Vec2::new(ax, ay);
+    let b = Vec2::new(bx, by);
+    let a_minus_b = a - b;
+    let neg_b_minus_a = -(b - a);
+    assert!(
+        a_minus_b.x == neg_b_minus_a.x,
+        "(a-b).x should equal -(b-a).x"
+    );
+    assert!(
+        a_minus_b.y == neg_b_minus_a.y,
+        "(a-b).y should equal -(b-a).y"
+    );
+}
+
+// ============================================================================
+// dot self non-negative
+// ============================================================================
+
+/// **Non-negativity**: `v.dot(v)` is always non-negative for finite bounded vectors.
+#[kani::proof]
+fn verify_vec2_dot_self_non_negative() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    let v = Vec2::new(x, y);
+    let d = v.dot(v);
+    assert!(!d.is_nan(), "v.dot(v) produced NaN");
+    assert!(d >= 0.0, "v.dot(v) returned negative value");
+}
+
+// ============================================================================
+// dot commutativity
+// ============================================================================
+
+/// **Commutativity**: `a.dot(b) == b.dot(a)` for all finite bounded vectors (IEEE 754).
+#[kani::proof]
+fn verify_vec2_dot_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    let a = Vec2::new(ax, ay);
+    let b = Vec2::new(bx, by);
+    let ab = a.dot(b);
+    let ba = b.dot(a);
+    assert!(ab == ba, "a.dot(b) should equal b.dot(a)");
+}
+
+// ============================================================================
+// perp orthogonality
+// ============================================================================
+
+/// **Orthogonality**: `v.dot(v.perp()) == 0` for all finite vectors.
+///
+/// Mathematical basis: `v · perp(v) = x*(-y) + y*x = 0`.
+/// IEEE 754: exact for this formula since it's `(-x*y) + (y*x) = 0`.
+#[kani::proof]
+fn verify_vec2_perp_orthogonal() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    let v = Vec2::new(x, y);
+    let p = v.perp();
+    let d = v.dot(p);
+    assert!(d == 0.0, "v.dot(v.perp()) should be exactly 0");
+}

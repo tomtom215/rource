@@ -956,25 +956,114 @@ Proof.
   apply mat3_eq; simpl; field; exact Hdet.
 Qed.
 
+(** * Transform Properties *)
+
+(** Theorem 93: transform_point with identity preserves the point.
+    ∀ p : Vec2, transform_point(I, p) = p *)
+Theorem mat3_transform_point_identity : forall p : Vec2,
+  mat3_transform_point mat3_identity p = p.
+Proof.
+  intros [px py].
+  unfold mat3_transform_point, mat3_identity. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 94: transform_vector with identity preserves the vector.
+    ∀ v : Vec2, transform_vector(I, v) = v *)
+Theorem mat3_transform_vector_identity : forall v : Vec2,
+  mat3_transform_vector mat3_identity v = v.
+Proof.
+  intros [vx0 vy0].
+  unfold mat3_transform_vector, mat3_identity. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 95: transform_point with translation adds offset.
+    ∀ p tx ty, transform_point(T(tx,ty), p) = (p.x + tx, p.y + ty) *)
+Theorem mat3_transform_point_translation : forall (p : Vec2) (tx ty : R),
+  mat3_transform_point (mat3_translation tx ty) p = mkVec2 (vx p + tx) (vy p + ty).
+Proof.
+  intros [px py] tx ty.
+  unfold mat3_transform_point, mat3_translation. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 96: transform_vector is invariant under translation.
+    ∀ v tx ty, transform_vector(T(tx,ty), v) = v *)
+Theorem mat3_transform_vector_translation : forall (v : Vec2) (tx ty : R),
+  mat3_transform_vector (mat3_translation tx ty) v = v.
+Proof.
+  intros [vx0 vy0] tx ty.
+  unfold mat3_transform_vector, mat3_translation. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 97: transform_point with scaling scales the point.
+    ∀ p sx sy, transform_point(S(sx,sy), p) = (sx*p.x, sy*p.y) *)
+Theorem mat3_transform_point_scaling : forall (p : Vec2) (sx sy : R),
+  mat3_transform_point (mat3_scaling sx sy) p = mkVec2 (sx * vx p) (sy * vy p).
+Proof.
+  intros [px py] sx sy.
+  unfold mat3_transform_point, mat3_scaling. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 98: transform_vector with scaling scales the vector.
+    ∀ v sx sy, transform_vector(S(sx,sy), v) = (sx*v.x, sy*v.y) *)
+Theorem mat3_transform_vector_scaling : forall (v : Vec2) (sx sy : R),
+  mat3_transform_vector (mat3_scaling sx sy) v = mkVec2 (sx * vx v) (sy * vy v).
+Proof.
+  intros [vx0 vy0] sx sy.
+  unfold mat3_transform_vector, mat3_scaling. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 99: transform_point with zero matrix gives zero.
+    ∀ p, transform_point(0, p) = (0, 0) *)
+Theorem mat3_transform_point_zero : forall p : Vec2,
+  mat3_transform_point mat3_zero p = mkVec2 0 0.
+Proof.
+  intros [px py].
+  unfold mat3_transform_point, mat3_zero. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 100: transform_vector with zero matrix gives zero.
+    ∀ v, transform_vector(0, v) = (0, 0) *)
+Theorem mat3_transform_vector_zero : forall v : Vec2,
+  mat3_transform_vector mat3_zero v = mkVec2 0 0.
+Proof.
+  intros [vx0 vy0].
+  unfold mat3_transform_vector, mat3_zero. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 101: transform_vector is linear (scalar multiplication).
+    ∀ m s v, transform_vector(m, s*v) = s * transform_vector(m, v) componentwise *)
+Theorem mat3_transform_vector_scale_compat : forall (m : Mat3) (s : R) (v : Vec2),
+  mat3_transform_vector m (mkVec2 (s * vx v) (s * vy v)) =
+  mkVec2 (s * vx (mat3_transform_vector m v)) (s * vy (mat3_transform_vector m v)).
+Proof.
+  intros m s [vx0 vy0].
+  unfold mat3_transform_vector. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
+(** Theorem 102: transform_point with shearing is correct.
+    ∀ p sx sy, transform_point(Sh(sx,sy), p) = (p.x + sx*p.y, sy*p.x + p.y) *)
+Theorem mat3_transform_point_shearing : forall (p : Vec2) (sx sy : R),
+  mat3_transform_point (mat3_shearing sx sy) p = mkVec2 (vx p + sx * vy p) (sy * vx p + vy p).
+Proof.
+  intros [px py] sx sy.
+  unfold mat3_transform_point, mat3_shearing. simpl.
+  apply vec2_eq; simpl; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 92 (80 original + 12 inverse properties)
+    Total theorems: 102 (80 original + 12 inverse + 10 transform properties)
     Admits: 0
     Axioms: Standard Coq real number library only
 
     All proofs are constructive and machine-checked.
-
-    Inverse theorems added:
-    - Theorem 81: inverse(I) = I
-    - Theorem 82: inverse(A) * A = I (left inverse correctness)
-    - Theorem 83: A * inverse(A) = I (right inverse correctness)
-    - Theorem 84: det(inverse(A)) = 1/det(A)
-    - Theorem 85: inverse(inverse(A)) = A (involutive)
-    - Theorem 86: det(A) * det(inverse(A)) = 1
-    - Theorem 87: inverse(A * B) = inverse(B) * inverse(A)
-    - Theorem 88: inverse(s * A) = (1/s) * inverse(A)
-    - Theorem 89: inverse(A^T) = (inverse(A))^T
-    - Theorem 90: inverse(translation) = translation(-tx, -ty)
-    - Theorem 91: inverse(scaling) = scaling(1/sx, 1/sy)
-    - Theorem 92: inverse(shearing) correctness
 *)

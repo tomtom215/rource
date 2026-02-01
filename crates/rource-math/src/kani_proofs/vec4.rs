@@ -643,3 +643,33 @@ fn verify_vec4_sub_anti_commutative() {
         "(a-b).w should equal -(b-a).w"
     );
 }
+
+// ============================================================================
+// dot commutativity
+// ============================================================================
+
+/// **Commutativity**: `a.dot(b) == b.dot(a)` for all finite bounded vectors (IEEE 754).
+#[kani::proof]
+fn verify_vec4_dot_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let aw: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    let bw: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(aw.is_finite() && aw.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    kani::assume(bw.is_finite() && bw.abs() < SAFE_BOUND);
+    let a = Vec4::new(ax, ay, az, aw);
+    let b = Vec4::new(bx, by, bz, bw);
+    let ab = a.dot(b);
+    let ba = b.dot(a);
+    assert!(ab == ba, "a.dot(b) should equal b.dot(a)");
+}

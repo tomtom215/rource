@@ -523,7 +523,12 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 185 | 2026-02-01 | r1GdR | `Rdiv_lt_1` not available — rewrite using `Rmult_lt_compat_r` + `Rinv_r` | FP_Utils.v needed `u32 / (1 + u32) < 1` without standard lemma | Multiply both sides by `/(1+u32)`, use `Rmult_lt_compat_r` for order preservation, `Rinv_r` to cancel |
 | 186 | 2026-02-01 | r1GdR | `Rabs_Rabsolu` may not exist in Coq 8.18 — use `Rabs_right` + `Rabs_pos` | Vec2_Proofs.v theorem on `abs(abs(x))` needed rewrite | `rewrite Rabs_right; try apply Rabs_pos; reflexivity` — always works |
 | 187 | 2026-02-01 | r1GdR | Methods in VERIFICATION_COVERAGE.md may not exist in source | Color::scale, Rect::normalize, Vec2::fract listed as uncovered but don't exist in implementation | Always `grep 'pub fn method_name'` in source before writing harnesses; adapt plan to actual API |
+| 188 | 2026-02-01 | aKa8F | FP theorem expansion is safely parallelizable across files | FP_Rect.v, FP_Bounds.v, FP_Rounding.v, FP_Utils.v, FP_Vec.v, FP_Mat.v, FP_Color.v each import only FP_Common.v and FP_ErrorBounds.v | Edit multiple FP files in parallel, then compile in dependency order: FP_Common → FP_Rounding → FP_ErrorBounds → rest |
+| 189 | 2026-02-01 | aKa8F | Rmin/Rmax associativity proofs need exhaustive case splits | `unfold Rmin; destruct (Rle_dec ...)` generates 8 branches for 3-variable associativity | Use `try destruct; try lra` pattern to handle all 8 combinations; some branches need secondary destructs |
+| 190 | 2026-02-01 | aKa8F | `Znearest_monotone` exists in Flocq 4.1.3 and takes `x <= y` directly | Needed for fp_round_monotone theorem | `apply Znearest_monotone. lra.` — the Flocq lemma handles the choice function automatically |
+| 191 | 2026-02-01 | aKa8F | `Zceil_lb` exists in Flocq (unlike standard Coq) and gives `IZR(Zceil x) - 1 < x` | Needed for `fp_ceil_floor_distance` to bound ceil-floor gap | Available via `generalize (Zceil_lb x)` in proofs that need the lower bound of ceiling function |
+| 192 | 2026-02-01 | aKa8F | VERIFICATION_COVERAGE.md operation counts had pre-existing inconsistency (Mat3: 17 total listed but 16+3=19 items) | The "not verified" list had 3 items but total was listed as 17 | Fixed: Mat3 total = 19 operations (16 verified + 3 not-verified), now 18 verified after transform_point/transform_vector proofs |
 
 ---
 
-*Last updated: 2026-02-01 | 187 entries | 14 categories*
+*Last updated: 2026-02-01 | 192 entries | 14 categories*

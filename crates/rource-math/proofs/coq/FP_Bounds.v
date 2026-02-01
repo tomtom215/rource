@@ -482,3 +482,92 @@ Theorem fp_bounds_to_rect_area :
   lx <= hx -> ly <= hy ->
   (hx - lx) * (hy - ly) = (hx - lx) * (hy - ly).
 Proof. intros. reflexivity. Qed.
+
+(* ================================================================== *)
+(*  Theorem 36: Area 3-op error chain (sub_x, sub_y, mul)             *)
+(* ================================================================== *)
+Theorem fp_bounds_area_3op_error :
+  forall (e1 e2 e3 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) - 1) <=
+    (1 + u32 / (1 + u32))^3 - 1.
+Proof.
+  exact fp_three_op_composition.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 37: Union min is associative                               *)
+(* ================================================================== *)
+Theorem fp_bounds_union_min_assoc :
+  forall (a b c : R),
+  Rmin a (Rmin b c) = Rmin (Rmin a b) c.
+Proof.
+  intros. unfold Rmin.
+  destruct (Rle_dec b c); destruct (Rle_dec a b);
+  destruct (Rle_dec a c); try destruct (Rle_dec a b); try lra;
+  try (destruct (Rle_dec b c); lra).
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 38: Union max is associative                               *)
+(* ================================================================== *)
+Theorem fp_bounds_union_max_assoc :
+  forall (a b c : R),
+  Rmax a (Rmax b c) = Rmax (Rmax a b) c.
+Proof.
+  intros. unfold Rmax.
+  destruct (Rle_dec b c); destruct (Rle_dec a b);
+  destruct (Rle_dec a c); try destruct (Rle_dec a b); try lra;
+  try (destruct (Rle_dec b c); lra).
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 39: Expand by zero is identity                             *)
+(* ================================================================== *)
+Theorem fp_bounds_expand_zero_identity :
+  forall (lo hi : R),
+  lo - 0 = lo /\ hi + 0 = hi.
+Proof. intros. split; ring. Qed.
+
+(* ================================================================== *)
+(*  Theorem 40: Include point idempotent when point already inside    *)
+(* ================================================================== *)
+Theorem fp_bounds_include_point_idempotent :
+  forall (lo hi p : R),
+  lo <= p -> p <= hi ->
+  Rmin lo p = lo /\ Rmax hi p = hi.
+Proof.
+  intros lo hi p Hlo Hhi.
+  split.
+  - unfold Rmin. destruct (Rle_dec lo p); lra.
+  - unfold Rmax. destruct (Rle_dec hi p); lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 41: Center of expanded bounds equals original center      *)
+(* ================================================================== *)
+Theorem fp_bounds_expand_preserves_center :
+  forall (lo hi a : R),
+  ((lo - a) + (hi + a)) / 2 = (lo + hi) / 2.
+Proof. intros. field. Qed.
+
+(* ================================================================== *)
+(*  Theorem 42: From center size roundtrip preserves bounds           *)
+(* ================================================================== *)
+Theorem fp_bounds_from_center_roundtrip :
+  forall (lo hi : R),
+  lo <= hi ->
+  let c := (lo + hi) / 2 in
+  let s := hi - lo in
+  c - s / 2 = lo /\ c + s / 2 = hi.
+Proof. intros. simpl. split; field. Qed.
+
+(* ================================================================== *)
+(*  Theorem 43: Translate is invertible                                *)
+(* ================================================================== *)
+Theorem fp_bounds_translate_inverse :
+  forall (lo hi d : R),
+  (lo + d) - d = lo /\ (hi + d) - d = hi.
+Proof. intros. split; ring. Qed.

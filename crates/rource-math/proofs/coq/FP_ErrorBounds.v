@@ -549,3 +549,150 @@ Proof.
     try lra;
     try (destruct (Rle_dec b c); lra).
 Qed.
+
+(* ================================================================== *)
+(*  Theorem 37: Four-operation composition error                       *)
+(*  Extends three-op composition: (1+e1)(1+e2)(1+e3)(1+e4) - 1        *)
+(* ================================================================== *)
+Theorem fp_four_op_composition :
+  forall (e1 e2 e3 e4 : R),
+  Rabs e1 <= u32 / (1 + u32) ->
+  Rabs e2 <= u32 / (1 + u32) ->
+  Rabs e3 <= u32 / (1 + u32) ->
+  Rabs e4 <= u32 / (1 + u32) ->
+  Rabs ((1 + e1) * (1 + e2) * (1 + e3) * (1 + e4) - 1) <=
+  (1 + u32 / (1 + u32))^4 - 1.
+Proof.
+  intros e1 e2 e3 e4 He1 He2 He3 He4.
+  set (u := u32 / (1 + u32)).
+  fold u in He1, He2, He3, He4.
+  replace ((1 + e1) * (1 + e2) * (1 + e3) * (1 + e4) - 1)
+    with (((1 + e1) * (1 + e2) * (1 + e3) - 1) * (1 + e4) + e4) by ring.
+  apply Rle_trans with (Rabs (((1 + e1) * (1 + e2) * (1 + e3) - 1) * (1 + e4)) + Rabs e4).
+  { apply Rabs_triang. }
+  rewrite Rabs_mult.
+  assert (He123 := fp_three_op_composition e1 e2 e3 He1 He2 He3).
+  fold u in He123.
+  assert (H_1pe4: Rabs (1 + e4) <= 1 + u).
+  { apply Rle_trans with (Rabs 1 + Rabs e4).
+    - apply Rabs_triang.
+    - rewrite Rabs_R1. lra. }
+  replace ((1 + u) ^ 4 - 1)
+    with (((1 + u) ^ 3 - 1) * (1 + u) + u) by ring.
+  apply Rplus_le_compat.
+  - apply Rmult_le_compat; try apply Rabs_pos; assumption.
+  - assumption.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 38: Subtraction error symmetry                             *)
+(*  |fl(a-b) - (a-b)| = |fl(b-a) - (b-a)| in terms of error model   *)
+(* ================================================================== *)
+Theorem fp_sub_error_symmetric :
+  forall (e : R),
+  Rabs e <= u32 / (1 + u32) ->
+  Rabs ((1 + e) - 1) <= u32 / (1 + u32).
+Proof.
+  intros e He. replace ((1 + e) - 1) with e by ring. exact He.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 39: Absolute value of product                              *)
+(*  |a * b| = |a| * |b|                                               *)
+(* ================================================================== *)
+Theorem fp_abs_product :
+  forall a b : R, Rabs (a * b) = Rabs a * Rabs b.
+Proof. intros. apply Rabs_mult. Qed.
+
+(* ================================================================== *)
+(*  Theorem 40: Absolute value of negation                             *)
+(*  |-x| = |x|                                                        *)
+(* ================================================================== *)
+Theorem fp_abs_neg :
+  forall x : R, Rabs (- x) = Rabs x.
+Proof. intros. apply Rabs_Ropp. Qed.
+
+(* ================================================================== *)
+(*  Theorem 41: min idempotent                                         *)
+(*  min(a, a) = a                                                      *)
+(* ================================================================== *)
+Theorem fp_min_idempotent :
+  forall a : R, Rmin a a = a.
+Proof. intros. unfold Rmin. destruct (Rle_dec a a); lra. Qed.
+
+(* ================================================================== *)
+(*  Theorem 42: max idempotent                                         *)
+(*  max(a, a) = a                                                      *)
+(* ================================================================== *)
+Theorem fp_max_idempotent :
+  forall a : R, Rmax a a = a.
+Proof. intros. unfold Rmax. destruct (Rle_dec a a); lra. Qed.
+
+(* ================================================================== *)
+(*  Theorem 43: min absorption: min(a, max(a, b)) = a                  *)
+(* ================================================================== *)
+Theorem fp_min_max_absorption :
+  forall a b : R, Rmin a (Rmax a b) = a.
+Proof.
+  intros. unfold Rmin, Rmax.
+  destruct (Rle_dec a b); destruct (Rle_dec a b); try lra;
+  destruct (Rle_dec a a); lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 44: max absorption: max(a, min(a, b)) = a                  *)
+(* ================================================================== *)
+Theorem fp_max_min_absorption :
+  forall a b : R, Rmax a (Rmin a b) = a.
+Proof.
+  intros. unfold Rmin, Rmax.
+  destruct (Rle_dec a b); destruct (Rle_dec a a); lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 45: Clamp preserves ordering                               *)
+(*  x <= y -> clamp(x, lo, hi) <= clamp(y, lo, hi)                    *)
+(* ================================================================== *)
+Theorem fp_clamp_monotone :
+  forall (x y lo hi : R),
+  lo <= hi -> x <= y ->
+  Rmax lo (Rmin x hi) <= Rmax lo (Rmin y hi).
+Proof.
+  intros x y lo hi Hlh Hxy. unfold Rmin, Rmax.
+  destruct (Rle_dec x hi); destruct (Rle_dec y hi);
+    destruct (Rle_dec lo x); destruct (Rle_dec lo y); lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 46: Absolute value triangle inequality (reverse)           *)
+(*  | |a| - |b| | <= |a - b|                                          *)
+(* ================================================================== *)
+Theorem fp_abs_triangle_reverse :
+  forall a b : R,
+  Rabs (Rabs a - Rabs b) <= Rabs (a - b).
+Proof.
+  intros a b.
+  apply Rabs_triang_inv.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 47: min distributes over negation                          *)
+(*  min(-a, -b) = -max(a, b)                                          *)
+(* ================================================================== *)
+Theorem fp_min_neg_is_neg_max :
+  forall a b : R, Rmin (-a) (-b) = - Rmax a b.
+Proof.
+  intros. unfold Rmin, Rmax.
+  destruct (Rle_dec (-a) (-b)); destruct (Rle_dec a b); lra.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 48: max distributes over negation                          *)
+(*  max(-a, -b) = -min(a, b)                                          *)
+(* ================================================================== *)
+Theorem fp_max_neg_is_neg_min :
+  forall a b : R, Rmax (-a) (-b) = - Rmin a b.
+Proof.
+  intros. unfold Rmin, Rmax.
+  destruct (Rle_dec (-a) (-b)); destruct (Rle_dec a b); lra.
+Qed.

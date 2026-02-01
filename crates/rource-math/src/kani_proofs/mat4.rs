@@ -514,3 +514,94 @@ fn verify_mat4_translation_preserves_vector() {
     assert!(result.y == vy, "translation should preserve vector y");
     assert!(result.z == vz, "translation should preserve vector z");
 }
+
+// ============================================================================
+// mul identity left
+// ============================================================================
+
+/// **Left identity**: `IDENTITY * M == M` for all finite matrices.
+#[kani::proof]
+fn verify_mat4_mul_identity_left() {
+    let m: [f32; 16] = [
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+    ];
+    for i in 0..16 {
+        kani::assume(m[i].is_finite());
+    }
+    let mat = Mat4 { m };
+    let result = Mat4::IDENTITY * mat;
+    for i in 0..16 {
+        assert!(result.m[i] == mat.m[i], "I * M should equal M");
+    }
+}
+
+// ============================================================================
+// mul identity right
+// ============================================================================
+
+/// **Right identity**: `M * IDENTITY == M` for all finite matrices.
+#[kani::proof]
+fn verify_mat4_mul_identity_right() {
+    let m: [f32; 16] = [
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+    ];
+    for i in 0..16 {
+        kani::assume(m[i].is_finite());
+    }
+    let mat = Mat4 { m };
+    let result = mat * Mat4::IDENTITY;
+    for i in 0..16 {
+        assert!(result.m[i] == mat.m[i], "M * I should equal M");
+    }
+}
+
+// ============================================================================
+// scaling determinant
+// ============================================================================
+
+/// **Postcondition**: `scaling(sx, sy, sz).determinant() == sx * sy * sz`.
+///
+/// Diagonal matrix determinant is the product of diagonal elements.
+#[kani::proof]
+fn verify_mat4_scaling_determinant_product() {
+    let sx: f32 = kani::any();
+    let sy: f32 = kani::any();
+    let sz: f32 = kani::any();
+    kani::assume(sx.is_finite() && sx.abs() < DET_BOUND);
+    kani::assume(sy.is_finite() && sy.abs() < DET_BOUND);
+    kani::assume(sz.is_finite() && sz.abs() < DET_BOUND);
+    let mat = Mat4::scaling(sx, sy, sz);
+    let det = mat.determinant();
+    let expected = sx * sy * sz;
+    assert!(det == expected, "scaling det should equal sx*sy*sz");
+}
