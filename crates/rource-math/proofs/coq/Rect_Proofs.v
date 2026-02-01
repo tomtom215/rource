@@ -1209,9 +1209,68 @@ Proof.
   unfold rect_area, rect_expand_xy. simpl. ring.
 Qed.
 
+(** * Shrink and Advanced Properties *)
+
+(** Theorem 121: shrink area formula. *)
+Theorem rect_shrink_area : forall (r : Rect) (a : R),
+  rect_area (rect_shrink r a) =
+  (rect_w r - 2 * a) * (rect_h r - 2 * a).
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_area, rect_shrink. simpl. ring.
+Qed.
+
+(** Theorem 122: shrink preserves center. *)
+Theorem rect_shrink_preserves_center : forall (r : Rect) (a : R),
+  rect_center_x (rect_shrink r a) = rect_center_x r /\
+  rect_center_y (rect_shrink r a) = rect_center_y r.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_center_x, rect_center_y, rect_shrink. simpl.
+  split; field.
+Qed.
+
+(** Theorem 123: containment is transitive for points. *)
+Theorem rect_contains_rect_contains_point :
+  forall (outer inner : Rect) (px py : R),
+  rect_contains_rect outer inner ->
+  rect_contains_point inner px py ->
+  rect_contains_point outer px py.
+Proof.
+  intros [ox oy ow oh] [ix iy iw ih] px py Hrr Hpt.
+  unfold rect_contains_rect, rect_contains_point, rect_right, rect_bottom in *.
+  simpl in *. lra.
+Qed.
+
+(** Theorem 124: shrink dimensions formula. *)
+Theorem rect_shrink_dims : forall (r : Rect) (a : R),
+  rect_w (rect_shrink r a) = rect_w r - 2 * a /\
+  rect_h (rect_shrink r a) = rect_h r - 2 * a.
+Proof.
+  intros [rx ry rw rh] a.
+  unfold rect_shrink. simpl. split; ring.
+Qed.
+
+(** Theorem 125: scale area is original area times factor squared. *)
+Theorem rect_scale_area_quadratic : forall (r : Rect) (s : R),
+  rect_area (rect_scale r s) = rect_area r * (s * s).
+Proof.
+  intros [rx ry rw rh] s.
+  unfold rect_area, rect_scale. simpl. ring.
+Qed.
+
+(** Theorem 126: translate is involutive. *)
+Theorem rect_translate_inverse : forall (r : Rect) (dx dy : R),
+  rect_translate (rect_translate r dx dy) (-dx) (-dy) = r.
+Proof.
+  intros [rx ry rw rh] dx dy.
+  unfold rect_translate. simpl.
+  f_equal; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 120
+    Total theorems: 127
     Admits: 0
     Axioms: Standard Coq real number library only
 

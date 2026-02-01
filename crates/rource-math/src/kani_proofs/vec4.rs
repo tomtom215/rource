@@ -567,3 +567,79 @@ fn verify_vec4_from_vec3_preserves() {
     assert!(v4.z == vz, "from_vec3 should preserve z");
     assert!(v4.w == w, "from_vec3 should set w");
 }
+
+// ============================================================================
+// Div (scalar)
+// ============================================================================
+
+/// **Finiteness**: `v / scalar` with finite inputs and non-zero scalar produces finite output.
+///
+/// Precondition: all components and scalar finite, `|scalar| >= 1e-18` (no near-zero divisors).
+/// Postcondition: all output components are finite.
+#[kani::proof]
+fn verify_vec4_div_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    let w: f32 = kani::any();
+    let s: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w.abs() < SAFE_BOUND);
+    kani::assume(s.is_finite() && s.abs() >= 1e-18);
+    let v = Vec4::new(x, y, z, w);
+    let r = v / s;
+    assert!(r.x.is_finite(), "div result.x non-finite");
+    assert!(r.y.is_finite(), "div result.y non-finite");
+    assert!(r.z.is_finite(), "div result.z non-finite");
+    assert!(r.w.is_finite(), "div result.w non-finite");
+}
+
+// ============================================================================
+// Sub (anti-commutativity)
+// ============================================================================
+
+/// **Anti-commutativity**: `a - b == -(b - a)` for Vec4 subtraction.
+///
+/// Precondition: all components finite and bounded.
+/// Postcondition: `(a - b).xyzw == (-(b - a)).xyzw`.
+#[kani::proof]
+fn verify_vec4_sub_anti_commutative() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let az: f32 = kani::any();
+    let aw: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bz: f32 = kani::any();
+    let bw: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
+    kani::assume(aw.is_finite() && aw.abs() < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
+    kani::assume(bw.is_finite() && bw.abs() < SAFE_BOUND);
+    let a = Vec4::new(ax, ay, az, aw);
+    let b = Vec4::new(bx, by, bz, bw);
+    let a_minus_b = a - b;
+    let neg_b_minus_a = -(b - a);
+    assert!(
+        a_minus_b.x == neg_b_minus_a.x,
+        "(a-b).x should equal -(b-a).x"
+    );
+    assert!(
+        a_minus_b.y == neg_b_minus_a.y,
+        "(a-b).y should equal -(b-a).y"
+    );
+    assert!(
+        a_minus_b.z == neg_b_minus_a.z,
+        "(a-b).z should equal -(b-a).z"
+    );
+    assert!(
+        a_minus_b.w == neg_b_minus_a.w,
+        "(a-b).w should equal -(b-a).w"
+    );
+}

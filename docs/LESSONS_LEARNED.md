@@ -174,6 +174,8 @@
 | 141 | Bounds `intersects` self-check needs strict inequality gap | `intersects()` uses `<` not `<=` | Require `width > 1.0` for self-intersection |
 | 159 | Kani harnesses for operator overloads require matching trait syntax | `v * s` compiles but tests `Mul<f32>` impl; `-v` tests `Neg` impl | Test operators directly (e.g., `a + b`, `a - b`, `-v`) — Kani will find the trait impl automatically |
 | 160 | Kani `verify_color_fade_preserves_rgb` validates separation of concerns | `fade()` modifies alpha while preserving RGB — a common source of bugs | Property-based harnesses can catch field-mutation bugs that unit tests miss |
+| 179 | Algebraic property harnesses (commutativity, anti-commutativity, idempotency) are uniformly applicable | All vector/matrix types support same operator overloads | Template: `verify_<type>_<op>_<property>` — e.g., `verify_vec4_mul_commutative`, `verify_clamp_idempotent` |
+| 180 | `from_corners` harness validates `min(a,b)` / `max(a,b)` contract | `Rect::from_corners` normalizes via `f32::min`/`f32::max` | Assert `r.width >= 0.0 && r.height >= 0.0` for any finite inputs |
 
 ---
 
@@ -192,6 +194,9 @@
 | 120 | `(1+u)^n - 1 <= 2*n*u` FALSE for large `u` and `n >= 4` | Bound needs small `u` | `u <= 1/8` for n=4,5 |
 | 121 | `nra` needs `pow_lt` hint for generic `(1+u)^n` | Not polynomial | `apply pow_lt; lra` then provide to `nra` |
 | 125 | 99 Flocq-based FP theorems machine-checked | Phase FP-1 foundations | 4 files: FP_Common, FP_Rounding, FP_ErrorBounds, FP_Vec |
+| 181 | `fp_four_op_composition` doesn't exist — must inline 4-op proof | FP_ErrorBounds.v only provides `two_op_error_bound` and `fp_three_op_composition` | Write 4-op proof inline following `fp_vec4_length_sq_error` pattern: chain `fp_three_op_composition` + `Rabs_triang` + `Rmult_le_compat` |
+| 182 | `Rle_max_compat_l`/`Rle_max_compat_r` not in Coq 8.18 stdlib | Used in FP_Rect.v and FP_Bounds.v for Rmax bounds | Add `Local Lemma` definitions: `unfold Rmax; destruct (Rle_dec x y); lra` |
+| 183 | FP Rect/Bounds/Utils files follow uniform structure | Each type needs: 1-op, 2-op, multi-op, exact, composition, and stability theorems | Template: ~35 Theorems + ~2 Local Lemmas per type, grouped by operation depth |
 
 ---
 
@@ -276,6 +281,8 @@
 | 145 | README.md sed patterns must match actual Markdown table format | Expected `N theorems, 0 admits | Machine-checked` vs actual `N theorems | Zero admits` | Row-anchored: `/Coq \(R-based\)/s/[0-9]+ theorems/$N theorems/` |
 | 146 | WASM_EXTRACTION_PIPELINE.md had no update rule in script | File with Coq counts was created without script entry | When creating doc files with metrics, ALWAYS add sed patterns to update script |
 | 147 | CLAUDE.md per-type verification table needs automated updates | Per-type Bounds/Utils rows went stale | Added per-type row patterns to `update-verification-counts.sh` |
+| 184 | New FP Coq files require 3-place script update | Script needs: count variable, TOTAL formula update, JSON output entry | Checklist: `COQ_FP_<TYPE>=$(count_coq ...)`, add to `COQ_FP_TOTAL`, add to JSON `coq_fp` block |
+| 185 | `Rdiv_lt_1` not standard Coq — rewrite using `Rmult_lt_compat_r` | FP_Utils.v theorem on `u32 / (1 + u32) < 1` needed non-standard lemma | `Rmult_lt_compat_r` + `Rinv_r` pattern: multiply both sides by `/(1+u32)`, rewrite `(1+u32) * /(1+u32)` to 1 |
 
 ---
 
@@ -507,6 +514,16 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 177 | 2026-01-31 | ykSJI | Z-integer roundtrip `zf32_to_u8(zu8_to_z1000(n)) = n` does NOT hold in general | Integer division truncation: `zu8_to_z1000(128) = 501`, `zf32_to_u8(501) = 127 ≠ 128`. The 1000-scale fixed-point loses precision through truncation | For Z-compute roundtrips involving division, prove boundary cases (0, 255) instead of universal quantification; document the precision limitation explicitly |
 | 178 | 2026-01-31 | ykSJI | `simpl. lia.` and `change ... lia.` fail on Z division expressions after `unfold zclamp` | `lia` cannot handle `Z.div` (linear integer arithmetic only); `simpl` doesn't reduce division of concrete Z values after `destruct` on boolean comparisons | Factor out helper lemmas (`zclamp_ge_lo`, `zclamp_nonneg`, `zclamp_le_hi`) and use `Z.div_pos`, `Z.div_le_upper_bound`, `Z.mul_nonneg_nonneg` from the Z library instead of brute-force tactic application |
 
+| 179 | 2026-02-01 | r1GdR | Algebraic property Kani harnesses (commutativity, anti-commutativity, idempotency) are uniformly applicable across all types | All vector/matrix types support same operator overloads (`Add`, `Sub`, `Mul`, `Neg`) | Template: `verify_<type>_<op>_<property>` works for Vec2-4, Mat3, Color, Rect, Bounds, Utils with identical structure |
+| 180 | 2026-02-01 | r1GdR | `Rect::from_corners` harness validates `min`/`max` normalization contract | `from_corners(a, b)` uses `f32::min`/`f32::max` to normalize | Assert `r.width >= 0.0 && r.height >= 0.0` for any finite inputs — catches potential NaN propagation |
+| 181 | 2026-02-01 | r1GdR | `fp_four_op_composition` doesn't exist in FP_ErrorBounds.v | FP_ErrorBounds.v only provides up to 3-op composition | Write 4-op proof inline following `fp_vec4_length_sq_error` pattern from FP_Vec.v |
+| 182 | 2026-02-01 | r1GdR | `Rle_max_compat_l`/`Rle_max_compat_r` not in Coq 8.18 standard library | Used in FP_Rect.v and FP_Bounds.v for Rmax inequality bounds | Add `Local Lemma` definitions: `unfold Rmax; destruct (Rle_dec x y); lra` at top of each file |
+| 183 | 2026-02-01 | r1GdR | FP Coq files follow uniform structure per type (~35 Theorems + ~2 Local Lemmas) | Each spatial type needs error bounds for all operation depths | Group by: 1-op exact, 1-op bounded, 2-op, multi-op, composition, stability |
+| 184 | 2026-02-01 | r1GdR | New FP Coq files require 3-place script update (count var + TOTAL + JSON) | Script was blind to FP_Rect.v, FP_Bounds.v, FP_Utils.v initially | Checklist: `COQ_FP_<TYPE>=$(count_coq ...)`, update `COQ_FP_TOTAL` formula, add JSON `coq_fp` entry |
+| 185 | 2026-02-01 | r1GdR | `Rdiv_lt_1` not available — rewrite using `Rmult_lt_compat_r` + `Rinv_r` | FP_Utils.v needed `u32 / (1 + u32) < 1` without standard lemma | Multiply both sides by `/(1+u32)`, use `Rmult_lt_compat_r` for order preservation, `Rinv_r` to cancel |
+| 186 | 2026-02-01 | r1GdR | `Rabs_Rabsolu` may not exist in Coq 8.18 — use `Rabs_right` + `Rabs_pos` | Vec2_Proofs.v theorem on `abs(abs(x))` needed rewrite | `rewrite Rabs_right; try apply Rabs_pos; reflexivity` — always works |
+| 187 | 2026-02-01 | r1GdR | Methods in VERIFICATION_COVERAGE.md may not exist in source | Color::scale, Rect::normalize, Vec2::fract listed as uncovered but don't exist in implementation | Always `grep 'pub fn method_name'` in source before writing harnesses; adapt plan to actual API |
+
 ---
 
-*Last updated: 2026-01-31 | 178 entries | 14 categories*
+*Last updated: 2026-02-01 | 187 entries | 14 categories*

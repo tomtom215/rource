@@ -1219,9 +1219,59 @@ Proof.
   ring.
 Qed.
 
+(** * Reflection and Projection Properties *)
+
+(** Theorem 111: negation is self-inverse (involution). *)
+Theorem vec2_neg_involution : forall v : Vec2,
+  vec2_neg (vec2_neg v) = v.
+Proof.
+  intros [vx vy].
+  unfold vec2_neg. simpl.
+  f_equal; ring.
+Qed.
+
+(** Theorem 112: element sum equals dot with (1,1). *)
+Theorem vec2_element_sum_dot_ones : forall v : Vec2,
+  vec2_element_sum v = vec2_dot v (mkVec2 1 1).
+Proof.
+  intros [vx vy].
+  unfold vec2_element_sum, vec2_dot. simpl. ring.
+Qed.
+
+(** Theorem 113: componentwise div is inverse of componentwise mul. *)
+Theorem vec2_div_mul_cancel : forall (a b : Vec2),
+  vec2_x b <> 0 -> vec2_y b <> 0 ->
+  vec2_mul (vec2_div a b) b = a.
+Proof.
+  intros [ax ay] [bx by0] Hx Hy.
+  unfold vec2_mul, vec2_div. simpl in *.
+  f_equal; field; assumption.
+Qed.
+
+(** Theorem 114: lerp is affine in first argument. *)
+Theorem vec2_lerp_affine_a : forall (a1 a2 b : Vec2) (t s1 s2 : R),
+  s1 + s2 = 1 ->
+  vec2_lerp (vec2_add (vec2_scale s1 a1) (vec2_scale s2 a2)) b t =
+  vec2_add
+    (vec2_scale s1 (vec2_lerp a1 b t))
+    (vec2_scale s2 (vec2_lerp a2 b t)).
+Proof.
+  intros [a1x a1y] [a2x a2y] [bx by0] t s1 s2 Hs.
+  unfold vec2_lerp, vec2_add, vec2_sub, vec2_scale. simpl.
+  f_equal; nra.
+Qed.
+
+(** Theorem 115: element product distributes over scale (squared). *)
+Theorem vec2_element_product_scale : forall (s : R) (v : Vec2),
+  vec2_element_product (vec2_scale s v) = s * s * vec2_element_product v.
+Proof.
+  intros s [vx vy].
+  unfold vec2_element_product, vec2_scale. simpl. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 110
+    Total theorems: 115
     Admits: 0
     Axioms: Standard Coq real number library only
 

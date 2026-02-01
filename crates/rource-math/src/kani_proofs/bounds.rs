@@ -443,3 +443,100 @@ fn verify_bounds_from_center_size_finite() {
     assert!(b.max.x.is_finite(), "from_center_size().max.x non-finite");
     assert!(b.max.y.is_finite(), "from_center_size().max.y non-finite");
 }
+
+// ============================================================================
+// half_extents
+// ============================================================================
+
+/// **Finiteness**: `half_extents()` with bounded inputs produces finite Vec2.
+///
+/// Precondition: finite min/max with `|v| < 1e18`.
+/// Postcondition: `half_extents()` components are finite.
+#[kani::proof]
+fn verify_bounds_half_extents_finite() {
+    let min_x: f32 = kani::any();
+    let min_y: f32 = kani::any();
+    let max_x: f32 = kani::any();
+    let max_y: f32 = kani::any();
+    kani::assume(min_x.is_finite() && min_x.abs() < SAFE_BOUND);
+    kani::assume(min_y.is_finite() && min_y.abs() < SAFE_BOUND);
+    kani::assume(max_x.is_finite() && max_x.abs() < SAFE_BOUND);
+    kani::assume(max_y.is_finite() && max_y.abs() < SAFE_BOUND);
+    let b = Bounds::new(Vec2::new(min_x, min_y), Vec2::new(max_x, max_y));
+    let he = b.half_extents();
+    assert!(he.x.is_finite(), "half_extents().x non-finite");
+    assert!(he.y.is_finite(), "half_extents().y non-finite");
+}
+
+// ============================================================================
+// include_point
+// ============================================================================
+
+/// **Postcondition**: `include_point(p)` produces bounds where `min <= p` and `max >= p`
+/// component-wise.
+///
+/// Precondition: finite bounds and point.
+/// Postcondition: result `min <= p` and `max >= p` component-wise.
+#[kani::proof]
+fn verify_bounds_include_point_componentwise() {
+    let min_x: f32 = kani::any();
+    let min_y: f32 = kani::any();
+    let max_x: f32 = kani::any();
+    let max_y: f32 = kani::any();
+    let px: f32 = kani::any();
+    let py: f32 = kani::any();
+    kani::assume(min_x.is_finite() && min_x.abs() < SAFE_BOUND);
+    kani::assume(min_y.is_finite() && min_y.abs() < SAFE_BOUND);
+    kani::assume(max_x.is_finite() && max_x.abs() < SAFE_BOUND);
+    kani::assume(max_y.is_finite() && max_y.abs() < SAFE_BOUND);
+    kani::assume(min_x <= max_x);
+    kani::assume(min_y <= max_y);
+    kani::assume(px.is_finite() && px.abs() < SAFE_BOUND);
+    kani::assume(py.is_finite() && py.abs() < SAFE_BOUND);
+    let b = Bounds::new(Vec2::new(min_x, min_y), Vec2::new(max_x, max_y));
+    let expanded = b.include_point(Vec2::new(px, py));
+    assert!(expanded.min.x <= px, "include_point: min.x > px");
+    assert!(expanded.min.y <= py, "include_point: min.y > py");
+    assert!(expanded.max.x >= px, "include_point: max.x < px");
+    assert!(expanded.max.y >= py, "include_point: max.y < py");
+}
+
+// ============================================================================
+// union commutativity
+// ============================================================================
+
+/// **Commutativity**: `a.union(b) == b.union(a)` for valid bounds.
+///
+/// Precondition: finite bounds with min <= max.
+/// Postcondition: `a.union(b).min == b.union(a).min` and same for max.
+#[kani::proof]
+fn verify_bounds_union_commutative() {
+    let a_min_x: f32 = kani::any();
+    let a_min_y: f32 = kani::any();
+    let a_max_x: f32 = kani::any();
+    let a_max_y: f32 = kani::any();
+    let b_min_x: f32 = kani::any();
+    let b_min_y: f32 = kani::any();
+    let b_max_x: f32 = kani::any();
+    let b_max_y: f32 = kani::any();
+    kani::assume(a_min_x.is_finite() && a_min_x.abs() < SAFE_BOUND);
+    kani::assume(a_min_y.is_finite() && a_min_y.abs() < SAFE_BOUND);
+    kani::assume(a_max_x.is_finite() && a_max_x.abs() < SAFE_BOUND);
+    kani::assume(a_max_y.is_finite() && a_max_y.abs() < SAFE_BOUND);
+    kani::assume(a_min_x <= a_max_x);
+    kani::assume(a_min_y <= a_max_y);
+    kani::assume(b_min_x.is_finite() && b_min_x.abs() < SAFE_BOUND);
+    kani::assume(b_min_y.is_finite() && b_min_y.abs() < SAFE_BOUND);
+    kani::assume(b_max_x.is_finite() && b_max_x.abs() < SAFE_BOUND);
+    kani::assume(b_max_y.is_finite() && b_max_y.abs() < SAFE_BOUND);
+    kani::assume(b_min_x <= b_max_x);
+    kani::assume(b_min_y <= b_max_y);
+    let a = Bounds::new(Vec2::new(a_min_x, a_min_y), Vec2::new(a_max_x, a_max_y));
+    let b = Bounds::new(Vec2::new(b_min_x, b_min_y), Vec2::new(b_max_x, b_max_y));
+    let ab = a.union(b);
+    let ba = b.union(a);
+    assert!(ab.min.x == ba.min.x, "union not commutative: min.x");
+    assert!(ab.min.y == ba.min.y, "union not commutative: min.y");
+    assert!(ab.max.x == ba.max.x, "union not commutative: max.x");
+    assert!(ab.max.y == ba.max.y, "union not commutative: max.y");
+}
