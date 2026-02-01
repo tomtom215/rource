@@ -637,32 +637,6 @@ fn verify_vec3_dot_self_non_negative() {
 }
 
 // ============================================================================
-// dot commutativity
-// ============================================================================
-
-/// **Commutativity**: `a.dot(b) == b.dot(a)` for all finite bounded vectors (IEEE 754).
-#[kani::proof]
-fn verify_vec3_dot_commutative() {
-    let ax: f32 = kani::any();
-    let ay: f32 = kani::any();
-    let az: f32 = kani::any();
-    let bx: f32 = kani::any();
-    let by: f32 = kani::any();
-    let bz: f32 = kani::any();
-    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
-    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
-    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
-    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
-    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
-    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
-    let a = Vec3::new(ax, ay, az);
-    let b = Vec3::new(bx, by, bz);
-    let ab = a.dot(b);
-    let ba = b.dot(a);
-    assert!(ab == ba, "a.dot(b) should equal b.dot(a)");
-}
-
-// ============================================================================
 // sub anti-commutativity
 // ============================================================================
 

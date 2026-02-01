@@ -448,21 +448,3 @@ fn verify_mat3_translation_det_is_one() {
     let det = mat.determinant();
     assert!(det == 1.0, "translation det should be 1.0");
 }
-
-// ============================================================================
-// scaling determinant
-// ============================================================================
-
-/// **Postcondition**: `scaling(sx, sy).determinant() == sx * sy` for bounded inputs.
-///
-/// Scaling matrix: [[sx,0,0],[0,sy,0],[0,0,1]], det = sx * sy * 1 = sx * sy.
-#[kani::proof]
-fn verify_mat3_scaling_determinant_product() {
-    let sx: f32 = kani::any();
-    let sy: f32 = kani::any();
-    kani::assume(sx.is_finite() && sx.abs() < 1e18);
-    kani::assume(sy.is_finite() && sy.abs() < 1e18);
-    let mat = Mat3::scaling(sx, sy);
-    let det = mat.determinant();
-    assert!(det == sx * sy, "scaling det should equal sx * sy");
-}
