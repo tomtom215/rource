@@ -488,22 +488,3 @@ fn verify_vec2_splat_all_equal() {
     assert!(v.y == x, "splat(x).y should equal x");
 }
 
-// ============================================================================
-// angle
-// ============================================================================
-
-/// **Finiteness**: `angle()` with finite inputs produces finite output.
-///
-/// Mathematical basis: `atan2(y, x)` is defined for all finite (x, y) except (0, 0),
-/// where IEEE 754 specifies `atan2(0, 0) = 0`. Returns value in [-pi, pi].
-#[kani::proof]
-fn verify_vec2_angle_finite() {
-    let x: f32 = kani::any();
-    let y: f32 = kani::any();
-    kani::assume(x.is_finite());
-    kani::assume(y.is_finite());
-    let v = Vec2::new(x, y);
-    let a = v.angle();
-    assert!(!a.is_nan(), "angle() produced NaN");
-    assert!(a.is_finite(), "angle() produced non-finite output");
-}

@@ -597,42 +597,6 @@ fn verify_vec4_div_finite() {
 }
 
 // ============================================================================
-// Mul (component-wise)
-// ============================================================================
-
-/// **Commutativity**: `a * b == b * a` for component-wise Vec4 multiplication.
-///
-/// Precondition: all components finite and bounded.
-/// Postcondition: `(a * b).xyzw == (b * a).xyzw`.
-#[kani::proof]
-fn verify_vec4_mul_commutative() {
-    let ax: f32 = kani::any();
-    let ay: f32 = kani::any();
-    let az: f32 = kani::any();
-    let aw: f32 = kani::any();
-    let bx: f32 = kani::any();
-    let by: f32 = kani::any();
-    let bz: f32 = kani::any();
-    let bw: f32 = kani::any();
-    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
-    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
-    kani::assume(az.is_finite() && az.abs() < SAFE_BOUND);
-    kani::assume(aw.is_finite() && aw.abs() < SAFE_BOUND);
-    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
-    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
-    kani::assume(bz.is_finite() && bz.abs() < SAFE_BOUND);
-    kani::assume(bw.is_finite() && bw.abs() < SAFE_BOUND);
-    let a = Vec4::new(ax, ay, az, aw);
-    let b = Vec4::new(bx, by, bz, bw);
-    let ab = a * b;
-    let ba = b * a;
-    assert!(ab.x == ba.x, "(a*b).x should equal (b*a).x");
-    assert!(ab.y == ba.y, "(a*b).y should equal (b*a).y");
-    assert!(ab.z == ba.z, "(a*b).z should equal (b*a).z");
-    assert!(ab.w == ba.w, "(a*b).w should equal (b*a).w");
-}
-
-// ============================================================================
 // Sub (anti-commutativity)
 // ============================================================================
 

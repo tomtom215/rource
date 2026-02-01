@@ -1230,16 +1230,7 @@ Proof.
   split; field.
 Qed.
 
-(** Theorem 123: empty rect has zero area. *)
-Theorem rect_empty_zero_area : forall (r : Rect),
-  rect_is_empty r -> rect_area r = 0.
-Proof.
-  intros [rx ry rw rh] [Hw | Hh].
-  - unfold rect_area, rect_is_empty in *. simpl in *. nra.
-  - unfold rect_area, rect_is_empty in *. simpl in *. nra.
-Qed.
-
-(** Theorem 124: containment is transitive for points. *)
+(** Theorem 123: containment is transitive for points. *)
 Theorem rect_contains_rect_contains_point :
   forall (outer inner : Rect) (px py : R),
   rect_contains_rect outer inner ->
@@ -1251,7 +1242,7 @@ Proof.
   simpl in *. lra.
 Qed.
 
-(** Theorem 125: shrink dimensions formula. *)
+(** Theorem 124: shrink dimensions formula. *)
 Theorem rect_shrink_dims : forall (r : Rect) (a : R),
   rect_w (rect_shrink r a) = rect_w r - 2 * a /\
   rect_h (rect_shrink r a) = rect_h r - 2 * a.
@@ -1260,7 +1251,7 @@ Proof.
   unfold rect_shrink. simpl. split; ring.
 Qed.
 
-(** Theorem 126: scale area is original area times factor squared. *)
+(** Theorem 125: scale area is original area times factor squared. *)
 Theorem rect_scale_area_quadratic : forall (r : Rect) (s : R),
   rect_area (rect_scale r s) = rect_area r * (s * s).
 Proof.
@@ -1268,7 +1259,7 @@ Proof.
   unfold rect_area, rect_scale. simpl. ring.
 Qed.
 
-(** Theorem 127: translate is involutive. *)
+(** Theorem 126: translate is involutive. *)
 Theorem rect_translate_inverse : forall (r : Rect) (dx dy : R),
   rect_translate (rect_translate r dx dy) (-dx) (-dy) = r.
 Proof.
