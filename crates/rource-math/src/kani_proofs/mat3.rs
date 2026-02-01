@@ -407,4 +407,3 @@ fn verify_mat3_default_is_identity() {
         assert!(def.m[i] == id.m[i], "default should be identity");
     }
 }
-

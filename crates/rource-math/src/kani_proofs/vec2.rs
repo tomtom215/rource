@@ -487,4 +487,3 @@ fn verify_vec2_splat_all_equal() {
     assert!(v.x == x, "splat(x).x should equal x");
     assert!(v.y == x, "splat(x).y should equal x");
 }
-
