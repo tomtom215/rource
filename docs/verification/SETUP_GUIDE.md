@@ -510,8 +510,8 @@ done
 | Verus | 475 proof functions | 0 | 0 |
 | Coq (R-based) | 1078 theorems | 0 | 0 |
 | Coq (Z-based) | 400 theorems | 0 | 0 |
-| Kani (CBMC) | 223 harnesses | 0 | 0 |
-| **Combined** | **2537** | **0** | **0** |
+| Kani (CBMC) | 221 harnesses | 0 | 0 |
+| **Combined** | **2535** | **0** | **0** |
 
 ---
 
@@ -790,6 +790,6 @@ crates/rource-math/proofs/
 
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC*
-*2537 formally verified theorems/harnesses (Verus: 475, Coq: 1839, Kani: 223)*
+*2535 formally verified theorems/harnesses (Verus: 475, Coq: 1839, Kani: 221)*
 *9 verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, Utils*
 *Current: Coq 8.18 + MetaCoq (from source) | Future: Rocq 9.x + MetaRocq (when opam repos stabilize)*

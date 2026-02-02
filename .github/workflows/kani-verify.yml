@@ -97,15 +97,23 @@ jobs:
 
           for HARNESS in $HARNESSES; do
             TOTAL=$((TOTAL + 1))
-            echo "[$TOTAL] Verifying: $HARNESS"
 
-            if timeout 300 cargo kani -p rource-math --harness "$HARNESS" --output-format terse 2>&1; then
+            # Suppress verbose CBMC output for passing harnesses;
+            # capture output and only display it on failure for debugging.
+            LOGFILE=$(mktemp)
+            if timeout 300 cargo kani -p rource-math --harness "$HARNESS" --output-format terse >"$LOGFILE" 2>&1; then
               PASSED=$((PASSED + 1))
+              echo "  ✓ [$TOTAL] $HARNESS"
             else
               FAILED=$((FAILED + 1))
               FAILED_LIST="$FAILED_LIST $HARNESS"
+              echo "  ✗ [$TOTAL] $HARNESS — FAILED"
+              echo "::group::$HARNESS failure details"
+              tail -50 "$LOGFILE"
+              echo "::endgroup::"
               echo "::warning::Harness $HARNESS failed"
             fi
+            rm -f "$LOGFILE"
           done
 
           echo "total=$TOTAL" >> $GITHUB_OUTPUT
