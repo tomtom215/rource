@@ -39,8 +39,18 @@ jobs:
 
       - name: Install Coq
         run: |
-          sudo apt-get update
-          sudo apt-get install -y coq coq-theories
+          # Retry apt-get for transient mirror/network failures
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: Installing Coq..."
+            sudo apt-get update -q && sudo apt-get install -y -q coq coq-theories && break
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Failed to install Coq after 3 attempts"
+              exit 1
+            fi
+            DELAY=$((attempt * 10))
+            echo "Install failed, retrying in ${DELAY}s..."
+            sleep "$DELAY"
+          done
 
       - name: Verify Coq installation
         run: |
@@ -48,31 +58,31 @@ jobs:
           echo "Coq version: $(coqc --version | head -1)"
 
       # ================================================================
-      # Layer 1: Specifications (8 files)
+      # Layer 1: Specifications (9 files)
       # ================================================================
 
       - name: "Layer 1: Build specifications"
         working-directory: crates/rource-math/proofs/coq
         run: |
-          echo "Building type specifications (8 files)..."
-          for f in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v; do
+          echo "Building type specifications (9 files)..."
+          for f in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v Bounds.v; do
             echo "  Building $f..."
             timeout 60 coqc -Q . RourceMath "$f" 2>&1
           done
           echo "All specifications compiled successfully."
 
       # ================================================================
-      # Layer 2: R-based algebraic proofs (7 files, 446 theorems)
+      # Layer 2: R-based algebraic proofs (9 files)
       # ================================================================
 
       - name: "Layer 2: Build R-based proofs"
         id: r_proofs
         working-directory: crates/rource-math/proofs/coq
         run: |
-          echo "Building R-based algebraic proofs (7 files)..."
+          echo "Building R-based algebraic proofs (9 files)..."
           FAILED=0
 
-          for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v; do
+          for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v Vec_CrossType.v; do
             echo "  Building $f..."
             if ! timeout 300 coqc -Q . RourceMath "$f" 2>&1; then
               echo "::error::$f failed to compile"
@@ -106,17 +116,17 @@ jobs:
           fi
 
       # ================================================================
-      # Layer 4: Z-based computational bridge (8 files, 251 theorems)
+      # Layer 4: Z-based computational bridge (9 files)
       # ================================================================
 
       - name: "Layer 4: Build Z-based computational bridge"
         id: z_compute
         working-directory: crates/rource-math/proofs/coq
         run: |
-          echo "Building Z-based computational bridge (8 files)..."
+          echo "Building Z-based computational bridge (9 files)..."
           FAILED=0
 
-          for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Utils_Compute.v; do
+          for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Utils_Compute.v Bounds_Compute.v; do
             echo "  Building $f..."
             if ! timeout 300 coqc -Q . RourceMath "$f" 2>&1; then
               echo "::error::$f failed to compile"
@@ -162,7 +172,7 @@ jobs:
 
           # R-based counts
           R_TOTAL=0
-          for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v; do
+          for f in Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v Vec_CrossType.v; do
             COUNT=$(grep -cE '^(Theorem|Lemma|Local Lemma)' "$f" 2>/dev/null || echo "0")
             echo "  $f: $COUNT theorems"
             R_TOTAL=$((R_TOTAL + COUNT))
@@ -175,7 +185,7 @@ jobs:
 
           # Z-based counts
           Z_TOTAL=0
-          for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Utils_Compute.v; do
+          for f in Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Utils_Compute.v Bounds_Compute.v; do
             COUNT=$(grep -cE '^(Theorem|Lemma|Local Lemma)' "$f" 2>/dev/null || echo "0")
             echo "  $f: $COUNT theorems"
             Z_TOTAL=$((Z_TOTAL + COUNT))
@@ -231,10 +241,10 @@ jobs:
           Z_STATUS="${{ steps.z_compute.outputs.z_compute_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
           E_STATUS="${{ steps.extraction.outputs.extraction_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
 
-          echo "| Layer 1 | Type specifications (R-based) | 8 | :white_check_mark: Verified |" >> $GITHUB_STEP_SUMMARY
-          echo "| Layer 2 | R-based algebraic proofs | 7 | $R_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 1 | Type specifications (R-based) | 9 | :white_check_mark: Verified |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 2 | R-based algebraic proofs | 9 | $R_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 3 | Complexity (ICC O(1) bounds) | 1 | $C_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| Layer 4 | Z-based computational bridge | 8 | $Z_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 4 | Z-based computational bridge | 9 | $Z_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 5 | OCaml extraction | 1 | $E_STATUS |" >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY

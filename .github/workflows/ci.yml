@@ -451,18 +451,23 @@ jobs:
           echo "| Documentation | ${{ needs.docs.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Features | ${{ needs.features.result }} |" >> $GITHUB_STEP_SUMMARY
 
-      - name: Fail if any job failed
+      - name: Fail if any job failed or was cancelled
         if: |
-          needs.fmt.result == 'failure' ||
-          needs.verification-counts.result == 'failure' ||
-          needs.clippy.result == 'failure' ||
-          needs.test.result == 'failure' ||
-          needs.chaos.result == 'failure' ||
-          needs.msrv.result == 'failure' ||
-          needs.build.result == 'failure' ||
-          needs.wasm.result == 'failure' ||
-          needs.docs.result == 'failure' ||
-          needs.features.result == 'failure'
+          needs.fmt.result != 'success' ||
+          needs.verification-counts.result != 'success' ||
+          needs.clippy.result != 'success' ||
+          needs.test.result != 'success' ||
+          needs.chaos.result != 'success' ||
+          needs.msrv.result != 'success' ||
+          needs.build.result != 'success' ||
+          needs.wasm.result != 'success' ||
+          needs.docs.result != 'success' ||
+          needs.features.result != 'success'
         run: |
-          echo "One or more CI jobs failed. See individual job logs for details."
+          echo "One or more CI jobs did not succeed. See individual job logs for details."
+          echo "fmt=${{ needs.fmt.result }} verification-counts=${{ needs.verification-counts.result }}"
+          echo "clippy=${{ needs.clippy.result }} test=${{ needs.test.result }}"
+          echo "chaos=${{ needs.chaos.result }} msrv=${{ needs.msrv.result }}"
+          echo "build=${{ needs.build.result }} wasm=${{ needs.wasm.result }}"
+          echo "docs=${{ needs.docs.result }} features=${{ needs.features.result }}"
           exit 1

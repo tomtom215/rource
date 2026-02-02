@@ -42,7 +42,20 @@ jobs:
       - name: Install Kani
         if: steps.cache-kani.outputs.cache-hit != 'true'
         run: |
-          cargo install --locked kani-verifier
+          # Retry up to 3 times with exponential backoff for transient network failures
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: Installing kani-verifier..."
+            if cargo install --locked kani-verifier; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Failed to install kani-verifier after 3 attempts"
+              exit 1
+            fi
+            DELAY=$((attempt * 10))
+            echo "Install failed, retrying in ${DELAY}s..."
+            sleep "$DELAY"
+          done
           cargo kani setup
 
       - name: Verify Kani installation
