@@ -33,13 +33,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.opam
-          key: opam-v2-flocq-${{ env.COQ_VERSION }}-${{ hashFiles('crates/rource-math/proofs/coq/_CoqProject') }}
+          key: opam-v3-flocq-${{ env.COQ_VERSION }}-${{ hashFiles('crates/rource-math/proofs/coq/_CoqProject') }}
           restore-keys: |
-            opam-v2-flocq-${{ env.COQ_VERSION }}-
+            opam-v3-flocq-${{ env.COQ_VERSION }}-
 
       - name: Install Coq and Flocq via opam
         run: |
-          # Install opam and system OCaml compiler
+          # Install system dependencies: opam, system OCaml compiler, build tools
           for attempt in 1 2 3; do
             echo "Attempt $attempt: Installing system dependencies..."
             sudo apt-get update -q && sudo apt-get install -y -q opam ocaml build-essential && break
@@ -52,32 +52,95 @@ jobs:
             sleep "$DELAY"
           done
 
-          # Initialize opam and create switch with system OCaml
-          # CRITICAL: Do NOT use --bare. In opam 2.1 (Ubuntu apt), --bare skips the
-          # repository index download entirely. The ocaml-system packages that install
-          # during switch creation are auto-detected virtual packages, not from the
-          # repository. Even `opam update` cannot fix the empty index after --bare init.
-          # Result: "No package named coq-flocq found" on every install attempt.
-          #
-          # --compiler=ocaml-system: creates the default switch using apt-installed OCaml
-          # (fast, no compilation needed). Without this flag, opam would compile OCaml
-          # from source (~10 min).
-          #
-          # On cache hit: ~/.opam exists, opam init says "already initialized" (no-op).
+          # Initialize opam with system OCaml compiler
+          # --compiler=ocaml-system: uses apt-installed OCaml (fast, no compilation)
+          # On cache hit: ~/.opam exists, opam init says "already initialized" (no-op)
           opam init --disable-sandboxing --no-setup -y --compiler=ocaml-system 2>&1 || true
           eval $(opam env)
 
-          # Refresh repository index (needed for cache hits with stale index)
+          # ================================================================
+          # Add the Coq released opam repository
+          # ================================================================
+          # CRITICAL: coq-flocq is NOT in the default opam.ocaml.org repository.
+          # Coq library packages live in a separate Coq released repository.
+          #
+          # The official HTTPS endpoints frequently return HTTP 503:
+          #   - https://coq.inria.fr/opam/released
+          #   - https://rocq-prover.org/opam/released
+          #
+          # Cascading fallback strategy:
+          #   1. Check if repo is already configured (opam cache hit)
+          #   2. Try official HTTPS endpoints (fastest when available)
+          #   3. Clone the GitHub mirror (github.com/coq/opam) as a local repo
+          #
+          # The GitHub mirror (rocq-prover/opam) contains the released/ directory
+          # which is a properly structured opam repository with packages/ and repo file.
+          # ================================================================
+
+          if opam repo list --short 2>/dev/null | grep -q coq-released; then
+            echo "Coq released repo already configured (cache hit)"
+          else
+            REPO_ADDED=false
+
+            # Strategy 1: Try official HTTPS endpoints
+            for url in "https://coq.inria.fr/opam/released" "https://rocq-prover.org/opam/released"; do
+              echo "Trying Coq opam repo: $url"
+              if timeout 30 opam repo add coq-released "$url" 2>&1; then
+                # Verify the repo actually has packages (guards against 503 being
+                # accepted by opam but yielding an empty index)
+                opam update --quiet coq-released 2>&1 || true
+                if opam list -a --short coq-flocq 2>/dev/null | grep -q coq-flocq; then
+                  echo "Coq released repo added from: $url"
+                  REPO_ADDED=true
+                  break
+                fi
+                # Repo entry exists but no packages visible — remove and try next
+                echo "  Repo added but coq-flocq not visible, removing..."
+                opam repo remove coq-released 2>/dev/null || true
+              else
+                # Clean up any partial state from failed add
+                opam repo remove coq-released 2>/dev/null || true
+                echo "  Failed (timeout or 503), trying next..."
+              fi
+            done
+
+            # Strategy 2: Clone GitHub mirror as local opam repo
+            if [ "$REPO_ADDED" = false ]; then
+              echo "HTTPS endpoints unavailable, cloning GitHub mirror..."
+              git clone --depth 1 --filter=blob:none --sparse \
+                https://github.com/coq/opam.git /tmp/coq-opam
+              (cd /tmp/coq-opam && git sparse-checkout set released)
+              opam repo add coq-released /tmp/coq-opam/released
+              echo "Added Coq released repo from GitHub mirror (local)"
+            fi
+          fi
+
+          # Refresh package index
           opam update --quiet 2>&1 || true
 
-          # Debug: verify opam can see the Flocq package
-          echo "Available coq-flocq versions:"
-          opam list -a --short coq-flocq 2>&1 || echo "WARNING: coq-flocq not found in package list"
+          # Verify coq-flocq is visible (available from repos OR already installed)
+          echo "Checking coq-flocq availability..."
+          FLOCQ_AVAILABLE=false
+          if opam list -a --short coq-flocq 2>/dev/null | grep -q coq-flocq; then
+            echo "coq-flocq: available from opam repos"
+            FLOCQ_AVAILABLE=true
+          fi
+          if opam list --installed --short coq-flocq 2>/dev/null | grep -q coq-flocq; then
+            echo "coq-flocq: already installed (cache hit)"
+            FLOCQ_AVAILABLE=true
+          fi
+          if [ "$FLOCQ_AVAILABLE" = false ]; then
+            echo "::error::coq-flocq not found (not in repos, not installed)"
+            echo "Configured opam repos:"
+            opam repo list 2>&1
+            exit 1
+          fi
 
           # Install Coq and Flocq (coq-flocq pulls coq as a dependency)
+          # Pin to 4.1.3 for reproducibility (compatible with Coq 8.12–8.18)
           for attempt in 1 2 3; do
             echo "Attempt $attempt: Installing Coq and Flocq..."
-            opam install -y coq-flocq && break
+            opam install -y coq-flocq.4.1.3 && break
             if [ "$attempt" -eq 3 ]; then
               echo "::error::Failed to install Coq+Flocq after 3 attempts"
               exit 1
