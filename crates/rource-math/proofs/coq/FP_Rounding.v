@@ -276,8 +276,9 @@ Proof.
   - (* Contradiction: Zfloor x < 0 implies x < 0 *)
     exfalso.
     assert (H1: (Zfloor x + 1 <= 0)%Z) by lia.
-    assert (H2: IZR (Zfloor x + 1) <= 0).
-    { apply IZR_le. exact H1. }
+    (* Convert Z inequality to R, matching Zfloor_ub's form: x < IZR(Zfloor x) + 1 *)
+    apply IZR_le in H1. rewrite plus_IZR in H1. simpl in H1.
+    (* H1: IZR (Zfloor x) + 1 <= 0, Hx: 0 <= x, Zfloor_ub: x < IZR (Zfloor x) + 1 *)
     generalize (Zfloor_ub x). lra.
   - exact Hpos.
 Qed.
@@ -327,12 +328,20 @@ Theorem fp_ceil_floor_distance :
   forall x : R, (Zceil x - Zfloor x <= 1)%Z.
 Proof.
   intro x.
-  generalize (Zfloor_lb x). intro Hlb.
-  generalize (Zfloor_ub x). intro Hub.
-  generalize (Zceil_ub x). intro Hcub.
-  generalize (Zceil_lb x). intro Hclb.
-  apply le_IZR. rewrite minus_IZR. simpl.
-  lra.
+  (* Strategy: prove < 2 in Z (via R), then derive <= 1 by integer reasoning *)
+  enough (Hlt: (Zceil x - Zfloor x < 2)%Z) by lia.
+  destruct (Z_lt_le_dec (Zceil x - Zfloor x) 2) as [H | H].
+  - exact H.
+  - exfalso.
+    (* H: 2 <= Zceil x - Zfloor x, i.e., Zfloor x + 2 <= Zceil x *)
+    assert (Hgap: (Zfloor x + 1 + 1 <= Zceil x)%Z) by lia.
+    apply IZR_le in Hgap. rewrite !plus_IZR in Hgap. simpl in Hgap.
+    (* Hgap: IZR (Zfloor x) + 1 + 1 <= IZR (Zceil x) *)
+    (* Zceil_lb: IZR (Zceil x) - 1 < x,  Zfloor_ub: x < IZR (Zfloor x) + 1 *)
+    (* Chain: IZR (Zfloor x) + 1 + 1 <= IZR (Zceil x) AND                    *)
+    (*        IZR (Zceil x) - 1 < x < IZR (Zfloor x) + 1                     *)
+    (* => IZR (Zfloor x) + 1 < IZR (Zfloor x) + 1, contradiction             *)
+    generalize (Zceil_lb x). generalize (Zfloor_ub x). lra.
 Qed.
 
 (* ================================================================== *)

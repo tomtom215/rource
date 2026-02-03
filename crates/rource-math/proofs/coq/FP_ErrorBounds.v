@@ -661,8 +661,12 @@ Theorem fp_clamp_monotone :
   Rmax lo (Rmin x hi) <= Rmax lo (Rmin y hi).
 Proof.
   intros x y lo hi Hlh Hxy. unfold Rmin, Rmax.
+  (* After unfold, outer Rmax creates Rle_dec lo (Rmin x hi) and Rle_dec lo (Rmin y hi).
+     When inner Rle_dec x hi / Rle_dec y hi are destructed, the outer may become
+     Rle_dec lo x, Rle_dec lo y, OR Rle_dec lo hi depending on the branch. *)
   destruct (Rle_dec x hi); destruct (Rle_dec y hi);
-    destruct (Rle_dec lo x); destruct (Rle_dec lo y); lra.
+    destruct (Rle_dec lo x); destruct (Rle_dec lo y);
+    try destruct (Rle_dec lo hi); lra.
 Qed.
 
 (* ================================================================== *)
