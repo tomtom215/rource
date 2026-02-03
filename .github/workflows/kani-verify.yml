@@ -116,11 +116,11 @@ jobs:
             LOGFILE=$(mktemp)
             if timeout 300 cargo kani -p rource-math --harness "$HARNESS" --output-format terse >"$LOGFILE" 2>&1; then
               PASSED=$((PASSED + 1))
-              echo "  ✓ [$TOTAL] $HARNESS"
+              echo "  PASS [$TOTAL] $HARNESS"
             else
               FAILED=$((FAILED + 1))
               FAILED_LIST="$FAILED_LIST $HARNESS"
-              echo "  ✗ [$TOTAL] $HARNESS — FAILED"
+              echo "  FAIL [$TOTAL] $HARNESS"
               echo "::group::$HARNESS failure details"
               tail -50 "$LOGFILE"
               echo "::endgroup::"
