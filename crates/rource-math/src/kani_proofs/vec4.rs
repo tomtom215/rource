@@ -643,3 +643,50 @@ fn verify_vec4_sub_anti_commutative() {
         "(a-b).w should equal -(b-a).w"
     );
 }
+
+/// **Idempotence**: `abs(abs(v)) == abs(v)` for all finite vectors.
+#[kani::proof]
+fn verify_vec4_abs_idempotent() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    let w: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(z.is_finite());
+    kani::assume(w.is_finite());
+    let v = Vec4::new(x, y, z, w);
+    let once = v.abs();
+    let twice = once.abs();
+    assert!(once.x == twice.x, "abs should be idempotent for x");
+    assert!(once.y == twice.y, "abs should be idempotent for y");
+    assert!(once.z == twice.z, "abs should be idempotent for z");
+    assert!(once.w == twice.w, "abs should be idempotent for w");
+}
+
+// ============================================================================
+// length_squared
+// ============================================================================
+
+/// **Non-negativity**: `length_squared()` is always ≥ 0 for finite bounded inputs.
+#[kani::proof]
+fn verify_vec4_length_squared_properties() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    let w: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
+    kani::assume(w.is_finite() && w.abs() < SAFE_BOUND);
+    let v = Vec4::new(x, y, z, w);
+    let ls = v.length_squared();
+    assert!(!ls.is_nan(), "length_squared produced NaN");
+    assert!(ls >= 0.0, "length_squared should be non-negative");
+    // length_squared of zero vector is zero
+    let zero = Vec4::new(0.0, 0.0, 0.0, 0.0);
+    assert!(
+        zero.length_squared() == 0.0,
+        "length_squared of zero should be 0"
+    );
+}

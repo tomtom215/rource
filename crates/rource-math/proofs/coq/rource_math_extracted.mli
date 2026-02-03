@@ -98,6 +98,8 @@ val zvec2_perp : zVec2 -> zVec2
 
 val zvec2_length_squared : zVec2 -> int
 
+val zvec2_lerp : int -> zVec2 -> zVec2 -> zVec2
+
 type zVec3 = { zvec3_x : int; zvec3_y : int; zvec3_z : int }
 
 val zvec3_x : zVec3 -> int
@@ -135,6 +137,8 @@ val zvec3_dot : zVec3 -> zVec3 -> int
 val zvec3_cross : zVec3 -> zVec3 -> zVec3
 
 val zvec3_length_squared : zVec3 -> int
+
+val zvec3_lerp : int -> zVec3 -> zVec3 -> zVec3
 
 val zvec3_scalar_triple : zVec3 -> zVec3 -> zVec3 -> int
 
@@ -179,6 +183,8 @@ val zvec4_mul : zVec4 -> zVec4 -> zVec4
 val zvec4_dot : zVec4 -> zVec4 -> int
 
 val zvec4_length_squared : zVec4 -> int
+
+val zvec4_lerp : int -> zVec4 -> zVec4 -> zVec4
 
 type zMat3 = { zm3_0 : int; zm3_1 : int; zm3_2 : int; zm3_3 : int;
                zm3_4 : int; zm3_5 : int; zm3_6 : int; zm3_7 : int; zm3_8 : 

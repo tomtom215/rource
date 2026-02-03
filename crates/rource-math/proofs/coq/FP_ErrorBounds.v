@@ -616,7 +616,7 @@ Proof. intros. apply Rabs_Ropp. Qed.
 (*  Theorem 41: min idempotent                                         *)
 (*  min(a, a) = a                                                      *)
 (* ================================================================== *)
-Theorem fp_min_idempotent :
+Theorem fp_min_idempotent_bounds :
   forall a : R, Rmin a a = a.
 Proof. intros. unfold Rmin. destruct (Rle_dec a a); lra. Qed.
 
@@ -624,7 +624,7 @@ Proof. intros. unfold Rmin. destruct (Rle_dec a a); lra. Qed.
 (*  Theorem 42: max idempotent                                         *)
 (*  max(a, a) = a                                                      *)
 (* ================================================================== *)
-Theorem fp_max_idempotent :
+Theorem fp_max_idempotent_bounds :
   forall a : R, Rmax a a = a.
 Proof. intros. unfold Rmax. destruct (Rle_dec a a); lra. Qed.
 

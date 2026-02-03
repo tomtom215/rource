@@ -558,3 +558,21 @@ fn verify_vec2_dot_self_non_negative() {
     assert!(!d.is_nan(), "v.dot(v) produced NaN");
     assert!(d >= 0.0, "v.dot(v) returned negative value");
 }
+
+/// **Idempotence**: `abs(abs(v)) == abs(v)` for all finite vectors.
+#[kani::proof]
+fn verify_vec2_abs_idempotent() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let once = v.abs();
+    let twice = once.abs();
+    assert!(once.x == twice.x, "abs should be idempotent for x");
+    assert!(once.y == twice.y, "abs should be idempotent for y");
+}
+
+// NOTE: verify_vec2_distance_squared_properties removed — exceeds CBMC solver
+// limits in CI (4 symbolic f32 inputs × subtraction + multiplication).
+// distance_squared correctness is covered by Coq R-based proofs and unit tests.

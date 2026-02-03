@@ -44,4 +44,5 @@ Extraction "vec3_extracted"
   zvec3_cross
   zvec3_length_squared
   zvec3_scalar_triple
+  zvec3_lerp
   zvec3_eq_dec.

@@ -672,3 +672,24 @@ fn verify_vec3_sub_anti_commutative() {
         "(a-b).z should equal -(b-a).z"
     );
 }
+
+/// **Idempotence**: `abs(abs(v)) == abs(v)` for all finite vectors.
+#[kani::proof]
+fn verify_vec3_abs_idempotent() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let z: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(z.is_finite());
+    let v = Vec3::new(x, y, z);
+    let once = v.abs();
+    let twice = once.abs();
+    assert!(once.x == twice.x, "abs should be idempotent for x");
+    assert!(once.y == twice.y, "abs should be idempotent for y");
+    assert!(once.z == twice.z, "abs should be idempotent for z");
+}
+
+// NOTE: verify_vec3_distance_squared_properties removed — exceeds CBMC solver
+// limits in CI (6 symbolic f32 inputs × subtraction + multiplication).
+// distance_squared correctness is covered by Coq R-based proofs and unit tests.

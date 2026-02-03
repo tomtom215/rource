@@ -103,6 +103,11 @@ Definition zvec4_dot (a b : ZVec4) : Z :=
 Definition zvec4_length_squared (v : ZVec4) : Z :=
   zvec4_dot v v.
 
+(** * Lerp (Linear Interpolation) *)
+
+Definition zvec4_lerp (t : Z) (a b : ZVec4) : ZVec4 :=
+  zvec4_add a (zvec4_scale t (zvec4_sub b a)).
+
 (** * Equality Lemma *)
 
 Lemma zvec4_eq : forall x1 y1 z1 w1 x2 y2 z2 w2 : Z,
@@ -409,6 +414,36 @@ Theorem zvec4_element_sum_zero :
   zvec4_element_sum zvec4_zero = 0.
 Proof.
   unfold zvec4_element_sum, zvec4_zero. simpl. reflexivity.
+Qed.
+
+(** ** Lerp Properties *)
+
+(** Theorem 34: lerp at t=0 returns first argument *)
+Theorem zvec4_lerp_zero : forall a b : ZVec4,
+  zvec4_lerp 0 a b = a.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub. simpl.
+  apply zvec4_eq; ring.
+Qed.
+
+(** Theorem 35: lerp at t=1 returns second argument *)
+Theorem zvec4_lerp_one : forall a b : ZVec4,
+  zvec4_lerp 1 a b = b.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub.
+  cbn [zvec4_x zvec4_y zvec4_z zvec4_w].
+  apply zvec4_eq; ring.
+Qed.
+
+(** Theorem 36: lerp with same endpoints is identity *)
+Theorem zvec4_lerp_same : forall (t : Z) (a : ZVec4),
+  zvec4_lerp t a a = a.
+Proof.
+  intros t [ax ay az aw].
+  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub. simpl.
+  apply zvec4_eq; ring.
 Qed.
 
 (** * Computational Tests *)

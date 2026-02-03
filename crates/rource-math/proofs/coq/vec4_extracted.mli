@@ -76,3 +76,5 @@ val zvec4_mul : zVec4 -> zVec4 -> zVec4
 val zvec4_dot : zVec4 -> zVec4 -> int
 
 val zvec4_length_squared : zVec4 -> int
+
+val zvec4_lerp : int -> zVec4 -> zVec4 -> zVec4

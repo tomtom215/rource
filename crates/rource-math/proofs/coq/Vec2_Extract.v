@@ -79,4 +79,5 @@ Extraction "vec2_extracted"
   zvec2_cross
   zvec2_perp
   zvec2_length_squared
+  zvec2_lerp
   zvec2_eq_dec.

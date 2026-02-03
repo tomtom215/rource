@@ -1528,9 +1528,93 @@ Proof.
   apply mat4_eq; unfold mat4_translation; simpl; ring.
 Qed.
 
+(** * Orthographic NDC Mapping Properties *)
+
+(** Theorem 106: Orthographic maps (left, bottom, -near) to NDC (-1, -1, -1).
+    This is the fundamental NDC mapping property for the near-bottom-left corner.
+    In OpenGL right-handed convention, the near plane is at z = -near in eye space,
+    so we use -near as the z-coordinate.
+    Proof: Each component reduces to (a-b)/(b-a) = -1 via field simplification. *)
+Theorem mat4_orthographic_ndc_near_corner : forall l r b t n f : R,
+  r - l <> 0 -> t - b <> 0 -> f - n <> 0 ->
+  mat4_transform_vec4 (mat4_orthographic l r b t n f) (mkVec4 l b (-n) 1) =
+  mkVec4 (-1) (-1) (-1) 1.
+Proof.
+  intros l r b t n f Hrl Htb Hfn.
+  unfold mat4_transform_vec4, mat4_orthographic. simpl.
+  apply vec4_eq; simpl; field; assumption.
+Qed.
+
+(** Theorem 107: Orthographic maps (right, top, -far) to NDC (1, 1, 1).
+    The far-top-right corner maps to the opposite NDC extremum.
+    Proof: Each component reduces to (b-a)/(b-a) = 1 via field simplification. *)
+Theorem mat4_orthographic_ndc_far_corner : forall l r b t n f : R,
+  r - l <> 0 -> t - b <> 0 -> f - n <> 0 ->
+  mat4_transform_vec4 (mat4_orthographic l r b t n f) (mkVec4 r t (-f) 1) =
+  mkVec4 1 1 1 1.
+Proof.
+  intros l r b t n f Hrl Htb Hfn.
+  unfold mat4_transform_vec4, mat4_orthographic. simpl.
+  apply vec4_eq; simpl; field; assumption.
+Qed.
+
+(** Theorem 108: Orthographic maps the midpoint to the NDC origin.
+    The center of the view volume maps to (0, 0, 0) in NDC.
+    Midpoint: ((l+r)/2, (b+t)/2, -(n+f)/2, 1) -> (0, 0, 0, 1). *)
+Theorem mat4_orthographic_ndc_midpoint : forall l r b t n f : R,
+  r - l <> 0 -> t - b <> 0 -> f - n <> 0 ->
+  mat4_transform_vec4 (mat4_orthographic l r b t n f)
+    (mkVec4 ((l+r)/2) ((b+t)/2) (-((n+f)/2)) 1) =
+  mkVec4 0 0 0 1.
+Proof.
+  intros l r b t n f Hrl Htb Hfn.
+  unfold mat4_transform_vec4, mat4_orthographic. simpl.
+  apply vec4_eq; simpl; field; assumption.
+Qed.
+
+(** Theorem 109: Determinant of orthographic projection matrix.
+    Since the matrix is upper triangular (m1=m2=m3=m4=m6=m7=m8=m9=m11=0),
+    the determinant is the product of diagonal elements:
+    det = (2/(r-l)) * (2/(t-b)) * (-2/(f-n)) * 1 = -8/((r-l)(t-b)(f-n)). *)
+Theorem mat4_det_orthographic : forall l r b t n f : R,
+  r - l <> 0 -> t - b <> 0 -> f - n <> 0 ->
+  mat4_determinant (mat4_orthographic l r b t n f) =
+  - (8 / ((r - l) * (t - b) * (f - n))).
+Proof.
+  intros l r b t n f Hrl Htb Hfn.
+  unfold mat4_determinant, mat4_orthographic. simpl.
+  field. split; [|split]; assumption.
+Qed.
+
+(** Theorem 110: Orthographic projection is invertible (non-zero determinant).
+    Follows from det = -8/((r-l)(t-b)(f-n)) != 0 when bounds are distinct. *)
+Theorem mat4_orthographic_invertible : forall l r b t n f : R,
+  r - l <> 0 -> t - b <> 0 -> f - n <> 0 ->
+  mat4_determinant (mat4_orthographic l r b t n f) <> 0.
+Proof.
+  intros l r b t n f Hrl Htb Hfn.
+  rewrite mat4_det_orthographic; try assumption.
+  apply Ropp_neq_0_compat.
+  unfold Rdiv.
+  apply Rmult_integral_contrapositive. split.
+  - lra.
+  - apply Rinv_neq_0_compat.
+    apply Rmult_integral_contrapositive. split.
+    + apply Rmult_integral_contrapositive. split; assumption.
+    + assumption.
+Qed.
+
+(** Theorem 111: Orthographic preserves w-component for points (w=1).
+    For any point (x, y, z, 1), the w-component after transformation is 1. *)
+Theorem mat4_orthographic_preserves_w : forall l r b t n f x y z : R,
+  vec4_w (mat4_transform_vec4 (mat4_orthographic l r b t n f) (mkVec4 x y z 1)) = 1.
+Proof.
+  intros. unfold mat4_transform_vec4, mat4_orthographic. simpl. ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 105 + 16 + 16 + 16 component lemmas = 153
+    Total theorems: 111 + 16 + 16 + 16 component lemmas = 159
     Admits: 0
     Axioms: Standard Coq real number library only
 
@@ -1546,4 +1630,5 @@ Qed.
     - Theorems 85-93: transform_vec4 properties (identity, zero, linearity, scalar, translation, scaling, composition)
     - Theorems 94-105: inverse properties (identity, left/right correctness, det(inv), involutive,
       det product, translation inv, scaling inv, transpose comm, uniform scaling, invertibility, compose)
+    - Theorems 106-111: orthographic NDC mapping + determinant + invertibility
 *)

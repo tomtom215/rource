@@ -96,6 +96,11 @@ Definition zvec3_cross (a b : ZVec3) : ZVec3 :=
 Definition zvec3_length_squared (v : ZVec3) : Z :=
   zvec3_dot v v.
 
+(** * Lerp (Linear Interpolation) *)
+
+Definition zvec3_lerp (t : Z) (a b : ZVec3) : ZVec3 :=
+  zvec3_add a (zvec3_scale t (zvec3_sub b a)).
+
 (** * Scalar Triple Product *)
 
 Definition zvec3_scalar_triple (a b c : ZVec3) : Z :=
@@ -452,6 +457,36 @@ Theorem zvec3_element_sum_zero :
   zvec3_element_sum zvec3_zero = 0.
 Proof.
   unfold zvec3_element_sum, zvec3_zero. simpl. reflexivity.
+Qed.
+
+(** ** Lerp Properties *)
+
+(** Theorem 43: lerp at t=0 returns first argument *)
+Theorem zvec3_lerp_zero : forall a b : ZVec3,
+  zvec3_lerp 0 a b = a.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold zvec3_lerp, zvec3_add, zvec3_scale, zvec3_sub. simpl.
+  apply zvec3_eq; ring.
+Qed.
+
+(** Theorem 44: lerp at t=1 returns second argument *)
+Theorem zvec3_lerp_one : forall a b : ZVec3,
+  zvec3_lerp 1 a b = b.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold zvec3_lerp, zvec3_add, zvec3_scale, zvec3_sub.
+  cbn [zvec3_x zvec3_y zvec3_z].
+  apply zvec3_eq; ring.
+Qed.
+
+(** Theorem 45: lerp with same endpoints is identity *)
+Theorem zvec3_lerp_same : forall (t : Z) (a : ZVec3),
+  zvec3_lerp t a a = a.
+Proof.
+  intros t [ax ay az].
+  unfold zvec3_lerp, zvec3_add, zvec3_scale, zvec3_sub. simpl.
+  apply zvec3_eq; ring.
 Qed.
 
 (** * Computational Tests *)

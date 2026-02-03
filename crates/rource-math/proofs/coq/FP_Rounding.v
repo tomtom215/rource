@@ -335,3 +335,55 @@ Proof.
   replace 0 with (IZR 0) by reflexivity.
   apply Zfloor_IZR.
 Qed.
+
+(* ================================================================== *)
+(*  Theorem 30: Ceil of 0 is 0                                        *)
+(* ================================================================== *)
+Theorem fp_ceil_zero :
+  Zceil 0 = 0%Z.
+Proof.
+  unfold Zceil. replace (- 0) with 0 by ring.
+  rewrite fp_floor_zero. lia.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 31: Floor of x+1 = floor(x)+1                             *)
+(* ================================================================== *)
+Theorem fp_floor_succ :
+  forall x : R, Zfloor (x + 1) = (Zfloor x + 1)%Z.
+Proof.
+  intro x.
+  replace 1 with (IZR 1) by reflexivity.
+  apply fp_floor_add_integer.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 32: Ceil of x+1 = ceil(x)+1                               *)
+(* ================================================================== *)
+Theorem fp_ceil_succ :
+  forall x : R, Zceil (x + 1) = (Zceil x + 1)%Z.
+Proof.
+  intro x. unfold Zceil.
+  replace (- (x + 1)) with (- x + IZR (-1)) by (rewrite opp_IZR; simpl; ring).
+  rewrite fp_floor_add_integer. lia.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 33: Floor of 1 is 1                                        *)
+(* ================================================================== *)
+Theorem fp_floor_one :
+  Zfloor 1 = 1%Z.
+Proof.
+  replace 1 with (IZR 1) by reflexivity.
+  apply Zfloor_IZR.
+Qed.
+
+(* ================================================================== *)
+(*  Theorem 34: Ceil of 1 is 1                                         *)
+(* ================================================================== *)
+Theorem fp_ceil_one :
+  Zceil 1 = 1%Z.
+Proof.
+  replace 1 with (IZR 1) by reflexivity.
+  apply fp_ceil_integer.
+Qed.

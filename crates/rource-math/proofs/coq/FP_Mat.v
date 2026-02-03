@@ -205,7 +205,7 @@ Proof. intro u. ring. Qed.
 (*  Theorem 6: 6-op error upper approximation                          *)
 (*  For u <= 1/16: (1+u)^6 - 1 <= 12u                                 *)
 (* ================================================================== *)
-Theorem fp_error_upper_approx_6op :
+Theorem fp_mat_error_upper_approx_6op :
   forall u : R,
   0 <= u -> u <= / 16 ->
   (1 + u)^6 - 1 <= 2 * (6 * u).
@@ -218,7 +218,7 @@ Qed.
 (*  Theorem 7: 7-op error upper approximation                          *)
 (*  For u <= 1/16: (1+u)^7 - 1 <= 14u                                 *)
 (* ================================================================== *)
-Theorem fp_error_upper_approx_7op :
+Theorem fp_mat_error_upper_approx_7op :
   forall u : R,
   0 <= u -> u <= / 16 ->
   (1 + u)^7 - 1 <= 2 * (7 * u).
