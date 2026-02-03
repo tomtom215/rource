@@ -678,7 +678,7 @@ Theorem fp_abs_triangle_reverse :
   Rabs (Rabs a - Rabs b) <= Rabs (a - b).
 Proof.
   intros a b.
-  apply Rabs_triang_inv.
+  apply Rabs_triang_inv2.
 Qed.
 
 (* ================================================================== *)
