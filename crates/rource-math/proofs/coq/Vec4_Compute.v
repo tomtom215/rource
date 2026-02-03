@@ -461,7 +461,8 @@ Theorem zvec4_lerp_two : forall (a b : ZVec4),
     zvec4_sub (zvec4_scale 2 b) a.
 Proof.
   intros [ax ay az aw] [bx by0 bz bw].
-  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub. simpl.
+  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub.
+  cbn [zvec4_x zvec4_y zvec4_z zvec4_w].
   apply zvec4_eq; ring.
 Qed.
 
@@ -471,7 +472,8 @@ Theorem zvec4_lerp_neg_one : forall (a b : ZVec4),
     zvec4_sub (zvec4_scale 2 a) b.
 Proof.
   intros [ax ay az aw] [bx by0 bz bw].
-  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub. simpl.
+  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub.
+  cbn [zvec4_x zvec4_y zvec4_z zvec4_w].
   apply zvec4_eq; ring.
 Qed.
 

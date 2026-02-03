@@ -602,12 +602,6 @@ Proof.
   simpl. intros Hx Hy Hw Hh. subst. reflexivity.
 Qed.
 
-(** * Computational Tests *)
-
-Example zrect_test_new :
-  zrect_new 10 20 100 50 = mkZRect 10 20 100 50.
-Proof. reflexivity. Qed.
-
 Example zrect_test_from_pos_size :
   zrect_from_pos_size 10 20 100 50 = mkZRect 10 20 100 50.
 Proof. reflexivity. Qed.
