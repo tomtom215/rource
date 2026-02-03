@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769955381940,
+  "lastUpdate": 1770141378530,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5054,6 +5054,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/305b8e3cfabd925eb6265a71b58eb76c08f7599c"
         },
         "date": 1769955381055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ee25a272e977a65bfd2bba8a7a546c13d00ef3c9",
+          "message": "Merge pull request #252 from tomtom215/claude/rource-math-verification-8mCIA\n\nAdd lerp proofs, orthographic NDC theorems, and Kani harnesses",
+          "timestamp": "2026-02-03T12:52:01-05:00",
+          "tree_id": "5c0bd3bfc690c1e121efec3f029c6695cbffff5b",
+          "url": "https://github.com/tomtom215/rource/commit/ee25a272e977a65bfd2bba8a7a546c13d00ef3c9"
+        },
+        "date": 1770141377350,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
