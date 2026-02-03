@@ -37,14 +37,14 @@ jobs:
           restore-keys: |
             opam-flocq-${{ env.COQ_VERSION }}-
 
-      - name: Install Coq
+      - name: Install Coq and Flocq via opam
         run: |
-          # Retry apt-get for transient mirror/network failures
+          # Install opam and system OCaml compiler
           for attempt in 1 2 3; do
-            echo "Attempt $attempt: Installing Coq..."
-            sudo apt-get update -q && sudo apt-get install -y -q coq coq-theories && break
+            echo "Attempt $attempt: Installing system dependencies..."
+            sudo apt-get update -q && sudo apt-get install -y -q opam ocaml build-essential && break
             if [ "$attempt" -eq 3 ]; then
-              echo "::error::Failed to install Coq after 3 attempts"
+              echo "::error::Failed to install system dependencies after 3 attempts"
               exit 1
             fi
             DELAY=$((attempt * 10))
@@ -52,50 +52,48 @@ jobs:
             sleep "$DELAY"
           done
 
-      - name: Verify Coq installation
+          # Initialize opam (idempotent — safe to re-run on cache hit)
+          opam init --disable-sandboxing --bare --no-setup -y
+
+          # Create switch using system OCaml compiler
+          # NOTE: --empty does NOT work — opam needs a compiler to resolve packages.
+          # ocaml-system uses the apt-installed OCaml, avoiding a from-source compile.
+          opam switch create default ocaml-system -y || true
+          eval $(opam env)
+
+          # Install Coq and Flocq (coq-flocq pulls coq as a dependency)
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: Installing Coq and Flocq..."
+            opam install -y coq-flocq && break
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Failed to install Coq+Flocq after 3 attempts"
+              exit 1
+            fi
+            DELAY=$((attempt * 10))
+            echo "Install failed, retrying in ${DELAY}s..."
+            sleep "$DELAY"
+          done
+
+          # Export opam environment to GITHUB_ENV so ALL subsequent steps
+          # use the opam-installed coqc (single consistent Coq binary)
+          eval $(opam env)
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          for var in OPAM_SWITCH_PREFIX CAML_LD_LIBRARY_PATH OCAML_TOPLEVEL_PATH; do
+            val="${!var}"
+            if [ -n "$val" ]; then
+              echo "$var=$val" >> "$GITHUB_ENV"
+            fi
+          done
+
+      - name: Verify Coq and Flocq installation
         run: |
           coqc --version
           echo "Coq version: $(coqc --version | head -1)"
-
-      - name: Install opam and Flocq (for FP proofs)
-        run: |
-          # Install opam (OCaml package manager)
-          for attempt in 1 2 3; do
-            echo "Attempt $attempt: Installing opam..."
-            sudo apt-get install -y -q opam && break
-            if [ "$attempt" -eq 3 ]; then
-              echo "::error::Failed to install opam after 3 attempts"
-              exit 1
-            fi
-            DELAY=$((attempt * 10))
-            echo "Install failed, retrying in ${DELAY}s..."
-            sleep "$DELAY"
-          done
-
-          # Initialize opam (non-interactive, no default switch needed)
-          opam init --disable-sandboxing --bare --no-setup -y
-
-          # Create a switch with the system compiler
-          opam switch create default --empty -y || true
-          eval $(opam env)
-
-          # Install Flocq (IEEE 754 formalization for Coq)
-          for attempt in 1 2 3; do
-            echo "Attempt $attempt: Installing Flocq..."
-            opam install -y coq-flocq && break
-            if [ "$attempt" -eq 3 ]; then
-              echo "::error::Failed to install Flocq after 3 attempts"
-              exit 1
-            fi
-            DELAY=$((attempt * 10))
-            echo "Install failed, retrying in ${DELAY}s..."
-            sleep "$DELAY"
-          done
-
-          # Verify Flocq is available
-          eval $(opam env)
-          coqc -v
-          echo "Flocq installation verified."
+          COQ_WHERE="$(coqc -where)"
+          echo "Coq lib: $COQ_WHERE"
+          ls "$COQ_WHERE/user-contrib/Flocq/" > /dev/null 2>&1 \
+            && echo "Flocq: installed at $COQ_WHERE/user-contrib/Flocq/" \
+            || { echo "::error::Flocq not found in $COQ_WHERE/user-contrib/"; exit 1; }
 
       # ================================================================
       # Layer 1: Specifications (9 files)
@@ -207,7 +205,6 @@ jobs:
         id: fp_proofs
         working-directory: crates/rource-math/proofs/coq
         run: |
-          eval $(opam env)
           echo "Building FP error bounds proofs (9 files, requires Flocq)..."
           FAILED=0
 
