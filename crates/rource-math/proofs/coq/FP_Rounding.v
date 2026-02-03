@@ -271,9 +271,15 @@ Qed.
 Theorem fp_floor_nonneg :
   forall x : R, 0 <= x -> (0 <= Zfloor x)%Z.
 Proof.
-  intros x Hx. apply le_IZR. simpl.
-  apply Rle_trans with 0; [lra|].
-  apply Zfloor_lb.
+  intros x Hx.
+  destruct (Z_lt_le_dec (Zfloor x) 0) as [Hneg | Hpos].
+  - (* Contradiction: Zfloor x < 0 implies x < 0 *)
+    exfalso.
+    assert (H1: (Zfloor x + 1 <= 0)%Z) by lia.
+    assert (H2: IZR (Zfloor x + 1) <= 0).
+    { apply IZR_le. exact H1. }
+    generalize (Zfloor_ub x). lra.
+  - exact Hpos.
 Qed.
 
 (* ================================================================== *)
@@ -282,8 +288,11 @@ Qed.
 Theorem fp_ceil_nonpos :
   forall x : R, x <= 0 -> (Zceil x <= 0)%Z.
 Proof.
-  intros x Hx. apply le_IZR. simpl.
-  apply Rle_trans with x; [apply Zceil_ub | lra].
+  intros x Hx.
+  unfold Zceil.
+  assert (H: (0 <= Zfloor (- x))%Z).
+  { apply fp_floor_nonneg. lra. }
+  lia.
 Qed.
 
 (* ================================================================== *)

@@ -646,7 +646,9 @@ Theorem fp_max_min_absorption :
   forall a b : R, Rmax a (Rmin a b) = a.
 Proof.
   intros. unfold Rmin, Rmax.
-  destruct (Rle_dec a b); destruct (Rle_dec a a); lra.
+  destruct (Rle_dec a b) as [Hab | Hab].
+  - destruct (Rle_dec a a); lra.
+  - destruct (Rle_dec a b); lra.
 Qed.
 
 (* ================================================================== *)
