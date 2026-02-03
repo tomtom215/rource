@@ -96,7 +96,7 @@ Proof.
   intros a b t Hab [Ht0 Ht1].
   split.
   - assert (H : 0 <= (b - a) * t) by (apply Rmult_le_pos; lra). lra.
-  - assert (H : (b - a) * t <= b - a) by (apply Rmult_le_compat_l; lra). lra.
+  - assert (H : (b - a) * t <= (b - a) * 1) by (apply Rmult_le_compat_l; lra). lra.
 Qed.
 
 (* ================================================================== *)
@@ -116,7 +116,7 @@ Theorem fp_utils_clamp_exact :
 Proof.
   intros v lo hi Hlh.
   split.
-  - apply Rle_max_compat_l. lra.
+  - unfold Rmax. destruct (Rle_dec lo (Rmin v hi)); lra.
   - unfold Rmax, Rmin.
     destruct (Rle_dec lo (Rmin v hi));
     destruct (Rle_dec v hi); lra.

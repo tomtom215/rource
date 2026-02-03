@@ -579,4 +579,10 @@ Proof. split; lra. Qed.
 (* ================================================================== *)
 Theorem fp_color_diff_sq_nonneg :
   forall (c1 c2 : R), 0 <= (c2 - c1) * (c2 - c1).
-Proof. intros. nra. Qed.
+Proof.
+  intros c1 c2.
+  destruct (Rle_dec 0 (c2 - c1)) as [H|H].
+  - apply Rmult_le_pos; exact H.
+  - replace ((c2 - c1) * (c2 - c1)) with ((-(c2 - c1)) * (-(c2 - c1))) by ring.
+    apply Rmult_le_pos; lra.
+Qed.

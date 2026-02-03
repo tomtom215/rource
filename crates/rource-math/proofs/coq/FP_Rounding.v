@@ -317,7 +317,9 @@ Theorem fp_round_monotone :
   x <= y -> (Znearest choice x <= Znearest choice y)%Z.
 Proof.
   intros choice x y Hxy.
-  apply Zrnd_le. lra.
+  apply Zrnd_le.
+  - exact (valid_rnd_N choice).
+  - exact Hxy.
 Qed.
 
 (* ================================================================== *)

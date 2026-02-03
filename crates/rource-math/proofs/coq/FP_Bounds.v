@@ -260,9 +260,9 @@ Proof.
   intros.
   repeat split.
   - apply Rmin_l.
-  - apply Rle_max_compat_l. lra.
+  - apply Rle_max_compat_l.
   - apply Rmin_r.
-  - apply Rle_max_compat_r. lra.
+  - apply Rle_max_compat_r.
 Qed.
 
 (* ================================================================== *)
@@ -299,8 +299,8 @@ Theorem fp_bounds_intersection_min_correct :
   a <= Rmax a b /\ b <= Rmax a b.
 Proof.
   intros. split.
-  - apply Rle_max_compat_l. lra.
-  - apply Rle_max_compat_r. lra.
+  - apply Rle_max_compat_l.
+  - apply Rle_max_compat_r.
 Qed.
 
 (* ================================================================== *)
@@ -438,7 +438,7 @@ Proof.
   intros.
   split.
   - apply Rmin_r.
-  - apply Rle_max_compat_r. lra.
+  - apply Rle_max_compat_r.
 Qed.
 
 (* ================================================================== *)
@@ -452,7 +452,7 @@ Proof.
   intros.
   split.
   - apply Rmin_l.
-  - apply Rle_max_compat_l. lra.
+  - apply Rle_max_compat_l.
 Qed.
 
 (* ================================================================== *)
