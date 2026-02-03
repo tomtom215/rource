@@ -425,6 +425,10 @@ CHECKS=(
     "docs/verification/CERTICOQ_WASM_ASSESSMENT.md|$COQ_Z_TOTAL theorems, all 8|CERTICOQ Layer 2 total"
     # FORMAL_VERIFICATION.md - Summary Statistics Coq R-based row
     "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_TOTAL theorems|Summary Coq R-based row"
+    # FORMAL_VERIFICATION.md - Summary Statistics Coq Z-based row (unique anchor)
+    "docs/verification/FORMAL_VERIFICATION.md|Z-based extractable) | $COQ_Z_TOTAL theorems|Summary Coq Z-based row"
+    # FORMAL_VERIFICATION.md - Summary Statistics Coq FP row (unique anchor)
+    "docs/verification/FORMAL_VERIFICATION.md|FP error bounds) | $COQ_FP_TOTAL theorems|Summary Coq FP row"
     # FORMAL_VERIFICATION.md - per-type table Coq R column (Mat4)
     "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_MAT4 theorems|Per-type Mat4 Coq R"
     # FORMAL_VERIFICATION.md - per-type table Coq R column (Color)
@@ -563,6 +567,10 @@ if [[ -f "$FV" ]]; then
     sed -i -E "s/All [0-9]+ harnesses verified/All $KANI_TOTAL harnesses verified/" "$FV"
     # Summary Statistics Coq R-based row
     sed -i -E "s/[0-9]+ theorems \| 0 \| Vec2-4, Mat3-4, Color, Rect, Bounds, Utils \+ Complexity \+ CrossType \| Machine-checked/$COQ_R_TOTAL theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + Complexity + CrossType | Machine-checked/" "$FV"
+    # Summary Statistics Coq Z-based row (anchored by unique "Z-based extractable" context)
+    sed -i -E "s/Z-based extractable\) \| [0-9]+ theorems \| 0 \| Vec2-4, Mat3-4, Color, Rect, Bounds, Utils \| Machine-checked/Z-based extractable) | $COQ_Z_TOTAL theorems | 0 | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | Machine-checked/" "$FV"
+    # Summary Statistics Coq FP error bounds row (anchored by unique "FP error bounds" context)
+    sed -i -E "s/FP error bounds\) \| [0-9]+ theorems \| 0 \| IEEE 754 binary32 error analysis/FP error bounds) | $COQ_FP_TOTAL theorems | 0 | IEEE 754 binary32 error analysis/" "$FV"
     # Summary Statistics Combined row
     sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*10 types \+ FP\*\*/**$GRAND_TOTAL** | **0** | **10 types + FP**/" "$FV"
     # Per-type table: full row updates (Coq R, Coq Z, Kani, Total)

@@ -43,20 +43,22 @@ For completed work history, see [VERIFICATION_CHRONOLOGY.md](VERIFICATION_CHRONO
 
 ## Priority 1: High-Value Algebraic Proofs
 
-### P1.4: Mat4 Orthographic Projection — PARTIALLY COMPLETED
+### P1.4: Mat4 Orthographic Projection — COMPLETED
 
-**Effort**: MEDIUM | **Impact**: HIGH
+**Effort**: MEDIUM | **Impact**: HIGH | **Status**: DONE (Phase 7)
 
-Spec added to `Mat4.v`. Five proofs completed in `Mat4_Proofs.v`:
-- `mat4_orthographic_trace`: trace has closed form `(2/rml + 2/tmb - 2/fmn + 1)`
+All 11 proofs completed in `Mat4_Proofs.v` (Theorems 101-111):
+- `mat4_orthographic_trace`: trace has closed form
 - `mat4_orthographic_origin`: maps midpoint to origin
-- `mat4_orthographic_diagonal`: off-diagonal structure (zero off-diagonal elements)
+- `mat4_orthographic_diagonal`: off-diagonal structure
 - `mat4_orthographic_symmetric`: symmetric bounds produce zero translation in x/y
 - `mat4_orthographic_get_translation`: translation components have closed form
-
-**Remaining**:
-- NDC mapping proof: `orthographic` maps `(left, bottom, near)` to `(-1, -1, -1)` (requires `mat4_transform_vec4` spec — now available)
-- `det(orthographic(...))` closed-form value
+- `mat4_orthographic_near_corner_ndc`: maps (left, bottom, near) to (-1, -1, -1)
+- `mat4_orthographic_far_corner_ndc`: maps (right, top, far) to (1, 1, 1)
+- `mat4_orthographic_midpoint_ndc`: maps midpoint to origin (0, 0, 0)
+- `mat4_orthographic_det`: determinant has closed form 8/(rml*tmb*fmn)
+- `mat4_orthographic_invertible`: invertible when rml, tmb, fmn non-zero
+- `mat4_orthographic_w_preserved`: w-component preserved under transform
 
 ### P1.5: Mat4 look_at View Matrix
 
@@ -74,38 +76,53 @@ Prove properties of `look_at(eye, target, up)`:
 
 These operations have SOME proofs but need additional verification layers.
 
-### P3.1: Vector Length Verus Proofs
+### P3.1: Vector Length Verus Proofs — BLOCKED
 
-**Effort**: MEDIUM | **Types**: Vec2/3/4
+**Effort**: MEDIUM | **Types**: Vec2/3/4 | **Status**: BLOCKED (sqrt)
 
-Coq has `length_nonneg`, `length_zero` proofs. Add Verus integer-model proof relating
+Coq has `length_nonneg`, `length_zero` proofs. Verus integer-model proof would relate
 `length` to `length_squared` via sqrt. Key property: `length(v) * length(v) = length_squared(v)`.
 
-### P3.2: Vector Normalized Verus Proofs
+**Blocker**: sqrt does not exist in the integer specification model. The Z-based
+computational bridge uses integer arithmetic only; sqrt requires either:
+- A fixed-point sqrt approximation (introduces imprecision)
+- Axiomatizing sqrt properties (violates zero-axioms policy)
+- Moving to FP modeling via Flocq (different approach)
 
-**Effort**: MEDIUM | **Types**: Vec2/3/4
+### P3.2: Vector Normalized Verus Proofs — BLOCKED
 
-Coq has `normalized_length_sq`. Add Verus proof: `|normalized(v)|^2 = 1` for non-zero v.
+**Effort**: MEDIUM | **Types**: Vec2/3/4 | **Status**: BLOCKED (sqrt)
 
-### P3.3: Vector Lerp Z-Compute Proofs — VERUS DONE, Z REMAINING
+Coq has `normalized_length_sq`. Verus proof: `|normalized(v)|^2 = 1` for non-zero v.
 
-**Effort**: MEDIUM | **Types**: Vec2/3/4
+**Blocker**: Same as P3.1 — normalized divides by length, which requires sqrt.
 
-Verus boundary-value lerp proofs completed. Remaining: Coq Z-based computational
-bridge lerp proofs for all three vector types.
+### P3.3: Vector Lerp Z-Compute Proofs — COMPLETED
 
-### P3.11: Utils lerp/clamp Verus Proofs
+**Effort**: MEDIUM | **Types**: Vec2/3/4 | **Status**: DONE (Phase 9)
 
-**Effort**: MEDIUM | **Types**: Utils
+Verus boundary-value lerp proofs completed. Z-based computational bridge lerp proofs
+added in Phase 9 for all three vector types:
+- Vec2: 3 new theorems (lerp_zero_zero, lerp_two, lerp_neg_one)
+- Vec3: 3 new theorems (lerp_zero_zero, lerp_two, lerp_neg_one)
+- Vec4: 3 new theorems (lerp_zero_zero, lerp_two, lerp_neg_one)
 
-Coq R+Z have comprehensive proofs for scalar lerp and clamp.
-Add Verus proofs for the same properties.
+### P3.11: Utils lerp/clamp Verus Proofs — COMPLETED
 
-### P2.5 Remaining: Rect Accessors
+**Effort**: MEDIUM | **Types**: Utils | **Status**: DONE (Phase 7)
 
-**Effort**: LOW | **Types**: Rect
+All 33 Verus proof functions exist in `utils_proofs.rs`, covering scalar lerp
+and clamp properties comprehensively.
 
-Remaining: `from_pos_size`, `position`, `size`, `to_bounds` (minor accessors).
+### P2.5: Rect Accessors Z-Compute — COMPLETED
+
+**Effort**: LOW | **Types**: Rect | **Status**: DONE (Phase 9)
+
+Added to `Rect_Compute.v` in Phase 9:
+- `zrect_from_pos_size` constructor + position/size accessors
+- `zrect_bounds_min/max` accessor definitions
+- 8 theorems: from_pos_size roundtrips, bounds correctness, position/size determination
+- 1 computational test
 
 ---
 
@@ -182,19 +199,25 @@ the per-element operations are already triple-verified.
 
 For a new session focused on increasing verification coverage, follow this order:
 
-1. **Warm-up**: Start with quick-win remaining items (P2.5 remaining, P3.3 Z-compute).
-   These are `reflexivity` or `simpl; ring` proofs that build momentum.
+1. **Main work**: P1.5 (look_at) is the highest-impact remaining algebraic proof.
+   The look_at proof gives the highest academic impact per proof but requires
+   careful handling of normalize (sqrt blocker for full algebraic treatment).
 
-2. **Main work**: Pick ONE item from P1 (orthographic remaining or look_at). The
-   orthographic NDC mapping uses `mat4_transform_vec4` spec (now available). The
-   look_at proof gives the highest academic impact per proof.
+2. **FP work** (if Flocq available): P4 items extend the FP error bounds layer.
+   P4.1 (floor/ceil/round) and P4.2/P4.3 (Color integer conversions) are the
+   most impactful remaining items.
 
-3. **Fill gaps**: Work through P3 items, prioritizing those that complete a type's
-   coverage (e.g., close all Vec3 gaps).
+3. **Documentation**: Update coverage tables, run `update-verification-counts.sh`.
 
-4. **FP work** (if Flocq available): P4 items extend the FP error bounds layer.
+**Completed items** (no longer actionable):
+- P1.4 (Mat4 orthographic) — fully done in Phase 7
+- P2.5 (Rect accessors) — done in Phase 9
+- P3.3 (Vector lerp Z-compute) — done in Phase 9
+- P3.11 (Utils Verus) — done in Phase 7
 
-5. **Documentation**: Update coverage tables, run `update-verification-counts.sh`.
+**Blocked items** (awaiting tool improvements):
+- P3.1 (Vector length Verus) — blocked by sqrt in integer model
+- P3.2 (Vector normalized Verus) — blocked by sqrt in integer model
 
 ---
 
@@ -215,6 +238,6 @@ batch operation proofs (7 low-value operations). The practical target is approxi
 
 ---
 
-*Last updated: 2026-02-01*
+*Last updated: 2026-02-03*
 *Current coverage: 169/255 (66.3%)*
-*Remaining P1–P4 items: 6 priority items*
+*Remaining actionable P1–P4 items: 5 (P1.5, P4.1–P4.4); 2 blocked (P3.1, P3.2)*

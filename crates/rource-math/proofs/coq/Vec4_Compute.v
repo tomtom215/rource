@@ -446,6 +446,35 @@ Proof.
   apply zvec4_eq; ring.
 Qed.
 
+(** Theorem 37: lerp of zero vectors is zero *)
+Theorem zvec4_lerp_zero_zero : forall (t : Z),
+  zvec4_lerp t zvec4_zero zvec4_zero = zvec4_zero.
+Proof.
+  intros t.
+  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub, zvec4_zero. simpl.
+  apply zvec4_eq; ring.
+Qed.
+
+(** Theorem 38: lerp at t=2 extrapolates *)
+Theorem zvec4_lerp_two : forall (a b : ZVec4),
+  zvec4_lerp 2 a b =
+    zvec4_sub (zvec4_scale 2 b) a.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub. simpl.
+  apply zvec4_eq; ring.
+Qed.
+
+(** Theorem 39: lerp at t=-1 extrapolates *)
+Theorem zvec4_lerp_neg_one : forall (a b : ZVec4),
+  zvec4_lerp (-1) a b =
+    zvec4_sub (zvec4_scale 2 a) b.
+Proof.
+  intros [ax ay az aw] [bx by0 bz bw].
+  unfold zvec4_lerp, zvec4_add, zvec4_scale, zvec4_sub. simpl.
+  apply zvec4_eq; ring.
+Qed.
+
 (** * Computational Tests *)
 
 Example zvec4_test_add :

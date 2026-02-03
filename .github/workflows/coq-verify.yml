@@ -23,7 +23,7 @@ jobs:
   verify-coq-proofs:
     name: Verify Coq Proofs
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -33,9 +33,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.opam
-          key: opam-${{ env.COQ_VERSION }}-${{ hashFiles('crates/rource-math/proofs/coq/_CoqProject') }}
+          key: opam-flocq-${{ env.COQ_VERSION }}-${{ hashFiles('crates/rource-math/proofs/coq/_CoqProject') }}
           restore-keys: |
-            opam-${{ env.COQ_VERSION }}-
+            opam-flocq-${{ env.COQ_VERSION }}-
 
       - name: Install Coq
         run: |
@@ -56,6 +56,46 @@ jobs:
         run: |
           coqc --version
           echo "Coq version: $(coqc --version | head -1)"
+
+      - name: Install opam and Flocq (for FP proofs)
+        run: |
+          # Install opam (OCaml package manager)
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: Installing opam..."
+            sudo apt-get install -y -q opam && break
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Failed to install opam after 3 attempts"
+              exit 1
+            fi
+            DELAY=$((attempt * 10))
+            echo "Install failed, retrying in ${DELAY}s..."
+            sleep "$DELAY"
+          done
+
+          # Initialize opam (non-interactive, no default switch needed)
+          opam init --disable-sandboxing --bare --no-setup -y
+
+          # Create a switch with the system compiler
+          opam switch create default --empty -y || true
+          eval $(opam env)
+
+          # Install Flocq (IEEE 754 formalization for Coq)
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: Installing Flocq..."
+            opam install -y coq-flocq && break
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Failed to install Flocq after 3 attempts"
+              exit 1
+            fi
+            DELAY=$((attempt * 10))
+            echo "Install failed, retrying in ${DELAY}s..."
+            sleep "$DELAY"
+          done
+
+          # Verify Flocq is available
+          eval $(opam env)
+          coqc -v
+          echo "Flocq installation verified."
 
       # ================================================================
       # Layer 1: Specifications (9 files)
@@ -160,6 +200,58 @@ jobs:
           fi
 
       # ================================================================
+      # Layer 6: FP error bounds proofs (9 files, requires Flocq)
+      # ================================================================
+
+      - name: "Layer 6: Build FP error bounds proofs"
+        id: fp_proofs
+        working-directory: crates/rource-math/proofs/coq
+        run: |
+          eval $(opam env)
+          echo "Building FP error bounds proofs (9 files, requires Flocq)..."
+          FAILED=0
+
+          # Phase 1: Foundation files (no local deps)
+          for f in FP_Common.v FP_Rounding.v; do
+            echo "  Building $f..."
+            if ! timeout 300 coqc -Q . RourceMath "$f" 2>&1; then
+              echo "::error::$f failed to compile"
+              FAILED=1
+            fi
+          done
+
+          # Phase 2: Error bounds (depends on FP_Common)
+          echo "  Building FP_ErrorBounds.v..."
+          if ! timeout 300 coqc -Q . RourceMath FP_ErrorBounds.v 2>&1; then
+            echo "::error::FP_ErrorBounds.v failed to compile"
+            FAILED=1
+          fi
+
+          # Phase 3: Vec (depends on FP_Common)
+          echo "  Building FP_Vec.v..."
+          if ! timeout 300 coqc -Q . RourceMath FP_Vec.v 2>&1; then
+            echo "::error::FP_Vec.v failed to compile"
+            FAILED=1
+          fi
+
+          # Phase 4: Remaining files (depend on FP_Common + FP_ErrorBounds)
+          # FP_Mat also depends on FP_Vec, which is built in Phase 3
+          for f in FP_Mat.v FP_Color.v FP_Rect.v FP_Bounds.v FP_Utils.v; do
+            echo "  Building $f..."
+            if ! timeout 300 coqc -Q . RourceMath "$f" 2>&1; then
+              echo "::error::$f failed to compile"
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "fp_proofs_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "fp_proofs_status=verified" >> $GITHUB_OUTPUT
+          echo "All FP error bounds proofs verified."
+
+      # ================================================================
       # Theorem counting and admits check
       # ================================================================
 
@@ -192,13 +284,23 @@ jobs:
           done
           echo "z_total=$Z_TOTAL" >> $GITHUB_OUTPUT
 
-          GRAND_TOTAL=$((R_TOTAL + COMPLEXITY + Z_TOTAL))
+          # FP error bounds counts
+          FP_TOTAL=0
+          for f in FP_Common.v FP_Rounding.v FP_ErrorBounds.v FP_Vec.v FP_Mat.v FP_Color.v FP_Rect.v FP_Bounds.v FP_Utils.v; do
+            COUNT=$(grep -cE '^(Theorem|Lemma|Local Lemma)' "$f" 2>/dev/null || echo "0")
+            echo "  $f: $COUNT theorems"
+            FP_TOTAL=$((FP_TOTAL + COUNT))
+          done
+          echo "fp_total=$FP_TOTAL" >> $GITHUB_OUTPUT
+
+          GRAND_TOTAL=$((R_TOTAL + COMPLEXITY + Z_TOTAL + FP_TOTAL))
           echo "grand_total=$GRAND_TOTAL" >> $GITHUB_OUTPUT
           echo ""
           echo "=== Coq Theorem Summary ==="
           echo "R-based proofs: $R_TOTAL"
           echo "Complexity:     $COMPLEXITY"
           echo "Z-based:        $Z_TOTAL"
+          echo "FP error bounds:$FP_TOTAL"
           echo "Grand total:    $GRAND_TOTAL"
 
       - name: Check for admits
@@ -240,12 +342,14 @@ jobs:
           C_STATUS="${{ steps.complexity.outputs.complexity_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
           Z_STATUS="${{ steps.z_compute.outputs.z_compute_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
           E_STATUS="${{ steps.extraction.outputs.extraction_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
+          FP_STATUS="${{ steps.fp_proofs.outputs.fp_proofs_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
 
           echo "| Layer 1 | Type specifications (R-based) | 9 | :white_check_mark: Verified |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 2 | R-based algebraic proofs | 9 | $R_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 3 | Complexity (ICC O(1) bounds) | 1 | $C_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 4 | Z-based computational bridge | 9 | $Z_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 5 | OCaml extraction | 1 | $E_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 6 | FP error bounds (Flocq) | 9 | $FP_STATUS |" >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Theorem Counts" >> $GITHUB_STEP_SUMMARY
@@ -255,6 +359,7 @@ jobs:
           echo "| R-based proofs | **${{ steps.count.outputs.r_total }}** |" >> $GITHUB_STEP_SUMMARY
           echo "| Complexity proofs | **${{ steps.count.outputs.complexity }}** |" >> $GITHUB_STEP_SUMMARY
           echo "| Z-based proofs | **${{ steps.count.outputs.z_total }}** |" >> $GITHUB_STEP_SUMMARY
+          echo "| FP error bounds | **${{ steps.count.outputs.fp_total }}** |" >> $GITHUB_STEP_SUMMARY
           echo "| **Total Coq theorems** | **${{ steps.count.outputs.grand_total }}** |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 

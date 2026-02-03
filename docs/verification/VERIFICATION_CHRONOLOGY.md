@@ -19,6 +19,7 @@ For remaining work items, see [VERIFICATION_FUTURE_WORK.md](VERIFICATION_FUTURE_
 - [Phase 5: Bounds, Inverse, CrossType](#phase-5-bounds-inverse-crosstype)
 - [Phase 6: Verus Extensions + Coverage Audit](#phase-6-verus-extensions--coverage-audit)
 - [Phase 7: Kani Expansion + Z-Compute Extensions](#phase-7-kani-expansion--z-compute-extensions)
+- [Phase 9: CI FP Layer + Z-Compute Expansion](#phase-9-ci-fp-layer--z-compute-expansion)
 - [Completed Milestones Summary](#completed-milestones-summary)
 - [Completed Priority Items](#completed-priority-items)
 
@@ -235,10 +236,12 @@ preserves non-negative dimensions.
 counterexample (a=0, b=3/4, c=3/2, eps=1), epsilon monotonicity, translation
 invariance, negation invariance.
 
-### Mat4 Orthographic (P1.4 — Partially Completed)
+### Mat4 Orthographic (P1.4 — Completed)
 
-5 proofs: trace closed form, maps midpoint to origin, off-diagonal structure,
-symmetric bounds produce zero translation, translation components closed form.
+11 proofs: trace closed form, maps midpoint to origin, off-diagonal structure,
+symmetric bounds produce zero translation, translation components closed form,
+near corner NDC mapping, far corner NDC mapping, midpoint NDC mapping,
+determinant closed form, invertibility, w-preservation.
 
 ---
 
@@ -332,6 +335,75 @@ VERIFICATION_COVERAGE.md. Operation coverage increased from 62.1% to 64.4%
 
 ---
 
+## Phase 9: CI FP Layer + Z-Compute Expansion
+
+**Status**: COMPLETED (Session IoNDB, 2026-02-03)
+
+### Documentation Consistency Fix
+
+Fixed stale Summary Statistics in `FORMAL_VERIFICATION.md` lines 29-30:
+- Z-based: 369 → 400 (correct ground truth)
+- FP error bounds: 177 → 361 (correct ground truth)
+
+Root cause: `update-verification-counts.sh` had sed patterns for the per-type table
+but was missing patterns for the Summary Statistics table. Added 2 new sed patterns
+with unique context anchors ("Z-based extractable", "FP error bounds") and 2 new
+`--check` entries to prevent recurrence.
+
+### FP Coq CI Layer (Layer 6)
+
+Added complete FP error bounds verification to `.github/workflows/coq-verify.yml`:
+- Added opam + Flocq 4.1.3 installation step with 3-attempt retry logic
+- Added Layer 6 build step with correct dependency ordering:
+  Phase 1: FP_Common.v, FP_Rounding.v (foundations)
+  Phase 2: FP_ErrorBounds.v (depends on FP_Common)
+  Phase 3: FP_Vec.v (depends on FP_Common)
+  Phase 4: FP_Mat.v, FP_Color.v, FP_Rect.v, FP_Bounds.v, FP_Utils.v
+- Updated theorem counting to include FP files
+- Updated CI summary with Layer 6 row and FP count
+- Increased workflow timeout from 30 to 45 minutes
+- Updated cache key to include Flocq
+
+### Rect Accessor Z-Compute Proofs (P2.5)
+
++8 theorems + 1 computational test in `Rect_Compute.v`:
+- `zrect_from_pos_size` constructor definition
+- Position/size/bounds accessor definitions
+- `zrect_from_pos_size_position`, `zrect_from_pos_size_size`: roundtrip proofs
+- `zrect_from_pos_size_eq_new`: equivalence with `zrect_new`
+- `zrect_bounds_min_eq_position`, `zrect_bounds_max_eq_pos_plus_size`: bounds correctness
+- `zrect_bounds_width_correct`, `zrect_bounds_height_correct`: dimension correctness
+- `zrect_position_size_determine`: position+size uniquely determine rect
+
+### Vector Lerp Z-Compute Proofs (P3.3)
+
++9 theorems across Vec2/3/4 Compute files:
+- Vec2: `zvec2_lerp_zero_zero`, `zvec2_lerp_two`, `zvec2_lerp_neg_one`
+- Vec3: `zvec3_lerp_zero_zero`, `zvec3_lerp_two`, `zvec3_lerp_neg_one`
+- Vec4: `zvec4_lerp_zero_zero`, `zvec4_lerp_two`, `zvec4_lerp_neg_one`
+
+These prove extrapolation behavior (t=2, t=-1) and zero-vector identity for lerp.
+
+### Future Work Audit
+
+Audited VERIFICATION_FUTURE_WORK.md and found 3 items incorrectly listed as incomplete:
+- P1.4 (Mat4 orthographic): Fully completed in Phase 7 (Theorems 101-111)
+- P3.11 (Utils Verus): Fully completed (33 proof functions in utils_proofs.rs)
+- P3.1, P3.2 (Vector length/normalized Verus): BLOCKED by sqrt in integer model
+
+Updated all items with correct status and blocker documentation.
+
+### Summary
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| Coq Z-based theorems | 400 | 417 | +17 |
+| Grand total | 2535 | 2552 | +17 |
+| CI FP verification | None | Layer 6 (361 theorems) | New |
+| Documentation checks | 43 | 45 | +2 |
+
+---
+
 ## Completed Milestones Summary
 
 | # | Milestone | Status |
@@ -361,9 +433,9 @@ VERIFICATION_COVERAGE.md. Operation coverage increased from 62.1% to 64.4%
 | P2.2 | Vec4 constructors/swizzles | COMPLETED | (included in P2.1) |
 | P2.3 | Mat3/Mat4 from_cols | COMPLETED | 6 theorems |
 | P2.4 | Mat4 col/row accessors | COMPLETED | 12 proofs |
-| P2.5 | Rect trivial accessors | MOSTLY COMPLETED | 29 proofs |
+| P2.5 | Rect trivial accessors | COMPLETED | 37 proofs (+8 Z-compute in Phase 9) |
 | P2.6 | Mat3 shearing | COMPLETED | 7 proofs |
-| P3.3 | Vector lerp Verus | VERUS COMPLETED | 16 proofs (Vec2:6, Vec3:5, Vec4:5) |
+| P3.3 | Vector lerp (Verus + Z-compute) | COMPLETED | 25 proofs (Verus:16, Z:9 in Phase 9) |
 | P3.4 | Vec3/Vec4 clamp Verus | COMPLETED | 8 proofs |
 | P3.5 | Vec3/Vec4 reflect Verus | COMPLETED | 5 proofs |
 | P3.6 | Mat3/Mat4 get_translation | COMPLETED | 10 theorems |
@@ -371,10 +443,12 @@ VERIFICATION_COVERAGE.md. Operation coverage increased from 62.1% to 64.4%
 | P3.8 | Color contrasting | COMPLETED | 4 proofs |
 | P3.9 | Rect union | COMPLETED | 6 proofs |
 | P3.10 | Rect from_corners + expand_xy | COMPLETED | 9 theorems |
+| P3.11 | Utils lerp/clamp Verus | COMPLETED | 33 proof functions |
 | P3.12 | Utils approx_eq | COMPLETED | 7 proofs |
+| P1.4 | Mat4 orthographic projection | COMPLETED | 11 proofs (Phase 6-7) |
 
 ---
 
-*Last updated: 2026-01-31*
-*Total phases: 8 implementation phases*
-*Total completed priority items: 18/24 (75%)*
+*Last updated: 2026-02-03*
+*Total phases: 9 implementation phases*
+*Total completed priority items: 20/24 (83%)*

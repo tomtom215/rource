@@ -505,6 +505,113 @@ Example zrect_test_expand :
   zrect_expand (mkZRect 10 10 80 80) 10 = mkZRect 0 0 100 100.
 Proof. reflexivity. Qed.
 
+(** * from_pos_size, position, size, to_bounds *)
+
+(** Construct a rect from position and size (mirrors Rust from_pos_size) *)
+Definition zrect_from_pos_size (px py sw sh : Z) : ZRect :=
+  mkZRect px py sw sh.
+
+(** Position accessor: returns (x, y) *)
+Definition zrect_position_x (r : ZRect) : Z := zrect_x r.
+Definition zrect_position_y (r : ZRect) : Z := zrect_y r.
+
+(** Size accessor: returns (w, h) *)
+Definition zrect_size_w (r : ZRect) : Z := zrect_w r.
+Definition zrect_size_h (r : ZRect) : Z := zrect_h r.
+
+(** to_bounds: returns (min_x, min_y, max_x, max_y) *)
+Definition zrect_bounds_min_x (r : ZRect) : Z := zrect_x r.
+Definition zrect_bounds_min_y (r : ZRect) : Z := zrect_y r.
+Definition zrect_bounds_max_x (r : ZRect) : Z := zrect_x r + zrect_w r.
+Definition zrect_bounds_max_y (r : ZRect) : Z := zrect_y r + zrect_h r.
+
+(** from_pos_size roundtrip: position recovers the input position *)
+Theorem zrect_from_pos_size_position : forall px py sw sh : Z,
+  let r := zrect_from_pos_size px py sw sh in
+  zrect_position_x r = px /\ zrect_position_y r = py.
+Proof.
+  intros. unfold zrect_from_pos_size, zrect_position_x, zrect_position_y.
+  simpl. split; reflexivity.
+Qed.
+
+(** from_pos_size roundtrip: size recovers the input size *)
+Theorem zrect_from_pos_size_size : forall px py sw sh : Z,
+  let r := zrect_from_pos_size px py sw sh in
+  zrect_size_w r = sw /\ zrect_size_h r = sh.
+Proof.
+  intros. unfold zrect_from_pos_size, zrect_size_w, zrect_size_h.
+  simpl. split; reflexivity.
+Qed.
+
+(** from_pos_size is equivalent to zrect_new *)
+Theorem zrect_from_pos_size_eq_new : forall px py sw sh : Z,
+  zrect_from_pos_size px py sw sh = zrect_new px py sw sh.
+Proof.
+  intros. unfold zrect_from_pos_size, zrect_new. reflexivity.
+Qed.
+
+(** to_bounds: min = position *)
+Theorem zrect_bounds_min_eq_position : forall (r : ZRect),
+  zrect_bounds_min_x r = zrect_position_x r /\
+  zrect_bounds_min_y r = zrect_position_y r.
+Proof.
+  intros [x y0 w h].
+  unfold zrect_bounds_min_x, zrect_bounds_min_y,
+         zrect_position_x, zrect_position_y. simpl.
+  split; reflexivity.
+Qed.
+
+(** to_bounds: max = position + size *)
+Theorem zrect_bounds_max_eq_pos_plus_size : forall (r : ZRect),
+  zrect_bounds_max_x r = zrect_position_x r + zrect_size_w r /\
+  zrect_bounds_max_y r = zrect_position_y r + zrect_size_h r.
+Proof.
+  intros [x y0 w h].
+  unfold zrect_bounds_max_x, zrect_bounds_max_y,
+         zrect_position_x, zrect_position_y,
+         zrect_size_w, zrect_size_h. simpl.
+  split; reflexivity.
+Qed.
+
+(** to_bounds: width = max_x - min_x *)
+Theorem zrect_bounds_width_correct : forall (r : ZRect),
+  zrect_bounds_max_x r - zrect_bounds_min_x r = zrect_w r.
+Proof.
+  intros [x y0 w h].
+  unfold zrect_bounds_max_x, zrect_bounds_min_x. simpl. lia.
+Qed.
+
+(** to_bounds: height = max_y - min_y *)
+Theorem zrect_bounds_height_correct : forall (r : ZRect),
+  zrect_bounds_max_y r - zrect_bounds_min_y r = zrect_h r.
+Proof.
+  intros [x y0 w h].
+  unfold zrect_bounds_max_y, zrect_bounds_min_y. simpl. lia.
+Qed.
+
+(** position and size fully determine the rect *)
+Theorem zrect_position_size_determine : forall (r1 r2 : ZRect),
+  zrect_position_x r1 = zrect_position_x r2 ->
+  zrect_position_y r1 = zrect_position_y r2 ->
+  zrect_size_w r1 = zrect_size_w r2 ->
+  zrect_size_h r1 = zrect_size_h r2 ->
+  r1 = r2.
+Proof.
+  intros [x1 y1 w1 h1] [x2 y2 w2 h2].
+  unfold zrect_position_x, zrect_position_y, zrect_size_w, zrect_size_h.
+  simpl. intros Hx Hy Hw Hh. subst. reflexivity.
+Qed.
+
+(** * Computational Tests *)
+
+Example zrect_test_new :
+  zrect_new 10 20 100 50 = mkZRect 10 20 100 50.
+Proof. reflexivity. Qed.
+
+Example zrect_test_from_pos_size :
+  zrect_from_pos_size 10 20 100 50 = mkZRect 10 20 100 50.
+Proof. reflexivity. Qed.
+
 Example zrect_test_contains :
   zrect_contains_point (mkZRect 0 0 100 100) 50 50 = true.
 Proof. reflexivity. Qed.
