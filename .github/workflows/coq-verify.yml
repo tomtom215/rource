@@ -61,6 +61,13 @@ jobs:
           opam switch create default ocaml-system -y || true
           eval $(opam env)
 
+          # Fetch the full package index from opam repository
+          # opam init --bare registers the repository URL but does NOT download the
+          # package index. The ocaml-system/ocaml-config packages that install during
+          # switch creation are auto-detected virtual packages, not from the repository.
+          # Without this step, "opam install coq-flocq" fails with "No package named".
+          opam update --quiet
+
           # Install Coq and Flocq (coq-flocq pulls coq as a dependency)
           for attempt in 1 2 3; do
             echo "Attempt $attempt: Installing Coq and Flocq..."
