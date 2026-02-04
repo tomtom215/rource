@@ -292,8 +292,8 @@ require composing single-operation proofs.
 
 | Phase | Coverage | Operations Verified | Total |
 |-------|----------|--------------------|----|
-| Current | 66.7% (170/255) | Algebraic + edge-case properties | 2573 theorems/harnesses |
-| **Phase FP-1 foundations** | **66.7%** | **+ FP error bounds, rounding, vec ops (361 FP theorems)** | **2573** |
+| Current | 69.8% (178/255) | Algebraic + edge-case properties | 2629 theorems/harnesses |
+| **Phase FP-1 foundations** | **69.8%** | **+ FP error bounds, rounding, vec ops (361 FP theorems)** | **2629** |
 | After Phase FP-2 | ~75% (192/255) | + sqrt, rounding, min/max, lerp, distance_sq | ~2700 |
 | After Phase FP-3 | ~85% (217/255) | + distance, conversions, batch, transcendental | ~2850 |
 | After Phase FP-4 | ~93% (238/255) | + matrix transforms, color, complex geometry | ~3000 |

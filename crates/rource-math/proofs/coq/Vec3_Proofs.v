@@ -21,11 +21,13 @@
  * 6. Geometric Properties (Theorems 31-35)
  *)
 
+Require Import RourceMath.Utils.
 Require Import RourceMath.Vec3.
 Require Import Reals.
 Require Import Lra.
 Require Import Lia.
 Require Import Psatz.
+Require Import R_Ifp.
 Open Scope R_scope.
 
 (** * Vector Space Axioms *)
@@ -1252,9 +1254,127 @@ Proof.
   ring.
 Qed.
 
+(** * Floor/Ceil/Round Properties *)
+
+(** Theorem 111: floor(v) ≤ v componentwise *)
+Theorem vec3_floor_le : forall v : Vec3,
+  vec3_x (vec3_floor v) <= vec3_x v /\
+  vec3_y (vec3_floor v) <= vec3_y v /\
+  vec3_z (vec3_floor v) <= vec3_z v.
+Proof.
+  intros [vx vy vz]. unfold vec3_floor. simpl.
+  repeat split; apply Rfloor_le.
+Qed.
+
+(** Theorem 112: v < floor(v) + 1 componentwise *)
+Theorem vec3_floor_lt_succ : forall v : Vec3,
+  vec3_x v < vec3_x (vec3_floor v) + 1 /\
+  vec3_y v < vec3_y (vec3_floor v) + 1 /\
+  vec3_z v < vec3_z (vec3_floor v) + 1.
+Proof.
+  intros [vx vy vz]. unfold vec3_floor. simpl.
+  repeat split; apply Rfloor_lt_succ.
+Qed.
+
+(** Theorem 113: v ≤ ceil(v) componentwise *)
+Theorem vec3_ceil_ge : forall v : Vec3,
+  vec3_x v <= vec3_x (vec3_ceil v) /\
+  vec3_y v <= vec3_y (vec3_ceil v) /\
+  vec3_z v <= vec3_z (vec3_ceil v).
+Proof.
+  intros [vx vy vz]. unfold vec3_ceil. simpl.
+  repeat split; apply Rceil_ge.
+Qed.
+
+(** Theorem 114: ceil(v) < v + 1 componentwise *)
+Theorem vec3_ceil_lt_succ : forall v : Vec3,
+  vec3_x (vec3_ceil v) < vec3_x v + 1 /\
+  vec3_y (vec3_ceil v) < vec3_y v + 1 /\
+  vec3_z (vec3_ceil v) < vec3_z v + 1.
+Proof.
+  intros [vx vy vz]. unfold vec3_ceil. simpl.
+  repeat split; apply Rceil_lt_succ.
+Qed.
+
+(** Theorem 115: floor(zero) = zero *)
+Theorem vec3_floor_zero : vec3_floor vec3_zero = vec3_zero.
+Proof.
+  unfold vec3_floor, vec3_zero. cbn [vec3_x vec3_y vec3_z].
+  rewrite !Rfloor_zero. reflexivity.
+Qed.
+
+(** Theorem 116: ceil(zero) = zero *)
+Theorem vec3_ceil_zero : vec3_ceil vec3_zero = vec3_zero.
+Proof.
+  unfold vec3_ceil, vec3_zero. cbn [vec3_x vec3_y vec3_z].
+  rewrite !Rceil_zero. reflexivity.
+Qed.
+
+(** Theorem 117: round(zero) = zero *)
+Theorem vec3_round_zero : vec3_round vec3_zero = vec3_zero.
+Proof.
+  unfold vec3_round, vec3_zero. cbn [vec3_x vec3_y vec3_z].
+  unfold Rround.
+  destruct (Rle_dec 0 0) as [_|H]; [|exfalso; apply H; lra].
+  replace (0 + / 2) with (/ 2) by ring.
+  assert (Hfloor : Rfloor (/ 2) = 0).
+  { unfold Rfloor.
+    replace 0 with (IZR 0) by reflexivity. f_equal.
+    unfold Int_part.
+    assert (Hup : up (/ 2) = 1%Z).
+    { symmetry. apply tech_up; simpl; lra. }
+    rewrite Hup. reflexivity. }
+  rewrite Hfloor. reflexivity.
+Qed.
+
+(** Theorem 118: floor(-v) = -ceil(v) *)
+Theorem vec3_floor_neg : forall v : Vec3,
+  vec3_floor (vec3_neg v) = vec3_neg (vec3_ceil v).
+Proof.
+  intros [vx vy vz]. unfold vec3_floor, vec3_neg, vec3_ceil.
+  cbn [vec3_x vec3_y vec3_z].
+  f_equal; apply Rfloor_neg.
+Qed.
+
+(** Theorem 119: ceil(-v) = -floor(v) *)
+Theorem vec3_ceil_neg : forall v : Vec3,
+  vec3_ceil (vec3_neg v) = vec3_neg (vec3_floor v).
+Proof.
+  intros [vx vy vz]. unfold vec3_ceil, vec3_neg, vec3_floor.
+  cbn [vec3_x vec3_y vec3_z].
+  f_equal; apply Rceil_neg.
+Qed.
+
+(** Theorem 120: floor(v) ≤ ceil(v) componentwise *)
+Theorem vec3_floor_le_ceil : forall v : Vec3,
+  vec3_x (vec3_floor v) <= vec3_x (vec3_ceil v) /\
+  vec3_y (vec3_floor v) <= vec3_y (vec3_ceil v) /\
+  vec3_z (vec3_floor v) <= vec3_z (vec3_ceil v).
+Proof.
+  intros [vx vy vz]. unfold vec3_floor, vec3_ceil.
+  cbn [vec3_x vec3_y vec3_z].
+  repeat split; apply Rfloor_le_Rceil.
+Qed.
+
+(** Theorem 121: floor of integer vector is identity *)
+Theorem vec3_floor_integer : forall (zx zy zz : Z),
+  vec3_floor (mkVec3 (IZR zx) (IZR zy) (IZR zz)) = mkVec3 (IZR zx) (IZR zy) (IZR zz).
+Proof.
+  intros zx zy zz. unfold vec3_floor. cbn [vec3_x vec3_y vec3_z].
+  rewrite !Rfloor_integer. reflexivity.
+Qed.
+
+(** Theorem 122: ceil of integer vector is identity *)
+Theorem vec3_ceil_integer : forall (zx zy zz : Z),
+  vec3_ceil (mkVec3 (IZR zx) (IZR zy) (IZR zz)) = mkVec3 (IZR zx) (IZR zy) (IZR zz).
+Proof.
+  intros zx zy zz. unfold vec3_ceil. cbn [vec3_x vec3_y vec3_z].
+  rewrite !Rceil_integer. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 110
+    Total theorems: 122
     Admits: 0
     Axioms: Standard Coq real number library only
 

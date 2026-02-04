@@ -82,7 +82,7 @@ Follow these guidelines:
 ### 3. Test Your Changes
 
 ```bash
-# Run all tests (2876+ tests)
+# Run all tests (2800+ tests)
 cargo test
 
 # Run tests for a specific crate
@@ -162,9 +162,9 @@ mod tests {
 | Crate | Test Count | Focus |
 |-------|------------|-------|
 | rource-math | 473 | Numerical accuracy, edge cases |
-| rource-vcs | 371 | Parser correctness, format edge cases |
-| rource-core | 570 | Scene graph, physics, camera |
-| rource-render | 643 | Rendering correctness, GPU backends |
+| rource-vcs | 340 | Parser correctness, format edge cases |
+| rource-core | 539 | Scene graph, physics, camera |
+| rource-render | 370 | Rendering correctness, GPU backends |
 | rource-cli | 358 | CLI argument parsing, integration |
 | rource-wasm | 461 | WebAssembly bindings, JavaScript API |
 

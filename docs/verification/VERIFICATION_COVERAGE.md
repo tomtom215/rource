@@ -11,38 +11,44 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 | Module | Operations | Formally Verified | Unit Tested | Coverage |
 |--------|------------|-------------------|-------------|----------|
-| Vec2 | 42 | 23 (55%) | 42 (100%) | 55% |
-| Vec3 | 28 | 19 (68%) | 28 (100%) | 68% |
+| Vec2 | 42 | 26 (62%) | 42 (100%) | 62% |
+| Vec3 | 28 | 22 (79%) | 28 (100%) | 79% |
 | Vec4 | 24 | 17 (71%) | 24 (100%) | 71% |
 | Mat3 | 19 | 18 (95%) | 19 (100%) | 95% |
 | Mat4 | 26 | 19 (73%) | 26 (100%) | 73% |
 | Color | 38 | 27 (71%) | 38 (100%) | 71% |
 | Rect | 50 | 23 (46%) | 50 (100%) | 46% |
 | Bounds | 23 | 21 (91%) | 23 (100%) | 91% |
-| Utils (lib.rs) | 5 | 3 (60%) | 5 (100%) | 60% |
-| **Total** | **255** | **170 (66.7%)** | **255 (100%)** | **66.7%** |
+| Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
+| **Total** | **255** | **178 (69.8%)** | **255 (100%)** | **69.8%** |
 
 ## Verified Operations by Module
 
-### Vec2 (23 operations verified)
+### Vec2 (26 operations verified)
 - `new`, `zero`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `perp`, `length_squared`, `mul`
 - `reflect`, `project`, `rejection`, `min_element`, `max_element`, `div`, `splat`, `element_sum`
 - `min` (component-wise, commutativity, associativity, idempotency)
 - `max` (component-wise, commutativity, associativity, idempotency)
 - `abs` (non-negativity, idempotency, triangle inequality)
 - `lerp` (boundary t=0, boundary t=1 via Coq proofs)
+- `floor` (Coq: component-wise floor via Int_part, floor ≤ x < floor+1, zero, neg, integer identity)
+- `ceil` (Coq: component-wise ceil via -floor(-x), x ≤ ceil < x+1, zero, neg, integer identity)
+- `round` (Coq: half-away-from-zero rounding, zero preservation)
 
 **Not verified** (require floating-point or transcendentals):
 - `from_angle`, `to_angle`, `rotate`, `length`, `normalized`
-- `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`
+- `fract`, `clamp`, `distance`, `distance_squared`
 - `element_product`
 - `is_finite`, `is_nan`, `as_ivec2`, `as_uvec2`, batch operations
 
-### Vec3 (19 operations verified)
+### Vec3 (22 operations verified)
 - `new`, `zero`, `x`, `y`, `z`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `length_squared`
 - `reflect`, `project`, `rejection`, `min_element`, `max_element`, `div`, `splat`
+- `floor` (Coq: component-wise floor via Int_part, floor ≤ x < floor+1, zero, neg, integer identity)
+- `ceil` (Coq: component-wise ceil via -floor(-x), x ≤ ceil < x+1, zero, neg, integer identity)
+- `round` (Coq: half-away-from-zero rounding, zero preservation)
 
-**Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, `floor`, `ceil`, `round`, `fract`, `clamp`, `distance`, `distance_squared`, `element_sum`, `element_product`, floating-point operations
+**Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, `fract`, `clamp`, `distance`, `distance_squared`, `element_sum`, `element_product`, floating-point operations
 
 ### Vec4 (17 operations verified)
 - `new`, `zero`, `x`, `y`, `z`, `w`, `add`, `sub`, `scale`, `neg`, `dot`, `length_squared`, `mul`
@@ -104,13 +110,14 @@ For an overview of the complete verification effort (Verus + Coq), see
 - `to_rect` (type conversion)
 - `approx_eq` (floating-point epsilon comparison)
 
-### Utils (3 operations verified)
+### Utils (5 operations verified — 100%)
 - `lerp` (18+ theorems: boundary values, affine form, symmetry, monotonicity, composition, injectivity)
 - `clamp` (12+ theorems: range, identity, lower/upper bounds, idempotent, monotone, center distance)
 - `approx_eq` (7+ theorems: reflexivity, symmetry, triangle inequality, non-transitivity counterexample, translation/negation invariance, epsilon monotonicity)
+- `deg_to_rad` (Coq: zero, 90°=π/2, 180°=π, 360°=2π, linearity, deg→rad→deg roundtrip)
+- `rad_to_deg` (Coq: zero, rad→deg→rad roundtrip)
 
-**Not verified** (require transcendentals):
-- `deg_to_rad`, `rad_to_deg` (require pi constant modeling)
+**All Utils operations verified.**
 
 ## Verification Limitations
 
@@ -129,7 +136,7 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 |----------|--------|------------|-----------|--------|
 | ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 57, Coq R: 121, Coq Z: 60) |
 | ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 52, Coq R: 126, Coq Z: 43) |
-| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`~~ | ~~Foundational operations~~ | DONE (Coq R: 37, Coq Z: 18) |
+| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`, `deg_to_rad`, `rad_to_deg`, `approx_eq`~~ | ~~Foundational operations~~ | DONE (Coq R: 57, Coq Z: 18) — 100% coverage |
 | 4 | Mat3/Mat4 | `determinant`, `trace` properties | Mathematical foundations | DONE (basic: det(I), det(0), det(A^T), det(-A), trace properties) |
 | 5 | Color | HSL <-> RGB conversion | Requires transcendentals | Blocked (floating-point) |
 
@@ -205,7 +212,7 @@ For rource-math, we recommend:
 Our current approach of proving properties over `int` specifications and documenting
 the f32 translation assumptions is the recommended best practice per Verus maintainers.
 
-The 33.7% of operations not formally verified (those requiring floating-point or
+The 30.2% of operations not formally verified (those requiring floating-point or
 transcendentals) will remain covered by:
 - Unit tests (100% coverage)
 - Property-based testing
@@ -309,7 +316,7 @@ The generated code requires `RocqOfRust.RocqOfRust` which depends on:
 
 **5. Version mismatch: Rocq 9.0 vs Coq 8.18**
 
-Our 1873 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
+Our 1929 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
 Bridging requires migrating one or both sides.
 
 ### Comparison: rocq-of-rust vs Our Approach
@@ -321,7 +328,7 @@ Bridging requires migrating one or both sides.
 | f32 support | `UnsupportedLiteral` | Modeled as R (reals) or Z (integers) |
 | Admits | Structural `Admitted` axioms | Zero admits |
 | Proof style | Systems-level | Mathematical properties |
-| Compilability | Blocked (infra) | All 1873 Coq theorems compile |
+| Compilability | Blocked (infra) | All 1929 Coq theorems compile |
 | Best suited for | Smart contracts, protocols | Pure math functions |
 
 ### Recommendation
@@ -333,8 +340,8 @@ Bridging requires migrating one or both sides.
 4. The bridging effort would be enormous with uncertain feasibility
 
 **Our current approach remains optimal**: clean algebraic specifications in Coq 8.18
-with manual correspondence to Rust implementations, verified by 1873 machine-checked
-Coq theorems (1095 R-based + 417 Z-based + 361 FP) with zero admits. The spec-to-implementation gap is documented as a known
+with manual correspondence to Rust implementations, verified by 1929 machine-checked
+Coq theorems (1139 R-based + 429 Z-based + 361 FP) with zero admits. The spec-to-implementation gap is documented as a known
 limitation and mitigated by:
 - Systematic specification writing following Rust implementation structure
 - 100% unit test coverage verifying runtime behavior
@@ -382,7 +389,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2573 theorems, 59.3% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2629 theorems, 69.8% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
@@ -422,8 +429,8 @@ All edge cases are IEEE 754-compliant behavior requiring bounded input domains f
 ---
 
 *Last verified: 2026-02-04*
-*Formal verification coverage: 170/255 operations (66.7%)*
+*Formal verification coverage: 178/255 operations (69.8%)*
 *Kani IEEE 754 harnesses: 225 (all verified, 0 failures)*
 *Unit test coverage: 255/255 operations (100%)*
-*Unverifiable operations: ~85 (floating-point, transcendentals, type conversions)*
+*Unverifiable operations: ~77 (floating-point, transcendentals, type conversions)*
 *Landscape survey: 8 tools investigated (6 new + 2 current), Kani adopted*
