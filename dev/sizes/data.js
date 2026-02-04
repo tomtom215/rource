@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770141378530,
+  "lastUpdate": 1770169276103,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5093,6 +5093,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/ee25a272e977a65bfd2bba8a7a546c13d00ef3c9"
         },
         "date": 1770141377350,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "614593a014e8cff022a0b00ee7335683011f4d1b",
+          "message": "Merge pull request #256 from tomtom215/claude/continue-academic-research-IoNDB\n\nAdd FP error bounds CI layer and expand Z-compute proofs",
+          "timestamp": "2026-02-03T20:39:07-05:00",
+          "tree_id": "3e60fcade29518024eaa5685e4502a43382f2d44",
+          "url": "https://github.com/tomtom215/rource/commit/614593a014e8cff022a0b00ee7335683011f4d1b"
+        },
+        "date": 1770169275567,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
