@@ -376,6 +376,45 @@ Proof.
   destruct a, b. simpl in *. subst. reflexivity.
 Qed.
 
+(** * Vec3 Dot Product *)
+
+(** Dot product of two Vec3 values. *)
+Definition v3_dot (a b : Vec3) : R :=
+  v3x a * v3x b + v3y a * v3y b + v3z a * v3z b.
+
+(** * Look-At View Matrix *)
+
+(** Construct a look-at view matrix from pre-computed orthonormal basis vectors.
+
+    This definition takes the basis vectors directly (s=side/right, u=up, f=forward)
+    rather than computing them from eye/target/up, because the normalization step
+    (which requires sqrt) cannot be represented in pure real arithmetic without
+    axiomatizing sqrt.
+
+    The resulting matrix maps:
+    - eye position to the origin
+    - forward direction (f) to -Z axis
+    - side direction (s) to +X axis
+    - up direction (u) to +Y axis
+
+    Column-major layout (matching Rust Mat4 storage):
+    | s.x    s.y    s.z    -s·eye |
+    | u.x    u.y    u.z    -u·eye |
+    | -f.x   -f.y   -f.z    f·eye |
+    | 0      0      0       1     |
+
+    Precondition: s, u, f should form an orthonormal basis
+    (unit length, mutually perpendicular). Proofs in Mat4_Proofs.v
+    verify structural properties under this assumption.
+
+    Matches Rust: Mat4::look_at(eye, target, up) after normalization. *)
+Definition mat4_look_at (s u f eye : Vec3) : Mat4 :=
+  mkMat4
+    (v3x s)  (v3x u)  (-(v3x f))  0
+    (v3y s)  (v3y u)  (-(v3y f))  0
+    (v3z s)  (v3z u)  (-(v3z f))  0
+    (-(v3_dot s eye))  (-(v3_dot u eye))  (v3_dot f eye)  1.
+
 (** * Specification Verification Summary
 
     This file provides:
@@ -403,11 +442,13 @@ Qed.
     - mat4_inverse: Matrix inverse via cofactor expansion (adjugate/det)
     - mat4_orthographic: Orthographic projection matrix
     - mat4_transform_vec4: Full 4D matrix-vector multiply
+    - v3_dot: Vec3 dot product
+    - mat4_look_at: Look-at view matrix from orthonormal basis
     - mat4_eq: Component-wise equality lemma
     - vec4_eq: Component-wise Vec4 equality lemma
     - vec3_eq: Component-wise Vec3 equality lemma
 
-    Total definitions: 32
+    Total definitions: 34
     Total lemmas: 3
     Admits: 0
 *)

@@ -1612,9 +1612,218 @@ Proof.
   intros. unfold mat4_transform_vec4, mat4_orthographic. simpl. ring.
 Qed.
 
+(** * Look-At View Matrix Properties *)
+
+(** Utility lemma: v3_dot is commutative. *)
+Lemma v3_dot_comm : forall a b : Vec3,
+  v3_dot a b = v3_dot b a.
+Proof.
+  intros. unfold v3_dot. ring.
+Qed.
+
+(** Theorem 112: Look-at matrix bottom row is [0, 0, 0, 1].
+    The 4th row of any look_at matrix is always [0, 0, 0, 1],
+    which preserves the homogeneous coordinate. *)
+Theorem mat4_look_at_bottom_row : forall s u f eye : Vec3,
+  m3 (mat4_look_at s u f eye) = 0 /\
+  m7 (mat4_look_at s u f eye) = 0 /\
+  m11 (mat4_look_at s u f eye) = 0 /\
+  m15 (mat4_look_at s u f eye) = 1.
+Proof.
+  intros. unfold mat4_look_at. simpl. auto.
+Qed.
+
+(** Theorem 113: Look-at maps eye position to origin.
+    The view matrix transforms the camera's world position to the origin
+    in view space. This is the fundamental property of a view matrix. *)
+Theorem mat4_look_at_eye_to_origin : forall s u f eye : Vec3,
+  mat4_transform_point (mat4_look_at s u f eye) eye =
+    mkVec3 0 0 0.
+Proof.
+  intros s u f eye. destruct s, u, f, eye.
+  unfold mat4_transform_point, mat4_look_at, v3_dot. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 114: Look-at maps forward direction to -Z axis.
+    Given orthonormal basis (s·f=0, u·f=0, f·f=1), the forward
+    direction maps to (0, 0, -1) in view space. *)
+Theorem mat4_look_at_forward_to_neg_z : forall s u f eye : Vec3,
+  v3_dot s f = 0 ->
+  v3_dot u f = 0 ->
+  v3_dot f f = 1 ->
+  mat4_transform_vector (mat4_look_at s u f eye) f =
+    mkVec3 0 0 (-1).
+Proof.
+  intros s u f eye Hsf Huf Hff.
+  destruct s, u, f, eye.
+  unfold mat4_transform_vector, mat4_look_at, v3_dot in *. simpl in *.
+  apply vec3_eq; simpl; lra.
+Qed.
+
+(** Theorem 115: Look-at maps side direction to +X axis.
+    Given orthonormal basis (s·s=1, u·s=0, f·s=0), the side/right
+    direction maps to (1, 0, 0) in view space. *)
+Theorem mat4_look_at_side_to_x : forall s u f eye : Vec3,
+  v3_dot s s = 1 ->
+  v3_dot u s = 0 ->
+  v3_dot f s = 0 ->
+  mat4_transform_vector (mat4_look_at s u f eye) s =
+    mkVec3 1 0 0.
+Proof.
+  intros s u f eye Hss Hus Hfs.
+  destruct s, u, f, eye.
+  unfold mat4_transform_vector, mat4_look_at, v3_dot in *. simpl in *.
+  apply vec3_eq; simpl; lra.
+Qed.
+
+(** Theorem 116: Look-at maps up direction to +Y axis.
+    Given orthonormal basis (s·u=0, u·u=1, f·u=0), the up
+    direction maps to (0, 1, 0) in view space. *)
+Theorem mat4_look_at_up_to_y : forall s u f eye : Vec3,
+  v3_dot s u = 0 ->
+  v3_dot u u = 1 ->
+  v3_dot f u = 0 ->
+  mat4_transform_vector (mat4_look_at s u f eye) u =
+    mkVec3 0 1 0.
+Proof.
+  intros s u f eye Hsu Huu Hfu.
+  destruct s, u, f, eye.
+  unfold mat4_transform_vector, mat4_look_at, v3_dot in *. simpl in *.
+  apply vec3_eq; simpl; lra.
+Qed.
+
+(** Theorem 117: Look-at preserves w-component.
+    For any point (x, y, z, 1), the w-component after look_at
+    transformation is 1. This confirms the matrix is affine. *)
+Theorem mat4_look_at_preserves_w : forall s u f eye : Vec3,
+  forall x y z : R,
+  vec4_w (mat4_transform_vec4 (mat4_look_at s u f eye) (mkVec4 x y z 1)) = 1.
+Proof.
+  intros. unfold mat4_transform_vec4, mat4_look_at. simpl. ring.
+Qed.
+
+(** Theorem 118: Look-at with standard basis at origin is a specific matrix.
+    When the camera is at the origin looking down -Z with standard
+    orientation (right=+X, up=+Y, forward=-Z in OpenGL convention),
+    the result is the identity matrix. *)
+Theorem mat4_look_at_standard_basis_origin :
+  mat4_look_at (mkVec3 1 0 0) (mkVec3 0 1 0) (mkVec3 0 0 (-1)) (mkVec3 0 0 0) =
+    mat4_identity.
+Proof.
+  unfold mat4_look_at, v3_dot, mat4_identity. simpl.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 119: Look-at eye transform via Vec4 gives (0,0,0,1).
+    Full 4D version of eye-to-origin: the eye position (with w=1)
+    maps to the origin (0,0,0,1) under look_at transformation. *)
+Theorem mat4_look_at_eye_to_origin_vec4 : forall s u f eye : Vec3,
+  mat4_transform_vec4 (mat4_look_at s u f eye)
+    (mkVec4 (v3x eye) (v3y eye) (v3z eye) 1) =
+    mkVec4 0 0 0 1.
+Proof.
+  intros. unfold mat4_transform_vec4, mat4_look_at, v3_dot. simpl.
+  apply vec4_eq; simpl; ring.
+Qed.
+
+(** Theorem 120: Look-at translation column encodes eye position.
+    The translation components of the look_at matrix are the
+    negated dot products of the basis vectors with the eye position. *)
+Theorem mat4_look_at_translation : forall s u f eye : Vec3,
+  mat4_get_translation (mat4_look_at s u f eye) =
+    mkVec3 (-(v3_dot s eye)) (-(v3_dot u eye)) (v3_dot f eye).
+Proof.
+  intros. unfold mat4_get_translation, mat4_look_at. simpl. reflexivity.
+Qed.
+
+(** Theorem 121: Look-at matrix transpose of upper 3x3 times upper 3x3 gives
+    identity when s,u,f are orthonormal.
+    This proves the rotation part of the view matrix is orthogonal.
+    We verify by showing the individual dot products of the matrix columns
+    equal the identity matrix components. *)
+Theorem mat4_look_at_upper3x3_col0_dot_col0 : forall s u f eye : Vec3,
+  v3_dot s s = 1 ->
+  v3_dot u u = 1 ->
+  v3_dot f f = 1 ->
+  let M := mat4_look_at s u f eye in
+  m0 M * m0 M + m4 M * m4 M + m8 M * m8 M = 1.
+Proof.
+  intros s u f eye Hss Huu Hff.
+  unfold mat4_look_at, v3_dot in *. simpl. lra.
+Qed.
+
+(** Theorem 122: Column 1 self-dot-product is 1 (orthonormality). *)
+Theorem mat4_look_at_upper3x3_col1_dot_col1 : forall s u f eye : Vec3,
+  v3_dot s s = 1 ->
+  v3_dot u u = 1 ->
+  v3_dot f f = 1 ->
+  let M := mat4_look_at s u f eye in
+  m1 M * m1 M + m5 M * m5 M + m9 M * m9 M = 1.
+Proof.
+  intros s u f eye Hss Huu Hff.
+  unfold mat4_look_at, v3_dot in *. simpl. lra.
+Qed.
+
+(** Theorem 123: Column 2 self-dot-product is 1 (orthonormality). *)
+Theorem mat4_look_at_upper3x3_col2_dot_col2 : forall s u f eye : Vec3,
+  v3_dot s s = 1 ->
+  v3_dot u u = 1 ->
+  v3_dot f f = 1 ->
+  let M := mat4_look_at s u f eye in
+  m2 M * m2 M + m6 M * m6 M + m10 M * m10 M = 1.
+Proof.
+  intros s u f eye Hss Huu Hff.
+  unfold mat4_look_at, v3_dot in *. simpl. nra.
+Qed.
+
+(** Theorem 124: Columns 0 and 1 are orthogonal (dot product = 0). *)
+Theorem mat4_look_at_upper3x3_col0_dot_col1 : forall s u f eye : Vec3,
+  v3_dot s u = 0 ->
+  let M := mat4_look_at s u f eye in
+  m0 M * m1 M + m4 M * m5 M + m8 M * m9 M = 0.
+Proof.
+  intros s u f eye Hsu.
+  unfold mat4_look_at, v3_dot in *. simpl. lra.
+Qed.
+
+(** Theorem 125: Columns 0 and 2 are orthogonal (dot product = 0). *)
+Theorem mat4_look_at_upper3x3_col0_dot_col2 : forall s u f eye : Vec3,
+  v3_dot s f = 0 ->
+  let M := mat4_look_at s u f eye in
+  m0 M * m2 M + m4 M * m6 M + m8 M * m10 M = 0.
+Proof.
+  intros s u f eye Hsf.
+  unfold mat4_look_at, v3_dot in *. simpl. nra.
+Qed.
+
+(** Theorem 126: Columns 1 and 2 are orthogonal (dot product = 0). *)
+Theorem mat4_look_at_upper3x3_col1_dot_col2 : forall s u f eye : Vec3,
+  v3_dot u f = 0 ->
+  let M := mat4_look_at s u f eye in
+  m1 M * m2 M + m5 M * m6 M + m9 M * m10 M = 0.
+Proof.
+  intros s u f eye Huf.
+  unfold mat4_look_at, v3_dot in *. simpl. nra.
+Qed.
+
+(** Theorem 127: Look-at commutes with translation in a specific sense.
+    Moving the eye by vector d is equivalent to translating the
+    translation column. *)
+Theorem mat4_look_at_eye_shift : forall s u f eye d : Vec3,
+  mat4_get_translation (mat4_look_at s u f (mkVec3 (v3x eye + v3x d) (v3y eye + v3y d) (v3z eye + v3z d))) =
+    mkVec3
+      (-(v3_dot s eye) - v3_dot s d)
+      (-(v3_dot u eye) - v3_dot u d)
+      (v3_dot f eye + v3_dot f d).
+Proof.
+  intros. unfold mat4_get_translation, mat4_look_at, v3_dot. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 111 + 16 + 16 + 16 component lemmas = 159
+    Total theorems: 127 + 16 + 16 + 16 component lemmas + 1 lemma = 176
     Admits: 0
     Axioms: Standard Coq real number library only
 
@@ -1631,4 +1840,7 @@ Qed.
     - Theorems 94-105: inverse properties (identity, left/right correctness, det(inv), involutive,
       det product, translation inv, scaling inv, transpose comm, uniform scaling, invertibility, compose)
     - Theorems 106-111: orthographic NDC mapping + determinant + invertibility
+    - Theorems 112-127: look_at view matrix properties (structural, eye-to-origin,
+      basis mapping, w-preservation, orthogonality of rotation part, translation encoding)
+    - Lemma: v3_dot_comm (utility)
 *)

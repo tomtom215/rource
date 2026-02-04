@@ -25,7 +25,7 @@ For completed work history, see [VERIFICATION_CHRONOLOGY.md](VERIFICATION_CHRONO
 
 ## Coverage Status
 
-**Current coverage**: 169/255 public operations verified (66.3%).
+**Current coverage**: 170/255 public operations verified (66.7%).
 **Theoretical maximum** (excluding transcendental-blocked and batch operations): ~238/255 (93.3%).
 
 ## Operation Classification
@@ -60,15 +60,23 @@ All 11 proofs completed in `Mat4_Proofs.v` (Theorems 101-111):
 - `mat4_orthographic_invertible`: invertible when rml, tmb, fmn non-zero
 - `mat4_orthographic_w_preserved`: w-component preserved under transform
 
-### P1.5: Mat4 look_at View Matrix
+### P1.5: Mat4 look_at View Matrix ✅ COMPLETED (Phase 10)
 
-**Effort**: HIGH | **Impact**: HIGH
+**Effort**: HIGH | **Impact**: HIGH | **Status**: COMPLETED (2026-02-04)
 
-Prove properties of `look_at(eye, target, up)`:
-- The forward/right/up vectors form an orthonormal basis
-- Translation component correctly positions the camera
-- Note: `normalize()` (sqrt) makes full algebraic proof difficult.
-  Prove structural properties assuming unit inputs.
+Proved 17 properties of `look_at(eye, target, up)` parameterized by
+pre-computed orthonormal basis (s=side, u=up, f=forward, eye=position):
+- ✅ Bottom row structural property (Theorem 112)
+- ✅ Eye-to-origin mapping — fundamental view matrix property (Theorems 113, 119)
+- ✅ Basis mapping: forward→-Z, side→+X, up→+Y (Theorems 114-116)
+- ✅ W-component preservation — affine matrix (Theorem 117)
+- ✅ Standard basis at origin = identity (Theorem 118)
+- ✅ Translation column encodes eye position (Theorem 120)
+- ✅ Rotation orthogonality: 6 column dot-product theorems (Theorems 121-126)
+- ✅ Eye shift property (Theorem 127)
+- ✅ 4 Kani harnesses: finite output, degenerate input, affine structure, parallel vectors
+- Note: Uses orthonormal basis parameterization to avoid sqrt.
+  All 17 Coq theorems machine-checked (0 admits). 4 Kani harnesses pass.
 
 ---
 
@@ -239,5 +247,5 @@ batch operation proofs (7 low-value operations). The practical target is approxi
 ---
 
 *Last updated: 2026-02-03*
-*Current coverage: 169/255 (66.3%)*
+*Current coverage: 170/255 (66.7%)*
 *Remaining actionable P1–P4 items: 5 (P1.5, P4.1–P4.4); 2 blocked (P3.1, P3.2)*

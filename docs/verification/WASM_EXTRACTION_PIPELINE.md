@@ -23,13 +23,13 @@ architecture combining Verus with the Coq ecosystem.
 | Tool | Purpose | Maturity | Integration |
 |------|---------|----------|-------------|
 | **Verus** | Algebraic properties | Production | Active (475 proof fns) |
-| **Coq** | Mathematical proofs, complexity | Production | Active (1495 theorems) |
+| **Coq** | Mathematical proofs, complexity | Production | Active (1512 theorems) |
 | **wasm_of_ocaml** | OCaml -> WASM compilation | Production (v6.2.0) | Active (Path 1, 6.8 KB lib) |
 | **MetaCoq Verified Extraction** | Verified Coq -> OCaml | Research (PLDI'24) | Built from source (Path 2) |
 | **CertiCoq-WASM** | Coq -> Verified WASM | Research (CPP 2025) | Deferred (Path 4, needs 8.20) |
 | **coq-rust-extraction** | Coq -> Rust extraction | Early research (v0.1.1) | Deferred (needs 8.20+) |
 | **WasmCert-Coq** | WASM formalization | Production | CertiCoq-WASM dependency |
-| **ICC/Coq** | Complexity bounds | Research | Active (1495 theorems) |
+| **ICC/Coq** | Complexity bounds | Research | Active (1512 theorems) |
 | **RefinedRust** | Unsafe code verification | Research (PLDI 2024) | Optional |
 
 ## Pipeline Status (Phase 3)
@@ -225,7 +225,7 @@ version 9.0 (released March 2025). This rebranding affects the entire ecosystem:
 
 | Timeline | Action | Rationale |
 |----------|--------|-----------|
-| **Current** | Stay on Coq 8.18 + MetaCoq (built from source) | Working, tested, 1495 theorems compile |
+| **Current** | Stay on Coq 8.18 + MetaCoq (built from source) | Working, tested, 1512 theorems compile |
 | **Near-term** | Migrate to Rocq 9.0 when opam repos stabilize | `rocq-prover 9.0.0` available on opam.ocaml.org |
 | **Medium-term** | Migrate to Rocq 9.1 + MetaRocq 1.4.1 | Latest, with full opam packages |
 
@@ -270,10 +270,10 @@ From MetaRocq.ErasurePlugin Require Import Loader.
 
 ---
 
-*Last verified: 2026-01-29*
+*Last verified: 2026-02-04*
 
-**Computational Bridge (Phase 3 + Phase 3 Continued + Phase 4):**
-*9 Compute files: Vec2(50), Vec3(42), Vec4(33), Mat3(25), Mat4(50), Color(28), Rect(43), Bounds(70), Utils(18) = 359 theorems over Z*
+**Computational Bridge (Phase 3 + Phase 3 Continued + Phase 4 + Phase 5 + Phase 7 + Phase 9):**
+*9 Compute files: Vec2(56), Vec3(48), Vec4(39), Mat3(25), Mat4(50), Color(60), Rect(51), Bounds(70), Utils(18) = 417 theorems over Z*
 *8 Extract files + 1 unified extraction (RourceMath_Extract.v)*
 *OCaml test driver: all tests pass*
 *WASM pipeline: Library 6.8 KB, test driver 42.2 KB (via wasm_of_ocaml v6.2.0)*

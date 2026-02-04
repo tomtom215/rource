@@ -404,6 +404,67 @@ Updated all items with correct status and blocker documentation.
 
 ---
 
+## Phase 10: Mat4 look_at View Matrix Proofs + Kani Harnesses
+
+**Status**: COMPLETED (Session 82WIW, 2026-02-04)
+
+### Goals
+1. Prove Mat4 `look_at` view matrix properties (P1.5 from VERIFICATION_FUTURE_WORK.md)
+2. Add Kani harnesses for `look_at` IEEE 754 edge cases
+3. Fix all stale documentation counts from prior sessions
+4. Machine-check all proofs
+
+### Accomplishments
+
+1. **17 new Coq theorems for look_at** (`Mat4_Proofs.v`, Theorems 112-127 + 1 lemma):
+   - `mat4_look_at_bottom_row`: Structural property (bottom row = [0,0,0,1])
+   - `mat4_look_at_eye_to_origin`: Eye position maps to origin (fundamental view matrix property)
+   - `mat4_look_at_forward_to_neg_z`: Forward→-Z mapping (orthonormal basis)
+   - `mat4_look_at_side_to_x`: Side→+X mapping
+   - `mat4_look_at_up_to_y`: Up→+Y mapping
+   - `mat4_look_at_preserves_w`: W-component preservation (affine matrix)
+   - `mat4_look_at_standard_basis_origin`: Standard basis at origin = identity
+   - `mat4_look_at_eye_to_origin_vec4`: 4D version of eye-to-origin
+   - `mat4_look_at_translation`: Translation column encodes eye position
+   - 6 orthogonality theorems: Column dot-products verify rotation part is orthogonal
+   - `mat4_look_at_eye_shift`: Eye translation property
+   - `v3_dot_comm`: Utility lemma (dot product commutativity)
+
+2. **4 new Kani harnesses** (`kani_proofs/mat4.rs`):
+   - `verify_mat4_look_at_finite`: Finite-input → finite-output
+   - `verify_mat4_look_at_eye_equals_target`: Degenerate input detection
+   - `verify_mat4_look_at_affine_structure`: Bottom row always [0,0,0,1]
+   - `verify_mat4_look_at_forward_parallel_up`: Parallel input detection
+
+3. **Mat4.v spec additions**: `v3_dot` definition, `mat4_look_at` definition
+   (parameterized by orthonormal basis to avoid sqrt)
+
+4. **Documentation inconsistency fixes**: 23+ stale values across 8 files corrected
+
+5. **Coq proof engineering lesson**: `apply vec3_eq; ring` fails because `apply vec3_eq`
+   introduces unreduced record projections (e.g., `v3x (mkVec3 0 0 0)`) on the RHS.
+   Fix: always use `apply vec3_eq; simpl; ring` — the `simpl` reduces the projections.
+
+### Key Decisions
+- **Orthonormal basis parameterization**: `mat4_look_at` takes pre-computed `s, u, f, eye`
+  vectors instead of `eye, target, up`. This avoids sqrt/normalize in proofs while
+  proving all properties that hold for the rotation+translation structure.
+- **simpl after apply vec3_eq**: Established as mandatory pattern for Coq proofs involving
+  record equality lemmas. All existing proofs already followed this pattern.
+
+### Summary
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| Coq R-based theorems | 1078 | 1095 | +17 |
+| Kani CBMC harnesses | 221 | 225 | +4 |
+| Grand total | 2552 | 2573 | +21 |
+| Mat4 verified operations | 18/26 (69%) | 19/26 (73%) | +1 |
+| Overall coverage | 169/255 (66.3%) | 170/255 (66.7%) | +1 |
+| P1.5 status | Pending | COMPLETED | — |
+
+---
+
 ## Completed Milestones Summary
 
 | # | Milestone | Status |

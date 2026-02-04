@@ -42,17 +42,21 @@ rource_math.wasm (WebAssembly, 6.8 KB)
 
 **Deliverables Completed:**
 
+> **Note**: Theorem counts below are from the initial assessment. Current counts are higher
+> due to subsequent phases (7, 9) adding lerp, accessor, and integer conversion theorems.
+> See [FORMAL_VERIFICATION.md](FORMAL_VERIFICATION.md) for current counts (417 Z-based theorems total).
+
 | Deliverable | Status | Details |
 |-------------|--------|---------|
 | Feasibility assessment (9 paths) | Done | This document |
-| Vec2_Compute.v | Done | 27 theorems, Z-based, extractable |
-| Vec3_Compute.v | Done | 31 theorems, Z-based, extractable |
-| Vec4_Compute.v | Done | 22 theorems, Z-based, extractable |
+| Vec2_Compute.v | Done | 27 theorems at assessment (now 56), Z-based, extractable |
+| Vec3_Compute.v | Done | 31 theorems at assessment (now 48), Z-based, extractable |
+| Vec4_Compute.v | Done | 22 theorems at assessment (now 39), Z-based, extractable |
 | Mat3_Compute.v | Done | 25 theorems (det, trace, mul assoc) |
-| Mat4_Compute.v | Done | 21 theorems + 16 component lemmas |
-| Color_Compute.v | Done | 24 theorems, Z-based Color operations |
-| Rect_Compute.v | Done | 22 theorems, Z-based Rect operations |
-| Utils_Compute.v | Done | 12 theorems, lerp/clamp Z-based |
+| Mat4_Compute.v | Done | 21 theorems + 16 component lemmas at assessment (now 50 total) |
+| Color_Compute.v | Done | 24 theorems at assessment (now 60), Z-based Color operations |
+| Rect_Compute.v | Done | 22 theorems at assessment (now 51), Z-based Rect operations |
+| Utils_Compute.v | Done | 12 theorems at assessment (now 18), lerp/clamp Z-based |
 | Color.v + Color_Proofs.v | Done | 25 R-based Color theorems |
 | Rect.v + Rect_Proofs.v | Done | 21 R-based Rect theorems |
 | Utils.v | Done | 12 R-based utility theorems |
@@ -196,11 +200,11 @@ The specifications and the compiler serve fundamentally different purposes.
 │  Layer 1: Abstract Specification (R-based)                              │
 │  ├── Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v                            │
 │  ├── Color.v, Rect.v, Utils.v                                          │
-│  ├── Vec2_Proofs.v ... Mat4_Proofs.v (597 theorems)                     │
+│  ├── Vec2_Proofs.v ... Mat4_Proofs.v (614 theorems)                     │
 │  ├── Color_Proofs.v, Rect_Proofs.v (247 theorems)                       │
 │  ├── Complexity.v (60 theorems)                                         │
 │  └── Purpose: Mathematical correctness proofs                           │
-│      Status: COMPLETE (1553 total with Verus)                            │
+│      Status: COMPLETE (1570 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
 │  ├── Vec2_Compute.v (56 theorems)                                       │
