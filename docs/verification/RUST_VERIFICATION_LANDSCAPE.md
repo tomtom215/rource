@@ -373,7 +373,7 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 │  Layer 1: Algebraic Correctness (CURRENT)                           │
 │  ├── Verus (475 proof functions)                                    │
 │  │   └── Int specs → Z3 → algebraic properties                     │
-│  └── Coq (1512 theorems, R+Z)                                       │
+│  └── Coq (1512 theorems)                                             │
 │      └── R-based + Z-based → machine-checked proofs                │
 │                                                                     │
 │  Layer 2: Edge Case Safety (CURRENT — Kani)                         │

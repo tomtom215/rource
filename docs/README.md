@@ -99,9 +99,9 @@ Complete technical documentation for the Rource project.
 
 | Document | Description |
 |----------|-------------|
-| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2573 theorems/harnesses, 10 types) |
-| [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (475 proof functions, 9 types) |
-| [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (R+Z+FP, 1873 theorems, development workflow) |
+| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2573 theorems/harnesses, 8 types) |
+| [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (475 proof functions, 7 types) |
+| [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (1512 theorems R+Z, 361 FP, development workflow) |
 | [verification/VERIFICATION_COVERAGE.md](./verification/VERIFICATION_COVERAGE.md) | Coverage metrics, limitations, floating-point assessment |
 | [verification/VERIFICATION_CHRONOLOGY.md](./verification/VERIFICATION_CHRONOLOGY.md) | Verification history: phases 1–10, completed milestones |
 | [verification/VERIFICATION_FUTURE_WORK.md](./verification/VERIFICATION_FUTURE_WORK.md) | Verification roadmap: remaining items, coverage projection |
