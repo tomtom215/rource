@@ -299,14 +299,14 @@ Proof. ring. Qed.
 (* ================================================================== *)
 Theorem fp_utils_180_deg_is_pi :
   180 * (PI / 180) = PI.
-Proof. field. lra. Qed.
+Proof. field. Qed.
 
 (* ================================================================== *)
 (*  Theorem 20: 360 degrees = 2*PI radians                             *)
 (* ================================================================== *)
 Theorem fp_utils_360_deg_is_2pi :
   360 * (PI / 180) = 2 * PI.
-Proof. field. lra. Qed.
+Proof. field. Qed.
 
 (* ================================================================== *)
 (*  SECTION 5: Composed Utility Expressions                             *)
