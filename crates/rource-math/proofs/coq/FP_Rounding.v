@@ -383,10 +383,9 @@ Qed.
 Theorem fp_ceil_succ :
   forall x : R, Zceil (x + 1) = (Zceil x + 1)%Z.
 Proof.
-  intro x. unfold Zceil.
-  rewrite Ropp_plus_distr.
-  replace (-1) with (IZR (-1)) by reflexivity.
-  rewrite fp_floor_add_integer. lia.
+  intro x.
+  replace 1 with (IZR 1) by reflexivity.
+  apply fp_ceil_add_integer.
 Qed.
 
 (* ================================================================== *)

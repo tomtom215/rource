@@ -562,7 +562,7 @@ Theorem fp_bounds_from_center_roundtrip :
   let c := (lo + hi) / 2 in
   let s := hi - lo in
   c - s / 2 = lo /\ c + s / 2 = hi.
-Proof. intros. simpl. split; field. Qed.
+Proof. intros. cbv zeta. split; field. Qed.
 
 (* ================================================================== *)
 (*  Theorem 43: Translate is invertible                                *)
