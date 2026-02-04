@@ -271,9 +271,16 @@ Qed.
 Theorem fp_floor_nonneg :
   forall x : R, 0 <= x -> (0 <= Zfloor x)%Z.
 Proof.
-  intros x Hx. apply le_IZR. simpl.
-  apply Rle_trans with 0; [lra|].
-  apply Zfloor_lb.
+  intros x Hx.
+  destruct (Z_lt_le_dec (Zfloor x) 0) as [Hneg | Hpos].
+  - (* Contradiction: Zfloor x < 0 implies x < 0 *)
+    exfalso.
+    assert (H1: (Zfloor x + 1 <= 0)%Z) by lia.
+    (* Convert Z inequality to R, matching Zfloor_ub's form: x < IZR(Zfloor x) + 1 *)
+    apply IZR_le in H1. rewrite plus_IZR in H1. simpl in H1.
+    (* H1: IZR (Zfloor x) + 1 <= 0, Hx: 0 <= x, Zfloor_ub: x < IZR (Zfloor x) + 1 *)
+    generalize (Zfloor_ub x). lra.
+  - exact Hpos.
 Qed.
 
 (* ================================================================== *)
@@ -282,8 +289,11 @@ Qed.
 Theorem fp_ceil_nonpos :
   forall x : R, x <= 0 -> (Zceil x <= 0)%Z.
 Proof.
-  intros x Hx. apply le_IZR. simpl.
-  apply Rle_trans with x; [apply Zceil_ub | lra].
+  intros x Hx.
+  unfold Zceil.
+  assert (H: (0 <= Zfloor (- x))%Z).
+  { apply fp_floor_nonneg. lra. }
+  lia.
 Qed.
 
 (* ================================================================== *)
@@ -307,7 +317,9 @@ Theorem fp_round_monotone :
   x <= y -> (Znearest choice x <= Znearest choice y)%Z.
 Proof.
   intros choice x y Hxy.
-  apply Znearest_monotone. lra.
+  apply Zrnd_le.
+  - exact (valid_rnd_N choice).
+  - exact Hxy.
 Qed.
 
 (* ================================================================== *)
@@ -318,12 +330,20 @@ Theorem fp_ceil_floor_distance :
   forall x : R, (Zceil x - Zfloor x <= 1)%Z.
 Proof.
   intro x.
-  generalize (Zfloor_lb x). intro Hlb.
-  generalize (Zfloor_ub x). intro Hub.
-  generalize (Zceil_ub x). intro Hcub.
-  generalize (Zceil_lb x). intro Hclb.
-  apply le_IZR. rewrite minus_IZR. simpl.
-  lra.
+  (* Strategy: prove < 2 in Z (via R), then derive <= 1 by integer reasoning *)
+  enough (Hlt: (Zceil x - Zfloor x < 2)%Z) by lia.
+  destruct (Z_lt_le_dec (Zceil x - Zfloor x) 2) as [H | H].
+  - exact H.
+  - exfalso.
+    (* H: 2 <= Zceil x - Zfloor x, i.e., Zfloor x + 2 <= Zceil x *)
+    assert (Hgap: (Zfloor x + 1 + 1 <= Zceil x)%Z) by lia.
+    apply IZR_le in Hgap. rewrite !plus_IZR in Hgap. simpl in Hgap.
+    (* Hgap: IZR (Zfloor x) + 1 + 1 <= IZR (Zceil x) *)
+    (* Zceil_lb: IZR (Zceil x) - 1 < x,  Zfloor_ub: x < IZR (Zfloor x) + 1 *)
+    (* Chain: IZR (Zfloor x) + 1 + 1 <= IZR (Zceil x) AND                    *)
+    (*        IZR (Zceil x) - 1 < x < IZR (Zfloor x) + 1                     *)
+    (* => IZR (Zfloor x) + 1 < IZR (Zfloor x) + 1, contradiction             *)
+    generalize (Zceil_lb x). generalize (Zfloor_ub x). lra.
 Qed.
 
 (* ================================================================== *)
@@ -363,9 +383,9 @@ Qed.
 Theorem fp_ceil_succ :
   forall x : R, Zceil (x + 1) = (Zceil x + 1)%Z.
 Proof.
-  intro x. unfold Zceil.
-  replace (- (x + 1)) with (- x + IZR (-1)) by (rewrite opp_IZR; simpl; ring).
-  rewrite fp_floor_add_integer. lia.
+  intro x.
+  replace 1 with (IZR 1) by reflexivity.
+  apply fp_ceil_add_integer.
 Qed.
 
 (* ================================================================== *)

@@ -489,6 +489,37 @@ Proof.
   apply zvec3_eq; ring.
 Qed.
 
+(** Theorem 46: lerp of zero vectors is zero *)
+Theorem zvec3_lerp_zero_zero : forall (t : Z),
+  zvec3_lerp t zvec3_zero zvec3_zero = zvec3_zero.
+Proof.
+  intros t.
+  unfold zvec3_lerp, zvec3_add, zvec3_scale, zvec3_sub, zvec3_zero. simpl.
+  apply zvec3_eq; ring.
+Qed.
+
+(** Theorem 47: lerp at t=2 extrapolates *)
+Theorem zvec3_lerp_two : forall (a b : ZVec3),
+  zvec3_lerp 2 a b =
+    zvec3_sub (zvec3_scale 2 b) a.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold zvec3_lerp, zvec3_add, zvec3_scale, zvec3_sub.
+  cbn [zvec3_x zvec3_y zvec3_z].
+  apply zvec3_eq; ring.
+Qed.
+
+(** Theorem 48: lerp at t=-1 extrapolates *)
+Theorem zvec3_lerp_neg_one : forall (a b : ZVec3),
+  zvec3_lerp (-1) a b =
+    zvec3_sub (zvec3_scale 2 a) b.
+Proof.
+  intros [ax ay az] [bx by0 bz].
+  unfold zvec3_lerp, zvec3_add, zvec3_scale, zvec3_sub.
+  cbn [zvec3_x zvec3_y zvec3_z].
+  apply zvec3_eq; ring.
+Qed.
+
 (** * Computational Tests *)
 
 Example zvec3_test_add :

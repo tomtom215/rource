@@ -260,9 +260,9 @@ Proof.
   intros.
   repeat split.
   - apply Rmin_l.
-  - apply Rle_max_compat_l. lra.
+  - apply Rle_max_compat_l.
   - apply Rmin_r.
-  - apply Rle_max_compat_r. lra.
+  - apply Rle_max_compat_r.
 Qed.
 
 (* ================================================================== *)
@@ -299,8 +299,8 @@ Theorem fp_bounds_intersection_min_correct :
   a <= Rmax a b /\ b <= Rmax a b.
 Proof.
   intros. split.
-  - apply Rle_max_compat_l. lra.
-  - apply Rle_max_compat_r. lra.
+  - apply Rle_max_compat_l.
+  - apply Rle_max_compat_r.
 Qed.
 
 (* ================================================================== *)
@@ -421,7 +421,7 @@ Proof. intros. field. Qed.
 Theorem fp_bounds_from_center_size_size_recovery :
   forall (c s : R),
   (c + s / 2) - (c - s / 2) = s.
-Proof. intros. ring. Qed.
+Proof. intros. field. Qed.
 
 (* ================================================================== *)
 (*  SECTION 11: Include Point                                           *)
@@ -438,7 +438,7 @@ Proof.
   intros.
   split.
   - apply Rmin_r.
-  - apply Rle_max_compat_r. lra.
+  - apply Rle_max_compat_r.
 Qed.
 
 (* ================================================================== *)
@@ -452,7 +452,7 @@ Proof.
   intros.
   split.
   - apply Rmin_l.
-  - apply Rle_max_compat_l. lra.
+  - apply Rle_max_compat_l.
 Qed.
 
 (* ================================================================== *)
@@ -562,7 +562,12 @@ Theorem fp_bounds_from_center_roundtrip :
   let c := (lo + hi) / 2 in
   let s := hi - lo in
   c - s / 2 = lo /\ c + s / 2 = hi.
-Proof. intros. simpl. split; field. Qed.
+Proof.
+  intros lo hi _.
+  cbv zeta. split.
+  - field.
+  - field.
+Qed.
 
 (* ================================================================== *)
 (*  Theorem 43: Translate is invertible                                *)

@@ -23,7 +23,7 @@ jobs:
   verify-coq-proofs:
     name: Verify Coq Proofs
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -33,18 +33,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.opam
-          key: opam-${{ env.COQ_VERSION }}-${{ hashFiles('crates/rource-math/proofs/coq/_CoqProject') }}
+          key: opam-v3-flocq-${{ env.COQ_VERSION }}-${{ hashFiles('crates/rource-math/proofs/coq/_CoqProject') }}
           restore-keys: |
-            opam-${{ env.COQ_VERSION }}-
+            opam-v3-flocq-${{ env.COQ_VERSION }}-
 
-      - name: Install Coq
+      - name: Install Coq and Flocq via opam
         run: |
-          # Retry apt-get for transient mirror/network failures
+          # Install system dependencies: opam, system OCaml compiler, build tools
           for attempt in 1 2 3; do
-            echo "Attempt $attempt: Installing Coq..."
-            sudo apt-get update -q && sudo apt-get install -y -q coq coq-theories && break
+            echo "Attempt $attempt: Installing system dependencies..."
+            sudo apt-get update -q && sudo apt-get install -y -q opam ocaml build-essential && break
             if [ "$attempt" -eq 3 ]; then
-              echo "::error::Failed to install Coq after 3 attempts"
+              echo "::error::Failed to install system dependencies after 3 attempts"
               exit 1
             fi
             DELAY=$((attempt * 10))
@@ -52,10 +52,124 @@ jobs:
             sleep "$DELAY"
           done
 
-      - name: Verify Coq installation
+          # Initialize opam with system OCaml compiler
+          # --compiler=ocaml-system: uses apt-installed OCaml (fast, no compilation)
+          # On cache hit: ~/.opam exists, opam init says "already initialized" (no-op)
+          opam init --disable-sandboxing --no-setup -y --compiler=ocaml-system 2>&1 || true
+          eval $(opam env)
+
+          # ================================================================
+          # Add the Coq released opam repository
+          # ================================================================
+          # CRITICAL: coq-flocq is NOT in the default opam.ocaml.org repository.
+          # Coq library packages live in a separate Coq released repository.
+          #
+          # The official HTTPS endpoints frequently return HTTP 503:
+          #   - https://coq.inria.fr/opam/released
+          #   - https://rocq-prover.org/opam/released
+          #
+          # Cascading fallback strategy:
+          #   1. Check if repo is already configured (opam cache hit)
+          #   2. Try official HTTPS endpoints (fastest when available)
+          #   3. Clone the GitHub mirror (github.com/coq/opam) as a local repo
+          #
+          # The GitHub mirror (rocq-prover/opam) contains the released/ directory
+          # which is a properly structured opam repository with packages/ and repo file.
+          # ================================================================
+
+          if opam repo list --short 2>/dev/null | grep -q coq-released; then
+            echo "Coq released repo already configured (cache hit)"
+          else
+            REPO_ADDED=false
+
+            # Strategy 1: Try official HTTPS endpoints
+            for url in "https://coq.inria.fr/opam/released" "https://rocq-prover.org/opam/released"; do
+              echo "Trying Coq opam repo: $url"
+              if timeout 30 opam repo add coq-released "$url" 2>&1; then
+                # Verify the repo actually has packages (guards against 503 being
+                # accepted by opam but yielding an empty index)
+                opam update --quiet coq-released 2>&1 || true
+                if opam list -a --short coq-flocq 2>/dev/null | grep -q coq-flocq; then
+                  echo "Coq released repo added from: $url"
+                  REPO_ADDED=true
+                  break
+                fi
+                # Repo entry exists but no packages visible — remove and try next
+                echo "  Repo added but coq-flocq not visible, removing..."
+                opam repo remove coq-released 2>/dev/null || true
+              else
+                # Clean up any partial state from failed add
+                opam repo remove coq-released 2>/dev/null || true
+                echo "  Failed (timeout or 503), trying next..."
+              fi
+            done
+
+            # Strategy 2: Clone GitHub mirror as local opam repo
+            if [ "$REPO_ADDED" = false ]; then
+              echo "HTTPS endpoints unavailable, cloning GitHub mirror..."
+              git clone --depth 1 --filter=blob:none --sparse \
+                https://github.com/coq/opam.git /tmp/coq-opam
+              (cd /tmp/coq-opam && git sparse-checkout set released)
+              opam repo add coq-released /tmp/coq-opam/released
+              echo "Added Coq released repo from GitHub mirror (local)"
+            fi
+          fi
+
+          # Refresh package index
+          opam update --quiet 2>&1 || true
+
+          # Verify coq-flocq is visible (available from repos OR already installed)
+          echo "Checking coq-flocq availability..."
+          FLOCQ_AVAILABLE=false
+          if opam list -a --short coq-flocq 2>/dev/null | grep -q coq-flocq; then
+            echo "coq-flocq: available from opam repos"
+            FLOCQ_AVAILABLE=true
+          fi
+          if opam list --installed --short coq-flocq 2>/dev/null | grep -q coq-flocq; then
+            echo "coq-flocq: already installed (cache hit)"
+            FLOCQ_AVAILABLE=true
+          fi
+          if [ "$FLOCQ_AVAILABLE" = false ]; then
+            echo "::error::coq-flocq not found (not in repos, not installed)"
+            echo "Configured opam repos:"
+            opam repo list 2>&1
+            exit 1
+          fi
+
+          # Install Coq and Flocq (coq-flocq pulls coq as a dependency)
+          # Pin to 4.1.3 for reproducibility (compatible with Coq 8.12–8.18)
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: Installing Coq and Flocq..."
+            opam install -y coq-flocq.4.1.3 && break
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Failed to install Coq+Flocq after 3 attempts"
+              exit 1
+            fi
+            DELAY=$((attempt * 10))
+            echo "Install failed, retrying in ${DELAY}s..."
+            sleep "$DELAY"
+          done
+
+          # Export opam environment to GITHUB_ENV so ALL subsequent steps
+          # use the opam-installed coqc (single consistent Coq binary)
+          eval $(opam env)
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          for var in OPAM_SWITCH_PREFIX CAML_LD_LIBRARY_PATH OCAML_TOPLEVEL_PATH; do
+            val="${!var}"
+            if [ -n "$val" ]; then
+              echo "$var=$val" >> "$GITHUB_ENV"
+            fi
+          done
+
+      - name: Verify Coq and Flocq installation
         run: |
           coqc --version
           echo "Coq version: $(coqc --version | head -1)"
+          COQ_WHERE="$(coqc -where)"
+          echo "Coq lib: $COQ_WHERE"
+          ls "$COQ_WHERE/user-contrib/Flocq/" > /dev/null 2>&1 \
+            && echo "Flocq: installed at $COQ_WHERE/user-contrib/Flocq/" \
+            || { echo "::error::Flocq not found in $COQ_WHERE/user-contrib/"; exit 1; }
 
       # ================================================================
       # Layer 1: Specifications (9 files)
@@ -160,6 +274,57 @@ jobs:
           fi
 
       # ================================================================
+      # Layer 6: FP error bounds proofs (9 files, requires Flocq)
+      # ================================================================
+
+      - name: "Layer 6: Build FP error bounds proofs"
+        id: fp_proofs
+        working-directory: crates/rource-math/proofs/coq
+        run: |
+          echo "Building FP error bounds proofs (9 files, requires Flocq)..."
+          FAILED=0
+
+          # Phase 1: Foundation files (no local deps)
+          for f in FP_Common.v FP_Rounding.v; do
+            echo "  Building $f..."
+            if ! timeout 300 coqc -Q . RourceMath "$f" 2>&1; then
+              echo "::error::$f failed to compile"
+              FAILED=1
+            fi
+          done
+
+          # Phase 2: Error bounds (depends on FP_Common)
+          echo "  Building FP_ErrorBounds.v..."
+          if ! timeout 300 coqc -Q . RourceMath FP_ErrorBounds.v 2>&1; then
+            echo "::error::FP_ErrorBounds.v failed to compile"
+            FAILED=1
+          fi
+
+          # Phase 3: Vec (depends on FP_Common)
+          echo "  Building FP_Vec.v..."
+          if ! timeout 300 coqc -Q . RourceMath FP_Vec.v 2>&1; then
+            echo "::error::FP_Vec.v failed to compile"
+            FAILED=1
+          fi
+
+          # Phase 4: Remaining files (depend on FP_Common + FP_ErrorBounds)
+          # FP_Mat also depends on FP_Vec, which is built in Phase 3
+          for f in FP_Mat.v FP_Color.v FP_Rect.v FP_Bounds.v FP_Utils.v; do
+            echo "  Building $f..."
+            if ! timeout 300 coqc -Q . RourceMath "$f" 2>&1; then
+              echo "::error::$f failed to compile"
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "fp_proofs_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "fp_proofs_status=verified" >> $GITHUB_OUTPUT
+          echo "All FP error bounds proofs verified."
+
+      # ================================================================
       # Theorem counting and admits check
       # ================================================================
 
@@ -192,13 +357,23 @@ jobs:
           done
           echo "z_total=$Z_TOTAL" >> $GITHUB_OUTPUT
 
-          GRAND_TOTAL=$((R_TOTAL + COMPLEXITY + Z_TOTAL))
+          # FP error bounds counts
+          FP_TOTAL=0
+          for f in FP_Common.v FP_Rounding.v FP_ErrorBounds.v FP_Vec.v FP_Mat.v FP_Color.v FP_Rect.v FP_Bounds.v FP_Utils.v; do
+            COUNT=$(grep -cE '^(Theorem|Lemma|Local Lemma)' "$f" 2>/dev/null || echo "0")
+            echo "  $f: $COUNT theorems"
+            FP_TOTAL=$((FP_TOTAL + COUNT))
+          done
+          echo "fp_total=$FP_TOTAL" >> $GITHUB_OUTPUT
+
+          GRAND_TOTAL=$((R_TOTAL + COMPLEXITY + Z_TOTAL + FP_TOTAL))
           echo "grand_total=$GRAND_TOTAL" >> $GITHUB_OUTPUT
           echo ""
           echo "=== Coq Theorem Summary ==="
           echo "R-based proofs: $R_TOTAL"
           echo "Complexity:     $COMPLEXITY"
           echo "Z-based:        $Z_TOTAL"
+          echo "FP error bounds:$FP_TOTAL"
           echo "Grand total:    $GRAND_TOTAL"
 
       - name: Check for admits
@@ -240,12 +415,14 @@ jobs:
           C_STATUS="${{ steps.complexity.outputs.complexity_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
           Z_STATUS="${{ steps.z_compute.outputs.z_compute_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
           E_STATUS="${{ steps.extraction.outputs.extraction_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
+          FP_STATUS="${{ steps.fp_proofs.outputs.fp_proofs_status == 'verified' && ':white_check_mark: Verified' || ':x: Failed' }}"
 
           echo "| Layer 1 | Type specifications (R-based) | 9 | :white_check_mark: Verified |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 2 | R-based algebraic proofs | 9 | $R_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 3 | Complexity (ICC O(1) bounds) | 1 | $C_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 4 | Z-based computational bridge | 9 | $Z_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| Layer 5 | OCaml extraction | 1 | $E_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer 6 | FP error bounds (Flocq) | 9 | $FP_STATUS |" >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Theorem Counts" >> $GITHUB_STEP_SUMMARY
@@ -255,6 +432,7 @@ jobs:
           echo "| R-based proofs | **${{ steps.count.outputs.r_total }}** |" >> $GITHUB_STEP_SUMMARY
           echo "| Complexity proofs | **${{ steps.count.outputs.complexity }}** |" >> $GITHUB_STEP_SUMMARY
           echo "| Z-based proofs | **${{ steps.count.outputs.z_total }}** |" >> $GITHUB_STEP_SUMMARY
+          echo "| FP error bounds | **${{ steps.count.outputs.fp_total }}** |" >> $GITHUB_STEP_SUMMARY
           echo "| **Total Coq theorems** | **${{ steps.count.outputs.grand_total }}** |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 

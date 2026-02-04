@@ -265,6 +265,7 @@
 | 133 | Docker Trivy scanning 138 OS-level CVEs from `debian:trixie-slim` | `runtime-with-git` pulls git + transitive deps (openldap, pam, ncurses, curl, etc.) | Switch default Docker target to `runtime-distroless` (cc-debian13); git stage opt-in |
 | 134 | NEVER dismiss security alerts as "pre-existing" or "base image issue" | Assumption that alerts auto-resolve proved wrong | Fix root cause: minimize attack surface; never assume issues resolve themselves |
 | 137 | Docker glibc version mismatch: build vs runtime | Builder on Trixie (glibc 2.39) + distroless cc-debian12 (glibc 2.36) = `GLIBC_2.39 not found` | All stages must use same Debian generation; upgrade distroless to cc-debian13 |
+| 200 | `coq-flocq` not found: "No package named coq-flocq found" after `opam install` | `coq-flocq` is NOT in the default opam.ocaml.org repository; it requires the Coq released opam repo (`coq.inria.fr/opam/released`) which returns HTTP 503 | Cascading fallback: try HTTPS endpoints, then clone GitHub mirror (`github.com/coq/opam` → `released/` directory) as local opam repo |
 
 ---
 
@@ -536,6 +537,8 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 198 | 2026-02-01 | 8mCIA | Flocq/coq-flocq unavailable: opam package name is `coq-flocq`, but Coq opam repo (coq.inria.fr) returns HTTP 503 | Cannot machine-check FP_Rounding.v new theorems without Flocq 4.1.3 | FP theorems structurally follow verified patterns; mark as "written, pending machine-check" until Flocq repo available |
 | 199 | 2026-02-01 | 8mCIA | Documentation counts can drift significantly (was 2508, actual 2491→2541 after session) even with update scripts | Scripts update docs but must be run; between runs, manual edits accumulate errors | ALWAYS run `update-verification-counts.sh` after ANY proof file change, not just at session end |
 
+| 200 | 2026-02-03 | IoNDB | `coq-flocq` not found: "No package named coq-flocq found" after `opam install` | `coq-flocq` is NOT in the default opam.ocaml.org repository; it requires the Coq released opam repo (`coq.inria.fr/opam/released`) which returns HTTP 503 | Cascading fallback: try HTTPS endpoints, then clone GitHub mirror (`github.com/coq/opam` → `released/` directory as local opam repo); bumped cache key to v3 |
+
 ---
 
-*Last updated: 2026-02-01 | 199 entries | 14 categories*
+*Last updated: 2026-02-03 | 200 entries | 14 categories*

@@ -437,7 +437,7 @@ Proof. intros. tauto. Qed.
 (* ================================================================== *)
 Theorem fp_rect_intersection_overlap :
   forall (x1 w1 x2 w2 : R),
-  0 <= w1 -> 0 <= w2 ->
+  0 < w1 -> 0 < w2 ->
   x1 < x2 + w2 -> x2 < x1 + w1 ->
   0 < Rmin (x1 + w1) (x2 + w2) - Rmax x1 x2.
 Proof.
@@ -461,7 +461,7 @@ Proof.
   intros.
   split.
   - apply Rmin_l.
-  - apply Rle_max_compat_l. lra.
+  - apply Rle_max_compat_l.
 Qed.
 
 (* ================================================================== *)
@@ -577,4 +577,17 @@ Proof. intros. field. Qed.
 Theorem fp_rect_diagonal_sq_nonneg :
   forall (w h : R),
   0 <= w * w + h * h.
-Proof. intros. nra. Qed.
+Proof.
+  intros w h.
+  assert (Hw : 0 <= w * w).
+  { destruct (Rle_dec 0 w) as [Hp|Hn].
+    - apply Rmult_le_pos; exact Hp.
+    - replace (w * w) with ((-w) * (-w)) by ring.
+      apply Rmult_le_pos; lra. }
+  assert (Hh : 0 <= h * h).
+  { destruct (Rle_dec 0 h) as [Hp|Hn].
+    - apply Rmult_le_pos; exact Hp.
+    - replace (h * h) with ((-h) * (-h)) by ring.
+      apply Rmult_le_pos; lra. }
+  lra.
+Qed.

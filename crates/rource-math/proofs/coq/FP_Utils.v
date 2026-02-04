@@ -96,7 +96,7 @@ Proof.
   intros a b t Hab [Ht0 Ht1].
   split.
   - assert (H : 0 <= (b - a) * t) by (apply Rmult_le_pos; lra). lra.
-  - assert (H : (b - a) * t <= b - a) by (apply Rmult_le_compat_l; lra). lra.
+  - assert (H : (b - a) * t <= (b - a) * 1) by (apply Rmult_le_compat_l; lra). lra.
 Qed.
 
 (* ================================================================== *)
@@ -116,10 +116,10 @@ Theorem fp_utils_clamp_exact :
 Proof.
   intros v lo hi Hlh.
   split.
-  - apply Rle_max_compat_l. lra.
-  - unfold Rmax, Rmin.
-    destruct (Rle_dec lo (Rmin v hi));
-    destruct (Rle_dec v hi); lra.
+  - unfold Rmax. destruct (Rle_dec lo (Rmin v hi)); lra.
+  - unfold Rmax. destruct (Rle_dec lo (Rmin v hi)) as [_|_].
+    + apply Rmin_r.
+    + exact Hlh.
 Qed.
 
 (* ================================================================== *)
@@ -131,22 +131,21 @@ Theorem fp_utils_clamp_idempotent :
   let c := Rmax lo (Rmin v hi) in
   Rmax lo (Rmin c hi) = c.
 Proof.
-  intros v lo hi Hlh.
-  simpl.
-  unfold Rmax, Rmin.
-  destruct (Rle_dec v hi);
-  destruct (Rle_dec lo (Rmin v hi));
-  unfold Rmin in *;
-  destruct (Rle_dec v hi) in *;
-  try lra;
-  destruct (Rle_dec lo v) in *;
-  try lra;
-  destruct (Rle_dec hi hi);
-  try lra;
-  destruct (Rle_dec lo hi);
-  try lra;
-  destruct (Rle_dec lo lo);
-  lra.
+  intros v lo hi Hlh. simpl.
+  (* Establish that lo <= c <= hi *)
+  assert (Hc_hi : Rmax lo (Rmin v hi) <= hi).
+  { unfold Rmax. destruct (Rle_dec lo (Rmin v hi)).
+    - apply Rmin_r.
+    - exact Hlh. }
+  assert (Hlo_c : lo <= Rmax lo (Rmin v hi)).
+  { unfold Rmax. destruct (Rle_dec lo (Rmin v hi)); lra. }
+  set (c := Rmax lo (Rmin v hi)) in *.
+  (* Since c <= hi, Rmin c hi = c *)
+  assert (Hmin_c : Rmin c hi = c).
+  { unfold Rmin. destruct (Rle_dec c hi); lra. }
+  rewrite Hmin_c.
+  (* Since lo <= c, Rmax lo c = c *)
+  unfold Rmax. destruct (Rle_dec lo c); lra.
 Qed.
 
 (* ================================================================== *)
@@ -163,7 +162,11 @@ Proof.
   destruct (Rle_dec v2 hi);
   destruct (Rle_dec lo v1);
   destruct (Rle_dec lo v2);
-  try lra.
+  try lra;
+  (* When ~(v1<=hi), Rmin v1 hi reduces to hi, so the outer Rmax
+     contains Rle_dec lo hi rather than Rle_dec lo v1. Destruct it. *)
+  destruct (Rle_dec lo hi);
+  lra.
 Qed.
 
 (* ================================================================== *)
@@ -296,14 +299,14 @@ Proof. ring. Qed.
 (* ================================================================== *)
 Theorem fp_utils_180_deg_is_pi :
   180 * (PI / 180) = PI.
-Proof. field. lra. Qed.
+Proof. field. Qed.
 
 (* ================================================================== *)
 (*  Theorem 20: 360 degrees = 2*PI radians                             *)
 (* ================================================================== *)
 Theorem fp_utils_360_deg_is_2pi :
   360 * (PI / 180) = 2 * PI.
-Proof. field. lra. Qed.
+Proof. field. Qed.
 
 (* ================================================================== *)
 (*  SECTION 5: Composed Utility Expressions                             *)

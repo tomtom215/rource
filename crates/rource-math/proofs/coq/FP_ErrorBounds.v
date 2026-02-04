@@ -646,7 +646,9 @@ Theorem fp_max_min_absorption :
   forall a b : R, Rmax a (Rmin a b) = a.
 Proof.
   intros. unfold Rmin, Rmax.
-  destruct (Rle_dec a b); destruct (Rle_dec a a); lra.
+  destruct (Rle_dec a b) as [Hab | Hab].
+  - destruct (Rle_dec a a); lra.
+  - destruct (Rle_dec a b); lra.
 Qed.
 
 (* ================================================================== *)
@@ -659,8 +661,12 @@ Theorem fp_clamp_monotone :
   Rmax lo (Rmin x hi) <= Rmax lo (Rmin y hi).
 Proof.
   intros x y lo hi Hlh Hxy. unfold Rmin, Rmax.
+  (* After unfold, outer Rmax creates Rle_dec lo (Rmin x hi) and Rle_dec lo (Rmin y hi).
+     When inner Rle_dec x hi / Rle_dec y hi are destructed, the outer may become
+     Rle_dec lo x, Rle_dec lo y, OR Rle_dec lo hi depending on the branch. *)
   destruct (Rle_dec x hi); destruct (Rle_dec y hi);
-    destruct (Rle_dec lo x); destruct (Rle_dec lo y); lra.
+    destruct (Rle_dec lo x); destruct (Rle_dec lo y);
+    try destruct (Rle_dec lo hi); lra.
 Qed.
 
 (* ================================================================== *)
@@ -672,7 +678,7 @@ Theorem fp_abs_triangle_reverse :
   Rabs (Rabs a - Rabs b) <= Rabs (a - b).
 Proof.
   intros a b.
-  apply Rabs_triang_inv.
+  apply Rabs_triang_inv2.
 Qed.
 
 (* ================================================================== *)

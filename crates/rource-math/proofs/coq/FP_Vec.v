@@ -825,6 +825,6 @@ Qed.
 (*  a·b = b·a (2D case: ax*bx + ay*by = bx*ax + by*ay)              *)
 (* ================================================================== *)
 Theorem fp_vec2_dot_commutative :
-  forall (ax ay bx by : R),
-  ax * bx + ay * by = bx * ax + by * ay.
+  forall (ax ay bx by0 : R),
+  ax * bx + ay * by0 = bx * ax + by0 * ay.
 Proof. intros. ring. Qed.
