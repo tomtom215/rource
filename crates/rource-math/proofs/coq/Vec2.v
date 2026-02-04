@@ -17,6 +17,7 @@ Require Import Reals.
 Require Import Lra.
 Require Import Lia.
 Require Import ZArith.
+Require Import RourceMath.Utils.
 Open Scope R_scope.
 
 (** * Vec2 Definition *)
@@ -171,6 +172,23 @@ Definition vec2_project (v w : Vec2) : Vec2 :=
 (** Rejection of v from w: v - project(v, w) *)
 Definition vec2_reject (v w : Vec2) : Vec2 :=
   vec2_sub v (vec2_project v w).
+
+(** * Floor/Ceil/Round Operations *)
+
+(** Component-wise floor: greatest integer ≤ each component.
+    Matches Rust Vec2::floor() which delegates to f32::floor(). *)
+Definition vec2_floor (v : Vec2) : Vec2 :=
+  mkVec2 (Rfloor (vec2_x v)) (Rfloor (vec2_y v)).
+
+(** Component-wise ceiling: least integer ≥ each component.
+    Matches Rust Vec2::ceil() which delegates to f32::ceil(). *)
+Definition vec2_ceil (v : Vec2) : Vec2 :=
+  mkVec2 (Rceil (vec2_x v)) (Rceil (vec2_y v)).
+
+(** Component-wise round: round half away from zero.
+    Matches Rust Vec2::round() which delegates to f32::round(). *)
+Definition vec2_round (v : Vec2) : Vec2 :=
+  mkVec2 (Rround (vec2_x v)) (Rround (vec2_y v)).
 
 (** * Equality *)
 

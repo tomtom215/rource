@@ -20,11 +20,13 @@
  * 5. Geometric Properties (Theorems 22-23)
  *)
 
+Require Import RourceMath.Utils.
 Require Import RourceMath.Vec2.
 Require Import Reals.
 Require Import Lra.
 Require Import Lia.
 Require Import Psatz.
+Require Import R_Ifp.
 Open Scope R_scope.
 
 (** * Vector Space Axioms *)
@@ -1323,9 +1325,118 @@ Proof.
   intros a b. unfold vec2_distance_squared, vec2_length_squared. reflexivity.
 Qed.
 
+(** * Floor/Ceil/Round Properties *)
+
+(** Theorem 131: floor(v) ≤ v componentwise *)
+Theorem vec2_floor_le : forall v : Vec2,
+  vec2_x (vec2_floor v) <= vec2_x v /\
+  vec2_y (vec2_floor v) <= vec2_y v.
+Proof.
+  intros [vx vy]. unfold vec2_floor. simpl. split; apply Rfloor_le.
+Qed.
+
+(** Theorem 132: v < floor(v) + 1 componentwise *)
+Theorem vec2_floor_lt_succ : forall v : Vec2,
+  vec2_x v < vec2_x (vec2_floor v) + 1 /\
+  vec2_y v < vec2_y (vec2_floor v) + 1.
+Proof.
+  intros [vx vy]. unfold vec2_floor. simpl. split; apply Rfloor_lt_succ.
+Qed.
+
+(** Theorem 133: v ≤ ceil(v) componentwise *)
+Theorem vec2_ceil_ge : forall v : Vec2,
+  vec2_x v <= vec2_x (vec2_ceil v) /\
+  vec2_y v <= vec2_y (vec2_ceil v).
+Proof.
+  intros [vx vy]. unfold vec2_ceil. simpl. split; apply Rceil_ge.
+Qed.
+
+(** Theorem 134: ceil(v) < v + 1 componentwise *)
+Theorem vec2_ceil_lt_succ : forall v : Vec2,
+  vec2_x (vec2_ceil v) < vec2_x v + 1 /\
+  vec2_y (vec2_ceil v) < vec2_y v + 1.
+Proof.
+  intros [vx vy]. unfold vec2_ceil. simpl. split; apply Rceil_lt_succ.
+Qed.
+
+(** Theorem 135: floor(zero) = zero *)
+Theorem vec2_floor_zero : vec2_floor vec2_zero = vec2_zero.
+Proof.
+  unfold vec2_floor, vec2_zero. cbn [vec2_x vec2_y].
+  rewrite !Rfloor_zero. reflexivity.
+Qed.
+
+(** Theorem 136: ceil(zero) = zero *)
+Theorem vec2_ceil_zero : vec2_ceil vec2_zero = vec2_zero.
+Proof.
+  unfold vec2_ceil, vec2_zero. cbn [vec2_x vec2_y].
+  rewrite !Rceil_zero. reflexivity.
+Qed.
+
+(** Theorem 137: round(zero) = zero *)
+Theorem vec2_round_zero : vec2_round vec2_zero = vec2_zero.
+Proof.
+  unfold vec2_round, vec2_zero. cbn [vec2_x vec2_y].
+  unfold Rround.
+  destruct (Rle_dec 0 0) as [_|H]; [|exfalso; apply H; lra].
+  replace (0 + / 2) with (/ 2) by ring.
+  assert (Hfloor : Rfloor (/ 2) = 0).
+  { unfold Rfloor.
+    replace 0 with (IZR 0) by reflexivity. f_equal.
+    unfold Int_part.
+    assert (Hup : up (/ 2) = 1%Z).
+    { symmetry. apply tech_up; simpl; lra. }
+    rewrite Hup. reflexivity. }
+  rewrite Hfloor. reflexivity.
+Qed.
+
+(** Theorem 138: floor(-v) = -ceil(v) *)
+Theorem vec2_floor_neg : forall v : Vec2,
+  vec2_floor (vec2_neg v) = vec2_neg (vec2_ceil v).
+Proof.
+  intros [vx vy]. unfold vec2_floor, vec2_neg, vec2_ceil.
+  cbn [vec2_x vec2_y].
+  f_equal; apply Rfloor_neg.
+Qed.
+
+(** Theorem 139: ceil(-v) = -floor(v) *)
+Theorem vec2_ceil_neg : forall v : Vec2,
+  vec2_ceil (vec2_neg v) = vec2_neg (vec2_floor v).
+Proof.
+  intros [vx vy]. unfold vec2_ceil, vec2_neg, vec2_floor.
+  cbn [vec2_x vec2_y].
+  f_equal; apply Rceil_neg.
+Qed.
+
+(** Theorem 140: floor(v) ≤ ceil(v) componentwise *)
+Theorem vec2_floor_le_ceil : forall v : Vec2,
+  vec2_x (vec2_floor v) <= vec2_x (vec2_ceil v) /\
+  vec2_y (vec2_floor v) <= vec2_y (vec2_ceil v).
+Proof.
+  intros [vx vy]. unfold vec2_floor, vec2_ceil.
+  cbn [vec2_x vec2_y].
+  split; apply Rfloor_le_Rceil.
+Qed.
+
+(** Theorem 141: floor of integer vector is identity *)
+Theorem vec2_floor_integer : forall (zx zy : Z),
+  vec2_floor (mkVec2 (IZR zx) (IZR zy)) = mkVec2 (IZR zx) (IZR zy).
+Proof.
+  intros zx zy. unfold vec2_floor. cbn [vec2_x vec2_y].
+  rewrite !Rfloor_integer. reflexivity.
+Qed.
+
+(** Theorem 142: ceil of integer vector is identity *)
+Theorem vec2_ceil_integer : forall (zx zy : Z),
+  vec2_ceil (mkVec2 (IZR zx) (IZR zy)) = mkVec2 (IZR zx) (IZR zy).
+Proof.
+  intros zx zy. unfold vec2_ceil. cbn [vec2_x vec2_y].
+  rewrite !Rceil_integer. reflexivity.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 130
+    Total theorems: 142
     Admits: 0
     Axioms: Standard Coq real number library only
 

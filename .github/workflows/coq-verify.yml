@@ -179,7 +179,7 @@ jobs:
         working-directory: crates/rource-math/proofs/coq
         run: |
           echo "Building type specifications (9 files)..."
-          for f in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v Bounds.v; do
+          for f in Utils.v Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v; do
             echo "  Building $f..."
             timeout 60 coqc -Q . RourceMath "$f" 2>&1
           done

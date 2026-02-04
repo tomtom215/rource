@@ -608,6 +608,45 @@ Proof.
   apply zvec2_eq; ring.
 Qed.
 
+(** * Floor/Ceil/Round Operations *)
+
+(** For integer vectors, floor/ceil/round are identity operations.
+    This mirrors the R-based proofs (Rfloor_integer, Rceil_integer)
+    but is trivially true for Z by definition. *)
+
+(** Floor of an integer vector is itself *)
+Definition zvec2_floor (v : ZVec2) : ZVec2 := v.
+
+(** Ceiling of an integer vector is itself *)
+Definition zvec2_ceil (v : ZVec2) : ZVec2 := v.
+
+(** Round of an integer vector is itself *)
+Definition zvec2_round (v : ZVec2) : ZVec2 := v.
+
+(** Theorem 57: floor is identity on integers *)
+Theorem zvec2_floor_id : forall v : ZVec2, zvec2_floor v = v.
+Proof. reflexivity. Qed.
+
+(** Theorem 58: ceil is identity on integers *)
+Theorem zvec2_ceil_id : forall v : ZVec2, zvec2_ceil v = v.
+Proof. reflexivity. Qed.
+
+(** Theorem 59: round is identity on integers *)
+Theorem zvec2_round_id : forall v : ZVec2, zvec2_round v = v.
+Proof. reflexivity. Qed.
+
+(** Theorem 60: floor(zero) = zero *)
+Theorem zvec2_floor_zero : zvec2_floor zvec2_zero = zvec2_zero.
+Proof. reflexivity. Qed.
+
+(** Theorem 61: ceil(zero) = zero *)
+Theorem zvec2_ceil_zero : zvec2_ceil zvec2_zero = zvec2_zero.
+Proof. reflexivity. Qed.
+
+(** Theorem 62: round(zero) = zero *)
+Theorem zvec2_round_zero : zvec2_round zvec2_zero = zvec2_zero.
+Proof. reflexivity. Qed.
+
 (** * Computational Tests (Extracted) *)
 
 (** These evaluate to concrete values, demonstrating computability. *)

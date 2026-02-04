@@ -17,6 +17,7 @@ Require Import Reals.
 Require Import Lra.
 Require Import Lia.
 Require Import ZArith.
+Require Import RourceMath.Utils.
 Open Scope R_scope.
 
 (** * Vec3 Definition *)
@@ -187,6 +188,23 @@ Definition vec3_reject (v w : Vec3) : Vec3 :=
     This gives the signed volume of the parallelepiped formed by a, b, c *)
 Definition vec3_scalar_triple (a b c : Vec3) : R :=
   vec3_dot a (vec3_cross b c).
+
+(** * Floor/Ceil/Round Operations *)
+
+(** Component-wise floor: greatest integer ≤ each component.
+    Matches Rust Vec3::floor() which delegates to f32::floor(). *)
+Definition vec3_floor (v : Vec3) : Vec3 :=
+  mkVec3 (Rfloor (vec3_x v)) (Rfloor (vec3_y v)) (Rfloor (vec3_z v)).
+
+(** Component-wise ceiling: least integer ≥ each component.
+    Matches Rust Vec3::ceil() which delegates to f32::ceil(). *)
+Definition vec3_ceil (v : Vec3) : Vec3 :=
+  mkVec3 (Rceil (vec3_x v)) (Rceil (vec3_y v)) (Rceil (vec3_z v)).
+
+(** Component-wise round: round half away from zero.
+    Matches Rust Vec3::round() which delegates to f32::round(). *)
+Definition vec3_round (v : Vec3) : Vec3 :=
+  mkVec3 (Rround (vec3_x v)) (Rround (vec3_y v)) (Rround (vec3_z v)).
 
 (** * Equality *)
 

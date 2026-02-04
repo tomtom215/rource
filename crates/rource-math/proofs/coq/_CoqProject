@@ -2,8 +2,10 @@
 
 # ================================================================
 # Layer 1: Type specifications (8 files)
+# NOTE: Utils.v must precede Vec2.v/Vec3.v (they import Rfloor/Rceil/Rround)
 # ================================================================
 
+Utils.v
 Vec2.v
 Vec3.v
 Vec4.v
@@ -11,7 +13,6 @@ Mat3.v
 Mat4.v
 Color.v
 Rect.v
-Utils.v
 
 # ================================================================
 # Layer 2: R-based algebraic proofs (7 files, 446 theorems)

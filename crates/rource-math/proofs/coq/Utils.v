@@ -12,6 +12,9 @@
 
 Require Import Reals.
 Require Import Lra.
+Require Import Lia.
+Require Import ZArith.
+Require Import R_Ifp.
 Open Scope R_scope.
 
 (** * Definitions *)
@@ -28,6 +31,32 @@ Definition rclamp (v lo hi : R) : R :=
 (** Approximate equality within epsilon *)
 Definition rapprox_eq (a b eps : R) : Prop :=
   Rabs (a - b) < eps.
+
+(** * Scalar Floor/Ceiling/Round Operations *)
+
+(** Scalar floor: greatest integer ≤ x.
+    Uses Int_part from R_Ifp: Int_part(x) = up(x) - 1
+    where up(x) is the smallest integer strictly greater than x. *)
+Definition Rfloor (x : R) : R := IZR (Int_part x).
+
+(** Scalar ceiling: least integer ≥ x.
+    Defined as ceil(x) = -floor(-x). *)
+Definition Rceil (x : R) : R := - Rfloor (- x).
+
+(** Scalar round: round half away from zero (matches Rust f32::round).
+    For x ≥ 0: round(x) = floor(x + 0.5)
+    For x < 0: round(x) = ceil(x - 0.5) *)
+Definition Rround (x : R) : R :=
+  if Rle_dec 0 x then Rfloor (x + / 2)
+  else Rceil (x - / 2).
+
+(** * Degree/Radian Conversion *)
+
+(** Convert degrees to radians: d × π / 180 *)
+Definition rdeg_to_rad (d : R) : R := d * PI / 180.
+
+(** Convert radians to degrees: r × 180 / π *)
+Definition rrad_to_deg (r : R) : R := r * 180 / PI.
 
 (** * Lerp Properties *)
 
@@ -350,4 +379,151 @@ Proof.
   intros. unfold rlerp.
   replace (a + (b - a) * t - (a + (b - a) * s)) with ((b - a) * (t - s)) by ring.
   apply Rabs_mult.
+Qed.
+
+(** * Scalar Floor/Ceiling/Round Properties *)
+
+(** Helper: Int_part of an integer equals the integer itself.
+    Key proof technique: use tech_up to establish up(IZR z) = z+1,
+    then Int_part = up - 1 = z. *)
+Lemma Int_part_IZR : forall z : Z, Int_part (IZR z) = z.
+Proof.
+  intros z. unfold Int_part.
+  assert (Hup : up (IZR z) = (z + 1)%Z).
+  { symmetry. apply tech_up.
+    - rewrite plus_IZR. simpl. lra.
+    - rewrite plus_IZR. simpl. lra. }
+  rewrite Hup. lia.
+Qed.
+
+(** Theorem 38: floor(x) ≤ x *)
+Theorem Rfloor_le : forall x : R, Rfloor x <= x.
+Proof.
+  intros x. unfold Rfloor.
+  destruct (base_Int_part x) as [H _]. exact H.
+Qed.
+
+(** Theorem 39: x < floor(x) + 1 *)
+Theorem Rfloor_lt_succ : forall x : R, x < Rfloor x + 1.
+Proof.
+  intros x. unfold Rfloor.
+  destruct (base_Int_part x) as [_ H]. lra.
+Qed.
+
+(** Theorem 40: x ≤ ceil(x) *)
+Theorem Rceil_ge : forall x : R, x <= Rceil x.
+Proof.
+  intros x. unfold Rceil, Rfloor.
+  destruct (base_Int_part (-x)) as [H _]. lra.
+Qed.
+
+(** Theorem 41: ceil(x) < x + 1 *)
+Theorem Rceil_lt_succ : forall x : R, Rceil x < x + 1.
+Proof.
+  intros x. unfold Rceil, Rfloor.
+  destruct (base_Int_part (-x)) as [_ H]. lra.
+Qed.
+
+(** Theorem 42: floor(0) = 0 *)
+Theorem Rfloor_zero : Rfloor 0 = 0.
+Proof.
+  unfold Rfloor. rewrite Int_part_IZR. reflexivity.
+Qed.
+
+(** Theorem 43: ceil(0) = 0 *)
+Theorem Rceil_zero : Rceil 0 = 0.
+Proof.
+  unfold Rceil. replace (- 0) with 0 by ring.
+  rewrite Rfloor_zero. ring.
+Qed.
+
+(** Theorem 44: floor(-x) = -ceil(x) *)
+Theorem Rfloor_neg : forall x : R, Rfloor (- x) = - Rceil x.
+Proof.
+  intros x. unfold Rceil. ring.
+Qed.
+
+(** Theorem 45: ceil(-x) = -floor(x) *)
+Theorem Rceil_neg : forall x : R, Rceil (- x) = - Rfloor x.
+Proof.
+  intros x. unfold Rceil, Rfloor.
+  replace (- - x) with x by ring. ring.
+Qed.
+
+(** Theorem 46: floor(x) ≤ ceil(x) *)
+Theorem Rfloor_le_Rceil : forall x : R, Rfloor x <= Rceil x.
+Proof.
+  intros x.
+  apply Rle_trans with x.
+  - apply Rfloor_le.
+  - apply Rceil_ge.
+Qed.
+
+(** Theorem 47: floor of an integer is that integer *)
+Theorem Rfloor_integer : forall z : Z, Rfloor (IZR z) = IZR z.
+Proof.
+  intros z. unfold Rfloor. f_equal. apply Int_part_IZR.
+Qed.
+
+(** Theorem 48: ceil of an integer is that integer *)
+Theorem Rceil_integer : forall z : Z, Rceil (IZR z) = IZR z.
+Proof.
+  intros z. unfold Rceil.
+  rewrite <- opp_IZR. rewrite Rfloor_integer.
+  rewrite opp_IZR. ring.
+Qed.
+
+(** * Degree/Radian Conversion Properties *)
+
+(** Theorem 49: deg_to_rad(0) = 0 *)
+Theorem rdeg_to_rad_zero : rdeg_to_rad 0 = 0.
+Proof.
+  unfold rdeg_to_rad. field.
+Qed.
+
+(** Theorem 50: rad_to_deg(0) = 0 *)
+Theorem rrad_to_deg_zero : PI <> 0 -> rrad_to_deg 0 = 0.
+Proof.
+  intros Hpi. unfold rrad_to_deg. field. exact Hpi.
+Qed.
+
+(** Theorem 51: deg → rad → deg round-trip is identity *)
+Theorem rdeg_rad_roundtrip : forall d : R,
+  PI <> 0 -> rrad_to_deg (rdeg_to_rad d) = d.
+Proof.
+  intros d Hpi. unfold rrad_to_deg, rdeg_to_rad. field.
+  exact Hpi.
+Qed.
+
+(** Theorem 52: rad → deg → rad round-trip is identity *)
+Theorem rrad_deg_roundtrip : forall r : R,
+  PI <> 0 -> rdeg_to_rad (rrad_to_deg r) = r.
+Proof.
+  intros r Hpi. unfold rdeg_to_rad, rrad_to_deg. field.
+  exact Hpi.
+Qed.
+
+(** Theorem 53: deg_to_rad(180) = PI *)
+Theorem rdeg_to_rad_180 : rdeg_to_rad 180 = PI.
+Proof.
+  unfold rdeg_to_rad. field.
+Qed.
+
+(** Theorem 54: deg_to_rad(90) = PI / 2 *)
+Theorem rdeg_to_rad_90 : rdeg_to_rad 90 = PI / 2.
+Proof.
+  unfold rdeg_to_rad. field.
+Qed.
+
+(** Theorem 55: deg_to_rad(360) = 2 * PI *)
+Theorem rdeg_to_rad_360 : rdeg_to_rad 360 = 2 * PI.
+Proof.
+  unfold rdeg_to_rad. field.
+Qed.
+
+(** Theorem 56: deg_to_rad is linear: deg_to_rad(a+b) = deg_to_rad(a) + deg_to_rad(b) *)
+Theorem rdeg_to_rad_linear : forall a b : R,
+  rdeg_to_rad (a + b) = rdeg_to_rad a + rdeg_to_rad b.
+Proof.
+  intros a b. unfold rdeg_to_rad. field.
 Qed.

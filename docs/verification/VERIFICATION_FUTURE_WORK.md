@@ -25,15 +25,15 @@ For completed work history, see [VERIFICATION_CHRONOLOGY.md](VERIFICATION_CHRONO
 
 ## Coverage Status
 
-**Current coverage**: 170/255 public operations verified (66.7%).
+**Current coverage**: 178/255 public operations verified (69.8%).
 **Theoretical maximum** (excluding transcendental-blocked and batch operations): ~238/255 (93.3%).
 
 ## Operation Classification
 
 | Category | Description | Count |
 |----------|-------------|-------|
-| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 170 |
-| **ALGEBRAIC GAP** | CAN be proved algebraically, no proof yet | ~13 |
+| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 178 |
+| **ALGEBRAIC GAP** | CAN be proved algebraically, no proof yet | ~5 |
 | **PARTIALLY VERIFIED** | Some proofs exist but missing verification layers | ~17 |
 | **FP-FEASIBLE** | Requires FP modeling; feasible via Flocq or Kani | ~13 |
 | **TRANSCENDENTAL-BLOCKED** | Requires sin/cos/atan2/tan; not provable | 10 |
@@ -138,32 +138,40 @@ Added to `Rect_Compute.v` in Phase 9:
 
 These operations need floating-point modeling via Coq+Flocq 4.1.3 or extended Kani harnesses.
 
-### P4.1: Vec2/3/4 floor/ceil/round
+### P4.1: Vec2/3 floor/ceil/round ✅ COMPLETED (Phase 11)
 
-**Effort**: MEDIUM | **Operations**: 9
+**Effort**: MEDIUM | **Operations**: 6 (Vec2: 3, Vec3: 3) | **Status**: COMPLETED (2026-02-04)
 
-Prove via Flocq: `floor(x) <= x < floor(x) + 1`, `ceil(x) - 1 < x <= ceil(x)`.
-Flocq provides `Zfloor`/`Zceil` for IEEE 754 floats.
+Proved via Coq's `R_Ifp` module (`Int_part`, `up`, `archimed`, `tech_up`):
+- `Rfloor(x) = IZR(Int_part(x))` with `floor(x) ≤ x < floor(x) + 1`
+- `Rceil(x) = -Rfloor(-x)` with `x ≤ ceil(x) < x + 1`
+- `Rround(x)` = half-away-from-zero (matching Rust `f32::round()`)
+- 12 Vec2 theorems (Theorems 131-142) + 12 Vec3 theorems (Theorems 111-122)
+- 6 Vec2 Z-compute + 6 Vec3 Z-compute (identity on integers)
+- Note: Vec4 floor/ceil/round not implemented in Rust source — no proofs needed
 
-### P4.2: Color Integer Conversion Functions
+### P4.2: Color Integer Conversion Functions ✅ COMPLETED (Phase 8)
 
-**Effort**: MEDIUM | **Operations**: 6
+**Effort**: MEDIUM | **Operations**: 6 | **Status**: COMPLETED (2026-01-31)
 
-`from_hex`, `from_hex_alpha`, `from_rgba8`, `to_rgba8`, `to_argb8`, `to_abgr8`:
-Prove output components are in [0.0, 1.0] range after u8/u32-to-f32 conversion.
+Already completed in Phase 8 (Session ykSJI): 21 R-based + 22 Z-based theorems
+for `u8_to_f32`, `f32_to_u8`, `from_u8`, `from_rgb8`, `from_hex`, `from_hex_alpha`.
 
-### P4.3: Color from_rgb8/from_rgb8_const
+### P4.3: Color from_rgb8/from_rgb8_const ✅ COMPLETED (Phase 8)
 
-**Effort**: LOW | **Operations**: 2
+**Effort**: LOW | **Operations**: 2 | **Status**: COMPLETED (2026-01-31)
 
-Same approach as P4.2.
+Included in P4.2 completion (Phase 8).
 
-### P4.4: Utils deg_to_rad/rad_to_deg Roundtrip
+### P4.4: Utils deg_to_rad/rad_to_deg Roundtrip ✅ COMPLETED (Phase 11)
 
-**Effort**: MEDIUM | **Operations**: 2
+**Effort**: MEDIUM | **Operations**: 2 | **Status**: COMPLETED (2026-02-04)
 
-Requires modeling pi as a Flocq binary32 value. Prove finiteness and approximate
-roundtrip: `|rad_to_deg(deg_to_rad(d)) - d| < epsilon`.
+Proved over Coq reals (R) using PI constant:
+- `rdeg_to_rad(d) = d * PI / 180`, `rrad_to_deg(r) = r * 180 / PI`
+- Zero, linearity, notable values (90°→π/2, 180°→π, 360°→2π)
+- Exact roundtrip: `rrad_to_deg(rdeg_to_rad(d)) = d` (PI ≠ 0)
+- 20 new theorems in Utils.v (Theorems 38-56 + 1 helper lemma)
 
 ---
 
@@ -207,9 +215,9 @@ the per-element operations are already triple-verified.
 
 For a new session focused on increasing verification coverage, follow this order:
 
-1. **FP work** (if Flocq available): P4 items extend the FP error bounds layer.
-   P4.1 (floor/ceil/round) and P4.2/P4.3 (Color integer conversions) are the
-   most impactful remaining items.
+1. **FP work** (if Flocq available): Remaining P4 items are all COMPLETED.
+   Next targets: P5 (transcendental-blocked, requires monitoring tool improvements)
+   or extend Vec4 with floor/ceil/round if Rust source adds these operations.
 
 2. **Documentation**: Update coverage tables, run `update-verification-counts.sh`.
 
@@ -219,6 +227,10 @@ For a new session focused on increasing verification coverage, follow this order
 - P2.5 (Rect accessors) — done in Phase 9
 - P3.3 (Vector lerp Z-compute) — done in Phase 9
 - P3.11 (Utils Verus) — done in Phase 7
+- P4.1 (Vec2/3 floor/ceil/round) — done in Phase 11
+- P4.2 (Color integer conversions) — done in Phase 8
+- P4.3 (Color from_rgb8) — done in Phase 8
+- P4.4 (Utils deg_to_rad/rad_to_deg) — done in Phase 11
 
 **Blocked items** (awaiting tool improvements):
 - P3.1 (Vector length Verus) — blocked by sqrt in integer model
@@ -230,9 +242,8 @@ For a new session focused on increasing verification coverage, follow this order
 
 | After Priority | Operations Verified | Coverage | Delta |
 |----------------|--------------------:|----------|-------|
-| **Current** | **170** | **66.7% (of 255)** | — |
-| After remaining P3 | ~178 | 69.8% | +8 |
-| After P4 (FP feasible) | ~191 | 74.9% | +13 |
+| **Current** | **178** | **69.8% (of 255)** | — |
+| After remaining P3 | ~186 | 72.9% | +8 |
 | **Theoretical maximum** (excl. blocked) | **~238** | **93.3%** | — |
 
 **Note**: The operation count is 255 (including 23 Bounds operations). Reaching 100%
@@ -243,5 +254,5 @@ batch operation proofs (7 low-value operations). The practical target is approxi
 ---
 
 *Last updated: 2026-02-04*
-*Current coverage: 170/255 (66.7%)*
-*Remaining actionable P4 items: 4 (P4.1–P4.4); 2 blocked (P3.1, P3.2)*
+*Current coverage: 178/255 (69.8%)*
+*All P4 items COMPLETED; 2 blocked (P3.1, P3.2)*

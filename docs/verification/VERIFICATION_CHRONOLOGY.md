@@ -20,6 +20,7 @@ For remaining work items, see [VERIFICATION_FUTURE_WORK.md](VERIFICATION_FUTURE_
 - [Phase 6: Verus Extensions + Coverage Audit](#phase-6-verus-extensions--coverage-audit)
 - [Phase 7: Kani Expansion + Z-Compute Extensions](#phase-7-kani-expansion--z-compute-extensions)
 - [Phase 9: CI FP Layer + Z-Compute Expansion](#phase-9-ci-fp-layer--z-compute-expansion)
+- [Phase 11: Vec2/3 floor/ceil/round + Utils deg/rad Proofs](#phase-11-vec23-floorceliround--utils-degrad-proofs)
 - [Completed Milestones Summary](#completed-milestones-summary)
 - [Completed Priority Items](#completed-priority-items)
 
@@ -80,8 +81,8 @@ Created Z-based computational bridge enabling Coq extraction to OCaml and WASM.
 
 | File | Theorems | Description |
 |------|----------|-------------|
-| `Vec2_Compute.v` | 50 | Z-based Vec2 operations |
-| `Vec3_Compute.v` | 42 | Z-based Vec3 operations |
+| `Vec2_Compute.v` | 62 | Z-based Vec2 operations |
+| `Vec3_Compute.v` | 54 | Z-based Vec3 operations |
 | `Vec4_Compute.v` | 33 | Z-based Vec4 operations |
 | `Mat3_Compute.v` | 25 | Z-based Mat3 operations |
 | `Mat4_Compute.v` | 50 | Z-based Mat4 operations |
@@ -465,6 +466,83 @@ Updated all items with correct status and blocker documentation.
 
 ---
 
+## Phase 11: Vec2/3 floor/ceil/round + Utils deg/rad Proofs
+
+**Status**: COMPLETED (Session qru8V, 2026-02-04)
+
+### Goals
+1. Complete P4.1: Vec2/Vec3 floor/ceil/round algebraic proofs
+2. Complete P4.4: Utils deg_to_rad/rad_to_deg proofs
+3. Increase operation coverage from 170/255 (66.7%) to 178/255 (69.8%)
+
+### Accomplishments
+
+1. **20 new scalar theorems in `Utils.v`** (Theorems 38-56 + 1 helper lemma):
+   - `Int_part_IZR`: Key lemma establishing `Int_part(IZR z) = z` via `tech_up`
+   - Definitions: `Rfloor`, `Rceil`, `Rround`, `rdeg_to_rad`, `rrad_to_deg`
+   - Floor properties: `Rfloor_le`, `Rfloor_lt_succ`, `Rfloor_zero`, `Rfloor_neg`, `Rfloor_integer`
+   - Ceiling properties: `Rceil_ge`, `Rceil_lt_succ`, `Rceil_zero`, `Rceil_neg`, `Rceil_integer`
+   - Relationship: `Rfloor_le_Rceil`
+   - Deg/rad: `rdeg_to_rad_zero`, `rrad_to_deg_zero`, `rdeg_rad_roundtrip`, `rrad_deg_roundtrip`,
+     `rdeg_to_rad_180`, `rdeg_to_rad_90`, `rdeg_to_rad_360`, `rdeg_to_rad_linear`
+
+2. **12 new Vec2 theorems in `Vec2_Proofs.v`** (Theorems 131-142):
+   - `vec2_floor_le`, `vec2_floor_lt_succ`, `vec2_ceil_ge`, `vec2_ceil_lt_succ`
+   - `vec2_floor_zero`, `vec2_ceil_zero`, `vec2_round_zero`
+   - `vec2_floor_neg`, `vec2_ceil_neg`, `vec2_floor_le_ceil`
+   - `vec2_floor_integer`, `vec2_ceil_integer`
+
+3. **12 new Vec3 theorems in `Vec3_Proofs.v`** (Theorems 111-122):
+   - Same property set as Vec2 but for 3-component vectors
+
+4. **6 new Vec2 Z-compute theorems** (`Vec2_Compute.v`, Theorems 57-62):
+   - `zvec2_floor/ceil/round` defined as identity on integers
+   - `zvec2_floor_id`, `zvec2_ceil_id`, `zvec2_round_id`
+   - `zvec2_floor_zero`, `zvec2_ceil_zero`, `zvec2_round_zero`
+
+5. **6 new Vec3 Z-compute theorems** (`Vec3_Compute.v`, Theorems 49-54):
+   - Same pattern as Vec2 Z-compute
+
+6. **Spec file changes**:
+   - `Vec2.v`: Added `Require Import RourceMath.Utils.`, `vec2_floor/ceil/round` definitions
+   - `Vec3.v`: Added `Require Import RourceMath.Utils.`, `vec3_floor/ceil/round` definitions
+   - `_CoqProject`: Moved `Utils.v` before `Vec2.v` (dependency ordering)
+
+### Key Decisions
+
+- **Scalar definitions in Utils.v**: Centralized `Rfloor/Rceil/Rround` in Utils.v to avoid
+  name collisions (Complexity.v and Vec_CrossType.v both import Vec2 and Vec3).
+- **R_Ifp module for floor/ceil**: Used Coq's `Int_part`/`up`/`archimed`/`tech_up` from
+  `Reals.R_Ifp` rather than Flocq's `Zfloor`/`Zceil`, since proofs are over R (reals)
+  not FP error bounds.
+- **Half-away-from-zero rounding**: `Rround(x) = if x ≥ 0 then Rfloor(x + 1/2) else Rceil(x - 1/2)`,
+  matching Rust's `f32::round()` semantics.
+- **`cbn` vs `simpl`**: Used `cbn [vec2_x vec2_y]` instead of `simpl` to prevent unfolding
+  `Rfloor` (which breaks `rewrite` pattern matching).
+
+### Proof Engineering Notes
+
+- `tech_up` is the key primitive: establishes `up(IZR z) = (z+1)%Z` by showing
+  `IZR z < IZR (z+1)` and `IZR(z+1) - IZR z ≤ 1`.
+- `round_zero` requires direct computation: `up(1/2) = 1` via `tech_up`, then
+  `Int_part(1/2) = 0`, therefore `Rfloor(1/2) = 0`.
+- `field` tactic fully solves deg/rad equations with `PI ≠ 0` as sole side condition.
+
+### Summary
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| Coq R-based theorems | 1095 | 1139 | +44 |
+| Coq Z-based theorems | 417 | 429 | +12 |
+| Grand total | 2573 | 2629 | +56 |
+| Utils verified operations | 3/5 (60%) | 5/5 (100%) | +2 |
+| Vec2 verified operations | 23/42 (55%) | 26/42 (62%) | +3 |
+| Vec3 verified operations | 19/28 (68%) | 22/28 (79%) | +3 |
+| Overall coverage | 170/255 (66.7%) | 178/255 (69.8%) | +8 |
+| P4 status | 0/4 items completed | 4/4 items completed | All P4 DONE |
+
+---
+
 ## Completed Milestones Summary
 
 | # | Milestone | Status |
@@ -508,9 +586,13 @@ Updated all items with correct status and blocker documentation.
 | P3.12 | Utils approx_eq | COMPLETED | 7 proofs |
 | P1.4 | Mat4 orthographic projection | COMPLETED | 11 proofs (Phase 6-7) |
 | P1.5 | Mat4 look_at view matrix | COMPLETED | 17 Coq theorems + 4 Kani harnesses (Phase 10) |
+| P4.1 | Vec2/3 floor/ceil/round | COMPLETED | 24 Coq R + 12 Coq Z theorems (Phase 11) |
+| P4.2 | Color integer conversions | COMPLETED | 21 R + 22 Z theorems (Phase 8) |
+| P4.3 | Color from_rgb8 | COMPLETED | Included in P4.2 (Phase 8) |
+| P4.4 | Utils deg_to_rad/rad_to_deg | COMPLETED | 20 Coq R theorems (Phase 11) |
 
 ---
 
 *Last updated: 2026-02-04*
-*Total phases: 10 implementation phases*
-*Total completed priority items: 21/24 (88%)*
+*Total phases: 11 implementation phases*
+*Total completed priority items: 25/28 (89%)*
