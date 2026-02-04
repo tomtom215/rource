@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770169276103,
+  "lastUpdate": 1770217542784,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5132,6 +5132,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/614593a014e8cff022a0b00ee7335683011f4d1b"
         },
         "date": 1770169275567,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aaf9e76fee5feb5303893d85a086af57c7518413",
+          "message": "Merge pull request #258 from tomtom215/claude/peer-review-standards-82WIW\n\nAdd look_at view matrix with 16 new theorems and 4 Kani harnesses",
+          "timestamp": "2026-02-04T10:01:32-05:00",
+          "tree_id": "6a9af5931479974140fac8379be3a2c08937eef8",
+          "url": "https://github.com/tomtom215/rource/commit/aaf9e76fee5feb5303893d85a086af57c7518413"
+        },
+        "date": 1770217542190,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
