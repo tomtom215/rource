@@ -421,7 +421,7 @@ Proof. intros. field. Qed.
 Theorem fp_bounds_from_center_size_size_recovery :
   forall (c s : R),
   (c + s / 2) - (c - s / 2) = s.
-Proof. intros. ring. Qed.
+Proof. intros. field. Qed.
 
 (* ================================================================== *)
 (*  SECTION 11: Include Point                                           *)

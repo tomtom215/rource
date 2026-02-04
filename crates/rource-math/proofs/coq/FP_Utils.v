@@ -117,9 +117,9 @@ Proof.
   intros v lo hi Hlh.
   split.
   - unfold Rmax. destruct (Rle_dec lo (Rmin v hi)); lra.
-  - unfold Rmax, Rmin.
-    destruct (Rle_dec lo (Rmin v hi));
-    destruct (Rle_dec v hi); lra.
+  - unfold Rmax. destruct (Rle_dec lo (Rmin v hi)) as [_|_].
+    + apply Rmin_r.
+    + exact Hlh.
 Qed.
 
 (* ================================================================== *)
