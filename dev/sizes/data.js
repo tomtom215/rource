@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770217542784,
+  "lastUpdate": 1770248458128,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5171,6 +5171,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/aaf9e76fee5feb5303893d85a086af57c7518413"
         },
         "date": 1770217542190,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "719cac8b92f1e7e956dbd05a3ee684a315d13ca5",
+          "message": "Merge pull request #259 from tomtom215/claude/peer-review-standards-qru8V\n\nAdd floor/ceil/round operations and degree/radian conversions to Coq proofs",
+          "timestamp": "2026-02-04T18:38:51-05:00",
+          "tree_id": "2943b17ee2d67c6d2f9995593bcb14b88837bf54",
+          "url": "https://github.com/tomtom215/rource/commit/719cac8b92f1e7e956dbd05a3ee684a315d13ca5"
+        },
+        "date": 1770248456970,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
