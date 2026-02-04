@@ -20,10 +20,10 @@ Rource is designed as a modular, multi-platform visualization system with three 
 │                    (Scene, Camera, Config)                        │
 ├───────────────────────────────────────────────────────────────────┤
 │                         rource-render                             │
-│             (Software Renderer, WebGL2 Renderer)                  │
+│         (Software Renderer, WebGL2, wgpu Renderer)               │
 ├─────────────────────┬─────────────────────────────────────────────┤
 │     rource-math     │                rource-vcs                   │
-│   (Vec2, Mat4, etc) │     (Git, SVN, Custom format parsers)       │
+│   (Vec2, Mat4, etc) │  (Git, SVN, Mercurial, Bazaar, Custom)      │
 └─────────────────────┴─────────────────────────────────────────────┘
 ```
 
@@ -52,6 +52,7 @@ Version control system log parsing with memory-efficient storage:
 │  • GitParser    │  • CommitStore  │  • StringInterner │
 │  • SvnParser    │  • CompactCommit│  • PathInterner   │
 │  • CustomParser │  • CompactChange│                   │
+│  • MercurialParser               │                   │
 │  • BazaarParser │                 │                   │
 ├─────────────────┴─────────────────┴───────────────────┤
 │                StreamingCommitLoader                  │
@@ -120,15 +121,17 @@ Backend-agnostic rendering with multiple implementations:
 │   • begin_frame() / end_frame()                       │
 │   • draw_circle(), draw_line(), draw_text()           │
 │   • Clip rectangles, alpha blending                   │
-├───────────────────────────┬───────────────────────────┤
-│    SoftwareRenderer       │      WebGl2Renderer       │
-│                           │                           │
-│  • Pure CPU rendering     │  • GPU-accelerated        │
-│  • Xiaolin Wu AA          │  • Instanced rendering    │
-│  • Bloom post-process     │  • GLSL ES 3.0 shaders    │
-│  • Platform agnostic      │  • Font atlas texture     │
-│                           │  • Context loss handling  │
-└───────────────────────────┴───────────────────────────┘
+├──────────────────┬──────────────────┬──────────────────┤
+│ SoftwareRenderer │  WebGl2Renderer  │   WgpuRenderer   │
+│                  │                  │                  │
+│ • Pure CPU       │ • GPU-accelerated│ • Cross-platform │
+│ • Xiaolin Wu AA  │ • Instanced draw │   GPU rendering  │
+│ • Bloom post-    │ • GLSL ES 3.0    │ • WebGPU/Vulkan/ │
+│   process        │   shaders        │   Metal/DX12     │
+│ • Platform       │ • Font atlas     │ • Native + WASM  │
+│   agnostic       │ • Context loss   │ • wgpu crate     │
+│                  │   handling       │                  │
+└──────────────────┴──────────────────┴──────────────────┘
 ```
 
 ### rource-cli
@@ -304,18 +307,18 @@ Benchmark (Home Assistant Core: 103k commits, 533k file changes):
 
 ## Testing Strategy
 
-- **Unit tests**: Per-module, 2700+ tests across crates
+- **Unit tests**: Per-module, 2876 tests across crates
 - **Integration tests**: End-to-end parsing and rendering
 - **Visual tests**: Headless frame export for regression testing
 - **Property tests**: Math operations with random inputs
 - **Doc tests**: Examples in rustdoc comments
 
-Total: **2700+ tests** across the codebase
+Total: **2876 tests** across the codebase
 
 ## Future Considerations
 
 1. **GPU Compute**: Use compute shaders for physics simulation
 2. **LOD System**: Reduce detail for zoomed-out views
 3. **Incremental Updates**: Only recompute affected subtrees
-4. **WebGPU Backend**: When browser support matures
-5. **Native GPU**: Vulkan/Metal backends via `wgpu`
+4. **WebGPU Maturation**: Expand wgpu backend as browser WebGPU support matures
+5. **wgpu Feature Parity**: Bring wgpu backend to full parity with WebGL2 features

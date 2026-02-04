@@ -84,9 +84,9 @@
 | Need | Tool | Status |
 |------|------|--------|
 | Algebraic correctness (Rust) | Verus | ADOPT (475 proofs) |
-| Mathematical theorems | Coq | ADOPT (1327 theorems: 968 R-based + 359 Z-based) |
-| IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (172 harnesses) |
-| FP error bounds | Coq + Flocq | ADOPT (99 theorems) |
+| Mathematical theorems | Coq | ADOPT (1512 theorems: 1095 R-based + 417 Z-based) |
+| IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (225 harnesses) |
+| FP error bounds | Coq + Flocq | ADOPT (361 theorems) |
 | Pure functional extraction | Aeneas | MONITOR (no f32 yet) |
 | Deductive FP via Why3/CVC5 | Creusot | MONITOR |
 | Cryptographic integer code | hax | NOT APPLICABLE |
@@ -132,6 +132,8 @@
 | 143 | `Z.abs_triangle` for approximate-equality triangle inequality | Transitive approximate equality via triangle inequality | Factor difference via `lia`, `eapply Z.le_lt_trans`, `apply Z.abs_triangle` |
 | 144 | `Z.div_add_l` enables center-translation proofs | `(a*b + c)/b = a + c/b` | Factor sum, then `rewrite Z.div_add_l by lia` |
 | 148 | `zlerp_bounded` requires careful Z division reasoning | Division monotonicity chain for bounded interpolation | `Z.mul_le_mono_nonneg_l` → `Z.div_le_mono` → `Z.div_mul` |
+| 201 | `apply vec3_eq; ring` fails — unreduced record projections on RHS | `apply vec3_eq` generates goals with `v3x (mkVec3 0 0 0)` which `ring` can't handle as opaque | Always use `apply vec3_eq; simpl; ring` — the `simpl` reduces `v3x (mkVec3 a b c)` → `a` |
+| 202 | Orthonormal basis parameterization avoids sqrt in Coq | `look_at(eye, target, up)` requires `normalize` (sqrt), unprovable in Coq | Parameterize as `look_at(s, u, f, eye)` with pre-computed orthonormal basis vectors |
 
 ---
 
@@ -538,7 +540,9 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 199 | 2026-02-01 | 8mCIA | Documentation counts can drift significantly (was 2508, actual 2491→2541 after session) even with update scripts | Scripts update docs but must be run; between runs, manual edits accumulate errors | ALWAYS run `update-verification-counts.sh` after ANY proof file change, not just at session end |
 
 | 200 | 2026-02-03 | IoNDB | `coq-flocq` not found: "No package named coq-flocq found" after `opam install` | `coq-flocq` is NOT in the default opam.ocaml.org repository; it requires the Coq released opam repo (`coq.inria.fr/opam/released`) which returns HTTP 503 | Cascading fallback: try HTTPS endpoints, then clone GitHub mirror (`github.com/coq/opam` → `released/` directory as local opam repo); bumped cache key to v3 |
+| 201 | 2026-02-04 | 82WIW | `apply vec3_eq; ring` fails: "not a valid ring equation" | `apply vec3_eq` introduces `v3x (mkVec3 0 0 0)` on RHS; `ring` can't handle unreduced record projections | Always `apply vec3_eq; simpl; ring` — existing codebase proofs consistently used this pattern |
+| 202 | 2026-02-04 | 82WIW | `look_at(eye, target, up)` proofs blocked by sqrt/normalize | Coq cannot reason about `sqrt` algebraically (transcendental, axiomatized) | Parameterize as `look_at(s, u, f, eye)` with pre-computed orthonormal basis; proves all structural properties |
 
 ---
 
-*Last updated: 2026-02-03 | 200 entries | 14 categories*
+*Last updated: 2026-02-04 | 202 entries | 14 categories*

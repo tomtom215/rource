@@ -6,7 +6,7 @@
 //! Verifies IEEE 754 safety properties for Mat4 operations: determinant,
 //! inverse, orthographic, and perspective.
 
-use crate::Mat4;
+use crate::{Mat4, Vec3};
 
 /// Bound for 4×4 determinant: involves products of 4 elements.
 /// Worst case: `~24·v⁴ < MAX` → `v < (MAX/24)^(1/4) ≈ 1.2e9`. Using 1e9.
@@ -582,5 +582,128 @@ fn verify_mat4_mul_identity_right() {
     let result = mat * Mat4::IDENTITY;
     for i in 0..16 {
         assert!(result.m[i] == mat.m[i], "M * I should equal M");
+    }
+}
+
+// ============================================================================
+// look_at
+// ============================================================================
+
+/// Bound for look_at inputs: coordinate values and direction components.
+/// look_at involves normalize (div by sqrt), cross products (3 multiplies),
+/// and dot products (3 multiplies + 2 adds). Using moderate bound.
+const LOOK_AT_BOUND: f32 = 1e6;
+
+/// **Finiteness**: `look_at()` with bounded, non-degenerate inputs produces
+/// a finite matrix. All 16 output components must be finite IEEE 754 f32.
+#[kani::proof]
+fn verify_mat4_look_at_finite() {
+    let ex: f32 = kani::any();
+    let ey: f32 = kani::any();
+    let ez: f32 = kani::any();
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    let tz: f32 = kani::any();
+
+    kani::assume(ex.is_finite() && ex.abs() < LOOK_AT_BOUND);
+    kani::assume(ey.is_finite() && ey.abs() < LOOK_AT_BOUND);
+    kani::assume(ez.is_finite() && ez.abs() < LOOK_AT_BOUND);
+    kani::assume(tx.is_finite() && tx.abs() < LOOK_AT_BOUND);
+    kani::assume(ty.is_finite() && ty.abs() < LOOK_AT_BOUND);
+    kani::assume(tz.is_finite() && tz.abs() < LOOK_AT_BOUND);
+
+    let eye = Vec3::new(ex, ey, ez);
+    let target = Vec3::new(tx, ty, tz);
+
+    // Ensure non-degenerate: eye != target (forward direction has length)
+    let diff = target - eye;
+    kani::assume(diff.length_squared() > f32::EPSILON);
+
+    let result = Mat4::look_at(eye, target, Vec3::Y);
+    for i in 0..16 {
+        assert!(
+            result.m[i].is_finite(),
+            "look_at() produced non-finite component"
+        );
+    }
+}
+
+/// **Degenerate case**: `look_at(eye, eye, up)` returns identity when
+/// eye equals target (zero forward direction).
+#[kani::proof]
+fn verify_mat4_look_at_eye_equals_target() {
+    let ex: f32 = kani::any();
+    let ey: f32 = kani::any();
+    let ez: f32 = kani::any();
+
+    kani::assume(ex.is_finite() && ex.abs() < LOOK_AT_BOUND);
+    kani::assume(ey.is_finite() && ey.abs() < LOOK_AT_BOUND);
+    kani::assume(ez.is_finite() && ez.abs() < LOOK_AT_BOUND);
+
+    let eye = Vec3::new(ex, ey, ez);
+    let result = Mat4::look_at(eye, eye, Vec3::Y);
+
+    // Should return identity matrix
+    assert!(result.m[0] == 1.0, "look_at degenerate: m[0] should be 1");
+    assert!(result.m[5] == 1.0, "look_at degenerate: m[5] should be 1");
+    assert!(result.m[10] == 1.0, "look_at degenerate: m[10] should be 1");
+    assert!(result.m[15] == 1.0, "look_at degenerate: m[15] should be 1");
+    // Off-diagonal should be zero
+    assert!(result.m[1] == 0.0, "look_at degenerate: m[1] should be 0");
+    assert!(result.m[4] == 0.0, "look_at degenerate: m[4] should be 0");
+}
+
+/// **W-component preservation**: The bottom row of look_at is [0, 0, 0, 1].
+/// This ensures affine transformation structure.
+#[kani::proof]
+fn verify_mat4_look_at_affine_structure() {
+    let ex: f32 = kani::any();
+    let ey: f32 = kani::any();
+    let ez: f32 = kani::any();
+    let tx: f32 = kani::any();
+    let ty: f32 = kani::any();
+    let tz: f32 = kani::any();
+
+    kani::assume(ex.is_finite() && ex.abs() < LOOK_AT_BOUND);
+    kani::assume(ey.is_finite() && ey.abs() < LOOK_AT_BOUND);
+    kani::assume(ez.is_finite() && ez.abs() < LOOK_AT_BOUND);
+    kani::assume(tx.is_finite() && tx.abs() < LOOK_AT_BOUND);
+    kani::assume(ty.is_finite() && ty.abs() < LOOK_AT_BOUND);
+    kani::assume(tz.is_finite() && tz.abs() < LOOK_AT_BOUND);
+
+    let eye = Vec3::new(ex, ey, ez);
+    let target = Vec3::new(tx, ty, tz);
+    let diff = target - eye;
+    kani::assume(diff.length_squared() > f32::EPSILON);
+
+    let result = Mat4::look_at(eye, target, Vec3::Y);
+
+    // Bottom row must be [0, 0, 0, 1] for affine transform
+    assert!(result.m[3] == 0.0, "look_at: m[3] should be 0");
+    assert!(result.m[7] == 0.0, "look_at: m[7] should be 0");
+    assert!(result.m[11] == 0.0, "look_at: m[11] should be 0");
+    assert!(result.m[15] == 1.0, "look_at: m[15] should be 1");
+}
+
+/// **NaN-freedom**: `look_at()` with forward parallel to up vector
+/// still produces a finite matrix (tests fallback path).
+#[kani::proof]
+fn verify_mat4_look_at_forward_parallel_up() {
+    let ey: f32 = kani::any();
+    let tz: f32 = kani::any();
+
+    kani::assume(ey.is_finite() && ey.abs() < LOOK_AT_BOUND && ey.abs() > 1.0);
+    kani::assume(tz.is_finite() && tz.abs() < LOOK_AT_BOUND);
+
+    // Looking straight up: forward is (0, 1, 0), which is parallel to Vec3::Y
+    let eye = Vec3::new(0.0, 0.0, tz);
+    let target = Vec3::new(0.0, ey, tz);
+
+    let result = Mat4::look_at(eye, target, Vec3::Y);
+    for i in 0..16 {
+        assert!(
+            result.m[i].is_finite(),
+            "look_at() with parallel forward/up produced non-finite"
+        );
     }
 }

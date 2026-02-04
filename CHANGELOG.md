@@ -189,7 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Performance Optimization Summary
 
-Rource has undergone 59 documented optimization phases, achieving:
+Rource has undergone 83 documented optimization phases, achieving:
 
 | Metric | Improvement |
 |--------|-------------|
@@ -226,7 +226,7 @@ See [docs/performance/](./docs/performance/) for detailed documentation of all o
 ## Links
 
 - [Original Gource](https://github.com/acaudwell/Gource) - The inspiration for this project
-- [Performance Documentation](./docs/performance/) - 59 optimization phases
+- [Performance Documentation](./docs/performance/) - 83 optimization phases
 - [Architecture Documentation](./docs/ARCHITECTURE.md) - Crate structure
 - [Contributing Guidelines](./CONTRIBUTING.md) - How to contribute
 

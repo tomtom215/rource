@@ -4,8 +4,8 @@
 
 | Version | Supported          |
 |---------|--------------------|
-| 1.x.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| 0.1.x   | :white_check_mark: |
+| < 0.1.0 | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -108,4 +108,4 @@ We appreciate responsible disclosure of security vulnerabilities. Contributors w
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-02-04*

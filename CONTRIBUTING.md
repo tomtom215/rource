@@ -10,7 +10,7 @@ Be respectful and constructive in all interactions. We welcome contributors of a
 
 ### Prerequisites
 
-- **Rust 1.82+** - Install via [rustup](https://rustup.rs/)
+- **Rust 1.93+** - Install via [rustup](https://rustup.rs/)
 - **wasm-pack** - For WebAssembly builds (`cargo install wasm-pack`)
 - **Git** - For version control
 
@@ -49,9 +49,9 @@ wasm-pack build --target web --release
 rource/
 ├── crates/
 │   ├── rource-math/      # Math primitives (Vec2, Mat4, Color, etc.)
-│   ├── rource-vcs/       # VCS log parsing (Git, SVN, custom format)
+│   ├── rource-vcs/       # VCS log parsing (Git, SVN, Custom, Mercurial, Bazaar)
 │   ├── rource-core/      # Core engine (scene, physics, camera)
-│   └── rource-render/    # Rendering (software, WebGL2)
+│   └── rource-render/    # Rendering (software, WebGL2, wgpu)
 ├── rource-cli/           # Native command-line application
 ├── rource-wasm/          # WebAssembly application
 │   └── www/              # Web demo (HTML, CSS, JavaScript)
@@ -82,7 +82,7 @@ Follow these guidelines:
 ### 3. Test Your Changes
 
 ```bash
-# Run all tests (2700+ tests)
+# Run all tests (2876+ tests)
 cargo test
 
 # Run tests for a specific crate
@@ -91,8 +91,8 @@ cargo test -p rource-core
 # Run with output for debugging
 cargo test -- --nocapture
 
-# Check for warnings
-cargo clippy -- -D warnings
+# Check for warnings (must include --all-features to catch feature-gated code)
+cargo clippy --all-targets --all-features -- -D warnings
 
 # Format code
 cargo fmt
@@ -161,10 +161,10 @@ mod tests {
 
 | Crate | Test Count | Focus |
 |-------|------------|-------|
-| rource-math | 405 | Numerical accuracy, edge cases |
-| rource-vcs | 267 | Parser correctness, format edge cases |
-| rource-core | 539 | Scene graph, physics, camera |
-| rource-render | 370 | Rendering correctness, GPU backends |
+| rource-math | 473 | Numerical accuracy, edge cases |
+| rource-vcs | 371 | Parser correctness, format edge cases |
+| rource-core | 570 | Scene graph, physics, camera |
+| rource-render | 643 | Rendering correctness, GPU backends |
 | rource-cli | 358 | CLI argument parsing, integration |
 | rource-wasm | 461 | WebAssembly bindings, JavaScript API |
 
@@ -179,6 +179,45 @@ For end-to-end testing:
 # Verify output
 ls /tmp/test-frames/*.ppm | head -5
 ```
+
+## Formal Verification
+
+This project uses a **hybrid verification architecture** with Verus, Coq, and Kani for machine-checked proofs of mathematical correctness. Together these tools provide **2573 formally verified theorems/harnesses** across all 9 primary math types (Vec2-4, Mat3-4, Color, Rect, Bounds, Utils) plus floating-point error bounds.
+
+- **Verus**: 475 proof functions (Rust-native verification)
+- **Coq (R-based + Z-based)**: 1512 theorems (0 admits, machine-checked)
+- **Coq (FP error bounds)**: 361 theorems (Flocq 4.1.3, IEEE 754 binary32)
+- **Kani (CBMC)**: 225 proof harnesses (bit-precise IEEE 754 f32 verification)
+
+For full details, see [`docs/verification/FORMAL_VERIFICATION.md`](docs/verification/FORMAL_VERIFICATION.md).
+
+To set up and run all verification tools:
+
+```bash
+# Install all formal verification tools and run proofs
+./scripts/setup-formal-verification.sh --verify
+
+# Check-only mode (verify tools are installed)
+./scripts/setup-formal-verification.sh --check
+```
+
+## Documentation Automation
+
+Documentation metrics (verification counts, test counts, optimization phases) are kept consistent via automated scripts:
+
+```bash
+# Update all documentation metrics from ground truth
+./scripts/update-doc-metrics.sh
+
+# Update verification counts only
+./scripts/update-verification-counts.sh
+
+# CI enforcement (exits non-zero if metrics are stale)
+./scripts/update-verification-counts.sh --check
+./scripts/update-doc-metrics.sh --check
+```
+
+Run these scripts after adding or removing proofs, tests, or other tracked metrics. CI enforces consistency via `--check` mode.
 
 ## Code Style
 

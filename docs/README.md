@@ -95,14 +95,18 @@ Complete technical documentation for the Rource project.
 
 ---
 
-### Verification Documentation (7 files)
+### Verification Documentation (11 files)
 
 | Document | Description |
 |----------|-------------|
-| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2552 theorems/harnesses, 8 types) |
+| [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2573 theorems/harnesses, 8 types) |
 | [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (475 proof functions, 7 types) |
-| [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (R-based + Z-based, 1495 theorems, development workflow) |
+| [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (1512 theorems R+Z, 361 FP, development workflow) |
 | [verification/VERIFICATION_COVERAGE.md](./verification/VERIFICATION_COVERAGE.md) | Coverage metrics, limitations, floating-point assessment |
+| [verification/VERIFICATION_CHRONOLOGY.md](./verification/VERIFICATION_CHRONOLOGY.md) | Verification history: phases 1–10, completed milestones |
+| [verification/VERIFICATION_FUTURE_WORK.md](./verification/VERIFICATION_FUTURE_WORK.md) | Verification roadmap: remaining items, coverage projection |
+| [verification/FLOATING_POINT_VERIFICATION.md](./verification/FLOATING_POINT_VERIFICATION.md) | FP verification: Flocq 4.1.3, IEEE 754 error analysis (361 theorems) |
+| [verification/RUST_VERIFICATION_LANDSCAPE.md](./verification/RUST_VERIFICATION_LANDSCAPE.md) | 8-tool landscape survey: Kani, Aeneas, Creusot, hax |
 | [verification/WASM_EXTRACTION_PIPELINE.md](./verification/WASM_EXTRACTION_PIPELINE.md) | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | [verification/SETUP_GUIDE.md](./verification/SETUP_GUIDE.md) | Verus, Coq, MetaCoq, wasm_of_ocaml setup |
 | [verification/CERTICOQ_WASM_ASSESSMENT.md](./verification/CERTICOQ_WASM_ASSESSMENT.md) | Coq-to-WASM pipeline (9 paths surveyed) |
@@ -189,12 +193,12 @@ Complete technical documentation for the Rource project.
 
 | Metric | Value |
 |--------|-------|
-| Total documentation files | **64** |
+| Total documentation files | **72** |
 | Performance documents | 20 |
 | Operations documents | 6 |
 | Architecture/Design documents | 8 |
 | ADR documents | 6 |
-| Verification documents | 3 |
+| Verification documents | 11 |
 | Security documents | 3 |
 | Testing documents | 2 |
 | UX/Accessibility documents | 2 |
@@ -208,13 +212,13 @@ Complete technical documentation for the Rource project.
 |----------|-------|------------------|
 | Performance | 19 | ~450 KB |
 | Root/Core | 14 | ~160 KB |
-| Verification | 3 | ~80 KB |
+| Verification | 11 | ~250 KB |
 | Operations | 6 | ~45 KB |
 | ADRs | 6 | ~25 KB |
 | Security | 3 | ~30 KB |
 | Testing | 2 | ~20 KB |
 | UX | 2 | ~40 KB |
-| **Total** | **65** | **~880 KB** |
+| **Total** | **73** | **~1050 KB** |
 
 ---
 
@@ -258,4 +262,4 @@ done
 
 ---
 
-*Last updated: 2026-01-29*
+*Last updated: 2026-02-04*

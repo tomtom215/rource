@@ -145,7 +145,7 @@ xvfb-run gource --log-format custom log.txt --stop-at-end \
 
 ### Software
 - Linux (tested on Ubuntu 24.04)
-- Rust 1.75+ (for building Rource)
+- Rust 1.93+ (for building Rource)
 - GCC/Clang (for building Gource)
 - Xvfb (for headless Gource testing)
 - `/usr/bin/time` (for memory measurement)
