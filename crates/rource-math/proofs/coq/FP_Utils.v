@@ -162,7 +162,11 @@ Proof.
   destruct (Rle_dec v2 hi);
   destruct (Rle_dec lo v1);
   destruct (Rle_dec lo v2);
-  try lra.
+  try lra;
+  (* When ~(v1<=hi), Rmin v1 hi reduces to hi, so the outer Rmax
+     contains Rle_dec lo hi rather than Rle_dec lo v1. Destruct it. *)
+  destruct (Rle_dec lo hi);
+  lra.
 Qed.
 
 (* ================================================================== *)
