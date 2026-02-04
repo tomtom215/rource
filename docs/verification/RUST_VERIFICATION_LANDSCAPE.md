@@ -15,7 +15,7 @@ For floating-point feasibility, see [FLOATING_POINT_VERIFICATION.md](FLOATING_PO
 |------|----------|------------|---------------------|----------------|
 | **Verus** (current) | SMT/Z3 | No (int specs) | Manual specs | KEEP (algebraic proofs) |
 | **Coq** (current) | Proof assistant | Via Flocq (planned) | Manual specs | KEEP (machine-checked proofs) |
-| **Kani** (adopted) | Bounded model checker | YES (bit-precise) | No (assertion-based) | **ADOPTED** (45 harnesses, 0 failures) |
+| **Kani** (adopted) | Bounded model checker | YES (bit-precise) | No (assertion-based) | **ADOPTED** (225 harnesses, 0 failures) |
 | **Aeneas** | Functional translation | Unknown | YES (pure functional) | **MONITOR** (spec-to-impl) |
 | **Creusot** | Deductive verifier | Via Why3 ieee_float | Inline annotations | **MONITOR** (Why3 FP) |
 | **hax** | Extraction tool | No (backends lack FP) | YES (THIR extraction) | NOT APPLICABLE |
@@ -24,15 +24,15 @@ For floating-point feasibility, see [FLOATING_POINT_VERIFICATION.md](FLOATING_PO
 
 ## Current Capability Gaps
 
-Our verification architecture (Verus + Coq) achieves 1073 theorems across 8 types
-with zero admits. The identified gaps are:
+Our verification architecture (Verus + Coq + Kani) achieves 2573 theorems/harnesses across 10 types
+with zero admits. The remaining gaps are:
 
 | Gap | Description | Blocked Operations | Impact |
 |-----|-------------|-------------------|--------|
-| **G1: Floating-point** | Cannot verify FP operations (sqrt, sin/cos, rounding) | 114/230 (49.6%) | 50.4% coverage ceiling |
-| **G2: Spec-to-impl** | Manual Coq specs (trusted, not machine-generated) | All 230 | Specification trustworthiness |
-| **G3: Edge cases** | No NaN/overflow/infinity verification | ~40 FP operations | Runtime safety |
-| **G4: Transcendentals** | No sin/cos/tan/atan2 verification | ~8 operations | Rotation, angle functions |
+| **G1: Floating-point** | Cannot verify FP operations (sqrt, sin/cos, rounding) | 85/255 (33.3%) | 66.7% coverage ceiling |
+| **G2: Spec-to-impl** | Manual Coq specs (trusted, not machine-generated) | All 255 | Specification trustworthiness |
+| **G3: Edge cases** | NaN/overflow/infinity — ADDRESSED by Kani (225 harnesses) | ~~40~~ → 0 | **RESOLVED** |
+| **G4: Transcendentals** | No sin/cos/tan/atan2 verification | ~10 operations | Rotation, angle functions |
 
 ## Tool 1: Kani (Bounded Model Checker)
 
@@ -371,20 +371,20 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  Layer 1: Algebraic Correctness (CURRENT)                           │
-│  ├── Verus (327 proof functions)                                    │
+│  ├── Verus (475 proof functions)                                    │
 │  │   └── Int specs → Z3 → algebraic properties                     │
-│  └── Coq (1512 theorems)                                             │
+│  └── Coq (1512 theorems, R+Z)                                       │
 │      └── R-based + Z-based → machine-checked proofs                │
 │                                                                     │
-│  Layer 2: Edge Case Safety (NEW — Kani)                             │
+│  Layer 2: Edge Case Safety (CURRENT — Kani)                         │
 │  └── Kani (bounded model checker)                                   │
 │      └── f32 bit-precise → NaN/overflow/infinity checking          │
 │      └── 225 harnesses for FP-intensive operations                 │
 │                                                                     │
-│  Layer 3: Floating-Point Accuracy (PLANNED — Flocq)                │
-│  └── Coq + Flocq + VCFloat2                                        │
+│  Layer 3: Floating-Point Accuracy (IN PROGRESS — Flocq)            │
+│  └── Coq + Flocq 4.1.3                                              │
 │      └── IEEE 754 error bounds → "within N ULPs" proofs           │
-│      └── ~46 operations (Phase FP-1)                               │
+│      └── 361 FP theorems (9 files, Phase FP-1 foundations)         │
 │                                                                     │
 │  Layer 4: Spec-to-Impl Bridge (FUTURE — Aeneas, pending)           │
 │  └── Aeneas functional translation                                  │
@@ -392,7 +392,7 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 │      └── Blocked on: f32 support confirmation                      │
 │                                                                     │
 │  Testing Layer: Unit + Property + Chaos (CURRENT)                   │
-│  └── cargo test (2700+ tests, 100% operation coverage)            │
+│  └── cargo test (2876 tests, 100% operation coverage)              │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -463,7 +463,7 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 
 ---
 
-*Last updated: 2026-01-30*
+*Last updated: 2026-02-04*
 *Tools investigated: 8 (Verus, Coq, Kani, Aeneas, Creusot, hax, rocq-of-rust, Stainless)*
-*Recommendation: ADOPT Kani for edge-case safety; MONITOR Aeneas for spec-to-impl bridge*
-*Current architecture: 2-layer (Verus + Coq); Target: 4-layer (+ Kani + Flocq)*
+*Recommendation: Kani ADOPTED for edge-case safety; MONITOR Aeneas for spec-to-impl bridge*
+*Current architecture: 3-layer (Verus + Coq + Kani); Target: 4-layer (+ Flocq complete)*

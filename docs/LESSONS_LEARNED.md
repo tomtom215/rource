@@ -84,9 +84,9 @@
 | Need | Tool | Status |
 |------|------|--------|
 | Algebraic correctness (Rust) | Verus | ADOPT (475 proofs) |
-| Mathematical theorems | Coq | ADOPT (1327 theorems: 968 R-based + 359 Z-based) |
-| IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (172 harnesses) |
-| FP error bounds | Coq + Flocq | ADOPT (99 theorems) |
+| Mathematical theorems | Coq | ADOPT (1512 theorems: 1095 R-based + 417 Z-based) |
+| IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (225 harnesses) |
+| FP error bounds | Coq + Flocq | ADOPT (361 theorems) |
 | Pure functional extraction | Aeneas | MONITOR (no f32 yet) |
 | Deductive FP via Why3/CVC5 | Creusot | MONITOR |
 | Cryptographic integer code | hax | NOT APPLICABLE |

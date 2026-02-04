@@ -472,7 +472,7 @@ ls -la rource_math.wasm  # Should be ~6.8 KB
 ### Manual Verification
 
 ```bash
-# Verus (426 proof functions, ~seconds)
+# Verus (475 proof functions, ~seconds)
 for f in crates/rource-math/proofs/*_proofs.rs; do
   /tmp/verus/verus "$f"
 done
@@ -553,7 +553,7 @@ When migrating from Coq 8.18 to Rocq 9.x, the following changes are required:
 1. `rocq-prover.org/opam/released` repo is stable (no HTTP 503)
 2. `rocq-metarocq` opam package is available for target version
 3. `rocq-equations` opam package is available for target version
-4. All 612 theorems verified to compile with Rocq 9.x
+4. All 1873 theorems verified to compile with Rocq 9.x
 
 **Until then**: Continue using Coq 8.18 with MetaCoq built from source.
 
@@ -712,14 +712,14 @@ cannot handle.
 
 ```
 crates/rource-math/proofs/
-  |-- vec2_proofs.rs          # Verus: Vec2 (49 proof fns)
-  |-- vec3_proofs.rs          # Verus: Vec3 (40 proof fns)
-  |-- vec4_proofs.rs          # Verus: Vec4 (39 proof fns)
+  |-- vec2_proofs.rs          # Verus: Vec2 (55 proof fns)
+  |-- vec3_proofs.rs          # Verus: Vec3 (55 proof fns)
+  |-- vec4_proofs.rs          # Verus: Vec4 (55 proof fns)
   |-- mat3_proofs.rs          # Verus: Mat3 base (22 proof fns)
   |-- mat3_extended_proofs.rs # Verus: Mat3 extended (26 proof fns)
   |-- mat4_proofs.rs          # Verus: Mat4 base (22 proof fns)
   |-- mat4_extended_proofs.rs # Verus: Mat4 extended (32 proof fns)
-  |-- color_proofs.rs         # Verus: Color (45 proof fns)
+  |-- color_proofs.rs         # Verus: Color (57 proof fns)
   |-- rect_proofs.rs          # Verus: Rect (52 proof fns)
   |-- bounds_proofs.rs        # Verus: Bounds (66 proof fns)
   |-- utils_proofs.rs         # Verus: Utils (33 proof fns)

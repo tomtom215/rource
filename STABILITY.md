@@ -1,6 +1,6 @@
 # API Stability Policy
 
-**Version**: 1.0.0
+**Version**: 0.1.0
 **Created**: 2026-01-26
 **Status**: Active
 
@@ -46,69 +46,69 @@ These APIs follow semantic versioning strictly. Breaking changes require a major
 
 | API | Since | Description |
 |-----|-------|-------------|
-| `Rource.create(canvas, options?)` | 1.0.0 | Create Rource instance |
-| `rource.dispose()` | 1.0.0 | Clean up resources |
-| `rource.frame(timestamp)` | 1.0.0 | Main render loop |
-| `rource.forceRender()` | 1.0.0 | Force immediate render |
+| `Rource.create(canvas, options?)` | 0.1.0 | Create Rource instance |
+| `rource.dispose()` | 0.1.0 | Clean up resources |
+| `rource.frame(timestamp)` | 0.1.0 | Main render loop |
+| `rource.forceRender()` | 0.1.0 | Force immediate render |
 
 ### Data Loading
 
 | API | Since | Description |
 |-----|-------|-------------|
-| `rource.loadGitLog(log)` | 1.0.0 | Load git log format |
-| `rource.loadCustomLog(log)` | 1.0.0 | Load custom Gource format |
-| `rource.commitCount()` | 1.0.0 | Total loaded commits |
+| `rource.loadGitLog(log)` | 0.1.0 | Load git log format |
+| `rource.loadCustomLog(log)` | 0.1.0 | Load custom Gource format |
+| `rource.commitCount()` | 0.1.0 | Total loaded commits |
 
 ### Playback Control
 
 | API | Since | Description |
 |-----|-------|-------------|
-| `rource.play()` | 1.0.0 | Start playback |
-| `rource.pause()` | 1.0.0 | Pause playback |
-| `rource.isPlaying()` | 1.0.0 | Check playback state |
-| `rource.togglePlay()` | 1.0.0 | Toggle play/pause |
-| `rource.seek(commitIndex)` | 1.0.0 | Seek to commit |
-| `rource.currentCommit()` | 1.0.0 | Current commit index |
-| `rource.setSpeed(secondsPerDay)` | 1.0.0 | Set playback speed |
-| `rource.getSpeed()` | 1.0.0 | Get playback speed |
+| `rource.play()` | 0.1.0 | Start playback |
+| `rource.pause()` | 0.1.0 | Pause playback |
+| `rource.isPlaying()` | 0.1.0 | Check playback state |
+| `rource.togglePlay()` | 0.1.0 | Toggle play/pause |
+| `rource.seek(commitIndex)` | 0.1.0 | Seek to commit |
+| `rource.currentCommit()` | 0.1.0 | Current commit index |
+| `rource.setSpeed(secondsPerDay)` | 0.1.0 | Set playback speed |
+| `rource.getSpeed()` | 0.1.0 | Get playback speed |
 
 ### Camera Control
 
 | API | Since | Description |
 |-----|-------|-------------|
-| `rource.zoom(factor)` | 1.0.0 | Zoom by factor |
-| `rource.zoomToward(x, y, factor)` | 1.0.0 | Zoom toward point |
-| `rource.pan(dx, dy)` | 1.0.0 | Pan camera |
-| `rource.resize(width, height)` | 1.0.0 | Resize canvas |
-| `rource.resetCamera()` | 1.0.0 | Fit content to view |
-| `rource.getZoom()` | 1.0.0 | Get zoom level |
+| `rource.zoom(factor)` | 0.1.0 | Zoom by factor |
+| `rource.zoomToward(x, y, factor)` | 0.1.0 | Zoom toward point |
+| `rource.pan(dx, dy)` | 0.1.0 | Pan camera |
+| `rource.resize(width, height)` | 0.1.0 | Resize canvas |
+| `rource.resetCamera()` | 0.1.0 | Fit content to view |
+| `rource.getZoom()` | 0.1.0 | Get zoom level |
 
 ### Visual Settings
 
 | API | Since | Description |
 |-----|-------|-------------|
-| `rource.setBloom(enabled)` | 1.0.0 | Toggle bloom effect |
-| `rource.setBackgroundColor(hex)` | 1.0.0 | Set background color |
-| `rource.setShowLabels(show)` | 1.0.0 | Toggle labels |
-| `rource.getShowLabels()` | 1.0.0 | Get label visibility |
+| `rource.setBloom(enabled)` | 0.1.0 | Toggle bloom effect |
+| `rource.setBackgroundColor(hex)` | 0.1.0 | Set background color |
+| `rource.setShowLabels(show)` | 0.1.0 | Toggle labels |
+| `rource.getShowLabels()` | 0.1.0 | Get label visibility |
 
 ### Statistics
 
 | API | Since | Description |
 |-----|-------|-------------|
-| `rource.getFrameStats()` | 1.0.0 | Batched frame statistics (JSON) |
-| `rource.getFps()` | 1.0.0 | Current FPS |
-| `rource.getFrameTimeMs()` | 1.0.0 | Frame time in ms |
-| `rource.getTotalEntities()` | 1.0.0 | Total entity count |
-| `rource.getVisibleFiles()` | 1.0.0 | Visible file count |
-| `rource.getVisibleUsers()` | 1.0.0 | Visible user count |
+| `rource.getFrameStats()` | 0.1.0 | Batched frame statistics (JSON) |
+| `rource.getFps()` | 0.1.0 | Current FPS |
+| `rource.getFrameTimeMs()` | 0.1.0 | Frame time in ms |
+| `rource.getTotalEntities()` | 0.1.0 | Total entity count |
+| `rource.getVisibleFiles()` | 0.1.0 | Visible file count |
+| `rource.getVisibleUsers()` | 0.1.0 | Visible user count |
 
 ### Renderer Info
 
 | API | Since | Description |
 |-----|-------|-------------|
-| `rource.getRendererType()` | 1.0.0 | "WebGPU", "WebGL2", or "Software" |
-| `rource.isGPUAccelerated()` | 1.0.0 | Whether GPU rendering is active |
+| `rource.getRendererType()` | 0.1.0 | "WebGPU", "WebGL2", or "Software" |
+| `rource.isGPUAccelerated()` | 0.1.0 | Whether GPU rendering is active |
 
 ---
 
@@ -120,100 +120,100 @@ These APIs are feature-complete but may change in minor versions. Use with aware
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.getCameraState()` | 1.0.0 | Returns JSON; format may change |
-| `rource.restoreCameraState(x, y, zoom)` | 1.0.0 | May add options parameter |
-| `rource.setAutoFit(enabled)` | 1.0.0 | Auto-fit behavior may evolve |
-| `rource.isAutoFit()` | 1.0.0 | - |
+| `rource.getCameraState()` | 0.1.0 | Returns JSON; format may change |
+| `rource.restoreCameraState(x, y, zoom)` | 0.1.0 | May add options parameter |
+| `rource.setAutoFit(enabled)` | 0.1.0 | Auto-fit behavior may evolve |
+| `rource.isAutoFit()` | 0.1.0 | - |
 
 ### Watermark (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.enableRourceWatermark()` | 1.0.0 | Convenience preset |
-| `rource.disableWatermark()` | 1.0.0 | - |
-| `rource.isWatermarkEnabled()` | 1.0.0 | - |
-| `rource.setWatermarkEnabled(enabled)` | 1.0.0 | - |
-| `rource.setWatermarkText(text)` | 1.0.0 | - |
-| `rource.setWatermarkSubtext(text)` | 1.0.0 | - |
-| `rource.setWatermarkPosition(pos)` | 1.0.0 | Position strings may expand |
-| `rource.setWatermarkOpacity(opacity)` | 1.0.0 | - |
-| `rource.setWatermarkFontSize(size)` | 1.0.0 | - |
-| `rource.setWatermarkColor(hex)` | 1.0.0 | - |
-| `rource.setWatermarkMargin(margin)` | 1.0.0 | - |
-| `rource.setCustomWatermark(text, subtext)` | 1.0.0 | - |
+| `rource.enableRourceWatermark()` | 0.1.0 | Convenience preset |
+| `rource.disableWatermark()` | 0.1.0 | - |
+| `rource.isWatermarkEnabled()` | 0.1.0 | - |
+| `rource.setWatermarkEnabled(enabled)` | 0.1.0 | - |
+| `rource.setWatermarkText(text)` | 0.1.0 | - |
+| `rource.setWatermarkSubtext(text)` | 0.1.0 | - |
+| `rource.setWatermarkPosition(pos)` | 0.1.0 | Position strings may expand |
+| `rource.setWatermarkOpacity(opacity)` | 0.1.0 | - |
+| `rource.setWatermarkFontSize(size)` | 0.1.0 | - |
+| `rource.setWatermarkColor(hex)` | 0.1.0 | - |
+| `rource.setWatermarkMargin(margin)` | 0.1.0 | - |
+| `rource.setCustomWatermark(text, subtext)` | 0.1.0 | - |
 
 ### File Icons (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.initFileIcons()` | 1.0.0 | Required before using icons |
-| `rource.hasFileIcons()` | 1.0.0 | - |
-| `rource.getFileIconCount()` | 1.0.0 | - |
-| `rource.registerFileIcon(ext, color)` | 1.0.0 | May add icon shape options |
+| `rource.initFileIcons()` | 0.1.0 | Required before using icons |
+| `rource.hasFileIcons()` | 0.1.0 | - |
+| `rource.getFileIconCount()` | 0.1.0 | - |
+| `rource.registerFileIcon(ext, color)` | 0.1.0 | May add icon shape options |
 
 ### Font Settings (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.setFontSize(size)` | 1.0.0 | Range may change |
-| `rource.getFontSize()` | 1.0.0 | - |
+| `rource.setFontSize(size)` | 0.1.0 | Range may change |
+| `rource.getFontSize()` | 0.1.0 | - |
 
 ### Vsync Control (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.setVsync(enabled)` | 1.0.0 | WebGPU only; may add modes |
-| `rource.isVsyncEnabled()` | 1.0.0 | - |
+| `rource.setVsync(enabled)` | 0.1.0 | WebGPU only; may add modes |
+| `rource.isVsyncEnabled()` | 0.1.0 | - |
 
 ### Commit Metadata (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.getCommitTimestamp(index)` | 1.0.0 | - |
-| `rource.getCommitAuthor(index)` | 1.0.0 | - |
-| `rource.getCommitFileCount(index)` | 1.0.0 | - |
-| `rource.getDateRange()` | 1.0.0 | JSON format may evolve |
+| `rource.getCommitTimestamp(index)` | 0.1.0 | - |
+| `rource.getCommitAuthor(index)` | 0.1.0 | - |
+| `rource.getCommitFileCount(index)` | 0.1.0 | - |
+| `rource.getDateRange()` | 0.1.0 | JSON format may evolve |
 
 ### Commit Limits (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.setMaxCommits(max)` | 1.0.0 | - |
-| `rource.getMaxCommits()` | 1.0.0 | - |
-| `rource.wasCommitsTruncated()` | 1.0.0 | - |
-| `rource.getOriginalCommitCount()` | 1.0.0 | - |
+| `rource.setMaxCommits(max)` | 0.1.0 | - |
+| `rource.getMaxCommits()` | 0.1.0 | - |
+| `rource.wasCommitsTruncated()` | 0.1.0 | - |
+| `rource.getOriginalCommitCount()` | 0.1.0 | - |
 
 ### Extended Statistics (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.getVisibleDirectories()` | 1.0.0 | - |
-| `rource.getActiveActions()` | 1.0.0 | - |
-| `rource.getDrawCalls()` | 1.0.0 | - |
-| `rource.getTotalFiles()` | 1.0.0 | - |
-| `rource.getTotalDirectories()` | 1.0.0 | - |
-| `rource.getTotalUsers()` | 1.0.0 | - |
-| `rource.getCommitDirectoryCount()` | 1.0.0 | - |
-| `rource.getTotalFrames()` | 1.0.0 | - |
-| `rource.getUptime()` | 1.0.0 | - |
-| `rource.getDetailedFrameStats()` | 1.0.0 | JSON format may evolve |
+| `rource.getVisibleDirectories()` | 0.1.0 | - |
+| `rource.getActiveActions()` | 0.1.0 | - |
+| `rource.getDrawCalls()` | 0.1.0 | - |
+| `rource.getTotalFiles()` | 0.1.0 | - |
+| `rource.getTotalDirectories()` | 0.1.0 | - |
+| `rource.getTotalUsers()` | 0.1.0 | - |
+| `rource.getCommitDirectoryCount()` | 0.1.0 | - |
+| `rource.getTotalFrames()` | 0.1.0 | - |
+| `rource.getUptime()` | 0.1.0 | - |
+| `rource.getDetailedFrameStats()` | 0.1.0 | JSON format may evolve |
 
 ### GPU Features (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.isWgpu()` | 1.0.0 | - |
-| `rource.isWebGL2()` | 1.0.0 | - |
-| `rource.getGPUInfo()` | 1.0.0 | JSON format may evolve |
-| `rource.isContextLost()` | 1.0.0 | - |
-| `rource.recoverContext()` | 1.0.0 | Recovery behavior may change |
+| `rource.isWgpu()` | 0.1.0 | - |
+| `rource.isWebGL2()` | 0.1.0 | - |
+| `rource.getGPUInfo()` | 0.1.0 | JSON format may evolve |
+| `rource.isContextLost()` | 0.1.0 | - |
+| `rource.recoverContext()` | 0.1.0 | Recovery behavior may change |
 
 ### Playback Navigation (Beta)
 
 | API | Since | Notes |
 |-----|-------|-------|
-| `rource.stepForward()` | 1.0.0 | - |
-| `rource.stepBackward()` | 1.0.0 | - |
+| `rource.stepForward()` | 0.1.0 | - |
+| `rource.stepBackward()` | 0.1.0 | - |
 
 ---
 
@@ -247,10 +247,10 @@ Rource follows [Semantic Versioning 2.0.0](https://semver.org/):
 
 | Change Type | Version Bump | Example |
 |-------------|--------------|---------|
-| Breaking change to Stable API | MAJOR | 1.0.0 → 2.0.0 |
-| New feature | MINOR | 1.0.0 → 1.1.0 |
-| Bug fix | PATCH | 1.0.0 → 1.0.1 |
-| Beta API change | MINOR | 1.0.0 → 1.1.0 |
+| Breaking change to Stable API | MAJOR | 0.1.0 → 0.2.0 |
+| New feature | MINOR | 0.1.0 → 0.2.0 |
+| Bug fix | PATCH | 0.1.0 → 0.1.1 |
+| Beta API change | MINOR | 0.1.0 → 0.2.0 |
 | Experimental API change | Any | Any version |
 
 ### What Constitutes a Breaking Change?
@@ -292,7 +292,7 @@ Rource follows [Semantic Versioning 2.0.0](https://semver.org/):
 ```javascript
 // In rource-wasm code:
 #[wasm_bindgen(js_name = oldApiName)]
-#[deprecated(since = "1.2.0", note = "Use newApiName() instead")]
+#[deprecated(since = "0.2.0", note = "Use newApiName() instead")]
 pub fn old_api_name(&self) -> String {
     web_sys::console::warn_1(&"oldApiName() is deprecated. Use newApiName() instead.".into());
     self.new_api_name()
@@ -326,7 +326,7 @@ When upgrading Rource:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.0 | 2026-01-26 | Initial stability policy |
+| 0.1.0 | 2026-01-26 | Initial stability policy |
 
 ---
 

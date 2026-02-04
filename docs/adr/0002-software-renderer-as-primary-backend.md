@@ -94,9 +94,9 @@ Depend on external GPU library for all rendering.
 ## References
 
 - `crates/rource-render/src/lib.rs` - RenderBackend trait
-- `crates/rource-render/src/software/` - Software renderer implementation
-- `crates/rource-render/src/webgl2/` - WebGL2 backend
-- `crates/rource-render/src/wgpu/` - wgpu backend
+- `crates/rource-render/src/backend/software/` - Software renderer implementation
+- `crates/rource-render/src/backend/webgl2/` - WebGL2 backend
+- `crates/rource-render/src/backend/wgpu/` - wgpu backend
 
 ---
 

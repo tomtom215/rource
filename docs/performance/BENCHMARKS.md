@@ -28,7 +28,7 @@ All benchmarks use Criterion 0.8 with `--sample-size 50` for statistical signifi
 | Platform            | x86_64-unknown-linux-gnu            |
 | Rust Version        | 1.93.0 (254b59607 2026-01-19)       |
 | Benchmark Framework | Criterion 0.8                       |
-| Test Suite          | 2700+ tests                        |
+| Test Suite          | 2800+ tests                        |
 | Sample Size         | 50 (default for statistical rigor)  |
 
 ---

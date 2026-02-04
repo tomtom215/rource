@@ -1,21 +1,22 @@
 # Rource Rendering Architecture
 
-This document explains Rource's dual-backend rendering strategy and the design decisions behind it.
+This document explains Rource's multi-backend rendering strategy and the design decisions behind it.
 
 ## Overview
 
-Rource supports two rendering backends:
+Rource supports three rendering backends:
 
-| Backend      | Target                 | Performance | Compatibility    |
-|--------------|------------------------|-------------|------------------|
-| **Software** | Native + WASM fallback | Good        | Universal        |
-| **WebGL2**   | WASM primary           | Best        | WebGL2 required  |
+| Backend      | Target                     | Performance | Compatibility              |
+|--------------|----------------------------|-------------|----------------------------|
+| **wgpu**     | Native + WASM              | Best        | WebGPU/Vulkan/Metal/DX12   |
+| **Software** | Native + WASM fallback     | Good        | Universal                  |
+| **WebGL2**   | WASM primary               | Great       | WebGL2 required            |
 
-The WASM build automatically tries WebGL2 first and falls back to Software if WebGL2 is unavailable.
+The WASM build automatically tries WebGL2 first and falls back to Software if WebGL2 is unavailable. The wgpu backend provides cross-platform GPU rendering via the `wgpu` crate, targeting WebGPU, Vulkan, Metal, and DX12.
 
 ## Renderer Trait
 
-Both backends implement a common `Renderer` trait:
+All backends implement a common `Renderer` trait:
 
 ```rust
 pub trait Renderer {
@@ -224,6 +225,43 @@ pub fn recover_context(&mut self) -> Result<(), String> {
     Ok(())
 }
 ```
+
+## wgpu Renderer
+
+The `WgpuRenderer` provides cross-platform GPU-accelerated rendering via the [`wgpu`](https://wgpu.rs/) crate, abstracting over platform-native graphics APIs.
+
+### Architecture
+
+```
+┌───────────────────────────────────────────────────────┐
+│                     WgpuRenderer                      │
+├───────────────────────────────────────────────────────┤
+│  wgpu::Device + wgpu::Queue                           │
+├───────────────────────────────────────────────────────┤
+│  Render Pipelines:                                    │
+│   • Circle pipeline (instanced circles/rings)         │
+│   • Line pipeline   (instanced line segments)         │
+│   • Quad pipeline   (instanced quads)                 │
+│   • Text pipeline   (textured quads for glyphs)       │
+├───────────────────────────────────────────────────────┤
+│  Platform Backends (auto-selected by wgpu):           │
+│   • Vulkan   (Linux, Windows, Android)                │
+│   • Metal    (macOS, iOS)                             │
+│   • DX12     (Windows)                                │
+│   • WebGPU   (Browsers with WebGPU support)           │
+└───────────────────────────────────────────────────────┘
+```
+
+### Key Features
+
+- **Cross-platform GPU**: Single codebase targets Vulkan, Metal, DX12, and WebGPU
+- **Native + WASM**: Works for both native desktop builds and browser WASM builds
+- **Modern API**: Leverages the WebGPU specification for a clean, safe GPU abstraction
+- **Instanced rendering**: Batches draw calls similar to the WebGL2 backend
+
+### Source Location
+
+The wgpu backend implementation is at `crates/rource-render/src/backend/wgpu/`.
 
 ## Backend Selection (WASM)
 

@@ -507,9 +507,10 @@ Updated all items with correct status and blocker documentation.
 | P3.11 | Utils lerp/clamp Verus | COMPLETED | 33 proof functions |
 | P3.12 | Utils approx_eq | COMPLETED | 7 proofs |
 | P1.4 | Mat4 orthographic projection | COMPLETED | 11 proofs (Phase 6-7) |
+| P1.5 | Mat4 look_at view matrix | COMPLETED | 17 Coq theorems + 4 Kani harnesses (Phase 10) |
 
 ---
 
-*Last updated: 2026-02-03*
-*Total phases: 9 implementation phases*
-*Total completed priority items: 20/24 (83%)*
+*Last updated: 2026-02-04*
+*Total phases: 10 implementation phases*
+*Total completed priority items: 21/24 (88%)*

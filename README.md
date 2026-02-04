@@ -74,7 +74,7 @@
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 2700+ tests | - |
+| **Test Coverage** | 2800+ tests | - |
 | **Rendering** | CPU + WebGL2 + wgpu | OpenGL only |
 
 ### Performance Highlights
@@ -97,7 +97,7 @@ See [Performance Documentation](#performance-documentation) for the complete opt
 | **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 475 proof functions, 452+ VCs | Verified |
 | **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + Complexity + CrossType | 1095 theorems | Zero admits |
 | **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils (extractable) | 417 theorems | Zero admits |
-| **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | 154 harnesses | IEEE 754 verified |
+| **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | 225 harnesses | IEEE 754 verified |
 | **Combined** | All 8 core math types + Bounds + FP layer + CrossType | **2573 theorems/harnesses** | **TRIPLE VERIFIED** |
 
 Properties verified include: vector space axioms, dot/cross product laws, matrix multiplication associativity (critical for MVP transformations), ring structure, RGBA color blending/interpolation/luminance, rectangle containment/intersection/union, O(1) complexity bounds, and a complete Coq-to-WASM extraction pipeline.
@@ -472,14 +472,14 @@ requestAnimationFrame(frame);
 ```
 rource/
 ├── crates/
-│   ├── rource-math/      270 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/       195 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/      390 tests   Scene graph, physics, camera, Barnes-Hut
-│   └── rource-render/    560 tests   Software + WebGL2 + wgpu rendering
-├── rource-cli/           340 tests   Native application (winit + softbuffer)
-└── rource-wasm/          420 tests   WebAssembly (browser)
+│   ├── rource-math/      473 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/       340 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/      539 tests   Scene graph, physics, camera, Barnes-Hut
+│   └── rource-render/    370 tests   Software + WebGL2 + wgpu rendering
+├── rource-cli/           358 tests   Native application (winit + softbuffer)
+└── rource-wasm/          461 tests   WebAssembly (browser)
                          ─────────
-                         2,100+ total tests
+                         2,800+ total tests
 ```
 
 ---
@@ -512,7 +512,7 @@ rource/
 | [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 83 optimization phases with measurements |
 | [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) | Raw benchmark data and methodology |
 | [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of algorithms |
-| [docs/performance/FORMAL_PROOFS.md](docs/performance/FORMAL_PROOFS.md) | Mathematical proofs for optimizations |
+| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2573 theorems/harnesses) |
 | [docs/performance/SUCCESSFUL_OPTIMIZATIONS.md](docs/performance/SUCCESSFUL_OPTIMIZATIONS.md) | Catalog of implemented optimizations |
 | [docs/performance/ALGORITHM_CANDIDATES.md](docs/performance/ALGORITHM_CANDIDATES.md) | Future optimization candidates |
 | [docs/performance/NOT_APPLICABLE.md](docs/performance/NOT_APPLICABLE.md) | Algorithms evaluated and ruled out |

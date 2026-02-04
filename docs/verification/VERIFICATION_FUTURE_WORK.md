@@ -32,7 +32,7 @@ For completed work history, see [VERIFICATION_CHRONOLOGY.md](VERIFICATION_CHRONO
 
 | Category | Description | Count |
 |----------|-------------|-------|
-| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 169 |
+| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 170 |
 | **ALGEBRAIC GAP** | CAN be proved algebraically, no proof yet | ~13 |
 | **PARTIALLY VERIFIED** | Some proofs exist but missing verification layers | ~17 |
 | **FP-FEASIBLE** | Requires FP modeling; feasible via Flocq or Kani | ~13 |
@@ -207,18 +207,15 @@ the per-element operations are already triple-verified.
 
 For a new session focused on increasing verification coverage, follow this order:
 
-1. **Main work**: P1.5 (look_at) is the highest-impact remaining algebraic proof.
-   The look_at proof gives the highest academic impact per proof but requires
-   careful handling of normalize (sqrt blocker for full algebraic treatment).
-
-2. **FP work** (if Flocq available): P4 items extend the FP error bounds layer.
+1. **FP work** (if Flocq available): P4 items extend the FP error bounds layer.
    P4.1 (floor/ceil/round) and P4.2/P4.3 (Color integer conversions) are the
    most impactful remaining items.
 
-3. **Documentation**: Update coverage tables, run `update-verification-counts.sh`.
+2. **Documentation**: Update coverage tables, run `update-verification-counts.sh`.
 
 **Completed items** (no longer actionable):
 - P1.4 (Mat4 orthographic) — fully done in Phase 7
+- P1.5 (Mat4 look_at) — fully done in Phase 10 (17 Coq theorems + 4 Kani harnesses)
 - P2.5 (Rect accessors) — done in Phase 9
 - P3.3 (Vector lerp Z-compute) — done in Phase 9
 - P3.11 (Utils Verus) — done in Phase 7
@@ -233,10 +230,9 @@ For a new session focused on increasing verification coverage, follow this order
 
 | After Priority | Operations Verified | Coverage | Delta |
 |----------------|--------------------:|----------|-------|
-| **Current** | **169** | **66.3% (of 255)** | — |
-| After remaining P3 | ~177 | 69.4% | +8 |
-| After P1.4-P1.5 (ortho, look_at) | ~179 | 70.2% | +2 |
-| After P4 (FP feasible) | ~192 | 75.3% | +13 |
+| **Current** | **170** | **66.7% (of 255)** | — |
+| After remaining P3 | ~178 | 69.8% | +8 |
+| After P4 (FP feasible) | ~191 | 74.9% | +13 |
 | **Theoretical maximum** (excl. blocked) | **~238** | **93.3%** | — |
 
 **Note**: The operation count is 255 (including 23 Bounds operations). Reaching 100%
@@ -246,6 +242,6 @@ batch operation proofs (7 low-value operations). The practical target is approxi
 
 ---
 
-*Last updated: 2026-02-03*
+*Last updated: 2026-02-04*
 *Current coverage: 170/255 (66.7%)*
-*Remaining actionable P1–P4 items: 5 (P1.5, P4.1–P4.4); 2 blocked (P3.1, P3.2)*
+*Remaining actionable P4 items: 4 (P4.1–P4.4); 2 blocked (P3.1, P3.2)*

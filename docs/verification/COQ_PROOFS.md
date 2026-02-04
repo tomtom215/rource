@@ -10,7 +10,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 ## Coq Version
 
 - **Coq**: 8.18
-- **Admits**: 0 (across all 1512 theorems, R+Z+FP)
+- **Admits**: 0 (across all 1873 theorems, R+Z+FP)
 - **Compilation time**: ~45 seconds total (32 .vo files)
 
 ## Layered Architecture
@@ -260,7 +260,7 @@ These practices were established through hard-won experience across multiple ses
 
 ---
 
-*Last verified: 2026-01-31*
+*Last verified: 2026-02-04*
 
 **Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6 + Phase 7 + Phase 8):**
 *Version: Coq 8.18*
@@ -272,7 +272,7 @@ These practices were established through hard-won experience across multiple ses
 *Version: Coq 8.18*
 *Total theorems: 417 (Vec2: 56, Vec3: 48, Vec4: 39, Mat3: 25, Mat4: 50, Color: 60, Rect: 51, Bounds: 70, Utils: 18)*
 *Admits: 0*
-*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1512 total Coq theorems incl. FP)*
+*Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1873 total Coq theorems incl. FP)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Complexity Proofs (Phase 2):**

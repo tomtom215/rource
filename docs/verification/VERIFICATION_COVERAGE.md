@@ -382,7 +382,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2573 theorems, 59.3% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2573 theorems, 66.7% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
@@ -397,15 +397,15 @@ that neither Verus nor Coq can directly offer.
 
 | Module | Harnesses | Properties Verified |
 |--------|-----------|---------------------|
-| Utils | 9 | lerp NaN-freedom, clamp bounded, approx_eq reflexive, deg/rad finite, lerp endpoint zero, approx_eq symmetry, lerp endpoint one, clamp idempotent |
-| Vec2 | 25 | length ≥ 0, length_sq ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard + no-NaN, distance ≥ 0, rotate no-NaN, from_angle no-NaN, lerp no-NaN, distance_sq ≥ 0, abs ≥ 0, floor/ceil/round finite, min/max componentwise, clamp bounded, perp finite, approx_eq reflexive, add commutative, neg involutive, sub anti-commutative, scale distributive |
-| Vec3 | 26 | length ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard + no-NaN, distance ≥ 0, distance_sq ≥ 0, lerp no-NaN, abs ≥ 0, floor/ceil/round finite, min/max componentwise, clamp bounded, reflect finite, approx_eq reflexive, add commutative, neg involutive, sub anti-commutative, scale distributive, element_sum finite, mul componentwise, div finite, min/max element finite |
-| Vec4 | 24 | length ≥ 0, normalized no-NaN, dot finite, lerp no-NaN, abs ≥ 0, min/max componentwise, clamp bounded, approx_eq reflexive, add commutative, neg involutive, sub anti-commutative, scale distributive, length_sq non-negative, dot self non-negative, zero length, splat components, mul componentwise, div finite, min_element finite, max_element finite, element_sum finite, mul commutative, sub anti-commutative algebraic |
-| Mat3 | 21 | determinant finite, inverse(zero)=None, inverse(I)=Some, transform_point finite, rotation no-NaN, identity preserves point, transpose involutive, translation/scaling/shearing finite, transform_vector finite, get_translation roundtrip, get_scale finite, approx_eq reflexive, mul identity right/left, uniform_scaling finite/structure, from_translation finite, default is identity, from_cols correct |
-| Mat4 | 26 | determinant finite, inverse(zero)=None, inverse(I)=Some, orthographic finite, identity det=1, zero det=0, transpose involutive, translation/scaling finite, rotation_x/y/z no-NaN, transform_point finite, identity preserves point, approx_eq reflexive, det_neg no-NaN, det_diagonal finite, trace operations finite, translation_compose componentwise, scaling_compose componentwise |
-| Color | 24 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN, clamp bounded, premultiplied no-NaN, fade no-NaN, with_alpha preserves RGB, to_argb8/abgr8 normalized, from_hex_alpha/rgba8 normalized, contrasting valid, approx_eq reflexive, scale finite, invert finite, mix no-NaN, add clamped, darken/lighten finite, from_rgba8 to_rgba8 roundtrip, from_hex to_rgba8 consistent, array roundtrip |
-| Rect | 25 | area ≥ 0, center finite, contains origin, perimeter ≥ 0, from_center_size center, translate preserves size, expand finite, is_valid positive dims, self-intersection, contains_self, scale_from_center finite/componentwise, approx_eq reflexive, from_corners valid, grow_to_contain finite, normalize finite, lerp finite, expand_xy finite, shrink finite, right/bottom correct, to_bounds finite |
-| Bounds | 23 | area ≥ 0, width/height ≥ 0, center finite, size finite, contains min, contains_bounds self, intersects self, translate preserves size, expand/shrink finite, from_points valid, from_center_half_extents finite, is_valid/is_empty complementarity, include_point contains, union contains both, approx_eq reflexive, to_rect finite, from_center_size finite, half_extents finite, union commutative |
+| Utils | 11 | lerp NaN-freedom, clamp bounded, approx_eq reflexive, deg/rad finite, lerp endpoint zero, approx_eq symmetry, lerp endpoint one, clamp idempotent, lerp no-NaN, approx_eq finite, clamp range |
+| Vec2 | 28 | length ≥ 0, length_sq ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard + no-NaN, distance ≥ 0, rotate no-NaN, from_angle no-NaN, lerp no-NaN, distance_sq ≥ 0, abs ≥ 0, floor/ceil/round finite, min/max componentwise, clamp bounded, perp finite, approx_eq reflexive, add commutative, neg involutive, sub anti-commutative, scale distributive, element_sum finite, mul componentwise, div finite |
+| Vec3 | 29 | length ≥ 0, normalized no-NaN, dot finite, cross finite, project zero-guard + no-NaN, distance ≥ 0, distance_sq ≥ 0, lerp no-NaN, abs ≥ 0, floor/ceil/round finite, min/max componentwise, clamp bounded, reflect finite, approx_eq reflexive, add commutative, neg involutive, sub anti-commutative, scale distributive, element_sum finite, mul componentwise, div finite, min/max element finite, splat components, element_product finite, rejection finite |
+| Vec4 | 25 | length ≥ 0, normalized no-NaN, dot finite, lerp no-NaN, abs ≥ 0, min/max componentwise, clamp bounded, approx_eq reflexive, add commutative, neg involutive, sub anti-commutative, scale distributive, length_sq non-negative, dot self non-negative, zero length, splat components, mul componentwise, div finite, min_element finite, max_element finite, element_sum finite, mul commutative, sub anti-commutative algebraic, element_product finite |
+| Mat3 | 23 | determinant finite, inverse(zero)=None, inverse(I)=Some, transform_point finite, rotation no-NaN, identity preserves point, transpose involutive, translation/scaling/shearing finite, transform_vector finite, get_translation roundtrip, get_scale finite, approx_eq reflexive, mul identity right/left, uniform_scaling finite/structure, from_translation finite, default is identity, from_cols correct, det_neg no-NaN, trace finite |
+| Mat4 | 32 | determinant finite, inverse(zero)=None, inverse(I)=Some, orthographic finite, identity det=1, zero det=0, transpose involutive, translation/scaling finite, rotation_x/y/z no-NaN, transform_point finite, identity preserves point, approx_eq reflexive, transform_vector finite, identity preserves vector, get_translation roundtrip, uniform_scaling structure, from_translation equiv, translation det=1, col/row correct, from_cols correct, translation_transforms_point, translation_preserves_vector, mul_identity left/right, look_at finite, look_at eye=target fallback, look_at affine structure, look_at forward parallel up |
+| Color | 25 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN, clamp bounded, premultiplied no-NaN, fade no-NaN, with_alpha preserves RGB, to_argb8/abgr8 normalized, from_hex_alpha/rgba8 normalized, contrasting valid, approx_eq reflexive, scale finite, invert finite, mix no-NaN, add clamped, darken/lighten finite, from_rgba8 to_rgba8 roundtrip, from_hex to_rgba8 consistent, array roundtrip, gray finite |
+| Rect | 27 | area ≥ 0, center finite, contains origin, perimeter ≥ 0, from_center_size center, translate preserves size, expand finite, is_valid positive dims, self-intersection, contains_self, scale_from_center finite/componentwise, approx_eq reflexive, from_corners valid, grow_to_contain finite, normalize finite, lerp finite, expand_xy finite, shrink finite, right/bottom correct, to_bounds finite, intersection finite, union finite |
+| Bounds | 25 | area ≥ 0, width/height ≥ 0, center finite, size finite, contains min, contains_bounds self, intersects self, translate preserves size, expand/shrink finite, from_points valid, from_center_half_extents finite, is_valid/is_empty complementarity, include_point contains, union contains both, approx_eq reflexive, to_rect finite, from_center_size finite, half_extents finite, union commutative, intersection finite, new finite |
 | **Total** | **225** | **All verified, 0 failures** |
 
 **Known limitation**: `Mat4::perspective()` uses `f32::tan()` which delegates to C `tanf` —
@@ -421,9 +421,9 @@ All edge cases are IEEE 754-compliant behavior requiring bounded input domains f
 
 ---
 
-*Last verified: 2026-02-01*
-*Formal verification coverage: 169/255 operations (66.3%)*
+*Last verified: 2026-02-04*
+*Formal verification coverage: 170/255 operations (66.7%)*
 *Kani IEEE 754 harnesses: 225 (all verified, 0 failures)*
 *Unit test coverage: 255/255 operations (100%)*
-*Unverifiable operations: ~86 (floating-point, transcendentals, type conversions)*
+*Unverifiable operations: ~85 (floating-point, transcendentals, type conversions)*
 *Landscape survey: 8 tools investigated (6 new + 2 current), Kani adopted*

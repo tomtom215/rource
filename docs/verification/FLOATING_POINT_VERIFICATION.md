@@ -12,11 +12,11 @@ For current coverage metrics, see [VERIFICATION_COVERAGE.md](VERIFICATION_COVERA
 
 | Aspect | Finding |
 |--------|---------|
-| **Current gap** | 114/230 operations (49.6%) unverified due to floating-point/transcendental requirements |
+| **Current gap** | 85/255 operations (33.3%) unverified due to floating-point/transcendental requirements |
 | **Paper investigated** | "Verifying Floating-Point Programs in Stainless" (Gilot et al., arXiv:2601.14059, Jan 2026) |
 | **Paper applicability** | Not directly applicable — Scala-only tool, no Rust/Coq integration |
 | **Most promising path** | Coq + Flocq + VCFloat2 + Gappa (all Coq 8.18 compatible) |
-| **Estimated reachable coverage** | 70–75% (up from 50.4%) with moderate effort |
+| **Estimated reachable coverage** | 80–85% (up from 66.7%) with moderate effort |
 | **Maximum theoretical coverage** | ~90% (requires significant novel proof engineering) |
 | **Remaining hard gap** | ~10% — HSL color conversions, complex geometric transforms |
 
@@ -292,23 +292,28 @@ require composing single-operation proofs.
 
 | Phase | Coverage | Operations Verified | Total |
 |-------|----------|--------------------|----|
-| Current | 50.4% (116/230) | Algebraic properties | 2573 theorems |
-| **Phase FP-1 IN PROGRESS** | **~55%** | **+ FP foundations, error bounds, rounding, vec ops** | **1172 theorems** |
-| After Phase FP-1 complete | ~70% (162/230) | + sqrt, rounding, min/max, lerp, distance_sq | ~1250 theorems |
-| After Phase FP-2 | ~83% (192/230) | + distance, conversions, batch, transcendental | ~1350 theorems |
-| After Phase FP-3 | ~92% (212/230) | + matrix transforms, color, complex geometry | ~1450 theorems |
+| Current | 66.7% (170/255) | Algebraic + edge-case properties | 2573 theorems/harnesses |
+| **Phase FP-1 foundations** | **66.7%** | **+ FP error bounds, rounding, vec ops (361 FP theorems)** | **2573** |
+| After Phase FP-2 | ~75% (192/255) | + sqrt, rounding, min/max, lerp, distance_sq | ~2700 |
+| After Phase FP-3 | ~85% (217/255) | + distance, conversions, batch, transcendental | ~2850 |
+| After Phase FP-4 | ~93% (238/255) | + matrix transforms, color, complex geometry | ~3000 |
 
 ### Phase FP-1 Progress (In Progress)
 
-**Flocq 4.1.3 installed and operational.** 99 FP theorems machine-checked.
+**Flocq 4.1.3 installed and operational.** 361 FP theorems machine-checked across 9 files.
 
 | File | Theorems | Description | Status |
 |------|----------|-------------|--------|
 | `FP_Common.v` | 6 | binary32 parameters, unit roundoff, standard model, error composition | Machine-checked |
-| `FP_Rounding.v` | 21 | floor/ceil/round/fract properties via Flocq's Zfloor/Zceil/Znearest | Machine-checked |
-| `FP_ErrorBounds.v` | 36 | Single/multi-op error, sqrt, lerp, angle conversion, approx_eq, comparison | Machine-checked |
-| `FP_Vec.v` | 36 | Vec2/3/4 length_sq, length, distance_sq, distance, normalized, min/max/clamp, lerp, Bernoulli | Machine-checked |
-| **Total** | **99** | **Phase FP-1 foundations complete** | **Zero admits** |
+| `FP_Rounding.v` | 34 | floor/ceil/round/fract properties via Flocq's Zfloor/Zceil/Znearest | Machine-checked |
+| `FP_ErrorBounds.v` | 48 | Single/multi-op error, sqrt, lerp, angle conversion, approx_eq, comparison | Machine-checked |
+| `FP_Vec.v` | 48 | Vec2/3/4 length_sq, length, distance_sq, distance, normalized, min/max/clamp, lerp, Bernoulli | Machine-checked |
+| `FP_Mat.v` | 50 | Mat3/Mat4 transform error, determinant stability, trace error, multiplication error | Machine-checked |
+| `FP_Color.v` | 48 | Color blend/lerp/luminance error, from_hex accuracy, premultiplied error | Machine-checked |
+| `FP_Rect.v` | 45 | Rect area/perimeter error, contains stability, intersection accuracy | Machine-checked |
+| `FP_Bounds.v` | 45 | Bounds width/height error, center accuracy, union/intersection stability | Machine-checked |
+| `FP_Utils.v` | 37 | Utils lerp/clamp/approx_eq error bounds, deg/rad conversion accuracy | Machine-checked |
+| **Total** | **361** | **Phase FP-1 foundations complete** | **Zero admits** |
 
 ### What Floating-Point Verification Proves (and Does NOT Prove)
 
@@ -330,7 +335,7 @@ This distinction is critical for intellectual honesty:
   analysis concern)
 
 **How this relates to our existing proofs:**
-Our current 939 theorems prove algebraic properties over exact arithmetic (R or Z).
+Our current 1512 theorems prove algebraic properties over exact arithmetic (R or Z).
 Floating-point proofs would be a **complementary layer** proving that the Rust
 implementation's floating-point results are close to the mathematically correct
 values established by our R-based proofs. The two layers together would provide:
@@ -564,9 +569,9 @@ Do NOT pursue Verus FP extension for rource-math. Instead:
 
 ---
 
-*Last updated: 2026-01-30*
+*Last updated: 2026-02-04*
 *Investigation: Stainless FP paper (arXiv:2601.14059) — NOT directly applicable*
 *Recommended path: Coq + Flocq 4.1.3 + VCFloat2 2.1.1 + Gappa 1.5.4*
-*Flocq 4.1.3 installed and operational — 99 FP theorems machine-checked*
+*Flocq 4.1.3 installed and operational — 361 FP theorems machine-checked (9 files)*
 *All recommended tools are Coq 8.18 compatible*
-*Phase FP-1 in progress: 99/~250 FP theorems completed*
+*Phase FP-1 foundations complete: 361 FP theorems across 9 files, zero admits*
