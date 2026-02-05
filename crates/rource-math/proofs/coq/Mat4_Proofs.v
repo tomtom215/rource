@@ -1885,7 +1885,7 @@ Theorem mat4_approx_eq_refl : forall (a : Mat4) (eps : R),
 Proof.
   intros a eps Heps.
   unfold mat4_approx_eq.
-  repeat split; rewrite Rminus_diag; rewrite Rabs_R0; exact Heps.
+  repeat split; replace (_ - _) with 0 by ring; rewrite Rabs_R0; exact Heps.
 Qed.
 
 (** Theorem 134: approx_eq is symmetric. *)
@@ -1918,7 +1918,10 @@ Proof.
   intros a b H.
   unfold mat4_approx_eq in H.
   decompose [and] H.
-  repeat split; apply Rminus_diag_uniq; apply Rabs_le_0_eq; lra.
+  repeat split;
+    match goal with
+    | H : Rabs (?x - ?y) <= 0 |- ?x = ?y => apply Rabs_le_0_eq in H; lra
+    end.
 Qed.
 
 (** Theorem 136: approx_eq is monotone in epsilon. *)
