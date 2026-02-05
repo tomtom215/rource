@@ -579,6 +579,11 @@ All 220 entries in chronological order. Entry numbers match category table refer
 | 224 | 2026-02-05 | 1WDWU | `Z.eqb_neq` rewrite requires hypothesis of form `(z =? z0) = false`, not `z <> 0` | `rewrite Z.eqb_neq in Hne` failed because Hne was `vx*vx + vy*vy <> 0`, not a `=? = false` form | Use `destruct (expr =? 0)%Z eqn:E` directly, then `apply Z.eqb_eq in E; contradiction` for true branch |
 | 225 | 2026-02-05 | 1WDWU | Update script `update-verification-counts.sh` missed two sed patterns for docs/README.md and FLOATING_POINT_VERIFICATION.md | docs/README.md used `N theorems R+Z` format; FP_VERIFICATION.md used `N theorems/harnesses` format — neither matched existing sed patterns | Added `s/[0-9]+ theorems R\+Z/` and `s/\| [0-9]+ theorems\/harnesses/` patterns to cover all documentation formats |
 
+| 226 | 2026-02-05 | 1WDWU | `f32::rem_euclid(360.0)` can return exactly `360.0` — documented Rust stdlib FP edge case | Kani found counterexample for `assert!(h < 360.0)` after `rem_euclid(360.0)` | Use `<= rhs` not `< rhs` when checking `rem_euclid` output; Rust docs: "can result in the modulus being equal to the divisor" |
+| 227 | 2026-02-05 | 1WDWU | HSL `q = l + s - l*s` can exceed 1.0 in f32 when l ≥ 0.5; `hue_to_rgb` amplifies by 6x | Kani found `to_color()` producing RGB slightly > 1.0 + 1e-6; the `p + (q-p)*6*t` formula magnifies the q overshoot | Use tolerance ≥ 1e-4 for HSL-to-RGB range assertions; never assume algebraically-bounded FP results are exactly bounded |
+| 228 | 2026-02-05 | 1WDWU | `(x + w) - x ≠ w` in f32 when `\|x\|` >> `w` (catastrophic cancellation in Rect::intersection self-test) | `intersection` computes `width = (x+w).min(x+w) - x.max(x)` = `(x+w) - x` which rounds differently than `w` | Use approximate equality (tolerance ≈ 1 ULP at given magnitude) for dimension assertions after add-then-subtract sequences |
+| 229 | 2026-02-05 | 1WDWU | VERIFICATION_COVERAGE.md inflated by ~15 phantom operations (Coq-only definitions not in Rust API) | Many ops listed (Vec2: rejection/min_element/max_element/element_sum/fract; Color: mix/darken/lighten/saturate/desaturate/contrast) have Coq proofs but no `pub fn` in Rust | Total is ~241 real Rust ops, not 256; both numerator and denominator inflated equally so ~85% coverage figure is approximately correct |
+
 ---
 
-*Last updated: 2026-02-05 | 225 entries | 14 categories*
+*Last updated: 2026-02-05 | 229 entries | 14 categories*

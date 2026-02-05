@@ -690,10 +690,13 @@ fn verify_rect_intersection_finite() {
     }
 }
 
-/// **Self-intersection**: `r.intersection(r)` returns `Some` with same dimensions.
+/// **Self-intersection**: `r.intersection(r)` returns `Some` with approximately
+/// the same dimensions.
 ///
-/// A valid rect with positive dimensions should always intersect itself,
-/// returning the same rect.
+/// A valid rect with positive dimensions should always intersect itself.
+/// The result may differ from the original by FP rounding: `intersection`
+/// computes `width = (x + w) - x` which can differ from `w` when `|x| >> w`
+/// due to intermediate rounding in `x + w`.
 #[kani::proof]
 fn verify_rect_intersection_self() {
     let x: f32 = kani::any();
@@ -705,13 +708,21 @@ fn verify_rect_intersection_self() {
     kani::assume(w.is_finite() && w > 1.0 && w < 1e6);
     kani::assume(h.is_finite() && h > 1.0 && h < 1e6);
     let r = Rect::new(x, y, w, h);
-    if let Some(i) = r.intersection(r) {
-        assert!(i.x == x, "self-intersection x mismatch");
-        assert!(i.y == y, "self-intersection y mismatch");
-        assert!(i.width == w, "self-intersection width mismatch");
-        assert!(i.height == h, "self-intersection height mismatch");
-    } else {
-        // This should not happen for a valid rect with w > 1.0 and |x| < 1e6
-        assert!(false, "self-intersection should be Some for valid rect");
-    }
+    let result = r.intersection(r);
+    // Self-intersection must return Some for valid positive-dimension rects
+    assert!(result.is_some(), "self-intersection should be Some");
+    let i = result.unwrap();
+    // Position is exact: max(x, x) = x
+    assert!(i.x == x, "self-intersection x mismatch");
+    assert!(i.y == y, "self-intersection y mismatch");
+    // Dimensions may differ due to FP: (x + w) - x ≠ w when |x| >> w.
+    // At |x| < 1e6, ULP ≈ 0.0625, so error bounded by 1 ULP ≈ 0.125.
+    assert!(
+        (i.width - w).abs() < 0.25,
+        "self-intersection width too far"
+    );
+    assert!(
+        (i.height - h).abs() < 0.25,
+        "self-intersection height too far"
+    );
 }
