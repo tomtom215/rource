@@ -642,6 +642,68 @@ Extended proofs for Rect, Mat4, Color, and Bounds with new operations and proper
 
 ---
 
+## Phase 14: Cross-Type Roundtrips + get_scale_sq + Array Conversions (Session i77s6)
+
+**Status**: COMPLETED (Session i77s6, 2026-02-05)
+
+### Goals
+1. Add cross-type roundtrip proofs and array conversion theorems
+2. Prove Mat4 `get_scale_sq` properties (modeled as squared to avoid sqrt)
+3. Expand Rect, Color, and Bounds proof coverage toward 85%+
+
+### Accomplishments
+
+1. **39 new Rect theorems in `Rect_Proofs.v`** (179 → 218):
+   - `to_bounds` conversion: component extraction, roundtrip with `bounds_to_rect`, width/height/area/center preservation, validity, translation commutes
+   - `merge`: commutativity, self-identity (alias for union)
+   - `clip_to`: alias for intersection, commutativity, self-identity, bounded min_x
+   - `grow_to_contain`: containment guarantee, idempotency on interior point, non-negative dims
+   - `from_pos_size`: equivalence to rect_new, accessor preservation, area formula, position/size roundtrips
+   - `position`/`size`: accessor equivalence proofs
+   - `lerp`: midpoint to_bounds, width/height formulas
+
+2. **31 new Color theorems in `Color_Proofs.v`** (133 → 164):
+   - `to_rgba`/`to_rgb`: component extraction, roundtrip proofs
+   - `from_rgba`/`from_rgb_tuple`: roundtrip, alpha default, component extraction
+   - `is_light`/`is_dark`: complement, exclusivity, black is dark, gray boundary
+   - `contrast`: symmetry, self=0, non-negative, black-white=1, triangle inequality
+   - `color_scale_to_rgba`, `color_add_to_rgba`, `color_invert_to_rgba`: interaction proofs
+   - `color_fade_to_rgba`, `color_with_alpha_to_rgba`: interaction proofs
+   - Fixed name collision: removed duplicate `color_luminance_black`, renamed to `color_luminance_white_rec709`
+
+3. **18 new Mat4 theorems in `Mat4_Proofs.v`** (190 → 208):
+   - `get_scale_sq`: identity, scaling, translation, non-negativity, uniform, zero, sign-invariance
+   - `get_scale_sq` composition: compose, transpose, dot-product, scalar multiply
+   - `from_translation`: equivalence, transforms point, preserves vectors, composition, determinant
+   - `approx_eq`: reflexive, symmetric, zero implies equality, epsilon monotonicity
+
+4. **18 new Bounds theorems in `Bounds_Proofs.v`** (118 → 136):
+   - `from_rect`: min/max extraction, roundtrip with `to_rect`, width/height/area/center preservation
+   - `from_rect` validity, zero, translation/expand commute, containment equivalence
+   - `scale_from_center`: preserves center, scales dims, identity, zero, compose
+   - `translate`: width, height, area preservation
+   - `include_point_min_corner`
+
+### Key Decisions
+
+- **get_scale_sq modeled as sum-of-squares**: Avoids sqrt (transcendental). All properties of `get_scale` transfer cleanly to the squared version. `nra` handles sum-of-squares non-negativity.
+- **Color name collision resolution**: Removed duplicate `color_luminance_black` (existed in both Phase 4 and later); renamed ambiguous `color_luminance_white` to `color_luminance_white_rec709`.
+- **Rabs_le_0_eq helper**: Proved `Rabs x <= 0 → x = 0` as local lemma for `approx_eq_zero_eq` proofs.
+
+### Summary
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| Coq R-based theorems | 1260 | 1366 | +106 |
+| Grand total | 2750 | 2856 | +106 |
+| Rect theorems | 179 | 218 | +39 |
+| Mat4 theorems | 190 | 208 | +18 |
+| Color theorems | 133 | 164 | +31 |
+| Bounds theorems | 118 | 136 | +18 |
+| Overall coverage | 208/255 (81.6%) | 219/256 (85.5%) | +14 ops |
+
+---
+
 ## Completed Milestones Summary
 
 | # | Milestone | Status |

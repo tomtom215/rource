@@ -647,6 +647,166 @@ Proof. reflexivity. Qed.
 Theorem zvec2_round_zero : zvec2_round zvec2_zero = zvec2_zero.
 Proof. reflexivity. Qed.
 
+(** * Clamp Operations *)
+
+(** Component-wise clamp: each component is clamped to [min, max]. *)
+Definition zvec2_clamp (v lo hi : ZVec2) : ZVec2 :=
+  mkZVec2
+    (Z.max (zvec2_x lo) (Z.min (zvec2_x v) (zvec2_x hi)))
+    (Z.max (zvec2_y lo) (Z.min (zvec2_y v) (zvec2_y hi))).
+
+(** Theorem 63: clamp of value within bounds is identity *)
+Theorem zvec2_clamp_identity : forall v lo hi : ZVec2,
+  zvec2_x lo <= zvec2_x v -> zvec2_x v <= zvec2_x hi ->
+  zvec2_y lo <= zvec2_y v -> zvec2_y v <= zvec2_y hi ->
+  zvec2_clamp v lo hi = v.
+Proof.
+  intros [vx vy] [lx ly] [hx hy].
+  unfold zvec2_clamp; simpl.
+  intros Hlx Hhx Hly Hhy.
+  apply zvec2_eq; lia.
+Qed.
+
+(** Theorem 64: clamp x-component is bounded below by lo.x *)
+Theorem zvec2_clamp_x_lower : forall v lo hi : ZVec2,
+  zvec2_x lo <= zvec2_x hi ->
+  zvec2_x lo <= zvec2_x (zvec2_clamp v lo hi).
+Proof.
+  intros [vx vy] [lx ly] [hx hy]. unfold zvec2_clamp; simpl. lia.
+Qed.
+
+(** Theorem 65: clamp x-component is bounded above by hi.x *)
+Theorem zvec2_clamp_x_upper : forall v lo hi : ZVec2,
+  zvec2_x lo <= zvec2_x hi ->
+  zvec2_x (zvec2_clamp v lo hi) <= zvec2_x hi.
+Proof.
+  intros [vx vy] [lx ly] [hx hy]. unfold zvec2_clamp; simpl. lia.
+Qed.
+
+(** Theorem 66: clamp y-component is bounded below by lo.y *)
+Theorem zvec2_clamp_y_lower : forall v lo hi : ZVec2,
+  zvec2_y lo <= zvec2_y hi ->
+  zvec2_y lo <= zvec2_y (zvec2_clamp v lo hi).
+Proof.
+  intros [vx vy] [lx ly] [hx hy]. unfold zvec2_clamp; simpl. lia.
+Qed.
+
+(** Theorem 67: clamp y-component is bounded above by hi.y *)
+Theorem zvec2_clamp_y_upper : forall v lo hi : ZVec2,
+  zvec2_y lo <= zvec2_y hi ->
+  zvec2_y (zvec2_clamp v lo hi) <= zvec2_y hi.
+Proof.
+  intros [vx vy] [lx ly] [hx hy]. unfold zvec2_clamp; simpl. lia.
+Qed.
+
+(** Theorem 68: clamp is idempotent *)
+Theorem zvec2_clamp_idempotent : forall v lo hi : ZVec2,
+  zvec2_x lo <= zvec2_x hi ->
+  zvec2_y lo <= zvec2_y hi ->
+  zvec2_clamp (zvec2_clamp v lo hi) lo hi = zvec2_clamp v lo hi.
+Proof.
+  intros [vx vy] [lx ly] [hx hy].
+  unfold zvec2_clamp; simpl.
+  intros Hx Hy.
+  apply zvec2_eq; lia.
+Qed.
+
+(** Theorem 69: clamp of lo is lo (when lo <= hi) *)
+Theorem zvec2_clamp_lo : forall lo hi : ZVec2,
+  zvec2_x lo <= zvec2_x hi ->
+  zvec2_y lo <= zvec2_y hi ->
+  zvec2_clamp lo lo hi = lo.
+Proof.
+  intros [lx ly] [hx hy]. unfold zvec2_clamp; simpl. intros. apply zvec2_eq; lia.
+Qed.
+
+(** Theorem 70: clamp of hi is hi (when lo <= hi) *)
+Theorem zvec2_clamp_hi : forall lo hi : ZVec2,
+  zvec2_x lo <= zvec2_x hi ->
+  zvec2_y lo <= zvec2_y hi ->
+  zvec2_clamp hi lo hi = hi.
+Proof.
+  intros [lx ly] [hx hy]. unfold zvec2_clamp; simpl. intros. apply zvec2_eq; lia.
+Qed.
+
+(** * Reflect Operations *)
+
+(** Reflect vector a across normal n: a - 2*(a·n)*n.
+    Uses fixed-point scaling: dot product is scaled by 1 (integer),
+    and the result is exact for integer vectors. *)
+Definition zvec2_reflect (a n : ZVec2) : ZVec2 :=
+  zvec2_sub a (zvec2_scale (2 * zvec2_dot a n) n).
+
+(** Theorem 71: reflect across zero normal is identity *)
+Theorem zvec2_reflect_zero_normal : forall a : ZVec2,
+  zvec2_reflect a zvec2_zero = a.
+Proof.
+  intros [ax ay]. unfold zvec2_reflect, zvec2_dot, zvec2_scale, zvec2_sub, zvec2_zero.
+  simpl. apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 72: reflect of zero vector is zero *)
+Theorem zvec2_reflect_zero_vec : forall n : ZVec2,
+  zvec2_reflect zvec2_zero n = zvec2_zero.
+Proof.
+  intros [nx ny].
+  unfold zvec2_reflect, zvec2_dot, zvec2_scale, zvec2_sub, zvec2_zero.
+  simpl. apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 73: reflect of a along itself (dot product form) *)
+Theorem zvec2_reflect_dot_relation : forall a n : ZVec2,
+  zvec2_dot (zvec2_reflect a n) n =
+  zvec2_dot a n - 2 * zvec2_dot a n * zvec2_dot n n.
+Proof.
+  intros [ax ay] [nx ny].
+  unfold zvec2_reflect, zvec2_dot, zvec2_scale, zvec2_sub.
+  simpl. ring.
+Qed.
+
+(** * Project Operations *)
+
+(** Project vector a onto vector b: (a·b / b·b) * b.
+    For integer vectors, this uses integer division which truncates.
+    Only exact when a·b is divisible by b·b. *)
+Definition zvec2_project (a b : ZVec2) : ZVec2 :=
+  let d := zvec2_dot b b in
+  if Z.eqb d 0 then zvec2_zero
+  else zvec2_scale (zvec2_dot a b / d) b.
+
+(** Theorem 74: project onto zero is zero *)
+Theorem zvec2_project_zero : forall a : ZVec2,
+  zvec2_project a zvec2_zero = zvec2_zero.
+Proof.
+  intros a. unfold zvec2_project, zvec2_dot, zvec2_zero. simpl. reflexivity.
+Qed.
+
+(** Theorem 75: project of zero is zero *)
+Theorem zvec2_project_of_zero : forall b : ZVec2,
+  zvec2_project zvec2_zero b = zvec2_zero.
+Proof.
+  intros [bx by0].
+  unfold zvec2_project, zvec2_dot, zvec2_zero, zvec2_scale.
+  simpl.
+  destruct (bx * bx + by0 * by0 =? 0)%Z eqn:E; [reflexivity|].
+  apply zvec2_eq; ring.
+Qed.
+
+(** Theorem 76: project self onto self (exact for unit-like vectors) *)
+Theorem zvec2_project_self : forall v : ZVec2,
+  zvec2_dot v v <> 0 ->
+  zvec2_project v v = v.
+Proof.
+  intros [vx vy] Hne.
+  unfold zvec2_project, zvec2_dot in *.
+  simpl in *.
+  destruct (vx * vx + vy * vy =? 0)%Z eqn:E.
+  - apply Z.eqb_eq in E. contradiction.
+  - unfold zvec2_scale. simpl.
+    rewrite Z.div_same by exact Hne.
+    apply zvec2_eq; ring.
+Qed.
+
 (** * Computational Tests (Extracted) *)
 
 (** These evaluate to concrete values, demonstrating computability. *)

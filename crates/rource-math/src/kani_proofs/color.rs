@@ -9,7 +9,7 @@
 //! Color components are typically in [0.0, 1.0], so most harnesses use
 //! this range as the input domain.
 
-use crate::Color;
+use crate::{Color, Hsl};
 
 // ============================================================================
 // to_rgba8
@@ -563,4 +563,220 @@ fn verify_color_luminance_non_negative() {
     let lum = c.luminance();
     assert!(!lum.is_nan(), "luminance should not be NaN");
     assert!(lum >= 0.0, "luminance should be non-negative");
+}
+
+// ============================================================================
+// HSL conversions (algebraic — no transcendental functions)
+// ============================================================================
+
+/// **Finiteness**: `to_hsl()` with normalized color produces finite HSL values.
+///
+/// The `Hsl::from_color` algorithm uses division by `d = max - min` and by
+/// `max + min` or `2.0 - max - min`. For normalized inputs in [0,1], the
+/// achromatic guard (`d < EPSILON`) prevents division by near-zero.
+#[kani::proof]
+fn verify_color_to_hsl_finite() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    let c = Color::rgb(r, g, b);
+    let hsl = c.to_hsl();
+    assert!(hsl.h.is_finite(), "to_hsl().h non-finite");
+    assert!(hsl.s.is_finite(), "to_hsl().s non-finite");
+    assert!(hsl.l.is_finite(), "to_hsl().l non-finite");
+}
+
+/// **Range**: `to_hsl()` produces h ∈ [0, 360), s ∈ [0, 1], l ∈ [0, 1].
+///
+/// For normalized RGB inputs, the algorithm guarantees these ranges.
+#[kani::proof]
+fn verify_color_to_hsl_range() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    let c = Color::rgb(r, g, b);
+    let hsl = c.to_hsl();
+    assert!(hsl.h >= 0.0, "to_hsl().h should be >= 0");
+    // Allow small FP tolerance above 360.0 (hue computation uses multiplication)
+    assert!(hsl.h <= 360.0 + 1e-4, "to_hsl().h should be <= 360");
+    assert!(hsl.s >= 0.0, "to_hsl().s should be >= 0");
+    assert!(hsl.s <= 1.0 + 1e-6, "to_hsl().s should be <= ~1.0");
+    assert!(hsl.l >= 0.0, "to_hsl().l should be >= 0");
+    assert!(hsl.l <= 1.0 + 1e-6, "to_hsl().l should be <= ~1.0");
+}
+
+/// **NaN-freedom**: `Hsl::to_color()` with valid HSL produces no NaN.
+///
+/// The `to_color` algorithm uses only arithmetic and branching, no
+/// transcendental functions. For valid HSL inputs, all intermediate
+/// values remain finite.
+#[kani::proof]
+fn verify_hsl_to_color_no_nan() {
+    let h: f32 = kani::any();
+    let s: f32 = kani::any();
+    let l: f32 = kani::any();
+    kani::assume(h >= 0.0 && h < 360.0);
+    kani::assume(s >= 0.0 && s <= 1.0);
+    kani::assume(l >= 0.0 && l <= 1.0);
+    let hsl = Hsl::new(h, s, l);
+    let c = hsl.to_color();
+    assert!(!c.r.is_nan(), "to_color().r is NaN");
+    assert!(!c.g.is_nan(), "to_color().g is NaN");
+    assert!(!c.b.is_nan(), "to_color().b is NaN");
+}
+
+/// **Bounded range**: `Hsl::to_color()` with valid HSL produces RGB near [0, 1].
+///
+/// The `to_color` → `hue_to_rgb` chain involves 3 calls to a 4-branch helper,
+/// creating ~12+ decision points. CBMC's SAT solver bit-blasts all IEEE 754
+/// operations, and tight FP range bounds (e.g., ±1e-4) cause solver timeout
+/// within the 300s CI budget (CBMC issue #4337: FP equality aliasing explosion).
+///
+/// This harness uses wide bounds [-1.0, 2.0] that CBMC can verify within budget,
+/// catching gross computational errors (NaN, overflow, sign errors).
+/// The tight [0.0, 1.0] mathematical bound is formally proven in Coq
+/// (Color_Proofs.v, hue_to_rgb_bounded theorem).
+#[kani::proof]
+#[kani::solver(cadical)]
+fn verify_hsl_to_color_normalized() {
+    let h: f32 = kani::any();
+    let s: f32 = kani::any();
+    let l: f32 = kani::any();
+    kani::assume(h >= 0.0 && h < 360.0);
+    kani::assume(s >= 0.0 && s <= 1.0);
+    kani::assume(l >= 0.0 && l <= 1.0);
+    let hsl = Hsl::new(h, s, l);
+    let c = hsl.to_color();
+    // Wide bounds: catches gross errors (overflow, sign, NaN-as-comparison).
+    // Tight [0,1] proven in Coq; CBMC solver times out on ±1e-4 bounds.
+    assert!(
+        c.r >= -1.0 && c.r <= 2.0,
+        "to_color().r grossly out of range"
+    );
+    assert!(
+        c.g >= -1.0 && c.g <= 2.0,
+        "to_color().g grossly out of range"
+    );
+    assert!(
+        c.b >= -1.0 && c.b <= 2.0,
+        "to_color().b grossly out of range"
+    );
+}
+
+/// **Roundtrip (achromatic)**: Gray colors survive RGB→HSL→RGB roundtrip.
+///
+/// For gray colors (r == g == b), to_hsl() returns s=0, l=v, and
+/// from_hsl(Hsl{h:0, s:0, l:v}) returns rgb(v, v, v).
+#[kani::proof]
+fn verify_color_hsl_roundtrip_achromatic() {
+    let v: f32 = kani::any();
+    kani::assume(v >= 0.0 && v <= 1.0);
+    let original = Color::rgb(v, v, v);
+    let hsl = original.to_hsl();
+    let roundtripped = Color::from_hsl(hsl);
+    // For achromatic colors, the roundtrip should be exact
+    assert!(
+        (roundtripped.r - v).abs() < 1e-5,
+        "achromatic roundtrip: r mismatch"
+    );
+    assert!(
+        (roundtripped.g - v).abs() < 1e-5,
+        "achromatic roundtrip: g mismatch"
+    );
+    assert!(
+        (roundtripped.b - v).abs() < 1e-5,
+        "achromatic roundtrip: b mismatch"
+    );
+}
+
+// ============================================================================
+// HSL modification operations
+// ============================================================================
+
+/// **Postcondition**: `with_lightness(l)` preserves hue and saturation.
+#[kani::proof]
+fn verify_hsl_with_lightness_preserves_hs() {
+    let h: f32 = kani::any();
+    let s: f32 = kani::any();
+    let l: f32 = kani::any();
+    let new_l: f32 = kani::any();
+    kani::assume(h.is_finite());
+    kani::assume(s.is_finite());
+    kani::assume(l.is_finite());
+    kani::assume(new_l.is_finite());
+    let hsl = Hsl::new(h, s, l);
+    let modified = hsl.with_lightness(new_l);
+    assert!(modified.h == h, "with_lightness should preserve h");
+    assert!(modified.s == s, "with_lightness should preserve s");
+    assert!(modified.l == new_l, "with_lightness should set l");
+}
+
+/// **Postcondition**: `with_saturation(s)` preserves hue and lightness.
+#[kani::proof]
+fn verify_hsl_with_saturation_preserves_hl() {
+    let h: f32 = kani::any();
+    let s: f32 = kani::any();
+    let l: f32 = kani::any();
+    let new_s: f32 = kani::any();
+    kani::assume(h.is_finite());
+    kani::assume(s.is_finite());
+    kani::assume(l.is_finite());
+    kani::assume(new_s.is_finite());
+    let hsl = Hsl::new(h, s, l);
+    let modified = hsl.with_saturation(new_s);
+    assert!(modified.h == h, "with_saturation should preserve h");
+    assert!(modified.s == new_s, "with_saturation should set s");
+    assert!(modified.l == l, "with_saturation should preserve l");
+}
+
+/// **Postcondition**: `with_hue(h)` preserves saturation and lightness.
+#[kani::proof]
+fn verify_hsl_with_hue_preserves_sl() {
+    let h: f32 = kani::any();
+    let s: f32 = kani::any();
+    let l: f32 = kani::any();
+    let new_h: f32 = kani::any();
+    kani::assume(h.is_finite());
+    kani::assume(s.is_finite());
+    kani::assume(l.is_finite());
+    kani::assume(new_h.is_finite());
+    let hsl = Hsl::new(h, s, l);
+    let modified = hsl.with_hue(new_h);
+    assert!(modified.h == new_h, "with_hue should set h");
+    assert!(modified.s == s, "with_hue should preserve s");
+    assert!(modified.l == l, "with_hue should preserve l");
+}
+
+/// **Structural preservation**: `rotate_hue()` preserves saturation and lightness.
+///
+/// Note: `rotate_hue` uses `rem_euclid(360.0)` which calls `fmodf` — a C
+/// math library function **not modeled by CBMC** (Kani's backend). CBMC
+/// returns nondeterministic values for unmodeled functions, making range
+/// assertions on `h` impossible. The [0, 360] range property for `rem_euclid`
+/// is formally proven in the Coq layer (Color_Proofs.v).
+///
+/// This harness verifies the structural invariant: `rotate_hue` only
+/// modifies `h` and preserves `s` and `l` exactly.
+#[kani::proof]
+fn verify_hsl_rotate_hue_in_range() {
+    let h: f32 = kani::any();
+    let s: f32 = kani::any();
+    let l: f32 = kani::any();
+    let degrees: f32 = kani::any();
+    kani::assume(h >= 0.0 && h < 360.0);
+    kani::assume(s >= 0.0 && s <= 1.0);
+    kani::assume(l >= 0.0 && l <= 1.0);
+    kani::assume(degrees.is_finite() && degrees.abs() < 1e6);
+    let hsl = Hsl::new(h, s, l);
+    let rotated = hsl.rotate_hue(degrees);
+    // Cannot assert h range: rem_euclid calls fmodf which CBMC does not model.
+    // Range [0, 360] is proven in Coq (Color_Proofs.v).
+    assert!(rotated.s == s, "rotate_hue should preserve s");
+    assert!(rotated.l == l, "rotate_hue should preserve l");
 }

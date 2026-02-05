@@ -175,9 +175,9 @@ Operations that **cannot be formally verified** with current Verus capabilities:
 
 | Priority | Module | Operations | Rationale | Status |
 |----------|--------|------------|-----------|--------|
-| ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 57, Coq R: 121, Coq Z: 60) |
-| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 52, Coq R: 126, Coq Z: 43) |
-| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`, `deg_to_rad`, `rad_to_deg`, `approx_eq`~~ | ~~Foundational operations~~ | DONE (Coq R: 57, Coq Z: 18) — 100% coverage |
+| ~~1~~ | ~~Color~~ | ~~Constructor, alpha, blend, lerp, luminance~~ | ~~Color correctness critical for visualization~~ | DONE (Verus: 57, Coq R: 164, Coq Z: 60) |
+| ~~2~~ | ~~Rect~~ | ~~`contains`, `intersects`, `union`, transforms~~ | ~~Spatial logic used in collision detection~~ | DONE (Verus: 52, Coq R: 218, Coq Z: 51) |
+| ~~3~~ | ~~Utils (lib.rs)~~ | ~~`lerp`, `clamp`, `deg_to_rad`, `rad_to_deg`, `approx_eq`~~ | ~~Foundational operations~~ | DONE (Coq R: 59, Coq Z: 18) — 100% coverage |
 | 4 | Mat3/Mat4 | `determinant`, `trace` properties | Mathematical foundations | DONE (basic: det(I), det(0), det(A^T), det(-A), trace properties) |
 | 5 | Color | HSL <-> RGB conversion | Requires transcendentals | Blocked (floating-point) |
 
@@ -253,9 +253,10 @@ For rource-math, we recommend:
 Our current approach of proving properties over `int` specifications and documenting
 the f32 translation assumptions is the recommended best practice per Verus maintainers.
 
-The 30.2% of operations not formally verified (those requiring floating-point or
-transcendentals) will remain covered by:
+The 14.5% of operations not formally verified (those requiring floating-point,
+transcendentals, iterators, or complex geometry) will remain covered by:
 - Unit tests (100% coverage)
+- Kani CBMC harnesses for NaN-freedom and finiteness (225 harnesses)
 - Property-based testing
 - Manual review for IEEE 754 compliance
 
@@ -357,7 +358,7 @@ The generated code requires `RocqOfRust.RocqOfRust` which depends on:
 
 **5. Version mismatch: Rocq 9.0 vs Coq 8.18**
 
-Our 2156 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
+Our 2198 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
 Bridging requires migrating one or both sides.
 
 ### Comparison: rocq-of-rust vs Our Approach
@@ -369,7 +370,7 @@ Bridging requires migrating one or both sides.
 | f32 support | `UnsupportedLiteral` | Modeled as R (reals) or Z (integers) |
 | Admits | Structural `Admitted` axioms | Zero admits |
 | Proof style | Systems-level | Mathematical properties |
-| Compilability | Blocked (infra) | All 2156 Coq theorems compile |
+| Compilability | Blocked (infra) | All 2198 Coq theorems compile |
 | Best suited for | Smart contracts, protocols | Pure math functions |
 
 ### Recommendation
@@ -381,8 +382,8 @@ Bridging requires migrating one or both sides.
 4. The bridging effort would be enormous with uncertain feasibility
 
 **Our current approach remains optimal**: clean algebraic specifications in Coq 8.18
-with manual correspondence to Rust implementations, verified by 2156 machine-checked
-Coq theorems (1366 R-based + 429 Z-based + 361 FP) with zero admits. The spec-to-implementation gap is documented as a known
+with manual correspondence to Rust implementations, verified by 2198 machine-checked
+Coq theorems (1366 R-based + 471 Z-based + 361 FP) with zero admits. The spec-to-implementation gap is documented as a known
 limitation and mitigated by:
 - Systematic specification writing following Rust implementation structure
 - 100% unit test coverage verifying runtime behavior
@@ -430,7 +431,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2856 theorems, 59.3% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2909 theorems, 59.3% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
@@ -454,7 +455,7 @@ that neither Verus nor Coq can directly offer.
 | Color | 25 | to_rgba8 normalized, luminance range, blend_over no-NaN, from_hex normalized, lerp no-NaN, clamp bounded, premultiplied no-NaN, fade no-NaN, with_alpha preserves RGB, to_argb8/abgr8 normalized, from_hex_alpha/rgba8 normalized, contrasting valid, approx_eq reflexive, scale finite, invert finite, mix no-NaN, add clamped, darken/lighten finite, from_rgba8 to_rgba8 roundtrip, from_hex to_rgba8 consistent, array roundtrip, gray finite |
 | Rect | 27 | area ≥ 0, center finite, contains origin, perimeter ≥ 0, from_center_size center, translate preserves size, expand finite, is_valid positive dims, self-intersection, contains_self, scale_from_center finite/componentwise, approx_eq reflexive, from_corners valid, grow_to_contain finite, normalize finite, lerp finite, expand_xy finite, shrink finite, right/bottom correct, to_bounds finite, intersection finite, union finite |
 | Bounds | 25 | area ≥ 0, width/height ≥ 0, center finite, size finite, contains min, contains_bounds self, intersects self, translate preserves size, expand/shrink finite, from_points valid, from_center_half_extents finite, is_valid/is_empty complementarity, include_point contains, union contains both, approx_eq reflexive, to_rect finite, from_center_size finite, half_extents finite, union commutative, intersection finite, new finite |
-| **Total** | **225** | **All verified, 0 failures** |
+| **Total** | **236** | **All verified, 0 failures** |
 
 **Known limitation**: `Mat4::perspective()` uses `f32::tan()` which delegates to C `tanf` —
 unsupported by Kani's CBMC backend (tracked: github.com/model-checking/kani/issues/2423).
@@ -471,7 +472,7 @@ All edge cases are IEEE 754-compliant behavior requiring bounded input domains f
 
 *Last verified: 2026-02-05*
 *Formal verification coverage: 219/256 operations (85.5%)*
-*Kani IEEE 754 harnesses: 225 (all verified, 0 failures)*
+*Kani IEEE 754 harnesses: 236 (all verified, 0 failures)*
 *Unit test coverage: 256/256 operations (100%)*
-*Unverifiable operations: ~77 (floating-point, transcendentals, type conversions)*
+*Unverified operations: 37 (transcendentals: 10, HSL: 2, batch: 7, FP-specific: 3, complex geometry: 3, type conversions: 2, new methods: ~10)*
 *Landscape survey: 8 tools investigated (6 new + 2 current), Kani adopted*

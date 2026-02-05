@@ -25,19 +25,21 @@ For completed work history, see [VERIFICATION_CHRONOLOGY.md](VERIFICATION_CHRONO
 
 ## Coverage Status
 
-**Current coverage**: 208/255 public operations verified (81.6%).
-**Theoretical maximum** (excluding transcendental-blocked and batch operations): ~238/255 (93.3%).
+**Current coverage**: 219/256 public operations verified (85.5%).
+**Theoretical maximum** (excluding transcendental-blocked and batch operations): ~239/256 (93.4%).
 
 ## Operation Classification
 
 | Category | Description | Count |
 |----------|-------------|-------|
-| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 205 |
-| **ALGEBRAIC GAP** | CAN be proved algebraically, no proof yet | ~5 |
-| **PARTIALLY VERIFIED** | Some proofs exist but missing verification layers | ~17 |
-| **FP-FEASIBLE** | Requires FP modeling; feasible via Flocq or Kani | ~13 |
-| **TRANSCENDENTAL-BLOCKED** | Requires sin/cos/atan2/tan; not provable | 10 |
+| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 219 |
+| **TRANSCENDENTAL-BLOCKED** | Requires sin/cos/atan2/tan; not provable algebraically | 10 |
+| **HSL-BLOCKED** | Complex conditional FP logic (to_hsl, from_hsl) | 2 |
+| **FP-SPECIFIC** | FP predicates (is_finite, is_nan) — Kani covers these | 3 |
+| **COMPLEX GEOMETRY** | Rect transform_by_mat3/mat4, from_points (iterator) | 3 |
+| **TYPE CONVERSIONS** | Vec2 as_ivec2, as_uvec2 | 2 |
 | **BATCH** | Batch operations; follow trivially from single-op proofs | 7 |
+| **NEW METHODS** | Color with_lightness/with_saturation/with_hue/rotate_hue + Rect min/max | ~10 |
 
 ---
 
@@ -240,19 +242,20 @@ For a new session focused on increasing verification coverage, follow this order
 
 ## Coverage Projection
 
-| After Priority | Operations Verified | Coverage | Delta |
-|----------------|--------------------:|----------|-------|
-| **Current** | **208** | **81.6% (of 255)** | — |
-| After remaining P3 | ~215 | 84.3% | +10 |
-| **Theoretical maximum** (excl. blocked) | **~238** | **93.3%** | — |
+| Milestone | Operations Verified | Coverage | Delta |
+|-----------|--------------------:|----------|-------|
+| **Current** | **219** | **85.5% (of 256)** | — |
+| After Rect/Color expansion | ~230 | 89.8% | +11 |
+| After Kani NaN-freedom harnesses | ~235 | 91.8% | +5 |
+| **Theoretical maximum** (excl. blocked) | **~239** | **93.4%** | — |
 
-**Note**: The operation count is 255 (including 23 Bounds operations). Reaching 100%
-is not possible without transcendental function support (10 blocked operations) and
-batch operation proofs (7 low-value operations). The practical target is approximately
-85–90% coverage, which would require completing P1 through P4.
+**Note**: The operation count is 256 (including 24 Bounds operations). Reaching 100%
+is not possible without transcendental function support (10 blocked operations),
+batch operation proofs (7 low-value operations), and complex geometry/iterator
+operations (3 blocked). The practical target is approximately 90–93% coverage.
 
 ---
 
 *Last updated: 2026-02-05*
-*Current coverage: 208/255 (81.6%)*
+*Current coverage: 219/256 (85.5%)*
 *All P4 items COMPLETED; 2 blocked (P3.1, P3.2)*
