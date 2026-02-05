@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770248458128,
+  "lastUpdate": 1770257335978,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5210,6 +5210,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/719cac8b92f1e7e956dbd05a3ee684a315d13ca5"
         },
         "date": 1770248456970,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fd635fa480e6431e8ddd1c664422ce148f4ad887",
+          "message": "Merge pull request #260 from tomtom215/claude/rource-continuation-WV5K1\n\nAdd 69 new Coq theorems: fract, normalize, lerp, approx_eq",
+          "timestamp": "2026-02-04T21:06:54-05:00",
+          "tree_id": "8e258ae929bdff30b9e4264a75da5ac2a4dd5aa4",
+          "url": "https://github.com/tomtom215/rource/commit/fd635fa480e6431e8ddd1c664422ce148f4ad887"
+        },
+        "date": 1770257335621,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
