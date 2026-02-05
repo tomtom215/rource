@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770267735939,
+  "lastUpdate": 1770299899610,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5288,6 +5288,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/fc7eb790dec540b189a275424e37b04ee6cd1217"
         },
         "date": 1770267735274,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7fd0a76ea1b0fff78a0dc20e629d0dccf6743c8",
+          "message": "Merge pull request #262 from tomtom215/claude/rource-continuation-i77s6\n\nPhase 14: Add 106 cross-type theorems for Bounds, Color, Mat4, Rect",
+          "timestamp": "2026-02-05T08:56:18-05:00",
+          "tree_id": "0563d1515ac1a6f4a362b0c8f6b0101c4cb3b152",
+          "url": "https://github.com/tomtom215/rource/commit/e7fd0a76ea1b0fff78a0dc20e629d0dccf6743c8"
+        },
+        "date": 1770299899049,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
