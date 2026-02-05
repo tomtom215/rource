@@ -60,7 +60,7 @@ which wasm_of_ocaml 2>/dev/null
 
 | Tool | Version | Purpose | Install Location |
 |------|---------|---------|------------------|
-| **Verus** | Latest | Rust formal verification (475 proof functions) | `/tmp/verus/` |
+| **Verus** | Latest | Rust formal verification (498 proof functions) | `/tmp/verus/` |
 | **Coq** | 8.18.0 | Proof assistant (2198 theorems: 1366 R-based + 471 Z-based + 361 FP) | System (`apt`) + opam (see Rocq migration) |
 | **coq-equations** | 1.3+8.18 | Dependent pattern matching for Coq | opam |
 | **MetaCoq** | 8.18.dev | Verified erasure/extraction (Path 2) | `/tmp/metacoq/` + opam |
@@ -139,18 +139,18 @@ rustup install 1.92.0
 
 | File | Proof Functions | Types Verified |
 |------|----------------|----------------|
-| `vec2_proofs.rs` | 55 | Vec2 |
-| `vec3_proofs.rs` | 55 | Vec3 |
+| `vec2_proofs.rs` | 61 | Vec2 |
+| `vec3_proofs.rs` | 61 | Vec3 |
 | `vec4_proofs.rs` | 55 | Vec4 |
 | `mat3_proofs.rs` | 22 | Mat3 (base) |
 | `mat3_extended_proofs.rs` | 26 | Mat3 (extended) |
 | `mat4_proofs.rs` | 22 | Mat4 (base) |
 | `mat4_extended_proofs.rs` | 32 | Mat4 (extended) |
-| `color_proofs.rs` | 57 | Color |
+| `color_proofs.rs` | 64 | Color |
 | `rect_proofs.rs` | 52 | Rect |
-| `bounds_proofs.rs` | 66 | Bounds |
+| `bounds_proofs.rs` | 70 | Bounds |
 | `utils_proofs.rs` | 33 | Utils |
-| **Total** | **475** | **9 types** |
+| **Total** | **498** | **9 types** |
 
 ---
 
@@ -507,11 +507,11 @@ done
 
 | Tool | Theorems/Proofs | Errors | Admits |
 |------|-----------------|--------|--------|
-| Verus | 475 proof functions | 0 | 0 |
+| Verus | 498 proof functions | 0 | 0 |
 | Coq (R-based) | 1366 theorems | 0 | 0 |
 | Coq (Z-based) | 471 theorems | 0 | 0 |
-| Kani (CBMC) | 236 harnesses | 0 | 0 |
-| **Combined** | **2909** | **0** | **0** |
+| Kani (CBMC) | 272 harnesses | 0 | 0 |
+| **Combined** | **2968** | **0** | **0** |
 
 ---
 
@@ -790,6 +790,6 @@ crates/rource-math/proofs/
 
 *Last updated: 2026-01-29*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC*
-*2909 formally verified theorems/harnesses (Verus: 475, Coq: 2198, Kani: 236)*
+*2968 formally verified theorems/harnesses (Verus: 498, Coq: 2198, Kani: 272)*
 *9 verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, Utils*
 *Current: Coq 8.18 + MetaCoq (from source) | Future: Rocq 9.x + MetaRocq (when opam repos stabilize)*

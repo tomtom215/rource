@@ -347,6 +347,69 @@ impl Vec3 {
             Self::ZERO
         }
     }
+
+    // ========================================================================
+    // Formally verified operations (Coq proofs exist in Vec3.v/Vec3_Proofs.v)
+    // ========================================================================
+
+    /// Returns the sum of all components: `x + y + z`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> f32 {
+        self.x + self.y + self.z
+    }
+
+    /// Returns the product of all components: `x * y * z`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> f32 {
+        self.x * self.y * self.z
+    }
+
+    /// Returns the minimum component value.
+    #[inline]
+    #[must_use]
+    pub fn min_element(self) -> f32 {
+        self.x.min(self.y).min(self.z)
+    }
+
+    /// Returns the maximum component value.
+    #[inline]
+    #[must_use]
+    pub fn max_element(self) -> f32 {
+        self.x.max(self.y).max(self.z)
+    }
+
+    /// Returns the rejection of this vector from another: `self - project(self, onto)`.
+    ///
+    /// The rejection is the component of `self` perpendicular to `onto`.
+    #[inline]
+    #[must_use]
+    pub fn reject(self, onto: Self) -> Self {
+        self - self.project(onto)
+    }
+
+    /// Returns the scalar triple product: `self.dot(b.cross(c))`.
+    ///
+    /// This gives the signed volume of the parallelepiped formed by the three vectors.
+    #[inline]
+    #[must_use]
+    pub fn scalar_triple(self, b: Self, c: Self) -> f32 {
+        self.dot(b.cross(c))
+    }
+
+    /// Returns the component-wise fractional part: `(x - floor(x), y - floor(y), z - floor(z))`.
+    ///
+    /// Useful for UV wrapping and shader operations.
+    #[inline]
+    #[must_use]
+    pub fn fract(self) -> Self {
+        Self {
+            x: self.x - self.x.floor(),
+            y: self.y - self.y.floor(),
+            z: self.z - self.z.floor(),
+        }
+    }
 }
 
 // Operator implementations
@@ -1034,5 +1097,146 @@ mod tests {
         assert!((result.x - 3.0).abs() < 1e-6);
         assert!((result.y).abs() < 1e-6);
         assert!((result.z).abs() < 1e-6);
+    }
+
+    // =========================================================================
+    // Tests for formally verified Vec3 operations
+    // =========================================================================
+
+    #[test]
+    fn test_element_sum() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(v.element_sum(), 6.0);
+    }
+
+    #[test]
+    fn test_element_sum_zero() {
+        assert_eq!(Vec3::ZERO.element_sum(), 0.0);
+    }
+
+    #[test]
+    fn test_element_sum_splat() {
+        let v = Vec3::splat(5.0);
+        assert_eq!(v.element_sum(), 15.0);
+    }
+
+    #[test]
+    fn test_element_product() {
+        let v = Vec3::new(2.0, 3.0, 4.0);
+        assert_eq!(v.element_product(), 24.0);
+    }
+
+    #[test]
+    fn test_element_product_zero() {
+        assert_eq!(Vec3::ZERO.element_product(), 0.0);
+    }
+
+    #[test]
+    fn test_min_element() {
+        let v = Vec3::new(3.0, 1.0, 5.0);
+        assert_eq!(v.min_element(), 1.0);
+    }
+
+    #[test]
+    fn test_min_element_equal() {
+        let v = Vec3::splat(5.0);
+        assert_eq!(v.min_element(), 5.0);
+    }
+
+    #[test]
+    fn test_max_element() {
+        let v = Vec3::new(3.0, 7.0, 2.0);
+        assert_eq!(v.max_element(), 7.0);
+    }
+
+    #[test]
+    fn test_max_element_equal() {
+        let v = Vec3::splat(5.0);
+        assert_eq!(v.max_element(), 5.0);
+    }
+
+    #[test]
+    fn test_min_le_max_element() {
+        let v = Vec3::new(3.0, 7.0, 5.0);
+        assert!(v.min_element() <= v.max_element());
+    }
+
+    #[test]
+    fn test_reject() {
+        let v = Vec3::new(3.0, 4.0, 5.0);
+        let onto = Vec3::new(1.0, 0.0, 0.0);
+        let r = v.reject(onto);
+        assert!((r.x).abs() < 1e-6);
+        assert!((r.y - 4.0).abs() < 1e-6);
+        assert!((r.z - 5.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_reject_orthogonal() {
+        let v = Vec3::new(3.0, 4.0, 5.0);
+        let onto = Vec3::new(1.0, 1.0, 0.0);
+        let r = v.reject(onto);
+        assert!((r.dot(onto)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_project_reject_sum() {
+        let v = Vec3::new(3.0, 4.0, 5.0);
+        let onto = Vec3::new(1.0, 2.0, 3.0);
+        let p = v.project(onto);
+        let r = v.reject(onto);
+        let sum = p + r;
+        assert!((sum.x - v.x).abs() < 1e-4);
+        assert!((sum.y - v.y).abs() < 1e-4);
+        assert!((sum.z - v.z).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_scalar_triple() {
+        // Standard basis: i · (j × k) = 1
+        let a = Vec3::X;
+        let b = Vec3::Y;
+        let c = Vec3::Z;
+        assert!((a.scalar_triple(b, c) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_scalar_triple_cyclic() {
+        let a = Vec3::new(1.0, 2.0, 3.0);
+        let b = Vec3::new(4.0, 5.0, 6.0);
+        let c = Vec3::new(7.0, 8.0, 10.0);
+        // Cyclic property: a·(b×c) = b·(c×a) = c·(a×b)
+        let t1 = a.scalar_triple(b, c);
+        let t2 = b.scalar_triple(c, a);
+        let t3 = c.scalar_triple(a, b);
+        assert!((t1 - t2).abs() < 1e-4);
+        assert!((t2 - t3).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_fract() {
+        let v = Vec3::new(3.7, 5.2, 1.9);
+        let f = v.fract();
+        assert!((f.x - 0.7).abs() < 1e-5);
+        assert!((f.y - 0.2).abs() < 1e-5);
+        assert!((f.z - 0.9).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_fract_zero() {
+        let v = Vec3::new(3.0, 5.0, 7.0);
+        let f = v.fract();
+        assert!((f.x).abs() < 1e-6);
+        assert!((f.y).abs() < 1e-6);
+        assert!((f.z).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_fract_negative() {
+        let v = Vec3::new(-0.3, -2.7, -1.1);
+        let f = v.fract();
+        assert!((f.x - 0.7).abs() < 1e-5);
+        assert!((f.y - 0.3).abs() < 1e-5);
+        assert!((f.z - 0.9).abs() < 1e-5);
     }
 }

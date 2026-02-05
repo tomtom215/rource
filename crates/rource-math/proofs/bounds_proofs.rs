@@ -917,6 +917,95 @@ proof fn bounds_translate_center(b: SpecBounds, dx: int, dy: int)
     assert((b.min_x + b.max_x + 2 * dx) / 2 == (b.min_x + b.max_x) / 2 + dx);
 }
 
+// =============================================================================
+// SCALE FROM CENTER PROOFS
+// =============================================================================
+
+/// Spec: scale_from_center scales dimensions while keeping center fixed.
+/// new_width = width * factor, new_height = height * factor.
+/// Center preserved: min + max unchanged (center = (min+max)/2).
+pub open spec fn bounds_scale_from_center(b: SpecBounds, factor: int) -> SpecBounds {
+    let cx = bounds_center_x(b);
+    let cy = bounds_center_y(b);
+    let new_w = bounds_width(b) * factor;
+    let new_h = bounds_height(b) * factor;
+    SpecBounds {
+        min_x: cx - new_w / 2,
+        min_y: cy - new_h / 2,
+        max_x: cx + new_w / 2,
+        max_y: cy + new_h / 2,
+    }
+}
+
+/// **Theorem 67**: scale_from_center(1) preserves width.
+proof fn bounds_scale_from_center_one_width(b: SpecBounds)
+    requires
+        b.min_x <= b.max_x,
+        b.min_y <= b.max_y,
+        // Width and height are even (for clean integer division)
+        (b.max_x - b.min_x) % 2 == 0,
+        (b.max_y - b.min_y) % 2 == 0,
+    ensures ({
+        let s = bounds_scale_from_center(b, 1);
+        bounds_width(s) == bounds_width(b)
+    }),
+{
+    let w = bounds_width(b);
+    let cx = bounds_center_x(b);
+    let s = bounds_scale_from_center(b, 1);
+    assert(s.max_x - s.min_x == (cx + w / 2) - (cx - w / 2));
+}
+
+/// **Theorem 68**: scale_from_center(0) collapses to center (zero width/height).
+proof fn bounds_scale_from_center_zero(b: SpecBounds)
+    requires
+        b.min_x <= b.max_x,
+        b.min_y <= b.max_y,
+    ensures ({
+        let s = bounds_scale_from_center(b, 0);
+        bounds_width(s) == 0 && bounds_height(s) == 0
+    }),
+{
+    let s = bounds_scale_from_center(b, 0);
+    let cx = bounds_center_x(b);
+    let cy = bounds_center_y(b);
+    assert(s.min_x == cx);
+    assert(s.max_x == cx);
+    assert(s.min_y == cy);
+    assert(s.max_y == cy);
+}
+
+/// **Theorem 69**: scale_from_center preserves center_x.
+proof fn bounds_scale_from_center_center_x(b: SpecBounds, factor: int)
+    requires
+        b.min_x <= b.max_x,
+        b.min_y <= b.max_y,
+        (bounds_width(b) * factor) % 2 == 0,
+    ensures
+        bounds_center_x(bounds_scale_from_center(b, factor)) == bounds_center_x(b),
+{
+    let cx = bounds_center_x(b);
+    let s = bounds_scale_from_center(b, factor);
+    let new_w = bounds_width(b) * factor;
+    // s.min_x + s.max_x = (cx - new_w/2) + (cx + new_w/2) = 2*cx
+    assert(s.min_x + s.max_x == 2 * cx);
+}
+
+/// **Theorem 70**: scale_from_center preserves center_y.
+proof fn bounds_scale_from_center_center_y(b: SpecBounds, factor: int)
+    requires
+        b.min_x <= b.max_x,
+        b.min_y <= b.max_y,
+        (bounds_height(b) * factor) % 2 == 0,
+    ensures
+        bounds_center_y(bounds_scale_from_center(b, factor)) == bounds_center_y(b),
+{
+    let cy = bounds_center_y(b);
+    let s = bounds_scale_from_center(b, factor);
+    let new_h = bounds_height(b) * factor;
+    assert(s.min_y + s.max_y == 2 * cy);
+}
+
 } // verus!
 
 fn main() {}

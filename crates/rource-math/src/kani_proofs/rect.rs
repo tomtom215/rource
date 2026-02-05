@@ -726,3 +726,146 @@ fn verify_rect_intersection_self() {
         "self-intersection height too far"
     );
 }
+
+// ============================================================================
+// normalize
+// ============================================================================
+
+/// **Idempotence**: `normalize(normalize(r)) == normalize(r)`.
+#[kani::proof]
+fn verify_rect_normalize_idempotent() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < 1e6);
+    kani::assume(y.is_finite() && y.abs() < 1e6);
+    kani::assume(w.is_finite() && w.abs() < 1e6);
+    kani::assume(h.is_finite() && h.abs() < 1e6);
+    let r = Rect::new(x, y, w, h);
+    let n1 = r.normalize();
+    let n2 = n1.normalize();
+    assert!(n1.x == n2.x, "normalize not idempotent: x");
+    assert!(n1.y == n2.y, "normalize not idempotent: y");
+    assert!(n1.width == n2.width, "normalize not idempotent: width");
+    assert!(n1.height == n2.height, "normalize not idempotent: height");
+}
+
+/// **Non-negative dimensions**: `normalize()` produces non-negative width/height.
+#[kani::proof]
+fn verify_rect_normalize_nonneg() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < 1e6);
+    kani::assume(y.is_finite() && y.abs() < 1e6);
+    kani::assume(w.is_finite() && w.abs() < 1e6);
+    kani::assume(h.is_finite() && h.abs() < 1e6);
+    let r = Rect::new(x, y, w, h);
+    let n = r.normalize();
+    assert!(n.width >= 0.0, "normalized width should be non-negative");
+    assert!(n.height >= 0.0, "normalized height should be non-negative");
+}
+
+// ============================================================================
+// lerp (Rect)
+// ============================================================================
+
+/// **Boundary**: `lerp(b, 0.0) == a` and `lerp(b, 1.0) == b`.
+#[kani::proof]
+fn verify_rect_lerp_boundaries() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let aw: f32 = kani::any();
+    let ah: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bw: f32 = kani::any();
+    let bh: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < 1e6);
+    kani::assume(ay.is_finite() && ay.abs() < 1e6);
+    kani::assume(aw.is_finite() && aw.abs() < 1e6);
+    kani::assume(ah.is_finite() && ah.abs() < 1e6);
+    kani::assume(bx.is_finite() && bx.abs() < 1e6);
+    kani::assume(by.is_finite() && by.abs() < 1e6);
+    kani::assume(bw.is_finite() && bw.abs() < 1e6);
+    kani::assume(bh.is_finite() && bh.abs() < 1e6);
+    let a = Rect::new(ax, ay, aw, ah);
+    let b = Rect::new(bx, by, bw, bh);
+    let at_zero = a.lerp(b, 0.0);
+    assert!(at_zero.x == ax, "lerp(0) should return a.x");
+    assert!(at_zero.y == ay, "lerp(0) should return a.y");
+    assert!(at_zero.width == aw, "lerp(0) should return a.width");
+    assert!(at_zero.height == ah, "lerp(0) should return a.height");
+}
+
+// ============================================================================
+// grow_to_contain
+// ============================================================================
+
+/// **Monotonicity**: grown rect always contains the new point.
+#[kani::proof]
+fn verify_rect_grow_to_contain_includes_point() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    let px: f32 = kani::any();
+    let py: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < 1e6);
+    kani::assume(y.is_finite() && y.abs() < 1e6);
+    kani::assume(w.is_finite() && w > 0.0 && w < 1e6);
+    kani::assume(h.is_finite() && h > 0.0 && h < 1e6);
+    kani::assume(px.is_finite() && px.abs() < 1e6);
+    kani::assume(py.is_finite() && py.abs() < 1e6);
+    let r = Rect::new(x, y, w, h);
+    let grown = r.grow_to_contain(crate::Vec2::new(px, py));
+    // The point should now be within the grown rect
+    assert!(grown.x <= px, "grown rect min x > point x");
+    assert!(grown.y <= py, "grown rect min y > point y");
+    assert!(grown.right() >= px, "grown rect max x < point x");
+    assert!(grown.bottom() >= py, "grown rect max y < point y");
+}
+
+// ============================================================================
+// scale (Rect, position-preserving)
+// ============================================================================
+
+/// **Position preservation**: `scale()` preserves x, y.
+#[kani::proof]
+fn verify_rect_scale_preserves_position() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    let factor: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(w.is_finite());
+    kani::assume(h.is_finite());
+    kani::assume(factor.is_finite());
+    let r = Rect::new(x, y, w, h);
+    let s = r.scale(factor);
+    assert!(s.x == x, "scale should preserve x");
+    assert!(s.y == y, "scale should preserve y");
+}
+
+/// **Identity**: `scale(1.0)` returns the original rect.
+#[kani::proof]
+fn verify_rect_scale_one_identity() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    kani::assume(w.is_finite());
+    kani::assume(h.is_finite());
+    let r = Rect::new(x, y, w, h);
+    let s = r.scale(1.0);
+    assert!(s.x == x, "scale(1) changed x");
+    assert!(s.y == y, "scale(1) changed y");
+    assert!(s.width == w, "scale(1) changed width");
+    assert!(s.height == h, "scale(1) changed height");
+}

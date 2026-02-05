@@ -878,6 +878,93 @@ proof fn vec3_lerp_zero_zero(t: int)
     vec3_lerp_identity(vec3_zero(), t);
 }
 
+// =============================================================================
+// MIN/MAX ELEMENT PROOFS
+// =============================================================================
+
+/// Spec: min_element(v) = min(min(v.x, v.y), v.z).
+pub open spec fn vec3_min_element(v: SpecVec3) -> int {
+    let m = if v.x <= v.y { v.x } else { v.y };
+    if m <= v.z { m } else { v.z }
+}
+
+/// Spec: max_element(v) = max(max(v.x, v.y), v.z).
+pub open spec fn vec3_max_element(v: SpecVec3) -> int {
+    let m = if v.x >= v.y { v.x } else { v.y };
+    if m >= v.z { m } else { v.z }
+}
+
+/// **Theorem 58**: min_element <= max_element.
+proof fn vec3_min_le_max_element(v: SpecVec3)
+    ensures
+        vec3_min_element(v) <= vec3_max_element(v),
+{
+}
+
+/// **Theorem 59**: min_element is a lower bound.
+proof fn vec3_min_element_bound(v: SpecVec3)
+    ensures
+        vec3_min_element(v) <= v.x,
+        vec3_min_element(v) <= v.y,
+        vec3_min_element(v) <= v.z,
+{
+}
+
+/// **Theorem 60**: max_element is an upper bound.
+proof fn vec3_max_element_bound(v: SpecVec3)
+    ensures
+        vec3_max_element(v) >= v.x,
+        vec3_max_element(v) >= v.y,
+        vec3_max_element(v) >= v.z,
+{
+}
+
+/// **Theorem 61**: splat min_element is the splat value.
+proof fn vec3_splat_min_element(v: int)
+    ensures
+        vec3_min_element(vec3_splat(v)) == v,
+{
+}
+
+/// **Theorem 62**: splat max_element is the splat value.
+proof fn vec3_splat_max_element(v: int)
+    ensures
+        vec3_max_element(vec3_splat(v)) == v,
+{
+}
+
+// =============================================================================
+// PROJECT / REJECT PROOFS
+// =============================================================================
+
+/// Spec: project(v, w) = w * dot(v,w) / dot(w,w).
+pub open spec fn vec3_project(v: SpecVec3, w: SpecVec3) -> SpecVec3 {
+    let d = vec3_dot(v, w);
+    let len_sq = vec3_dot(w, w);
+    if len_sq > 0 {
+        SpecVec3 { x: w.x * d / len_sq, y: w.y * d / len_sq, z: w.z * d / len_sq }
+    } else {
+        vec3_zero()
+    }
+}
+
+/// Spec: reject(v, w) = v - project(v, w).
+pub open spec fn vec3_reject(v: SpecVec3, w: SpecVec3) -> SpecVec3 {
+    vec3_sub(v, vec3_project(v, w))
+}
+
+/// **Theorem 63**: project + reject = original.
+proof fn vec3_project_reject_sum(v: SpecVec3, w: SpecVec3)
+    ensures
+        vec3_add(vec3_project(v, w), vec3_reject(v, w)) == v,
+{
+    let p = vec3_project(v, w);
+    let r = vec3_reject(v, w);
+    assert(p.x + (v.x - p.x) == v.x);
+    assert(p.y + (v.y - p.y) == v.y);
+    assert(p.z + (v.z - p.z) == v.z);
+}
+
 fn main() {
     // Verification only
 }

@@ -576,3 +576,119 @@ fn verify_vec2_abs_idempotent() {
 // NOTE: verify_vec2_distance_squared_properties removed — exceeds CBMC solver
 // limits in CI (4 symbolic f32 inputs × subtraction + multiplication).
 // distance_squared correctness is covered by Coq R-based proofs and unit tests.
+
+// ============================================================================
+// element_sum
+// ============================================================================
+
+/// **Finiteness**: `element_sum()` with bounded inputs produces finite output.
+#[kani::proof]
+fn verify_vec2_element_sum_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    let v = Vec2::new(x, y);
+    let s = v.element_sum();
+    assert!(s.is_finite(), "element_sum() not finite");
+}
+
+// ============================================================================
+// element_product
+// ============================================================================
+
+/// **Finiteness**: `element_product()` with bounded inputs.
+#[kani::proof]
+fn verify_vec2_element_product_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
+    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
+    let v = Vec2::new(x, y);
+    let p = v.element_product();
+    assert!(p.is_finite(), "element_product() not finite");
+}
+
+// ============================================================================
+// min_element / max_element
+// ============================================================================
+
+/// **Ordering**: `min_element() <= max_element()` for all finite vectors.
+#[kani::proof]
+fn verify_vec2_min_le_max_element() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    assert!(v.min_element() <= v.max_element(), "min > max element");
+}
+
+/// **Bound**: `min_element()` is a lower bound on components.
+#[kani::proof]
+fn verify_vec2_min_element_bound() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let m = v.min_element();
+    assert!(m <= x, "min_element > x");
+    assert!(m <= y, "min_element > y");
+}
+
+/// **Bound**: `max_element()` is an upper bound on components.
+#[kani::proof]
+fn verify_vec2_max_element_bound() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite());
+    kani::assume(y.is_finite());
+    let v = Vec2::new(x, y);
+    let m = v.max_element();
+    assert!(m >= x, "max_element < x");
+    assert!(m >= y, "max_element < y");
+}
+
+// ============================================================================
+// reject
+// ============================================================================
+
+/// **Finiteness**: `reject()` with bounded non-zero onto produces finite output.
+#[kani::proof]
+fn verify_vec2_reject_finite() {
+    let vx: f32 = kani::any();
+    let vy: f32 = kani::any();
+    let ox: f32 = kani::any();
+    let oy: f32 = kani::any();
+    kani::assume(vx.is_finite() && vx.abs() < SAFE_BOUND);
+    kani::assume(vy.is_finite() && vy.abs() < SAFE_BOUND);
+    kani::assume(ox.is_finite() && ox.abs() < SAFE_BOUND);
+    kani::assume(oy.is_finite() && oy.abs() < SAFE_BOUND);
+    // Ensure onto is non-zero to avoid degenerate projection
+    kani::assume(ox * ox + oy * oy > 1e-10);
+    let v = Vec2::new(vx, vy);
+    let onto = Vec2::new(ox, oy);
+    let r = v.reject(onto);
+    assert!(r.x.is_finite(), "reject().x not finite");
+    assert!(r.y.is_finite(), "reject().y not finite");
+}
+
+// ============================================================================
+// fract
+// ============================================================================
+
+/// **Finiteness**: `fract()` with finite inputs produces finite output.
+/// NOTE: fract uses f32::floor() which is a compiler intrinsic (not fmodf),
+/// so CBMC models it correctly.
+#[kani::proof]
+fn verify_vec2_fract_finite() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < 1e6);
+    kani::assume(y.is_finite() && y.abs() < 1e6);
+    let v = Vec2::new(x, y);
+    let f = v.fract();
+    assert!(f.x.is_finite(), "fract().x not finite");
+    assert!(f.y.is_finite(), "fract().y not finite");
+}

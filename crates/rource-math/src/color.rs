@@ -415,6 +415,145 @@ impl Color {
             && crate::approx_eq(self.b, other.b)
             && crate::approx_eq(self.a, other.a)
     }
+
+    // ========================================================================
+    // Formally verified operations (Coq proofs exist in Color.v/Color_Proofs.v)
+    // ========================================================================
+
+    /// Component-wise RGBA addition.
+    ///
+    /// Useful for additive blending and light accumulation.
+    /// Note: results may exceed [0, 1] range — use [`clamp`](Self::clamp) if needed.
+    #[inline]
+    #[must_use]
+    #[allow(clippy::should_implement_trait)]
+    pub fn add(self, other: Self) -> Self {
+        Self {
+            r: self.r + other.r,
+            g: self.g + other.g,
+            b: self.b + other.b,
+            a: self.a + other.a,
+        }
+    }
+
+    /// Scalar multiplication of all RGBA channels.
+    ///
+    /// Useful for brightness adjustment and fade effects.
+    #[inline]
+    #[must_use]
+    pub fn scale(self, s: f32) -> Self {
+        Self {
+            r: self.r * s,
+            g: self.g * s,
+            b: self.b * s,
+            a: self.a * s,
+        }
+    }
+
+    /// Inverts the RGB components: `(1-r, 1-g, 1-b, a)`.
+    ///
+    /// Alpha is preserved. Useful for negative/complement and contrast effects.
+    #[inline]
+    #[must_use]
+    pub fn invert(self) -> Self {
+        Self {
+            r: 1.0 - self.r,
+            g: 1.0 - self.g,
+            b: 1.0 - self.b,
+            a: self.a,
+        }
+    }
+
+    /// Equal-weight blend of two colors (equivalent to `lerp(other, 0.5)`).
+    ///
+    /// Useful for color palette generation.
+    #[inline]
+    #[must_use]
+    pub fn mix(self, other: Self) -> Self {
+        Self {
+            r: (self.r + other.r) * 0.5,
+            g: (self.g + other.g) * 0.5,
+            b: (self.b + other.b) * 0.5,
+            a: (self.a + other.a) * 0.5,
+        }
+    }
+
+    /// Reduces brightness by the given factor.
+    ///
+    /// `amount = 0.0` returns the original color, `amount = 1.0` returns black
+    /// (with alpha preserved). Useful for hover/press UI states.
+    #[inline]
+    #[must_use]
+    pub fn darken(self, amount: f32) -> Self {
+        let factor = 1.0 - amount;
+        Self {
+            r: self.r * factor,
+            g: self.g * factor,
+            b: self.b * factor,
+            a: self.a,
+        }
+    }
+
+    /// Increases brightness by the given factor.
+    ///
+    /// `amount = 0.0` returns the original color, `amount = 1.0` returns white
+    /// (with alpha preserved). Useful for hover/press UI states.
+    #[inline]
+    #[must_use]
+    pub fn lighten(self, amount: f32) -> Self {
+        Self {
+            r: self.r + (1.0 - self.r) * amount,
+            g: self.g + (1.0 - self.g) * amount,
+            b: self.b + (1.0 - self.b) * amount,
+            a: self.a,
+        }
+    }
+
+    /// Returns the perceived luminance contrast between two colors.
+    ///
+    /// Uses absolute difference of Rec. 709 luminance values.
+    /// Useful for WCAG accessibility checks.
+    #[inline]
+    #[must_use]
+    pub fn contrast(self, other: Self) -> f32 {
+        (self.luminance() - other.luminance()).abs()
+    }
+
+    /// Returns `true` if the color's luminance exceeds 0.5.
+    ///
+    /// Useful for determining whether to use dark or light text on this background.
+    #[inline]
+    #[must_use]
+    pub fn is_light(self) -> bool {
+        self.luminance() > 0.5
+    }
+
+    /// Returns `true` if the color's luminance is 0.5 or below.
+    ///
+    /// Useful for determining whether to use dark or light text on this background.
+    #[inline]
+    #[must_use]
+    pub fn is_dark(self) -> bool {
+        self.luminance() <= 0.5
+    }
+
+    /// Returns the color components as an `(r, g, b, a)` tuple.
+    ///
+    /// Useful for interop and serialization.
+    #[inline]
+    #[must_use]
+    pub fn to_rgba(self) -> (f32, f32, f32, f32) {
+        (self.r, self.g, self.b, self.a)
+    }
+
+    /// Returns the RGB components as an `(r, g, b)` tuple (alpha discarded).
+    ///
+    /// Useful for interop and serialization.
+    #[inline]
+    #[must_use]
+    pub fn to_rgb(self) -> (f32, f32, f32) {
+        (self.r, self.g, self.b)
+    }
 }
 
 impl fmt::Debug for Color {
@@ -2018,5 +2157,208 @@ mod tests {
             color2.g > color2.r,
             "Green hue with positive saturation should have more green"
         );
+    }
+
+    // =========================================================================
+    // Tests for formally verified Color operations
+    // =========================================================================
+
+    #[test]
+    fn test_color_add() {
+        let a = Color::new(0.2, 0.3, 0.4, 0.5);
+        let b = Color::new(0.1, 0.2, 0.3, 0.4);
+        let c = a.add(b);
+        assert!((c.r - 0.3).abs() < 1e-6);
+        assert!((c.g - 0.5).abs() < 1e-6);
+        assert!((c.b - 0.7).abs() < 1e-6);
+        assert!((c.a - 0.9).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_add_commutative() {
+        let a = Color::new(0.2, 0.3, 0.4, 0.5);
+        let b = Color::new(0.1, 0.6, 0.3, 0.2);
+        assert!(a.add(b).approx_eq(b.add(a)));
+    }
+
+    #[test]
+    fn test_color_add_zero() {
+        let a = Color::new(0.5, 0.6, 0.7, 0.8);
+        let zero = Color::new(0.0, 0.0, 0.0, 0.0);
+        assert!(a.add(zero).approx_eq(a));
+    }
+
+    #[test]
+    fn test_color_scale() {
+        let c = Color::new(0.2, 0.4, 0.6, 0.8);
+        let s = c.scale(2.0);
+        assert!((s.r - 0.4).abs() < 1e-6);
+        assert!((s.g - 0.8).abs() < 1e-6);
+        assert!((s.b - 1.2).abs() < 1e-6);
+        assert!((s.a - 1.6).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_scale_one() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.9);
+        assert!(c.scale(1.0).approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_scale_zero() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.9);
+        let s = c.scale(0.0);
+        assert!((s.r).abs() < 1e-6);
+        assert!((s.g).abs() < 1e-6);
+        assert!((s.b).abs() < 1e-6);
+        assert!((s.a).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_invert() {
+        let c = Color::new(0.2, 0.3, 0.7, 0.8);
+        let inv = c.invert();
+        assert!((inv.r - 0.8).abs() < 1e-6);
+        assert!((inv.g - 0.7).abs() < 1e-6);
+        assert!((inv.b - 0.3).abs() < 1e-6);
+        assert_eq!(inv.a, 0.8); // alpha preserved
+    }
+
+    #[test]
+    fn test_color_invert_involutive() {
+        let c = Color::new(0.2, 0.3, 0.7, 0.8);
+        assert!(c.invert().invert().approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_invert_black_white() {
+        let inv_black = Color::BLACK.invert();
+        assert!(inv_black.approx_eq(Color::WHITE));
+        let inv_white = Color::WHITE.invert();
+        assert!(inv_white.approx_eq(Color::BLACK));
+    }
+
+    #[test]
+    fn test_color_mix() {
+        let a = Color::new(0.0, 0.0, 0.0, 1.0);
+        let b = Color::new(1.0, 1.0, 1.0, 1.0);
+        let m = a.mix(b);
+        assert!((m.r - 0.5).abs() < 1e-6);
+        assert!((m.g - 0.5).abs() < 1e-6);
+        assert!((m.b - 0.5).abs() < 1e-6);
+        assert!((m.a - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_mix_commutative() {
+        let a = Color::new(0.2, 0.3, 0.4, 0.5);
+        let b = Color::new(0.6, 0.7, 0.8, 0.9);
+        assert!(a.mix(b).approx_eq(b.mix(a)));
+    }
+
+    #[test]
+    fn test_color_mix_self() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.9);
+        assert!(c.mix(c).approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_darken() {
+        let c = Color::new(0.8, 0.6, 0.4, 1.0);
+        let d = c.darken(0.5);
+        assert!((d.r - 0.4).abs() < 1e-6);
+        assert!((d.g - 0.3).abs() < 1e-6);
+        assert!((d.b - 0.2).abs() < 1e-6);
+        assert_eq!(d.a, 1.0); // alpha preserved
+    }
+
+    #[test]
+    fn test_color_darken_zero() {
+        let c = Color::new(0.5, 0.6, 0.7, 0.8);
+        assert!(c.darken(0.0).approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_darken_full() {
+        let c = Color::new(0.5, 0.6, 0.7, 0.8);
+        let d = c.darken(1.0);
+        assert!((d.r).abs() < 1e-6);
+        assert!((d.g).abs() < 1e-6);
+        assert!((d.b).abs() < 1e-6);
+        assert_eq!(d.a, 0.8);
+    }
+
+    #[test]
+    fn test_color_lighten() {
+        let c = Color::new(0.0, 0.0, 0.0, 1.0);
+        let l = c.lighten(1.0);
+        assert!((l.r - 1.0).abs() < 1e-6);
+        assert!((l.g - 1.0).abs() < 1e-6);
+        assert!((l.b - 1.0).abs() < 1e-6);
+        assert_eq!(l.a, 1.0);
+    }
+
+    #[test]
+    fn test_color_lighten_zero() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.9);
+        assert!(c.lighten(0.0).approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_lighten_preserves_alpha() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.4);
+        assert_eq!(c.lighten(0.5).a, 0.4);
+    }
+
+    #[test]
+    fn test_color_contrast() {
+        let bw = Color::BLACK.contrast(Color::WHITE);
+        assert!(bw > 0.9); // ~1.0 for black vs white
+        let self_contrast = Color::RED.contrast(Color::RED);
+        assert!((self_contrast).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_contrast_symmetric() {
+        let a = Color::new(0.2, 0.5, 0.8, 1.0);
+        let b = Color::new(0.9, 0.1, 0.3, 1.0);
+        assert!((a.contrast(b) - b.contrast(a)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_is_light() {
+        assert!(Color::WHITE.is_light());
+        assert!(!Color::BLACK.is_light());
+    }
+
+    #[test]
+    fn test_color_is_dark() {
+        assert!(Color::BLACK.is_dark());
+        assert!(!Color::WHITE.is_dark());
+    }
+
+    #[test]
+    fn test_color_light_dark_complement() {
+        let c = Color::new(0.3, 0.5, 0.7, 1.0);
+        assert!(c.is_light() != c.is_dark());
+    }
+
+    #[test]
+    fn test_color_to_rgba() {
+        let c = Color::new(0.1, 0.2, 0.3, 0.4);
+        let (r, g, b, a) = c.to_rgba();
+        assert_eq!(r, 0.1);
+        assert_eq!(g, 0.2);
+        assert_eq!(b, 0.3);
+        assert_eq!(a, 0.4);
+    }
+
+    #[test]
+    fn test_color_to_rgb() {
+        let c = Color::new(0.1, 0.2, 0.3, 0.4);
+        let (r, g, b) = c.to_rgb();
+        assert_eq!(r, 0.1);
+        assert_eq!(g, 0.2);
+        assert_eq!(b, 0.3);
     }
 }

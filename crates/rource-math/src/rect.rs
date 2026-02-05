@@ -349,6 +349,79 @@ impl Rect {
             && crate::approx_eq(self.width, other.width)
             && crate::approx_eq(self.height, other.height)
     }
+
+    // ========================================================================
+    // Formally verified operations (Coq proofs exist in Rect.v/Rect_Proofs.v)
+    // ========================================================================
+
+    /// Normalizes the rectangle so width and height are non-negative.
+    ///
+    /// If width is negative, the x position is adjusted so the rectangle
+    /// covers the same region. Same for height/y.
+    #[inline]
+    #[must_use]
+    pub fn normalize(self) -> Self {
+        let (x, w) = if self.width < 0.0 {
+            (self.x + self.width, -self.width)
+        } else {
+            (self.x, self.width)
+        };
+        let (y, h) = if self.height < 0.0 {
+            (self.y + self.height, -self.height)
+        } else {
+            (self.y, self.height)
+        };
+        Self {
+            x,
+            y,
+            width: w,
+            height: h,
+        }
+    }
+
+    /// Linearly interpolates between two rectangles.
+    ///
+    /// Interpolates each component (x, y, width, height) independently.
+    #[inline]
+    #[must_use]
+    pub fn lerp(self, other: Self, t: f32) -> Self {
+        Self {
+            x: crate::lerp(self.x, other.x, t),
+            y: crate::lerp(self.y, other.y, t),
+            width: crate::lerp(self.width, other.width, t),
+            height: crate::lerp(self.height, other.height, t),
+        }
+    }
+
+    /// Expands the rectangle to include the given point.
+    ///
+    /// Useful for dynamic bounding box construction.
+    #[inline]
+    #[must_use]
+    pub fn grow_to_contain(self, point: Vec2) -> Self {
+        let new_x = self.x.min(point.x);
+        let new_y = self.y.min(point.y);
+        let new_right = self.right().max(point.x);
+        let new_bottom = self.bottom().max(point.y);
+        Self {
+            x: new_x,
+            y: new_y,
+            width: new_right - new_x,
+            height: new_bottom - new_y,
+        }
+    }
+
+    /// Scales the width and height by a factor, preserving position (x, y).
+    #[inline]
+    #[must_use]
+    pub fn scale(self, factor: f32) -> Self {
+        Self {
+            x: self.x,
+            y: self.y,
+            width: self.width * factor,
+            height: self.height * factor,
+        }
+    }
 }
 
 impl fmt::Debug for Rect {
@@ -620,6 +693,25 @@ impl Bounds {
     #[must_use]
     pub fn approx_eq(self, other: Self) -> bool {
         self.min.approx_eq(other.min) && self.max.approx_eq(other.max)
+    }
+
+    // ========================================================================
+    // Formally verified operations (Coq proofs exist in Bounds.v/Bounds_Proofs.v)
+    // ========================================================================
+
+    /// Scales the bounds from its center by the given factor.
+    ///
+    /// The center point remains fixed while width and height are multiplied by `factor`.
+    #[inline]
+    #[must_use]
+    pub fn scale_from_center(self, factor: f32) -> Self {
+        let center = self.center();
+        let new_half_w = self.width() * factor * 0.5;
+        let new_half_h = self.height() * factor * 0.5;
+        Self {
+            min: Vec2::new(center.x - new_half_w, center.y - new_half_h),
+            max: Vec2::new(center.x + new_half_w, center.y + new_half_h),
+        }
     }
 }
 
@@ -1426,5 +1518,154 @@ mod tests {
         let b = Bounds::new(Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0));
         assert!(!b.approx_eq(Bounds::new(Vec2::new(100.0, 2.0), Vec2::new(3.0, 4.0))));
         assert!(!b.approx_eq(Bounds::new(Vec2::new(1.0, 2.0), Vec2::new(100.0, 4.0))));
+    }
+
+    // =========================================================================
+    // Tests for formally verified Rect operations
+    // =========================================================================
+
+    #[test]
+    fn test_rect_normalize_positive() {
+        let r = Rect::new(1.0, 2.0, 3.0, 4.0);
+        let n = r.normalize();
+        // Already positive: should be identity
+        assert!(n.approx_eq(r));
+    }
+
+    #[test]
+    fn test_rect_normalize_negative_width() {
+        let r = Rect::new(4.0, 2.0, -3.0, 4.0);
+        let n = r.normalize();
+        assert!((n.x - 1.0).abs() < 1e-6);
+        assert!((n.width - 3.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rect_normalize_negative_height() {
+        let r = Rect::new(1.0, 6.0, 3.0, -4.0);
+        let n = r.normalize();
+        assert!((n.y - 2.0).abs() < 1e-6);
+        assert!((n.height - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rect_normalize_idempotent() {
+        let r = Rect::new(4.0, 6.0, -3.0, -4.0);
+        assert!(r.normalize().normalize().approx_eq(r.normalize()));
+    }
+
+    #[test]
+    fn test_rect_lerp_zero() {
+        let a = Rect::new(0.0, 0.0, 10.0, 10.0);
+        let b = Rect::new(5.0, 5.0, 20.0, 20.0);
+        assert!(a.lerp(b, 0.0).approx_eq(a));
+    }
+
+    #[test]
+    fn test_rect_lerp_one() {
+        let a = Rect::new(0.0, 0.0, 10.0, 10.0);
+        let b = Rect::new(5.0, 5.0, 20.0, 20.0);
+        assert!(a.lerp(b, 1.0).approx_eq(b));
+    }
+
+    #[test]
+    fn test_rect_lerp_half() {
+        let a = Rect::new(0.0, 0.0, 10.0, 10.0);
+        let b = Rect::new(10.0, 10.0, 20.0, 20.0);
+        let mid = a.lerp(b, 0.5);
+        assert!((mid.x - 5.0).abs() < 1e-6);
+        assert!((mid.y - 5.0).abs() < 1e-6);
+        assert!((mid.width - 15.0).abs() < 1e-6);
+        assert!((mid.height - 15.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rect_lerp_same() {
+        let r = Rect::new(1.0, 2.0, 3.0, 4.0);
+        assert!(r.lerp(r, 0.5).approx_eq(r));
+    }
+
+    #[test]
+    fn test_rect_grow_to_contain_interior() {
+        let r = Rect::new(0.0, 0.0, 10.0, 10.0);
+        let grown = r.grow_to_contain(Vec2::new(5.0, 5.0));
+        // Point is inside: rect should not change
+        assert!(grown.approx_eq(r));
+    }
+
+    #[test]
+    fn test_rect_grow_to_contain_outside() {
+        let r = Rect::new(0.0, 0.0, 10.0, 10.0);
+        let grown = r.grow_to_contain(Vec2::new(15.0, 20.0));
+        assert!((grown.x - 0.0).abs() < 1e-6);
+        assert!((grown.y - 0.0).abs() < 1e-6);
+        assert!((grown.right() - 15.0).abs() < 1e-6);
+        assert!((grown.bottom() - 20.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rect_grow_to_contain_left() {
+        let r = Rect::new(5.0, 5.0, 10.0, 10.0);
+        let grown = r.grow_to_contain(Vec2::new(2.0, 7.0));
+        assert!((grown.x - 2.0).abs() < 1e-6);
+        assert!((grown.right() - 15.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rect_scale() {
+        let r = Rect::new(1.0, 2.0, 10.0, 20.0);
+        let s = r.scale(2.0);
+        assert_eq!(s.x, 1.0); // position preserved
+        assert_eq!(s.y, 2.0);
+        assert!((s.width - 20.0).abs() < 1e-6);
+        assert!((s.height - 40.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rect_scale_one() {
+        let r = Rect::new(1.0, 2.0, 3.0, 4.0);
+        assert!(r.scale(1.0).approx_eq(r));
+    }
+
+    // =========================================================================
+    // Tests for formally verified Bounds operations
+    // =========================================================================
+
+    #[test]
+    fn test_bounds_scale_from_center() {
+        let b = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        let s = b.scale_from_center(2.0);
+        // Center stays at (5, 5), width/height doubles
+        assert!((s.center().x - 5.0).abs() < 1e-6);
+        assert!((s.center().y - 5.0).abs() < 1e-6);
+        assert!((s.width() - 20.0).abs() < 1e-6);
+        assert!((s.height() - 20.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_bounds_scale_from_center_one() {
+        let b = Bounds::new(Vec2::new(2.0, 3.0), Vec2::new(8.0, 9.0));
+        let s = b.scale_from_center(1.0);
+        assert!(s.approx_eq(b));
+    }
+
+    #[test]
+    fn test_bounds_scale_from_center_zero() {
+        let b = Bounds::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0));
+        let s = b.scale_from_center(0.0);
+        // Should collapse to center point
+        assert!((s.width()).abs() < 1e-6);
+        assert!((s.height()).abs() < 1e-6);
+        assert!((s.center().x - 5.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_bounds_scale_from_center_preserves_center() {
+        let b = Bounds::new(Vec2::new(3.0, 5.0), Vec2::new(13.0, 15.0));
+        let center_before = b.center();
+        let s = b.scale_from_center(1.5);
+        let center_after = s.center();
+        assert!((center_before.x - center_after.x).abs() < 1e-5);
+        assert!((center_before.y - center_after.y).abs() < 1e-5);
     }
 }

@@ -945,6 +945,89 @@ proof fn color_lighten_preserves_alpha(c: SpecColor, amount: int)
 {
 }
 
+// =============================================================================
+// CONTRAST PROOFS (luminance difference)
+// =============================================================================
+
+/// Contrast between two colors: absolute difference of luminance.
+/// Scaled: contrast(a, b) = |luminance(a) - luminance(b)|.
+pub open spec fn color_contrast(a: SpecColor, b: SpecColor) -> int {
+    let la = color_luminance_scaled(a);
+    let lb = color_luminance_scaled(b);
+    if la >= lb { la - lb } else { lb - la }
+}
+
+/// **Theorem 58**: Contrast is symmetric.
+proof fn color_contrast_symmetric(a: SpecColor, b: SpecColor)
+    ensures
+        color_contrast(a, b) == color_contrast(b, a),
+{
+}
+
+/// **Theorem 59**: Contrast with self is zero.
+proof fn color_contrast_self(c: SpecColor)
+    ensures
+        color_contrast(c, c) == 0int,
+{
+}
+
+/// **Theorem 60**: Contrast is non-negative.
+proof fn color_contrast_nonneg(a: SpecColor, b: SpecColor)
+    ensures
+        color_contrast(a, b) >= 0int,
+{
+}
+
+// =============================================================================
+// TO_RGBA / TO_RGB PROOFS
+// =============================================================================
+
+/// Spec: to_rgba returns a 4-tuple of components.
+pub open spec fn color_to_rgba(c: SpecColor) -> (int, int, int, int) {
+    (c.r, c.g, c.b, c.a)
+}
+
+/// Spec: to_rgb returns a 3-tuple of components.
+pub open spec fn color_to_rgb(c: SpecColor) -> (int, int, int) {
+    (c.r, c.g, c.b)
+}
+
+/// **Theorem 61**: to_rgba preserves all components.
+proof fn color_to_rgba_components(c: SpecColor)
+    ensures ({
+        let t = color_to_rgba(c);
+        t.0 == c.r && t.1 == c.g && t.2 == c.b && t.3 == c.a
+    }),
+{
+}
+
+/// **Theorem 62**: to_rgb preserves RGB components.
+proof fn color_to_rgb_components(c: SpecColor)
+    ensures ({
+        let t = color_to_rgb(c);
+        t.0 == c.r && t.1 == c.g && t.2 == c.b
+    }),
+{
+}
+
+/// **Theorem 63**: to_rgba roundtrip: creating from to_rgba output recreates original.
+proof fn color_to_rgba_roundtrip(c: SpecColor)
+    ensures ({
+        let (r, g, b, a) = color_to_rgba(c);
+        color_new(r, g, b, a) == c
+    }),
+{
+}
+
+/// **Theorem 64**: to_rgb roundtrip with alpha.
+proof fn color_to_rgb_roundtrip(c: SpecColor)
+    ensures ({
+        let (r, g, b) = color_to_rgb(c);
+        color_rgb(r, g, b) == SpecColor { r: c.r, g: c.g, b: c.b, a: 1000 }
+    }),
+{
+}
+
 fn main() {
     // Verification only
 }

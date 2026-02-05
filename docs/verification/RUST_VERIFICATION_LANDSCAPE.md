@@ -107,7 +107,7 @@ fn verify_vec2_length_no_nan() {
 | **Bounded** — only checks inputs up to a bound | Cannot prove universal properties (∀ x, P(x)) |
 | **No algebraic proofs** — checks assertions, not theorems | Complements but doesn't replace Verus/Coq |
 | **Scalability** — complex FP expressions may timeout | Mat4 determinant (16 fields) may be challenging |
-| **No proof certificates** — verification result, not Coq term | Cannot extend our 2909-theorem corpus |
+| **No proof certificates** — verification result, not Coq term | Cannot extend our 2968-theorem corpus |
 
 ### Recommendation: **ADOPT**
 
@@ -379,7 +379,7 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 │  Layer 2: Edge Case Safety (CURRENT — Kani)                         │
 │  └── Kani (bounded model checker)                                   │
 │      └── f32 bit-precise → NaN/overflow/infinity checking          │
-│      └── 236 harnesses for FP-intensive operations                 │
+│      └── 272 harnesses for FP-intensive operations                 │
 │                                                                     │
 │  Layer 3: Floating-Point Accuracy (IN PROGRESS — Flocq)            │
 │  └── Coq + Flocq 4.1.3                                              │

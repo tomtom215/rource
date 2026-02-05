@@ -204,7 +204,7 @@ The specifications and the compiler serve fundamentally different purposes.
 │  ├── Color_Proofs.v, Rect_Proofs.v (382 theorems)                       │
 │  ├── Complexity.v (60 theorems)                                         │
 │  └── Purpose: Mathematical correctness proofs                           │
-│      Status: COMPLETE (1841 total with Verus)                            │
+│      Status: COMPLETE (1864 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
 │  ├── Vec2_Compute.v (76 theorems)                                       │

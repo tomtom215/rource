@@ -508,6 +508,59 @@ impl Vec2 {
             Self::ZERO
         }
     }
+
+    // ========================================================================
+    // Formally verified operations (Coq proofs exist in Vec2.v/Vec2_Proofs.v)
+    // ========================================================================
+
+    /// Returns the sum of all components: `x + y`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> f32 {
+        self.x + self.y
+    }
+
+    /// Returns the product of all components: `x * y`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> f32 {
+        self.x * self.y
+    }
+
+    /// Returns the minimum component value.
+    #[inline]
+    #[must_use]
+    pub fn min_element(self) -> f32 {
+        self.x.min(self.y)
+    }
+
+    /// Returns the maximum component value.
+    #[inline]
+    #[must_use]
+    pub fn max_element(self) -> f32 {
+        self.x.max(self.y)
+    }
+
+    /// Returns the rejection of this vector from another: `self - project(self, onto)`.
+    ///
+    /// The rejection is the component of `self` perpendicular to `onto`.
+    #[inline]
+    #[must_use]
+    pub fn reject(self, onto: Self) -> Self {
+        self - self.project(onto)
+    }
+
+    /// Returns the component-wise fractional part: `(x - floor(x), y - floor(y))`.
+    ///
+    /// Useful for UV wrapping and tiling.
+    #[inline]
+    #[must_use]
+    pub fn fract(self) -> Self {
+        Self {
+            x: self.x - self.x.floor(),
+            y: self.y - self.y.floor(),
+        }
+    }
 }
 
 // =============================================================================
@@ -1511,5 +1564,123 @@ mod tests {
         v /= 4.0;
         // If /=→%=: (0, 0). Actual: (3, 5).
         assert_eq!(v, Vec2::new(3.0, 5.0));
+    }
+
+    // =========================================================================
+    // Tests for formally verified Vec2 operations
+    // =========================================================================
+
+    #[test]
+    fn test_element_sum() {
+        let v = Vec2::new(3.0, 4.0);
+        assert_eq!(v.element_sum(), 7.0);
+    }
+
+    #[test]
+    fn test_element_sum_zero() {
+        assert_eq!(Vec2::ZERO.element_sum(), 0.0);
+    }
+
+    #[test]
+    fn test_element_sum_splat() {
+        let v = Vec2::splat(5.0);
+        assert_eq!(v.element_sum(), 10.0);
+    }
+
+    #[test]
+    fn test_element_product() {
+        let v = Vec2::new(3.0, 4.0);
+        assert_eq!(v.element_product(), 12.0);
+    }
+
+    #[test]
+    fn test_element_product_zero() {
+        assert_eq!(Vec2::ZERO.element_product(), 0.0);
+    }
+
+    #[test]
+    fn test_min_element() {
+        let v = Vec2::new(3.0, 1.0);
+        assert_eq!(v.min_element(), 1.0);
+    }
+
+    #[test]
+    fn test_min_element_equal() {
+        let v = Vec2::splat(5.0);
+        assert_eq!(v.min_element(), 5.0);
+    }
+
+    #[test]
+    fn test_max_element() {
+        let v = Vec2::new(3.0, 7.0);
+        assert_eq!(v.max_element(), 7.0);
+    }
+
+    #[test]
+    fn test_max_element_equal() {
+        let v = Vec2::splat(5.0);
+        assert_eq!(v.max_element(), 5.0);
+    }
+
+    #[test]
+    fn test_min_le_max_element() {
+        let v = Vec2::new(3.0, 7.0);
+        assert!(v.min_element() <= v.max_element());
+    }
+
+    #[test]
+    fn test_reject() {
+        let v = Vec2::new(3.0, 4.0);
+        let onto = Vec2::new(1.0, 0.0);
+        let r = v.reject(onto);
+        // Rejection onto X axis: should keep only Y component
+        assert!((r.x).abs() < 1e-6);
+        assert!((r.y - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_reject_orthogonal() {
+        // Rejection should be orthogonal to onto
+        let v = Vec2::new(3.0, 4.0);
+        let onto = Vec2::new(1.0, 1.0);
+        let r = v.reject(onto);
+        assert!((r.dot(onto)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_project_reject_sum() {
+        let v = Vec2::new(3.0, 4.0);
+        let onto = Vec2::new(1.0, 2.0);
+        let p = v.project(onto);
+        let r = v.reject(onto);
+        let sum = p + r;
+        assert!((sum.x - v.x).abs() < 1e-4);
+        assert!((sum.y - v.y).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_fract() {
+        let v = Vec2::new(3.7, 5.2);
+        let f = v.fract();
+        assert!((f.x - 0.7).abs() < 1e-5);
+        assert!((f.y - 0.2).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_fract_zero() {
+        let v = Vec2::new(3.0, 5.0);
+        let f = v.fract();
+        assert!((f.x).abs() < 1e-6);
+        assert!((f.y).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_fract_negative() {
+        let v = Vec2::new(-0.3, -2.7);
+        let f = v.fract();
+        // fract of -0.3: -0.3 - floor(-0.3) = -0.3 - (-1) = 0.7
+        assert!((f.x - 0.7).abs() < 1e-5);
+        // fract of -2.7: -2.7 - floor(-2.7) = -2.7 - (-3) = 0.3
+        assert!((f.y - 0.3).abs() < 1e-5);
     }
 }

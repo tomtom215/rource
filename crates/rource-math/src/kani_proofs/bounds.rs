@@ -601,3 +601,63 @@ fn verify_bounds_union_commutative() {
     assert!(ab.max.x == ba.max.x, "union not commutative: max.x");
     assert!(ab.max.y == ba.max.y, "union not commutative: max.y");
 }
+
+// ============================================================================
+// scale_from_center
+// ============================================================================
+
+/// **Center preservation**: `scale_from_center()` preserves the center point.
+#[kani::proof]
+fn verify_bounds_scale_from_center_preserves_center() {
+    let min_x: f32 = kani::any();
+    let min_y: f32 = kani::any();
+    let max_x: f32 = kani::any();
+    let max_y: f32 = kani::any();
+    let factor: f32 = kani::any();
+    kani::assume(min_x.is_finite() && min_x.abs() < SAFE_BOUND);
+    kani::assume(min_y.is_finite() && min_y.abs() < SAFE_BOUND);
+    kani::assume(max_x.is_finite() && max_x.abs() < SAFE_BOUND);
+    kani::assume(max_y.is_finite() && max_y.abs() < SAFE_BOUND);
+    kani::assume(min_x < max_x);
+    kani::assume(min_y < max_y);
+    kani::assume(factor.is_finite() && factor.abs() < 1e6);
+    let b = Bounds::new(Vec2::new(min_x, min_y), Vec2::new(max_x, max_y));
+    let center_before = b.center();
+    let s = b.scale_from_center(factor);
+    let center_after = s.center();
+    // Center should be preserved within FP tolerance
+    assert!(
+        (center_before.x - center_after.x).abs() < 0.01,
+        "scale_from_center moved center x"
+    );
+    assert!(
+        (center_before.y - center_after.y).abs() < 0.01,
+        "scale_from_center moved center y"
+    );
+}
+
+/// **Identity**: `scale_from_center(1.0)` preserves dimensions.
+#[kani::proof]
+fn verify_bounds_scale_from_center_one_identity() {
+    let min_x: f32 = kani::any();
+    let min_y: f32 = kani::any();
+    let max_x: f32 = kani::any();
+    let max_y: f32 = kani::any();
+    kani::assume(min_x.is_finite() && min_x.abs() < 1e6);
+    kani::assume(min_y.is_finite() && min_y.abs() < 1e6);
+    kani::assume(max_x.is_finite() && max_x.abs() < 1e6);
+    kani::assume(max_y.is_finite() && max_y.abs() < 1e6);
+    kani::assume(min_x < max_x);
+    kani::assume(min_y < max_y);
+    let b = Bounds::new(Vec2::new(min_x, min_y), Vec2::new(max_x, max_y));
+    let s = b.scale_from_center(1.0);
+    // Width/height should be preserved within FP tolerance
+    assert!(
+        (b.width() - s.width()).abs() < 0.01,
+        "scale_from_center(1) changed width"
+    );
+    assert!(
+        (b.height() - s.height()).abs() < 0.01,
+        "scale_from_center(1) changed height"
+    );
+}
