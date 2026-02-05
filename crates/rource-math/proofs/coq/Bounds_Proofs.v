@@ -851,3 +851,105 @@ Proof.
   unfold bounds_from_center_size, bounds_center_y. simpl. field.
 Qed.
 
+(* ================================================================== *)
+(** ** Phase 13: scale_from_center + approx_eq Properties             *)
+(* ================================================================== *)
+
+(** Theorem 107: scale_from_center preserves center_x. *)
+Theorem bounds_scale_from_center_center_x : forall (b : Bounds) (f : R),
+  bounds_center_x (bounds_scale_from_center b f) = bounds_center_x b.
+Proof.
+  intros b f.
+  unfold bounds_scale_from_center, bounds_center_x, bounds_width. simpl. field.
+Qed.
+
+(** Theorem 108: scale_from_center preserves center_y. *)
+Theorem bounds_scale_from_center_center_y : forall (b : Bounds) (f : R),
+  bounds_center_y (bounds_scale_from_center b f) = bounds_center_y b.
+Proof.
+  intros b f.
+  unfold bounds_scale_from_center, bounds_center_y, bounds_height. simpl. field.
+Qed.
+
+(** Theorem 109: scale_from_center scales width by the factor. *)
+Theorem bounds_scale_from_center_width : forall (b : Bounds) (f : R),
+  bounds_width (bounds_scale_from_center b f) = bounds_width b * f.
+Proof.
+  intros b f.
+  unfold bounds_scale_from_center, bounds_width, bounds_center_x, bounds_center_y, bounds_height. simpl. field.
+Qed.
+
+(** Theorem 110: scale_from_center scales height by the factor. *)
+Theorem bounds_scale_from_center_height : forall (b : Bounds) (f : R),
+  bounds_height (bounds_scale_from_center b f) = bounds_height b * f.
+Proof.
+  intros b f.
+  unfold bounds_scale_from_center, bounds_height, bounds_center_x, bounds_center_y, bounds_width. simpl. field.
+Qed.
+
+(** Theorem 111: scale_from_center by 1 is identity. *)
+Theorem bounds_scale_from_center_one : forall b : Bounds,
+  bounds_scale_from_center b 1 = b.
+Proof.
+  intros [mnx mny mxx mxy].
+  unfold bounds_scale_from_center, bounds_center_x, bounds_center_y, bounds_width, bounds_height. simpl.
+  apply bounds_eq; field.
+Qed.
+
+(** Theorem 112: scale_from_center by 0 collapses to a point at center. *)
+Theorem bounds_scale_from_center_zero : forall b : Bounds,
+  let result := bounds_scale_from_center b 0 in
+  bounds_min_x result = bounds_center_x b /\
+  bounds_min_y result = bounds_center_y b /\
+  bounds_max_x result = bounds_center_x b /\
+  bounds_max_y result = bounds_center_y b.
+Proof.
+  intros [mnx mny mxx mxy]. simpl.
+  unfold bounds_scale_from_center, bounds_center_x, bounds_center_y, bounds_width, bounds_height. simpl.
+  repeat split; field.
+Qed.
+
+(** Theorem 113: scale_from_center composes multiplicatively. *)
+Theorem bounds_scale_from_center_compose : forall (b : Bounds) (f1 f2 : R),
+  bounds_scale_from_center (bounds_scale_from_center b f1) f2 =
+  bounds_scale_from_center b (f1 * f2).
+Proof.
+  intros [mnx mny mxx mxy] f1 f2.
+  unfold bounds_scale_from_center, bounds_center_x, bounds_center_y, bounds_width, bounds_height. simpl.
+  apply bounds_eq; field.
+Qed.
+
+(** Theorem 107: translate preserves width. *)
+Theorem bounds_translate_width : forall (b : Bounds) (dx dy : R),
+  bounds_width (bounds_translate b dx dy) = bounds_width b.
+Proof.
+  intros [mnx mny mxx mxy] dx dy.
+  unfold bounds_translate, bounds_width. simpl. ring.
+Qed.
+
+(** Theorem 108: translate preserves height. *)
+Theorem bounds_translate_height : forall (b : Bounds) (dx dy : R),
+  bounds_height (bounds_translate b dx dy) = bounds_height b.
+Proof.
+  intros [mnx mny mxx mxy] dx dy.
+  unfold bounds_translate, bounds_height. simpl. ring.
+Qed.
+
+(** Theorem 109: translate preserves area. *)
+Theorem bounds_translate_area : forall (b : Bounds) (dx dy : R),
+  bounds_area (bounds_translate b dx dy) = bounds_area b.
+Proof.
+  intros [mnx mny mxx mxy] dx dy.
+  unfold bounds_translate, bounds_area, bounds_width, bounds_height. simpl. ring.
+Qed.
+
+(** Theorem 110: include_point on min corner is identity for valid bounds. *)
+Theorem bounds_include_point_min_corner : forall (b : Bounds),
+  bounds_is_valid b ->
+  bounds_include_point b (bounds_min_x b) (bounds_min_y b) = b.
+Proof.
+  intros [mnx mny mxx mxy] [Hx Hy]. simpl in *.
+  unfold bounds_include_point. simpl.
+  apply bounds_eq; unfold Rmin, Rmax; repeat destruct (Rle_dec _ _); lra.
+Qed.
+

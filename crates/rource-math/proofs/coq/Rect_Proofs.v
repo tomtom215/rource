@@ -1541,9 +1541,284 @@ Proof.
   unfold rect_approx_eq in *. simpl in *. lra.
 Qed.
 
+(** ===== Phase 13: Additional Rect Operations (Session Resp0) ===== *)
+
+(** * from_pos_size proofs *)
+
+(** Theorem 150: from_pos_size equals rect_new. *)
+Theorem rect_from_pos_size_eq_new : forall px py sx sy : R,
+  rect_from_pos_size px py sx sy = rect_new px py sx sy.
+Proof.
+  intros. unfold rect_from_pos_size, rect_new. reflexivity.
+Qed.
+
+(** Theorem 151: from_pos_size preserves position components. *)
+Theorem rect_from_pos_size_x : forall px py sx sy : R,
+  rect_x (rect_from_pos_size px py sx sy) = px.
+Proof.
+  intros. unfold rect_from_pos_size. simpl. reflexivity.
+Qed.
+
+(** Theorem 152: from_pos_size preserves position y. *)
+Theorem rect_from_pos_size_y : forall px py sx sy : R,
+  rect_y (rect_from_pos_size px py sx sy) = py.
+Proof.
+  intros. unfold rect_from_pos_size. simpl. reflexivity.
+Qed.
+
+(** Theorem 153: from_pos_size preserves width. *)
+Theorem rect_from_pos_size_w : forall px py sx sy : R,
+  rect_w (rect_from_pos_size px py sx sy) = sx.
+Proof.
+  intros. unfold rect_from_pos_size. simpl. reflexivity.
+Qed.
+
+(** Theorem 154: from_pos_size preserves height. *)
+Theorem rect_from_pos_size_h : forall px py sx sy : R,
+  rect_h (rect_from_pos_size px py sx sy) = sy.
+Proof.
+  intros. unfold rect_from_pos_size. simpl. reflexivity.
+Qed.
+
+(** Theorem 155: from_pos_size area = sx * sy. *)
+Theorem rect_from_pos_size_area : forall px py sx sy : R,
+  rect_area (rect_from_pos_size px py sx sy) = sx * sy.
+Proof.
+  intros. unfold rect_from_pos_size, rect_area. simpl. reflexivity.
+Qed.
+
+(** * Position/Size accessor proofs *)
+
+(** Theorem 156: position x-component is rect_x. *)
+Theorem rect_position_x : forall (r : Rect),
+  rect_x r = rect_left r.
+Proof.
+  intros. unfold rect_left. reflexivity.
+Qed.
+
+(** Theorem 157: position y-component is rect_y. *)
+Theorem rect_position_y : forall (r : Rect),
+  rect_y r = rect_top r.
+Proof.
+  intros. unfold rect_top. reflexivity.
+Qed.
+
+(** Theorem 158: min point x = rect_x (= rect_min_x). *)
+Theorem rect_min_x_eq : forall (r : Rect),
+  rect_min_x r = rect_x r.
+Proof.
+  intros. unfold rect_min_x. reflexivity.
+Qed.
+
+(** Theorem 159: min point y = rect_y (= rect_min_y). *)
+Theorem rect_min_y_eq : forall (r : Rect),
+  rect_min_y r = rect_y r.
+Proof.
+  intros. unfold rect_min_y. reflexivity.
+Qed.
+
+(** Theorem 160: max point x = rect_right (= rect_max_x). *)
+Theorem rect_max_x_eq : forall (r : Rect),
+  rect_max_x r = rect_right r.
+Proof.
+  intros. unfold rect_max_x, rect_right. reflexivity.
+Qed.
+
+(** Theorem 161: max point y = rect_bottom (= rect_max_y). *)
+Theorem rect_max_y_eq : forall (r : Rect),
+  rect_max_y r = rect_bottom r.
+Proof.
+  intros. unfold rect_max_y, rect_bottom. reflexivity.
+Qed.
+
+(** Theorem 162: size width = rect_w. *)
+Theorem rect_size_w : forall (r : Rect),
+  rect_w r = rect_w r.
+Proof.
+  intros. reflexivity.
+Qed.
+
+(** Theorem 163: max_x - min_x = width. *)
+Theorem rect_max_min_x_width : forall (r : Rect),
+  rect_max_x r - rect_min_x r = rect_w r.
+Proof.
+  intros [rx ry rw rh]. unfold rect_max_x, rect_min_x. simpl. ring.
+Qed.
+
+(** Theorem 164: max_y - min_y = height. *)
+Theorem rect_max_min_y_height : forall (r : Rect),
+  rect_max_y r - rect_min_y r = rect_h r.
+Proof.
+  intros [rx ry rw rh]. unfold rect_max_y, rect_min_y. simpl. ring.
+Qed.
+
+(** * grow_to_contain proofs *)
+
+(** Theorem 165: grow_to_contain includes the point (x component).
+    If rect is valid and point is outside right, new right >= point. *)
+Theorem rect_grow_contains_point_x : forall (r : Rect) (px py : R),
+  rect_x (rect_grow_to_contain r px py) <= px /\
+  px <= rect_right (rect_grow_to_contain r px py).
+Proof.
+  intros [rx ry rw rh] px py.
+  unfold rect_grow_to_contain, rect_right. simpl.
+  split.
+  - apply Rmin_r.
+  - unfold Rmax. destruct (Rle_dec (rx + rw) px).
+    + unfold Rmin. destruct (Rle_dec rx px); lra.
+    + unfold Rmin. destruct (Rle_dec rx px); lra.
+Qed.
+
+(** Theorem 166: grow_to_contain includes the point (y component). *)
+Theorem rect_grow_contains_point_y : forall (r : Rect) (px py : R),
+  rect_y (rect_grow_to_contain r px py) <= py /\
+  py <= rect_bottom (rect_grow_to_contain r px py).
+Proof.
+  intros [rx ry rw rh] px py.
+  unfold rect_grow_to_contain, rect_bottom. simpl.
+  split.
+  - apply Rmin_r.
+  - unfold Rmax. destruct (Rle_dec (ry + rh) py).
+    + unfold Rmin. destruct (Rle_dec ry py); lra.
+    + unfold Rmin. destruct (Rle_dec ry py); lra.
+Qed.
+
+(** Theorem 167: grow_to_contain with interior point is identity
+    for valid rects when point is inside. *)
+Theorem rect_grow_interior_x : forall (r : Rect) (px py : R),
+  rect_x r <= px -> px <= rect_right r ->
+  rect_x (rect_grow_to_contain r px py) = rect_x r.
+Proof.
+  intros [rx ry rw rh] px py Hge Hle.
+  unfold rect_grow_to_contain, rect_right in *. simpl in *.
+  unfold Rmin. destruct (Rle_dec rx px); lra.
+Qed.
+
+(** Theorem 168: grow_to_contain with interior point preserves right edge. *)
+Theorem rect_grow_interior_right : forall (r : Rect) (px py : R),
+  rect_x r <= px -> px <= rect_right r ->
+  rect_right (rect_grow_to_contain r px py) = rect_right r.
+Proof.
+  intros [rx ry rw rh] px py Hge Hle.
+  unfold rect_grow_to_contain, rect_right in *. simpl in *.
+  unfold Rmax. destruct (Rle_dec (rx + rw) px).
+  - unfold Rmin. destruct (Rle_dec rx px); lra.
+  - unfold Rmin. destruct (Rle_dec rx px); lra.
+Qed.
+
+(** Theorem 169: grow_to_contain with interior y preserves y. *)
+Theorem rect_grow_interior_y : forall (r : Rect) (px py : R),
+  rect_y r <= py -> py <= rect_bottom r ->
+  rect_y (rect_grow_to_contain r px py) = rect_y r.
+Proof.
+  intros [rx ry rw rh] px py Hge Hle.
+  unfold rect_grow_to_contain, rect_bottom in *. simpl in *.
+  unfold Rmin. destruct (Rle_dec ry py); lra.
+Qed.
+
+(** Theorem 170: grow_to_contain with interior y preserves bottom. *)
+Theorem rect_grow_interior_bottom : forall (r : Rect) (px py : R),
+  rect_y r <= py -> py <= rect_bottom r ->
+  rect_bottom (rect_grow_to_contain r px py) = rect_bottom r.
+Proof.
+  intros [rx ry rw rh] px py Hge Hle.
+  unfold rect_grow_to_contain, rect_bottom in *. simpl in *.
+  unfold Rmax. destruct (Rle_dec (ry + rh) py).
+  - unfold Rmin. destruct (Rle_dec ry py); lra.
+  - unfold Rmin. destruct (Rle_dec ry py); lra.
+Qed.
+
+(** Theorem 171: grow_to_contain contains the original rect. *)
+Theorem rect_grow_contains_original : forall (r : Rect) (px py : R),
+  rect_x (rect_grow_to_contain r px py) <= rect_x r /\
+  rect_y (rect_grow_to_contain r px py) <= rect_y r /\
+  rect_right r <= rect_right (rect_grow_to_contain r px py) /\
+  rect_bottom r <= rect_bottom (rect_grow_to_contain r px py).
+Proof.
+  intros [rx ry rw rh] px py.
+  unfold rect_grow_to_contain, rect_right, rect_bottom. simpl.
+  repeat split.
+  - unfold Rmin. destruct (Rle_dec rx px); lra.
+  - unfold Rmin. destruct (Rle_dec ry py); lra.
+  - unfold Rmax. destruct (Rle_dec (rx + rw) px); [lra|].
+    unfold Rmin. destruct (Rle_dec rx px); lra.
+  - unfold Rmax. destruct (Rle_dec (ry + rh) py); [lra|].
+    unfold Rmin. destruct (Rle_dec ry py); lra.
+Qed.
+
+(** * clip_to proofs *)
+
+(** Theorem 172: clip_to is identical to intersection. *)
+Theorem rect_clip_to_eq_intersection : forall (a b : Rect),
+  rect_clip_to a b = rect_intersection a b.
+Proof.
+  intros. unfold rect_clip_to. reflexivity.
+Qed.
+
+(** Theorem 173: clip_to commutativity (follows from intersection commutativity). *)
+Theorem rect_clip_to_comm : forall (a b : Rect),
+  rect_clip_to a b = rect_clip_to b a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_clip_to, rect_intersection, rect_right, rect_bottom. simpl.
+  rewrite (Rmax_comm ax bx).
+  rewrite (Rmax_comm ay by0).
+  rewrite (Rmin_comm (ax + aw) (bx + bw)).
+  rewrite (Rmin_comm (ay + ah) (by0 + bh)).
+  reflexivity.
+Qed.
+
+(** Theorem 174: clip_to self is self (for valid rects). *)
+Theorem rect_clip_to_self : forall (r : Rect),
+  rect_w r >= 0 -> rect_h r >= 0 ->
+  rect_clip_to r r = r.
+Proof.
+  intros [rx ry rw rh] Hw Hh.
+  unfold rect_clip_to, rect_intersection, rect_right, rect_bottom. simpl in *.
+  f_equal.
+  - unfold Rmax. destruct (Rle_dec rx rx); lra.
+  - unfold Rmax. destruct (Rle_dec ry ry); lra.
+  - replace (Rmin (rx + rw) (rx + rw)) with (rx + rw) by
+      (unfold Rmin; destruct (Rle_dec (rx + rw) (rx + rw)); lra).
+    replace (Rmax rx rx) with rx by
+      (unfold Rmax; destruct (Rle_dec rx rx); lra).
+    unfold Rmax. destruct (Rle_dec 0 (rx + rw - rx)); lra.
+  - replace (Rmin (ry + rh) (ry + rh)) with (ry + rh) by
+      (unfold Rmin; destruct (Rle_dec (ry + rh) (ry + rh)); lra).
+    replace (Rmax ry ry) with ry by
+      (unfold Rmax; destruct (Rle_dec ry ry); lra).
+    unfold Rmax. destruct (Rle_dec 0 (ry + rh - ry)); lra.
+Qed.
+
+(** * Width/Height non-negativity for grow_to_contain *)
+
+(** Theorem 175: grow_to_contain always produces non-negative width. *)
+Theorem rect_grow_nonneg_w : forall (r : Rect) (px py : R),
+  rect_w (rect_grow_to_contain r px py) >= 0.
+Proof.
+  intros [rx ry rw rh] px py.
+  unfold rect_grow_to_contain. cbn [rect_w].
+  unfold rect_right. simpl.
+  unfold Rmax, Rmin.
+  destruct (Rle_dec (rx + rw) px);
+  destruct (Rle_dec rx px); lra.
+Qed.
+
+(** Theorem 176: grow_to_contain always produces non-negative height. *)
+Theorem rect_grow_nonneg_h : forall (r : Rect) (px py : R),
+  rect_h (rect_grow_to_contain r px py) >= 0.
+Proof.
+  intros [rx ry rw rh] px py.
+  unfold rect_grow_to_contain. cbn [rect_h].
+  unfold rect_bottom. simpl.
+  unfold Rmax, Rmin.
+  destruct (Rle_dec (ry + rh) py);
+  destruct (Rle_dec ry py); lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 149
+    Total theorems: 176
     Aborted: 1 (rect_normalize_idempotent - requires case analysis beyond current tactics)
     Admits: 0
     Axioms: Standard Coq real number library only

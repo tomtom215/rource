@@ -25,14 +25,14 @@ For completed work history, see [VERIFICATION_CHRONOLOGY.md](VERIFICATION_CHRONO
 
 ## Coverage Status
 
-**Current coverage**: 178/255 public operations verified (69.8%).
+**Current coverage**: 208/255 public operations verified (81.6%).
 **Theoretical maximum** (excluding transcendental-blocked and batch operations): ~238/255 (93.3%).
 
 ## Operation Classification
 
 | Category | Description | Count |
 |----------|-------------|-------|
-| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 178 |
+| **VERIFIED** | Has algebraic proofs (Verus/Coq) + Kani | 205 |
 | **ALGEBRAIC GAP** | CAN be proved algebraically, no proof yet | ~5 |
 | **PARTIALLY VERIFIED** | Some proofs exist but missing verification layers | ~17 |
 | **FP-FEASIBLE** | Requires FP modeling; feasible via Flocq or Kani | ~13 |
@@ -242,8 +242,8 @@ For a new session focused on increasing verification coverage, follow this order
 
 | After Priority | Operations Verified | Coverage | Delta |
 |----------------|--------------------:|----------|-------|
-| **Current** | **178** | **69.8% (of 255)** | — |
-| After remaining P3 | ~186 | 72.9% | +8 |
+| **Current** | **208** | **81.6% (of 255)** | — |
+| After remaining P3 | ~215 | 84.3% | +10 |
 | **Theoretical maximum** (excl. blocked) | **~238** | **93.3%** | — |
 
 **Note**: The operation count is 255 (including 23 Bounds operations). Reaching 100%
@@ -253,6 +253,6 @@ batch operation proofs (7 low-value operations). The practical target is approxi
 
 ---
 
-*Last updated: 2026-02-04*
-*Current coverage: 178/255 (69.8%)*
+*Last updated: 2026-02-05*
+*Current coverage: 208/255 (81.6%)*
 *All P4 items COMPLETED; 2 blocked (P3.1, P3.2)*

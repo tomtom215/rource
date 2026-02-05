@@ -183,3 +183,21 @@ Definition rect_lerp (a b : Rect) (t : R) : Rect :=
          (rect_y a + t * (rect_y b - rect_y a))
          (rect_w a + t * (rect_w b - rect_w a))
          (rect_h a + t * (rect_h b - rect_h a)).
+
+(** * Constructor from position and size.
+    Matches Rust: Rect::from_pos_size(pos, size) *)
+Definition rect_from_pos_size (px py sx sy : R) : Rect :=
+  mkRect px py sx sy.
+
+(** * Grow to contain a point.
+    Expands rectangle to include the given point. *)
+Definition rect_grow_to_contain (r : Rect) (px py : R) : Rect :=
+  let new_x := Rmin (rect_x r) px in
+  let new_y := Rmin (rect_y r) py in
+  let new_right := Rmax (rect_right r) px in
+  let new_bottom := Rmax (rect_bottom r) py in
+  mkRect new_x new_y (new_right - new_x) (new_bottom - new_y).
+
+(** * Clip (intersection alias for clarity). *)
+Definition rect_clip_to (r clip : Rect) : Rect :=
+  rect_intersection r clip.

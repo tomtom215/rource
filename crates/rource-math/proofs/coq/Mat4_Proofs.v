@@ -1821,9 +1821,124 @@ Proof.
   apply vec3_eq; simpl; ring.
 Qed.
 
+(* ================================================================== *)
+(** ** Phase 13: from_translation + approx_eq Properties              *)
+(* ================================================================== *)
+
+(** Theorem 128: from_translation is equivalent to mat4_translation. *)
+Theorem mat4_from_translation_eq : forall v : Vec3,
+  mat4_from_translation v = mat4_translation (v3x v) (v3y v) (v3z v).
+Proof.
+  intros. unfold mat4_from_translation. reflexivity.
+Qed.
+
+(** Theorem 129: from_translation correctly translates a point (w=1). *)
+Theorem mat4_from_translation_transforms_point : forall v p : Vec3,
+  let M := mat4_from_translation v in
+  let p4 := mkVec4 (v3x p) (v3y p) (v3z p) 1 in
+  let result := mat4_transform_vec4 M p4 in
+  vec4_x result = v3x p + v3x v /\
+  vec4_y result = v3y p + v3y v /\
+  vec4_z result = v3z p + v3z v /\
+  vec4_w result = 1.
+Proof.
+  intros. unfold M, p4, result.
+  unfold mat4_from_translation, mat4_translation, mat4_transform_vec4. simpl.
+  repeat split; ring.
+Qed.
+
+(** Theorem 130: from_translation preserves direction vectors (w=0). *)
+Theorem mat4_from_translation_preserves_vector : forall v d : Vec3,
+  let M := mat4_from_translation v in
+  let d4 := mkVec4 (v3x d) (v3y d) (v3z d) 0 in
+  let result := mat4_transform_vec4 M d4 in
+  vec4_x result = v3x d /\
+  vec4_y result = v3y d /\
+  vec4_z result = v3z d /\
+  vec4_w result = 0.
+Proof.
+  intros. unfold M, d4, result.
+  unfold mat4_from_translation, mat4_translation, mat4_transform_vec4. simpl.
+  repeat split; ring.
+Qed.
+
+(** Theorem 131: Composing two translations is equivalent to adding vectors. *)
+Theorem mat4_from_translation_compose : forall u v : Vec3,
+  mat4_mul (mat4_from_translation u) (mat4_from_translation v) =
+  mat4_from_translation (mkVec3 (v3x u + v3x v) (v3y u + v3y v) (v3z u + v3z v)).
+Proof.
+  intros. unfold mat4_from_translation, mat4_translation, mat4_mul.
+  apply mat4_eq; simpl; ring.
+Qed.
+
+(** Theorem 132: from_translation has determinant 1. *)
+Theorem mat4_from_translation_det : forall v : Vec3,
+  mat4_determinant (mat4_from_translation v) = 1.
+Proof.
+  intros. unfold mat4_from_translation, mat4_translation, mat4_determinant. simpl. ring.
+Qed.
+
+(** Theorem 133: approx_eq is reflexive for any non-negative epsilon. *)
+Theorem mat4_approx_eq_refl : forall (a : Mat4) (eps : R),
+  0 <= eps ->
+  mat4_approx_eq a a eps.
+Proof.
+  intros a eps Heps.
+  unfold mat4_approx_eq.
+  repeat split; replace (_ - _) with 0 by ring; rewrite Rabs_R0; exact Heps.
+Qed.
+
+(** Theorem 134: approx_eq is symmetric. *)
+Theorem mat4_approx_eq_sym : forall (a b : Mat4) (eps : R),
+  mat4_approx_eq a b eps ->
+  mat4_approx_eq b a eps.
+Proof.
+  intros a b eps H.
+  unfold mat4_approx_eq in *.
+  decompose [and] H.
+  repeat split; rewrite Rabs_minus_sym; assumption.
+Qed.
+
+(** Helper: Rabs x <= 0 implies x = 0. *)
+Local Lemma Rabs_le_0_eq : forall x : R, Rabs x <= 0 -> x = 0.
+Proof.
+  intros x Hle.
+  destruct (Req_dec x 0) as [Heq|Hne]; auto.
+  exfalso. apply Rabs_pos_lt in Hne. lra.
+Qed.
+
+(** Theorem 135: approx_eq with eps=0 implies exact equality of components. *)
+Theorem mat4_approx_eq_zero_eq : forall (a b : Mat4),
+  mat4_approx_eq a b 0 ->
+  m0 a = m0 b /\ m1 a = m1 b /\ m2 a = m2 b /\ m3 a = m3 b /\
+  m4 a = m4 b /\ m5 a = m5 b /\ m6 a = m6 b /\ m7 a = m7 b /\
+  m8 a = m8 b /\ m9 a = m9 b /\ m10 a = m10 b /\ m11 a = m11 b /\
+  m12 a = m12 b /\ m13 a = m13 b /\ m14 a = m14 b /\ m15 a = m15 b.
+Proof.
+  intros a b H.
+  unfold mat4_approx_eq in H.
+  decompose [and] H.
+  repeat split;
+    match goal with
+    | H : Rabs (?x - ?y) <= 0 |- ?x = ?y => apply Rabs_le_0_eq in H; lra
+    end.
+Qed.
+
+(** Theorem 136: approx_eq is monotone in epsilon. *)
+Theorem mat4_approx_eq_eps_mono : forall (a b : Mat4) (eps1 eps2 : R),
+  eps1 <= eps2 ->
+  mat4_approx_eq a b eps1 ->
+  mat4_approx_eq a b eps2.
+Proof.
+  intros a b eps1 eps2 Hle H.
+  unfold mat4_approx_eq in *.
+  decompose [and] H.
+  repeat split; lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 127 + 16 + 16 + 16 component lemmas + 1 lemma = 176
+    Total theorems: 136 + 16 + 16 + 16 component lemmas + 1 lemma = 185
     Admits: 0
     Axioms: Standard Coq real number library only
 
@@ -1842,5 +1957,7 @@ Qed.
     - Theorems 106-111: orthographic NDC mapping + determinant + invertibility
     - Theorems 112-127: look_at view matrix properties (structural, eye-to-origin,
       basis mapping, w-preservation, orthogonality of rotation part, translation encoding)
+    - Theorems 128-132: from_translation properties (equivalence, point transform, vector preserve, compose, det)
+    - Theorems 133-136: approx_eq properties (reflexivity, symmetry, zero-eq, monotonicity)
     - Lemma: v3_dot_comm (utility)
 *)

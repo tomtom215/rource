@@ -1239,9 +1239,52 @@ Proof.
   rewrite !Rabs_0. lra.
 Qed.
 
+(* ================================================================== *)
+(** ** Phase 13: Additional Color Properties                          *)
+(* ================================================================== *)
+
+(** Theorem 128: blend_over with opaque source equals premultiplied source. *)
+Theorem color_blend_over_opaque_eq_premult : forall src dst : Color,
+  color_a src = 1 ->
+  color_blend_over src dst = color_premultiplied src.
+Proof.
+  intros [sr sg sb sa] dst Ha. simpl in Ha. subst.
+  unfold color_blend_over, color_premultiplied. apply color_eq; simpl; ring.
+Qed.
+
+(** Theorem 129: scale distributes over add. *)
+Theorem color_scale_add_dist : forall (a b : Color) (s : R),
+  color_scale (color_add a b) s =
+  color_add (color_scale a s) (color_scale b s).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] s.
+  unfold color_scale, color_add. apply color_eq; simpl; ring.
+Qed.
+
+(** Theorem 130: clamp01 of value already in [0,1] is identity. *)
+Theorem clamp01_in_range : forall v : R,
+  0 <= v <= 1 -> clamp01 v = v.
+Proof.
+  intros v [H0 H1]. unfold clamp01.
+  destruct (Rle_dec v 0) as [Hle|Hgt].
+  - lra.
+  - destruct (Rle_dec 1 v) as [Hle1|Hgt1].
+    + lra.
+    + reflexivity.
+Qed.
+
+(** Theorem 131: blend_over with transparent source preserves destination
+    (structural equality). *)
+Theorem color_blend_over_transparent_eq : forall dst : Color,
+  color_blend_over color_transparent dst = dst.
+Proof.
+  intros [dr dg db da].
+  unfold color_blend_over, color_transparent. apply color_eq; simpl; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 127
+    Total theorems: 131
     Admits: 0
     Axioms: Standard Coq real number library only
 
