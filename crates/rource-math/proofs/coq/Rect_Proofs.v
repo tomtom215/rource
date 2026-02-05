@@ -1268,11 +1268,285 @@ Proof.
   f_equal; ring.
 Qed.
 
+(** * Normalize Proofs *)
+
+(** Theorem 127: normalize produces non-negative width. *)
+Theorem rect_normalize_w_nonneg : forall (r : Rect),
+  rect_w (rect_normalize r) >= 0.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_normalize. simpl.
+  destruct (Rle_dec rw 0); destruct (Rle_dec rh 0);
+  simpl; apply Rle_ge; apply Rabs_pos.
+Qed.
+
+(** Theorem 128: normalize produces non-negative height. *)
+Theorem rect_normalize_h_nonneg : forall (r : Rect),
+  rect_h (rect_normalize r) >= 0.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_normalize. simpl.
+  destruct (Rle_dec rw 0); destruct (Rle_dec rh 0);
+  simpl; apply Rle_ge; apply Rabs_pos.
+Qed.
+
+(** Theorem 129: normalize preserves right edge. *)
+Theorem rect_normalize_right : forall (r : Rect),
+  rect_w r >= 0 -> rect_h r >= 0 ->
+  rect_right (rect_normalize r) = rect_right r.
+Proof.
+  intros [rx ry rw rh] Hw Hh.
+  unfold rect_normalize, rect_right. simpl. simpl in Hw, Hh.
+  destruct (Rle_dec rw 0) as [Hw0|Hw0];
+  destruct (Rle_dec rh 0) as [Hh0|Hh0]; simpl;
+  try (rewrite Rabs_right by lra; ring);
+  assert (rw = 0) by lra; subst; rewrite Rabs_R0; ring.
+Qed.
+
+(** Theorem 130: normalize preserves bottom edge. *)
+Theorem rect_normalize_bottom : forall (r : Rect),
+  rect_w r >= 0 -> rect_h r >= 0 ->
+  rect_bottom (rect_normalize r) = rect_bottom r.
+Proof.
+  intros [rx ry rw rh] Hw Hh.
+  unfold rect_normalize, rect_bottom. simpl. simpl in Hw, Hh.
+  destruct (Rle_dec rw 0) as [Hw0|Hw0];
+  destruct (Rle_dec rh 0) as [Hh0|Hh0]; simpl;
+  try (rewrite Rabs_right by lra; ring);
+  assert (rh = 0) by lra; subst; rewrite Rabs_R0; ring.
+Qed.
+
+(** Theorem 131: normalize of positive-dims rect is identity. *)
+Theorem rect_normalize_positive_id : forall (r : Rect),
+  rect_w r > 0 -> rect_h r > 0 ->
+  rect_normalize r = r.
+Proof.
+  intros [rx ry rw rh] Hw Hh.
+  unfold rect_normalize. simpl. simpl in Hw, Hh.
+  destruct (Rle_dec rw 0) as [Hw0|Hw0]; [lra|].
+  destruct (Rle_dec rh 0) as [Hh0|Hh0]; [lra|].
+  simpl.
+  rewrite Rabs_right by lra.
+  rewrite Rabs_right by lra.
+  reflexivity.
+Qed.
+
+(** Theorem 132: normalize is idempotent. *)
+Theorem rect_normalize_idempotent : forall (r : Rect),
+  rect_normalize (rect_normalize r) = rect_normalize r.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_normalize. simpl.
+  destruct (Rle_dec rw 0); destruct (Rle_dec rh 0); simpl;
+  match goal with
+  | |- context [Rle_dec (Rabs ?x) 0] =>
+    destruct (Rle_dec (Rabs x) 0) as [Ha|Ha]
+  end;
+  try (assert (Rabs rw = 0) by (apply Rle_antisym; [exact Ha | apply Rabs_pos]);
+       assert (rw = 0) by (destruct (Rcase_abs rw); lra));
+  try (assert (Rabs rh = 0) by (apply Rle_antisym; [exact Ha | apply Rabs_pos]);
+       assert (rh = 0) by (destruct (Rcase_abs rh); lra));
+  simpl;
+  try (match goal with
+  | |- context [Rle_dec (Rabs ?x) 0] =>
+    destruct (Rle_dec (Rabs x) 0) as [Hb|Hb]
+  end);
+  try rewrite Rabs_Rabsolu;
+  try (f_equal; try (rewrite Rabs_Rabsolu; reflexivity));
+  try (destruct (Rcase_abs rw); destruct (Rcase_abs rh);
+       try rewrite Rabs_left by lra;
+       try rewrite Rabs_right by lra;
+       try rewrite Rabs_left in * by lra;
+       try rewrite Rabs_right in * by lra;
+       try (f_equal; lra);
+       try lra).
+Abort.
+
+(** * Scale From Center Proofs *)
+
+(** Theorem 132: scale_from_center preserves center_x. *)
+Theorem rect_scale_from_center_cx : forall (r : Rect) (f : R),
+  rect_center_x (rect_scale_from_center r f) = rect_center_x r.
+Proof.
+  intros [rx ry rw rh] f.
+  unfold rect_scale_from_center, rect_center_x. simpl. field.
+Qed.
+
+(** Theorem 133: scale_from_center preserves center_y. *)
+Theorem rect_scale_from_center_cy : forall (r : Rect) (f : R),
+  rect_center_y (rect_scale_from_center r f) = rect_center_y r.
+Proof.
+  intros [rx ry rw rh] f.
+  unfold rect_scale_from_center, rect_center_y. simpl. field.
+Qed.
+
+(** Theorem 134: scale_from_center produces correct width. *)
+Theorem rect_scale_from_center_w : forall (r : Rect) (f : R),
+  rect_w (rect_scale_from_center r f) = rect_w r * f.
+Proof.
+  intros [rx ry rw rh] f.
+  unfold rect_scale_from_center. simpl. reflexivity.
+Qed.
+
+(** Theorem 135: scale_from_center produces correct height. *)
+Theorem rect_scale_from_center_h : forall (r : Rect) (f : R),
+  rect_h (rect_scale_from_center r f) = rect_h r * f.
+Proof.
+  intros [rx ry rw rh] f.
+  unfold rect_scale_from_center. simpl. reflexivity.
+Qed.
+
+(** Theorem 136: scale_from_center with factor=1 is identity. *)
+Theorem rect_scale_from_center_identity : forall (r : Rect),
+  rect_scale_from_center r 1 = r.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_scale_from_center, rect_center_x, rect_center_y. simpl.
+  f_equal; field.
+Qed.
+
+(** Theorem 137: scale_from_center area = original area * factor^2. *)
+Theorem rect_scale_from_center_area : forall (r : Rect) (f : R),
+  rect_area (rect_scale_from_center r f) = rect_area r * (f * f).
+Proof.
+  intros [rx ry rw rh] f.
+  unfold rect_area, rect_scale_from_center. simpl. ring.
+Qed.
+
+(** Theorem 138: scale_from_center with factor=0 has zero dimensions. *)
+Theorem rect_scale_from_center_zero : forall (r : Rect),
+  rect_w (rect_scale_from_center r 0) = 0 /\
+  rect_h (rect_scale_from_center r 0) = 0.
+Proof.
+  intros [rx ry rw rh].
+  unfold rect_scale_from_center. simpl. split; ring.
+Qed.
+
+(** * Lerp Proofs *)
+
+(** Theorem 139: lerp at t=0 returns first rect. *)
+Theorem rect_lerp_zero : forall (a b : Rect),
+  rect_lerp a b 0 = a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_lerp. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 140: lerp at t=1 returns second rect. *)
+Theorem rect_lerp_one : forall (a b : Rect),
+  rect_lerp a b 1 = b.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_lerp. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 141: lerp of same rect is identity. *)
+Theorem rect_lerp_same : forall (r : Rect) (t : R),
+  rect_lerp r r t = r.
+Proof.
+  intros [rx ry rw rh] t.
+  unfold rect_lerp. simpl. f_equal; ring.
+Qed.
+
+(** Theorem 142: lerp preserves area at endpoints. *)
+Theorem rect_lerp_area_zero : forall (a b : Rect),
+  rect_area (rect_lerp a b 0) = rect_area a.
+Proof.
+  intros a b. rewrite rect_lerp_zero. reflexivity.
+Qed.
+
+(** Theorem 143: lerp preserves area at t=1. *)
+Theorem rect_lerp_area_one : forall (a b : Rect),
+  rect_area (rect_lerp a b 1) = rect_area b.
+Proof.
+  intros a b. rewrite rect_lerp_one. reflexivity.
+Qed.
+
+(** Theorem 144: lerp width formula. *)
+Theorem rect_lerp_w : forall (a b : Rect) (t : R),
+  rect_w (rect_lerp a b t) = rect_w a + t * (rect_w b - rect_w a).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] t.
+  unfold rect_lerp. simpl. reflexivity.
+Qed.
+
+(** Theorem 145: lerp height formula. *)
+Theorem rect_lerp_h : forall (a b : Rect) (t : R),
+  rect_h (rect_lerp a b t) = rect_h a + t * (rect_h b - rect_h a).
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] t.
+  unfold rect_lerp. simpl. reflexivity.
+Qed.
+
+(** * Approx Eq Proofs *)
+
+(** Helper lemma: Rabs of zero is zero. *)
+Local Lemma Rabs_0 : Rabs 0 = 0.
+Proof.
+  unfold Rabs. destruct (Rcase_abs 0); lra.
+Qed.
+
+(** Helper lemma: Rabs(x) <= 0 implies x = 0. *)
+Local Lemma Rabs_le_zero_eq : forall x : R, Rabs x <= 0 -> x = 0.
+Proof.
+  intros x Hx. destruct (Rcase_abs x) as [Hn|Hp].
+  - unfold Rabs in Hx. destruct (Rcase_abs x); lra.
+  - unfold Rabs in Hx. destruct (Rcase_abs x); lra.
+Qed.
+
+(** Theorem 146: approx_eq is reflexive. *)
+Theorem rect_approx_eq_refl : forall (r : Rect) (eps : R),
+  eps >= 0 -> rect_approx_eq r r eps.
+Proof.
+  intros [rx ry rw rh] eps Heps.
+  unfold rect_approx_eq. simpl.
+  replace (rx - rx) with 0 by ring.
+  replace (ry - ry) with 0 by ring.
+  replace (rw - rw) with 0 by ring.
+  replace (rh - rh) with 0 by ring.
+  rewrite Rabs_0. lra.
+Qed.
+
+(** Theorem 147: approx_eq is symmetric. *)
+Theorem rect_approx_eq_sym : forall (a b : Rect) (eps : R),
+  rect_approx_eq a b eps -> rect_approx_eq b a eps.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] eps [H1 [H2 [H3 H4]]].
+  unfold rect_approx_eq in *. simpl in *.
+  repeat split.
+  - replace (bx - ax) with (- (ax - bx)) by ring. rewrite Rabs_Ropp. exact H1.
+  - replace (by0 - ay) with (- (ay - by0)) by ring. rewrite Rabs_Ropp. exact H2.
+  - replace (bw - aw) with (- (aw - bw)) by ring. rewrite Rabs_Ropp. exact H3.
+  - replace (bh - ah) with (- (ah - bh)) by ring. rewrite Rabs_Ropp. exact H4.
+Qed.
+
+(** Theorem 148: approx_eq with eps=0 implies exact equality. *)
+Theorem rect_approx_eq_zero_eq : forall (a b : Rect),
+  rect_approx_eq a b 0 -> a = b.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] [H1 [H2 [H3 H4]]].
+  unfold rect_approx_eq in *. simpl in *.
+  apply Rabs_le_zero_eq in H1.
+  apply Rabs_le_zero_eq in H2.
+  apply Rabs_le_zero_eq in H3.
+  apply Rabs_le_zero_eq in H4.
+  f_equal; lra.
+Qed.
+
+(** Theorem 149: approx_eq is monotonic in epsilon. *)
+Theorem rect_approx_eq_eps_mono : forall (a b : Rect) (e1 e2 : R),
+  rect_approx_eq a b e1 -> e1 <= e2 -> rect_approx_eq a b e2.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh] e1 e2 [H1 [H2 [H3 H4]]] Hle.
+  unfold rect_approx_eq in *. simpl in *. lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 127
+    Total theorems: 149
+    Aborted: 1 (rect_normalize_idempotent - requires case analysis beyond current tactics)
     Admits: 0
     Axioms: Standard Coq real number library only
 
-    All proofs are constructive and machine-checked.
+    All completed proofs are constructive and machine-checked.
 *)

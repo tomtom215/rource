@@ -206,6 +206,15 @@ Definition vec3_ceil (v : Vec3) : Vec3 :=
 Definition vec3_round (v : Vec3) : Vec3 :=
   mkVec3 (Rround (vec3_x v)) (Rround (vec3_y v)) (Rround (vec3_z v)).
 
+(** * Fractional Part *)
+
+(** Component-wise fractional part: x - floor(x).
+    Matches Rust Vec3::fract() which delegates to f32 fract(). *)
+Definition vec3_fract (v : Vec3) : Vec3 :=
+  mkVec3 (vec3_x v - Rfloor (vec3_x v))
+         (vec3_y v - Rfloor (vec3_y v))
+         (vec3_z v - Rfloor (vec3_z v)).
+
 (** * Equality *)
 
 (** Two vectors are equal iff their components are equal *)

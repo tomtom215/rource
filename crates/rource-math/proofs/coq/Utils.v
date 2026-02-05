@@ -527,3 +527,25 @@ Theorem rdeg_to_rad_linear : forall a b : R,
 Proof.
   intros a b. unfold rdeg_to_rad. field.
 Qed.
+
+(** * Additional Floor/Ceil Properties *)
+
+(** Theorem 57: Combined floor spec: floor(x) ≤ x < floor(x) + 1 *)
+Theorem Rfloor_spec : forall x : R,
+  Rfloor x <= x /\ x < Rfloor x + 1.
+Proof.
+  intros x. split.
+  - apply Rfloor_le.
+  - apply Rfloor_lt_succ.
+Qed.
+
+(** Theorem 58: floor of x in [0, 1) is 0 *)
+Theorem Rfloor_eq : forall x : R,
+  0 <= x -> x < 1 -> Rfloor x = 0.
+Proof.
+  intros x Hlo Hhi.
+  unfold Rfloor.
+  assert (H: 0%Z = Int_part x).
+  { apply Int_part_spec. simpl. lra. }
+  rewrite <- H. reflexivity.
+Qed.

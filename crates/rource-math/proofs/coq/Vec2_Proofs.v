@@ -1434,9 +1434,69 @@ Proof.
   rewrite !Rceil_integer. reflexivity.
 Qed.
 
+(** ================================================================= *)
+(** * Phase 12: fract proofs                                          *)
+(** ================================================================= *)
+
+(** Theorem 143: fract is in [0, 1) — x component. *)
+Theorem vec2_fract_x_range : forall v : Vec2,
+  0 <= vec2_x (vec2_fract v) < 1.
+Proof.
+  intros [vx vy]. unfold vec2_fract. cbn [vec2_x vec2_y].
+  pose proof (Rfloor_spec vx) as [Hlo Hhi].
+  lra.
+Qed.
+
+(** Theorem 144: fract is in [0, 1) — y component. *)
+Theorem vec2_fract_y_range : forall v : Vec2,
+  0 <= vec2_y (vec2_fract v) < 1.
+Proof.
+  intros [vx vy]. unfold vec2_fract. cbn [vec2_x vec2_y].
+  pose proof (Rfloor_spec vy) as [Hlo Hhi].
+  lra.
+Qed.
+
+(** Theorem 145: fract(zero) = zero. *)
+Theorem vec2_fract_zero :
+  vec2_fract vec2_zero = vec2_zero.
+Proof.
+  unfold vec2_fract, vec2_zero. cbn [vec2_x vec2_y].
+  rewrite !Rfloor_zero. f_equal; ring.
+Qed.
+
+(** Theorem 146: fract of an integer vector is zero. *)
+Theorem vec2_fract_integer : forall (zx zy : Z),
+  vec2_fract (mkVec2 (IZR zx) (IZR zy)) = vec2_zero.
+Proof.
+  intros zx zy. unfold vec2_fract, vec2_zero. cbn [vec2_x vec2_y].
+  rewrite !Rfloor_integer. f_equal; ring.
+Qed.
+
+(** Theorem 147: v = floor(v) + fract(v). *)
+Theorem vec2_floor_fract_decompose : forall v : Vec2,
+  v = vec2_add (vec2_floor v) (vec2_fract v).
+Proof.
+  intros [vx vy]. unfold vec2_add, vec2_floor, vec2_fract.
+  cbn [vec2_x vec2_y]. f_equal; ring.
+Qed.
+
+(** Theorem 148: fract is idempotent: fract(fract(v)) = fract(v). *)
+Theorem vec2_fract_idempotent : forall v : Vec2,
+  vec2_fract (vec2_fract v) = vec2_fract v.
+Proof.
+  intros [vx vy]. unfold vec2_fract. cbn [vec2_x vec2_y].
+  pose proof (Rfloor_spec vx) as [Hlox Hhix].
+  pose proof (Rfloor_spec vy) as [Hloy Hhiy].
+  assert (Hfx: Rfloor (vx - Rfloor vx) = 0).
+  { apply Rfloor_eq; lra. }
+  assert (Hfy: Rfloor (vy - Rfloor vy) = 0).
+  { apply Rfloor_eq; lra. }
+  rewrite Hfx, Hfy. f_equal; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 142
+    Total theorems: 148
     Admits: 0
     Axioms: Standard Coq real number library only
 

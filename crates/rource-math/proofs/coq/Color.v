@@ -177,6 +177,16 @@ Definition color_from_hex_alpha (r_byte g_byte b_byte a_byte : R) : Color :=
     In exact arithmetic over R, this simplifies to v * 255. *)
 Definition f32_to_u8 (v : R) : R := clamp01 v * 255.
 
+(** * Approximate Equality *)
+
+(** Approximate equality with epsilon tolerance.
+    Matches Rust: Color::approx_eq(other) with default epsilon. *)
+Definition color_approx_eq (a b : Color) (eps : R) : Prop :=
+  Rabs (color_r a - color_r b) <= eps /\
+  Rabs (color_g a - color_g b) <= eps /\
+  Rabs (color_b a - color_b b) <= eps /\
+  Rabs (color_a a - color_a b) <= eps.
+
 (** * Notations *)
 
 Notation "+c" := color_new (at level 0).

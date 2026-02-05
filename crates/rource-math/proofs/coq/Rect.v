@@ -147,3 +147,39 @@ Definition rect_union (a b : Rect) : Rect :=
 Definition rect_expand_xy (r : Rect) (x_amount y_amount : R) : Rect :=
   mkRect (rect_x r - x_amount) (rect_y r - y_amount)
          (rect_w r + 2 * x_amount) (rect_h r + 2 * y_amount).
+
+(** Normalize a rectangle: ensure width and height are non-negative.
+    If width is negative, adjust x so that the rect covers the same region.
+    Matches Rust: Rect::normalize() *)
+Definition rect_normalize (r : Rect) : Rect :=
+  let x := if Rle_dec (rect_w r) 0 then rect_x r + rect_w r else rect_x r in
+  let y := if Rle_dec (rect_h r) 0 then rect_y r + rect_h r else rect_y r in
+  let w := Rabs (rect_w r) in
+  let h := Rabs (rect_h r) in
+  mkRect x y w h.
+
+(** Scale from center: scale dimensions while keeping center fixed.
+    Matches Rust: Rect::scale_from_center(factor) *)
+Definition rect_scale_from_center (r : Rect) (factor : R) : Rect :=
+  let cx := rect_center_x r in
+  let cy := rect_center_y r in
+  let nw := rect_w r * factor in
+  let nh := rect_h r * factor in
+  mkRect (cx - nw / 2) (cy - nh / 2) nw nh.
+
+(** Approximate equality with epsilon tolerance.
+    Matches Rust: Rect::approx_eq(other) *)
+Definition rect_approx_eq (a b : Rect) (eps : R) : Prop :=
+  Rabs (rect_x a - rect_x b) <= eps /\
+  Rabs (rect_y a - rect_y b) <= eps /\
+  Rabs (rect_w a - rect_w b) <= eps /\
+  Rabs (rect_h a - rect_h b) <= eps.
+
+(** Linear interpolation between two rectangles.
+    lerp(a, b, t) interpolates each component: x, y, w, h.
+    Matches component-wise lerp for rectangles. *)
+Definition rect_lerp (a b : Rect) (t : R) : Rect :=
+  mkRect (rect_x a + t * (rect_x b - rect_x a))
+         (rect_y a + t * (rect_y b - rect_y a))
+         (rect_w a + t * (rect_w b - rect_w a))
+         (rect_h a + t * (rect_h b - rect_h a)).

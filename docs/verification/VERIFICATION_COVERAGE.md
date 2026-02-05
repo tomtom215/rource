@@ -11,20 +11,20 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 | Module | Operations | Formally Verified | Unit Tested | Coverage |
 |--------|------------|-------------------|-------------|----------|
-| Vec2 | 42 | 26 (62%) | 42 (100%) | 62% |
-| Vec3 | 28 | 22 (79%) | 28 (100%) | 79% |
-| Vec4 | 24 | 17 (71%) | 24 (100%) | 71% |
+| Vec2 | 42 | 33 (79%) | 42 (100%) | 79% |
+| Vec3 | 28 | 28 (100%) | 28 (100%) | 100% |
+| Vec4 | 24 | 23 (96%) | 24 (100%) | 96% |
 | Mat3 | 19 | 18 (95%) | 19 (100%) | 95% |
 | Mat4 | 26 | 19 (73%) | 26 (100%) | 73% |
-| Color | 38 | 27 (71%) | 38 (100%) | 71% |
-| Rect | 50 | 23 (46%) | 50 (100%) | 46% |
-| Bounds | 23 | 21 (91%) | 23 (100%) | 91% |
+| Color | 38 | 28 (74%) | 38 (100%) | 74% |
+| Rect | 50 | 28 (56%) | 50 (100%) | 56% |
+| Bounds | 23 | 23 (100%) | 23 (100%) | 100% |
 | Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
-| **Total** | **255** | **178 (69.8%)** | **255 (100%)** | **69.8%** |
+| **Total** | **255** | **205 (80.4%)** | **255 (100%)** | **80.4%** |
 
 ## Verified Operations by Module
 
-### Vec2 (26 operations verified)
+### Vec2 (33 operations verified)
 - `new`, `zero`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `perp`, `length_squared`, `mul`
 - `reflect`, `project`, `rejection`, `min_element`, `max_element`, `div`, `splat`, `element_sum`
 - `min` (component-wise, commutativity, associativity, idempotency)
@@ -34,27 +34,51 @@ For an overview of the complete verification effort (Verus + Coq), see
 - `floor` (Coq: component-wise floor via Int_part, floor ≤ x < floor+1, zero, neg, integer identity)
 - `ceil` (Coq: component-wise ceil via -floor(-x), x ≤ ceil < x+1, zero, neg, integer identity)
 - `round` (Coq: half-away-from-zero rounding, zero preservation)
+- `length` (Coq: non-negativity, zero ↔ zero vector)
+- `normalized` (Coq: normalized length squared property)
+- `fract` (Coq: range [0,1), zero, integer identity, floor+fract decomposition, idempotent)
+- `clamp` (Coq: component-wise bounds verification)
+- `distance` (Coq: non-negativity, self=0, symmetry)
+- `distance_squared` (Coq: non-negativity, self=0, symmetry, translation invariance)
+- `element_product` (Coq: splat, zero, scale properties)
 
 **Not verified** (require floating-point or transcendentals):
-- `from_angle`, `to_angle`, `rotate`, `length`, `normalized`
-- `fract`, `clamp`, `distance`, `distance_squared`
-- `element_product`
+- `from_angle`, `to_angle`, `rotate`
 - `is_finite`, `is_nan`, `as_ivec2`, `as_uvec2`, batch operations
 
-### Vec3 (22 operations verified)
+### Vec3 (28 operations verified — 100%)
 - `new`, `zero`, `x`, `y`, `z`, `add`, `sub`, `scale`, `neg`, `dot`, `cross`, `length_squared`
 - `reflect`, `project`, `rejection`, `min_element`, `max_element`, `div`, `splat`
 - `floor` (Coq: component-wise floor via Int_part, floor ≤ x < floor+1, zero, neg, integer identity)
 - `ceil` (Coq: component-wise ceil via -floor(-x), x ≤ ceil < x+1, zero, neg, integer identity)
 - `round` (Coq: half-away-from-zero rounding, zero preservation)
+- `length` (Coq: non-negativity, zero ↔ zero vector)
+- `normalized` (Coq: normalized length squared property)
+- `lerp` (Coq: boundary t=0/t=1, same vector identity, midpoint, component ranges)
+- `min`, `max` (Coq: commutativity, idempotency, element bounds)
+- `abs` (Coq: non-negativity, idempotency, neg invariance)
+- `fract` (Coq: range [0,1), zero, integer identity, floor+fract decomposition)
+- `clamp` (Coq: component-wise bounds verification)
+- `distance` (Coq: non-negativity, self=0, symmetry)
+- `distance_squared` (Coq: non-negativity, self=0, symmetry, translation invariance)
+- `element_sum`, `element_product` (Coq: algebraic properties)
 
-**Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, `fract`, `clamp`, `distance`, `distance_squared`, `element_sum`, `element_product`, floating-point operations
+**All counted Vec3 operations verified.**
 
-### Vec4 (17 operations verified)
+### Vec4 (23 operations verified — 96%)
 - `new`, `zero`, `x`, `y`, `z`, `w`, `add`, `sub`, `scale`, `neg`, `dot`, `length_squared`, `mul`
 - `min_element`, `max_element`, `div`, `splat`
+- `length` (Coq: non-negativity, zero ↔ zero vector)
+- `normalized` (Coq: normalized length squared property)
+- `lerp` (Coq: boundary t=0/t=1, same vector identity, midpoint, component ranges)
+- `min`, `max` (Coq: commutativity, idempotency, element bounds)
+- `abs` (Coq: non-negativity, idempotency, neg invariance)
+- `clamp` (Coq: component-wise bounds verification)
+- `distance` (Coq: non-negativity, self=0, symmetry)
+- `distance_squared` (Coq: non-negativity, self=0, symmetry, translation invariance)
+- `element_sum`, `element_product` (Coq: algebraic properties)
 
-**Not verified**: `length`, `normalized`, `lerp`, `min`, `max`, `abs`, floating-point operations
+**Not verified**: floating-point-specific operations (`is_finite`, `is_nan`)
 
 ### Mat3 (18 operations verified)
 - `new`, `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
@@ -74,41 +98,46 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 **Not verified**: `perspective` (blocked: tanf), `rotation_*` (blocked: sin/cos)
 
-### Color (27 operations verified)
+### Color (28 operations verified)
 - `new`, `rgb`, `gray`, `with_alpha`, `fade`, `lerp`, `premultiplied`, `blend_over`, `luminance`, `clamp`, `transparent`, `black`, `white`, `clamp_component`
 - `add`, `scale`, `invert`
 - `mix` (commutativity, self-mixing, lerp equivalence), `darken` (identity, full, alpha preservation, composition), `lighten` (identity, full, alpha preservation, composition), `contrasting` (black→white, white→black, binary output, always opaque)
 - `from_u8` (range, black, white), `from_rgb8` (opaque, equivalence), `from_hex` (opaque, alpha consistency), `from_hex_alpha`, `u8_to_f32` (zero, max, nonneg, le_one, range, monotone, injective), `f32_to_u8` (zero, one, range, roundtrip boundaries)
+- `approx_eq` (Coq: reflexive, symmetric, zero implies equality, epsilon monotonicity, lerp compatibility)
 
 **Not verified** (require floating-point or HSL conversions):
 - `from_hsl`, `to_hsl`, `saturate`, `desaturate`
 - `contrast_ratio`, `is_light`, `is_dark`
 - `to_array`, `from_array`
-- Floating-point-specific: `approx_eq`, `is_finite`, `is_nan`
+- Floating-point-specific: `is_finite`, `is_nan`
 
-### Rect (23 operations verified)
+### Rect (28 operations verified)
 - `new`, `zero`, `right`, `bottom`, `center_x`, `center_y`, `area`, `perimeter`
 - `contains_point`, `contains_rect`, `intersects`, `union`, `translate`, `expand`, `shrink`, `is_valid`
 - `intersection` (commutativity, self-intersection, area properties)
 - `scale` (composition property)
 - `left`, `top`, `is_empty`, `from_corners`, `expand_xy`
+- `from_center` (Coq: center preservation, dimensions, area)
+- `normalize` (Coq: non-negative dims, preserves right/bottom, positive identity)
+- `scale_from_center` (Coq: preserves center, correct dims, identity at factor=1, area formula)
+- `lerp` (Coq: boundary t=0/t=1, same rect identity, width/height formulas)
+- `approx_eq` (Coq: reflexive, symmetric, zero implies equality, epsilon monotonicity)
 
 **Not verified** (require floating-point or complex geometry):
-- `from_center`, `from_points`
-- `normalize`, `merge_bounds`, `clip_to`
-- Floating-point-specific: `lerp`, `grow_to_contain`, iterator-based operations
+- `from_points`, `merge_bounds`, `clip_to`
+- `grow_to_contain`, iterator-based operations
 - Complex geometry: `transform_by_mat3`, `transform_by_mat4`
 
-### Bounds (21 operations verified)
+### Bounds (23 operations verified — 100%)
 - `new`, `from_points`, `from_center_half_extents`, `from_center_size`
 - `width`, `height`, `size`, `center`, `half_extents`, `area`
 - `contains`, `contains_bounds`, `intersects`, `intersection`, `union`
 - `include_point`, `expand`, `shrink`, `translate`
 - `is_valid`, `is_empty`
+- `to_rect` (Coq: x/y/w/h extraction, area preservation, right/bottom edges, center preservation, valid rect)
+- `approx_eq` (Coq: reflexive, symmetric, zero implies equality, epsilon monotonicity)
 
-**Not verified**:
-- `to_rect` (type conversion)
-- `approx_eq` (floating-point epsilon comparison)
+**All Bounds operations verified.**
 
 ### Utils (5 operations verified — 100%)
 - `lerp` (18+ theorems: boundary values, affine form, symmetry, monotonicity, composition, injectivity)
@@ -316,7 +345,7 @@ The generated code requires `RocqOfRust.RocqOfRust` which depends on:
 
 **5. Version mismatch: Rocq 9.0 vs Coq 8.18**
 
-Our 1929 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
+Our 1998 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
 Bridging requires migrating one or both sides.
 
 ### Comparison: rocq-of-rust vs Our Approach
@@ -328,7 +357,7 @@ Bridging requires migrating one or both sides.
 | f32 support | `UnsupportedLiteral` | Modeled as R (reals) or Z (integers) |
 | Admits | Structural `Admitted` axioms | Zero admits |
 | Proof style | Systems-level | Mathematical properties |
-| Compilability | Blocked (infra) | All 1929 Coq theorems compile |
+| Compilability | Blocked (infra) | All 1998 Coq theorems compile |
 | Best suited for | Smart contracts, protocols | Pure math functions |
 
 ### Recommendation
@@ -340,8 +369,8 @@ Bridging requires migrating one or both sides.
 4. The bridging effort would be enormous with uncertain feasibility
 
 **Our current approach remains optimal**: clean algebraic specifications in Coq 8.18
-with manual correspondence to Rust implementations, verified by 1929 machine-checked
-Coq theorems (1139 R-based + 429 Z-based + 361 FP) with zero admits. The spec-to-implementation gap is documented as a known
+with manual correspondence to Rust implementations, verified by 1998 machine-checked
+Coq theorems (1208 R-based + 429 Z-based + 361 FP) with zero admits. The spec-to-implementation gap is documented as a known
 limitation and mitigated by:
 - Systematic specification writing following Rust implementation structure
 - 100% unit test coverage verifying runtime behavior
@@ -389,7 +418,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2629 theorems, 69.8% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2698 theorems, 59.3% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```

@@ -14,6 +14,7 @@ Require Import Reals.
 Require Import Lra.
 Require Import Rminmax.
 Open Scope R_scope.
+Require Import RourceMath.Rect.
 Require Import RourceMath.Bounds.
 
 (** * Min/Max Helper Lemmas (unconditional bounds) *)
@@ -668,5 +669,185 @@ Theorem bounds_expand_contains_original_point : forall b amount px py,
 Proof.
   intros [a1 a2 a3 a4] amount px py Ha [H1 [H2 [H3 H4]]].
   unfold bounds_contains, bounds_expand in *. simpl in *. lra.
+Qed.
+
+(** ================================================================= *)
+(** * Phase 12: to_rect and approx_eq proofs                          *)
+(** ================================================================= *)
+
+(** Theorem 87: to_rect preserves x coordinate. *)
+Theorem bounds_to_rect_x : forall b : Bounds,
+  rect_x (bounds_to_rect b) = bounds_min_x b.
+Proof.
+  intros [a1 a2 a3 a4]. unfold bounds_to_rect. simpl. reflexivity.
+Qed.
+
+(** Theorem 88: to_rect preserves y coordinate. *)
+Theorem bounds_to_rect_y : forall b : Bounds,
+  rect_y (bounds_to_rect b) = bounds_min_y b.
+Proof.
+  intros [a1 a2 a3 a4]. unfold bounds_to_rect. simpl. reflexivity.
+Qed.
+
+(** Theorem 89: to_rect computes correct width. *)
+Theorem bounds_to_rect_w : forall b : Bounds,
+  rect_w (bounds_to_rect b) = bounds_width b.
+Proof.
+  intros [a1 a2 a3 a4]. unfold bounds_to_rect, bounds_width. simpl. reflexivity.
+Qed.
+
+(** Theorem 90: to_rect computes correct height. *)
+Theorem bounds_to_rect_h : forall b : Bounds,
+  rect_h (bounds_to_rect b) = bounds_height b.
+Proof.
+  intros [a1 a2 a3 a4]. unfold bounds_to_rect, bounds_height. simpl. reflexivity.
+Qed.
+
+(** Theorem 91: to_rect of zero bounds is zero rect. *)
+Theorem bounds_to_rect_zero :
+  bounds_to_rect bounds_zero = rect_zero.
+Proof.
+  unfold bounds_to_rect, bounds_zero, rect_zero. simpl.
+  apply rect_eq; ring.
+Qed.
+
+(** Theorem 92: to_rect preserves area for valid bounds. *)
+Theorem bounds_to_rect_area : forall b : Bounds,
+  rect_area (bounds_to_rect b) = bounds_area b.
+Proof.
+  intros [a1 a2 a3 a4].
+  unfold rect_area, bounds_to_rect, bounds_area, bounds_width, bounds_height. simpl. ring.
+Qed.
+
+(** Theorem 93: to_rect right edge equals bounds max_x. *)
+Theorem bounds_to_rect_right : forall b : Bounds,
+  rect_right (bounds_to_rect b) = bounds_max_x b.
+Proof.
+  intros [a1 a2 a3 a4].
+  unfold rect_right, bounds_to_rect. simpl. ring.
+Qed.
+
+(** Theorem 94: to_rect bottom edge equals bounds max_y. *)
+Theorem bounds_to_rect_bottom : forall b : Bounds,
+  rect_bottom (bounds_to_rect b) = bounds_max_y b.
+Proof.
+  intros [a1 a2 a3 a4].
+  unfold rect_bottom, bounds_to_rect. simpl. ring.
+Qed.
+
+(** Theorem 95: to_rect of valid bounds gives valid rect. *)
+Theorem bounds_to_rect_valid : forall b : Bounds,
+  bounds_is_valid b -> rect_is_valid (bounds_to_rect b).
+Proof.
+  intros [a1 a2 a3 a4] [Hx Hy].
+  unfold bounds_is_valid, rect_is_valid, bounds_to_rect in *. simpl in *.
+  split; lra.
+Qed.
+
+(** Theorem 96: to_rect preserves center_x. *)
+Theorem bounds_to_rect_center_x : forall b : Bounds,
+  rect_center_x (bounds_to_rect b) = bounds_center_x b.
+Proof.
+  intros [a1 a2 a3 a4].
+  unfold rect_center_x, bounds_to_rect, bounds_center_x. simpl. field.
+Qed.
+
+(** Theorem 97: to_rect preserves center_y. *)
+Theorem bounds_to_rect_center_y : forall b : Bounds,
+  rect_center_y (bounds_to_rect b) = bounds_center_y b.
+Proof.
+  intros [a1 a2 a3 a4].
+  unfold rect_center_y, bounds_to_rect, bounds_center_y. simpl. field.
+Qed.
+
+(** Theorem 98: approx_eq is reflexive for any eps >= 0. *)
+Theorem bounds_approx_eq_refl : forall (b : Bounds) (eps : R),
+  eps >= 0 -> bounds_approx_eq b b eps.
+Proof.
+  intros [a1 a2 a3 a4] eps Heps.
+  unfold bounds_approx_eq. simpl.
+  repeat split; replace (_ - _) with 0 by ring;
+    rewrite Rabs_R0; lra.
+Qed.
+
+(** Theorem 99: approx_eq is symmetric. *)
+Theorem bounds_approx_eq_sym : forall (a b : Bounds) (eps : R),
+  bounds_approx_eq a b eps -> bounds_approx_eq b a eps.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4] eps [H1 [H2 [H3 H4]]].
+  unfold bounds_approx_eq in *. simpl in *.
+  repeat split; rewrite Rabs_minus_sym; assumption.
+Qed.
+
+(** Helper: Rabs x <= 0 implies x = 0 *)
+Local Lemma Rabs_le_zero_eq : forall x : R, Rabs x <= 0 -> x = 0.
+Proof.
+  intros x Hx. destruct (Rcase_abs x) as [Hn|Hp].
+  - unfold Rabs in Hx. destruct (Rcase_abs x); lra.
+  - unfold Rabs in Hx. destruct (Rcase_abs x); lra.
+Qed.
+
+(** Theorem 100: approx_eq with eps=0 implies equality. *)
+Theorem bounds_approx_eq_zero_eq : forall a b : Bounds,
+  bounds_approx_eq a b 0 -> a = b.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4] [H1 [H2 [H3 H4]]].
+  unfold bounds_approx_eq in *. simpl in *.
+  assert (a1 = b1) by (apply Rabs_le_zero_eq in H1; lra).
+  assert (a2 = b2) by (apply Rabs_le_zero_eq in H2; lra).
+  assert (a3 = b3) by (apply Rabs_le_zero_eq in H3; lra).
+  assert (a4 = b4) by (apply Rabs_le_zero_eq in H4; lra).
+  subst. reflexivity.
+Qed.
+
+(** Theorem 101: approx_eq is monotonic in epsilon. *)
+Theorem bounds_approx_eq_eps_mono : forall (a b : Bounds) (e1 e2 : R),
+  e1 <= e2 -> bounds_approx_eq a b e1 -> bounds_approx_eq a b e2.
+Proof.
+  intros [a1 a2 a3 a4] [b1 b2 b3 b4] e1 e2 He [H1 [H2 [H3 H4]]].
+  unfold bounds_approx_eq in *. simpl in *.
+  repeat split; lra.
+Qed.
+
+(** Theorem 102: translate preserves to_rect width and height. *)
+Theorem bounds_translate_to_rect_size : forall b dx dy,
+  rect_w (bounds_to_rect (bounds_translate b dx dy)) = rect_w (bounds_to_rect b) /\
+  rect_h (bounds_to_rect (bounds_translate b dx dy)) = rect_h (bounds_to_rect b).
+Proof.
+  intros [a1 a2 a3 a4] dx dy.
+  unfold bounds_to_rect, bounds_translate, bounds_width, bounds_height. simpl.
+  split; ring.
+Qed.
+
+(** Theorem 103: from_center_size has correct width. *)
+Theorem bounds_from_center_size_width : forall cx cy w h : R,
+  w >= 0 -> bounds_width (bounds_from_center_size cx cy w h) = w.
+Proof.
+  intros cx cy w h Hw.
+  unfold bounds_from_center_size, bounds_width. simpl. field.
+Qed.
+
+(** Theorem 104: from_center_size has correct height. *)
+Theorem bounds_from_center_size_height : forall cx cy w h : R,
+  h >= 0 -> bounds_height (bounds_from_center_size cx cy w h) = h.
+Proof.
+  intros cx cy w h Hh.
+  unfold bounds_from_center_size, bounds_height. simpl. field.
+Qed.
+
+(** Theorem 105: from_center_size center_x equals input. *)
+Theorem bounds_from_center_size_center_x : forall cx cy w h : R,
+  bounds_center_x (bounds_from_center_size cx cy w h) = cx.
+Proof.
+  intros cx cy w h.
+  unfold bounds_from_center_size, bounds_center_x. simpl. field.
+Qed.
+
+(** Theorem 106: from_center_size center_y equals input. *)
+Theorem bounds_from_center_size_center_y : forall cx cy w h : R,
+  bounds_center_y (bounds_from_center_size cx cy w h) = cy.
+Proof.
+  intros cx cy w h.
+  unfold bounds_from_center_size, bounds_center_y. simpl. field.
 Qed.
 
