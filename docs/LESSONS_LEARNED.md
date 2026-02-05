@@ -54,6 +54,10 @@
 | Existential `Rabs` witness (counterexample) | `Rabs_def1` to prove, `Rabs_def2` to destructure hypothesis | Standard library pair; `Rabs_def1: -a < x < a → Rabs x < a` |
 | `if Rle_dec _ _ then ... else ...` in definition | `destruct (Rle_dec _ _) as [H|H]` + handle both branches | Case-split the decision to expose concrete branch |
 | Composition `f(f(x,a1),a2) = f(x, combined)` | Factor as `1 - (1-a1)*(1-a2)`, then `ring` | Both darken and lighten follow this multiplicative pattern |
+| Decimal `0.2126` vs fraction `2126/10000` | `lra` (NOT `ring`) | `ring` can't equate decimal literals with fraction forms; `lra` handles both |
+| 4-tuple equality `(a,b,c,d) = (a',b',c',d')` | `replace ... by ring; reflexivity` per component | `f_equal` chaining fails on 4-tuples; explicit component replacement is robust |
+| `Rabs` of known-sign expression | `match goal with \|- Rabs ?x = _ => replace x with val by lra end. unfold Rabs. destruct (Rcase_abs val); lra.` | Most robust pattern; works regardless of expression complexity |
+| Theorem name collision | `grep '^Theorem\|^Lemma' file.v` BEFORE adding | Duplicate names cause `already exists` error; always check first |
 
 ### Verus Proof Strategy
 
@@ -84,7 +88,7 @@
 | Need | Tool | Status |
 |------|------|--------|
 | Algebraic correctness (Rust) | Verus | ADOPT (475 proofs) |
-| Mathematical theorems | Coq | ADOPT (1512 theorems: 1095 R-based + 417 Z-based) |
+| Mathematical theorems | Coq | ADOPT (1795 theorems: 1366 R-based + 429 Z-based) |
 | IEEE 754 edge-case safety | Kani (CBMC) | ADOPT (225 harnesses) |
 | FP error bounds | Coq + Flocq | ADOPT (361 theorems) |
 | Pure functional extraction | Aeneas | MONITOR (no f32 yet) |
@@ -127,6 +131,13 @@
 | 119 | `nlra` doesn't exist in Coq 8.18 | Nonlinear real is `nra` | `Require Import Psatz.` then use `nra` |
 | 122 | `Require Import` is NOT `Require Export` | `FP_Common.v` imports don't re-export | Files must explicitly import what they need |
 | 123 | `field` may close all subgoals in Coq 8.18 | Side conditions auto-discharged | Use `field.` alone or `field; lra.` (semicolon) |
+| 211 | `ring` fails on decimal↔fraction equivalence (`0.2126` vs `2126/10000`) | `ring` normalizes polynomials over abstract reals; decimal literals are opaque | Use `lra` which handles linear real arithmetic including decimal/fraction equivalences |
+| 212 | `f_equal` chaining fails for 4-tuple equality | `f_equal; [|f_equal; [|f_equal]]; ring` gives "Incorrect number of goals" on 4-tuples | Use sequential `replace` per component: `replace (1-(1-cr)) with cr by ring. ... reflexivity.` |
+| 213 | Robust `Rabs` proof: match-replace-unfold-destruct pattern | `rewrite Rabs_Ropp` fails when subterm doesn't match syntactically | `match goal with \|- Rabs ?x = _ => replace x with val by lra end. unfold Rabs. destruct (Rcase_abs val); lra.` |
+| 214 | `color_scale` scales ALL components including alpha | Theorem incorrectly stated `color_a c` for alpha of scaled color | Correct: `color_a (color_scale c s) = color_a c * s`, not `color_a c` |
+| 215 | `apply vec3_eq; ring` fails — needs `simpl` between | After `apply vec3_eq`, goals have unevaluated record projections like `v3x (mkVec3 ...)` | Always `apply vec3_eq; simpl; ring` — `simpl` reduces the projections first |
+| 216 | `mat4_scale` not `mat4_scalar_mul` | Grepped wrong function name from memory | Always `grep 'Definition mat4_' file.v` to confirm exact name |
+| 217 | `bounds_contains` not `bounds_contains_point` | Wrong name assumed for Bounds containment predicate | Always check `.v` spec file for exact definition name |
 | 124 | FP error composition follows inductive multiplication pattern | `(1+e1)*...*(1+en) - 1` decomposes as `(prefix-1)*(1+en) + en` | Factor, `Rabs_triang`, `Rabs_mult`, IH, then `ring`+`Rplus_le_compat` |
 | 142 | Z-based `ring` fails after `zb_unfold` on Bounds_Compute.v | `zb_unfold` exposes nested `Z.sub` in constructors | Rewrite with proven width/height lemmas first, then `ring` |
 | 143 | `Z.abs_triangle` for approximate-equality triangle inequality | Transitive approximate equality via triangle inequality | Factor difference via `lia`, `eapply Z.le_lt_trans`, `apply Z.abs_triangle` |
@@ -332,7 +343,7 @@
 
 ## Chronological Audit Log
 
-All 148 entries in chronological order. Entry numbers match category table references.
+All 220 entries in chronological order. Entry numbers match category table references.
 
 | # | Date | Session | Issue | Root Cause | Fix Applied |
 |---|------|---------|-------|-----------|-------------|
@@ -551,7 +562,17 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 208 | 2026-02-05 | WV5K1 | `ring` cannot handle division; use `field` for goals with `/` | `rect_scale_from_center_identity` has `rx + rw / 2 - rw * 1 / 2` which requires `field`, not `ring` | Always use `field` for equalities involving division; `ring` only handles +, -, * |
 | 209 | 2026-02-05 | WV5K1 | VERIFICATION_COVERAGE.md was massively stale: 27+ operations listed "Not verified" already had proofs | Vec3 had 12 operations listed as unverified that ALL had Coq proofs (lerp, min, max, abs, clamp, etc.) | Coverage went from 178/255 (69.8%) to 205/255 (80.4%) — majority from fixing documentation, not writing new proofs |
 | 210 | 2026-02-05 | WV5K1 | `color_lerp` uses `(b - a) * t` not `t * (b - a)` in its definition | `replace` patterns must match actual term order after `unfold`+`simpl` | Always check definition order before writing `replace` — read the .v spec file first |
+| 211 | 2026-02-05 | Resp0 | `ring` fails on decimal↔fraction equivalence (`0.2126` vs `2126/10000`) | `ring` normalizes polynomials over abstract reals; decimal literals are opaque | Use `lra` which handles linear real arithmetic including decimal/fraction equivalences |
+| 212 | 2026-02-05 | Resp0 | `f_equal` chaining fails for 4-tuple equality (`color_to_rgba`) | `f_equal; [|f_equal; [|f_equal]]; ring` gives "Incorrect number of goals" on 4-tuples | Use sequential `replace` per component: `replace (1-(1-cr)) with cr by ring. ... reflexivity.` |
+| 213 | 2026-02-05 | Resp0 | Robust `Rabs` proof: match-replace-unfold-destruct pattern | `rewrite Rabs_Ropp` fails when subterm doesn't match `Rabs (- ?M)` syntactically | `match goal with \|- Rabs ?x = _ => replace x with val by lra end. unfold Rabs. destruct (Rcase_abs val); lra.` |
+| 214 | 2026-02-05 | Resp0 | `color_scale` scales ALL 4 components including alpha | Theorem incorrectly stated `color_a c` for alpha of scaled result | Correct: `color_a (color_scale c s) = color_a c * s`; read definition carefully before writing theorem |
+| 215 | 2026-02-05 | Resp0 | `apply vec3_eq; ring` fails — needs `simpl` between | After `apply vec3_eq`, goals have unevaluated record projections `v3x (mkVec3 ...)` | Always `apply vec3_eq; simpl; ring` — `simpl` reduces the projections first |
+| 216 | 2026-02-05 | Resp0 | `mat4_scale` not `mat4_scalar_mul` — wrong function name from memory | Assumed name without checking; caused `The reference mat4_scalar_mul was not found` | Always `grep 'Definition mat4_' file.v` to confirm exact definition name |
+| 217 | 2026-02-05 | Resp0 | `bounds_contains` not `bounds_contains_point` — wrong predicate name | Assumed Bounds containment was named `bounds_contains_point`; actual is `bounds_contains` | Always check `.v` spec file for exact definition name before using |
+| 218 | 2026-02-05 | Resp0 | Duplicate theorem name collision causes `already exists` error | `color_luminance_black` existed at line 202 and was re-added at line 1382 | ALWAYS `grep '^Theorem\|^Lemma' file.v` before adding new theorems; catch collisions early |
+| 219 | 2026-02-05 | Resp0 | Modeling `get_scale` as `get_scale_sq` (length-squared) avoids sqrt | Coq cannot reason algebraically about `sqrt` (transcendental) | Use sum-of-squares `m0²+m1²+m2²` instead of `sqrt(m0²+m1²+m2²)`; proves all algebraic properties |
+| 220 | 2026-02-05 | Resp0 | `lra` fails on nonlinear products; `ring` fails on linear comparisons | `1*1+0*0+0*0=1` needs `ring`; `Rle` needs `lra`; `Rle_0_sqr` needs neither | Match tactic to goal structure: `ring` for polynomial equality, `lra` for linear inequality, specialized lemmas for sum-of-squares |
 
 ---
 
-*Last updated: 2026-02-05 | 210 entries | 14 categories*
+*Last updated: 2026-02-05 | 220 entries | 14 categories*

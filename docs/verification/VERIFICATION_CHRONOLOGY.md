@@ -662,6 +662,7 @@ Extended proofs for Rect, Mat4, Color, and Bounds with new operations and proper
 | 14 | Vec2/Vec3 floor/ceil/round + Utils deg/rad (Phase 11) | COMPLETED |
 | 15 | Coverage audit + fract/normalize/scale/lerp/approx_eq (Phase 12) | COMPLETED |
 | 16 | Rect/Mat4/Color/Bounds extensions (Phase 13) | COMPLETED |
+| 17 | Cross-type roundtrips + get_scale_sq + array conversions (Phase 14, +106 theorems) | COMPLETED |
 
 ## Completed Priority Items
 
@@ -696,5 +697,5 @@ Extended proofs for Rect, Mat4, Color, and Bounds with new operations and proper
 ---
 
 *Last updated: 2026-02-05*
-*Total phases: 13 implementation phases*
+*Total phases: 14 implementation phases*
 *Total completed priority items: 25/28 (89%)*

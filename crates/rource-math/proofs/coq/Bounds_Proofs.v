@@ -303,7 +303,7 @@ Proof.
   intros [mnx mny mxx mxy]. unfold bounds_contains_bounds. simpl. lra.
 Qed.
 
-Theorem bounds_contains_point_in_valid : forall b px py,
+Theorem bounds_contains_in_valid : forall b px py,
   bounds_is_valid b ->
   bounds_min_x b <= px -> px <= bounds_max_x b ->
   bounds_min_y b <= py -> py <= bounds_max_y b ->
@@ -951,5 +951,157 @@ Proof.
   intros [mnx mny mxx mxy] [Hx Hy]. simpl in *.
   unfold bounds_include_point. simpl.
   apply bounds_eq; unfold Rmin, Rmax; repeat destruct (Rle_dec _ _); lra.
+Qed.
+
+(* ================================================================== *)
+(** ** Phase 14: rect_to_bounds + Cross-Type Roundtrip Properties      *)
+(* ================================================================== *)
+
+(** Theorem 111: rect_to_bounds preserves min_x. *)
+Theorem rect_to_bounds_min_x : forall r : Rect,
+  bounds_min_x (rect_to_bounds r) = rect_x r.
+Proof.
+  intros [x y w h]. unfold rect_to_bounds. simpl. reflexivity.
+Qed.
+
+(** Theorem 112: rect_to_bounds preserves min_y. *)
+Theorem rect_to_bounds_min_y : forall r : Rect,
+  bounds_min_y (rect_to_bounds r) = rect_y r.
+Proof.
+  intros [x y w h]. unfold rect_to_bounds. simpl. reflexivity.
+Qed.
+
+(** Theorem 113: rect_to_bounds computes max_x correctly. *)
+Theorem rect_to_bounds_max_x : forall r : Rect,
+  bounds_max_x (rect_to_bounds r) = rect_x r + rect_w r.
+Proof.
+  intros [x y w h]. unfold rect_to_bounds. simpl. reflexivity.
+Qed.
+
+(** Theorem 114: rect_to_bounds computes max_y correctly. *)
+Theorem rect_to_bounds_max_y : forall r : Rect,
+  bounds_max_y (rect_to_bounds r) = rect_y r + rect_h r.
+Proof.
+  intros [x y w h]. unfold rect_to_bounds. simpl. reflexivity.
+Qed.
+
+(** Theorem 115: roundtrip bounds -> rect -> bounds = identity. *)
+Theorem bounds_rect_bounds_roundtrip : forall b : Bounds,
+  rect_to_bounds (bounds_to_rect b) = b.
+Proof.
+  intros [mnx mny mxx mxy].
+  unfold rect_to_bounds, bounds_to_rect. simpl.
+  apply bounds_eq; ring.
+Qed.
+
+(** Theorem 116: roundtrip rect -> bounds -> rect = identity. *)
+Theorem rect_bounds_rect_roundtrip : forall r : Rect,
+  bounds_to_rect (rect_to_bounds r) = r.
+Proof.
+  intros [x y w h].
+  unfold bounds_to_rect, rect_to_bounds. simpl.
+  apply rect_eq; ring.
+Qed.
+
+(** Theorem 117: rect_to_bounds preserves width. *)
+Theorem rect_to_bounds_width : forall r : Rect,
+  bounds_width (rect_to_bounds r) = rect_w r.
+Proof.
+  intros [x y w h]. unfold rect_to_bounds, bounds_width. simpl. ring.
+Qed.
+
+(** Theorem 118: rect_to_bounds preserves height. *)
+Theorem rect_to_bounds_height : forall r : Rect,
+  bounds_height (rect_to_bounds r) = rect_h r.
+Proof.
+  intros [x y w h]. unfold rect_to_bounds, bounds_height. simpl. ring.
+Qed.
+
+(** Theorem 119: rect_to_bounds preserves area. *)
+Theorem rect_to_bounds_area : forall r : Rect,
+  bounds_area (rect_to_bounds r) = rect_area r.
+Proof.
+  intros [x y w h].
+  unfold rect_to_bounds, bounds_area, bounds_width, bounds_height, rect_area. simpl. ring.
+Qed.
+
+(** Theorem 120: valid rect implies valid bounds after conversion. *)
+Theorem rect_to_bounds_valid : forall r : Rect,
+  rect_is_valid r -> bounds_is_valid (rect_to_bounds r).
+Proof.
+  intros [x y w h] [Hw Hh]. unfold rect_to_bounds, rect_is_valid, bounds_is_valid. simpl in *. lra.
+Qed.
+
+(** Theorem 121: rect_to_bounds preserves center_x. *)
+Theorem rect_to_bounds_center_x : forall r : Rect,
+  bounds_center_x (rect_to_bounds r) = rect_center_x r.
+Proof.
+  intros [x y w h].
+  unfold rect_to_bounds, bounds_center_x, rect_center_x. simpl. field.
+Qed.
+
+(** Theorem 122: rect_to_bounds preserves center_y. *)
+Theorem rect_to_bounds_center_y : forall r : Rect,
+  bounds_center_y (rect_to_bounds r) = rect_center_y r.
+Proof.
+  intros [x y w h].
+  unfold rect_to_bounds, bounds_center_y, rect_center_y. simpl. field.
+Qed.
+
+(** Theorem 123: rect_to_bounds of zero is zero. *)
+Theorem rect_to_bounds_zero :
+  rect_to_bounds rect_zero = bounds_zero.
+Proof.
+  unfold rect_to_bounds, rect_zero, bounds_zero. simpl.
+  apply bounds_eq; ring.
+Qed.
+
+(** Theorem 124: translating a rect then converting equals converting then translating. *)
+Theorem rect_translate_to_bounds_commute : forall (r : Rect) (dx dy : R),
+  rect_to_bounds (rect_translate r dx dy) =
+  bounds_translate (rect_to_bounds r) dx dy.
+Proof.
+  intros [x y w h] dx dy.
+  unfold rect_to_bounds, rect_translate, bounds_translate. simpl.
+  apply bounds_eq; ring.
+Qed.
+
+(** Theorem 125: translating bounds then converting equals converting then translating rect. *)
+Theorem bounds_translate_to_rect_commute : forall (b : Bounds) (dx dy : R),
+  bounds_to_rect (bounds_translate b dx dy) =
+  rect_translate (bounds_to_rect b) dx dy.
+Proof.
+  intros [mnx mny mxx mxy] dx dy.
+  unfold bounds_to_rect, bounds_translate, rect_translate. simpl.
+  apply rect_eq; ring.
+Qed.
+
+(** Theorem 126: containment is preserved across conversion. *)
+Theorem rect_to_bounds_contains : forall (r : Rect) (px py : R),
+  rect_contains_point r px py ->
+  bounds_contains (rect_to_bounds r) px py.
+Proof.
+  intros [x y w h] px py [Hx1 [Hx2 [Hy1 Hy2]]].
+  unfold rect_to_bounds, bounds_contains, rect_contains_point in *. simpl in *. lra.
+Qed.
+
+(** Theorem 127: bounds containment transfers to rect after conversion. *)
+Theorem bounds_to_rect_contains_point : forall (b : Bounds) (px py : R),
+  bounds_contains b px py ->
+  rect_contains_point (bounds_to_rect b) px py.
+Proof.
+  intros [mnx mny mxx mxy] px py [H1 [H2 [H3 H4]]].
+  unfold bounds_to_rect, rect_contains_point, bounds_contains in *. simpl in *.
+  repeat split; lra.
+Qed.
+
+(** Theorem 128: expand then convert equals convert then expand for bounds. *)
+Theorem bounds_expand_to_rect_commute : forall (b : Bounds) (amount : R),
+  bounds_to_rect (bounds_expand b amount) =
+  rect_expand (bounds_to_rect b) amount.
+Proof.
+  intros [mnx mny mxx mxy] amount.
+  unfold bounds_to_rect, bounds_expand, rect_expand. simpl.
+  apply rect_eq; ring.
 Qed.
 

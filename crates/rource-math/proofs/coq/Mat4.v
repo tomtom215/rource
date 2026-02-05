@@ -440,6 +440,15 @@ Definition mat4_approx_eq (a b : Mat4) (eps : R) : Prop :=
   Rabs (m14 a - m14 b) <= eps /\
   Rabs (m15 a - m15 b) <= eps.
 
+(** Extract scale factors from matrix columns.
+    Matches Rust: Mat4::get_scale() which returns Vec3 of column lengths.
+    scale.x = length(col0[0..3]), scale.y = length(col1[0..3]), scale.z = length(col2[0..3]).
+    We model the length-squared since sqrt is transcendental. *)
+Definition mat4_get_scale_sq (mat : Mat4) : Vec3 :=
+  mkVec3 (m0 mat * m0 mat + m1 mat * m1 mat + m2 mat * m2 mat)
+         (m4 mat * m4 mat + m5 mat * m5 mat + m6 mat * m6 mat)
+         (m8 mat * m8 mat + m9 mat * m9 mat + m10 mat * m10 mat).
+
 (** * Specification Verification Summary
 
     This file provides:

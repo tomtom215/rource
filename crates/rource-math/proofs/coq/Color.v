@@ -187,6 +187,38 @@ Definition color_approx_eq (a b : Color) (eps : R) : Prop :=
   Rabs (color_b a - color_b b) <= eps /\
   Rabs (color_a a - color_a b) <= eps.
 
+(** * Array Conversion *)
+
+(** Convert color to (r, g, b, a) tuple — models From<Color> for [f32; 4]. *)
+Definition color_to_rgba (c : Color) : (R * R * R * R) :=
+  (color_r c, color_g c, color_b c, color_a c).
+
+(** Convert color to (r, g, b) tuple — models From<Color> for [f32; 3]. *)
+Definition color_to_rgb (c : Color) : (R * R * R) :=
+  (color_r c, color_g c, color_b c).
+
+(** Construct color from (r, g, b, a) tuple — models From<[f32; 4]> for Color. *)
+Definition color_from_rgba (r g b a : R) : Color := mkColor r g b a.
+
+(** Construct color from (r, g, b) tuple — models From<[f32; 3]> for Color (a=1). *)
+Definition color_from_rgb_tuple (r g b : R) : Color := mkColor r g b 1.
+
+(** Color luminance threshold: luminance > 0.5 means "light".
+    Models Rust's concept but does not directly correspond to a pub fn. *)
+Definition color_is_light (c : Color) : Prop :=
+  color_luminance c > 1/2.
+
+(** Color is dark: luminance ≤ 0.5. *)
+Definition color_is_dark (c : Color) : Prop :=
+  color_luminance c <= 1/2.
+
+(** Contrast ratio between two colors (simplified Weber contrast).
+    Models the general concept of contrast measurement. *)
+Definition color_contrast (a b : Color) : R :=
+  let la := color_luminance a in
+  let lb := color_luminance b in
+  Rabs (la - lb).
+
 (** * Notations *)
 
 Notation "+c" := color_new (at level 0).
