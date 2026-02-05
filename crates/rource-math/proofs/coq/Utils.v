@@ -545,7 +545,10 @@ Theorem Rfloor_eq : forall x : R,
 Proof.
   intros x Hlo Hhi.
   unfold Rfloor.
-  assert (H: 0%Z = Int_part x).
-  { apply Int_part_spec. simpl. lra. }
-  rewrite <- H. reflexivity.
+  destruct (base_Int_part x) as [H1 H2].
+  assert (HZ: (Int_part x = 0)%Z).
+  { assert ((-1 < Int_part x < 1)%Z).
+    { split; apply lt_IZR; lra. }
+    lia. }
+  rewrite HZ. reflexivity.
 Qed.
