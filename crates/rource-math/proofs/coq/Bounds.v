@@ -18,6 +18,7 @@
 
 Require Import Reals.
 Require Import Lra.
+Require Import RourceMath.Rect.
 Open Scope R_scope.
 
 (** * Bounds Definition *)
@@ -115,3 +116,27 @@ Definition bounds_translate (b : Bounds) (dx dy : R) : Bounds :=
 Definition bounds_include_point (b : Bounds) (px py : R) : Bounds :=
   mkBounds (Rmin (bounds_min_x b) px) (Rmin (bounds_min_y b) py)
            (Rmax (bounds_max_x b) px) (Rmax (bounds_max_y b) py).
+
+(** * Conversion *)
+
+(** Convert bounds to a rectangle.
+    Matches Rust: Bounds::to_rect() *)
+Definition bounds_to_rect (b : Bounds) : Rect :=
+  mkRect (bounds_min_x b) (bounds_min_y b)
+         (bounds_max_x b - bounds_min_x b) (bounds_max_y b - bounds_min_y b).
+
+(** * Approximate Equality *)
+
+(** Approximate equality with epsilon tolerance.
+    Matches Rust: Bounds::approx_eq(other) with default epsilon.
+    We parameterize by epsilon for generality. *)
+Definition bounds_approx_eq (a b : Bounds) (eps : R) : Prop :=
+  Rabs (bounds_min_x a - bounds_min_x b) <= eps /\
+  Rabs (bounds_min_y a - bounds_min_y b) <= eps /\
+  Rabs (bounds_max_x a - bounds_max_x b) <= eps /\
+  Rabs (bounds_max_y a - bounds_max_y b) <= eps.
+
+(** Create bounds from center and size (width, height).
+    Matches Rust: Bounds::from_center_size(center, size). *)
+Definition bounds_from_center_size (cx cy w h : R) : Bounds :=
+  mkBounds (cx - w / 2) (cy - h / 2) (cx + w / 2) (cy + h / 2).

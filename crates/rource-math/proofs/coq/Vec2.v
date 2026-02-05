@@ -190,6 +190,13 @@ Definition vec2_ceil (v : Vec2) : Vec2 :=
 Definition vec2_round (v : Vec2) : Vec2 :=
   mkVec2 (Rround (vec2_x v)) (Rround (vec2_y v)).
 
+(** * Fractional Part *)
+
+(** Component-wise fractional part: x - floor(x).
+    Matches Rust Vec2::fract() which delegates to f32 fract(). *)
+Definition vec2_fract (v : Vec2) : Vec2 :=
+  mkVec2 (vec2_x v - Rfloor (vec2_x v)) (vec2_y v - Rfloor (vec2_y v)).
+
 (** * Equality *)
 
 (** Two vectors are equal iff their components are equal *)

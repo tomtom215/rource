@@ -1372,9 +1372,61 @@ Proof.
   rewrite !Rceil_integer. reflexivity.
 Qed.
 
+(** ================================================================= *)
+(** * Phase 12: fract proofs                                          *)
+(** ================================================================= *)
+
+(** Theorem 123: fract is in [0, 1) — x component. *)
+Theorem vec3_fract_x_range : forall v : Vec3,
+  0 <= vec3_x (vec3_fract v) < 1.
+Proof.
+  intros [vx vy vz]. unfold vec3_fract. cbn [vec3_x].
+  pose proof (Rfloor_spec vx) as [Hlo Hhi]. lra.
+Qed.
+
+(** Theorem 124: fract is in [0, 1) — y component. *)
+Theorem vec3_fract_y_range : forall v : Vec3,
+  0 <= vec3_y (vec3_fract v) < 1.
+Proof.
+  intros [vx vy vz]. unfold vec3_fract. cbn [vec3_y].
+  pose proof (Rfloor_spec vy) as [Hlo Hhi]. lra.
+Qed.
+
+(** Theorem 125: fract is in [0, 1) — z component. *)
+Theorem vec3_fract_z_range : forall v : Vec3,
+  0 <= vec3_z (vec3_fract v) < 1.
+Proof.
+  intros [vx vy vz]. unfold vec3_fract. cbn [vec3_z].
+  pose proof (Rfloor_spec vz) as [Hlo Hhi]. lra.
+Qed.
+
+(** Theorem 126: fract(zero) = zero. *)
+Theorem vec3_fract_zero :
+  vec3_fract vec3_zero = vec3_zero.
+Proof.
+  unfold vec3_fract, vec3_zero. cbn [vec3_x vec3_y vec3_z].
+  rewrite !Rfloor_zero. f_equal; ring.
+Qed.
+
+(** Theorem 127: fract of an integer vector is zero. *)
+Theorem vec3_fract_integer : forall (zx zy zz : Z),
+  vec3_fract (mkVec3 (IZR zx) (IZR zy) (IZR zz)) = vec3_zero.
+Proof.
+  intros zx zy zz. unfold vec3_fract, vec3_zero. cbn [vec3_x vec3_y vec3_z].
+  rewrite !Rfloor_integer. f_equal; ring.
+Qed.
+
+(** Theorem 128: v = floor(v) + fract(v). *)
+Theorem vec3_floor_fract_decompose : forall v : Vec3,
+  v = vec3_add (vec3_floor v) (vec3_fract v).
+Proof.
+  intros [vx vy vz]. unfold vec3_add, vec3_floor, vec3_fract.
+  cbn [vec3_x vec3_y vec3_z]. f_equal; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 122
+    Total theorems: 128
     Admits: 0
     Axioms: Standard Coq real number library only
 

@@ -543,6 +543,15 @@ All 148 entries in chronological order. Entry numbers match category table refer
 | 201 | 2026-02-04 | 82WIW | `apply vec3_eq; ring` fails: "not a valid ring equation" | `apply vec3_eq` introduces `v3x (mkVec3 0 0 0)` on RHS; `ring` can't handle unreduced record projections | Always `apply vec3_eq; simpl; ring` — existing codebase proofs consistently used this pattern |
 | 202 | 2026-02-04 | 82WIW | `look_at(eye, target, up)` proofs blocked by sqrt/normalize | Coq cannot reason about `sqrt` algebraically (transcendental, axiomatized) | Parameterize as `look_at(s, u, f, eye)` with pre-computed orthonormal basis; proves all structural properties |
 
+| 203 | 2026-02-05 | WV5K1 | `Rfloor` not in Coq 8.18 standard Reals library | `Rfloor` is defined in project Utils.v (via `IZR (Int_part x)`), not in the standard library | Always check `Utils.v` for custom real analysis definitions before assuming standard library provides them |
+| 204 | 2026-02-05 | WV5K1 | `Rfloor_spec` and `Rfloor_eq` missing from Utils.v | Vec2/Vec3 fract proofs need combined floor bound and floor-in-[0,1) lemmas | Added `Rfloor_spec` (combines `Rfloor_le` + `Rfloor_lt_succ`) and `Rfloor_eq` (uses `Int_part_spec`) to Utils.v |
+| 205 | 2026-02-05 | WV5K1 | `Int_part_tech` doesn't exist in Coq 8.18; use `Int_part_spec` instead | `Int_part_spec` takes `(r - 1 < IZR z <= r) -> z = Int_part r` — note reversed direction vs typical tech lemma | Use `assert (H: 0%Z = Int_part x). { apply Int_part_spec. simpl. lra. }` then `rewrite <- H` |
+| 206 | 2026-02-05 | WV5K1 | `replace (_ - _) with (- (_ - _))` pattern fails with multiple R variables in scope | Coq cannot disambiguate which `_ - _` to replace when 4+ R subtractions are in the goal | Use explicit terms: `replace (br - ar) with (- (ar - br)) by ring` instead of wildcard `_` patterns |
+| 207 | 2026-02-05 | WV5K1 | `exfalso; lra` wrong when premises give `x >= 0` and `x <= 0` (means `x = 0`, not False) | `Rle_dec x 0` returns `left: x <= 0` which combined with `x >= 0` gives `x = 0`, not contradiction | Use `assert (x = 0) by lra; subst` then handle the zero case, don't assume contradiction |
+| 208 | 2026-02-05 | WV5K1 | `ring` cannot handle division; use `field` for goals with `/` | `rect_scale_from_center_identity` has `rx + rw / 2 - rw * 1 / 2` which requires `field`, not `ring` | Always use `field` for equalities involving division; `ring` only handles +, -, * |
+| 209 | 2026-02-05 | WV5K1 | VERIFICATION_COVERAGE.md was massively stale: 27+ operations listed "Not verified" already had proofs | Vec3 had 12 operations listed as unverified that ALL had Coq proofs (lerp, min, max, abs, clamp, etc.) | Coverage went from 178/255 (69.8%) to 205/255 (80.4%) — majority from fixing documentation, not writing new proofs |
+| 210 | 2026-02-05 | WV5K1 | `color_lerp` uses `(b - a) * t` not `t * (b - a)` in its definition | `replace` patterns must match actual term order after `unfold`+`simpl` | Always check definition order before writing `replace` — read the .v spec file first |
+
 ---
 
-*Last updated: 2026-02-04 | 202 entries | 14 categories*
+*Last updated: 2026-02-05 | 210 entries | 14 categories*

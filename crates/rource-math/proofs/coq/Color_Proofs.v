@@ -1150,9 +1150,98 @@ Proof.
     + lra.
 Qed.
 
+(** * Approximate Equality Proofs *)
+
+(** Helper lemma: Rabs of zero is zero. *)
+Local Lemma Rabs_0 : Rabs 0 = 0.
+Proof.
+  unfold Rabs. destruct (Rcase_abs 0); lra.
+Qed.
+
+(** Helper lemma: Rabs(x) <= 0 implies x = 0. *)
+Local Lemma Rabs_le_zero_eq : forall x : R, Rabs x <= 0 -> x = 0.
+Proof.
+  intros x Hx. destruct (Rcase_abs x) as [Hn|Hp].
+  - unfold Rabs in Hx. destruct (Rcase_abs x); lra.
+  - unfold Rabs in Hx. destruct (Rcase_abs x); lra.
+Qed.
+
+(** Theorem 122: approx_eq is reflexive. *)
+Theorem color_approx_eq_refl : forall (c : Color) (eps : R),
+  eps >= 0 -> color_approx_eq c c eps.
+Proof.
+  intros [cr cg cb ca] eps Heps.
+  unfold color_approx_eq. simpl.
+  replace (cr - cr) with 0 by ring.
+  replace (cg - cg) with 0 by ring.
+  replace (cb - cb) with 0 by ring.
+  replace (ca - ca) with 0 by ring.
+  rewrite Rabs_0. lra.
+Qed.
+
+(** Theorem 123: approx_eq is symmetric. *)
+Theorem color_approx_eq_sym : forall (a b : Color) (eps : R),
+  color_approx_eq a b eps -> color_approx_eq b a eps.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] eps [H1 [H2 [H3 H4]]].
+  unfold color_approx_eq in *. simpl in *.
+  repeat split.
+  - replace (br - ar) with (- (ar - br)) by ring. rewrite Rabs_Ropp. exact H1.
+  - replace (bg - ag) with (- (ag - bg)) by ring. rewrite Rabs_Ropp. exact H2.
+  - replace (bb - ab0) with (- (ab0 - bb)) by ring. rewrite Rabs_Ropp. exact H3.
+  - replace (ba - aa) with (- (aa - ba)) by ring. rewrite Rabs_Ropp. exact H4.
+Qed.
+
+(** Theorem 124: approx_eq with eps=0 implies exact equality. *)
+Theorem color_approx_eq_zero_eq : forall (a b : Color),
+  color_approx_eq a b 0 -> a = b.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] [H1 [H2 [H3 H4]]].
+  unfold color_approx_eq in *. simpl in *.
+  apply Rabs_le_zero_eq in H1.
+  apply Rabs_le_zero_eq in H2.
+  apply Rabs_le_zero_eq in H3.
+  apply Rabs_le_zero_eq in H4.
+  f_equal; lra.
+Qed.
+
+(** Theorem 125: approx_eq is monotonic in epsilon. *)
+Theorem color_approx_eq_eps_mono : forall (a b : Color) (e1 e2 : R),
+  color_approx_eq a b e1 -> e1 <= e2 -> color_approx_eq a b e2.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] e1 e2 [H1 [H2 [H3 H4]]] Hle.
+  unfold color_approx_eq in *. simpl in *. lra.
+Qed.
+
+(** Theorem 126: approx_eq respects lerp at t=0 (self). *)
+Theorem color_approx_eq_lerp_zero : forall (a b : Color) (eps : R),
+  eps >= 0 -> color_approx_eq (color_lerp a b 0) a eps.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] eps Heps.
+  unfold color_approx_eq, color_lerp. simpl.
+  replace (ar + (br - ar) * 0 - ar) with 0 by ring.
+  replace (ag + (bg - ag) * 0 - ag) with 0 by ring.
+  replace (ab0 + (bb - ab0) * 0 - ab0) with 0 by ring.
+  replace (aa + (ba - aa) * 0 - aa) with 0 by ring.
+  rewrite !Rabs_0. lra.
+Qed.
+
+(** Theorem 127: approx_eq respects lerp at t=1 (target). *)
+Theorem color_approx_eq_lerp_one : forall (a b : Color) (eps : R),
+  eps >= 0 -> color_approx_eq (color_lerp a b 1) b eps.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba] eps Heps.
+  unfold color_approx_eq, color_lerp. simpl.
+  replace (ar + (br - ar) * 1 - br) with 0 by ring.
+  replace (ag + (bg - ag) * 1 - bg) with 0 by ring.
+  replace (ab0 + (bb - ab0) * 1 - bb) with 0 by ring.
+  replace (aa + (ba - aa) * 1 - ba) with 0 by ring.
+  rewrite !Rabs_0. lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 121
+    Total theorems: 127
     Admits: 0
     Axioms: Standard Coq real number library only
 
