@@ -140,3 +140,12 @@ Definition bounds_approx_eq (a b : Bounds) (eps : R) : Prop :=
     Matches Rust: Bounds::from_center_size(center, size). *)
 Definition bounds_from_center_size (cx cy w h : R) : Bounds :=
   mkBounds (cx - w / 2) (cy - h / 2) (cx + w / 2) (cy + h / 2).
+
+(** Scale bounds from its center by a factor.
+    Matches Rust: Bounds::scale_from_center(factor). *)
+Definition bounds_scale_from_center (b : Bounds) (factor : R) : Bounds :=
+  let cx := bounds_center_x b in
+  let cy := bounds_center_y b in
+  let new_w := bounds_width b * factor in
+  let new_h := bounds_height b * factor in
+  mkBounds (cx - new_w / 2) (cy - new_h / 2) (cx + new_w / 2) (cy + new_h / 2).

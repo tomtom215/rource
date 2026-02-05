@@ -15,12 +15,12 @@ For an overview of the complete verification effort (Verus + Coq), see
 | Vec3 | 28 | 28 (100%) | 28 (100%) | 100% |
 | Vec4 | 24 | 23 (96%) | 24 (100%) | 96% |
 | Mat3 | 19 | 18 (95%) | 19 (100%) | 95% |
-| Mat4 | 26 | 19 (73%) | 26 (100%) | 73% |
+| Mat4 | 26 | 21 (81%) | 26 (100%) | 81% |
 | Color | 38 | 28 (74%) | 38 (100%) | 74% |
-| Rect | 50 | 28 (56%) | 50 (100%) | 56% |
+| Rect | 50 | 29 (58%) | 50 (100%) | 58% |
 | Bounds | 23 | 23 (100%) | 23 (100%) | 100% |
 | Utils (lib.rs) | 5 | 5 (100%) | 5 (100%) | 100% |
-| **Total** | **255** | **205 (80.4%)** | **255 (100%)** | **80.4%** |
+| **Total** | **255** | **208 (81.6%)** | **255 (100%)** | **81.6%** |
 
 ## Verified Operations by Module
 
@@ -89,12 +89,14 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 **Not verified**: `rotation` (blocked: sin/cos transcendentals in Verus/Coq; Kani verifies NaN-freedom)
 
-### Mat4 (19 operations verified)
+### Mat4 (21 operations verified)
 - `zero`, `identity`, `add`, `neg`, `scale`, `transpose`, `mul`
 - `determinant`, `trace`, `from_cols`, `inverse`
 - `col` (col0-3), `row` (row0-3), `orthographic`, `get_translation`
 - `transform_point` (identity, translation, scaling proofs), `transform_vector` (identity, scaling proofs), `transform_vec4` (identity, zero, additive, scalar, translation, scaling, mul_compat)
 - `look_at` (17 Coq theorems: eye-to-origin, basis mapping, orthogonality, w-preservation, translation encoding; 4 Kani harnesses)
+- `from_translation` (Coq: equivalence to mat4_translation, transforms point correctly, preserves vectors, composition is additive, determinant = 1)
+- `approx_eq` (Coq: reflexive, symmetric, zero implies equality, epsilon monotonicity)
 
 **Not verified**: `perspective` (blocked: tanf), `rotation_*` (blocked: sin/cos)
 
@@ -111,13 +113,14 @@ For an overview of the complete verification effort (Verus + Coq), see
 - `to_array`, `from_array`
 - Floating-point-specific: `is_finite`, `is_nan`
 
-### Rect (28 operations verified)
+### Rect (29 operations verified)
 - `new`, `zero`, `right`, `bottom`, `center_x`, `center_y`, `area`, `perimeter`
 - `contains_point`, `contains_rect`, `intersects`, `union`, `translate`, `expand`, `shrink`, `is_valid`
 - `intersection` (commutativity, self-intersection, area properties)
 - `scale` (composition property)
 - `left`, `top`, `is_empty`, `from_corners`, `expand_xy`
 - `from_center` (Coq: center preservation, dimensions, area)
+- `from_pos_size` (Coq: equivalence to rect_new, accessor preservation, area formula)
 - `normalize` (Coq: non-negative dims, preserves right/bottom, positive identity)
 - `scale_from_center` (Coq: preserves center, correct dims, identity at factor=1, area formula)
 - `lerp` (Coq: boundary t=0/t=1, same rect identity, width/height formulas)
@@ -136,6 +139,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 - `is_valid`, `is_empty`
 - `to_rect` (Coq: x/y/w/h extraction, area preservation, right/bottom edges, center preservation, valid rect)
 - `approx_eq` (Coq: reflexive, symmetric, zero implies equality, epsilon monotonicity)
+- Additional Coq-only: `scale_from_center` (7 theorems: preserves center, scales dims, identity/zero/compose)
 
 **All Bounds operations verified.**
 
@@ -345,7 +349,7 @@ The generated code requires `RocqOfRust.RocqOfRust` which depends on:
 
 **5. Version mismatch: Rocq 9.0 vs Coq 8.18**
 
-Our 1998 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
+Our 2050 existing Coq theorems use Coq 8.18. The generated code targets Rocq 9.0.
 Bridging requires migrating one or both sides.
 
 ### Comparison: rocq-of-rust vs Our Approach
@@ -357,7 +361,7 @@ Bridging requires migrating one or both sides.
 | f32 support | `UnsupportedLiteral` | Modeled as R (reals) or Z (integers) |
 | Admits | Structural `Admitted` axioms | Zero admits |
 | Proof style | Systems-level | Mathematical properties |
-| Compilability | Blocked (infra) | All 1998 Coq theorems compile |
+| Compilability | Blocked (infra) | All 2050 Coq theorems compile |
 | Best suited for | Smart contracts, protocols | Pure math functions |
 
 ### Recommendation
@@ -369,8 +373,8 @@ Bridging requires migrating one or both sides.
 4. The bridging effort would be enormous with uncertain feasibility
 
 **Our current approach remains optimal**: clean algebraic specifications in Coq 8.18
-with manual correspondence to Rust implementations, verified by 1998 machine-checked
-Coq theorems (1208 R-based + 429 Z-based + 361 FP) with zero admits. The spec-to-implementation gap is documented as a known
+with manual correspondence to Rust implementations, verified by 2050 machine-checked
+Coq theorems (1260 R-based + 429 Z-based + 361 FP) with zero admits. The spec-to-implementation gap is documented as a known
 limitation and mitigated by:
 - Systematic specification writing following Rust implementation structure
 - 100% unit test coverage verifying runtime behavior
@@ -418,7 +422,7 @@ address any capability gaps in our current Verus + Coq architecture. See
 ### Updated Verification Architecture
 
 ```
-Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2698 theorems, 59.3% ops
+Current (3-layer):  Verus (algebra) + Coq (proofs) + Kani (IEEE 754)  → 2750 theorems, 59.3% ops
 Target (4-layer):   + Flocq (FP accuracy bounds)                      → ~1100+ theorems, ~75% ops
 Future (5-layer):   + Aeneas (spec-to-impl bridge)                    → machine-generated specs
 ```
@@ -458,7 +462,7 @@ All edge cases are IEEE 754-compliant behavior requiring bounded input domains f
 ---
 
 *Last verified: 2026-02-04*
-*Formal verification coverage: 178/255 operations (69.8%)*
+*Formal verification coverage: 205/255 operations (80.4%)*
 *Kani IEEE 754 harnesses: 225 (all verified, 0 failures)*
 *Unit test coverage: 255/255 operations (100%)*
 *Unverifiable operations: ~77 (floating-point, transcendentals, type conversions)*

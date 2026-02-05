@@ -415,6 +415,31 @@ Definition mat4_look_at (s u f eye : Vec3) : Mat4 :=
     (v3z s)  (v3z u)  (-(v3z f))  0
     (-(v3_dot s eye))  (-(v3_dot u eye))  (v3_dot f eye)  1.
 
+(** Create a translation matrix from a Vec3.
+    Matches Rust: Mat4::from_translation(v) = Mat4::translation(v.x, v.y, v.z). *)
+Definition mat4_from_translation (v : Vec3) : Mat4 :=
+  mat4_translation (v3x v) (v3y v) (v3z v).
+
+(** Approximate equality: all 16 components within epsilon.
+    Matches Rust: Mat4::approx_eq(other). *)
+Definition mat4_approx_eq (a b : Mat4) (eps : R) : Prop :=
+  Rabs (m0 a - m0 b) <= eps /\
+  Rabs (m1 a - m1 b) <= eps /\
+  Rabs (m2 a - m2 b) <= eps /\
+  Rabs (m3 a - m3 b) <= eps /\
+  Rabs (m4 a - m4 b) <= eps /\
+  Rabs (m5 a - m5 b) <= eps /\
+  Rabs (m6 a - m6 b) <= eps /\
+  Rabs (m7 a - m7 b) <= eps /\
+  Rabs (m8 a - m8 b) <= eps /\
+  Rabs (m9 a - m9 b) <= eps /\
+  Rabs (m10 a - m10 b) <= eps /\
+  Rabs (m11 a - m11 b) <= eps /\
+  Rabs (m12 a - m12 b) <= eps /\
+  Rabs (m13 a - m13 b) <= eps /\
+  Rabs (m14 a - m14 b) <= eps /\
+  Rabs (m15 a - m15 b) <= eps.
+
 (** * Specification Verification Summary
 
     This file provides:

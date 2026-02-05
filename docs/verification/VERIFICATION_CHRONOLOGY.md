@@ -19,8 +19,12 @@ For remaining work items, see [VERIFICATION_FUTURE_WORK.md](VERIFICATION_FUTURE_
 - [Phase 5: Bounds, Inverse, CrossType](#phase-5-bounds-inverse-crosstype)
 - [Phase 6: Verus Extensions + Coverage Audit](#phase-6-verus-extensions--coverage-audit)
 - [Phase 7: Kani Expansion + Z-Compute Extensions](#phase-7-kani-expansion--z-compute-extensions)
+- [Phase 8: Color Integer Conversion + Mat3 Kani + Documentation Refactoring](#phase-8-color-integer-conversion--mat3-kani--documentation-refactoring)
 - [Phase 9: CI FP Layer + Z-Compute Expansion](#phase-9-ci-fp-layer--z-compute-expansion)
+- [Phase 10: Mat4 look_at View Matrix Proofs + Kani Harnesses](#phase-10-mat4-look_at-view-matrix-proofs--kani-harnesses)
 - [Phase 11: Vec2/3 floor/ceil/round + Utils deg/rad Proofs](#phase-11-vec23-floorceliround--utils-degrad-proofs)
+- [Phase 12: Coverage Audit + fract/normalize/scale/lerp/approx_eq Proofs](#phase-12-coverage-audit--fractnormalizescalelerp-approx_eq-proofs-session-wv5k1)
+- [Phase 13: Rect/Mat4/Color/Bounds Extensions](#phase-13-rectmat4colorbounds-extensions-session-resp0)
 - [Completed Milestones Summary](#completed-milestones-summary)
 - [Completed Priority Items](#completed-priority-items)
 
@@ -543,6 +547,101 @@ Updated all items with correct status and blocker documentation.
 
 ---
 
+## Phase 12: Coverage Audit + fract/normalize/scale/lerp/approx_eq Proofs (Session WV5K1)
+
+**Status**: COMPLETED (Session WV5K1, 2026-02-05)
+
+### Goals
+1. Audit VERIFICATION_COVERAGE.md against actual proof files — fix stale entries
+2. Write new Coq proofs for fract, normalize, scale_from_center, lerp, approx_eq
+3. Increase operation coverage from 178/255 (69.8%) toward 85%+
+
+### Accomplishments
+
+1. **Documentation audit revealed 27+ operations already verified but listed as "Not verified"**:
+   - Vec3: lerp, min, max, abs, clamp, fract, normalize, scale, distance_sq, approx_eq, floor, ceil, round (12 ops)
+   - Vec2: fract, normalize, scale, distance_sq, approx_eq, lerp, min (7 ops)
+   - Color: lerp, darken, lighten, mix, clamp, invert, with_alpha, contrasting (8 ops)
+   - Coverage jumped from 178/255 (69.8%) to 205/255 (80.4%) primarily from documentation fixes
+
+2. **69 new Coq R-based theorems** across multiple files:
+   - Vec2_Proofs.v: +6 theorems (fract, normalize, scale, lerp, approx_eq properties)
+   - Vec3_Proofs.v: +6 theorems
+   - Color_Proofs.v: +8 theorems
+   - Rect_Proofs.v: +26 theorems (largest growth: from_corners, expand, scale_from_center, lerp, normalize, approx_eq)
+   - Bounds_Proofs.v: +21 theorems
+   - Utils.v: +2 theorems (Rfloor_eq, Rfract helper)
+
+3. **CI fix**: Replaced `Int_part_spec` (unavailable in CI Coq environment) with `base_Int_part` (universally available from R_Ifp)
+
+### Key Decisions
+
+- **Coverage audit before new proofs**: Fixing stale documentation had more impact (+27 ops) than writing new proofs. This established the principle: always audit first.
+- **base_Int_part over Int_part_spec**: CI environments may not have all R_Ifp lemmas. `base_Int_part` provides `IZR(Int_part r) <= r` and `IZR(Int_part r) - r > -1`, which combined with `lt_IZR` and `lia` solves floor/ceil proofs universally.
+
+### Proof Engineering Notes
+
+- `replace (_ - _)` wildcards fail with multiple R subtractions — use explicit terms
+- `exfalso; lra` is WRONG when `x >= 0` and `x <= 0` — use `assert (x = 0) by lra; subst`
+- `ring` cannot handle division — use `field` for goals containing `/`
+- Color lerp uses `(b - a) * t` not `t * (b - a)` — always check actual definition order
+
+### Summary
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| Coq R-based theorems | 1139 | 1208 | +69 |
+| Grand total | 2629 | 2698 | +69 |
+| Verified operations | 178/255 (69.8%) | 205/255 (80.4%) | +27 |
+| Documentation accuracy | Stale (27+ wrong entries) | Accurate | Fixed |
+
+---
+
+## Phase 13: Rect/Mat4/Color/Bounds Extensions (Session Resp0)
+
+**Status**: COMPLETED
+
+Extended proofs for Rect, Mat4, Color, and Bounds with new operations and properties.
+
+### New Coq Definitions Added
+
+| File | Definitions Added |
+|------|-------------------|
+| `Rect.v` | `rect_from_pos_size`, `rect_grow_to_contain`, `rect_clip_to` |
+| `Mat4.v` | `mat4_from_translation`, `mat4_approx_eq` |
+| `Bounds.v` | `bounds_scale_from_center` |
+
+### New Proofs Added
+
+| File | New Theorems | Theorem Numbers |
+|------|--------------|-----------------|
+| `Rect_Proofs.v` | 27 | 150–176: from_pos_size properties, position/size accessors, grow_to_contain, clip_to |
+| `Mat4_Proofs.v` | 10 | 128–137: from_translation (eq, transforms_point, preserves_vector, compose, det), approx_eq (refl, sym, zero_eq, eps_mono) + helper lemma |
+| `Color_Proofs.v` | 4 | 128–131: blend_over_opaque_eq_premult, scale_add_dist, clamp01_in_range, blend_over_transparent_eq |
+| `Bounds_Proofs.v` | 11 | 107–117: scale_from_center (center_x, center_y, width, height, one, zero, compose), translate (width, height, area), include_point_min_corner |
+| **Total new** | **52** | — |
+
+### Techniques Used
+
+- **Selective unfolding**: Use `cbn [rect_w]` before `unfold Rmax, Rmin` to avoid explosive Rle_dec case splitting
+- **Rmin/Rmax disambiguation**: `Rmin_l : Rmin x y <= x`, `Rmin_r : Rmin x y <= y` — check carefully
+- **Helper lemmas**: `Rabs_le_0_eq` for proving zero-equality from `Rabs x <= 0`
+- **Field names**: Mat4.v Vec4 uses `vec4_x/y/z/w`, not `v4x/y/z/w`
+- **Circular dependencies**: Bounds.v imports Rect.v, so Rect.v cannot import Bounds.v
+
+### Summary
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| Coq R-based theorems | 1208 | 1260 | +52 |
+| Grand total | 2698 | 2750 | +52 |
+| Rect theorems | 152 | 179 | +27 |
+| Mat4 theorems | 180 | 190 | +10 |
+| Color theorems | 127 | 131 | +4 |
+| Bounds theorems | 107 | 118 | +11 |
+
+---
+
 ## Completed Milestones Summary
 
 | # | Milestone | Status |
@@ -560,6 +659,9 @@ Updated all items with correct status and blocker documentation.
 | 11 | Determinant multiplicativity (det(A*B) = det(A)*det(B) for Mat3/Mat4) | COMPLETED |
 | 12 | rocq-of-rust investigation | INVESTIGATED (not viable) |
 | 13 | Stainless FP paper investigation | INVESTIGATED (not applicable) |
+| 14 | Vec2/Vec3 floor/ceil/round + Utils deg/rad (Phase 11) | COMPLETED |
+| 15 | Coverage audit + fract/normalize/scale/lerp/approx_eq (Phase 12) | COMPLETED |
+| 16 | Rect/Mat4/Color/Bounds extensions (Phase 13) | COMPLETED |
 
 ## Completed Priority Items
 
@@ -593,6 +695,6 @@ Updated all items with correct status and blocker documentation.
 
 ---
 
-*Last updated: 2026-02-04*
-*Total phases: 11 implementation phases*
+*Last updated: 2026-02-05*
+*Total phases: 13 implementation phases*
 *Total completed priority items: 25/28 (89%)*
