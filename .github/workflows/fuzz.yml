@@ -1,3 +1,14 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+#
+# Fuzzing CI workflow for Rource VCS parsers.
+#
+# Targets: fuzz_git_parser, fuzz_custom_parser, fuzz_svn_parser
+# (defined in fuzz/Cargo.toml)
+#
+# Uses cargo-fuzz (libFuzzer) with corpus caching for incremental
+# effectiveness across runs.
+
 name: Fuzzing
 
 on:
@@ -28,6 +39,7 @@ concurrency:
 permissions:
   contents: write  # For pushing coverage reports
   security-events: write  # For security alerts
+  issues: write  # For creating crash issues
 
 env:
   CARGO_TERM_COLOR: always
@@ -37,7 +49,11 @@ jobs:
   fuzz:
     name: Fuzz VCS Parsers
     runs-on: ubuntu-latest
-    timeout-minutes: 180  # 3 hour timeout for weekly runs
+    # Budget: build (~10min) + 3 targets × duration + coverage (~10min) + buffer
+    # Default scheduled: 10 + 3×60 + 10 + 10 = 210 min
+    # PR: 10 + 3×5 + 10 + 10 = 45 min
+    # Manual: depends on input duration
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v6
 
@@ -53,8 +69,37 @@ jobs:
           shared-key: "fuzz"
           workspaces: "fuzz -> target"
 
+      # Cache fuzz corpora across runs for incremental effectiveness.
+      # A warm corpus lets the fuzzer reach deeper code paths faster.
+      - name: Cache fuzz corpora
+        uses: actions/cache@v4
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            fuzz-corpus-${{ github.ref_name }}-
+            fuzz-corpus-main-
+            fuzz-corpus-
+
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
+
+      - name: Validate fuzz targets
+        run: |
+          cd fuzz
+          TARGETS=$(cargo +nightly fuzz list 2>&1)
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "::error::cargo fuzz list failed (exit $EXIT_CODE): $TARGETS"
+            exit 1
+          fi
+          TARGET_COUNT=$(echo "$TARGETS" | wc -l)
+          if [ "$TARGET_COUNT" -lt 1 ] || [ -z "$TARGETS" ]; then
+            echo "::error::No fuzz targets found in fuzz/Cargo.toml"
+            exit 1
+          fi
+          echo "Found $TARGET_COUNT fuzz targets:"
+          echo "$TARGETS"
 
       - name: Determine fuzzing duration
         id: duration
@@ -66,7 +111,7 @@ jobs:
           else
             DURATION="3600"  # 1 hour for scheduled runs
           fi
-          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> "$GITHUB_OUTPUT"
           echo "Fuzzing duration: ${DURATION}s per target"
 
       - name: Run fuzzing
@@ -74,12 +119,12 @@ jobs:
         run: |
           cd fuzz
 
-          # Get list of targets
-          TARGETS=$(cargo +nightly fuzz list 2>/dev/null)
+          # Get list of targets (already validated above)
+          TARGETS=$(cargo +nightly fuzz list)
           echo "Targets: $TARGETS"
 
           TOTAL_CRASHES=0
-          CRASH_DETAILS=""
+          CRASH_TARGETS=""
 
           for target in $TARGETS; do
             echo ""
@@ -87,6 +132,9 @@ jobs:
             echo "Fuzzing: $target"
             echo "Duration: ${{ steps.duration.outputs.duration }}s"
             echo "=========================================="
+
+            # Ensure corpus directory exists (for first run without cache)
+            mkdir -p "corpus/$target"
 
             # Run fuzzer
             set +e
@@ -98,22 +146,40 @@ jobs:
             set -e
 
             # Count crashes
-            CRASHES=$(find "artifacts/$target" -type f 2>/dev/null | wc -l || echo "0")
+            CRASHES=$(find "artifacts/$target" -type f 2>/dev/null | wc -l)
+            CRASHES=${CRASHES:-0}
             TOTAL_CRASHES=$((TOTAL_CRASHES + CRASHES))
 
             if [ "$CRASHES" -gt 0 ]; then
-              CRASH_DETAILS="${CRASH_DETAILS}\n- $target: $CRASHES crash(es)"
+              if [ -n "$CRASH_TARGETS" ]; then
+                CRASH_TARGETS="${CRASH_TARGETS}|${target}:${CRASHES}"
+              else
+                CRASH_TARGETS="${target}:${CRASHES}"
+              fi
             fi
 
+            # Extract libfuzzer stats from output
+            EXECS=$(grep -oP 'stat::number_of_executed_units:\s*\K[0-9]+' "fuzz-output-$target.txt" 2>/dev/null || echo "0")
+            NEW_UNITS=$(grep -oP 'stat::new_units_added:\s*\K[0-9]+' "fuzz-output-$target.txt" 2>/dev/null || echo "0")
+            PEAK_RSS=$(grep -oP 'stat::peak_rss_mb:\s*\K[0-9]+' "fuzz-output-$target.txt" 2>/dev/null || echo "0")
+
             # Collect corpus stats
-            CORPUS_SIZE=$(find "corpus/$target" -type f 2>/dev/null | wc -l || echo "0")
-            echo "Corpus size: $CORPUS_SIZE"
+            CORPUS_SIZE=$(find "corpus/$target" -type f 2>/dev/null | wc -l)
+            CORPUS_SIZE=${CORPUS_SIZE:-0}
+
+            echo "--- Stats for $target ---"
+            echo "  Corpus size: $CORPUS_SIZE"
+            echo "  Executions: $EXECS"
+            echo "  New units: $NEW_UNITS"
+            echo "  Peak RSS: ${PEAK_RSS}MB"
+            echo "  Crashes: $CRASHES"
+            echo "  Exit code: $FUZZ_EXIT"
           done
 
           cd ..
 
-          echo "total_crashes=$TOTAL_CRASHES" >> $GITHUB_OUTPUT
-          echo "crash_details=$CRASH_DETAILS" >> $GITHUB_OUTPUT
+          echo "total_crashes=$TOTAL_CRASHES" >> "$GITHUB_OUTPUT"
+          echo "crash_targets=$CRASH_TARGETS" >> "$GITHUB_OUTPUT"
 
           # Fail if crashes were found
           if [ "$TOTAL_CRASHES" -gt 0 ]; then
@@ -128,11 +194,12 @@ jobs:
 
           mkdir -p coverage-report
 
-          for target in $(cargo +nightly fuzz list 2>/dev/null); do
+          TARGETS=$(cargo +nightly fuzz list 2>/dev/null || true)
+          for target in $TARGETS; do
             echo "Generating coverage for $target..."
-            set +e
-            cargo +nightly fuzz coverage "$target" 2>/dev/null
-            set -e
+            if ! cargo +nightly fuzz coverage "$target" 2>&1; then
+              echo "::warning::Coverage generation failed for $target"
+            fi
           done
 
           cd ..
@@ -142,72 +209,118 @@ jobs:
         run: |
           cd fuzz
 
-          # Generate metrics JSON
-          cat > coverage-metrics.json << 'JSONHEADER'
-          {
-            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-            "event": "${{ github.event_name }}",
-            "duration_per_target": ${{ steps.duration.outputs.duration }},
-            "targets": [
-          JSONHEADER
+          TARGETS=$(cargo +nightly fuzz list 2>/dev/null || true)
 
-          FIRST=true
-          for target in $(cargo +nightly fuzz list 2>/dev/null); do
-            CORPUS_SIZE=$(find "corpus/$target" -type f 2>/dev/null | wc -l || echo "0")
-            CRASHES=$(find "artifacts/$target" -type f 2>/dev/null | wc -l || echo "0")
+          # Use Python for reliable JSON generation (no heredoc escaping issues)
+          python3 << 'PYEOF'
+          import json, os, subprocess, glob
 
-            if [ "$FIRST" != "true" ]; then
-              echo "    ," >> coverage-metrics.json
-            fi
-            FIRST=false
+          targets = os.popen("cargo +nightly fuzz list 2>/dev/null").read().strip().split("\n")
+          targets = [t.strip() for t in targets if t.strip()]
 
-            cat >> coverage-metrics.json << EOF
-              {
-                "name": "$target",
-                "corpus_size": $CORPUS_SIZE,
-                "crashes": $CRASHES
-              }
-          EOF
-          done
+          target_data = []
+          for t in targets:
+              corpus_files = glob.glob(f"corpus/{t}/*")
+              corpus_size = len(corpus_files)
+              artifact_files = glob.glob(f"artifacts/{t}/*")
+              crashes = len(artifact_files)
 
-          cat >> coverage-metrics.json << 'JSONFOOTER'
-            ]
+              # Extract libfuzzer stats from output file
+              execs = 0
+              new_units = 0
+              peak_rss = 0
+              output_file = f"fuzz-output-{t}.txt"
+              if os.path.exists(output_file):
+                  with open(output_file) as f:
+                      for line in f:
+                          if "stat::number_of_executed_units:" in line:
+                              try: execs = int(line.split(":")[-1].strip())
+                              except: pass
+                          elif "stat::new_units_added:" in line:
+                              try: new_units = int(line.split(":")[-1].strip())
+                              except: pass
+                          elif "stat::peak_rss_mb:" in line:
+                              try: peak_rss = int(line.split(":")[-1].strip())
+                              except: pass
+
+              target_data.append({
+                  "name": t,
+                  "corpus_size": corpus_size,
+                  "crashes": crashes,
+                  "executions": execs,
+                  "new_units_added": new_units,
+                  "peak_rss_mb": peak_rss
+              })
+
+          from datetime import datetime, timezone
+          metrics = {
+              "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "event": os.environ.get("GITHUB_EVENT_NAME", "unknown"),
+              "duration_per_target": int(os.environ.get("FUZZ_DURATION", "0")),
+              "target_count": len(targets),
+              "targets": target_data
           }
-          JSONFOOTER
+
+          with open("coverage-metrics.json", "w") as f:
+              json.dump(metrics, f, indent=2)
+
+          print(json.dumps(metrics, indent=2))
+          PYEOF
 
           cd ..
+        env:
+          FUZZ_DURATION: ${{ steps.duration.outputs.duration }}
 
       - name: Generate summary
         if: always()
         run: |
-          echo "## Fuzzing Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Event**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Duration**: ${{ steps.duration.outputs.duration }}s per target" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Fuzzing Results"
+            echo ""
+            echo "**Event**: ${{ github.event_name }}"
+            echo "**Duration**: ${{ steps.duration.outputs.duration }}s per target"
+            echo ""
 
-          if [ "${{ steps.fuzz.outputs.total_crashes }}" -gt 0 ]; then
-            echo "### WARN: Crashes Found" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Total crashes: **${{ steps.fuzz.outputs.total_crashes }}**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps.fuzz.outputs.crash_details }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "### PASS: No Crashes Found" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "All fuzz targets completed without finding crashes." >> $GITHUB_STEP_SUMMARY
-          fi
+            TOTAL_CRASHES="${{ steps.fuzz.outputs.total_crashes }}"
+            CRASH_TARGETS="${{ steps.fuzz.outputs.crash_targets }}"
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Corpus Statistics" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Target | Corpus Size |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------------|" >> $GITHUB_STEP_SUMMARY
+            if [ -n "$TOTAL_CRASHES" ] && [ "$TOTAL_CRASHES" -gt 0 ] 2>/dev/null; then
+              echo "### WARN: Crashes Found"
+              echo ""
+              echo "Total crashes: **${TOTAL_CRASHES}**"
+              echo ""
+              # Parse pipe-delimited crash targets (target:count|target:count)
+              if [ -n "$CRASH_TARGETS" ]; then
+                echo "| Target | Crashes |"
+                echo "|--------|---------|"
+                echo "$CRASH_TARGETS" | tr '|' '\n' | while IFS=: read -r tgt cnt; do
+                  echo "| $tgt | $cnt |"
+                done
+              fi
+            else
+              echo "### PASS: No Crashes Found"
+              echo ""
+              echo "All fuzz targets completed without finding crashes."
+            fi
+
+            echo ""
+            echo "### Corpus Statistics"
+            echo ""
+            echo "| Target | Corpus Size | Executions | New Units | Peak RSS |"
+            echo "|--------|-------------|------------|-----------|----------|"
+          } >> "$GITHUB_STEP_SUMMARY"
 
           cd fuzz
-          for target in $(cargo +nightly fuzz list 2>/dev/null); do
-            CORPUS_SIZE=$(find "corpus/$target" -type f 2>/dev/null | wc -l || echo "0")
-            echo "| $target | $CORPUS_SIZE inputs |" >> $GITHUB_STEP_SUMMARY
+          for target in $(cargo +nightly fuzz list 2>/dev/null || true); do
+            CORPUS_SIZE=$(find "corpus/$target" -type f 2>/dev/null | wc -l)
+            CORPUS_SIZE=${CORPUS_SIZE:-0}
+
+            # Extract stats from output file
+            EXECS=$(grep -oP 'stat::number_of_executed_units:\s*\K[0-9]+' "fuzz-output-$target.txt" 2>/dev/null || echo "?")
+            NEW_UNITS=$(grep -oP 'stat::new_units_added:\s*\K[0-9]+' "fuzz-output-$target.txt" 2>/dev/null || echo "?")
+            PEAK_RSS=$(grep -oP 'stat::peak_rss_mb:\s*\K[0-9]+' "fuzz-output-$target.txt" 2>/dev/null || echo "?")
+
+            echo "| $target | $CORPUS_SIZE inputs | $EXECS | $NEW_UNITS | ${PEAK_RSS}MB |" >> "$GITHUB_STEP_SUMMARY"
           done
           cd ..
 
@@ -231,41 +344,49 @@ jobs:
             fuzz/coverage-report/
           retention-days: 90
 
-      - name: Create security advisory (on crash)
+      - name: Create issue on crash (scheduled runs only)
         if: failure() && github.event_name == 'schedule'
         uses: actions/github-script@v7
         with:
           script: |
             const crashes = parseInt('${{ steps.fuzz.outputs.total_crashes }}') || 0;
-            if (crashes > 0) {
-              // Create an issue for the crash
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `[Security] Fuzzing found ${crashes} crash(es)`,
-                body: `## Fuzzing Crash Report
+            if (crashes === 0) return;
 
-            **Date**: ${new Date().toISOString()}
-            **Crashes Found**: ${crashes}
+            const crashTargets = '${{ steps.fuzz.outputs.crash_targets }}';
+            const details = crashTargets.split('|').filter(Boolean).map(entry => {
+              const [target, count] = entry.split(':');
+              return `- **${target}**: ${count} crash(es)`;
+            }).join('\n');
 
-            ### Details
+            const body = [
+              '## Fuzzing Crash Report',
+              '',
+              `**Date**: ${new Date().toISOString()}`,
+              `**Crashes Found**: ${crashes}`,
+              '',
+              '### Affected Targets',
+              '',
+              details,
+              '',
+              '### Action Required',
+              '',
+              `1. Download the crash artifacts from the [workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              '2. Reproduce the crash locally with `cargo +nightly fuzz run <target> fuzz/artifacts/<target>/<input>`',
+              '3. Minimize the input with `cargo +nightly fuzz tmin <target> <input>`',
+              '4. Fix the issue and add a regression test',
+              '',
+              '### Severity Assessment',
+              '',
+              'Please assess the severity and determine if this requires a security advisory.',
+            ].join('\n');
 
-            The weekly fuzzing run found potential crashes in the VCS parsers.
-
-            ### Action Required
-
-            1. Download the crash artifacts from the [workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${{ github.run_id }})
-            2. Reproduce the crash locally with \`cargo +nightly fuzz run <target> fuzz/artifacts/<target>/<input>\`
-            3. Minimize the input with \`cargo +nightly fuzz tmin <target> <input>\`
-            4. Fix the issue and add a regression test
-
-            ### Severity Assessment
-
-            Please assess the severity and determine if this requires a security advisory.
-            `,
-                labels: ['security', 'fuzzing', 'bug']
-              });
-            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Security] Fuzzing found ${crashes} crash(es)`,
+              body: body,
+              labels: ['security', 'fuzzing', 'bug']
+            });
 
   # Summary job for required status check
   fuzz-status:

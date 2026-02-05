@@ -1,22 +1,33 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Tom F <https://github.com/tomtom215>
+#
+# Mutation testing CI workflow for Rource.
+#
+# Tests all 4 library crates: rource-math, rource-vcs, rource-core, rource-render.
+# Uses cargo-mutants to inject mutations and verify test suites catch them.
+#
+# Field names in outcomes.json (cargo-mutants source of truth):
+#   total_mutants, caught, missed, timeout, unviable, success
+#
+# Thresholds per CLAUDE.md Domain 3 (Testing Maturity):
+#   80%+ mutation score for critical crates (rource-math, rource-vcs)
+#   60%+ for other crates (rource-core, rource-render)
 
 name: Mutation Testing
 
 on:
-  # Run on PRs that modify critical crates
+  # Run on PRs that modify library crates
   pull_request:
     branches: [main]
     paths:
-      - 'crates/rource-math/**'
-      - 'crates/rource-vcs/**'
+      - 'crates/**'
   # Allow manual triggering
   workflow_dispatch:
     inputs:
       crate:
-        description: 'Crate to test (rource-math, rource-vcs, or all)'
+        description: 'Crate to test (rource-math, rource-vcs, rource-core, rource-render, or all)'
         required: false
-        default: 'rource-math'
+        default: 'all'
       timeout:
         description: 'Timeout per mutant (seconds)'
         required: false
@@ -36,33 +47,71 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  # Detect which crates were changed in PRs
+  detect-changes:
+    name: Detect Changed Crates
+    runs-on: ubuntu-latest
+    outputs:
+      math: ${{ steps.filter.outputs.math || steps.manual.outputs.math }}
+      vcs: ${{ steps.filter.outputs.vcs || steps.manual.outputs.vcs }}
+      core: ${{ steps.filter.outputs.core || steps.manual.outputs.core }}
+      render: ${{ steps.filter.outputs.render || steps.manual.outputs.render }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            math:
+              - 'crates/rource-math/**'
+            vcs:
+              - 'crates/rource-vcs/**'
+            core:
+              - 'crates/rource-core/**'
+            render:
+              - 'crates/rource-render/**'
+
+      # For workflow_dispatch, set outputs based on input
+      - name: Set outputs for manual trigger
+        id: manual
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          CRATE="${{ inputs.crate }}"
+          if [ "$CRATE" = "all" ] || [ "$CRATE" = "rource-math" ]; then
+            echo "math=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$CRATE" = "all" ] || [ "$CRATE" = "rource-vcs" ]; then
+            echo "vcs=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$CRATE" = "all" ] || [ "$CRATE" = "rource-core" ]; then
+            echo "core=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$CRATE" = "all" ] || [ "$CRATE" = "rource-render" ]; then
+            echo "render=true" >> "$GITHUB_OUTPUT"
+          fi
+
   mutation-math:
     name: Mutation Test (rource-math)
     runs-on: ubuntu-latest
-    # No timeout - mutation testing must run to completion to find everything
+    timeout-minutes: 120
+    needs: [detect-changes]
     if: |
-      github.event_name == 'workflow_dispatch' &&
-      (inputs.crate == 'rource-math' || inputs.crate == 'all') ||
-      github.event_name == 'pull_request' &&
-      contains(github.event.pull_request.changed_files, 'crates/rource-math/')
-
+      needs.detect-changes.outputs.math == 'true' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.crate == 'rource-math' || inputs.crate == 'all'))
     steps:
       - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo dependencies
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-mutants-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-mutants-
+          prefix-key: "v1-rust"
+          shared-key: "mutants-math"
 
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
@@ -71,34 +120,41 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
-          cargo mutants -p rource-math --timeout=$TIMEOUT --jobs=2 --output=mutants-output
+          cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=2 --output=mutants-output
 
-          # Parse results
+          # Parse results using correct cargo-mutants field names
           if [ -f mutants-output/outcomes.json ]; then
-            TOTAL=$(jq '.total' mutants-output/outcomes.json)
-            KILLED=$(jq '.killed' mutants-output/outcomes.json)
-            SURVIVED=$(jq '.survived' mutants-output/outcomes.json)
+            TOTAL=$(jq '.total_mutants' mutants-output/outcomes.json)
+            CAUGHT=$(jq '.caught' mutants-output/outcomes.json)
+            MISSED=$(jq '.missed' mutants-output/outcomes.json)
             TIMEOUT_COUNT=$(jq '.timeout' mutants-output/outcomes.json)
             UNVIABLE=$(jq '.unviable' mutants-output/outcomes.json)
 
-            # Calculate score (exclude unviable from total)
+            # Calculate score (exclude unviable from denominator)
             VIABLE=$((TOTAL - UNVIABLE))
             if [ "$VIABLE" -gt 0 ]; then
-              SCORE=$(echo "scale=2; $KILLED * 100 / $VIABLE" | bc)
+              SCORE=$(echo "scale=2; $CAUGHT * 100 / $VIABLE" | bc)
             else
               SCORE="N/A"
             fi
 
-            echo "total=$TOTAL" >> $GITHUB_OUTPUT
-            echo "killed=$KILLED" >> $GITHUB_OUTPUT
-            echo "survived=$SURVIVED" >> $GITHUB_OUTPUT
-            echo "timeout=$TIMEOUT_COUNT" >> $GITHUB_OUTPUT
-            echo "unviable=$UNVIABLE" >> $GITHUB_OUTPUT
-            echo "score=$SCORE" >> $GITHUB_OUTPUT
+            echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "caught=$CAUGHT" >> "$GITHUB_OUTPUT"
+            echo "missed=$MISSED" >> "$GITHUB_OUTPUT"
+            echo "timeout=$TIMEOUT_COUNT" >> "$GITHUB_OUTPUT"
+            echo "unviable=$UNVIABLE" >> "$GITHUB_OUTPUT"
+            echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+
+            echo "--- rource-math mutation results ---"
+            echo "  Total: $TOTAL  Caught: $CAUGHT  Missed: $MISSED  Timeout: $TIMEOUT_COUNT  Unviable: $UNVIABLE"
+            echo "  Score: $SCORE%"
+          else
+            echo "::error::outcomes.json not found after mutation testing"
+            exit 1
           fi
 
       - name: Upload mutation report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: mutation-report-math
@@ -108,76 +164,71 @@ jobs:
       - name: Generate summary
         if: always()
         run: |
-          echo "## 🧬 Mutation Testing: rource-math" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Mutation Testing: rource-math"
+            echo ""
+            if [ -f mutants-output/outcomes.json ]; then
+              SCORE="${{ steps.mutants.outputs.score }}"
+              echo "| Metric | Count |"
+              echo "|--------|-------|"
+              echo "| Total Mutants | ${{ steps.mutants.outputs.total }} |"
+              echo "| Caught (PASS) | ${{ steps.mutants.outputs.caught }} |"
+              echo "| Missed (FAIL) | ${{ steps.mutants.outputs.missed }} |"
+              echo "| Timeout | ${{ steps.mutants.outputs.timeout }} |"
+              echo "| Unviable | ${{ steps.mutants.outputs.unviable }} |"
+              echo ""
+              echo "**Mutation Score: ${SCORE}%**"
 
-          if [ -f mutants-output/outcomes.json ]; then
-            SCORE="${{ steps.mutants.outputs.score }}"
-            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Total Mutants | ${{ steps.mutants.outputs.total }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Killed PASS | ${{ steps.mutants.outputs.killed }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Survived FAIL | ${{ steps.mutants.outputs.survived }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Timeout TIMEOUT | ${{ steps.mutants.outputs.timeout }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Unviable WARN | ${{ steps.mutants.outputs.unviable }} |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Mutation Score: ${SCORE}%**" >> $GITHUB_STEP_SUMMARY
-
-            # Add pass/fail indicator
-            if [ "$SCORE" != "N/A" ]; then
-              THRESHOLD=80
-              if (( $(echo "$SCORE >= $THRESHOLD" | bc -l) )); then
-                echo "" >> $GITHUB_STEP_SUMMARY
-                echo "PASS Score meets threshold (≥${THRESHOLD}%)" >> $GITHUB_STEP_SUMMARY
-              else
-                echo "" >> $GITHUB_STEP_SUMMARY
-                echo "WARN Score below threshold (<${THRESHOLD}%)" >> $GITHUB_STEP_SUMMARY
+              if [ "$SCORE" != "N/A" ]; then
+                THRESHOLD=80
+                PASS=$(echo "$SCORE >= $THRESHOLD" | bc -l)
+                if [ "$PASS" = "1" ]; then
+                  echo ""
+                  echo "PASS: Score meets threshold (>=${THRESHOLD}%)"
+                else
+                  echo ""
+                  echo "WARN: Score below threshold (<${THRESHOLD}%)"
+                fi
               fi
+            else
+              echo "FAIL: Mutation test results not found"
             fi
-          else
-            echo "FAIL Mutation test results not found" >> $GITHUB_STEP_SUMMARY
-          fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check mutation score threshold
-        if: steps.mutants.outputs.score != 'N/A'
+        if: steps.mutants.outputs.score != 'N/A' && steps.mutants.outputs.score != ''
         run: |
           SCORE="${{ steps.mutants.outputs.score }}"
           THRESHOLD=80
 
-          if (( $(echo "$SCORE < $THRESHOLD" | bc -l) )); then
-            echo "::warning::Mutation score ($SCORE%) is below the $THRESHOLD% threshold"
-            # Note: Not failing the build, just warning
-            # Uncomment below to enforce threshold:
+          BELOW=$(echo "$SCORE < $THRESHOLD" | bc -l)
+          if [ "$BELOW" = "1" ]; then
+            echo "::warning::rource-math mutation score ($SCORE%) is below the $THRESHOLD% threshold"
+            # Note: Warning only. Uncomment to enforce:
             # exit 1
+          else
+            echo "rource-math mutation score: $SCORE% (threshold: $THRESHOLD%) - PASS"
           fi
 
   mutation-vcs:
     name: Mutation Test (rource-vcs)
     runs-on: ubuntu-latest
-    # No timeout - mutation testing must run to completion to find everything
+    timeout-minutes: 120
+    needs: [detect-changes]
     if: |
-      github.event_name == 'workflow_dispatch' &&
-      (inputs.crate == 'rource-vcs' || inputs.crate == 'all') ||
-      github.event_name == 'pull_request' &&
-      contains(github.event.pull_request.changed_files, 'crates/rource-vcs/')
-
+      needs.detect-changes.outputs.vcs == 'true' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.crate == 'rource-vcs' || inputs.crate == 'all'))
     steps:
       - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo dependencies
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-mutants-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-mutants-
+          prefix-key: "v1-rust"
+          shared-key: "mutants-vcs"
 
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
@@ -186,33 +237,40 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
-          cargo mutants -p rource-vcs --timeout=$TIMEOUT --jobs=2 --output=mutants-output
+          cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=2 --output=mutants-output
 
-          # Parse results (same logic as math)
+          # Parse results using correct cargo-mutants field names
           if [ -f mutants-output/outcomes.json ]; then
-            TOTAL=$(jq '.total' mutants-output/outcomes.json)
-            KILLED=$(jq '.killed' mutants-output/outcomes.json)
-            SURVIVED=$(jq '.survived' mutants-output/outcomes.json)
+            TOTAL=$(jq '.total_mutants' mutants-output/outcomes.json)
+            CAUGHT=$(jq '.caught' mutants-output/outcomes.json)
+            MISSED=$(jq '.missed' mutants-output/outcomes.json)
             TIMEOUT_COUNT=$(jq '.timeout' mutants-output/outcomes.json)
             UNVIABLE=$(jq '.unviable' mutants-output/outcomes.json)
 
             VIABLE=$((TOTAL - UNVIABLE))
             if [ "$VIABLE" -gt 0 ]; then
-              SCORE=$(echo "scale=2; $KILLED * 100 / $VIABLE" | bc)
+              SCORE=$(echo "scale=2; $CAUGHT * 100 / $VIABLE" | bc)
             else
               SCORE="N/A"
             fi
 
-            echo "total=$TOTAL" >> $GITHUB_OUTPUT
-            echo "killed=$KILLED" >> $GITHUB_OUTPUT
-            echo "survived=$SURVIVED" >> $GITHUB_OUTPUT
-            echo "timeout=$TIMEOUT_COUNT" >> $GITHUB_OUTPUT
-            echo "unviable=$UNVIABLE" >> $GITHUB_OUTPUT
-            echo "score=$SCORE" >> $GITHUB_OUTPUT
+            echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "caught=$CAUGHT" >> "$GITHUB_OUTPUT"
+            echo "missed=$MISSED" >> "$GITHUB_OUTPUT"
+            echo "timeout=$TIMEOUT_COUNT" >> "$GITHUB_OUTPUT"
+            echo "unviable=$UNVIABLE" >> "$GITHUB_OUTPUT"
+            echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+
+            echo "--- rource-vcs mutation results ---"
+            echo "  Total: $TOTAL  Caught: $CAUGHT  Missed: $MISSED  Timeout: $TIMEOUT_COUNT  Unviable: $UNVIABLE"
+            echo "  Score: $SCORE%"
+          else
+            echo "::error::outcomes.json not found after mutation testing"
+            exit 1
           fi
 
       - name: Upload mutation report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: mutation-report-vcs
@@ -222,20 +280,319 @@ jobs:
       - name: Generate summary
         if: always()
         run: |
-          echo "## 🧬 Mutation Testing: rource-vcs" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Mutation Testing: rource-vcs"
+            echo ""
+            if [ -f mutants-output/outcomes.json ]; then
+              SCORE="${{ steps.mutants.outputs.score }}"
+              echo "| Metric | Count |"
+              echo "|--------|-------|"
+              echo "| Total Mutants | ${{ steps.mutants.outputs.total }} |"
+              echo "| Caught (PASS) | ${{ steps.mutants.outputs.caught }} |"
+              echo "| Missed (FAIL) | ${{ steps.mutants.outputs.missed }} |"
+              echo "| Timeout | ${{ steps.mutants.outputs.timeout }} |"
+              echo "| Unviable | ${{ steps.mutants.outputs.unviable }} |"
+              echo ""
+              echo "**Mutation Score: ${SCORE}%**"
+
+              if [ "$SCORE" != "N/A" ]; then
+                THRESHOLD=80
+                PASS=$(echo "$SCORE >= $THRESHOLD" | bc -l)
+                if [ "$PASS" = "1" ]; then
+                  echo ""
+                  echo "PASS: Score meets threshold (>=${THRESHOLD}%)"
+                else
+                  echo ""
+                  echo "WARN: Score below threshold (<${THRESHOLD}%)"
+                fi
+              fi
+            else
+              echo "FAIL: Mutation test results not found"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check mutation score threshold
+        if: steps.mutants.outputs.score != 'N/A' && steps.mutants.outputs.score != ''
+        run: |
+          SCORE="${{ steps.mutants.outputs.score }}"
+          THRESHOLD=80
+
+          BELOW=$(echo "$SCORE < $THRESHOLD" | bc -l)
+          if [ "$BELOW" = "1" ]; then
+            echo "::warning::rource-vcs mutation score ($SCORE%) is below the $THRESHOLD% threshold"
+          else
+            echo "rource-vcs mutation score: $SCORE% (threshold: $THRESHOLD%) - PASS"
+          fi
+
+  mutation-core:
+    name: Mutation Test (rource-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    needs: [detect-changes]
+    if: |
+      needs.detect-changes.outputs.core == 'true' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.crate == 'rource-core' || inputs.crate == 'all'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1-rust"
+          shared-key: "mutants-core"
+
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants --locked
+
+      - name: Run mutation tests on rource-core
+        id: mutants
+        run: |
+          TIMEOUT="${{ inputs.timeout || '120' }}"
+          cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=2 --output=mutants-output
 
           if [ -f mutants-output/outcomes.json ]; then
-            SCORE="${{ steps.mutants.outputs.score }}"
-            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Total Mutants | ${{ steps.mutants.outputs.total }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Killed PASS | ${{ steps.mutants.outputs.killed }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Survived FAIL | ${{ steps.mutants.outputs.survived }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Timeout TIMEOUT | ${{ steps.mutants.outputs.timeout }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Unviable WARN | ${{ steps.mutants.outputs.unviable }} |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Mutation Score: ${SCORE}%**" >> $GITHUB_STEP_SUMMARY
+            TOTAL=$(jq '.total_mutants' mutants-output/outcomes.json)
+            CAUGHT=$(jq '.caught' mutants-output/outcomes.json)
+            MISSED=$(jq '.missed' mutants-output/outcomes.json)
+            TIMEOUT_COUNT=$(jq '.timeout' mutants-output/outcomes.json)
+            UNVIABLE=$(jq '.unviable' mutants-output/outcomes.json)
+
+            VIABLE=$((TOTAL - UNVIABLE))
+            if [ "$VIABLE" -gt 0 ]; then
+              SCORE=$(echo "scale=2; $CAUGHT * 100 / $VIABLE" | bc)
+            else
+              SCORE="N/A"
+            fi
+
+            echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "caught=$CAUGHT" >> "$GITHUB_OUTPUT"
+            echo "missed=$MISSED" >> "$GITHUB_OUTPUT"
+            echo "timeout=$TIMEOUT_COUNT" >> "$GITHUB_OUTPUT"
+            echo "unviable=$UNVIABLE" >> "$GITHUB_OUTPUT"
+            echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+
+            echo "--- rource-core mutation results ---"
+            echo "  Total: $TOTAL  Caught: $CAUGHT  Missed: $MISSED  Timeout: $TIMEOUT_COUNT  Unviable: $UNVIABLE"
+            echo "  Score: $SCORE%"
           else
-            echo "FAIL Mutation test results not found" >> $GITHUB_STEP_SUMMARY
+            echo "::error::outcomes.json not found after mutation testing"
+            exit 1
           fi
+
+      - name: Upload mutation report
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: mutation-report-core
+          path: mutants-output/
+          retention-days: 30
+
+      - name: Generate summary
+        if: always()
+        run: |
+          {
+            echo "## Mutation Testing: rource-core"
+            echo ""
+            if [ -f mutants-output/outcomes.json ]; then
+              SCORE="${{ steps.mutants.outputs.score }}"
+              echo "| Metric | Count |"
+              echo "|--------|-------|"
+              echo "| Total Mutants | ${{ steps.mutants.outputs.total }} |"
+              echo "| Caught (PASS) | ${{ steps.mutants.outputs.caught }} |"
+              echo "| Missed (FAIL) | ${{ steps.mutants.outputs.missed }} |"
+              echo "| Timeout | ${{ steps.mutants.outputs.timeout }} |"
+              echo "| Unviable | ${{ steps.mutants.outputs.unviable }} |"
+              echo ""
+              echo "**Mutation Score: ${SCORE}%**"
+
+              if [ "$SCORE" != "N/A" ]; then
+                THRESHOLD=60
+                PASS=$(echo "$SCORE >= $THRESHOLD" | bc -l)
+                if [ "$PASS" = "1" ]; then
+                  echo ""
+                  echo "PASS: Score meets threshold (>=${THRESHOLD}%)"
+                else
+                  echo ""
+                  echo "WARN: Score below threshold (<${THRESHOLD}%)"
+                fi
+              fi
+            else
+              echo "FAIL: Mutation test results not found"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check mutation score threshold
+        if: steps.mutants.outputs.score != 'N/A' && steps.mutants.outputs.score != ''
+        run: |
+          SCORE="${{ steps.mutants.outputs.score }}"
+          THRESHOLD=60
+
+          BELOW=$(echo "$SCORE < $THRESHOLD" | bc -l)
+          if [ "$BELOW" = "1" ]; then
+            echo "::warning::rource-core mutation score ($SCORE%) is below the $THRESHOLD% threshold"
+          else
+            echo "rource-core mutation score: $SCORE% (threshold: $THRESHOLD%) - PASS"
+          fi
+
+  mutation-render:
+    name: Mutation Test (rource-render)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    needs: [detect-changes]
+    if: |
+      needs.detect-changes.outputs.render == 'true' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.crate == 'rource-render' || inputs.crate == 'all'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1-rust"
+          shared-key: "mutants-render"
+
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants --locked
+
+      - name: Run mutation tests on rource-render
+        id: mutants
+        run: |
+          TIMEOUT="${{ inputs.timeout || '120' }}"
+          cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=2 --output=mutants-output
+
+          if [ -f mutants-output/outcomes.json ]; then
+            TOTAL=$(jq '.total_mutants' mutants-output/outcomes.json)
+            CAUGHT=$(jq '.caught' mutants-output/outcomes.json)
+            MISSED=$(jq '.missed' mutants-output/outcomes.json)
+            TIMEOUT_COUNT=$(jq '.timeout' mutants-output/outcomes.json)
+            UNVIABLE=$(jq '.unviable' mutants-output/outcomes.json)
+
+            VIABLE=$((TOTAL - UNVIABLE))
+            if [ "$VIABLE" -gt 0 ]; then
+              SCORE=$(echo "scale=2; $CAUGHT * 100 / $VIABLE" | bc)
+            else
+              SCORE="N/A"
+            fi
+
+            echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "caught=$CAUGHT" >> "$GITHUB_OUTPUT"
+            echo "missed=$MISSED" >> "$GITHUB_OUTPUT"
+            echo "timeout=$TIMEOUT_COUNT" >> "$GITHUB_OUTPUT"
+            echo "unviable=$UNVIABLE" >> "$GITHUB_OUTPUT"
+            echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+
+            echo "--- rource-render mutation results ---"
+            echo "  Total: $TOTAL  Caught: $CAUGHT  Missed: $MISSED  Timeout: $TIMEOUT_COUNT  Unviable: $UNVIABLE"
+            echo "  Score: $SCORE%"
+          else
+            echo "::error::outcomes.json not found after mutation testing"
+            exit 1
+          fi
+
+      - name: Upload mutation report
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: mutation-report-render
+          path: mutants-output/
+          retention-days: 30
+
+      - name: Generate summary
+        if: always()
+        run: |
+          {
+            echo "## Mutation Testing: rource-render"
+            echo ""
+            if [ -f mutants-output/outcomes.json ]; then
+              SCORE="${{ steps.mutants.outputs.score }}"
+              echo "| Metric | Count |"
+              echo "|--------|-------|"
+              echo "| Total Mutants | ${{ steps.mutants.outputs.total }} |"
+              echo "| Caught (PASS) | ${{ steps.mutants.outputs.caught }} |"
+              echo "| Missed (FAIL) | ${{ steps.mutants.outputs.missed }} |"
+              echo "| Timeout | ${{ steps.mutants.outputs.timeout }} |"
+              echo "| Unviable | ${{ steps.mutants.outputs.unviable }} |"
+              echo ""
+              echo "**Mutation Score: ${SCORE}%**"
+
+              if [ "$SCORE" != "N/A" ]; then
+                THRESHOLD=60
+                PASS=$(echo "$SCORE >= $THRESHOLD" | bc -l)
+                if [ "$PASS" = "1" ]; then
+                  echo ""
+                  echo "PASS: Score meets threshold (>=${THRESHOLD}%)"
+                else
+                  echo ""
+                  echo "WARN: Score below threshold (<${THRESHOLD}%)"
+                fi
+              fi
+            else
+              echo "FAIL: Mutation test results not found"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check mutation score threshold
+        if: steps.mutants.outputs.score != 'N/A' && steps.mutants.outputs.score != ''
+        run: |
+          SCORE="${{ steps.mutants.outputs.score }}"
+          THRESHOLD=60
+
+          BELOW=$(echo "$SCORE < $THRESHOLD" | bc -l)
+          if [ "$BELOW" = "1" ]; then
+            echo "::warning::rource-render mutation score ($SCORE%) is below the $THRESHOLD% threshold"
+          else
+            echo "rource-render mutation score: $SCORE% (threshold: $THRESHOLD%) - PASS"
+          fi
+
+  # Summary job aggregates all mutation results for required status check
+  mutation-status:
+    name: Mutation Testing Status
+    runs-on: ubuntu-latest
+    needs: [mutation-math, mutation-vcs, mutation-core, mutation-render]
+    if: always()
+    steps:
+      - name: Aggregate results
+        run: |
+          echo "## Mutation Testing Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Crate | Status | Threshold |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|--------|-----------|" >> "$GITHUB_STEP_SUMMARY"
+
+          FAILED=0
+
+          for job_result in \
+            "rource-math:${{ needs.mutation-math.result }}:80%" \
+            "rource-vcs:${{ needs.mutation-vcs.result }}:80%" \
+            "rource-core:${{ needs.mutation-core.result }}:60%" \
+            "rource-render:${{ needs.mutation-render.result }}:60%"; do
+
+            CRATE=$(echo "$job_result" | cut -d: -f1)
+            RESULT=$(echo "$job_result" | cut -d: -f2)
+            THRESH=$(echo "$job_result" | cut -d: -f3)
+
+            case "$RESULT" in
+              success) STATUS="PASS" ;;
+              failure) STATUS="FAIL"; FAILED=$((FAILED + 1)) ;;
+              skipped) STATUS="SKIP (no changes)" ;;
+              cancelled) STATUS="CANCELLED" ;;
+              *) STATUS="$RESULT" ;;
+            esac
+
+            echo "| $CRATE | $STATUS | $THRESH |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**$FAILED crate(s) failed mutation testing.**" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::$FAILED crate(s) failed mutation testing"
+            exit 1
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "All mutation testing passed or was skipped (no relevant changes)." >> "$GITHUB_STEP_SUMMARY"
