@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770299899610,
+  "lastUpdate": 1770315252023,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5327,6 +5327,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/e7fd0a76ea1b0fff78a0dc20e629d0dccf6743c8"
         },
         "date": 1770299899049,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4937d7a66550bc1d621eabaa70475a37ba05b610",
+          "message": "Merge pull request #263 from tomtom215/claude/rource-continuation-1WDWU\n\nAdd 53 new theorems/harnesses: Vec2 clamp/reflect/project, Rect operations, HSL color, Kani proofs",
+          "timestamp": "2026-02-05T13:12:08-05:00",
+          "tree_id": "cd2427fb859fff41e91c174636616b699f43cea2",
+          "url": "https://github.com/tomtom215/rource/commit/4937d7a66550bc1d621eabaa70475a37ba05b610"
+        },
+        "date": 1770315251384,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
