@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770257335978,
+  "lastUpdate": 1770267735939,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5249,6 +5249,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/fd635fa480e6431e8ddd1c664422ce148f4ad887"
         },
         "date": 1770257335621,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fc7eb790dec540b189a275424e37b04ee6cd1217",
+          "message": "Merge pull request #261 from tomtom215/claude/rource-continuation-Resp0\n\nPhase 13: Expand Coq proofs to 1260 R-based theorems (+52)",
+          "timestamp": "2026-02-05T00:00:09-05:00",
+          "tree_id": "85d590b43087f6c146b12b853e50f3bb2fc6189c",
+          "url": "https://github.com/tomtom215/rource/commit/fc7eb790dec540b189a275424e37b04ee6cd1217"
+        },
+        "date": 1770267735274,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
