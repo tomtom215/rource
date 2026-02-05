@@ -648,3 +648,70 @@ fn verify_rect_translate_correctness() {
     assert!(r.x == x + ox, "translate should shift x by offset.x");
     assert!(r.y == y + oy, "translate should shift y by offset.y");
 }
+
+// ============================================================================
+// intersection (returns Option)
+// ============================================================================
+
+/// **Finiteness**: `intersection()` of overlapping rects produces finite result.
+///
+/// Two rects that overlap (verified by requiring overlap conditions) should
+/// produce a `Some(rect)` with all finite components.
+#[kani::proof]
+fn verify_rect_intersection_finite() {
+    let ax: f32 = kani::any();
+    let ay: f32 = kani::any();
+    let aw: f32 = kani::any();
+    let ah: f32 = kani::any();
+    let bx: f32 = kani::any();
+    let by: f32 = kani::any();
+    let bw: f32 = kani::any();
+    let bh: f32 = kani::any();
+    kani::assume(ax.is_finite() && ax.abs() < SAFE_BOUND);
+    kani::assume(ay.is_finite() && ay.abs() < SAFE_BOUND);
+    kani::assume(aw.is_finite() && aw > 1.0 && aw < SAFE_BOUND);
+    kani::assume(ah.is_finite() && ah > 1.0 && ah < SAFE_BOUND);
+    kani::assume(bx.is_finite() && bx.abs() < SAFE_BOUND);
+    kani::assume(by.is_finite() && by.abs() < SAFE_BOUND);
+    kani::assume(bw.is_finite() && bw > 1.0 && bw < SAFE_BOUND);
+    kani::assume(bh.is_finite() && bh > 1.0 && bh < SAFE_BOUND);
+    // Ensure overlap by requiring b starts within a
+    kani::assume(bx >= ax && bx < ax + aw);
+    kani::assume(by >= ay && by < ay + ah);
+    let a = Rect::new(ax, ay, aw, ah);
+    let b = Rect::new(bx, by, bw, bh);
+    if let Some(i) = a.intersection(b) {
+        assert!(i.x.is_finite(), "intersection().x non-finite");
+        assert!(i.y.is_finite(), "intersection().y non-finite");
+        assert!(i.width.is_finite(), "intersection().width non-finite");
+        assert!(i.height.is_finite(), "intersection().height non-finite");
+        assert!(i.width >= 0.0, "intersection width non-negative");
+        assert!(i.height >= 0.0, "intersection height non-negative");
+    }
+}
+
+/// **Self-intersection**: `r.intersection(r)` returns `Some` with same dimensions.
+///
+/// A valid rect with positive dimensions should always intersect itself,
+/// returning the same rect.
+#[kani::proof]
+fn verify_rect_intersection_self() {
+    let x: f32 = kani::any();
+    let y: f32 = kani::any();
+    let w: f32 = kani::any();
+    let h: f32 = kani::any();
+    kani::assume(x.is_finite() && x.abs() < 1e6);
+    kani::assume(y.is_finite() && y.abs() < 1e6);
+    kani::assume(w.is_finite() && w > 1.0 && w < 1e6);
+    kani::assume(h.is_finite() && h > 1.0 && h < 1e6);
+    let r = Rect::new(x, y, w, h);
+    if let Some(i) = r.intersection(r) {
+        assert!(i.x == x, "self-intersection x mismatch");
+        assert!(i.y == y, "self-intersection y mismatch");
+        assert!(i.width == w, "self-intersection width mismatch");
+        assert!(i.height == h, "self-intersection height mismatch");
+    } else {
+        // This should not happen for a valid rect with w > 1.0 and |x| < 1e6
+        assert!(false, "self-intersection should be Some for valid rect");
+    }
+}

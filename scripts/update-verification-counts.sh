@@ -733,6 +733,8 @@ if [[ -f "$DR" ]]; then
     sed -i -E "s/[0-9]+ theorems, 0 admits, Coq 8/$COQ_COMBINED theorems, 0 admits, Coq 8/" "$DR"
     # COQ_PROOFS.md reference (R-based + Z-based, N theorems)
     sed -i -E "s/R-based \+ Z-based, [0-9]+ theorems/R-based + Z-based, $COQ_COMBINED theorems/" "$DR"
+    # COQ_PROOFS.md reference (N theorems R+Z)
+    sed -i -E "s/[0-9]+ theorems R\+Z/$COQ_COMBINED theorems R+Z/" "$DR"
     # FORMAL_VERIFICATION.md reference (total and types)
     sed -i -E "s/[0-9]+ theorems\/harnesses, [0-9]+ types/$GRAND_TOTAL theorems\/harnesses, 8 types/" "$DR"
     echo "  Done."
@@ -801,6 +803,8 @@ if [[ -f "$FPV" ]]; then
     echo "Updating FLOATING_POINT_VERIFICATION.md..."
     # Coverage trajectory table: current total
     sed -i -E "s/Algebraic properties \| [0-9]+ theorems/Algebraic properties | $GRAND_TOTAL theorems/" "$FPV"
+    # Coverage trajectory table: "N theorems/harnesses" in table cells
+    sed -i -E "s/\| [0-9]+ theorems\/harnesses/| $GRAND_TOTAL theorems\/harnesses/" "$FPV"
     echo "  Done."
 fi
 

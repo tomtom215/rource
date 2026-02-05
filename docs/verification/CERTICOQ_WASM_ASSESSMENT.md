@@ -207,16 +207,16 @@ The specifications and the compiler serve fundamentally different purposes.
 │      Status: COMPLETE (1841 total with Verus)                            │
 │                                                                         │
 │  Layer 2: Computational Implementation (Z-based)                        │
-│  ├── Vec2_Compute.v (62 theorems)                                       │
+│  ├── Vec2_Compute.v (76 theorems)                                       │
 │  ├── Vec3_Compute.v (54 theorems)                                       │
 │  ├── Vec4_Compute.v (39 theorems)                                       │
 │  ├── Mat3_Compute.v (25 theorems, determinant + trace)                  │
 │  ├── Mat4_Compute.v (50 theorems, incl. 16 component lemmas)            │
 │  ├── Color_Compute.v (60 theorems, blend/lerp/clamp)                    │
-│  ├── Rect_Compute.v (51 theorems, intersection/containment)             │
+│  ├── Rect_Compute.v (79 theorems, intersection/containment)             │
 │  ├── Utils_Compute.v (18 theorems, lerp/clamp)                           │
 │  └── Purpose: Computable operations with algebraic proofs               │
-│      Status: COMPLETE (429 theorems, all 8 types)                       │
+│      Status: COMPLETE (471 theorems, all 8 types)                       │
 │                                                                         │
 │  Layer 3: Extraction Pipeline                                           │
 │  ├── RourceMath_Extract.v → rource_math_extracted.ml (OCaml, 23 KB)     │
@@ -262,7 +262,7 @@ the order completeness of R.
 
 **File**: `crates/rource-math/proofs/coq/Vec2_Compute.v`
 **Compilation time**: 1.472s
-**Theorems**: 62 (all machine-checked, zero admits)
+**Theorems**: 76 (all machine-checked, zero admits)
 
 | Theorem | Property | Tactic |
 |---------|----------|--------|

@@ -573,6 +573,12 @@ All 220 entries in chronological order. Entry numbers match category table refer
 | 219 | 2026-02-05 | Resp0 | Modeling `get_scale` as `get_scale_sq` (length-squared) avoids sqrt | Coq cannot reason algebraically about `sqrt` (transcendental) | Use sum-of-squares `m0²+m1²+m2²` instead of `sqrt(m0²+m1²+m2²)`; proves all algebraic properties |
 | 220 | 2026-02-05 | Resp0 | `lra` fails on nonlinear products; `ring` fails on linear comparisons | `1*1+0*0+0*0=1` needs `ring`; `Rle` needs `lra`; `Rle_0_sqr` needs neither | Match tactic to goal structure: `ring` for polynomial equality, `lra` for linear inequality, specialized lemmas for sum-of-squares |
 
+| 221 | 2026-02-05 | 1WDWU | Color HSL operations (to_hsl, from_hsl, with_lightness, with_saturation, with_hue, rotate_hue) are purely algebraic — NO transcendental functions | Previously categorized as "transcendental-blocked" in verification docs, blocking Kani verification | Analysis of `color.rs` showed only arithmetic, comparisons, `rem_euclid` — enabled 9 new Kani harnesses covering 6 previously "unverifiable" operations |
+| 222 | 2026-02-05 | 1WDWU | `nia` (nonlinear integer arithmetic) fails on degree-4+ polynomial constraints in Coq Z proofs | `reflect_involutive` required `a - 2*d*nx + 2*(2*d*nx - a)*nx*nx = a` with `nx*nx + ny*ny = 1` — degree-5 polynomial | Avoid degree-4+ nia proofs; decompose into unconditional `ring` identities (e.g., `reflect_dot_relation`) |
+| 223 | 2026-02-05 | 1WDWU | `simpl` normalizes `2*d` to `d+d` in Coq Z, breaking syntactic `set`/`rewrite` pattern matching | After `simpl`, `set (d := zvec2_dot a n)` couldn't find `2*d` because it became `d+d` in the goal | Either avoid `simpl` before `set`, or use `cbn [specific_functions]` for targeted reduction |
+| 224 | 2026-02-05 | 1WDWU | `Z.eqb_neq` rewrite requires hypothesis of form `(z =? z0) = false`, not `z <> 0` | `rewrite Z.eqb_neq in Hne` failed because Hne was `vx*vx + vy*vy <> 0`, not a `=? = false` form | Use `destruct (expr =? 0)%Z eqn:E` directly, then `apply Z.eqb_eq in E; contradiction` for true branch |
+| 225 | 2026-02-05 | 1WDWU | Update script `update-verification-counts.sh` missed two sed patterns for docs/README.md and FLOATING_POINT_VERIFICATION.md | docs/README.md used `N theorems R+Z` format; FP_VERIFICATION.md used `N theorems/harnesses` format — neither matched existing sed patterns | Added `s/[0-9]+ theorems R\+Z/` and `s/\| [0-9]+ theorems\/harnesses/` patterns to cover all documentation formats |
+
 ---
 
-*Last updated: 2026-02-05 | 220 entries | 14 categories*
+*Last updated: 2026-02-05 | 225 entries | 14 categories*

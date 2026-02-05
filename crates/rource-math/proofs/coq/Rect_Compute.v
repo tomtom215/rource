@@ -609,3 +609,313 @@ Proof. reflexivity. Qed.
 Example zrect_test_contains :
   zrect_contains_point (mkZRect 0 0 100 100) 50 50 = true.
 Proof. reflexivity. Qed.
+
+(** * Phase 15: Additional Z-Compute Definitions and Theorems *)
+
+(** ** Accessor definitions *)
+
+Definition zrect_left (r : ZRect) : Z := zrect_x r.
+Definition zrect_top (r : ZRect) : Z := zrect_y r.
+Definition zrect_min_x (r : ZRect) : Z := zrect_x r.
+Definition zrect_min_y (r : ZRect) : Z := zrect_y r.
+Definition zrect_max_x (r : ZRect) : Z := zrect_x r + zrect_w r.
+Definition zrect_max_y (r : ZRect) : Z := zrect_y r + zrect_h r.
+
+(** ** from_corners: constructs rect from any two corner points *)
+
+Definition zrect_from_corners (ax ay bx by0 : Z) : ZRect :=
+  let x := Z.min ax bx in
+  let y0 := Z.min ay by0 in
+  mkZRect x y0 (Z.max ax bx - x) (Z.max ay by0 - y0).
+
+(** ** expand_xy: independent expansion on each axis *)
+
+Definition zrect_expand_xy (r : ZRect) (xa ya : Z) : ZRect :=
+  mkZRect (zrect_x r - xa) (zrect_y r - ya)
+          (zrect_w r + 2 * xa) (zrect_h r + 2 * ya).
+
+(** ** scale_from_center: scale dims preserving center (factor/1000) *)
+
+Definition zrect_scale_from_center (r : ZRect) (factor : Z) : ZRect :=
+  let cx := zrect_center_x r in
+  let cy := zrect_center_y r in
+  let nw := zrect_w r * factor / 1000 in
+  let nh := zrect_h r * factor / 1000 in
+  mkZRect (cx - nw / 2) (cy - nh / 2) nw nh.
+
+(** ** normalize: ensure non-negative dims *)
+
+Definition zrect_normalize (r : ZRect) : ZRect :=
+  if (zrect_w r <? 0) then
+    mkZRect (zrect_x r + zrect_w r) (zrect_y r) (- zrect_w r) (zrect_h r)
+  else if (zrect_h r <? 0) then
+    mkZRect (zrect_x r) (zrect_y r + zrect_h r) (zrect_w r) (- zrect_h r)
+  else
+    r.
+
+(** ** lerp: linear interpolation (t in millionths: 0=0.0, 1000000=1.0) *)
+
+Definition zrect_lerp (a b : ZRect) (t : Z) : ZRect :=
+  mkZRect (zrect_x a + (zrect_x b - zrect_x a) * t / 1000000)
+          (zrect_y a + (zrect_y b - zrect_y a) * t / 1000000)
+          (zrect_w a + (zrect_w b - zrect_w a) * t / 1000000)
+          (zrect_h a + (zrect_h b - zrect_h a) * t / 1000000).
+
+(** ** merge: alias for union *)
+
+Definition zrect_merge (a b : ZRect) : ZRect := zrect_union a b.
+
+(** ** clip_to: alias for intersection *)
+
+Definition zrect_clip_to (r clip : ZRect) : ZRect := zrect_intersection r clip.
+
+(** ** grow_to_contain: expand rect to include a point *)
+
+Definition zrect_grow_to_contain (r : ZRect) (px py : Z) : ZRect :=
+  let new_x := Z.min (zrect_x r) px in
+  let new_y := Z.min (zrect_y r) py in
+  let new_right := Z.max (zrect_x r + zrect_w r) px in
+  let new_bottom := Z.max (zrect_y r + zrect_h r) py in
+  mkZRect new_x new_y (new_right - new_x) (new_bottom - new_y).
+
+(** ** Accessor Theorems *)
+
+Theorem zrect_left_eq_x : forall (r : ZRect),
+  zrect_left r = zrect_x r.
+Proof. intros [x y0 w h]. unfold zrect_left. simpl. reflexivity. Qed.
+
+Theorem zrect_top_eq_y : forall (r : ZRect),
+  zrect_top r = zrect_y r.
+Proof. intros [x y0 w h]. unfold zrect_top. simpl. reflexivity. Qed.
+
+Theorem zrect_min_x_eq : forall (r : ZRect),
+  zrect_min_x r = zrect_x r.
+Proof. intros [x y0 w h]. unfold zrect_min_x. simpl. reflexivity. Qed.
+
+Theorem zrect_min_y_eq : forall (r : ZRect),
+  zrect_min_y r = zrect_y r.
+Proof. intros [x y0 w h]. unfold zrect_min_y. simpl. reflexivity. Qed.
+
+Theorem zrect_max_x_eq_right : forall (r : ZRect),
+  zrect_max_x r = zrect_right r.
+Proof. intros [x y0 w h]. unfold zrect_max_x, zrect_right. simpl. reflexivity. Qed.
+
+Theorem zrect_max_y_eq_bottom : forall (r : ZRect),
+  zrect_max_y r = zrect_bottom r.
+Proof. intros [x y0 w h]. unfold zrect_max_y, zrect_bottom. simpl. reflexivity. Qed.
+
+(** ** from_corners Theorems *)
+
+Theorem zrect_from_corners_nonneg_w : forall ax ay bx by0 : Z,
+  zrect_w (zrect_from_corners ax ay bx by0) >= 0.
+Proof.
+  intros. unfold zrect_from_corners. simpl. lia.
+Qed.
+
+Theorem zrect_from_corners_nonneg_h : forall ax ay bx by0 : Z,
+  zrect_h (zrect_from_corners ax ay bx by0) >= 0.
+Proof.
+  intros. unfold zrect_from_corners. simpl. lia.
+Qed.
+
+Theorem zrect_from_corners_symmetric : forall ax ay bx by0 : Z,
+  zrect_from_corners ax ay bx by0 = zrect_from_corners bx by0 ax ay.
+Proof.
+  intros. unfold zrect_from_corners. simpl.
+  apply zrect_eq.
+  - apply Z.min_comm.
+  - apply Z.min_comm.
+  - f_equal. apply Z.max_comm. apply Z.min_comm.
+  - f_equal. apply Z.max_comm. apply Z.min_comm.
+Qed.
+
+Theorem zrect_from_corners_same_point : forall px py : Z,
+  zrect_from_corners px py px py = mkZRect px py 0 0.
+Proof.
+  intros. unfold zrect_from_corners. simpl.
+  apply zrect_eq.
+  - apply Z.min_id.
+  - apply Z.min_id.
+  - rewrite Z.max_id. lia.
+  - rewrite Z.max_id. lia.
+Qed.
+
+(** ** expand_xy Theorems *)
+
+Theorem zrect_expand_xy_zero : forall (r : ZRect),
+  zrect_expand_xy r 0 0 = r.
+Proof.
+  intros [x y0 w h]. unfold zrect_expand_xy.
+  cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq; lia.
+Qed.
+
+Theorem zrect_expand_xy_width : forall (r : ZRect) (xa ya : Z),
+  zrect_w (zrect_expand_xy r xa ya) = zrect_w r + 2 * xa.
+Proof.
+  intros [x y0 w h] xa ya. unfold zrect_expand_xy. simpl. lia.
+Qed.
+
+Theorem zrect_expand_xy_height : forall (r : ZRect) (xa ya : Z),
+  zrect_h (zrect_expand_xy r xa ya) = zrect_h r + 2 * ya.
+Proof.
+  intros [x y0 w h] xa ya. unfold zrect_expand_xy. simpl. lia.
+Qed.
+
+Theorem zrect_expand_xy_equal_is_expand : forall (r : ZRect) (a : Z),
+  zrect_expand_xy r a a = zrect_expand r a.
+Proof.
+  intros [x y0 w h] a. unfold zrect_expand_xy, zrect_expand.
+  cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq; lia.
+Qed.
+
+Theorem zrect_expand_xy_compose : forall (r : ZRect) (xa1 ya1 xa2 ya2 : Z),
+  zrect_expand_xy (zrect_expand_xy r xa1 ya1) xa2 ya2 =
+  zrect_expand_xy r (xa1 + xa2) (ya1 + ya2).
+Proof.
+  intros [x y0 w h] xa1 ya1 xa2 ya2.
+  unfold zrect_expand_xy.
+  cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq; lia.
+Qed.
+
+(** ** scale_from_center Theorems *)
+
+Theorem zrect_scale_from_center_identity : forall (r : ZRect),
+  zrect_w (zrect_scale_from_center r 1000) = zrect_w r.
+Proof.
+  intros [x y0 w h]. unfold zrect_scale_from_center, zrect_center_x, zrect_center_y.
+  simpl. rewrite Z.div_mul by lia. reflexivity.
+Qed.
+
+Theorem zrect_scale_from_center_zero_width : forall (r : ZRect),
+  zrect_w (zrect_scale_from_center r 0) = 0.
+Proof.
+  intros [x y0 w h]. unfold zrect_scale_from_center, zrect_center_x, zrect_center_y.
+  simpl. rewrite Z.mul_0_r. reflexivity.
+Qed.
+
+Theorem zrect_scale_from_center_zero_height : forall (r : ZRect),
+  zrect_h (zrect_scale_from_center r 0) = 0.
+Proof.
+  intros [x y0 w h]. unfold zrect_scale_from_center, zrect_center_x, zrect_center_y.
+  simpl. rewrite Z.mul_0_r. reflexivity.
+Qed.
+
+(** ** lerp Theorems *)
+
+Theorem zrect_lerp_zero : forall (a b : ZRect),
+  zrect_lerp a b 0 = a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold zrect_lerp. cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq; rewrite Z.mul_0_r; rewrite Z.div_0_l by lia; lia.
+Qed.
+
+Theorem zrect_lerp_same : forall (r : ZRect) (t : Z),
+  zrect_lerp r r t = r.
+Proof.
+  intros [x y0 w h] t.
+  unfold zrect_lerp. cbn [zrect_x zrect_y zrect_w zrect_h].
+  apply zrect_eq; rewrite Z.sub_diag; rewrite Z.mul_0_l; rewrite Z.div_0_l by lia; lia.
+Qed.
+
+(** ** merge Theorems *)
+
+Theorem zrect_merge_comm : forall (a b : ZRect),
+  zrect_merge a b = zrect_merge b a.
+Proof.
+  intros. unfold zrect_merge. apply zrect_union_commutative.
+Qed.
+
+Theorem zrect_merge_self : forall (r : ZRect),
+  zrect_w r >= 0 -> zrect_h r >= 0 ->
+  zrect_merge r r = r.
+Proof.
+  intros. unfold zrect_merge. apply zrect_union_self; assumption.
+Qed.
+
+(** ** clip_to Theorems *)
+
+Theorem zrect_clip_to_comm : forall (a b : ZRect),
+  zrect_clip_to a b = zrect_clip_to b a.
+Proof.
+  intros. unfold zrect_clip_to. apply zrect_intersection_comm.
+Qed.
+
+Theorem zrect_clip_to_self : forall (r : ZRect),
+  zrect_w r >= 0 -> zrect_h r >= 0 ->
+  zrect_clip_to r r = r.
+Proof.
+  intros. unfold zrect_clip_to. apply zrect_intersection_self; assumption.
+Qed.
+
+(** ** grow_to_contain Theorems *)
+
+Theorem zrect_grow_to_contain_nonneg_w : forall (r : ZRect) (px py : Z),
+  zrect_w r >= 0 ->
+  zrect_w (zrect_grow_to_contain r px py) >= 0.
+Proof.
+  intros [x y0 w h] px py Hw.
+  unfold zrect_grow_to_contain.
+  cbn [zrect_x zrect_y zrect_w zrect_h]. simpl in Hw. lia.
+Qed.
+
+Theorem zrect_grow_to_contain_nonneg_h : forall (r : ZRect) (px py : Z),
+  zrect_h r >= 0 ->
+  zrect_h (zrect_grow_to_contain r px py) >= 0.
+Proof.
+  intros [x y0 w h] px py Hh.
+  unfold zrect_grow_to_contain.
+  cbn [zrect_x zrect_y zrect_w zrect_h]. simpl in Hh. lia.
+Qed.
+
+(** ** normalize Theorems *)
+
+Theorem zrect_normalize_nonneg_w : forall (r : ZRect),
+  zrect_w (zrect_normalize r) >= 0.
+Proof.
+  intros [x y0 w h].
+  unfold zrect_normalize. simpl.
+  destruct (w <? 0) eqn:Hw; simpl.
+  - apply Z.ltb_lt in Hw. lia.
+  - destruct (h <? 0) eqn:Hh; simpl.
+    + apply Z.ltb_ge in Hw. lia.
+    + apply Z.ltb_ge in Hw. lia.
+Qed.
+
+Theorem zrect_normalize_positive_id : forall (r : ZRect),
+  zrect_w r >= 0 -> zrect_h r >= 0 ->
+  zrect_normalize r = r.
+Proof.
+  intros [x y0 w h] Hw Hh.
+  unfold zrect_normalize. simpl. simpl in Hw, Hh.
+  destruct (w <? 0) eqn:Ew.
+  - apply Z.ltb_lt in Ew. lia.
+  - destruct (h <? 0) eqn:Eh.
+    + apply Z.ltb_lt in Eh. lia.
+    + reflexivity.
+Qed.
+
+(** ** Computational Tests for New Operations *)
+
+Example zrect_test_left :
+  zrect_left (mkZRect 10 20 100 50) = 10.
+Proof. reflexivity. Qed.
+
+Example zrect_test_top :
+  zrect_top (mkZRect 10 20 100 50) = 20.
+Proof. reflexivity. Qed.
+
+Example zrect_test_from_corners :
+  zrect_from_corners 100 50 10 20 = mkZRect 10 20 90 30.
+Proof. reflexivity. Qed.
+
+Example zrect_test_expand_xy :
+  zrect_expand_xy (mkZRect 10 10 80 80) 5 10 = mkZRect 5 0 90 100.
+Proof. reflexivity. Qed.
+
+Example zrect_test_grow_to_contain :
+  zrect_grow_to_contain (mkZRect 10 10 10 10) 5 15 = mkZRect 5 10 15 10.
+Proof. reflexivity. Qed.
