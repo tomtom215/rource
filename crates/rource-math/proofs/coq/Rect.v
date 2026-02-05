@@ -201,3 +201,25 @@ Definition rect_grow_to_contain (r : Rect) (px py : R) : Rect :=
 (** * Clip (intersection alias for clarity). *)
 Definition rect_clip_to (r clip : Rect) : Rect :=
   rect_intersection r clip.
+
+(** * Rect-to-Bounds conversion.
+    Matches Rust: Rect::to_bounds().
+    Returns min=(x,y) max=(x+w, y+h). *)
+Definition rect_to_bounds_min_x (r : Rect) : R := rect_x r.
+Definition rect_to_bounds_min_y (r : Rect) : R := rect_y r.
+Definition rect_to_bounds_max_x (r : Rect) : R := rect_x r + rect_w r.
+Definition rect_to_bounds_max_y (r : Rect) : R := rect_y r + rect_h r.
+
+(** * Size accessor components.
+    Matches Rust: Rect::size() returning Vec2 { x: width, y: height }. *)
+Definition rect_size_width (r : Rect) : R := rect_w r.
+Definition rect_size_height (r : Rect) : R := rect_h r.
+
+(** * Position accessor components.
+    Matches Rust: Rect::position() returning Vec2 { x, y }. *)
+Definition rect_pos_x (r : Rect) : R := rect_x r.
+Definition rect_pos_y (r : Rect) : R := rect_y r.
+
+(** * Merge bounds: union of a Rect with another point-pair region.
+    This models Rect::merge_bounds equivalent behavior. *)
+Definition rect_merge (a b : Rect) : Rect := rect_union a b.

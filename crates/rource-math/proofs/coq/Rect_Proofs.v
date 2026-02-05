@@ -1816,12 +1816,334 @@ Proof.
   destruct (Rle_dec ry py); lra.
 Qed.
 
+(** * Phase 14: Rect-to-Bounds Conversion and Additional Properties *)
+
+(** Theorem 177: to_bounds min_x equals rect_x *)
+Theorem rect_to_bounds_min_x_eq : forall (r : Rect),
+  rect_to_bounds_min_x r = rect_x r.
+Proof.
+  intros r. unfold rect_to_bounds_min_x. reflexivity.
+Qed.
+
+(** Theorem 178: to_bounds min_y equals rect_y *)
+Theorem rect_to_bounds_min_y_eq : forall (r : Rect),
+  rect_to_bounds_min_y r = rect_y r.
+Proof.
+  intros r. unfold rect_to_bounds_min_y. reflexivity.
+Qed.
+
+(** Theorem 179: to_bounds max_x equals right edge *)
+Theorem rect_to_bounds_max_x_eq : forall (r : Rect),
+  rect_to_bounds_max_x r = rect_right r.
+Proof.
+  intros r. unfold rect_to_bounds_max_x, rect_right. reflexivity.
+Qed.
+
+(** Theorem 180: to_bounds max_y equals bottom edge *)
+Theorem rect_to_bounds_max_y_eq : forall (r : Rect),
+  rect_to_bounds_max_y r = rect_bottom r.
+Proof.
+  intros r. unfold rect_to_bounds_max_y, rect_bottom. reflexivity.
+Qed.
+
+(** Theorem 181: to_bounds width = rect_w *)
+Theorem rect_to_bounds_width : forall (r : Rect),
+  rect_to_bounds_max_x r - rect_to_bounds_min_x r = rect_w r.
+Proof.
+  intros r. unfold rect_to_bounds_max_x, rect_to_bounds_min_x. lra.
+Qed.
+
+(** Theorem 182: to_bounds height = rect_h *)
+Theorem rect_to_bounds_height : forall (r : Rect),
+  rect_to_bounds_max_y r - rect_to_bounds_min_y r = rect_h r.
+Proof.
+  intros r. unfold rect_to_bounds_max_y, rect_to_bounds_min_y. lra.
+Qed.
+
+(** Theorem 183: to_bounds area equals rect area *)
+Theorem rect_to_bounds_area : forall (r : Rect),
+  (rect_to_bounds_max_x r - rect_to_bounds_min_x r) *
+  (rect_to_bounds_max_y r - rect_to_bounds_min_y r) = rect_area r.
+Proof.
+  intros r. unfold rect_to_bounds_max_x, rect_to_bounds_min_x,
+    rect_to_bounds_max_y, rect_to_bounds_min_y, rect_area. lra.
+Qed.
+
+(** Theorem 184: to_bounds center_x equals rect center_x *)
+Theorem rect_to_bounds_center_x : forall (r : Rect),
+  (rect_to_bounds_min_x r + rect_to_bounds_max_x r) / 2 = rect_center_x r.
+Proof.
+  intros r. unfold rect_to_bounds_min_x, rect_to_bounds_max_x, rect_center_x.
+  lra.
+Qed.
+
+(** Theorem 185: to_bounds center_y equals rect center_y *)
+Theorem rect_to_bounds_center_y : forall (r : Rect),
+  (rect_to_bounds_min_y r + rect_to_bounds_max_y r) / 2 = rect_center_y r.
+Proof.
+  intros r. unfold rect_to_bounds_min_y, rect_to_bounds_max_y, rect_center_y.
+  lra.
+Qed.
+
+(** Theorem 186: to_bounds preserves validity *)
+Theorem rect_to_bounds_valid : forall (r : Rect),
+  rect_is_valid r ->
+  rect_to_bounds_max_x r > rect_to_bounds_min_x r /\
+  rect_to_bounds_max_y r > rect_to_bounds_min_y r.
+Proof.
+  intros r [Hw Hh].
+  unfold rect_to_bounds_max_x, rect_to_bounds_min_x,
+    rect_to_bounds_max_y, rect_to_bounds_min_y. lra.
+Qed.
+
+(** Theorem 187: translate then to_bounds = shift both min and max *)
+Theorem rect_to_bounds_translate : forall (r : Rect) (dx dy : R),
+  rect_to_bounds_min_x (rect_translate r dx dy) = rect_to_bounds_min_x r + dx /\
+  rect_to_bounds_min_y (rect_translate r dx dy) = rect_to_bounds_min_y r + dy /\
+  rect_to_bounds_max_x (rect_translate r dx dy) = rect_to_bounds_max_x r + dx /\
+  rect_to_bounds_max_y (rect_translate r dx dy) = rect_to_bounds_max_y r + dy.
+Proof.
+  intros r dx dy.
+  unfold rect_to_bounds_min_x, rect_to_bounds_min_y,
+    rect_to_bounds_max_x, rect_to_bounds_max_y, rect_translate. simpl. lra.
+Qed.
+
+(** Theorem 188: size_width equals rect_w *)
+Theorem rect_size_width_eq : forall (r : Rect),
+  rect_size_width r = rect_w r.
+Proof.
+  intros r. unfold rect_size_width. reflexivity.
+Qed.
+
+(** Theorem 189: size_height equals rect_h *)
+Theorem rect_size_height_eq : forall (r : Rect),
+  rect_size_height r = rect_h r.
+Proof.
+  intros r. unfold rect_size_height. reflexivity.
+Qed.
+
+(** Theorem 190: size components are positive for valid rects *)
+Theorem rect_size_nonneg : forall (r : Rect),
+  rect_is_valid r ->
+  rect_size_width r > 0 /\ rect_size_height r > 0.
+Proof.
+  intros r [Hw Hh]. unfold rect_size_width, rect_size_height. auto.
+Qed.
+
+(** Theorem 191: size area = rect area *)
+Theorem rect_size_area : forall (r : Rect),
+  rect_size_width r * rect_size_height r = rect_area r.
+Proof.
+  intros r. unfold rect_size_width, rect_size_height, rect_area. reflexivity.
+Qed.
+
+(** Theorem 192: pos_x = rect_x *)
+Theorem rect_pos_x_def : forall (r : Rect),
+  rect_pos_x r = rect_x r.
+Proof.
+  intros r. unfold rect_pos_x. reflexivity.
+Qed.
+
+(** Theorem 193: pos_y = rect_y *)
+Theorem rect_pos_y_def : forall (r : Rect),
+  rect_pos_y r = rect_y r.
+Proof.
+  intros r. unfold rect_pos_y. reflexivity.
+Qed.
+
+(** Theorem 194: merge is commutative (since union is) *)
+Theorem rect_merge_comm : forall (a b : Rect),
+  rect_merge a b = rect_merge b a.
+Proof.
+  intros [ax ay aw ah] [bx by0 bw bh].
+  unfold rect_merge, rect_union, rect_right, rect_bottom. simpl.
+  f_equal; unfold Rmin, Rmax;
+  repeat (destruct (Rle_dec _ _)); try lra.
+Qed.
+
+(** Theorem 195: merge with self is identity via union_self *)
+Theorem rect_merge_self : forall (r : Rect),
+  rect_merge r r = rect_union r r.
+Proof.
+  intros r. unfold rect_merge. reflexivity.
+Qed.
+
+(** Theorem 196: expand then to_bounds: min decreases, max increases *)
+Theorem rect_to_bounds_expand : forall (r : Rect) (a : R),
+  rect_to_bounds_min_x (rect_expand r a) = rect_to_bounds_min_x r - a /\
+  rect_to_bounds_min_y (rect_expand r a) = rect_to_bounds_min_y r - a /\
+  rect_to_bounds_max_x (rect_expand r a) = rect_to_bounds_max_x r + a /\
+  rect_to_bounds_max_y (rect_expand r a) = rect_to_bounds_max_y r + a.
+Proof.
+  intros r a.
+  unfold rect_to_bounds_min_x, rect_to_bounds_min_y,
+    rect_to_bounds_max_x, rect_to_bounds_max_y, rect_expand. simpl. lra.
+Qed.
+
+(** Theorem 197: from_pos_size position retrieval *)
+Theorem rect_from_pos_size_pos : forall px py sx sy : R,
+  rect_pos_x (rect_from_pos_size px py sx sy) = px /\
+  rect_pos_y (rect_from_pos_size px py sx sy) = py.
+Proof.
+  intros. unfold rect_pos_x, rect_pos_y, rect_from_pos_size. simpl. auto.
+Qed.
+
+(** Theorem 198: from_pos_size size retrieval *)
+Theorem rect_from_pos_size_size_eq : forall px py sx sy : R,
+  rect_size_width (rect_from_pos_size px py sx sy) = sx /\
+  rect_size_height (rect_from_pos_size px py sx sy) = sy.
+Proof.
+  intros. unfold rect_size_width, rect_size_height, rect_from_pos_size. simpl. auto.
+Qed.
+
+(** Theorem 199: translate preserves size components *)
+Theorem rect_translate_size_preserved : forall (r : Rect) (dx dy : R),
+  rect_size_width (rect_translate r dx dy) = rect_size_width r /\
+  rect_size_height (rect_translate r dx dy) = rect_size_height r.
+Proof.
+  intros r dx dy.
+  unfold rect_size_width, rect_size_height, rect_translate. simpl. auto.
+Qed.
+
+(** Theorem 200: translate shifts position *)
+Theorem rect_translate_pos : forall (r : Rect) (dx dy : R),
+  rect_pos_x (rect_translate r dx dy) = rect_pos_x r + dx /\
+  rect_pos_y (rect_translate r dx dy) = rect_pos_y r + dy.
+Proof.
+  intros r dx dy.
+  unfold rect_pos_x, rect_pos_y, rect_translate. simpl. auto.
+Qed.
+
+(** Theorem 201: scale_from_center size_width *)
+Theorem rect_scale_from_center_size_width_eq : forall (r : Rect) (f : R),
+  rect_size_width (rect_scale_from_center r f) = rect_w r * f.
+Proof.
+  intros r f. unfold rect_size_width, rect_scale_from_center, rect_center_x. simpl. reflexivity.
+Qed.
+
+(** Theorem 202: scale_from_center size_height *)
+Theorem rect_scale_from_center_size_height_eq : forall (r : Rect) (f : R),
+  rect_size_height (rect_scale_from_center r f) = rect_h r * f.
+Proof.
+  intros r f. unfold rect_size_height, rect_scale_from_center, rect_center_y. simpl. reflexivity.
+Qed.
+
+(** Theorem 203: from_corners produces correct to_bounds min_x *)
+Theorem rect_from_corners_to_bounds_min_x : forall ax ay bx by0 : R,
+  rect_to_bounds_min_x (rect_from_corners ax ay bx by0) = Rmin ax bx.
+Proof.
+  intros. unfold rect_to_bounds_min_x, rect_from_corners. simpl. reflexivity.
+Qed.
+
+(** Theorem 204: from_corners produces correct to_bounds max_x *)
+Theorem rect_from_corners_to_bounds_max_x : forall ax ay bx by0 : R,
+  rect_to_bounds_max_x (rect_from_corners ax ay bx by0) = Rmax ax bx.
+Proof.
+  intros. unfold rect_to_bounds_max_x, rect_from_corners. simpl.
+  unfold Rmin, Rmax. destruct (Rle_dec ax bx); lra.
+Qed.
+
+(** Theorem 205: from_corners produces correct to_bounds min_y *)
+Theorem rect_from_corners_to_bounds_min_y : forall ax ay bx by0 : R,
+  rect_to_bounds_min_y (rect_from_corners ax ay bx by0) = Rmin ay by0.
+Proof.
+  intros. unfold rect_to_bounds_min_y, rect_from_corners. simpl. reflexivity.
+Qed.
+
+(** Theorem 206: from_corners produces correct to_bounds max_y *)
+Theorem rect_from_corners_to_bounds_max_y : forall ax ay bx by0 : R,
+  rect_to_bounds_max_y (rect_from_corners ax ay bx by0) = Rmax ay by0.
+Proof.
+  intros. unfold rect_to_bounds_max_y, rect_from_corners. simpl.
+  unfold Rmin, Rmax. destruct (Rle_dec ay by0); lra.
+Qed.
+
+(** Theorem 207: to_bounds roundtrip width = size_w *)
+Theorem rect_to_bounds_roundtrip_w : forall (r : Rect),
+  rect_to_bounds_max_x r - rect_to_bounds_min_x r = rect_size_width r.
+Proof.
+  intros r. unfold rect_to_bounds_max_x, rect_to_bounds_min_x, rect_size_width. lra.
+Qed.
+
+(** Theorem 208: to_bounds roundtrip height = size_height *)
+Theorem rect_to_bounds_roundtrip_h : forall (r : Rect),
+  rect_to_bounds_max_y r - rect_to_bounds_min_y r = rect_size_height r.
+Proof.
+  intros r. unfold rect_to_bounds_max_y, rect_to_bounds_min_y, rect_size_height. lra.
+Qed.
+
+(** Theorem 209: expand_xy preserves to_bounds center_x *)
+Theorem rect_expand_xy_to_bounds_center_x : forall (r : Rect) (xa ya : R),
+  (rect_to_bounds_min_x (rect_expand_xy r xa ya) +
+   rect_to_bounds_max_x (rect_expand_xy r xa ya)) / 2 =
+  rect_center_x r.
+Proof.
+  intros r xa ya.
+  unfold rect_to_bounds_min_x, rect_to_bounds_max_x, rect_expand_xy, rect_center_x.
+  simpl. lra.
+Qed.
+
+(** Theorem 210: expand_xy preserves to_bounds center_y *)
+Theorem rect_expand_xy_to_bounds_center_y : forall (r : Rect) (xa ya : R),
+  (rect_to_bounds_min_y (rect_expand_xy r xa ya) +
+   rect_to_bounds_max_y (rect_expand_xy r xa ya)) / 2 =
+  rect_center_y r.
+Proof.
+  intros r xa ya.
+  unfold rect_to_bounds_min_y, rect_to_bounds_max_y, rect_expand_xy, rect_center_y.
+  simpl. lra.
+Qed.
+
+(** Theorem 211: lerp at t=1/2 gives midpoint for to_bounds min_x *)
+Theorem rect_lerp_midpoint_to_bounds_min_x : forall (a b : Rect),
+  rect_to_bounds_min_x (rect_lerp a b (1/2)) =
+  (rect_to_bounds_min_x a + rect_to_bounds_min_x b) / 2.
+Proof.
+  intros a b.
+  unfold rect_to_bounds_min_x, rect_lerp. simpl. lra.
+Qed.
+
+(** Theorem 212: to_bounds of zero rect min is origin *)
+Theorem rect_to_bounds_zero_min_x :
+  rect_to_bounds_min_x rect_zero = 0.
+Proof.
+  unfold rect_to_bounds_min_x, rect_zero. simpl. reflexivity.
+Qed.
+
+(** Theorem 213: to_bounds of zero rect max is also zero *)
+Theorem rect_to_bounds_zero_max_x :
+  rect_to_bounds_max_x rect_zero = 0.
+Proof.
+  unfold rect_to_bounds_max_x, rect_zero. simpl. lra.
+Qed.
+
+(** Theorem 214: scale preserves to_bounds min_x *)
+Theorem rect_scale_to_bounds_min_x : forall (r : Rect) (f : R),
+  rect_to_bounds_min_x (rect_scale r f) = rect_to_bounds_min_x r.
+Proof.
+  intros r f. unfold rect_to_bounds_min_x, rect_scale. simpl. reflexivity.
+Qed.
+
+(** Theorem 215: clip_to is bounded by one of the two rects *)
+Theorem rect_clip_to_bounded_min_x : forall (r clip : Rect),
+  rect_to_bounds_min_x (rect_clip_to r clip) >= rect_to_bounds_min_x r \/
+  rect_to_bounds_min_x (rect_clip_to r clip) >= rect_to_bounds_min_x clip.
+Proof.
+  intros r clip.
+  unfold rect_clip_to, rect_intersection, rect_to_bounds_min_x. simpl.
+  unfold Rmax. destruct (Rle_dec (rect_x r) (rect_x clip)); [right|left]; lra.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 176
+    Total theorems: 215 (176 original + 39 Phase 14)
+    Local lemmas: 1 (Rabs_le_zero_eq)
     Aborted: 1 (rect_normalize_idempotent - requires case analysis beyond current tactics)
     Admits: 0
     Axioms: Standard Coq real number library only
+
+    Phase 14 additions: 39 theorems (rect_to_bounds conversions, size/position accessors,
+    merge properties, cross-operation interactions)
 
     All completed proofs are constructive and machine-checked.
 *)

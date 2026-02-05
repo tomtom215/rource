@@ -125,6 +125,11 @@ Definition bounds_to_rect (b : Bounds) : Rect :=
   mkRect (bounds_min_x b) (bounds_min_y b)
          (bounds_max_x b - bounds_min_x b) (bounds_max_y b - bounds_min_y b).
 
+(** Convert a rectangle to bounds.
+    Matches Rust: Rect::to_bounds() *)
+Definition rect_to_bounds (r : Rect) : Bounds :=
+  mkBounds (rect_x r) (rect_y r) (rect_x r + rect_w r) (rect_y r + rect_h r).
+
 (** * Approximate Equality *)
 
 (** Approximate equality with epsilon tolerance.

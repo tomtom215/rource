@@ -107,7 +107,7 @@ fn verify_vec2_length_no_nan() {
 | **Bounded** — only checks inputs up to a bound | Cannot prove universal properties (∀ x, P(x)) |
 | **No algebraic proofs** — checks assertions, not theorems | Complements but doesn't replace Verus/Coq |
 | **Scalability** — complex FP expressions may timeout | Mat4 determinant (16 fields) may be challenging |
-| **No proof certificates** — verification result, not Coq term | Cannot extend our 2750-theorem corpus |
+| **No proof certificates** — verification result, not Coq term | Cannot extend our 2856-theorem corpus |
 
 ### Recommendation: **ADOPT**
 
@@ -373,7 +373,7 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 │  Layer 1: Algebraic Correctness (CURRENT)                           │
 │  ├── Verus (475 proof functions)                                    │
 │  │   └── Int specs → Z3 → algebraic properties                     │
-│  └── Coq (1689 theorems)                                             │
+│  └── Coq (1795 theorems)                                             │
 │      └── R-based + Z-based → machine-checked proofs                │
 │                                                                     │
 │  Layer 2: Edge Case Safety (CURRENT — Kani)                         │

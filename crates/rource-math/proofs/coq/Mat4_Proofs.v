@@ -1936,9 +1936,171 @@ Proof.
   repeat split; lra.
 Qed.
 
+(** * Phase 14: get_scale_sq Properties *)
+
+(** Theorem 137: get_scale_sq of identity matrix is (1,1,1). *)
+Theorem mat4_get_scale_sq_identity :
+  mat4_get_scale_sq mat4_identity = mkVec3 1 1 1.
+Proof.
+  unfold mat4_get_scale_sq, mat4_identity. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 138: get_scale_sq of scaling matrix gives squared scale factors. *)
+Theorem mat4_get_scale_sq_scaling : forall sx sy sz : R,
+  mat4_get_scale_sq (mat4_scaling sx sy sz) = mkVec3 (sx * sx) (sy * sy) (sz * sz).
+Proof.
+  intros sx sy sz. unfold mat4_get_scale_sq, mat4_scaling. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 139: get_scale_sq of translation matrix is (1,1,1). *)
+Theorem mat4_get_scale_sq_translation : forall tx ty tz : R,
+  mat4_get_scale_sq (mat4_translation tx ty tz) = mkVec3 1 1 1.
+Proof.
+  intros tx ty tz. unfold mat4_get_scale_sq, mat4_translation. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 140: get_scale_sq of from_translation is (1,1,1). *)
+Theorem mat4_get_scale_sq_from_translation : forall v : Vec3,
+  mat4_get_scale_sq (mat4_from_translation v) = mkVec3 1 1 1.
+Proof.
+  intros v. unfold mat4_from_translation.
+  apply mat4_get_scale_sq_translation.
+Qed.
+
+(** Theorem 141: x component of get_scale_sq is non-negative. *)
+Theorem mat4_get_scale_sq_x_nonneg : forall mat : Mat4,
+  v3x (mat4_get_scale_sq mat) >= 0.
+Proof.
+  intros mat. unfold mat4_get_scale_sq. simpl.
+  apply Rle_ge. apply Rplus_le_le_0_compat.
+  - apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+  - apply Rle_0_sqr.
+Qed.
+
+(** Theorem 142: y component of get_scale_sq is non-negative. *)
+Theorem mat4_get_scale_sq_y_nonneg : forall mat : Mat4,
+  v3y (mat4_get_scale_sq mat) >= 0.
+Proof.
+  intros mat. unfold mat4_get_scale_sq. simpl.
+  apply Rle_ge. apply Rplus_le_le_0_compat.
+  - apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+  - apply Rle_0_sqr.
+Qed.
+
+(** Theorem 143: z component of get_scale_sq is non-negative. *)
+Theorem mat4_get_scale_sq_z_nonneg : forall mat : Mat4,
+  v3z (mat4_get_scale_sq mat) >= 0.
+Proof.
+  intros mat. unfold mat4_get_scale_sq. simpl.
+  apply Rle_ge. apply Rplus_le_le_0_compat.
+  - apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+  - apply Rle_0_sqr.
+Qed.
+
+(** Theorem 144: uniform scaling gives equal scale_sq in all axes. *)
+Theorem mat4_get_scale_sq_uniform : forall s : R,
+  let ss := mat4_get_scale_sq (mat4_uniform_scaling s) in
+  v3x ss = v3y ss /\ v3y ss = v3z ss.
+Proof.
+  intros s. unfold mat4_get_scale_sq, mat4_uniform_scaling, mat4_scaling. simpl.
+  split; ring.
+Qed.
+
+(** Theorem 145: uniform scaling value is s^2. *)
+Theorem mat4_get_scale_sq_uniform_val : forall s : R,
+  v3x (mat4_get_scale_sq (mat4_uniform_scaling s)) = s * s.
+Proof.
+  intros s. unfold mat4_get_scale_sq, mat4_uniform_scaling, mat4_scaling. simpl. ring.
+Qed.
+
+(** Theorem 146: zero matrix has zero scale_sq. *)
+Theorem mat4_get_scale_sq_zero :
+  mat4_get_scale_sq mat4_zero = mkVec3 0 0 0.
+Proof.
+  unfold mat4_get_scale_sq, mat4_zero. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 147: scaling by -1 has scale_sq = 1 (sign information lost). *)
+Theorem mat4_get_scale_sq_neg_one :
+  mat4_get_scale_sq (mat4_scaling (-1) (-1) (-1)) = mkVec3 1 1 1.
+Proof.
+  unfold mat4_get_scale_sq, mat4_scaling. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 148: scale_sq is invariant under sign flip of scale factors. *)
+Theorem mat4_get_scale_sq_sign_invariant : forall sx sy sz : R,
+  mat4_get_scale_sq (mat4_scaling sx sy sz) =
+  mat4_get_scale_sq (mat4_scaling (-sx) (-sy) (-sz)).
+Proof.
+  intros sx sy sz. unfold mat4_get_scale_sq, mat4_scaling. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 149: composing two diagonal scaling matrices multiplies scale_sq. *)
+Theorem mat4_get_scale_sq_compose_scaling : forall sx1 sy1 sz1 sx2 sy2 sz2 : R,
+  mat4_get_scale_sq (mat4_mul (mat4_scaling sx1 sy1 sz1) (mat4_scaling sx2 sy2 sz2)) =
+  mkVec3 (sx1 * sx2 * (sx1 * sx2)) (sy1 * sy2 * (sy1 * sy2)) (sz1 * sz2 * (sz1 * sz2)).
+Proof.
+  intros sx1 sy1 sz1 sx2 sy2 sz2.
+  unfold mat4_get_scale_sq, mat4_mul, mat4_scaling. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 150: transpose preserves scale_sq for diagonal matrices. *)
+Theorem mat4_get_scale_sq_transpose_scaling : forall sx sy sz : R,
+  mat4_get_scale_sq (mat4_transpose (mat4_scaling sx sy sz)) =
+  mat4_get_scale_sq (mat4_scaling sx sy sz).
+Proof.
+  intros sx sy sz.
+  unfold mat4_get_scale_sq, mat4_transpose, mat4_scaling. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
+(** Theorem 151: scale_sq x component equals dot product of column 0 with itself. *)
+Theorem mat4_get_scale_sq_x_dot : forall mat : Mat4,
+  v3x (mat4_get_scale_sq mat) = v3_dot (mkVec3 (m0 mat) (m1 mat) (m2 mat))
+                                        (mkVec3 (m0 mat) (m1 mat) (m2 mat)).
+Proof.
+  intros mat. unfold mat4_get_scale_sq, v3_dot. simpl. ring.
+Qed.
+
+(** Theorem 152: scale_sq y component equals dot product of column 1 with itself. *)
+Theorem mat4_get_scale_sq_y_dot : forall mat : Mat4,
+  v3y (mat4_get_scale_sq mat) = v3_dot (mkVec3 (m4 mat) (m5 mat) (m6 mat))
+                                        (mkVec3 (m4 mat) (m5 mat) (m6 mat)).
+Proof.
+  intros mat. unfold mat4_get_scale_sq, v3_dot. simpl. ring.
+Qed.
+
+(** Theorem 153: scale_sq z component equals dot product of column 2 with itself. *)
+Theorem mat4_get_scale_sq_z_dot : forall mat : Mat4,
+  v3z (mat4_get_scale_sq mat) = v3_dot (mkVec3 (m8 mat) (m9 mat) (m10 mat))
+                                        (mkVec3 (m8 mat) (m9 mat) (m10 mat)).
+Proof.
+  intros mat. unfold mat4_get_scale_sq, v3_dot. simpl. ring.
+Qed.
+
+(** Theorem 154: scalar multiply of matrix scales get_scale_sq by s^2. *)
+Theorem mat4_get_scale_sq_scalar : forall (mat : Mat4) (s : R),
+  mat4_get_scale_sq (mat4_scale s mat) =
+  mkVec3 (s * s * v3x (mat4_get_scale_sq mat))
+         (s * s * v3y (mat4_get_scale_sq mat))
+         (s * s * v3z (mat4_get_scale_sq mat)).
+Proof.
+  intros mat s. unfold mat4_get_scale_sq, mat4_scale. simpl.
+  apply vec3_eq; simpl; ring.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 136 + 16 + 16 + 16 component lemmas + 1 lemma = 185
+    Total theorems: 154 (136 original + 18 Phase 14)
+    Local lemmas: 49 (48 original + 1 Rabs helper)
+    Plus v3_dot_comm utility lemma
     Admits: 0
     Axioms: Standard Coq real number library only
 
@@ -1959,5 +2121,7 @@ Qed.
       basis mapping, w-preservation, orthogonality of rotation part, translation encoding)
     - Theorems 128-132: from_translation properties (equivalence, point transform, vector preserve, compose, det)
     - Theorems 133-136: approx_eq properties (reflexivity, symmetry, zero-eq, monotonicity)
+    - Theorems 137-154: get_scale_sq properties (identity, scaling, translation, non-negativity,
+      uniform, zero, sign-invariance, composition, transpose, dot-product, scalar multiply)
     - Lemma: v3_dot_comm (utility)
 *)

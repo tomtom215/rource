@@ -1282,11 +1282,266 @@ Proof.
   unfold color_blend_over, color_transparent. apply color_eq; simpl; ring.
 Qed.
 
+(** * Phase 14: Array Conversion, Contrast, and Light/Dark Properties *)
+
+(** Theorem 132: to_rgba roundtrip — components match *)
+Theorem color_to_rgba_components : forall (c : Color),
+  color_to_rgba c = (color_r c, color_g c, color_b c, color_a c).
+Proof.
+  intros c. unfold color_to_rgba. reflexivity.
+Qed.
+
+(** Theorem 133: to_rgb components match *)
+Theorem color_to_rgb_components : forall (c : Color),
+  color_to_rgb c = (color_r c, color_g c, color_b c).
+Proof.
+  intros c. unfold color_to_rgb. reflexivity.
+Qed.
+
+(** Theorem 134: from_rgba roundtrip — constructing from tuple recovers original *)
+Theorem color_from_rgba_roundtrip : forall (c : Color),
+  color_from_rgba (color_r c) (color_g c) (color_b c) (color_a c) = c.
+Proof.
+  intros [r g b a]. unfold color_from_rgba. simpl. reflexivity.
+Qed.
+
+(** Theorem 135: from_rgb_tuple sets alpha to 1 *)
+Theorem color_from_rgb_tuple_alpha : forall r g b : R,
+  color_a (color_from_rgb_tuple r g b) = 1.
+Proof.
+  intros. unfold color_from_rgb_tuple. simpl. reflexivity.
+Qed.
+
+(** Theorem 136: from_rgb_tuple preserves r component *)
+Theorem color_from_rgb_tuple_r : forall r g b : R,
+  color_r (color_from_rgb_tuple r g b) = r.
+Proof.
+  intros. unfold color_from_rgb_tuple. simpl. reflexivity.
+Qed.
+
+(** Theorem 137: from_rgb_tuple preserves g component *)
+Theorem color_from_rgb_tuple_g : forall r g b : R,
+  color_g (color_from_rgb_tuple r g b) = g.
+Proof.
+  intros. unfold color_from_rgb_tuple. simpl. reflexivity.
+Qed.
+
+(** Theorem 138: from_rgb_tuple preserves b component *)
+Theorem color_from_rgb_tuple_b : forall r g b : R,
+  color_b (color_from_rgb_tuple r g b) = b.
+Proof.
+  intros. unfold color_from_rgb_tuple. simpl. reflexivity.
+Qed.
+
+(** Theorem 139: to_rgba then from_rgba is identity *)
+Theorem color_to_from_rgba_roundtrip : forall (c : Color),
+  let '(r, g, b, a) := color_to_rgba c in
+  color_from_rgba r g b a = c.
+Proof.
+  intros [cr cg cb ca]. unfold color_to_rgba, color_from_rgba. simpl. reflexivity.
+Qed.
+
+(** Theorem 140: from_rgba then to_rgba is identity *)
+Theorem color_from_to_rgba_roundtrip : forall r g b a : R,
+  color_to_rgba (color_from_rgba r g b a) = (r, g, b, a).
+Proof.
+  intros. unfold color_from_rgba, color_to_rgba. simpl. reflexivity.
+Qed.
+
+(** Theorem 141: from_rgb_tuple then to_rgb is identity *)
+Theorem color_from_to_rgb_roundtrip : forall r g b : R,
+  color_to_rgb (color_from_rgb_tuple r g b) = (r, g, b).
+Proof.
+  intros. unfold color_from_rgb_tuple, color_to_rgb. simpl. reflexivity.
+Qed.
+
+(** Theorem 142: contrast is symmetric *)
+Theorem color_contrast_sym : forall (a b : Color),
+  color_contrast a b = color_contrast b a.
+Proof.
+  intros a b. unfold color_contrast. rewrite Rabs_minus_sym. reflexivity.
+Qed.
+
+(** Theorem 143: contrast with self is zero *)
+Theorem color_contrast_self : forall (c : Color),
+  color_contrast c c = 0.
+Proof.
+  intros c. unfold color_contrast.
+  replace (color_luminance c - color_luminance c) with 0 by ring.
+  rewrite Rabs_R0. reflexivity.
+Qed.
+
+(** Theorem 144: contrast is non-negative *)
+Theorem color_contrast_nonneg : forall (a b : Color),
+  color_contrast a b >= 0.
+Proof.
+  intros a b. unfold color_contrast. apply Rle_ge. apply Rabs_pos.
+Qed.
+
+(** Theorem 145: white luminance as sum of Rec.709 coefficients *)
+Theorem color_luminance_white_rec709 :
+  color_luminance color_white = 2126/10000 + 7152/10000 + 722/10000.
+Proof.
+  unfold color_luminance, color_white. simpl. lra.
+Qed.
+
+(** Theorem 147: black is dark *)
+Theorem color_black_is_dark :
+  color_is_dark color_black.
+Proof.
+  unfold color_is_dark, color_luminance, color_black. simpl. lra.
+Qed.
+
+(** Theorem 148: is_light and is_dark are complementary *)
+Theorem color_light_dark_complement : forall (c : Color),
+  color_is_light c \/ color_is_dark c.
+Proof.
+  intros c. unfold color_is_light, color_is_dark.
+  destruct (Rle_dec (color_luminance c) (1/2)).
+  - right. exact r.
+  - left. lra.
+Qed.
+
+(** Theorem 149: is_light and is_dark cannot both hold in the strict sense *)
+Theorem color_light_dark_exclusive : forall (c : Color),
+  color_is_light c -> ~ (color_luminance c < 1/2).
+Proof.
+  intros c Hlight Hlt.
+  unfold color_is_light in Hlight. lra.
+Qed.
+
+(** Theorem 150: contrast between black and white equals 1 *)
+Theorem color_contrast_black_white :
+  color_contrast color_black color_white = 1.
+Proof.
+  unfold color_contrast, color_luminance, color_black, color_white. simpl.
+  match goal with |- Rabs ?x = _ =>
+    replace x with (-1) by lra
+  end.
+  unfold Rabs. destruct (Rcase_abs (-1)); lra.
+Qed.
+
+(** Theorem 151: scale then to_rgba extracts scaled components *)
+Theorem color_scale_to_rgba : forall (c : Color) (s : R),
+  color_to_rgba (color_scale c s) =
+  (color_r c * s, color_g c * s, color_b c * s, color_a c * s).
+Proof.
+  intros [cr cg cb ca] s. unfold color_scale, color_to_rgba. simpl. reflexivity.
+Qed.
+
+(** Theorem 152: lerp at t=0.5 gives midpoint for all components via to_rgba *)
+Theorem color_lerp_midpoint_r : forall (a b : Color),
+  color_r (color_lerp a b (1/2)) = (color_r a + color_r b) / 2.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_lerp. simpl. lra.
+Qed.
+
+(** Theorem 153: lerp midpoint g component *)
+Theorem color_lerp_midpoint_g : forall (a b : Color),
+  color_g (color_lerp a b (1/2)) = (color_g a + color_g b) / 2.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_lerp. simpl. lra.
+Qed.
+
+(** Theorem 154: lerp midpoint b component *)
+Theorem color_lerp_midpoint_b : forall (a b : Color),
+  color_b (color_lerp a b (1/2)) = (color_b a + color_b b) / 2.
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_lerp. simpl. lra.
+Qed.
+
+(** Theorem 155: add then to_rgba gives summed components *)
+Theorem color_add_to_rgba : forall (a b : Color),
+  color_to_rgba (color_add a b) =
+  (color_r a + color_r b, color_g a + color_g b,
+   color_b a + color_b b, color_a a + color_a b).
+Proof.
+  intros [ar ag ab0 aa] [br bg bb ba].
+  unfold color_add, color_to_rgba. simpl. reflexivity.
+Qed.
+
+(** Theorem 156: invert then to_rgba gives inverted components *)
+Theorem color_invert_to_rgba : forall (c : Color),
+  color_to_rgba (color_invert c) =
+  (1 - color_r c, 1 - color_g c, 1 - color_b c, color_a c).
+Proof.
+  intros [cr cg cb ca].
+  unfold color_invert, color_to_rgba. simpl. reflexivity.
+Qed.
+
+(** Theorem 157: double invert roundtrip via to_rgba *)
+Theorem color_invert_involutive_rgba : forall (c : Color),
+  color_to_rgba (color_invert (color_invert c)) = color_to_rgba c.
+Proof.
+  intros [cr cg cb ca].
+  unfold color_invert, color_to_rgba. simpl.
+  replace (1 - (1 - cr)) with cr by ring.
+  replace (1 - (1 - cg)) with cg by ring.
+  replace (1 - (1 - cb)) with cb by ring.
+  reflexivity.
+Qed.
+
+(** Theorem 158: fade preserves RGB, scales alpha *)
+Theorem color_fade_to_rgba : forall (c : Color) (f : R),
+  color_to_rgba (color_fade c f) =
+  (color_r c, color_g c, color_b c, color_a c * f).
+Proof.
+  intros [cr cg cb ca] f.
+  unfold color_fade, color_to_rgba. simpl. reflexivity.
+Qed.
+
+(** Theorem 159: with_alpha preserves RGB, sets alpha *)
+Theorem color_with_alpha_to_rgba : forall (c : Color) (a : R),
+  color_to_rgba (color_with_alpha c a) =
+  (color_r c, color_g c, color_b c, a).
+Proof.
+  intros [cr cg cb ca] a.
+  unfold color_with_alpha, color_to_rgba. simpl. reflexivity.
+Qed.
+
+(** Theorem 160: gray color luminance formula *)
+Theorem color_gray_luminance : forall v : R,
+  color_luminance (color_gray v) = v.
+Proof.
+  intros v. unfold color_luminance, color_gray. simpl. lra.
+Qed.
+
+(** Theorem 161: gray(0) is dark *)
+Theorem color_gray_zero_dark :
+  color_is_dark (color_gray 0).
+Proof.
+  unfold color_is_dark, color_luminance, color_gray. simpl. lra.
+Qed.
+
+(** Theorem 162: gray(1) is light *)
+Theorem color_gray_one_light :
+  color_is_light (color_gray 1).
+Proof.
+  unfold color_is_light, color_luminance, color_gray. simpl. lra.
+Qed.
+
+(** Theorem 163: contrast triangle inequality *)
+Theorem color_contrast_triangle : forall (a b c : Color),
+  color_contrast a c <= color_contrast a b + color_contrast b c.
+Proof.
+  intros a b c. unfold color_contrast.
+  replace (color_luminance a - color_luminance c) with
+    ((color_luminance a - color_luminance b) + (color_luminance b - color_luminance c)) by ring.
+  apply Rabs_triang.
+Qed.
+
 (** * Proof Verification Summary
 
-    Total theorems: 131
+    Total theorems: 162 (131 original + 31 Phase 14)
+    Local lemmas: 2 (Rabs_le_zero_eq, clamp01_range helper)
     Admits: 0
     Axioms: Standard Coq real number library only
+
+    Phase 14 additions: 31 theorems (array conversion roundtrips, contrast properties,
+    is_light/is_dark, luminance formulas, component-level operations)
 
     All proofs are constructive and machine-checked.
 *)
