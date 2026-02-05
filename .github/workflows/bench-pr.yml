@@ -30,6 +30,25 @@ env:
   RUST_BACKTRACE: 1
   # 5% regression threshold as documented in CLAUDE.md
   REGRESSION_THRESHOLD: 5
+  # Explicit list of Criterion benchmark targets (same as bench.yml).
+  # Excludes iai-callgrind benchmarks (iai_scene, iai_vcs) which require
+  # valgrind and use a different harness/output format.
+  #
+  # MAINTENANCE: Keep in sync with bench.yml CRITERION_BENCHES.
+  CRITERION_BENCHES: >-
+    --bench color_perf
+    --bench vcs_parsing
+    --bench scene_perf
+    --bench easing_perf
+    --bench barnes_hut_theta
+    --bench bloom_perf
+    --bench blend_perf
+    --bench visual_perf
+    --bench render_scale
+    --bench texture_batching
+    --bench primitive_consolidation
+    --bench disc_perf
+    --bench label_perf
 
 jobs:
   # Check if we should skip due to bypass label
@@ -45,14 +64,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Check if PR has the allow-perf-regression label
-          LABELS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} --jq '.labels[].name' 2>/dev/null || echo "")
-          if echo "$LABELS" | grep -q "allow-perf-regression"; then
-            echo "Found 'allow-perf-regression' label - skipping benchmark comparison"
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "No bypass label found - will run benchmark comparison"
-            echo "skip=false" >> $GITHUB_OUTPUT
+          # Guard against missing PR number (workflow_dispatch without PR context)
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            LABELS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} --jq '.labels[].name' 2>/dev/null || echo "")
+            if echo "$LABELS" | grep -q "allow-perf-regression"; then
+              echo "Found 'allow-perf-regression' label - skipping benchmark comparison"
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
           fi
+          echo "No bypass label found - will run benchmark comparison"
+          echo "skip=false" >> $GITHUB_OUTPUT
 
   benchmark-comparison:
     name: Benchmark Comparison
@@ -75,10 +97,12 @@ jobs:
           prefix-key: "v1-rust"
           shared-key: "bench-pr"
 
-      - name: Install benchmark tools
+      - name: Install benchmark comparison tool
         run: |
+          # critcmp compares Criterion baselines stored in target/criterion/
+          # cargo-criterion is NOT needed — standard cargo bench with
+          # --save-baseline is sufficient and avoids extra tool installation.
           cargo install critcmp --locked
-          cargo install cargo-criterion --locked
 
       - name: Get main branch SHA
         id: main-sha
@@ -89,13 +113,13 @@ jobs:
 
       - name: Run PR benchmarks
         run: |
-          echo "Running benchmarks on PR branch (${{ github.head_ref }})..."
-          # Use cargo criterion for baseline functionality
-          cargo criterion --workspace --exclude rource --exclude rource-wasm --message-format=json -- --noplot 2>&1 | tee pr-bench.json || true
-          # Save criterion output directory as PR baseline
-          if [ -d "target/criterion" ]; then
-            cp -r target/criterion target/criterion-pr
-          fi
+          echo "Running benchmarks on PR branch (${{ github.head_ref || github.ref_name }})..."
+          # Use cargo bench with explicit Criterion bench targets and --save-baseline.
+          # This stores results in target/criterion/<benchmark_name>/pr/ for comparison.
+          #
+          # NOTE: --noplot was removed in Criterion 0.5+. Criterion 0.8 does not
+          # generate plots by default. Do NOT pass --noplot.
+          cargo bench --workspace ${{ env.CRITERION_BENCHES }} -- --save-baseline pr 2>&1 | tee pr-bench.txt
           echo "PR benchmarks completed"
 
       - name: Checkout main branch
@@ -106,53 +130,56 @@ jobs:
       - name: Run main branch benchmarks
         run: |
           echo "Running benchmarks on main branch..."
-          cargo criterion --workspace --exclude rource --exclude rource-wasm --message-format=json -- --noplot 2>&1 | tee main-bench.json || true
-          # Save criterion output directory as main baseline
-          if [ -d "target/criterion" ]; then
-            cp -r target/criterion target/criterion-main
-          fi
+          cargo bench --workspace ${{ env.CRITERION_BENCHES }} -- --save-baseline main 2>&1 | tee main-bench.txt
           echo "Main branch benchmarks completed"
 
-      - name: Checkout back to PR
-        run: git checkout ${{ github.head_ref }}
+      - name: Checkout back to original ref
+        run: git checkout ${{ github.head_ref || github.sha }}
 
       - name: Compare benchmarks
         id: compare
         run: |
           echo "## Benchmark Comparison Results" > comparison.md
           echo "" >> comparison.md
-          echo "Comparing PR branch \`${{ github.head_ref }}\` against \`main\` (\`${{ steps.main-sha.outputs.sha }}\`)" >> comparison.md
+          echo "Comparing \`${{ github.head_ref || github.ref_name }}\` against \`main\` (\`${{ steps.main-sha.outputs.sha }}\`)" >> comparison.md
           echo "" >> comparison.md
 
-          # Compare criterion output directories
-          # critcmp can compare directories containing criterion output
-          if [ -d "target/criterion-main" ] && [ -d "target/criterion-pr" ]; then
-            critcmp target/criterion-main target/criterion-pr --threshold ${{ env.REGRESSION_THRESHOLD }} 2>&1 | tee critcmp-output.txt || true
+          # Compare criterion baselines using critcmp.
+          # critcmp reads from target/criterion/<benchmark_name>/pr/ and /main/
+          if critcmp pr main --threshold ${{ env.REGRESSION_THRESHOLD }} 2>&1 | tee critcmp-output.txt; then
+            echo "critcmp completed successfully"
           else
-            echo "Warning: Criterion output directories not found" | tee critcmp-output.txt
-            echo "main dir exists: $(test -d target/criterion-main && echo yes || echo no)" >> critcmp-output.txt
-            echo "pr dir exists: $(test -d target/criterion-pr && echo yes || echo no)" >> critcmp-output.txt
+            echo "critcmp exited with non-zero status (may indicate regressions or missing data)"
           fi
 
-          # Check for regressions (critcmp outputs "Regressed" with capital R)
-          REGRESSIONS=$(grep -ic "regress" critcmp-output.txt 2>/dev/null || echo "0")
-
-          if [ "$REGRESSIONS" -gt 0 ]; then
-            echo "### WARN: Performance Regressions Detected" >> comparison.md
-            echo "" >> comparison.md
-            echo "Found **$REGRESSIONS** benchmark(s) that regressed by more than ${{ env.REGRESSION_THRESHOLD }}%." >> comparison.md
-            echo "" >> comparison.md
-            echo "To merge this PR with performance regressions, add the \`allow-perf-regression\` label and include justification in the PR description." >> comparison.md
-            echo "" >> comparison.md
-            echo "has_regressions=true" >> $GITHUB_OUTPUT
-            echo "regression_count=$REGRESSIONS" >> $GITHUB_OUTPUT
-          else
-            echo "### PASS: No Significant Regressions" >> comparison.md
-            echo "" >> comparison.md
-            echo "All benchmarks are within the ${{ env.REGRESSION_THRESHOLD }}% tolerance threshold." >> comparison.md
+          # Verify critcmp produced output
+          if [ ! -s critcmp-output.txt ]; then
+            echo "Warning: critcmp produced no output." >> comparison.md
+            echo "This may indicate benchmark baselines were not saved correctly." >> comparison.md
             echo "" >> comparison.md
             echo "has_regressions=false" >> $GITHUB_OUTPUT
             echo "regression_count=0" >> $GITHUB_OUTPUT
+          else
+            # Check for regressions (critcmp outputs "Regressed" with capital R)
+            REGRESSIONS=$(grep -ic "regress" critcmp-output.txt 2>/dev/null || echo "0")
+
+            if [ "$REGRESSIONS" -gt 0 ]; then
+              echo "### WARN: Performance Regressions Detected" >> comparison.md
+              echo "" >> comparison.md
+              echo "Found **$REGRESSIONS** benchmark(s) that regressed by more than ${{ env.REGRESSION_THRESHOLD }}%." >> comparison.md
+              echo "" >> comparison.md
+              echo "To merge this PR with performance regressions, add the \`allow-perf-regression\` label and include justification in the PR description." >> comparison.md
+              echo "" >> comparison.md
+              echo "has_regressions=true" >> $GITHUB_OUTPUT
+              echo "regression_count=$REGRESSIONS" >> $GITHUB_OUTPUT
+            else
+              echo "### PASS: No Significant Regressions" >> comparison.md
+              echo "" >> comparison.md
+              echo "All benchmarks are within the ${{ env.REGRESSION_THRESHOLD }}% tolerance threshold." >> comparison.md
+              echo "" >> comparison.md
+              echo "has_regressions=false" >> $GITHUB_OUTPUT
+              echo "regression_count=0" >> $GITHUB_OUTPUT
+            fi
           fi
 
           echo "### Detailed Comparison" >> comparison.md
@@ -168,6 +195,7 @@ jobs:
           cat comparison.md >> $GITHUB_STEP_SUMMARY
 
       - name: Post PR comment
+        if: github.event.pull_request.number
         uses: actions/github-script@v7
         with:
           script: |
@@ -211,8 +239,8 @@ jobs:
           path: |
             comparison.md
             critcmp-output.txt
-            pr-bench.json
-            main-bench.json
+            pr-bench.txt
+            main-bench.txt
           retention-days: 14
 
       - name: Fail on regression

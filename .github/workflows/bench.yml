@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Prevent concurrent benchmark runs
+# Prevent concurrent benchmark runs — critical for reproducibility
 concurrency:
   group: benchmarks-${{ github.ref }}
   cancel-in-progress: true
@@ -18,6 +18,37 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # Explicit list of Criterion benchmark targets.
+  #
+  # WHY EXPLICIT: We must exclude iai-callgrind benchmarks (iai_scene, iai_vcs)
+  # which require valgrind and use a completely different harness/output format.
+  # Using --workspace --benches would also run library test harnesses, which
+  # reject Criterion CLI flags and cause "Unrecognized option" errors.
+  #
+  # MAINTENANCE: Update this list when adding/removing [[bench]] targets in
+  # crate Cargo.toml files. Each entry must have harness = false and use
+  # criterion_main! macro. iai-callgrind benchmarks are tracked separately.
+  #
+  # Current Criterion benchmarks (13 total across 4 crates):
+  #   rource-math:   color_perf
+  #   rource-vcs:    vcs_parsing
+  #   rource-core:   scene_perf, easing_perf, barnes_hut_theta
+  #   rource-render: bloom_perf, blend_perf, visual_perf, render_scale,
+  #                  texture_batching, primitive_consolidation, disc_perf, label_perf
+  CRITERION_BENCHES: >-
+    --bench color_perf
+    --bench vcs_parsing
+    --bench scene_perf
+    --bench easing_perf
+    --bench barnes_hut_theta
+    --bench bloom_perf
+    --bench blend_perf
+    --bench visual_perf
+    --bench render_scale
+    --bench texture_batching
+    --bench primitive_consolidation
+    --bench disc_perf
+    --bench label_perf
 
 jobs:
   # Setup gh-pages branch if it doesn't exist (runs once)
@@ -106,65 +137,127 @@ jobs:
           prefix-key: "v1-rust"
           shared-key: "bench"
 
-      - name: Run benchmarks
+      - name: Run Criterion benchmarks
         run: |
-          # Run benchmarks, capture output cleanly
-          cargo bench --workspace --benches --exclude rource --exclude rource-wasm -- --noplot 2>&1 | tee benchmark-raw.txt
+          # Run ONLY Criterion benchmarks by explicitly listing bench targets.
+          #
+          # This avoids three failure modes that broke prior runs:
+          #   1. iai-callgrind benchmarks (iai_scene, iai_vcs) need valgrind
+          #   2. Library test harnesses reject unknown CLI flags
+          #   3. --noplot was removed in Criterion 0.5+ (our version: 0.8)
+          #
+          # Criterion 0.8 does NOT generate plots by default.
+          # No arguments after -- are needed for standard operation.
+          cargo bench --workspace ${{ env.CRITERION_BENCHES }} 2>&1 | tee benchmark-raw.txt
 
-          # Create a clean summary (filter out noise, keep results)
+          # Verify benchmarks actually produced timing output
+          if ! grep -q "time:" benchmark-raw.txt; then
+            echo "::error::No Criterion timing results found in benchmark output."
+            echo "Check benchmark-raw.txt artifact for compilation or runtime errors."
+            exit 1
+          fi
+
+          # Create a clean summary (filter out compilation noise, keep results)
           echo "=== Benchmark Results ===" > benchmark-results.txt
-          grep -E '(^test |time:|thrpt:|Benchmarking|^[a-zA-Z_/]+\s+time:)' benchmark-raw.txt >> benchmark-results.txt 2>/dev/null || true
+          grep -E '(time:|thrpt:|change:)' benchmark-raw.txt >> benchmark-results.txt 2>/dev/null || true
 
-      - name: Extract Criterion results
+      - name: Extract Criterion results to JSON
         run: |
-          # Convert Criterion output to JSON format for benchmark-action
+          # Convert Criterion output to JSON format for benchmark-action.
+          # This parser handles the exact Criterion 0.8 output format.
           python3 << 'PYEOF'
           import json
           import re
+          import sys
 
           results = []
           with open('benchmark-raw.txt', 'r') as f:
               content = f.read()
 
-          # Parse Criterion benchmark output
-          # Format: "group/name/variant    time:   [lower bound  estimate  upper bound]"
-          pattern = r'([\w/]+)\s+time:\s+\[([0-9.]+)\s+(\w+)\s+([0-9.]+)\s+(\w+)\s+([0-9.]+)\s+(\w+)\]'
+          # Parse Criterion benchmark output.
+          #
+          # Criterion 0.8 output format (one result per benchmark):
+          #   benchmark_name          time:   [1.2345 ns 1.2456 ns 1.2567 ns]
+          #                           thrpt:  [7.8 Melem/s 7.9 Melem/s 8.0 Melem/s]
+          #
+          # CRITICAL: Use \S+ for unit matching, NOT \w+.
+          # Criterion outputs Unicode 'µs' (U+00B5) for microseconds.
+          # \w+ only matches [a-zA-Z0-9_] and SILENTLY DROPS all µs results,
+          # causing "Extracted 0 benchmark results" when all timings are in µs.
+          pattern = r'([\w][\w/]*)\s+time:\s+\[([0-9.]+)\s+(\S+)\s+([0-9.]+)\s+(\S+)\s+([0-9.]+)\s+(\S+)\]'
 
           for match in re.finditer(pattern, content):
               name = match.group(1)
-              value = float(match.group(4))  # Use estimate (middle value)
-              unit = match.group(5)
+              lower = float(match.group(2))
+              lower_unit = match.group(3)
+              estimate = float(match.group(4))
+              estimate_unit = match.group(5)
+              upper = float(match.group(6))
+              upper_unit = match.group(7)
 
-              # Convert to nanoseconds for consistency
-              multipliers = {'ns': 1, 'µs': 1000, 'us': 1000, 'ms': 1000000, 's': 1000000000}
-              value_ns = value * multipliers.get(unit, 1)
+              # Convert to nanoseconds for consistent storage and comparison.
+              # Criterion unit strings: ps, ns, µs (Unicode), us (ASCII fallback), ms, s
+              multipliers = {
+                  'ps': 0.001,
+                  'ns': 1,
+                  '\u00b5s': 1000,  # µs — Unicode micro sign (U+00B5)
+                  'us': 1000,       # ASCII fallback (some terminals)
+                  'ms': 1000000,
+                  's': 1000000000,
+              }
+
+              unit_mult = multipliers.get(estimate_unit)
+              if unit_mult is None:
+                  print(f"WARNING: Unknown unit '{repr(estimate_unit)}' for '{name}', skipping", file=sys.stderr)
+                  continue
+
+              value_ns = estimate * unit_mult
+              lower_ns = lower * multipliers.get(lower_unit, unit_mult)
+              upper_ns = upper * multipliers.get(upper_unit, unit_mult)
+
+              # Confidence interval half-width for range field
+              half_width_ns = (upper_ns - lower_ns) / 2.0
 
               results.append({
                   'name': name,
                   'unit': 'ns',
-                  'value': value_ns
+                  'value': round(value_ns, 3),
+                  'range': f'\u00b1 {half_width_ns:.3f}',
               })
 
-          # Write results even if empty (benchmark-action needs valid JSON)
+          # Write results (benchmark-action needs valid JSON array)
           with open('benchmark-data.json', 'w') as f:
               json.dump(results, f, indent=2)
 
           print(f"Extracted {len(results)} benchmark results")
 
           if len(results) == 0:
-              print("WARNING: No benchmark results extracted. Check benchmark output format.")
+              print("ERROR: No benchmark results extracted from Criterion output.", file=sys.stderr)
+              print("This means the regex did not match any lines in benchmark-raw.txt.", file=sys.stderr)
+              print("Debug: first 50 lines containing 'time':", file=sys.stderr)
+              for line in content.split('\n'):
+                  if 'time' in line.lower():
+                      print(f"  {repr(line)}", file=sys.stderr)
+              sys.exit(1)
+          else:
+              # Print summary for CI log
+              for r in sorted(results, key=lambda x: x['name']):
+                  ns = r['value']
+                  if ns >= 1_000_000:
+                      human = f"{ns/1_000_000:.2f} ms"
+                  elif ns >= 1_000:
+                      human = f"{ns/1_000:.2f} \u00b5s"
+                  else:
+                      human = f"{ns:.2f} ns"
+                  print(f"  {r['name']}: {human} ({r['range']} ns)")
           PYEOF
 
-      - name: Check if benchmarks were extracted
+      - name: Verify benchmark extraction
         id: check_benchmarks
         run: |
           RESULT_COUNT=$(python3 -c "import json; print(len(json.load(open('benchmark-data.json'))))")
           echo "result_count=$RESULT_COUNT" >> $GITHUB_OUTPUT
-          if [ "$RESULT_COUNT" -eq 0 ]; then
-            echo "::warning::No benchmark results were extracted. Skipping benchmark storage."
-          else
-            echo "Found $RESULT_COUNT benchmark results"
-          fi
+          echo "Extracted $RESULT_COUNT benchmark results"
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
@@ -190,42 +283,62 @@ jobs:
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          RESULT_COUNT=$(python3 -c "import json; print(len(json.load(open('benchmark-data.json'))))" 2>/dev/null || echo "0")
-
-          if [ "$RESULT_COUNT" -eq 0 ]; then
-            echo "No benchmark results extracted." >> $GITHUB_STEP_SUMMARY
+          if [ ! -f benchmark-data.json ]; then
+            echo "> **Error:** Benchmark data file not found. Benchmarks failed to run." >> $GITHUB_STEP_SUMMARY
+            echo "> Check the benchmark-raw.txt artifact for details." >> $GITHUB_STEP_SUMMARY
           else
-            echo "### Results ($RESULT_COUNT benchmarks)" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            RESULT_COUNT=$(python3 -c "import json; print(len(json.load(open('benchmark-data.json'))))" 2>/dev/null || echo "0")
 
-            # Create a clean table from JSON
-            python3 << 'PYEOF'
+            if [ "$RESULT_COUNT" -eq 0 ]; then
+              echo "> **Warning:** No benchmark results extracted." >> $GITHUB_STEP_SUMMARY
+              echo "> Check the benchmark-raw.txt artifact for Criterion output format." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### Results ($RESULT_COUNT benchmarks)" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+
+              # Create a clean table from JSON
+              python3 << 'PYEOF'
           import json
 
           with open('benchmark-data.json') as f:
               data = json.load(f)
 
           if data:
-              print("| Benchmark | Time (ns) | Time (human) |", file=open('/tmp/bench_table.md', 'w'))
-              print("|-----------|-----------|--------------|", file=open('/tmp/bench_table.md', 'a'))
-              for entry in sorted(data, key=lambda x: x['name']):
-                  ns = entry['value']
-                  if ns >= 1_000_000:
-                      human = f"{ns/1_000_000:.2f} ms"
-                  elif ns >= 1_000:
-                      human = f"{ns/1_000:.2f} us"
-                  else:
-                      human = f"{ns:.2f} ns"
-                  print(f"| `{entry['name']}` | {ns:.1f} | {human} |", file=open('/tmp/bench_table.md', 'a'))
+              with open('/tmp/bench_table.md', 'w') as out:
+                  out.write("| Benchmark | Time (ns) | Time (human) | 95% CI |\n")
+                  out.write("|-----------|-----------|--------------|--------|\n")
+                  for entry in sorted(data, key=lambda x: x['name']):
+                      ns = entry['value']
+                      if ns >= 1_000_000:
+                          human = f"{ns/1_000_000:.2f} ms"
+                      elif ns >= 1_000:
+                          human = f"{ns/1_000:.2f} \u00b5s"
+                      else:
+                          human = f"{ns:.2f} ns"
+                      ci = entry.get('range', '-')
+                      out.write(f"| `{entry['name']}` | {ns:.1f} | {human} | {ci} ns |\n")
           PYEOF
-            cat /tmp/bench_table.md >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+              cat /tmp/bench_table.md >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+            fi
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Reproducibility Notes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner**: GitHub Actions \`ubuntu-latest\` (shared infrastructure)" >> $GITHUB_STEP_SUMMARY
+          echo "- **CPU governor**: Uncontrolled (expect 5-15% variance between runs)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Framework**: Criterion 0.8, 100+ samples per benchmark, 95% CI" >> $GITHUB_STEP_SUMMARY
+          echo "- **Excluded**: iai-callgrind benchmarks (require valgrind, deterministic instruction counts)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Alert threshold**: 110% (10% regression triggers alert)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> For picosecond-precision measurements, run locally with CPU governor" >> $GITHUB_STEP_SUMMARY
+          echo "> pinned to \`performance\` mode and turbo boost disabled." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "*Run on-demand via workflow_dispatch to get fresh numbers.*" >> $GITHUB_STEP_SUMMARY
+          echo "*Run on-demand via Actions > Benchmarks > Run workflow*" >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload benchmark results
+      - name: Upload benchmark artifacts
+        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: benchmark-results
@@ -234,7 +347,7 @@ jobs:
             benchmark-results.txt
             benchmark-data.json
 
-  # Size tracking - monitor binary and WASM sizes
+  # Size tracking — monitor binary and WASM sizes
   size-check:
     name: Size Check
     runs-on: ubuntu-latest
