@@ -1311,6 +1311,17 @@ approach provides maximum confidence suitable for top-tier academic publication.
 # Kani proofs (236 harnesses)
 # NOTE: Running all at once may SIGSEGV. Run individually:
 cargo kani -p rource-math --harness verify_lerp_no_nan
+#
+# KNOWN KANI/CBMC LIMITATIONS (affect harness design):
+#   1. fmodf NOT modeled: f32::rem_euclid and f32 % f32 call fmodf (C library)
+#      which CBMC does not model — returns nondeterministic values.
+#      → Never assert on rem_euclid output range in Kani; prove range in Coq.
+#   2. FP range bounds can cause solver timeout: CBMC bit-blasts IEEE 754 ops,
+#      tight bounds (±1e-4) on complex FP chains exceed CI budget (CBMC #4337).
+#      → Use #[kani::solver(cadical)] + wide bounds; prove tight bounds in Coq.
+#   3. Transcendentals over-approximated: sin, cos, tan, sqrt, exp, log, pow
+#      return nondeterministic ranges in CBMC.
+#      → Kani for structural/NaN/finiteness; Coq for mathematical correctness.
 
 # Verus proofs (475 proof functions)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
