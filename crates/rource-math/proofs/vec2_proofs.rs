@@ -846,6 +846,91 @@ proof fn vec2_is_vector_space(a: SpecVec2, b: SpecVec2, c: SpecVec2, s: int, t: 
     vec2_scale_identity(a);
 }
 
+// =============================================================================
+// MIN/MAX ELEMENT PROOFS
+// =============================================================================
+
+/// Spec: min_element(v) = min(v.x, v.y).
+pub open spec fn vec2_min_element(v: SpecVec2) -> int {
+    if v.x <= v.y { v.x } else { v.y }
+}
+
+/// Spec: max_element(v) = max(v.x, v.y).
+pub open spec fn vec2_max_element(v: SpecVec2) -> int {
+    if v.x >= v.y { v.x } else { v.y }
+}
+
+/// **Theorem 56**: min_element <= max_element.
+proof fn vec2_min_le_max_element(v: SpecVec2)
+    ensures
+        vec2_min_element(v) <= vec2_max_element(v),
+{
+}
+
+/// **Theorem 57**: min_element is a lower bound.
+proof fn vec2_min_element_bound(v: SpecVec2)
+    ensures
+        vec2_min_element(v) <= v.x,
+        vec2_min_element(v) <= v.y,
+{
+}
+
+/// **Theorem 58**: max_element is an upper bound.
+proof fn vec2_max_element_bound(v: SpecVec2)
+    ensures
+        vec2_max_element(v) >= v.x,
+        vec2_max_element(v) >= v.y,
+{
+}
+
+/// **Theorem 59**: splat min_element is the splat value.
+proof fn vec2_splat_min_element(v: int)
+    ensures
+        vec2_min_element(vec2_splat(v)) == v,
+{
+}
+
+/// **Theorem 60**: splat max_element is the splat value.
+proof fn vec2_splat_max_element(v: int)
+    ensures
+        vec2_max_element(vec2_splat(v)) == v,
+{
+}
+
+// =============================================================================
+// PROJECT / REJECT PROOFS
+// =============================================================================
+
+/// Spec: project(v, w) = w * dot(v,w) / dot(w,w).
+/// Integer division: the projection of v onto w.
+pub open spec fn vec2_project(v: SpecVec2, w: SpecVec2) -> SpecVec2 {
+    let d = vec2_dot(v, w);
+    let len_sq = vec2_dot(w, w);
+    if len_sq > 0 {
+        SpecVec2 { x: w.x * d / len_sq, y: w.y * d / len_sq }
+    } else {
+        vec2_zero()
+    }
+}
+
+/// Spec: reject(v, w) = v - project(v, w).
+pub open spec fn vec2_reject(v: SpecVec2, w: SpecVec2) -> SpecVec2 {
+    vec2_sub(v, vec2_project(v, w))
+}
+
+/// **Theorem 61**: project + reject = original.
+proof fn vec2_project_reject_sum(v: SpecVec2, w: SpecVec2)
+    ensures
+        vec2_add(vec2_project(v, w), vec2_reject(v, w)) == v,
+{
+    // project + reject = project + (v - project) = v
+    let p = vec2_project(v, w);
+    let r = vec2_reject(v, w);
+    // r = v - p, so p + r = p + (v - p) = v
+    assert(p.x + (v.x - p.x) == v.x);
+    assert(p.y + (v.y - p.y) == v.y);
+}
+
 fn main() {
     // Verification only
 }

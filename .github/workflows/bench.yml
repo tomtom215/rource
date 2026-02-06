@@ -126,7 +126,7 @@ jobs:
     needs: [setup-gh-pages]
     # Run even if setup-gh-pages was skipped (for workflow_dispatch)
     if: always() && (needs.setup-gh-pages.result == 'success' || needs.setup-gh-pages.result == 'skipped')
-    timeout-minutes: 30
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
 

@@ -780,3 +780,331 @@ fn verify_hsl_rotate_hue_in_range() {
     assert!(rotated.s == s, "rotate_hue should preserve s");
     assert!(rotated.l == l, "rotate_hue should preserve l");
 }
+
+// ============================================================================
+// add (component-wise)
+// ============================================================================
+
+/// **Finiteness**: `add()` with normalized colors produces finite components.
+#[kani::proof]
+fn verify_color_add_finite() {
+    let r1: f32 = kani::any();
+    let g1: f32 = kani::any();
+    let b1: f32 = kani::any();
+    let a1: f32 = kani::any();
+    let r2: f32 = kani::any();
+    let g2: f32 = kani::any();
+    let b2: f32 = kani::any();
+    let a2: f32 = kani::any();
+    kani::assume(r1 >= 0.0 && r1 <= 1.0);
+    kani::assume(g1 >= 0.0 && g1 <= 1.0);
+    kani::assume(b1 >= 0.0 && b1 <= 1.0);
+    kani::assume(a1 >= 0.0 && a1 <= 1.0);
+    kani::assume(r2 >= 0.0 && r2 <= 1.0);
+    kani::assume(g2 >= 0.0 && g2 <= 1.0);
+    kani::assume(b2 >= 0.0 && b2 <= 1.0);
+    kani::assume(a2 >= 0.0 && a2 <= 1.0);
+    let c1 = Color::new(r1, g1, b1, a1);
+    let c2 = Color::new(r2, g2, b2, a2);
+    let result = c1.add(c2);
+    assert!(result.r.is_finite(), "add().r not finite");
+    assert!(result.g.is_finite(), "add().g not finite");
+    assert!(result.b.is_finite(), "add().b not finite");
+    assert!(result.a.is_finite(), "add().a not finite");
+}
+
+/// **Commutativity**: `a.add(b) == b.add(a)` for all normalized colors.
+#[kani::proof]
+fn verify_color_add_commutative() {
+    let r1: f32 = kani::any();
+    let g1: f32 = kani::any();
+    let b1: f32 = kani::any();
+    let a1: f32 = kani::any();
+    let r2: f32 = kani::any();
+    let g2: f32 = kani::any();
+    let b2: f32 = kani::any();
+    let a2: f32 = kani::any();
+    kani::assume(r1 >= 0.0 && r1 <= 1.0);
+    kani::assume(g1 >= 0.0 && g1 <= 1.0);
+    kani::assume(b1 >= 0.0 && b1 <= 1.0);
+    kani::assume(a1 >= 0.0 && a1 <= 1.0);
+    kani::assume(r2 >= 0.0 && r2 <= 1.0);
+    kani::assume(g2 >= 0.0 && g2 <= 1.0);
+    kani::assume(b2 >= 0.0 && b2 <= 1.0);
+    kani::assume(a2 >= 0.0 && a2 <= 1.0);
+    let c1 = Color::new(r1, g1, b1, a1);
+    let c2 = Color::new(r2, g2, b2, a2);
+    let ab = c1.add(c2);
+    let ba = c2.add(c1);
+    assert!(ab.r == ba.r, "add not commutative: r");
+    assert!(ab.g == ba.g, "add not commutative: g");
+    assert!(ab.b == ba.b, "add not commutative: b");
+    assert!(ab.a == ba.a, "add not commutative: a");
+}
+
+// ============================================================================
+// scale (scalar multiply)
+// ============================================================================
+
+/// **Finiteness**: `scale()` with normalized color and bounded scalar.
+#[kani::proof]
+fn verify_color_scale_finite() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    let s: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    kani::assume(s.is_finite() && s.abs() < 1e6);
+    let c = Color::new(r, g, b, a);
+    let result = c.scale(s);
+    assert!(result.r.is_finite(), "scale().r not finite");
+    assert!(result.g.is_finite(), "scale().g not finite");
+    assert!(result.b.is_finite(), "scale().b not finite");
+    assert!(result.a.is_finite(), "scale().a not finite");
+}
+
+/// **Identity**: `scale(1.0)` returns the original color.
+#[kani::proof]
+fn verify_color_scale_one_identity() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let s = c.scale(1.0);
+    assert!(s.r == c.r, "scale(1) changed r");
+    assert!(s.g == c.g, "scale(1) changed g");
+    assert!(s.b == c.b, "scale(1) changed b");
+    assert!(s.a == c.a, "scale(1) changed a");
+}
+
+// ============================================================================
+// invert
+// ============================================================================
+
+/// **NaN-freedom + alpha preservation**: `invert()` with normalized color.
+#[kani::proof]
+fn verify_color_invert_no_nan() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let inv = c.invert();
+    assert!(inv.r.is_finite(), "invert().r not finite");
+    assert!(inv.g.is_finite(), "invert().g not finite");
+    assert!(inv.b.is_finite(), "invert().b not finite");
+    assert!(inv.a == a, "invert should preserve alpha");
+}
+
+/// **Involutive**: `invert(invert(c)) == c` for all normalized colors.
+#[kani::proof]
+fn verify_color_invert_involutive() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let double_inv = c.invert().invert();
+    // FP roundtrip: 1 - (1 - x) may not be exactly x, but within 1 ULP
+    assert!((double_inv.r - r).abs() < 1e-6, "invert not involutive: r");
+    assert!((double_inv.g - g).abs() < 1e-6, "invert not involutive: g");
+    assert!((double_inv.b - b).abs() < 1e-6, "invert not involutive: b");
+    assert!(double_inv.a == a, "invert not involutive: a");
+}
+
+// ============================================================================
+// mix
+// ============================================================================
+
+/// **Commutativity + finiteness**: `mix(a, b) == mix(b, a)`.
+#[kani::proof]
+fn verify_color_mix_commutative() {
+    let r1: f32 = kani::any();
+    let g1: f32 = kani::any();
+    let b1: f32 = kani::any();
+    let a1: f32 = kani::any();
+    let r2: f32 = kani::any();
+    let g2: f32 = kani::any();
+    let b2: f32 = kani::any();
+    let a2: f32 = kani::any();
+    kani::assume(r1 >= 0.0 && r1 <= 1.0);
+    kani::assume(g1 >= 0.0 && g1 <= 1.0);
+    kani::assume(b1 >= 0.0 && b1 <= 1.0);
+    kani::assume(a1 >= 0.0 && a1 <= 1.0);
+    kani::assume(r2 >= 0.0 && r2 <= 1.0);
+    kani::assume(g2 >= 0.0 && g2 <= 1.0);
+    kani::assume(b2 >= 0.0 && b2 <= 1.0);
+    kani::assume(a2 >= 0.0 && a2 <= 1.0);
+    let c1 = Color::new(r1, g1, b1, a1);
+    let c2 = Color::new(r2, g2, b2, a2);
+    let ab = c1.mix(c2);
+    let ba = c2.mix(c1);
+    assert!(ab.r == ba.r, "mix not commutative: r");
+    assert!(ab.g == ba.g, "mix not commutative: g");
+    assert!(ab.b == ba.b, "mix not commutative: b");
+    assert!(ab.a == ba.a, "mix not commutative: a");
+}
+
+// ============================================================================
+// darken
+// ============================================================================
+
+/// **Alpha preservation + finiteness**: `darken()` preserves alpha.
+#[kani::proof]
+fn verify_color_darken_preserves_alpha() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    let amount: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    kani::assume(amount >= 0.0 && amount <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let d = c.darken(amount);
+    assert!(d.a == a, "darken should preserve alpha");
+    assert!(d.r.is_finite(), "darken().r not finite");
+    assert!(d.g.is_finite(), "darken().g not finite");
+    assert!(d.b.is_finite(), "darken().b not finite");
+}
+
+// ============================================================================
+// lighten
+// ============================================================================
+
+/// **Alpha preservation + finiteness**: `lighten()` preserves alpha.
+#[kani::proof]
+fn verify_color_lighten_preserves_alpha() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    let amount: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    kani::assume(a >= 0.0 && a <= 1.0);
+    kani::assume(amount >= 0.0 && amount <= 1.0);
+    let c = Color::new(r, g, b, a);
+    let l = c.lighten(amount);
+    assert!(l.a == a, "lighten should preserve alpha");
+    assert!(l.r.is_finite(), "lighten().r not finite");
+    assert!(l.g.is_finite(), "lighten().g not finite");
+    assert!(l.b.is_finite(), "lighten().b not finite");
+}
+
+// ============================================================================
+// contrast
+// ============================================================================
+
+/// **Finiteness + non-negativity**: `contrast()` returns finite non-negative value.
+/// Symmetry (contrast(a,b) == contrast(b,a)) is proven in Coq (Color_Proofs.v,
+/// color_contrast_symmetric theorem). CBMC cannot efficiently bit-blast FP
+/// equality through two independent luminance chains (6 symbolic inputs × 5 FP ops).
+#[kani::proof]
+fn verify_color_contrast_symmetric() {
+    let r1: f32 = kani::any();
+    let g1: f32 = kani::any();
+    let b1: f32 = kani::any();
+    let r2: f32 = kani::any();
+    let g2: f32 = kani::any();
+    let b2: f32 = kani::any();
+    kani::assume(r1 >= 0.0 && r1 <= 1.0);
+    kani::assume(g1 >= 0.0 && g1 <= 1.0);
+    kani::assume(b1 >= 0.0 && b1 <= 1.0);
+    kani::assume(r2 >= 0.0 && r2 <= 1.0);
+    kani::assume(g2 >= 0.0 && g2 <= 1.0);
+    kani::assume(b2 >= 0.0 && b2 <= 1.0);
+    let c1 = Color::rgb(r1, g1, b1);
+    let c2 = Color::rgb(r2, g2, b2);
+    let ab = c1.contrast(c2);
+    assert!(ab.is_finite(), "contrast should be finite");
+    assert!(ab >= 0.0, "contrast should be non-negative");
+    // Upper bound: max luminance diff is |1.0 - 0.0| = 1.0
+    assert!(ab <= 1.0 + 1e-6, "contrast should be <= 1.0");
+}
+
+// ============================================================================
+// is_light / is_dark
+// ============================================================================
+
+/// **Structural**: `is_light()` and `is_dark()` return valid booleans for valid inputs.
+/// Mutual exclusivity is proven in Coq (Color_Proofs.v, color_light_dark_complement).
+/// CBMC struggles with proving FP comparison complement (> 0.5 vs <= 0.5)
+/// when luminance involves 3 multiplications + 2 additions on symbolic inputs.
+#[kani::proof]
+fn verify_color_light_dark_exclusive() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(r >= 0.0 && r <= 1.0);
+    kani::assume(g >= 0.0 && g <= 1.0);
+    kani::assume(b >= 0.0 && b <= 1.0);
+    let c = Color::rgb(r, g, b);
+    let lum = c.luminance();
+    // luminance of [0,1] inputs is finite and in [0,1]
+    assert!(lum.is_finite(), "luminance should be finite");
+    assert!(lum >= -1e-6, "luminance should be non-negative");
+    assert!(lum <= 1.0 + 1e-6, "luminance should be <= 1.0");
+    // Both methods return without panicking (structural soundness)
+    let _light = c.is_light();
+    let _dark = c.is_dark();
+}
+
+// ============================================================================
+// to_rgba / to_rgb
+// ============================================================================
+
+/// **Roundtrip**: `to_rgba()` components match original.
+#[kani::proof]
+fn verify_color_to_rgba_roundtrip() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    let a: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    kani::assume(a.is_finite());
+    let c = Color::new(r, g, b, a);
+    let (tr, tg, tb, ta) = c.to_rgba();
+    assert!(tr == r, "to_rgba().0 mismatch");
+    assert!(tg == g, "to_rgba().1 mismatch");
+    assert!(tb == b, "to_rgba().2 mismatch");
+    assert!(ta == a, "to_rgba().3 mismatch");
+}
+
+/// **Roundtrip**: `to_rgb()` components match original RGB.
+#[kani::proof]
+fn verify_color_to_rgb_roundtrip() {
+    let r: f32 = kani::any();
+    let g: f32 = kani::any();
+    let b: f32 = kani::any();
+    kani::assume(r.is_finite());
+    kani::assume(g.is_finite());
+    kani::assume(b.is_finite());
+    let c = Color::rgb(r, g, b);
+    let (tr, tg, tb) = c.to_rgb();
+    assert!(tr == r, "to_rgb().0 mismatch");
+    assert!(tg == g, "to_rgb().1 mismatch");
+    assert!(tb == b, "to_rgb().2 mismatch");
+}

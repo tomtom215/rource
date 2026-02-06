@@ -415,6 +415,145 @@ impl Color {
             && crate::approx_eq(self.b, other.b)
             && crate::approx_eq(self.a, other.a)
     }
+
+    // ========================================================================
+    // Formally verified operations (Coq proofs exist in Color.v/Color_Proofs.v)
+    // ========================================================================
+
+    /// Component-wise RGBA addition.
+    ///
+    /// Useful for additive blending and light accumulation.
+    /// Note: results may exceed [0, 1] range — use [`clamp`](Self::clamp) if needed.
+    #[inline]
+    #[must_use]
+    #[allow(clippy::should_implement_trait)]
+    pub fn add(self, other: Self) -> Self {
+        Self {
+            r: self.r + other.r,
+            g: self.g + other.g,
+            b: self.b + other.b,
+            a: self.a + other.a,
+        }
+    }
+
+    /// Scalar multiplication of all RGBA channels.
+    ///
+    /// Useful for brightness adjustment and fade effects.
+    #[inline]
+    #[must_use]
+    pub fn scale(self, s: f32) -> Self {
+        Self {
+            r: self.r * s,
+            g: self.g * s,
+            b: self.b * s,
+            a: self.a * s,
+        }
+    }
+
+    /// Inverts the RGB components: `(1-r, 1-g, 1-b, a)`.
+    ///
+    /// Alpha is preserved. Useful for negative/complement and contrast effects.
+    #[inline]
+    #[must_use]
+    pub fn invert(self) -> Self {
+        Self {
+            r: 1.0 - self.r,
+            g: 1.0 - self.g,
+            b: 1.0 - self.b,
+            a: self.a,
+        }
+    }
+
+    /// Equal-weight blend of two colors (equivalent to `lerp(other, 0.5)`).
+    ///
+    /// Useful for color palette generation.
+    #[inline]
+    #[must_use]
+    pub fn mix(self, other: Self) -> Self {
+        Self {
+            r: (self.r + other.r) * 0.5,
+            g: (self.g + other.g) * 0.5,
+            b: (self.b + other.b) * 0.5,
+            a: (self.a + other.a) * 0.5,
+        }
+    }
+
+    /// Reduces brightness by the given factor.
+    ///
+    /// `amount = 0.0` returns the original color, `amount = 1.0` returns black
+    /// (with alpha preserved). Useful for hover/press UI states.
+    #[inline]
+    #[must_use]
+    pub fn darken(self, amount: f32) -> Self {
+        let factor = 1.0 - amount;
+        Self {
+            r: self.r * factor,
+            g: self.g * factor,
+            b: self.b * factor,
+            a: self.a,
+        }
+    }
+
+    /// Increases brightness by the given factor.
+    ///
+    /// `amount = 0.0` returns the original color, `amount = 1.0` returns white
+    /// (with alpha preserved). Useful for hover/press UI states.
+    #[inline]
+    #[must_use]
+    pub fn lighten(self, amount: f32) -> Self {
+        Self {
+            r: self.r + (1.0 - self.r) * amount,
+            g: self.g + (1.0 - self.g) * amount,
+            b: self.b + (1.0 - self.b) * amount,
+            a: self.a,
+        }
+    }
+
+    /// Returns the perceived luminance contrast between two colors.
+    ///
+    /// Uses absolute difference of Rec. 709 luminance values.
+    /// Useful for WCAG accessibility checks.
+    #[inline]
+    #[must_use]
+    pub fn contrast(self, other: Self) -> f32 {
+        (self.luminance() - other.luminance()).abs()
+    }
+
+    /// Returns `true` if the color's luminance exceeds 0.5.
+    ///
+    /// Useful for determining whether to use dark or light text on this background.
+    #[inline]
+    #[must_use]
+    pub fn is_light(self) -> bool {
+        self.luminance() > 0.5
+    }
+
+    /// Returns `true` if the color's luminance is 0.5 or below.
+    ///
+    /// Useful for determining whether to use dark or light text on this background.
+    #[inline]
+    #[must_use]
+    pub fn is_dark(self) -> bool {
+        self.luminance() <= 0.5
+    }
+
+    /// Returns the color components as an `(r, g, b, a)` tuple.
+    ///
+    /// Useful for interop and serialization.
+    #[inline]
+    #[must_use]
+    pub fn to_rgba(self) -> (f32, f32, f32, f32) {
+        (self.r, self.g, self.b, self.a)
+    }
+
+    /// Returns the RGB components as an `(r, g, b)` tuple (alpha discarded).
+    ///
+    /// Useful for interop and serialization.
+    #[inline]
+    #[must_use]
+    pub fn to_rgb(self) -> (f32, f32, f32) {
+        (self.r, self.g, self.b)
+    }
 }
 
 impl fmt::Debug for Color {
@@ -2019,4 +2158,422 @@ mod tests {
             "Green hue with positive saturation should have more green"
         );
     }
+
+    // =========================================================================
+    // Tests for formally verified Color operations
+    // =========================================================================
+
+    #[test]
+    fn test_color_add() {
+        let a = Color::new(0.2, 0.3, 0.4, 0.5);
+        let b = Color::new(0.1, 0.2, 0.3, 0.4);
+        let c = a.add(b);
+        assert!((c.r - 0.3).abs() < 1e-6);
+        assert!((c.g - 0.5).abs() < 1e-6);
+        assert!((c.b - 0.7).abs() < 1e-6);
+        assert!((c.a - 0.9).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_add_commutative() {
+        let a = Color::new(0.2, 0.3, 0.4, 0.5);
+        let b = Color::new(0.1, 0.6, 0.3, 0.2);
+        assert!(a.add(b).approx_eq(b.add(a)));
+    }
+
+    #[test]
+    fn test_color_add_zero() {
+        let a = Color::new(0.5, 0.6, 0.7, 0.8);
+        let zero = Color::new(0.0, 0.0, 0.0, 0.0);
+        assert!(a.add(zero).approx_eq(a));
+    }
+
+    #[test]
+    fn test_color_scale() {
+        let c = Color::new(0.2, 0.4, 0.6, 0.8);
+        let s = c.scale(2.0);
+        assert!((s.r - 0.4).abs() < 1e-6);
+        assert!((s.g - 0.8).abs() < 1e-6);
+        assert!((s.b - 1.2).abs() < 1e-6);
+        assert!((s.a - 1.6).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_scale_one() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.9);
+        assert!(c.scale(1.0).approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_scale_zero() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.9);
+        let s = c.scale(0.0);
+        assert!((s.r).abs() < 1e-6);
+        assert!((s.g).abs() < 1e-6);
+        assert!((s.b).abs() < 1e-6);
+        assert!((s.a).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_invert() {
+        let c = Color::new(0.2, 0.3, 0.7, 0.8);
+        let inv = c.invert();
+        assert!((inv.r - 0.8).abs() < 1e-6);
+        assert!((inv.g - 0.7).abs() < 1e-6);
+        assert!((inv.b - 0.3).abs() < 1e-6);
+        assert_eq!(inv.a, 0.8); // alpha preserved
+    }
+
+    #[test]
+    fn test_color_invert_involutive() {
+        let c = Color::new(0.2, 0.3, 0.7, 0.8);
+        assert!(c.invert().invert().approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_invert_black_white() {
+        let inv_black = Color::BLACK.invert();
+        assert!(inv_black.approx_eq(Color::WHITE));
+        let inv_white = Color::WHITE.invert();
+        assert!(inv_white.approx_eq(Color::BLACK));
+    }
+
+    #[test]
+    fn test_color_mix() {
+        let a = Color::new(0.0, 0.0, 0.0, 1.0);
+        let b = Color::new(1.0, 1.0, 1.0, 1.0);
+        let m = a.mix(b);
+        assert!((m.r - 0.5).abs() < 1e-6);
+        assert!((m.g - 0.5).abs() < 1e-6);
+        assert!((m.b - 0.5).abs() < 1e-6);
+        assert!((m.a - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_mix_commutative() {
+        let a = Color::new(0.2, 0.3, 0.4, 0.5);
+        let b = Color::new(0.6, 0.7, 0.8, 0.9);
+        assert!(a.mix(b).approx_eq(b.mix(a)));
+    }
+
+    #[test]
+    fn test_color_mix_self() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.9);
+        assert!(c.mix(c).approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_darken() {
+        let c = Color::new(0.8, 0.6, 0.4, 1.0);
+        let d = c.darken(0.5);
+        assert!((d.r - 0.4).abs() < 1e-6);
+        assert!((d.g - 0.3).abs() < 1e-6);
+        assert!((d.b - 0.2).abs() < 1e-6);
+        assert_eq!(d.a, 1.0); // alpha preserved
+    }
+
+    #[test]
+    fn test_color_darken_zero() {
+        let c = Color::new(0.5, 0.6, 0.7, 0.8);
+        assert!(c.darken(0.0).approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_darken_full() {
+        let c = Color::new(0.5, 0.6, 0.7, 0.8);
+        let d = c.darken(1.0);
+        assert!((d.r).abs() < 1e-6);
+        assert!((d.g).abs() < 1e-6);
+        assert!((d.b).abs() < 1e-6);
+        assert_eq!(d.a, 0.8);
+    }
+
+    #[test]
+    fn test_color_lighten() {
+        let c = Color::new(0.0, 0.0, 0.0, 1.0);
+        let l = c.lighten(1.0);
+        assert!((l.r - 1.0).abs() < 1e-6);
+        assert!((l.g - 1.0).abs() < 1e-6);
+        assert!((l.b - 1.0).abs() < 1e-6);
+        assert_eq!(l.a, 1.0);
+    }
+
+    #[test]
+    fn test_color_lighten_zero() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.9);
+        assert!(c.lighten(0.0).approx_eq(c));
+    }
+
+    #[test]
+    fn test_color_lighten_preserves_alpha() {
+        let c = Color::new(0.3, 0.5, 0.7, 0.4);
+        assert_eq!(c.lighten(0.5).a, 0.4);
+    }
+
+    #[test]
+    fn test_color_contrast() {
+        let bw = Color::BLACK.contrast(Color::WHITE);
+        assert!(bw > 0.9); // ~1.0 for black vs white
+        let self_contrast = Color::RED.contrast(Color::RED);
+        assert!((self_contrast).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_contrast_symmetric() {
+        let a = Color::new(0.2, 0.5, 0.8, 1.0);
+        let b = Color::new(0.9, 0.1, 0.3, 1.0);
+        assert!((a.contrast(b) - b.contrast(a)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_color_is_light() {
+        assert!(Color::WHITE.is_light());
+        assert!(!Color::BLACK.is_light());
+    }
+
+    #[test]
+    fn test_color_is_dark() {
+        assert!(Color::BLACK.is_dark());
+        assert!(!Color::WHITE.is_dark());
+    }
+
+    #[test]
+    fn test_color_light_dark_complement() {
+        let c = Color::new(0.3, 0.5, 0.7, 1.0);
+        assert!(c.is_light() != c.is_dark());
+    }
+
+    #[test]
+    fn test_color_to_rgba() {
+        let c = Color::new(0.1, 0.2, 0.3, 0.4);
+        let (r, g, b, a) = c.to_rgba();
+        assert_eq!(r, 0.1);
+        assert_eq!(g, 0.2);
+        assert_eq!(b, 0.3);
+        assert_eq!(a, 0.4);
+    }
+
+    #[test]
+    fn test_color_to_rgb() {
+        let c = Color::new(0.1, 0.2, 0.3, 0.4);
+        let (r, g, b) = c.to_rgb();
+        assert_eq!(r, 0.1);
+        assert_eq!(g, 0.2);
+        assert_eq!(b, 0.3);
+    }
+
+    // =========================================================================
+    // Mutation-killing tests: Color::lighten `- → +` mutants (lines 505-507)
+    // =========================================================================
+
+    /// Kill `- → +` mutants in `Color::lighten`.
+    ///
+    /// The formula `self.r + (1.0 - self.r) * amount` mutated to
+    /// `self.r + (1.0 + self.r) * amount` produces different values when
+    /// both self.r ≠ 0 and amount ≠ 0.
+    ///
+    /// Existing tests used black (r=0) or amount=0, making both formulas equal.
+    #[test]
+    fn test_lighten_kills_minus_to_plus_mutant() {
+        let c = Color::new(0.4, 0.6, 0.8, 1.0);
+        let result = c.lighten(0.5);
+
+        // Original: r = 0.4 + (1.0 - 0.4) * 0.5 = 0.4 + 0.3 = 0.7
+        // Mutant:   r = 0.4 + (1.0 + 0.4) * 0.5 = 0.4 + 0.7 = 1.1
+        assert!(
+            (result.r - 0.7).abs() < 1e-6,
+            "lighten r: expected 0.7, got {}",
+            result.r
+        );
+
+        // Original: g = 0.6 + (1.0 - 0.6) * 0.5 = 0.6 + 0.2 = 0.8
+        // Mutant:   g = 0.6 + (1.0 + 0.6) * 0.5 = 0.6 + 0.8 = 1.4
+        assert!(
+            (result.g - 0.8).abs() < 1e-6,
+            "lighten g: expected 0.8, got {}",
+            result.g
+        );
+
+        // Original: b = 0.8 + (1.0 - 0.8) * 0.5 = 0.8 + 0.1 = 0.9
+        // Mutant:   b = 0.8 + (1.0 + 0.8) * 0.5 = 0.8 + 0.9 = 1.7
+        assert!(
+            (result.b - 0.9).abs() < 1e-6,
+            "lighten b: expected 0.9, got {}",
+            result.b
+        );
+
+        // Each channel: mutant value > 1.0, original ≤ 1.0
+        assert!(
+            result.r <= 1.0,
+            "lighten should not exceed 1.0 for valid inputs"
+        );
+        assert!(
+            result.g <= 1.0,
+            "lighten should not exceed 1.0 for valid inputs"
+        );
+        assert!(
+            result.b <= 1.0,
+            "lighten should not exceed 1.0 for valid inputs"
+        );
+    }
+
+    // =========================================================================
+    // Mutation-killing test: Color::is_light `> → >=` mutant (line 528)
+    // =========================================================================
+
+    /// Kill `> → >=` mutant in `Color::is_light`.
+    ///
+    /// `luminance(gray_50%)` = 0.2126\*0.5 + 0.7152\*0.5 + 0.0722\*0.5
+    ///                     = 0.5 * (0.2126 + 0.7152 + 0.0722) = 0.5
+    ///
+    /// With `> 0.5`:  0.5 > 0.5  → false (correct: boundary is "not light")
+    /// With `>= 0.5`: 0.5 >= 0.5 → true  (mutant: boundary is "light")
+    #[test]
+    fn test_is_light_at_exact_boundary_kills_ge_mutant() {
+        let gray_50 = Color::rgb(0.5, 0.5, 0.5);
+        let lum = gray_50.luminance();
+
+        // Verify we're at the exact boundary
+        assert!(
+            (lum - 0.5).abs() < 1e-7,
+            "Gray 50% luminance should be 0.5, got {lum}"
+        );
+
+        // is_light uses `> 0.5` (strict), so exactly 0.5 is NOT light
+        assert!(
+            !gray_50.is_light(),
+            "luminance == 0.5 should NOT be is_light (strict >)"
+        );
+
+        // is_dark uses `<= 0.5`, so exactly 0.5 IS dark
+        assert!(
+            gray_50.is_dark(),
+            "luminance == 0.5 should be is_dark (<= 0.5)"
+        );
+    }
+
+    // =========================================================================
+    // Mutation-killing test: Hsl::from_color `g < b` → `g <= b` (line 738)
+    // =========================================================================
+
+    /// Kill `g < b` → `g <= b` mutant in `Hsl::from_color`.
+    ///
+    /// When max == r and g == b: (g-b)/d = 0, hue = 0.
+    /// The `g < b` branch adds 6.0 to normalize negative hues.
+    /// With g == b, `g < b` is false → h stays 0 → hue = 0°.
+    /// With mutant `g <= b`, `g <= b` is true → h += 6 → hue = 360°.
+    /// These are visually the same color but numerically different (0 ≠ 360).
+    #[test]
+    fn test_hsl_from_color_g_eq_b_kills_le_mutant() {
+        // Red-dominant with g == b exactly
+        let c = Color::rgb(1.0, 0.3, 0.3);
+        let hsl = Hsl::from_color(c);
+
+        // With correct code: h = 0 (g == b, so g < b is false, no +6)
+        // With mutant: h = 360 (g <= b is true, h += 6, 6*60 = 360)
+        assert!(
+            hsl.h < 1.0,
+            "When g == b with max == r, hue should be ~0, not 360. Got {}",
+            hsl.h
+        );
+    }
+
+    // =========================================================================
+    // Mutation-killing test: Hsl::from_color achromatic boundary (line 724)
+    // =========================================================================
+
+    /// Kill `< → <=` mutant on `(max - min).abs() < EPSILON` in `Hsl::from_color`.
+    ///
+    /// At max - min == EPSILON exactly:
+    /// - `<`: false → computes h, s, l normally (non-achromatic)
+    /// - `<=`: true → returns achromatic (h=0, s=0)
+    #[test]
+    fn test_hsl_from_color_achromatic_boundary_kills_le_mutant() {
+        // Use simple values where subtraction is exact in f32:
+        // r = EPSILON, g = 0, b = 0 → max - min = EPSILON - 0 = EPSILON
+        let c = Color::rgb(crate::EPSILON, 0.0, 0.0);
+        let diff = c.r - c.g; // EPSILON - 0.0 = EPSILON exactly
+
+        assert!(
+            (diff - crate::EPSILON).abs() < 1e-12,
+            "max - min should be EPSILON, got {diff}"
+        );
+
+        let hsl = Hsl::from_color(c);
+
+        // With `<`: EPSILON < EPSILON is false → non-achromatic → s > 0
+        // With `<=`: EPSILON <= EPSILON is true → achromatic → s == 0
+        assert!(
+            hsl.s > 0.0,
+            "Color with max-min == EPSILON should not be achromatic (strict <). Got s={}",
+            hsl.s
+        );
+    }
+
+    // =========================================================================
+    // Mutation-killing test: Hsl::to_color `< → ==` mutant (line 759)
+    // =========================================================================
+
+    /// Kill `self.l < 0.5` → `self.l == 0.5` mutant in `Hsl::to_color`.
+    ///
+    /// With the `==` mutant, ALL l < 0.5 inputs take the wrong branch:
+    ///   q = l + s - l*s  (instead of q = l * (1+s))
+    ///
+    /// For l=0.3, s=0.8:
+    ///   Correct: q = 0.3 * 1.8 = 0.54
+    ///   Mutant:  q = 0.3 + 0.8 - 0.24 = 0.86
+    /// This produces very different RGB values.
+    #[test]
+    fn test_hsl_to_color_lt_vs_eq_kills_mutant() {
+        let hsl = Hsl::new(120.0, 0.8, 0.3); // green, dark
+        let color = hsl.to_color();
+
+        // With correct code: q = 0.3 * (1 + 0.8) = 0.54, p = 0.6 - 0.54 = 0.06
+        // Green at h=120°: g channel should be q (max), r and b should be smaller
+        // Correct: r ~0.06, g ~0.54, b ~0.06
+        // Mutant:  r ~-0.26 (negative!), g ~0.86, b ~-0.26
+
+        // The green channel specifically distinguishes the formulas
+        assert!(
+            (color.g - 0.54).abs() < 0.01,
+            "HSL(120, 0.8, 0.3) green channel should be ~0.54, got {}",
+            color.g
+        );
+
+        // Red channel should be positive (mutant gives negative)
+        assert!(
+            color.r >= 0.0,
+            "HSL(120, 0.8, 0.3) red channel should be non-negative, got {}",
+            color.r
+        );
+
+        // Blue channel should be positive (mutant gives negative)
+        assert!(
+            color.b >= 0.0,
+            "HSL(120, 0.8, 0.3) blue channel should be non-negative, got {}",
+            color.b
+        );
+    }
+
+    // =========================================================================
+    // Documentation: equivalent (unkillable) mutants in HSL/hue_to_rgb
+    // =========================================================================
+
+    // The following mutants are EQUIVALENT and cannot be killed:
+    //
+    // 1. Hsl::from_color `l > 0.5` → `l >= 0.5` (line 730):
+    //    At l = 0.5, max+min = 1.0 and 2-max-min = 1.0, so both saturation
+    //    formulas give d/1.0 = d. The mutant produces identical output.
+    //
+    // 2. Hsl::to_color `self.l < 0.5` → `self.l <= 0.5` (line 759):
+    //    At l = 0.5: q = 0.5*(1+s) = 0.5+0.5s vs q = 0.5+s-0.5s = 0.5+0.5s.
+    //    Both formulas give identical q. The mutant is equivalent.
+    //
+    // 3. hue_to_rgb boundary mutations (5 total, lines 821-832):
+    //    All `< → <=` and `> → >=` mutations are equivalent because hue_to_rgb
+    //    is continuous at every boundary:
+    //      - t=0/1: periodic (f(0)=f(1)=p)
+    //      - t=1/6: p+(q-p)*6*(1/6) = q (matches next branch)
+    //      - t=1/2: q (matches both branches)
+    //      - t=2/3: p+(q-p)*(2/3-2/3)*6 = p (matches else branch)
 }

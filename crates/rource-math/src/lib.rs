@@ -251,6 +251,36 @@ mod tests {
         assert_eq!(result, 10.0, "Value just above max should be clamped");
     }
 
+    /// Kill mutant: replace `<` with `<=` in clamp (line 98) using -0.0/0.0 bit patterns.
+    /// IEEE 754: -0.0 == 0.0 is true, but -0.0 < 0.0 is false while -0.0 <= 0.0 is true.
+    /// Original: clamp(-0.0, 0.0, 1.0) → value=-0.0, -0.0 < 0.0 is FALSE → returns value (-0.0).
+    /// Mutant:   clamp(-0.0, 0.0, 1.0) → -0.0 <= 0.0 is TRUE → returns min (0.0).
+    /// Bit patterns differ: -0.0 = 0x80000000, 0.0 = 0x00000000.
+    #[test]
+    fn test_clamp_neg_zero_kills_lt_mutant() {
+        let result = clamp(-0.0, 0.0, 1.0);
+        assert_eq!(
+            result.to_bits(),
+            (-0.0f32).to_bits(),
+            "clamp(-0.0, 0.0, 1.0) should return -0.0 (value path), not 0.0 (min path)"
+        );
+    }
+
+    /// Kill mutant: replace `>` with `>=` in clamp (line 100) using -0.0/0.0 bit patterns.
+    /// IEEE 754: 0.0 == -0.0 is true, but 0.0 > -0.0 is false while 0.0 >= -0.0 is true.
+    /// Original: clamp(0.0, -1.0, -0.0) → 0.0 > -0.0 is FALSE → returns value (0.0).
+    /// Mutant:   clamp(0.0, -1.0, -0.0) → 0.0 >= -0.0 is TRUE → returns max (-0.0).
+    /// Bit patterns differ: 0.0 = 0x00000000, -0.0 = 0x80000000.
+    #[test]
+    fn test_clamp_neg_zero_kills_gt_mutant() {
+        let result = clamp(0.0, -1.0, -0.0);
+        assert_eq!(
+            result.to_bits(),
+            0.0f32.to_bits(),
+            "clamp(0.0, -1.0, -0.0) should return 0.0 (value path), not -0.0 (max path)"
+        );
+    }
+
     /// Kill mutant: replace < with <= in `approx_eq` (line 126)
     /// `approx_eq` uses `(a - b).abs() < EPSILON`
     /// If mutated to `<=`, then values exactly EPSILON apart would be "equal".
