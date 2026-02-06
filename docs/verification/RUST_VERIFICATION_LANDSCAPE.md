@@ -15,7 +15,7 @@ For floating-point feasibility, see [FLOATING_POINT_VERIFICATION.md](FLOATING_PO
 |------|----------|------------|---------------------|----------------|
 | **Verus** (current) | SMT/Z3 | No (int specs) | Manual specs | KEEP (algebraic proofs) |
 | **Coq** (current) | Proof assistant | Via Flocq (planned) | Manual specs | KEEP (machine-checked proofs) |
-| **Kani** (adopted) | Bounded model checker | YES (bit-precise) | No (assertion-based) | **ADOPTED** (225 harnesses, 0 failures) |
+| **Kani** (adopted) | Bounded model checker | YES (bit-precise) | No (assertion-based) | **ADOPTED** (272 harnesses, 0 failures) |
 | **Aeneas** | Functional translation | Unknown | YES (pure functional) | **MONITOR** (spec-to-impl) |
 | **Creusot** | Deductive verifier | Via Why3 ieee_float | Inline annotations | **MONITOR** (Why3 FP) |
 | **hax** | Extraction tool | No (backends lack FP) | YES (THIR extraction) | NOT APPLICABLE |
@@ -24,14 +24,14 @@ For floating-point feasibility, see [FLOATING_POINT_VERIFICATION.md](FLOATING_PO
 
 ## Current Capability Gaps
 
-Our verification architecture (Verus + Coq + Kani) achieves 2573 theorems/harnesses across 10 types
+Our verification architecture (Verus + Coq + Kani) achieves 2968 theorems/harnesses across 10 types
 with zero admits. The remaining gaps are:
 
 | Gap | Description | Blocked Operations | Impact |
 |-----|-------------|-------------------|--------|
 | **G1: Floating-point** | Cannot verify FP operations (sqrt, sin/cos, rounding) | 85/255 (33.3%) | 66.7% coverage ceiling |
 | **G2: Spec-to-impl** | Manual Coq specs (trusted, not machine-generated) | All 255 | Specification trustworthiness |
-| **G3: Edge cases** | NaN/overflow/infinity — ADDRESSED by Kani (225 harnesses) | ~~40~~ → 0 | **RESOLVED** |
+| **G3: Edge cases** | NaN/overflow/infinity — ADDRESSED by Kani (272 harnesses) | ~~40~~ → 0 | **RESOLVED** |
 | **G4: Transcendentals** | No sin/cos/tan/atan2 verification | ~10 operations | Rotation, angle functions |
 
 ## Tool 1: Kani (Bounded Model Checker)
@@ -371,7 +371,7 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  Layer 1: Algebraic Correctness (CURRENT)                           │
-│  ├── Verus (475 proof functions)                                    │
+│  ├── Verus (498 proof functions)                                    │
 │  │   └── Int specs → Z3 → algebraic properties                     │
 │  └── Coq (1837 theorems)                                             │
 │      └── R-based + Z-based → machine-checked proofs                │

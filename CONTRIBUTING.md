@@ -182,12 +182,12 @@ ls /tmp/test-frames/*.ppm | head -5
 
 ## Formal Verification
 
-This project uses a **hybrid verification architecture** with Verus, Coq, and Kani for machine-checked proofs of mathematical correctness. Together these tools provide **2573 formally verified theorems/harnesses** across all 9 primary math types (Vec2-4, Mat3-4, Color, Rect, Bounds, Utils) plus floating-point error bounds.
+This project uses a **hybrid verification architecture** with Verus, Coq, and Kani for machine-checked proofs of mathematical correctness. Together these tools provide **2968 formally verified theorems/harnesses** across all 9 primary math types (Vec2-4, Mat3-4, Color, Rect, Bounds, Utils) plus floating-point error bounds.
 
-- **Verus**: 475 proof functions (Rust-native verification)
-- **Coq (R-based + Z-based)**: 1512 theorems (0 admits, machine-checked)
+- **Verus**: 498 proof functions (Rust-native verification)
+- **Coq (R-based + Z-based)**: 1837 theorems (0 admits, machine-checked)
 - **Coq (FP error bounds)**: 361 theorems (Flocq 4.1.3, IEEE 754 binary32)
-- **Kani (CBMC)**: 225 proof harnesses (bit-precise IEEE 754 f32 verification)
+- **Kani (CBMC)**: 272 proof harnesses (bit-precise IEEE 754 f32 verification)
 
 For full details, see [`docs/verification/FORMAL_VERIFICATION.md`](docs/verification/FORMAL_VERIFICATION.md).
 

@@ -335,7 +335,7 @@ This distinction is critical for intellectual honesty:
   analysis concern)
 
 **How this relates to our existing proofs:**
-Our current 1512 theorems prove algebraic properties over exact arithmetic (R or Z).
+Our current 1837 theorems prove algebraic properties over exact arithmetic (R or Z).
 Floating-point proofs would be a **complementary layer** proving that the Rust
 implementation's floating-point results are close to the mathematically correct
 values established by our R-based proofs. The two layers together would provide:

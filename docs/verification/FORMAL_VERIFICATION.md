@@ -35,14 +35,14 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Coq (FP) | Kani (CBMC) | Total | Status |
 |-----------|-------|---------------|-----------------|----------|-------------|-------|--------|
-| Vec2 | 55 proof fns | 139 theorems | 76 theorems | — | 35 harnesses | 311 | TRIPLE VERIFIED |
-| Vec3 | 55 proof fns | 133 theorems | 54 theorems | — | 37 harnesses | 285 | TRIPLE VERIFIED |
+| Vec2 | 61 proof fns | 139 theorems | 76 theorems | — | 35 harnesses | 311 | TRIPLE VERIFIED |
+| Vec3 | 61 proof fns | 133 theorems | 54 theorems | — | 37 harnesses | 285 | TRIPLE VERIFIED |
 | Vec4 | 55 proof fns | 96 theorems | 39 theorems | — | 25 harnesses | 215 | TRIPLE VERIFIED |
 | Mat3 | 48 proof fns | 102 theorems | 25 theorems | — | 23 harnesses | 198 | TRIPLE VERIFIED |
 | Mat4 | 54 proof fns | 208 theorems | 50 theorems | — | 32 harnesses | 344 | TRIPLE VERIFIED |
 | Color | 64 proof fns | 164 theorems | 60 theorems | — | 47 harnesses | 335 | TRIPLE VERIFIED |
 | Rect | 52 proof fns | 218 theorems | 79 theorems | — | 35 harnesses | 384 | TRIPLE VERIFIED |
-| Bounds | 66 proof fns | 136 theorems | 70 theorems | — | 27 harnesses | 303 | TRIPLE VERIFIED |
+| Bounds | 70 proof fns | 136 theorems | 70 theorems | — | 27 harnesses | 303 | TRIPLE VERIFIED |
 | Utils | 33 proof fns | 59 theorems | 18 theorems | — | 11 harnesses | 121 | TRIPLE VERIFIED |
 | Complexity | — | 60 theorems | — | — | — | 60 | VERIFIED |
 | CrossType | — | 51 theorems | — | — | — | 51 | VERIFIED |
@@ -50,13 +50,13 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 | **Total** | **498 proof fns** | **1366 theorems** | **471 theorems** | **361 theorems** | **272 harnesses** | **2968** | **ACADEMIC** |
 
 > **Note**: Verus "proof fns" counts all `proof fn` declarations including helpers
-> (Vec2: 55, Vec3: 55, Vec4: 55, Mat3: 48 [22 base + 26 extended], Mat4: 54 [22 base + 32 extended],
-> Color: 57, Rect: 52, Bounds: 66, Utils: 33). Mat3/Mat4 extended proofs are in separate files
+> (Vec2: 61, Vec3: 61, Vec4: 55, Mat3: 48 [22 base + 26 extended], Mat4: 54 [22 base + 32 extended],
+> Color: 64, Rect: 52, Bounds: 70, Utils: 33). Mat3/Mat4 extended proofs are in separate files
 > (`mat3_extended_proofs.rs`, `mat4_extended_proofs.rs`) due to Z3 resource limits.
 > Coq "theorems" counts all `Theorem`, `Lemma`, and `Local Lemma` declarations
 > in the corresponding `_Proofs.v`, `_Compute.v`, `Complexity.v`, or `Vec_CrossType.v` files.
 > Kani "harnesses" counts all `#[kani::proof]` functions in `crates/rource-math/src/kani_proofs/`
-> (Vec2: 28, Vec3: 29, Vec4: 25, Mat3: 23, Mat4: 32, Color: 25, Rect: 27, Bounds: 25, Utils: 11).
+> (Vec2: 28, Vec3: 29, Vec4: 25, Mat3: 23, Mat4: 32, Color: 64, Rect: 52, Bounds: 70, Utils: 33).
 > Each harness verifies IEEE 754 safety properties (NaN-freedom, finiteness, postconditions)
 > via CBMC bounded model checking over all 2^32 f32 bit patterns within bounded domains.
 > Coq FP "theorems" counts all `Theorem` and `Lemma` declarations in `FP_*.v` files.
@@ -85,7 +85,7 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 |  rource-math (Rust)                                                       |
 |       |                                                                   |
 |       +---> Verus -----------> Algebraic Properties                       |
-|       |         (475 proof fns)  Vector space axioms, dot/cross           |
+|       |         (498 proof fns)  Vector space axioms, dot/cross           |
 |       |                          properties, matrix ring structure,       |
 |       |                          color operations, rect operations        |
 |       |                                                                   |
@@ -161,7 +161,7 @@ quaternion algebra, cross product identities).
 ## Quick Verification Commands
 
 ```bash
-# Kani proofs (225 harnesses)
+# Kani proofs (272 harnesses)
 # Requires: cargo install --locked kani-verifier && cargo kani setup
 # NOTE: Running all harnesses at once may SIGSEGV due to Kani compiler
 # memory limits. Run harnesses individually for reliability:
@@ -172,17 +172,17 @@ cargo kani -p rource-math --harness verify_lerp_no_nan
 cargo kani -p rource-math --harness verify_vec2_length_non_negative
 cargo kani -p rource-math --harness verify_mat4_determinant_finite  # ~60s (16 symbolic floats)
 
-# Verus proofs (475 proof functions, 11 files, ~30s total)
-/tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs   # 55 proof fns
-/tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs   # 55 proof fns
+# Verus proofs (498 proof functions, 11 files, ~30s total)
+/tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs   # 61 proof fns
+/tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs   # 61 proof fns
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs   # 55 proof fns
 /tmp/verus/verus --rlimit 20000000 crates/rource-math/proofs/mat3_proofs.rs  # 22 proof fns
 /tmp/verus/verus crates/rource-math/proofs/mat3_extended_proofs.rs  # 26 proof fns
 /tmp/verus/verus --rlimit 50000000 crates/rource-math/proofs/mat4_proofs.rs  # 22 proof fns
 /tmp/verus/verus crates/rource-math/proofs/mat4_extended_proofs.rs  # 32 proof fns
-/tmp/verus/verus crates/rource-math/proofs/color_proofs.rs  # 57 proof fns
+/tmp/verus/verus crates/rource-math/proofs/color_proofs.rs  # 64 proof fns
 /tmp/verus/verus crates/rource-math/proofs/rect_proofs.rs   # 52 proof fns
-/tmp/verus/verus crates/rource-math/proofs/bounds_proofs.rs  # 66 proof fns
+/tmp/verus/verus crates/rource-math/proofs/bounds_proofs.rs  # 70 proof fns
 /tmp/verus/verus crates/rource-math/proofs/utils_proofs.rs   # 33 proof fns
 
 # Coq proofs (1837 theorems, ~45s total)
@@ -322,7 +322,7 @@ See [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) for per-module breakdow
 
 **Verus Proofs:**
 *Version: 0.2026.01.23.1650a05*
-*Total proof functions: 475 (Vec2: 55, Vec3: 55, Vec4: 55, Mat3: 48 [22+26], Mat4: 54 [22+32], Color: 57, Rect: 52, Bounds: 66, Utils: 33)*
+*Total proof functions: 498 (Vec2: 61, Vec3: 61, Vec4: 55, Mat3: 48 [22+26], Mat4: 54 [22+32], Color: 64, Rect: 52, Bounds: 70, Utils: 33)*
 *Status: All proofs verified with 0 errors*
 
 **Coq Proofs (R-based, Phase 1 + Phase 2 + Phase 2b + Phase 4 + Phase 5 + Phase 6 + Phase 7):**
@@ -333,7 +333,7 @@ See [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) for per-module breakdow
 
 **Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5):**
 *Version: Coq 8.18*
-*Total theorems: 429 (Vec2: 62, Vec3: 54, Vec4: 39, Mat3: 25, Mat4: 50, Color: 60, Rect: 51, Bounds: 70, Utils: 18)*
+*Total theorems: 471 (Vec2: 76, Vec3: 54, Vec4: 39, Mat3: 25, Mat4: 50, Color: 60, Rect: 79, Bounds: 70, Utils: 18)*
 *Admits: 0*
 *Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
@@ -367,7 +367,7 @@ See [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) for per-module breakdow
 *Status: All 272 harnesses verified, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
 
 **Combined Verification:**
-*Total theorems/harnesses: 2968 across Verus, Coq, and Kani (Verus: 475, Coq R-based: 1366, Coq Z-based: 471, Coq FP: 361, Kani: 272)*
+*Total theorems/harnesses: 2968 across Verus, Coq, and Kani (Verus: 498, Coq R-based: 1366, Coq Z-based: 471, Coq FP: 361, Kani: 272)*
 *Total admits: 0*
 *Verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, Utils + CrossType*
 *Verified operations: 219/256 (85.5%) — see VERIFICATION_COVERAGE.md for per-module breakdown*

@@ -632,7 +632,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (2968 theorems/harnesses) |
 | `docs/verification/VERIFICATION_CHRONOLOGY.md` | Verification history: phases 1–7, completed milestones |
 | `docs/verification/VERIFICATION_FUTURE_WORK.md` | Verification roadmap: remaining items P1.4–P6, coverage projection |
-| `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (475 proof functions, 11 files) |
+| `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (498 proof functions, 11 files) |
 | `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 1837 theorems, development workflow) |
 | `docs/verification/VERIFICATION_COVERAGE.md` | Coverage metrics, limitations, floating-point assessment |
 | `docs/verification/WASM_EXTRACTION_PIPELINE.md` | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
@@ -1283,14 +1283,14 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 | Component | Verus | Coq (R-based) | Coq (Z-Compute) | Kani (CBMC) | Total | Status |
 |-----------|-------|---------------|-----------------|-------------|-------|--------|
-| Vec2 | 55 proof fns | 139 theorems | 76 theorems | 35 harnesses | 311 | TRIPLE VERIFIED |
-| Vec3 | 55 proof fns | 133 theorems | 54 theorems | 37 harnesses | 285 | TRIPLE VERIFIED |
+| Vec2 | 61 proof fns | 139 theorems | 76 theorems | 35 harnesses | 311 | TRIPLE VERIFIED |
+| Vec3 | 61 proof fns | 133 theorems | 54 theorems | 37 harnesses | 285 | TRIPLE VERIFIED |
 | Vec4 | 55 proof fns | 96 theorems | 39 theorems | 25 harnesses | 215 | TRIPLE VERIFIED |
 | Mat3 | 48 proof fns | 102 theorems | 25 theorems | 23 harnesses | 198 | TRIPLE VERIFIED |
 | Mat4 | 54 proof fns | 208 theorems | 50 theorems | 32 harnesses | 344 | TRIPLE VERIFIED |
-| Color | 57 proof fns | 164 theorems | 60 theorems | 47 harnesses | 335 | TRIPLE VERIFIED |
+| Color | 64 proof fns | 164 theorems | 60 theorems | 47 harnesses | 335 | TRIPLE VERIFIED |
 | Rect | 52 proof fns | 218 theorems | 79 theorems | 35 harnesses | 384 | TRIPLE VERIFIED |
-| Bounds | 66 proof fns | 136 theorems | 70 theorems | 27 harnesses | 303 | TRIPLE VERIFIED |
+| Bounds | 70 proof fns | 136 theorems | 70 theorems | 27 harnesses | 303 | TRIPLE VERIFIED |
 | Utils | 33 proof fns | 59 theorems | 18 theorems | 11 harnesses | 121 | TRIPLE VERIFIED |
 | Complexity | — | 60 theorems | — | — | 60 | VERIFIED |
 | CrossType | — | 51 theorems | — | — | 51 | VERIFIED |
@@ -1323,7 +1323,7 @@ cargo kani -p rource-math --harness verify_lerp_no_nan
 #      return nondeterministic ranges in CBMC.
 #      → Kani for structural/NaN/finiteness; Coq for mathematical correctness.
 
-# Verus proofs (475 proof functions)
+# Verus proofs (498 proof functions)
 /tmp/verus/verus crates/rource-math/proofs/vec2_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec3_proofs.rs
 /tmp/verus/verus crates/rource-math/proofs/vec4_proofs.rs

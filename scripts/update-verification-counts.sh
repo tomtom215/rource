@@ -475,6 +475,36 @@ CHECKS=(
     "docs/verification/SETUP_GUIDE.md|$COQ_ALL theorems|SETUP_GUIDE Coq all count"
     # SETUP_GUIDE.md - Verus count in tool table
     "docs/verification/SETUP_GUIDE.md|$VERUS_TOTAL proof functions|SETUP_GUIDE Verus tool table"
+    # README.md - Kani harness count in table
+    "README.md|$KANI_TOTAL harnesses|README Kani harnesses"
+    # README.md - FORMAL_VERIFICATION reference total
+    "README.md|$GRAND_TOTAL theorems/harnesses|README FV reference total"
+    # CONTRIBUTING.md - Verus count
+    "CONTRIBUTING.md|$VERUS_TOTAL proof functions|CONTRIBUTING Verus"
+    # CONTRIBUTING.md - Kani count
+    "CONTRIBUTING.md|$KANI_TOTAL proof harnesses|CONTRIBUTING Kani"
+    # CONTRIBUTING.md - grand total
+    "CONTRIBUTING.md|$GRAND_TOTAL formally verified|CONTRIBUTING grand total"
+    # VERUS_PROOFS.md - total
+    "docs/verification/VERUS_PROOFS.md|$VERUS_TOTAL proof functions verified|VERUS_PROOFS total"
+    # LESSONS_LEARNED.md - Verus
+    "docs/LESSONS_LEARNED.md|$VERUS_TOTAL proof|LESSONS_LEARNED Verus"
+    # LESSONS_LEARNED.md - Kani
+    "docs/LESSONS_LEARNED.md|$KANI_TOTAL harnesses|LESSONS_LEARNED Kani"
+    # RUST_VERIFICATION_LANDSCAPE.md - ADOPTED Kani
+    "docs/verification/RUST_VERIFICATION_LANDSCAPE.md|$KANI_TOTAL harnesses, 0 failures|LANDSCAPE ADOPTED Kani"
+    # RUST_VERIFICATION_LANDSCAPE.md - architecture Verus
+    "docs/verification/RUST_VERIFICATION_LANDSCAPE.md|$VERUS_TOTAL proof functions|LANDSCAPE architecture Verus"
+    # FORMAL_VERIFICATION.md - per-type Vec2 Verus
+    "docs/verification/FORMAL_VERIFICATION.md|Vec2 | $VERUS_VEC2 proof fns|FV per-type Vec2 Verus"
+    # FORMAL_VERIFICATION.md - per-type Bounds Verus
+    "docs/verification/FORMAL_VERIFICATION.md|Bounds | $VERUS_BOUNDS proof fns|FV per-type Bounds Verus"
+    # CLAUDE.md - per-type Vec2 Verus
+    "CLAUDE.md|Vec2 | $VERUS_VEC2 proof fns|CLAUDE per-type Vec2 Verus"
+    # CLAUDE.md - per-type Bounds Verus
+    "CLAUDE.md|Bounds | $VERUS_BOUNDS proof fns|CLAUDE per-type Bounds Verus"
+    # verus-verify.yml - total count comment
+    ".github/workflows/verus-verify.yml|$VERUS_TOTAL proof functions|verus-verify.yml total"
 )
 
 if [[ "$MODE" == "check" ]]; then
@@ -551,10 +581,35 @@ if [[ -f "$FV" ]]; then
     # (Z-based per-type is handled above by context-aware sed anchored to "Z-based Computational Bridge")
     # Per-type table Total row (update Verus, Kani, and grand totals)
     sed -i -E "s/\| \*\*[0-9]+ proof fns\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ theorems\*\* \| \*\*[0-9]+ harnesses\*\* \| \*\*[0-9]+\*\* \| \*\*ACADEMIC\*\*/| **$VERUS_TOTAL proof fns** | **$COQ_R_TOTAL theorems** | **$COQ_Z_TOTAL theorems** | **$COQ_FP_TOTAL theorems** | **$KANI_TOTAL harnesses** | **$GRAND_TOTAL** | **ACADEMIC**/" "$FV"
-    # Per-type table: update individual Verus counts per type that changed
+    # Per-type table: update ALL individual Verus counts
+    sed -i -E "s/\| Vec2 \| [0-9]+ proof fns \|/| Vec2 | $VERUS_VEC2 proof fns |/" "$FV"
+    sed -i -E "s/\| Vec3 \| [0-9]+ proof fns \|/| Vec3 | $VERUS_VEC3 proof fns |/" "$FV"
+    sed -i -E "s/\| Vec4 \| [0-9]+ proof fns \|/| Vec4 | $VERUS_VEC4 proof fns |/" "$FV"
+    sed -i -E "s/\| Mat3 \| [0-9]+ proof fns \|/| Mat3 | $VERUS_MAT3 proof fns |/" "$FV"
     sed -i -E "s/\| Mat4 \| [0-9]+ proof fns \|/| Mat4 | $VERUS_MAT4 proof fns |/" "$FV"
     sed -i -E "s/\| Color \| [0-9]+ proof fns \|/| Color | $VERUS_COLOR proof fns |/" "$FV"
     sed -i -E "s/\| Rect \| [0-9]+ proof fns \|/| Rect | $VERUS_RECT proof fns |/" "$FV"
+    sed -i -E "s/\| Bounds \| [0-9]+ proof fns \|/| Bounds | $VERUS_BOUNDS proof fns |/" "$FV"
+    sed -i -E "s/\| Utils \| [0-9]+ proof fns \|/| Utils | $VERUS_UTILS proof fns |/" "$FV"
+    # Architecture diagram Verus count
+    sed -i -E "s/\(([0-9]+) proof fns\)  Vector space/(${VERUS_TOTAL} proof fns)  Vector space/" "$FV"
+    # Code block per-file Verus counts
+    sed -i -E "s/vec2_proofs\.rs   # [0-9]+ proof fns/vec2_proofs.rs   # $VERUS_VEC2 proof fns/" "$FV"
+    sed -i -E "s/vec3_proofs\.rs   # [0-9]+ proof fns/vec3_proofs.rs   # $VERUS_VEC3 proof fns/" "$FV"
+    sed -i -E "s/vec4_proofs\.rs   # [0-9]+ proof fns/vec4_proofs.rs   # $VERUS_VEC4 proof fns/" "$FV"
+    sed -i -E "s/color_proofs\.rs  # [0-9]+ proof fns/color_proofs.rs  # $VERUS_COLOR proof fns/" "$FV"
+    sed -i -E "s/bounds_proofs\.rs  # [0-9]+ proof fns/bounds_proofs.rs  # $VERUS_BOUNDS proof fns/" "$FV"
+    # Note line per-type Verus breakdown (anchored to "Mat3/Mat4 extended" context unique to this line)
+    sed -i -E "/Mat3\/Mat4 extended proofs/{s/\(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+/(Vec2: $VERUS_VEC2, Vec3: $VERUS_VEC3, Vec4: $VERUS_VEC4/}" "$FV"
+    sed -i -E "/Mat3\/Mat4 extended proofs/{s/Color: [0-9]+, Rect: [0-9]+, Bounds: [0-9]+, Utils: [0-9]+/Color: $VERUS_COLOR, Rect: $VERUS_RECT, Bounds: $VERUS_BOUNDS, Utils: $VERUS_UTILS/}" "$FV"
+    # Verus footer total (anchored to unique "Total proof functions:" prefix)
+    sed -i -E "s/\*Total proof functions: [0-9]+/\*Total proof functions: $VERUS_TOTAL/" "$FV"
+    # Combined footer Verus count
+    sed -i -E "s/Verus: [0-9]+, Coq R-based/Verus: $VERUS_TOTAL, Coq R-based/" "$FV"
+    # Kani footer per-type (anchored to "Total harnesses:" context)
+    sed -i -E "/\*Total harnesses: [0-9]+/{s/Color: [0-9]+, Rect: [0-9]+, Bounds: [0-9]+, Utils: [0-9]+/Color: $KANI_COLOR, Rect: $KANI_RECT, Bounds: $KANI_BOUNDS, Utils: $KANI_UTILS/}" "$FV"
+    # Z-based footer total and per-type (anchored to "Z-based Computational Bridge" section)
+    sed -i -E "/Z-based Computational Bridge, Phase/{n;n;s/\*Total theorems: [0-9]+/\*Total theorems: $COQ_Z_TOTAL/}" "$FV"
     # Per-type table: update Kani harness counts per type
     sed -i -E "/\| Mat4 \|.*\| [0-9]+ harnesses/{s/[0-9]+ harnesses \| [0-9]+ \|/$KANI_MAT4 harnesses | $TOTAL_MAT4 |/}" "$FV"
     sed -i -E "/\| Color \|.*\| [0-9]+ harnesses/{s/[0-9]+ harnesses \| [0-9]+ \|/$KANI_COLOR harnesses | $TOTAL_COLOR |/}" "$FV"
@@ -697,6 +752,20 @@ if [[ -f "$CM" ]]; then
     sed -i -E "/\| Utils \|/s/[0-9]+ theorems \| [0-9]+ theorems \| [0-9]+ harnesses \| [0-9]+/$COQ_R_UTILS theorems | $COQ_Z_UTILS theorems | $KANI_UTILS harnesses | $TOTAL_UTILS/" "$CM"
     # Per-type table: FP Foundations row
     sed -i -E "/\| FP Foundations \|/s/\| [0-9]+ \| MACHINE-CHECKED/| $COQ_FP_TOTAL | MACHINE-CHECKED/" "$CM"
+    # Per-type table: update Verus proof fn counts (first column after type name)
+    sed -i -E "/\| Vec2 \|/s/\| [0-9]+ proof fns \|/| $VERUS_VEC2 proof fns |/" "$CM"
+    sed -i -E "/\| Vec3 \|/s/\| [0-9]+ proof fns \|/| $VERUS_VEC3 proof fns |/" "$CM"
+    sed -i -E "/\| Vec4 \|/s/\| [0-9]+ proof fns \|/| $VERUS_VEC4 proof fns |/" "$CM"
+    sed -i -E "/\| Mat3 \|/s/\| [0-9]+ proof fns \|/| $VERUS_MAT3 proof fns |/" "$CM"
+    sed -i -E "/\| Mat4 \|/s/\| [0-9]+ proof fns \|/| $VERUS_MAT4 proof fns |/" "$CM"
+    sed -i -E "/\| Color \|/s/\| [0-9]+ proof fns \|/| $VERUS_COLOR proof fns |/" "$CM"
+    sed -i -E "/\| Rect \|/s/\| [0-9]+ proof fns \|/| $VERUS_RECT proof fns |/" "$CM"
+    sed -i -E "/\| Bounds \|/s/\| [0-9]+ proof fns \|/| $VERUS_BOUNDS proof fns |/" "$CM"
+    sed -i -E "/\| Utils \|/s/\| [0-9]+ proof fns \|/| $VERUS_UTILS proof fns |/" "$CM"
+    # Verus code block comment
+    sed -i -E "s/# Verus proofs \([0-9]+ proof functions/# Verus proofs ($VERUS_TOTAL proof functions/" "$CM"
+    # VERUS_PROOFS.md doc reference
+    sed -i -E "s/Verus theorem tables \([0-9]+ proof functions/Verus theorem tables ($VERUS_TOTAL proof functions/" "$CM"
     # Coq command line comment (673/681/697 → correct)
     sed -i -E "s/# Coq proofs \([0-9]+ theorems/# Coq proofs ($COQ_COMBINED theorems/" "$CM"
     # COQ_PROOFS.md doc reference
@@ -714,12 +783,15 @@ if [[ -f "$RM" ]]; then
     sed -i -E "/Coq \(R-based\)/s/[0-9]+ theorems/$COQ_R_TOTAL theorems/" "$RM"
     # Coq Z-based row (matches "N theorems" on Coq Z-based line)
     sed -i -E "/Coq \(Z-based\)/s/[0-9]+ theorems/$COQ_Z_TOTAL theorems/" "$RM"
-    # Kani row (if present)
+    # Kani row (format: "N harnesses, 0 failures" or "N harnesses | IEEE")
     sed -i -E "s/[0-9]+ harnesses, 0 failures/$KANI_TOTAL harnesses, 0 failures/" "$RM"
+    sed -i -E "/Kani \(CBMC\)/s/[0-9]+ harnesses/$KANI_TOTAL harnesses/" "$RM"
     # Combined/total bold references "**N theorems/harnesses**"
     sed -i -E "s/\*\*[0-9]+ theorems\/harnesses\*\*/**$GRAND_TOTAL theorems\/harnesses**/" "$RM"
     # Combined/total non-bold references
     sed -i -E "s/[0-9]+ formally verified theorems/$GRAND_TOTAL formally verified theorems/" "$RM"
+    # FORMAL_VERIFICATION.md doc reference "(N theorems/harnesses)"
+    sed -i -E "s/FORMAL_VERIFICATION\.md \| Formal verification overview and index \([0-9]+ theorems\/harnesses\)/FORMAL_VERIFICATION.md | Formal verification overview and index ($GRAND_TOTAL theorems\/harnesses)/" "$RM"
     # Optimization phases
     sed -i -E "s/[0-9]+ optimization phases/$OPT_PHASES optimization phases/" "$RM"
     echo "  Done."
@@ -884,6 +956,100 @@ if [[ -f "$SG" ]]; then
     sed -i -E "s/[0-9]+ formally verified theorems\/harnesses \(Verus: [0-9]+, Coq: [0-9]+, Kani: [0-9]+\)/$GRAND_TOTAL formally verified theorems\/harnesses (Verus: $VERUS_TOTAL, Coq: $COQ_ALL, Kani: $KANI_TOTAL)/" "$SG"
     # Tool table Verus count
     sed -i -E "s/Rust formal verification \([0-9]+ proof functions\)/Rust formal verification ($VERUS_TOTAL proof functions)/" "$SG"
+    echo "  Done."
+fi
+
+# --- CONTRIBUTING.md ---
+CT="$PROJECT_ROOT/CONTRIBUTING.md"
+if [[ -f "$CT" ]]; then
+    echo "Updating CONTRIBUTING.md..."
+    sed -i -E "s/\*\*[0-9]+ formally verified theorems\/harnesses\*\*/**$GRAND_TOTAL formally verified theorems\/harnesses**/" "$CT"
+    sed -i -E "s/\*\*Verus\*\*: [0-9]+ proof functions/**Verus**: $VERUS_TOTAL proof functions/" "$CT"
+    sed -i -E "s/\*\*Coq \(R-based \+ Z-based\)\*\*: [0-9]+ theorems/**Coq (R-based + Z-based)**: $COQ_COMBINED theorems/" "$CT"
+    sed -i -E "s/\*\*Kani \(CBMC\)\*\*: [0-9]+ proof harnesses/**Kani (CBMC)**: $KANI_TOTAL proof harnesses/" "$CT"
+    echo "  Done."
+fi
+
+# --- VERUS_PROOFS.md ---
+VP="$PROJECT_ROOT/docs/verification/VERUS_PROOFS.md"
+if [[ -f "$VP" ]]; then
+    echo "Updating VERUS_PROOFS.md..."
+    sed -i -E "s/\*\*Total: [0-9]+ proof functions verified/\*\*Total: $VERUS_TOTAL proof functions verified/" "$VP"
+    sed -i -E "s/\*Total proof functions: [0-9]+ \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+/\*Total proof functions: $VERUS_TOTAL (Vec2: $VERUS_VEC2, Vec3: $VERUS_VEC3, Vec4: $VERUS_VEC4, Mat3: $VERUS_MAT3/" "$VP"
+    sed -i -E "s/Color: [0-9]+, Rect: [0-9]+, Bounds: [0-9]+, Utils: [0-9]+\)\*/Color: $VERUS_COLOR, Rect: $VERUS_RECT, Bounds: $VERUS_BOUNDS, Utils: $VERUS_UTILS)*/" "$VP"
+    # Per-type table Verus counts
+    sed -i -E "/rource-math\/Vec2/s/\| [0-9]+ \| [0-9]+/| $VERUS_VEC2 | 87+/" "$VP"
+    sed -i -E "/rource-math\/Vec3/s/\| [0-9]+ \| [0-9]+/| $VERUS_VEC3 | 89+/" "$VP"
+    sed -i -E "/rource-math\/Color/s/VERIFIED \| [0-9]+/VERIFIED | $VERUS_COLOR/" "$VP"
+    sed -i -E "/rource-math\/Bounds/s/VERIFIED \| [0-9]+/VERIFIED | $VERUS_BOUNDS/" "$VP"
+    echo "  Done."
+fi
+
+# --- LESSONS_LEARNED.md ---
+LL="$PROJECT_ROOT/docs/LESSONS_LEARNED.md"
+if [[ -f "$LL" ]]; then
+    echo "Updating LESSONS_LEARNED.md..."
+    sed -i -E "s/Verus \| ADOPT \([0-9]+ proof/Verus | ADOPT ($VERUS_TOTAL proof/" "$LL"
+    sed -i -E "s/Coq \| ADOPT \([0-9]+ theorems: [0-9]+ R-based \+ [0-9]+ Z-based\)/Coq | ADOPT ($COQ_COMBINED theorems: $COQ_R_TOTAL R-based + $COQ_Z_TOTAL Z-based)/" "$LL"
+    sed -i -E "s/Kani \(CBMC\) \| ADOPT \([0-9]+ harnesses\)/Kani (CBMC) | ADOPT ($KANI_TOTAL harnesses)/" "$LL"
+    echo "  Done."
+fi
+
+# --- RUST_VERIFICATION_LANDSCAPE.md (additional patterns) ---
+RL="$PROJECT_ROOT/docs/verification/RUST_VERIFICATION_LANDSCAPE.md"
+if [[ -f "$RL" ]]; then
+    echo "Updating RUST_VERIFICATION_LANDSCAPE.md (additional)..."
+    # ADOPTED line with harness count
+    sed -i -E "s/\*\*ADOPTED\*\* \([0-9]+ harnesses, 0 failures\)/**ADOPTED** ($KANI_TOTAL harnesses, 0 failures)/" "$RL"
+    # Architecture diagram Verus count
+    sed -i -E "s/Verus \([0-9]+ proof functions\)/Verus ($VERUS_TOTAL proof functions)/" "$RL"
+    # G3 edge cases Kani count
+    sed -i -E "s/ADDRESSED by Kani \([0-9]+ harnesses\)/ADDRESSED by Kani ($KANI_TOTAL harnesses)/" "$RL"
+    echo "  Done."
+fi
+
+# --- VERIFICATION_COVERAGE.md (additional narrative) ---
+VC="$PROJECT_ROOT/docs/verification/VERIFICATION_COVERAGE.md"
+if [[ -f "$VC" ]]; then
+    echo "Updating VERIFICATION_COVERAGE.md (additional)..."
+    sed -i -E "s/finiteness \([0-9]+ harnesses\)/finiteness ($KANI_TOTAL harnesses)/" "$VC"
+    echo "  Done."
+fi
+
+# --- SETUP_GUIDE.md (file tree comments) ---
+SG="$PROJECT_ROOT/docs/verification/SETUP_GUIDE.md"
+if [[ -f "$SG" ]]; then
+    echo "Updating SETUP_GUIDE.md file tree..."
+    sed -i -E "s/vec2_proofs\.rs .*# Verus: Vec2 \([0-9]+ proof fns\)/vec2_proofs.rs          # Verus: Vec2 ($VERUS_VEC2 proof fns)/" "$SG"
+    sed -i -E "s/vec3_proofs\.rs .*# Verus: Vec3 \([0-9]+ proof fns\)/vec3_proofs.rs          # Verus: Vec3 ($VERUS_VEC3 proof fns)/" "$SG"
+    sed -i -E "s/vec4_proofs\.rs .*# Verus: Vec4 \([0-9]+ proof fns\)/vec4_proofs.rs          # Verus: Vec4 ($VERUS_VEC4 proof fns)/" "$SG"
+    sed -i -E "s/color_proofs\.rs .*# Verus: Color \([0-9]+ proof fns\)/color_proofs.rs         # Verus: Color ($VERUS_COLOR proof fns)/" "$SG"
+    sed -i -E "s/bounds_proofs\.rs .*# Verus: Bounds \([0-9]+ proof fns\)/bounds_proofs.rs        # Verus: Bounds ($VERUS_BOUNDS proof fns)/" "$SG"
+    # Verus heading count
+    sed -i -E "s/# Verus \([0-9]+ proof functions/# Verus ($VERUS_TOTAL proof functions/" "$SG"
+    echo "  Done."
+fi
+
+# --- FLOATING_POINT_VERIFICATION.md (additional narrative) ---
+FPV="$PROJECT_ROOT/docs/verification/FLOATING_POINT_VERIFICATION.md"
+if [[ -f "$FPV" ]]; then
+    echo "Updating FLOATING_POINT_VERIFICATION.md (additional)..."
+    sed -i -E "s/[0-9]+ theorems prove algebraic/$COQ_COMBINED theorems prove algebraic/" "$FPV"
+    echo "  Done."
+fi
+
+# --- verus-verify.yml (CI workflow step names) ---
+VY="$PROJECT_ROOT/.github/workflows/verus-verify.yml"
+if [[ -f "$VY" ]]; then
+    echo "Updating verus-verify.yml..."
+    sed -i -E "s/Verify all 11 proof files \([0-9]+ proof functions\)/Verify all 11 proof files ($VERUS_TOTAL proof functions)/" "$VY"
+    sed -i -E "s/Verify Vec2 Proofs \([0-9]+ proof fns\)/Verify Vec2 Proofs ($VERUS_VEC2 proof fns)/" "$VY"
+    sed -i -E "s/Verify Vec3 Proofs \([0-9]+ proof fns\)/Verify Vec3 Proofs ($VERUS_VEC3 proof fns)/" "$VY"
+    sed -i -E "s/Verify Vec4 Proofs \([0-9]+ proof fns\)/Verify Vec4 Proofs ($VERUS_VEC4 proof fns)/" "$VY"
+    sed -i -E "s/Verify Color Proofs \([0-9]+ proof fns\)/Verify Color Proofs ($VERUS_COLOR proof fns)/" "$VY"
+    sed -i -E "s/Verify Rect Proofs \([0-9]+ proof fns\)/Verify Rect Proofs ($VERUS_RECT proof fns)/" "$VY"
+    sed -i -E "s/Verify Bounds Proofs \([0-9]+ proof fns\)/Verify Bounds Proofs ($VERUS_BOUNDS proof fns)/" "$VY"
+    sed -i -E "s/Verify Utils Proofs \([0-9]+ proof fns\)/Verify Utils Proofs ($VERUS_UTILS proof fns)/" "$VY"
     echo "  Done."
 fi
 

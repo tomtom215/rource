@@ -256,7 +256,7 @@ the f32 translation assumptions is the recommended best practice per Verus maint
 The 14.5% of operations not formally verified (those requiring floating-point,
 transcendentals, iterators, or complex geometry) will remain covered by:
 - Unit tests (100% coverage)
-- Kani CBMC harnesses for NaN-freedom and finiteness (225 harnesses)
+- Kani CBMC harnesses for NaN-freedom and finiteness (272 harnesses)
 - Property-based testing
 - Manual review for IEEE 754 compliance
 
