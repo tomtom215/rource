@@ -717,14 +717,16 @@ fn verify_vec3_element_sum_finite() {
 // ============================================================================
 
 /// **Finiteness**: `element_product()` with bounded inputs.
+/// Bound is 1e12 (not SAFE_BOUND) because x*y*z can reach bound^3;
+/// 1e12^3 = 1e36 < f32::MAX (3.4e38), while 1e18^3 = 1e54 overflows.
 #[kani::proof]
 fn verify_vec3_element_product_finite() {
     let x: f32 = kani::any();
     let y: f32 = kani::any();
     let z: f32 = kani::any();
-    kani::assume(x.is_finite() && x.abs() < SAFE_BOUND);
-    kani::assume(y.is_finite() && y.abs() < SAFE_BOUND);
-    kani::assume(z.is_finite() && z.abs() < SAFE_BOUND);
+    kani::assume(x.is_finite() && x.abs() < 1e12);
+    kani::assume(y.is_finite() && y.abs() < 1e12);
+    kani::assume(z.is_finite() && z.abs() < 1e12);
     let v = Vec3::new(x, y, z);
     let p = v.element_product();
     assert!(p.is_finite(), "element_product() not finite");

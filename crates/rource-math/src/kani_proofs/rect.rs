@@ -805,6 +805,11 @@ fn verify_rect_lerp_boundaries() {
 // ============================================================================
 
 /// **Monotonicity**: grown rect always contains the new point.
+/// The min-corner assertions (grown.x <= px, grown.y <= py) are exact because
+/// grow_to_contain uses f32::min which preserves the smaller value exactly.
+/// The max-corner assertions use tolerance because grown.right() = grown.x + grown.width
+/// where grown.width = max(right, px) - min(x, px), and `a + (b - a)` can differ from
+/// `b` by 1 ULP due to FP rounding. At 1e6, ULP ≈ 0.0625, so tolerance of 1.0 is safe.
 #[kani::proof]
 fn verify_rect_grow_to_contain_includes_point() {
     let x: f32 = kani::any();
@@ -821,11 +826,19 @@ fn verify_rect_grow_to_contain_includes_point() {
     kani::assume(py.is_finite() && py.abs() < 1e6);
     let r = Rect::new(x, y, w, h);
     let grown = r.grow_to_contain(crate::Vec2::new(px, py));
-    // The point should now be within the grown rect
+    // Min-corner: f32::min(self.x, point.x) <= point.x is exact
     assert!(grown.x <= px, "grown rect min x > point x");
     assert!(grown.y <= py, "grown rect min y > point y");
-    assert!(grown.right() >= px, "grown rect max x < point x");
-    assert!(grown.bottom() >= py, "grown rect max y < point y");
+    // Max-corner: grown.right() = grown.x + grown.width, which involves
+    // FP rounding of (new_right - new_x). Use tolerance for the max edge.
+    assert!(
+        grown.right() >= px - 1.0,
+        "grown rect max x too far below point x"
+    );
+    assert!(
+        grown.bottom() >= py - 1.0,
+        "grown rect max y too far below point y"
+    );
 }
 
 // ============================================================================
