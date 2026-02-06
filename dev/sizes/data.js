@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770400515419,
+  "lastUpdate": 1770408068319,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5483,6 +5483,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/711e6cbb8a8fb80760105f90ab32a71c43a27b8d"
         },
         "date": 1770400514938,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "60820034d8cf3395f788d96660b67c9804b57e66",
+          "message": "Merge pull request #267 from tomtom215/claude/rust-wasm-gource-continued-7vWaa\n\nComplete mutation testing analysis with 100% adjusted score",
+          "timestamp": "2026-02-06T14:59:11-05:00",
+          "tree_id": "0cf97cde1a361e042820f82138d2fe1289b89d4a",
+          "url": "https://github.com/tomtom215/rource/commit/60820034d8cf3395f788d96660b67c9804b57e66"
+        },
+        "date": 1770408067914,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
