@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770345062837,
+  "lastUpdate": 1770393155267,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5405,6 +5405,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/e01b9db4b7e9af1d9c5171d841a776ed83324c9f"
         },
         "date": 1770345062186,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "87031ceaf55089a7548af2148eff32323fd1499f",
+          "message": "Merge pull request #265 from tomtom215/claude/rource-continuation-wPcrQ\n\nAdd 59 new formally verified proofs across Vec2/3, Color, Bounds",
+          "timestamp": "2026-02-06T10:50:31-05:00",
+          "tree_id": "2ba408ee662117c5eec42ef630177abf24dfbf7d",
+          "url": "https://github.com/tomtom215/rource/commit/87031ceaf55089a7548af2148eff32323fd1499f"
+        },
+        "date": 1770393154653,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
