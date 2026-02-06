@@ -14,7 +14,7 @@ We present the first triple-verified Rust math library combining three
 complementary verification approaches — Verus (SMT/Z3 algebraic proofs),
 Coq (machine-checked interactive proofs), and Kani (CBMC bit-precise IEEE 754
 model checking) — achieving 2968 machine-checked theorems/harnesses with zero
-admits across 10 types and 219/256 public operations (85.5% coverage).
+admits across 9 types and 219/256 public operations (85.5% coverage).
 
 ### Evidence
 
@@ -24,7 +24,7 @@ admits across 10 types and 219/256 public operations (85.5% coverage).
 | Machine-checked | Coq | 2198 theorems | Mathematical correctness over R and Z, FP error bounds (Flocq), complexity (ICC) | Manual specification |
 | Bit-precise | Kani (CBMC) | 272 harnesses | NaN-freedom, finiteness, overflow safety, postconditions at IEEE 754 f32 level | Bounded domain |
 
-**Source files**: 11 Verus `.rs` files, 37 Coq `.v` files, 9 Kani modules in
+**Source files**: 11 Verus `.rs` files, 46 Coq `.v` files, 9 Kani modules in
 `crates/rource-math/src/kani_proofs/`.
 
 ### Generalizable Insight
@@ -71,7 +71,7 @@ Z3's `nonlinear_arith` cannot solve this in one step.
    of the 9 product terms (81 calls) plus `distrib_2` for accumulation (54 calls)
 3. Z3 assembles the equalities into the full matrix identity
 
-**Scale**: Mat3 requires ~200 lemma calls. Mat4 requires ~300+ calls and had to
+**Scale**: Mat3 requires 145 lemma calls. Mat4 requires ~300+ calls and had to
 be split into a separate file (`mat4_proofs.rs` / `mat4_extended_proofs.rs`)
 because combining these proofs with other `nonlinear_arith` proofs exceeded Z3's
 resource limits in a single verification run.
@@ -115,7 +115,7 @@ to executable code.
 ~15 minutes. After separating specs from proofs, total compilation is ~45 seconds
 (32 `.vo` files). This is a >300x improvement.
 
-**Source**: `crates/rource-math/proofs/coq/` (37 files total)
+**Source**: `crates/rource-math/proofs/coq/` (46 files total)
 
 ### Generalizable Insight
 
@@ -276,9 +276,9 @@ with a decision framework for Coq-to-WASM compilation.
 
 | ID | Contribution | Evidence | Generalizable Insight |
 |----|-------------|----------|----------------------|
-| C1 | Triple-verification architecture | 2968 theorems, 3 tools, 10 types | Complementary verification tools |
-| C2 | Lemma decomposition for polynomial identities | 200-300+ calls per matrix proof | SMT workaround for nonlinear arithmetic |
-| C3 | Layered Coq with >300x compilation speedup | 37 files, 3 layers, 45s total | Spec/proof separation pattern |
+| C1 | Triple-verification architecture | 2968 theorems, 3 tools, 9 types | Complementary verification tools |
+| C2 | Lemma decomposition for polynomial identities | 145-300+ calls per matrix proof | SMT workaround for nonlinear arithmetic |
+| C3 | Layered Coq with >300x compilation speedup | 46 files, 3 layers, 45s total | Spec/proof separation pattern |
 | C4 | 4 IEEE 754 edge-case bugs | Concrete f32 failures documented | Algebraic proofs insufficient for FP |
 | C5 | 361 FP error bound theorems | Flocq 4.1.3, zero admits | Machine-checked FP error analysis |
 | C6 | Coq-to-WASM pipeline (6.8 KB) | 9 paths evaluated, 2 tested | End-to-end verified extraction |

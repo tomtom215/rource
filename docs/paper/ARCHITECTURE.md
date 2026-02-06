@@ -114,15 +114,14 @@ Theorem add_error: forall x y : R,
 
 Composition theorems accumulate error through operation chains.
 
-**Organization**: 37 Coq files, compiled in ~45 seconds:
+**Organization**: 46 Coq files, compiled in ~45 seconds:
 ```
-Spec files:    Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v
-Proof files:   Vec2_Proofs.v Vec3_Proofs.v ... Bounds_Proofs.v Complexity.v
-Compute files: Vec2_Compute.v Vec3_Compute.v ... Bounds_Compute.v
-FP files:      FP_Common.v FP_Rounding.v FP_ErrorBounds.v FP_Vec.v FP_Mat.v
-               FP_Color.v FP_Rect.v FP_Bounds.v FP_Utils.v
-Cross-type:    CrossType.v
-Extraction:    RourceMath_Extract.v
+Spec files (9):    Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v
+Proof files (10):  Vec2_Proofs.v Vec3_Proofs.v ... Bounds_Proofs.v Complexity.v Vec_CrossType.v
+Compute files (9): Vec2_Compute.v Vec3_Compute.v ... Bounds_Compute.v Utils_Compute.v
+FP files (9):      FP_Common.v FP_Rounding.v FP_ErrorBounds.v FP_Vec.v FP_Mat.v
+                   FP_Color.v FP_Rect.v FP_Bounds.v FP_Utils.v
+Extract files (9): Vec2_Extract.v ... Rect_Extract.v RourceMath_Extract.v Vec2_VerifiedExtract.v
 ```
 
 ### Layer 3: Kani Bit-Precise Verification (272 harnesses)

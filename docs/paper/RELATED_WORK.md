@@ -77,7 +77,7 @@ Also: CryptOpt, PLDI 2023 (Distinguished Paper).
 - **FP support**: **Yes — core focus.** IEEE 754 backward/mixed error bounds via Flocq, accounting for underflow. "No assumptions except a low-level formal model of IEEE-754 arithmetic."
 - **Connects to C via VST** (Verified Software Toolchain).
 
-**Key difference**: LAProof provides deeper FP error analysis for a narrower set of BLAS operations. rource-math covers 10 geometric types with triple verification and broader property coverage. rource-math's FP layer (361 theorems) is inspired by LAProof's methodology.
+**Key difference**: LAProof provides deeper FP error analysis for a narrower set of BLAS operations. rource-math covers 9 types with triple verification and broader property coverage. rource-math's FP layer (361 theorems) is inspired by LAProof's methodology.
 
 ### 5. VCFloat2 (Kellison & Appel)
 
@@ -144,7 +144,7 @@ Also: CryptOpt, PLDI 2023 (Distinguished Paper).
 
 3. **Concrete implementation verification**: Unlike mathlib4 (abstract math) or RustBelt (type system meta-theory), rource-math verifies properties of a shipped Rust library.
 
-4. **Zero admits at scale**: 2,968 machine-checked theorems/harnesses across four verification systems, all with zero admits.
+4. **Zero admits at scale**: 2,968 machine-checked theorems/harnesses across three verification tools (Verus, Coq, Kani), all with zero admits.
 
 5. **Multi-domain property coverage**: Algebraic, geometric, semantic, AND floating-point error properties — all verified for the same types.
 

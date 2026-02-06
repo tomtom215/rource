@@ -95,7 +95,7 @@ For comparison:
 | Tool | Total Time | Parallelizable | Per-Proof Average |
 |------|-----------|----------------|-------------------|
 | Verus (11 files) | ~15 seconds | Yes (per file) | ~30ms |
-| Coq (37 files) | ~45 seconds | Yes (per layer) | ~20ms |
+| Coq (46 files) | ~45 seconds | Yes (per layer) | ~20ms |
 | Kani (272 harnesses) | ~4 hours total | Yes (per harness) | ~50 seconds |
 
 Kani is the bottleneck: each harness requires CBMC to bit-blast f32
@@ -106,10 +106,15 @@ In CI, we run a subset of representative harnesses (~30 minutes).
 
 ### Overlap Analysis
 
-We measured how many properties are verified by exactly 1, 2, or 3 tools:
+We estimated how many properties are verified by exactly 1, 2, or 3 tools.
+Counts are approximate because the three tools use different specification
+granularities (a single Verus `proof fn` may correspond to multiple Coq
+theorems or vice versa). We count at the *property* level (e.g., "Vec2::add
+commutativity" = 1 property regardless of how many tool-specific artifacts
+verify it):
 
-| Verification Depth | Properties | Example |
-|--------------------|-----------|---------|
+| Verification Depth | Properties (est.) | Example |
+|--------------------|-------------------|---------|
 | All 3 tools | ~140 | Vec2::add commutativity (Verus + Coq + Kani) |
 | 2 tools (Verus + Coq) | ~79 | Mat4::determinant identity (no Kani analog) |
 | 2 tools (Coq + Kani) | ~30 | Complex formula correctness |
@@ -159,11 +164,15 @@ produce identical native code.
 | Extracted WASM size | 6.8 KB |
 | Production WASM size | ~1 MB (full application) |
 | Extraction coverage | 8 types (all Z-based operations) |
-| Runtime overhead | Not yet benchmarked (see Future Work) |
+| Runtime overhead | Proof-of-concept; benchmarking is future work |
 
-The extracted WASM library is operational: it accepts integer inputs,
-performs computations using the Z-based definitions, and returns results.
-The 6.8 KB size makes it suitable for embedding in web applications.
+The extracted WASM library is a proof-of-concept demonstrating the
+end-to-end pipeline from Coq specifications to deployable WebAssembly.
+It accepts integer inputs, performs computations using the Z-based
+definitions, and returns correct results. The 6.8 KB size makes it
+suitable for embedding in web applications. Comparative benchmarking
+against the production Rust-compiled WASM module is left as future work,
+as CPP focuses on verification methodology rather than runtime performance.
 
 ## 6.6 Mutation Testing
 

@@ -53,7 +53,7 @@ Z3 can verify the final assembly.
 For 3x3 matrices, the proof requires:
 - 9 component-wise sub-proofs
 - Per component: 9 `mul_assoc_3` calls + 6 `distrib_2` calls
-- Total: ~135 explicit lemma calls + 9 `distrib_3_right` helper calls
+- Total: 145 explicit lemma calls (72 `mul_assoc_3` + 48 `distrib_2` + 24 `distrib_3_right` + 1 `assoc_m0`)
 - Source: `crates/rource-math/proofs/mat3_proofs.rs:269-430`
 
 For 4x4 matrices, the proof requires:
@@ -145,12 +145,11 @@ seconds; FP files in ~12 seconds; extraction in ~5 seconds.
 | Layer | Files | Theorems | Purpose |
 |-------|-------|----------|---------|
 | Spec (Layer 1a) | 9 | 0 | Record definitions, operations |
-| Proof (Layer 1b) | 10 | 1,366 | R-based mathematical proofs |
+| Proof (Layer 1b) | 10 | 1,366 | R-based proofs (incl. Complexity, CrossType) |
 | Compute (Layer 2) | 9 | 471 | Z-based extractable definitions |
 | FP (Layer FP) | 9 | 361 | Flocq IEEE 754 error bounds |
-| Cross-type | 1 | 51 | Inter-type properties |
-| Extraction | 1 | 0 | OCaml/WASM output |
-| **Total** | **37** | **2,198** | |
+| Extraction | 9 | 0 | Per-type + top-level OCaml/WASM output |
+| **Total** | **46** | **2,198** | |
 
 ---
 

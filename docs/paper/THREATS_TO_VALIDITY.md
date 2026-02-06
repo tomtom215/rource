@@ -220,10 +220,11 @@ contains a soundness bug, proofs may be invalid.
 
 ### Mitigations
 
-1. **Dual verification**: Every property verified by Verus (498 proof fns) is
-   *also* verified by Coq (1366 R-based + 471 Z-based theorems). A Z3
-   soundness bug would need to coincide with a Coq proof error for any
-   property to be incorrectly verified.
+1. **Dual verification**: The majority of properties verified by Verus (498
+   proof fns) have corresponding Coq theorems (1366 R-based + 471 Z-based
+   theorems), though the mapping is not strictly 1:1 due to differing
+   specification granularity. A Z3 soundness bug would need to coincide
+   with a Coq proof error for a shared property to be incorrectly verified.
 
 2. **Different proof strategies**: Verus uses `nonlinear_arith` and custom
    lemma decomposition; Coq uses tactics (`ring`, `field`, `lra`, custom
@@ -281,7 +282,7 @@ boundaries.
 
 ### Threat: Results May Not Generalize Beyond Graphics Math
 
-rource-math is a specific domain (graphics/visualization math with 10 types).
+rource-math is a specific domain (graphics/visualization math with 9 types).
 The triple-verification methodology may not generalize to:
 
 - **Higher-dimensional types**: Scaling beyond 4x4 matrices

@@ -32,7 +32,7 @@ Rust Math Library using Verus, Coq, and Kani
 | Contributions | `CONTRIBUTIONS.md` | **Complete** |
 | Spec-Impl Correspondence | `../verification/SPEC_IMPL_CORRESPONDENCE.md` | **Complete** |
 | 10-Operation Audit | `TEN_OPERATION_AUDIT.md` | **Complete** |
-| Mutation Testing | `MUTATION_TESTING.md` | **Preliminary** |
+| Mutation Testing | `MUTATION_TESTING.md` | **Complete** |
 
 ## Key Claims and Evidence
 
@@ -44,7 +44,7 @@ Rust Math Library using Verus, Coq, and Kani
 | 4 IEEE 754 bugs | `VERIFICATION_COVERAGE.md:463-469` | Yes (concrete counterexamples) |
 | >300x Coq compilation speedup | `METHODOLOGY.md` Section 4.2 | Yes (45s vs ~15min) |
 | 6.8 KB WASM extraction | `WASM_EXTRACTION_PIPELINE.md` | Yes (measured) |
-| 97.6%+ mutation score | `MUTATION_TESTING.md` | Yes (preliminary) |
+| 91.2% raw / 100% adjusted mutation score | `MUTATION_TESTING.md` | Yes (20 equivalent mutants) |
 | 361 FP error bounds | `metrics/verification-counts.json` | Yes (automated count) |
 
 ## Figures Needed
