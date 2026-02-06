@@ -7,7 +7,7 @@
 ## 2.1 The Target: rource-math
 
 rource-math is a production Rust math library providing 256 public operations
-across 10 types for a graphics visualization application. The types span
+across 9 types for a graphics visualization application. The types span
 four domains:
 
 | Domain | Types | Key Operations |
@@ -23,7 +23,7 @@ WebAssembly module. All functions are pure (no side effects, no mutable
 global state), making them well-suited for formal verification.
 
 The library's MSRV (Minimum Supported Rust Version) is 1.93, and it
-maintains 2876+ unit tests with 100% function coverage.
+maintains 2876+ unit tests.
 
 ## 2.2 Verus
 

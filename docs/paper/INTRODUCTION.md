@@ -66,7 +66,7 @@ library, each covering a different aspect of correctness.
 
 Together, these three tools yield 2,968 machine-checked theorems and proof
 harnesses with zero admits, covering 219 of 256 public operations (85.5%)
-across 10 types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, and
+across 9 types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, and
 utility functions.
 
 ## Contributions
@@ -80,7 +80,7 @@ We make the following contributions:
 
 2. **A lemma decomposition technique** for polynomial identities in Verus
    when Z3's `nonlinear_arith` tactic fails. We demonstrate this on 3x3 and
-   4x4 matrix multiplication associativity, requiring 200-300+ helper lemma
+   4x4 matrix multiplication associativity, requiring 145-300+ helper lemma
    calls per proof. (Section 4.1)
 
 3. **A layered Coq architecture** separating R-abstract specifications,
@@ -119,5 +119,5 @@ reproducible from a clean build.
 ---
 
 *Word count: ~680 (target: ~800-1000 for 2-page conference introduction)*
-*References to add: Verus [Lattuada+22], Coq [Coq Team], Kani [Amazon], Flocq [Boldo+11],
+*References to add: Verus [Lattuada+23], Coq [Coq Team], Kani [Amazon], Flocq [Boldo+11],
 IEEE 754 [IEEE 2019], CompCert [Leroy 2009], Fiat-Crypto [Erbsen+19]*

@@ -8,7 +8,7 @@ We have presented the first triple-verified Rust math library, combining
 Verus (SMT-based algebraic proofs), Coq (machine-checked interactive proofs
 with Flocq IEEE 754 error bounds), and Kani (CBMC bit-precise bounded model
 checking) to achieve 2,968 machine-checked theorems and proof harnesses with
-zero admits across 10 types and 219 of 256 public operations (85.5% coverage).
+zero admits across 9 types and 219 of 256 public operations (85.5% coverage).
 
 Our experience yields several lessons for the formal verification community:
 
@@ -58,8 +58,8 @@ Three directions merit further investigation:
    MetaCoq Verified Extraction (PLDI 2024) would eliminate the last
    unverified step in the Coq-to-WASM pipeline.
 
-All proofs, harnesses, and benchmarks are publicly available at [repository
-URL] and are reproducible from a clean build.
+All proofs, harnesses, and benchmarks are publicly available at
+https://github.com/tomtom215/rource and are reproducible from a clean build.
 
 ---
 

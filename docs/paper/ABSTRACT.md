@@ -12,7 +12,7 @@ of vector, matrix, color, and spatial operations, yet these libraries are
 rarely formally verified. We present the first triple-verified Rust math
 library, combining three complementary formal verification approaches to
 achieve 2,968 machine-checked theorems and proof harnesses with zero admits
-across 10 types and 256 public operations.
+across 9 types and 256 public operations.
 
 Our hybrid architecture pairs Verus (SMT-based algebraic proofs, 498 proof
 functions), Coq (machine-checked proofs with R-based and Z-based layers,
