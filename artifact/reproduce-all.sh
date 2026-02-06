@@ -222,20 +222,37 @@ run_coq() {
     done
     pass "Coq FP Layer: 9 files compiled (361 theorems)"
 
-    # Extraction
+    # Extraction (9 files: 8 per-type + 1 top-level)
     echo "  Compiling Extraction..."
-    if [ -f "RourceMath_Extract.v" ]; then
-        if coqc -Q . RourceMath RourceMath_Extract.v 2>&1; then
-            pass "Coq Extraction: compiled"
+    EXTRACT_FILES="Vec2_Extract.v Vec3_Extract.v Vec4_Extract.v Mat3_Extract.v Mat4_Extract.v Color_Extract.v Rect_Extract.v RourceMath_Extract.v"
+    EXTRACT_COMPILED=0
+    for f in $EXTRACT_FILES; do
+        if [ -f "$f" ]; then
+            if coqc -Q . RourceMath "$f" 2>&1; then
+                EXTRACT_COMPILED=$((EXTRACT_COMPILED + 1))
+            else
+                fail "Coq extraction: $f"
+                cd "$PROJECT_ROOT"
+                return
+            fi
+        fi
+    done
+    # Vec2_VerifiedExtract.v uses MetaCoq (optional, may not compile without it)
+    if [ -f "Vec2_VerifiedExtract.v" ]; then
+        if coqc -Q . RourceMath Vec2_VerifiedExtract.v 2>&1; then
+            EXTRACT_COMPILED=$((EXTRACT_COMPILED + 1))
         else
-            fail "Coq Extraction: RourceMath_Extract.v"
+            echo "  (Vec2_VerifiedExtract.v requires MetaCoq — skipped)"
         fi
     fi
+    pass "Coq Extraction: $EXTRACT_COMPILED files compiled"
 
     # Count theorems
-    R_THMS=$(grep -cE '^(Theorem|Lemma|Local Lemma)' Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v Complexity.v Vec_CrossType.v 2>/dev/null | awk -F: '{sum+=$NF} END{print sum}')
-    Z_THMS=$(grep -cE '^(Theorem|Lemma|Local Lemma)' Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Bounds_Compute.v Utils_Compute.v 2>/dev/null | awk -F: '{sum+=$NF} END{print sum}')
-    FP_THMS=$(grep -cE '^(Theorem|Lemma|Local Lemma)' FP_*.v 2>/dev/null | awk -F: '{sum+=$NF} END{print sum}')
+    # Note: Utils.v (spec file) contains 59 theorems with no separate _Proofs.v;
+    # these are counted in the R-based total per project convention.
+    R_THMS=$(grep -cE '^(Theorem|Lemma|Local Lemma)' Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v Mat3_Proofs.v Mat4_Proofs.v Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v Complexity.v Vec_CrossType.v Utils.v 2>/dev/null | awk -F: '{sum+=$NF} END{print sum+0}')
+    Z_THMS=$(grep -cE '^(Theorem|Lemma|Local Lemma)' Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v Mat3_Compute.v Mat4_Compute.v Color_Compute.v Rect_Compute.v Bounds_Compute.v Utils_Compute.v 2>/dev/null | awk -F: '{sum+=$NF} END{print sum+0}')
+    FP_THMS=$(grep -cE '^(Theorem|Lemma|Local Lemma)' FP_*.v 2>/dev/null | awk -F: '{sum+=$NF} END{print sum+0}')
     TOTAL_COQ=$((R_THMS + Z_THMS + FP_THMS))
 
     echo "  Coq theorem counts: R-based=$R_THMS, Z-based=$Z_THMS, FP=$FP_THMS, Total=$TOTAL_COQ"

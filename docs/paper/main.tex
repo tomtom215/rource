@@ -5,7 +5,7 @@
 % Format: ACM acmart sigplan
 % Page limit: ~20 pages
 
-\documentclass[sigplan,screen,nonacm]{acmart}
+\documentclass[sigplan,screen]{acmart}
 
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,calc,decorations.pathmorphing}
@@ -69,7 +69,11 @@
 Library using Verus, Coq, and Kani}
 
 \author{Anonymous}
-\affiliation{\institution{Anonymous Institution}}
+\affiliation{%
+  \institution{Anonymous Institution}
+  \city{Anonymous City}
+  \country{Anonymous Country}
+}
 \email{anonymous@example.com}
 
 \begin{abstract}
@@ -101,6 +105,30 @@ The library achieves 85.5\% formal verification coverage (219/256 operations),
 with the remaining 14.5\% blocked by transcendental functions or complex
 geometry. All proofs are publicly available and reproducible.
 \end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10011007.10011006.10011041</concept_id>
+<concept_desc>Software and its engineering~Formal software verification</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10011006.10011039</concept_id>
+<concept_desc>Software and its engineering~Formal language definitions</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+<concept>
+<concept_id>10003752.10003790.10003795</concept_id>
+<concept_desc>Theory of computation~Program verification</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Software and its engineering~Formal software verification}
+\ccsdesc[300]{Software and its engineering~Formal language definitions}
+\ccsdesc[500]{Theory of computation~Program verification}
 
 \keywords{Formal verification, Rust, Verus, Coq, Kani, IEEE~754,
 floating-point, math library, WebAssembly, proof engineering}
@@ -289,8 +317,10 @@ type abstraction.
 
 \subsection{IEEE~754 Binary32 and the Verification Gap}
 
-The gap between mathematical reals and \texttt{f32} is the central challenge
-our triple-verification methodology addresses:
+IEEE~754~\cite{ieee754_2019} binary32 (\texttt{f32}) represents numbers as a
+1-bit sign, 8-bit exponent, and 23-bit significand. The gap between
+mathematical reals and \texttt{f32} is the central challenge our
+triple-verification methodology addresses:
 
 \begin{center}
 \small
@@ -339,6 +369,7 @@ production floating-point math library.
 
   \node[desc] at (0, 1.5) {Same Rust\\implementation};
 \end{tikzpicture}
+\Description{Triangle diagram with Verus (498 proof fns) at top, Coq (2198 theorems) at bottom-left, and Kani (272 harnesses) at bottom-right, with bidirectional arrows showing complementary coverage.}
 \caption{Verification triangle. Each tool's limitations are covered by the
   other two. All three verify properties of the same Rust implementation.}
 \label{fig:triangle}
@@ -486,6 +517,7 @@ proof automation.
   \draw[->, thick] (spec) -- (fp);
   \draw[->, thick] (compute) -- (extract);
 \end{tikzpicture}
+\Description{Directed acyclic graph showing Coq compilation layers: Spec (9 files) at top, with arrows to R-Proofs (10 files, 1366 theorems), Z-Compute (9 files, 471 theorems), and FP Bounds (9 files, 361 theorems), and Z-Compute flowing to Extraction (9 files).}
 \caption{Coq layer dependency DAG. Proof files depend only on specs, enabling
   parallel compilation and independent evolution.}
 \label{fig:coq-dag}
@@ -592,6 +624,7 @@ deployable WebAssembly library:
   \draw[->, thick] (ocaml) -- node[above, font=\scriptsize]
     {wasm\_of\_ocaml} (wasm);
 \end{tikzpicture}
+\Description{Linear pipeline diagram: Coq Z-specs (471 theorems) flows via Extraction to OCaml source, which flows via wasm\_of\_ocaml to WASM (6.8 KB).}
 \caption{Coq-to-WASM extraction pipeline. The $\mathbb{Z}$-based computational
   bridge enables extraction to executable integer-arithmetic WASM.}
 \label{fig:pipeline}
@@ -617,9 +650,13 @@ verified extraction but requires Coq~8.20+.
 
 \textbf{Trust boundaries.} The weakest link is standard \coq{} extraction,
 which is known to be unverified but has a 20+ year track record (CompCert,
-Fiat-Crypto). The extracted WASM library is a proof-of-concept demonstrating
-the end-to-end pipeline; comparative runtime benchmarking against the
-production Rust-compiled WASM module is left as future work.
+Fiat-Crypto). Our MetaCoq verified extraction test (9 ZVec2 operations)
+relies on 5 axioms inherent to the MetaCoq erasure framework (e.g.,
+\texttt{fake\_normalization}, \texttt{assume\_welltyped\_template\_program\_expansion}),
+which are documented and expected per Sozeau et al.~\cite{sozeau2024metacoq}.
+The extracted WASM library is a proof-of-concept demonstrating the end-to-end
+pipeline; comparative runtime benchmarking against the production Rust-compiled
+WASM module is left as future work.
 
 
 % ============================================================================
@@ -728,9 +765,15 @@ Extraction~\cite{sozeau2024metacoq} has been tested on a subset (9 ZVec2
 operations) but is not yet deployed for the full development.
 
 \textbf{Count methodology.} Theorem/harness counts are extracted automatically
-via \texttt{grep} patterns from source files, ensuring reproducibility. Not
-all theorems are equally deep ($\sim$15\% are trivial, $\sim$55\% standard,
-$\sim$25\% non-trivial, $\sim$5\% deep).
+via \texttt{grep} patterns (\texttt{\^{}(Theorem|Lemma|Local Lemma)} for
+\coq{}, \texttt{proof fn} for \verus{}, \texttt{\#[kani::proof]} for \kani{})
+from source files, ensuring reproducibility. The $\mathbb{R}$-based count
+(1,366) includes 59 theorems from \texttt{Utils.v} (which has no separate
+\texttt{\_Proofs.v} file); 11 additional specification-level lemmas in other
+spec files are not counted. Not all theorems are equally deep ($\sim$15\%
+are trivial, $\sim$55\% standard, $\sim$25\% non-trivial, $\sim$5\% deep).
+The artifact's \texttt{reproduce-all.sh} independently counts and reports
+theorem totals for cross-checking.
 
 
 % ============================================================================
@@ -774,6 +817,10 @@ RefinedRust~\cite{gaher2024refinedrust} & Unsafe Rust & Coq (Iris) &
 \bottomrule
 \end{tabular}
 \end{table*}
+
+The hax tool~\cite{bhargavan2024hax} shares our multi-backend philosophy,
+targeting F*, Coq, and ProVerif for cryptographic protocol verification, but
+does not support floating-point types.
 
 \textbf{Key differentiators.} (1)~No other surveyed project simultaneously
 employs SMT verification, interactive theorem proving, AND bounded model

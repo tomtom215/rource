@@ -55,9 +55,11 @@ RUN opam init --disable-sandboxing --auto-setup -y && \
 # ============================================================================
 # Stage 2: Verus (pre-built binary)
 # ============================================================================
+# Pin to specific Verus release for reproducibility (do NOT use /latest/)
 RUN mkdir -p /tmp/verus && \
     cd /tmp/verus && \
-    VERUS_URL="https://github.com/verus-lang/verus/releases/latest/download/verus-x86_64-unknown-linux-gnu.tar.gz" && \
+    VERUS_TAG="v0.2026.1.23" && \
+    VERUS_URL="https://github.com/verus-lang/verus/releases/download/${VERUS_TAG}/verus-x86_64-unknown-linux-gnu.tar.gz" && \
     curl -fsSL "$VERUS_URL" -o verus.tar.gz && \
     tar xzf verus.tar.gz && \
     chmod +x verus && \
