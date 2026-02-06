@@ -893,4 +893,84 @@ mod tests {
             );
         }
     }
+
+    // =========================================================================
+    // Mutation-killing tests: Mat3::inverse arithmetic mutants (lines 201-206)
+    // =========================================================================
+
+    /// Kill `- → +` and `* → /` mutants in `Mat3::inverse` cofactor formulas.
+    ///
+    /// Uses a matrix with ALL 9 elements non-zero so every cofactor term
+    /// contributes to the result. Previous test used an upper-triangular matrix
+    /// where b=c=f=g=0, making many cofactor mutations invisible.
+    ///
+    /// Matrix (column-major):
+    /// | 1  2  3 |
+    /// | 2  1  4 |   det = 20
+    /// | 3  4  1 |
+    ///
+    /// Expected inverse = (1/20) * adjugate:
+    ///   m[0] = (1*1 - 4*4)/20 = -15/20 = -0.75
+    ///   m[1] = (3*4 - 2*1)/20 =  10/20 =  0.5
+    ///   m[2] = (2*4 - 3*1)/20 =   5/20 =  0.25
+    ///   m[3] = (4*3 - 2*1)/20 =  10/20 =  0.5
+    ///   m[4] = (1*1 - 3*3)/20 =  -8/20 = -0.4
+    ///   m[5] = (3*2 - 1*4)/20 =   2/20 =  0.1
+    ///   m[6] = (2*4 - 1*3)/20 =   5/20 =  0.25
+    ///   m[7] = (2*3 - 1*4)/20 =   2/20 =  0.1
+    ///   m[8] = (1*1 - 2*2)/20 =  -3/20 = -0.15
+    #[test]
+    fn test_inverse_all_nonzero_kills_arithmetic_mutants() {
+        let m = Mat3::new(1.0, 2.0, 3.0, 2.0, 1.0, 4.0, 3.0, 4.0, 1.0);
+        let det = m.determinant();
+        assert!(
+            (det - 20.0).abs() < 1e-6,
+            "Determinant should be 20, got {det}"
+        );
+
+        let inv = m.inverse().expect("Matrix should be invertible");
+
+        // Check each element individually — any arithmetic mutation
+        // (- → +, * → /) in the cofactor formulas changes at least one element.
+        let expected = [
+            -0.75, 0.5, 0.25, // column 0
+            0.5, -0.4, 0.1, // column 1
+            0.25, 0.1, -0.15, // column 2
+        ];
+
+        for (i, &exp) in expected.iter().enumerate() {
+            assert!(
+                (inv.m[i] - exp).abs() < 1e-5,
+                "inv.m[{i}] = {}, expected {exp}",
+                inv.m[i]
+            );
+        }
+
+        // Cross-check: M * M^-1 = I
+        let product = m * inv;
+        assert!(product.approx_eq(Mat3::IDENTITY), "M * M^-1 should equal I");
+    }
+
+    /// Kill `< → <=` mutant on `det.abs() < EPSILON` in `Mat3::inverse` (line 192).
+    ///
+    /// When det == EPSILON exactly:
+    /// - `<`: EPSILON < EPSILON → false → returns Some (invertible)
+    /// - `<=`: EPSILON <= EPSILON → true → returns None (singular)
+    #[test]
+    fn test_inverse_det_exactly_epsilon_kills_le_mutant() {
+        // Diagonal matrix with det = EPSILON (first element = EPSILON, rest = 1)
+        let m = Mat3::new(crate::EPSILON, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+        let det = m.determinant();
+        assert!(
+            (det - crate::EPSILON).abs() < 1e-12,
+            "Det should be EPSILON, got {det}"
+        );
+
+        // With strict `<`: EPSILON < EPSILON is false → invertible
+        // With mutant `<=`: EPSILON <= EPSILON is true → None
+        assert!(
+            m.inverse().is_some(),
+            "Matrix with det == EPSILON should be invertible (strict <, not <=)"
+        );
+    }
 }

@@ -2361,4 +2361,219 @@ mod tests {
         assert_eq!(g, 0.2);
         assert_eq!(b, 0.3);
     }
+
+    // =========================================================================
+    // Mutation-killing tests: Color::lighten `- → +` mutants (lines 505-507)
+    // =========================================================================
+
+    /// Kill `- → +` mutants in `Color::lighten`.
+    ///
+    /// The formula `self.r + (1.0 - self.r) * amount` mutated to
+    /// `self.r + (1.0 + self.r) * amount` produces different values when
+    /// both self.r ≠ 0 and amount ≠ 0.
+    ///
+    /// Existing tests used black (r=0) or amount=0, making both formulas equal.
+    #[test]
+    fn test_lighten_kills_minus_to_plus_mutant() {
+        let c = Color::new(0.4, 0.6, 0.8, 1.0);
+        let result = c.lighten(0.5);
+
+        // Original: r = 0.4 + (1.0 - 0.4) * 0.5 = 0.4 + 0.3 = 0.7
+        // Mutant:   r = 0.4 + (1.0 + 0.4) * 0.5 = 0.4 + 0.7 = 1.1
+        assert!(
+            (result.r - 0.7).abs() < 1e-6,
+            "lighten r: expected 0.7, got {}",
+            result.r
+        );
+
+        // Original: g = 0.6 + (1.0 - 0.6) * 0.5 = 0.6 + 0.2 = 0.8
+        // Mutant:   g = 0.6 + (1.0 + 0.6) * 0.5 = 0.6 + 0.8 = 1.4
+        assert!(
+            (result.g - 0.8).abs() < 1e-6,
+            "lighten g: expected 0.8, got {}",
+            result.g
+        );
+
+        // Original: b = 0.8 + (1.0 - 0.8) * 0.5 = 0.8 + 0.1 = 0.9
+        // Mutant:   b = 0.8 + (1.0 + 0.8) * 0.5 = 0.8 + 0.9 = 1.7
+        assert!(
+            (result.b - 0.9).abs() < 1e-6,
+            "lighten b: expected 0.9, got {}",
+            result.b
+        );
+
+        // Each channel: mutant value > 1.0, original ≤ 1.0
+        assert!(
+            result.r <= 1.0,
+            "lighten should not exceed 1.0 for valid inputs"
+        );
+        assert!(
+            result.g <= 1.0,
+            "lighten should not exceed 1.0 for valid inputs"
+        );
+        assert!(
+            result.b <= 1.0,
+            "lighten should not exceed 1.0 for valid inputs"
+        );
+    }
+
+    // =========================================================================
+    // Mutation-killing test: Color::is_light `> → >=` mutant (line 528)
+    // =========================================================================
+
+    /// Kill `> → >=` mutant in `Color::is_light`.
+    ///
+    /// `luminance(gray_50%)` = 0.2126\*0.5 + 0.7152\*0.5 + 0.0722\*0.5
+    ///                     = 0.5 * (0.2126 + 0.7152 + 0.0722) = 0.5
+    ///
+    /// With `> 0.5`:  0.5 > 0.5  → false (correct: boundary is "not light")
+    /// With `>= 0.5`: 0.5 >= 0.5 → true  (mutant: boundary is "light")
+    #[test]
+    fn test_is_light_at_exact_boundary_kills_ge_mutant() {
+        let gray_50 = Color::rgb(0.5, 0.5, 0.5);
+        let lum = gray_50.luminance();
+
+        // Verify we're at the exact boundary
+        assert!(
+            (lum - 0.5).abs() < 1e-7,
+            "Gray 50% luminance should be 0.5, got {lum}"
+        );
+
+        // is_light uses `> 0.5` (strict), so exactly 0.5 is NOT light
+        assert!(
+            !gray_50.is_light(),
+            "luminance == 0.5 should NOT be is_light (strict >)"
+        );
+
+        // is_dark uses `<= 0.5`, so exactly 0.5 IS dark
+        assert!(
+            gray_50.is_dark(),
+            "luminance == 0.5 should be is_dark (<= 0.5)"
+        );
+    }
+
+    // =========================================================================
+    // Mutation-killing test: Hsl::from_color `g < b` → `g <= b` (line 738)
+    // =========================================================================
+
+    /// Kill `g < b` → `g <= b` mutant in `Hsl::from_color`.
+    ///
+    /// When max == r and g == b: (g-b)/d = 0, hue = 0.
+    /// The `g < b` branch adds 6.0 to normalize negative hues.
+    /// With g == b, `g < b` is false → h stays 0 → hue = 0°.
+    /// With mutant `g <= b`, `g <= b` is true → h += 6 → hue = 360°.
+    /// These are visually the same color but numerically different (0 ≠ 360).
+    #[test]
+    fn test_hsl_from_color_g_eq_b_kills_le_mutant() {
+        // Red-dominant with g == b exactly
+        let c = Color::rgb(1.0, 0.3, 0.3);
+        let hsl = Hsl::from_color(c);
+
+        // With correct code: h = 0 (g == b, so g < b is false, no +6)
+        // With mutant: h = 360 (g <= b is true, h += 6, 6*60 = 360)
+        assert!(
+            hsl.h < 1.0,
+            "When g == b with max == r, hue should be ~0, not 360. Got {}",
+            hsl.h
+        );
+    }
+
+    // =========================================================================
+    // Mutation-killing test: Hsl::from_color achromatic boundary (line 724)
+    // =========================================================================
+
+    /// Kill `< → <=` mutant on `(max - min).abs() < EPSILON` in `Hsl::from_color`.
+    ///
+    /// At max - min == EPSILON exactly:
+    /// - `<`: false → computes h, s, l normally (non-achromatic)
+    /// - `<=`: true → returns achromatic (h=0, s=0)
+    #[test]
+    fn test_hsl_from_color_achromatic_boundary_kills_le_mutant() {
+        // Use simple values where subtraction is exact in f32:
+        // r = EPSILON, g = 0, b = 0 → max - min = EPSILON - 0 = EPSILON
+        let c = Color::rgb(crate::EPSILON, 0.0, 0.0);
+        let diff = c.r - c.g; // EPSILON - 0.0 = EPSILON exactly
+
+        assert!(
+            (diff - crate::EPSILON).abs() < 1e-12,
+            "max - min should be EPSILON, got {diff}"
+        );
+
+        let hsl = Hsl::from_color(c);
+
+        // With `<`: EPSILON < EPSILON is false → non-achromatic → s > 0
+        // With `<=`: EPSILON <= EPSILON is true → achromatic → s == 0
+        assert!(
+            hsl.s > 0.0,
+            "Color with max-min == EPSILON should not be achromatic (strict <). Got s={}",
+            hsl.s
+        );
+    }
+
+    // =========================================================================
+    // Mutation-killing test: Hsl::to_color `< → ==` mutant (line 759)
+    // =========================================================================
+
+    /// Kill `self.l < 0.5` → `self.l == 0.5` mutant in `Hsl::to_color`.
+    ///
+    /// With the `==` mutant, ALL l < 0.5 inputs take the wrong branch:
+    ///   q = l + s - l*s  (instead of q = l * (1+s))
+    ///
+    /// For l=0.3, s=0.8:
+    ///   Correct: q = 0.3 * 1.8 = 0.54
+    ///   Mutant:  q = 0.3 + 0.8 - 0.24 = 0.86
+    /// This produces very different RGB values.
+    #[test]
+    fn test_hsl_to_color_lt_vs_eq_kills_mutant() {
+        let hsl = Hsl::new(120.0, 0.8, 0.3); // green, dark
+        let color = hsl.to_color();
+
+        // With correct code: q = 0.3 * (1 + 0.8) = 0.54, p = 0.6 - 0.54 = 0.06
+        // Green at h=120°: g channel should be q (max), r and b should be smaller
+        // Correct: r ~0.06, g ~0.54, b ~0.06
+        // Mutant:  r ~-0.26 (negative!), g ~0.86, b ~-0.26
+
+        // The green channel specifically distinguishes the formulas
+        assert!(
+            (color.g - 0.54).abs() < 0.01,
+            "HSL(120, 0.8, 0.3) green channel should be ~0.54, got {}",
+            color.g
+        );
+
+        // Red channel should be positive (mutant gives negative)
+        assert!(
+            color.r >= 0.0,
+            "HSL(120, 0.8, 0.3) red channel should be non-negative, got {}",
+            color.r
+        );
+
+        // Blue channel should be positive (mutant gives negative)
+        assert!(
+            color.b >= 0.0,
+            "HSL(120, 0.8, 0.3) blue channel should be non-negative, got {}",
+            color.b
+        );
+    }
+
+    // =========================================================================
+    // Documentation: equivalent (unkillable) mutants in HSL/hue_to_rgb
+    // =========================================================================
+
+    // The following mutants are EQUIVALENT and cannot be killed:
+    //
+    // 1. Hsl::from_color `l > 0.5` → `l >= 0.5` (line 730):
+    //    At l = 0.5, max+min = 1.0 and 2-max-min = 1.0, so both saturation
+    //    formulas give d/1.0 = d. The mutant produces identical output.
+    //
+    // 2. Hsl::to_color `self.l < 0.5` → `self.l <= 0.5` (line 759):
+    //    At l = 0.5: q = 0.5*(1+s) = 0.5+0.5s vs q = 0.5+s-0.5s = 0.5+0.5s.
+    //    Both formulas give identical q. The mutant is equivalent.
+    //
+    // 3. hue_to_rgb boundary mutations (5 total, lines 821-832):
+    //    All `< → <=` and `> → >=` mutations are equivalent because hue_to_rgb
+    //    is continuous at every boundary:
+    //      - t=0/1: periodic (f(0)=f(1)=p)
+    //      - t=1/6: p+(q-p)*6*(1/6) = q (matches next branch)
+    //      - t=1/2: q (matches both branches)
+    //      - t=2/3: p+(q-p)*(2/3-2/3)*6 = p (matches else branch)
 }
