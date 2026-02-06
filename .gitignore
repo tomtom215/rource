@@ -36,6 +36,16 @@ crates/rource-render/tests/visual/output/
 .lia.cache
 .nia.cache
 
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
 # OCaml build artifacts
 *.cmo
 *.cmi
