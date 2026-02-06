@@ -5,7 +5,7 @@
 #    Library using Verus, Coq, and Kani"
 #
 # Usage:
-#   docker build -t rource-artifact artifact/
+#   docker build -t rource-artifact -f artifact/Dockerfile .
 #   docker run --rm rource-artifact            # Run all verification
 #   docker run --rm rource-artifact --quick    # Quick subset (~10 min)
 #   docker run --rm rource-artifact --tests    # Rust tests only (~2 min)
@@ -75,8 +75,6 @@ RUN cargo install --locked kani-verifier && \
 WORKDIR /workspace
 COPY . /workspace/
 
-# Copy the reproduce script
-COPY artifact/reproduce-all.sh /workspace/artifact/reproduce-all.sh
 RUN chmod +x /workspace/artifact/reproduce-all.sh
 
 # Set up opam environment in shell

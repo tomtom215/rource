@@ -8,7 +8,7 @@ This artifact reproduces all verification results for:
 ## Quick Start
 
 ```bash
-docker build -t rource-artifact artifact/
+docker build -t rource-artifact -f artifact/Dockerfile .
 docker run --rm rource-artifact          # Full reproduction (~30 min)
 docker run --rm rource-artifact --quick  # Quick subset (~10 min)
 ```

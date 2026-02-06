@@ -73,7 +73,7 @@ run_tests() {
     banner "Phase 1: Rust Unit Tests (Claim: 2876+ tests)"
 
     if cargo test --workspace 2>&1 | tee /tmp/test-output.txt | tail -5; then
-        TEST_COUNT=$(grep -oP 'test result.*?(\d+) passed' /tmp/test-output.txt | grep -oP '\d+ passed' | head -1 || echo "0 passed")
+        TEST_COUNT=$(grep 'test result' /tmp/test-output.txt | grep -o '[0-9]* passed' | head -1 || echo "0 passed")
         pass "Rust tests: $TEST_COUNT"
     else
         fail "Rust tests failed"
@@ -160,8 +160,8 @@ run_coq() {
     COQ_DIR="$PROJECT_ROOT/crates/rource-math/proofs/coq"
     cd "$COQ_DIR"
 
-    # Check for admits
-    ADMIT_COUNT=$(grep -rlE '(^Admitted\.|[^_]admit\.)' ./*.v 2>/dev/null | wc -l || echo "0")
+    # Check for admits (Admitted. ends a proof with no content; admit. skips a subgoal)
+    ADMIT_COUNT=$(grep -rlE '(^Admitted\.$|[[:space:]]admit\.)' ./*.v 2>/dev/null | wc -l || echo "0")
     if [ "$ADMIT_COUNT" -eq "0" ]; then
         pass "Zero admits in Coq source files"
     else
