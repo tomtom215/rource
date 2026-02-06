@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770393155267,
+  "lastUpdate": 1770400515419,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5444,6 +5444,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/87031ceaf55089a7548af2148eff32323fd1499f"
         },
         "date": 1770393154653,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "711e6cbb8a8fb80760105f90ab32a71c43a27b8d",
+          "message": "Merge pull request #266 from tomtom215/claude/rust-wasm-gource-rF6sR\n\nUpdate verification counts and add academic publication roadmap",
+          "timestamp": "2026-02-06T12:53:17-05:00",
+          "tree_id": "d522319765d236d37f80f39dd922d595c9ac8877",
+          "url": "https://github.com/tomtom215/rource/commit/711e6cbb8a8fb80760105f90ab32a71c43a27b8d"
+        },
+        "date": 1770400514938,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
