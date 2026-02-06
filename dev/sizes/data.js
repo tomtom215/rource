@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770408068319,
+  "lastUpdate": 1770413616722,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5522,6 +5522,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/60820034d8cf3395f788d96660b67c9804b57e66"
         },
         "date": 1770408067914,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea4fcebad4d8792a148e7708ba074afd64096995",
+          "message": "Merge pull request #268 from tomtom215/claude/rust-wasm-gource-continued-M6CXv\n\nAdd artifact evaluation infrastructure for CPP 2027 submission",
+          "timestamp": "2026-02-06T16:31:19-05:00",
+          "tree_id": "68c08bdbc5b6c359285c3bb79afe47bf1f441095",
+          "url": "https://github.com/tomtom215/rource/commit/ea4fcebad4d8792a148e7708ba074afd64096995"
+        },
+        "date": 1770413616244,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
