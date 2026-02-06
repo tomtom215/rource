@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770315252023,
+  "lastUpdate": 1770345062837,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5366,6 +5366,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/4937d7a66550bc1d621eabaa70475a37ba05b610"
         },
         "date": 1770315251384,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3914408,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269386,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e01b9db4b7e9af1d9c5171d841a776ed83324c9f",
+          "message": "Merge pull request #264 from tomtom215/claude/fix-benchmark-ci-workflow-6dZR1\n\nRefactor benchmark workflows to use explicit Criterion targets",
+          "timestamp": "2026-02-05T21:28:50-05:00",
+          "tree_id": "4b9c367efd2b2143ad0f2330b970e53cc23d5c29",
+          "url": "https://github.com/tomtom215/rource/commit/e01b9db4b7e9af1d9c5171d841a776ed83324c9f"
+        },
+        "date": 1770345062186,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
