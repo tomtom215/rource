@@ -127,10 +127,15 @@ printf "║  Benchmark files:       %3d                               ║\n" "$B
 printf "║  Benchmark functions:   %3d                               ║\n" "$BENCH_FUNCTIONS"
 
 # --- 1f. Verified operations coverage ---
-VERIFIED_OPS=$(grep -oE '[0-9]+/230' "$PROJECT_ROOT/docs/verification/VERIFICATION_COVERAGE.md" 2>/dev/null | \
-    head -1 | sed 's|/230||' || echo "0")
-TOTAL_OPS=230
-COVERAGE_PCT=$(python3 -c "print(f'{$VERIFIED_OPS/$TOTAL_OPS*100:.1f}')" 2>/dev/null || echo "0.0")
+# Extract "N/M operations" from VERIFICATION_COVERAGE.md dynamically
+COVERAGE_LINE=$(grep -oE '[0-9]+/[0-9]+ operations' "$PROJECT_ROOT/docs/verification/VERIFICATION_COVERAGE.md" 2>/dev/null | head -1)
+VERIFIED_OPS=$(echo "$COVERAGE_LINE" | grep -oE '^[0-9]+' || echo "0")
+TOTAL_OPS=$(echo "$COVERAGE_LINE" | grep -oE '/[0-9]+' | sed 's|/||' || echo "0")
+if [ "$TOTAL_OPS" -eq 0 ] 2>/dev/null; then
+    COVERAGE_PCT="0.0"
+else
+    COVERAGE_PCT=$(python3 -c "print(f'{$VERIFIED_OPS/$TOTAL_OPS*100:.1f}')" 2>/dev/null || echo "0.0")
+fi
 printf "║  Verified operations: %3d/%-3d (%s%%)                     ║\n" "$VERIFIED_OPS" "$TOTAL_OPS" "$COVERAGE_PCT"
 
 echo "║                                                             ║"

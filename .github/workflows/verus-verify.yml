@@ -72,10 +72,10 @@ jobs:
           echo "Verus version: $(/tmp/verus/verus --version | head -2 | tail -1)"
 
       # ================================================================
-      # Verify all 11 proof files (475 proof functions)
+      # Verify all 11 proof files (498 proof functions)
       # ================================================================
 
-      - name: Verify Vec2 Proofs (49 proof fns)
+      - name: Verify Vec2 Proofs (61 proof fns)
         id: vec2
         run: |
           echo "Verifying Vec2 proofs..."
@@ -98,7 +98,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify Vec3 Proofs (40 proof fns)
+      - name: Verify Vec3 Proofs (61 proof fns)
         id: vec3
         run: |
           echo "Verifying Vec3 proofs..."
@@ -120,7 +120,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify Vec4 Proofs (39 proof fns)
+      - name: Verify Vec4 Proofs (55 proof fns)
         id: vec4
         run: |
           echo "Verifying Vec4 proofs..."
@@ -208,7 +208,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify Color Proofs (35 proof fns)
+      - name: Verify Color Proofs (64 proof fns)
         id: color
         run: |
           echo "Verifying Color proofs..."
@@ -230,7 +230,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify Rect Proofs (33 proof fns)
+      - name: Verify Rect Proofs (52 proof fns)
         id: rect
         run: |
           echo "Verifying Rect proofs..."
@@ -252,7 +252,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify Bounds Proofs (66 proof fns)
+      - name: Verify Bounds Proofs (70 proof fns)
         id: bounds
         run: |
           echo "Verifying Bounds proofs..."

@@ -97,7 +97,7 @@ See [Performance Documentation](#performance-documentation) for the complete opt
 | **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 498 proof functions, 452+ VCs | Verified |
 | **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + Complexity + CrossType | 1366 theorems | Zero admits |
 | **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils (extractable) | 471 theorems | Zero admits |
-| **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | 225 harnesses | IEEE 754 verified |
+| **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | 272 harnesses | IEEE 754 verified |
 | **Combined** | All 8 core math types + Bounds + FP layer + CrossType | **2968 theorems/harnesses** | **TRIPLE VERIFIED** |
 
 Properties verified include: vector space axioms, dot/cross product laws, matrix multiplication associativity (critical for MVP transformations), ring structure, RGBA color blending/interpolation/luminance, rectangle containment/intersection/union, O(1) complexity bounds, and a complete Coq-to-WASM extraction pipeline.
@@ -512,7 +512,7 @@ rource/
 | [docs/performance/CHRONOLOGY.md](docs/performance/CHRONOLOGY.md) | 83 optimization phases with measurements |
 | [docs/performance/BENCHMARKS.md](docs/performance/BENCHMARKS.md) | Raw benchmark data and methodology |
 | [docs/performance/ALGORITHMIC_COMPLEXITY.md](docs/performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of algorithms |
-| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2573 theorems/harnesses) |
+| [docs/verification/FORMAL_VERIFICATION.md](docs/verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2968 theorems/harnesses) |
 | [docs/performance/SUCCESSFUL_OPTIMIZATIONS.md](docs/performance/SUCCESSFUL_OPTIMIZATIONS.md) | Catalog of implemented optimizations |
 | [docs/performance/ALGORITHM_CANDIDATES.md](docs/performance/ALGORITHM_CANDIDATES.md) | Future optimization candidates |
 | [docs/performance/NOT_APPLICABLE.md](docs/performance/NOT_APPLICABLE.md) | Algorithms evaluated and ruled out |
