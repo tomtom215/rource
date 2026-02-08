@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770584614431,
+  "lastUpdate": 1770589145014,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5717,6 +5717,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/7325cc8b26adab3e94260f06195e3f9913e5d719"
         },
         "date": 1770584613728,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bdd468a5178a3515341b59bf7e2c9b845d3b4ac",
+          "message": "Merge pull request #275 from tomtom215/claude/fix-code-scanning-workflow-Ws0j6\n\nClean up stale Trivy alerts and orphaned scan analyses",
+          "timestamp": "2026-02-08T23:16:56+01:00",
+          "tree_id": "cfae7cfdb233553dac56a14eed73c1c788b37aee",
+          "url": "https://github.com/tomtom215/rource/commit/5bdd468a5178a3515341b59bf7e2c9b845d3b4ac"
+        },
+        "date": 1770589143802,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
