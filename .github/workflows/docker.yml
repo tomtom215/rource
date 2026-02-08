@@ -137,7 +137,7 @@ jobs:
         run: |
           docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}"
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy container vulnerability scanner
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}'
@@ -149,21 +149,24 @@ jobs:
           # Exit code 0 even if vulnerabilities found (we want to upload results)
           exit-code: '0'
 
-      - name: Display scan summary
+      - name: Display container scan summary
         if: always()
         run: |
-          echo "=== Trivy Scan Results Summary ==="
+          echo "=== Trivy Container Scan Results Summary ==="
           if [ -f trivy-results.sarif ]; then
             # Count vulnerabilities from SARIF
             VULN_COUNT=$(jq '.runs[0].results | length' trivy-results.sarif 2>/dev/null || echo "0")
-            echo "Total findings: ${VULN_COUNT}"
+            echo "Total container findings: ${VULN_COUNT}"
             # Show first few findings
             jq -r '.runs[0].results[:5][] | "- \(.ruleId): \(.message.text | split("\n")[0])"' trivy-results.sarif 2>/dev/null || true
           else
             echo "No SARIF file generated"
           fi
 
-      - name: Upload Trivy scan results to GitHub Security
+      # -----------------------------------------------------------------------
+      # Upload container scan to 'trivy-container' (primary tracking category)
+      # -----------------------------------------------------------------------
+      - name: Upload container scan to GitHub Security (trivy-container)
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
@@ -171,9 +174,30 @@ jobs:
           category: 'trivy-container'
 
       # -----------------------------------------------------------------------
+      # Upload the SAME container scan results under category 'scan'.
+      #
+      # WHY: The old 138 alerts were produced by a Trivy *container* scan
+      # uploaded as category 'scan' (commit 077085c8). PR #272 tried to close
+      # these by uploading a *filesystem* scan with category 'scan', but GitHub
+      # Code Scanning uses (tool.driver metadata + category + ref) to identify
+      # analysis streams. A filesystem scan has different SARIF tool.driver
+      # properties than a container scan, so GitHub treated it as a separate
+      # analysis — leaving the old container-scan alerts orphaned and open.
+      #
+      # FIX: Upload the container scan (same tool.driver metadata as the old
+      # alerts) under category 'scan'. Since the distroless/static image has
+      # ~0 CVEs, this will close all 138 orphaned alerts.
+      # -----------------------------------------------------------------------
+      - name: Upload container scan to close orphaned 'scan' alerts
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'scan'
+
+      # -----------------------------------------------------------------------
       # Filesystem scan: Check source code dependencies (Cargo.lock) for CVEs.
-      # Also replaces the stale 'scan' category from a previous workflow
-      # configuration, ensuring those orphaned alerts get closed.
+      # This runs independently from the container scan.
       # -----------------------------------------------------------------------
       - name: Run Trivy filesystem scanner
         uses: aquasecurity/trivy-action@0.33.1
@@ -192,15 +216,15 @@ jobs:
           echo "=== Trivy Filesystem Scan Results ==="
           if [ -f trivy-fs-results.sarif ]; then
             VULN_COUNT=$(jq '.runs[0].results | length' trivy-fs-results.sarif 2>/dev/null || echo "0")
-            echo "Total findings: ${VULN_COUNT}"
+            echo "Total dependency findings: ${VULN_COUNT}"
             jq -r '.runs[0].results[:5][] | "- \(.ruleId): \(.message.text | split("\n")[0])"' trivy-fs-results.sarif 2>/dev/null || true
           else
             echo "No SARIF file generated"
           fi
 
-      - name: Upload Trivy filesystem scan results to GitHub Security
+      - name: Upload filesystem scan to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-fs-results.sarif'
-          category: 'scan'
+          category: 'trivy-filesystem'
