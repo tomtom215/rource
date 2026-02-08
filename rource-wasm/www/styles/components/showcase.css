@@ -121,7 +121,7 @@
     padding: 0.5rem 0.6rem;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -156,7 +156,7 @@
 
 .refresh-status {
     margin-top: 0.5rem;
-    font-size: clamp(0.6rem, 1.5vw, 0.7rem);
+    font-size: 0.75rem; /* 12px - WCAG minimum (was clamp with sub-12px values) */
     text-align: center;
     padding: 0.35rem 0.5rem;
     border-radius: 4px;
@@ -367,7 +367,7 @@
 
 .tech-info-panel.collapsible .panel-toggle {
     margin-left: auto;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     transition: transform 0.2s;
 }

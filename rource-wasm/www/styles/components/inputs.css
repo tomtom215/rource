@@ -76,7 +76,7 @@
     color: var(--text-secondary);
     padding: 0.25rem 0.5rem;
     border-radius: 16px;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     cursor: pointer;
     /* Use composited properties only for better performance */
     transition: opacity 0.2s, transform 0.2s;
@@ -293,7 +293,7 @@ textarea:focus {
 }
 
 .file-upload-privacy {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     margin-top: 0.5rem;
     opacity: 0.8;
@@ -340,7 +340,7 @@ textarea:focus {
    ============================================================================= */
 
 .help-text {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     line-height: 1.6;
     word-wrap: break-word;

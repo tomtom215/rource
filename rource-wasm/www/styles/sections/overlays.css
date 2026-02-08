@@ -55,7 +55,7 @@
 }
 
 .legend-header .legend-title {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -63,7 +63,7 @@
 }
 
 .legend-toggle {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     transition: transform 0.2s;
 }
@@ -190,7 +190,7 @@
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     min-width: 140px;
     z-index: var(--z-canvas-perf);
 }
@@ -251,7 +251,7 @@
     background: rgba(255, 215, 0, 0.15);
     border: 1px solid rgba(255, 215, 0, 0.3);
     border-radius: 8px;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
 }
 
 .perf-peak-badge:not(.hidden) {
@@ -355,7 +355,7 @@
 
 .perf-toggle {
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     transition: transform 0.2s;
 }
 
@@ -422,7 +422,7 @@
     font-weight: 600;
     padding: 0.1rem 0.4rem;
     border-radius: 3px;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
@@ -489,7 +489,7 @@
 }
 
 .authors-header .authors-title {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -497,7 +497,7 @@
 }
 
 .authors-toggle {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     transition: transform 0.2s;
 }
@@ -536,6 +536,6 @@
 
 .author-commits {
     color: var(--text-muted);
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     flex-shrink: 0;
 }

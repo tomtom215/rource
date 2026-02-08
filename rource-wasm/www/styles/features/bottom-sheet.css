@@ -188,8 +188,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
+        /* Touch target: 44px minimum (Apple HIG / WCAG 2.5.5) */
+        width: 44px;
+        height: 44px;
         background: var(--bg-tertiary);
         border: none;
         border-radius: 50%;
@@ -448,7 +449,7 @@
 
     .bottom-sheet-label {
         display: block;
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         font-weight: 700;
         color: var(--text-muted);
         text-transform: uppercase;
@@ -679,7 +680,7 @@
         padding: 4px 10px;
         background: var(--bg-tertiary);
         border-radius: 12px;
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         font-weight: 600;
         color: var(--text-secondary);
     }
@@ -718,7 +719,7 @@
     }
 
     .bottom-sheet-legend-title {
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         font-weight: 700;
         color: var(--text-secondary);
         text-transform: uppercase;
@@ -769,7 +770,7 @@
 
     .bottom-sheet-legend-count {
         color: var(--text-muted);
-        font-size: 0.6875rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum (was 0.6875rem/11px) */
         font-weight: 500;
         font-variant-numeric: tabular-nums;
     }

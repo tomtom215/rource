@@ -98,7 +98,7 @@
 }
 
 .panel.collapsible .panel-toggle {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     transition: transform 0.2s;
 }

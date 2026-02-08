@@ -116,8 +116,9 @@
         background: var(--bg-tertiary);
         border: 1px solid var(--border);
         color: var(--text-secondary);
-        width: 36px;
-        height: 36px;
+        /* Touch target: 44px minimum (Apple HIG / WCAG 2.5.5) */
+        width: 44px;
+        height: 44px;
         border-radius: 6px;
         cursor: pointer;
         display: flex;
@@ -353,7 +354,7 @@
 
     .mobile-toolbar-btn .btn-label {
         display: block;
-        font-size: 0.65rem; /* Slightly smaller for better fit */
+        font-size: 0.75rem; /* 12px - WCAG minimum readable size */
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.2px;
@@ -773,7 +774,7 @@
 
     /* Uncapped label - more prominent */
     .has-bottom-sheet .perf-overlay #perf-uncapped-label {
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -1095,9 +1096,9 @@
         height: 16px;
     }
 
-    /* Smaller labels in landscape to save space */
+    /* Labels in landscape maintain WCAG minimum */
     .has-bottom-sheet .mobile-toolbar-btn .btn-label {
-        font-size: 0.6rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     /* Tighter toolbar spacing in landscape */
@@ -1234,7 +1235,7 @@
 }
 
 .landscape-mobile.has-bottom-sheet .mobile-toolbar-btn .btn-label {
-    font-size: 0.6rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
 }
 
 /* Landscape styles via JS-added class - Performance and Stats overlays */
@@ -1304,7 +1305,7 @@
 }
 
 .landscape-mobile.has-bottom-sheet .stats-overlay .stat-value {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
 }
 
 .landscape-mobile.has-bottom-sheet .stats-overlay .stat-label {
@@ -1339,7 +1340,7 @@
     }
 
     .has-bottom-sheet .stats-overlay .stat-value {
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     .has-bottom-sheet .stats-overlay .stat-label {

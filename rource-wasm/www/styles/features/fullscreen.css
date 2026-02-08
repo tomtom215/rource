@@ -374,12 +374,12 @@
     .pseudo-fullscreen .authors-panel {
         bottom: 200px; /* More clearance for taller mobile timeline */
         max-width: 140px;
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     .pseudo-fullscreen .legend-panel {
         max-width: 150px;
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     /* -----------------------------------------------------------------
@@ -419,7 +419,7 @@
         max-width: 120px;
         border-radius: 12px;
         background: rgba(0, 0, 0, 0.7);
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     /* Force collapsed state in fullscreen - just show FPS */

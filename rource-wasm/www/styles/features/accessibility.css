@@ -419,10 +419,11 @@ a:focus-visible {
 
 @media (prefers-contrast: more) {
     :root {
-        --border: #6e7681;
-        --border-light: #8b949e;
-        --text-secondary: #c9d1d9;
-        --text-muted: #8b949e;
+        /* High contrast: increase all contrast values above defaults */
+        --border: #848d97;          /* ~4.6:1 vs bg-primary (was #6e7681 ~3.8:1) */
+        --border-light: #9ca3ab;    /* ~5.7:1 vs bg-primary */
+        --text-secondary: #c9d1d9;  /* ~11.6:1 vs bg-primary */
+        --text-muted: #b1b8c0;     /* ~8.2:1 vs bg-primary (was #8b949e ~4.86:1, same as default) */
     }
 
     :root.light-theme {
