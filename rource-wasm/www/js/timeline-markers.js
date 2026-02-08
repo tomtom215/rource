@@ -555,8 +555,10 @@ function createTickElement(boundary, position, config, showLabel = false) {
     tick.setAttribute('role', 'img');
     tick.setAttribute('aria-label', `Timeline marker: ${periodLabel}`);
 
-    // Add inline label for major ticks or when explicitly requested
-    if (showLabel && (boundary.isMajor || config.heightClass === 'tick-major')) {
+    // Add inline label when selected by selectLabeledTicks()
+    // The label selection algorithm already handles spacing and priority,
+    // so showLabel is the sole gate here.
+    if (showLabel) {
         const label = document.createElement('span');
         label.className = 'timeline-tick-label';
         label.textContent = boundary.label;
@@ -713,31 +715,62 @@ function getCoarserInterval(intervalType) {
 /**
  * Determines which ticks should show inline labels.
  * Returns indices of ticks that should have labels, spaced to avoid overlap.
+ *
+ * Algorithm:
+ * 1. Always label first and last ticks (temporal anchoring)
+ * 2. Label major ticks (year/quarter boundaries) with spacing constraint
+ * 3. Fill in remaining labels if too few are shown
+ *
  * @param {Array} boundaries - Array of boundary objects with positions calculated
- * @param {number} minSpacing - Minimum spacing percentage between labels
+ * @param {number} minSpacing - Minimum spacing percentage between labels (default 10%)
  * @returns {Set<number>} Set of indices that should show labels
  */
-function selectLabeledTicks(boundaries, minSpacing = 15) {
-    const labeled = new Set();
-    let lastLabelPos = -Infinity;
+function selectLabeledTicks(boundaries, minSpacing = 10) {
+    if (boundaries.length === 0) return new Set();
+    if (boundaries.length === 1) return new Set([0]);
 
-    // First pass: label all major ticks that have enough spacing
-    for (let i = 0; i < boundaries.length; i++) {
+    const labeled = new Set();
+
+    // Always label first and last ticks for temporal anchoring
+    labeled.add(0);
+    labeled.add(boundaries.length - 1);
+
+    // Build a sorted list of labeled positions for spacing checks
+    const labeledPositions = [
+        boundaries[0].position,
+        boundaries[boundaries.length - 1].position,
+    ];
+
+    /**
+     * Checks if a position has enough spacing from all existing labeled positions.
+     * @param {number} pos - Position to check
+     * @returns {boolean} True if spacing is sufficient
+     */
+    function hasEnoughSpacing(pos) {
+        for (const existingPos of labeledPositions) {
+            if (Math.abs(pos - existingPos) < minSpacing) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Second pass: label major ticks that have enough spacing
+    for (let i = 1; i < boundaries.length - 1; i++) {
         const boundary = boundaries[i];
-        if (boundary.isMajor && boundary.position - lastLabelPos >= minSpacing) {
+        if (boundary.isMajor && hasEnoughSpacing(boundary.position)) {
             labeled.add(i);
-            lastLabelPos = boundary.position;
+            labeledPositions.push(boundary.position);
         }
     }
 
-    // If we have very few labels, try to add more
+    // Third pass: if we have fewer than 3 labels and have room, fill in non-major ticks
     if (labeled.size < 3 && boundaries.length >= 3) {
-        lastLabelPos = -Infinity;
-        for (let i = 0; i < boundaries.length; i++) {
-            const boundary = boundaries[i];
-            if (boundary.position - lastLabelPos >= minSpacing) {
+        for (let i = 1; i < boundaries.length - 1; i++) {
+            if (labeled.has(i)) continue;
+            if (hasEnoughSpacing(boundaries[i].position)) {
                 labeled.add(i);
-                lastLabelPos = boundary.position;
+                labeledPositions.push(boundaries[i].position);
             }
         }
     }

@@ -113,7 +113,7 @@
 }
 
 .docs-heading .panel-toggle {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     transition: transform 0.2s;
 }
@@ -142,7 +142,7 @@
     padding: 0.15rem 0.4rem;
     border-radius: 4px;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-secondary);
     border: 1px solid var(--border);
     text-align: center;
@@ -211,7 +211,7 @@
 }
 
 .panel-guide .help-text {
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     color: var(--text-muted);
     line-height: 1.6;
 }
@@ -227,11 +227,11 @@
 
     .docs-section p,
     .docs-section li {
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     .shortcut-grid {
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     .shortcut-key {

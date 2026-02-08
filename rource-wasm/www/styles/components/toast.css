@@ -132,9 +132,9 @@
     .toast-close {
         padding: 0.35rem;
         font-size: 1.1rem;
-        /* Larger touch target */
-        min-width: 36px;
-        min-height: 36px;
+        /* Touch target: 44px minimum (Apple HIG / WCAG 2.5.5) */
+        min-width: 44px;
+        min-height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;

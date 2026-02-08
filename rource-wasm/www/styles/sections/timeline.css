@@ -303,7 +303,7 @@
 
 .timeline-info-label {
     color: var(--text-secondary);
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
 }
 
 .timeline-info-numbers {
@@ -364,7 +364,7 @@
     }
 
     .timeline-commit-info {
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
         /* Allow more space for author name on mobile */
         max-width: none;
         flex: 1;
@@ -482,10 +482,9 @@
         font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
-    /* Adjust marker container offset for mobile thumb (10px = half of 20px) */
-    .timeline-slider-container .timeline-markers {
-        left: 10px;
-        right: 10px;
+    /* Mobile thumb is 24px, so marker offset = 24/2 = 12px */
+    .timeline-slider-container {
+        --thumb-size: 24px;
     }
 }
 
@@ -523,6 +522,11 @@
         height: 22px;
     }
 
+    /* 375px thumb is 22px, so marker offset = 22/2 = 11px */
+    .timeline-slider-container {
+        --thumb-size: 22px;
+    }
+
     .play-btn-main {
         width: 40px;
         height: 40px;
@@ -545,7 +549,7 @@
 
     .timeline-info {
         min-width: 60px;
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 
     /* A5: Maintain touch target on smaller screens */
@@ -610,7 +614,7 @@
     }
 
     .timeline-info {
-        font-size: 0.7rem;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
     }
 }
 
@@ -676,6 +680,9 @@
     display: flex;
     align-items: center;
     overflow: visible;
+    /* Thumb size token: markers offset = thumb-size / 2 so ticks align with thumb center.
+       Must match the actual slider thumb width at each breakpoint. */
+    --thumb-size: 16px;
 }
 
 .timeline-slider-container .timeline-slider {
@@ -687,8 +694,9 @@
 .timeline-slider-container .timeline-markers {
     position: absolute;
     top: 50%;
-    left: 8px;
-    right: 8px;
+    /* Derive offset from thumb size so ticks always align with slider positions */
+    left: calc(var(--thumb-size) / 2);
+    right: calc(var(--thumb-size) / 2);
     height: 24px;
     transform: translateY(-50%);
     pointer-events: none;
@@ -860,7 +868,7 @@
     color: var(--text-primary);
     padding: 4px 10px;
     border-radius: 4px;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
     font-weight: 500;
     white-space: nowrap;
     opacity: 0;
@@ -896,7 +904,5 @@
     opacity: 0;
 }
 
-/* Hide labels on minor ticks to avoid clutter */
-.timeline-tick.tick-minor .timeline-tick-label {
-    display: none;
-}
+/* Label visibility on minor ticks is controlled by JS selectLabeledTicks().
+   JS only creates label elements when spacing is sufficient, so no CSS override needed. */

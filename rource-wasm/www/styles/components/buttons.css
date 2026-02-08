@@ -117,8 +117,9 @@
 
 .btn-icon {
     padding: 0.5rem;
-    min-width: 32px;
-    min-height: 32px;
+    /* Touch target: 44px minimum (Apple HIG / WCAG 2.5.5) */
+    min-width: 44px;
+    min-height: 44px;
     justify-content: center;
 }
 
