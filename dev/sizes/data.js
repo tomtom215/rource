@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770570254815,
+  "lastUpdate": 1770573911465,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5639,6 +5639,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/126820b46ae7b401189883a6acc7c242c8ebe1b4"
         },
         "date": 1770570254271,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21c15f3f9e757d8ccdba2aaee82657a76701fe47",
+          "message": "Merge pull request #273 from tomtom215/claude/fix-scanning-alerts-vUKOn\n\nFix orphaned security alerts by uploading container scan under both categories",
+          "timestamp": "2026-02-08T18:50:03+01:00",
+          "tree_id": "a5af8164942ca45bfaec225d2acc0b4e0f045a85",
+          "url": "https://github.com/tomtom215/rource/commit/21c15f3f9e757d8ccdba2aaee82657a76701fe47"
+        },
+        "date": 1770573911097,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
