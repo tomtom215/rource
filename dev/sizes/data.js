@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770573911465,
+  "lastUpdate": 1770584614431,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5678,6 +5678,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/21c15f3f9e757d8ccdba2aaee82657a76701fe47"
         },
         "date": 1770573911097,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7325cc8b26adab3e94260f06195e3f9913e5d719",
+          "message": "Merge pull request #274 from tomtom215/claude/improve-ui-ux-standards-GteRm\n\nImprove accessibility: WCAG compliance and touch targets",
+          "timestamp": "2026-02-08T22:01:27+01:00",
+          "tree_id": "dfc92fc35976dbbd4c50e572f682c38c1d6b772a",
+          "url": "https://github.com/tomtom215/rource/commit/7325cc8b26adab3e94260f06195e3f9913e5d719"
+        },
+        "date": 1770584613728,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
