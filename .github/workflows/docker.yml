@@ -169,3 +169,38 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-container'
+
+      # -----------------------------------------------------------------------
+      # Filesystem scan: Check source code dependencies (Cargo.lock) for CVEs.
+      # Also replaces the stale 'scan' category from a previous workflow
+      # configuration, ensuring those orphaned alerts get closed.
+      # -----------------------------------------------------------------------
+      - name: Run Trivy filesystem scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Display filesystem scan summary
+        if: always()
+        run: |
+          echo "=== Trivy Filesystem Scan Results ==="
+          if [ -f trivy-fs-results.sarif ]; then
+            VULN_COUNT=$(jq '.runs[0].results | length' trivy-fs-results.sarif 2>/dev/null || echo "0")
+            echo "Total findings: ${VULN_COUNT}"
+            jq -r '.runs[0].results[:5][] | "- \(.ruleId): \(.message.text | split("\n")[0])"' trivy-fs-results.sarif 2>/dev/null || true
+          else
+            echo "No SARIF file generated"
+          fi
+
+      - name: Upload Trivy filesystem scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+          category: 'scan'
