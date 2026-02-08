@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770566407092,
+  "lastUpdate": 1770570254815,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5600,6 +5600,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/81e28ce8206bb48934746013f298573ae95285e8"
         },
         "date": 1770566406583,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "126820b46ae7b401189883a6acc7c242c8ebe1b4",
+          "message": "Merge pull request #272 from tomtom215/claude/fix-scanning-alerts-wLBjy\n\nAdd Trivy filesystem scanner to detect dependency vulnerabilities",
+          "timestamp": "2026-02-08T17:49:37+01:00",
+          "tree_id": "691e162e31c0776665486134944e2f4a2fa24df0",
+          "url": "https://github.com/tomtom215/rource/commit/126820b46ae7b401189883a6acc7c242c8ebe1b4"
+        },
+        "date": 1770570254271,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
