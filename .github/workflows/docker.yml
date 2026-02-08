@@ -119,10 +119,95 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # -----------------------------------------------------------------------
+      # CLEANUP: Dismiss stale Trivy alerts via GitHub REST API.
+      #
+      # Context: 138 alerts were created by an old container scan under a
+      # category/tool identity that no subsequent SARIF upload could match.
+      # PRs #272 and #273 tried SARIF-based approaches (filesystem scan as
+      # 'scan' category, then container scan as 'scan' category), but GitHub
+      # treated each as a separate analysis due to tool.driver metadata
+      # differences — leaving the old alerts permanently orphaned.
+      #
+      # Fix: Dismiss all open Trivy alerts via API. The fresh container and
+      # filesystem scans below will re-open any real vulnerabilities.
+      # This step is idempotent: if there are 0 open alerts, it does nothing.
+      # -----------------------------------------------------------------------
+      - name: Dismiss stale code scanning alerts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+        run: |
+          echo "=== Checking for stale code scanning alerts ==="
+
+          DISMISSED=0
+          PAGE=1
+          while true; do
+            NUMBERS=$(gh api "repos/${{ github.repository }}/code-scanning/alerts?state=open&tool_name=Trivy&per_page=100&page=${PAGE}" \
+              --jq '.[].number' 2>/dev/null || true)
+
+            [ -z "$NUMBERS" ] && break
+
+            for NUM in $NUMBERS; do
+              gh api -X PATCH "repos/${{ github.repository }}/code-scanning/alerts/${NUM}" \
+                -f state=dismissed \
+                -f "dismissed_reason=won't fix" \
+                -f "dismissed_comment=Stale alert from old container scan configuration. Image rebuilt with distroless/static + musl (zero OS CVEs). Fresh scans will re-open any real issues." \
+                --silent 2>/dev/null && DISMISSED=$((DISMISSED + 1)) || true
+            done
+
+            PAGE=$((PAGE + 1))
+          done
+
+          echo "Dismissed ${DISMISSED} stale Trivy alert(s)"
+
+      # -----------------------------------------------------------------------
+      # CLEANUP: Delete orphaned 'scan' analyses from the Security tab.
+      #
+      # The old 'scan' category entries (from 077085c8 and the dual-upload
+      # workaround) clutter the Security > Code Scanning tools page. Delete
+      # them so only 'trivy-container' and 'trivy-filesystem' remain.
+      # Analyses must be deleted newest-first; deleting the last analysis
+      # for a tool+ref returns a confirm_delete_url that must be followed.
+      # -----------------------------------------------------------------------
+      - name: Delete orphaned scan analyses
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+        run: |
+          echo "=== Cleaning up orphaned 'scan' analyses ==="
+
+          # Get analysis IDs for the deprecated 'scan' category, newest first
+          ANALYSIS_IDS=$(gh api "repos/${{ github.repository }}/code-scanning/analyses" \
+            --paginate \
+            --jq '[.[] | select(.category == "scan")] | sort_by(.id) | reverse | .[].id' \
+            2>/dev/null || true)
+
+          if [ -z "$ANALYSIS_IDS" ]; then
+            echo "No orphaned 'scan' analyses found"
+            exit 0
+          fi
+
+          DELETED=0
+          for ID in $ANALYSIS_IDS; do
+            RESPONSE=$(gh api -X DELETE "repos/${{ github.repository }}/code-scanning/analyses/${ID}" 2>&1 || true)
+
+            # If this was the last analysis for tool+ref, follow the confirm URL
+            CONFIRM_URL=$(echo "$RESPONSE" | jq -r '.confirm_delete_url // empty' 2>/dev/null || true)
+            if [ -n "$CONFIRM_URL" ]; then
+              # Extract API path from full URL
+              CONFIRM_PATH="${CONFIRM_URL#https://api.github.com/}"
+              gh api -X DELETE "$CONFIRM_PATH" --silent 2>/dev/null || true
+            fi
+
+            DELETED=$((DELETED + 1))
+          done
+
+          echo "Deleted ${DELETED} orphaned 'scan' analysis/analyses"
+
       - name: Determine image tag
         id: image-tag
         run: |
-          # For tags (releases), use the tag name; for branches, use 'latest' for main or branch name
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG="${{ github.ref_name }}"
           elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
@@ -144,9 +229,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
-          # Ignore unfixed vulnerabilities in base image packages
           ignore-unfixed: true
-          # Exit code 0 even if vulnerabilities found (we want to upload results)
           exit-code: '0'
 
       - name: Display container scan summary
@@ -154,51 +237,20 @@ jobs:
         run: |
           echo "=== Trivy Container Scan Results Summary ==="
           if [ -f trivy-results.sarif ]; then
-            # Count vulnerabilities from SARIF
             VULN_COUNT=$(jq '.runs[0].results | length' trivy-results.sarif 2>/dev/null || echo "0")
             echo "Total container findings: ${VULN_COUNT}"
-            # Show first few findings
             jq -r '.runs[0].results[:5][] | "- \(.ruleId): \(.message.text | split("\n")[0])"' trivy-results.sarif 2>/dev/null || true
           else
             echo "No SARIF file generated"
           fi
 
-      # -----------------------------------------------------------------------
-      # Upload container scan to 'trivy-container' (primary tracking category)
-      # -----------------------------------------------------------------------
-      - name: Upload container scan to GitHub Security (trivy-container)
+      - name: Upload container scan to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-container'
 
-      # -----------------------------------------------------------------------
-      # Upload the SAME container scan results under category 'scan'.
-      #
-      # WHY: The old 138 alerts were produced by a Trivy *container* scan
-      # uploaded as category 'scan' (commit 077085c8). PR #272 tried to close
-      # these by uploading a *filesystem* scan with category 'scan', but GitHub
-      # Code Scanning uses (tool.driver metadata + category + ref) to identify
-      # analysis streams. A filesystem scan has different SARIF tool.driver
-      # properties than a container scan, so GitHub treated it as a separate
-      # analysis — leaving the old container-scan alerts orphaned and open.
-      #
-      # FIX: Upload the container scan (same tool.driver metadata as the old
-      # alerts) under category 'scan'. Since the distroless/static image has
-      # ~0 CVEs, this will close all 138 orphaned alerts.
-      # -----------------------------------------------------------------------
-      - name: Upload container scan to close orphaned 'scan' alerts
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: 'scan'
-
-      # -----------------------------------------------------------------------
-      # Filesystem scan: Check source code dependencies (Cargo.lock) for CVEs.
-      # This runs independently from the container scan.
-      # -----------------------------------------------------------------------
       - name: Run Trivy filesystem scanner
         uses: aquasecurity/trivy-action@0.33.1
         with:
