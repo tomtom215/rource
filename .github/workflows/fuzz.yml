@@ -136,14 +136,27 @@ jobs:
             # Ensure corpus directory exists (for first run without cache)
             mkdir -p "corpus/$target"
 
-            # Run fuzzer
+            # Run fuzzer — capture full output to file, only show final stats
+            # to keep CI logs concise (libFuzzer progress lines caused 33k+ line logs).
             set +e
             cargo +nightly fuzz run "$target" -- \
               -max_total_time=${{ steps.duration.outputs.duration }} \
               -print_final_stats=1 \
-              2>&1 | tee "fuzz-output-$target.txt"
+              > "fuzz-output-$target.txt" 2>&1
             FUZZ_EXIT=$?
             set -e
+
+            # Print only final stats and any crash/error information
+            if grep -q "SUMMARY:" "fuzz-output-$target.txt"; then
+              echo "--- libFuzzer summary ---"
+              grep -E "(SUMMARY:|stat::|Test unit written|artifact_prefix)" "fuzz-output-$target.txt"
+            fi
+            if [ "$FUZZ_EXIT" -ne 0 ]; then
+              echo "::warning::Fuzzer exited with code $FUZZ_EXIT for $target"
+              # Show last 20 lines for crash diagnosis
+              echo "--- Last 20 lines of fuzzer output ---"
+              tail -20 "fuzz-output-$target.txt"
+            fi
 
             # Count crashes
             CRASHES=$(find "artifacts/$target" -type f 2>/dev/null | wc -l)
@@ -197,7 +210,7 @@ jobs:
           TARGETS=$(cargo +nightly fuzz list 2>/dev/null || true)
           for target in $TARGETS; do
             echo "Generating coverage for $target..."
-            if ! cargo +nightly fuzz coverage "$target" 2>&1; then
+            if ! cargo +nightly fuzz coverage "$target" > /dev/null 2>&1; then
               echo "::warning::Coverage generation failed for $target"
             fi
           done
