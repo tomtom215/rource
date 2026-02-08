@@ -41,7 +41,7 @@ js-sys = { version = "0.3", optional = true }
 # wgpu provides WebGPU support for WASM and native Vulkan/Metal/DX12
 wgpu = { version = "28", optional = true }
 raw-window-handle = { version = "0.6", optional = true }
-bytemuck = { version = "1.14", features = ["derive"], optional = true }
+bytemuck = { version = "1.25", features = ["derive"], optional = true }
 pollster = { version = "0.4", optional = true }
 
 # Tracing for profiling instrumentation (optional)

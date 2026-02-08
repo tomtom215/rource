@@ -160,7 +160,21 @@ impl SvnParser {
             (h, m, s)
         };
 
+        // Validate time components to prevent arithmetic overflow in timestamp
+        // calculation. Without this, values like hour=2562047788015216 cause
+        // hour * 3600 to overflow i64 (discovered by libFuzzer).
+        if !(0..=23).contains(&hour) || !(0..=59).contains(&minute) || !(0..=59).contains(&second) {
+            return Err(ParseError::InvalidTimestamp {
+                line_number,
+                value: date_str.to_string(),
+            });
+        }
+
         // Simple Unix timestamp calculation
+        // All components are now range-validated, so overflow is impossible:
+        //   days_since_epoch: year in 0..=9999 → max |days| ≈ 2,932,896
+        //   days * 86400: max ≈ 253,402,214,400 (fits i64)
+        //   hour * 3600: max = 82,800; minute * 60: max = 3,540; second: max = 59
         let days_since_epoch = Self::days_since_epoch(year, month, day);
         let timestamp = days_since_epoch * 86400 + hour * 3600 + minute * 60 + second;
 
@@ -364,12 +378,23 @@ impl Default for SvnParser {
     }
 }
 
+/// Maximum input size the SVN parser will accept (64 MiB).
+///
+/// This prevents resource exhaustion from pathologically large inputs
+/// that could cause quadratic scanning time in the tag-finding loops.
+const MAX_SVN_INPUT_SIZE: usize = 64 * 1024 * 1024;
+
 impl Parser for SvnParser {
     fn name(&self) -> &'static str {
         "svn"
     }
 
     fn parse_str(&self, input: &str) -> ParseResult<Vec<Commit>> {
+        // Reject excessively large inputs to prevent resource exhaustion.
+        if input.len() > MAX_SVN_INPUT_SIZE {
+            return Err(ParseError::EmptyLog);
+        }
+
         let mut commits = Vec::new();
 
         for (revision, content) in self.extract_log_entries(input) {
@@ -1089,6 +1114,72 @@ mod tests {
         assert!(SvnParser::parse_svn_date("2024-06-00T00:00:00.000000Z", 1).is_err());
         // Day 32
         assert!(SvnParser::parse_svn_date("2024-06-32T00:00:00.000000Z", 1).is_err());
+    }
+
+    // =========================================================================
+    // Regression tests for fuzzer crash: time component overflow
+    // =========================================================================
+
+    #[test]
+    fn test_fuzz_regression_hour_overflow() {
+        // Regression: libFuzzer deadly signal (crash-717304ab4d85f8753ce4ae81b446ba84e508a88b).
+        // Garbage input where the time portion of a date parses as a large i64,
+        // causing `hour * 3600` to overflow with overflow-checks enabled.
+        // The fix validates h/m/s are in valid ranges before arithmetic.
+        assert!(
+            SvnParser::parse_svn_date("2024-01-01T2562047788015216:00:00.000000Z", 1).is_err(),
+            "huge hour should be rejected (would overflow hour * 3600)"
+        );
+        assert!(
+            SvnParser::parse_svn_date("2024-01-01T24:00:00.000000Z", 1).is_err(),
+            "hour 24 should be rejected"
+        );
+        assert!(
+            SvnParser::parse_svn_date("2024-01-01T00:60:00.000000Z", 1).is_err(),
+            "minute 60 should be rejected"
+        );
+        assert!(
+            SvnParser::parse_svn_date("2024-01-01T00:00:60.000000Z", 1).is_err(),
+            "second 60 should be rejected"
+        );
+        // Negative time values (parsed from garbage)
+        assert!(
+            SvnParser::parse_svn_date("2024-01-01T-1:00:00.000000Z", 1).is_err(),
+            "negative hour should be rejected"
+        );
+    }
+
+    #[test]
+    fn test_fuzz_regression_valid_time_boundaries() {
+        // Boundary values that should still be accepted
+        assert!(
+            SvnParser::parse_svn_date("2024-01-01T23:59:59.000000Z", 1).is_ok(),
+            "23:59:59 should be accepted"
+        );
+        assert!(
+            SvnParser::parse_svn_date("2024-01-01T00:00:00.000000Z", 1).is_ok(),
+            "00:00:00 should be accepted"
+        );
+    }
+
+    #[test]
+    fn test_fuzz_regression_crash_717304ab_pattern() {
+        // Approximation of the actual crash artifact pattern:
+        // Multiple malformed logentry blocks with garbage date content where
+        // the time portion could parse as a huge i64.
+        let parser = SvnParser::new();
+        let malformed = concat!(
+            "<logentry-82<\x07>\x13kdate>\x07k",
+            "<date-82<\x07>\x13kdate>\x07k",
+            "<date>22-2-2-5en\x01",
+            "T000000000000000000000000000000000000000000",
+            "............0000000000000000000",
+            "</date>",
+            "<logentry></logentry>",
+            "<logent</logentry>",
+        );
+        // Must not panic regardless of parse result
+        let _ = parser.parse_str(malformed);
     }
 
     /// Kill mutant: `parse_paths` `search_start` advancement

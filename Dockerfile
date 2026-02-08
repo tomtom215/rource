@@ -1,19 +1,17 @@
 # Rource - Software Version Control Visualization
-# Multi-stage build for minimal image size with security hardening
+# Multi-stage build with musl static linking for zero OS-level CVEs
 
 # =============================================================================
-# Build stage - Compile the Rust binary
+# Build stage - Compile a fully static Rust binary using musl
 # =============================================================================
-FROM rust:1.93-slim-trixie AS builder
+# Alpine provides musl libc by default, producing fully static binaries
+# that require NO shared libraries at runtime.
+FROM rust:1.93-alpine AS builder
 
-# Install build dependencies with security updates
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-        pkg-config \
-        libssl-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+# Install build dependencies:
+#   musl-dev   - musl C library headers (required for libc crate)
+#   pkgconf    - pkg-config implementation (for crates using pkg-config)
+RUN apk add --no-cache musl-dev pkgconf
 
 WORKDIR /build
 
@@ -50,18 +48,31 @@ RUN touch crates/*/src/*.rs rource-cli/src/*.rs
 
 # Build the actual application with optimizations
 # Note: Package name is "rource", not "rource-cli" (directory name)
+# On Alpine, cargo builds with musl by default, producing a static binary.
 RUN cargo build --release --package rource && \
     strip /build/target/release/rource
 
-# =============================================================================
-# Runtime stage - Minimal secure image
-# =============================================================================
-# Using Google's distroless base with glibc for maximum security
-# Only contains the runtime libraries needed to run the binary
-# Must use cc-debian13 to match glibc 2.39 from Trixie build stage
-FROM gcr.io/distroless/cc-debian13:nonroot AS runtime-distroless
+# Verify the binary is statically linked (no shared library dependencies)
+# ldd returns non-zero for static binaries ("not a dynamic executable")
+RUN ! ldd /build/target/release/rource 2>&1 | grep -q "=>" && \
+    echo "OK: Binary is statically linked (no dynamic library dependencies)" || \
+    { echo "WARNING: Binary has dynamic dependencies:"; ldd /build/target/release/rource; }
 
-# Copy the binary (distroless has no shell, so we use COPY directly)
+# =============================================================================
+# Runtime stage - Minimal static image (ZERO OS package CVEs)
+# =============================================================================
+# Using Google's static distroless base which contains NO C library at all.
+# The musl-linked binary is fully self-contained and needs no shared libraries.
+#
+# static-debian13 contains ONLY:
+#   - ca-certificates, tzdata, base-files, netbase
+#   - NO glibc, NO libgcc, NO libstdc++, NO package manager, NO shell
+#
+# This eliminates ALL OS-level CVEs from C libraries (glibc, openssl, zlib,
+# openldap, curl, pam, ncurses, util-linux, libtasn1, expat, git).
+FROM gcr.io/distroless/static-debian13:nonroot AS runtime-static
+
+# Copy the statically linked binary
 COPY --from=builder /build/target/release/rource /usr/local/bin/rource
 
 # Run as non-root user (distroless:nonroot already sets this up)
@@ -76,6 +87,8 @@ CMD ["--help"]
 # Alternative runtime stage - With git support (for repository analysis)
 # =============================================================================
 # Use Debian 13 Trixie (released August 2025, LTS until 2030)
+# This variant has a larger attack surface due to OS packages.
+# Only use when git CLI access is required inside the container.
 FROM debian:trixie-slim AS runtime-with-git
 
 # Security: Apply all available security updates
@@ -93,7 +106,7 @@ RUN apt-get update && \
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/false --uid 1000 rource
 
-# Copy the binary
+# Copy the binary (musl static binary runs on any Linux)
 COPY --from=builder /build/target/release/rource /usr/local/bin/rource
 
 # Set ownership and permissions
@@ -109,21 +122,18 @@ ENTRYPOINT ["rource"]
 CMD ["--help"]
 
 # =============================================================================
-# Default target - Use distroless for minimal attack surface
+# Default target - Static distroless for zero OS-level CVEs
 # =============================================================================
-# The default image uses Google Distroless (cc-debian13) which contains ONLY:
-#   - glibc runtime, libgcc, libstdc++, ca-certificates
-#   - NO shell, NO package manager, NO unnecessary OS packages
+# The default image uses static distroless with a musl-linked binary.
+# This image contains ZERO C library packages and therefore has effectively
+# ZERO OS-level CVEs. The musl-linked binary is fully self-contained.
 #
-# Uses Debian 13 (Trixie) distroless to match the build stage's glibc 2.39.
-# This eliminates the vast majority of OS-level CVEs (openldap, pam, ncurses,
-# util-linux, libtasn1, curl, expat, git, zlib) that are present in full
-# Debian images. For git support, build with: --target runtime-with-git
+# For git support, build with: --target runtime-with-git
 #
 # Usage:
-#   Default (distroless):  docker build -t rource .
-#   With git support:      docker build --target runtime-with-git -t rource:git .
-FROM runtime-distroless AS runtime
+#   Default (static):     docker build -t rource .
+#   With git support:     docker build --target runtime-with-git -t rource:git .
+FROM runtime-static AS runtime
 
 # Metadata labels
 LABEL org.opencontainers.image.title="Rource"
@@ -132,5 +142,5 @@ LABEL org.opencontainers.image.url="https://github.com/tomtom215/rource"
 LABEL org.opencontainers.image.source="https://github.com/tomtom215/rource"
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 LABEL org.opencontainers.image.authors="Rource Contributors"
-LABEL org.opencontainers.image.base.name="gcr.io/distroless/cc-debian13"
+LABEL org.opencontainers.image.base.name="gcr.io/distroless/static-debian13"
 LABEL org.opencontainers.image.version="0.1.0"

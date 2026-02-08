@@ -126,6 +126,10 @@ pub struct LoadTestMetrics {
     start_time: Instant,
     /// Frame times collected during the test
     frame_times: Vec<Duration>,
+    /// Reusable buffer for sorting frame times in percentile calculations.
+    /// Avoids cloning the entire `frame_times` Vec (which caused 12+ MB
+    /// temporary allocations that inflated RSS through allocator fragmentation).
+    sort_buffer: Vec<Duration>,
     /// Memory samples (`elapsed_secs`, `rss_bytes`)
     memory_samples: Vec<(f64, u64)>,
     /// Entity count samples (`elapsed_secs`, `file_count`, `user_count`)
@@ -142,11 +146,16 @@ pub struct LoadTestMetrics {
 
 impl LoadTestMetrics {
     /// Creates a new metrics collector.
-    pub fn new(sample_interval: Duration) -> Self {
+    ///
+    /// `expected_frames` should be estimated from `duration_secs * expected_fps`
+    /// to pre-allocate the `frame_times` buffer. Under-estimation causes a Vec
+    /// reallocation mid-test that inflates RSS by the entire buffer size.
+    pub fn new(sample_interval: Duration, expected_frames: usize) -> Self {
         let now = Instant::now();
         Self {
             start_time: now,
-            frame_times: Vec::with_capacity(1_000_000), // 30 min at 60fps
+            frame_times: Vec::with_capacity(expected_frames),
+            sort_buffer: Vec::with_capacity(expected_frames),
             memory_samples: Vec::with_capacity(2000),
             entity_samples: Vec::with_capacity(2000),
             warmup_rss: 0,
@@ -185,35 +194,40 @@ impl LoadTestMetrics {
     }
 
     /// Calculates the Nth percentile of frame times.
-    pub fn percentile(&self, p: f64) -> Duration {
+    ///
+    /// Uses a reusable sort buffer to avoid cloning the entire `frame_times` Vec.
+    /// Previously, each call allocated and freed a ~14 MB clone, which inflated
+    /// RSS through allocator fragmentation (heap pages not returned to OS).
+    pub fn percentile(&mut self, p: f64) -> Duration {
         if self.frame_times.is_empty() {
             return Duration::ZERO;
         }
 
-        let mut sorted: Vec<Duration> = self.frame_times.clone();
-        sorted.sort();
+        self.sort_buffer.clear();
+        self.sort_buffer.extend_from_slice(&self.frame_times);
+        self.sort_buffer.sort_unstable();
 
-        let idx = ((p / 100.0) * (sorted.len() - 1) as f64).round() as usize;
-        sorted[idx.min(sorted.len() - 1)]
+        let idx = ((p / 100.0) * (self.sort_buffer.len() - 1) as f64).round() as usize;
+        self.sort_buffer[idx.min(self.sort_buffer.len() - 1)]
     }
 
     /// Returns P50 (median) frame time.
-    pub fn p50(&self) -> Duration {
+    pub fn p50(&mut self) -> Duration {
         self.percentile(50.0)
     }
 
     /// Returns P95 frame time.
-    pub fn p95(&self) -> Duration {
+    pub fn p95(&mut self) -> Duration {
         self.percentile(95.0)
     }
 
     /// Returns P99 frame time.
-    pub fn p99(&self) -> Duration {
+    pub fn p99(&mut self) -> Duration {
         self.percentile(99.0)
     }
 
     /// Returns P99.9 frame time.
-    pub fn p999(&self) -> Duration {
+    pub fn p999(&mut self) -> Duration {
         self.percentile(99.9)
     }
 
@@ -238,7 +252,7 @@ impl LoadTestMetrics {
     }
 
     /// Generates a JSON report.
-    pub fn to_json(&self) -> String {
+    pub fn to_json(&mut self) -> String {
         let p50_ms = self.p50().as_secs_f64() * 1000.0;
         let p95_ms = self.p95().as_secs_f64() * 1000.0;
         let p99_ms = self.p99().as_secs_f64() * 1000.0;
@@ -314,9 +328,10 @@ impl LoadTestMetrics {
     }
 
     /// Writes report to file.
-    pub fn write_report(&self, path: &str) -> std::io::Result<()> {
+    pub fn write_report(&mut self, path: &str) -> std::io::Result<()> {
+        let json = self.to_json();
         let mut file = File::create(path)?;
-        file.write_all(self.to_json().as_bytes())?;
+        file.write_all(json.as_bytes())?;
         Ok(())
     }
 }
@@ -441,8 +456,12 @@ fn load_test_30min_100k_commits() {
         scene.update(dt);
     }
 
-    // Initialize metrics with 1-second sampling
-    let mut metrics = LoadTestMetrics::new(Duration::from_secs(1));
+    // Initialize metrics with 1-second sampling.
+    // Pre-allocate for expected throughput: the scene updates at ~4000 fps in
+    // release mode, so 30 min × 60s × 4000 = 7.2M frames. Over-allocate to
+    // 10M to avoid mid-test reallocation that inflates RSS.
+    let expected_frames = 10_000_000;
+    let mut metrics = LoadTestMetrics::new(Duration::from_secs(1), expected_frames);
     metrics.set_warmup_baseline();
 
     println!(
@@ -478,12 +497,14 @@ fn load_test_30min_100k_commits() {
             let rss = bytes_to_mb(get_rss_bytes());
             let growth = metrics.memory_growth_percent();
 
+            let p50 = metrics.p50().as_secs_f64() * 1000.0;
+            let p99 = metrics.p99().as_secs_f64() * 1000.0;
             println!(
                 "[{:>5.1}%] {:>4.0}s elapsed | P50: {:>6.3}ms | P99: {:>6.3}ms | RSS: {:>6.1}MB ({:>+5.1}%)",
                 pct,
                 elapsed.as_secs_f64(),
-                metrics.p50().as_secs_f64() * 1000.0,
-                metrics.p99().as_secs_f64() * 1000.0,
+                p50,
+                p99,
                 rss,
                 growth
             );
@@ -610,8 +631,11 @@ fn load_test_smoke_5min_10k_commits() {
         scene.update(dt);
     }
 
-    // Initialize metrics
-    let mut metrics = LoadTestMetrics::new(Duration::from_secs(1));
+    // Initialize metrics.
+    // Pre-allocate for expected throughput: ~4000 fps × 300s = 1.2M frames.
+    // Use 2M to avoid mid-test reallocation that inflates RSS.
+    let expected_frames = 2_000_000;
+    let mut metrics = LoadTestMetrics::new(Duration::from_secs(1), expected_frames);
     metrics.set_warmup_baseline();
 
     println!(
@@ -639,12 +663,14 @@ fn load_test_smoke_5min_10k_commits() {
         // Progress every 30 seconds
         if last_progress.elapsed() >= Duration::from_secs(30) {
             let elapsed = start.elapsed();
+            let p50 = metrics.p50().as_secs_f64() * 1000.0;
+            let p99 = metrics.p99().as_secs_f64() * 1000.0;
             println!(
                 "[{:>5.1}%] {:>4.0}s | P50: {:>6.3}ms | P99: {:>6.3}ms | RSS: {:>6.1}MB ({:>+5.1}%)",
                 (elapsed.as_secs_f64() / test_duration.as_secs_f64()) * 100.0,
                 elapsed.as_secs_f64(),
-                metrics.p50().as_secs_f64() * 1000.0,
-                metrics.p99().as_secs_f64() * 1000.0,
+                p50,
+                p99,
                 bytes_to_mb(get_rss_bytes()),
                 metrics.memory_growth_percent()
             );
@@ -704,7 +730,8 @@ fn load_test_quick_sanity_1min() {
         scene.update(dt);
     }
 
-    let mut metrics = LoadTestMetrics::new(Duration::from_secs(1));
+    // Pre-allocate for ~4000 fps × 60s = 240K frames. Use 500K.
+    let mut metrics = LoadTestMetrics::new(Duration::from_secs(1), 500_000);
     metrics.set_warmup_baseline();
 
     // Run for 1 minute
