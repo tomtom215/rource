@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770413616722,
+  "lastUpdate": 1770566407092,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5576,6 +5576,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1255464,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "81e28ce8206bb48934746013f298573ae95285e8",
+          "message": "Merge pull request #270 from tomtom215/claude/fix-libfuzzer-crash-0WOhS\n\nUpgrade dependencies, harden fuzzing, optimize load tests, and improve Docker security",
+          "timestamp": "2026-02-08T16:56:08+01:00",
+          "tree_id": "4aff1f1da7e611be671c8a7712f22f602ca83dde",
+          "url": "https://github.com/tomtom215/rource/commit/81e28ce8206bb48934746013f298573ae95285e8"
+        },
+        "date": 1770566406583,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
             "unit": "bytes"
           }
         ]
