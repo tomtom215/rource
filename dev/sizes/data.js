@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770589145014,
+  "lastUpdate": 1770633932822,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5756,6 +5756,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/5bdd468a5178a3515341b59bf7e2c9b845d3b4ac"
         },
         "date": 1770589143802,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "54ccc031488250542a65ee8f7a8bcd901cee9c87",
+          "message": "Merge pull request #276 from tomtom215/claude/audit-markdown-docs-jHDty\n\nUpdate test counts and unsafe block documentation to 2900+",
+          "timestamp": "2026-02-09T11:43:33+01:00",
+          "tree_id": "c2a3b5514e56596e25f22158fd117b949aa99c38",
+          "url": "https://github.com/tomtom215/rource/commit/54ccc031488250542a65ee8f7a8bcd901cee9c87"
+        },
+        "date": 1770633932442,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
