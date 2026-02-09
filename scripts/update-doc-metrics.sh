@@ -514,13 +514,13 @@ if [[ -f "$CM" ]]; then
     echo "  Updated CLAUDE.md"
 fi
 
-# SECURITY.md
+# SECURITY.md — uses TOTAL (prod + test) because the text describes both
 SEC="$PROJECT_ROOT/SECURITY.md"
 if [[ -f "$SEC" ]]; then
-    if [[ "$UNSAFE_PROD_COUNT" -eq 1 ]]; then
-        sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_PROD_COUNT unsafe block/" "$SEC"
+    if [[ "$UNSAFE_TOTAL" -eq 1 ]]; then
+        sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_TOTAL unsafe block/" "$SEC"
     else
-        sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_PROD_COUNT unsafe blocks/" "$SEC"
+        sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_TOTAL unsafe blocks/" "$SEC"
     fi
     echo "  Updated SECURITY.md"
 fi
