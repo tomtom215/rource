@@ -50,8 +50,8 @@ Properties verified include:
 - **Domain properties**: Determinant identities, orthogonality, interpolation bounds
 - **Cross-type**: Matrix-vector transform correctness, type conversion consistency
 
-Verus proof functions are annotated with `#[verifier::proof]` and use
-`ensures` clauses specifying the postcondition. Most proofs are discharged
+Verus proof functions use the `proof fn` keyword and specify postconditions
+via `ensures` clauses. Most proofs are discharged
 automatically by Z3; complex polynomial identities require the lemma
 decomposition technique described in Section 4.1.
 
@@ -102,8 +102,10 @@ Bridge theorems establish correspondence between R and Z layers
 
 Using Flocq 4.1.3, we establish IEEE 754 binary32 error bounds:
 ```coq
-Definition binary32 := FLT_exp (-149) 24.
-Definition round32 := round radix2 binary32 rndNE.
+Definition prec32 : Z := 24%Z.         (* significand bits *)
+Definition emin32 : Z := (-149)%Z.     (* minimum exponent *)
+Definition fexp32 := FLT_exp emin32 prec32.
+Definition round32 := round radix2 fexp32 rndNE.
 ```
 
 Error bound theorems follow the pattern:

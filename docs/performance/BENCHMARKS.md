@@ -367,11 +367,11 @@ All measurements in elements per second.
 
 Historical benchmark data from the first FPS optimization report, superseded by Phases 40-58.
 
-**Test Count at Time**: 245 tests (now 2,076)
+**Test Count at Time**: 245 tests (now 2900+)
 
 ### Allocation Reuse for Hot Path Buffers
 
-**Location**: `rource-core/src/scene/mod.rs`
+**Location**: `crates/rource-core/src/scene/mod.rs`
 
 Reusable buffers added: `completed_actions_buffer`, `files_to_remove_buffer`, `forces_buffer`, `dir_data_buffer`
 
@@ -383,7 +383,7 @@ Reusable buffers added: `completed_actions_buffer`, `files_to_remove_buffer`, `f
 
 ### Squared Distance Comparisons
 
-**Location**: `rource-core/src/scene/mod.rs`
+**Location**: `crates/rource-core/src/scene/mod.rs`
 
 | Benchmark | Before | After | Change |
 |-----------|--------|-------|--------|

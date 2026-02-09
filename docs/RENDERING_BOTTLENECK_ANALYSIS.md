@@ -284,7 +284,7 @@ Complexity: O(width × height) instead of O(n_files × radius²)
 ### Implementation
 
 The recommended optimization was implemented in:
-- `rource-cli/src/rendering.rs` (lines 853-860)
+- `rource-cli/src/rendering.rs` (lines 846-853)
 - `rource-wasm/src/render_phases/` (module directory)
 
 **Before:**
@@ -295,12 +295,15 @@ let glow_color = color.with_alpha(glow_intensity * file.alpha());
 renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
 ```
 
-**After:**
+**After (Phase 59 + Phase 70 LOD culling):**
 ```rust
+// Phase 59: Skip glow for inactive files (~97% of files)
+// Phase 70: LOD culling - skip glow when effective_radius < 3.0
+//           Reduced glow radius from 2.0x to 1.5x (-44% pixel area)
 let is_touched = file.touch_time() > 0.0;
-if is_touched {
+if is_touched && effective_radius >= 3.0 {
     let glow_color = color.with_alpha(0.25 * file.alpha());
-    renderer.draw_disc(screen_pos, effective_radius * 2.0, glow_color);
+    renderer.draw_disc(screen_pos, effective_radius * 1.5, glow_color);
 }
 ```
 

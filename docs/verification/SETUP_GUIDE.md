@@ -228,7 +228,9 @@ opam pin add coq-equations \
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Abstract specifications (9 files)
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v
+# CRITICAL: Utils.v MUST compile first (Vec2.v, Vec3.v depend on it)
+# Rect.v MUST compile before Bounds.v (Bounds.v depends on it)
+coqc -Q . RourceMath Utils.v Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v
 
 # Layer 1: Abstract proofs (10 files)
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
@@ -510,7 +512,7 @@ done
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specs
-for f in Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v; do
+for f in Utils.v Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v; do
   coqc -Q . RourceMath "$f"
 done
 
@@ -690,8 +692,8 @@ rm -f *.vo *.vos *.vok *.glob
 
 # 3. Recompile everything in dependency order (all 46 files)
 
-# Layer 1: Specs
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v
+# Layer 1: Specs (Utils.v first — Vec2.v, Vec3.v depend on it; Rect.v before Bounds.v)
+coqc -Q . RourceMath Utils.v Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v
 
 # Layer 1: Proofs
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
