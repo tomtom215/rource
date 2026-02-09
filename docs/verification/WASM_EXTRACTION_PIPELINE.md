@@ -23,13 +23,13 @@ architecture combining Verus with the Coq ecosystem.
 | Tool | Purpose | Maturity | Integration |
 |------|---------|----------|-------------|
 | **Verus** | Algebraic properties | Production | Active (498 proof fns) |
-| **Coq** | Mathematical proofs, complexity | Production | Active (2198 theorems) |
+| **Coq** | Mathematical proofs, complexity | Production | Active (1837 theorems) |
 | **wasm_of_ocaml** | OCaml -> WASM compilation | Production (v6.2.0) | Active (Path 1, 6.8 KB lib) |
 | **MetaCoq Verified Extraction** | Verified Coq -> OCaml | Research (PLDI'24) | Built from source (Path 2) |
 | **CertiCoq-WASM** | Coq -> Verified WASM | Research (CPP 2025) | Deferred (Path 4, needs 8.20) |
 | **coq-rust-extraction** | Coq -> Rust extraction | Early research (v0.1.1) | Deferred (needs 8.20+) |
 | **WasmCert-Coq** | WASM formalization | Production | CertiCoq-WASM dependency |
-| **ICC/Coq** | Complexity bounds | Research | Active (2198 theorems) |
+| **ICC/Coq** | Complexity bounds | Research | Active (1837 theorems) |
 | **RefinedRust** | Unsafe code verification | Research (PLDI 2024) | Optional |
 
 ## Pipeline Status (Phase 3)
