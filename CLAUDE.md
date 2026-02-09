@@ -21,15 +21,16 @@ This document provides context and guidance for Claude (AI assistant) when worki
 13. [Accessibility Standards](#accessibility-standards)
 14. [Documentation Standards](#documentation-standards)
 15. [Documentation Automation Standards](#documentation-automation-standards)
-16. [Common Tasks](#common-tasks)
-17. [CI/CD Pipeline](#cicd-pipeline)
-18. [Debugging](#debugging)
-19. [Dependencies Philosophy](#dependencies-philosophy)
-20. [Git Workflow](#git-workflow)
-21. [Troubleshooting](#troubleshooting)
-22. [Reference Links](#reference-links)
-23. [Roadmap Documents](#roadmap-documents)
-24. [Session Best Practices](#session-best-practices)
+16. [Documentation Audit Standards](#documentation-audit-standards)
+17. [Common Tasks](#common-tasks)
+18. [CI/CD Pipeline](#cicd-pipeline)
+19. [Debugging](#debugging)
+20. [Dependencies Philosophy](#dependencies-philosophy)
+21. [Git Workflow](#git-workflow)
+22. [Troubleshooting](#troubleshooting)
+23. [Reference Links](#reference-links)
+24. [Roadmap Documents](#roadmap-documents)
+25. [Session Best Practices](#session-best-practices)
 
 ---
 
@@ -146,6 +147,7 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 | **"Unrelated to my changes"** | **Destroys trust and quality** | **You touched it, you own it** |
 | **"It's a base image issue"** | **Assumption that issues self-resolve** | **Minimize attack surface; fix root cause** |
 | **"It'll resolve after next merge"** | **Speculation, not action** | **Fix it NOW; never assume future resolution** |
+| **"I'll fix the doc, not the script"** | **Script will overwrite your fix** | **Fix the automation script FIRST, then run it** |
 
 ### CRITICAL: The "Pre-Existing Issue" Fallacy
 
@@ -359,12 +361,16 @@ The following events MUST trigger a CLAUDE.md update:
 | Automation gap identified | Create or extend scripts; add `--check` enforcement to CI |
 | Security scan alerts appeared/increased | Investigate root cause; fix Dockerfile/dependencies; never dismiss |
 | Feature-gated code missed by linting | Add `--all-features` to clippy/test commands |
+| Script overwrites a manual doc fix | Fix the script variable/pattern FIRST; never edit only the doc |
+| Coq build fails on clean compile | Verify `Require Import` dependency order; `Utils.v` must compile first |
+| Documentation audit finds stale claims | Run full `update-doc-metrics.sh`; add missing sed patterns |
+| Path reference uses relative instead of full | Always reference from repo root with `crates/` prefix |
 
 #### Lessons Learned Log
 
 > **Refactored to external document**: See [`docs/LESSONS_LEARNED.md`](docs/LESSONS_LEARNED.md)
 > for the full categorized knowledge base with decision tables, domain-organized
-> lessons, and chronological audit log (136+ entries).
+> lessons, and chronological audit log (258+ entries).
 >
 > New entries should be added to BOTH the appropriate category section AND the
 > chronological log in that document.
@@ -630,7 +636,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
 | `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (2968 theorems/harnesses) |
-| `docs/verification/VERIFICATION_CHRONOLOGY.md` | Verification history: phases 1–7, completed milestones |
+| `docs/verification/VERIFICATION_CHRONOLOGY.md` | Verification history: phases 1–14, completed milestones |
 | `docs/verification/VERIFICATION_FUTURE_WORK.md` | Verification roadmap: remaining items P1.4–P6, coverage projection |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (498 proof functions, 11 files) |
 | `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 1837 theorems, development workflow) |
@@ -641,6 +647,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/verification/RUST_VERIFICATION_LANDSCAPE.md` | 8-tool landscape survey: Kani (ADOPT), Aeneas/Creusot (MONITOR), hax (N/A) |
 | `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment (9-path survey) |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
+| `docs/adr/` | Architecture Decision Records (5 ADRs + template) |
 | `metrics/verification-counts.json` | Machine-readable verification counts (auto-generated) |
 | `metrics/doc-metrics.json` | Machine-readable documentation metrics (auto-generated) |
 | `scripts/update-verification-counts.sh` | Automated verification count propagation + CI check |
@@ -1308,7 +1315,8 @@ approach provides maximum confidence suitable for top-tier academic publication.
 
 # Option 3: Manual verification
 
-# Kani proofs (272 harnesses)
+# Kani proofs (272 harnesses across 10 files in crates/rource-math/src/kani_proofs/)
+# Files: mod.rs, vec2.rs, vec3.rs, vec4.rs, mat3.rs, mat4.rs, color.rs, rect.rs, bounds.rs, utils.rs
 # NOTE: Running all at once may SIGSEGV. Run individually:
 cargo kani -p rource-math --harness verify_lerp_no_nan
 #
@@ -1340,7 +1348,8 @@ cargo kani -p rource-math --harness verify_lerp_no_nan
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specifications + proofs
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v Bounds.v
+# CRITICAL: Utils.v MUST compile first — Vec2.v, Vec3.v, Vec4.v all `Require Import RourceMath.Utils`
+coqc -Q . RourceMath Utils.v Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
 coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v
@@ -1407,7 +1416,7 @@ coqc -Q . RourceMath FP_Rect.v
 - Unsafe code requires explicit justification
 - Must have `// SAFETY:` comment explaining invariants
 - Must be reviewed for soundness
-- Current unsafe: 2 blocks — `webgl2/buffers.rs` (float reinterpretation) and `load_tests.rs` (test helper)
+- Current unsafe: 2 blocks — `crates/rource-render/src/backend/webgl2/buffers.rs` (float reinterpretation) and `crates/rource-core/tests/load_tests.rs` (test helper)
 
 ---
 
@@ -1448,7 +1457,7 @@ Every change must be documented:
 | UI/UX improvement | MOBILE_UX_ROADMAP.md status update |
 | New feature | README.md, API docs, usage examples |
 | Bug fix | Commit message with root cause |
-| Architecture change | ADR in docs/adr/ (TODO) |
+| Architecture change | ADR in `docs/adr/` (5 active ADRs, use `docs/adr/template.md`) |
 
 ### Commit Message Format
 
@@ -1518,7 +1527,7 @@ this repeatedly: counts go stale within a single session when new proofs or test
 │  Ground Truth Sources:                                                      │
 │     Coq:   grep -cE '^(Theorem|Lemma|Local Lemma)' *.v                     │
 │     Verus: grep -c 'proof fn' *.rs                                          │
-│     Kani:  grep -c '#\[kani::proof\]' kani_proofs.rs                        │
+│     Kani:  grep -rc '#\[kani::proof\]' crates/rource-math/src/kani_proofs/  │
 │     Tests: cargo test --workspace 2>&1 | grep 'test result'                 │
 │     MSRV:  grep 'rust-version' Cargo.toml                                   │
 │                                                                             │
@@ -1594,7 +1603,85 @@ sed -i -E "s/[0-9,]+\+ tests/$DISPLAY tests/g" file.md
 
 # Multi-line context anchoring for tables
 sed -i -E "/unique_header/{n;s/old_value/new_value/}" file.md
+
+# WRONG: Using wrong variable scope for text that describes multiple items
+# SECURITY.md says "2 unsafe blocks (1 production, 1 test)" — needs TOTAL, not PROD
+sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_PROD_COUNT unsafe blocks/" "$SEC"
+
+# RIGHT: Match variable scope to what the text describes
+sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_TOTAL unsafe blocks/" "$SEC"
 ```
+
+---
+
+## Documentation Audit Standards
+
+### Why Documentation Audits Are Required
+
+Documentation drift is inevitable in a project with 116+ markdown files, multiple
+automation scripts, and rapid development. Phase 4-5 audits discovered 30+ errors
+across the documentation corpus. Without periodic audits, stale claims erode
+credibility and violate the PEER REVIEWED PUBLISHED ACADEMIC standard.
+
+### Audit Scope
+
+| Dimension | What to Check | Ground Truth Source |
+|-----------|---------------|---------------------|
+| Numerical claims | Test counts, theorem counts, phase counts | `cargo test`, `grep -c` on proof files, CHRONOLOGY.md |
+| File paths | Every `path/to/file.rs` reference | `ls` / `stat` on the actual path |
+| Code snippets | Trait definitions, struct layouts, function signatures | Read the actual source file |
+| CLI arguments | `--flag` references | `rource-cli/src/args/mod.rs` clap definitions |
+| API signatures | WASM function names | `rource-wasm/src/wasm_api/` `#[wasm_bindgen]` attributes |
+| Build commands | `cargo`, `coqc`, `wasm-pack` invocations | Execute them and verify success |
+| Cross-doc consistency | Same metric in multiple files | `metrics/doc-metrics.json`, `metrics/verification-counts.json` |
+| Internal links | `[text](./path.md)` references | File existence check |
+| Coq build order | `coqc` command sequences | `Require Import` dependency chain in `.v` files |
+
+### Critical Audit Lesson: Script-Managed Files
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    SCRIPT-MANAGED DOCUMENTATION WARNING                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  20+ documentation files are managed by update-doc-metrics.sh and           │
+│  update-verification-counts.sh. If you manually edit a metric in one        │
+│  of these files, the NEXT script run will OVERWRITE your fix.               │
+│                                                                             │
+│  CORRECT workflow for fixing a script-managed metric:                       │
+│                                                                             │
+│  1. Fix the SCRIPT first (update-doc-metrics.sh or                          │
+│     update-verification-counts.sh)                                          │
+│  2. Run the script to propagate the fix                                     │
+│  3. Verify with --check mode                                                │
+│  4. Commit both the script fix AND the updated docs                         │
+│                                                                             │
+│  INCORRECT workflow (will silently break):                                   │
+│                                                                             │
+│  1. Edit the markdown file directly                                         │
+│  2. Commit without updating the script                                      │
+│  3. Next script run overwrites your fix                                     │
+│                                                                             │
+│  Phase 5 example: SECURITY.md "Only 2 unsafe blocks" was manually           │
+│  fixed but reverted by the script because it used UNSAFE_PROD_COUNT (1)     │
+│  instead of UNSAFE_TOTAL (2). The script had to be fixed first.             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Known Audit Findings Pattern
+
+These error patterns recur across documentation audits:
+
+| Pattern | Frequency | Prevention |
+|---------|-----------|------------|
+| Stale numerical counts | High | Run `update-doc-metrics.sh` after any change |
+| Missing `crates/` prefix in paths | Medium | Always use full path from repo root |
+| Coq build order wrong | Medium | `Utils.v` must compile FIRST (Vec2/3/4.v depend on it) |
+| Script sed patterns miss new file formats | Medium | Test scripts after adding new doc format variants |
+| "all N phases" vs "N optimization phases" | Low | Multiple sed patterns needed for different phrasings |
+| Broken links after file rename/move | Low | Run link check sweep after reorganization |
+| ADR marked as TODO when ADRs exist | Low | Verify TODOs against actual directory contents |
 
 ---
 
@@ -1620,7 +1707,7 @@ sed -i -E "/unique_header/{n;s/old_value/new_value/}" file.md
 
 1. Add field to appropriate module in `rource-core/src/config/settings/`
 2. Add CLI argument in `rource-cli/src/args/mod.rs`
-3. Add environment variable in `rource-core/src/config/config_env.rs`
+3. Add environment variable in `crates/rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/wasm_api/settings.rs`
 5. Update documentation (README, CLAUDE.md if significant)
 
@@ -1633,6 +1720,22 @@ When verification counts, test counts, or other metrics change:
 3. Review `metrics/doc-metrics.json` and `metrics/verification-counts.json` for correctness
 4. If adding a new documentation file with metrics, add sed patterns to the appropriate script
 5. If adding a new metric type, add extraction logic to `update-doc-metrics.sh`
+
+### Running a Documentation Audit
+
+When documentation accuracy is in question or after major changes:
+
+1. Run `./scripts/update-doc-metrics.sh --check` to detect metric staleness
+2. Run `./scripts/update-verification-counts.sh --check` for proof count staleness
+3. For prose/code snippet audits, verify against source code ground truth:
+   - Read actual source files, not other documentation
+   - Check every file path with `ls` or `stat`
+   - Verify every code snippet matches the actual function signature
+   - Confirm build commands execute successfully
+4. Check internal links resolve: every `[text](./path.md)` must point to an existing file
+5. When fixing a script-managed file, fix the **script** first, then run it
+6. Verify idempotency: run scripts twice, then `--check` — must pass
+7. Test that `cargo fmt --check` and `cargo clippy --all-targets --all-features -- -D warnings` still pass
 
 ### Adding a New Verification Proof File
 
@@ -2009,7 +2112,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 ---
 
-*Last updated: 2026-02-05*
+*Last updated: 2026-02-09*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
 *Formal Verification: 2968 theorems/harnesses (Verus: 498, Coq R-based: 1366, Coq Z-based: 471, Coq FP: 361, Kani: 272)*

@@ -103,7 +103,7 @@ Complete technical documentation for the Rource project.
 | [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (498 proof functions, 9 types) |
 | [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (1837 theorems R+Z, 361 FP, development workflow) |
 | [verification/VERIFICATION_COVERAGE.md](./verification/VERIFICATION_COVERAGE.md) | Coverage metrics, limitations, floating-point assessment |
-| [verification/VERIFICATION_CHRONOLOGY.md](./verification/VERIFICATION_CHRONOLOGY.md) | Verification history: phases 1–10, completed milestones |
+| [verification/VERIFICATION_CHRONOLOGY.md](./verification/VERIFICATION_CHRONOLOGY.md) | Verification history: phases 1–14, completed milestones |
 | [verification/VERIFICATION_FUTURE_WORK.md](./verification/VERIFICATION_FUTURE_WORK.md) | Verification roadmap: remaining items, coverage projection |
 | [verification/FLOATING_POINT_VERIFICATION.md](./verification/FLOATING_POINT_VERIFICATION.md) | FP verification: Flocq 4.1.3, IEEE 754 error analysis (361 theorems) |
 | [verification/RUST_VERIFICATION_LANDSCAPE.md](./verification/RUST_VERIFICATION_LANDSCAPE.md) | 8-tool landscape survey: Kani, Aeneas, Creusot, hax |
@@ -194,7 +194,7 @@ Complete technical documentation for the Rource project.
 
 | Metric | Value |
 |--------|-------|
-| Total documentation files | **72** |
+| Total documentation files | **73** |
 | Performance documents | 20 |
 | Operations documents | 6 |
 | Architecture/Design documents | 8 |

@@ -2,7 +2,7 @@
 
 This document covers general performance characteristics, profiling tools, and configuration
 options for Rource. For the detailed optimization history, see the
-[performance documentation](./performance/README.md).
+[performance documentation](./README.md).
 
 ---
 

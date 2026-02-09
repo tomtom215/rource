@@ -265,6 +265,14 @@ js/
 ├── data-loader.js       # Repository data loading
 ├── github-fetch.js      # GitHub API integration
 ├── utils.js             # Shared utility functions
+├── build-info.js        # Build metadata
+├── cached-data.js       # Data caching layer
+├── indexeddb-cache.js   # IndexedDB persistence
+├── static-logs.js       # Bundled sample logs
+├── telemetry.js         # Performance telemetry
+├── timeline-markers.js  # Timeline marker overlays
+├── toast.js             # Toast notification system
+├── url-state.js         # URL-based state management
 ├── core/                # Core runtime modules
 │   ├── animation-loop.js
 │   ├── frame-scheduler.js
@@ -274,6 +282,7 @@ js/
 └── features/            # Feature-specific modules
     ├── screenshot.js
     ├── fullscreen.js
+    ├── full-map-export.js
     ├── theme.js
     ├── help.js
     ├── keyboard.js
@@ -351,9 +360,9 @@ cargo flamegraph -- --headless --output /tmp/frames .
 1. Add field to the appropriate settings module in `rource-core/src/config/settings/`:
    - `camera.rs`, `display.rs`, `playback.rs`, `visibility.rs`, `limits.rs`
    - `input.rs`, `export.rs`, `title.rs`, `directory.rs`, `layout.rs`
-   - `overlay.rs`, `filter.rs`, or `mod.rs` for new setting categories
+   - `overlay.rs`, `filter.rs`, `watermark.rs`, or `mod.rs` for new setting categories
 2. Add CLI argument in `rource-cli/src/args/mod.rs`
-3. Add environment variable in `rource-core/src/config/config_env.rs`
+3. Add environment variable in `crates/rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/wasm_api/settings.rs`
 5. Update README and help text
 

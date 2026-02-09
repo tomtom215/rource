@@ -49,6 +49,14 @@ pub trait Renderer {
     // Textures
     fn load_texture(&mut self, width: u32, height: u32, data: &[u8]) -> TextureId;
     fn unload_texture(&mut self, texture: TextureId);
+
+    // Fonts
+    fn load_font(&mut self, data: &[u8]) -> Option<FontId>;
+
+    // File icons (opt-in, with default fallback implementations)
+    fn init_file_icons(&mut self) -> bool { false }
+    fn has_file_icons(&self) -> bool { false }
+    fn draw_file_icon(&mut self, center: Vec2, size: f32, extension: &str, color: Color);
 }
 ```
 

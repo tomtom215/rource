@@ -168,7 +168,7 @@ WebAssembly module for browser deployment:
 │   playback.rs      - Timeline management              │
 │   interaction.rs   - Mouse/touch handling             │
 │   render_phases/   - Phased rendering pipeline        │
-│   rendering.rs     - Splines, curves, visual helpers  │
+│   rendering.rs     - Re-exports rource_render::visual │
 │   profiler.rs      - Performance profiling            │
 │   png.rs           - Screenshot export                │
 │   wasm_api/        - Modular WASM API endpoints       │

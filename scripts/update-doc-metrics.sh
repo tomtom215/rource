@@ -408,6 +408,14 @@ if [[ -f "$SLO" ]]; then
     sed -i -E "s/[0-9]+ optimization phases/$OPT_PHASES optimization phases/" "$SLO"
     echo "  Done."
 fi
+
+# OVERVIEW.md uses "all N phases" pattern (not "N optimization phases")
+OV="$PROJECT_ROOT/docs/performance/OVERVIEW.md"
+if [[ -f "$OV" ]]; then
+    echo "  Updating docs/performance/OVERVIEW.md..."
+    sed -i -E "s/all [0-9]+ phases/all $OPT_PHASES phases/" "$OV"
+    echo "  Done."
+fi
 echo ""
 
 # ─── Test counts (only if data available) ───
@@ -454,14 +462,26 @@ if [[ "$TEST_TOTAL" -gt 0 ]]; then
     fi
 
     # Update per-crate test counts in README.md
+    # README uses TWO formats:
+    #   1. Pipe-table rows: "rource-math | 558"
+    #   2. ASCII art diagram: "rource-math/      558 tests"
+    # We must update both.
     if [[ -f "$RM" ]]; then
         echo "  Updating README.md per-crate counts..."
+        # Pipe-table format (if present)
         sed -i -E "s/rource-math \| [0-9]+/rource-math | $TEST_MATH/" "$RM"
         sed -i -E "s/rource-vcs \| [0-9]+/rource-vcs | $TEST_VCS/" "$RM"
         sed -i -E "s/rource-core \| [0-9]+/rource-core | $TEST_CORE/" "$RM"
         sed -i -E "s/rource-render \| [0-9]+/rource-render | $TEST_RENDER/" "$RM"
         sed -i -E "s/rource-cli \| [0-9]+/rource-cli | $TEST_CLI/" "$RM"
         sed -i -E "s/rource-wasm \| [0-9]+/rource-wasm | $TEST_WASM/" "$RM"
+        # ASCII art diagram format: "rource-math/      NNN tests"
+        sed -i -E "s/(rource-math\/[[:space:]]+)[0-9]+ tests/\1$TEST_MATH tests/" "$RM"
+        sed -i -E "s/(rource-vcs\/[[:space:]]+)[0-9]+ tests/\1$TEST_VCS tests/" "$RM"
+        sed -i -E "s/(rource-core\/[[:space:]]+)[0-9]+ tests/\1$TEST_CORE tests/" "$RM"
+        sed -i -E "s/(rource-render\/[[:space:]]+)[0-9]+ tests/\1$TEST_RENDER tests/" "$RM"
+        sed -i -E "s/(rource-cli\/[[:space:]]+)[0-9]+ tests/\1$TEST_CLI tests/" "$RM"
+        sed -i -E "s/(rource-wasm\/[[:space:]]+)[0-9]+ tests/\1$TEST_WASM tests/" "$RM"
         echo "  Done."
     fi
 
@@ -494,13 +514,13 @@ if [[ -f "$CM" ]]; then
     echo "  Updated CLAUDE.md"
 fi
 
-# SECURITY.md
+# SECURITY.md — uses TOTAL (prod + test) because the text describes both
 SEC="$PROJECT_ROOT/SECURITY.md"
 if [[ -f "$SEC" ]]; then
-    if [[ "$UNSAFE_PROD_COUNT" -eq 1 ]]; then
-        sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_PROD_COUNT unsafe block/" "$SEC"
+    if [[ "$UNSAFE_TOTAL" -eq 1 ]]; then
+        sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_TOTAL unsafe block/" "$SEC"
     else
-        sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_PROD_COUNT unsafe blocks/" "$SEC"
+        sed -i -E "s/Only [0-9]+ unsafe blocks?/Only $UNSAFE_TOTAL unsafe blocks/" "$SEC"
     fi
     echo "  Updated SECURITY.md"
 fi
