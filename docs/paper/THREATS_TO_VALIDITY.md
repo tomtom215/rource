@@ -330,7 +330,7 @@ individual theorems are trivial or if counting methodology is inconsistent.
 | Coq (R) | `Theorem` + `Lemma` + `Local Lemma` | `grep -cE '^(Theorem\|Lemma\|Local Lemma)' *.v` |
 | Coq (Z) | Same as above in `*_Compute.v` | Same grep pattern |
 | Coq (FP) | Same as above in `FP_*.v` | Same grep pattern |
-| Kani | `#[kani::proof]` attributes | `grep -c '#\[kani::proof\]' kani_proofs.rs` |
+| Kani | `#[kani::proof]` attributes | `grep -rc '#\[kani::proof\]' crates/rource-math/src/kani_proofs/` |
 
 ### Assessment of Triviality
 
