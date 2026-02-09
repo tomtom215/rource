@@ -23,7 +23,7 @@ WebAssembly module. All functions are pure (no side effects, no mutable
 global state), making them well-suited for formal verification.
 
 The library's MSRV (Minimum Supported Rust Version) is 1.93, and it
-maintains 2876+ unit tests.
+maintains 2900+ unit tests.
 
 ## 2.2 Verus
 

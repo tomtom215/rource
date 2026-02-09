@@ -1015,8 +1015,8 @@ rustup install 1.92.0
 
 | Crate | Status | Proof Fns | VCs | Notes |
 |-------|--------|-----------|-----|-------|
-| rource-math/Vec2 | VERIFIED | 61 | 87+++ | Complete vector space axioms, geometric, length, min/max, abs, clamp, distance, reflect, lerp |
-| rource-math/Vec3 | VERIFIED | 61 | 89+++ | Cross product, scalar triple product, reflect, clamp, distance, element product, lerp |
+| rource-math/Vec2 | VERIFIED | 61 | 87++++ | Complete vector space axioms, geometric, length, min/max, abs, clamp, distance, reflect, lerp |
+| rource-math/Vec3 | VERIFIED | 61 | 89++++ | Cross product, scalar triple product, reflect, clamp, distance, element product, lerp |
 | rource-math/Vec4 | VERIFIED | 55 | 90+ | 4D vector space, basis orthonormality, min/max, abs, clamp, reflect, element product, lerp |
 | rource-math/Mat3 (base) | VERIFIED | 22 | 26 | Matrix multiplication associativity, ring structure |
 | rource-math/Mat3 (extended) | VERIFIED | 26 | 45 | Determinant, translation, scaling, shearing, transforms |

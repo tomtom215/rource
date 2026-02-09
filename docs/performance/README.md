@@ -133,7 +133,7 @@ All optimization documentation follows these requirements:
 
 1. **Measurable**: Backed by criterion benchmarks with 100+ samples, 95% CI
 2. **Documented**: Before/after measurements with clear methodology
-3. **Correct**: All 2800+ tests must pass
+3. **Correct**: All 2900+ tests must pass
 4. **Clean**: Clippy and rustfmt compliant (zero warnings)
 5. **Verifiable**: Benchmarks can be re-run to reproduce results
 6. **Complexity Verified**: Big-O claims empirically verified at 5 input sizes

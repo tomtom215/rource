@@ -17,7 +17,7 @@ docker run --rm rource-artifact --quick  # Quick subset (~10 min)
 
 | Claim | Tool | Expected Result |
 |-------|------|-----------------|
-| 2876+ unit tests pass | `cargo test` | All pass, zero failures |
+| 2900+ unit tests pass | `cargo test` | All pass, zero failures |
 | Zero clippy warnings | `cargo clippy` | Zero warnings |
 | 498 Verus proof functions | `/tmp/verus/verus` | Zero errors across 11 files |
 | 1,366 R-based Coq theorems | `coqc` | Zero admits |

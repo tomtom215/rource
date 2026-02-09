@@ -82,7 +82,7 @@ Follow these guidelines:
 ### 3. Test Your Changes
 
 ```bash
-# Run all tests (2800+ tests)
+# Run all tests (2900+ tests)
 cargo test
 
 # Run tests for a specific crate
@@ -161,8 +161,8 @@ mod tests {
 
 | Crate | Test Count | Focus |
 |-------|------------|-------|
-| rource-math | 473 | Numerical accuracy, edge cases |
-| rource-vcs | 340 | Parser correctness, format edge cases |
+| rource-math | 558 | Numerical accuracy, edge cases |
+| rource-vcs | 343 | Parser correctness, format edge cases |
 | rource-core | 539 | Scene graph, physics, camera |
 | rource-render | 370 | Rendering correctness, GPU backends |
 | rource-cli | 358 | CLI argument parsing, integration |
@@ -332,7 +332,7 @@ cargo flamegraph -- --headless --output /tmp/frames .
    - `overlay.rs`, `filter.rs`, or `mod.rs` for new setting categories
 2. Add CLI argument in `rource-cli/src/args/mod.rs`
 3. Add environment variable in `rource-core/src/config/config_env.rs`
-4. Add WASM binding in `rource-wasm/src/lib.rs`
+4. Add WASM binding in `rource-wasm/src/wasm_api/settings.rs`
 5. Update README and help text
 
 ## Reporting Issues

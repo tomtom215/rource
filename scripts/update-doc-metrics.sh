@@ -310,12 +310,8 @@ echo ""
 
 # ─── Unsafe blocks checks ───
 echo "=== Checking unsafe block counts ==="
-# CLAUDE.md says "1 block, documented" — check it matches prod count
-if [[ "$UNSAFE_PROD_COUNT" -eq 1 ]]; then
-    check_contains "$PROJECT_ROOT/CLAUDE.md" "1 block" "CLAUDE.md unsafe count"
-else
-    check_contains "$PROJECT_ROOT/CLAUDE.md" "$UNSAFE_PROD_COUNT block" "CLAUDE.md unsafe count"
-fi
+# CLAUDE.md documents total unsafe blocks (prod + test)
+check_contains "$PROJECT_ROOT/CLAUDE.md" "$UNSAFE_TOTAL blocks" "CLAUDE.md unsafe count"
 echo ""
 
 # ─── Test count checks (only if we have test data) ───

@@ -140,7 +140,7 @@ SLOs ensure consistent quality for:
 |-----|--------|-------------|
 | Clippy warnings | 0 | `-D warnings` |
 | Rustfmt compliance | 100% | `cargo fmt --check` |
-| Unsafe code | 1 block | `#![deny(unsafe_code)]` + documented safety invariants |
+| Unsafe code | 2 blocks (1 prod, 1 test) | `#![deny(unsafe_code)]` + documented safety invariants |
 | Doc coverage | >90% public items | `cargo doc` warnings |
 
 ---

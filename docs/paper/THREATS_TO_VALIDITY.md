@@ -38,7 +38,7 @@ floating-point modeling decisions that are documented and mitigated
    to appear in *both* independent translations.
 
 2. **Unit test cross-validation**: All 219 verified operations have
-   corresponding unit tests (2876+ tests total) that empirically validate
+   corresponding unit tests (2900+ tests total) that empirically validate
    runtime behavior. A specification error that causes the spec to diverge
    from actual behavior would need to also evade unit test detection.
 
