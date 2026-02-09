@@ -360,6 +360,15 @@
 | 244 | Verification proof counts drifted from source (Vec2 Verus: 55→61, Color Verus: 57→64, Coq-Z totals: 417→471) | Phase 1 metrics update missed per-file granular counts in VERUS_PROOFS.md and COQ_PROOFS.md | Automation scripts must cover ALL files containing per-type/per-file counts, not just summary totals |
 | 245 | Subagent audit results must be verified before applying | Agent reported `getDetailedFrameStats` as non-existent but it exists at `lib.rs:1042` | Always cross-check agent-reported violations against source before editing |
 | 246 | Files with most violations: TROUBLESHOOTING.md (7+), RUNBOOK.md (8+), RENDERING.md (5+), ARCHITECTURE.md (5+) | These files describe implementation details that change frequently | Prioritize these files in future audits; consider automation for API-referencing docs |
+| 259 | Verus uses `proof fn` keyword, NOT `#[verifier::proof]` attribute | ARCHITECTURE.md had deprecated syntax | Always verify tool syntax against actual proof files |
+| 260 | FP_Common.v uses named constants `prec32`/`emin32`/`fexp32`, not inline `binary32 := FLT_exp (-149) 24` | Paper simplified beyond accuracy | Diff code snippets against actual `.v` files |
+| 261 | Kani proofs directory (`kani_proofs/`, 10 files), not single file `kani_proofs.rs` | Module refactored from file to directory | Update all grep/counting commands after refactors |
+| 262 | ALL 8 Coq Record field names wrong in SPEC_IMPL_CORRESPONDENCE.md | Written from memory, never verified | ALWAYS read actual `.v` Record definitions |
+| 263 | Utils.v MUST compile before Vec2.v, Vec3.v, Vec4.v | `Require Import RourceMath.Utils` dependency chain | Verify compilation order with `grep 'Require Import'` |
+| 264 | Per-file Z-compute breakdown stale: Vec2(62→76), Rect(51→79); sum was 429, not claimed 471 | Per-file counts not updated | Cross-check per-file breakdowns SUM to claimed total |
+| 265 | RENDERING_BOTTLENECK_ANALYSIS.md stale code snippet (Phase 70 changes not reflected) | Optimization applied but doc not updated | Re-verify before/after snippets after each optimization phase |
+| 266 | BENCHMARKS.md test count "2,076" severely stale (actual 2964) | Snapshot never updated | Use rounded display strings or automate |
+| 267 | File paths missing `crates/` prefix in 2 BENCHMARKS.md references | Shorthand without repo-root prefix | ALWAYS use full path from repo root |
 
 ---
 
@@ -636,6 +645,16 @@ All 246 entries in chronological order. Entry numbers match category table refer
 | 257 | 2026-02-09 | ykbr1 | PERFORMANCE_REPORT.md Phase 27 references wrong: Phase 27 is "Texture state management", not sqrt optimization or bloom | Phase numbers assigned without checking CHRONOLOGY.md | Always verify phase numbers against CHRONOLOGY.md |
 | 258 | 2026-02-09 | ykbr1 | BENCHMARK_METHODOLOGY.md claimed "Software renderer only" but wgpu backend provides GPU acceleration | Stale from early project state when only software renderer existed | Architecture claims must be updated when new backends are added |
 
+| 259 | 2026-02-09 | tuwZp | Verus uses `proof fn` keyword, NOT `#[verifier::proof]` attribute | Paper ARCHITECTURE.md described Verus annotation syntax from older/deprecated version | Always verify tool syntax against actual proof files (e.g., `grep 'proof fn' proofs/*.rs`), not memory or external docs |
+| 260 | 2026-02-09 | tuwZp | FP_Common.v uses named constants `prec32`/`emin32`/`fexp32`, not inline `binary32 := FLT_exp (-149) 24` | Paper simplified the Coq definition for exposition but crossed into inaccuracy | For code snippets claiming "verbatim from source", always diff against the actual `.v` file |
+| 261 | 2026-02-09 | tuwZp | Kani proofs live in `crates/rource-math/src/kani_proofs/` directory (10 files), not single `kani_proofs.rs` file | Module refactored from single file to directory; grep commands referencing old path were wrong | After any file→directory refactoring, update ALL grep/counting commands in docs |
+| 262 | 2026-02-09 | tuwZp | SPEC_IMPL_CORRESPONDENCE.md had ALL 8 Coq Record field names wrong (used abbreviated forms: `vx`/`vy`, `cr`/`cg`/`cb`/`ca`, `m00`..`m22`) | Field names written from memory, never verified against actual `.v` definitions | ALWAYS read the `Record` definition in the actual `.v` file; field names are: `vec2_x`/`vec2_y`, `color_r`/`color_g`/`color_b`/`color_a`, `m0`..`m8`/`m15` |
+| 263 | 2026-02-09 | tuwZp | `Utils.v` MUST compile before Vec2.v, Vec3.v, Vec4.v (they `Require Import RourceMath.Utils`) | 4 build commands across 3 docs had Utils.v listed LAST in compilation order | Coq compilation order follows `Require Import` dependency chain; always verify with `grep 'Require Import' *.v` |
+| 264 | 2026-02-09 | tuwZp | FORMAL_VERIFICATION.md per-file Z-compute breakdown was stale: Vec2(62→76), Rect(51→79) but total still claimed 471 | Per-file counts not updated when theorems were added; stale values summed to 429, not 471 | Cross-check that per-file breakdowns actually SUM to the claimed total; this catches silent staleness |
+| 265 | 2026-02-09 | tuwZp | RENDERING_BOTTLENECK_ANALYSIS.md "After" code snippet was stale: showed `effective_radius * 2.0` but actual code uses `effective_radius * 1.5` with `>= 3.0` LOD gate (Phase 70) | Code optimization applied but doc not updated | Before/after code snippets in analysis docs must be re-verified after optimization phases that touch the same code |
+| 266 | 2026-02-09 | tuwZp | BENCHMARKS.md test count "now 2,076" was severely stale (actual: 2964) | Test count snapshot taken early and never updated | Use rounded display strings ("2900+") that resist fluctuation, or automate via `update-doc-metrics.sh` |
+| 267 | 2026-02-09 | tuwZp | File paths missing `crates/` prefix (e.g., `rource-core/src/scene/mod.rs` → `crates/rource-core/src/scene/mod.rs`) | Shorthand path written without repo-root prefix | ALWAYS use full path from repo root; add `crates/` prefix for all crate source paths |
+
 ---
 
-*Last updated: 2026-02-09 | 258 entries | 15 categories*
+*Last updated: 2026-02-09 | 267 entries | 15 categories*

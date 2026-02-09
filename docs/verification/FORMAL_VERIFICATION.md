@@ -345,7 +345,7 @@ See [VERIFICATION_COVERAGE.md](VERIFICATION_COVERAGE.md) for per-module breakdow
 *Status: All complexity bounds verified*
 
 **Computational Bridge (Phase 3 + Phase 3 Continued + Phase 4 + Phase 5):**
-*9 Compute files: Vec2(62), Vec3(54), Vec4(39), Mat3(25), Mat4(50), Color(60), Rect(51), Bounds(70), Utils(18) = 471 theorems over Z*
+*9 Compute files: Vec2(76), Vec3(54), Vec4(39), Mat3(25), Mat4(50), Color(60), Rect(79), Bounds(70), Utils(18) = 471 theorems over Z*
 *8 Extract files + 1 unified extraction (RourceMath_Extract.v)*
 *OCaml test driver: all tests pass*
 *WASM pipeline: Library 6.8 KB, test driver 42.2 KB (via wasm_of_ocaml v6.2.0)*
