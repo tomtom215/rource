@@ -26,16 +26,7 @@ The 5% threshold was chosen based on:
 
 ### Workflow Trigger
 
-The `bench-pr.yml` workflow triggers on pull requests to `main` when performance-sensitive files change:
-
-```yaml
-paths:
-  - 'crates/**/*.rs'
-  - 'rource-cli/**/*.rs'
-  - 'rource-wasm/**/*.rs'
-  - 'Cargo.toml'
-  - 'Cargo.lock'
-```
+The `bench-pr.yml` workflow is on-demand only (`workflow_dispatch`). Full A/B criterion benchmarks require ~60+ minutes, so automatic PR triggering is disabled. The workflow must be triggered manually when performance regression testing is needed.
 
 ### Comparison Process
 
@@ -57,7 +48,12 @@ The following benchmarks are included in the comparison:
 | rource-math | color_perf | Color operations |
 | rource-render | blend_perf | Alpha blending |
 | rource-render | bloom_perf | Post-processing |
+| rource-render | disc_perf | Disc rendering |
+| rource-render | label_perf | Label rendering |
+| rource-render | primitive_consolidation | Primitive batching |
+| rource-render | render_scale | Scale rendering |
 | rource-render | texture_batching | Draw call batching |
+| rource-render | visual_perf | Full render pipeline |
 | rource-vcs | vcs_parsing | Log parsing |
 
 ## Bypassing the Gate
@@ -161,7 +157,7 @@ If the comparison fails due to missing baseline:
 
 ### Timeout Issues
 
-The workflow has a 45-minute timeout. For large benchmark suites:
+The workflow has a 120-minute timeout. For large benchmark suites:
 
 1. Consider running only critical benchmarks on PR
 2. Use `--bench <specific>` to limit scope

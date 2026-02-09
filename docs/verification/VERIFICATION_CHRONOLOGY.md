@@ -714,9 +714,9 @@ Extended proofs for Rect, Mat4, Color, and Bounds with new operations and proper
 | 4 | Floating-point refinement investigation | INVESTIGATED |
 | 5 | CI integration (`.github/workflows/verus-verify.yml`) | COMPLETED |
 | 6 | Proof coverage metrics | COMPLETED |
-| 7 | Color proofs (Verus: 57, Coq R: 121, Coq Z: 60) | COMPLETED |
-| 8 | Rect proofs (Verus: 52, Coq R: 120, Coq Z: 43) | COMPLETED |
-| 9 | Utils proofs (Coq R: 37, Coq Z: 18) | COMPLETED |
+| 7 | Color proofs (Verus: 64, Coq R: 164, Coq Z: 60) | COMPLETED |
+| 8 | Rect proofs (Verus: 52, Coq R: 218, Coq Z: 79) | COMPLETED |
+| 9 | Utils proofs (Coq R: 59, Coq Z: 18) | COMPLETED |
 | 10 | Determinant properties (det(I), det(0), det(A^T), det(-A), trace) | COMPLETED |
 | 11 | Determinant multiplicativity (det(A*B) = det(A)*det(B) for Mat3/Mat4) | COMPLETED |
 | 12 | rocq-of-rust investigation | INVESTIGATED (not viable) |
@@ -730,7 +730,7 @@ Extended proofs for Rect, Mat4, Color, and Bounds with new operations and proper
 
 | ID | Item | Status | Proof Count |
 |----|------|--------|-------------|
-| P1.1 | Bounds full verification | COMPLETED | 242 (Verus:66, Coq-R:86, Coq-Z:70, Kani:20) |
+| P1.1 | Bounds full verification | COMPLETED | 303 (Verus:70, Coq-R:136, Coq-Z:70, Kani:27) |
 | P1.2 | Mat3 inverse correctness | COMPLETED | 12 theorems |
 | P1.3 | Mat4 inverse correctness | COMPLETED | 44 theorems (incl. 32 Local Lemmas) |
 | P2.1 | Vec3 constructors/swizzles | COMPLETED | 51 theorems (Vec_CrossType.v) |

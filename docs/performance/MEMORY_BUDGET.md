@@ -21,7 +21,7 @@ This document defines memory budgets and scaling characteristics for Rource enti
 
 | Entity Type | Size (bytes) | Notes |
 |-------------|--------------|-------|
-| **File** | 128 | Position (Vec2), color, state, path string ref |
+| **File** | 128 | Position (Vec2), color, state, size, age, directory ref |
 | **Directory** | 256 | Children HashSet, bounds, collapsed state |
 | **User** | 192 | Position, color, avatar texture ref, label |
 | **Action (beam)** | 64 | Source/target positions, alpha, type |
@@ -35,7 +35,7 @@ This document defines memory budgets and scaling characteristics for Rource enti
 | **Vec2** | 8 | 2× f32 |
 | **Vec3** | 12 | 3× f32 |
 | **Color** | 16 | 4× f32 (RGBA) |
-| **String (avg)** | 24 + len | SmallString optimized |
+| **String (avg)** | 24 + len | Standard String |
 | **HashSet<usize>** | 48 + 8/item | FxHashSet |
 | **HashMap<K,V>** | 48 + entry_size/item | FxHashMap |
 
@@ -202,6 +202,7 @@ jobs:
       - name: Run memory test
         run: |
           # Generate test log
+          # TODO: generate-test-log.sh does not exist yet
           ./scripts/generate-test-log.sh 50000 > /tmp/test.log
 
           # Run with DHAT
@@ -214,6 +215,7 @@ jobs:
       - name: Analyze results
         run: |
           # Parse dhat-heap.json for metrics
+          # TODO: analyze-memory.py does not exist yet
           python3 scripts/analyze-memory.py dhat-heap.json
 
       - name: Upload DHAT output
@@ -229,10 +231,10 @@ jobs:
 
 | Technique | Savings | Implementation |
 |-----------|---------|----------------|
-| SmallString | ~30% string memory | Inline short strings |
+| String interning | ~30% string memory | Intern repeated strings (crates/rource-vcs/src/intern.rs) |
 | FxHashMap/Set | ~20% hash overhead | Faster hashing |
 | Generation counter | O(1) reset | Avoid clear() allocations |
-| Object pooling | ~15% allocation rate | Reuse Action objects |
+| Object pooling (Planned) | ~15% allocation rate | Reuse Action objects |
 | String interning | ~40% path memory | Deduplicate file paths |
 
 ### Future Optimizations

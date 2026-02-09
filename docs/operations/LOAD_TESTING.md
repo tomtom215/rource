@@ -304,8 +304,8 @@ If memory growth fails the 5% threshold:
 2. Look for continuous growth vs. step increases
 3. Run with DHAT profiling:
    ```bash
-   cargo build --profile dhat --features dhat -p rource-core
-   cargo test --profile dhat --features dhat -p rource-core --test load_tests
+   cargo build --profile dhat --features dhat -p rource-cli
+   cargo test --profile dhat --features dhat -p rource-cli --test load_tests
    ```
 4. Review allocation sites in `dhat-heap.json`
 
@@ -316,7 +316,7 @@ If P99/P50 ratio exceeds 2x:
 2. Look for cache misses or spatial index rebuilds
 3. Profile with Tracy:
    ```bash
-   cargo build --release --features tracy -p rource-core
+   cargo build --release --features tracy -p rource-cli
    ```
 4. Review recent changes to hot paths
 

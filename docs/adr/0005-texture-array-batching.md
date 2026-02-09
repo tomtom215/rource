@@ -111,8 +111,9 @@ Only show top N contributors.
 
 ## References
 
-- `crates/rource-render/src/backend/webgl2/texture_array.rs` - Implementation
-- `docs/performance/CHRONOLOGY.md` - Phase 55: Texture Array Batching
+- `crates/rource-render/src/backend/webgl2/texture_array.rs` - WebGL2 implementation
+- `crates/rource-render/src/backend/wgpu/textures.rs` - wgpu implementation (TextureArray, AvatarTextureArray)
+- `docs/performance/CHRONOLOGY.md` - Phase 61: Avatar Texture Array Batching
 - Benchmark: `cargo bench -p rource-render --bench texture_batching`
 - Measured: 360ps ± 6.8ps per instance (constant time)
 

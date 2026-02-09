@@ -72,18 +72,24 @@ which wasm_of_ocaml 2>/dev/null
 
 ```
 Layer 1: Abstract Proofs (R-based, full real arithmetic)
-  Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v, Color.v, Rect.v, Utils.v
-  Vec2_Proofs.v, Vec3_Proofs.v, Vec4_Proofs.v
-  Mat3_Proofs.v, Mat4_Proofs.v, Color_Proofs.v, Rect_Proofs.v
-  Complexity.v
+  Specs: Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v, Color.v, Rect.v, Bounds.v, Utils.v
+  Proofs: Vec2_Proofs.v, Vec3_Proofs.v, Vec4_Proofs.v
+          Mat3_Proofs.v, Mat4_Proofs.v, Color_Proofs.v, Rect_Proofs.v, Bounds_Proofs.v
+          Complexity.v, Vec_CrossType.v
+        |
+Layer FP: Floating-Point Error Bounds (Flocq 4.1.3 IEEE 754 binary32)
+  FP_Common.v, FP_Rounding.v, FP_ErrorBounds.v
+  FP_Vec.v, FP_Mat.v, FP_Color.v, FP_Rect.v, FP_Bounds.v, FP_Utils.v
         |
 Layer 2: Computational Bridge (Z-based, extractable)
   Vec2_Compute.v, Vec3_Compute.v, Vec4_Compute.v
   Mat3_Compute.v, Mat4_Compute.v
-  Color_Compute.v, Rect_Compute.v, Utils_Compute.v
+  Color_Compute.v, Rect_Compute.v, Bounds_Compute.v, Utils_Compute.v
         |
 Layer 3: Extraction to OCaml
-  RourceMath_Extract.v -> rource_math_extracted.ml (8 types)
+  Individual: Vec2_Extract.v .. Rect_Extract.v
+  Unified:    RourceMath_Extract.v -> rource_math_extracted.ml (8 types)
+  Verified:   Verified_Extract.v (MetaCoq Path 2)
         |
 Layer 4: OCaml to WASM
   Path 1: wasm_of_ocaml (production, 6.8 KB)
@@ -221,30 +227,35 @@ opam pin add coq-equations \
 ```bash
 cd crates/rource-math/proofs/coq
 
-# Layer 1: Abstract specifications
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v
+# Layer 1: Abstract specifications (9 files)
+coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v
 
-# Layer 1: Abstract proofs
+# Layer 1: Abstract proofs (10 files)
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
-coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v
-
-# Complexity proofs
+coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v
 coqc -Q . RourceMath Complexity.v
+coqc -Q . RourceMath Vec_CrossType.v
 
-# Layer 2: Computational bridge
+# Layer FP: Floating-point error bounds (9 files, requires Flocq 4.1.3)
+coqc -Q . RourceMath FP_Common.v
+coqc -Q . RourceMath FP_Rounding.v FP_ErrorBounds.v
+coqc -Q . RourceMath FP_Vec.v FP_Mat.v FP_Color.v FP_Rect.v FP_Bounds.v FP_Utils.v
+
+# Layer 2: Computational bridge (9 files)
 coqc -Q . RourceMath Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v
 coqc -Q . RourceMath Mat3_Compute.v Mat4_Compute.v
-coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Utils_Compute.v
+coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Bounds_Compute.v Utils_Compute.v
 
-# Layer 3: Extraction
+# Layer 3: Extraction (9 files)
 coqc -Q . RourceMath Vec2_Extract.v Vec3_Extract.v Vec4_Extract.v
 coqc -Q . RourceMath Mat3_Extract.v Mat4_Extract.v
 coqc -Q . RourceMath Color_Extract.v Rect_Extract.v
 coqc -Q . RourceMath RourceMath_Extract.v
+coqc -Q . RourceMath Verified_Extract.v  # Requires MetaCoq
 ```
 
-**Expected output**: All files compile with zero errors.
+**Expected output**: All 46 files compile with zero errors.
 
 ### Coq Proof Files
 
@@ -254,10 +265,11 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 1 (Spec) | `Vec3.v` | 1 | R-based Vec3 specification |
 | 1 (Spec) | `Vec4.v` | 1 | R-based Vec4 specification |
 | 1 (Spec) | `Mat3.v` | 2 | R-based Mat3 specification |
-| 1 (Spec) | `Mat4.v` | 1 | R-based Mat4 specification |
+| 1 (Spec) | `Mat4.v` | 3 | R-based Mat4 specification |
 | 1 (Spec) | `Color.v` | 1 | R-based Color specification |
 | 1 (Spec) | `Rect.v` | 1 | R-based Rect specification |
-| 1 (Spec) | `Utils.v` | 10 | R-based utilities (lerp, clamp) |
+| 1 (Spec) | `Bounds.v` | 0 | R-based Bounds specification |
+| 1 (Spec) | `Utils.v` | 59 | R-based utilities (lerp, clamp) |
 | 1 (Proof) | `Vec2_Proofs.v` | 139 | Vec2 algebraic properties |
 | 1 (Proof) | `Vec3_Proofs.v` | 133 | Vec3 algebraic properties |
 | 1 (Proof) | `Vec4_Proofs.v` | 96 | Vec4 algebraic properties |
@@ -265,7 +277,18 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 1 (Proof) | `Mat4_Proofs.v` | 208 | Mat4 algebraic properties |
 | 1 (Proof) | `Color_Proofs.v` | 164 | Color alpha, blend, lerp, luminance |
 | 1 (Proof) | `Rect_Proofs.v` | 218 | Rect containment, intersection, union |
+| 1 (Proof) | `Bounds_Proofs.v` | 136 | Bounds containment, expansion |
 | 1 (Proof) | `Complexity.v` | 60 | O(1) complexity bounds |
+| 1 (Proof) | `Vec_CrossType.v` | 51 | Cross-type vector operations |
+| FP | `FP_Common.v` | — | FP foundations and shared definitions |
+| FP | `FP_Rounding.v` | — | IEEE 754 rounding mode proofs |
+| FP | `FP_ErrorBounds.v` | — | Generic FP error bound lemmas |
+| FP | `FP_Vec.v` | — | Vec2/Vec3/Vec4 FP error analysis |
+| FP | `FP_Mat.v` | — | Mat3/Mat4 FP error analysis |
+| FP | `FP_Color.v` | — | Color FP error analysis |
+| FP | `FP_Rect.v` | — | Rect FP error analysis |
+| FP | `FP_Bounds.v` | — | Bounds FP error analysis |
+| FP | `FP_Utils.v` | — | Utils FP error analysis |
 | 2 (Compute) | `Vec2_Compute.v` | 76 | Z-based Vec2 (extractable) |
 | 2 (Compute) | `Vec3_Compute.v` | 54 | Z-based Vec3 (extractable) |
 | 2 (Compute) | `Vec4_Compute.v` | 39 | Z-based Vec4 (extractable) |
@@ -273,12 +296,18 @@ coqc -Q . RourceMath RourceMath_Extract.v
 | 2 (Compute) | `Mat4_Compute.v` | 50 | Z-based Mat4 (extractable) |
 | 2 (Compute) | `Color_Compute.v` | 60 | Z-based Color (extractable) |
 | 2 (Compute) | `Rect_Compute.v` | 79 | Z-based Rect (extractable) |
+| 2 (Compute) | `Bounds_Compute.v` | 70 | Z-based Bounds (extractable) |
 | 2 (Compute) | `Utils_Compute.v` | 18 | Z-based Utils (extractable) |
+| 3 (Extract) | `Vec2_Extract.v` | 0 | Vec2 OCaml extraction |
+| 3 (Extract) | `Vec3_Extract.v` | 0 | Vec3 OCaml extraction |
+| 3 (Extract) | `Vec4_Extract.v` | 0 | Vec4 OCaml extraction |
+| 3 (Extract) | `Mat3_Extract.v` | 0 | Mat3 OCaml extraction |
+| 3 (Extract) | `Mat4_Extract.v` | 0 | Mat4 OCaml extraction |
 | 3 (Extract) | `Color_Extract.v` | 0 | Color OCaml extraction |
 | 3 (Extract) | `Rect_Extract.v` | 0 | Rect OCaml extraction |
 | 3 (Extract) | `RourceMath_Extract.v` | 0 | Unified OCaml extraction (8 types) |
-| 3 (Verified) | `Vec2_VerifiedExtract.v` | 0 | MetaCoq verified erasure (Path 2) |
-| **Total** | **32 files** | **1837** | **Zero admits** |
+| 3 (Verified) | `Verified_Extract.v` | 0 | MetaCoq verified erasure (Path 2) |
+| **Total** | **46 files** | **2198** | **1366 R + 471 Z + 361 FP, zero admits** |
 
 ---
 
@@ -553,7 +582,7 @@ When migrating from Coq 8.18 to Rocq 9.x, the following changes are required:
 1. `rocq-prover.org/opam/released` repo is stable (no HTTP 503)
 2. `rocq-metarocq` opam package is available for target version
 3. `rocq-equations` opam package is available for target version
-4. All 1873 theorems verified to compile with Rocq 9.x
+4. All 2198 theorems verified to compile with Rocq 9.x
 
 **Until then**: Continue using Coq 8.18 with MetaCoq built from source.
 
@@ -659,20 +688,34 @@ which coqc  # Must point to ~/.opam/default/bin/coqc
 cd crates/rource-math/proofs/coq
 rm -f *.vo *.vos *.vok *.glob
 
-# 3. Recompile everything in dependency order
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v
+# 3. Recompile everything in dependency order (all 46 files)
+
+# Layer 1: Specs
+coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v
+
+# Layer 1: Proofs
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
-coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v
+coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v
 coqc -Q . RourceMath Complexity.v
+coqc -Q . RourceMath Vec_CrossType.v
+
+# Layer FP: Floating-point error bounds (requires Flocq 4.1.3)
+coqc -Q . RourceMath FP_Common.v
+coqc -Q . RourceMath FP_Rounding.v FP_ErrorBounds.v
+coqc -Q . RourceMath FP_Vec.v FP_Mat.v FP_Color.v FP_Rect.v FP_Bounds.v FP_Utils.v
+
+# Layer 2: Compute
 coqc -Q . RourceMath Vec2_Compute.v Vec3_Compute.v Vec4_Compute.v
 coqc -Q . RourceMath Mat3_Compute.v Mat4_Compute.v
-coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Utils_Compute.v
+coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Bounds_Compute.v Utils_Compute.v
+
+# Layer 3: Extract
 coqc -Q . RourceMath Vec2_Extract.v Vec3_Extract.v Vec4_Extract.v
 coqc -Q . RourceMath Mat3_Extract.v Mat4_Extract.v
 coqc -Q . RourceMath Color_Extract.v Rect_Extract.v
 coqc -Q . RourceMath RourceMath_Extract.v
-coqc -Q . RourceMath Vec2_VerifiedExtract.v  # Requires MetaCoq
+coqc -Q . RourceMath Verified_Extract.v  # Requires MetaCoq
 ```
 
 **Prevention**: Always use `eval $(opam env)` before any `coqc` command.
@@ -724,41 +767,65 @@ crates/rource-math/proofs/
   |-- bounds_proofs.rs        # Verus: Bounds (70 proof fns)
   |-- utils_proofs.rs         # Verus: Utils (33 proof fns)
   |
-  +-- coq/
-       |-- Vec2.v             # Layer 1: R-based specification
-       |-- Vec3.v             # Layer 1: R-based specification
-       |-- Vec4.v             # Layer 1: R-based specification
-       |-- Mat3.v             # Layer 1: R-based specification
-       |-- Mat4.v             # Layer 1: R-based specification
-       |-- Color.v            # Layer 1: R-based Color specification
-       |-- Rect.v             # Layer 1: R-based Rect specification
-       |-- Vec2_Proofs.v      # Layer 1: Algebraic proofs (R)
-       |-- Vec3_Proofs.v      # Layer 1: Algebraic proofs (R)
-       |-- Vec4_Proofs.v      # Layer 1: Algebraic proofs (R)
-       |-- Mat3_Proofs.v      # Layer 1: Algebraic proofs (R)
-       |-- Mat4_Proofs.v      # Layer 1: Algebraic proofs (R)
-       |-- Color_Proofs.v     # Layer 1: Color algebraic proofs (R)
-       |-- Rect_Proofs.v      # Layer 1: Rect geometric proofs (R)
-       |-- Complexity.v       # Layer 1: O(1) complexity bounds
-       |-- Vec2_Compute.v     # Layer 2: Z-based (extractable)
-       |-- Vec3_Compute.v     # Layer 2: Z-based (extractable)
-       |-- Vec4_Compute.v     # Layer 2: Z-based (extractable)
-       |-- Mat3_Compute.v     # Layer 2: Z-based (extractable)
-       |-- Mat4_Compute.v     # Layer 2: Z-based (extractable)
-       |-- Color_Compute.v    # Layer 2: Z-based Color (extractable)
-       |-- Rect_Compute.v     # Layer 2: Z-based Rect (extractable)
-       |-- Utils.v            # Layer 1: Utility specifications
-       |-- Utils_Compute.v    # Layer 2: Z-based Utils (extractable)
-       |-- Vec2_Extract.v     # Layer 3: Individual extraction
-       |-- Vec3_Extract.v     # Layer 3: Individual extraction
-       |-- Vec4_Extract.v     # Layer 3: Individual extraction
-       |-- Mat3_Extract.v     # Layer 3: Individual extraction
-       |-- Mat4_Extract.v     # Layer 3: Individual extraction
-       |-- Color_Extract.v    # Layer 3: Color extraction
-       |-- Rect_Extract.v     # Layer 3: Rect extraction
-       |-- RourceMath_Extract.v  # Layer 3: Unified extraction
-       |-- Vec2_VerifiedExtract.v  # MetaCoq verified erasure (Path 2)
+  +-- coq/                    # 46 Coq files (2198 theorems)
        |
+       |-- # Layer 1: Specifications (9 files)
+       |-- Vec2.v             # R-based Vec2 specification
+       |-- Vec3.v             # R-based Vec3 specification
+       |-- Vec4.v             # R-based Vec4 specification
+       |-- Mat3.v             # R-based Mat3 specification
+       |-- Mat4.v             # R-based Mat4 specification
+       |-- Color.v            # R-based Color specification
+       |-- Rect.v             # R-based Rect specification
+       |-- Bounds.v           # R-based Bounds specification
+       |-- Utils.v            # R-based utility specifications
+       |
+       |-- # Layer 1: Proofs (10 files)
+       |-- Vec2_Proofs.v      # Vec2 algebraic proofs (R)
+       |-- Vec3_Proofs.v      # Vec3 algebraic proofs (R)
+       |-- Vec4_Proofs.v      # Vec4 algebraic proofs (R)
+       |-- Mat3_Proofs.v      # Mat3 algebraic proofs (R)
+       |-- Mat4_Proofs.v      # Mat4 algebraic proofs (R)
+       |-- Color_Proofs.v     # Color algebraic proofs (R)
+       |-- Rect_Proofs.v      # Rect geometric proofs (R)
+       |-- Bounds_Proofs.v    # Bounds containment/expansion proofs (R)
+       |-- Complexity.v       # O(1) complexity bounds
+       |-- Vec_CrossType.v    # Cross-type vector operations
+       |
+       |-- # Layer FP: Floating-point error bounds (9 files, 361 theorems)
+       |-- FP_Common.v        # FP foundations and shared definitions
+       |-- FP_Rounding.v      # IEEE 754 rounding mode proofs
+       |-- FP_ErrorBounds.v   # Generic FP error bound lemmas
+       |-- FP_Vec.v           # Vec2/Vec3/Vec4 FP error analysis
+       |-- FP_Mat.v           # Mat3/Mat4 FP error analysis
+       |-- FP_Color.v         # Color FP error analysis
+       |-- FP_Rect.v          # Rect FP error analysis
+       |-- FP_Bounds.v        # Bounds FP error analysis
+       |-- FP_Utils.v         # Utils FP error analysis
+       |
+       |-- # Layer 2: Computational bridge (9 files)
+       |-- Vec2_Compute.v     # Z-based Vec2 (extractable)
+       |-- Vec3_Compute.v     # Z-based Vec3 (extractable)
+       |-- Vec4_Compute.v     # Z-based Vec4 (extractable)
+       |-- Mat3_Compute.v     # Z-based Mat3 (extractable)
+       |-- Mat4_Compute.v     # Z-based Mat4 (extractable)
+       |-- Color_Compute.v    # Z-based Color (extractable)
+       |-- Rect_Compute.v     # Z-based Rect (extractable)
+       |-- Bounds_Compute.v   # Z-based Bounds (extractable)
+       |-- Utils_Compute.v    # Z-based Utils (extractable)
+       |
+       |-- # Layer 3: Extraction (9 files)
+       |-- Vec2_Extract.v     # Vec2 individual extraction
+       |-- Vec3_Extract.v     # Vec3 individual extraction
+       |-- Vec4_Extract.v     # Vec4 individual extraction
+       |-- Mat3_Extract.v     # Mat3 individual extraction
+       |-- Mat4_Extract.v     # Mat4 individual extraction
+       |-- Color_Extract.v    # Color individual extraction
+       |-- Rect_Extract.v     # Rect individual extraction
+       |-- RourceMath_Extract.v  # Unified extraction (8 types)
+       |-- Verified_Extract.v # MetaCoq verified erasure (Path 2)
+       |
+       |-- # Generated files (not tracked in git)
        |-- vec2_extracted.ml  # Generated: individual OCaml
        |-- vec3_extracted.ml  # Generated: individual OCaml
        |-- vec4_extracted.ml  # Generated: individual OCaml
@@ -788,7 +855,7 @@ crates/rource-math/proofs/
 
 ---
 
-*Last updated: 2026-01-29*
+*Last updated: 2026-02-09*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC*
 *2968 formally verified theorems/harnesses (Verus: 498, Coq: 2198, Kani: 272)*
 *9 verified types: Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, Utils*

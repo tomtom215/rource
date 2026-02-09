@@ -52,7 +52,7 @@ rource-wasm     - WASM bindings
 - **Browser deployment**: Demo at `https://tomtom215.github.io/rource/`
 - **No installation**: Users can try immediately
 - **Cross-platform**: Single codebase, works everywhere
-- **Reduced binary size**: WASM is ~280KB gzipped
+- **Reduced binary size**: WASM is ~1MB gzipped (includes wgpu support)
 - **Sandboxed execution**: Browser security model applies
 
 ### Negative

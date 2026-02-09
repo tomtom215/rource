@@ -163,7 +163,7 @@ produce identical native code.
 |--------|-------|
 | Extracted WASM size | 6.8 KB |
 | Production WASM size | ~1 MB (full application) |
-| Extraction coverage | 8 types (all Z-based operations) |
+| Extraction coverage | 7 types + utils (Bounds not extracted) |
 | Runtime overhead | Proof-of-concept; benchmarking is future work |
 
 The extracted WASM library is a proof-of-concept demonstrating the

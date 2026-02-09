@@ -24,7 +24,7 @@ These functions are called every frame and directly impact FPS.
 
 ### `Rource::frame(timestamp: f64) → bool`
 
-**Location**: `rource-wasm/src/lib.rs:858`
+**Location**: `rource-wasm/src/lib.rs:872`
 **Call Frequency**: Per-frame (60+ times/second)
 **Criticality**: CRITICAL
 
@@ -86,7 +86,7 @@ Complexity: O(n) Yes
 
 ### `Scene::rebuild_spatial_index()`
 
-**Location**: `crates/rource-core/src/scene/mod.rs`
+**Location**: `crates/rource-core/src/scene/spatial_methods.rs`
 **Call Frequency**: After scene changes (amortized)
 **Criticality**: MEDIUM
 
@@ -107,7 +107,7 @@ Complexity: O(n log n) Yes
 
 ### `Scene::visible_entities_into(bounds, ...)`
 
-**Location**: `crates/rource-core/src/scene/mod.rs`
+**Location**: `crates/rource-core/src/scene/spatial_methods.rs`
 **Call Frequency**: Per-frame
 **Criticality**: HIGH
 
@@ -115,9 +115,9 @@ Complexity: O(n log n) Yes
 
 **Complexity**: O(log n + k) where k = visible entities Yes
 
-### `Scene::extension_stats_cached()`
+### `Scene::file_extension_stats_cached()`
 
-**Location**: `crates/rource-core/src/scene/mod.rs`
+**Location**: `crates/rource-core/src/scene/stats_methods.rs`
 **Call Frequency**: On-demand (statistics display)
 **Criticality**: LOW
 
@@ -140,7 +140,7 @@ Complexity: O(n log n) Yes
 
 **Measurements**: ~1.3 ns per call (negligible)
 
-### `barnes_hut_calculate_forces(theta, entities)`
+### `BarnesHutTree::calculate_force(theta, entities)`
 
 **Location**: `crates/rource-core/src/physics/barnes_hut.rs`
 **Call Frequency**: Per-frame
@@ -177,7 +177,7 @@ Complexity: O(n log n) Yes
 
 ### `render_directories(renderer, ctx, scene, camera)`
 
-**Location**: `rource-wasm/src/render_phases.rs:538`
+**Location**: `rource-wasm/src/render_phases/directories.rs:46`
 **Call Frequency**: Per-frame
 **Criticality**: HIGH
 
@@ -192,7 +192,7 @@ Complexity: O(n log n) Yes
 
 ### `render_files(renderer, ctx, scene, camera)`
 
-**Location**: `rource-wasm/src/render_phases.rs:684`
+**Location**: `rource-wasm/src/render_phases/files.rs:48`
 **Call Frequency**: Per-frame
 **Criticality**: HIGH
 
@@ -209,7 +209,7 @@ Complexity: O(n log n) Yes
 
 ### `render_users(renderer, ctx, scene, camera)`
 
-**Location**: `rource-wasm/src/render_phases.rs`
+**Location**: `rource-wasm/src/render_phases/users.rs:44`
 **Call Frequency**: Per-frame
 **Criticality**: HIGH
 
@@ -224,7 +224,7 @@ Complexity: O(n log n) Yes
 
 ### `render_actions(renderer, ctx, scene, camera)`
 
-**Location**: `rource-wasm/src/render_phases.rs:778`
+**Location**: `rource-wasm/src/render_phases/actions.rs:58`
 **Call Frequency**: Per-frame
 **Criticality**: MEDIUM
 
@@ -241,7 +241,7 @@ Complexity: O(n log n) Yes
 
 ### `LabelPlacer::new(viewport_width, viewport_height) → LabelPlacer`
 
-**Location**: `rource-wasm/src/render_phases.rs`
+**Location**: `rource-wasm/src/render_phases/label_placer.rs`
 **Call Frequency**: Once at initialization
 **Criticality**: LOW
 
@@ -251,7 +251,7 @@ Allocates 32×32 grid with generation tracking.
 
 ### `LabelPlacer::reset(camera_zoom)`
 
-**Location**: `rource-wasm/src/render_phases.rs`
+**Location**: `rource-wasm/src/render_phases/label_placer.rs`
 **Call Frequency**: Per-frame
 **Criticality**: HIGH
 
@@ -266,7 +266,7 @@ self.generation = self.generation.wrapping_add(1);
 
 ### `LabelPlacer::try_place(rect) → bool`
 
-**Location**: `rource-wasm/src/render_phases.rs`
+**Location**: `rource-wasm/src/render_phases/label_placer.rs`
 **Call Frequency**: Per-label
 **Criticality**: HIGH
 
@@ -276,7 +276,7 @@ Uses spatial hash grid for O(1) collision detection.
 
 ### `LabelPlacer::try_place_with_fallback(rect, offsets) → (bool, Vec2)`
 
-**Location**: `rource-wasm/src/render_phases.rs`
+**Location**: `rource-wasm/src/render_phases/label_placer.rs`
 **Call Frequency**: Per-label (when collision detected)
 **Criticality**: HIGH
 
@@ -286,7 +286,7 @@ Tries multiple positions with offset fallbacks.
 
 ### `render_user_labels(renderer, ctx, scene, camera, buffer, label_placer)`
 
-**Location**: `rource-wasm/src/render_phases.rs`
+**Location**: `rource-wasm/src/render_phases/users.rs:101`
 **Call Frequency**: Per-frame
 **Criticality**: MEDIUM
 
@@ -298,7 +298,7 @@ Tries multiple positions with offset fallbacks.
 
 ### `render_file_labels(...)`
 
-**Location**: `rource-wasm/src/render_phases.rs`
+**Location**: `rource-wasm/src/render_phases/files.rs:143`
 **Call Frequency**: Per-frame
 **Criticality**: MEDIUM
 
@@ -350,7 +350,7 @@ Similar to user labels but for file names.
 
 ### `alpha_blend(src, dst, alpha) → Color`
 
-**Location**: `crates/rource-render/src/blend.rs`
+**Location**: `crates/rource-render/src/backend/software/renderer.rs`
 **Call Frequency**: Per-pixel (blending operations)
 **Criticality**: HIGH (software renderer only)
 
