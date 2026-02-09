@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770633932822,
+  "lastUpdate": 1770637714401,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5795,6 +5795,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/54ccc031488250542a65ee8f7a8bcd901cee9c87"
         },
         "date": 1770633932442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "966756f2f5f7d375086adc9e554fcdda6cf6066a",
+          "message": "Merge pull request #277 from tomtom215/claude/audit-markdown-docs-phase2-PNhXS\n\ndocs: Comprehensive audit and correction of API references and test counts",
+          "timestamp": "2026-02-09T12:43:22+01:00",
+          "tree_id": "86312e2290c7c9d9888e4035006a3b123e9b5805",
+          "url": "https://github.com/tomtom215/rource/commit/966756f2f5f7d375086adc9e554fcdda6cf6066a"
+        },
+        "date": 1770637713459,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
