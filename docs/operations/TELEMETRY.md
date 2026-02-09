@@ -40,7 +40,7 @@ Rource provides comprehensive telemetry for monitoring and debugging:
 
 ```javascript
 // Get current performance metrics
-const metrics = JSON.parse(rource.getMetrics());
+const metrics = JSON.parse(rource.getFrameStats());
 console.log(`FPS: ${metrics.fps.toFixed(1)}`);
 console.log(`Frame time: ${metrics.avgFrameTimeMs.toFixed(2)}ms`);
 console.log(`Visible files: ${metrics.visibleFiles}`);
@@ -278,7 +278,7 @@ Monitor WASM memory growth:
 // Monitor for frame drops
 let lastFps = 60;
 setInterval(() => {
-    const metrics = JSON.parse(rource.getMetrics());
+    const metrics = JSON.parse(rource.getFrameStats());
     if (metrics.fps < 30 && lastFps >= 30) {
         console.warn('FPS dropped below 30:', metrics.fps);
     }

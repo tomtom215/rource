@@ -14,7 +14,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 
 ## Verified Properties
 
-### Vec2 (55 Proof Functions, 87+ Verification Conditions)
+### Vec2 (61 Proof Functions, 87+ Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -128,7 +128,7 @@ All proofs verified with `0 errors`.
 | 54 | Lerp Zero Zero | lerp(0, 0, t) = 0 |
 | 55 | Vector Space Structure | Combined axiom verification (extended) |
 
-### Vec3 (55 Proof Functions, 89+ Verification Conditions)
+### Vec3 (61 Proof Functions, 89+ Verification Conditions)
 
 All proofs verified with `0 errors`.
 
@@ -602,7 +602,7 @@ All proofs verified with `0 errors`.
 | 49 | Translation Roundtrip | get_translation(T(tx,ty,tz)) = (tx,ty,tz) |
 | 50 | det(T·S) = det(S) | det(T(t)·S(s)) = sx·sy·sz |
 
-### Color (57 Proof Functions)
+### Color (64 Proof Functions)
 
 All proofs verified with `0 errors`.
 

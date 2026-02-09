@@ -446,7 +446,7 @@ import init, { Rource } from './pkg/rource_wasm.js';
 await init();
 
 const canvas = document.getElementById('canvas');
-const rource = new Rource(canvas);
+const rource = await Rource.create(canvas);
 
 // Check which renderer is being used
 console.log('Renderer:', rource.getRendererType()); // "wgpu", "webgl2", or "software"
@@ -472,14 +472,14 @@ requestAnimationFrame(frame);
 ```
 rource/
 ├── crates/
-│   ├── rource-math/      473 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/       340 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/      539 tests   Scene graph, physics, camera, Barnes-Hut
-│   └── rource-render/    370 tests   Software + WebGL2 + wgpu rendering
+│   ├── rource-math/      508 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/       366 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/      560 tests   Scene graph, physics, camera, Barnes-Hut
+│   └── rource-render/    615 tests   Software + WebGL2 + wgpu rendering
 ├── rource-cli/           358 tests   Native application (winit + softbuffer)
-└── rource-wasm/          461 tests   WebAssembly (browser)
+└── rource-wasm/          557 tests   WebAssembly (browser)
                          ─────────
-                         2,800+ total tests
+                         2,900+ total tests
 ```
 
 ---

@@ -51,7 +51,7 @@ Version control system log parsing with memory-efficient storage:
 │                 │                 │                   │
 │  • GitParser    │  • CommitStore  │  • StringInterner │
 │  • SvnParser    │  • CompactCommit│  • PathInterner   │
-│  • CustomParser │  • CompactChange│                   │
+│  • CustomParser │  • CompactFile- │                   │
 │  • MercurialParser               │                   │
 │  • BazaarParser │                 │                   │
 ├─────────────────┴─────────────────┴───────────────────┤
@@ -143,11 +143,14 @@ Native desktop application:
 │                       rource-cli                      │
 ├───────────────────────────────────────────────────────┤
 │   main.rs       - Entry point, event loop             │
-│   args.rs       - CLI argument parsing (clap)         │
+│   app.rs        - Application orchestration           │
+│   args/         - CLI argument parsing (clap)         │
 │   window.rs     - Window creation, input handling     │
 │   rendering.rs  - Scene to pixel rendering            │
 │   avatar.rs     - User avatar image loading           │
 │   headless.rs   - Batch video export mode             │
+│   input.rs      - Keyboard/mouse input                │
+│   export.rs     - Frame/screenshot export             │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -164,9 +167,11 @@ WebAssembly module for browser deployment:
 │   metrics.rs       - FPS tracking, render statistics  │
 │   playback.rs      - Timeline management              │
 │   interaction.rs   - Mouse/touch handling             │
-│   render_phases.rs - Phased rendering pipeline        │
+│   render_phases/   - Phased rendering pipeline        │
 │   rendering.rs     - Splines, curves, visual helpers  │
+│   profiler.rs      - Performance profiling            │
 │   png.rs           - Screenshot export                │
+│   wasm_api/        - Modular WASM API endpoints       │
 ├───────────────────────────────────────────────────────┤
 │   www/             - Web demo page                    │
 │   ├── index.html   - Page structure                   │
@@ -252,10 +257,11 @@ pub trait Renderer {
     fn begin_frame(&mut self);
     fn end_frame(&mut self);
     fn clear(&mut self, color: Color);
-    fn draw_circle(&mut self, center: Vec2, radius: f32, color: Color);
+    fn draw_circle(&mut self, center: Vec2, radius: f32, width: f32, color: Color);
+    fn draw_disc(&mut self, center: Vec2, radius: f32, color: Color);
     fn draw_line(&mut self, start: Vec2, end: Vec2, width: f32, color: Color);
-    fn draw_text(&mut self, text: &str, pos: Vec2, size: f32, color: Color, font: FontId);
-    // ... more primitives
+    fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color);
+    // ... more primitives (draw_quad, draw_text, etc.)
 }
 ```
 

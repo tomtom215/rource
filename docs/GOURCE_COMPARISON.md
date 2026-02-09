@@ -22,7 +22,7 @@ Rource is a complete Rust rewrite of [Gource](https://github.com/acaudwell/Gourc
 |--------|--------|--------|
 | Language | C++ | Rust |
 | GPU Required | Yes (OpenGL) | No (software rendering available) |
-| Binary Size | ~10MB | ~2.5MB native, ~1MB WASM gzip |
+| Binary Size | ~10MB | ~3.8MB native, ~1MB WASM gzip |
 | WASM Support | No | Yes |
 | Dependencies | SDL2, FTGL, PCRE, Boost, etc. | Minimal (pure Rust) |
 | Portability | OpenGL platforms only | Any CPU architecture |
@@ -73,15 +73,12 @@ Features needed for 100% Gource feature parity:
 
 | Feature | Priority | Complexity | Notes |
 |---------|----------|------------|-------|
-| Background image | Medium | Low | `--background-image` overlay |
-| Logo overlay | Medium | Low | `--logo` positioning |
 | Caption files | Low | Medium | Timed text overlays |
-| Highlight users | Low | Low | `--highlight-users` visual emphasis |
 | Multi-monitor | Low | Medium | Span across displays |
 | CVS support | Low | Medium | Legacy VCS parser |
 | Font color option | Low | Low | `--font-colour` equivalent |
 
-**Current parity: ~85%** (all core visualization features complete)
+**Current parity: ~90%** (all core visualization features complete, including background images, logo overlay, and user highlighting)
 
 ---
 

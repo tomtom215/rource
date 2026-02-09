@@ -164,13 +164,13 @@ the gap between mathematical proofs (over R) and executable code.
 
 | Deliverable | Theorems | Compilation Time | Details |
 |-------------|----------|------------------|---------|
-| Vec2_Compute.v | 56 | ~1.5s | Z-based vector operations, min/max element, neg involutive, mul assoc/one/zero, element sum, lerp |
-| Vec3_Compute.v | 48 | ~1.6s | Z-based 3D vector operations, lerp |
+| Vec2_Compute.v | 76 | ~1.5s | Z-based vector operations, min/max element, neg involutive, mul assoc/one/zero, element sum, lerp |
+| Vec3_Compute.v | 54 | ~1.6s | Z-based 3D vector operations, lerp |
 | Vec4_Compute.v | 39 | ~1.6s | Z-based 4D vector operations, lerp |
 | Mat3_Compute.v | 25 | ~3.0s | Z-based 3x3 matrix operations |
 | Mat4_Compute.v | 50 (34 + 16 local) | ~5.5s | Z-based 4x4 matrix operations + determinant + translation/scaling |
 | Color_Compute.v | 60 | — | Z-based fixed-point (1000-scale), integer conversion |
-| Rect_Compute.v | 51 | — | Z-based, boolean predicates, union, from_corners, expand_xy, accessors |
+| Rect_Compute.v | 79 | — | Z-based, boolean predicates, union, from_corners, expand_xy, accessors |
 | Bounds_Compute.v | 70 | — | Z-based bounds operations, containment, union, intersection |
 | Utils_Compute.v | 18 | — | zlerp/zclamp + additional properties |
 | **Total** | **471** | **~45s** | All 0 admits |
@@ -196,7 +196,7 @@ coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Bounds_Compute.v Utils_Compu
 | Color_Extract.v | Individual Color extraction |
 | Rect_Extract.v | Individual Rect extraction |
 | Bounds_Extract.v | Individual Bounds extraction |
-| RourceMath_Extract.v | Unified extraction of all 9 types (300+ theorems) |
+| RourceMath_Extract.v | Unified extraction of 8 types (Vec2-4, Mat3-4, Color, Rect, Utils) |
 | Vec2_VerifiedExtract.v | MetaCoq verified erasure (Path 2, optional) |
 
 ### Verification Command (Layer 3)
@@ -270,7 +270,7 @@ These practices were established through hard-won experience across multiple ses
 
 **Coq Proofs (Z-based Computational Bridge, Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7):**
 *Version: Coq 8.18*
-*Total theorems: 417 (Vec2: 56, Vec3: 48, Vec4: 39, Mat3: 25, Mat4: 50, Color: 60, Rect: 51, Bounds: 70, Utils: 18)*
+*Total theorems: 471 (Vec2: 76, Vec3: 54, Vec4: 39, Mat3: 25, Mat4: 50, Color: 60, Rect: 79, Bounds: 70, Utils: 18)*
 *Admits: 0*
 *Compilation time: ~45 seconds total (32 .vo files, including Vec2_VerifiedExtract.v, 1837 total Coq theorems incl. FP)*
 *Status: All proofs machine-checked, PEER REVIEWED PUBLISHED ACADEMIC STANDARD*
