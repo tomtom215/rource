@@ -285,7 +285,7 @@ Complexity: O(width × height) instead of O(n_files × radius²)
 
 The recommended optimization was implemented in:
 - `rource-cli/src/rendering.rs` (lines 853-860)
-- `rource-wasm/src/render_phases.rs` (lines 756-761)
+- `rource-wasm/src/render_phases/` (module directory)
 
 **Before:**
 ```rust

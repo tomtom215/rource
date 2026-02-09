@@ -57,6 +57,12 @@ cargo mutants -p rource-math --timeout=60 --output=mutants-output
 | rource-core | ≥80% | Medium |
 | rource-render | ≥75% | Lower (visual bugs less critical) |
 
+> **Note**: The target scores above are aspirational goals. The CI workflow
+> (`.github/workflows/mutation.yml`) enforces *lower* warning thresholds:
+> rource-math 80%, rource-vcs 80%, rource-core 60%, rource-render 60%.
+> These CI thresholds represent the minimum acceptable quality gate;
+> the targets above represent the long-term quality goals.
+
 ---
 
 ## Understanding Mutations

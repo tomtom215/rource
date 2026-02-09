@@ -18,9 +18,9 @@ This directory contains formal mathematical proofs for the key algorithms used i
 | 4 | [Force-Directed Layout Convergence](./04-force-directed-layout.md) | `crates/rource-core/src/physics/force.rs` | Physics Simulation |
 | 5 | [Alpha Blending Correctness](./05-alpha-blending.md) | `crates/rource-render/src/backend/software/optimized.rs` | Rendering |
 | 6 | [Color Conversion Accuracy](./06-color-conversion.md) | `crates/rource-math/src/color.rs` | Mathematics |
-| 7 | [Label Collision Detection (Spatial Hash Grid)](./07-label-collision-detection.md) | `rource-wasm/src/render_phases.rs`, `crates/rource-render/src/label.rs` | Rendering |
-| 8 | [Generation Counter Pattern](./08-generation-counter.md) | `rource-wasm/src/render_phases.rs` (LabelPlacer) | Data Structures |
-| 9 | [Partial Selection Algorithm](./09-partial-selection.md) | `rource-wasm/src/render_phases.rs` | Algorithms |
+| 7 | [Label Collision Detection (Spatial Hash Grid)](./07-label-collision-detection.md) | `rource-wasm/src/render_phases/label_placer.rs`, `crates/rource-render/src/label.rs` | Rendering |
+| 8 | [Generation Counter Pattern](./08-generation-counter.md) | `rource-wasm/src/render_phases/label_placer.rs` (LabelPlacer) | Data Structures |
+| 9 | [Partial Selection Algorithm](./09-partial-selection.md) | `rource-wasm/src/render_phases/actions.rs`, `rource-wasm/src/render_phases/users.rs`, `rource-wasm/src/render_phases/files.rs` | Algorithms |
 | 10 | [Texture Array Batching](./10-texture-array-batching.md) | `crates/rource-render/src/backend/wgpu/textures.rs` | GPU Optimization |
 | 11 | [Adaptive Barnes-Hut Theta](./11-adaptive-barnes-hut-theta.md) | `crates/rource-core/src/physics/barnes_hut.rs` | Physics Simulation |
 | 12 | [Bloom Effect Sliding Window](./12-bloom-effect-sliding-window.md) | `crates/rource-render/src/effects/bloom.rs` | Rendering Effects |

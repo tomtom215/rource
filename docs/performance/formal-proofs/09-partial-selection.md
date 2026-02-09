@@ -1,6 +1,6 @@
 # 9. Partial Selection Algorithm
 
-**Implementation**: `rource-wasm/src/render_phases.rs`
+**Implementation**: `rource-wasm/src/render_phases/actions.rs`, `rource-wasm/src/render_phases/users.rs`, `rource-wasm/src/render_phases/files.rs`
 
 **Category**: Algorithms
 
@@ -76,13 +76,13 @@ if beams.len() > 15 {
 
 | Component | File | Lines |
 |-----------|------|-------|
-| Beam selection | `rource-wasm/src/render_phases.rs` | 828-836 |
-| User label selection | `rource-wasm/src/render_phases.rs` | 963-975 |
-| File label selection | `rource-wasm/src/render_phases.rs` | 1431-1441 |
+| Beam selection | `rource-wasm/src/render_phases/actions.rs` | — |
+| User label selection | `rource-wasm/src/render_phases/users.rs` | — |
+| File label selection | `rource-wasm/src/render_phases/files.rs` | — |
 
 ### Core Implementation
 
-**Beam Selection with O(n) Partial Ordering** (`render_phases.rs:828-836`):
+**Beam Selection with O(n) Partial Ordering** (`render_phases/actions.rs`):
 
 ```rust
 // V1: Limit concurrent beams to prevent visual chaos
@@ -97,7 +97,7 @@ if beam_limit > 0 && beam_limit < active_indices.len() {
 }
 ```
 
-**User Label Selection** (`render_phases.rs:963-975`):
+**User Label Selection** (`render_phases/users.rs`):
 
 ```rust
 // OPTIMIZATION: Use select_nth_unstable for O(n) partial selection instead of O(n log n) sort
@@ -117,8 +117,8 @@ if select_count > 0 && select_count < label_candidates.len() {
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 9.2 | E[C(n,k)] = O(n) | `render_phases.rs:833` | `select_nth_unstable_by` |
-| 9.2 | Partition property | `render_phases.rs:834` | `a.1.partial_cmp(&b.1)` |
+| 9.2 | E[C(n,k)] = O(n) | `render_phases/actions.rs` | `select_nth_unstable_by` |
+| 9.2 | Partition property | `render_phases/actions.rs` | `a.1.partial_cmp(&b.1)` |
 | 9.2 | Worst case O(n) | Rust std lib | Introselect hybrid algorithm |
 
 ### Verification Commands

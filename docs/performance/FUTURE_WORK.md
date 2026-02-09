@@ -96,7 +96,7 @@ Implemented comprehensive telemetry infrastructure building on existing foundati
 
 **Newly Implemented (OP-1 Completion)**:
 
-1. **Tracing Spans in Hot Paths** (`rource-wasm/src/render_phases.rs`):
+1. **Tracing Spans in Hot Paths** (`rource-wasm/src/render_phases/`):
    - Added `trace_span!` macro for conditional tracing
    - Instrumented 7 render functions with spans:
      - `render_directories` (with entity count)

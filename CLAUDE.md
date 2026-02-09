@@ -767,7 +767,7 @@ rource/
 When making visual/rendering changes:
 1. **BENCHMARK BASELINE FIRST** - Run `cargo test -p rource-wasm bench_ --release -- --nocapture`
 2. Update `rource-cli/src/rendering.rs` for native CLI
-3. **Also update** `rource-wasm/src/lib.rs` and `rource-wasm/src/render_phases.rs` with same changes
+3. **Also update** `rource-wasm/src/lib.rs` and `rource-wasm/src/render_phases/` with same changes
 4. Update `crates/rource-render/src/label.rs` if label-related changes
 5. **BENCHMARK AFTER** - Compare with baseline, verify < 5% regression
 6. Rebuild WASM with `./scripts/build-wasm.sh`
@@ -963,7 +963,7 @@ See `docs/performance/CHRONOLOGY.md` for complete history (83 phases).
 │  • Rendering loops (render_files, render_users, render_actions)             │
 │  • Spatial data structures (grids, hashes, trees)                           │
 │  • Per-frame operations (reset, update, draw calls)                         │
-│  • Hot paths in rource-render, rource-wasm/render_phases.rs                 │
+│  • Hot paths in rource-render, rource-wasm/src/render_phases/               │
 │  • Any code with "optimization", "performance", or "LOD" in comments        │
 │                                                                             │
 │  Even "simple" changes like adding 4 comparisons can have unexpected        │

@@ -39,12 +39,12 @@ Time complexity: O(1) for dispatch, O(n) for GPU execution
 
 **Shader Access**:
 ```wgsl
-@group(0) @binding(0)
-var texture_array: texture_2d_array<f32>;
+@group(1) @binding(0)
+var t_texture_array: texture_2d_array<f32>;
 
 @fragment
 fn main(@location(0) tex_index: u32, @location(1) uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(texture_array, sampler, uv, tex_index);
+    return textureSample(t_texture_array, sampler, uv, tex_index);
 }
 ```
 

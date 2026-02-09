@@ -213,7 +213,7 @@ Where:
 
 - `docs/performance/PERFORMANCE_BASELINE.md` - Detailed component benchmarks
 - `docs/performance/BENCHMARKS.md` - Raw benchmark data
-- `docs/performance/CHRONOLOGY.md` - Optimization history (77 phases)
+- `docs/performance/CHRONOLOGY.md` - Optimization history (83 phases)
 - `scripts/collect-latency-metrics.sh` - Data collection script
 
 ---

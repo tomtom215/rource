@@ -549,15 +549,16 @@ cd /tmp/ha-core
 git log --pretty=format:"%H|%an|%at" --numstat > /tmp/ha-core.log
 
 # Profile with this large dataset
+# Note: Rource takes the repository path as a positional argument, not --git-log
 cargo flamegraph --profile profiling -- \
-    --git-log /tmp/ha-core.log \
     --headless \
     --output /tmp/frames \
-    --seconds-per-day 0.01
+    --seconds-per-day 0.01 \
+    /tmp/ha-core
 
 # Memory profile
 cargo build --profile dhat --features dhat
-./target/dhat/rource --git-log /tmp/ha-core.log --headless --output /tmp/frames
+./target/dhat/rource --headless --output /tmp/frames /tmp/ha-core
 ```
 
 ## Profile-Guided Optimization (PGO)

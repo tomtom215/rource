@@ -12,17 +12,17 @@ This document describes the supply chain security measures implemented in Rource
 
 ## SLSA Compliance
 
-Rource implements [SLSA (Supply-chain Levels for Software Artifacts)](https://slsa.dev/) Level 3 provenance for all release artifacts.
+Rource is configured for [SLSA (Supply-chain Levels for Software Artifacts)](https://slsa.dev/) Level 3 provenance (pending first release). The release workflow (`.github/workflows/release.yml`) includes SLSA provenance generation, but no releases have been published yet, so provenance has not been produced or verified in practice.
 
 ### SLSA Level 3 Requirements
 
-| Requirement | Implementation | Status |
-|-------------|----------------|--------|
-| Build as code | GitHub Actions workflows | Yes |
-| Signed provenance | slsa-github-generator | Yes |
-| Provenance from build | Automatic attestation | Yes |
-| Non-falsifiable provenance | Sigstore signing | Yes |
-| Isolated build | GitHub-hosted runners | Yes |
+| Requirement | Implementation | Configured | Executed |
+|-------------|----------------|------------|----------|
+| Build as code | GitHub Actions workflows | Yes | Pending first release |
+| Signed provenance | slsa-github-generator | Yes | Pending first release |
+| Provenance from build | Automatic attestation | Yes | Pending first release |
+| Non-falsifiable provenance | Sigstore signing | Yes | Pending first release |
+| Isolated build | GitHub-hosted runners | Yes | Pending first release |
 
 ### What SLSA Provenance Provides
 
@@ -51,6 +51,11 @@ slsa-verifier verify-artifact rource-linux-x86_64.tar.gz \
 ```
 
 ### Verify GPG Signatures
+
+> **Note**: GPG signing is conditional on the `GPG_PRIVATE_KEY` secret being
+> configured in the repository. If the secret is not set, release artifacts
+> will be published without GPG signatures. Check whether `.asc` files are
+> present in the release assets before attempting verification.
 
 ```bash
 # Import the Rource signing key
@@ -166,14 +171,14 @@ cargo deny check
 
 ### Current Dependencies
 
-Core dependencies are audited and minimal:
+Core dependencies are checked via `cargo audit` (automated CVE scanning) and kept minimal. Note: "cargo-audit checked" means no known CVEs were found by the automated advisory database scan; it does not indicate a manual source-level security audit.
 
 | Dependency | Purpose | Audit Status |
 |------------|---------|--------------|
-| fontdue | Font rendering | Yes Audited |
-| regex-lite | Log parsing | Yes Audited |
-| chrono | Date handling | Yes Audited |
-| wasm-bindgen | WASM bindings | Yes Audited |
+| fontdue | Font rendering | cargo-audit checked (no known CVEs) |
+| regex-lite | Log parsing | cargo-audit checked (no known CVEs) |
+| chrono | Date handling | cargo-audit checked (no known CVEs) |
+| wasm-bindgen | WASM bindings | cargo-audit checked (no known CVEs) |
 
 ## Security Contacts
 

@@ -10,12 +10,12 @@ Rource uses WGSL (WebGPU Shading Language) for GPU shaders. All shaders are embe
 
 | File | Purpose |
 |------|---------|
-| `shaders.rs` | Primitive rendering (circles, rings, lines, quads, text) |
-| `bloom.rs` | Bloom post-processing (bright pass, blur, composite) |
-| `shadow.rs` | Shadow map generation and application |
-| `compute.rs` | Physics compute shaders (force calculation, integration) |
-| `spatial_hash.rs` | GPU spatial hash for O(n) neighbor queries |
-| `culling.rs` | Frustum culling compute shader |
+| `crates/rource-render/src/backend/wgpu/shaders.rs` | Primitive rendering (circles, rings, lines, quads, text) |
+| `crates/rource-render/src/backend/wgpu/bloom.rs` | Bloom post-processing (bright pass, blur, composite) |
+| `crates/rource-render/src/backend/wgpu/shadow.rs` | Shadow map generation and application |
+| `crates/rource-render/src/backend/wgpu/compute.rs` | Physics compute shaders (force calculation, integration) |
+| `crates/rource-render/src/backend/wgpu/spatial_hash.rs` | GPU spatial hash for O(n) neighbor queries |
+| `crates/rource-render/src/backend/wgpu/culling.rs` | Frustum culling compute shader |
 
 ## Design Principles
 

@@ -111,20 +111,20 @@ For interactive use with 60 FPS target (16.67ms budget), all measurements are we
 
 ## WASM Entry Point Inventory
 
-### Total Exported Functions: 132
+### Total Exported Functions: 138
 
 | Frequency | Count | Description |
 |-----------|-------|-------------|
 | CRITICAL (per-frame) | 2 | `frame()`, `getFrameStats()` |
 | HIGH (per-input) | 21 | Input handlers, statistics getters |
-| MEDIUM (user action) | 48 | Playback, camera, settings |
-| LOW (init/on-demand) | 61 | Setup, configuration, diagnostics |
+| MEDIUM (user action) | 51 | Playback, camera, settings |
+| LOW (init/on-demand) | 64 | Setup, configuration, diagnostics |
 
 ### CRITICAL: Per-Frame Functions
 
 #### `frame(timestamp: f64) → bool`
 
-**Location**: `rource-wasm/src/lib.rs:858`
+**Location**: `rource-wasm/src/lib.rs:872`
 **Call Frequency**: Every animation frame (60+ Hz)
 **Criticality**: CRITICAL
 
@@ -238,11 +238,11 @@ render()
 
 | Entity Type | Min Screen Radius | Min Zoom for Labels |
 |-------------|-------------------|---------------------|
-| Directory | 2.0 px | 0.15 (depth ≤ 2) |
-| File | 0.5 px | 0.15 (alpha ≥ 0.3) |
-| User | 3.0 px | always |
-| Dir Branch | - | 0.02 |
-| File Branch | - | 0.08 |
+| Directory | 0.05 px | 0.15 (depth ≤ 2) |
+| File | 0.1 px | 0.15 (alpha ≥ 0.3) |
+| User | 0.3 px | always |
+| Dir Branch | - | 0.01 |
+| File Branch | - | 0.02 |
 
 ---
 
