@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770637714401,
+  "lastUpdate": 1770644533617,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5834,6 +5834,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/966756f2f5f7d375086adc9e554fcdda6cf6066a"
         },
         "date": 1770637713459,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "64568799bcdf21bfca0268c309ccbc61f20ad82a",
+          "message": "Merge pull request #278 from tomtom215/claude/audit-markdown-docs-phase3-ykbr1\n\nFix documentation accuracy: correct stale paths, claims, and unverified results",
+          "timestamp": "2026-02-09T14:39:57+01:00",
+          "tree_id": "2efa224de17e37fea498aa2f67364f5f11341410",
+          "url": "https://github.com/tomtom215/rource/commit/64568799bcdf21bfca0268c309ccbc61f20ad82a"
+        },
+        "date": 1770644532346,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
