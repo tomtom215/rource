@@ -49,7 +49,7 @@ Rource employs multiple security measures to protect users:
 
 ### Code Security
 
-- **Minimal Unsafe Code**: Only 1 unsafe block in the entire codebase (1 production in `webgl2/buffers.rs`, 1 test in `load_tests.rs`), with documented safety invariants
+- **Minimal Unsafe Code**: Only 2 unsafe blocks in the entire codebase (1 production in `crates/rource-render/src/backend/webgl2/buffers.rs`, 1 test in `crates/rource-core/tests/load_tests.rs`), with documented safety invariants
 - **Fuzzing**: VCS parsers are fuzzed to catch parsing vulnerabilities
 - **Static Analysis**: All code passes `cargo clippy` with `-D warnings`
 

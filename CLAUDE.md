@@ -630,7 +630,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/performance/SUCCESSFUL_OPTIMIZATIONS.md` | Implemented optimizations catalog |
 | `docs/performance/FUTURE_WORK.md` | Expert+ technical roadmap |
 | `docs/verification/FORMAL_VERIFICATION.md` | Formal verification overview and index (2968 theorems/harnesses) |
-| `docs/verification/VERIFICATION_CHRONOLOGY.md` | Verification history: phases 1–7, completed milestones |
+| `docs/verification/VERIFICATION_CHRONOLOGY.md` | Verification history: phases 1–14, completed milestones |
 | `docs/verification/VERIFICATION_FUTURE_WORK.md` | Verification roadmap: remaining items P1.4–P6, coverage projection |
 | `docs/verification/VERUS_PROOFS.md` | Verus theorem tables (498 proof functions, 11 files) |
 | `docs/verification/COQ_PROOFS.md` | Coq proofs (R + Z, 1837 theorems, development workflow) |
