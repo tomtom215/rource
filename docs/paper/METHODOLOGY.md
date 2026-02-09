@@ -54,7 +54,7 @@ For 3x3 matrices, the proof requires:
 - 9 component-wise sub-proofs
 - Per component: 9 `mul_assoc_3` calls + 6 `distrib_2` calls
 - Total: 145 explicit lemma calls (72 `mul_assoc_3` + 48 `distrib_2` + 24 `distrib_3_right` + 1 `assoc_m0`)
-- Source: `crates/rource-math/proofs/mat3_proofs.rs:269-430`
+- Source: `crates/rource-math/proofs/mat3_proofs.rs:220-428`
 
 For 4x4 matrices, the proof requires:
 - 16 component-wise sub-proofs
