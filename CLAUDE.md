@@ -365,12 +365,17 @@ The following events MUST trigger a CLAUDE.md update:
 | Coq build fails on clean compile | Verify `Require Import` dependency order; `Utils.v` must compile first |
 | Documentation audit finds stale claims | Run full `update-doc-metrics.sh`; add missing sed patterns |
 | Path reference uses relative instead of full | Always reference from repo root with `crates/` prefix |
+| Per-file breakdown doesn't sum to claimed total | Fix individual counts from source; verify arithmetic before committing |
+| Code snippet in docs outdated after optimization phase | Re-read source at cited line numbers; update snippet to match actual code |
+| Coq Record field names written from memory | ALWAYS read actual `.v` file `Record` definition; never guess abbreviated forms |
+| Tool syntax documented from deprecated version | Verify syntax against actual proof files (e.g., `grep 'proof fn'` for Verus) |
+| Module refactored from file to directory | Grep all docs for old path; update counting commands and references |
 
 #### Lessons Learned Log
 
 > **Refactored to external document**: See [`docs/LESSONS_LEARNED.md`](docs/LESSONS_LEARNED.md)
 > for the full categorized knowledge base with decision tables, domain-organized
-> lessons, and chronological audit log (258+ entries).
+> lessons, and chronological audit log (267+ entries).
 >
 > New entries should be added to BOTH the appropriate category section AND the
 > chronological log in that document.
@@ -1676,12 +1681,17 @@ These error patterns recur across documentation audits:
 | Pattern | Frequency | Prevention |
 |---------|-----------|------------|
 | Stale numerical counts | High | Run `update-doc-metrics.sh` after any change |
-| Missing `crates/` prefix in paths | Medium | Always use full path from repo root |
+| Missing `crates/` prefix in paths | High | Always use full path from repo root |
+| Per-file breakdowns don't sum to total | High | Verify arithmetic: sum individual counts and compare to claimed total |
+| Code snippets stale after optimization | High | Re-read source at cited lines after each phase that modifies the code |
+| Coq Record field names abbreviated | High | Always verify against actual `.v` `Record` definition |
 | Coq build order wrong | Medium | `Utils.v` must compile FIRST (Vec2/3/4.v depend on it) |
+| Tool syntax from deprecated versions | Medium | Verify against actual proof files, not memory |
 | Script sed patterns miss new file formats | Medium | Test scripts after adding new doc format variants |
 | "all N phases" vs "N optimization phases" | Low | Multiple sed patterns needed for different phrasings |
 | Broken links after file rename/move | Low | Run link check sweep after reorganization |
 | ADR marked as TODO when ADRs exist | Low | Verify TODOs against actual directory contents |
+| Line number references drift after edits | Low | Verify cited line numbers against source with `grep -n` |
 
 ---
 
