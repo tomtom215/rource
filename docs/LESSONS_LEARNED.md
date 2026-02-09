@@ -23,7 +23,8 @@
 11. [Category: IEEE 754 Floating-Point Edge Cases](#category-ieee-754-floating-point-edge-cases)
 12. [Category: Rust Verification Landscape](#category-rust-verification-landscape)
 13. [Category: Coq Extraction & WASM Pipeline](#category-coq-extraction--wasm-pipeline)
-14. [Chronological Audit Log](#chronological-audit-log)
+14. [Category: Documentation Content Auditing](#category-documentation-content-auditing)
+15. [Chronological Audit Log](#chronological-audit-log)
 
 ---
 
@@ -341,9 +342,30 @@
 
 ---
 
+## Category: Documentation Content Auditing
+
+| # | Issue | Root Cause | Fix |
+|---|-------|-----------|-----|
+| 233 | Non-existent CLI flags documented in TROUBLESHOOTING.md (7+ flags) | Docs written speculatively without verifying `args/mod.rs` | Always grep `rource-cli/src/args/` for any CLI flag referenced in docs |
+| 234 | Wrong WASM API method names in RUNBOOK.md (8+ methods) | Names guessed from conventions instead of checked against `wasm_api/` | Always grep `rource-wasm/src/wasm_api/` and `lib.rs` for `#[wasm_bindgen]` exports |
+| 235 | JS API constructor `new Rource(canvas)` never existed — factory is `await Rource.create(canvas)` | Docs assumed constructor pattern; actual API uses async factory | Verify JS API against `rource-wasm/src/lib.rs` `create()` method |
+| 236 | Renderer trait signatures wrong in ARCHITECTURE.md and RENDERING.md | Documented from memory instead of source; missing `width` param on `draw_circle`, missing `draw_disc` | Always read `crates/rource-render/src/lib.rs` `pub trait Renderer` for authoritative signatures |
+| 237 | Backend selection order wrong in RENDERING.md (said WebGL2 first; actual is wgpu first) | Documented assumption contradicted by `Rource::create()` in `lib.rs` | Check `rource-wasm/src/lib.rs` `create()` for actual initialization sequence |
+| 238 | `getRendererType()` return strings documented as PascalCase but are lowercase | Convention assumed; actual strings are `"wgpu"`, `"webgl2"`, `"software"` | Check `get_renderer_type()` in `wasm_api/rendering.rs` for exact return values |
+| 239 | ADR 0004 (generation counter) accepted but pattern never implemented | Decision documented but LabelPlacer uses `Vec::clear()` not generation counters | Audit ADRs against actual implementation; mark as Superseded when pattern differs |
+| 240 | CONTRIBUTING.md JS directory tree had 12 entries but actual directory has 30+ files | Tree written once and never updated as files were added | Verify directory trees with `find` or `ls -R` before documenting |
+| 241 | GOURCE_COMPARISON.md listed 3 features as "roadmap" that were already implemented | Feature status not updated when implementation completed | Cross-reference feature claims with `grep` in source before marking status |
+| 242 | `getMetrics()` referenced in TELEMETRY.md but actual method is `getFrameStats()` | API renamed but docs not updated | Use `grep -r 'wasm_bindgen' rource-wasm/src/` to find actual exported names |
+| 243 | Broken link in docs/README.md (`performance/FORMAL_PROOFS.md` → `performance/formal-proofs/README.md`) | Path changed but cross-reference not updated | Run link checker (`grep -oP` + file existence check) before committing doc changes |
+| 244 | Verification proof counts drifted from source (Vec2 Verus: 55→61, Color Verus: 57→64, Coq-Z totals: 417→471) | Phase 1 metrics update missed per-file granular counts in VERUS_PROOFS.md and COQ_PROOFS.md | Automation scripts must cover ALL files containing per-type/per-file counts, not just summary totals |
+| 245 | Subagent audit results must be verified before applying | Agent reported `getDetailedFrameStats` as non-existent but it exists at `lib.rs:1042` | Always cross-check agent-reported violations against source before editing |
+| 246 | Files with most violations: TROUBLESHOOTING.md (7+), RUNBOOK.md (8+), RENDERING.md (5+), ARCHITECTURE.md (5+) | These files describe implementation details that change frequently | Prioritize these files in future audits; consider automation for API-referencing docs |
+
+---
+
 ## Chronological Audit Log
 
-All 220 entries in chronological order. Entry numbers match category table references.
+All 246 entries in chronological order. Entry numbers match category table references.
 
 | # | Date | Session | Issue | Root Cause | Fix Applied |
 |---|------|---------|-------|-----------|-------------|
@@ -587,6 +609,21 @@ All 220 entries in chronological order. Entry numbers match category table refer
 | 231 | 2026-02-05 | 1WDWU | CBMC SAT solver times out on tight FP range bounds with complex branching (CBMC issue #4337) | `verify_hsl_to_color_normalized` with ±1e-4 bounds on 3 calls to 4-branch `hue_to_rgb` exceeded 300s CI timeout | Use `#[kani::solver(cadical)]` for FP-heavy harnesses + wide bounds (e.g., [-1.0, 2.0]); prove tight bounds in Coq instead |
 | 232 | 2026-02-05 | 1WDWU | Kani/CBMC verification tool division of labor: Kani excels at bit-precise structural/NaN/finiteness properties; Coq excels at tight mathematical bounds | Attempting tight FP range proofs in Kani hit fundamental CBMC limitations (fmodf unsupported, FP bit-blasting timeout) | Design Kani harnesses for IEEE 754 edge-case safety (NaN, infinity, structural invariants); design Coq proofs for mathematical range/correctness properties |
 
+| 233 | 2026-02-09 | PNhXS | Non-existent CLI flags in TROUBLESHOOTING.md (--max-commits, --show-fps, --show-filenames, --show-usernames, --show-tree, --start-position, --log-format) | Docs written speculatively without verifying `args/mod.rs` | Removed or replaced all 7+ false flags with correct alternatives |
+| 234 | 2026-02-09 | PNhXS | Wrong WASM API method names in RUNBOOK.md (getEntityCount, isGPUPhysicsActive, getLastFrameTime, getFileCount, getDirCount, getUserCount, getCommitQueueSize, getPlaybackSpeed, setSecondsPerDay) | Names guessed from conventions | Fixed all 8+ to actual exported names from `wasm_api/` |
+| 235 | 2026-02-09 | PNhXS | JS API constructor `new Rource(canvas)` in README.md never existed | Docs assumed constructor pattern | Changed to `await Rource.create(canvas)` matching `lib.rs` |
+| 236 | 2026-02-09 | PNhXS | Renderer trait signatures wrong in ARCHITECTURE.md and RENDERING.md | Documented from memory not source | Fixed all signatures against `pub trait Renderer` in `rource-render/src/lib.rs` |
+| 237 | 2026-02-09 | PNhXS | Backend selection order wrong in RENDERING.md | Assumed WebGL2 first; actual is wgpu first | Corrected to match `Rource::create()` initialization sequence |
+| 238 | 2026-02-09 | PNhXS | `getRendererType()` return strings documented as PascalCase | Convention assumed incorrectly | Fixed to lowercase: `"wgpu"`, `"webgl2"`, `"software"` |
+| 239 | 2026-02-09 | PNhXS | ADR 0004 (generation counter) accepted but never implemented | LabelPlacer uses `Vec::clear()` not generation counters | Changed status to Superseded with implementation note |
+| 240 | 2026-02-09 | PNhXS | CONTRIBUTING.md JS directory tree had 12 entries, actual has 30+ | Never updated as files added | Rewrote entire tree from `find` output |
+| 241 | 2026-02-09 | PNhXS | GOURCE_COMPARISON.md listed background-image, logo, highlight-users as "roadmap" | Features implemented but status not updated | Removed from roadmap, updated parity to ~90% |
+| 242 | 2026-02-09 | PNhXS | `getMetrics()` in TELEMETRY.md — actual method is `getFrameStats()` | API renamed, docs not updated | Global replace across file |
+| 243 | 2026-02-09 | PNhXS | Broken link `performance/FORMAL_PROOFS.md` in docs/README.md | Path changed, cross-ref not updated | Fixed to `performance/formal-proofs/README.md` |
+| 244 | 2026-02-09 | PNhXS | Per-file verification counts drifted (Vec2 Verus: 55→61, Color: 57→64, Coq-Z totals: 417→471) | Phase 1 update missed per-file granular counts | Fixed in VERUS_PROOFS.md and COQ_PROOFS.md |
+| 245 | 2026-02-09 | PNhXS | Subagent reported `getDetailedFrameStats` as non-existent but it exists at `lib.rs:1042` | Agent error in verification | Cross-checked all agent-reported violations before applying |
+| 246 | 2026-02-09 | PNhXS | Files with most violations: TROUBLESHOOTING.md (7+), RUNBOOK.md (8+), RENDERING.md (5+), ARCHITECTURE.md (5+) | Implementation-detail docs drift fastest | Prioritize these in future audits |
+
 ---
 
-*Last updated: 2026-02-05 | 232 entries | 14 categories*
+*Last updated: 2026-02-09 | 246 entries | 15 categories*
