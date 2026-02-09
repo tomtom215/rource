@@ -141,12 +141,12 @@ cargo bench --bench iai_bench_name
 Heap allocation tracking for memory optimization.
 
 ```rust
-#[cfg(feature = "dhat-heap")]
+#[cfg(feature = "dhat")]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn main() {
-    #[cfg(feature = "dhat-heap")]
+    #[cfg(feature = "dhat")]
     let _profiler = dhat::Profiler::new_heap();
 
     // ... code to profile ...
@@ -155,7 +155,7 @@ fn main() {
 
 **Running**:
 ```bash
-cargo run --profile dhat --features dhat-heap
+cargo run --profile dhat --features dhat
 ```
 
 ---
@@ -212,7 +212,11 @@ All benchmarks can be reproduced using:
 ./scripts/benchmark-all.sh --verify-against docs/performance/EXPECTED_RESULTS.json
 ```
 
-This compares results against known-good baselines and reports any regressions.
+> **Note**: `EXPECTED_RESULTS.json` is planned but not yet implemented (TODO).
+> The `--verify-against` flag and baseline file are part of the future regression
+> detection infrastructure.
+
+This will compare results against known-good baselines and report any regressions.
 
 ### 4.3 Result Archival
 

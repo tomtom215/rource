@@ -16,7 +16,7 @@ Rource provides comprehensive telemetry for monitoring and debugging:
 | **Performance Metrics** | FPS, frame time, entity counts | `rource-wasm/src/metrics.rs` |
 | **Error Tracking** | Categorized error counting and rates | `rource-wasm/src/metrics.rs` |
 | **Frame Profiler** | Phase-level timing breakdown | `rource-wasm/src/profiler.rs` |
-| **Tracing Spans** | Function-level execution tracing | `rource-wasm/src/render_phases.rs` |
+| **Tracing Spans** | Function-level execution tracing | `rource-wasm/src/render_phases/` |
 
 ---
 

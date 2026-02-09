@@ -1,6 +1,6 @@
 # 8. Generation Counter Pattern
 
-**Implementation**: `rource-wasm/src/render_phases.rs` (LabelPlacer)
+**Implementation**: `rource-wasm/src/render_phases/label_placer.rs` (LabelPlacer)
 
 **Category**: Data Structures
 
@@ -72,14 +72,14 @@ Time: O(1) amortized (clear happens at most once per cell per frame)
 
 | Component | File | Lines |
 |-----------|------|-------|
-| LabelPlacer struct | `rource-wasm/src/render_phases.rs` | 1125-1135 |
-| reset() method | `rource-wasm/src/render_phases.rs` | 1197-1210 |
-| Collision check with gen | `rource-wasm/src/render_phases.rs` | 1292-1302 |
-| Insert with generation | `rource-wasm/src/render_phases.rs` | 1311-1317 |
+| LabelPlacer struct | `rource-wasm/src/render_phases/label_placer.rs` | — |
+| reset() method | `rource-wasm/src/render_phases/label_placer.rs` | — |
+| Collision check with gen | `rource-wasm/src/render_phases/label_placer.rs` | — |
+| Insert with generation | `rource-wasm/src/render_phases/label_placer.rs` | — |
 
 ### Core Implementation
 
-**LabelPlacer with Generation Counter** (`render_phases.rs:1125-1135`):
+**LabelPlacer with Generation Counter** (`render_phases/label_placer.rs`):
 
 ```rust
 pub struct LabelPlacer {
@@ -96,11 +96,11 @@ pub struct LabelPlacer {
 }
 ```
 
-**O(1) Reset via Generation Increment** (`render_phases.rs:1197-1210`):
+**O(1) Reset via Generation Increment** (`render_phases/label_placer.rs`):
 
 ```rust
 #[inline]
-pub fn reset(&mut self, camera_zoom: f32, viewport_width: f32, viewport_height: f32) {
+pub fn reset(&mut self, camera_zoom: f32) {
     // Track stale entries for periodic compaction
     self.stale_entry_count += self.placed_labels.len() * 2;
     self.placed_labels.clear();
@@ -114,7 +114,7 @@ pub fn reset(&mut self, camera_zoom: f32, viewport_width: f32, viewport_height: 
 }
 ```
 
-**Collision Check with Generation Filtering** (`render_phases.rs:1292-1302`):
+**Collision Check with Generation Filtering** (`render_phases/label_placer.rs`):
 
 ```rust
 let current_gen = self.generation;
@@ -134,7 +134,7 @@ for cy in min_cy..=max_cy {
 }
 ```
 
-**Insert with Current Generation** (`render_phases.rs:1311-1317`):
+**Insert with Current Generation** (`render_phases/label_placer.rs`):
 
 ```rust
 // Store with current generation for O(1) reset support
@@ -149,8 +149,8 @@ for cy in min_cy..=max_cy {
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 8.2 | O(1) clear | `render_phases.rs:1204` | `self.generation.wrapping_add(1)` |
-| 8.2 | Lazy cell clear | `render_phases.rs:1300` | `if gen != current_gen { continue; }` |
+| 8.2 | O(1) clear | `render_phases/label_placer.rs` | `self.generation.wrapping_add(1)` |
+| 8.2 | Lazy cell clear | `render_phases/label_placer.rs` | `if gen != current_gen { continue; }` |
 | 8.2 | Space O(G + n) | struct fields | `grid` (G cells) + `placed_labels` (n entries) |
 
 ### Verification Commands

@@ -113,7 +113,7 @@ to executable code.
 
 **Compilation speedup**: Before separation (monolithic files), compilation took
 ~15 minutes. After separating specs from proofs, total compilation is ~45 seconds
-(32 `.vo` files). This is a >300x improvement.
+(46 `.vo` files). This is a >300x improvement.
 
 **Source**: `crates/rource-math/proofs/coq/` (46 files total)
 
@@ -233,8 +233,8 @@ bit-precise safety checks (Kani), creating a complete verification stack.
 ### Claim
 
 We implemented an operational pipeline from Coq specifications through a
-Z-based computational bridge to WebAssembly, extracting all 8 verified types
-to a 6.8 KB WASM library. The pipeline has been tested with both standard
+Z-based computational bridge to WebAssembly, extracting 7 verified types plus
+utility functions to a 6.8 KB WASM library (Bounds is not extracted). The pipeline has been tested with both standard
 Coq extraction (unverified but production-ready) and MetaCoq verified
 extraction (PLDI 2024, partially verified).
 

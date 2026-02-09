@@ -48,7 +48,7 @@ Definition vec2_add (a b : Vec2) : Vec2 :=
 
 ```coq
 Definition zvec2_add (a b : ZVec2) : ZVec2 :=
-  mk_zvec2 (zvec2_x a + zvec2_x b) (zvec2_y a + zvec2_y b).
+  mkZVec2 (zvec2_x a + zvec2_x b) (zvec2_y a + zvec2_y b).
 ```
 
 ### Verus Proof (`vec2_proofs.rs`)
@@ -106,9 +106,10 @@ pub fn cross(self, other: Self) -> Self {
 
 ```coq
 Definition vec3_cross (a b : Vec3) : Vec3 :=
-  mkVec3 (vy a * vz b - vz a * vy b)
-         (vz a * vx b - vx a * vz b)
-         (vx a * vy b - vy a * vx b).
+  mkVec3
+    (vec3_y a * vec3_z b - vec3_z a * vec3_y b)
+    (vec3_z a * vec3_x b - vec3_x a * vec3_z b)
+    (vec3_x a * vec3_y b - vec3_y a * vec3_x b).
 ```
 
 ### Correspondence Assessment
@@ -116,7 +117,7 @@ Definition vec3_cross (a b : Vec3) : Vec3 :=
 **Category**: S (Structural)
 
 Each component uses the same formula: cyclic permutation of (x,y,z).
-Field mapping: `self.x/y/z → vx/vy/vz a`, `other.x/y/z → vx/vy/vz b`.
+Field mapping: `self.x/y/z → vec3_x/vec3_y/vec3_z a`, `other.x/y/z → vec3_x/vec3_y/vec3_z b`.
 No gap.
 
 ---
@@ -372,14 +373,24 @@ pub fn inverse(self) -> Option<Self> {
 ### Coq (`Mat3.v` / `Mat3_Proofs.v`)
 
 ```coq
-Definition mat3_inverse (m : Mat3) : Mat3 :=
-  let d := mat3_det m in
-  (* Returns cofactor matrix scaled by 1/det *)
-  mat3_scale (1/d) (mat3_cofactor m).
+Definition mat3_inverse (a : Mat3) : Mat3 :=
+  let det := mat3_determinant a in
+  let inv_det := / det in
+  mkMat3
+    ((m4 a * m8 a - m5 a * m7 a) * inv_det)
+    ((m2 a * m7 a - m1 a * m8 a) * inv_det)
+    ((m1 a * m5 a - m2 a * m4 a) * inv_det)
+    ((m5 a * m6 a - m3 a * m8 a) * inv_det)
+    ((m0 a * m8 a - m2 a * m6 a) * inv_det)
+    ((m2 a * m3 a - m0 a * m5 a) * inv_det)
+    ((m3 a * m7 a - m4 a * m6 a) * inv_det)
+    ((m1 a * m6 a - m0 a * m7 a) * inv_det)
+    ((m0 a * m4 a - m1 a * m3 a) * inv_det).
 
-(* Theorem: inverse is correct when det ≠ 0 *)
-Theorem mat3_inverse_correct : forall m,
-  mat3_det m <> 0 -> mat3_mul m (mat3_inverse m) = mat3_identity.
+(* Theorem: left inverse is correct when det ≠ 0 *)
+Theorem mat3_inverse_correct : forall a : Mat3,
+  mat3_determinant a <> 0 ->
+  mat3_mul (mat3_inverse a) a = mat3_identity.
 ```
 
 ### Correspondence Assessment

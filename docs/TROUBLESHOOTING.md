@@ -446,7 +446,7 @@ Include:
 | Black screen | Press `F` to auto-fit camera |
 | Low FPS | Use `--release` build, `--no-bloom` |
 | Large repo slow | `--max-files 5000` |
-| Labels missing | Zoom in, check `--show-filenames` |
+| Labels missing | Zoom in, ensure `--hide-filenames` is not set |
 | WASM crash | Refresh, use smaller repo |
 | Export black | Add `--seconds-per-day 5.0` |
 

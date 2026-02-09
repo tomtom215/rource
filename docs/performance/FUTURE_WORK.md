@@ -96,7 +96,7 @@ Implemented comprehensive telemetry infrastructure building on existing foundati
 
 **Newly Implemented (OP-1 Completion)**:
 
-1. **Tracing Spans in Hot Paths** (`rource-wasm/src/render_phases.rs`):
+1. **Tracing Spans in Hot Paths** (`rource-wasm/src/render_phases/`):
    - Added `trace_span!` macro for conditional tracing
    - Instrumented 7 render functions with spans:
      - `render_directories` (with entity count)
@@ -188,7 +188,7 @@ for commits in 1000 10000 100000; do
     echo "Testing with $commits commits..."
     cargo run --release -- \
         --headless \
-        --max-commits $commits \
+        --max-files $commits \
         --output /tmp/frames \
         --telemetry-output /tmp/latency-$commits.json \
         /path/to/large/repo
@@ -1481,14 +1481,13 @@ Created comprehensive operational runbook with incident response procedures.
 **Symptoms**: Browser tab using >2GB memory, OOM crashes
 
 **Diagnosis**:
-1. Check entity count: `rource.getEntityCount()`
+1. Check entity count: `rource.getTotalEntities()`
 2. Check for memory leaks: Enable heap profiling
 3. Check commit count: Large repos (>100k commits)
 
 **Mitigation**:
-1. Reduce `--max-commits` to 50,000
-2. Enable LOD: `rource.setUseLOD(true)`
-3. Disable bloom: `rource.setBloomEnabled(false)`
+1. Reduce `--max-files` to limit visible entities
+2. Disable bloom: `rource.setBloom(false)`
 
 ### Low Frame Rate
 

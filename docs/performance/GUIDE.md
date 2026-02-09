@@ -171,14 +171,14 @@ LOD culling skips sub-pixel entities for massive performance gains at low zoom l
 
 | Constant                       | Value   | Purpose                       |
 |--------------------------------|---------|-------------------------------|
-| `LOD_MIN_FILE_RADIUS`          | 0.5px   | Skip files smaller than this  |
-| `LOD_MIN_DIR_RADIUS`           | 0.3px   | Skip directories smaller      |
-| `LOD_MIN_FILE_LABEL_RADIUS`    | 3.0px   | Skip file labels below this   |
-| `LOD_MIN_DIR_LABEL_RADIUS`     | 4.0px   | Skip dir labels below this    |
-| `LOD_MIN_USER_RADIUS`          | 1.0px   | Skip users smaller than this  |
-| `LOD_MIN_USER_LABEL_RADIUS`    | 5.0px   | Skip user labels below this   |
-| `LOD_MIN_ZOOM_FOR_FILE_BRANCHES`| 0.05   | Skip file branches below zoom |
-| `LOD_MIN_ZOOM_FOR_DIR_BRANCHES` | 0.02   | Skip dir branches below zoom  |
+| `MIN_FILE_RADIUS`              | 0.1px   | Skip files smaller than this  |
+| `MIN_DIR_RADIUS`               | 0.05px  | Skip directories smaller      |
+| `MIN_FILE_LABEL_RADIUS`        | 3.0px   | Skip file labels below this   |
+| `MIN_DIR_LABEL_RADIUS`         | 4.0px   | Skip dir labels below this    |
+| `MIN_USER_RADIUS`              | 0.3px   | Skip users smaller than this  |
+| `MIN_USER_LABEL_RADIUS`        | 5.0px   | Skip user labels below this   |
+| `MIN_ZOOM_FOR_FILE_BRANCHES`   | 0.02    | Skip file branches below zoom |
+| `MIN_ZOOM_FOR_DIR_BRANCHES`    | 0.01    | Skip dir branches below zoom  |
 
 **Impact at Scale**: At zoom=0.01 with 50,000 files, most entities are sub-pixel and skipped
 
@@ -309,7 +309,7 @@ When experiencing slowness:
 
 ## Related Documentation
 
-- [Performance Optimization History](./README.md) - 59 optimization phases
+- [Performance Optimization History](./README.md) - 83 optimization phases
 - [Algorithmic Complexity](./ALGORITHMIC_COMPLEXITY.md) - Big-O analysis
 - [Profiling Guide](./PROFILING.md) - Detailed profiling tools
 - [Rendering Architecture](../RENDERING.md) - Backend details

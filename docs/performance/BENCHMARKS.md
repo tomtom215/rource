@@ -578,7 +578,7 @@ Time to compute the adaptive theta value (negligible).
 
 ## Label Collision Detection Benchmarks (Phase 65)
 
-**Source**: `rource-wasm/src/render_phases.rs`
+**Source**: `rource-wasm/src/render_phases/`
 **Phase**: 65
 **Target**: 42,000 FPS (23.8µs frame budget)
 
@@ -702,7 +702,7 @@ self.user_label_candidates_buf.clear();
 
 ## rustc-hash 2.x Upgrade Benchmarks (Phase 66)
 
-**Source**: `rource-wasm/src/render_phases.rs` (benchmark tests)
+**Source**: `rource-wasm/src/render_phases/` (benchmark tests)
 **Phase**: 66
 **Date**: 2026-01-26
 
@@ -749,7 +749,7 @@ rustc-hash is used throughout the codebase in hot paths:
 
 | Location | Usage |
 |----------|-------|
-| `rource-wasm/src/render_phases.rs` | LabelPlacer spatial hash grid |
+| `rource-wasm/src/render_phases/` | LabelPlacer spatial hash grid |
 | `crates/rource-core/src/scene/` | Entity lookups, directory membership |
 | `crates/rource-render/src/font.rs` | Glyph cache |
 | `crates/rource-render/src/backend/wgpu/textures.rs` | Texture management |
@@ -766,7 +766,7 @@ rustc-hash is used throughout the codebase in hot paths:
 
 ## Major Dependency Updates (Phase 67)
 
-**Source**: `rource-wasm/src/render_phases.rs` (benchmark tests)
+**Source**: `rource-wasm/src/render_phases/` (benchmark tests)
 **Phase**: 67
 **Date**: 2026-01-26
 
@@ -850,7 +850,7 @@ use std::hint::black_box;
 
 ## Label Width Estimation Fix (Phase 68)
 
-**Source**: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases.rs`
+**Source**: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases/`
 **Phase**: 68
 **Date**: 2026-01-26
 

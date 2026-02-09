@@ -37,7 +37,7 @@ instead of pairwise force calculation.
 - Default: Barnes-Hut for all simulations
 - Fallback: Pairwise for < 100 directories
 
-**Methods**:
+**Methods** (in `crates/rource-core/src/physics/force.rs`):
 ```rust
 calculate_repulsion_barnes_hut()  // O(n log n) repulsion
 calculate_repulsion_pairwise()    // O(n²) exact (comparison/testing)
@@ -179,7 +179,7 @@ pub struct QuadTree<T: Clone> {
 ### Label Collision Detection Optimization
 
 **Phase**: 65
-**Location**: `rource-wasm/src/render_phases.rs`
+**Location**: `rource-wasm/src/render_phases/`
 **Impact**: 90× faster grid reset, 7-8× sorting improvement, zero allocations
 
 Optimized label collision detection for 42,000 FPS target (23.8µs frame budget).
@@ -263,7 +263,7 @@ self.user_label_candidates_buf.clear();
 ### Label Width Estimation Fix
 
 **Phase**: 68
-**Location**: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases.rs`
+**Location**: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases/`
 **Impact**: 22.4× more accurate width estimation, eliminates UTF-8 label overlaps
 
 Fixed critical bug in `estimate_text_width()` where `text.len()` (bytes) was used instead
@@ -810,7 +810,7 @@ for strip in 0..(width / STRIP_WIDTH) {
 ### File Glow LOD Culling and Radius Reduction
 
 **Phase**: 70
-**Location**: `rource-wasm/src/render_phases.rs`, `rource-cli/src/rendering.rs`
+**Location**: `rource-wasm/src/render_phases/`, `rource-cli/src/rendering.rs`
 **Impact**: 43.75% reduction in glow pixel area + LOD culling for small files
 
 Optimized file glow rendering through two complementary strategies:

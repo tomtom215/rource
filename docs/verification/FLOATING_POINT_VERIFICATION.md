@@ -1,6 +1,6 @@
 # Floating-Point Formal Verification Feasibility Assessment
 
-This document assesses the feasibility of formally verifying the 114 rource-math
+This document assesses the feasibility of formally verifying the 37 rource-math
 operations that currently cannot be verified due to floating-point semantics.
 It surveys the state of the art, evaluates specific tools and papers, and
 provides a concrete roadmap for extending verification coverage.
@@ -12,11 +12,11 @@ For current coverage metrics, see [VERIFICATION_COVERAGE.md](VERIFICATION_COVERA
 
 | Aspect | Finding |
 |--------|---------|
-| **Current gap** | 85/255 operations (33.3%) unverified due to floating-point/transcendental requirements |
+| **Current gap** | 37/256 operations (14.5%) unverified due to floating-point/transcendental requirements |
 | **Paper investigated** | "Verifying Floating-Point Programs in Stainless" (Gilot et al., arXiv:2601.14059, Jan 2026) |
 | **Paper applicability** | Not directly applicable — Scala-only tool, no Rust/Coq integration |
 | **Most promising path** | Coq + Flocq + VCFloat2 + Gappa (all Coq 8.18 compatible) |
-| **Estimated reachable coverage** | 80–85% (up from 66.7%) with moderate effort |
+| **Current coverage** | 85.5% (219/256 operations) |
 | **Maximum theoretical coverage** | ~90% (requires significant novel proof engineering) |
 | **Remaining hard gap** | ~10% — HSL color conversions, complex geometric transforms |
 
@@ -193,7 +193,7 @@ arithmetic, generating Coq proof certificates.
 **Key reference**: Daumas, M. & Melquiond, G. "Certification of bounds on expressions
 involving rounded operators." IEEE Transactions on Computers, 2010.
 
-## Feasibility Assessment: 114 Unverified Operations
+## Feasibility Assessment: 37 Unverified Operations
 
 ### Operations by Category and Feasibility
 
@@ -292,11 +292,11 @@ require composing single-operation proofs.
 
 | Phase | Coverage | Operations Verified | Total |
 |-------|----------|--------------------|----|
-| Current | 80.4% (205/255) | Algebraic + edge-case properties | 2968 theorems/harnesses |
-| **Phase FP-1 foundations** | **80.4%** | **+ FP error bounds, rounding, vec ops (361 FP theorems)** | **2909** |
-| After Phase FP-2 | ~85% (217/255) | + sqrt, rounding, min/max, lerp, distance_sq | ~2909 |
-| After Phase FP-3 | ~90% (230/255) | + distance, conversions, batch, transcendental | ~2900 |
-| After Phase FP-4 | ~93% (238/255) | + matrix transforms, color, complex geometry | ~3000 |
+| Current | 85.5% (219/256) | Algebraic + edge-case properties | 2968 theorems/harnesses |
+| **Phase FP-1 foundations** | **85.5%** | **+ FP error bounds, rounding, vec ops (361 FP theorems)** | **3329** |
+| After Phase FP-2 | ~90% (230/256) | + sqrt, rounding, min/max, lerp, distance_sq | ~3400 |
+| After Phase FP-3 | ~93% (238/256) | + distance, conversions, batch, transcendental | ~3500 |
+| After Phase FP-4 | ~96% (246/256) | + matrix transforms, color, complex geometry | ~3600 |
 
 ### Phase FP-1 Progress (In Progress)
 
@@ -335,7 +335,7 @@ This distinction is critical for intellectual honesty:
   analysis concern)
 
 **How this relates to our existing proofs:**
-Our current 1837 theorems prove algebraic properties over exact arithmetic (R or Z).
+Our current 2198 theorems prove algebraic properties over exact arithmetic (R or Z).
 Floating-point proofs would be a **complementary layer** proving that the Rust
 implementation's floating-point results are close to the mathematically correct
 values established by our R-based proofs. The two layers together would provide:

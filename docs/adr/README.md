@@ -18,14 +18,15 @@ An Architecture Decision Record captures an important architectural decision mad
 | [0001](0001-use-barnes-hut-for-force-layout.md) | Use Barnes-Hut Algorithm for Force-Directed Layout | Accepted | 2024-01 |
 | [0002](0002-software-renderer-as-primary-backend.md) | Software Renderer as Primary Backend | Accepted | 2024-01 |
 | [0003](0003-wasm-first-architecture.md) | WASM-First Architecture | Accepted | 2024-01 |
-| [0004](0004-generation-counter-for-spatial-reset.md) | Generation Counter Pattern for Spatial Grid Reset | Accepted | 2025-01 |
+| [0004](0004-generation-counter-for-spatial-reset.md) | Generation Counter Pattern for Spatial Grid Reset | Superseded | 2025-01 |
 | [0005](0005-texture-array-batching.md) | Texture Array Batching for Draw Calls | Accepted | 2025-01 |
 
 ## ADR Statuses
 
 - **Proposed**: Under discussion
 - **Accepted**: Decision made, implementation in progress or complete
-- **Deprecated**: Superseded by another decision
+- **Superseded**: Replaced by a different implementation approach
+- **Deprecated**: No longer relevant to the project
 - **Rejected**: Considered but not adopted
 
 ## Creating a New ADR

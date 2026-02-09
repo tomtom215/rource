@@ -11,7 +11,7 @@
 
 | Aspect | Status |
 |--------|--------|
-| **Overall Compliance** | 85% AA Compliant |
+| **Overall Compliance** | ~85% AA Compliant (estimated based on implementation review; not verified by automated or manual audit) |
 | **Keyboard Navigation** | PASS |
 | **Color Contrast** | PASS |
 | **Focus Visibility** | PASS |
@@ -307,26 +307,34 @@ The visualization includes continuous animation that cannot be fully paused:
 
 ## Testing Performed
 
+> **Status: Not Yet Verified**
+>
+> The test results below represent the *expected* outcomes based on the
+> implementation described in this document. No automated or manual
+> accessibility audit has been executed against a deployed build.
+> These entries should be updated with actual results once testing is
+> performed.
+
 ### Automated Testing
 
-| Tool | Result |
-|------|--------|
-| axe DevTools | 0 violations |
-| WAVE | 0 errors |
-| Lighthouse Accessibility | 100/100 |
-| HTML Validator | Valid |
+| Tool | Expected Result | Verified |
+|------|-----------------|----------|
+| axe DevTools | 0 violations | Not yet tested |
+| WAVE | 0 errors | Not yet tested |
+| Lighthouse Accessibility | 100/100 | Not yet tested |
+| HTML Validator | Valid | Not yet tested |
 
 ### Manual Testing
 
-| Test | Browser/Device | Result |
-|------|----------------|--------|
-| Keyboard navigation | Chrome, Firefox, Safari | PASS |
-| Screen reader (VoiceOver) | macOS Safari | PASS |
-| Screen reader (NVDA) | Windows Chrome | PASS |
-| High contrast mode | Windows | PASS |
-| Reduced motion | All browsers | PASS |
-| Touch targets | iOS Safari | PASS |
-| Focus visibility | All browsers | PASS |
+| Test | Browser/Device | Expected Result | Verified |
+|------|----------------|-----------------|----------|
+| Keyboard navigation | Chrome, Firefox, Safari | PASS | Not yet tested |
+| Screen reader (VoiceOver) | macOS Safari | PASS | Not yet tested |
+| Screen reader (NVDA) | Windows Chrome | PASS | Not yet tested |
+| High contrast mode | Windows | PASS | Not yet tested |
+| Reduced motion | All browsers | PASS | Not yet tested |
+| Touch targets | iOS Safari | PASS | Not yet tested |
+| Focus visibility | All browsers | PASS | Not yet tested |
 
 ---
 

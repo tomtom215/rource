@@ -51,7 +51,7 @@ TOTAL:    46 issues
   - Average estimation error: 74.4% → 3.3% (22.4× more accurate)
   - Worst case (CJK/Emoji): 274.9% → 3.3% (fixed)
   - Performance: 277-309 ps/call (negligible overhead)
-  - Files: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases.rs`
+  - Files: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases/`
 
 **Session 8 Fixes (2026-01-26):**
 - L2: Fixed bottom sheet excessive height - gives 15% more visualization space
@@ -84,7 +84,7 @@ TOTAL:    46 issues
   - Labels extending beyond viewport edges are rejected
   - Prevents visual clutter and wasted render calls
   - Updated both rource-render (CLI) and rource-wasm implementations
-  - Files: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases.rs`
+  - Files: `crates/rource-render/src/label.rs`, `rource-wasm/src/render_phases/`
 - A6: Added visible focus states for keyboard navigation
   - Comprehensive :focus-visible styles for all interactive elements
   - WCAG 2.1 Success Criterion 2.4.7 compliance

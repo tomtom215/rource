@@ -17,8 +17,8 @@ Coq (Z-based specs)  →  Standard Extraction  →  OCaml source
                                               WebAssembly (6.8 KB)
 ```
 
-The pipeline extracts all 8 primary types (Vec2-4, Mat3-4, Color, Rect,
-Bounds) plus utility functions from the Z-based computational bridge
+The pipeline extracts 7 primary types (Vec2-4, Mat3-4, Color, Rect)
+plus utility functions from the Z-based computational bridge
 (Layer 2), producing executable integer-arithmetic implementations.
 
 ## 5.2 The Z-Based Computational Bridge

@@ -31,7 +31,7 @@ WebAssembly relaxed-SIMD (Phase 5, standardized) adds `f32x4.relaxed_fma` and
 
 **Why Not Applicable**:
 
-From `optimized.rs`:
+From `crates/rource-render/src/backend/software/optimized.rs`:
 ```rust
 //! # Determinism Guarantee
 //!
@@ -576,8 +576,8 @@ Rource's statistics are simple:
 - **Entity counts**: Instantaneous values
 
 No variance calculations exist in Rource's hot paths. The HudCache
-(`rource-core/src/hud.rs`) uses simple averaging that's numerically stable
-for the scale of values involved (frame times in milliseconds).
+(`rource-cli/src/app.rs`) is a string formatting cache that avoids per-frame
+`format!()` allocations for HUD text, not a statistical computation.
 
 If variance tracking were added (e.g., frame time jitter metrics), Welford
 would be the correct choice. Currently, no such requirement exists.
@@ -683,7 +683,7 @@ render_pass.draw_indirect(culled.indirect(), 0)
 
 The spatial hash grid optimization was evaluated for the core library's `LabelPlacer`
 (`crates/rource-render/src/label.rs`). The WASM version already uses spatial hash
-(`rource-wasm/src/render_phases.rs`), but the core library uses O(n) linear scan.
+(`rource-wasm/src/render_phases/label_placer.rs`), but the core library uses O(n) linear scan.
 
 **Benchmark Results** (criterion, 100 samples, 95% CI):
 
@@ -720,7 +720,7 @@ Empirically, spatial hash only breaks even around 100+ labels.
 
 **Why WASM Uses Spatial Hash**:
 
-The WASM version in `render_phases.rs` uses spatial hash for different reasons:
+The WASM version in `render_phases/label_placer.rs` uses spatial hash for different reasons:
 
 1. **Frame rate target**: 42,000+ FPS requires O(1) reset (generation counter)
 2. **Memory pressure**: WASM heap is constrained; generation counter avoids allocation
@@ -901,10 +901,10 @@ which is functionally equivalent to (and often better than) hybrid introsort:
 
 Current usage in Rource:
 ```rust
-// render_phases.rs:2519 - already uses optimal sort
+// render_phases/actions.rs - already uses optimal sort
 active.sort_unstable_by(|a, b| { ... });
 
-// render_phases.rs:2549 - already uses optimal sort
+// render_phases/users.rs - already uses optimal sort
 users.sort_unstable_by(|a, b| { ... });
 ```
 

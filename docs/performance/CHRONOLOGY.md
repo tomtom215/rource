@@ -845,7 +845,7 @@ The optimization provides significant benefit for interactive viewing.
 
 **Files Modified**:
 - `rource-cli/src/rendering.rs` (lines 853-860)
-- `rource-wasm/src/render_phases.rs` (lines 756-761)
+- `rource-wasm/src/render_phases/` (lines 756-761)
 
 **Related Documentation**:
 - [docs/RENDERING_BOTTLENECK_ANALYSIS.md](../RENDERING_BOTTLENECK_ANALYSIS.md)
@@ -1492,7 +1492,7 @@ impl Rource {
 - Savings: **18.9 µs/frame** (79.5% budget recovered)
 
 **Files Modified**:
-- `rource-wasm/src/render_phases.rs` (LabelPlacer generation counter, sorting)
+- `rource-wasm/src/render_phases/` (LabelPlacer generation counter, sorting)
 - `rource-wasm/src/lib.rs` (reusable buffer)
 
 **Correctness Verification**:
@@ -1543,7 +1543,7 @@ uses FxHashSet for entity tracking.
 - At 60 FPS: **420 µs/second** saved
 
 **Affected Code Paths**:
-- `rource-wasm/src/render_phases.rs` - LabelPlacer spatial hash grid
+- `rource-wasm/src/render_phases/` - LabelPlacer spatial hash grid
 - `crates/rource-core/src/scene/` - Entity lookups, directory membership
 - `crates/rource-render/src/font.rs` - Glyph cache
 - `crates/rource-render/src/backend/*/textures.rs` - Texture management
@@ -1752,7 +1752,7 @@ For UTF-8 with multi-byte chars (bytes > n):
 
 **Files Modified**:
 - `crates/rource-render/src/label.rs` - Core implementation and tests
-- `rource-wasm/src/render_phases.rs` - WASM implementation and benchmark
+- `rource-wasm/src/render_phases/` - WASM implementation and benchmark
 - `crates/rource-render/src/font.rs` - Font metrics analysis tests
 - `docs/ux/MOBILE_UX_ROADMAP.md` - Updated T1/T5 status
 
@@ -1972,7 +1972,7 @@ Reduction = (A_before - A_after) / A_before
 
 **Files Modified**:
 - `rource-cli/src/rendering.rs` (lines 846-854)
-- `rource-wasm/src/render_phases.rs` (lines 754-762)
+- `rource-wasm/src/render_phases/` (lines 754-762)
 
 **Verification**:
 - All 2,163+ tests pass
@@ -2577,7 +2577,7 @@ benchmarked, but **showed regression** for typical label counts (30-100).
 
 The continuation prompt from a previous session identified the core library's
 `LabelPlacer` as using O(n) linear scan for collision detection, while the
-WASM version (`rource-wasm/src/render_phases.rs`) uses O(1) spatial hash grid.
+WASM version (`rource-wasm/src/render_phases/`) uses O(1) spatial hash grid.
 
 The formal proof (`docs/performance/formal-proofs/07-label-collision-detection.md`)
 documents the algorithm, promising 10-44× improvement.
@@ -2959,7 +2959,7 @@ scalar operations outperforms SIMD batch for sparse distributions.
 **Status**: COMPLETED
 **Date**: 2026-01-28
 
-Refactored `rource-wasm/src/render_phases.rs` (2,772 lines) into a focused
+Refactored `rource-wasm/src/render_phases/` (2,772 lines) into a focused
 modular directory structure for improved maintainability, testability, and
 compile-time granularity.
 
@@ -2974,7 +2974,7 @@ refactoring, with `render_phases.rs` being the highest priority (CRITICAL).
 
 Before:
 ```
-rource-wasm/src/render_phases.rs (2,772 lines)
+rource-wasm/src/render_phases/ (2,772 lines)
 ```
 
 After:

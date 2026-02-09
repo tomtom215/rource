@@ -1,6 +1,6 @@
 # 7. Label Collision Detection (Spatial Hash Grid)
 
-**Implementation**: `rource-wasm/src/render_phases.rs` (WASM only)
+**Implementation**: `rource-wasm/src/render_phases/label_placer.rs` (WASM only)
 
 **Category**: Rendering
 
@@ -89,7 +89,7 @@ With priority ordering and typical label sizes, empirical ratio is >50%. ∎
 | LabelPlacer struct | `crates/rource-render/src/label.rs` | 110-123 |
 | try_place method | `crates/rource-render/src/label.rs` | 194-227 |
 | rects_overlap function | `crates/rource-render/src/label.rs` | 303-305 |
-| Spatial hash (WASM) | `rource-wasm/src/render_phases.rs` | 1125-1135 |
+| Spatial hash (WASM) | `rource-wasm/src/render_phases/label_placer.rs` | — |
 
 ### Core Implementation
 
@@ -164,10 +164,10 @@ fn rects_overlap(a: &Rect, b: &Rect) -> bool {
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 7.2 | Cell index: `(x/c, y/c)` | `render_phases.rs` | `(x / cell_size).floor() as i32` |
-| 7.2 | O(1) expected per cell | `render_phases.rs:1296-1307` | Spatial hash lookup in WASM |
+| 7.2 | Cell index: `(x/c, y/c)` | `render_phases/label_placer.rs` | `(x / cell_size).floor() as i32` |
+| 7.2 | O(1) expected per cell | `render_phases/label_placer.rs` | Spatial hash lookup in WASM |
 | 7.2 | O(n) linear scan | `label.rs:291-297` | Sequential Vec iteration (core lib) |
-| 7.3 | Greedy by priority | `render_phases.rs` | Sort by priority, place in order |
+| 7.3 | Greedy by priority | `render_phases/label_placer.rs` | Sort by priority, place in order |
 | 7.3 | ≥20% approximation | N/A | Empirically >50% achieved |
 
 **Note**: The core library uses O(n) linear scan because benchmarking (Phase 76)

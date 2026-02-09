@@ -29,7 +29,7 @@ Implement a pure software renderer as the primary/fallback backend, with GPU bac
 
 **Architecture**:
 ```
-RenderBackend trait
+Renderer trait
 ├── SoftwareBackend (pure CPU, always available)
 ├── WebGL2Backend (browser GPU, optional)
 └── WgpuBackend (native/WebGPU, optional)
@@ -93,7 +93,7 @@ Depend on external GPU library for all rendering.
 
 ## References
 
-- `crates/rource-render/src/lib.rs` - RenderBackend trait
+- `crates/rource-render/src/lib.rs` - Renderer trait
 - `crates/rource-render/src/backend/software/` - Software renderer implementation
 - `crates/rource-render/src/backend/webgl2/` - WebGL2 backend
 - `crates/rource-render/src/backend/wgpu/` - wgpu backend

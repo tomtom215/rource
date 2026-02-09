@@ -75,8 +75,8 @@ The Coq development comprises three sub-layers:
 
 Each type is modeled as a Coq Record with real-number fields:
 ```coq
-Record Vec2 := mk_vec2 { vx : R; vy : R }.
-Record Mat3 := mk_mat3 { m00 : R; m01 : R; ...; m22 : R }.
+Record Vec2 : Type := mkVec2 { vec2_x : R; vec2_y : R }.
+Record Mat3 : Type := mkMat3 { m0 : R; m1 : R; m2 : R; m3 : R; m4 : R; m5 : R; m6 : R; m7 : R; m8 : R }.
 ```
 
 Theorems prove properties over the field of reals, leveraging Coq's
@@ -89,7 +89,7 @@ standard library (`Reals`). Proof tactics include:
 
 A parallel development models fields as integers (Z) for extractability:
 ```coq
-Record ZVec2 := mk_zvec2 { zvx : Z; zvy : Z }.
+Record ZVec2 : Type := mkZVec2 { zvec2_x : Z; zvec2_y : Z }.
 ```
 
 Where division is needed (e.g., color normalization), we use scaled

@@ -36,7 +36,7 @@ This document describes the methodology used to compare Rource (Rust implementat
 
 **Rource Command**:
 ```bash
-rource --headless --output /tmp/frames --max-frames 1 --log custom.log
+rource --headless --output /tmp/frames --framerate 1 --custom-log custom.log
 ```
 
 **Gource Command**:
@@ -69,8 +69,8 @@ gource --log-format custom log.txt --stop-at-end -s 0.001 -o /dev/null
 
 **Rource Command**:
 ```bash
-rource --headless --output /tmp/frames --max-frames 300 \
-       --width 1280 --height 720 --no-bloom --log custom.log
+rource --headless --output /tmp/frames --framerate 300 \
+       --width 1280 --height 720 --no-bloom --custom-log custom.log
 ```
 
 **Gource Command**:
@@ -218,12 +218,12 @@ Edit `benchmarks/scripts/common.sh` to modify:
 - PPM output to stdout (stream processing)
 
 ### Rource
-- Software renderer only (no GPU acceleration on native)
+- Multiple renderer backends: wgpu (GPU via Vulkan/Metal/DX12), WebGL2 (browser), software (CPU fallback)
 - Some Gource features not yet implemented
 - WASM build has browser-specific constraints
 
 ### Comparison Notes
-1. **Rendering technology differs**: Gource uses GPU (OpenGL), Rource uses CPU (software)
+1. **Rendering technology differs**: Gource uses GPU (OpenGL), Rource supports GPU (wgpu) and CPU (software) backends
 2. **Feature sets differ**: Not all Gource features in Rource (and vice versa)
 3. **Headless approach differs**: Rource is truly headless; Gource requires virtual display
 

@@ -13,7 +13,7 @@ After comprehensive research across competitive programming, nature-inspired alg
 cache optimization, SIMD techniques, and Google OR-Tools, this document identifies
 **5 genuinely promising algorithms** that warrant rigorous A/B benchmarking.
 
-**Critical Caveat**: Rource is already highly optimized (77 phases documented). Most
+**Critical Caveat**: Rource is already highly optimized (83 phases documented). Most
 remaining gains will be in the single-digit nanosecond range. Some candidates may
 prove NOT APPLICABLE after benchmarking—this is expected and acceptable.
 
@@ -259,7 +259,7 @@ struct FilesData {
 | Rendering | position, color, radius | **Medium** - 16 bytes/entity |
 | Full entity access | All fields | **Low** - multiple arrays |
 
-**Target**: `crates/rource-core/src/entity/` - Entity definitions
+**Target**: `crates/rource-core/src/entity.rs` (ID types) and `crates/rource-core/src/scene/` (FileNode, DirNode, User, Action)
 
 ### Expected Impact
 
@@ -396,7 +396,7 @@ Interval Tree: O(log n + k) - only returns overlapping intervals
 | Viewport culling | AABB test | **No** - single test |
 | Physics queries | QuadTree | **No** - 2D queries |
 
-**Target**: Label collision in `render_phases.rs`
+**Target**: Label collision in `rource-wasm/src/render_phases/label_placer.rs`
 
 ### Expected Impact
 

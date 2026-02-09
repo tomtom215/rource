@@ -53,7 +53,6 @@ The dashboard provides:
 | scene_perf | rource-core | Scene update operations |
 | barnes_hut_theta | rource-core | Physics simulation |
 | easing_perf | rource-core | Animation curves |
-| spatial_perf | rource-core | Spatial index operations |
 
 ### Rendering
 
@@ -61,6 +60,10 @@ The dashboard provides:
 |-------|-------|-------------|
 | blend_perf | rource-render | Alpha blending |
 | bloom_perf | rource-render | Post-processing |
+| disc_perf | rource-render | Disc rendering |
+| label_perf | rource-render | Label rendering |
+| primitive_consolidation | rource-render | Primitive batching |
+| render_scale | rource-render | Rendering at different scales |
 | texture_batching | rource-render | Draw call optimization |
 | visual_perf | rource-render | Full render pipeline |
 

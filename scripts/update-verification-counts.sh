@@ -271,19 +271,19 @@ ENDJSON
 # =============================================================================
 
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║          VERIFICATION COUNTS (from source files)            ║"
+printf "║%-63s║\n" "            VERIFICATION COUNTS (from source files)"
 echo "╠═══════════════════════════════════════════════════════════════╣"
-echo "║                                                             ║"
-printf "║  Verus proof functions:  %4d                               ║\n" "$VERUS_TOTAL"
-printf "║  Coq R-based theorems:  %4d                               ║\n" "$COQ_R_TOTAL"
-printf "║  Coq Z-based theorems:  %4d                               ║\n" "$COQ_Z_TOTAL"
-printf "║  Coq FP error bounds:   %4d                               ║\n" "$COQ_FP_TOTAL"
-printf "║  Kani CBMC harnesses:   %4d                               ║\n" "$KANI_TOTAL"
-echo "║  ─────────────────────────────                              ║"
-printf "║  GRAND TOTAL:           %4d                               ║\n" "$GRAND_TOTAL"
-echo "║                                                             ║"
-printf "║  Optimization phases:     %3d                               ║\n" "$OPT_PHASES"
-echo "║                                                             ║"
+printf "║%-63s║\n" ""
+printf "║  Verus proof functions:  %4d%33s║\n" "$VERUS_TOTAL" ""
+printf "║  Coq R-based theorems:  %4d%34s║\n" "$COQ_R_TOTAL" ""
+printf "║  Coq Z-based theorems:  %4d%34s║\n" "$COQ_Z_TOTAL" ""
+printf "║  Coq FP error bounds:   %4d%34s║\n" "$COQ_FP_TOTAL" ""
+printf "║  Kani CBMC harnesses:   %4d%34s║\n" "$KANI_TOTAL" ""
+echo "║  ─────────────────────────────                                ║"
+printf "║  GRAND TOTAL:           %4d%34s║\n" "$GRAND_TOTAL" ""
+printf "║%-63s║\n" ""
+printf "║  Optimization phases:     %3d%33s║\n" "$OPT_PHASES" ""
+printf "║%-63s║\n" ""
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo ""
 echo "Per-type breakdown:"
@@ -415,14 +415,14 @@ CHECKS=(
     "crates/rource-math/src/kani_proofs/mod.rs|$KANI_TOTAL total|mod.rs harness count"
     # SETUP_GUIDE.md - Verus total in table
     "docs/verification/SETUP_GUIDE.md|**$VERUS_TOTAL**|SETUP_GUIDE Verus total"
-    # SETUP_GUIDE.md - Coq combined total in table
-    "docs/verification/SETUP_GUIDE.md|**$COQ_COMBINED**|SETUP_GUIDE Coq combined total"
+    # SETUP_GUIDE.md - Coq total in table (R + Z + FP = all Coq)
+    "docs/verification/SETUP_GUIDE.md|**$COQ_ALL**|SETUP_GUIDE Coq combined total"
     # SETUP_GUIDE.md - Combined total
     "docs/verification/SETUP_GUIDE.md|**$GRAND_TOTAL**|SETUP_GUIDE combined total"
     # FLOATING_POINT_VERIFICATION.md - grand total
     "docs/verification/FLOATING_POINT_VERIFICATION.md|$GRAND_TOTAL theorems|FP_VERIFICATION total"
     # CERTICOQ_WASM_ASSESSMENT.md - Layer 2 Z total
-    "docs/verification/CERTICOQ_WASM_ASSESSMENT.md|$COQ_Z_TOTAL theorems, all 8|CERTICOQ Layer 2 total"
+    "docs/verification/CERTICOQ_WASM_ASSESSMENT.md|$COQ_Z_TOTAL theorems, all 9|CERTICOQ Layer 2 total"
     # FORMAL_VERIFICATION.md - Summary Statistics Coq R-based row
     "docs/verification/FORMAL_VERIFICATION.md|$COQ_R_TOTAL theorems|Summary Coq R-based row"
     # FORMAL_VERIFICATION.md - Summary Statistics Coq Z-based row (unique anchor)

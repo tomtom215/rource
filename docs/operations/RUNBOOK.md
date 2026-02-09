@@ -145,7 +145,7 @@ console.log('Visible users:', rource.getVisibleUsers());
 | Label accumulation | Disable labels or reduce max_labels |
 
 **Prevention**:
-- For repos >100k commits, use `--max-commits 50000`
+- For repos >100k commits, use `--max-files` to limit visible entities
 - Monitor memory growth over time
 
 ### Playbook: Memory Growth Over Time
@@ -181,7 +181,7 @@ setInterval(() => {
 ```javascript
 // Check if scene is loaded
 console.log('Scene loaded:', rource.isSceneLoaded());
-console.log('Entity count:', rource.getEntityCount());
+console.log('Entity count:', rource.getTotalEntities());
 
 // Check camera position
 console.log('Zoom:', rource.getZoom());
@@ -232,7 +232,7 @@ console.log('Bloom enabled:', rource.isBloomEnabled());
 
 | Artifact | Solution |
 |----------|----------|
-| Flickering | Disable bloom: `rource.setBloomEnabled(false)` |
+| Flickering | Disable bloom: `rource.setBloom(false)` |
 | Z-fighting | Zoom in; report as bug |
 | Missing elements | Check visibility: `rource.setDebugMode(true)` |
 
@@ -415,8 +415,8 @@ console.log('Renderer type:', rource.getRendererType());
 **Browser Console**:
 ```javascript
 // Add performance warnings
-if (rource.getLastFrameTime() > 20) {
-    console.warn('Frame time exceeds target:', rource.getLastFrameTime());
+if (rource.getFrameTimeMs() > 20) {
+    console.warn('Frame time exceeds target:', rource.getFrameTimeMs());
 }
 
 // Add error rate warnings
