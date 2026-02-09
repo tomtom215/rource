@@ -282,7 +282,7 @@ Maximum error: ±1 in the result.
 |-----------|------|-------|
 | SQRT_LUT | `crates/rource-render/src/backend/software/optimized.rs` | 76-87 |
 | INV_TABLE | `crates/rource-render/src/backend/software/optimized.rs` | 126-136 |
-| fast_sqrt_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 158-175 |
+| fast_sqrt_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 156-175 |
 | blend_pixel_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 211-236 |
 
 ### Core Implementation

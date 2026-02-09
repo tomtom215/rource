@@ -225,9 +225,9 @@ This exceeds practical memory limits, so the u32 limit is never reached in pract
 | Component | File | Lines |
 |-----------|------|-------|
 | StringInterner struct | `crates/rource-vcs/src/intern.rs` | 61-66 |
-| intern method | `crates/rource-vcs/src/intern.rs` | 68-80 |
-| resolve method | `crates/rource-vcs/src/intern.rs` | 82-90 |
-| PathInterner struct | `crates/rource-vcs/src/intern.rs` | 95-110 |
+| intern method | `crates/rource-vcs/src/intern.rs` | 94-106 |
+| resolve method | `crates/rource-vcs/src/intern.rs` | 128-130 |
+| PathInterner struct | `crates/rource-vcs/src/intern.rs` | 195-202 |
 
 ### Core Implementation
 
@@ -243,14 +243,15 @@ pub struct StringInterner {
 }
 ```
 
-**intern Method** (`intern.rs:68-80`):
+**intern Method** (`intern.rs:94-106`):
 
 ```rust
 pub fn intern(&mut self, s: &str) -> InternedString {
     if let Some(&idx) = self.lookup.get(s) {
         return InternedString(idx);
     }
-    let idx = self.strings.len() as u32;
+    let idx = u32::try_from(self.strings.len())
+        .expect("string interner capacity exceeded (>4 billion unique strings)");
     let owned = s.to_owned();
     self.lookup.insert(owned.clone(), idx);
     self.strings.push(owned);
@@ -262,9 +263,9 @@ pub fn intern(&mut self, s: &str) -> InternedString {
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 17.3 | O(1) lookup | `intern.rs:69` | `self.lookup.get(s)` (HashMap) |
-| 17.3 | O(1) resolve | `intern.rs:84` | `self.strings.get(id.0)` (Vec) |
-| 17.1 | Idempotent | `intern.rs:70` | Early return if exists |
+| 17.3 | O(1) lookup | `intern.rs:95` | `self.lookup.get(s)` (HashMap) |
+| 17.3 | O(1) resolve | `intern.rs:129` | `self.strings.get(id.0)` (Vec) |
+| 17.1 | Idempotent | `intern.rs:95-96` | Early return if exists |
 
 ### Verification Commands
 

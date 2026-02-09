@@ -327,9 +327,9 @@ pub fn ease(t: f32, easing: Easing) -> f32 {
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 19.1 | tⁿ for ease-in | `tween.rs:134` | `t * t` (QuadIn) |
-| 19.1 | 1-(1-t)ⁿ for ease-out | `tween.rs:135` | `1.0 - (1.0 - t) * (1.0 - t)` |
-| 19.4 | exp2 optimization | `tween.rs:180` | `f32::exp2(10.0 * t)` |
+| 19.1 | tⁿ for ease-in | `tween.rs:137` | `t * t` (QuadIn) |
+| 19.1 | 1-(1-t)ⁿ for ease-out | `tween.rs:138` | `1.0 - (1.0 - t) * (1.0 - t)` |
+| 19.4 | exp2 optimization | `tween.rs:221` | `f32::exp2(10.0 * t)` |
 
 ### Verification Commands
 
