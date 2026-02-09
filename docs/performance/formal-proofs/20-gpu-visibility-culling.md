@@ -274,7 +274,7 @@ pub fn warmup(&mut self, device: &Device, queue: &Queue) {
 |-----------|------|-------|
 | Culling module | `crates/rource-render/src/backend/wgpu/culling.rs` | 1-600 |
 | cs_cull_circles (WGSL) | `crates/rource-render/src/backend/wgpu/shaders.rs` | 1450-1500 |
-| cs_cull_lines (WGSL) | `crates/rource-render/src/backend/wgpu/shaders.rs` | 1502-1550 |
+| cs_cull_lines (WGSL) | `crates/rource-render/src/backend/wgpu/shaders.rs` | 1498-1538 |
 | Pipeline creation | `crates/rource-render/src/backend/wgpu/culling.rs` | 395-400 |
 
 ### Core Implementation
@@ -317,8 +317,8 @@ device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 20.3 | AABB intersection | `shaders.rs:1442-1448` | 4 comparisons |
-| 20.4 | Atomic compaction | `shaders.rs:1460` | `atomicAdd(&indirect.instance_count, 1u)` |
+| 20.3 | AABB intersection | `shaders.rs:1389-1405` | 4 comparisons (`is_circle_visible`) |
+| 20.4 | Atomic compaction | `shaders.rs:1472` | `atomicAdd(&workgroup_count, 1u)` |
 | 20.6 | Sound + complete | Shader logic | No false positives/negatives |
 
 ### Verification Commands

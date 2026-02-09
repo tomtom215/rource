@@ -16,18 +16,19 @@ Fixed θ parameter in Barnes-Hut is suboptimal:
 
 ## 11.2 Theorem: Adaptive Theta Maintains Error Bounds
 
-**Claim**: Piecewise linear θ(n) maintains error below 15% while maximizing speedup.
+**Claim**: Logarithmic θ(n) maintains error bounds while maximizing speedup for large scenes.
 
-**Adaptive Function**:
+**Adaptive Function** (logarithmic interpolation):
 ```rust
 pub fn calculate_adaptive_theta(entity_count: usize) -> f32 {
-    match entity_count {
-        0..=500     => 0.5,                              // Accurate for small
-        501..=2000  => 0.5 + (n - 500) * 0.3 / 1500,     // Linear interpolation
-        2001..=5000 => 0.8,                              // Balanced
-        5001..=10000=> 0.8 + (n - 5000) * 0.2 / 5000,    // Aggressive for large
-        _           => 1.0                               // Maximum speed
+    if entity_count <= 200 {    // ADAPTIVE_THETA_THRESHOLD
+        return 0.8;             // DEFAULT_BARNES_HUT_THETA
     }
+    let ratio = entity_count as f32 / 200.0;
+    let max_ratio = 5000.0 / 200.0;  // ADAPTIVE_THETA_MAX_ENTITIES / threshold
+    let scale_factor = (ratio.log2() / max_ratio.log2()).clamp(0.0, 1.0);
+    let theta = 0.8 + (1.5 - 0.8) * scale_factor;  // range [0.8, 1.5]
+    theta.clamp(0.7, 1.5)  // [MIN_ADAPTIVE_THETA, MAX_ADAPTIVE_THETA]
 }
 ```
 
@@ -35,24 +36,26 @@ pub fn calculate_adaptive_theta(entity_count: usize) -> f32 {
 
 From [Barnes-Hut Algorithm](./01-barnes-hut-algorithm.md) Section 1.3, relative error ≤ O(θ²).
 
-| n Range | θ(n) | Max Error θ² | Actual (Empirical) |
-|---------|------|--------------|-------------------|
-| ≤500    | 0.5  | 6.25%        | 4.9%              |
-| 2000    | 0.8  | 16.0%        | 12.3%             |
-| 5000    | 0.8  | 16.0%        | 12.3%             |
-| 10000   | 1.0  | 25.0%        | 19.1%             |
+| n Range | θ(n) | Max Error θ² | Benchmark Reference |
+|---------|------|--------------|---------------------|
+| ≤200    | 0.80 | 16.0%        | See `force.rs` doc comments |
+| 500     | 0.91 | 20.8%        | ~10% faster vs θ=0.8 |
+| 1000    | 1.00 | 25.0%        | -31.9% force calc time |
+| 5000+   | 1.50 | 56.3%        | -62.0% force calc time |
 
-All empirical errors below theoretical bounds. [Confirmed]
+Note: Higher θ² error bounds are acceptable for large scenes because
+individual node positioning has less visual impact at scale.
 
-**Speedup Analysis**:
+**Speedup Analysis** (from `force.rs` doc comments):
 
-| n | θ_fixed=0.8 | θ_adaptive | Speedup vs Fixed |
-|---|-------------|------------|------------------|
-| 500 | 8.2×  | 3.8× | Accuracy +7% |
-| 2000 | 8.2× | 8.2× | Same |
-| 10000 | 8.2× | 15.7× | Speed +91% |
+| Entities | θ_adaptive | Force Calc Time | vs θ=0.8 |
+|----------|------------|-----------------|----------|
+| 100      | 0.80       | 26.83 µs        | baseline |
+| 500      | 0.91       | ~270 µs         | ~10% faster |
+| 1000     | 1.00       | 531.06 µs       | -31.9% |
+| 5000     | 1.50       | 1.60 ms         | -62.0% |
 
-**Monotonicity**: θ(n) is non-decreasing, ensuring larger scenes don't get slower unexpectedly. ∎
+**Monotonicity**: θ(n) is non-decreasing because log₂ is monotonically increasing, and scale_factor is clamped to [0.0, 1.0]. ∎
 
 ---
 
@@ -64,7 +67,7 @@ All empirical errors below theoretical bounds. [Confirmed]
 |-----------|------|-------|
 | Adaptive theta | `crates/rource-core/src/physics/barnes_hut.rs` | 102-120 |
 | With FPS adjustment | `crates/rource-core/src/physics/barnes_hut.rs` | 138-152 |
-| Constants | `crates/rource-core/src/physics/barnes_hut.rs` | 32-50 |
+| Constants | `crates/rource-core/src/physics/barnes_hut.rs` | 34-50 |
 
 ### Core Implementation
 
@@ -109,8 +112,8 @@ pub const ADAPTIVE_THETA_MAX_ENTITIES: usize = 5000;
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
 | 11.2 | θ(n) ≤ 200 → 0.8 | `barnes_hut.rs:103-104` | Early return for small n |
-| 11.2 | Logarithmic scaling | `barnes_hut.rs:110-113` | `ratio.log2() / max_ratio.log2()` |
-| 11.2 | Monotonicity | `barnes_hut.rs:117-119` | Linear interpolation + clamp |
+| 11.2 | Logarithmic scaling | `barnes_hut.rs:109-114` | `ratio.log2() / max_ratio.log2()` |
+| 11.2 | Interpolation + clamp | `barnes_hut.rs:116-119` | `base + range * factor`, clamped to [0.7, 1.5] |
 
 ### Verification Commands
 

@@ -305,12 +305,12 @@ let force_scale = INV_TABLE[(dist >> 8) as usize];
 |-----------|------|-------|
 | SQRT_LUT | `crates/rource-render/src/backend/software/optimized.rs` | 76-87 |
 | INV_TABLE | `crates/rource-render/src/backend/software/optimized.rs` | 126-136 |
-| fast_sqrt_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 158-175 |
-| const_sqrt (Newton-Raphson) | `crates/rource-render/src/backend/software/optimized.rs` | 40-55 |
+| fast_sqrt_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 156-175 |
+| const_sqrt (Newton-Raphson) | `crates/rource-render/src/backend/software/optimized.rs` | 93-121 |
 
 ### Core Implementation
 
-**Fast Sqrt with Interpolation** (`optimized.rs:158-175`):
+**Fast Sqrt with Interpolation** (`optimized.rs:156-175`):
 
 ```rust
 pub fn fast_sqrt_fixed(dist_sq_fixed: u32) -> u16 {
@@ -334,9 +334,9 @@ pub fn fast_sqrt_fixed(dist_sq_fixed: u32) -> u16 {
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 21.1 | y_{n+1} = (y_n + x/y_n)/2 | `optimized.rs:48` | Newton iteration |
-| 21.4 | lerp(a, b, frac) | `optimized.rs:170` | `a + (((b - a) * frac) >> 8)` |
-| 21.6 | error ≤ 1 | `optimized.rs:166` | Integer rounding |
+| 21.1 | y_{n+1} = (y_n + x/y_n)/2 | `optimized.rs:107` | Newton iteration |
+| 21.4 | lerp(a, b, frac) | `optimized.rs:173` | `a + (((b - a) * frac) >> 8)` |
+| 21.6 | error ≤ 1 | `optimized.rs:131` | Rounded division in INV_TABLE |
 
 ### Verification Commands
 

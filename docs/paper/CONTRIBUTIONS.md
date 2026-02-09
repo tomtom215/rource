@@ -63,7 +63,7 @@ individually verify, then assembles the full proof.
 of two expressions each containing 27 terms of the form `a.mi * b.mj * c.mk`.
 Z3's `nonlinear_arith` cannot solve this in one step.
 
-**Solution** (`crates/rource-math/proofs/mat3_proofs.rs:265-430`):
+**Solution** (`crates/rource-math/proofs/mat3_proofs.rs:220-428`):
 1. Prove two helper lemmas via `nonlinear_arith`:
    - `distrib_2(a, x, y)`: `a * (x + y) == a * x + a * y`
    - `mul_assoc_3(a, b, c)`: `(a * b) * c == a * (b * c)`

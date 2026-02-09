@@ -240,7 +240,7 @@ let picked = spatial_index.nearest_neighbor(cursor_world_pos, PICK_RADIUS);
 | Component | File | Lines |
 |-----------|------|-------|
 | QuadTree struct | `crates/rource-core/src/physics/spatial.rs` | 22-40 |
-| query_range | `crates/rource-core/src/physics/spatial.rs` | 252-296 |
+| query | `crates/rource-core/src/physics/spatial.rs` | 210-214 |
 | query_for_each | `crates/rource-core/src/physics/spatial.rs` | 252-275 |
 | insert | `crates/rource-core/src/physics/spatial.rs` | 116-134 |
 
@@ -249,25 +249,26 @@ let picked = spatial_index.nearest_neighbor(cursor_world_pos, PICK_RADIUS);
 **Range Query** (`spatial.rs:252-275`):
 
 ```rust
-pub fn query_for_each<F>(&self, range: &Bounds, mut f: F)
-where
-    F: FnMut(&T),
-{
-    if !self.bounds.intersects(range) {
+pub fn query_for_each(&self, bounds: &Bounds, mut visitor: impl FnMut(&T)) {
+    self.query_for_each_recursive(bounds, &mut visitor);
+}
+
+fn query_for_each_recursive(&self, bounds: &Bounds, visitor: &mut impl FnMut(&T)) {
+    if !self.bounds.intersects(*bounds) {
         return;
     }
 
-    // Check items in this node
-    for item in &self.items {
-        if range.contains(item.position()) {
-            f(item);
+    // Check items at this node
+    for (pos, item) in &self.items {
+        if bounds.contains(*pos) {
+            visitor(item);
         }
     }
 
-    // Recurse into children
+    // Check children
     if let Some(ref children) = self.children {
         for child in children.iter() {
-            child.query_for_each(range, &mut f);
+            child.query_for_each_recursive(bounds, visitor);
         }
     }
 }
@@ -277,7 +278,7 @@ where
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 23.3 | O(log n + k) | `spatial.rs:254` | Early bounds check |
+| 23.3 | O(log n + k) | `spatial.rs:258` | Early bounds check |
 | 23.4 | d² preserves order | Comparisons | `distance_sq` used |
 | 23.3 | Radius expansion | Algorithm | Double radius on miss |
 

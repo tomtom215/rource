@@ -161,12 +161,12 @@ mod tests {
 
 | Crate | Test Count | Focus |
 |-------|------------|-------|
-| rource-math | 508 | Numerical accuracy, edge cases |
-| rource-vcs | 366 | Parser correctness, format edge cases |
-| rource-core | 560 | Scene graph, physics, camera |
-| rource-render | 615 | Rendering correctness, GPU backends |
+| rource-math | 558 | Numerical accuracy, edge cases |
+| rource-vcs | 343 | Parser correctness, format edge cases |
+| rource-core | 539 | Scene graph, physics, camera |
+| rource-render | 370 | Rendering correctness, GPU backends |
 | rource-cli | 358 | CLI argument parsing, integration |
-| rource-wasm | 557 | WebAssembly bindings, JavaScript API |
+| rource-wasm | 461 | WebAssembly bindings, JavaScript API |
 
 ### Integration Tests
 

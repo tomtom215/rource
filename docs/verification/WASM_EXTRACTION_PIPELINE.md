@@ -56,7 +56,7 @@ Pipeline operational: All 8 types (Vec2-4, Mat3-4, Color, Rect + Utils) extracte
 
 | Layer | File(s) | Type System | Purpose |
 |-------|---------|-------------|---------|
-| 1 (Abstract) | Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v, Color.v, Rect.v, Utils.v + *_Proofs.v | R (reals) | Mathematical correctness |
+| 1 (Abstract) | Vec2.v, Vec3.v, Vec4.v, Mat3.v, Mat4.v, Color.v, Rect.v, Bounds.v, Utils.v + *_Proofs.v | R (reals) | Mathematical correctness |
 | 2 (Computational) | Vec2-4_Compute.v, Mat3-4_Compute.v, Color_Compute.v, Rect_Compute.v, Bounds_Compute.v, Utils_Compute.v | Z (integers) | Extractable operations (all 9 types, 471 theorems) |
 | 3 (Extraction) | RourceMath_Extract.v -> wasm_of_ocaml | OCaml -> WASM | Executable code (8 types, 401 extractable theorems) |
 

@@ -253,10 +253,10 @@ fn cs_calculate_forces_spatial(@builtin(global_invocation_id) id: vec3<u32>) {
 
 | Component | File | Lines |
 |-----------|------|-------|
-| hash_position (WGSL) | `crates/rource-render/src/backend/wgpu/shaders.rs` | 714-718, 902-910 |
-| Prefix sum kernel | `crates/rource-render/src/backend/wgpu/shaders.rs` | 897-980 |
-| Force calculation | `crates/rource-render/src/backend/wgpu/shaders.rs` | 982-1050 |
-| Scatter entities | `crates/rource-render/src/backend/wgpu/shaders.rs` | 950-975 |
+| hash_position (WGSL) | `crates/rource-render/src/backend/wgpu/shaders.rs` | 714-718, 902-915 |
+| Prefix sum data | `crates/rource-render/src/backend/wgpu/shaders.rs` | 898-899 |
+| Scatter entities | `crates/rource-render/src/backend/wgpu/shaders.rs` | 1087-1096 |
+| Force calculation | `crates/rource-render/src/backend/wgpu/shaders.rs` | 1103+ |
 
 ### Core Implementation
 

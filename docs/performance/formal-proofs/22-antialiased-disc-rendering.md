@@ -250,9 +250,9 @@ for y in (cy - outer_radius) as i32 ..= (cy + outer_radius) as i32 {
 
 | Component | File | Lines |
 |-----------|------|-------|
-| draw_disc_optimized | `crates/rource-render/src/backend/software/optimized.rs` | 450-550 |
-| draw_disc_precomputed | `crates/rource-render/src/backend/software/optimized.rs` | 560-640 |
-| draw_disc_simd | `crates/rource-render/src/backend/software/optimized.rs` | 650-750 |
+| draw_disc_optimized | `crates/rource-render/src/backend/software/optimized.rs` | 539-624 |
+| draw_disc_precomputed | `crates/rource-render/src/backend/software/optimized.rs` | 802-959 |
+| draw_disc_simd | `crates/rource-render/src/backend/software/optimized.rs` | 646-772 |
 | blend_pixel_fixed | `crates/rource-render/src/backend/software/optimized.rs` | 211-236 |
 
 ### Core Implementation

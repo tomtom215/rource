@@ -1015,14 +1015,14 @@ rustup install 1.92.0
 
 | Crate | Status | Proof Fns | VCs | Notes |
 |-------|--------|-----------|-----|-------|
-| rource-math/Vec2 | VERIFIED | 61 | 87++++ | Complete vector space axioms, geometric, length, min/max, abs, clamp, distance, reflect, lerp |
-| rource-math/Vec3 | VERIFIED | 61 | 89++++ | Cross product, scalar triple product, reflect, clamp, distance, element product, lerp |
-| rource-math/Vec4 | VERIFIED | 55 | 90+ | 4D vector space, basis orthonormality, min/max, abs, clamp, reflect, element product, lerp |
+| rource-math/Vec2 | VERIFIED | 61 | 87 | Complete vector space axioms, geometric, length, min/max, abs, clamp, distance, reflect, lerp |
+| rource-math/Vec3 | VERIFIED | 61 | 89 | Cross product, scalar triple product, reflect, clamp, distance, element product, lerp |
+| rource-math/Vec4 | VERIFIED | 55 | 90 | 4D vector space, basis orthonormality, min/max, abs, clamp, reflect, element product, lerp |
 | rource-math/Mat3 (base) | VERIFIED | 22 | 26 | Matrix multiplication associativity, ring structure |
 | rource-math/Mat3 (extended) | VERIFIED | 26 | 45 | Determinant, translation, scaling, shearing, transforms |
 | rource-math/Mat4 (base) | VERIFIED | 22 | 27 | 3D transformation pipelines, ring structure |
 | rource-math/Mat4 (extended) | VERIFIED | 32 | 55 | Translation, scaling, determinant, trace, composite |
-| rource-math/Color | VERIFIED | 64 | 81+ | Constructor, alpha, lerp, blend, clamp, luminance, scale, mix, invert, contrasting, darken, lighten |
+| rource-math/Color | VERIFIED | 64 | 81 | Constructor, alpha, lerp, blend, clamp, luminance, scale, mix, invert, contrasting, darken, lighten |
 | rource-math/Rect | VERIFIED | 52 | 70 | Containment, intersection, union, transforms, area, from_points, normalize, grow, lerp |
 | rource-math/Bounds | VERIFIED | 70 | — | Bounds struct: area, containment, union, intersection, expand, shrink, translate, include_point |
 | rource-math/Utils | VERIFIED | 33 | — | Scalar lerp, clamp, approx_eq properties |

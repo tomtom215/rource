@@ -343,7 +343,7 @@ variable_blur(image, depth_buffer, blur_amount);
 | BloomEffect::apply | `crates/rource-render/src/effects/bloom.rs` | 167-195 |
 | box_blur_in_place | `crates/rource-render/src/effects/bloom.rs` | 425-502 |
 | vertical_blur_striped | `crates/rource-render/src/effects/bloom.rs` | 514-556 |
-| extract_and_downscale | `crates/rource-render/src/effects/bloom.rs` | 250-320 |
+| extract_and_downscale_into | `crates/rource-render/src/effects/bloom.rs` | 226-320 |
 
 ### Core Implementation
 
