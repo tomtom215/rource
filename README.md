@@ -472,12 +472,12 @@ requestAnimationFrame(frame);
 ```
 rource/
 ├── crates/
-│   ├── rource-math/      508 tests   Math primitives (Vec2, Vec3, Mat4, Color)
-│   ├── rource-vcs/       366 tests   VCS parsing (Git, SVN, custom format)
-│   ├── rource-core/      560 tests   Scene graph, physics, camera, Barnes-Hut
-│   └── rource-render/    615 tests   Software + WebGL2 + wgpu rendering
+│   ├── rource-math/      558 tests   Math primitives (Vec2, Vec3, Mat4, Color)
+│   ├── rource-vcs/       343 tests   VCS parsing (Git, SVN, custom format)
+│   ├── rource-core/      539 tests   Scene graph, physics, camera, Barnes-Hut
+│   └── rource-render/    370 tests   Software + WebGL2 + wgpu rendering
 ├── rource-cli/           358 tests   Native application (winit + softbuffer)
-└── rource-wasm/          557 tests   WebAssembly (browser)
+└── rource-wasm/          461 tests   WebAssembly (browser)
                          ─────────
                          2,900+ total tests
 ```

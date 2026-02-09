@@ -454,14 +454,26 @@ if [[ "$TEST_TOTAL" -gt 0 ]]; then
     fi
 
     # Update per-crate test counts in README.md
+    # README uses TWO formats:
+    #   1. Pipe-table rows: "rource-math | 558"
+    #   2. ASCII art diagram: "rource-math/      558 tests"
+    # We must update both.
     if [[ -f "$RM" ]]; then
         echo "  Updating README.md per-crate counts..."
+        # Pipe-table format (if present)
         sed -i -E "s/rource-math \| [0-9]+/rource-math | $TEST_MATH/" "$RM"
         sed -i -E "s/rource-vcs \| [0-9]+/rource-vcs | $TEST_VCS/" "$RM"
         sed -i -E "s/rource-core \| [0-9]+/rource-core | $TEST_CORE/" "$RM"
         sed -i -E "s/rource-render \| [0-9]+/rource-render | $TEST_RENDER/" "$RM"
         sed -i -E "s/rource-cli \| [0-9]+/rource-cli | $TEST_CLI/" "$RM"
         sed -i -E "s/rource-wasm \| [0-9]+/rource-wasm | $TEST_WASM/" "$RM"
+        # ASCII art diagram format: "rource-math/      NNN tests"
+        sed -i -E "s/(rource-math\/[[:space:]]+)[0-9]+ tests/\1$TEST_MATH tests/" "$RM"
+        sed -i -E "s/(rource-vcs\/[[:space:]]+)[0-9]+ tests/\1$TEST_VCS tests/" "$RM"
+        sed -i -E "s/(rource-core\/[[:space:]]+)[0-9]+ tests/\1$TEST_CORE tests/" "$RM"
+        sed -i -E "s/(rource-render\/[[:space:]]+)[0-9]+ tests/\1$TEST_RENDER tests/" "$RM"
+        sed -i -E "s/(rource-cli\/[[:space:]]+)[0-9]+ tests/\1$TEST_CLI tests/" "$RM"
+        sed -i -E "s/(rource-wasm\/[[:space:]]+)[0-9]+ tests/\1$TEST_WASM tests/" "$RM"
         echo "  Done."
     fi
 

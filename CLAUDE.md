@@ -364,7 +364,7 @@ The following events MUST trigger a CLAUDE.md update:
 
 > **Refactored to external document**: See [`docs/LESSONS_LEARNED.md`](docs/LESSONS_LEARNED.md)
 > for the full categorized knowledge base with decision tables, domain-organized
-> lessons, and chronological audit log (136+ entries).
+> lessons, and chronological audit log (258+ entries).
 >
 > New entries should be added to BOTH the appropriate category section AND the
 > chronological log in that document.
@@ -1407,7 +1407,7 @@ coqc -Q . RourceMath FP_Rect.v
 - Unsafe code requires explicit justification
 - Must have `// SAFETY:` comment explaining invariants
 - Must be reviewed for soundness
-- Current unsafe: 2 blocks — `webgl2/buffers.rs` (float reinterpretation) and `load_tests.rs` (test helper)
+- Current unsafe: 2 blocks — `crates/rource-render/src/backend/webgl2/buffers.rs` (float reinterpretation) and `crates/rource-core/tests/load_tests.rs` (test helper)
 
 ---
 
@@ -1518,7 +1518,7 @@ this repeatedly: counts go stale within a single session when new proofs or test
 │  Ground Truth Sources:                                                      │
 │     Coq:   grep -cE '^(Theorem|Lemma|Local Lemma)' *.v                     │
 │     Verus: grep -c 'proof fn' *.rs                                          │
-│     Kani:  grep -c '#\[kani::proof\]' kani_proofs.rs                        │
+│     Kani:  grep -rc '#\[kani::proof\]' kani_proofs/                         │
 │     Tests: cargo test --workspace 2>&1 | grep 'test result'                 │
 │     MSRV:  grep 'rust-version' Cargo.toml                                   │
 │                                                                             │
@@ -1620,7 +1620,7 @@ sed -i -E "/unique_header/{n;s/old_value/new_value/}" file.md
 
 1. Add field to appropriate module in `rource-core/src/config/settings/`
 2. Add CLI argument in `rource-cli/src/args/mod.rs`
-3. Add environment variable in `rource-core/src/config/config_env.rs`
+3. Add environment variable in `crates/rource-core/src/config/config_env.rs`
 4. Add WASM binding in `rource-wasm/src/wasm_api/settings.rs`
 5. Update documentation (README, CLAUDE.md if significant)
 
