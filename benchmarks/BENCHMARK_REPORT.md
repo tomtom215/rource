@@ -78,7 +78,7 @@ This benchmark compares **Rource** (Rust implementation) against **Gource** (ori
 |---------|--------|--------|
 | Git log parsing | Yes | Yes |
 | Custom log format | Yes | Yes |
-| SVN/CVS/Hg/Bzr | No | Yes |
+| SVN/Hg/Bzr | Yes | Yes |
 | PPM frame export | Yes | Yes |
 | Bloom effect | Yes | Yes |
 | 3D camera mode | Yes | No |

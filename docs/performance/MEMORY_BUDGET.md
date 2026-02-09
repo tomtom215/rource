@@ -169,7 +169,7 @@ Key metrics to watch:
   --headless \
   --output /tmp/frames \
   --seconds-per-day 0.01 \
-  --max-commits 10000 \
+  --max-files 10000 \
   /path/to/large/repo
 
 # Check for:

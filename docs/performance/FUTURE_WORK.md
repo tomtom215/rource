@@ -188,7 +188,7 @@ for commits in 1000 10000 100000; do
     echo "Testing with $commits commits..."
     cargo run --release -- \
         --headless \
-        --max-commits $commits \
+        --max-files $commits \
         --output /tmp/frames \
         --telemetry-output /tmp/latency-$commits.json \
         /path/to/large/repo
@@ -1481,14 +1481,13 @@ Created comprehensive operational runbook with incident response procedures.
 **Symptoms**: Browser tab using >2GB memory, OOM crashes
 
 **Diagnosis**:
-1. Check entity count: `rource.getEntityCount()`
+1. Check entity count: `rource.getTotalEntities()`
 2. Check for memory leaks: Enable heap profiling
 3. Check commit count: Large repos (>100k commits)
 
 **Mitigation**:
-1. Reduce `--max-commits` to 50,000
-2. Enable LOD: `rource.setUseLOD(true)`
-3. Disable bloom: `rource.setBloomEnabled(false)`
+1. Reduce `--max-files` to limit visible entities
+2. Disable bloom: `rource.setBloom(false)`
 
 ### Low Frame Rate
 

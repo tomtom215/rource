@@ -126,7 +126,7 @@ Measured at Frame 200 with maximum entity count:
 35,441 files × 4.8µs = 170ms/frame
 ```
 - Anti-aliased disc drawing with per-pixel sqrt()
-- Already optimized in Phase 27 to skip sqrt() for inner pixels
+- Already optimized in Phase 72 to skip sqrt() for inner pixels via pre-computed inner bounds
 - **Further optimization:** GPU instancing for identical discs
 
 #### 2. Text Rendering (Labels)
@@ -149,7 +149,7 @@ Measured at Frame 200 with maximum entity count:
 41ms/frame (already optimized O(n) blur)
 ```
 - 3-pass: bright extract → blur H → blur V
-- Uses sliding window O(n) algorithm (Phase 27)
+- Uses sliding window O(n) algorithm (Phase 11)
 - **Further optimization:** GPU compute shaders
 
 #### 5. PPM Export
