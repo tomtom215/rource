@@ -45,7 +45,7 @@ For an overview of the complete verification effort (Verus + Coq), see
 | Vec4_Proofs.v | 96 | VERIFIED | Orthonormal basis, 4D vector space, min/max element, div, lerp, mul algebraic properties, neg, sub, from_vec3, distance, normalize |
 | Mat3.v | 2 | VERIFIED | Specification (mat3_eq, vec2_eq), determinant, trace, translation, scaling, transform definitions |
 | Mat3_Proofs.v | 102 | VERIFIED | Matrix ring structure, determinant (6+4), trace (5+2), transform operations (11+6), distributivity, transpose_mul, rotation, shearing |
-| Mat4.v | 2 | VERIFIED | Specification (mat4_eq, vec3_eq), determinant, trace, translation, scaling, transform definitions |
+| Mat4.v | 3 | VERIFIED | Specification (mat4_eq, vec4_eq, vec3_eq), determinant, trace, translation, scaling, transform definitions |
 | Mat4_Proofs.v | 208 | VERIFIED | Matrix ring structure (optimized Phase 80), determinant (5+4+3), trace (5+2), transform operations (15), rotation, perspective, look_at, from_cols, col/row accessors, orthographic, get_translation |
 | Color.v | 1 | VERIFIED | RGBA color specification (equality lemma) |
 | Color_Proofs.v | 164 | VERIFIED | Constructor, alpha, interpolation, blending, premultiplication, luminance, add, scale, invert, clamp01, luminance_lerp, luminance_monotone, from_hex, to_hex, gamma, srgb, hsv, darken, lighten, contrasting |
@@ -66,7 +66,7 @@ implementation semantics.
 
 ```bash
 cd crates/rource-math/proofs/coq
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v Utils.v
+coqc -Q . RourceMath Utils.v Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
 coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v
@@ -195,7 +195,6 @@ coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Bounds_Compute.v Utils_Compu
 | Mat4_Extract.v | Individual Mat4 extraction |
 | Color_Extract.v | Individual Color extraction |
 | Rect_Extract.v | Individual Rect extraction |
-| Bounds_Extract.v | Individual Bounds extraction |
 | RourceMath_Extract.v | Unified extraction of 8 types (Vec2-4, Mat3-4, Color, Rect, Utils) |
 | Vec2_VerifiedExtract.v | MetaCoq verified erasure (Path 2, optional) |
 

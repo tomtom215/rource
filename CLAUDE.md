@@ -1340,7 +1340,7 @@ cargo kani -p rource-math --harness verify_lerp_no_nan
 cd crates/rource-math/proofs/coq
 
 # Layer 1: Specifications + proofs
-coqc -Q . RourceMath Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Utils.v Bounds.v
+coqc -Q . RourceMath Utils.v Vec2.v Vec3.v Vec4.v Mat3.v Mat4.v Color.v Rect.v Bounds.v
 coqc -Q . RourceMath Vec2_Proofs.v Vec3_Proofs.v Vec4_Proofs.v
 coqc -Q . RourceMath Mat3_Proofs.v Mat4_Proofs.v
 coqc -Q . RourceMath Color_Proofs.v Rect_Proofs.v Bounds_Proofs.v
