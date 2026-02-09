@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770644533617,
+  "lastUpdate": 1770650020726,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5873,6 +5873,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/64568799bcdf21bfca0268c309ccbc61f20ad82a"
         },
         "date": 1770644532346,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ee44cc69601e7e1736c5442c6322ab2058ce2c8",
+          "message": "Merge pull request #279 from tomtom215/claude/documentation-audit-phase-4-lNQHY\n\nUpdate documentation and metrics for verification phase completion",
+          "timestamp": "2026-02-09T16:11:32+01:00",
+          "tree_id": "7600ab9ff93e36f84a5361d064c9fe10950d0e9c",
+          "url": "https://github.com/tomtom215/rource/commit/5ee44cc69601e7e1736c5442c6322ab2058ce2c8"
+        },
+        "date": 1770650019702,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
