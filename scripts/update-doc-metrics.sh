@@ -408,6 +408,14 @@ if [[ -f "$SLO" ]]; then
     sed -i -E "s/[0-9]+ optimization phases/$OPT_PHASES optimization phases/" "$SLO"
     echo "  Done."
 fi
+
+# OVERVIEW.md uses "all N phases" pattern (not "N optimization phases")
+OV="$PROJECT_ROOT/docs/performance/OVERVIEW.md"
+if [[ -f "$OV" ]]; then
+    echo "  Updating docs/performance/OVERVIEW.md..."
+    sed -i -E "s/all [0-9]+ phases/all $OPT_PHASES phases/" "$OV"
+    echo "  Done."
+fi
 echo ""
 
 # ─── Test counts (only if data available) ───
