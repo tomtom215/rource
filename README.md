@@ -74,7 +74,7 @@
 | **Runs in Browser** | Yes (WASM) | No |
 | **Binary Size** | ~3.8 MB | ~10 MB |
 | **Memory (100k commits)** | ~16 MB | ~52 MB |
-| **Test Coverage** | 2800+ tests | - |
+| **Test Coverage** | 2900+ tests | - |
 | **Rendering** | CPU + WebGL2 + wgpu | OpenGL only |
 
 ### Performance Highlights
@@ -94,11 +94,11 @@ See [Performance Documentation](#performance-documentation) for the complete opt
 
 | Tool | Components | Theorems | Status |
 |------|------------|----------|--------|
-| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect | 498 proof functions, 452+ VCs | Verified |
+| **Verus** | Vec2, Vec3, Vec4, Mat3, Mat4, Color, Rect, Bounds, Utils | 498 proof functions, 452+ VCs | Verified |
 | **Coq (R-based)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils + Complexity + CrossType | 1366 theorems | Zero admits |
 | **Coq (Z-based)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils (extractable) | 471 theorems | Zero admits |
 | **Kani (CBMC)** | Vec2-4, Mat3-4, Color, Rect, Bounds, Utils | 272 harnesses | IEEE 754 verified |
-| **Combined** | All 8 core math types + Bounds + FP layer + CrossType | **2968 theorems/harnesses** | **TRIPLE VERIFIED** |
+| **Combined** | All 9 core math types + FP layer + CrossType | **2968 theorems/harnesses** | **TRIPLE VERIFIED** |
 
 Properties verified include: vector space axioms, dot/cross product laws, matrix multiplication associativity (critical for MVP transformations), ring structure, RGBA color blending/interpolation/luminance, rectangle containment/intersection/union, O(1) complexity bounds, and a complete Coq-to-WASM extraction pipeline.
 

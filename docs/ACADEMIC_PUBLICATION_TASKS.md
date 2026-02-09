@@ -451,7 +451,7 @@ is honest about overhead.
 
 ### Problem Statement
 
-We claim comprehensive testing (2876+ tests) but have never measured mutation
+We claim comprehensive testing (2900+ tests) but have never measured mutation
 testing scores. Mutation testing reveals whether tests actually detect bugs.
 Without it, high test counts may be misleading.
 

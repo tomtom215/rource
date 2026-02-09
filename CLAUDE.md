@@ -750,7 +750,7 @@ rource/
 └── rource-wasm/           # WebAssembly application
 ```
 
-**Test Count**: 2800+ tests total across all crates.
+**Test Count**: 2900+ tests total across all crates.
 
 ### Rendering Backends
 
@@ -804,7 +804,7 @@ Every change MUST follow this workflow:
 │     └─ Add tests for new functionality                                  │
 │                                                                         │
 │  4. VERIFY CORRECTNESS                                                  │
-│     └─ cargo test (all 2800+ tests pass)                               │
+│     └─ cargo test (all 2900+ tests pass)                               │
 │     └─ cargo clippy --all-targets --all-features -- -D warnings (zero)   │
 │     └─ cargo fmt --check (formatted)                                    │
 │     └─ Mobile Safari test (if UI change)                                │
@@ -912,7 +912,7 @@ Every optimization MUST follow this exact process:
 |-----------|-------------|
 | **Measurable** | Backed by criterion benchmarks with statistical significance |
 | **Documented** | Added to ALL THREE docs/performance/ files |
-| **Correct** | All 2800+ tests must pass |
+| **Correct** | All 2900+ tests must pass |
 | **Clean** | Clippy and rustfmt compliant |
 | **Verifiable** | Benchmarks can be re-run to reproduce results |
 | **Mathematical** | Include complexity analysis and/or mathematical proof |
@@ -1244,7 +1244,7 @@ Some code CANNOT be covered by unit tests:
 
 | Test Type | Requirement | Status |
 |-----------|-------------|--------|
-| Unit tests | All public functions | Yes (2876 tests) |
+| Unit tests | All public functions | Yes (2964 tests) |
 | Property tests | Math crate invariants | Yes (Implemented) |
 | Chaos tests | Edge cases, unicode, boundaries | Yes (Implemented) |
 | Benchmarks | Critical paths | Yes (15 benchmark suites) |
@@ -1354,11 +1354,16 @@ coqc -Q . RourceMath Color_Compute.v Rect_Compute.v Utils_Compute.v Bounds_Compu
 # Layer 3: Extraction (OCaml output)
 coqc -Q . RourceMath RourceMath_Extract.v
 
-# Layer FP: Floating-point error bounds (99 theorems, requires Flocq 4.1.3)
+# Layer FP: Floating-point error bounds (361 theorems, requires Flocq 4.1.3)
 coqc -Q . RourceMath FP_Common.v
 coqc -Q . RourceMath FP_Rounding.v
 coqc -Q . RourceMath FP_ErrorBounds.v
 coqc -Q . RourceMath FP_Vec.v
+coqc -Q . RourceMath FP_Mat.v
+coqc -Q . RourceMath FP_Utils.v
+coqc -Q . RourceMath FP_Bounds.v
+coqc -Q . RourceMath FP_Color.v
+coqc -Q . RourceMath FP_Rect.v
 ```
 
 **Formal Verification Rules:**
@@ -1392,7 +1397,7 @@ coqc -Q . RourceMath FP_Vec.v
 | Requirement | Status |
 |-------------|--------|
 | `cargo audit` clean | Yes (CI enforced) |
-| Minimal unsafe code | Yes (1 block, documented) |
+| Minimal unsafe code | Yes (2 blocks: 1 production, 1 test) |
 | SBOM generation | Yes (SPDX + CycloneDX) |
 | Fuzzing coverage | TODO (target: 75%+) |
 | SECURITY.md | Yes (vulnerability reporting process) |
@@ -1402,7 +1407,7 @@ coqc -Q . RourceMath FP_Vec.v
 - Unsafe code requires explicit justification
 - Must have `// SAFETY:` comment explaining invariants
 - Must be reviewed for soundness
-- Current unsafe: 1 block in `webgl2/buffers.rs` (float reinterpretation)
+- Current unsafe: 2 blocks — `webgl2/buffers.rs` (float reinterpretation) and `load_tests.rs` (test helper)
 
 ---
 

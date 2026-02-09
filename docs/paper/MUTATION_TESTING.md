@@ -265,7 +265,7 @@ test suite effectively detects all meaningful behavioral changes:
 
 The mutation testing results support three claims:
 
-1. **Test suite quality**: The 2876+ unit tests effectively detect
+1. **Test suite quality**: The 2900+ unit tests effectively detect
    behavioral changes in rource-math operations. The 100% adjusted
    mutation score (all surviving mutants are provably equivalent)
    places the test suite at the highest quality tier.

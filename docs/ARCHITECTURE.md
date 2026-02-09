@@ -6,7 +6,7 @@ This document describes the high-level architecture of Rource, a Rust rewrite of
 
 Rource is designed as a modular, multi-platform visualization system with three primary targets:
 - **Native CLI** (`rource-cli`): Desktop application using `winit` + `softbuffer`
-- **WebAssembly** (`rource-wasm`): Browser-based visualization with WebGL2/Canvas2D
+- **WebAssembly** (`rource-wasm`): Browser-based visualization with wgpu/WebGL2/Software
 - **Headless**: Server-side rendering for video export
 
 ```
@@ -307,13 +307,13 @@ Benchmark (Home Assistant Core: 103k commits, 533k file changes):
 
 ## Testing Strategy
 
-- **Unit tests**: Per-module, 2876 tests across crates
+- **Unit tests**: Per-module, 2900+ tests across crates
 - **Integration tests**: End-to-end parsing and rendering
 - **Visual tests**: Headless frame export for regression testing
 - **Property tests**: Math operations with random inputs
 - **Doc tests**: Examples in rustdoc comments
 
-Total: **2876 tests** across the codebase
+Total: **2900+ tests** across the codebase
 
 ## Future Considerations
 

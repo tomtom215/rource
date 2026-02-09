@@ -429,13 +429,13 @@ independent mechanisms:
 | 2. Dual verification | Verus independently verifies same properties as Coq | 219 operations × 2 |
 | 3. Kani bit-precise | Verifies f32 behavior directly (not model) | 272 harnesses |
 | 4. Flocq error bounds | Quantifies R ↔ f32 deviation | 361 theorems |
-| 5. Unit tests | Verifies runtime behavior empirically | 2876+ tests |
+| 5. Unit tests | Verifies runtime behavior empirically | 2900+ tests |
 
 **Combined assurance**: For the 219 verified operations:
 - The algebraic property holds exactly over R (Coq proof) and int (Verus proof)
 - The f32 deviation from R is bounded (Flocq error bound)
 - The f32 operation produces finite results for bounded inputs (Kani harness)
-- The f32 operation passes all unit tests (2876+ tests)
+- The f32 operation passes all unit tests (2900+ tests)
 
 No single mechanism provides complete assurance, but together they provide
 defense-in-depth that an academic reviewer should find compelling.

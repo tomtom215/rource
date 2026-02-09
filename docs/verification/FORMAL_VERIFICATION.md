@@ -56,7 +56,7 @@ The `rource-math` crate provides fundamental mathematical types (`Vec2`, `Vec3`,
 > Coq "theorems" counts all `Theorem`, `Lemma`, and `Local Lemma` declarations
 > in the corresponding `_Proofs.v`, `_Compute.v`, `Complexity.v`, or `Vec_CrossType.v` files.
 > Kani "harnesses" counts all `#[kani::proof]` functions in `crates/rource-math/src/kani_proofs/`
-> (Vec2: 28, Vec3: 29, Vec4: 25, Mat3: 23, Mat4: 32, Color: 64, Rect: 52, Bounds: 70, Utils: 33).
+> (Vec2: 35, Vec3: 37, Vec4: 25, Mat3: 23, Mat4: 32, Color: 47, Rect: 35, Bounds: 27, Utils: 11).
 > Each harness verifies IEEE 754 safety properties (NaN-freedom, finiteness, postconditions)
 > via CBMC bounded model checking over all 2^32 f32 bit patterns within bounded domains.
 > Coq FP "theorems" counts all `Theorem` and `Lemma` declarations in `FP_*.v` files.
