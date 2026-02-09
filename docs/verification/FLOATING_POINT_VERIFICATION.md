@@ -292,13 +292,12 @@ require composing single-operation proofs.
 
 | Phase | Coverage | Operations Verified | Total |
 |-------|----------|--------------------|----|
-| Current | 85.5% (219/256) | Algebraic + edge-case properties | 2968 theorems/harnesses |
-| **Phase FP-1 foundations** | **85.5%** | **+ FP error bounds, rounding, vec ops (361 FP theorems)** | **3329** |
-| After Phase FP-2 | ~90% (230/256) | + sqrt, rounding, min/max, lerp, distance_sq | ~3400 |
-| After Phase FP-3 | ~93% (238/256) | + distance, conversions, batch, transcendental | ~3500 |
-| After Phase FP-4 | ~96% (246/256) | + matrix transforms, color, complex geometry | ~3600 |
+| **Current (FP-1 complete)** | **85.5% (219/256)** | **Algebraic + edge-case + FP error bounds (361 FP theorems)** | **2968 theorems/harnesses** |
+| After Phase FP-2 | ~90% (230/256) | + sqrt, rounding, min/max, lerp, distance_sq | ~3100 |
+| After Phase FP-3 | ~93% (238/256) | + distance, conversions, batch, transcendental | ~3200 |
+| After Phase FP-4 | ~96% (246/256) | + matrix transforms, color, complex geometry | ~3300 |
 
-### Phase FP-1 Progress (In Progress)
+### Phase FP-1 Progress (Complete)
 
 **Flocq 4.1.3 installed and operational.** 361 FP theorems machine-checked across 9 files.
 
@@ -335,7 +334,7 @@ This distinction is critical for intellectual honesty:
   analysis concern)
 
 **How this relates to our existing proofs:**
-Our current 2198 theorems prove algebraic properties over exact arithmetic (R or Z).
+Our current 1837 theorems prove algebraic properties over exact arithmetic (R or Z).
 Floating-point proofs would be a **complementary layer** proving that the Rust
 implementation's floating-point results are close to the mathematically correct
 values established by our R-based proofs. The two layers together would provide:

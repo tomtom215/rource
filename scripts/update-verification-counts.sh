@@ -543,8 +543,8 @@ if [[ -f "$FV" ]]; then
     sed -i -E "s/[0-9]+ machine-checked theorems\/harnesses/$GRAND_TOTAL machine-checked theorems\/harnesses/g" "$FV"
     # Kani summary row total
     sed -i -E "s/[0-9]+ proof harnesses \| 0/$KANI_TOTAL proof harnesses | 0/" "$FV"
-    # Combined total row (matches both "8 types" and "8 types + FP")
-    sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*8 types[^|]*\*\*/**$GRAND_TOTAL** | **0** | **8 types + FP**/" "$FV"
+    # Combined total row (matches "10 types + FP" in FORMAL_VERIFICATION.md)
+    sed -i -E "s/\*\*[0-9]+\*\* \| \*\*0\*\* \| \*\*10 types \+ FP\*\*/**$GRAND_TOTAL** | **0** | **10 types + FP**/" "$FV"
     # Coq combined comment
     sed -i -E "s/[0-9]+ theorems, ~45s/$COQ_COMBINED theorems, ~45s/" "$FV"
     # Per-type Kani counts in the table
@@ -654,7 +654,8 @@ fi
 VC="$PROJECT_ROOT/docs/verification/VERIFICATION_COVERAGE.md"
 if [[ -f "$VC" ]]; then
     echo "Updating VERIFICATION_COVERAGE.md..."
-    sed -i -E "s/→ [0-9]+ theorems, [0-9]+\.[0-9]+% ops/→ $GRAND_TOTAL theorems, 59.3% ops/" "$VC"
+    # Update theorem count but preserve the ops percentage (manually computed metric)
+    sed -i -E "s/→ [0-9]+ theorems, ([0-9]+\.[0-9]+% ops)/→ $GRAND_TOTAL theorems, \1/" "$VC"
     sed -i -E "s/Kani IEEE 754 harnesses: [0-9]+/Kani IEEE 754 harnesses: $KANI_TOTAL/" "$VC"
     # Kani total row in bold
     sed -i -E "s/\| \*\*Total\*\* \| \*\*[0-9]+\*\* \| \*\*All verified/| **Total** | **$KANI_TOTAL** | **All verified/" "$VC"
@@ -801,14 +802,14 @@ fi
 DR="$PROJECT_ROOT/docs/README.md"
 if [[ -f "$DR" ]]; then
     echo "Updating docs/README.md..."
-    sed -i -E "s/[0-9]+ proof functions, [0-9]+ types/$VERUS_TOTAL proof functions, 7 types/" "$DR"
+    sed -i -E "s/[0-9]+ proof functions, [0-9]+ types/$VERUS_TOTAL proof functions, 9 types/" "$DR"
     sed -i -E "s/[0-9]+ theorems, 0 admits, Coq 8/$COQ_COMBINED theorems, 0 admits, Coq 8/" "$DR"
     # COQ_PROOFS.md reference (R-based + Z-based, N theorems)
     sed -i -E "s/R-based \+ Z-based, [0-9]+ theorems/R-based + Z-based, $COQ_COMBINED theorems/" "$DR"
     # COQ_PROOFS.md reference (N theorems R+Z)
     sed -i -E "s/[0-9]+ theorems R\+Z/$COQ_COMBINED theorems R+Z/" "$DR"
     # FORMAL_VERIFICATION.md reference (total and types)
-    sed -i -E "s/[0-9]+ theorems\/harnesses, [0-9]+ types/$GRAND_TOTAL theorems\/harnesses, 8 types/" "$DR"
+    sed -i -E "s/[0-9]+ theorems\/harnesses, [0-9]+ types/$GRAND_TOTAL theorems\/harnesses, 9 types/" "$DR"
     echo "  Done."
 fi
 
@@ -818,8 +819,8 @@ if [[ -f "$WE" ]]; then
     echo "Updating WASM_EXTRACTION_PIPELINE.md..."
     # Coq active count "Active (N theorems)"
     sed -i -E "s/Active \([0-9]+ theorems\)/Active ($COQ_COMBINED theorems)/" "$WE"
-    # Working/tested count "tested, N theorems compile"
-    sed -i -E "s/tested, [0-9]+ theorems compile/tested, $COQ_COMBINED theorems compile/" "$WE"
+    # Working/tested count "tested, N theorems compile" (all Coq: R+Z+FP)
+    sed -i -E "s/tested, [0-9]+ theorems compile/tested, $COQ_ALL theorems compile/" "$WE"
     echo "  Done."
 fi
 
@@ -873,8 +874,8 @@ fi
 FPV="$PROJECT_ROOT/docs/verification/FLOATING_POINT_VERIFICATION.md"
 if [[ -f "$FPV" ]]; then
     echo "Updating FLOATING_POINT_VERIFICATION.md..."
-    # Coverage trajectory table: current total
-    sed -i -E "s/Algebraic properties \| [0-9]+ theorems/Algebraic properties | $GRAND_TOTAL theorems/" "$FPV"
+    # Coverage trajectory table: current total (matches "N theorems" in narrative)
+    sed -i -E "s/current [0-9]+ theorems prove/current $COQ_ALL theorems prove/" "$FPV"
     # Coverage trajectory table: "N theorems/harnesses" in table cells
     sed -i -E "s/\| [0-9]+ theorems\/harnesses/| $GRAND_TOTAL theorems\/harnesses/" "$FPV"
     echo "  Done."
@@ -894,7 +895,7 @@ if [[ -f "$CW" ]]; then
     sed -i -E "s/Rect_Compute\.v \([0-9]+ theorems/Rect_Compute.v ($COQ_Z_RECT theorems/" "$CW"
     sed -i -E "s/Utils_Compute\.v \([0-9]+ theorems/Utils_Compute.v ($COQ_Z_UTILS theorems/" "$CW"
     # Layer 2 total
-    sed -i -E "s/COMPLETE \([0-9]+ theorems, all 8 types\)/COMPLETE ($COQ_Z_TOTAL theorems, all 8 types)/" "$CW"
+    sed -i -E "s/COMPLETE \([0-9]+ theorems, all 9 types\)/COMPLETE ($COQ_Z_TOTAL theorems, all 9 types)/" "$CW"
     # Layer 1 R-based proof file ranges
     PROOFS_TOTAL=$((COQ_R_VEC2 + COQ_R_VEC3 + COQ_R_VEC4 + COQ_R_MAT3 + COQ_R_MAT4))
     COLOR_RECT_TOTAL=$((COQ_R_COLOR + COQ_R_RECT))
@@ -977,10 +978,11 @@ if [[ -f "$VP" ]]; then
     sed -i -E "s/\*\*Total: [0-9]+ proof functions verified/\*\*Total: $VERUS_TOTAL proof functions verified/" "$VP"
     sed -i -E "s/\*Total proof functions: [0-9]+ \(Vec2: [0-9]+, Vec3: [0-9]+, Vec4: [0-9]+, Mat3: [0-9]+/\*Total proof functions: $VERUS_TOTAL (Vec2: $VERUS_VEC2, Vec3: $VERUS_VEC3, Vec4: $VERUS_VEC4, Mat3: $VERUS_MAT3/" "$VP"
     sed -i -E "s/Color: [0-9]+, Rect: [0-9]+, Bounds: [0-9]+, Utils: [0-9]+\)\*/Color: $VERUS_COLOR, Rect: $VERUS_RECT, Bounds: $VERUS_BOUNDS, Utils: $VERUS_UTILS)*/" "$VP"
-    # Per-type table Verus counts
-    sed -i -E "/rource-math\/Vec2/s/\| [0-9]+ \| [0-9]+/| $VERUS_VEC2 | 87+/" "$VP"
-    sed -i -E "/rource-math\/Vec3/s/\| [0-9]+ \| [0-9]+/| $VERUS_VEC3 | 89+/" "$VP"
-    sed -i -E "/rource-math\/Color/s/VERIFIED \| [0-9]+/VERIFIED | $VERUS_COLOR/" "$VP"
+    # Per-type table Verus counts (update Proof Fns column only; VCs are static)
+    sed -i -E "/rource-math\/Vec2/s/VERIFIED \| [0-9]+ \| [0-9]+\+*/VERIFIED | $VERUS_VEC2 | 87/" "$VP"
+    sed -i -E "/rource-math\/Vec3/s/VERIFIED \| [0-9]+ \| [0-9]+\+*/VERIFIED | $VERUS_VEC3 | 89/" "$VP"
+    sed -i -E "/rource-math\/Vec4/s/VERIFIED \| [0-9]+ \| [0-9]+\+*/VERIFIED | $VERUS_VEC4 | 90/" "$VP"
+    sed -i -E "/rource-math\/Color/s/VERIFIED \| [0-9]+ \| [0-9]+\+*/VERIFIED | $VERUS_COLOR | 81/" "$VP"
     sed -i -E "/rource-math\/Bounds/s/VERIFIED \| [0-9]+/VERIFIED | $VERUS_BOUNDS/" "$VP"
     echo "  Done."
 fi

@@ -124,7 +124,7 @@ No gap.
 
 ## Audit 3: Mat4::determinant — Complex Cofactor Expansion
 
-### Rust (`crates/rource-math/src/mat4.rs:382-404`)
+### Rust (`crates/rource-math/src/mat4.rs:382-400`)
 
 ```rust
 pub fn determinant(self) -> f32 {
@@ -356,7 +356,7 @@ implementation is safe.
 
 ## Audit 8: Mat3::inverse — Partial Function
 
-### Rust (`crates/rource-math/src/mat3.rs:190-204`)
+### Rust (`crates/rource-math/src/mat3.rs:190-212`)
 
 ```rust
 pub fn inverse(self) -> Option<Self> {
