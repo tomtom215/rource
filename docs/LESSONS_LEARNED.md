@@ -623,7 +623,19 @@ All 246 entries in chronological order. Entry numbers match category table refer
 | 244 | 2026-02-09 | PNhXS | Per-file verification counts drifted (Vec2 Verus: 55→61, Color: 57→64, Coq-Z totals: 417→471) | Phase 1 update missed per-file granular counts | Fixed in VERUS_PROOFS.md and COQ_PROOFS.md |
 | 245 | 2026-02-09 | PNhXS | Subagent reported `getDetailedFrameStats` as non-existent but it exists at `lib.rs:1042` | Agent error in verification | Cross-checked all agent-reported violations before applying |
 | 246 | 2026-02-09 | PNhXS | Files with most violations: TROUBLESHOOTING.md (7+), RUNBOOK.md (8+), RENDERING.md (5+), ARCHITECTURE.md (5+) | Implementation-detail docs drift fastest | Prioritize these in future audits |
+| 247 | 2026-02-09 | ykbr1 | `render_phases.rs` was refactored into `render_phases/` directory but 30+ docs still referenced the old monolithic file | Module refactors must trigger docs grep-and-replace | After any file→directory refactor, grep all .md files for the old path |
+| 248 | 2026-02-09 | ykbr1 | Coq constructor names in paper docs were fabricated (mk_vec2 vs actual mkVec2, vx vs vec2_x, mat3_det vs mat3_determinant) | Paper examples written from memory, not copied from source | Always copy Coq snippets directly from .v source files |
+| 249 | 2026-02-09 | ykbr1 | `mat3_cofactor` function referenced in TEN_OPERATION_AUDIT.md does not exist — actual mat3_inverse uses inline cofactor computation | Docs described abstracted version of algorithm instead of actual code | For "line-by-line correspondence" docs, literally copy from source |
+| 250 | 2026-02-09 | ykbr1 | WCAG_COMPLIANCE.md claimed passing axe/Lighthouse scores but no testing was ever performed | Aspirational results presented as actual | Always mark unverified results as "Not Yet Tested" |
+| 251 | 2026-02-09 | ykbr1 | SUPPLY_CHAIN.md claimed SLSA Level 3 "implements" but no releases published — provenance never generated | Future capability described in present tense | Use "configured for" not "implements" when prerequisite (release) hasn't occurred |
+| 252 | 2026-02-09 | ykbr1 | `--max-commits` CLI flag referenced in 4 files but never existed in args/mod.rs | Speculative flag from Gource compatibility assumption | Verify every CLI flag against args/mod.rs before documenting |
+| 253 | 2026-02-09 | ykbr1 | `setBloomEnabled()`, `setUseLOD()`, `getEntityCount()` WASM methods in docs were fabricated names | Methods named by convention rather than verified | Always grep `wasm_bindgen(js_name` for actual exported names |
+| 254 | 2026-02-09 | ykbr1 | BENCHMARK_DASHBOARD.md listed fabricated `spatial_perf` benchmark that never existed | Benchmark list not verified against actual benches/ directory | `ls crates/*/benches/` is the ground truth for benchmark names |
+| 255 | 2026-02-09 | ykbr1 | bench-pr.yml described as automatic PR trigger but actual trigger is `workflow_dispatch` (manual only) | CI docs assumed desired behavior was actual behavior | Read .github/workflows/ YAML to verify trigger configuration |
+| 256 | 2026-02-09 | ykbr1 | Bounds type NOT extracted by RourceMath_Extract.v but 3 paper docs claimed "8 types extracted" | Extraction count taken from Z-compute file count (9) not import list (8) | Check RourceMath_Extract.v imports, not _Compute.v file count |
+| 257 | 2026-02-09 | ykbr1 | PERFORMANCE_REPORT.md Phase 27 references wrong: Phase 27 is "Texture state management", not sqrt optimization or bloom | Phase numbers assigned without checking CHRONOLOGY.md | Always verify phase numbers against CHRONOLOGY.md |
+| 258 | 2026-02-09 | ykbr1 | BENCHMARK_METHODOLOGY.md claimed "Software renderer only" but wgpu backend provides GPU acceleration | Stale from early project state when only software renderer existed | Architecture claims must be updated when new backends are added |
 
 ---
 
-*Last updated: 2026-02-09 | 246 entries | 15 categories*
+*Last updated: 2026-02-09 | 258 entries | 15 categories*
