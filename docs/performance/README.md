@@ -36,7 +36,7 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 | [METHODOLOGY.md](./METHODOLOGY.md) | Benchmark methodology and standards |
 | [ALGORITHMIC_COMPLEXITY.md](./ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of all functions |
 | [THEORETICAL_ALGORITHMS.md](./THEORETICAL_ALGORITHMS.md) | Advanced algorithmic research reference |
-| [FORMAL_PROOFS.md](./FORMAL_PROOFS.md) | Mathematical proofs for core algorithms |
+| [formal-proofs/README.md](./formal-proofs/README.md) | Mathematical proofs for core algorithms |
 | [SHADERS.md](./SHADERS.md) | GPU shader optimization reference |
 | [FUTURE_WORK.md](./FUTURE_WORK.md) | Expert+ technical roadmap |
 
@@ -90,7 +90,7 @@ PERFORMANCE.md file, this documentation has been organized into focused, navigab
 
 ## Algorithm Reference
 
-Quick reference for the core algorithms and their complexities. For formal proofs, see [FORMAL_PROOFS.md](./FORMAL_PROOFS.md).
+Quick reference for the core algorithms and their complexities. For formal proofs, see [formal-proofs/README.md](./formal-proofs/README.md).
 
 ### Spatial Data Structures
 

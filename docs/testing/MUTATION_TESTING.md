@@ -326,4 +326,4 @@ Use `--timeout` to skip mutants that take too long. Timeouts are tracked separat
 
 - [cargo-mutants documentation](https://github.com/sourcefrog/cargo-mutants)
 - [Mutation Testing Wikipedia](https://en.wikipedia.org/wiki/Mutation_testing)
-- [CLAUDE.md Testing Standards](../CLAUDE.md#testing--quality-standards)
+- [CLAUDE.md Testing Standards](../../CLAUDE.md#testing--quality-standards)
