@@ -107,7 +107,7 @@ These APIs follow semantic versioning strictly. Breaking changes require a major
 
 | API | Since | Description |
 |-----|-------|-------------|
-| `rource.getRendererType()` | 0.1.0 | "WebGPU", "WebGL2", or "Software" |
+| `rource.getRendererType()` | 0.1.0 | "wgpu", "webgl2", or "software" |
 | `rource.isGPUAccelerated()` | 0.1.0 | Whether GPU rendering is active |
 
 ---

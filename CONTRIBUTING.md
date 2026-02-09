@@ -161,12 +161,12 @@ mod tests {
 
 | Crate | Test Count | Focus |
 |-------|------------|-------|
-| rource-math | 558 | Numerical accuracy, edge cases |
-| rource-vcs | 343 | Parser correctness, format edge cases |
-| rource-core | 539 | Scene graph, physics, camera |
-| rource-render | 370 | Rendering correctness, GPU backends |
+| rource-math | 508 | Numerical accuracy, edge cases |
+| rource-vcs | 366 | Parser correctness, format edge cases |
+| rource-core | 560 | Scene graph, physics, camera |
+| rource-render | 615 | Rendering correctness, GPU backends |
 | rource-cli | 358 | CLI argument parsing, integration |
-| rource-wasm | 461 | WebAssembly bindings, JavaScript API |
+| rource-wasm | 557 | WebAssembly bindings, JavaScript API |
 
 ### Integration Tests
 
@@ -255,19 +255,41 @@ The web UI uses a modular ES Module architecture located in `rource-wasm/www/js/
 
 ```
 js/
-├── main.js          # Entry point - WASM init and module coordination
-├── config.js        # Constants and extension colors
-├── state.js         # Observable application state
-├── wasm-api.js      # Safe WASM call wrappers
-├── animation.js     # Render loop and canvas management
-├── preferences.js   # localStorage handling
-├── dom.js           # Centralized DOM element references
-└── features/        # Feature-specific modules
+├── main.js              # Entry point - WASM init and module coordination
+├── config.js            # Constants and extension colors
+├── state.js             # Observable application state
+├── wasm-api.js          # Safe WASM call wrappers
+├── animation.js         # Render loop and canvas management
+├── preferences.js       # localStorage handling
+├── dom.js               # Centralized DOM element references
+├── data-loader.js       # Repository data loading
+├── github-fetch.js      # GitHub API integration
+├── utils.js             # Shared utility functions
+├── core/                # Core runtime modules
+│   ├── animation-loop.js
+│   ├── frame-scheduler.js
+│   └── performance-metrics.js
+├── ui/                  # UI component modules
+│   └── playback-ui.js
+└── features/            # Feature-specific modules
     ├── screenshot.js
     ├── fullscreen.js
     ├── theme.js
     ├── help.js
-    └── keyboard.js
+    ├── keyboard.js
+    ├── playback.js
+    ├── canvas-input.js
+    ├── mobile-controls.js
+    ├── mobile-toolbar.js
+    ├── bottom-sheet.js
+    ├── panels.js
+    ├── immersive-mode.js
+    ├── video-recording.js
+    ├── font-size.js
+    ├── data-input.js
+    ├── hover-tooltip.js
+    ├── reduced-motion.js
+    └── window-events.js
 ```
 
 **Guidelines:**

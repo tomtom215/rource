@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Superseded — The generation counter pattern was proposed but not implemented.
+The actual `LabelPlacer` in `crates/rource-render/src/label.rs` uses a simple
+`Vec<Rect>` with `clear()` on reset, which proved sufficient for the current
+label counts and frame budgets.
 
 ## Date
 

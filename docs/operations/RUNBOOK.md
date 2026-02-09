@@ -70,16 +70,16 @@ This runbook provides operational procedures for diagnosing and resolving issues
 
 ```javascript
 // 1. Check entity count
-console.log('Entities:', rource.getEntityCount());
+console.log('Entities:', rource.getTotalEntities());
 
 // 2. Check renderer type
 console.log('Renderer:', rource.getRendererType());
 
-// 3. Check GPU physics status
-console.log('GPU Physics:', rource.isGPUPhysicsActive());
+// 3. Check GPU acceleration status
+console.log('GPU Accelerated:', rource.isGPUAccelerated());
 
 // 4. Check frame time
-console.log('Frame time:', rource.getLastFrameTime(), 'ms');
+console.log('Frame time:', rource.getFrameTimeMs(), 'ms');
 ```
 
 **Resolution by Cause**:
@@ -104,12 +104,12 @@ console.log('Frame time:', rource.getLastFrameTime(), 'ms');
 
 **Diagnosis**:
 ```javascript
-console.log('Commits pending:', rource.getCommitQueueSize());
-console.log('Playback speed:', rource.getPlaybackSpeed());
+console.log('Current commit:', rource.currentCommit());
+console.log('Playback speed:', rource.getSpeed());
 ```
 
 **Resolution**:
-1. Reduce playback speed: `rource.setSecondsPerDay(0.5)` (was 0.1)
+1. Reduce playback speed: `rource.setSpeed(0.5)` (was 0.1)
 2. Skip idle periods: Already automatic
 3. Enable commit batching (if available)
 
@@ -127,12 +127,13 @@ console.log('Playback speed:', rource.getPlaybackSpeed());
 **Diagnosis**:
 ```javascript
 // Check entity counts
-console.log('Files:', rource.getFileCount());
-console.log('Directories:', rource.getDirCount());
-console.log('Users:', rource.getUserCount());
+console.log('Files:', rource.getTotalFiles());
+console.log('Directories:', rource.getTotalDirectories());
+console.log('Users:', rource.getTotalUsers());
 
-// Check if labels are accumulating
-console.log('Label count:', rource.getVisibleLabelCount());
+// Check visible entity counts
+console.log('Visible files:', rource.getVisibleFiles());
+console.log('Visible users:', rource.getVisibleUsers());
 ```
 
 **Resolution by Cause**:

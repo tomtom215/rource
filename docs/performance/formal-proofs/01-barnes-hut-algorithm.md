@@ -94,7 +94,7 @@ For θ = 0.5: relative error ≤ O(0.25) ≈ 6.25%. ∎
 
 ## 1.4 Empirical Validation
 
-See `benches/barnes_hut_accuracy.rs` for empirical verification:
+See `crates/rource-core/benches/barnes_hut_theta.rs` for empirical verification:
 
 | θ Value | Theoretical Max Error | Measured Max Error | Speedup |
 |---------|----------------------|-------------------|---------|

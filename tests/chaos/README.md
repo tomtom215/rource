@@ -123,11 +123,10 @@ Located in `fixtures/`:
 | Fixture | Description | Size |
 |---------|-------------|------|
 | `empty.log` | Empty log file | 0 bytes |
-| `single-commit.log` | Minimal valid log | 50 bytes |
-| `unicode-hell.log` | All unicode edge cases | 5 KB |
-| `massive.log` | 100K commits | 15 MB |
-| `malformed.log` | Invalid format variations | 2 KB |
-| `injection.log` | XSS/injection attempts | 1 KB |
+| `single-commit.log` | Minimal valid log | 34 bytes |
+| `unicode-hell.log` | All unicode edge cases | 665 bytes |
+| `malformed.log` | Invalid format variations | 437 bytes |
+| `injection.log` | XSS/injection attempts | 703 bytes |
 
 ## Architecture
 
@@ -153,14 +152,12 @@ tests/chaos/
 │   │   ├── devices.js          # Device simulation tests
 │   │   └── edge-cases.js       # Edge case tests
 │   └── utils/
-│       ├── mock-wasm.js        # WASM mock for isolation
 │       ├── dom-simulator.js    # DOM event simulation
 │       └── assertions.js       # Custom assertions
 ├── fixtures/
 │   ├── empty.log
 │   ├── single-commit.log
 │   ├── unicode-hell.log
-│   ├── massive.log
 │   ├── malformed.log
 │   └── injection.log
 └── reports/
@@ -248,17 +245,17 @@ jobs:
 ```rust
 #[test]
 fn chaos_test_name() {
-    let chaos = ChaosContext::new();
+    let mut chaos = ChaosContext::new();
 
-    // Inject chaos condition
-    chaos.inject_memory_pressure(256 * 1024 * 1024);
-
-    // Run scenario
-    let result = scene.update(0.016);
+    // Run iterations under stress
+    for i in 0..1000 {
+        chaos.record_iteration();
+        // ... perform operations ...
+    }
 
     // Validate resilience
-    assert!(result.is_ok(), "Should handle memory pressure gracefully");
-    chaos.verify_no_leaks();
+    let result = chaos.into_result("chaos_test_name");
+    assert!(result.is_ok(), "Should handle chaos gracefully");
 }
 ```
 

@@ -132,13 +132,13 @@ Application starts but shows only a black screen.
 Application becomes unresponsive when loading a large repository.
 
 **Solution:**
-For repositories with many commits, use limits:
+For repositories with many commits, try:
 ```bash
-# Limit to first 10,000 commits
-rource --max-commits 10000 /path/to/repo
-
 # Skip old history
 rource --start-date "2024-01-01" /path/to/repo
+
+# Limit file/user counts
+rource --max-files 5000 --max-users 100 /path/to/repo
 ```
 
 ---
@@ -156,14 +156,9 @@ Error: Failed to detect VCS type
    ls -la .git  # For Git repos
    ```
 
-2. Or specify the log format explicitly:
+2. For custom log formats, use the `--custom-log` flag:
    ```bash
-   rource --log-format git /path/to/repo
-   ```
-
-3. For custom log formats, use:
-   ```bash
-   rource --log-format custom custom.log
+   rource --custom-log custom.log
    ```
 
 ---
@@ -227,7 +222,7 @@ This occurs when GPU resources are exhausted. Refresh the page and try with:
 Visualization is choppy or slow.
 
 **Diagnostic:**
-1. Enable FPS display: `--show-fps` or press `F` key in WASM
+1. Enable FPS display via the stats panel in the WASM UI
 2. Check the entity count in the stats panel
 
 **Solutions:**
@@ -239,8 +234,9 @@ Visualization is choppy or slow.
 
 2. **Disable expensive effects:**
    ```bash
-   rource --no-bloom --no-shadows /path/to/repo
+   rource --no-bloom /path/to/repo
    ```
+   (Shadows are off by default; don't pass `--shadows` to keep them disabled.)
 
 3. **Limit entity counts:**
    ```bash
@@ -305,12 +301,7 @@ Entity labels (file names, user names) aren't visible.
 2. Zoom level too low (LOD optimization)
 
 **Solutions:**
-1. Check visibility flags:
-   ```bash
-   rource --show-filenames --show-usernames /path/to/repo
-   ```
-
-2. Zoom in closer to entities (scroll wheel or pinch)
+1. Labels are displayed by default. If still not visible, zoom in closer to entities (scroll wheel or pinch) — the LOD system hides labels at low zoom levels.
 
 ---
 
@@ -341,12 +332,7 @@ Tree structure (connection lines) not visible.
 2. Zoom level too low (LOD culls branches)
 
 **Solutions:**
-1. Check tree visibility:
-   ```bash
-   rource --show-tree /path/to/repo  # Ensure tree is shown
-   ```
-
-2. Zoom in to reveal branches (they hide at low zoom for performance)
+1. Tree branches are displayed by default. Zoom in to reveal branches — they are hidden at low zoom levels for performance (LOD culling).
 
 ---
 
@@ -364,10 +350,7 @@ The scene needs time to initialize:
 rource --headless --seconds-per-day 5.0 --output /tmp/frames /path/to/repo
 ```
 
-Or specify a starting position:
-```bash
-rource --headless --start-position "0,0" --output /tmp/frames /path/to/repo
-```
+Or use a longer seconds-per-day value to allow the scene to build up gradually before export.
 
 ---
 

@@ -58,7 +58,7 @@ Complete technical documentation for the Rource project.
 | [performance/FUTURE_WORK.md](./performance/FUTURE_WORK.md) | **Expert+ roadmap** (active) |
 | [performance/THEORETICAL_ALGORITHMS.md](./performance/THEORETICAL_ALGORITHMS.md) | Advanced algorithmic research |
 | [performance/ALGORITHMIC_COMPLEXITY.md](./performance/ALGORITHMIC_COMPLEXITY.md) | Big-O analysis of all functions |
-| [performance/FORMAL_PROOFS.md](./performance/FORMAL_PROOFS.md) | Mathematical proofs for core algorithms |
+| [performance/formal-proofs/README.md](./performance/formal-proofs/README.md) | Mathematical proofs for core algorithms |
 | [performance/COMPLEXITY_VERIFICATION.md](./performance/COMPLEXITY_VERIFICATION.md) | Empirical Big-O verification |
 | [performance/FUNCTION_PROFILES.md](./performance/FUNCTION_PROFILES.md) | Per-function timing profiles |
 | [performance/PERFORMANCE_BASELINE.md](./performance/PERFORMANCE_BASELINE.md) | WASM performance audit |
@@ -95,12 +95,12 @@ Complete technical documentation for the Rource project.
 
 ---
 
-### Verification Documentation (11 files)
+### Verification Documentation (12 files)
 
 | Document | Description |
 |----------|-------------|
 | [verification/FORMAL_VERIFICATION.md](./verification/FORMAL_VERIFICATION.md) | Formal verification overview and index (2968 theorems/harnesses, 8 types) |
-| [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (498 proof functions, 7 types) |
+| [verification/VERUS_PROOFS.md](./verification/VERUS_PROOFS.md) | Verus theorem tables (498 proof functions, 9 types) |
 | [verification/COQ_PROOFS.md](./verification/COQ_PROOFS.md) | Coq proofs (1837 theorems R+Z, 361 FP, development workflow) |
 | [verification/VERIFICATION_COVERAGE.md](./verification/VERIFICATION_COVERAGE.md) | Coverage metrics, limitations, floating-point assessment |
 | [verification/VERIFICATION_CHRONOLOGY.md](./verification/VERIFICATION_CHRONOLOGY.md) | Verification history: phases 1–10, completed milestones |
@@ -109,6 +109,7 @@ Complete technical documentation for the Rource project.
 | [verification/RUST_VERIFICATION_LANDSCAPE.md](./verification/RUST_VERIFICATION_LANDSCAPE.md) | 8-tool landscape survey: Kani, Aeneas, Creusot, hax |
 | [verification/WASM_EXTRACTION_PIPELINE.md](./verification/WASM_EXTRACTION_PIPELINE.md) | Coq-to-WASM pipeline, tool ecosystem, Rocq migration |
 | [verification/SETUP_GUIDE.md](./verification/SETUP_GUIDE.md) | Verus, Coq, MetaCoq, wasm_of_ocaml setup |
+| [verification/SPEC_IMPL_CORRESPONDENCE.md](./verification/SPEC_IMPL_CORRESPONDENCE.md) | Spec-implementation correspondence mapping |
 | [verification/CERTICOQ_WASM_ASSESSMENT.md](./verification/CERTICOQ_WASM_ASSESSMENT.md) | Coq-to-WASM pipeline (9 paths surveyed) |
 
 ---
@@ -198,7 +199,7 @@ Complete technical documentation for the Rource project.
 | Operations documents | 6 |
 | Architecture/Design documents | 8 |
 | ADR documents | 6 |
-| Verification documents | 11 |
+| Verification documents | 12 |
 | Security documents | 3 |
 | Testing documents | 2 |
 | UX/Accessibility documents | 2 |

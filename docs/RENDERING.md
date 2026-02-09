@@ -12,7 +12,7 @@ Rource supports three rendering backends:
 | **Software** | Native + WASM fallback     | Good        | Universal                  |
 | **WebGL2**   | WASM primary               | Great       | WebGL2 required            |
 
-The WASM build automatically tries WebGL2 first and falls back to Software if WebGL2 is unavailable. The wgpu backend provides cross-platform GPU rendering via the `wgpu` crate, targeting WebGPU, Vulkan, Metal, and DX12.
+The WASM build automatically tries wgpu (WebGPU) first, then WebGL2, and falls back to Software if neither is available. The wgpu backend provides cross-platform GPU rendering via the `wgpu` crate, targeting WebGPU, Vulkan, Metal, and DX12.
 
 ## Renderer Trait
 
@@ -31,21 +31,24 @@ pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
 
     // Primitives
-    fn draw_circle(&mut self, center: Vec2, radius: f32, color: Color);
-    fn draw_ring(&mut self, center: Vec2, inner: f32, outer: f32, color: Color);
+    fn draw_circle(&mut self, center: Vec2, radius: f32, width: f32, color: Color);
+    fn draw_disc(&mut self, center: Vec2, radius: f32, color: Color);
     fn draw_line(&mut self, start: Vec2, end: Vec2, width: f32, color: Color);
-    fn draw_quad(&mut self, pos: Vec2, size: Vec2, color: Color);
-    fn draw_text(&mut self, text: &str, pos: Vec2, size: f32, color: Color, font: FontId);
+    fn draw_spline(&mut self, points: &[Vec2], width: f32, color: Color);
+    fn draw_quad(&mut self, bounds: Bounds, texture: Option<TextureId>, color: Color);
+    fn draw_text(&mut self, text: &str, position: Vec2, font: FontId, size: f32, color: Color);
 
-    // Text metrics
-    fn measure_text(&self, text: &str, size: f32, font: FontId) -> Vec2;
-
-    // Font management
-    fn load_font(&mut self, data: &[u8]) -> Option<FontId>;
+    // Transform
+    fn set_transform(&mut self, transform: Mat4);
+    fn transform(&self) -> Mat4;
 
     // Clipping
-    fn push_clip(&mut self, rect: Rect);
+    fn push_clip(&mut self, bounds: Bounds);
     fn pop_clip(&mut self);
+
+    // Textures
+    fn load_texture(&mut self, width: u32, height: u32, data: &[u8]) -> TextureId;
+    fn unload_texture(&mut self, texture: TextureId);
 }
 ```
 
@@ -269,6 +272,7 @@ The `RendererBackend` enum provides automatic fallback:
 
 ```rust
 pub enum RendererBackend {
+    Wgpu(WgpuRenderer),
     WebGl2(WebGl2Renderer),
     Software {
         renderer: SoftwareRenderer,
@@ -277,8 +281,13 @@ pub enum RendererBackend {
 }
 
 impl RendererBackend {
-    pub fn new(canvas: &HtmlCanvasElement) -> Result<(Self, RendererType), JsValue> {
-        // Try WebGL2 first
+    pub async fn new_async(canvas: &HtmlCanvasElement) -> Result<(Self, RendererType), JsValue> {
+        // Try wgpu (WebGPU) first - best performance
+        if let Ok(wgpu) = WgpuRenderer::new_async(canvas).await {
+            return Ok((Self::Wgpu(wgpu), RendererType::Wgpu));
+        }
+
+        // Try WebGL2 next
         if let Ok(webgl2) = WebGl2Renderer::new(canvas) {
             return Ok((Self::WebGl2(webgl2), RendererType::WebGl2));
         }
@@ -294,11 +303,11 @@ impl RendererBackend {
 ### JavaScript API
 
 ```javascript
-const rource = new Rource(canvas);
+const rource = await Rource.create(canvas);
 
 // Check which renderer is active
-const type = rource.getRendererType(); // "webgl2" or "software"
-const isGPU = rource.isWebGL2();       // true/false
+const type = rource.getRendererType(); // "wgpu", "webgl2", or "software"
+const isGPU = rource.isGPUAccelerated(); // true/false
 
 // Handle context loss (WebGL2 only)
 if (rource.isContextLost()) {
@@ -382,7 +391,7 @@ Tested on MacBook Pro M1, 1920x1080, 10k files:
 | Component  | Location                                                      |
 |------------|---------------------------------------------------------------|
 | Native CLI | `rource-cli/src/rendering.rs`                                 |
-| WASM       | `rource-wasm/src/render_phases.rs`, `rource-wasm/src/rendering.rs` |
+| WASM       | `rource-wasm/src/render_phases/`, `rource-wasm/src/rendering.rs` |
 
 When modifying visual elements (avatar styles, beam effects, curves):
 1. Update CLI rendering code

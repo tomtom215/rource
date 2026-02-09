@@ -90,7 +90,7 @@ VCS log parsers handle untrusted input. While we fuzz these parsers, extremely m
 - High memory usage (for pathological inputs)
 - High CPU usage (for deeply nested paths)
 
-**Mitigation**: Use `--max-commits` to limit input size when visualizing untrusted repositories.
+**Mitigation**: Use `--max-files` to limit displayed files, or in the WASM build use `setMaxCommits()` to limit input size when visualizing untrusted repositories.
 
 ### WebGL/WebGPU
 
