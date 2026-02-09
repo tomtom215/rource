@@ -58,14 +58,14 @@ process:
 
 | Rust Type | Coq Record | Fields | Mapping Notes |
 |-----------|------------|--------|---------------|
-| `Vec2 { x: f32, y: f32 }` | `Record Vec2 := { vx: R; vy: R }` | 2 | Direct: `x → vx`, `y → vy` |
-| `Vec3 { x: f32, y: f32, z: f32 }` | `Record Vec3 := { vx: R; vy: R; vz: R }` | 3 | Direct field mapping |
-| `Vec4 { x: f32, y: f32, z: f32, w: f32 }` | `Record Vec4 := { vx: R; vy: R; vz: R; vw: R }` | 4 | Direct field mapping |
-| `Mat3 { cols: [[f32; 3]; 3] }` | `Record Mat3 := { m00..m22: R }` | 9 | Column-major, flattened in Coq |
-| `Mat4 { cols: [[f32; 4]; 4] }` | `Record Mat4 := { m00..m33: R }` | 16 | Column-major, flattened in Coq |
-| `Color { r: f32, g: f32, b: f32, a: f32 }` | `Record Color := { cr: R; cg: R; cb: R; ca: R }` | 4 | Direct field mapping |
-| `Rect { x: f32, y: f32, width: f32, height: f32 }` | `Record Rect := { rx: R; ry: R; rw: R; rh: R }` | 4 | Direct field mapping |
-| `Bounds { min: Vec2, max: Vec2 }` | `Record Bounds := { bmin_x: R; bmin_y: R; bmax_x: R; bmax_y: R }` | 4 | Flattened from nested Vec2 |
+| `Vec2 { x: f32, y: f32 }` | `Record Vec2 := { vec2_x: R; vec2_y: R }` | 2 | Direct: `x → vec2_x`, `y → vec2_y` |
+| `Vec3 { x: f32, y: f32, z: f32 }` | `Record Vec3 := { vec3_x: R; vec3_y: R; vec3_z: R }` | 3 | Direct field mapping |
+| `Vec4 { x: f32, y: f32, z: f32, w: f32 }` | `Record Vec4 := { vec4_x: R; vec4_y: R; vec4_z: R; vec4_w: R }` | 4 | Direct field mapping |
+| `Mat3 { cols: [[f32; 3]; 3] }` | `Record Mat3 := { m0..m8: R }` | 9 | Column-major, flattened in Coq |
+| `Mat4 { cols: [[f32; 4]; 4] }` | `Record Mat4 := { m0..m15: R }` | 16 | Column-major, flattened in Coq |
+| `Color { r: f32, g: f32, b: f32, a: f32 }` | `Record Color := { color_r: R; color_g: R; color_b: R; color_a: R }` | 4 | Direct field mapping |
+| `Rect { x: f32, y: f32, width: f32, height: f32 }` | `Record Rect := { rect_x: R; rect_y: R; rect_w: R; rect_h: R }` | 4 | Direct field mapping |
+| `Bounds { min: Vec2, max: Vec2 }` | `Record Bounds := { bounds_min_x: R; bounds_min_y: R; bounds_max_x: R; bounds_max_y: R }` | 4 | Flattened from nested Vec2 |
 
 ### Rust → Coq (Z-based, Layer 2)
 
