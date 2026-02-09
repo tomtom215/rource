@@ -15,13 +15,13 @@
 **LUT Construction**:
 ```rust
 static U8_TO_F32_LUT: [f32; 256] = {
-    let mut lut = [0.0f32; 256];
-    let mut i = 0;
+    let mut table = [0.0f32; 256];
+    let mut i = 0u32;
     while i < 256 {
-        lut[i] = i as f32 / 255.0;
+        table[i as usize] = i as f32 / 255.0;
         i += 1;
     }
-    lut
+    table
 };
 ```
 

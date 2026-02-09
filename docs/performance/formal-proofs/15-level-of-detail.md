@@ -205,9 +205,9 @@ This supports the UI/UX principle of information hierarchy.
 |-----------|------|-------|
 | LOD constants | `crates/rource-render/src/lod.rs` | 55-85 |
 | should_render_file | `crates/rource-render/src/lod.rs` | 182-183 |
-| should_render_directory | `crates/rource-render/src/lod.rs` | 206-210 |
-| should_render_user | `crates/rource-render/src/lod.rs` | 195-196 |
-| Label LOD functions | `crates/rource-render/src/lod.rs` | 219-260 |
+| should_render_directory | `crates/rource-render/src/lod.rs` | 151-152 |
+| should_render_user | `crates/rource-render/src/lod.rs` | 213-214 |
+| Label LOD functions | `crates/rource-render/src/lod.rs` | 228-261 |
 
 ### Core Implementation
 
@@ -236,7 +236,7 @@ pub const fn should_render_file(screen_radius: f32, alpha: f32) -> bool {
 |---------|------------------------|---------------|----------------|
 | 15.3 | r_s ≥ τ | `lod.rs:183` | `screen_radius >= MIN_FILE_RADIUS` |
 | 15.5 | r_s = r_w × z | Caller | `world_radius * camera_zoom` |
-| 15.7 | depth == 0 exception | `lod.rs:207` | Root always rendered |
+| 15.7 | depth == 0 exception | `lod.rs:151-152` | Root always rendered |
 
 ### Verification Commands
 

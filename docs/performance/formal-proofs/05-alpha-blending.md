@@ -19,24 +19,23 @@ result = src × alpha + dst × (1 - alpha)
        = (src × α + dst × (255 - α)) / 255
 ```
 
-**Fixed-Point Implementation**:
+**Fixed-Point Implementation** (8.8 fixed-point, divide-by-256 via shift):
 ```rust
-let alpha_u32 = alpha as u32;
-let inv_alpha = 255 - alpha_u32;
-let result = ((src * alpha_u32 + dst * inv_alpha) + 128) / 255;
+let inv_alpha = 256 - alpha;  // alpha in [0, 256]
+let new_r = ((src_r as u32 * alpha + dst_r * inv_alpha) >> 8).min(255);
 ```
 
 **Error Analysis**:
 
-Let x = src × α + dst × (255 - α).
-- Floating: result_f = x / 255
-- Fixed: result_i = (x + 128) / 255 (with rounding)
+The implementation uses 8.8 fixed-point: alpha ∈ [0, 256], where 256 = fully opaque.
+Let x = src × α + dst × (256 - α).
+- Floating: result_f = (src × α/256) + dst × (1 - α/256)
+- Fixed: result_i = (x >> 8) = floor(x / 256)
 
-Maximum error:
+Maximum error from truncation (no rounding bias):
 ```
-|result_i - result_f| = |((x + 128) / 255) - (x / 255)|
-                      ≤ |(x + 128 - x) / 255| + rounding
-                      = 128/255 + 0.5
+|result_i - result_f| = |floor(x/256) - x/256|
+                      ≤ 255/256
                       < 1
 ```
 
@@ -122,9 +121,9 @@ pub fn blend_pixel_fixed(dst: u32, src_r: u8, src_g: u8, src_b: u8, alpha: u32) 
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 5.1 | `result = src × α + dst × (1-α)` | `optimized.rs:231-233` | `src_r * alpha + dst_r * inv_alpha` |
-| 5.1 | `+ 128` rounding bias | `optimized.rs:231` | `>> 8` (shift division) |
-| 5.1 | Error bound ≤ 1 | N/A | Guaranteed by integer arithmetic |
+| 5.1 | `result = src × α + dst × (256-α)` | `optimized.rs:231-233` | `src_r * alpha + dst_r * inv_alpha` |
+| 5.1 | Divide-by-256 via shift | `optimized.rs:231` | `>> 8` (bit-shift division, no rounding bias) |
+| 5.1 | Error bound ≤ 1 | N/A | Guaranteed by integer truncation |
 
 ### Verification Commands
 

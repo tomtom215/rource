@@ -393,7 +393,7 @@ Floyd's algorithm verifies no *short* cycles exist (cannot verify full 2^64 peri
 
 ## 13.11 Implementation Correctness
 
-**Implementation** (`crates/rource-core/src/scene/tree.rs:621-693`):
+**Implementation** (`crates/rource-core/src/scene/tree.rs:642-692`):
 
 ```rust
 pub fn detect_ancestor_cycle(&self, id: DirId) -> bool {
@@ -413,12 +413,12 @@ pub fn detect_ancestor_cycle(&self, id: DirId) -> bool {
     loop {
         if tortoise == hare { return true; }  // Cycle detected
 
-        let Some(next_t) = get_parent(tortoise) else { return false };
-        let Some(h1) = get_parent(hare) else { return false };
-        let Some(next_h) = get_parent(h1) else { return false };
+        let Some(next_tortoise) = get_parent(tortoise) else { return false };
+        let Some(hare_mid) = get_parent(hare) else { return false };
+        let Some(next_hare) = get_parent(hare_mid) else { return false };
 
-        tortoise = next_t;
-        hare = next_h;
+        tortoise = next_tortoise;
+        hare = next_hare;
     }
 }
 ```
@@ -524,15 +524,15 @@ DOI: 10.1007/BF01933190
 
 | Component | File | Lines |
 |-----------|------|-------|
-| detect_ancestor_cycle | `crates/rource-core/src/scene/tree.rs` | 642-693 |
+| detect_ancestor_cycle | `crates/rource-core/src/scene/tree.rs` | 642-692 |
 | Test cases | `crates/rource-core/src/scene/tree.rs` | 851-954 |
 
 ### Mathematical-Code Correspondence
 
 | Theorem | Mathematical Expression | Code Location | Implementation |
 |---------|------------------------|---------------|----------------|
-| 13.1 | tortoise = f(tortoise) | `tree.rs:669` | `tortoise = next_t` |
-| 13.1 | hare = f(f(hare)) | `tree.rs:670-671` | Two get_parent calls |
+| 13.1 | tortoise = f(tortoise) | `tree.rs:690` | `tortoise = next_tortoise` |
+| 13.1 | hare = f(f(hare)) | `tree.rs:681-688` | Two get_parent calls |
 | 13.4 | O(1) space | struct | Only 2 pointers maintained |
 | 13.5 | O(μ + λ) time | loop | Terminates on meeting or root |
 
