@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770650020726,
+  "lastUpdate": 1770666281733,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5912,6 +5912,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/5ee44cc69601e7e1736c5442c6322ab2058ce2c8"
         },
         "date": 1770650019702,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3913880,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3269376,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f34194e10ef7576ef6084ae347458353b35def8",
+          "message": "Merge pull request #281 from tomtom215/claude/add-code-documentation-tuwZp\n\nFix documentation accuracy: Coq syntax, field names, paths, and metrics",
+          "timestamp": "2026-02-09T20:38:59+01:00",
+          "tree_id": "198de6bf698fdffeb110f47ce9643fc819377d0a",
+          "url": "https://github.com/tomtom215/rource/commit/7f34194e10ef7576ef6084ae347458353b35def8"
+        },
+        "date": 1770666280493,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
