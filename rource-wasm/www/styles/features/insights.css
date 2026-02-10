@@ -1,0 +1,424 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Repository Insights Dashboard Styles
+ *
+ * Mobile-first responsive design for the insights panel.
+ * Touch targets >= 44px, body text >= 14px, contrast >= 4.5:1.
+ */
+
+/* ===== Panel Container ===== */
+
+.insights-panel {
+    margin-top: var(--spacing-md);
+}
+
+.insights-panel.collapsed .insights-tabs,
+.insights-panel.collapsed .insights-content {
+    display: none;
+}
+
+.insights-panel .panel-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.insights-panel .panel-header .insights-icon {
+    flex-shrink: 0;
+}
+
+/* ===== Tab Bar ===== */
+
+.insights-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 var(--spacing-sm);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--border);
+}
+
+.insights-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.insights-tab-btn {
+    flex: 0 0 auto;
+    min-height: 44px;
+    min-width: 44px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.insights-tab-btn:hover {
+    color: var(--text-secondary);
+}
+
+.insights-tab-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+}
+
+.insights-tab-btn.active,
+.insights-tab-btn[aria-selected="true"] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* ===== Tab Content ===== */
+
+.insights-content {
+    padding: var(--spacing-sm);
+}
+
+.insights-tab-panel {
+    display: none;
+}
+
+.insights-tab-panel.active {
+    display: block;
+}
+
+/* ===== Metric Sections ===== */
+
+.insights-metric {
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.insights-metric:last-child {
+    border-bottom: none;
+}
+
+.insights-metric-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-xs);
+}
+
+.insights-metric-desc {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0 0 var(--spacing-sm);
+    line-height: 1.4;
+}
+
+.insights-citation {
+    display: block;
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--text-muted);
+    margin-top: var(--spacing-sm);
+    opacity: 0.8;
+}
+
+/* ===== Key-Value Lists ===== */
+
+.insights-kv-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.insights-kv-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: var(--spacing-xs) 0;
+    font-size: 0.875rem;
+}
+
+.insights-kv-key {
+    color: var(--text-secondary);
+}
+
+.insights-kv-value {
+    color: var(--text-primary);
+    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-weight: 500;
+}
+
+/* ===== Data Tables ===== */
+
+.insights-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: var(--spacing-xs) 0;
+}
+
+.insights-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.insights-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.insights-table th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+}
+
+.insights-table th.num {
+    text-align: right;
+}
+
+.insights-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+.insights-table td.num {
+    text-align: right;
+    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    white-space: nowrap;
+}
+
+.insights-table td.filepath {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.75rem;
+}
+
+.insights-table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+/* Risk color coding (NOT the only information channel - text labels are added) */
+.insights-table tr.risk-high td:first-child {
+    border-left: 3px solid var(--error);
+}
+
+.insights-table tr.risk-medium td:first-child {
+    border-left: 3px solid var(--warning);
+}
+
+/* Hidden rows for "show all" toggle */
+.insights-hidden-row {
+    display: none;
+}
+
+.insights-metric.expanded .insights-hidden-row {
+    display: table-row;
+}
+
+/* ===== Show All Button ===== */
+
+.insights-show-all {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--accent-blue);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.insights-show-all:hover {
+    background: var(--bg-secondary);
+}
+
+.insights-show-all:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+/* ===== Badges ===== */
+
+.insights-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: var(--radius-full);
+    text-transform: capitalize;
+}
+
+.insights-badge-core {
+    background: rgba(63, 185, 80, 0.15);
+    color: var(--success);
+}
+
+.insights-badge-peripheral {
+    background: rgba(210, 153, 34, 0.15);
+    color: var(--warning);
+}
+
+.insights-badge-drive-by {
+    background: rgba(139, 148, 158, 0.15);
+    color: var(--text-muted);
+}
+
+.insights-badge-unknown {
+    background: rgba(139, 148, 158, 0.1);
+    color: var(--text-muted);
+}
+
+/* ===== Loading State ===== */
+
+.insights-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xl);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.insights-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: insights-spin 0.8s linear infinite;
+}
+
+@keyframes insights-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ===== Empty State ===== */
+
+.insights-empty {
+    padding: var(--spacing-lg);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* ===== Bottom Sheet Integration ===== */
+
+.bottom-sheet .insights-summary {
+    padding: var(--spacing-sm);
+}
+
+.insights-summary-stats {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.insights-summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+}
+
+.insights-summary-stat .stat-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+}
+
+.insights-summary-stat .stat-label {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ===== Responsive: Desktop ===== */
+
+@media (min-width: 769px) {
+    .insights-tabs {
+        padding: 0 var(--spacing-md);
+    }
+
+    .insights-content {
+        padding: var(--spacing-md);
+    }
+
+    .insights-table td.filepath {
+        max-width: 320px;
+    }
+
+    .insights-kv-row {
+        font-size: 0.9375rem;
+    }
+}
+
+/* ===== Responsive: Small Mobile ===== */
+
+@media (max-width: 374px) {
+    .insights-tab-btn {
+        padding: var(--spacing-sm) var(--spacing-xs);
+        font-size: 0.75rem;
+    }
+
+    .insights-table td.filepath {
+        max-width: 120px;
+    }
+}
+
+/* ===== Light Theme ===== */
+
+.light-theme .insights-tab-btn {
+    color: #57606a;
+}
+
+.light-theme .insights-tab-btn.active,
+.light-theme .insights-tab-btn[aria-selected="true"] {
+    color: var(--accent);
+}
+
+.light-theme .insights-table thead th {
+    background: var(--bg-secondary);
+}
+
+.light-theme .insights-badge-core {
+    background: rgba(26, 127, 55, 0.12);
+    color: #1a7f37;
+}
+
+.light-theme .insights-badge-peripheral {
+    background: rgba(159, 106, 0, 0.12);
+    color: #9f6a00;
+}
+
+/* ===== Reduced Motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+    .insights-spinner {
+        animation: none;
+        opacity: 0.5;
+    }
+}

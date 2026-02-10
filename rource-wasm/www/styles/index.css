@@ -79,5 +79,8 @@
 /* iOS-style bottom sheet for mobile */
 @import url('./features/bottom-sheet.css');
 
+/* Repository insights dashboard */
+@import url('./features/insights.css');
+
 /* Mobile responsive overrides (should be last to override other styles) */
 @import url('./features/mobile.css');

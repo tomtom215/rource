@@ -287,3 +287,306 @@ export function getCommitDirectoryCount() {
     }
     return 0;
 }
+
+// ============================================================
+// Repository Insights API
+//
+// Wrappers for the 21 insights analysis methods.
+// All methods return parsed JSON objects (or null/[] on failure).
+// Insights are computed from commit history, not per-frame data.
+// ============================================================
+
+/**
+ * Parses a JSON string returned by a WASM insights method.
+ * @param {string} methodName - Method name for error logging
+ * @param {string|null} json - JSON string from WASM
+ * @param {*} defaultValue - Fallback value on parse failure
+ * @returns {*} Parsed JSON or default value
+ */
+function parseInsightsJson(methodName, json, defaultValue) {
+    if (json == null) return defaultValue;
+    try {
+        return JSON.parse(json);
+    } catch (e) {
+        if (CONFIG.LOG_WASM_ERRORS) {
+            console.warn(`[Insights parse error:${methodName}]`, e);
+        }
+        return defaultValue;
+    }
+}
+
+/**
+ * Returns the full insights report for the loaded repository.
+ * Contains all 20 research-backed metrics in a single response.
+ * @returns {Object|null} Complete InsightsReport or null if no commits loaded
+ */
+export function getInsights() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getInsights', () => rource.getInsights(), null);
+        return parseInsightsJson('getInsights', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns a dashboard summary: top hotspots, risk directories, and couplings.
+ * @returns {Object|null} Summary object or null
+ */
+export function getInsightsSummary() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getInsightsSummary', () => rource.getInsightsSummary(), null);
+        return parseInsightsJson('getInsightsSummary', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns the top N file hotspots (defect-prone files).
+ * @param {number} [limit=20] - Maximum number of hotspots
+ * @returns {Array} Hotspot objects sorted by score
+ */
+export function getHotspots(limit = 20) {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getHotspots', () => rource.getHotspots(limit), null);
+        return parseInsightsJson('getHotspots', json, []);
+    }
+    return [];
+}
+
+/**
+ * Returns change coupling pairs (files that frequently co-change).
+ * @param {number} [limit=20] - Maximum number of pairs
+ * @returns {Array} Coupling pair objects
+ */
+export function getChangeCoupling(limit = 20) {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getChangeCoupling', () => rource.getChangeCoupling(limit), null);
+        return parseInsightsJson('getChangeCoupling', json, []);
+    }
+    return [];
+}
+
+/**
+ * Returns bus factor analysis per directory.
+ * @returns {Array} Bus factor objects per directory
+ */
+export function getBusFactors() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getBusFactors', () => rource.getBusFactors(), null);
+        return parseInsightsJson('getBusFactors', json, []);
+    }
+    return [];
+}
+
+/**
+ * Returns temporal activity patterns (7x24 heatmap, peaks, bursts).
+ * @returns {Object|null} Temporal patterns object
+ */
+export function getTemporalPatterns() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTemporalPatterns', () => rource.getTemporalPatterns(), null);
+        return parseInsightsJson('getTemporalPatterns', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns codebase growth trajectory over time.
+ * @returns {Object|null} Growth data with timeline and trend
+ */
+export function getCodebaseGrowth() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCodebaseGrowth', () => rource.getCodebaseGrowth(), null);
+        return parseInsightsJson('getCodebaseGrowth', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns sliding-window change entropy analysis.
+ * @returns {Object|null} Entropy data with per-window values
+ */
+export function getChangeEntropy() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getChangeEntropy', () => rource.getChangeEntropy(), null);
+        return parseInsightsJson('getChangeEntropy', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns per-developer commit cadence analysis.
+ * @returns {Object|null} Cadence data per developer
+ */
+export function getCommitCadence() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCommitCadence', () => rource.getCommitCadence(), null);
+        return parseInsightsJson('getCommitCadence', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns developer activity profiles (core/peripheral/drive-by).
+ * @returns {Object|null} Profile classifications per developer
+ */
+export function getDeveloperProfiles() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getDeveloperProfiles', () => rource.getDeveloperProfiles(), null);
+        return parseInsightsJson('getDeveloperProfiles', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns developer focus and file diffusion analysis.
+ * @returns {Object|null} Focus/diffusion scores per developer and file
+ */
+export function getDeveloperFocus() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getDeveloperFocus', () => rource.getDeveloperFocus(), null);
+        return parseInsightsJson('getDeveloperFocus', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns developer collaboration network analysis.
+ * @returns {Object|null} Network metrics (density, components, centrality)
+ */
+export function getDeveloperNetwork() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getDeveloperNetwork', () => rource.getDeveloperNetwork(), null);
+        return parseInsightsJson('getDeveloperNetwork', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns knowledge map and silo analysis (Shannon entropy of ownership).
+ * @returns {Object|null} Knowledge distribution data
+ */
+export function getKnowledgeMap() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getKnowledgeMap', () => rource.getKnowledgeMap(), null);
+        return parseInsightsJson('getKnowledgeMap', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns co-change modularity / DSM analysis.
+ * @returns {Object|null} Modularity index and cross-module coupling
+ */
+export function getModularity() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getModularity', () => rource.getModularity(), null);
+        return parseInsightsJson('getModularity', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns sociotechnical congruence analysis.
+ * @returns {Object|null} Congruence score and alignment data
+ */
+export function getCongruence() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCongruence', () => rource.getCongruence(), null);
+        return parseInsightsJson('getCongruence', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns work-type mix analysis (feature/maintenance/cleanup ratio).
+ * @returns {Object|null} Work type percentages
+ */
+export function getWorkTypeMix() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getWorkTypeMix', () => rource.getWorkTypeMix(), null);
+        return parseInsightsJson('getWorkTypeMix', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns circadian (time-of-day) risk patterns.
+ * @returns {Object|null} Risk scores per hour/day
+ */
+export function getCircadianRisk() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getCircadianRisk', () => rource.getCircadianRisk(), null);
+        return parseInsightsJson('getCircadianRisk', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns per-file change burst detection.
+ * @returns {Object|null} Burst data per file
+ */
+export function getChangeBursts() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getChangeBursts', () => rource.getChangeBursts(), null);
+        return parseInsightsJson('getChangeBursts', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns contribution inequality / Gini coefficient analysis.
+ * @returns {Object|null} Gini coefficient and Lorenz curve data
+ */
+export function getContributionInequality() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getContributionInequality', () => rource.getContributionInequality(), null);
+        return parseInsightsJson('getContributionInequality', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns file lifecycle analysis (active/stable/ephemeral/dead/deleted).
+ * @returns {Object|null} Lifecycle stage distribution
+ */
+export function getFileLifecycles() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getFileLifecycles', () => rource.getFileLifecycles(), null);
+        return parseInsightsJson('getFileLifecycles', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns file survival analysis (Kaplan-Meier estimator).
+ * @returns {Object|null} Survival curve data
+ */
+export function getFileSurvival() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getFileSurvival', () => rource.getFileSurvival(), null);
+        return parseInsightsJson('getFileSurvival', json, null);
+    }
+    return null;
+}
