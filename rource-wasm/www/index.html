@@ -69,6 +69,8 @@
     <link rel="modulepreload" href="js/features/bottom-sheet.js">
     <link rel="modulepreload" href="js/features/insights.js">
     <link rel="modulepreload" href="js/features/view-manager.js">
+    <link rel="modulepreload" href="js/ui/components.js">
+    <link rel="modulepreload" href="js/ui/sidebar-template.js">
 
     <!-- Critical CSS (inlined for fast initial render - eliminates render blocking) -->
     <style>
@@ -975,27 +977,7 @@
                     <span class="panel-toggle" aria-hidden="true">&#9660;</span>
                 </button>
                 <div class="panel-body" id="panel-shortcuts-body">
-                    <div class="shortcut-grid">
-                        <div class="shortcut-item"><span>Play/Pause</span><kbd>Space</kbd></div>
-                        <div class="shortcut-item"><span>Zoom In</span><kbd>+</kbd></div>
-                        <div class="shortcut-item"><span>Zoom Out</span><kbd>-</kbd></div>
-                        <div class="shortcut-item"><span>Reset View</span><kbd>R</kbd></div>
-                        <div class="shortcut-item"><span>Pan</span><kbd>Arrows</kbd></div>
-                        <div class="shortcut-item"><span>Labels</span><kbd>L</kbd></div>
-                        <div class="shortcut-item"><span>Step Fwd</span><kbd>&gt;</kbd></div>
-                        <div class="shortcut-item"><span>Step Back</span><kbd>&lt;</kbd></div>
-                        <div class="shortcut-item"><span>Speed Down</span><kbd>[</kbd></div>
-                        <div class="shortcut-item"><span>Speed Up</span><kbd>]</kbd></div>
-                        <div class="shortcut-item"><span>Perf Stats</span><kbd>P</kbd></div>
-                        <div class="shortcut-item"><span>Authors</span><kbd>A</kbd></div>
-                        <div class="shortcut-item"><span>Full Map</span><kbd>M</kbd></div>
-                        <div class="shortcut-item"><span>Record</span><kbd>V</kbd></div>
-                        <div class="shortcut-item"><span>Text Size +</span><kbd>Shift+&#8593;</kbd></div>
-                        <div class="shortcut-item"><span>Text Size -</span><kbd>Shift+&#8595;</kbd></div>
-                    </div>
-                    <p class="help-text" style="margin-top: 0.75rem;">
-                        <strong>Mouse:</strong> Drag to pan, scroll to zoom
-                    </p>
+                    <!-- Content injected by js/ui/components.js -->
                 </div>
             </div>
 

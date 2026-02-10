@@ -70,6 +70,7 @@ import {
 import { initReducedMotion, setRourceInstance as setReducedMotionRource } from './features/reduced-motion.js';
 import { initInsights, invalidateInsightsCache, loadInsightsSummary, renderDashboard } from './features/insights.js';
 import { initViewManager, switchToVisualization, switchToAnalytics, getCurrentView } from './features/view-manager.js';
+import { initComponents } from './ui/components.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -448,6 +449,9 @@ async function main() {
     try {
         // Initialize WASM
         await init();
+
+        // Inject component HTML templates (must run before initDomElements)
+        initComponents();
 
         // Initialize DOM references
         initDomElements();
