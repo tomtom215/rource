@@ -858,4 +858,145 @@ mod tests {
             "bus factors should be sorted ascending"
         );
     }
+
+    #[test]
+    fn test_greedy_set_cover_exhaustion() {
+        // Covers lines 191 (removed.contains_key) and 201 (best_contributor None break)
+        // Scenario: files with overlapping contributors that require multiple removal rounds
+        let mut authors_a: FxHashMap<String, u32> = FxHashMap::default();
+        authors_a.insert("Alice".to_string(), 3);
+        authors_a.insert("Bob".to_string(), 1);
+
+        let mut authors_b: FxHashMap<String, u32> = FxHashMap::default();
+        authors_b.insert("Bob".to_string(), 3);
+        authors_b.insert("Carol".to_string(), 1);
+
+        let mut authors_c: FxHashMap<String, u32> = FxHashMap::default();
+        authors_c.insert("Carol".to_string(), 3);
+        authors_c.insert("Alice".to_string(), 1);
+
+        let ownership = vec![
+            compute_file_ownership("src/a.rs".to_string(), &authors_a),
+            compute_file_ownership("src/b.rs".to_string(), &authors_b),
+            compute_file_ownership("src/c.rs".to_string(), &authors_c),
+        ];
+
+        let factors = compute_bus_factors(&ownership);
+        assert!(!factors.is_empty());
+        // With 3 files, 3 authors, each covering 2 files, bus_factor should be 2
+        // Removing any one author leaves all files with at least 1 contributor
+        // Removing 2 authors orphans a file
+        let src_factor = factors.iter().find(|f| f.directory == "src").unwrap();
+        assert!(
+            src_factor.bus_factor >= 2,
+            "bus_factor={}, expected >= 2",
+            src_factor.bus_factor
+        );
+        assert!(
+            src_factor.critical_contributors.len() == src_factor.bus_factor,
+            "critical count mismatch"
+        );
+    }
+
+    #[test]
+    fn test_single_contributor_per_file_disjoint() {
+        // Covers the removed.contains_key skip path more thoroughly
+        // Each file has a unique sole contributor → bus_factor = 1
+        let mut a1: FxHashMap<String, u32> = FxHashMap::default();
+        a1.insert("Alice".to_string(), 5);
+        let mut a2: FxHashMap<String, u32> = FxHashMap::default();
+        a2.insert("Bob".to_string(), 5);
+        let mut a3: FxHashMap<String, u32> = FxHashMap::default();
+        a3.insert("Carol".to_string(), 5);
+
+        let ownership = vec![
+            compute_file_ownership("src/a.rs".to_string(), &a1),
+            compute_file_ownership("src/b.rs".to_string(), &a2),
+            compute_file_ownership("src/c.rs".to_string(), &a3),
+        ];
+
+        let factors = compute_bus_factors(&ownership);
+        let src_factor = factors.iter().find(|f| f.directory == "src").unwrap();
+        assert_eq!(
+            src_factor.bus_factor, 1,
+            "disjoint contributors → bus_factor=1"
+        );
+    }
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+        use rustc_hash::FxHashMap;
+
+        proptest! {
+            /// Contributor shares always sum to approximately 1.0.
+            #[test]
+            fn prop_shares_sum_to_one(n_authors in 1usize..8) {
+                let mut authors: FxHashMap<String, u32> = FxHashMap::default();
+                for a in 0..n_authors {
+                    authors.insert(format!("dev{a}"), u32::try_from(a + 1).unwrap());
+                }
+                let ownership = compute_file_ownership("test.rs".to_string(), &authors);
+                let sum: f64 = ownership.contributors.iter().map(|c| c.share).sum();
+                prop_assert!((sum - 1.0).abs() < 1e-10,
+                    "share sum={} != 1.0", sum);
+            }
+
+            /// Top owner has the highest share.
+            #[test]
+            fn prop_top_owner_highest(n_authors in 1usize..8) {
+                let mut authors: FxHashMap<String, u32> = FxHashMap::default();
+                for a in 0..n_authors {
+                    authors.insert(format!("dev{a}"), u32::try_from(a + 1).unwrap());
+                }
+                let ownership = compute_file_ownership("test.rs".to_string(), &authors);
+                if let Some(first) = ownership.contributors.first() {
+                    prop_assert_eq!(&ownership.top_owner, &first.author);
+                    for c in &ownership.contributors {
+                        prop_assert!(first.share >= c.share - 1e-10,
+                            "top share {} < contributor share {}", first.share, c.share);
+                    }
+                }
+            }
+
+            /// Bus factor is always >= 1 when contributors exist.
+            #[test]
+            fn prop_bus_factor_positive(n_files in 1usize..5, n_authors in 1usize..4) {
+                let mut ownership_list: Vec<FileOwnership> = Vec::new();
+                for f in 0..n_files {
+                    let mut authors: FxHashMap<String, u32> = FxHashMap::default();
+                    for a in 0..n_authors {
+                        authors.insert(format!("dev{a}"), 1);
+                    }
+                    ownership_list.push(compute_file_ownership(format!("src/f{f}.rs"), &authors));
+                }
+                let factors = compute_bus_factors(&ownership_list);
+                for factor in &factors {
+                    if factor.contributor_count > 0 {
+                        prop_assert!(factor.bus_factor >= 1,
+                            "bus_factor={} < 1", factor.bus_factor);
+                    }
+                }
+            }
+
+            /// Bus factor ≤ contributor count.
+            #[test]
+            fn prop_bus_factor_leq_contributors(n_files in 1usize..5, n_authors in 1usize..5) {
+                let mut ownership_list: Vec<FileOwnership> = Vec::new();
+                for f in 0..n_files {
+                    let mut authors: FxHashMap<String, u32> = FxHashMap::default();
+                    for a in 0..n_authors {
+                        authors.insert(format!("dev{a}"), u32::try_from(a + 1).unwrap());
+                    }
+                    ownership_list.push(compute_file_ownership(format!("src/f{f}.rs"), &authors));
+                }
+                let factors = compute_bus_factors(&ownership_list);
+                for factor in &factors {
+                    prop_assert!(factor.bus_factor <= factor.contributor_count,
+                        "bus_factor={} > contributor_count={}",
+                        factor.bus_factor, factor.contributor_count);
+                }
+            }
+        }
+    }
 }

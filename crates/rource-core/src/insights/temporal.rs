@@ -685,4 +685,63 @@ mod tests {
             "10 commits spanning exactly BURST_WINDOW_SECONDS should be a burst"
         );
     }
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Commits per day has exactly 7 bins.
+            #[test]
+            fn prop_day_bins_count(n_commits in 1usize..20) {
+                let mut acc = TemporalAccumulator::new();
+                for i in 0..n_commits {
+                    acc.record_commit(i64::try_from(i).unwrap() * 86400, 1);
+                }
+                let report = acc.finalize();
+                prop_assert_eq!(report.commits_per_day.len(), 7);
+                prop_assert_eq!(report.commits_per_hour.len(), 24);
+            }
+
+            /// Sum of commits_per_day equals sum of commits_per_hour (total commits recorded in heatmap).
+            #[test]
+            fn prop_day_hour_sum_equal(n_commits in 1usize..30) {
+                let mut acc = TemporalAccumulator::new();
+                for i in 0..n_commits {
+                    acc.record_commit(i64::try_from(i).unwrap() * 3600, 1);
+                }
+                let report = acc.finalize();
+                let day_sum: u32 = report.commits_per_day.iter().sum();
+                let hour_sum: u32 = report.commits_per_hour.iter().sum();
+                prop_assert_eq!(day_sum, hour_sum,
+                    "day_sum={} != hour_sum={}", day_sum, hour_sum);
+            }
+
+            /// peak_hour is in [0, 23] and peak_day is in [0, 6].
+            #[test]
+            fn prop_peak_bounded(n_commits in 1usize..20) {
+                let mut acc = TemporalAccumulator::new();
+                for i in 0..n_commits {
+                    acc.record_commit(i64::try_from(i).unwrap() * 7200, 2);
+                }
+                let report = acc.finalize();
+                prop_assert!(report.peak_hour <= 23, "peak_hour={}", report.peak_hour);
+                prop_assert!(report.peak_day <= 6, "peak_day={}", report.peak_day);
+            }
+
+            /// avg_files_in_bursts and avg_files_outside_bursts are non-negative.
+            #[test]
+            fn prop_avg_files_non_negative(n_commits in 1usize..30) {
+                let mut acc = TemporalAccumulator::new();
+                for i in 0..n_commits {
+                    acc.record_commit(i64::try_from(i).unwrap() * 60, 3);
+                }
+                let report = acc.finalize();
+                prop_assert!(report.avg_files_in_bursts >= 0.0,
+                    "avg_in={} < 0", report.avg_files_in_bursts);
+                prop_assert!(report.avg_files_outside_bursts >= 0.0,
+                    "avg_out={} < 0", report.avg_files_outside_bursts);
+            }
+        }
+    }
 }

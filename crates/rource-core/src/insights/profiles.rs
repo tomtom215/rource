@@ -551,4 +551,85 @@ mod tests {
             alice.active_span_days
         );
     }
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Classification counts sum to total_contributors.
+            #[test]
+            fn prop_classification_sum(n_authors in 1usize..10) {
+                let mut acc = ProfilesAccumulator::new();
+                let mut total_commits = 0usize;
+                for a in 0..n_authors {
+                    let name = format!("dev{a}");
+                    let commits = a + 1; // 1, 2, 3, ...
+                    for c in 0..commits {
+                        acc.record_commit(&name, i64::try_from(c).unwrap() * 86400, &["a.rs"]);
+                        total_commits += 1;
+                    }
+                }
+                let t_max = i64::try_from(n_authors * 10).unwrap() * 86400;
+                let report = acc.finalize(total_commits, 0, t_max);
+                prop_assert_eq!(
+                    report.core_count + report.peripheral_count + report.drive_by_count,
+                    report.total_contributors,
+                    "classification counts don't sum to total"
+                );
+            }
+
+            /// Developers are sorted descending by commit_count.
+            #[test]
+            fn prop_sorted_descending(n_authors in 2usize..8) {
+                let mut acc = ProfilesAccumulator::new();
+                let mut total = 0usize;
+                for a in 0..n_authors {
+                    let name = format!("dev{a}");
+                    let commits = (a + 1) * 3;
+                    for c in 0..commits {
+                        acc.record_commit(&name, i64::try_from(c).unwrap() * 86400, &["a.rs"]);
+                        total += 1;
+                    }
+                }
+                let t_max = i64::try_from(n_authors * 30).unwrap() * 86400;
+                let report = acc.finalize(total, 0, t_max);
+                for w in report.developers.windows(2) {
+                    prop_assert!(w[0].commit_count >= w[1].commit_count,
+                        "not sorted: {} < {}", w[0].commit_count, w[1].commit_count);
+                }
+            }
+
+            /// preferred_directories has at most 3 entries.
+            #[test]
+            fn prop_preferred_dirs_capped(n_dirs in 1usize..10) {
+                let mut acc = ProfilesAccumulator::new();
+                let dirs: Vec<String> = (0..n_dirs).map(|i| format!("dir{i}/file.rs")).collect();
+                for (i, dir) in dirs.iter().enumerate() {
+                    acc.record_commit("Alice", i64::try_from(i).unwrap() * 86400, &[dir.as_str()]);
+                }
+                let report = acc.finalize(n_dirs, 0, i64::try_from(n_dirs).unwrap() * 86400);
+                for dev in &report.developers {
+                    prop_assert!(dev.preferred_directories.len() <= 3,
+                        "preferred_directories has {} entries", dev.preferred_directories.len());
+                }
+            }
+
+            /// Drive-by developers always have ≤ 2 commits.
+            #[test]
+            fn prop_drive_by_threshold(n_commits in 1usize..3) {
+                let mut acc = ProfilesAccumulator::new();
+                for c in 0..n_commits {
+                    acc.record_commit("DriveBy", i64::try_from(c).unwrap() * 86400, &["a.rs"]);
+                }
+                // Make total commits large so this person can't be Core
+                let report = acc.finalize(100, 0, 100 * 86400);
+                let dev = &report.developers[0];
+                if dev.classification == ContributorType::DriveBy {
+                    prop_assert!(dev.commit_count <= 2,
+                        "DriveBy with {} commits", dev.commit_count);
+                }
+            }
+        }
+    }
 }

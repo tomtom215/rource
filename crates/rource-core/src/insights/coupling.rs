@@ -484,4 +484,88 @@ mod tests {
             "support=3 with min_support=4 should be excluded"
         );
     }
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn file(path: &str) -> crate::insights::FileRecord {
+            crate::insights::FileRecord {
+                path: path.to_string(),
+                action: crate::insights::FileActionKind::Modify,
+            }
+        }
+
+        proptest! {
+            /// Confidence values are always in [0, 1].
+            #[test]
+            fn prop_confidence_bounded(n_commits in 2usize..10, n_files in 2usize..6) {
+                let mut acc = CouplingAccumulator::new();
+                let file_names: Vec<String> = (0..n_files).map(|i| format!("f{i}.rs")).collect();
+                for c in 0..n_commits {
+                    // Each commit touches a subset of files
+                    let subset: Vec<_> = file_names.iter()
+                        .enumerate()
+                        .filter(|(i, _)| (c + i) % 2 == 0)
+                        .map(|(_, name)| file(name))
+                        .collect();
+                    if subset.len() >= 2 {
+                        acc.record_commit(&subset);
+                    }
+                }
+                let pairs = acc.finalize(1);
+                for pair in &pairs {
+                    prop_assert!(pair.confidence_ab >= 0.0 && pair.confidence_ab <= 1.0 + 1e-10,
+                        "confidence_ab={} out of [0,1]", pair.confidence_ab);
+                    prop_assert!(pair.confidence_ba >= 0.0 && pair.confidence_ba <= 1.0 + 1e-10,
+                        "confidence_ba={} out of [0,1]", pair.confidence_ba);
+                }
+            }
+
+            /// Coupling pairs are always lexicographically ordered (file_a < file_b).
+            #[test]
+            fn prop_lex_order(n_commits in 2usize..8, n_files in 2usize..6) {
+                let mut acc = CouplingAccumulator::new();
+                let file_names: Vec<String> = (0..n_files).map(|i| format!("f{i}.rs")).collect();
+                for _ in 0..n_commits {
+                    let files: Vec<_> = file_names.iter().map(|n| file(n)).collect();
+                    acc.record_commit(&files);
+                }
+                let pairs = acc.finalize(1);
+                for pair in &pairs {
+                    prop_assert!(pair.file_a < pair.file_b,
+                        "file_a={} >= file_b={}", pair.file_a, pair.file_b);
+                }
+            }
+
+            /// Support is always ≤ min(total_a, total_b).
+            #[test]
+            fn prop_support_bounded(n_commits in 2usize..10) {
+                let mut acc = CouplingAccumulator::new();
+                for _ in 0..n_commits {
+                    acc.record_commit(&[file("a.rs"), file("b.rs")]);
+                }
+                let pairs = acc.finalize(1);
+                for pair in &pairs {
+                    let min_total = pair.total_a.min(pair.total_b);
+                    prop_assert!(pair.support <= min_total,
+                        "support={} > min(total_a={}, total_b={})",
+                        pair.support, pair.total_a, pair.total_b);
+                }
+            }
+
+            /// Number of pairs from k unique files is at most C(k, 2) = k*(k-1)/2.
+            #[test]
+            fn prop_pair_count_bounded(n_files in 2usize..8) {
+                let mut acc = CouplingAccumulator::new();
+                let files: Vec<_> = (0..n_files).map(|i| file(&format!("f{i}.rs"))).collect();
+                acc.record_commit(&files);
+                acc.record_commit(&files); // Need support >= 2
+                let pairs = acc.finalize(2);
+                let max_pairs = n_files * (n_files - 1) / 2;
+                prop_assert!(pairs.len() <= max_pairs,
+                    "pairs={} > C({},2)={}", pairs.len(), n_files, max_pairs);
+            }
+        }
+    }
 }

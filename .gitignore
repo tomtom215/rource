@@ -19,6 +19,7 @@ Thumbs.db
 *.profdata
 *.proptest-regressions
 mutants.out/
+mutants.out.old/
 mutants-output/
 
 # Visual regression test output (but NOT golden images)

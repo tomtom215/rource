@@ -821,11 +821,22 @@ Do NOT report security vulnerabilities via public GitHub issues.
   - Coverage: 97.6% line coverage across all 20 insights modules (1475/1511 lines, tarpaulin --engine Llvm)
   - Total insights tests: 444 (352 + 48 + 6 + 38)
   - Total workspace tests: 3431
+- Yes **Session 7: 48 property tests + 7 coverage/mutation-killing tests** (2026-02-10)
+  - Property tests now cover ALL 20/20 modules (86 total, up from 38)
+  - 7 new coverage tests: out-of-order timestamps, greedy set cover, shrinking trend, time_span mutation
+  - Mutation testing baseline (4 modules sampled):
+    - coupling: 100% (13/13 caught)
+    - work_type: 100% (60/60 caught)
+    - hotspot: 91% (30/33, 2 equivalent mutants documented)
+    - growth: 72% (47/65, trend classification boundary mutations)
+  - 6 equivalent mutants total documented in `.cargo/mutants.toml`
+  - Total insights tests: 499 (444 + 48 property + 7 coverage)
+  - Total workspace tests: 3486
 
 **Remaining**:
-- ⏳ Full baseline run in CI (long-running, ~30+ minutes per crate)
-- ⏳ Record final mutation scores in documentation
-- ⏳ Address any additional test gaps identified in baseline run
+- ⏳ Full mutation baseline across all 20 modules (4 sampled, 16 remaining)
+- ⏳ Kill remaining growth.rs trend classification mutants (18 missed)
+- ⏳ CI integration for mutation score regression gate
 
 #### Problem Statement
 2900+ tests exist but their effectiveness at catching bugs is unquantified.

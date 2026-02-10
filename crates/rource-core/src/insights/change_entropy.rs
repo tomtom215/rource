@@ -642,4 +642,70 @@ mod tests {
             expected_h_norm
         );
     }
+
+    mod property_tests {
+        use super::*;
+        use crate::insights::FileActionKind;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Normalized entropy is always in [0, 1].
+            #[test]
+            fn prop_normalized_entropy_bounded(n_files in 1usize..8, n_events_per_file in 1usize..5) {
+                let mut acc = ChangeEntropyAccumulator::new();
+                for f in 0..n_files {
+                    let path = format!("f{f}.rs");
+                    for e in 0..n_events_per_file {
+                        let ts = i64::try_from(e).unwrap() * 86400;
+                        acc.record_file(&path, FileActionKind::Modify, ts);
+                    }
+                }
+                let t_max = DEFAULT_WINDOW_SECONDS;
+                let report = acc.finalize(0, t_max);
+                for w in &report.windows {
+                    prop_assert!(w.normalized_entropy >= -1e-10,
+                        "H_norm={} < 0", w.normalized_entropy);
+                    prop_assert!(w.normalized_entropy <= 1.0 + 1e-10,
+                        "H_norm={} > 1", w.normalized_entropy);
+                }
+            }
+
+            /// Average normalized entropy is in [0, 1].
+            #[test]
+            fn prop_avg_entropy_bounded(n_files in 1usize..6) {
+                let mut acc = ChangeEntropyAccumulator::new();
+                for f in 0..n_files {
+                    acc.record_file(&format!("f{f}.rs"), FileActionKind::Modify, i64::try_from(f).unwrap() * 86400);
+                }
+                let report = acc.finalize(0, DEFAULT_WINDOW_SECONDS);
+                prop_assert!(report.avg_normalized_entropy >= -1e-10,
+                    "avg={} < 0", report.avg_normalized_entropy);
+                prop_assert!(report.avg_normalized_entropy <= 1.0 + 1e-10,
+                    "avg={} > 1", report.avg_normalized_entropy);
+            }
+
+            /// Single-file window produces zero normalized entropy.
+            #[test]
+            fn prop_single_file_zero_entropy(n_events in 1usize..10) {
+                let mut acc = ChangeEntropyAccumulator::new();
+                for e in 0..n_events {
+                    acc.record_file("only.rs", FileActionKind::Modify, i64::try_from(e).unwrap() * 86400);
+                }
+                let report = acc.finalize(0, DEFAULT_WINDOW_SECONDS);
+                for w in &report.windows {
+                    prop_assert!((w.normalized_entropy).abs() < 1e-10,
+                        "single-file H_norm={} != 0", w.normalized_entropy);
+                }
+            }
+
+            /// Empty accumulator produces empty report.
+            #[test]
+            fn prop_empty_always_default(_seed in 0u32..100) {
+                let acc = ChangeEntropyAccumulator::new();
+                let report = acc.finalize(0, DEFAULT_WINDOW_SECONDS);
+                prop_assert!(report.windows.is_empty());
+                prop_assert!(report.max_entropy_window_idx.is_none());
+            }
+        }
+    }
 }

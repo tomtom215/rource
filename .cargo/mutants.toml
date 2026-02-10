@@ -26,4 +26,14 @@ exclude_re = [
     # p is always > 0.0 for all reachable inputs. The `else { 0.0 }` is dead code.
     # Mutation `> 0.0` → `>= 0.0` changes nothing since p is never exactly 0.0.
     "change_entropy.rs:150.*replace > with >=",
+
+    # EQUIVALENT: HotspotAccumulator::record line 92: `< self.first_seen` vs `<= self.first_seen`.
+    # When timestamp == first_seen, the assignment `self.first_seen = timestamp` is a no-op
+    # (assigns the same value). Observable behavior is identical for all inputs.
+    "hotspot.rs:92.*replace < with <= in HotspotAccumulator::record",
+
+    # EQUIVALENT: HotspotAccumulator::record line 95: `> self.last_seen` vs `>= self.last_seen`.
+    # When timestamp == last_seen, the assignment `self.last_seen = timestamp` is a no-op
+    # (assigns the same value). Observable behavior is identical for all inputs.
+    "hotspot.rs:95.*replace > with >= in HotspotAccumulator::record",
 ]
