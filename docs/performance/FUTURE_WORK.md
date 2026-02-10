@@ -812,6 +812,15 @@ Do NOT report security vulnerabilities via public GitHub issues.
   - Boundary tests for `clamp`, `contrasting` (luminance threshold)
   - Formula verification for `premultiplied`, `blend_over`, `fade`
   - HSL conversion tests for achromatic, primary hues, saturation/lightness
+- Yes **Session 5: 83 mutation-killing tests** across 20 insights modules (2026-02-09)
+  - 4 documented equivalent mutants in `.cargo/mutants.toml`
+- Yes **Session 6: 48 mutation-killing tests + 6 integration tests + 38 property-based tests** (2026-02-10)
+  - Targets 7 NEEDS-HARDENING modules: cadence, coupling, growth, knowledge, ownership, temporal, lifecycle
+  - Integration tests verify full 20-metric pipeline end-to-end
+  - Property-based tests (proptest) verify mathematical invariants across 8 modules
+  - Coverage: 97.6% line coverage across all 20 insights modules (1475/1511 lines, tarpaulin --engine Llvm)
+  - Total insights tests: 444 (352 + 48 + 6 + 38)
+  - Total workspace tests: 3431
 
 **Remaining**:
 - ⏳ Full baseline run in CI (long-running, ~30+ minutes per crate)
