@@ -68,6 +68,7 @@ import {
     updateImmersiveStats
 } from './features/immersive-mode.js';
 import { initReducedMotion, setRourceInstance as setReducedMotionRource } from './features/reduced-motion.js';
+import { initInsights, invalidateInsightsCache } from './features/insights.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -483,6 +484,7 @@ async function main() {
         initFontSizeControl();
         initVideoRecording();
         initBottomSheet();
+        initInsights();
 
         // Wire up bottom sheet actions
         initBottomSheetActions();
@@ -625,6 +627,9 @@ function handleDataLoaded(content, stats, format = 'custom') {
 
     // Reset timeline date labels so they get recalculated
     resetTimelineDateLabels();
+
+    // Invalidate insights cache so it reloads with new data
+    invalidateInsightsCache();
 
     // Parse commits for tooltip
     parsedCommits = parseCommits(content);
