@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770666281733,
+  "lastUpdate": 1770709239623,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -5966,6 +5966,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1255663,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "811b5d00a13bb403f62dcecae3a98a63d0207b82",
+          "message": "Merge pull request #282 from tomtom215/claude/enhance-visualization-insights-wzc96\n\nAdd research-backed insights engine for repository analysis",
+          "timestamp": "2026-02-10T08:38:33+01:00",
+          "tree_id": "3c11bc93c420637768f4eeb3a9e0ef95d7e9107f",
+          "url": "https://github.com/tomtom215/rource/commit/811b5d00a13bb403f62dcecae3a98a63d0207b82"
+        },
+        "date": 1770709238559,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3371465,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1291511,
             "unit": "bytes"
           }
         ]
