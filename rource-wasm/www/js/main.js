@@ -15,7 +15,7 @@ import { CONFIG, getExtensionColor } from './config.js';
 import { telemetry, validateSpeed } from './telemetry.js';
 import { escapeHtml } from './utils.js';
 import {
-    setState, getRource, setRource, hasData, addManagedEventListener
+    setState, get, subscribe, getRource, setRource, hasData, addManagedEventListener
 } from './state.js';
 import { initDomElements, getElement, getAllElements } from './dom.js';
 import {
@@ -68,7 +68,8 @@ import {
     updateImmersiveStats
 } from './features/immersive-mode.js';
 import { initReducedMotion, setRourceInstance as setReducedMotionRource } from './features/reduced-motion.js';
-import { initInsights, invalidateInsightsCache, loadInsightsSummary } from './features/insights.js';
+import { initInsights, invalidateInsightsCache, loadInsightsSummary, renderDashboard } from './features/insights.js';
+import { initViewManager, switchToVisualization, switchToAnalytics, getCurrentView } from './features/view-manager.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -171,6 +172,88 @@ function initBottomSheetActions() {
 
     // Update bottom sheet tech specs when available
     updateBottomSheetTechSpecs();
+}
+
+/**
+ * Initializes analytics dashboard actions.
+ * Wires the "Visualize" button, GitHub URL input, and fetch button.
+ */
+function initAnalyticsDashboardActions() {
+    const vizBtn = document.getElementById('btn-switch-to-viz');
+    const analyticsGithubUrl = document.getElementById('analytics-github-url');
+    const analyticsFetchBtn = document.getElementById('analytics-fetch-btn');
+
+    // "Visualize" button: switch to viz view and auto-play
+    if (vizBtn) {
+        addManagedEventListener(vizBtn, 'click', () => {
+            switchToVisualization();
+            const rource = getRource();
+            if (rource && get('hasLoadedData')) {
+                safeWasmCall('play', () => rource.play(), undefined);
+                updatePlaybackUI();
+            }
+        });
+    }
+
+    // Dashboard GitHub URL fetch
+    if (analyticsGithubUrl && analyticsFetchBtn) {
+        analyticsFetchBtn.disabled = true;
+
+        addManagedEventListener(analyticsGithubUrl, 'input', () => {
+            analyticsFetchBtn.disabled = !analyticsGithubUrl.value.trim();
+        });
+
+        addManagedEventListener(analyticsFetchBtn, 'click', async () => {
+            const input = analyticsGithubUrl.value.trim();
+            if (!input) return;
+
+            // Parse repo from input
+            let repo = input;
+            const urlMatch = input.match(/github\.com\/([^\/]+\/[^\/]+)/);
+            if (urlMatch) {
+                repo = urlMatch[1];
+            }
+
+            analyticsFetchBtn.disabled = true;
+            analyticsGithubUrl.disabled = true;
+
+            try {
+                const logData = await fetchGitHubWithProgress(repo, {
+                    statusEl: document.getElementById('analytics-fetch-status-text'),
+                    progressEl: document.getElementById('analytics-fetch-progress-bar'),
+                });
+
+                if (logData) {
+                    loadLogData(logData, 'custom');
+                    showToast(`Loaded ${repo}`, 'success');
+                } else {
+                    showToast('Failed to fetch repository', 'error');
+                }
+            } catch (error) {
+                showToast('Error fetching repository: ' + error.message, 'error');
+            } finally {
+                analyticsFetchBtn.disabled = false;
+                analyticsGithubUrl.disabled = false;
+            }
+        });
+
+        addManagedEventListener(analyticsGithubUrl, 'keydown', (e) => {
+            if (e.key === 'Enter' && !analyticsFetchBtn.disabled) {
+                analyticsFetchBtn.click();
+            }
+        });
+    }
+
+    // Update repo name in dashboard header when data loads
+    subscribe('hasLoadedData', (loaded) => {
+        if (loaded) {
+            const repoName = document.getElementById('analytics-repo-name');
+            if (repoName && get('commitStats')) {
+                const stats = get('commitStats');
+                repoName.textContent = `${stats.commits || 0} commits across ${stats.files || 0} files`;
+            }
+        }
+    });
 }
 
 /**
@@ -485,9 +568,17 @@ async function main() {
         initVideoRecording();
         initBottomSheet();
         initInsights();
+        initViewManager();
+
+        // Set initial view from URL params
+        const initialView = urlParams.view === 'viz' ? 'viz' : 'analytics';
+        setState({ currentView: initialView });
 
         // Wire up bottom sheet actions
         initBottomSheetActions();
+
+        // Wire up analytics dashboard actions
+        initAnalyticsDashboardActions();
 
         // Initialize mobile toolbar
         initMobileToolbar({
@@ -677,15 +768,20 @@ function handleDataLoaded(content, stats, format = 'custom') {
         }
     }
 
-    // Auto-play the visualization
-    const rource = getRource();
-    if (rource) {
-        safeWasmCall('play', () => rource.play(), undefined);
-        updatePlaybackUI();
+    // Branch on view state
+    if (getCurrentView() === 'analytics') {
+        // Analytics view: render the dashboard, do NOT auto-play
+        renderDashboard();
+    } else {
+        // Viz view: auto-play the visualization
+        const rource = getRource();
+        if (rource) {
+            safeWasmCall('play', () => rource.play(), undefined);
+            updatePlaybackUI();
+        }
+        // Show first-time help only in viz view
+        maybeShowFirstTimeHelp();
     }
-
-    // Show first-time help
-    maybeShowFirstTimeHelp();
 }
 
 /**

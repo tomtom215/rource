@@ -13,7 +13,7 @@
  *   'viz'       — Canvas visualization with sidebar (original layout)
  */
 
-import { setState, get, subscribe, addManagedEventListener } from '../state.js';
+import { setState, get, subscribe, addManagedEventListener, hasData } from '../state.js';
 import { updateUrlState } from '../url-state.js';
 
 // DOM references
@@ -24,6 +24,7 @@ let sidebarWrapper = null;
 let btnSwitchToViz = null;
 let btnBackToAnalytics = null;
 let timelineContainer = null;
+let backDivider = null;
 
 /**
  * Initializes the view manager.
@@ -37,6 +38,7 @@ export function initViewManager() {
     btnSwitchToViz = document.getElementById('btn-switch-to-viz');
     btnBackToAnalytics = document.getElementById('btn-back-to-analytics');
     timelineContainer = document.querySelector('.timeline-container');
+    backDivider = document.querySelector('.control-divider-dashboard');
 
     if (!appContainer) return;
 
@@ -97,6 +99,7 @@ function applyViewState(view) {
         if (sidebarWrapper) sidebarWrapper.hidden = false;
         if (timelineContainer) timelineContainer.hidden = false;
         if (btnBackToAnalytics) btnBackToAnalytics.hidden = false;
+        if (backDivider) backDivider.hidden = false;
     } else {
         // Show analytics dashboard, hide visualization
         appContainer.classList.remove('view-viz');
@@ -107,5 +110,6 @@ function applyViewState(view) {
         if (sidebarWrapper) sidebarWrapper.hidden = true;
         if (timelineContainer) timelineContainer.hidden = true;
         if (btnBackToAnalytics) btnBackToAnalytics.hidden = true;
+        if (backDivider) backDivider.hidden = true;
     }
 }
