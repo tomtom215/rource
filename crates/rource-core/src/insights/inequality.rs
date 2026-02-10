@@ -605,4 +605,91 @@ mod tests {
         assert!(gini >= 0.0, "gini should be clamped to >= 0, got {}", gini);
         assert!(gini.abs() < 1e-10);
     }
+
+    // ── Property-based tests ────────────────────────────────────────
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Gini coefficient is always in [0, 1] for any non-empty input.
+            #[test]
+            fn prop_gini_bounded(counts in proptest::collection::vec(0u32..1000, 1..50)) {
+                let gini = compute_gini_from_counts(&counts);
+                prop_assert!(gini >= 0.0, "gini={} < 0", gini);
+                prop_assert!(gini <= 1.0, "gini={} > 1", gini);
+            }
+
+            /// Equal counts always produce Gini = 0.
+            #[test]
+            fn prop_gini_zero_for_equal(val in 1u32..1000, n in 2usize..20) {
+                let counts = vec![val; n];
+                let gini = compute_gini_from_counts(&counts);
+                prop_assert!(gini.abs() < 1e-10, "equal counts: gini={}, expected≈0", gini);
+            }
+
+            /// Lorenz curve is monotonically non-decreasing in both coordinates.
+            #[test]
+            fn prop_lorenz_monotonic(
+                entries in proptest::collection::vec((1u32..100,), 2..20)
+            ) {
+                let mut authors: FxHashMap<String, u32> = FxHashMap::default();
+                for (i, (c,)) in entries.iter().enumerate() {
+                    authors.insert(format!("dev{i}"), *c);
+                }
+                let report = compute_inequality(&authors, Vec::new());
+                for i in 1..report.lorenz_curve.len() {
+                    prop_assert!(
+                        report.lorenz_curve[i].0 >= report.lorenz_curve[i - 1].0,
+                        "x not monotonic at i={}", i
+                    );
+                    prop_assert!(
+                        report.lorenz_curve[i].1 >= report.lorenz_curve[i - 1].1,
+                        "y not monotonic at i={}", i
+                    );
+                }
+            }
+
+            /// Top-K share is always in [0, 1] and non-decreasing as K increases.
+            #[test]
+            fn prop_top_k_share_bounded_and_monotonic(
+                entries in proptest::collection::vec(1u32..100, 2..30)
+            ) {
+                let mut sorted = entries;
+                sorted.sort_unstable();
+                let total: f64 = sorted.iter().map(|&c| f64::from(c)).sum();
+                if total > 0.0 {
+                    let s1 = compute_top_k_share(&sorted, total, 1);
+                    let s10 = compute_top_k_share(&sorted, total, 10);
+                    let s20 = compute_top_k_share(&sorted, total, 20);
+                    prop_assert!((0.0..=1.0).contains(&s1), "top_1%={}", s1);
+                    prop_assert!((0.0..=1.0).contains(&s10), "top_10%={}", s10);
+                    prop_assert!((0.0..=1.0).contains(&s20), "top_20%={}", s20);
+                    prop_assert!(s20 >= s10, "top_20% < top_10%: {} < {}", s20, s10);
+                    prop_assert!(s10 >= s1, "top_10% < top_1%: {} < {}", s10, s1);
+                }
+            }
+
+            /// Lorenz curve always starts at (0,0) and ends at (1,1).
+            #[test]
+            fn prop_lorenz_endpoints(
+                entries in proptest::collection::vec(1u32..100, 1..20)
+            ) {
+                let mut authors: FxHashMap<String, u32> = FxHashMap::default();
+                for (i, &c) in entries.iter().enumerate() {
+                    authors.insert(format!("dev{i}"), c);
+                }
+                let report = compute_inequality(&authors, Vec::new());
+                if !report.lorenz_curve.is_empty() {
+                    let first = report.lorenz_curve.first().unwrap();
+                    let last = report.lorenz_curve.last().unwrap();
+                    prop_assert!(first.0.abs() < f64::EPSILON, "first.x={}", first.0);
+                    prop_assert!(first.1.abs() < f64::EPSILON, "first.y={}", first.1);
+                    prop_assert!((last.0 - 1.0).abs() < f64::EPSILON, "last.x={}", last.0);
+                    prop_assert!((last.1 - 1.0).abs() < f64::EPSILON, "last.y={}", last.1);
+                }
+            }
+        }
+    }
 }

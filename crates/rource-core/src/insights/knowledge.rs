@@ -581,4 +581,130 @@ mod tests {
             );
         }
     }
+
+    // ── Property-based tests ────────────────────────────────────────
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Shannon entropy is always non-negative.
+            #[test]
+            fn prop_entropy_non_negative(
+                n_authors in 1usize..6,
+                counts in proptest::collection::vec(1u32..50, 1..6),
+            ) {
+                let authors_list = ["Alice", "Bob", "Carol", "Dave", "Eve"];
+                let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                let mut author_map: FxHashMap<String, u32> = FxHashMap::default();
+                for (i, &c) in counts.iter().enumerate().take(n_authors.min(5)) {
+                    author_map.insert(authors_list[i].to_string(), c);
+                }
+                fa.insert("file.rs".to_string(), author_map);
+                let report = compute_knowledge(&fa);
+                for f in &report.files {
+                    prop_assert!(
+                        f.knowledge_entropy >= 0.0,
+                        "entropy={} < 0 for {}",
+                        f.knowledge_entropy, f.path
+                    );
+                }
+            }
+
+            /// Shannon entropy is bounded by log₂(contributor_count).
+            #[test]
+            fn prop_entropy_bounded_by_log2_k(
+                n_authors in 1usize..6,
+                counts in proptest::collection::vec(1u32..50, 1..6),
+            ) {
+                let authors_list = ["Alice", "Bob", "Carol", "Dave", "Eve"];
+                let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                let mut author_map: FxHashMap<String, u32> = FxHashMap::default();
+                let actual_n = n_authors.min(5).min(counts.len());
+                for (i, &c) in counts.iter().enumerate().take(actual_n) {
+                    author_map.insert(authors_list[i].to_string(), c);
+                }
+                fa.insert("file.rs".to_string(), author_map);
+                let report = compute_knowledge(&fa);
+                for f in &report.files {
+                    if f.contributor_count > 1 {
+                        let max_entropy = (f.contributor_count as f64).log2();
+                        prop_assert!(
+                            f.knowledge_entropy <= max_entropy + 1e-10,
+                            "entropy={} > log2({})={} for {}",
+                            f.knowledge_entropy, f.contributor_count, max_entropy, f.path
+                        );
+                    }
+                }
+            }
+
+            /// Silo percentage is always in [0, 100].
+            #[test]
+            fn prop_silo_pct_bounded(
+                n_files in 1usize..10,
+                n_authors_per_file in 1usize..4,
+            ) {
+                let authors_list = ["Alice", "Bob", "Carol"];
+                let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                for i in 0..n_files {
+                    let mut author_map: FxHashMap<String, u32> = FxHashMap::default();
+                    let actual_n = n_authors_per_file.min(3);
+                    for name in &authors_list[..actual_n] {
+                        author_map.insert(name.to_string(), 1);
+                    }
+                    fa.insert(format!("f{i}.rs"), author_map);
+                }
+                let report = compute_knowledge(&fa);
+                prop_assert!(
+                    report.silo_percentage >= 0.0,
+                    "silo_pct={} < 0",
+                    report.silo_percentage
+                );
+                prop_assert!(
+                    report.silo_percentage <= 100.0,
+                    "silo_pct={} > 100",
+                    report.silo_percentage
+                );
+            }
+
+            /// Single contributor always means is_silo = true and entropy = 0.
+            #[test]
+            fn prop_single_contributor_is_silo(count in 1u32..100) {
+                let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                let mut author_map: FxHashMap<String, u32> = FxHashMap::default();
+                author_map.insert("Alice".to_string(), count);
+                fa.insert("file.rs".to_string(), author_map);
+                let report = compute_knowledge(&fa);
+                prop_assert!(report.files[0].is_silo, "single contributor must be silo");
+                prop_assert!(
+                    report.files[0].knowledge_entropy.abs() < f64::EPSILON,
+                    "single contributor entropy={}, expected=0",
+                    report.files[0].knowledge_entropy
+                );
+            }
+
+            /// k equal contributors produce entropy = log₂(k).
+            #[test]
+            fn prop_equal_contributors_max_entropy(
+                k in 2usize..6,
+                count in 1u32..50,
+            ) {
+                let authors_list = ["Alice", "Bob", "Carol", "Dave", "Eve"];
+                let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                let mut author_map: FxHashMap<String, u32> = FxHashMap::default();
+                for name in &authors_list[..k] {
+                    author_map.insert(name.to_string(), count);
+                }
+                fa.insert("file.rs".to_string(), author_map);
+                let report = compute_knowledge(&fa);
+                let expected = (k as f64).log2();
+                prop_assert!(
+                    (report.files[0].knowledge_entropy - expected).abs() < 1e-10,
+                    "k={}: entropy={}, expected=log2({})={}",
+                    k, report.files[0].knowledge_entropy, k, expected
+                );
+            }
+        }
+    }
 }

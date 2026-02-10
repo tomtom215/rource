@@ -506,4 +506,114 @@ mod tests {
             report.directories.last().unwrap().modularity_score
         );
     }
+
+    // ── Property-based tests ────────────────────────────────────────
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        /// Strategy to generate random coupling pairs.
+        fn arb_couplings() -> impl Strategy<Value = Vec<CouplingPair>> {
+            let dirs = ["src", "tests", "docs", "lib"];
+            proptest::collection::vec(
+                (0usize..4, 0usize..3, 0usize..4, 0usize..3, 1u32..10),
+                1..=10,
+            )
+            .prop_map(move |specs| {
+                specs
+                    .into_iter()
+                    .map(|(d1, f1, d2, f2, support)| {
+                        let file_a = format!("{}/f{f1}.rs", dirs[d1]);
+                        let file_b = format!("{}/f{f2}.rs", dirs[d2]);
+                        CouplingPair {
+                            file_a,
+                            file_b,
+                            support,
+                            confidence_ab: 0.5,
+                            confidence_ba: 0.5,
+                            total_a: support * 2,
+                            total_b: support * 2,
+                        }
+                    })
+                    .collect()
+            })
+        }
+
+        proptest! {
+            /// Modularity index is always in [0, 1].
+            #[test]
+            fn prop_modularity_bounded(couplings in arb_couplings()) {
+                let report = compute_modularity(&couplings);
+                prop_assert!(
+                    report.modularity_index >= -f64::EPSILON,
+                    "index={} < 0",
+                    report.modularity_index
+                );
+                prop_assert!(
+                    report.modularity_index <= 1.0 + f64::EPSILON,
+                    "index={} > 1",
+                    report.modularity_index
+                );
+            }
+
+            /// Intra + cross always equals total edges.
+            #[test]
+            fn prop_edge_conservation(couplings in arb_couplings()) {
+                let report = compute_modularity(&couplings);
+                prop_assert_eq!(
+                    report.total_intra_edges + report.total_cross_edges,
+                    couplings.len() as u32,
+                    "intra({}) + cross({}) != total({})",
+                    report.total_intra_edges, report.total_cross_edges, couplings.len()
+                );
+            }
+
+            /// Cross module ratio is always in [0, 1].
+            #[test]
+            fn prop_cross_ratio_bounded(couplings in arb_couplings()) {
+                let report = compute_modularity(&couplings);
+                prop_assert!(
+                    report.cross_module_ratio >= -f64::EPSILON,
+                    "ratio={} < 0",
+                    report.cross_module_ratio
+                );
+                prop_assert!(
+                    report.cross_module_ratio <= 1.0 + f64::EPSILON,
+                    "ratio={} > 1",
+                    report.cross_module_ratio
+                );
+            }
+
+            /// modularity_index = 1.0 - cross_module_ratio always holds.
+            #[test]
+            fn prop_index_eq_one_minus_ratio(couplings in arb_couplings()) {
+                let report = compute_modularity(&couplings);
+                let expected = 1.0 - report.cross_module_ratio;
+                prop_assert!(
+                    (report.modularity_index - expected).abs() < 1e-10,
+                    "index={}, 1-ratio={}",
+                    report.modularity_index, expected
+                );
+            }
+
+            /// Per-directory modularity scores are always in [0, 1].
+            #[test]
+            fn prop_dir_scores_bounded(couplings in arb_couplings()) {
+                let report = compute_modularity(&couplings);
+                for dir in &report.directories {
+                    prop_assert!(
+                        dir.modularity_score >= -f64::EPSILON,
+                        "dir {} score={} < 0",
+                        dir.directory, dir.modularity_score
+                    );
+                    prop_assert!(
+                        dir.modularity_score <= 1.0 + f64::EPSILON,
+                        "dir {} score={} > 1",
+                        dir.directory, dir.modularity_score
+                    );
+                }
+            }
+        }
+    }
 }

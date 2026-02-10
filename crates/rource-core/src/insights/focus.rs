@@ -621,4 +621,100 @@ mod tests {
         // commit_count = total file touches across all commits: 2 + 1 = 3
         assert_eq!(devs[0].commit_count, 3);
     }
+
+    // ── Property-based tests ────────────────────────────────────────
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Developer focus is always in [0, 1].
+            #[test]
+            fn prop_focus_bounded(
+                n_dirs in 1usize..6,
+                commits_per_dir in proptest::collection::vec(1u32..20, 1..6),
+            ) {
+                let dirs = ["src", "tests", "docs", "lib", "bench"];
+                let mut acc = FocusAccumulator::new();
+                for (i, &count) in commits_per_dir.iter().enumerate().take(n_dirs.min(5)) {
+                    let path = format!("{}/f.rs", dirs[i]);
+                    let path_ref: &str = &path;
+                    for _ in 0..count {
+                        acc.record_commit("Alice", &[path_ref]);
+                    }
+                }
+                let devs = acc.finalize();
+                for dev in &devs {
+                    prop_assert!(
+                        dev.focus_score >= -f64::EPSILON,
+                        "focus={} < 0 for {}",
+                        dev.focus_score, dev.author
+                    );
+                    prop_assert!(
+                        dev.focus_score <= 1.0 + f64::EPSILON,
+                        "focus={} > 1 for {}",
+                        dev.focus_score, dev.author
+                    );
+                }
+            }
+
+            /// File diffusion is always in [0, 1].
+            #[test]
+            fn prop_diffusion_bounded(
+                n_contributors in 1usize..5,
+                counts in proptest::collection::vec(1u32..50, 1..5),
+            ) {
+                let authors = ["Alice", "Bob", "Carol", "Dave"];
+                let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                let mut author_map: FxHashMap<String, u32> = FxHashMap::default();
+                for (i, &c) in counts.iter().enumerate().take(n_contributors.min(4)) {
+                    author_map.insert(authors[i].to_string(), c);
+                }
+                fa.insert("file.rs".to_string(), author_map);
+                let files = compute_file_diffusion(&fa);
+                for f in &files {
+                    prop_assert!(
+                        f.diffusion_score >= -f64::EPSILON,
+                        "diffusion={} < 0",
+                        f.diffusion_score
+                    );
+                    prop_assert!(
+                        f.diffusion_score <= 1.0 + f64::EPSILON,
+                        "diffusion={} > 1",
+                        f.diffusion_score
+                    );
+                }
+            }
+
+            /// Average focus is the arithmetic mean of individual focus scores.
+            #[test]
+            fn prop_avg_focus_is_mean(
+                alice_dirs in 1usize..4,
+                bob_dirs in 1usize..4,
+            ) {
+                let dirs = ["src", "tests", "docs"];
+                let mut acc = FocusAccumulator::new();
+                for dir in &dirs[..alice_dirs.min(3)] {
+                    let path = format!("{dir}/a.rs");
+                    acc.record_commit("Alice", &[&path]);
+                }
+                for dir in &dirs[..bob_dirs.min(3)] {
+                    let path = format!("{dir}/b.rs");
+                    acc.record_commit("Bob", &[&path]);
+                }
+                let devs = acc.finalize();
+                let report = build_focus_report(devs.clone(), Vec::new());
+                if !devs.is_empty() {
+                    let expected_avg: f64 =
+                        devs.iter().map(|d| d.focus_score).sum::<f64>() / devs.len() as f64;
+                    prop_assert!(
+                        (report.avg_developer_focus - expected_avg).abs() < 1e-10,
+                        "avg={}, expected={}",
+                        report.avg_developer_focus, expected_avg
+                    );
+                }
+            }
+        }
+    }
 }

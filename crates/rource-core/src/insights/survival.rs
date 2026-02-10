@@ -522,4 +522,124 @@ mod tests {
         assert_eq!(report.total_births, 1);
         assert_eq!(report.total_deaths, 1);
     }
+
+    // ── Property-based tests ────────────────────────────────────────
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Survival probability is always in [0, 1] and S(0) = 1.0.
+            #[test]
+            fn prop_survival_bounded(
+                n_files in 1usize..30,
+                n_deaths in 0usize..15,
+            ) {
+                let mut acc = SurvivalAccumulator::new();
+                for i in 0..n_files {
+                    acc.record_create(&format!("f{i}.rs"), 0);
+                }
+                for i in 0..n_deaths.min(n_files) {
+                    acc.record_delete(&format!("f{i}.rs"), (i64::try_from(i + 1).unwrap()) * 86400);
+                }
+                let report = acc.finalize(365 * 86400);
+                for point in &report.curve {
+                    prop_assert!(
+                        point.survival_probability >= -f64::EPSILON,
+                        "S(t)={} < 0 at t={}",
+                        point.survival_probability, point.time_days
+                    );
+                    prop_assert!(
+                        point.survival_probability <= 1.0 + f64::EPSILON,
+                        "S(t)={} > 1 at t={}",
+                        point.survival_probability, point.time_days
+                    );
+                }
+                // S(0) = 1.0 always
+                if !report.curve.is_empty() {
+                    prop_assert!(
+                        (report.curve[0].survival_probability - 1.0).abs() < f64::EPSILON,
+                        "S(0)={}, expected=1.0",
+                        report.curve[0].survival_probability
+                    );
+                }
+            }
+
+            /// Survival curve is monotonically non-increasing.
+            #[test]
+            fn prop_survival_monotonic(
+                n_files in 2usize..20,
+                n_deaths in 1usize..10,
+            ) {
+                let mut acc = SurvivalAccumulator::new();
+                for i in 0..n_files {
+                    acc.record_create(&format!("f{i}.rs"), 0);
+                }
+                for i in 0..n_deaths.min(n_files) {
+                    acc.record_delete(&format!("f{i}.rs"), (i64::try_from(i + 1).unwrap()) * 86400);
+                }
+                let report = acc.finalize(365 * 86400);
+                for i in 1..report.curve.len() {
+                    prop_assert!(
+                        report.curve[i].survival_probability
+                            <= report.curve[i - 1].survival_probability + f64::EPSILON,
+                        "S not monotonic: S[{}]={} > S[{}]={}",
+                        i, report.curve[i].survival_probability,
+                        i - 1, report.curve[i - 1].survival_probability
+                    );
+                }
+            }
+
+            /// Infant mortality rate is always in [0, 1].
+            #[test]
+            fn prop_infant_mortality_bounded(
+                n_files in 1usize..20,
+                n_deaths in 0usize..10,
+            ) {
+                let mut acc = SurvivalAccumulator::new();
+                for i in 0..n_files {
+                    acc.record_create(&format!("f{i}.rs"), 0);
+                }
+                for i in 0..n_deaths.min(n_files) {
+                    // Some die young (within 30 days), some die old
+                    let death_day = if i % 2 == 0 { 10 } else { 60 };
+                    acc.record_delete(&format!("f{i}.rs"), death_day * 86400);
+                }
+                let report = acc.finalize(365 * 86400);
+                prop_assert!(
+                    report.infant_mortality_rate >= 0.0,
+                    "rate={} < 0",
+                    report.infant_mortality_rate
+                );
+                prop_assert!(
+                    report.infant_mortality_rate <= 1.0,
+                    "rate={} > 1",
+                    report.infant_mortality_rate
+                );
+            }
+
+            /// births = deaths + censored always.
+            #[test]
+            fn prop_births_eq_deaths_plus_censored(
+                n_files in 1usize..20,
+                n_deaths in 0usize..10,
+            ) {
+                let mut acc = SurvivalAccumulator::new();
+                for i in 0..n_files {
+                    acc.record_create(&format!("f{i}.rs"), 0);
+                }
+                for i in 0..n_deaths.min(n_files) {
+                    acc.record_delete(&format!("f{i}.rs"), (i64::try_from(i + 1).unwrap()) * 86400);
+                }
+                let report = acc.finalize(365 * 86400);
+                prop_assert_eq!(
+                    report.total_births,
+                    report.total_deaths + report.censored_count,
+                    "births={} != deaths({}) + censored({})",
+                    report.total_births, report.total_deaths, report.censored_count
+                );
+            }
+        }
+    }
 }
