@@ -31,13 +31,22 @@
 //! on the visualization's frame budget.
 
 pub mod cadence;
+pub mod change_bursts;
+pub mod change_entropy;
+pub mod circadian;
+pub mod congruence;
 pub mod coupling;
+pub mod focus;
 pub mod growth;
 pub mod hotspot;
+pub mod inequality;
 pub mod knowledge;
 pub mod lifecycle;
+pub mod modularity;
+pub mod network;
 pub mod ownership;
 pub mod profiles;
+pub mod survival;
 pub mod temporal;
 pub mod work_type;
 
@@ -122,6 +131,33 @@ pub struct InsightsReport {
     /// File lifecycle analysis (Godfrey & Tu 2000).
     pub lifecycle: lifecycle::LifecycleReport,
 
+    /// Contribution inequality / Gini coefficient (Chelkowski et al. 2016).
+    pub inequality: inequality::InequalityReport,
+
+    /// Sliding-window change entropy (Hassan ICSE 2009).
+    pub change_entropy: change_entropy::ChangeEntropyReport,
+
+    /// Circadian (time-of-day) risk patterns (Eyolfson et al. 2011).
+    pub circadian: circadian::CircadianReport,
+
+    /// Per-file change burst detection (Nagappan et al. 2010).
+    pub change_bursts: change_bursts::ChangeBurstReport,
+
+    /// Developer focus and file diffusion (Posnett et al. 2013).
+    pub focus: focus::FocusReport,
+
+    /// Co-change modularity / DSM analysis (Silva et al. 2014).
+    pub modularity: modularity::ModularityReport,
+
+    /// Sociotechnical congruence / Conway's Law (Cataldo et al. 2008).
+    pub congruence: congruence::CongruenceReport,
+
+    /// File survival analysis / Kaplan-Meier (Cito et al. 2021).
+    pub survival: survival::SurvivalReport,
+
+    /// Developer collaboration network centrality (Begel et al. 2023).
+    pub network: network::NetworkReport,
+
     /// Summary statistics.
     pub summary: SummaryStats,
 }
@@ -201,6 +237,22 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         .profiles_acc
         .finalize(commits.len(), t_min, t_max);
     let lifecycle = accumulators.lifecycle_acc.finalize(t_min, t_max);
+
+    // Session 3 metrics: finalize new accumulators and compute derived metrics
+    let inequality_windows = accumulators.inequality_acc.finalize(t_min, t_max);
+    let inequality =
+        inequality::compute_inequality(&accumulators.unique_authors, inequality_windows);
+    let change_entropy = accumulators.change_entropy_acc.finalize(t_min, t_max);
+    let circadian = accumulators.circadian_acc.finalize();
+    let change_bursts = accumulators.change_burst_acc.finalize();
+    let focus_devs = accumulators.focus_acc.finalize();
+    let focus_files = focus::compute_file_diffusion(&accumulators.file_authors);
+    let focus = focus::build_focus_report(focus_devs, focus_files);
+    let modularity = modularity::compute_modularity(&couplings);
+    let congruence = congruence::compute_congruence(&couplings, &accumulators.file_authors);
+    let survival = accumulators.survival_acc.finalize(t_max);
+    let network = network::compute_network(&accumulators.file_authors);
+
     let summary = compute_summary(
         commits,
         &ownership,
@@ -224,11 +276,21 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         knowledge,
         profiles: profiles_report,
         lifecycle,
+        inequality,
+        change_entropy,
+        circadian,
+        change_bursts,
+        focus,
+        modularity,
+        congruence,
+        survival,
+        network,
         summary,
     }
 }
 
 /// Returns an empty report for repositories with no commits.
+#[allow(clippy::too_many_lines)]
 fn empty_report() -> InsightsReport {
     InsightsReport {
         hotspots: Vec::new(),
@@ -285,6 +347,72 @@ fn empty_report() -> InsightsReport {
             churn_rate: 0.0,
             total_files_seen: 0,
         },
+        inequality: inequality::InequalityReport {
+            gini_coefficient: 0.0,
+            top_1_pct_share: 0.0,
+            top_10_pct_share: 0.0,
+            top_20_pct_share: 0.0,
+            total_developers: 0,
+            total_commits: 0,
+            lorenz_curve: Vec::new(),
+            windows: Vec::new(),
+        },
+        change_entropy: change_entropy::ChangeEntropyReport {
+            windows: Vec::new(),
+            avg_normalized_entropy: 0.0,
+            max_entropy_window_idx: None,
+            trend: change_entropy::EntropyTrend::Stable,
+        },
+        circadian: circadian::CircadianReport {
+            files: Vec::new(),
+            authors: Vec::new(),
+            hourly_risk: [0.0; 24],
+            high_risk_percentage: 0.0,
+            total_commits_analyzed: 0,
+        },
+        change_bursts: change_bursts::ChangeBurstReport {
+            files: Vec::new(),
+            total_bursts: 0,
+            avg_burst_length: 0.0,
+            files_with_bursts: 0,
+            multi_author_burst_count: 0,
+        },
+        focus: focus::FocusReport {
+            developers: Vec::new(),
+            files: Vec::new(),
+            avg_developer_focus: 0.0,
+            avg_file_diffusion: 0.0,
+        },
+        modularity: modularity::ModularityReport {
+            modularity_index: 1.0, // vacuously modular
+            cross_module_ratio: 0.0,
+            total_intra_edges: 0,
+            total_cross_edges: 0,
+            directories: Vec::new(),
+        },
+        congruence: congruence::CongruenceReport {
+            congruence_score: 1.0, // vacuously congruent
+            required_coordinations: 0,
+            actual_coordinations: 0,
+            coordination_gaps: Vec::new(),
+            total_developer_pairs: 0,
+        },
+        survival: survival::SurvivalReport {
+            curve: Vec::new(),
+            median_survival_days: None,
+            infant_mortality_rate: 0.0,
+            total_births: 0,
+            total_deaths: 0,
+            censored_count: 0,
+        },
+        network: network::NetworkReport {
+            developers: Vec::new(),
+            network_density: 0.0,
+            connected_components: 0,
+            largest_component_size: 0,
+            total_edges: 0,
+            avg_degree: 0.0,
+        },
         summary: SummaryStats {
             total_commits: 0,
             total_files: 0,
@@ -310,6 +438,12 @@ struct CommitAccumulators {
     cadence_acc: cadence::CadenceAccumulator,
     profiles_acc: profiles::ProfilesAccumulator,
     lifecycle_acc: lifecycle::LifecycleAccumulator,
+    inequality_acc: inequality::InequalityAccumulator,
+    change_entropy_acc: change_entropy::ChangeEntropyAccumulator,
+    circadian_acc: circadian::CircadianAccumulator,
+    change_burst_acc: change_bursts::ChangeBurstAccumulator,
+    focus_acc: focus::FocusAccumulator,
+    survival_acc: survival::SurvivalAccumulator,
 }
 
 /// Single pass over commits to populate all accumulators.
@@ -325,6 +459,12 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut cadence_acc = cadence::CadenceAccumulator::new();
     let mut profiles_acc = profiles::ProfilesAccumulator::new();
     let mut lifecycle_acc = lifecycle::LifecycleAccumulator::new();
+    let mut inequality_acc = inequality::InequalityAccumulator::new();
+    let mut change_entropy_acc = change_entropy::ChangeEntropyAccumulator::new();
+    let mut circadian_acc = circadian::CircadianAccumulator::new();
+    let mut change_burst_acc = change_bursts::ChangeBurstAccumulator::new();
+    let mut focus_acc = focus::FocusAccumulator::new();
+    let mut survival_acc = survival::SurvivalAccumulator::new();
 
     for commit in commits {
         *unique_authors.entry(commit.author.clone()).or_insert(0) += 1;
@@ -339,6 +479,11 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         work_type_acc.record_commit(commit.timestamp, creates, modifies, deletes);
         profiles_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
 
+        // Session 3 accumulators: per-commit data
+        inequality_acc.record_commit(&commit.author, commit.timestamp);
+        circadian_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
+        focus_acc.record_commit(&commit.author, &file_paths);
+
         for file in &commit.files {
             file_changes
                 .entry(file.path.clone())
@@ -351,6 +496,15 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
                 .or_insert(0) += 1;
             growth_acc.record_file(&file.path, file.action);
             lifecycle_acc.record_file(&file.path, file.action, commit.timestamp, &commit.author);
+
+            // Session 3 accumulators: per-file data
+            change_entropy_acc.record_file(&file.path, file.action, commit.timestamp);
+            change_burst_acc.record_file(&file.path, commit.timestamp, &commit.author);
+            match file.action {
+                FileActionKind::Create => survival_acc.record_create(&file.path, commit.timestamp),
+                FileActionKind::Delete => survival_acc.record_delete(&file.path, commit.timestamp),
+                FileActionKind::Modify => {}
+            }
         }
 
         // Record growth snapshot after processing all files in this commit
@@ -373,6 +527,12 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         cadence_acc,
         profiles_acc,
         lifecycle_acc,
+        inequality_acc,
+        change_entropy_acc,
+        circadian_acc,
+        change_burst_acc,
+        focus_acc,
+        survival_acc,
     }
 }
 

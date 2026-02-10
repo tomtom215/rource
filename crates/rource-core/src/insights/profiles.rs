@@ -432,4 +432,123 @@ mod tests {
         let alice = &report.developers[0];
         assert!(alice.preferred_directories.iter().any(|(d, _)| d == "."));
     }
+
+    // --- Mutation-killing tests ---
+
+    #[test]
+    fn test_drive_by_boundary_exactly_two_commits() {
+        // Exactly 2 commits → DriveBy (kills `<` vs `<=` mutant on DRIVE_BY_MAX_COMMITS)
+        let mut acc = ProfilesAccumulator::new();
+        acc.record_commit("Guest", 9000, &["a.rs"]);
+        acc.record_commit("Guest", 9500, &["b.rs"]);
+        let report = acc.finalize(100, 0, 10000);
+        assert_eq!(
+            report.developers[0].classification,
+            ContributorType::DriveBy
+        );
+    }
+
+    #[test]
+    fn test_three_commits_not_drive_by() {
+        // Exactly 3 commits → NOT DriveBy (kills `<=` vs `<` on boundary+1)
+        let mut acc = ProfilesAccumulator::new();
+        acc.record_commit("Bob", 9000, &["a.rs"]);
+        acc.record_commit("Bob", 9200, &["b.rs"]);
+        acc.record_commit("Bob", 9500, &["c.rs"]);
+        // 3/100 = 3% < 10% → Peripheral (not DriveBy)
+        let report = acc.finalize(100, 0, 10000);
+        assert_eq!(
+            report.developers[0].classification,
+            ContributorType::Peripheral
+        );
+    }
+
+    #[test]
+    fn test_core_at_exactly_ten_percent_share() {
+        // 10 commits out of 100 = exactly 10% share, recent → Core
+        // Kills `>` vs `>=` mutant on CORE_COMMIT_THRESHOLD_PCT
+        let mut acc = ProfilesAccumulator::new();
+        for i in 0..10 {
+            acc.record_commit("Alice", 9000 + i * 50, &["src/main.rs"]);
+        }
+        // share = 10/100 = 0.10, recency_threshold = 10000 - 2000 = 8000
+        // last_commit = 9450 >= 8000 → Core
+        let report = acc.finalize(100, 0, 10000);
+        assert_eq!(report.developers[0].classification, ContributorType::Core);
+    }
+
+    #[test]
+    fn test_just_below_core_threshold_is_peripheral() {
+        // 9 commits out of 100 = 9% < 10%, recent → Peripheral (not Core)
+        let mut acc = ProfilesAccumulator::new();
+        for i in 0..9 {
+            acc.record_commit("Alice", 9000 + i * 50, &["src/main.rs"]);
+        }
+        let report = acc.finalize(100, 0, 10000);
+        assert_eq!(
+            report.developers[0].classification,
+            ContributorType::Peripheral
+        );
+    }
+
+    #[test]
+    fn test_avg_files_per_commit_exact_division() {
+        // 3 commits touching 2, 3, 4 files = 9 file touches / 3 commits = 3.0 exactly
+        // Kills `/` vs `*` mutant in avg_files calculation
+        let mut acc = ProfilesAccumulator::new();
+        acc.record_commit("Alice", 1000, &["a.rs", "b.rs"]);
+        acc.record_commit("Alice", 2000, &["c.rs", "d.rs", "e.rs"]);
+        acc.record_commit("Alice", 3000, &["f.rs", "g.rs", "h.rs", "i.rs"]);
+        let report = acc.finalize(3, 1000, 3000);
+        let alice = &report.developers[0];
+        // file_count_sum = 2 + 3 + 4 = 9, commit_count = 3
+        assert!(
+            (alice.avg_files_per_commit - 3.0).abs() < f64::EPSILON,
+            "avg_files_per_commit={}, expected=3.0",
+            alice.avg_files_per_commit
+        );
+    }
+
+    #[test]
+    fn test_recency_threshold_at_exact_boundary() {
+        // last_commit exactly at recency_threshold → Core (kills `>` vs `>=`)
+        // t_max = 10000, t_min = 0, time_span = 10000
+        // recency_threshold = 10000 - 10000 * 0.20 = 8000
+        let mut acc = ProfilesAccumulator::new();
+        for i in 0..20 {
+            acc.record_commit("Alice", 7800 + i * 10, &["src/main.rs"]);
+        }
+        // last_commit = 7800 + 19*10 = 7990 < 8000 → Peripheral
+        let report = acc.finalize(100, 0, 10000);
+        assert_eq!(
+            report.developers[0].classification,
+            ContributorType::Peripheral
+        );
+
+        // Now with last_commit = 8000 exactly
+        let mut acc2 = ProfilesAccumulator::new();
+        for i in 0..20 {
+            acc2.record_commit("Bob", 7810 + i * 10, &["src/main.rs"]);
+        }
+        // last_commit = 7810 + 19*10 = 8000 >= 8000 → Core
+        let report2 = acc2.finalize(100, 0, 10000);
+        assert_eq!(report2.developers[0].classification, ContributorType::Core);
+    }
+
+    #[test]
+    fn test_active_span_days_division_by_86400() {
+        // Kills `/` vs `*` mutant in active_span_days = (last - first) / 86400.0
+        let mut acc = ProfilesAccumulator::new();
+        acc.record_commit("Alice", 0, &["a.rs"]);
+        acc.record_commit("Alice", 86400, &["b.rs"]); // exactly 1 day
+        acc.record_commit("Alice", 172_800, &["c.rs"]); // exactly 2 days
+        let report = acc.finalize(3, 0, 172_800);
+        let alice = &report.developers[0];
+        // active_span = (172800 - 0) / 86400 = 2.0
+        assert!(
+            (alice.active_span_days - 2.0).abs() < f64::EPSILON,
+            "active_span_days={}, expected=2.0",
+            alice.active_span_days
+        );
+    }
 }
