@@ -714,4 +714,75 @@ mod tests {
             expected
         );
     }
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Classification counts sum to total authors in report.
+            #[test]
+            fn prop_classification_sum(n_authors in 1usize..8) {
+                let mut acc = CadenceAccumulator::new();
+                for a in 0..n_authors {
+                    let name = format!("dev{a}");
+                    // Each author gets 2+ commits so they're included
+                    for c in 0..(a + 2) {
+                        acc.record_commit(&name, i64::try_from(c).unwrap() * 86400);
+                    }
+                }
+                let report = acc.finalize();
+                prop_assert_eq!(
+                    report.regular_count + report.moderate_count + report.bursty_count,
+                    report.authors.len(),
+                    "classification counts don't sum"
+                );
+            }
+
+            /// Authors are sorted descending by commit_count.
+            #[test]
+            fn prop_sorted_by_commits(n_authors in 2usize..8) {
+                let mut acc = CadenceAccumulator::new();
+                for a in 0..n_authors {
+                    let name = format!("dev{a}");
+                    for c in 0..(a + 2) {
+                        acc.record_commit(&name, i64::try_from(c).unwrap() * 86400);
+                    }
+                }
+                let report = acc.finalize();
+                for w in report.authors.windows(2) {
+                    prop_assert!(w[0].commit_count >= w[1].commit_count,
+                        "not sorted: {} < {}", w[0].commit_count, w[1].commit_count);
+                }
+            }
+
+            /// Mean interval is non-negative.
+            #[test]
+            fn prop_mean_non_negative(n_commits in 2usize..15) {
+                let mut acc = CadenceAccumulator::new();
+                for c in 0..n_commits {
+                    acc.record_commit("Alice", i64::try_from(c).unwrap() * 3600);
+                }
+                let report = acc.finalize();
+                for author in &report.authors {
+                    prop_assert!(author.mean_interval >= 0.0,
+                        "mean_interval={} < 0", author.mean_interval);
+                }
+            }
+
+            /// CV (coefficient of variation) is non-negative.
+            #[test]
+            fn prop_cv_non_negative(n_commits in 2usize..15) {
+                let mut acc = CadenceAccumulator::new();
+                for c in 0..n_commits {
+                    acc.record_commit("Alice", i64::try_from(c).unwrap() * 3600);
+                }
+                let report = acc.finalize();
+                for author in &report.authors {
+                    prop_assert!(author.cv >= 0.0,
+                        "cv={} < 0", author.cv);
+                }
+            }
+        }
+    }
 }

@@ -1230,4 +1230,78 @@ mod tests {
         // Time span = 99 days
         assert_eq!(report.summary.time_span_seconds, 99 * 86400);
     }
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Empty input always produces an empty report.
+            #[test]
+            fn prop_empty_input_empty_report(_seed in 0u32..100) {
+                let report = compute_insights(&[]);
+                prop_assert!(report.hotspots.is_empty());
+                prop_assert!(report.couplings.is_empty());
+                prop_assert!(report.ownership.is_empty());
+                prop_assert_eq!(report.summary.total_commits, 0);
+                prop_assert_eq!(report.summary.total_files, 0);
+                prop_assert_eq!(report.summary.total_authors, 0);
+            }
+
+            /// compute_insights is deterministic: same input always gives same output.
+            #[test]
+            fn prop_deterministic(n_commits in 1usize..10) {
+                let commits: Vec<CommitRecord> = (0..n_commits).map(|i| {
+                    make_commit(
+                        i64::try_from(i).unwrap() * 86400,
+                        "Alice",
+                        &[(&format!("f{}.rs", i % 3), FileActionKind::Modify)],
+                    )
+                }).collect();
+                let r1 = compute_insights(&commits);
+                let r2 = compute_insights(&commits);
+                prop_assert_eq!(r1.summary.total_commits, r2.summary.total_commits);
+                prop_assert_eq!(r1.summary.total_files, r2.summary.total_files);
+                prop_assert_eq!(r1.summary.total_authors, r2.summary.total_authors);
+                prop_assert_eq!(r1.hotspots.len(), r2.hotspots.len());
+            }
+
+            /// Summary total_commits matches input length.
+            #[test]
+            fn prop_total_commits_matches(n_commits in 1usize..20) {
+                let commits: Vec<CommitRecord> = (0..n_commits).map(|i| {
+                    make_commit(
+                        i64::try_from(i).unwrap() * 86400,
+                        "Alice",
+                        &[("a.rs", FileActionKind::Modify)],
+                    )
+                }).collect();
+                let report = compute_insights(&commits);
+                prop_assert_eq!(report.summary.total_commits, n_commits,
+                    "total_commits={} != input len={}", report.summary.total_commits, n_commits);
+            }
+
+            /// Hotspots are sorted descending by score.
+            #[test]
+            fn prop_hotspots_sorted(n_files in 2usize..8) {
+                let mut commits = Vec::new();
+                for f in 0..n_files {
+                    let path = format!("f{f}.rs");
+                    // Each file gets a different number of modifications
+                    for c in 0..=f {
+                        commits.push(make_commit(
+                            i64::try_from(f * 10 + c).unwrap() * 86400,
+                            "Alice",
+                            &[(&path, FileActionKind::Modify)],
+                        ));
+                    }
+                }
+                let report = compute_insights(&commits);
+                for w in report.hotspots.windows(2) {
+                    prop_assert!(w[0].score >= w[1].score - 1e-10,
+                        "hotspots not sorted: {} < {}", w[0].score, w[1].score);
+                }
+            }
+        }
+    }
 }

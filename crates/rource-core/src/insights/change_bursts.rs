@@ -569,4 +569,72 @@ mod tests {
         assert_eq!(bursts[0].commit_count, 3);
         assert_eq!(bursts[1].commit_count, 3);
     }
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Burst start ≤ end always holds.
+            #[test]
+            fn prop_burst_start_leq_end(n_events in 3usize..30) {
+                let events: Vec<(i64, String)> = (0..n_events)
+                    .map(|i| (i64::try_from(i).unwrap() * 3600, "A".to_string()))
+                    .collect();
+                let bursts = detect_bursts(&events);
+                for burst in &bursts {
+                    prop_assert!(burst.start <= burst.end,
+                        "start={} > end={}", burst.start, burst.end);
+                }
+            }
+
+            /// Burst commit_count ≥ MIN_BURST_LENGTH for every burst.
+            #[test]
+            fn prop_burst_min_length(n_events in 3usize..30) {
+                let events: Vec<(i64, String)> = (0..n_events)
+                    .map(|i| (i64::try_from(i).unwrap() * 3600, "A".to_string()))
+                    .collect();
+                let bursts = detect_bursts(&events);
+                for burst in &bursts {
+                    prop_assert!(burst.commit_count >= MIN_BURST_LENGTH,
+                        "burst commit_count={} < MIN_BURST_LENGTH={}", burst.commit_count, MIN_BURST_LENGTH);
+                }
+            }
+
+            /// Risk score is always non-negative.
+            #[test]
+            fn prop_risk_non_negative(n_files in 1usize..5, n_events_per_file in 3usize..10) {
+                let mut acc = ChangeBurstAccumulator::new();
+                for f in 0..n_files {
+                    let path = format!("f{f}.rs");
+                    for e in 0..n_events_per_file {
+                        acc.record_file(&path, i64::try_from(e).unwrap() * 3600, "Alice");
+                    }
+                }
+                let report = acc.finalize();
+                for file_metrics in &report.files {
+                    prop_assert!(file_metrics.risk_score >= 0.0,
+                        "risk_score={} < 0", file_metrics.risk_score);
+                }
+            }
+
+            /// Files in report are sorted by risk_score descending.
+            #[test]
+            fn prop_sorted_by_risk(n_files in 2usize..6) {
+                let mut acc = ChangeBurstAccumulator::new();
+                for f in 0..n_files {
+                    let path = format!("f{f}.rs");
+                    let n_events = (f + 3) * 2; // varying burst sizes
+                    for e in 0..n_events {
+                        acc.record_file(&path, i64::try_from(e).unwrap() * 3600, "Alice");
+                    }
+                }
+                let report = acc.finalize();
+                for w in report.files.windows(2) {
+                    prop_assert!(w[0].risk_score >= w[1].risk_score - 1e-10,
+                        "not sorted: {} < {}", w[0].risk_score, w[1].risk_score);
+                }
+            }
+        }
+    }
 }

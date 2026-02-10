@@ -353,4 +353,106 @@ mod tests {
             "decay must be moderate for age = time_span"
         );
     }
+
+    #[test]
+    fn test_time_span_subtraction_not_addition() {
+        // Kills mutant: line 109 replace - with + in t_max - t_min
+        // Use t_min=1000, t_max=2000 so time_span = 1000 (correct) vs 3000 (mutant)
+        // Different time_spans produce different half-lives and thus different weights
+        let mut acc = HotspotAccumulator::new(1500);
+        acc.record(1500, FileActionKind::Modify);
+        acc.record(2000, FileActionKind::Modify);
+        let hotspot = acc.finalize("ts.rs".to_string(), 1000, 2000);
+
+        // time_span = 2000 - 1000 = 1000
+        // half_life = 1000 * 0.5 = 500
+        // lambda = ln(2) / 500
+        let time_span = 1000.0_f64;
+        let half_life = time_span * 0.5;
+        let lambda = std::f64::consts::LN_2 / half_life;
+
+        // Weight for ts=1500: age = 2000 - 1500 = 500, weight = exp(-lambda * 500) = 0.5
+        // Weight for ts=2000: age = 2000 - 2000 = 0, weight = exp(0) = 1.0
+        let expected_weighted = (-lambda * 500.0).exp() + (-lambda * 0.0).exp();
+        assert!(
+            (hotspot.weighted_changes - expected_weighted).abs() < 1e-10,
+            "weighted_changes={}, expected={} (time_span=1000, not 3000)",
+            hotspot.weighted_changes,
+            expected_weighted
+        );
+    }
+
+    mod property_tests {
+        use super::*;
+        use crate::insights::FileActionKind;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Score is always non-negative.
+            #[test]
+            fn prop_score_non_negative(n_changes in 1usize..30) {
+                let mut acc = HotspotAccumulator::new(0);
+                for i in 1..=n_changes {
+                    acc.record(i64::try_from(i).unwrap() * 1000, FileActionKind::Modify);
+                }
+                let t_max = i64::try_from(n_changes).unwrap() * 1000;
+                let hotspot = acc.finalize("test.rs".to_string(), 0, t_max);
+                prop_assert!(hotspot.score >= 0.0, "score={} < 0", hotspot.score);
+            }
+
+            /// Weighted changes are always non-negative and ≤ total_changes.
+            #[test]
+            fn prop_weighted_bounded(n_changes in 1usize..30) {
+                let mut acc = HotspotAccumulator::new(0);
+                for i in 1..=n_changes {
+                    acc.record(i64::try_from(i).unwrap() * 1000, FileActionKind::Modify);
+                }
+                let t_max = i64::try_from(n_changes).unwrap() * 1000;
+                let hotspot = acc.finalize("test.rs".to_string(), 0, t_max);
+                prop_assert!(hotspot.weighted_changes >= 0.0,
+                    "weighted={} < 0", hotspot.weighted_changes);
+                prop_assert!(hotspot.weighted_changes <= f64::from(hotspot.total_changes) + 1e-10,
+                    "weighted={} > total={}", hotspot.weighted_changes, hotspot.total_changes);
+            }
+
+            /// Action counts always sum to total_changes.
+            #[test]
+            fn prop_action_sum(creates in 0u32..10, modifies in 0u32..10, deletes in 0u32..10) {
+                prop_assume!(creates + modifies + deletes > 0);
+                let mut acc = HotspotAccumulator::new(0);
+                let mut ts = 1i64;
+                for _ in 0..creates {
+                    acc.record(ts, FileActionKind::Create);
+                    ts += 1000;
+                }
+                for _ in 0..modifies {
+                    acc.record(ts, FileActionKind::Modify);
+                    ts += 1000;
+                }
+                for _ in 0..deletes {
+                    acc.record(ts, FileActionKind::Delete);
+                    ts += 1000;
+                }
+                let hotspot = acc.finalize("test.rs".to_string(), 0, ts);
+                prop_assert_eq!(
+                    hotspot.creates + hotspot.modifies + hotspot.deletes,
+                    hotspot.total_changes,
+                    "action sum mismatch"
+                );
+            }
+
+            /// first_seen ≤ last_seen always.
+            #[test]
+            fn prop_first_leq_last(n_changes in 1usize..20) {
+                let mut acc = HotspotAccumulator::new(100);
+                for i in 1..n_changes {
+                    acc.record(100 + i64::try_from(i).unwrap() * 500, FileActionKind::Modify);
+                }
+                let t_max = 100 + i64::try_from(n_changes).unwrap() * 500;
+                let hotspot = acc.finalize("test.rs".to_string(), 0, t_max);
+                prop_assert!(hotspot.first_seen <= hotspot.last_seen,
+                    "first={} > last={}", hotspot.first_seen, hotspot.last_seen);
+            }
+        }
+    }
 }

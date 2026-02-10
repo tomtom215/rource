@@ -682,4 +682,119 @@ mod tests {
             "< 4 snapshots with active files → Stable"
         );
     }
+
+    #[test]
+    fn test_fewer_than_4_snapshots_zero_active_shrinking() {
+        // Covers lines 174-175: snapshots.len() < 4 with active_files == 0
+        let mut acc = GrowthAccumulator::new();
+        // Create a file, then delete it → 0 active files
+        acc.record_file("a.rs", FileActionKind::Create);
+        acc.record_snapshot(0);
+        acc.record_file("a.rs", FileActionKind::Delete);
+        acc.record_snapshot(1000);
+        // Only 2 snapshots, active_files = 0 at end
+        let report = acc.finalize(0, 1000);
+        assert_eq!(report.current_file_count, 0);
+        assert_eq!(
+            report.trend,
+            GrowthTrend::Shrinking,
+            "< 4 snapshots with 0 active files → Shrinking"
+        );
+    }
+
+    #[test]
+    fn test_three_snapshots_zero_active_shrinking() {
+        // Covers lines 174-175: exactly 3 snapshots, last has 0 active files
+        let mut acc = GrowthAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Create);
+        acc.record_snapshot(0);
+        acc.record_file("b.rs", FileActionKind::Create);
+        acc.record_snapshot(1000);
+        // Delete both
+        acc.record_file("a.rs", FileActionKind::Delete);
+        acc.record_file("b.rs", FileActionKind::Delete);
+        acc.record_snapshot(2000);
+        let report = acc.finalize(0, 2000);
+        assert_eq!(report.current_file_count, 0);
+        assert_eq!(
+            report.trend,
+            GrowthTrend::Shrinking,
+            "3 snapshots ending at 0 active → Shrinking"
+        );
+    }
+
+    mod property_tests {
+        use super::*;
+        use crate::insights::FileActionKind;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Net growth equals total_created - total_deleted (as i64).
+            #[test]
+            fn prop_net_growth_arithmetic(creates in 0u32..20, deletes in 0u32..20) {
+                let mut acc = GrowthAccumulator::new();
+                for i in 0..creates {
+                    acc.record_file(&format!("c{i}.rs"), FileActionKind::Create);
+                    acc.record_snapshot(i64::from(i) * 1000);
+                }
+                for i in 0..deletes.min(creates) {
+                    acc.record_file(&format!("c{i}.rs"), FileActionKind::Delete);
+                    acc.record_snapshot(i64::from(creates + i) * 1000);
+                }
+                let t_max = i64::from(creates + deletes) * 1000 + 1;
+                let report = acc.finalize(0, t_max);
+                let expected = i64::from(report.total_created) - i64::from(report.total_deleted);
+                prop_assert_eq!(report.net_growth, expected,
+                    "net_growth={} != created({}) - deleted({})",
+                    report.net_growth, report.total_created, report.total_deleted);
+            }
+
+            /// Cumulative create counts are monotonically non-decreasing in snapshots.
+            #[test]
+            fn prop_cumulative_creates_monotonic(n_files in 1usize..15) {
+                let mut acc = GrowthAccumulator::new();
+                for i in 0..n_files {
+                    acc.record_file(&format!("f{i}.rs"), FileActionKind::Create);
+                    acc.record_snapshot(i64::try_from(i).unwrap() * 1000);
+                }
+                let report = acc.finalize(0, i64::try_from(n_files).unwrap() * 1000);
+                for w in report.snapshots.windows(2) {
+                    prop_assert!(w[0].cumulative_creates <= w[1].cumulative_creates,
+                        "creates not monotonic: {} > {}", w[0].cumulative_creates, w[1].cumulative_creates);
+                }
+            }
+
+            /// current_file_count is non-negative.
+            #[test]
+            fn prop_current_files_non_negative(creates in 1usize..10, deletes in 0usize..10) {
+                let mut acc = GrowthAccumulator::new();
+                for i in 0..creates {
+                    acc.record_file(&format!("f{i}.rs"), FileActionKind::Create);
+                    acc.record_snapshot(i64::try_from(i).unwrap() * 1000);
+                }
+                for i in 0..deletes.min(creates) {
+                    acc.record_file(&format!("f{i}.rs"), FileActionKind::Delete);
+                    acc.record_snapshot(i64::try_from(creates + i).unwrap() * 1000);
+                }
+                let t_max = i64::try_from(creates + deletes).unwrap() * 1000 + 1;
+                let report = acc.finalize(0, t_max);
+                // current_file_count is usize, so always >= 0 by type
+                // But verify it matches active_files semantics
+                prop_assert!(report.current_file_count <= creates,
+                    "current_file_count={} > creates={}", report.current_file_count, creates);
+            }
+
+            /// Snapshots count matches number of record_snapshot calls.
+            #[test]
+            fn prop_snapshot_count(n_snapshots in 1usize..20) {
+                let mut acc = GrowthAccumulator::new();
+                for i in 0..n_snapshots {
+                    acc.record_file(&format!("f{i}.rs"), FileActionKind::Create);
+                    acc.record_snapshot(i64::try_from(i).unwrap() * 1000);
+                }
+                let report = acc.finalize(0, i64::try_from(n_snapshots).unwrap() * 1000);
+                prop_assert_eq!(report.snapshots.len(), n_snapshots);
+            }
+        }
+    }
 }

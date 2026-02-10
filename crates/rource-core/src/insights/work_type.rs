@@ -499,4 +499,86 @@ mod tests {
                 || report.dominant_type == WorkType::Maintenance
         );
     }
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Percentages always sum to approximately 100.
+            #[test]
+            fn prop_percentages_sum_to_100(
+                n_commits in 1usize..20,
+                seed in 0u64..1000
+            ) {
+                let mut acc = WorkTypeAccumulator::new();
+                for i in 0..n_commits {
+                    let v = (seed + u64::try_from(i).unwrap()) % 4;
+                    let (c, m, d) = match v {
+                        0 => (10u32, 0u32, 0u32),   // Feature
+                        1 => (0, 10, 0),              // Maintenance
+                        2 => (0, 0, 10),              // Cleanup
+                        _ => (3, 3, 4),               // Mixed
+                    };
+                    acc.record_commit(i64::try_from(i).unwrap() * 1000, c, m, d);
+                }
+                let report = acc.finalize();
+                let sum = report.feature_pct + report.maintenance_pct
+                    + report.cleanup_pct + report.mixed_pct;
+                prop_assert!(
+                    (sum - 100.0).abs() < 1e-6,
+                    "pct sum={}, expected 100.0", sum
+                );
+            }
+
+            /// All percentages are in [0, 100].
+            #[test]
+            fn prop_percentages_bounded(
+                n_commits in 1usize..20,
+                seed in 0u64..1000
+            ) {
+                let mut acc = WorkTypeAccumulator::new();
+                for i in 0..n_commits {
+                    let v = (seed + u64::try_from(i).unwrap()) % 3;
+                    let (c, m, d) = match v {
+                        0 => (8u32, 1u32, 1u32),
+                        1 => (1, 8, 1),
+                        _ => (1, 1, 8),
+                    };
+                    acc.record_commit(i64::try_from(i).unwrap() * 1000, c, m, d);
+                }
+                let report = acc.finalize();
+                for pct in [report.feature_pct, report.maintenance_pct,
+                            report.cleanup_pct, report.mixed_pct] {
+                    prop_assert!((0.0..=100.0).contains(&pct), "pct={} out of [0,100]", pct);
+                }
+            }
+
+            /// Ratios in each commit sum to 1.0.
+            #[test]
+            fn prop_ratios_sum_to_one(creates in 0u32..20, modifies in 0u32..20, deletes in 0u32..20) {
+                prop_assume!(creates + modifies + deletes > 0);
+                let mut acc = WorkTypeAccumulator::new();
+                acc.record_commit(1000, creates, modifies, deletes);
+                let report = acc.finalize();
+                let commit = &report.commits[0];
+                let sum = commit.create_ratio + commit.modify_ratio + commit.delete_ratio;
+                prop_assert!(
+                    (sum - 1.0).abs() < 1e-10,
+                    "ratio sum={}, expected 1.0", sum
+                );
+            }
+
+            /// Total commits matches expected count.
+            #[test]
+            fn prop_total_commits(n_commits in 1usize..30) {
+                let mut acc = WorkTypeAccumulator::new();
+                for i in 0..n_commits {
+                    acc.record_commit(i64::try_from(i).unwrap() * 1000, 5, 3, 2);
+                }
+                let report = acc.finalize();
+                prop_assert_eq!(report.total_commits, n_commits);
+            }
+        }
+    }
 }

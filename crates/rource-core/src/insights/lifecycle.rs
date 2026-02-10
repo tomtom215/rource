@@ -712,4 +712,129 @@ mod tests {
             "3 unique authors (Alice, Bob, Carol)"
         );
     }
+
+    #[test]
+    fn test_out_of_order_timestamps_first_seen() {
+        // Covers lines 161-162: timestamp < data.first_seen guard
+        // Record a file with a later timestamp first, then an earlier one
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Create, 5000, "Alice");
+        acc.record_file("a.rs", FileActionKind::Modify, 2000, "Alice"); // earlier!
+        let report = acc.finalize(2000, 5000);
+        assert_eq!(
+            report.files[0].first_seen, 2000,
+            "first_seen should update to earlier timestamp"
+        );
+    }
+
+    #[test]
+    fn test_out_of_order_timestamps_last_modified() {
+        // Covers lines 164-166: timestamp > data.last_modified guard
+        // Record a file with an earlier timestamp first, then a later one
+        // (This is actually the normal path, but we also verify with a gap)
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Create, 1000, "Alice");
+        acc.record_file("a.rs", FileActionKind::Modify, 10000, "Alice");
+        acc.record_file("a.rs", FileActionKind::Modify, 5000, "Alice"); // not later
+        let report = acc.finalize(1000, 10000);
+        assert_eq!(
+            report.files[0].last_modified, 10000,
+            "last_modified should remain at highest timestamp"
+        );
+    }
+
+    mod property_tests {
+        use super::*;
+        use crate::insights::FileActionKind;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Age in days is always non-negative.
+            #[test]
+            fn prop_age_non_negative(n_files in 1usize..10) {
+                let mut acc = LifecycleAccumulator::new();
+                for i in 0..n_files {
+                    acc.record_file(
+                        &format!("f{i}.rs"),
+                        FileActionKind::Create,
+                        i64::try_from(i).unwrap() * 86400,
+                        "Alice",
+                    );
+                }
+                let t_max = i64::try_from(n_files).unwrap() * 86400;
+                let report = acc.finalize(0, t_max);
+                for file in &report.files {
+                    prop_assert!(file.age_days >= 0.0,
+                        "age_days={} < 0 for {}", file.age_days, file.path);
+                }
+            }
+
+            /// Churn rate is non-negative.
+            #[test]
+            fn prop_churn_non_negative(creates in 1usize..10, deletes in 0usize..5) {
+                let mut acc = LifecycleAccumulator::new();
+                for i in 0..creates {
+                    acc.record_file(
+                        &format!("f{i}.rs"),
+                        FileActionKind::Create,
+                        i64::try_from(i).unwrap() * 86400,
+                        "Alice",
+                    );
+                }
+                for i in 0..deletes.min(creates) {
+                    acc.record_file(
+                        &format!("f{i}.rs"),
+                        FileActionKind::Delete,
+                        i64::try_from(creates + i).unwrap() * 86400,
+                        "Alice",
+                    );
+                }
+                let t_max = i64::try_from(creates + deletes).unwrap() * 86400 + 1;
+                let report = acc.finalize(0, t_max);
+                prop_assert!(report.churn_rate >= 0.0,
+                    "churn_rate={} < 0", report.churn_rate);
+            }
+
+            /// Stage counts sum to total files seen.
+            #[test]
+            fn prop_stage_counts_sum(n_files in 1usize..10) {
+                let mut acc = LifecycleAccumulator::new();
+                for i in 0..n_files {
+                    acc.record_file(
+                        &format!("f{i}.rs"),
+                        FileActionKind::Create,
+                        i64::try_from(i).unwrap() * 86400,
+                        "Alice",
+                    );
+                }
+                let t_max = i64::try_from(n_files + 10).unwrap() * 86400;
+                let report = acc.finalize(0, t_max);
+                let stage_sum = report.active_count + report.dead_count
+                    + report.deleted_count + report.ephemeral_count;
+                prop_assert_eq!(stage_sum, report.total_files_seen,
+                    "stage_sum={} != total_files_seen={}", stage_sum, report.total_files_seen);
+            }
+
+            /// modifications_per_month is non-negative.
+            #[test]
+            fn prop_mod_rate_non_negative(n_mods in 1usize..10) {
+                let mut acc = LifecycleAccumulator::new();
+                acc.record_file("a.rs", FileActionKind::Create, 0, "Alice");
+                for i in 0..n_mods {
+                    acc.record_file(
+                        "a.rs",
+                        FileActionKind::Modify,
+                        i64::try_from(i + 1).unwrap() * 86400,
+                        "Alice",
+                    );
+                }
+                let t_max = i64::try_from(n_mods + 1).unwrap() * 86400;
+                let report = acc.finalize(0, t_max);
+                for file in &report.files {
+                    prop_assert!(file.modifications_per_month >= 0.0,
+                        "mod_rate={} < 0 for {}", file.modifications_per_month, file.path);
+                }
+            }
+        }
+    }
 }
