@@ -1717,3 +1717,45 @@
         min-height: 44px;
     }
 }
+
+/* =============================================================================
+   Analytics Dashboard - Mobile Overrides
+   ============================================================================= */
+
+/* Hide viz-specific chrome when in analytics view */
+@media (max-width: 768px) {
+    .view-analytics .mobile-toolbar,
+    .view-analytics .mobile-center-play,
+    .view-analytics .stats-overlay,
+    .view-analytics .perf-overlay,
+    .view-analytics .legend-panel,
+    .view-analytics .authors-panel,
+    .view-analytics .sidebar-toggle,
+    .view-analytics #bottom-sheet-fab {
+        display: none !important;
+    }
+
+    /* In analytics view, hide header export/utility controls for cleaner mobile header */
+    .view-analytics .control-group[aria-label="Export controls"],
+    .view-analytics .control-group[aria-label="Display controls"] {
+        display: none;
+    }
+
+    /* Analytics dashboard takes full viewport on mobile */
+    .view-analytics .analytics-dashboard {
+        padding: var(--spacing-sm);
+        gap: var(--spacing-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .view-analytics .analytics-dashboard {
+        padding: var(--spacing-xs);
+    }
+
+    /* Visualize button full-width on small screens */
+    .view-analytics .analytics-viz-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
