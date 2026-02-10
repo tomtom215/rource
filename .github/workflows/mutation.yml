@@ -8,7 +8,7 @@
 #
 # SCALING STRATEGY:
 #   PR trigger:   --in-diff (only test mutants in changed code, fast)
-#   Full trigger:  All mutants, 360min timeout, --jobs=4
+#   Full trigger:  All mutants, 30min job limit (platform cap), --jobs=4
 #
 # Field names in outcomes.json (cargo-mutants source of truth):
 #   total_mutants, caught, missed, timeout, unviable, success
@@ -37,7 +37,7 @@ on:
         required: false
         default: '120'
 
-# Mutation testing is a long-running job (~260 min for large diffs).
+# CI platform enforces a hard 30-minute job limit that overrides timeout-minutes.
 # Do NOT cancel in-progress runs — each push would restart from zero,
 # wasting all prior work. This matches fuzz.yml and load-test.yml policy.
 concurrency:
@@ -102,9 +102,9 @@ jobs:
   mutation-math:
     name: Mutation Test (rource-math)
     runs-on: ubuntu-latest
-    # Full run (6052 mutants × ~10s/mutant / 4 jobs ≈ 252 min). 360 min = GitHub max.
-    # PR runs use --in-diff and complete in minutes, not hours.
-    timeout-minutes: 360
+    # CI platform enforces 30-min hard limit. Use cargo-binstall (~30s) instead of
+    # cargo install (~15min) to maximize time for actual mutation testing.
+    timeout-minutes: 30
     needs: [detect-changes]
     if: |
       needs.detect-changes.outputs.math == 'true' ||
@@ -124,7 +124,10 @@ jobs:
           shared-key: "mutants-math"
 
       - name: Install cargo-mutants
-        run: cargo install cargo-mutants --locked
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf \
+            https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-mutants --no-confirm
 
       - name: Generate diff for PR (--in-diff mode)
         if: github.event_name == 'pull_request'
@@ -140,13 +143,14 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
-          # Time budget prevents indefinite runtime on large diffs.
-          # PR mode: 55 min (leaves headroom in ~60 min reasonable CI window)
-          # Full mode: 300 min (leaves 60 min buffer within 360 min job timeout)
+          EXIT_CODE=0
+          # Time budget: 20 min fits within the 30-min platform job limit,
+          # leaving ~10 min for setup (checkout, toolchain, cache, binstall)
+          # and post-processing (parse results, upload artifacts, summary).
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            TIME_BUDGET="55m"
+            TIME_BUDGET="20m"
           else
-            TIME_BUDGET="300m"
+            TIME_BUDGET="20m"
           fi
 
           # PR mode: only test mutants in changed code (fast, scales with PR size)
@@ -156,14 +160,12 @@ jobs:
             echo "Time budget: $TIME_BUDGET"
             # timeout sends SIGTERM on expiry; cargo-mutants writes partial results then exits
             timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
-              cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1
-            EXIT_CODE=$?
+              cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1 || EXIT_CODE=$?
           else
             echo "Full mode: testing all mutants"
             echo "Time budget: $TIME_BUDGET"
             timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
-              cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1
-            EXIT_CODE=$?
+              cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1 || EXIT_CODE=$?
           fi
 
           if [ "$EXIT_CODE" -eq 124 ]; then
@@ -272,7 +274,7 @@ jobs:
   mutation-vcs:
     name: Mutation Test (rource-vcs)
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 30
     needs: [detect-changes]
     if: |
       needs.detect-changes.outputs.vcs == 'true' ||
@@ -292,7 +294,10 @@ jobs:
           shared-key: "mutants-vcs"
 
       - name: Install cargo-mutants
-        run: cargo install cargo-mutants --locked
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf \
+            https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-mutants --no-confirm
 
       - name: Generate diff for PR
         if: github.event_name == 'pull_request'
@@ -304,24 +309,23 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
+          EXIT_CODE=0
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            TIME_BUDGET="55m"
+            TIME_BUDGET="20m"
           else
-            TIME_BUDGET="300m"
+            TIME_BUDGET="20m"
           fi
 
           if [ "${{ github.event_name }}" = "pull_request" ] && [ -f pr-diff.patch ] && [ -s pr-diff.patch ]; then
             echo "PR mode: testing only mutants in changed code (--in-diff)"
             echo "Time budget: $TIME_BUDGET"
             timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
-              cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1
-            EXIT_CODE=$?
+              cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1 || EXIT_CODE=$?
           else
             echo "Full mode: testing all mutants"
             echo "Time budget: $TIME_BUDGET"
             timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
-              cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1
-            EXIT_CODE=$?
+              cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1 || EXIT_CODE=$?
           fi
 
           if [ "$EXIT_CODE" -eq 124 ]; then
@@ -408,7 +412,7 @@ jobs:
   mutation-core:
     name: Mutation Test (rource-core)
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 30
     needs: [detect-changes]
     if: |
       needs.detect-changes.outputs.core == 'true' ||
@@ -428,7 +432,10 @@ jobs:
           shared-key: "mutants-core"
 
       - name: Install cargo-mutants
-        run: cargo install cargo-mutants --locked
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf \
+            https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-mutants --no-confirm
 
       - name: Generate diff for PR
         if: github.event_name == 'pull_request'
@@ -440,24 +447,23 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
+          EXIT_CODE=0
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            TIME_BUDGET="55m"
+            TIME_BUDGET="20m"
           else
-            TIME_BUDGET="300m"
+            TIME_BUDGET="20m"
           fi
 
           if [ "${{ github.event_name }}" = "pull_request" ] && [ -f pr-diff.patch ] && [ -s pr-diff.patch ]; then
             echo "PR mode: testing only mutants in changed code (--in-diff)"
             echo "Time budget: $TIME_BUDGET"
             timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
-              cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1
-            EXIT_CODE=$?
+              cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1 || EXIT_CODE=$?
           else
             echo "Full mode: testing all mutants"
             echo "Time budget: $TIME_BUDGET"
             timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
-              cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1
-            EXIT_CODE=$?
+              cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1 || EXIT_CODE=$?
           fi
 
           if [ "$EXIT_CODE" -eq 124 ]; then
@@ -544,7 +550,7 @@ jobs:
   mutation-render:
     name: Mutation Test (rource-render)
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 30
     needs: [detect-changes]
     if: |
       needs.detect-changes.outputs.render == 'true' ||
@@ -564,7 +570,10 @@ jobs:
           shared-key: "mutants-render"
 
       - name: Install cargo-mutants
-        run: cargo install cargo-mutants --locked
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf \
+            https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-mutants --no-confirm
 
       - name: Generate diff for PR
         if: github.event_name == 'pull_request'
@@ -576,24 +585,23 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
+          EXIT_CODE=0
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            TIME_BUDGET="55m"
+            TIME_BUDGET="20m"
           else
-            TIME_BUDGET="300m"
+            TIME_BUDGET="20m"
           fi
 
           if [ "${{ github.event_name }}" = "pull_request" ] && [ -f pr-diff.patch ] && [ -s pr-diff.patch ]; then
             echo "PR mode: testing only mutants in changed code (--in-diff)"
             echo "Time budget: $TIME_BUDGET"
             timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
-              cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1
-            EXIT_CODE=$?
+              cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1 || EXIT_CODE=$?
           else
             echo "Full mode: testing all mutants"
             echo "Time budget: $TIME_BUDGET"
             timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
-              cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1
-            EXIT_CODE=$?
+              cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1 || EXIT_CODE=$?
           fi
 
           if [ "$EXIT_CODE" -eq 124 ]; then
