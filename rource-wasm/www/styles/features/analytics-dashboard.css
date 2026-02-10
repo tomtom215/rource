@@ -1,0 +1,392 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Analytics Dashboard Styles
+ *
+ * Full-width analytics-first landing layout.
+ * Mobile-first responsive design:
+ *   - 375px: single column, compact cards
+ *   - 480px: 2-column summary cards
+ *   - 768px: improved spacing
+ *   - 1200px+: 3-5 column cards, wider tab panels
+ *
+ * Touch targets >= 44px, body text >= 14px, contrast >= 4.5:1.
+ */
+
+/* ===== View State Classes ===== */
+
+.app-container.view-analytics {
+    grid-template-columns: 1fr;
+}
+
+.app-container.view-viz {
+    grid-template-columns: 1fr minmax(320px, min(400px, 30vw));
+}
+
+@media (max-width: 1200px) {
+    .app-container.view-viz {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== Dashboard Container ===== */
+
+.analytics-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--spacing-sm);
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.analytics-dashboard[hidden] {
+    display: none;
+}
+
+/* ===== Dashboard Header ===== */
+
+.analytics-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.analytics-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.analytics-title {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.analytics-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: var(--spacing-xs) 0 0;
+}
+
+.analytics-viz-btn {
+    min-height: 44px;
+    padding: var(--spacing-sm) var(--spacing-xl);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+/* ===== Summary Cards ===== */
+
+.analytics-summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.analytics-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    text-align: center;
+    transition: border-color var(--transition-fast);
+}
+
+.analytics-card:hover {
+    border-color: var(--border-light);
+}
+
+.analytics-card-value {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.analytics-card-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* ===== Tab Bar ===== */
+
+.analytics-tabs-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.analytics-tabs {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.analytics-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.analytics-tab-btn {
+    flex: 1 0 auto;
+    min-height: 48px;
+    min-width: 44px;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.analytics-tab-btn:hover {
+    color: var(--text-secondary);
+}
+
+.analytics-tab-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: -2px;
+}
+
+.analytics-tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ===== Tab Content ===== */
+
+.analytics-content {
+    padding: var(--spacing-lg);
+}
+
+.analytics-tab-panel {
+    display: none;
+}
+
+.analytics-tab-panel.active {
+    display: block;
+}
+
+.analytics-tab-body {
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+/* Reuse insights metric styles in dashboard context */
+.analytics-tab-body .insights-metric {
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border);
+}
+
+.analytics-tab-body .insights-metric:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.analytics-tab-body .insights-metric-title {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-xs);
+}
+
+.analytics-tab-body .insights-metric-desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: 0 0 var(--spacing-md);
+}
+
+.analytics-tab-body .insights-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.analytics-tab-body .insights-table {
+    width: 100%;
+}
+
+/* ===== Repo Selector Section ===== */
+
+.analytics-repo-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+}
+
+.analytics-section-title {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-md);
+}
+
+.analytics-input-group {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.analytics-input {
+    flex: 1;
+    min-height: 44px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+}
+
+.analytics-input::placeholder {
+    color: var(--text-muted);
+}
+
+.analytics-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+}
+
+.analytics-repo-chips {
+    margin-top: var(--spacing-sm);
+}
+
+.analytics-chips-label {
+    display: block;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* ===== Loading State ===== */
+
+.analytics-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-3xl);
+    gap: var(--spacing-md);
+    color: var(--text-secondary);
+}
+
+.analytics-loading .insights-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--bg-tertiary);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* ===== Empty State ===== */
+
+.analytics-empty-state {
+    text-align: center;
+    padding: var(--spacing-3xl) var(--spacing-lg);
+    color: var(--text-secondary);
+}
+
+.analytics-empty-state h3 {
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-sm);
+}
+
+.analytics-empty-state p {
+    font-size: var(--font-size-sm);
+    margin: 0 0 var(--spacing-lg);
+}
+
+/* ===== Responsive Breakpoints ===== */
+
+/* Small mobile (375px) */
+@media (max-width: 480px) {
+    .analytics-dashboard {
+        padding: var(--spacing-xs);
+        gap: var(--spacing-md);
+    }
+
+    .analytics-summary-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .analytics-card {
+        padding: var(--spacing-md);
+    }
+
+    .analytics-card-value {
+        font-size: var(--font-size-xl);
+    }
+
+    .analytics-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .analytics-viz-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .analytics-tab-btn {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-xs);
+    }
+
+    .analytics-content {
+        padding: var(--spacing-md);
+    }
+}
+
+/* Tablet (768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+    .analytics-summary-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Desktop (1200px+) */
+@media (min-width: 1200px) {
+    .analytics-dashboard {
+        padding: var(--spacing-lg);
+    }
+
+    .analytics-summary-row {
+        grid-template-columns: repeat(5, 1fr);
+    }
+
+    .analytics-content {
+        padding: var(--spacing-xl);
+    }
+}
