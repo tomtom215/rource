@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770728716180,
+  "lastUpdate": 1770734514991,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6068,6 +6068,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/2f4fc961e433d0b5d890b354386b1df80dc2b9aa"
         },
         "date": 1770728715798,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3593841,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1353323,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2283fd4dfd03586a9e444a86dcacfae0b4e03be8",
+          "message": "Merge pull request #285 from tomtom215/claude/defect-risk-metrics-WMsCT\n\nAdd comprehensive test coverage with mutation-killing and property-based tests",
+          "timestamp": "2026-02-10T15:37:40+01:00",
+          "tree_id": "d78b577d5fc218645617cf9d0781034c8be74f21",
+          "url": "https://github.com/tomtom215/rource/commit/2283fd4dfd03586a9e444a86dcacfae0b4e03be8"
+        },
+        "date": 1770734514332,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
