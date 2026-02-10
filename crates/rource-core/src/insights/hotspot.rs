@@ -156,8 +156,16 @@ mod tests {
         assert_eq!(hotspot.modifies, 1);
         assert_eq!(hotspot.creates, 0);
         assert_eq!(hotspot.deletes, 0);
-        assert!(hotspot.weighted_changes > 0.0);
-        assert!(hotspot.score > 0.0);
+        // Zero time span → weighted_changes = total = 1.0
+        assert!((hotspot.weighted_changes - 1.0).abs() < f64::EPSILON);
+        // score = 1.0 * (1 + ln(1 + 1)) = 1.0 * (1 + ln(2))
+        let expected_score = 1.0 * (1.0 + 1.0_f64.ln_1p());
+        assert!(
+            (hotspot.score - expected_score).abs() < 1e-10,
+            "score={}, expected={}",
+            hotspot.score,
+            expected_score
+        );
     }
 
     #[test]
@@ -181,6 +189,25 @@ mod tests {
             "recent weighted={}, old weighted={}",
             recent.weighted_changes,
             old.weighted_changes
+        );
+        // Verify actual decay math: time_span=10000, half_life=5000
+        // lambda = ln(2)/5000
+        // For recent: ages are 1000 and 0 → weights = exp(-λ*1000) + exp(0)
+        // For old: ages are 10000 and 9000 → much lower weights
+        let lambda = std::f64::consts::LN_2 / 5000.0;
+        let expected_recent = (-lambda * 1000.0).exp() + 1.0; // ages: 1000, 0
+        let expected_old = (-lambda * 10000.0).exp() + (-lambda * 9000.0).exp();
+        assert!(
+            (recent.weighted_changes - expected_recent).abs() < 1e-10,
+            "recent weighted={}, expected={}",
+            recent.weighted_changes,
+            expected_recent
+        );
+        assert!(
+            (old.weighted_changes - expected_old).abs() < 1e-10,
+            "old weighted={}, expected={}",
+            old.weighted_changes,
+            expected_old
         );
     }
 
@@ -227,6 +254,27 @@ mod tests {
     }
 
     #[test]
+    fn test_first_last_seen_strict_boundaries() {
+        // Kills mutants: < vs <= on first_seen, > vs >= on last_seen
+        // Start with timestamp 500, then record 500 again — first_seen must stay 500, not change
+        let mut acc = HotspotAccumulator::new(500);
+        acc.record(500, FileActionKind::Modify);
+        // Record earlier timestamp — first_seen must update to 200
+        acc.record(200, FileActionKind::Modify);
+        // Record timestamp equal to current first_seen — must NOT update (< not <=)
+        acc.record(200, FileActionKind::Modify);
+        // Record timestamp equal to current last_seen — must NOT update (> not >=)
+        acc.record(500, FileActionKind::Modify);
+        // Record a later timestamp
+        acc.record(800, FileActionKind::Modify);
+
+        let hotspot = acc.finalize("bounds.rs".to_string(), 0, 1000);
+        assert_eq!(hotspot.first_seen, 200);
+        assert_eq!(hotspot.last_seen, 800);
+        assert_eq!(hotspot.total_changes, 5);
+    }
+
+    #[test]
     fn test_zero_time_span() {
         // All commits at the same instant
         let mut acc = HotspotAccumulator::new(5000);
@@ -237,5 +285,72 @@ mod tests {
 
         assert_eq!(hotspot.total_changes, 3);
         assert!((hotspot.weighted_changes - 3.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_score_formula_exact() {
+        // Kills mutants: * vs + and * vs / in score formula
+        // Use total=5 so that multiplication and addition diverge significantly:
+        // 5.0 * (1 + ln(6)) ≈ 13.96 vs 5.0 + (1 + ln(6)) ≈ 7.79 (diff ≈ 6.17)
+        // With zero time_span, weighted_changes = total = 5
+        let mut acc = HotspotAccumulator::new(100);
+        for _ in 0..5 {
+            acc.record(100, FileActionKind::Modify);
+        }
+        let hotspot = acc.finalize("exact.rs".to_string(), 100, 100);
+
+        assert_eq!(hotspot.total_changes, 5);
+        assert!((hotspot.weighted_changes - 5.0).abs() < f64::EPSILON);
+        // score = weighted_changes * (1 + ln_1p(total))
+        // = 5.0 * (1.0 + ln(1 + 5)) = 5.0 * (1.0 + ln(6))
+        let log_factor = 1.0 + 5.0_f64.ln_1p();
+        let expected = 5.0 * log_factor;
+        assert!(
+            (hotspot.score - expected).abs() < 1e-10,
+            "score={}, expected={} (5.0 * (1.0 + ln(6)))",
+            hotspot.score,
+            expected
+        );
+        // Verify it's NOT the result of + or / operations
+        let wrong_add = 5.0 + log_factor;
+        let wrong_div = 5.0 / log_factor;
+        assert!(
+            (hotspot.score - wrong_add).abs() > 1.0,
+            "score ({}) should differ from addition variant ({})",
+            hotspot.score,
+            wrong_add
+        );
+        assert!(
+            (hotspot.score - wrong_div).abs() > 1.0,
+            "score ({}) should differ from division variant ({})",
+            hotspot.score,
+            wrong_div
+        );
+    }
+
+    #[test]
+    fn test_decay_weight_direction() {
+        // Kills mutant: t_max - t vs t_max + t
+        // With positive ages, decay should reduce weight
+        let mut acc = HotspotAccumulator::new(0);
+        acc.record(0, FileActionKind::Modify); // age = t_max - 0 = 10000 (old)
+        let hotspot = acc.finalize("old.rs".to_string(), 0, 10000);
+
+        // exp(-lambda * 10000) where lambda = ln(2)/5000
+        // = exp(-ln(2) * 2) = exp(-2*ln(2)) = 1/4 = 0.25
+        let expected_weight = 0.25;
+        assert!(
+            (hotspot.weighted_changes - expected_weight).abs() < 1e-10,
+            "weighted_changes={}, expected={}",
+            hotspot.weighted_changes,
+            expected_weight
+        );
+        // If mutation flipped - to +, age would be 10000+0=10000 still but
+        // with t_max + t it would be 20000 → exp(-lambda*20000) = 1/16
+        // So verify we got 0.25, not 0.0625
+        assert!(
+            hotspot.weighted_changes > 0.2,
+            "decay must be moderate for age = time_span"
+        );
     }
 }

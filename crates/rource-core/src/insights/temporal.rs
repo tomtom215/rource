@@ -409,5 +409,120 @@ mod tests {
         assert!(report.bursts.is_empty());
         assert_eq!(report.peak_hour, 0);
         assert_eq!(report.peak_day, 0);
+        assert!((report.avg_files_in_bursts - 0.0).abs() < f64::EPSILON);
+        assert!((report.avg_files_outside_bursts - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_burst_file_averages_mixed() {
+        // Some commits in burst, some outside — verify exact averages
+        // 12 commits within 1 hour (burst), then 3 commits outside
+        let mut events: Vec<(i64, usize)> = Vec::new();
+        // Burst: 12 commits, each touching 4 files
+        for i in 0..12 {
+            events.push((1000 + i * 60, 4));
+        }
+        // Outside burst: 3 commits, each touching 2 files
+        events.push((100_000, 2));
+        events.push((200_000, 2));
+        events.push((300_000, 2));
+
+        let bursts = detect_bursts(&events);
+        assert!(!bursts.is_empty(), "should detect burst");
+
+        let (avg_in, avg_out) = compute_burst_file_averages(&events, &bursts);
+        // In-burst: 12 commits * 4 files / 12 = 4.0
+        assert!(
+            (avg_in - 4.0).abs() < 1e-10,
+            "avg_in={}, expected=4.0",
+            avg_in
+        );
+        // Out-burst: 3 commits * 2 files / 3 = 2.0
+        assert!(
+            (avg_out - 2.0).abs() < 1e-10,
+            "avg_out={}, expected=2.0",
+            avg_out
+        );
+    }
+
+    #[test]
+    fn test_commits_per_day_and_hour_summing() {
+        // Kills mutants on += in finalize (commits_per_day/commits_per_hour)
+        let mut acc = TemporalAccumulator::new();
+        // 5 commits at epoch (Thursday midnight)
+        for i in 0..5 {
+            acc.record_commit(i, 1);
+        }
+        let report = acc.finalize();
+
+        // All 5 on Thursday (day 3)
+        assert_eq!(report.commits_per_day[3], 5);
+        assert_eq!(report.commits_per_day.iter().sum::<u32>(), 5);
+        // All 5 at hour 0
+        assert_eq!(report.commits_per_hour[0], 5);
+        assert_eq!(report.commits_per_hour.iter().sum::<u32>(), 5);
+    }
+
+    #[test]
+    fn test_heatmap_different_slots() {
+        let mut acc = TemporalAccumulator::new();
+        // Thursday midnight (epoch)
+        acc.record_commit(0, 1);
+        // Thursday 15:00
+        acc.record_commit(15 * 3600, 1);
+        // Friday midnight (epoch + 24h)
+        acc.record_commit(86400, 1);
+
+        let report = acc.finalize();
+        assert_eq!(report.activity_heatmap[3][0], 1, "Thu midnight");
+        assert_eq!(report.activity_heatmap[3][15], 1, "Thu 15:00");
+        assert_eq!(report.activity_heatmap[4][0], 1, "Fri midnight");
+        // Total heatmap count should be 3
+        let total: u32 = report.activity_heatmap.iter().flat_map(|r| r.iter()).sum();
+        assert_eq!(total, 3);
+    }
+
+    #[test]
+    fn test_burst_duration_seconds() {
+        // Verify burst duration_seconds is end - start
+        let mut events: Vec<(i64, usize)> = Vec::new();
+        for i in 0..15 {
+            events.push((1000 + i * 100, 1)); // 15 commits over 1400 seconds
+        }
+        let bursts = detect_bursts(&events);
+        assert_eq!(bursts.len(), 1);
+        assert_eq!(bursts[0].start, 1000);
+        assert_eq!(bursts[0].end, 1000 + 14 * 100);
+        assert_eq!(
+            bursts[0].duration_seconds,
+            bursts[0].end - bursts[0].start,
+            "duration must be end - start"
+        );
+    }
+
+    #[test]
+    fn test_empty_events_burst_detection() {
+        let bursts = detect_bursts(&[]);
+        assert!(bursts.is_empty());
+        let (avg_in, avg_out) = compute_burst_file_averages(&[], &[]);
+        assert!((avg_in - 0.0).abs() < f64::EPSILON);
+        assert!((avg_out - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_burst_merge_overlapping() {
+        // Two groups of commits that should merge into one burst
+        let mut events: Vec<(i64, usize)> = Vec::new();
+        // First group: 10 commits at time 0-540 (within 1 hour window)
+        for i in 0..10 {
+            events.push((i * 60, 1));
+        }
+        // Second group: 10 commits at time 1800-2340 (within window of first group end + 3600)
+        for i in 0..10 {
+            events.push((1800 + i * 60, 1));
+        }
+        let bursts = detect_bursts(&events);
+        // Should merge because second burst start (1800) <= first burst end + BURST_WINDOW_SECONDS
+        assert_eq!(bursts.len(), 1, "overlapping bursts should merge");
     }
 }

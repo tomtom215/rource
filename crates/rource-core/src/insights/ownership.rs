@@ -396,7 +396,144 @@ mod tests {
             .find(|c| c.author == "Bob")
             .unwrap();
 
-        assert!((alice.share - 1.0 / 3.0).abs() < 0.001);
-        assert!((bob.share - 2.0 / 3.0).abs() < 0.001);
+        // Kills mutant: / vs * in share calculation
+        assert!(
+            (alice.share - 1.0 / 3.0).abs() < 1e-10,
+            "alice share={}, expected={}",
+            alice.share,
+            1.0 / 3.0
+        );
+        assert!(
+            (bob.share - 2.0 / 3.0).abs() < 1e-10,
+            "bob share={}, expected={}",
+            bob.share,
+            2.0 / 3.0
+        );
+        // Shares must sum to 1.0
+        let total_share: f64 = ownership.contributors.iter().map(|c| c.share).sum();
+        assert!(
+            (total_share - 1.0).abs() < 1e-10,
+            "shares must sum to 1.0, got={}",
+            total_share
+        );
+        // If / were *, share would be 1*3=3.0 — verify it's bounded
+        assert!(alice.share <= 1.0, "share must be ≤ 1.0");
+        assert!(bob.share <= 1.0, "share must be ≤ 1.0");
+    }
+
+    #[test]
+    fn test_extract_top_directory_edge_cases() {
+        // Coverage: multiple slash variations
+        assert_eq!(extract_top_directory("a/b"), "a");
+        assert_eq!(extract_top_directory("single"), ".");
+        assert_eq!(extract_top_directory("deep/nested/path/file.rs"), "deep");
+        assert_eq!(extract_top_directory(""), ".");
+    }
+
+    #[test]
+    fn test_bus_factor_zero_contributors() {
+        // Coverage: the contributor_count == 0 early return path
+        let ownership = vec![FileOwnership {
+            path: "src/empty.rs".to_string(),
+            top_owner: String::new(),
+            top_owner_share: 0.0,
+            total_changes: 0,
+            contributor_count: 0,
+            contributors: Vec::new(),
+        }];
+
+        let factors = compute_bus_factors(&ownership);
+        let src = factors.iter().find(|f| f.directory == "src").unwrap();
+        assert_eq!(src.bus_factor, 0);
+        assert_eq!(src.contributor_count, 0);
+        assert!(src.critical_contributors.is_empty());
+    }
+
+    #[test]
+    fn test_bus_factor_three_contributors_shared() {
+        // All three contribute to the same file — bus factor = 3
+        let ownership = vec![FileOwnership {
+            path: "src/shared.rs".to_string(),
+            top_owner: "Alice".to_string(),
+            top_owner_share: 0.5,
+            total_changes: 10,
+            contributor_count: 3,
+            contributors: vec![
+                ContributorShare {
+                    author: "Alice".to_string(),
+                    changes: 5,
+                    share: 0.5,
+                },
+                ContributorShare {
+                    author: "Bob".to_string(),
+                    changes: 3,
+                    share: 0.3,
+                },
+                ContributorShare {
+                    author: "Carol".to_string(),
+                    changes: 2,
+                    share: 0.2,
+                },
+            ],
+        }];
+
+        let factors = compute_bus_factors(&ownership);
+        let src = factors.iter().find(|f| f.directory == "src").unwrap();
+        // Must remove all 3 to orphan the file
+        assert_eq!(src.bus_factor, 3);
+        assert_eq!(src.critical_contributors.len(), 3);
+    }
+
+    #[test]
+    fn test_bus_factor_root_directory() {
+        // Files without directory separator → "." directory
+        let ownership = vec![FileOwnership {
+            path: "README.md".to_string(),
+            top_owner: "Alice".to_string(),
+            top_owner_share: 1.0,
+            total_changes: 1,
+            contributor_count: 1,
+            contributors: vec![ContributorShare {
+                author: "Alice".to_string(),
+                changes: 1,
+                share: 1.0,
+            }],
+        }];
+
+        let factors = compute_bus_factors(&ownership);
+        assert_eq!(factors.len(), 1);
+        assert_eq!(factors[0].directory, ".");
+        assert_eq!(factors[0].bus_factor, 1);
+    }
+
+    #[test]
+    fn test_ownership_share_exact_division() {
+        // Kills mutant: / vs * or / vs % in share computation
+        let authors = make_authors(&[("Alice", 3), ("Bob", 7)]);
+        let ownership = compute_file_ownership("test.rs".to_string(), &authors);
+
+        assert_eq!(ownership.total_changes, 10);
+        // Alice: 3/10 = 0.3 exactly
+        let alice = ownership
+            .contributors
+            .iter()
+            .find(|c| c.author == "Alice")
+            .unwrap();
+        assert!(
+            (alice.share - 0.3).abs() < f64::EPSILON,
+            "alice share={}, expected=0.3",
+            alice.share
+        );
+        // Bob: 7/10 = 0.7 exactly
+        let bob = ownership
+            .contributors
+            .iter()
+            .find(|c| c.author == "Bob")
+            .unwrap();
+        assert!(
+            (bob.share - 0.7).abs() < f64::EPSILON,
+            "bob share={}, expected=0.7",
+            bob.share
+        );
     }
 }

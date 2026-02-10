@@ -242,4 +242,57 @@ mod tests {
         let pairs = acc.finalize(1);
         assert!(pairs.is_empty());
     }
+
+    #[test]
+    fn test_confidence_exact_values() {
+        // Kills mutants: / vs * in confidence computation
+        // a.rs changes 4 times, b.rs changes 3 times, they co-change 2 times
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("a.rs"), file("b.rs")]); // co-change 1
+        acc.record_commit(&[file("a.rs"), file("b.rs")]); // co-change 2
+        acc.record_commit(&[file("a.rs"), file("c.rs")]); // a alone (with c)
+        acc.record_commit(&[file("a.rs")]); // a alone
+        acc.record_commit(&[file("b.rs")]); // b alone
+
+        let pairs = acc.finalize(2);
+        let ab = pairs
+            .iter()
+            .find(|p| p.file_a == "a.rs" && p.file_b == "b.rs")
+            .expect("a.rs-b.rs pair should exist");
+
+        assert_eq!(ab.support, 2);
+        assert_eq!(ab.total_a, 4);
+        assert_eq!(ab.total_b, 3);
+        // confidence_ab = 2/4 = 0.5
+        assert!(
+            (ab.confidence_ab - 0.5).abs() < f64::EPSILON,
+            "confidence_ab={}, expected=0.5",
+            ab.confidence_ab
+        );
+        // confidence_ba = 2/3 ≈ 0.6667
+        assert!(
+            (ab.confidence_ba - 2.0 / 3.0).abs() < 1e-10,
+            "confidence_ba={}, expected={}",
+            ab.confidence_ba,
+            2.0 / 3.0
+        );
+        // If / were *, confidence_ab would be 2*4=8.0 — verify it's not
+        assert!(ab.confidence_ab <= 1.0, "confidence must be ≤ 1.0");
+        assert!(ab.confidence_ba <= 1.0, "confidence must be ≤ 1.0");
+    }
+
+    #[test]
+    fn test_file_totals_tracked_correctly() {
+        // Kills mutants: += vs -= on file_totals and co_changes counters
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("x.rs"), file("y.rs")]);
+        acc.record_commit(&[file("x.rs"), file("y.rs")]);
+        acc.record_commit(&[file("x.rs"), file("y.rs")]);
+
+        let pairs = acc.finalize(1);
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].total_a, 3, "x.rs should have 3 total changes");
+        assert_eq!(pairs[0].total_b, 3, "y.rs should have 3 total changes");
+        assert_eq!(pairs[0].support, 3, "co-change count should be 3");
+    }
 }

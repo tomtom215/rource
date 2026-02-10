@@ -407,7 +407,24 @@ mod tests {
         assert_eq!(report.summary.total_commits, 1);
         assert_eq!(report.summary.total_files, 2);
         assert_eq!(report.summary.total_authors, 1);
-        assert_eq!(report.summary.avg_files_per_commit, 2.0);
+        // Kills mutant: / vs * in compute_summary (avg_files = 2/1 = 2.0)
+        assert!(
+            (report.summary.avg_files_per_commit - 2.0).abs() < f64::EPSILON,
+            "avg_files_per_commit={}, expected=2.0",
+            report.summary.avg_files_per_commit
+        );
+        // Entropy for 2 files = log2(2) = 1.0
+        // avg_entropy = 1.0 / 1 = 1.0, median_entropy = 1.0
+        assert!(
+            (report.summary.avg_commit_entropy - 1.0).abs() < f64::EPSILON,
+            "avg_commit_entropy={}, expected=1.0",
+            report.summary.avg_commit_entropy
+        );
+        assert!(
+            (report.summary.median_commit_entropy - 1.0).abs() < f64::EPSILON,
+            "median_commit_entropy={}, expected=1.0",
+            report.summary.median_commit_entropy
+        );
     }
 
     #[test]
@@ -527,5 +544,129 @@ mod tests {
         ];
         let report = compute_insights(&commits);
         assert_eq!(report.summary.time_span_seconds, 4000);
+    }
+
+    #[test]
+    fn test_summary_averages_exact() {
+        // Kills mutants: / vs * and / vs % in compute_summary
+        // 3 commits with 1, 2, 3 files respectively
+        let commits = vec![
+            make_commit(1000, "Alice", &[("a.rs", FileActionKind::Create)]),
+            make_commit(
+                2000,
+                "Alice",
+                &[
+                    ("a.rs", FileActionKind::Modify),
+                    ("b.rs", FileActionKind::Create),
+                ],
+            ),
+            make_commit(
+                3000,
+                "Alice",
+                &[
+                    ("a.rs", FileActionKind::Modify),
+                    ("b.rs", FileActionKind::Modify),
+                    ("c.rs", FileActionKind::Create),
+                ],
+            ),
+        ];
+        let report = compute_insights(&commits);
+
+        // avg_files = (1 + 2 + 3) / 3 = 2.0
+        assert!(
+            (report.summary.avg_files_per_commit - 2.0).abs() < f64::EPSILON,
+            "avg_files_per_commit={}, expected=2.0",
+            report.summary.avg_files_per_commit
+        );
+        // If / were * : (1+2+3) * 3 = 18.0 — would fail
+        assert!(report.summary.avg_files_per_commit < 3.0);
+
+        // Entropies: log2(1)=0, log2(2)=1.0, log2(3)≈1.585
+        // avg = (0 + 1.0 + 1.585) / 3 ≈ 0.8617
+        let e1 = 0.0_f64;
+        let e2 = 2.0_f64.log2();
+        let e3 = 3.0_f64.log2();
+        let expected_avg = (e1 + e2 + e3) / 3.0;
+        assert!(
+            (report.summary.avg_commit_entropy - expected_avg).abs() < 1e-10,
+            "avg_entropy={}, expected={}",
+            report.summary.avg_commit_entropy,
+            expected_avg
+        );
+        // If / were *: (0 + 1 + 1.585) * 3 ≈ 7.75 — would fail
+        assert!(report.summary.avg_commit_entropy < 2.0);
+
+        // Median: sorted entropies [0, 1.0, 1.585], median = 1.0 (index 1)
+        assert!(
+            (report.summary.median_commit_entropy - e2).abs() < f64::EPSILON,
+            "median_entropy={}, expected={}",
+            report.summary.median_commit_entropy,
+            e2
+        );
+    }
+
+    #[test]
+    fn test_author_count_accumulation() {
+        // Kills mutant: += vs *= in accumulate_commit_data (unique_authors counter)
+        // Two commits by same author — total_authors should still be 1
+        let commits = vec![
+            make_commit(1000, "Alice", &[("a.rs", FileActionKind::Create)]),
+            make_commit(2000, "Alice", &[("b.rs", FileActionKind::Create)]),
+        ];
+        let report = compute_insights(&commits);
+        assert_eq!(report.summary.total_authors, 1);
+        assert_eq!(report.summary.total_files, 2);
+        // avg_files = (1 + 1) / 2 = 1.0
+        assert!(
+            (report.summary.avg_files_per_commit - 1.0).abs() < f64::EPSILON,
+            "avg_files={}, expected=1.0",
+            report.summary.avg_files_per_commit
+        );
+    }
+
+    #[test]
+    fn test_ownership_truncation() {
+        // Kills mutant: DEFAULT_TOP_N * 4 (line 181)
+        // With DEFAULT_TOP_N=50, truncation is at 200.
+        // Create 210 unique files to verify truncation happens
+        let mut commits = Vec::new();
+        for i in 0..210 {
+            commits.push(make_commit(
+                1000 + i64::from(i),
+                "Alice",
+                &[(&format!("file{i:03}.rs"), FileActionKind::Create)],
+            ));
+        }
+        let report = compute_insights(&commits);
+        // Ownership should be truncated to DEFAULT_TOP_N * 4 = 200
+        assert_eq!(
+            report.ownership.len(),
+            200,
+            "ownership should be truncated to DEFAULT_TOP_N * 4 = 200"
+        );
+    }
+
+    #[test]
+    fn test_hotspot_score_nonzero() {
+        // Verify hotspot scores are computed (not zero) — kills score formula mutants
+        let commits = vec![
+            make_commit(1000, "Alice", &[("a.rs", FileActionKind::Modify)]),
+            make_commit(2000, "Alice", &[("a.rs", FileActionKind::Modify)]),
+            make_commit(3000, "Alice", &[("a.rs", FileActionKind::Modify)]),
+        ];
+        let report = compute_insights(&commits);
+        assert!(!report.hotspots.is_empty());
+        let h = &report.hotspots[0];
+        assert_eq!(h.total_changes, 3);
+        assert!(h.weighted_changes > 0.0);
+        assert!(h.score > 0.0);
+        // Score should be weighted_changes * (1 + ln_1p(3))
+        let expected_score = h.weighted_changes * (1.0 + 3.0_f64.ln_1p());
+        assert!(
+            (h.score - expected_score).abs() < 1e-10,
+            "score={}, expected={}",
+            h.score,
+            expected_score
+        );
     }
 }
