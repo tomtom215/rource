@@ -80,7 +80,7 @@
 /* ===== Tab Content ===== */
 
 .insights-content {
-    padding: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-md);
 }
 
 .insights-tab-panel {
@@ -94,16 +94,19 @@
 /* ===== Metric Sections ===== */
 
 .insights-metric {
-    padding: var(--spacing-md) 0;
-    border-bottom: 1px solid var(--border);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
 }
 
 .insights-metric:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .insights-metric-title {
-    font-size: 0.9375rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 var(--spacing-xs);
@@ -118,11 +121,11 @@
 
 .insights-citation {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-style: italic;
     color: var(--text-muted);
     margin-top: var(--spacing-sm);
-    opacity: 0.8;
+    opacity: 0.6;
 }
 
 /* ===== Key-Value Lists ===== */
@@ -148,7 +151,8 @@
 .insights-kv-value {
     color: var(--text-primary);
     font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.9375rem;
 }
 
 /* ===== Data Tables ===== */
@@ -209,8 +213,13 @@
     font-size: 0.75rem;
 }
 
-.insights-table tbody tr:hover {
+.insights-table tbody tr:nth-child(even) {
     background: var(--bg-tertiary);
+}
+
+.insights-table tbody tr:hover {
+    background: var(--bg-secondary);
+    outline: 1px solid var(--border);
 }
 
 /* Risk color coding (NOT the only information channel - text labels are added) */
@@ -323,6 +332,17 @@
     font-size: 0.875rem;
 }
 
+.insights-empty p {
+    margin: 0 0 var(--spacing-xs);
+}
+
+.insights-empty-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+    font-style: italic;
+}
+
 /* ===== Bottom Sheet Integration ===== */
 
 .bottom-sheet .insights-summary {
@@ -333,6 +353,7 @@
     display: flex;
     gap: var(--spacing-md);
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .insights-summary-stat {
