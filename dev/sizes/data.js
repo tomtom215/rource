@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770709239623,
+  "lastUpdate": 1770715804623,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6005,6 +6005,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1291511,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1f208cea778d8d7cd9f56a24d72390ea1ec1194c",
+          "message": "Merge pull request #283 from tomtom215/claude/enhance-rource-visualization-uUc1C\n\nAdd cadence, growth, and knowledge insights modules",
+          "timestamp": "2026-02-10T10:27:58+01:00",
+          "tree_id": "7b77ad9bd1e793e093a05f072f5cda8071ad3cf1",
+          "url": "https://github.com/tomtom215/rource/commit/1f208cea778d8d7cd9f56a24d72390ea1ec1194c"
+        },
+        "date": 1770715804281,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3452220,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1317481,
             "unit": "bytes"
           }
         ]
