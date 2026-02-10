@@ -359,4 +359,91 @@ mod tests {
             expected
         );
     }
+
+    #[test]
+    fn test_two_contributors_not_silo() {
+        // Kills mutant: contributor_count == 1 → contributor_count != 1
+        let data = make_file_authors(&[("a.rs", &[("Alice", 8), ("Bob", 2)])]);
+        let report = compute_knowledge(&data);
+        assert!(
+            !report.files[0].is_silo,
+            "2 contributors should not be a silo"
+        );
+        assert_eq!(report.files[0].contributor_count, 2);
+        assert_eq!(report.total_silos, 0);
+    }
+
+    #[test]
+    fn test_silo_percentage_division() {
+        // Kills mutant: replace / with * in silo_percentage = silos / total * 100
+        // 1 silo out of 4 files = 25% (not 1*4*100 = 400)
+        let data = make_file_authors(&[
+            ("a.rs", &[("Alice", 10)]),              // silo
+            ("b.rs", &[("Alice", 5), ("Bob", 5)]),   // not silo
+            ("c.rs", &[("Alice", 3), ("Carol", 7)]), // not silo
+            ("d.rs", &[("Alice", 1), ("Dave", 9)]),  // not silo
+        ]);
+        let report = compute_knowledge(&data);
+        assert_eq!(report.total_silos, 1);
+        assert!(
+            (report.silo_percentage - 25.0).abs() < f64::EPSILON,
+            "silo_pct={}, expected=25.0",
+            report.silo_percentage
+        );
+    }
+
+    #[test]
+    fn test_avg_entropy_division() {
+        // Kills mutant: replace / with * in avg_entropy calculation
+        // 3 files with entropy [0, 1.0, log2(3)]
+        // avg = (0 + 1.0 + log2(3)) / 3
+        let data = make_file_authors(&[
+            ("a.rs", &[("Alice", 10)]),                             // entropy = 0
+            ("b.rs", &[("Alice", 5), ("Bob", 5)]),                  // entropy = 1.0
+            ("c.rs", &[("Alice", 10), ("Bob", 10), ("Carol", 10)]), // entropy = log2(3)
+        ]);
+        let report = compute_knowledge(&data);
+        let expected = (0.0 + 1.0 + 3.0_f64.log2()) / 3.0;
+        assert!(
+            (report.avg_entropy - expected).abs() < 1e-10,
+            "avg_entropy={}, expected={}",
+            report.avg_entropy,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_extract_directory_deep_path() {
+        // "a/b/c.rs" → should give "a" (top-level only)
+        let data = make_file_authors(&[("a/b/c.rs", &[("Alice", 5)])]);
+        let report = compute_knowledge(&data);
+        assert!(
+            report.directories.iter().any(|d| d.directory == "a"),
+            "deep path should map to top-level dir"
+        );
+    }
+
+    #[test]
+    fn test_directory_silo_percentage_exact() {
+        // Kills mutant: replace / with * in directory silo_percentage
+        let data = make_file_authors(&[
+            ("src/a.rs", &[("Alice", 10)]),            // silo
+            ("src/b.rs", &[("Alice", 5), ("Bob", 5)]), // not silo
+            ("src/c.rs", &[("Alice", 5), ("Bob", 5)]), // not silo
+        ]);
+        let report = compute_knowledge(&data);
+        let src = report
+            .directories
+            .iter()
+            .find(|d| d.directory == "src")
+            .unwrap();
+        // 1 silo / 3 files * 100 = 33.33%
+        let expected = 100.0 / 3.0;
+        assert!(
+            (src.silo_percentage - expected).abs() < 0.01,
+            "dir_silo_pct={}, expected={}",
+            src.silo_percentage,
+            expected
+        );
+    }
 }

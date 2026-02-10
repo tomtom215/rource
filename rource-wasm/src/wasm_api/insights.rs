@@ -100,6 +100,15 @@ fn format_insights_json(report: &InsightsReport) -> String {
     write_knowledge_json(&mut json, report);
     write_profiles_json(&mut json, report);
     write_lifecycle_json(&mut json, report);
+    write_inequality_json(&mut json, report);
+    write_change_entropy_json(&mut json, report);
+    write_circadian_json(&mut json, report);
+    write_change_bursts_json(&mut json, report);
+    write_focus_json(&mut json, report);
+    write_modularity_json(&mut json, report);
+    write_congruence_json(&mut json, report);
+    write_survival_json(&mut json, report);
+    write_network_json(&mut json, report);
     json.push('}');
     json
 }
@@ -430,6 +439,287 @@ fn write_lifecycle_json(json: &mut String, report: &InsightsReport) {
         l.active_count,
         l.churn_rate,
         l.total_files_seen,
+    );
+}
+
+/// Appends the inequality / Gini coefficient section to the JSON output.
+fn write_inequality_json(json: &mut String, report: &InsightsReport) {
+    let iq = &report.inequality;
+    let _ = write!(
+        json,
+        r#","inequality":{{"giniCoefficient":{:.4},"top1PctShare":{:.4},"top10PctShare":{:.4},"top20PctShare":{:.4},"totalDevelopers":{},"totalCommits":{},"lorenzCurve":["#,
+        iq.gini_coefficient,
+        iq.top_1_pct_share,
+        iq.top_10_pct_share,
+        iq.top_20_pct_share,
+        iq.total_developers,
+        iq.total_commits,
+    );
+    for (i, &(dev_share, commit_share)) in iq.lorenz_curve.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(json, "[{dev_share:.4},{commit_share:.4}]");
+    }
+    json.push_str("],\"windows\":[");
+    for (i, w) in iq.windows.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"windowStart":{},"windowEnd":{},"gini":{:.4},"developerCount":{}}}"#,
+            w.window_start, w.window_end, w.gini, w.developer_count,
+        );
+    }
+    json.push_str("]}");
+}
+
+/// Appends the change entropy section to the JSON output.
+fn write_change_entropy_json(json: &mut String, report: &InsightsReport) {
+    let ce = &report.change_entropy;
+    let trend = match ce.trend {
+        rource_core::insights::change_entropy::EntropyTrend::Increasing => "increasing",
+        rource_core::insights::change_entropy::EntropyTrend::Stable => "stable",
+        rource_core::insights::change_entropy::EntropyTrend::Decreasing => "decreasing",
+    };
+    json.push_str(",\"changeEntropy\":{\"windows\":[");
+    for (i, w) in ce.windows.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"windowStart":{},"windowEnd":{},"rawEntropy":{:.4},"normalizedEntropy":{:.4},"filesModified":{},"totalModifications":{}}}"#,
+            w.window_start,
+            w.window_end,
+            w.raw_entropy,
+            w.normalized_entropy,
+            w.files_modified,
+            w.total_modifications,
+        );
+    }
+    let max_idx = ce
+        .max_entropy_window_idx
+        .map_or_else(|| "null".to_string(), |i| i.to_string());
+    let _ = write!(
+        json,
+        r#"],"avgNormalizedEntropy":{:.4},"maxEntropyWindowIdx":{},"trend":"{}"}}"#,
+        ce.avg_normalized_entropy, max_idx, trend,
+    );
+}
+
+/// Appends the circadian risk section to the JSON output.
+fn write_circadian_json(json: &mut String, report: &InsightsReport) {
+    let cr = &report.circadian;
+    json.push_str(",\"circadian\":{\"files\":[");
+    for (i, f) in cr.files.iter().take(50).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","totalRisk":{:.4},"highRiskCommits":{},"totalCommits":{},"highRiskFraction":{:.4}}}"#,
+            escape_json(&f.path),
+            f.total_risk,
+            f.high_risk_commits,
+            f.total_commits,
+            f.high_risk_fraction,
+        );
+    }
+    json.push_str("],\"authors\":[");
+    for (i, a) in cr.authors.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","avgRisk":{:.4},"highRiskCommits":{},"totalCommits":{},"preferredHour":{}}}"#,
+            escape_json(&a.author),
+            a.avg_risk,
+            a.high_risk_commits,
+            a.total_commits,
+            a.preferred_hour,
+        );
+    }
+    json.push_str("],\"hourlyRisk\":[");
+    for (i, &r) in cr.hourly_risk.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(json, "{r:.2}");
+    }
+    let _ = write!(
+        json,
+        r#"],"highRiskPct":{:.1},"totalCommitsAnalyzed":{}}}"#,
+        cr.high_risk_percentage, cr.total_commits_analyzed,
+    );
+}
+
+/// Appends the change bursts section to the JSON output.
+fn write_change_bursts_json(json: &mut String, report: &InsightsReport) {
+    let cb = &report.change_bursts;
+    json.push_str(",\"changeBursts\":{\"files\":[");
+    for (i, f) in cb.files.iter().take(50).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","burstCount":{},"maxBurstLength":{},"totalBurstCommits":{},"maxBurstAuthors":{},"riskScore":{:.4}}}"#,
+            escape_json(&f.path),
+            f.burst_count,
+            f.max_burst_length,
+            f.total_burst_commits,
+            f.max_burst_authors,
+            f.risk_score,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"totalBursts":{},"avgBurstLength":{:.2},"filesWithBursts":{},"multiAuthorBurstCount":{}}}"#,
+        cb.total_bursts, cb.avg_burst_length, cb.files_with_bursts, cb.multi_author_burst_count,
+    );
+}
+
+/// Appends the developer focus / file diffusion section to the JSON output.
+fn write_focus_json(json: &mut String, report: &InsightsReport) {
+    let fo = &report.focus;
+    json.push_str(",\"focus\":{\"developers\":[");
+    for (i, d) in fo.developers.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","focusScore":{:.4},"directoriesTouched":{},"commitCount":{}}}"#,
+            escape_json(&d.author),
+            d.focus_score,
+            d.directories_touched,
+            d.commit_count,
+        );
+    }
+    json.push_str("],\"files\":[");
+    for (i, f) in fo.files.iter().take(50).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","diffusionScore":{:.4},"contributorCount":{},"totalChanges":{}}}"#,
+            escape_json(&f.path),
+            f.diffusion_score,
+            f.contributor_count,
+            f.total_changes,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"avgDeveloperFocus":{:.4},"avgFileDiffusion":{:.4}}}"#,
+        fo.avg_developer_focus, fo.avg_file_diffusion,
+    );
+}
+
+/// Appends the co-change modularity section to the JSON output.
+fn write_modularity_json(json: &mut String, report: &InsightsReport) {
+    let mo = &report.modularity;
+    json.push_str(",\"modularity\":{\"directories\":[");
+    for (i, d) in mo.directories.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"directory":"{}","modularityScore":{:.4},"internalCoupling":{},"externalCoupling":{}}}"#,
+            escape_json(&d.directory),
+            d.modularity_score,
+            d.internal_coupling,
+            d.external_coupling,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"modularityIndex":{:.4},"crossModuleRatio":{:.4},"totalIntraEdges":{},"totalCrossEdges":{}}}"#,
+        mo.modularity_index, mo.cross_module_ratio, mo.total_intra_edges, mo.total_cross_edges,
+    );
+}
+
+/// Appends the sociotechnical congruence section to the JSON output.
+fn write_congruence_json(json: &mut String, report: &InsightsReport) {
+    let co = &report.congruence;
+    json.push_str(",\"congruence\":{\"coordinationGaps\":[");
+    for (i, g) in co.coordination_gaps.iter().take(20).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"developerA":"{}","developerB":"{}","sharedDependencies":{}}}"#,
+            escape_json(&g.developer_a),
+            escape_json(&g.developer_b),
+            g.shared_dependencies,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"congruenceScore":{:.4},"requiredCoordinations":{},"actualCoordinations":{},"totalDeveloperPairs":{}}}"#,
+        co.congruence_score,
+        co.required_coordinations,
+        co.actual_coordinations,
+        co.total_developer_pairs,
+    );
+}
+
+/// Appends the file survival (Kaplan-Meier) section to the JSON output.
+fn write_survival_json(json: &mut String, report: &InsightsReport) {
+    let sv = &report.survival;
+    json.push_str(",\"survival\":{\"curve\":[");
+    for (i, p) in sv.curve.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"timeDays":{:.1},"survivalProbability":{:.4},"atRisk":{},"events":{}}}"#,
+            p.time_days, p.survival_probability, p.at_risk, p.events,
+        );
+    }
+    let median = sv
+        .median_survival_days
+        .map_or_else(|| "null".to_string(), |d| format!("{d:.1}"));
+    let _ = write!(
+        json,
+        r#"],"medianSurvivalDays":{},"infantMortalityRate":{:.4},"totalBirths":{},"totalDeaths":{},"censoredCount":{}}}"#,
+        median, sv.infant_mortality_rate, sv.total_births, sv.total_deaths, sv.censored_count,
+    );
+}
+
+/// Appends the developer network centrality section to the JSON output.
+fn write_network_json(json: &mut String, report: &InsightsReport) {
+    let nw = &report.network;
+    json.push_str(",\"network\":{\"developers\":[");
+    for (i, d) in nw.developers.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","degree":{},"betweenness":{:.4},"clusteringCoefficient":{:.4},"sharedFilesTotal":{}}}"#,
+            escape_json(&d.author),
+            d.degree,
+            d.betweenness,
+            d.clustering_coefficient,
+            d.shared_files_total,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"networkDensity":{:.4},"connectedComponents":{},"largestComponentSize":{},"totalEdges":{},"avgDegree":{:.2}}}"#,
+        nw.network_density,
+        nw.connected_components,
+        nw.largest_component_size,
+        nw.total_edges,
+        nw.avg_degree,
     );
 }
 
@@ -814,6 +1104,175 @@ impl Rource {
         json.push('}');
         Some(json)
     }
+
+    /// Returns contribution inequality / Gini coefficient analysis as JSON.
+    ///
+    /// Measures how unevenly commits are distributed using the Gini coefficient.
+    /// Includes Lorenz curve, top-K% share, and windowed trend analysis
+    /// (Chelkowski et al. 2016).
+    #[wasm_bindgen(js_name = getContributionInequality)]
+    pub fn get_contribution_inequality(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_inequality_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns sliding-window change entropy analysis as JSON.
+    ///
+    /// Measures Shannon entropy of file modification distribution within
+    /// time windows for defect risk prediction (Hassan ICSE 2009).
+    #[wasm_bindgen(js_name = getChangeEntropy)]
+    pub fn get_change_entropy(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_change_entropy_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns circadian (time-of-day) risk patterns as JSON.
+    ///
+    /// Assigns risk scores based on hour-of-day and day-of-week.
+    /// Commits between midnight–4AM UTC are significantly buggier
+    /// (Eyolfson et al. 2011).
+    #[wasm_bindgen(js_name = getCircadianRisk)]
+    pub fn get_circadian_risk(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_circadian_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns per-file change burst detection as JSON.
+    ///
+    /// Detects rapid consecutive changes to individual files.
+    /// Files with many bursts are significantly more defect-prone
+    /// (Nagappan et al. 2010).
+    #[wasm_bindgen(js_name = getChangeBursts)]
+    pub fn get_change_bursts(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_change_bursts_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns developer focus and file diffusion analysis as JSON.
+    ///
+    /// Measures how concentrated developers' activity is (focus) and
+    /// how spread out files' contributors are (diffusion).
+    /// More focused developers introduce fewer defects (Posnett et al. 2013).
+    #[wasm_bindgen(js_name = getDeveloperFocus)]
+    pub fn get_developer_focus(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_focus_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns co-change modularity / DSM analysis as JSON.
+    ///
+    /// Measures whether co-changing files respect directory boundaries.
+    /// High cross-module coupling indicates architectural erosion
+    /// (Silva et al. 2014).
+    #[wasm_bindgen(js_name = getModularity)]
+    pub fn get_modularity(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(512);
+        json.push('{');
+        write_modularity_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns sociotechnical congruence analysis as JSON.
+    ///
+    /// Measures alignment between who SHOULD coordinate (from technical
+    /// dependencies) and who ACTUALLY does (from shared files).
+    /// Conway's Law quantified (Cataldo et al. 2008).
+    #[wasm_bindgen(js_name = getCongruence)]
+    pub fn get_congruence(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(512);
+        json.push('{');
+        write_congruence_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns file survival analysis (Kaplan-Meier estimator) as JSON.
+    ///
+    /// Estimates how long files survive before deletion using the
+    /// gold-standard survival analysis technique from biostatistics
+    /// (Cito et al. 2021).
+    #[wasm_bindgen(js_name = getFileSurvival)]
+    pub fn get_file_survival(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_survival_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns developer collaboration network analysis as JSON.
+    ///
+    /// Builds and analyzes the co-authorship network: density, components,
+    /// betweenness centrality, and clustering (Begel et al. 2023).
+    #[wasm_bindgen(js_name = getDeveloperNetwork)]
+    pub fn get_developer_network(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_network_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
 }
 
 /// Standalone growth JSON (without leading comma for top-level endpoints).
@@ -856,6 +1315,69 @@ fn write_profiles_json_standalone(json: &mut String, report: &InsightsReport) {
 fn write_lifecycle_json_standalone(json: &mut String, report: &InsightsReport) {
     let mut buf = String::new();
     write_lifecycle_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone inequality JSON.
+fn write_inequality_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_inequality_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone change entropy JSON.
+fn write_change_entropy_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_change_entropy_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone circadian JSON.
+fn write_circadian_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_circadian_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone change bursts JSON.
+fn write_change_bursts_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_change_bursts_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone focus JSON.
+fn write_focus_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_focus_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone modularity JSON.
+fn write_modularity_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_modularity_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone congruence JSON.
+fn write_congruence_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_congruence_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone survival JSON.
+fn write_survival_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_survival_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone network JSON.
+fn write_network_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_network_json(&mut buf, report);
     json.push_str(buf.trim_start_matches(','));
 }
 
@@ -959,6 +1481,15 @@ mod tests {
         assert!(json.contains("\"knowledge\":"));
         assert!(json.contains("\"profiles\":"));
         assert!(json.contains("\"lifecycle\":"));
+        assert!(json.contains("\"inequality\":"));
+        assert!(json.contains("\"changeEntropy\":"));
+        assert!(json.contains("\"circadian\":"));
+        assert!(json.contains("\"changeBursts\":"));
+        assert!(json.contains("\"focus\":"));
+        assert!(json.contains("\"modularity\":"));
+        assert!(json.contains("\"congruence\":"));
+        assert!(json.contains("\"survival\":"));
+        assert!(json.contains("\"network\":"));
     }
 
     #[test]
@@ -1109,6 +1640,226 @@ mod tests {
         write_lifecycle_json(&mut json, &report);
         assert!(json.contains("\"totalFilesSeen\":"));
         assert!(json.contains("\"churnRate\":"));
+    }
+
+    #[test]
+    fn test_inequality_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "b.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+            CommitRecord {
+                timestamp: 3000,
+                author: "Bob".to_string(),
+                files: vec![FileRecord {
+                    path: "c.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_inequality_json(&mut json, &report);
+        assert!(json.contains("\"giniCoefficient\":"));
+        assert!(json.contains("\"lorenzCurve\":"));
+        assert!(json.contains("\"totalDevelopers\":"));
+    }
+
+    #[test]
+    fn test_change_entropy_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "b.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_change_entropy_json(&mut json, &report);
+        assert!(json.contains("\"changeEntropy\":"));
+        assert!(json.contains("\"avgNormalizedEntropy\":"));
+        assert!(json.contains("\"trend\":"));
+    }
+
+    #[test]
+    fn test_circadian_json() {
+        let records = vec![CommitRecord {
+            timestamp: 3600, // 01:00 UTC — high risk
+            author: "Alice".to_string(),
+            files: vec![FileRecord {
+                path: "a.rs".to_string(),
+                action: FileActionKind::Modify,
+            }],
+        }];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_circadian_json(&mut json, &report);
+        assert!(json.contains("\"circadian\":"));
+        assert!(json.contains("\"hourlyRisk\":"));
+        assert!(json.contains("\"totalCommitsAnalyzed\":"));
+    }
+
+    #[test]
+    fn test_change_bursts_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_change_bursts_json(&mut json, &report);
+        assert!(json.contains("\"changeBursts\":"));
+        assert!(json.contains("\"totalBursts\":"));
+        assert!(json.contains("\"filesWithBursts\":"));
+    }
+
+    #[test]
+    fn test_focus_json() {
+        let records = vec![CommitRecord {
+            timestamp: 1000,
+            author: "Alice".to_string(),
+            files: vec![FileRecord {
+                path: "src/a.rs".to_string(),
+                action: FileActionKind::Modify,
+            }],
+        }];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_focus_json(&mut json, &report);
+        assert!(json.contains("\"focus\":"));
+        assert!(json.contains("\"avgDeveloperFocus\":"));
+        assert!(json.contains("\"avgFileDiffusion\":"));
+    }
+
+    #[test]
+    fn test_modularity_json() {
+        let records = vec![CommitRecord {
+            timestamp: 1000,
+            author: "Alice".to_string(),
+            files: vec![FileRecord {
+                path: "a.rs".to_string(),
+                action: FileActionKind::Create,
+            }],
+        }];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_modularity_json(&mut json, &report);
+        assert!(json.contains("\"modularity\":"));
+        assert!(json.contains("\"modularityIndex\":"));
+        assert!(json.contains("\"crossModuleRatio\":"));
+    }
+
+    #[test]
+    fn test_congruence_json() {
+        let records = vec![CommitRecord {
+            timestamp: 1000,
+            author: "Alice".to_string(),
+            files: vec![FileRecord {
+                path: "a.rs".to_string(),
+                action: FileActionKind::Create,
+            }],
+        }];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_congruence_json(&mut json, &report);
+        assert!(json.contains("\"congruence\":"));
+        assert!(json.contains("\"congruenceScore\":"));
+        assert!(json.contains("\"requiredCoordinations\":"));
+    }
+
+    #[test]
+    fn test_survival_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Delete,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_survival_json(&mut json, &report);
+        assert!(json.contains("\"survival\":"));
+        assert!(json.contains("\"totalBirths\":"));
+        assert!(json.contains("\"infantMortalityRate\":"));
+    }
+
+    #[test]
+    fn test_network_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "shared.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Bob".to_string(),
+                files: vec![FileRecord {
+                    path: "shared.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_network_json(&mut json, &report);
+        assert!(json.contains("\"network\":"));
+        assert!(json.contains("\"networkDensity\":"));
+        assert!(json.contains("\"avgDegree\":"));
     }
 
     #[test]

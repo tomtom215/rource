@@ -367,4 +367,136 @@ mod tests {
         let report = acc.finalize();
         assert_eq!(report.total_commits, 0);
     }
+
+    // --- Mutation-killing tests ---
+
+    #[test]
+    fn test_delete_ratio_exactly_at_boundary() {
+        // delete_ratio = 0.3 exactly → NOT Cleanup (kills `>=` vs `>` mutant)
+        // 3 deletes out of 10 total = 0.3
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 0, 7, 3);
+        let report = acc.finalize();
+        // delete_ratio = 3/10 = 0.3, NOT > 0.3 → not Cleanup
+        // modify_ratio = 7/10 = 0.7, NOT > 0.7 → not Maintenance
+        // create_ratio = 0/10 = 0.0 → not Feature
+        // → Mixed
+        assert_eq!(report.commits[0].work_type, WorkType::Mixed);
+    }
+
+    #[test]
+    fn test_delete_ratio_just_above_boundary() {
+        // delete_ratio = 0.31 → Cleanup (confirms strict >0.3)
+        // Approximate: 31 deletes out of 100 = 0.31
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 0, 69, 31);
+        let report = acc.finalize();
+        assert_eq!(report.commits[0].work_type, WorkType::Cleanup);
+    }
+
+    #[test]
+    fn test_create_ratio_exactly_at_boundary() {
+        // create_ratio = 0.5 exactly → NOT Feature (kills `>=` vs `>` mutant)
+        // 5 creates out of 10 total = 0.5
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 5, 5, 0);
+        let report = acc.finalize();
+        // create_ratio = 5/10 = 0.5, NOT > 0.5 → not Feature
+        // modify_ratio = 5/10 = 0.5 → not Maintenance (need >0.7)
+        // delete_ratio = 0 → not Cleanup
+        // → Mixed
+        assert_eq!(report.commits[0].work_type, WorkType::Mixed);
+    }
+
+    #[test]
+    fn test_create_ratio_just_above_boundary() {
+        // create_ratio > 0.5 → Feature
+        // 51 creates out of 100 = 0.51
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 51, 49, 0);
+        let report = acc.finalize();
+        assert_eq!(report.commits[0].work_type, WorkType::Feature);
+    }
+
+    #[test]
+    fn test_modify_ratio_exactly_at_boundary() {
+        // modify_ratio = 0.7 exactly → NOT Maintenance (kills `>=` vs `>` mutant)
+        // 7 modifies out of 10 = 0.7, 3 creates, 0 deletes
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 3, 7, 0);
+        let report = acc.finalize();
+        // create_ratio = 3/10 = 0.3 → not Feature
+        // modify_ratio = 7/10 = 0.7, NOT > 0.7 → not Maintenance
+        // delete_ratio = 0 → not Cleanup
+        // → Mixed
+        assert_eq!(report.commits[0].work_type, WorkType::Mixed);
+    }
+
+    #[test]
+    fn test_modify_ratio_just_above_boundary() {
+        // modify_ratio > 0.7 → Maintenance
+        // 71 modifies out of 100 = 0.71
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 29, 71, 0);
+        let report = acc.finalize();
+        // create_ratio = 29/100 = 0.29 → not Feature
+        // delete_ratio = 0 → not Cleanup
+        // modify_ratio = 71/100 = 0.71 > 0.7 → Maintenance
+        assert_eq!(report.commits[0].work_type, WorkType::Maintenance);
+    }
+
+    #[test]
+    fn test_percentage_division_exact() {
+        // 1 Feature out of 4 commits = 25.0% exactly
+        // Kills `/` vs `*` mutant in percentage calculation
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 10, 0, 0); // Feature
+        acc.record_commit(2000, 0, 10, 0); // Maintenance
+        acc.record_commit(3000, 0, 0, 10); // Cleanup
+        acc.record_commit(4000, 2, 3, 1); // Mixed
+        let report = acc.finalize();
+        assert!(
+            (report.feature_pct - 25.0).abs() < f64::EPSILON,
+            "feature_pct={}, expected=25.0",
+            report.feature_pct
+        );
+        assert!(
+            (report.maintenance_pct - 25.0).abs() < f64::EPSILON,
+            "maintenance_pct={}, expected=25.0",
+            report.maintenance_pct
+        );
+        assert!(
+            (report.cleanup_pct - 25.0).abs() < f64::EPSILON,
+            "cleanup_pct={}, expected=25.0",
+            report.cleanup_pct
+        );
+        assert!(
+            (report.mixed_pct - 25.0).abs() < f64::EPSILON,
+            "mixed_pct={}, expected=25.0",
+            report.mixed_pct
+        );
+    }
+
+    #[test]
+    fn test_file_count_stored_correctly() {
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 3, 4, 5);
+        let report = acc.finalize();
+        assert_eq!(report.commits[0].file_count, 12);
+    }
+
+    #[test]
+    fn test_dominant_type_tie_breaking() {
+        // When two types tie, max_by_key picks the first with max count.
+        // Feature and Maintenance each have 1 commit.
+        let mut acc = WorkTypeAccumulator::new();
+        acc.record_commit(1000, 10, 0, 0); // Feature
+        acc.record_commit(2000, 0, 10, 0); // Maintenance
+        let report = acc.finalize();
+        // Both have count 1; dominant should be one of them (deterministic via order)
+        assert!(
+            report.dominant_type == WorkType::Feature
+                || report.dominant_type == WorkType::Maintenance
+        );
+    }
 }

@@ -391,4 +391,139 @@ mod tests {
         // But creates counter incremented twice
         assert_eq!(report.total_created, 2);
     }
+
+    #[test]
+    fn test_exactly_four_snapshots_trend() {
+        // Boundary: snapshots.len() < 4 skips trend analysis.
+        // At exactly 4, trend analysis should run.
+        let mut acc = GrowthAccumulator::new();
+        for i in 0..4 {
+            acc.record_file(&format!("file{i}.rs"), FileActionKind::Create);
+            acc.record_snapshot(i * 1000);
+        }
+        let report = acc.finalize(0, 3000);
+        // 4 snapshots, growing from 1→2→3→4 files → Stable (both halves grow equally)
+        assert!(
+            report.trend == GrowthTrend::Stable || report.trend == GrowthTrend::Accelerating,
+            "trend={:?}",
+            report.trend
+        );
+    }
+
+    #[test]
+    fn test_zero_net_growth_not_shrinking() {
+        // total_net == 0 → should NOT be Shrinking
+        let mut acc = GrowthAccumulator::new();
+        // Create and delete same number in each half
+        acc.record_file("a.rs", FileActionKind::Create);
+        acc.record_snapshot(0);
+        acc.record_file("b.rs", FileActionKind::Create);
+        acc.record_snapshot(1000);
+        acc.record_file("a.rs", FileActionKind::Delete);
+        acc.record_snapshot(2000);
+        acc.record_file("c.rs", FileActionKind::Create);
+        acc.record_snapshot(3000);
+
+        let report = acc.finalize(0, 3000);
+        // Net = 2 creates active - did we grow? a.rs created then deleted, b.rs and c.rs remain
+        assert_ne!(
+            report.trend,
+            GrowthTrend::Shrinking,
+            "net_growth={}, should not shrink",
+            report.net_growth
+        );
+    }
+
+    #[test]
+    fn test_net_growth_subtraction() {
+        // Kills mutant: replace - with + in net_growth = creates - deletes
+        let mut acc = GrowthAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Create);
+        acc.record_file("b.rs", FileActionKind::Create);
+        acc.record_file("c.rs", FileActionKind::Create);
+        acc.record_file("a.rs", FileActionKind::Delete);
+        acc.record_snapshot(1000);
+
+        let report = acc.finalize(0, 1000);
+        // 3 creates - 1 delete = 2 (not 3 + 1 = 4)
+        assert_eq!(
+            report.net_growth, 2,
+            "net_growth should be creates - deletes"
+        );
+    }
+
+    #[test]
+    fn test_avg_monthly_growth_division() {
+        // Kills mutant: replace / with * in avg_monthly_growth calculation
+        let mut acc = GrowthAccumulator::new();
+        // 10 files in 60 days = 5 files/month
+        for i in 0..10 {
+            acc.record_file(&format!("f{i}.rs"), FileActionKind::Create);
+            acc.record_snapshot(i * 86400);
+        }
+        let t_max = 60 * 86400; // 60 days
+        let report = acc.finalize(0, t_max);
+        // 10 files / 2 months = 5 files/month
+        let expected = 10.0 / (60.0 * 86400.0 / SECONDS_PER_MONTH);
+        assert!(
+            (report.avg_monthly_growth - expected).abs() < 0.01,
+            "avg_monthly_growth={}, expected={}",
+            report.avg_monthly_growth,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_accelerating_trend() {
+        // Second half grows faster than first half
+        let mut acc = GrowthAccumulator::new();
+        // First half: 1 file added per snapshot (2 snapshots)
+        acc.record_file("a.rs", FileActionKind::Create);
+        acc.record_snapshot(0);
+        acc.record_file("b.rs", FileActionKind::Create);
+        acc.record_snapshot(1000);
+        // Second half: 5 files added per snapshot (2 snapshots)
+        for i in 0..5 {
+            acc.record_file(&format!("c{i}.rs"), FileActionKind::Create);
+        }
+        acc.record_snapshot(2000);
+        for i in 0..5 {
+            acc.record_file(&format!("d{i}.rs"), FileActionKind::Create);
+        }
+        acc.record_snapshot(3000);
+
+        let report = acc.finalize(0, 3000);
+        assert_eq!(
+            report.trend,
+            GrowthTrend::Accelerating,
+            "second half grows much faster"
+        );
+    }
+
+    #[test]
+    fn test_decelerating_trend() {
+        // First half grows faster than second half
+        let mut acc = GrowthAccumulator::new();
+        // First half: 5 files per snapshot
+        for i in 0..5 {
+            acc.record_file(&format!("a{i}.rs"), FileActionKind::Create);
+        }
+        acc.record_snapshot(0);
+        for i in 0..5 {
+            acc.record_file(&format!("b{i}.rs"), FileActionKind::Create);
+        }
+        acc.record_snapshot(1000);
+        // Second half: 1 file per snapshot
+        acc.record_file("c.rs", FileActionKind::Create);
+        acc.record_snapshot(2000);
+        acc.record_file("d.rs", FileActionKind::Create);
+        acc.record_snapshot(3000);
+
+        let report = acc.finalize(0, 3000);
+        assert_eq!(
+            report.trend,
+            GrowthTrend::Decelerating,
+            "first half grows much faster"
+        );
+    }
 }

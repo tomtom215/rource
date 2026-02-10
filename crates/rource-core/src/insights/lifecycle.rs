@@ -492,4 +492,154 @@ mod tests {
         assert_eq!(report.files[1].stage, LifecycleStage::Dead);
         assert_eq!(report.files[2].stage, LifecycleStage::Active);
     }
+
+    #[test]
+    fn test_ephemeral_boundary_exactly_30_days() {
+        // Kills mutant: <= vs < in lifespan <= EPHEMERAL_THRESHOLD_DAYS
+        // Exactly 30 days → should be Ephemeral (<=)
+        let mut acc = LifecycleAccumulator::new();
+        let create_ts = 1000;
+        let delete_ts = create_ts + 30 * 86400; // exactly 30 days
+        acc.record_file("exact30.rs", FileActionKind::Create, create_ts, "Alice");
+        acc.record_file("exact30.rs", FileActionKind::Delete, delete_ts, "Alice");
+
+        let report = acc.finalize(0, delete_ts + 100_000);
+        assert_eq!(
+            report.files[0].stage,
+            LifecycleStage::Ephemeral,
+            "exactly 30 days should be Ephemeral"
+        );
+    }
+
+    #[test]
+    fn test_not_ephemeral_at_31_days() {
+        // 31 days → should be Deleted (not Ephemeral)
+        let mut acc = LifecycleAccumulator::new();
+        let create_ts = 1000;
+        let delete_ts = create_ts + 31 * 86400; // 31 days
+        acc.record_file("long31.rs", FileActionKind::Create, create_ts, "Alice");
+        acc.record_file("long31.rs", FileActionKind::Delete, delete_ts, "Alice");
+
+        let report = acc.finalize(0, delete_ts + 100_000);
+        assert_eq!(
+            report.files[0].stage,
+            LifecycleStage::Deleted,
+            "31 days should be Deleted, not Ephemeral"
+        );
+    }
+
+    #[test]
+    fn test_active_at_exact_threshold() {
+        // Kills mutant: >= vs > in active_threshold check
+        // active_threshold = t_max - 0.20 * time_span
+        // With t_min=0, t_max=10000: active_threshold = 10000 - 2000 = 8000
+        // last_modified=8000 exactly → should be Active (>=)
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("edge.rs", FileActionKind::Create, 0, "Alice");
+        acc.record_file("edge.rs", FileActionKind::Modify, 8000, "Alice");
+
+        let report = acc.finalize(0, 10000);
+        assert_eq!(
+            report.files[0].stage,
+            LifecycleStage::Active,
+            "last_modified at exact active_threshold should be Active"
+        );
+    }
+
+    #[test]
+    fn test_dead_at_exact_threshold() {
+        // Kills mutant: < vs <= in dead_threshold check
+        // dead_threshold = t_max - 0.30 * time_span
+        // With t_min=0, t_max=100000: dead_threshold = 100000 - 30000 = 70000
+        // last_modified=70000 exactly → should be Stable (not Dead), since < 70000 is Dead
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("border.rs", FileActionKind::Create, 0, "Alice");
+        acc.record_file("border.rs", FileActionKind::Modify, 70000, "Alice");
+
+        let report = acc.finalize(0, 100_000);
+        assert_eq!(
+            report.files[0].stage,
+            LifecycleStage::Stable,
+            "last_modified at exact dead_threshold should be Stable, not Dead"
+        );
+    }
+
+    #[test]
+    fn test_churn_rate_division() {
+        // Kills mutant: replace / with * in churn_rate calculation
+        // 3 creates + 2 deletes = 5 events, 3 unique files → 5/3 = 1.667
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Create, 1000, "Alice");
+        acc.record_file("b.rs", FileActionKind::Create, 2000, "Alice");
+        acc.record_file("c.rs", FileActionKind::Create, 3000, "Alice");
+        acc.record_file("a.rs", FileActionKind::Delete, 4000, "Alice");
+        acc.record_file("b.rs", FileActionKind::Delete, 5000, "Alice");
+
+        let report = acc.finalize(1000, 5000);
+        let expected = 5.0 / 3.0;
+        assert!(
+            (report.churn_rate - expected).abs() < 1e-10,
+            "churn_rate={}, expected={}",
+            report.churn_rate,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_avg_lifespan_days_exact() {
+        // Kills mutant: replace / with * in avg_lifespan computation
+        let mut acc = LifecycleAccumulator::new();
+        // File a: 10 days old, File b: 20 days old → avg = 15 days
+        acc.record_file("a.rs", FileActionKind::Create, 0, "Alice");
+        acc.record_file("b.rs", FileActionKind::Create, 0, "Alice");
+
+        let t_max = 20 * 86400; // 20 days
+                                // But a.rs deleted at day 10
+        acc.record_file("a.rs", FileActionKind::Delete, 10 * 86400, "Alice");
+
+        let report = acc.finalize(0, t_max);
+        // a.rs: age = 10 days (deleted), b.rs: age = 20 days
+        // avg = (10 + 20) / 2 = 15
+        assert!(
+            (report.avg_lifespan_days - 15.0).abs() < 1e-10,
+            "avg_lifespan_days={}, expected=15.0",
+            report.avg_lifespan_days
+        );
+    }
+
+    #[test]
+    fn test_modifications_per_month_exact() {
+        // Kills mutant: replace / with * in modifications_per_month
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Create, 0, "Alice");
+        // 6 modifications over 60 days
+        for i in 1..=6 {
+            acc.record_file("a.rs", FileActionKind::Modify, i * 10 * 86400, "Alice");
+        }
+
+        let report = acc.finalize(0, 60 * 86400);
+        let f = &report.files[0];
+        // 6 modifications / 2 months = 3 per month
+        let expected = 6.0 / (60.0 * 86400.0 / (30.0 * 86400.0));
+        assert!(
+            (f.modifications_per_month - expected).abs() < 1e-6,
+            "mods_per_month={}, expected={}",
+            f.modifications_per_month,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_stable_stage() {
+        // A file that is not recently modified, not dead, and not deleted → Stable
+        let mut acc = LifecycleAccumulator::new();
+        // With t_min=0, t_max=100000:
+        // active_threshold = 80000, dead_threshold = 70000
+        // last_modified = 75000 → between dead and active → Stable
+        acc.record_file("mid.rs", FileActionKind::Create, 0, "Alice");
+        acc.record_file("mid.rs", FileActionKind::Modify, 75000, "Alice");
+
+        let report = acc.finalize(0, 100_000);
+        assert_eq!(report.files[0].stage, LifecycleStage::Stable);
+    }
 }
