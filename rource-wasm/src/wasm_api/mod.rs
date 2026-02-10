@@ -20,6 +20,7 @@
 //! | `error` | Error metrics and error rate tracking |
 //! | `authors` | Author information and colors |
 //! | `hover` | Hover detection and entity info for tooltips |
+//! | `insights` | Repository insights (hotspots, coupling, ownership, bus factor) |
 
 mod authors;
 #[cfg(feature = "cache")]
@@ -29,6 +30,7 @@ mod error;
 mod export;
 mod hover;
 mod input;
+mod insights;
 mod layout;
 mod playback;
 mod settings;
