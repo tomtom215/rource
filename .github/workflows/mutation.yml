@@ -37,10 +37,12 @@ on:
         required: false
         default: '120'
 
-# Prevent concurrent runs on the same branch/PR
+# Mutation testing is a long-running job (~260 min for large diffs).
+# Do NOT cancel in-progress runs — each push would restart from zero,
+# wasting all prior work. This matches fuzz.yml and load-test.yml policy.
 concurrency:
   group: mutation-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -138,15 +140,34 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
+          # Time budget prevents indefinite runtime on large diffs.
+          # PR mode: 55 min (leaves headroom in ~60 min reasonable CI window)
+          # Full mode: 300 min (leaves 60 min buffer within 360 min job timeout)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TIME_BUDGET="55m"
+          else
+            TIME_BUDGET="300m"
+          fi
 
           # PR mode: only test mutants in changed code (fast, scales with PR size)
           # Full mode: test all mutants (workflow_dispatch, takes hours)
           if [ "${{ github.event_name }}" = "pull_request" ] && [ -f pr-diff.patch ] && [ -s pr-diff.patch ]; then
             echo "PR mode: testing only mutants in changed code (--in-diff)"
-            cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1 || true
+            echo "Time budget: $TIME_BUDGET"
+            # timeout sends SIGTERM on expiry; cargo-mutants writes partial results then exits
+            timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
+              cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1
+            EXIT_CODE=$?
           else
             echo "Full mode: testing all mutants"
-            cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1 || true
+            echo "Time budget: $TIME_BUDGET"
+            timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
+              cargo mutants -p rource-math --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1
+            EXIT_CODE=$?
+          fi
+
+          if [ "$EXIT_CODE" -eq 124 ]; then
+            echo "::warning::Time budget ($TIME_BUDGET) reached — reporting partial results"
           fi
 
           # Parse results using correct cargo-mutants field names
@@ -283,13 +304,28 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TIME_BUDGET="55m"
+          else
+            TIME_BUDGET="300m"
+          fi
 
           if [ "${{ github.event_name }}" = "pull_request" ] && [ -f pr-diff.patch ] && [ -s pr-diff.patch ]; then
             echo "PR mode: testing only mutants in changed code (--in-diff)"
-            cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1 || true
+            echo "Time budget: $TIME_BUDGET"
+            timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
+              cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1
+            EXIT_CODE=$?
           else
             echo "Full mode: testing all mutants"
-            cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1 || true
+            echo "Time budget: $TIME_BUDGET"
+            timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
+              cargo mutants -p rource-vcs --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1
+            EXIT_CODE=$?
+          fi
+
+          if [ "$EXIT_CODE" -eq 124 ]; then
+            echo "::warning::Time budget ($TIME_BUDGET) reached — reporting partial results"
           fi
 
           if [ -f mutants-output/outcomes.json ]; then
@@ -404,13 +440,28 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TIME_BUDGET="55m"
+          else
+            TIME_BUDGET="300m"
+          fi
 
           if [ "${{ github.event_name }}" = "pull_request" ] && [ -f pr-diff.patch ] && [ -s pr-diff.patch ]; then
             echo "PR mode: testing only mutants in changed code (--in-diff)"
-            cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1 || true
+            echo "Time budget: $TIME_BUDGET"
+            timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
+              cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1
+            EXIT_CODE=$?
           else
             echo "Full mode: testing all mutants"
-            cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1 || true
+            echo "Time budget: $TIME_BUDGET"
+            timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
+              cargo mutants -p rource-core --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1
+            EXIT_CODE=$?
+          fi
+
+          if [ "$EXIT_CODE" -eq 124 ]; then
+            echo "::warning::Time budget ($TIME_BUDGET) reached — reporting partial results"
           fi
 
           if [ -f mutants-output/outcomes.json ]; then
@@ -525,13 +576,28 @@ jobs:
         id: mutants
         run: |
           TIMEOUT="${{ inputs.timeout || '120' }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TIME_BUDGET="55m"
+          else
+            TIME_BUDGET="300m"
+          fi
 
           if [ "${{ github.event_name }}" = "pull_request" ] && [ -f pr-diff.patch ] && [ -s pr-diff.patch ]; then
             echo "PR mode: testing only mutants in changed code (--in-diff)"
-            cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1 || true
+            echo "Time budget: $TIME_BUDGET"
+            timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
+              cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=4 --in-diff pr-diff.patch --output=mutants-output 2>&1
+            EXIT_CODE=$?
           else
             echo "Full mode: testing all mutants"
-            cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1 || true
+            echo "Time budget: $TIME_BUDGET"
+            timeout --signal=TERM --kill-after=2m "$TIME_BUDGET" \
+              cargo mutants -p rource-render --timeout="$TIMEOUT" --jobs=4 --output=mutants-output 2>&1
+            EXIT_CODE=$?
+          fi
+
+          if [ "$EXIT_CODE" -eq 124 ]; then
+            echo "::warning::Time budget ($TIME_BUDGET) reached — reporting partial results"
           fi
 
           if [ -f mutants-output/outcomes.json ]; then

@@ -1,0 +1,29 @@
+# cargo-mutants configuration
+# See: https://mutants.rs/config.html
+#
+# Equivalent mutants — verified to produce identical observable behavior
+# for ALL possible inputs. These are false positives, not test gaps.
+#
+# Each exclusion has a documented proof of equivalence.
+
+exclude_re = [
+    # EQUIVALENT: max_burst_authors is u32 >= 1 (always at least 1 author in a burst).
+    # At boundary value 1: `> 1` → false → 0.0; `>= 1` → true → (1-1)*FACTOR = 0.0.
+    # Both branches produce 0.0. No test can distinguish them.
+    "change_bursts.rs.*replace > with >= in ChangeBurstAccumulator::finalize",
+
+    # EQUIVALENT: Early return is an optimization. Without it, `while window_start < t_max`
+    # produces zero windows when events are empty (nothing to count) or t_min >= t_max
+    # (loop condition false). Result: same empty report with Stable trend.
+    "change_entropy.rs.*replace \\|\\| with && in ChangeEntropyAccumulator::finalize",
+
+    # EQUIVALENT: Extra iteration when window_start == t_max creates a zero-length window
+    # [t_max, t_max). No events match (ts >= t_max && ts < t_max is impossible).
+    # total_modifications == 0 → window filtered by `if total_modifications > 0`.
+    "change_entropy.rs.*replace < with <= in ChangeEntropyAccumulator::finalize",
+
+    # EQUIVALENT: p = count/total where count >= 1 (HashMap entries created by += 1).
+    # p is always > 0.0 for all reachable inputs. The `else { 0.0 }` is dead code.
+    # Mutation `> 0.0` → `>= 0.0` changes nothing since p is never exactly 0.0.
+    "change_entropy.rs:150.*replace > with >=",
+]
