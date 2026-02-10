@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770755211685,
+  "lastUpdate": 1770763146591,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6185,6 +6185,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/41914675fca3ff59071dd43d10aa3e4420b70daf"
         },
         "date": 1770755211051,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3593841,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1353323,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c03cddf003422640d2c08a13e23d358238a0ef12",
+          "message": "Merge pull request #288 from tomtom215/claude/insights-dashboard-fixes-H08Wz\n\nReposition insights panel and fix field name mappings",
+          "timestamp": "2026-02-10T23:36:55+01:00",
+          "tree_id": "9249a349654c066e89a1bb5b9967e75869e62b37",
+          "url": "https://github.com/tomtom215/rource/commit/c03cddf003422640d2c08a13e23d358238a0ef12"
+        },
+        "date": 1770763146219,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
