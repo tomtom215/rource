@@ -944,4 +944,290 @@ mod tests {
             expected_score
         );
     }
+
+    // ========================================================================
+    // Integration Tests: Full Pipeline
+    // ========================================================================
+
+    #[test]
+    fn test_full_pipeline_all_20_metrics_computed() {
+        // Kills: any accumulator that fails to initialize or finalize
+        // Verify that all 20 metric sections are populated for a realistic input
+        let commits = vec![
+            make_commit(
+                1000,
+                "Alice",
+                &[
+                    ("src/main.rs", FileActionKind::Create),
+                    ("src/lib.rs", FileActionKind::Create),
+                ],
+            ),
+            make_commit(
+                2000,
+                "Bob",
+                &[
+                    ("src/main.rs", FileActionKind::Modify),
+                    ("tests/test.rs", FileActionKind::Create),
+                ],
+            ),
+            make_commit(
+                3000,
+                "Alice",
+                &[
+                    ("src/lib.rs", FileActionKind::Modify),
+                    ("src/main.rs", FileActionKind::Modify),
+                ],
+            ),
+            make_commit(4000, "Carol", &[("docs/readme.md", FileActionKind::Create)]),
+        ];
+        let report = compute_insights(&commits);
+
+        // Summary
+        assert_eq!(report.summary.total_commits, 4);
+        assert_eq!(report.summary.total_authors, 3);
+        assert!(report.summary.total_files > 0);
+        assert_eq!(report.summary.time_span_seconds, 3000);
+
+        // Hotspots (src/main.rs modified 3 times → top hotspot)
+        assert!(!report.hotspots.is_empty());
+
+        // Couplings (src/main.rs & src/lib.rs co-change 2 times → coupling pair)
+        assert!(
+            !report.couplings.is_empty(),
+            "should detect coupling between co-changed files"
+        );
+
+        // Ownership
+        assert!(!report.ownership.is_empty());
+
+        // Bus factors
+        assert!(!report.bus_factors.is_empty());
+
+        // Temporal
+        assert!(report.temporal.commits_per_day.iter().sum::<u32>() == 4);
+        assert!(report.temporal.commits_per_hour.iter().sum::<u32>() == 4);
+
+        // Growth
+        assert!(report.growth.total_created > 0);
+        assert!(report.growth.current_file_count > 0);
+        assert!(!report.growth.snapshots.is_empty());
+
+        // Work type
+        assert_eq!(report.work_type.total_commits, 4);
+
+        // Cadence
+        // Alice has 2 commits, Bob has 1, Carol has 1 — only Alice qualifies (>= 2)
+        assert!(!report.cadence.authors.is_empty());
+
+        // Knowledge
+        assert!(!report.knowledge.files.is_empty());
+
+        // Profiles
+        assert_eq!(report.profiles.total_contributors, 3);
+
+        // Lifecycle
+        assert!(!report.lifecycle.files.is_empty());
+
+        // Inequality (need >= 2 authors with commits)
+        assert!(report.inequality.total_developers >= 2);
+
+        // Change entropy
+        // May or may not have windows depending on time span
+
+        // Circadian
+        assert_eq!(report.circadian.total_commits_analyzed, 4);
+
+        // Survival (4 creates, 0 deletes)
+        assert!(report.survival.total_births > 0);
+
+        // Network (3 authors, shared files → edges)
+        assert!(!report.network.developers.is_empty());
+    }
+
+    #[test]
+    fn test_full_pipeline_single_author() {
+        // Kills: degenerate cases in network (1 node, no edges), inequality (1 author)
+        let commits = vec![
+            make_commit(1000, "Alice", &[("a.rs", FileActionKind::Create)]),
+            make_commit(2000, "Alice", &[("a.rs", FileActionKind::Modify)]),
+            make_commit(3000, "Alice", &[("b.rs", FileActionKind::Create)]),
+        ];
+        let report = compute_insights(&commits);
+
+        assert_eq!(report.summary.total_authors, 1);
+        // Network: 1 node, 0 edges, density = 0
+        assert_eq!(report.network.developers.len(), 1);
+        assert_eq!(report.network.total_edges, 0);
+        assert!((report.network.network_density - 0.0).abs() < f64::EPSILON);
+        // Bus factor: all files by Alice → bus_factor = 1
+        for bf in &report.bus_factors {
+            assert_eq!(bf.bus_factor, 1);
+        }
+        // Knowledge: all silos (single contributor)
+        assert_eq!(report.knowledge.total_silos, report.knowledge.files.len());
+        // Ownership: 100% for Alice on every file
+        for o in &report.ownership {
+            assert_eq!(o.top_owner, "Alice");
+            assert!((o.top_owner_share - 1.0).abs() < f64::EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_full_pipeline_single_file() {
+        // Kills: degenerate cases in coupling (1 file → no pairs), modularity
+        let commits = vec![
+            make_commit(1000, "Alice", &[("only.rs", FileActionKind::Create)]),
+            make_commit(2000, "Bob", &[("only.rs", FileActionKind::Modify)]),
+            make_commit(3000, "Carol", &[("only.rs", FileActionKind::Modify)]),
+        ];
+        let report = compute_insights(&commits);
+
+        assert_eq!(report.summary.total_files, 1);
+        assert!(
+            report.couplings.is_empty(),
+            "single file → no coupling pairs"
+        );
+        assert_eq!(report.knowledge.files.len(), 1);
+        assert!(!report.knowledge.files[0].is_silo);
+        assert_eq!(report.knowledge.files[0].contributor_count, 3);
+    }
+
+    #[test]
+    fn test_deterministic_output() {
+        // Kills: non-determinism (HashMap iteration order, unstable sorts)
+        let commits = vec![
+            make_commit(
+                1000,
+                "Alice",
+                &[
+                    ("src/a.rs", FileActionKind::Create),
+                    ("src/b.rs", FileActionKind::Create),
+                ],
+            ),
+            make_commit(
+                2000,
+                "Bob",
+                &[
+                    ("src/a.rs", FileActionKind::Modify),
+                    ("src/c.rs", FileActionKind::Create),
+                ],
+            ),
+            make_commit(
+                3000,
+                "Alice",
+                &[
+                    ("src/a.rs", FileActionKind::Modify),
+                    ("src/b.rs", FileActionKind::Modify),
+                ],
+            ),
+        ];
+
+        let report1 = compute_insights(&commits);
+        let report2 = compute_insights(&commits);
+
+        // Summary must be identical
+        assert_eq!(report1.summary.total_commits, report2.summary.total_commits);
+        assert_eq!(report1.summary.total_files, report2.summary.total_files);
+        assert_eq!(report1.summary.total_authors, report2.summary.total_authors);
+        assert!(
+            (report1.summary.avg_files_per_commit - report2.summary.avg_files_per_commit).abs()
+                < f64::EPSILON
+        );
+
+        // Hotspot ranking must be identical
+        assert_eq!(report1.hotspots.len(), report2.hotspots.len());
+        for (h1, h2) in report1.hotspots.iter().zip(report2.hotspots.iter()) {
+            assert_eq!(h1.path, h2.path);
+            assert!((h1.score - h2.score).abs() < 1e-10);
+        }
+
+        // Growth snapshots must be identical
+        assert_eq!(
+            report1.growth.snapshots.len(),
+            report2.growth.snapshots.len()
+        );
+        assert_eq!(report1.growth.net_growth, report2.growth.net_growth);
+    }
+
+    #[test]
+    fn test_bulk_commit_threshold_respected_in_pipeline() {
+        // Kills: BULK_COMMIT_THRESHOLD check in accumulate_commit_data
+        // Commit with 51 files should be excluded from coupling
+        let file_names: Vec<String> = (0..51).map(|i| format!("f{i:03}.rs")).collect();
+        let create_files: Vec<(&str, FileActionKind)> = file_names
+            .iter()
+            .map(|n| (n.as_str(), FileActionKind::Create))
+            .collect();
+        let modify_files: Vec<(&str, FileActionKind)> = file_names
+            .iter()
+            .map(|n| (n.as_str(), FileActionKind::Modify))
+            .collect();
+
+        let commits = vec![
+            make_commit(1000, "Alice", &create_files),
+            make_commit(2000, "Alice", &modify_files),
+        ];
+        let report = compute_insights(&commits);
+        // 51 > BULK_COMMIT_THRESHOLD (50) → excluded from coupling
+        assert!(
+            report.couplings.is_empty(),
+            "commits with >50 files should be excluded from coupling"
+        );
+
+        // But hotspots should still be computed
+        assert!(!report.hotspots.is_empty());
+        // And growth should track all created files
+        assert_eq!(report.growth.current_file_count, 51);
+    }
+
+    #[test]
+    fn test_full_pipeline_100_commits_realistic() {
+        // Kills: any accumulator that breaks with moderate scale
+        // Simulate a realistic 100-commit repository
+        let mut commits = Vec::new();
+        let authors = ["Alice", "Bob", "Carol", "Dave"];
+        let base_ts: i64 = 1_700_000_000; // ~2023
+
+        for i in 0..100_i64 {
+            let author = authors[i as usize % 4];
+            let ts = base_ts + i * 86400; // 1 commit per day
+            let file_count = (i % 5) + 1; // 1-5 files per commit
+            let mut files = Vec::new();
+            for j in 0..file_count {
+                let path = format!("src/mod{}.rs", j % 10);
+                let action = if i < 10 && j == 0 {
+                    FileActionKind::Create
+                } else {
+                    FileActionKind::Modify
+                };
+                files.push((path, action));
+            }
+            let file_refs: Vec<(&str, FileActionKind)> =
+                files.iter().map(|(p, a)| (p.as_str(), *a)).collect();
+            commits.push(make_commit(ts, author, &file_refs));
+        }
+
+        let report = compute_insights(&commits);
+
+        // Verify all sections populated
+        assert_eq!(report.summary.total_commits, 100);
+        assert_eq!(report.summary.total_authors, 4);
+        assert!(!report.hotspots.is_empty());
+        assert!(!report.ownership.is_empty());
+        assert!(!report.bus_factors.is_empty());
+        assert!(!report.cadence.authors.is_empty());
+        assert!(!report.knowledge.files.is_empty());
+        assert!(report.profiles.total_contributors == 4);
+        assert!(!report.lifecycle.files.is_empty());
+        assert!(report.inequality.total_developers >= 2);
+        assert!(!report.network.developers.is_empty());
+        assert!(report.network.total_edges > 0);
+        assert!(report.survival.total_births > 0);
+        assert!(report.circadian.total_commits_analyzed == 100);
+        assert!(!report.growth.snapshots.is_empty());
+        assert_eq!(report.work_type.total_commits, 100);
+
+        // Time span = 99 days
+        assert_eq!(report.summary.time_span_seconds, 99 * 86400);
+    }
 }

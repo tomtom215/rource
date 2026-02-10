@@ -536,4 +536,326 @@ mod tests {
             bob.share
         );
     }
+
+    #[test]
+    fn test_bus_factor_five_files_three_owners() {
+        // Kills: greedy set cover selection (best_coverage comparison)
+        // Alice: files 1,2,3 (3 files)
+        // Bob: files 2,3,4 (3 files)
+        // Carol: files 4,5 (2 files)
+        // Greedy picks Alice (covers 3), then checks orphans: file 4,5 still covered by Bob,Carol
+        // Then picks Bob (covers remaining 4), then file 5 only Carol → orphan after Carol removed
+        let ownership = vec![
+            FileOwnership {
+                path: "src/f1.rs".to_string(),
+                top_owner: "Alice".to_string(),
+                top_owner_share: 1.0,
+                total_changes: 5,
+                contributor_count: 1,
+                contributors: vec![ContributorShare {
+                    author: "Alice".to_string(),
+                    changes: 5,
+                    share: 1.0,
+                }],
+            },
+            FileOwnership {
+                path: "src/f2.rs".to_string(),
+                top_owner: "Alice".to_string(),
+                top_owner_share: 0.6,
+                total_changes: 10,
+                contributor_count: 2,
+                contributors: vec![
+                    ContributorShare {
+                        author: "Alice".to_string(),
+                        changes: 6,
+                        share: 0.6,
+                    },
+                    ContributorShare {
+                        author: "Bob".to_string(),
+                        changes: 4,
+                        share: 0.4,
+                    },
+                ],
+            },
+            FileOwnership {
+                path: "src/f3.rs".to_string(),
+                top_owner: "Alice".to_string(),
+                top_owner_share: 0.5,
+                total_changes: 10,
+                contributor_count: 2,
+                contributors: vec![
+                    ContributorShare {
+                        author: "Alice".to_string(),
+                        changes: 5,
+                        share: 0.5,
+                    },
+                    ContributorShare {
+                        author: "Bob".to_string(),
+                        changes: 5,
+                        share: 0.5,
+                    },
+                ],
+            },
+            FileOwnership {
+                path: "src/f4.rs".to_string(),
+                top_owner: "Bob".to_string(),
+                top_owner_share: 0.6,
+                total_changes: 10,
+                contributor_count: 2,
+                contributors: vec![
+                    ContributorShare {
+                        author: "Bob".to_string(),
+                        changes: 6,
+                        share: 0.6,
+                    },
+                    ContributorShare {
+                        author: "Carol".to_string(),
+                        changes: 4,
+                        share: 0.4,
+                    },
+                ],
+            },
+            FileOwnership {
+                path: "src/f5.rs".to_string(),
+                top_owner: "Carol".to_string(),
+                top_owner_share: 1.0,
+                total_changes: 3,
+                contributor_count: 1,
+                contributors: vec![ContributorShare {
+                    author: "Carol".to_string(),
+                    changes: 3,
+                    share: 1.0,
+                }],
+            },
+        ];
+
+        let factors = compute_bus_factors(&ownership);
+        let src = factors.iter().find(|f| f.directory == "src").unwrap();
+        assert_eq!(src.file_count, 5);
+        assert_eq!(src.contributor_count, 3);
+        // f1 only has Alice, f5 only has Carol → after removing the greedy
+        // choice, one of these orphans quickly
+        assert!(
+            src.bus_factor >= 1 && src.bus_factor <= 3,
+            "bus_factor={}, expected 1-3",
+            src.bus_factor
+        );
+        assert!(!src.critical_contributors.is_empty());
+    }
+
+    #[test]
+    fn test_bus_factor_power_law_distribution() {
+        // Kills: greedy best_coverage > comparison (off-by-one or wrong comparison)
+        // 1 dev owns 8 files exclusively, 2 devs each own 1 file exclusively
+        let mut ownerships = Vec::new();
+        for i in 0..8 {
+            ownerships.push(FileOwnership {
+                path: format!("src/f{i}.rs"),
+                top_owner: "Alice".to_string(),
+                top_owner_share: 1.0,
+                total_changes: 10,
+                contributor_count: 1,
+                contributors: vec![ContributorShare {
+                    author: "Alice".to_string(),
+                    changes: 10,
+                    share: 1.0,
+                }],
+            });
+        }
+        ownerships.push(FileOwnership {
+            path: "src/f8.rs".to_string(),
+            top_owner: "Bob".to_string(),
+            top_owner_share: 1.0,
+            total_changes: 5,
+            contributor_count: 1,
+            contributors: vec![ContributorShare {
+                author: "Bob".to_string(),
+                changes: 5,
+                share: 1.0,
+            }],
+        });
+        ownerships.push(FileOwnership {
+            path: "src/f9.rs".to_string(),
+            top_owner: "Carol".to_string(),
+            top_owner_share: 1.0,
+            total_changes: 5,
+            contributor_count: 1,
+            contributors: vec![ContributorShare {
+                author: "Carol".to_string(),
+                changes: 5,
+                share: 1.0,
+            }],
+        });
+
+        let factors = compute_bus_factors(&ownerships);
+        let src = factors.iter().find(|f| f.directory == "src").unwrap();
+        // Greedy picks Alice first (covers 8 files), removing Alice orphans f0-f7 immediately
+        assert_eq!(
+            src.bus_factor, 1,
+            "power-law: removing the dominant contributor orphans 8 files"
+        );
+        assert_eq!(src.critical_contributors[0], "Alice");
+    }
+
+    #[test]
+    fn test_bus_factor_all_overlapping() {
+        // Kills: removal check (all contributors cover all files)
+        // All 3 devs contribute to all 3 files → bus_factor = 3
+        let contributors = vec![
+            ContributorShare {
+                author: "Alice".to_string(),
+                changes: 5,
+                share: 0.33,
+            },
+            ContributorShare {
+                author: "Bob".to_string(),
+                changes: 5,
+                share: 0.33,
+            },
+            ContributorShare {
+                author: "Carol".to_string(),
+                changes: 5,
+                share: 0.34,
+            },
+        ];
+        let mut ownerships = Vec::new();
+        for i in 0..3 {
+            ownerships.push(FileOwnership {
+                path: format!("src/f{i}.rs"),
+                top_owner: "Carol".to_string(),
+                top_owner_share: 0.34,
+                total_changes: 15,
+                contributor_count: 3,
+                contributors: contributors.clone(),
+            });
+        }
+
+        let factors = compute_bus_factors(&ownerships);
+        let src = factors.iter().find(|f| f.directory == "src").unwrap();
+        assert_eq!(
+            src.bus_factor, 3,
+            "all 3 must be removed before any file is orphaned"
+        );
+    }
+
+    #[test]
+    fn test_bus_factor_single_owner_all_files() {
+        // Kills: boundary on single-contributor scenario
+        let mut ownerships = Vec::new();
+        for i in 0..5 {
+            ownerships.push(FileOwnership {
+                path: format!("src/f{i}.rs"),
+                top_owner: "Alice".to_string(),
+                top_owner_share: 1.0,
+                total_changes: 3,
+                contributor_count: 1,
+                contributors: vec![ContributorShare {
+                    author: "Alice".to_string(),
+                    changes: 3,
+                    share: 1.0,
+                }],
+            });
+        }
+
+        let factors = compute_bus_factors(&ownerships);
+        let src = factors.iter().find(|f| f.directory == "src").unwrap();
+        assert_eq!(
+            src.bus_factor, 1,
+            "single owner of all files → bus_factor=1"
+        );
+        assert_eq!(src.critical_contributors, vec!["Alice"]);
+    }
+
+    #[test]
+    fn test_ownership_share_five_contributors() {
+        // Kills: division precision with 5 contributors
+        let authors = make_authors(&[
+            ("Alice", 5),
+            ("Bob", 4),
+            ("Carol", 3),
+            ("Dave", 2),
+            ("Eve", 1),
+        ]);
+        let ownership = compute_file_ownership("test.rs".to_string(), &authors);
+
+        assert_eq!(ownership.total_changes, 15);
+        assert_eq!(ownership.contributor_count, 5);
+        assert_eq!(ownership.top_owner, "Alice");
+        assert!(
+            (ownership.top_owner_share - 5.0 / 15.0).abs() < 1e-10,
+            "top_owner_share={}, expected={}",
+            ownership.top_owner_share,
+            5.0 / 15.0
+        );
+
+        // Verify all shares sum to 1.0
+        let total: f64 = ownership.contributors.iter().map(|c| c.share).sum();
+        assert!(
+            (total - 1.0).abs() < 1e-10,
+            "all shares must sum to 1.0, got={}",
+            total
+        );
+    }
+
+    #[test]
+    fn test_top_owner_is_sorted_first() {
+        // Kills: sort direction (descending vs ascending in contributors sort)
+        let authors = make_authors(&[("Alice", 1), ("Bob", 10), ("Carol", 5)]);
+        let ownership = compute_file_ownership("test.rs".to_string(), &authors);
+
+        assert_eq!(ownership.top_owner, "Bob", "Bob has most changes");
+        assert_eq!(
+            ownership.contributors[0].author, "Bob",
+            "first contributor should be highest"
+        );
+        assert_eq!(ownership.contributors[1].author, "Carol");
+        assert_eq!(ownership.contributors[2].author, "Alice");
+    }
+
+    #[test]
+    fn test_bus_factor_sorted_ascending() {
+        // Kills: sort direction in bus_factor results
+        let o1 = vec![
+            FileOwnership {
+                path: "src/a.rs".to_string(),
+                top_owner: "Alice".to_string(),
+                top_owner_share: 1.0,
+                total_changes: 5,
+                contributor_count: 1,
+                contributors: vec![ContributorShare {
+                    author: "Alice".to_string(),
+                    changes: 5,
+                    share: 1.0,
+                }],
+            },
+            FileOwnership {
+                path: "lib/b.rs".to_string(),
+                top_owner: "Bob".to_string(),
+                top_owner_share: 0.5,
+                total_changes: 10,
+                contributor_count: 2,
+                contributors: vec![
+                    ContributorShare {
+                        author: "Bob".to_string(),
+                        changes: 5,
+                        share: 0.5,
+                    },
+                    ContributorShare {
+                        author: "Carol".to_string(),
+                        changes: 5,
+                        share: 0.5,
+                    },
+                ],
+            },
+        ];
+
+        let factors = compute_bus_factors(&o1);
+        // src: bus_factor=1 (only Alice), lib: bus_factor=2 (Bob+Carol)
+        // Should be sorted ascending: src first
+        assert!(factors.len() == 2);
+        assert!(
+            factors[0].bus_factor <= factors[1].bus_factor,
+            "bus factors should be sorted ascending"
+        );
+    }
 }

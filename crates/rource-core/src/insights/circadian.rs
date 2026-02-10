@@ -593,4 +593,84 @@ mod tests {
         let risk = compute_risk(0, 5); // hour 0, Saturday
         assert!((risk - 1.3).abs() < 1e-10, "risk={}, expected=1.3", risk);
     }
+
+    // ── Property-based tests ────────────────────────────────────────
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// extract_hour always returns a value in [0, 23].
+            #[test]
+            fn prop_hour_bounded(ts in proptest::num::i64::ANY) {
+                let hour = extract_hour(ts);
+                prop_assert!(hour <= 23, "hour={} > 23 for ts={}", hour, ts);
+            }
+
+            /// extract_day_of_week always returns a value in [0, 6].
+            #[test]
+            fn prop_dow_bounded(ts in proptest::num::i64::ANY) {
+                let dow = extract_day_of_week(ts);
+                prop_assert!(dow <= 6, "dow={} > 6 for ts={}", dow, ts);
+            }
+
+            /// Timestamps exactly 7 days apart have the same day of week.
+            #[test]
+            fn prop_dow_weekly_period(ts in -1_000_000_000i64..1_000_000_000i64) {
+                let dow1 = extract_day_of_week(ts);
+                let dow2 = extract_day_of_week(ts + 7 * 86400);
+                prop_assert_eq!(dow1, dow2, "dow should be periodic with period 7 days");
+            }
+
+            /// Timestamps exactly 24 hours apart have the same hour.
+            #[test]
+            fn prop_hour_daily_period(ts in -1_000_000_000i64..1_000_000_000i64) {
+                let h1 = extract_hour(ts);
+                let h2 = extract_hour(ts + 86400);
+                prop_assert_eq!(h1, h2, "hour should be periodic with period 24 hours");
+            }
+
+            /// compute_risk is always non-negative.
+            #[test]
+            fn prop_risk_non_negative(hour in 0u8..24, dow in 0u8..7) {
+                let risk = compute_risk(hour, dow);
+                prop_assert!(risk >= 0.0, "risk={} < 0 for hour={}, dow={}", risk, hour, dow);
+            }
+
+            /// Weekend risk is always >= weekday risk for the same hour.
+            #[test]
+            fn prop_weekend_risk_geq_weekday(hour in 0u8..24) {
+                let weekday_risk = compute_risk(hour, 0); // Monday
+                let weekend_risk = compute_risk(hour, 5); // Saturday
+                prop_assert!(
+                    weekend_risk >= weekday_risk - f64::EPSILON,
+                    "weekend risk {} < weekday risk {} for hour {}",
+                    weekend_risk, weekday_risk, hour
+                );
+            }
+
+            /// High-risk percentage is always in [0, 100].
+            #[test]
+            fn prop_high_risk_pct_bounded(n_commits in 1usize..20) {
+                let mut acc = CircadianAccumulator::new();
+                for i in 0..n_commits {
+                    // Distribute commits across various hours
+                    let hour_offset = i64::try_from(i % 24).unwrap() * 3600;
+                    acc.record_commit("Alice", hour_offset, &["a.rs"]);
+                }
+                let report = acc.finalize();
+                prop_assert!(
+                    report.high_risk_percentage >= 0.0,
+                    "pct={} < 0",
+                    report.high_risk_percentage
+                );
+                prop_assert!(
+                    report.high_risk_percentage <= 100.0,
+                    "pct={} > 100",
+                    report.high_risk_percentage
+                );
+            }
+        }
+    }
 }

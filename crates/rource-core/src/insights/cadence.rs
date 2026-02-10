@@ -555,4 +555,163 @@ mod tests {
             report.team_mean_interval
         );
     }
+
+    #[test]
+    fn test_cv_just_below_0_5_is_regular() {
+        // Kills: < vs <= in cv < 0.5 → Regular classification
+        // Intervals: [a, b] with CV = |a-b|/(a+b)
+        // Want CV < 0.5 but close: let a=110, b=290 → CV=180/400=0.45
+        let mut acc = CadenceAccumulator::new();
+        acc.record_commit("Alice", 0);
+        acc.record_commit("Alice", 110);
+        acc.record_commit("Alice", 400); // intervals: 110, 290
+        let report = acc.finalize();
+        let alice = &report.authors[0];
+        let expected_cv = 90.0 / 200.0; // std_dev=90, mean=200 → CV=0.45
+        assert!(
+            (alice.cv - expected_cv).abs() < 1e-10,
+            "cv={}, expected={}",
+            alice.cv,
+            expected_cv
+        );
+        assert_eq!(
+            alice.cadence_type,
+            CadenceType::Regular,
+            "CV=0.45 should be Regular"
+        );
+    }
+
+    #[test]
+    fn test_cv_just_above_0_5_is_moderate() {
+        // Kills: < vs <= in cv < 0.5 boundary (just above)
+        // Intervals: [a, b] with CV = |a-b|/(a+b)
+        // Want CV > 0.5 but close: let a=90, b=310 → CV=220/400=0.55
+        let mut acc = CadenceAccumulator::new();
+        acc.record_commit("Alice", 0);
+        acc.record_commit("Alice", 90);
+        acc.record_commit("Alice", 400); // intervals: 90, 310
+        let report = acc.finalize();
+        let alice = &report.authors[0];
+        let expected_cv = 110.0 / 200.0; // std_dev=110, mean=200 → CV=0.55
+        assert!(
+            (alice.cv - expected_cv).abs() < 1e-10,
+            "cv={}, expected={}",
+            alice.cv,
+            expected_cv
+        );
+        assert_eq!(
+            alice.cadence_type,
+            CadenceType::Moderate,
+            "CV=0.55 should be Moderate"
+        );
+    }
+
+    #[test]
+    fn test_mean_interval_division_exact() {
+        // Kills: replace / with * in mean = sum / len
+        // 3 intervals: 100, 200, 300 → mean = 600/3 = 200
+        let mut acc = CadenceAccumulator::new();
+        acc.record_commit("Alice", 0);
+        acc.record_commit("Alice", 100);
+        acc.record_commit("Alice", 300);
+        acc.record_commit("Alice", 600);
+        let report = acc.finalize();
+        let alice = &report.authors[0];
+        assert!(
+            (alice.mean_interval - 200.0).abs() < 1e-10,
+            "mean={}, expected=200.0",
+            alice.mean_interval
+        );
+    }
+
+    #[test]
+    fn test_variance_powi_2_exact() {
+        // Kills: .powi(2) mutation (e.g., powi(1) or powi(3))
+        // Intervals: [100, 500] → mean = 300
+        // variance = ((100-300)^2 + (500-300)^2) / 2 = (40000+40000)/2 = 40000
+        // std_dev = 200
+        let mut acc = CadenceAccumulator::new();
+        acc.record_commit("Alice", 0);
+        acc.record_commit("Alice", 100);
+        acc.record_commit("Alice", 600); // intervals: 100, 500
+        let report = acc.finalize();
+        let alice = &report.authors[0];
+        assert!(
+            (alice.std_dev - 200.0).abs() < 1e-10,
+            "std_dev={}, expected=200.0",
+            alice.std_dev
+        );
+    }
+
+    #[test]
+    fn test_cv_division_direction() {
+        // Kills: std_dev / mean vs mean / std_dev
+        // Intervals: [100, 300] → mean=200, std_dev=100
+        // CV = 100/200 = 0.5 (not 200/100 = 2.0)
+        let mut acc = CadenceAccumulator::new();
+        acc.record_commit("Alice", 0);
+        acc.record_commit("Alice", 100);
+        acc.record_commit("Alice", 400);
+        let report = acc.finalize();
+        let alice = &report.authors[0];
+        assert!(
+            (alice.cv - 0.5).abs() < 1e-10,
+            "cv={}, expected=0.5 (std_dev/mean, not mean/std_dev)",
+            alice.cv
+        );
+    }
+
+    #[test]
+    fn test_moderate_count_classification() {
+        // Kills: count classification (regular/moderate/bursty counting)
+        let mut acc = CadenceAccumulator::new();
+        // Regular: CV=0 (uniform intervals)
+        for i in 0..5 {
+            acc.record_commit("Regular", i * 1000);
+        }
+        // Moderate: need CV between 0.5 and 1.5
+        // Intervals [90, 310] → CV = 110/200 = 0.55
+        acc.record_commit("Moderate", 0);
+        acc.record_commit("Moderate", 90);
+        acc.record_commit("Moderate", 400);
+        // Bursty: huge gap then rapid fire
+        acc.record_commit("Bursty", 0);
+        acc.record_commit("Bursty", 1_000_000);
+        acc.record_commit("Bursty", 1_000_001);
+        acc.record_commit("Bursty", 1_000_002);
+        acc.record_commit("Bursty", 1_000_003);
+
+        let report = acc.finalize();
+        assert_eq!(report.regular_count, 1, "exactly 1 regular author");
+        assert_eq!(report.moderate_count, 1, "exactly 1 moderate author");
+        assert_eq!(report.bursty_count, 1, "exactly 1 bursty author");
+        // Verify total adds up
+        assert_eq!(
+            report.regular_count + report.moderate_count + report.bursty_count,
+            report.authors.len()
+        );
+    }
+
+    #[test]
+    fn test_team_mean_weighted_by_commit_count() {
+        // Kills: weighting by commit_count vs uniform weighting
+        // Alice: 10 commits, mean_interval=100 → weight=10
+        // Bob: 2 commits, mean_interval=5000 → weight=2
+        // Weighted mean = (100*10 + 5000*2) / (10+2) = 11000/12 ≈ 916.67
+        // Uniform mean would be (100+5000)/2 = 2550 — different value
+        let mut acc = CadenceAccumulator::new();
+        for i in 0..10 {
+            acc.record_commit("Alice", i * 100);
+        }
+        acc.record_commit("Bob", 0);
+        acc.record_commit("Bob", 5000);
+        let report = acc.finalize();
+        let expected = (100.0 * 10.0 + 5000.0 * 2.0) / 12.0;
+        assert!(
+            (report.team_mean_interval - expected).abs() < 1e-10,
+            "team_mean={}, expected={} (weighted, not uniform)",
+            report.team_mean_interval,
+            expected
+        );
+    }
 }

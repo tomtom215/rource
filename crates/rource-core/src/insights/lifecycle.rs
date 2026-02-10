@@ -642,4 +642,74 @@ mod tests {
         let report = acc.finalize(0, 100_000);
         assert_eq!(report.files[0].stage, LifecycleStage::Stable);
     }
+
+    #[test]
+    fn test_modifications_per_month_zero_age() {
+        // Kills: division guard in modifications_per_month when age_seconds == 0
+        // File created and only action at same timestamp → age = 0
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("instant.rs", FileActionKind::Create, 5000, "Alice");
+        acc.record_file("instant.rs", FileActionKind::Modify, 5000, "Alice");
+
+        let report = acc.finalize(5000, 5000);
+        let f = &report.files[0];
+        // age_seconds = 0 → modifications_per_month = modification_count (fallback)
+        assert!(
+            (f.modifications_per_month - 1.0).abs() < 1e-10,
+            "zero age → mods_per_month={}, expected=1.0",
+            f.modifications_per_month
+        );
+    }
+
+    #[test]
+    fn test_churn_rate_mixed_create_modify_delete() {
+        // Kills: churn_rate = (creates + deletes) / total_files formula
+        // Create 4, modify 3 of them, delete 2 → churn = (4+2)/4 = 1.5
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Create, 1000, "Alice");
+        acc.record_file("b.rs", FileActionKind::Create, 2000, "Bob");
+        acc.record_file("c.rs", FileActionKind::Create, 3000, "Carol");
+        acc.record_file("d.rs", FileActionKind::Create, 4000, "Dave");
+        acc.record_file("a.rs", FileActionKind::Modify, 5000, "Alice");
+        acc.record_file("b.rs", FileActionKind::Modify, 6000, "Bob");
+        acc.record_file("c.rs", FileActionKind::Modify, 7000, "Carol");
+        acc.record_file("a.rs", FileActionKind::Delete, 8000, "Alice");
+        acc.record_file("b.rs", FileActionKind::Delete, 9000, "Bob");
+
+        let report = acc.finalize(1000, 9000);
+        // total_creates = 4, total_deletes = 2, total_files_seen = 4
+        let expected = (4.0 + 2.0) / 4.0;
+        assert!(
+            (report.churn_rate - expected).abs() < 1e-10,
+            "churn_rate={}, expected={}",
+            report.churn_rate,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_stage_priority_sort_order() {
+        // Kills: stage_priority ordering (verifies all 5 stages sort correctly)
+        assert!(stage_priority(LifecycleStage::Ephemeral) < stage_priority(LifecycleStage::Dead));
+        assert!(stage_priority(LifecycleStage::Dead) < stage_priority(LifecycleStage::Deleted));
+        assert!(stage_priority(LifecycleStage::Deleted) < stage_priority(LifecycleStage::Stable));
+        assert!(stage_priority(LifecycleStage::Stable) < stage_priority(LifecycleStage::Active));
+    }
+
+    #[test]
+    fn test_unique_authors_tracked() {
+        // Kills: authors.insert tracking (HashSet behavior)
+        let mut acc = LifecycleAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Create, 1000, "Alice");
+        acc.record_file("a.rs", FileActionKind::Modify, 2000, "Alice"); // same author
+        acc.record_file("a.rs", FileActionKind::Modify, 3000, "Bob");
+        acc.record_file("a.rs", FileActionKind::Modify, 4000, "Alice"); // duplicate
+        acc.record_file("a.rs", FileActionKind::Modify, 5000, "Carol");
+
+        let report = acc.finalize(1000, 5000);
+        assert_eq!(
+            report.files[0].unique_authors, 3,
+            "3 unique authors (Alice, Bob, Carol)"
+        );
+    }
 }

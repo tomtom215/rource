@@ -26,6 +26,7 @@ toml = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+proptest = "1.5"
 rource-vcs = { path = "../rource-vcs" }
 
 # iai-callgrind requires Valgrind which only works on Linux

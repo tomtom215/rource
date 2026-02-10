@@ -797,4 +797,111 @@ mod tests {
             .unwrap();
         assert_eq!(alice.shared_files_total, 2, "Alice shares 2 files with Bob");
     }
+
+    // ── Property-based tests ────────────────────────────────────────
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        /// Strategy to generate random file-author maps with 1-5 files and 1-4 authors each.
+        fn arb_file_authors() -> impl Strategy<Value = FxHashMap<String, FxHashMap<String, u32>>> {
+            proptest::collection::vec(
+                (1usize..=4,), // number of authors per file
+                1..=5,         // number of files
+            )
+            .prop_map(|file_specs| {
+                let authors = ["Alice", "Bob", "Carol", "Dave"];
+                let mut result: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                for (i, (n_authors,)) in file_specs.iter().enumerate() {
+                    let mut author_map: FxHashMap<String, u32> = FxHashMap::default();
+                    for name in &authors[..*n_authors] {
+                        author_map.insert(name.to_string(), 1);
+                    }
+                    result.insert(format!("file{i}.rs"), author_map);
+                }
+                result
+            })
+        }
+
+        proptest! {
+            /// Network density is always in [0, 1].
+            #[test]
+            fn prop_density_bounded(fa in arb_file_authors()) {
+                let report = compute_network(&fa);
+                prop_assert!(
+                    report.network_density >= -f64::EPSILON,
+                    "density={} < 0",
+                    report.network_density
+                );
+                prop_assert!(
+                    report.network_density <= 1.0 + f64::EPSILON,
+                    "density={} > 1",
+                    report.network_density
+                );
+            }
+
+            /// Clustering coefficient is always in [0, 1] for every developer.
+            #[test]
+            fn prop_clustering_bounded(fa in arb_file_authors()) {
+                let report = compute_network(&fa);
+                for dev in &report.developers {
+                    prop_assert!(
+                        dev.clustering_coefficient >= -f64::EPSILON,
+                        "clustering for {} = {} < 0",
+                        dev.author, dev.clustering_coefficient
+                    );
+                    prop_assert!(
+                        dev.clustering_coefficient <= 1.0 + f64::EPSILON,
+                        "clustering for {} = {} > 1",
+                        dev.author, dev.clustering_coefficient
+                    );
+                }
+            }
+
+            /// Sum of all degrees equals 2 * total_edges (handshaking lemma).
+            #[test]
+            fn prop_handshaking_lemma(fa in arb_file_authors()) {
+                let report = compute_network(&fa);
+                let degree_sum: u32 = report.developers.iter().map(|d| d.degree).sum();
+                prop_assert_eq!(
+                    degree_sum,
+                    2 * report.total_edges,
+                    "sum(degrees)={} != 2*edges={}",
+                    degree_sum, 2 * report.total_edges
+                );
+            }
+
+            /// At least one connected component if there are developers.
+            #[test]
+            fn prop_components_at_least_one(fa in arb_file_authors()) {
+                let report = compute_network(&fa);
+                if !report.developers.is_empty() {
+                    prop_assert!(
+                        report.connected_components >= 1,
+                        "components={}, but developers exist",
+                        report.connected_components
+                    );
+                }
+            }
+
+            /// Betweenness centrality is always in [0, 1] for every developer.
+            #[test]
+            fn prop_betweenness_bounded(fa in arb_file_authors()) {
+                let report = compute_network(&fa);
+                for dev in &report.developers {
+                    prop_assert!(
+                        dev.betweenness >= -f64::EPSILON,
+                        "betweenness for {} = {} < 0",
+                        dev.author, dev.betweenness
+                    );
+                    prop_assert!(
+                        dev.betweenness <= 1.0 + f64::EPSILON,
+                        "betweenness for {} = {} > 1",
+                        dev.author, dev.betweenness
+                    );
+                }
+            }
+        }
+    }
 }

@@ -2187,6 +2187,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "iai-callgrind",
+ "proptest",
  "regex-lite",
  "rource-math",
  "rource-vcs",

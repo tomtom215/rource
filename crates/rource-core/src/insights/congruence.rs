@@ -479,4 +479,113 @@ mod tests {
             report.coordination_gaps.len()
         );
     }
+
+    // ── Property-based tests ────────────────────────────────────────
+
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Congruence score is always in [0, 1].
+            #[test]
+            fn prop_congruence_bounded(
+                n_couplings in 1usize..5,
+                n_files in 2usize..6,
+                n_devs in 2usize..5,
+            ) {
+                let dev_names: Vec<String> = (0..n_devs).map(|i| format!("Dev{i}")).collect();
+                let mut couplings = Vec::new();
+                for i in 0..n_couplings.min(n_files - 1) {
+                    couplings.push(CouplingPair {
+                        file_a: format!("f{i}.rs"),
+                        file_b: format!("f{}.rs", i + 1),
+                        support: 3,
+                        confidence_ab: 0.5,
+                        confidence_ba: 0.5,
+                        total_a: 6,
+                        total_b: 6,
+                    });
+                }
+                let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                for i in 0..n_files {
+                    let mut authors: FxHashMap<String, u32> = FxHashMap::default();
+                    // Each file gets 1-2 developers
+                    authors.insert(dev_names[i % n_devs].clone(), 1);
+                    if i + 1 < n_devs {
+                        authors.insert(dev_names[(i + 1) % n_devs].clone(), 1);
+                    }
+                    fa.insert(format!("f{i}.rs"), authors);
+                }
+                let report = compute_congruence(&couplings, &fa);
+                prop_assert!(
+                    report.congruence_score >= -f64::EPSILON,
+                    "score={} < 0",
+                    report.congruence_score
+                );
+                prop_assert!(
+                    report.congruence_score <= 1.0 + f64::EPSILON,
+                    "score={} > 1",
+                    report.congruence_score
+                );
+            }
+
+            /// Actual coordinations never exceed required coordinations.
+            #[test]
+            fn prop_actual_leq_required(
+                n_couplings in 1usize..5,
+                n_devs in 2usize..5,
+            ) {
+                let dev_names: Vec<String> = (0..n_devs).map(|i| format!("Dev{i}")).collect();
+                let mut couplings = Vec::new();
+                for i in 0..n_couplings {
+                    couplings.push(CouplingPair {
+                        file_a: format!("a{i}.rs"),
+                        file_b: format!("b{i}.rs"),
+                        support: 2,
+                        confidence_ab: 0.5,
+                        confidence_ba: 0.5,
+                        total_a: 4,
+                        total_b: 4,
+                    });
+                }
+                let mut fa: FxHashMap<String, FxHashMap<String, u32>> = FxHashMap::default();
+                for i in 0..n_couplings {
+                    let mut m: FxHashMap<String, u32> = FxHashMap::default();
+                    m.insert(dev_names[i % n_devs].clone(), 1);
+                    fa.insert(format!("a{i}.rs"), m);
+                    let mut m2: FxHashMap<String, u32> = FxHashMap::default();
+                    m2.insert(dev_names[(i + 1) % n_devs].clone(), 1);
+                    fa.insert(format!("b{i}.rs"), m2);
+                }
+                let report = compute_congruence(&couplings, &fa);
+                prop_assert!(
+                    report.actual_coordinations <= report.required_coordinations,
+                    "actual({}) > required({})",
+                    report.actual_coordinations, report.required_coordinations
+                );
+            }
+
+            /// normalize_pair is commutative: normalize(a,b) == normalize(b,a).
+            #[test]
+            fn prop_normalize_commutative(
+                a in "[a-z]{1,5}",
+                b in "[a-z]{1,5}",
+            ) {
+                let (x1, y1) = normalize_pair(&a, &b);
+                let (x2, y2) = normalize_pair(&b, &a);
+                prop_assert_eq!((x1, y1), (x2, y2));
+            }
+
+            /// normalize_pair always produces lexicographic order.
+            #[test]
+            fn prop_normalize_ordered(
+                a in "[a-z]{1,5}",
+                b in "[a-z]{1,5}",
+            ) {
+                let (x, y) = normalize_pair(&a, &b);
+                prop_assert!(x <= y, "not ordered: {} > {}", x, y);
+            }
+        }
+    }
 }
