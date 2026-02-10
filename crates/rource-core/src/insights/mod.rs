@@ -30,10 +30,16 @@
 //! All computation happens at load time (not per-frame), so there is zero impact
 //! on the visualization's frame budget.
 
+pub mod cadence;
 pub mod coupling;
+pub mod growth;
 pub mod hotspot;
+pub mod knowledge;
+pub mod lifecycle;
 pub mod ownership;
+pub mod profiles;
 pub mod temporal;
+pub mod work_type;
 
 use rustc_hash::FxHashMap;
 
@@ -97,6 +103,24 @@ pub struct InsightsReport {
 
     /// Temporal activity patterns.
     pub temporal: temporal::TemporalReport,
+
+    /// Codebase growth trajectory (Lehman 1996).
+    pub growth: growth::GrowthReport,
+
+    /// Work-type mix analysis (Hindle et al. 2008).
+    pub work_type: work_type::WorkTypeReport,
+
+    /// Commit cadence analysis per developer (Eyolfson et al. 2014).
+    pub cadence: cadence::CadenceReport,
+
+    /// Knowledge distribution and silo detection (Rigby & Bird 2013).
+    pub knowledge: knowledge::KnowledgeReport,
+
+    /// Developer activity profiles (Mockus et al. 2002).
+    pub profiles: profiles::ProfilesReport,
+
+    /// File lifecycle analysis (Godfrey & Tu 2000).
+    pub lifecycle: lifecycle::LifecycleReport,
 
     /// Summary statistics.
     pub summary: SummaryStats,
@@ -167,8 +191,16 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
     // Finalize each metric from accumulated data
     let hotspots = finalize_hotspots(accumulators.file_changes, t_min, t_max);
     let couplings = finalize_couplings(accumulators.coupling_acc);
-    let (mut ownership, bus_factors) = finalize_ownership(accumulators.file_authors);
+    let (mut ownership, bus_factors) = finalize_ownership(accumulators.file_authors.clone());
     let temporal = accumulators.temporal_acc.finalize();
+    let growth = accumulators.growth_acc.finalize(t_min, t_max);
+    let work_type = accumulators.work_type_acc.finalize();
+    let cadence = accumulators.cadence_acc.finalize();
+    let knowledge = knowledge::compute_knowledge(&accumulators.file_authors);
+    let profiles_report = accumulators
+        .profiles_acc
+        .finalize(commits.len(), t_min, t_max);
+    let lifecycle = accumulators.lifecycle_acc.finalize(t_min, t_max);
     let summary = compute_summary(
         commits,
         &ownership,
@@ -186,6 +218,12 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         ownership,
         bus_factors,
         temporal,
+        growth,
+        work_type,
+        cadence,
+        knowledge,
+        profiles: profiles_report,
+        lifecycle,
         summary,
     }
 }
@@ -198,6 +236,55 @@ fn empty_report() -> InsightsReport {
         ownership: Vec::new(),
         bus_factors: Vec::new(),
         temporal: temporal::TemporalReport::empty(),
+        growth: growth::GrowthReport {
+            snapshots: Vec::new(),
+            current_file_count: 0,
+            total_created: 0,
+            total_deleted: 0,
+            net_growth: 0,
+            avg_monthly_growth: 0.0,
+            trend: growth::GrowthTrend::Stable,
+        },
+        work_type: work_type::WorkTypeReport {
+            commits: Vec::new(),
+            feature_pct: 0.0,
+            maintenance_pct: 0.0,
+            cleanup_pct: 0.0,
+            mixed_pct: 0.0,
+            dominant_type: work_type::WorkType::Mixed,
+            total_commits: 0,
+        },
+        cadence: cadence::CadenceReport {
+            authors: Vec::new(),
+            team_mean_interval: 0.0,
+            regular_count: 0,
+            bursty_count: 0,
+            moderate_count: 0,
+        },
+        knowledge: knowledge::KnowledgeReport {
+            files: Vec::new(),
+            directories: Vec::new(),
+            total_silos: 0,
+            silo_percentage: 0.0,
+            avg_entropy: 0.0,
+        },
+        profiles: profiles::ProfilesReport {
+            developers: Vec::new(),
+            core_count: 0,
+            peripheral_count: 0,
+            drive_by_count: 0,
+            total_contributors: 0,
+        },
+        lifecycle: lifecycle::LifecycleReport {
+            files: Vec::new(),
+            avg_lifespan_days: 0.0,
+            ephemeral_count: 0,
+            dead_count: 0,
+            deleted_count: 0,
+            active_count: 0,
+            churn_rate: 0.0,
+            total_files_seen: 0,
+        },
         summary: SummaryStats {
             total_commits: 0,
             total_files: 0,
@@ -218,6 +305,11 @@ struct CommitAccumulators {
     commit_entropies: Vec<f64>,
     coupling_acc: coupling::CouplingAccumulator,
     temporal_acc: temporal::TemporalAccumulator,
+    growth_acc: growth::GrowthAccumulator,
+    work_type_acc: work_type::WorkTypeAccumulator,
+    cadence_acc: cadence::CadenceAccumulator,
+    profiles_acc: profiles::ProfilesAccumulator,
+    lifecycle_acc: lifecycle::LifecycleAccumulator,
 }
 
 /// Single pass over commits to populate all accumulators.
@@ -228,11 +320,24 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut commit_entropies: Vec<f64> = Vec::with_capacity(commits.len());
     let mut coupling_acc = coupling::CouplingAccumulator::new();
     let mut temporal_acc = temporal::TemporalAccumulator::new();
+    let mut growth_acc = growth::GrowthAccumulator::new();
+    let mut work_type_acc = work_type::WorkTypeAccumulator::new();
+    let mut cadence_acc = cadence::CadenceAccumulator::new();
+    let mut profiles_acc = profiles::ProfilesAccumulator::new();
+    let mut lifecycle_acc = lifecycle::LifecycleAccumulator::new();
 
     for commit in commits {
         *unique_authors.entry(commit.author.clone()).or_insert(0) += 1;
         commit_entropies.push(compute_commit_entropy(commit.files.len()));
         temporal_acc.record_commit(commit.timestamp, commit.files.len());
+        cadence_acc.record_commit(&commit.author, commit.timestamp);
+
+        // Collect file paths and action counts for work-type and profiles
+        let file_paths: Vec<&str> = commit.files.iter().map(|f| f.path.as_str()).collect();
+        let actions: Vec<FileActionKind> = commit.files.iter().map(|f| f.action).collect();
+        let (creates, modifies, deletes) = work_type::count_actions(&actions);
+        work_type_acc.record_commit(commit.timestamp, creates, modifies, deletes);
+        profiles_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
 
         for file in &commit.files {
             file_changes
@@ -244,7 +349,12 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
                 .or_default()
                 .entry(commit.author.clone())
                 .or_insert(0) += 1;
+            growth_acc.record_file(&file.path, file.action);
+            lifecycle_acc.record_file(&file.path, file.action, commit.timestamp, &commit.author);
         }
+
+        // Record growth snapshot after processing all files in this commit
+        growth_acc.record_snapshot(commit.timestamp);
 
         if commit.files.len() >= 2 && commit.files.len() <= BULK_COMMIT_THRESHOLD {
             coupling_acc.record_commit(&commit.files);
@@ -258,6 +368,11 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         commit_entropies,
         coupling_acc,
         temporal_acc,
+        growth_acc,
+        work_type_acc,
+        cadence_acc,
+        profiles_acc,
+        lifecycle_acc,
     }
 }
 

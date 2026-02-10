@@ -86,7 +86,7 @@ fn format_summary_json(summary: &SummaryStats) -> String {
 
 /// Formats the complete insights report as JSON.
 fn format_insights_json(report: &InsightsReport) -> String {
-    let mut json = String::with_capacity(4096);
+    let mut json = String::with_capacity(8192);
     json.push_str("{\"summary\":");
     json.push_str(&format_summary_json(&report.summary));
     write_hotspots_json(&mut json, report);
@@ -94,6 +94,12 @@ fn format_insights_json(report: &InsightsReport) -> String {
     write_ownership_json(&mut json, report);
     write_bus_factors_json(&mut json, report);
     write_temporal_json(&mut json, report);
+    write_growth_json(&mut json, report);
+    write_work_type_json(&mut json, report);
+    write_cadence_json(&mut json, report);
+    write_knowledge_json(&mut json, report);
+    write_profiles_json(&mut json, report);
+    write_lifecycle_json(&mut json, report);
     json.push('}');
     json
 }
@@ -244,6 +250,186 @@ fn write_temporal_json(json: &mut String, report: &InsightsReport) {
         json,
         r#","avgFilesInBursts":{:.2},"avgFilesOutsideBursts":{:.2}}}"#,
         report.temporal.avg_files_in_bursts, report.temporal.avg_files_outside_bursts,
+    );
+}
+
+/// Appends the growth trajectory section to the JSON output.
+fn write_growth_json(json: &mut String, report: &InsightsReport) {
+    let g = &report.growth;
+    let trend = match g.trend {
+        rource_core::insights::growth::GrowthTrend::Accelerating => "accelerating",
+        rource_core::insights::growth::GrowthTrend::Stable => "stable",
+        rource_core::insights::growth::GrowthTrend::Decelerating => "decelerating",
+        rource_core::insights::growth::GrowthTrend::Shrinking => "shrinking",
+    };
+    let _ = write!(
+        json,
+        r#","growth":{{"currentFileCount":{},"totalCreated":{},"totalDeleted":{},"netGrowth":{},"avgMonthlyGrowth":{:.2},"trend":"{}","snapshotCount":{}}}"#,
+        g.current_file_count,
+        g.total_created,
+        g.total_deleted,
+        g.net_growth,
+        g.avg_monthly_growth,
+        trend,
+        g.snapshots.len(),
+    );
+}
+
+/// Appends the work-type mix section to the JSON output.
+fn write_work_type_json(json: &mut String, report: &InsightsReport) {
+    let w = &report.work_type;
+    let dominant = match w.dominant_type {
+        rource_core::insights::work_type::WorkType::Feature => "feature",
+        rource_core::insights::work_type::WorkType::Maintenance => "maintenance",
+        rource_core::insights::work_type::WorkType::Cleanup => "cleanup",
+        rource_core::insights::work_type::WorkType::Mixed => "mixed",
+    };
+    let _ = write!(
+        json,
+        r#","workType":{{"featurePct":{:.1},"maintenancePct":{:.1},"cleanupPct":{:.1},"mixedPct":{:.1},"dominantType":"{}","totalCommits":{}}}"#,
+        w.feature_pct, w.maintenance_pct, w.cleanup_pct, w.mixed_pct, dominant, w.total_commits,
+    );
+}
+
+/// Appends the cadence analysis section to the JSON output.
+fn write_cadence_json(json: &mut String, report: &InsightsReport) {
+    let c = &report.cadence;
+    json.push_str(",\"cadence\":{\"authors\":[");
+    for (i, a) in c.authors.iter().take(20).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let cadence_type = match a.cadence_type {
+            rource_core::insights::cadence::CadenceType::Regular => "regular",
+            rource_core::insights::cadence::CadenceType::Moderate => "moderate",
+            rource_core::insights::cadence::CadenceType::Bursty => "bursty",
+        };
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","commitCount":{},"meanInterval":{:.0},"medianInterval":{:.0},"cv":{:.2},"cadenceType":"{}","activeSpan":{}}}"#,
+            escape_json(&a.author),
+            a.commit_count,
+            a.mean_interval,
+            a.median_interval,
+            a.cv,
+            cadence_type,
+            a.active_span,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"teamMeanInterval":{:.0},"regularCount":{},"burstyCount":{},"moderateCount":{}}}"#,
+        c.team_mean_interval, c.regular_count, c.bursty_count, c.moderate_count,
+    );
+}
+
+/// Appends the knowledge map section to the JSON output.
+fn write_knowledge_json(json: &mut String, report: &InsightsReport) {
+    let k = &report.knowledge;
+    json.push_str(",\"knowledge\":{\"files\":[");
+    for (i, f) in k.files.iter().take(50).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","entropy":{:.4},"isSilo":{},"primaryOwner":"{}","contributorCount":{}}}"#,
+            escape_json(&f.path),
+            f.knowledge_entropy,
+            f.is_silo,
+            escape_json(&f.primary_owner),
+            f.contributor_count,
+        );
+    }
+    json.push_str("],\"directories\":[");
+    for (i, d) in k.directories.iter().take(20).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"directory":"{}","avgEntropy":{:.4},"siloPct":{:.1},"fileCount":{},"siloCount":{}}}"#,
+            escape_json(&d.directory),
+            d.avg_entropy,
+            d.silo_percentage,
+            d.file_count,
+            d.silo_count,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"totalSilos":{},"siloPct":{:.1},"avgEntropy":{:.4}}}"#,
+        k.total_silos, k.silo_percentage, k.avg_entropy,
+    );
+}
+
+/// Appends the developer profiles section to the JSON output.
+fn write_profiles_json(json: &mut String, report: &InsightsReport) {
+    let p = &report.profiles;
+    json.push_str(",\"profiles\":{\"developers\":[");
+    for (i, d) in p.developers.iter().take(30).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let classification = match d.classification {
+            rource_core::insights::profiles::ContributorType::Core => "core",
+            rource_core::insights::profiles::ContributorType::Peripheral => "peripheral",
+            rource_core::insights::profiles::ContributorType::DriveBy => "drive-by",
+        };
+        let _ = write!(
+            json,
+            r#"{{"author":"{}","commitCount":{},"uniqueFiles":{},"avgFilesPerCommit":{:.1},"classification":"{}","activeSpanDays":{:.1}}}"#,
+            escape_json(&d.author),
+            d.commit_count,
+            d.unique_files,
+            d.avg_files_per_commit,
+            classification,
+            d.active_span_days,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"coreCount":{},"peripheralCount":{},"driveByCount":{},"totalContributors":{}}}"#,
+        p.core_count, p.peripheral_count, p.drive_by_count, p.total_contributors,
+    );
+}
+
+/// Appends the file lifecycle section to the JSON output.
+fn write_lifecycle_json(json: &mut String, report: &InsightsReport) {
+    let l = &report.lifecycle;
+    json.push_str(",\"lifecycle\":{\"files\":[");
+    for (i, f) in l.files.iter().take(50).enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let stage = match f.stage {
+            rource_core::insights::lifecycle::LifecycleStage::Active => "active",
+            rource_core::insights::lifecycle::LifecycleStage::Stable => "stable",
+            rource_core::insights::lifecycle::LifecycleStage::Ephemeral => "ephemeral",
+            rource_core::insights::lifecycle::LifecycleStage::Dead => "dead",
+            rource_core::insights::lifecycle::LifecycleStage::Deleted => "deleted",
+        };
+        let _ = write!(
+            json,
+            r#"{{"path":"{}","stage":"{}","ageDays":{:.1},"modificationCount":{},"modsPerMonth":{:.1},"uniqueAuthors":{}}}"#,
+            escape_json(&f.path),
+            stage,
+            f.age_days,
+            f.modification_count,
+            f.modifications_per_month,
+            f.unique_authors,
+        );
+    }
+    let _ = write!(
+        json,
+        r#"],"avgLifespanDays":{:.1},"ephemeralCount":{},"deadCount":{},"deletedCount":{},"activeCount":{},"churnRate":{:.2},"totalFilesSeen":{}}}"#,
+        l.avg_lifespan_days,
+        l.ephemeral_count,
+        l.dead_count,
+        l.deleted_count,
+        l.active_count,
+        l.churn_rate,
+        l.total_files_seen,
     );
 }
 
@@ -518,6 +704,159 @@ impl Rource {
         json.push('}');
         Some(json)
     }
+
+    /// Returns codebase growth trajectory as JSON.
+    ///
+    /// Tracks active file count over time, growth rate, and trend
+    /// classification (Lehman 1996 Laws of Software Evolution).
+    #[wasm_bindgen(js_name = getCodebaseGrowth)]
+    pub fn get_codebase_growth(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(512);
+        json.push('{');
+        write_growth_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns work-type mix analysis as JSON.
+    ///
+    /// Classifies commits by Create/Modify/Delete ratio to reveal whether
+    /// the team is building features, maintaining code, or cleaning up
+    /// (Hindle et al. 2008, Mockus & Votta 2000).
+    #[wasm_bindgen(js_name = getWorkTypeMix)]
+    pub fn get_work_type_mix(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(256);
+        json.push('{');
+        write_work_type_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns commit cadence analysis per developer as JSON.
+    ///
+    /// Analyzes inter-commit intervals to classify contributors as
+    /// regular, moderate, or bursty (Eyolfson et al. 2014).
+    #[wasm_bindgen(js_name = getCommitCadence)]
+    pub fn get_commit_cadence(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_cadence_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns knowledge map and silo analysis as JSON.
+    ///
+    /// Computes Shannon entropy of ownership distribution per file to
+    /// identify knowledge silos (Rigby & Bird 2013, Fritz et al. 2014).
+    #[wasm_bindgen(js_name = getKnowledgeMap)]
+    pub fn get_knowledge_map(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_knowledge_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns developer activity profiles as JSON.
+    ///
+    /// Classifies contributors as core, peripheral, or drive-by based
+    /// on commit share and recency (Mockus et al. 2002).
+    #[wasm_bindgen(js_name = getDeveloperProfiles)]
+    pub fn get_developer_profiles(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(1024);
+        json.push('{');
+        write_profiles_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns file lifecycle analysis as JSON.
+    ///
+    /// Tracks file creation, modification, and deletion patterns to
+    /// identify ephemeral, dead, and actively maintained files
+    /// (Godfrey & Tu 2000, Gall et al. 1998).
+    #[wasm_bindgen(js_name = getFileLifecycles)]
+    pub fn get_file_lifecycles(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_lifecycle_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+}
+
+/// Standalone growth JSON (without leading comma for top-level endpoints).
+fn write_growth_json_standalone(json: &mut String, report: &InsightsReport) {
+    // Reuse the section writer but strip the leading comma
+    let mut buf = String::new();
+    write_growth_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone work-type JSON.
+fn write_work_type_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_work_type_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone cadence JSON.
+fn write_cadence_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_cadence_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone knowledge JSON.
+fn write_knowledge_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_knowledge_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone profiles JSON.
+fn write_profiles_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_profiles_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone lifecycle JSON.
+fn write_lifecycle_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_lifecycle_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
 }
 
 // ============================================================================
@@ -614,6 +953,162 @@ mod tests {
         assert!(json.contains("\"ownership\":"));
         assert!(json.contains("\"busFactors\":"));
         assert!(json.contains("\"temporal\":"));
+        assert!(json.contains("\"growth\":"));
+        assert!(json.contains("\"workType\":"));
+        assert!(json.contains("\"cadence\":"));
+        assert!(json.contains("\"knowledge\":"));
+        assert!(json.contains("\"profiles\":"));
+        assert!(json.contains("\"lifecycle\":"));
+    }
+
+    #[test]
+    fn test_growth_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "b.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_growth_json(&mut json, &report);
+        assert!(json.contains("\"currentFileCount\":2"));
+        assert!(json.contains("\"totalCreated\":2"));
+        assert!(json.contains("\"netGrowth\":2"));
+    }
+
+    #[test]
+    fn test_work_type_json() {
+        let records = vec![CommitRecord {
+            timestamp: 1000,
+            author: "Alice".to_string(),
+            files: vec![
+                FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Create,
+                },
+                FileRecord {
+                    path: "b.rs".to_string(),
+                    action: FileActionKind::Create,
+                },
+            ],
+        }];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_work_type_json(&mut json, &report);
+        assert!(json.contains("\"featurePct\":"));
+        assert!(json.contains("\"dominantType\":"));
+    }
+
+    #[test]
+    fn test_cadence_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_cadence_json(&mut json, &report);
+        assert!(json.contains("\"authors\":["));
+        assert!(json.contains("\"teamMeanInterval\":"));
+    }
+
+    #[test]
+    fn test_knowledge_json() {
+        let records = vec![CommitRecord {
+            timestamp: 1000,
+            author: "Alice".to_string(),
+            files: vec![FileRecord {
+                path: "solo.rs".to_string(),
+                action: FileActionKind::Create,
+            }],
+        }];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_knowledge_json(&mut json, &report);
+        assert!(json.contains("\"totalSilos\":"));
+        assert!(json.contains("\"isSilo\":true"));
+    }
+
+    #[test]
+    fn test_profiles_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Bob".to_string(),
+                files: vec![FileRecord {
+                    path: "b.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_profiles_json(&mut json, &report);
+        assert!(json.contains("\"developers\":["));
+        assert!(json.contains("\"coreCount\":"));
+        assert!(json.contains("\"totalContributors\":"));
+    }
+
+    #[test]
+    fn test_lifecycle_json() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Delete,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let mut json = String::new();
+        write_lifecycle_json(&mut json, &report);
+        assert!(json.contains("\"totalFilesSeen\":"));
+        assert!(json.contains("\"churnRate\":"));
     }
 
     #[test]
