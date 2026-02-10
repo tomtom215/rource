@@ -295,4 +295,193 @@ mod tests {
         assert_eq!(pairs[0].total_b, 3, "y.rs should have 3 total changes");
         assert_eq!(pairs[0].support, 3, "co-change count should be 3");
     }
+
+    #[test]
+    fn test_confidence_asymmetric_file_counts() {
+        // Kills: replace / with * in confidence_ab = support / total_a
+        // File a.rs changed 100 times, file b.rs changed 3 times, co-change 3 times
+        let mut acc = CouplingAccumulator::new();
+        // 3 co-changes
+        for _ in 0..3 {
+            acc.record_commit(&[file("a.rs"), file("b.rs")]);
+        }
+        // 97 solo changes to a.rs
+        for _ in 0..97 {
+            acc.record_commit(&[file("a.rs"), file("z_other.rs")]);
+        }
+
+        let pairs = acc.finalize(1);
+        let ab = pairs
+            .iter()
+            .find(|p| p.file_a == "a.rs" && p.file_b == "b.rs")
+            .expect("a.rs-b.rs pair must exist");
+
+        assert_eq!(ab.support, 3);
+        assert_eq!(ab.total_a, 100);
+        assert_eq!(ab.total_b, 3);
+        // confidence_ab = 3/100 = 0.03
+        assert!(
+            (ab.confidence_ab - 0.03).abs() < 1e-10,
+            "confidence_ab={}, expected=0.03",
+            ab.confidence_ab
+        );
+        // confidence_ba = 3/3 = 1.0
+        assert!(
+            (ab.confidence_ba - 1.0).abs() < 1e-10,
+            "confidence_ba={}, expected=1.0",
+            ab.confidence_ba
+        );
+    }
+
+    #[test]
+    fn test_three_file_commit_generates_three_pairs() {
+        // Kills: off-by-one in j = (i+1)..paths.len() loop
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("a.rs"), file("b.rs"), file("c.rs")]);
+
+        let pairs = acc.finalize(1);
+        // 3 choose 2 = 3 pairs
+        assert_eq!(pairs.len(), 3, "3 files should produce exactly 3 pairs");
+        // Each pair has support=1
+        for pair in &pairs {
+            assert_eq!(pair.support, 1);
+        }
+    }
+
+    #[test]
+    fn test_four_file_commit_generates_six_pairs() {
+        // Kills: combinatorial correctness of pair generation
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("a.rs"), file("b.rs"), file("c.rs"), file("d.rs")]);
+
+        let pairs = acc.finalize(1);
+        // 4 choose 2 = 6 pairs
+        assert_eq!(pairs.len(), 6, "4 files should produce exactly 6 pairs");
+    }
+
+    #[test]
+    fn test_single_file_commit_no_coupling() {
+        // Kills: boundary condition on pair generation (i < paths.len(), j starts at i+1)
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("alone.rs")]);
+        acc.record_commit(&[file("alone.rs")]);
+        acc.record_commit(&[file("alone.rs")]);
+
+        let pairs = acc.finalize(1);
+        assert!(
+            pairs.is_empty(),
+            "single-file commits produce no coupling pairs"
+        );
+    }
+
+    #[test]
+    fn test_confidence_zero_when_no_co_change() {
+        // Kills: support count increment (if += 0 instead of += 1)
+        let mut acc = CouplingAccumulator::new();
+        // a.rs and b.rs never co-change
+        acc.record_commit(&[file("a.rs"), file("c.rs")]);
+        acc.record_commit(&[file("b.rs"), file("c.rs")]);
+
+        let pairs = acc.finalize(1);
+        // No pair for (a.rs, b.rs) since they never co-changed
+        let ab = pairs
+            .iter()
+            .find(|p| p.file_a == "a.rs" && p.file_b == "b.rs");
+        assert!(
+            ab.is_none(),
+            "files that never co-change should have no pair"
+        );
+    }
+
+    #[test]
+    fn test_support_count_increments_correctly() {
+        // Kills: += 1 vs += 0 or -= 1 in co_changes counter
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("a.rs"), file("b.rs")]);
+        let pairs1 = CouplingAccumulator::new();
+        // Use separate accumulator to check intermediate state
+        let mut acc2 = CouplingAccumulator::new();
+        acc2.record_commit(&[file("a.rs"), file("b.rs")]);
+        let p1 = acc2.finalize(1);
+        assert_eq!(p1[0].support, 1, "1 co-change → support=1");
+
+        let mut acc3 = CouplingAccumulator::new();
+        acc3.record_commit(&[file("a.rs"), file("b.rs")]);
+        acc3.record_commit(&[file("a.rs"), file("b.rs")]);
+        let p2 = acc3.finalize(1);
+        assert_eq!(p2[0].support, 2, "2 co-changes → support=2");
+
+        // Unused accumulator to suppress warning
+        let _ = pairs1.finalize(1);
+        let _ = acc.finalize(1);
+    }
+
+    #[test]
+    fn test_confidence_boundary_at_one() {
+        // Kills: confidence clamp logic — when files always co-change, confidence = 1.0
+        let mut acc = CouplingAccumulator::new();
+        for _ in 0..10 {
+            acc.record_commit(&[file("a.rs"), file("b.rs")]);
+        }
+
+        let pairs = acc.finalize(1);
+        assert_eq!(pairs.len(), 1);
+        assert!(
+            (pairs[0].confidence_ab - 1.0).abs() < 1e-10,
+            "always co-changed → confidence_ab=1.0, got={}",
+            pairs[0].confidence_ab
+        );
+        assert!(
+            (pairs[0].confidence_ba - 1.0).abs() < 1e-10,
+            "always co-changed → confidence_ba=1.0, got={}",
+            pairs[0].confidence_ba
+        );
+    }
+
+    #[test]
+    fn test_file_total_increment_per_commit() {
+        // Kills: += 1 vs += 0 on file_totals counter
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("a.rs"), file("b.rs")]);
+        acc.record_commit(&[file("a.rs")]);
+        acc.record_commit(&[file("a.rs"), file("c.rs")]);
+
+        let pairs = acc.finalize(1);
+        let ab = pairs
+            .iter()
+            .find(|p| p.file_a == "a.rs" && p.file_b == "b.rs")
+            .expect("a.rs-b.rs pair");
+
+        assert_eq!(ab.total_a, 3, "a.rs appeared in 3 commits");
+        assert_eq!(ab.total_b, 1, "b.rs appeared in 1 commit");
+    }
+
+    #[test]
+    fn test_min_support_boundary_exactly_at_threshold() {
+        // Kills: >= vs > in min_support filter
+        let mut acc = CouplingAccumulator::new();
+        acc.record_commit(&[file("a.rs"), file("b.rs")]);
+        acc.record_commit(&[file("a.rs"), file("b.rs")]);
+        acc.record_commit(&[file("a.rs"), file("b.rs")]);
+
+        // At min_support=3, support=3 should be included (>=)
+        let pairs = acc.finalize(3);
+        assert_eq!(
+            pairs.len(),
+            1,
+            "support=3 with min_support=3 should be included"
+        );
+        assert_eq!(pairs[0].support, 3);
+
+        // At min_support=4, support=3 should be excluded
+        let mut acc2 = CouplingAccumulator::new();
+        acc2.record_commit(&[file("a.rs"), file("b.rs")]);
+        acc2.record_commit(&[file("a.rs"), file("b.rs")]);
+        acc2.record_commit(&[file("a.rs"), file("b.rs")]);
+        let pairs2 = acc2.finalize(4);
+        assert!(
+            pairs2.is_empty(),
+            "support=3 with min_support=4 should be excluded"
+        );
+    }
 }

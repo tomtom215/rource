@@ -525,4 +525,164 @@ mod tests {
         // Should merge because second burst start (1800) <= first burst end + BURST_WINDOW_SECONDS
         assert_eq!(bursts.len(), 1, "overlapping bursts should merge");
     }
+
+    #[test]
+    fn test_burst_no_merge_gap_exceeds_window() {
+        // Kills: merge condition (start <= last.end + BURST_WINDOW_SECONDS)
+        // Two burst groups separated by more than BURST_WINDOW_SECONDS from last burst end
+        let mut events: Vec<(i64, usize)> = Vec::new();
+        // First group: 10 commits at time 0-540
+        for i in 0..10 {
+            events.push((i * 60, 1));
+        }
+        // Second group starts well beyond first_end + 2*BURST_WINDOW_SECONDS
+        // First burst ends around 540, so gap must exceed 540 + 3600 = 4140
+        // Place second group at time 10000+ (gap of ~9460 from first burst end)
+        for i in 0..10 {
+            events.push((10000 + i * 60, 1));
+        }
+        let bursts = detect_bursts(&events);
+        assert_eq!(
+            bursts.len(),
+            2,
+            "bursts separated by large gap should NOT merge"
+        );
+    }
+
+    #[test]
+    fn test_burst_threshold_exactly_10_commits() {
+        // Kills: >= vs > in count >= BURST_THRESHOLD check
+        // Exactly 10 commits in a 1-hour window should be a burst (threshold = 10)
+        let mut events: Vec<(i64, usize)> = Vec::new();
+        for i in 0..10 {
+            events.push((i * 60, 2));
+        }
+        let bursts = detect_bursts(&events);
+        assert_eq!(bursts.len(), 1, "exactly 10 commits should trigger burst");
+        assert_eq!(bursts[0].commit_count, 10);
+    }
+
+    #[test]
+    fn test_burst_threshold_9_commits_no_burst() {
+        // Kills: >= vs > boundary — 9 commits should NOT be a burst
+        let mut events: Vec<(i64, usize)> = Vec::new();
+        for i in 0..9 {
+            events.push((i * 60, 2));
+        }
+        let bursts = detect_bursts(&events);
+        assert!(
+            bursts.is_empty(),
+            "9 commits should not trigger burst (threshold is 10)"
+        );
+    }
+
+    #[test]
+    fn test_burst_file_count_division_exact() {
+        // Kills: replace / with * in avg_files_in_bursts = in_burst_files / in_burst_count
+        let mut events: Vec<(i64, usize)> = Vec::new();
+        // 10 commits, each touching 5 files
+        for i in 0..10 {
+            events.push((i * 60, 5));
+        }
+        // 2 commits outside burst, each touching 3 files
+        events.push((100_000, 3));
+        events.push((200_000, 3));
+
+        let bursts = detect_bursts(&events);
+        assert!(!bursts.is_empty());
+        let (avg_in, avg_out) = compute_burst_file_averages(&events, &bursts);
+
+        // In-burst: 10 * 5 / 10 = 5.0
+        assert!(
+            (avg_in - 5.0).abs() < 1e-10,
+            "avg_in={}, expected=5.0",
+            avg_in
+        );
+        // Out-burst: 2 * 3 / 2 = 3.0
+        assert!(
+            (avg_out - 3.0).abs() < 1e-10,
+            "avg_out={}, expected=3.0",
+            avg_out
+        );
+    }
+
+    #[test]
+    fn test_peak_hour_detection_exact() {
+        // Kills: argmax correctness in peak_hour computation
+        let mut acc = TemporalAccumulator::new();
+        // 1 commit at hour 10 (epoch + 10h = Thursday 10:00)
+        acc.record_commit(10 * 3600, 1);
+        // 5 commits at hour 14 (epoch + 14h = Thursday 14:00)
+        for i in 0..5 {
+            acc.record_commit(14 * 3600 + i, 1);
+        }
+        // 3 commits at hour 22 (epoch + 22h = Thursday 22:00)
+        for i in 0..3 {
+            acc.record_commit(22 * 3600 + i, 1);
+        }
+
+        let report = acc.finalize();
+        assert_eq!(report.peak_hour, 14, "hour 14 has most commits (5)");
+        assert_eq!(report.commits_per_hour[14], 5);
+        assert_eq!(report.commits_per_hour[10], 1);
+        assert_eq!(report.commits_per_hour[22], 3);
+    }
+
+    #[test]
+    fn test_peak_day_detection_exact() {
+        // Kills: argmax correctness in peak_day computation
+        let mut acc = TemporalAccumulator::new();
+        // Thursday (day 3): epoch + 0 seconds, 2 commits
+        acc.record_commit(0, 1);
+        acc.record_commit(1, 1);
+        // Monday (day 0): epoch + 4 days, 5 commits
+        let monday = 4 * 86400;
+        for i in 0..5 {
+            acc.record_commit(monday + i, 1);
+        }
+
+        let report = acc.finalize();
+        assert_eq!(report.peak_day, 0, "Monday has most commits (5)");
+        assert_eq!(report.commits_per_day[0], 5, "Monday commit count");
+        assert_eq!(report.commits_per_day[3], 2, "Thursday commit count");
+    }
+
+    #[test]
+    fn test_commits_per_day_hour_total_consistency() {
+        // Kills: += operator mutations in heatmap summing
+        let mut acc = TemporalAccumulator::new();
+        let total_commits = 20;
+        for i in 0..total_commits {
+            acc.record_commit(i * 7200, 1); // every 2 hours
+        }
+
+        let report = acc.finalize();
+        let day_total: u32 = report.commits_per_day.iter().sum();
+        let hour_total: u32 = report.commits_per_hour.iter().sum();
+        assert_eq!(
+            day_total, total_commits as u32,
+            "sum of commits_per_day must equal total"
+        );
+        assert_eq!(
+            hour_total, total_commits as u32,
+            "sum of commits_per_hour must equal total"
+        );
+    }
+
+    #[test]
+    fn test_burst_window_boundary_exact() {
+        // Kills: > vs >= in window advancement condition
+        // sorted[window_end].0 - sorted[window_start].0 > BURST_WINDOW_SECONDS
+        // Place 10 commits spanning exactly 3600 seconds (= BURST_WINDOW_SECONDS)
+        let mut events: Vec<(i64, usize)> = Vec::new();
+        for i in 0..10 {
+            events.push((i * 400, 1)); // 10 commits over 3600s exactly
+        }
+        let bursts = detect_bursts(&events);
+        assert_eq!(
+            bursts.len(),
+            1,
+            "10 commits spanning exactly BURST_WINDOW_SECONDS should be a burst"
+        );
+    }
 }

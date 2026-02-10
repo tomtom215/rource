@@ -446,4 +446,139 @@ mod tests {
             expected
         );
     }
+
+    #[test]
+    fn test_entropy_five_equal_contributors() {
+        // Kills: log2 computation and entropy sum formula with 5 contributors
+        // H(uniform(5)) = log2(5) = 2.3219...
+        let data = make_file_authors(&[(
+            "test.rs",
+            &[
+                ("Alice", 10),
+                ("Bob", 10),
+                ("Carol", 10),
+                ("Dave", 10),
+                ("Eve", 10),
+            ],
+        )]);
+        let report = compute_knowledge(&data);
+        let expected = 5.0_f64.log2();
+        assert!(
+            (report.files[0].knowledge_entropy - expected).abs() < 1e-10,
+            "entropy={}, expected=log2(5)={}",
+            report.files[0].knowledge_entropy,
+            expected
+        );
+        assert_eq!(report.files[0].contributor_count, 5);
+        assert!(!report.files[0].is_silo);
+    }
+
+    #[test]
+    fn test_entropy_extreme_asymmetric_99_1() {
+        // Kills: -p * log2(p) formula precision with extreme distribution
+        // Alice: 99/100, Bob: 1/100
+        let data = make_file_authors(&[("test.rs", &[("Alice", 99), ("Bob", 1)])]);
+        let report = compute_knowledge(&data);
+        let p1 = 0.99_f64;
+        let p2 = 0.01_f64;
+        let expected = -(p1 * p1.log2() + p2 * p2.log2());
+        assert!(
+            (report.files[0].knowledge_entropy - expected).abs() < 1e-10,
+            "entropy={}, expected={}",
+            report.files[0].knowledge_entropy,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_entropy_negation_in_formula() {
+        // Kills: removal of negation in -p * log2(p)
+        // Without negation, entropy would be negative (since p*log2(p) < 0 for 0<p<1)
+        let data = make_file_authors(&[("test.rs", &[("Alice", 3), ("Bob", 7)])]);
+        let report = compute_knowledge(&data);
+        assert!(
+            report.files[0].knowledge_entropy > 0.0,
+            "entropy must be positive, got={}",
+            report.files[0].knowledge_entropy
+        );
+        // Exact value: -(0.3*log2(0.3) + 0.7*log2(0.7))
+        let p1 = 0.3_f64;
+        let p2 = 0.7_f64;
+        let expected = -(p1 * p1.log2() + p2 * p2.log2());
+        assert!(
+            (report.files[0].knowledge_entropy - expected).abs() < 1e-10,
+            "entropy={}, expected={}",
+            report.files[0].knowledge_entropy,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_directory_avg_entropy_exact() {
+        // Kills: / vs * in directory avg_entropy = sum / count
+        let data = make_file_authors(&[
+            ("src/a.rs", &[("Alice", 10)]),            // entropy = 0.0
+            ("src/b.rs", &[("Alice", 5), ("Bob", 5)]), // entropy = 1.0
+        ]);
+        let report = compute_knowledge(&data);
+        let src = report
+            .directories
+            .iter()
+            .find(|d| d.directory == "src")
+            .unwrap();
+        // avg = (0.0 + 1.0) / 2 = 0.5
+        assert!(
+            (src.avg_entropy - 0.5).abs() < 1e-10,
+            "dir avg_entropy={}, expected=0.5",
+            src.avg_entropy
+        );
+    }
+
+    #[test]
+    fn test_silo_detection_boundary_one_vs_two() {
+        // Kills: == 1 vs != 1 in is_silo = contributor_count == 1
+        let data = make_file_authors(&[
+            ("a.rs", &[("Alice", 10)]),            // 1 contributor → silo
+            ("b.rs", &[("Alice", 9), ("Bob", 1)]), // 2 contributors → not silo
+        ]);
+        let report = compute_knowledge(&data);
+        let a = report.files.iter().find(|f| f.path == "a.rs").unwrap();
+        let b = report.files.iter().find(|f| f.path == "b.rs").unwrap();
+        assert!(a.is_silo, "1 contributor should be silo");
+        assert!(!b.is_silo, "2 contributors should NOT be silo");
+        assert_eq!(a.contributor_count, 1);
+        assert_eq!(b.contributor_count, 2);
+    }
+
+    #[test]
+    fn test_primary_owner_is_max_contributor() {
+        // Kills: max_by_key direction (max vs min)
+        let data = make_file_authors(&[("test.rs", &[("Alice", 1), ("Bob", 100), ("Carol", 50)])]);
+        let report = compute_knowledge(&data);
+        assert_eq!(
+            report.files[0].primary_owner, "Bob",
+            "primary_owner should be contributor with most changes"
+        );
+    }
+
+    #[test]
+    fn test_directories_sorted_by_silo_percentage_descending() {
+        // Kills: sort direction (descending vs ascending) in directory sort
+        let data = make_file_authors(&[
+            ("src/a.rs", &[("Alice", 10)]),              // silo (100%)
+            ("src/b.rs", &[("Alice", 10)]),              // silo (100%)
+            ("lib/c.rs", &[("Alice", 5), ("Bob", 5)]),   // not silo (0%)
+            ("lib/d.rs", &[("Alice", 5), ("Bob", 5)]),   // not silo (0%)
+            ("tests/e.rs", &[("Alice", 10)]),            // silo (100%)
+            ("tests/f.rs", &[("Alice", 5), ("Bob", 5)]), // not silo (50%)
+        ]);
+        let report = compute_knowledge(&data);
+        // Verify directories are sorted by silo_percentage descending
+        for i in 1..report.directories.len() {
+            assert!(
+                report.directories[i - 1].silo_percentage >= report.directories[i].silo_percentage,
+                "directories should be sorted by silo_percentage descending"
+            );
+        }
+    }
 }
