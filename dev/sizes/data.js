@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770734514991,
+  "lastUpdate": 1770746134677,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6107,6 +6107,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/2283fd4dfd03586a9e444a86dcacfae0b4e03be8"
         },
         "date": 1770734514332,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3593841,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1353323,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "43ef0c89812b703cad129f0aac13cb52d51c3d60",
+          "message": "Merge pull request #286 from tomtom215/claude/defect-risk-metrics-Mw2yU\n\nAdd property-based tests and mutation testing exclusions",
+          "timestamp": "2026-02-10T18:51:25+01:00",
+          "tree_id": "f47af4f44ac18ec4b6d57e0410acee0bae211958",
+          "url": "https://github.com/tomtom215/rource/commit/43ef0c89812b703cad129f0aac13cb52d51c3d60"
+        },
+        "date": 1770746133899,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
