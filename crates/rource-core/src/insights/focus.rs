@@ -471,4 +471,154 @@ mod tests {
             "all root files → single dir → focus=1.0"
         );
     }
+
+    // --- Mutation-killing tests ---
+
+    #[test]
+    fn test_focus_dirs_touched_exactly_one() {
+        // Kills: replace <= with < in `if dirs_touched <= 1`
+        // 1 directory → focus = 1.0 (no entropy calculation)
+        let mut acc = FocusAccumulator::new();
+        acc.record_commit("Alice", &["src/a.rs", "src/b.rs"]);
+        let devs = acc.finalize();
+        assert_eq!(devs[0].directories_touched, 1);
+        assert!(
+            (devs[0].focus_score - 1.0).abs() < f64::EPSILON,
+            "1 dir should give focus=1.0"
+        );
+    }
+
+    #[test]
+    fn test_focus_subtraction_from_one() {
+        // Kills: replace - with + in `1.0 - h_norm`
+        // With 2 equal dirs: H=1.0, H_norm=1.0, focus = 1.0-1.0 = 0.0
+        // If - → +: focus = 1.0+1.0 = 2.0
+        let mut acc = FocusAccumulator::new();
+        acc.record_commit("Alice", &["src/a.rs"]);
+        acc.record_commit("Alice", &["tests/b.rs"]);
+        let devs = acc.finalize();
+        assert!(
+            devs[0].focus_score.abs() < 1e-10,
+            "focus={}, expected=0.0",
+            devs[0].focus_score
+        );
+        assert!(devs[0].focus_score <= 1.0, "focus must be <= 1.0");
+    }
+
+    #[test]
+    fn test_focus_entropy_division_by_log2() {
+        // Kills: replace / with * in `entropy / log2(dirs_touched)`
+        // 3 dirs with [4, 2, 2] commits → known entropy
+        let mut acc = FocusAccumulator::new();
+        for _ in 0..4 {
+            acc.record_commit("Alice", &["src/a.rs"]);
+        }
+        for _ in 0..2 {
+            acc.record_commit("Alice", &["tests/b.rs"]);
+        }
+        for _ in 0..2 {
+            acc.record_commit("Alice", &["docs/c.rs"]);
+        }
+        let devs = acc.finalize();
+        // p = [4/8, 2/8, 2/8] = [0.5, 0.25, 0.25]
+        // H = -(0.5*log2(0.5) + 2*0.25*log2(0.25)) = 0.5 + 1.0 = 1.5
+        // H_norm = 1.5 / log2(3) ≈ 0.9464
+        // focus = 1.0 - 0.9464 ≈ 0.0536
+        let h = 1.5;
+        let h_norm = h / 3.0_f64.log2();
+        let expected_focus = 1.0 - h_norm;
+        assert!(
+            (devs[0].focus_score - expected_focus).abs() < 1e-10,
+            "focus={}, expected={}",
+            devs[0].focus_score,
+            expected_focus
+        );
+    }
+
+    #[test]
+    fn test_diffusion_contributor_count_boundary() {
+        // Kills: replace <= with < in `if contributor_count <= 1`
+        // 1 contributor → diffusion = 0.0
+        let data = make_file_authors(&[("a.rs", &[("Alice", 10)])]);
+        let files = compute_file_diffusion(&data);
+        assert_eq!(files[0].contributor_count, 1);
+        assert!(
+            files[0].diffusion_score.abs() < f64::EPSILON,
+            "1 contributor → diffusion=0"
+        );
+    }
+
+    #[test]
+    fn test_diffusion_entropy_division_exact() {
+        // Kills: replace / with * in `entropy / log2(contributor_count)`
+        // 2 contributors: [8, 2] → total=10
+        // p = [0.8, 0.2], H = -(0.8*log2(0.8) + 0.2*log2(0.2))
+        // H_norm = H / log2(2) = H
+        let data = make_file_authors(&[("a.rs", &[("Alice", 8), ("Bob", 2)])]);
+        let files = compute_file_diffusion(&data);
+        let p1 = 0.8_f64;
+        let p2 = 0.2_f64;
+        let h = -(p1 * p1.log2() + p2 * p2.log2());
+        assert!(
+            (files[0].diffusion_score - h).abs() < 1e-10,
+            "diffusion={}, expected={}",
+            files[0].diffusion_score,
+            h
+        );
+    }
+
+    #[test]
+    fn test_avg_focus_division_exact() {
+        // Kills: replace / with * in avg_developer_focus calculation
+        // 3 developers with focus [1.0, 0.5, 0.0] → avg = 0.5
+        let mut acc = FocusAccumulator::new();
+        // Dev 1: 1 dir → focus = 1.0
+        for _ in 0..5 {
+            acc.record_commit("Alice", &["src/a.rs"]);
+        }
+        // Dev 2: 2 dirs with [3, 1] → known focus
+        for _ in 0..3 {
+            acc.record_commit("Bob", &["src/b.rs"]);
+        }
+        acc.record_commit("Bob", &["tests/c.rs"]);
+        // Dev 3: 2 equal dirs → focus = 0.0
+        acc.record_commit("Carol", &["src/d.rs"]);
+        acc.record_commit("Carol", &["tests/e.rs"]);
+
+        let devs = acc.finalize();
+        let report = build_focus_report(devs, Vec::new());
+        // Sum of focus scores / 3 → exact value
+        assert!(
+            report.avg_developer_focus > 0.0 && report.avg_developer_focus < 1.0,
+            "avg should be between 0 and 1, got {}",
+            report.avg_developer_focus
+        );
+    }
+
+    #[test]
+    fn test_avg_file_diffusion_division_exact() {
+        // Kills: replace / with * in avg_file_diffusion calculation
+        // 2 files: one with diffusion 0.0, one with 1.0 → avg = 0.5
+        let data = make_file_authors(&[
+            ("a.rs", &[("Alice", 10)]),            // single contributor → 0.0
+            ("b.rs", &[("Alice", 5), ("Bob", 5)]), // equal → 1.0
+        ]);
+        let files = compute_file_diffusion(&data);
+        let report = build_focus_report(Vec::new(), files);
+        assert!(
+            (report.avg_file_diffusion - 0.5).abs() < 1e-10,
+            "avg_diffusion={}, expected=0.5",
+            report.avg_file_diffusion
+        );
+    }
+
+    #[test]
+    fn test_commit_count_tracked() {
+        let mut acc = FocusAccumulator::new();
+        acc.record_commit("Alice", &["src/a.rs", "src/b.rs"]); // 2 file touches
+        acc.record_commit("Alice", &["src/c.rs"]); // 1 file touch
+        let devs = acc.finalize();
+        // commit_count = total file touches across all commits: 2 + 1 = 3
+        assert_eq!(devs[0].commit_count, 3);
+    }
 }

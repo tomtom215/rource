@@ -478,4 +478,119 @@ mod tests {
         let report = acc.finalize();
         assert_eq!(report.total_commits_analyzed, 0);
     }
+
+    // --- Mutation-killing tests ---
+
+    #[test]
+    fn test_high_risk_hour_end_boundary() {
+        // Hour 3 is high risk (< 4), hour 4 is NOT high risk (4 is not < 4)
+        // Kills: replace < with <= in `hour < HIGH_RISK_HOUR_END`
+        let mut acc = CircadianAccumulator::new();
+        // Hour 3: high risk
+        acc.record_commit("Alice", 3 * 3600, &["a.rs"]);
+        // Hour 4: NOT high risk
+        acc.record_commit("Alice", 4 * 3600, &["b.rs"]);
+        let report = acc.finalize();
+        let a = report.files.iter().find(|f| f.path == "a.rs").unwrap();
+        let b = report.files.iter().find(|f| f.path == "b.rs").unwrap();
+        assert_eq!(a.high_risk_commits, 1, "hour 3 should be high risk");
+        assert_eq!(b.high_risk_commits, 0, "hour 4 should NOT be high risk");
+    }
+
+    #[test]
+    fn test_high_risk_fraction_division_exact() {
+        // Kills: replace / with * in high_risk_fraction computation
+        // 1 high-risk commit out of 4 total → fraction = 0.25
+        let mut acc = CircadianAccumulator::new();
+        acc.record_commit("Alice", 2 * 3600, &["a.rs"]); // hour 2 → high risk
+        acc.record_commit("Bob", 9 * 3600, &["a.rs"]); // hour 9 → low
+        acc.record_commit("Carol", 10 * 3600, &["a.rs"]); // hour 10 → low
+        acc.record_commit("Dave", 14 * 3600, &["a.rs"]); // hour 14 → moderate
+        let report = acc.finalize();
+        assert!(
+            (report.files[0].high_risk_fraction - 0.25).abs() < 1e-10,
+            "fraction={}, expected=0.25",
+            report.files[0].high_risk_fraction
+        );
+    }
+
+    #[test]
+    fn test_avg_risk_division_exact() {
+        // Kills: replace / with * in avg_risk calculation
+        // Alice: hour 2 (1.0) + hour 9 (0.2) → avg = 1.2/2 = 0.6
+        let mut acc = CircadianAccumulator::new();
+        acc.record_commit("Alice", 2 * 3600, &["a.rs"]);
+        acc.record_commit("Alice", 9 * 3600, &["b.rs"]);
+        let report = acc.finalize();
+        let alice = report.authors.iter().find(|a| a.author == "Alice").unwrap();
+        assert!(
+            (alice.avg_risk - 0.6).abs() < 1e-10,
+            "avg_risk={}, expected=0.6",
+            alice.avg_risk
+        );
+    }
+
+    #[test]
+    fn test_weekend_dow_boundary() {
+        // dow=4 (Friday) → weekday, dow=5 (Saturday) → weekend
+        // Kills: replace >= with > in `dow >= 5`
+        let friday = 86400; // epoch + 1 day = Friday
+        let saturday = 2 * 86400; // epoch + 2 days = Saturday
+        assert_eq!(extract_day_of_week(friday), 4);
+        assert_eq!(extract_day_of_week(saturday), 5);
+
+        let risk_friday = compute_risk(9, 4);
+        let risk_saturday = compute_risk(9, 5);
+        assert!(
+            (risk_friday - 0.2).abs() < f64::EPSILON,
+            "Friday hour 9 → 0.2"
+        );
+        assert!(
+            (risk_saturday - 0.2 * WEEKEND_MULTIPLIER).abs() < 1e-10,
+            "Saturday hour 9 → 0.2*1.3"
+        );
+    }
+
+    #[test]
+    fn test_high_risk_percentage_division() {
+        // Kills: replace / with * and * with / in percentage calculation
+        // 1 high-risk commit out of 5 total → 20%
+        let mut acc = CircadianAccumulator::new();
+        acc.record_commit("A", 3600, &["a.rs"]); // hour 1 → high
+        acc.record_commit("A", 9 * 3600, &["a.rs"]); // hour 9 → low
+        acc.record_commit("A", 10 * 3600, &["a.rs"]); // hour 10 → low
+        acc.record_commit("A", 14 * 3600, &["a.rs"]); // hour 14 → mod
+        acc.record_commit("A", 18 * 3600, &["a.rs"]); // hour 18 → elevated
+        let report = acc.finalize();
+        assert!(
+            (report.high_risk_percentage - 20.0).abs() < 1e-10,
+            "pct={}, expected=20.0",
+            report.high_risk_percentage
+        );
+    }
+
+    #[test]
+    fn test_extract_hour_division() {
+        // Kills: replace / with * in `seconds_in_day / 3600`
+        // 2:30 AM = 2*3600 + 30*60 = 9000 seconds → hour = 9000/3600 = 2
+        assert_eq!(extract_hour(9000), 2);
+        // 23:59 = 23*3600 + 59*60 = 86340 → hour = 23
+        assert_eq!(extract_hour(86340), 23);
+    }
+
+    #[test]
+    fn test_timestamp_zero_is_thursday() {
+        // Kills arithmetic mutants in extract_day_of_week
+        // Epoch = Thursday (3). If +3 mutated to -3 or similar, wrong day.
+        assert_eq!(extract_day_of_week(0), 3); // Thursday
+        assert_eq!(extract_day_of_week(7 * 86400), 3); // Next Thursday
+    }
+
+    #[test]
+    fn test_risk_multiplication() {
+        // Kills: replace * with + in `hour_risk * dow_multiplier`
+        // Weekend midnight: 1.0 * 1.3 = 1.3 (not 1.0 + 1.3 = 2.3)
+        let risk = compute_risk(0, 5); // hour 0, Saturday
+        assert!((risk - 1.3).abs() < 1e-10, "risk={}, expected=1.3", risk);
+    }
 }

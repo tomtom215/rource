@@ -499,4 +499,110 @@ mod tests {
         // If - were +: 1.8 + 1.5 = 3.3 → clamped to 1
         // The exact value 0.3 kills all these mutants
     }
+
+    // --- Mutation-killing tests ---
+
+    #[test]
+    fn test_gini_single_element_returns_zero() {
+        // Kills: replace == with != in `if n == 1`
+        let gini = compute_gini_from_counts(&[42]);
+        assert!(
+            gini.abs() < f64::EPSILON,
+            "single element gini={}, expected=0.0",
+            gini
+        );
+    }
+
+    #[test]
+    fn test_gini_all_zeros_returns_zero() {
+        // Kills: replace == with != in `if total == 0.0`
+        let gini = compute_gini_from_counts(&[0, 0, 0]);
+        assert!(
+            gini.abs() < f64::EPSILON,
+            "all zeros gini={}, expected=0.0",
+            gini
+        );
+    }
+
+    #[test]
+    fn test_top_k_share_division_exact() {
+        // Kills: replace / with * in `top_sum / total`
+        // [1, 1, 1, 7], total=10, top 1 = 7 → 7/10 = 0.7
+        let counts = [1, 1, 1, 7];
+        let share = compute_top_k_share(&counts, 10.0, 10);
+        // top 10% of 4 = ceil(0.4) = 1 → top 1 developer
+        assert!((share - 0.7).abs() < 1e-10, "share={}, expected=0.7", share);
+    }
+
+    #[test]
+    fn test_top_k_at_least_one_developer() {
+        // Top 1% of 3 developers → ceil(0.03) = 1 (at least 1)
+        // [10, 20, 70], top 1 = 70 → 70/100 = 0.7
+        let counts = [10, 20, 70];
+        let share = compute_top_k_share(&counts, 100.0, 1);
+        assert!((share - 0.7).abs() < 1e-10, "share={}, expected=0.7", share);
+    }
+
+    #[test]
+    fn test_lorenz_curve_point_count() {
+        // Lorenz curve should have LORENZ_CURVE_POINTS + 1 points (including origin)
+        let authors = make_authors(&[("A", 10), ("B", 20), ("C", 30)]);
+        let report = compute_inequality(&authors, Vec::new());
+        assert_eq!(
+            report.lorenz_curve.len(),
+            LORENZ_CURVE_POINTS + 1,
+            "curve should have {} points",
+            LORENZ_CURVE_POINTS + 1
+        );
+    }
+
+    #[test]
+    fn test_windowed_gini_tmin_gte_tmax() {
+        // Kills: replace >= with > in `if t_min >= t_max`
+        let mut acc = InequalityAccumulator::new();
+        acc.record_commit("Alice", 100);
+        let windows = acc.finalize(100, 100); // t_min == t_max
+        assert!(windows.is_empty(), "t_min == t_max should produce empty");
+    }
+
+    #[test]
+    fn test_windowed_gini_division_arithmetic() {
+        // Verify windowed Gini uses correct arithmetic (kills + vs * in formula)
+        // Window with [5, 15] → gini = 0.25
+        // sorted: [5, 15], n=2, sum=20
+        // weighted = 1*5 + 2*15 = 35
+        // gini = 2*35/(2*20) - 3/2 = 70/40 - 1.5 = 1.75 - 1.5 = 0.25
+        let mut acc = InequalityAccumulator::new();
+        for _ in 0..5 {
+            acc.record_commit("Alice", 86400);
+        }
+        for _ in 0..15 {
+            acc.record_commit("Bob", 2 * 86400);
+        }
+        let windows = acc.finalize(0, GINI_WINDOW_SECONDS);
+        assert_eq!(windows.len(), 1);
+        assert!(
+            (windows[0].gini - 0.25).abs() < 1e-10,
+            "gini={}, expected=0.25",
+            windows[0].gini
+        );
+    }
+
+    #[test]
+    fn test_gini_weighted_sum_indexing() {
+        // Kills: replace + 1.0 with - 1.0 in `(i as f64 + 1.0)`
+        // [1, 3], n=2, sum=4
+        // Correct: weighted = 1*1 + 2*3 = 7, gini = 2*7/(2*4) - 3/2 = 14/8 - 1.5 = 0.25
+        // If + → -: weighted = (-1)*1 + 0*3 = -1, gini = 2*(-1)/(2*4) - 3/2 = -0.25 - 1.5
+        let gini = compute_gini_from_counts(&[1, 3]);
+        assert!((gini - 0.25).abs() < 1e-10, "gini={}, expected=0.25", gini);
+    }
+
+    #[test]
+    fn test_gini_clamp_prevents_negative() {
+        // All equal → formula gives exactly 0 (or tiny negative from FP)
+        let gini = compute_gini_from_counts(&[10, 10, 10, 10]);
+        assert!(gini >= 0.0, "gini should be clamped to >= 0, got {}", gini);
+        assert!(gini.abs() < 1e-10);
+    }
 }

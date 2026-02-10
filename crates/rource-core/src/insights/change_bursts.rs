@@ -444,4 +444,129 @@ mod tests {
         assert_eq!(report.files[0].burst_count, 1);
         assert_eq!(report.files[0].max_burst_length, 3);
     }
+
+    // --- Mutation-killing tests ---
+
+    #[test]
+    fn test_burst_gap_threshold_multiplication() {
+        // Commits 25 hours (90000s) apart — less than 48*3600=172800 → same burst.
+        // Kills: replace * with + in `48 * 3600` (becomes 48+3600=3648, 90000>3648 → broken)
+        let mut acc = ChangeBurstAccumulator::new();
+        acc.record_file("a.rs", 0, "Alice");
+        acc.record_file("a.rs", 90000, "Alice");
+        acc.record_file("a.rs", 170_000, "Alice");
+        let report = acc.finalize();
+        assert_eq!(report.files.len(), 1);
+        assert_eq!(report.files[0].burst_count, 1);
+        assert_eq!(report.files[0].max_burst_length, 3);
+    }
+
+    #[test]
+    fn test_single_author_risk_no_multi_factor() {
+        // Single-author burst: risk = burst_count * log2(1+max_length) * 1.0
+        // Kills: replace > with >= in `max_burst_authors > 1` (coverage, equivalent-ish)
+        let mut acc = ChangeBurstAccumulator::new();
+        for i in 0..4 {
+            acc.record_file("a.rs", i * 3600, "Alice");
+        }
+        let report = acc.finalize();
+        let expected = 1.0_f64 * (1.0 + 4.0_f64).log2() * 1.0;
+        assert!(
+            (report.files[0].risk_score - expected).abs() < 1e-10,
+            "risk={}, expected={}",
+            report.files[0].risk_score,
+            expected
+        );
+        assert_eq!(report.files[0].max_burst_authors, 1);
+        assert_eq!(report.multi_author_burst_count, 0);
+    }
+
+    #[test]
+    fn test_burst_duration_seconds_exact() {
+        // Tests duration_seconds = end - start in maybe_emit_burst.
+        // Kills: replace - with + in `events[end_idx-1].0 - events[start_idx].0`
+        let events: Vec<(i64, String)> = vec![
+            (1000, "Alice".to_string()),
+            (4600, "Alice".to_string()),
+            (8200, "Alice".to_string()),
+        ];
+        let bursts = detect_bursts(&events);
+        assert_eq!(bursts.len(), 1);
+        // duration = 8200 - 1000 = 7200. If mutated to +: 8200+1000 = 9200
+        assert_eq!(
+            bursts[0].duration_seconds, 7200,
+            "duration={}, expected=7200",
+            bursts[0].duration_seconds
+        );
+        assert_eq!(bursts[0].start, 1000);
+        assert_eq!(bursts[0].end, 8200);
+    }
+
+    #[test]
+    fn test_avg_burst_length_division_exact() {
+        // Kills: replace / with * in avg_burst_length calculation
+        // 2 bursts: total_commits=3+3=6, total_bursts=2 → avg=3.0
+        let mut acc = ChangeBurstAccumulator::new();
+        // Burst 1: 3 commits
+        for i in 0..3 {
+            acc.record_file("a.rs", i * 3600, "Alice");
+        }
+        let gap = 7 * 86400;
+        // Burst 2: 3 commits
+        for i in 0..3 {
+            acc.record_file("a.rs", gap + i * 3600, "Alice");
+        }
+        let report = acc.finalize();
+        // avg = 6 / 2 = 3.0. If / mutated to *: 6 * 2 = 12.0
+        assert!(
+            (report.avg_burst_length - 3.0).abs() < 1e-10,
+            "avg={}, expected=3.0",
+            report.avg_burst_length
+        );
+    }
+
+    #[test]
+    fn test_multi_author_filter_gte_2() {
+        // Kills: replace >= with > in `b.unique_authors >= 2`
+        // A burst with exactly 2 authors should count as multi-author
+        let mut acc = ChangeBurstAccumulator::new();
+        acc.record_file("a.rs", 0, "Alice");
+        acc.record_file("a.rs", 3600, "Bob");
+        acc.record_file("a.rs", 7200, "Alice");
+        let report = acc.finalize();
+        assert_eq!(report.files[0].max_burst_authors, 2);
+        assert_eq!(
+            report.multi_author_burst_count, 1,
+            "2 authors should count as multi-author"
+        );
+    }
+
+    #[test]
+    fn test_min_burst_length_exactly_three() {
+        // Exactly MIN_BURST_LENGTH=3 commits → IS a burst (kills < vs <= on length)
+        let mut acc = ChangeBurstAccumulator::new();
+        acc.record_file("a.rs", 0, "Alice");
+        acc.record_file("a.rs", 3600, "Alice");
+        acc.record_file("a.rs", 7200, "Alice");
+        let report = acc.finalize();
+        assert_eq!(report.files.len(), 1);
+        assert_eq!(report.files[0].max_burst_length, 3);
+    }
+
+    #[test]
+    fn test_gap_gte_threshold_breaks_burst() {
+        // Gap of exactly BURST_GAP_THRESHOLD breaks the burst (kills < vs <= in detect_bursts)
+        let events: Vec<(i64, String)> = vec![
+            (0, "A".to_string()),
+            (3600, "A".to_string()),
+            (7200, "A".to_string()),
+            (7200 + BURST_GAP_THRESHOLD, "A".to_string()), // exactly at threshold → break
+            (7200 + BURST_GAP_THRESHOLD + 3600, "A".to_string()),
+            (7200 + BURST_GAP_THRESHOLD + 7200, "A".to_string()),
+        ];
+        let bursts = detect_bursts(&events);
+        assert_eq!(bursts.len(), 2, "gap at threshold should create 2 bursts");
+        assert_eq!(bursts[0].commit_count, 3);
+        assert_eq!(bursts[1].commit_count, 3);
+    }
 }

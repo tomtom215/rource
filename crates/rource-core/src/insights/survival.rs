@@ -387,4 +387,139 @@ mod tests {
         let report = acc.finalize(0);
         assert!(report.curve.is_empty());
     }
+
+    // --- Mutation-killing tests ---
+
+    #[test]
+    fn test_infant_mortality_boundary_exactly_30_days() {
+        // 30 days = exactly INFANT_MORTALITY_DAYS → IS infant (kills < vs <= boundary)
+        let mut acc = SurvivalAccumulator::new();
+        acc.record_create("a.rs", 0);
+        acc.record_delete("a.rs", 30 * 86400); // exactly 30 days
+        acc.record_create("b.rs", 0);
+        let report = acc.finalize(365 * 86400);
+        assert_eq!(report.total_births, 2);
+        assert_eq!(report.total_deaths, 1);
+        assert!(
+            (report.infant_mortality_rate - 0.5).abs() < 1e-10,
+            "rate={}, expected=0.5",
+            report.infant_mortality_rate
+        );
+    }
+
+    #[test]
+    fn test_infant_mortality_31_days_not_infant() {
+        // 31 days > INFANT_MORTALITY_DAYS → NOT infant
+        let mut acc = SurvivalAccumulator::new();
+        acc.record_create("a.rs", 0);
+        acc.record_delete("a.rs", 31 * 86400); // 31 days
+        let report = acc.finalize(365 * 86400);
+        assert!(
+            report.infant_mortality_rate.abs() < f64::EPSILON,
+            "31 days should not be infant, rate={}",
+            report.infant_mortality_rate
+        );
+    }
+
+    #[test]
+    fn test_infant_mortality_rate_division_exact() {
+        // Kills: replace / with * in infant_mortality_rate calculation
+        // 2 infant deaths out of 5 total → rate = 2/5 = 0.4
+        let mut acc = SurvivalAccumulator::new();
+        for i in 0..5 {
+            acc.record_create(&format!("f{i}.rs"), 0);
+        }
+        acc.record_delete("f0.rs", 10 * 86400); // infant
+        acc.record_delete("f1.rs", 20 * 86400); // infant
+        let report = acc.finalize(365 * 86400);
+        assert!(
+            (report.infant_mortality_rate - 0.4).abs() < 1e-10,
+            "rate={}, expected=0.4",
+            report.infant_mortality_rate
+        );
+    }
+
+    #[test]
+    fn test_survival_formula_subtraction() {
+        // Kills: replace - with + in `f64::from(at_risk - d) / f64::from(at_risk)`
+        // 3 files, 1 dies at day 10 → S = (3-1)/3 = 2/3
+        let mut acc = SurvivalAccumulator::new();
+        for i in 0..3 {
+            acc.record_create(&format!("f{i}.rs"), 0);
+        }
+        acc.record_delete("f0.rs", 10 * 86400);
+        let report = acc.finalize(365 * 86400);
+        let expected = 2.0 / 3.0;
+        assert!(
+            (report.curve[1].survival_probability - expected).abs() < 1e-10,
+            "S(10)={}, expected={}",
+            report.curve[1].survival_probability,
+            expected
+        );
+        assert_eq!(report.curve[1].at_risk, 2);
+        assert_eq!(report.curve[1].events, 1);
+    }
+
+    #[test]
+    fn test_median_survival_below_half() {
+        // Kills: replace < with <= in `p.survival_probability < 0.5`
+        // S exactly = 0.5 should NOT be the median (need S < 0.5)
+        let mut acc = SurvivalAccumulator::new();
+        for i in 0..4 {
+            acc.record_create(&format!("f{i}.rs"), 0);
+        }
+        acc.record_delete("f0.rs", 10 * 86400); // S = 3/4 = 0.75
+        acc.record_delete("f1.rs", 20 * 86400); // S = 0.75 * 2/3 = 0.5
+
+        let report = acc.finalize(365 * 86400);
+        // S = 0.5 at day 20 — this is NOT < 0.5, so median should be None
+        assert!(
+            report.median_survival_days.is_none(),
+            "S=0.5 should not trigger median (need S < 0.5)"
+        );
+    }
+
+    #[test]
+    fn test_duration_days_division_by_seconds_per_day() {
+        // Kills: replace / with * in duration calculation
+        // File lives 2 days = 2*86400 seconds → duration = 2.0 days
+        let mut acc = SurvivalAccumulator::new();
+        acc.record_create("a.rs", 0);
+        acc.record_delete("a.rs", 2 * 86400);
+        let report = acc.finalize(10 * 86400);
+        // Death at 2.0 days
+        assert!(
+            (report.curve[1].time_days - 2.0).abs() < 1e-10,
+            "time={}, expected=2.0",
+            report.curve[1].time_days
+        );
+    }
+
+    #[test]
+    fn test_negative_duration_clamped_to_zero() {
+        // Birth AFTER death → duration negative → clamped to 0.0
+        let mut acc = SurvivalAccumulator::new();
+        acc.record_create("a.rs", 200);
+        acc.record_delete("a.rs", 100); // death before birth
+        let report = acc.finalize(1000);
+        assert_eq!(report.total_deaths, 1);
+        // Duration clamped to 0.0 via .max(0.0)
+        assert!(
+            report.curve[1].time_days.abs() < 1e-10,
+            "negative duration should be clamped to 0"
+        );
+    }
+
+    #[test]
+    fn test_record_create_keeps_earliest_birth() {
+        // Multiple creates for same file → keeps earliest birth
+        let mut acc = SurvivalAccumulator::new();
+        acc.record_create("a.rs", 1000);
+        acc.record_create("a.rs", 500); // Earlier!
+        acc.record_delete("a.rs", 5000);
+        let report = acc.finalize(10000);
+        // Birth should be 500, death at 5000 → duration = 4500/86400 days
+        assert_eq!(report.total_births, 1);
+        assert_eq!(report.total_deaths, 1);
+    }
 }

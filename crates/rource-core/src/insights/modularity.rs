@@ -320,4 +320,190 @@ mod tests {
             tests.modularity_score
         );
     }
+
+    // ── Mutation-killing tests ──────────────────────────────────────
+
+    #[test]
+    fn test_dir_equality_check() {
+        // Kills: replace `==` with `!=` in `if dir_a == dir_b`
+        // Same-dir pair MUST count as intra, not cross.
+        let couplings = vec![make_coupling("src/a.rs", "src/b.rs", 1)];
+        let report = compute_modularity(&couplings);
+        assert_eq!(report.total_intra_edges, 1);
+        assert_eq!(report.total_cross_edges, 0);
+        assert!(
+            (report.modularity_index - 1.0).abs() < f64::EPSILON,
+            "same-dir must be intra"
+        );
+    }
+
+    #[test]
+    fn test_cross_module_ratio_division_exact() {
+        // Kills: replace `/` with `*` in `f64::from(total_cross) / f64::from(total_edges)`
+        // 1 cross out of 3 total → ratio = 1/3, not 1*3
+        let couplings = vec![
+            make_coupling("src/a.rs", "src/b.rs", 1),
+            make_coupling("src/c.rs", "src/d.rs", 1),
+            make_coupling("src/e.rs", "tests/f.rs", 1),
+        ];
+        let report = compute_modularity(&couplings);
+        let expected_ratio = 1.0 / 3.0;
+        assert!(
+            (report.cross_module_ratio - expected_ratio).abs() < 1e-10,
+            "ratio={}, expected={}",
+            report.cross_module_ratio,
+            expected_ratio
+        );
+    }
+
+    #[test]
+    fn test_modularity_index_subtraction() {
+        // Kills: replace `-` with `+` in `1.0 - cross_module_ratio`
+        // ratio = 1/3 → index = 1-1/3 = 2/3, not 1+1/3 = 4/3
+        let couplings = vec![
+            make_coupling("src/a.rs", "src/b.rs", 1),
+            make_coupling("src/c.rs", "src/d.rs", 1),
+            make_coupling("src/e.rs", "tests/f.rs", 1),
+        ];
+        let report = compute_modularity(&couplings);
+        let expected_index = 2.0 / 3.0;
+        assert!(
+            (report.modularity_index - expected_index).abs() < 1e-10,
+            "index={}, expected={}",
+            report.modularity_index,
+            expected_index
+        );
+        assert!(report.modularity_index <= 1.0, "index must be <= 1.0");
+    }
+
+    #[test]
+    fn test_per_dir_modularity_score_division() {
+        // Kills: replace `/` with `*` in `f64::from(internal) / f64::from(total)`
+        // src: 2 internal, 1 external → score = 2/3, not 2*3=6
+        let couplings = vec![
+            make_coupling("src/a.rs", "src/b.rs", 1),
+            make_coupling("src/c.rs", "src/d.rs", 1),
+            make_coupling("src/e.rs", "tests/f.rs", 1),
+        ];
+        let report = compute_modularity(&couplings);
+        let src = report
+            .directories
+            .iter()
+            .find(|d| d.directory == "src")
+            .unwrap();
+        let expected = 2.0 / 3.0;
+        assert!(
+            (src.modularity_score - expected).abs() < 1e-10,
+            "src.modularity_score={}, expected={}",
+            src.modularity_score,
+            expected
+        );
+        assert!(src.modularity_score <= 1.0, "score must be <= 1.0");
+    }
+
+    #[test]
+    fn test_total_edges_guard_with_single_edge() {
+        // Kills: replace `> 0` with `> 1` in `if total_edges > 0`
+        // Exactly 1 total edge → guard must pass.
+        let couplings = vec![make_coupling("src/a.rs", "tests/b.rs", 1)];
+        let report = compute_modularity(&couplings);
+        // total_edges = 1, all cross → ratio = 1.0
+        assert!(
+            (report.cross_module_ratio - 1.0).abs() < f64::EPSILON,
+            "single cross edge: ratio={}, expected=1.0",
+            report.cross_module_ratio
+        );
+    }
+
+    #[test]
+    fn test_per_dir_total_guard_with_single_edge() {
+        // Kills: replace `> 0` with `> 1` in per-dir `if total > 0`
+        // Directory with exactly 1 edge (all external) → score = 0.0
+        let couplings = vec![make_coupling("src/a.rs", "tests/b.rs", 1)];
+        let report = compute_modularity(&couplings);
+        let tests_dir = report
+            .directories
+            .iter()
+            .find(|d| d.directory == "tests")
+            .unwrap();
+        // tests: 0 internal, 1 external → total=1, score = 0/1 = 0.0
+        assert!(
+            tests_dir.modularity_score.abs() < f64::EPSILON,
+            "tests score={}, expected=0.0",
+            tests_dir.modularity_score
+        );
+        assert_eq!(tests_dir.internal_coupling, 0);
+        assert_eq!(tests_dir.external_coupling, 1);
+    }
+
+    #[test]
+    fn test_intra_cross_counts_exact() {
+        // Kills: mutants that swap `+= 1` to `+= 0` or `-= 1` on total_intra/total_cross
+        // 2 intra + 2 cross = 4 total
+        let couplings = vec![
+            make_coupling("src/a.rs", "src/b.rs", 1),
+            make_coupling("tests/c.rs", "tests/d.rs", 1),
+            make_coupling("src/e.rs", "tests/f.rs", 1),
+            make_coupling("src/g.rs", "docs/h.rs", 1),
+        ];
+        let report = compute_modularity(&couplings);
+        assert_eq!(
+            report.total_intra_edges, 2,
+            "expected exactly 2 intra edges"
+        );
+        assert_eq!(
+            report.total_cross_edges, 2,
+            "expected exactly 2 cross edges"
+        );
+    }
+
+    #[test]
+    fn test_extract_directory_with_slash() {
+        // Kills: negate `path.contains('/')` filter
+        // File with slash → first component, file without slash → "."
+        assert_eq!(extract_directory("src/main.rs"), "src");
+        assert_eq!(extract_directory("nodir.txt"), ".");
+    }
+
+    #[test]
+    fn test_external_coupling_counts_both_directions() {
+        // Kills: removing one of the two `dir_data.entry(dir_b)` / `dir_data.entry(dir_a)` blocks
+        // Cross-edge src↔tests should add to BOTH src and tests external counts.
+        let couplings = vec![make_coupling("src/a.rs", "tests/b.rs", 1)];
+        let report = compute_modularity(&couplings);
+        let src = report
+            .directories
+            .iter()
+            .find(|d| d.directory == "src")
+            .unwrap();
+        let tests_dir = report
+            .directories
+            .iter()
+            .find(|d| d.directory == "tests")
+            .unwrap();
+        assert_eq!(src.external_coupling, 1, "src should have 1 external edge");
+        assert_eq!(
+            tests_dir.external_coupling, 1,
+            "tests should have 1 external edge"
+        );
+    }
+
+    #[test]
+    fn test_directories_sorted_ascending_by_score() {
+        // Kills: swap sort order (a↔b in partial_cmp)
+        let couplings = vec![
+            make_coupling("src/a.rs", "src/b.rs", 1), // src: 1 intra, 0 cross → score 1.0
+            make_coupling("tests/c.rs", "docs/d.rs", 1), // tests & docs: 0 intra, 1 cross → score 0.0
+        ];
+        let report = compute_modularity(&couplings);
+        assert!(report.directories.len() >= 2);
+        // First element (worst) should have lowest score
+        assert!(
+            report.directories[0].modularity_score
+                <= report.directories.last().unwrap().modularity_score,
+            "directories not sorted ascending: first={}, last={}",
+            report.directories[0].modularity_score,
+            report.directories.last().unwrap().modularity_score
+        );
+    }
 }

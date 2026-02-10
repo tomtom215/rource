@@ -507,4 +507,294 @@ mod tests {
             report.avg_degree
         );
     }
+
+    // ── Mutation-killing tests ──────────────────────────────────────
+
+    #[test]
+    fn test_total_edges_divided_by_two() {
+        // Kills: replace `/ 2` with `* 2` in total_edges calculation
+        // 2 devs sharing 1 file → 1 edge (not 2 or 4)
+        let fa = make_file_authors(&[("a.rs", &["Alice", "Bob"])]);
+        let report = compute_network(&fa);
+        assert_eq!(report.total_edges, 1, "edge counted once, not twice");
+    }
+
+    #[test]
+    fn test_density_formula_multiplication_by_two() {
+        // Kills: replace `2.0 *` with `1.0 *` or removing factor in density formula
+        // 3 devs, 2 edges → density = 2*2/(3*2) = 4/6 = 2/3
+        let fa = make_file_authors(&[("ab.rs", &["Alice", "Bob"]), ("bc.rs", &["Bob", "Carol"])]);
+        let report = compute_network(&fa);
+        assert_eq!(report.total_edges, 2);
+        let expected = 2.0 * 2.0 / (3.0 * 2.0); // 2/3
+        assert!(
+            (report.network_density - expected).abs() < 1e-10,
+            "density={}, expected={}",
+            report.network_density,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_density_division_exact() {
+        // Kills: replace `/` with `*` in density formula
+        // 2 devs, 1 edge → density = 2*1/(2*1) = 1.0
+        let fa = make_file_authors(&[("a.rs", &["Alice", "Bob"])]);
+        let report = compute_network(&fa);
+        let expected = 2.0 * 1.0 / (2.0 * 1.0); // 1.0
+        assert!(
+            (report.network_density - expected).abs() < 1e-10,
+            "density={}, expected={}",
+            report.network_density,
+            expected
+        );
+        assert!(report.network_density <= 1.0, "density must be <= 1.0");
+    }
+
+    #[test]
+    fn test_avg_degree_division_exact() {
+        // Kills: replace `/` with `*` in `2.0 * f64::from(total_edges) / v as f64`
+        // 4 devs, 3 edges → avg = 2*3/4 = 1.5
+        let fa = make_file_authors(&[
+            ("ab.rs", &["Alice", "Bob"]),
+            ("bc.rs", &["Bob", "Carol"]),
+            ("cd.rs", &["Carol", "Dave"]),
+        ]);
+        let report = compute_network(&fa);
+        assert_eq!(report.total_edges, 3);
+        let expected = 2.0 * 3.0 / 4.0; // 1.5
+        assert!(
+            (report.avg_degree - expected).abs() < 1e-10,
+            "avg_degree={}, expected={}",
+            report.avg_degree,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_clustering_k_lt_2_boundary() {
+        // Kills: replace `< 2` with `<= 2` or `< 1` in clustering coefficient
+        // Developer with exactly 1 neighbor → k=1 → clustering = 0.0
+        let fa = make_file_authors(&[("ab.rs", &["Alice", "Bob"])]);
+        let report = compute_network(&fa);
+        let alice = report
+            .developers
+            .iter()
+            .find(|d| d.author == "Alice")
+            .unwrap();
+        assert_eq!(alice.degree, 1);
+        assert!(
+            alice.clustering_coefficient.abs() < f64::EPSILON,
+            "k=1: clustering should be 0.0, got {}",
+            alice.clustering_coefficient
+        );
+    }
+
+    #[test]
+    fn test_clustering_k_exactly_2_not_excluded() {
+        // Kills: replace `< 2` with `<= 2` in clustering check
+        // Developer with exactly 2 neighbors → k=2 → should compute clustering, not return 0
+        // Alice connects to Bob and Carol; Bob and Carol also connected → clustering = 1.0
+        let fa = make_file_authors(&[("shared.rs", &["Alice", "Bob", "Carol"])]);
+        let report = compute_network(&fa);
+        for dev in &report.developers {
+            assert_eq!(dev.degree, 2);
+            // k=2, all connected → actual=1, possible=1 → clustering=1.0
+            assert!(
+                (dev.clustering_coefficient - 1.0).abs() < 1e-10,
+                "k=2 triangle: clustering should be 1.0 for {}, got {}",
+                dev.author,
+                dev.clustering_coefficient
+            );
+        }
+    }
+
+    #[test]
+    fn test_edges_among_neighbors_divided_by_two() {
+        // Kills: replace `/ 2` with `* 2` in `actual_edges = edges_among_neighbors / 2`
+        // In a triangle, each neighbor pair counted in both directions:
+        // Alice's neighbors: Bob, Carol. Bob→Carol and Carol→Bob = 2 raw, /2 = 1 actual.
+        // possible = C(2,1) = 1. clustering = 1/1 = 1.0
+        let fa = make_file_authors(&[("shared.rs", &["Alice", "Bob", "Carol"])]);
+        let report = compute_network(&fa);
+        let alice = report
+            .developers
+            .iter()
+            .find(|d| d.author == "Alice")
+            .unwrap();
+        assert!(
+            (alice.clustering_coefficient - 1.0).abs() < 1e-10,
+            "triangle: clustering={}, expected=1.0",
+            alice.clustering_coefficient
+        );
+    }
+
+    #[test]
+    fn test_possible_edges_formula() {
+        // Kills: mutations in `(k * (k - 1)) / 2` formula
+        // Alice has 3 neighbors, only 1 pair connected → clustering = 1/3
+        let fa = make_file_authors(&[
+            ("ab.rs", &["Alice", "Bob"]),
+            ("ac.rs", &["Alice", "Carol"]),
+            ("ad.rs", &["Alice", "Dave"]),
+            ("bc.rs", &["Bob", "Carol"]), // Only Bob-Carol connected among Alice's neighbors
+        ]);
+        let report = compute_network(&fa);
+        let alice = report
+            .developers
+            .iter()
+            .find(|d| d.author == "Alice")
+            .unwrap();
+        assert_eq!(alice.degree, 3);
+        // possible = C(3,2) = 3, actual = 1 (Bob-Carol)
+        let expected = 1.0 / 3.0;
+        assert!(
+            (alice.clustering_coefficient - expected).abs() < 1e-10,
+            "clustering={}, expected={}",
+            alice.clustering_coefficient,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_betweenness_range_exactly_3_devs() {
+        // Kills: mutations in `3..=MAX_DEVS_FOR_BETWEENNESS` range check
+        // 3 devs in a line: Alice-Bob-Carol → Bob should have highest betweenness
+        let fa = make_file_authors(&[("ab.rs", &["Alice", "Bob"]), ("bc.rs", &["Bob", "Carol"])]);
+        let report = compute_network(&fa);
+        let bob = report
+            .developers
+            .iter()
+            .find(|d| d.author == "Bob")
+            .unwrap();
+        // Bob is on all shortest paths between Alice and Carol
+        assert!(
+            bob.betweenness > 0.0,
+            "Bob should have positive betweenness, got {}",
+            bob.betweenness
+        );
+        let alice = report
+            .developers
+            .iter()
+            .find(|d| d.author == "Alice")
+            .unwrap();
+        assert!(
+            alice.betweenness.abs() < f64::EPSILON,
+            "Alice should have zero betweenness (leaf), got {}",
+            alice.betweenness
+        );
+    }
+
+    #[test]
+    fn test_betweenness_skipped_for_two_devs() {
+        // Kills: lower bound of `3..=MAX_DEVS` range (e.g., `2..=MAX_DEVS`)
+        // 2 devs → betweenness should NOT be computed (all 0.0)
+        let fa = make_file_authors(&[("a.rs", &["Alice", "Bob"])]);
+        let report = compute_network(&fa);
+        for dev in &report.developers {
+            assert!(
+                dev.betweenness.abs() < f64::EPSILON,
+                "2-dev network: betweenness should be 0.0 for {}, got {}",
+                dev.author,
+                dev.betweenness
+            );
+        }
+    }
+
+    #[test]
+    fn test_betweenness_normalization_divisor() {
+        // Kills: mutations in `((v - 1) * (v - 2)) as f64` and `/ norm`
+        // 4 devs in a line: A-B-C-D. norm = (4-1)*(4-2) = 3*2 = 6
+        // B is on paths A↔C, A↔D (2 paths). C is on paths B↔D, A↔D (2 paths, one overlap with B).
+        let fa = make_file_authors(&[
+            ("ab.rs", &["Alice", "Bob"]),
+            ("bc.rs", &["Bob", "Carol"]),
+            ("cd.rs", &["Carol", "Dave"]),
+        ]);
+        let report = compute_network(&fa);
+        // All betweenness values must be in [0, 1] after normalization
+        for dev in &report.developers {
+            assert!(
+                dev.betweenness >= 0.0 && dev.betweenness <= 1.0,
+                "betweenness for {} should be in [0,1], got {}",
+                dev.author,
+                dev.betweenness
+            );
+        }
+        // Leaves (Alice, Dave) should have 0 betweenness
+        let alice = report
+            .developers
+            .iter()
+            .find(|d| d.author == "Alice")
+            .unwrap();
+        let dave = report
+            .developers
+            .iter()
+            .find(|d| d.author == "Dave")
+            .unwrap();
+        assert!(
+            alice.betweenness.abs() < f64::EPSILON,
+            "Alice (leaf) betweenness should be 0"
+        );
+        assert!(
+            dave.betweenness.abs() < f64::EPSILON,
+            "Dave (leaf) betweenness should be 0"
+        );
+    }
+
+    #[test]
+    fn test_density_v_lt_2_returns_zero() {
+        // Kills: replace `>= 2` with `> 2` in density guard
+        // Single dev → v=1 → density must be 0.0
+        let fa = make_file_authors(&[("a.rs", &["Alice"])]);
+        let report = compute_network(&fa);
+        assert!(
+            report.network_density.abs() < f64::EPSILON,
+            "single dev: density must be 0, got {}",
+            report.network_density
+        );
+    }
+
+    #[test]
+    fn test_avg_degree_v_gt_0_guard() {
+        // Kills: replace `> 0` with `> 1` in `if v > 0` for avg_degree
+        // Single dev → v=1, edges=0 → avg_degree = 0.0
+        let fa = make_file_authors(&[("a.rs", &["Alice"])]);
+        let report = compute_network(&fa);
+        assert!(
+            report.avg_degree.abs() < f64::EPSILON,
+            "single dev: avg_degree must be 0, got {}",
+            report.avg_degree
+        );
+    }
+
+    #[test]
+    fn test_connected_components_exact() {
+        // Kills: mutations in component counting (e.g., `+1` at the end)
+        // 3 isolated devs → 3 components
+        let fa = make_file_authors(&[
+            ("a.rs", &["Alice"]),
+            ("b.rs", &["Bob"]),
+            ("c.rs", &["Carol"]),
+        ]);
+        let report = compute_network(&fa);
+        assert_eq!(
+            report.connected_components, 3,
+            "3 isolated devs = 3 components"
+        );
+    }
+
+    #[test]
+    fn test_shared_files_total_accumulated() {
+        // Kills: mutations in `n.values().sum()` for shared_files_total
+        // Alice shares 2 files with Bob → shared_files_total = 2
+        let fa = make_file_authors(&[("x.rs", &["Alice", "Bob"]), ("y.rs", &["Alice", "Bob"])]);
+        let report = compute_network(&fa);
+        let alice = report
+            .developers
+            .iter()
+            .find(|d| d.author == "Alice")
+            .unwrap();
+        assert_eq!(alice.shared_files_total, 2, "Alice shares 2 files with Bob");
+    }
 }

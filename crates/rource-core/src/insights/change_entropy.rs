@@ -453,4 +453,193 @@ mod tests {
         assert_eq!(report.windows.len(), 1);
         assert_eq!(report.windows[0].total_modifications, 1);
     }
+
+    // --- Mutation-killing tests ---
+
+    #[test]
+    fn test_events_exist_but_equal_timestamps() {
+        // Kills: replace || with && in `self.events.is_empty() || t_min >= t_max`
+        // Events exist but t_min == t_max → should return empty (early exit)
+        let mut acc = ChangeEntropyAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Modify, 100);
+        let report = acc.finalize(100, 100);
+        assert!(
+            report.windows.is_empty(),
+            "equal t_min/t_max should produce empty windows"
+        );
+        assert_eq!(report.trend, EntropyTrend::Stable);
+    }
+
+    #[test]
+    fn test_event_at_window_boundary_excluded() {
+        // Kills: replace < with <= in `*ts >= window_start && *ts < window_end`
+        // Event at exactly window boundary should go to NEXT window
+        let mut acc = ChangeEntropyAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Modify, 86400); // day 1 → window 1
+        acc.record_file("b.rs", FileActionKind::Modify, DEFAULT_WINDOW_SECONDS); // exactly at boundary
+        let report = acc.finalize(0, 2 * DEFAULT_WINDOW_SECONDS);
+        assert_eq!(report.windows.len(), 2, "expected 2 windows");
+        // Window 1: only a.rs → 1 file, 1 modification
+        assert_eq!(
+            report.windows[0].total_modifications, 1,
+            "window 1 should have 1 modification"
+        );
+        assert_eq!(report.windows[0].files_modified, 1);
+        // Window 2: only b.rs → 1 file, 1 modification
+        assert_eq!(
+            report.windows[1].total_modifications, 1,
+            "window 2 should have 1 modification"
+        );
+    }
+
+    #[test]
+    fn test_empty_window_skipped() {
+        // Kills: replace > with >= in `if total_modifications > 0`
+        // Window with 0 events should be skipped entirely
+        let mut acc = ChangeEntropyAccumulator::new();
+        // Events in window 1 (days 0-29) and window 3 (days 60-89), none in window 2
+        acc.record_file("a.rs", FileActionKind::Modify, 86400);
+        acc.record_file(
+            "b.rs",
+            FileActionKind::Modify,
+            2 * DEFAULT_WINDOW_SECONDS + 86400,
+        );
+        let report = acc.finalize(0, 3 * DEFAULT_WINDOW_SECONDS);
+        // Window 2 has 0 modifications → skipped
+        assert_eq!(
+            report.windows.len(),
+            2,
+            "empty window should be skipped, got {}",
+            report.windows.len()
+        );
+    }
+
+    #[test]
+    fn test_avg_normalized_entropy_division_exact() {
+        // Kills: replace / with % in `sum / windows.len() as f64`
+        // 2 windows: H_norm = 0.0 and 1.0 → avg = 0.5
+        let mut acc = ChangeEntropyAccumulator::new();
+        // Window 1: single file → H_norm = 0.0
+        for i in 0..5 {
+            acc.record_file("a.rs", FileActionKind::Modify, i * 86400);
+        }
+        // Window 2: two files equal → H_norm = 1.0
+        let w2 = DEFAULT_WINDOW_SECONDS;
+        for i in 0..5 {
+            acc.record_file("a.rs", FileActionKind::Modify, w2 + i * 86400);
+            acc.record_file("b.rs", FileActionKind::Modify, w2 + i * 86400 + 100);
+        }
+        let report = acc.finalize(0, 2 * DEFAULT_WINDOW_SECONDS);
+        assert_eq!(report.windows.len(), 2);
+        // avg = (0.0 + 1.0) / 2.0 = 0.5. If / → %: (0.0 + 1.0) % 2.0 = 1.0
+        assert!(
+            (report.avg_normalized_entropy - 0.5).abs() < 1e-10,
+            "avg={}, expected=0.5",
+            report.avg_normalized_entropy
+        );
+    }
+
+    #[test]
+    fn test_window_seconds_multiplication() {
+        // Kills: replace * with / in `30 * 86400` (const)
+        // With correct value (2592000), a 60-day span → 2 windows.
+        // If * → /: 30/86400 ≈ 0.0003 → millions of windows
+        let mut acc = ChangeEntropyAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Modify, 86400); // day 1
+        acc.record_file(
+            "b.rs",
+            FileActionKind::Modify,
+            DEFAULT_WINDOW_SECONDS + 86400,
+        ); // day 31
+        let report = acc.finalize(0, 2 * DEFAULT_WINDOW_SECONDS);
+        assert_eq!(report.windows.len(), 2, "60-day span should have 2 windows");
+    }
+
+    #[test]
+    fn test_trend_stable_with_single_window() {
+        // Kills: replace < with <= in `if windows.len() < 2`
+        // A single window should produce Stable trend
+        let mut acc = ChangeEntropyAccumulator::new();
+        for i in 0..5 {
+            acc.record_file("a.rs", FileActionKind::Modify, i * 86400);
+            acc.record_file("b.rs", FileActionKind::Modify, i * 86400 + 100);
+        }
+        let report = acc.finalize(0, DEFAULT_WINDOW_SECONDS);
+        assert_eq!(report.windows.len(), 1);
+        assert_eq!(report.trend, EntropyTrend::Stable);
+    }
+
+    #[test]
+    fn test_trend_diff_threshold_boundary() {
+        // Kills: replace > with >= in `if diff > 0.05`
+        // and < with <= in `if diff < -0.05`
+        // With diff exactly 0.05 → Stable (not Increasing)
+        // This is hard to engineer precisely, but we can verify that
+        // a clearly stable case (equal windows) produces Stable.
+        let mut acc = ChangeEntropyAccumulator::new();
+        // Both windows: same entropy (2 files equal → H_norm = 1.0)
+        for w in 0..2 {
+            let base = w * DEFAULT_WINDOW_SECONDS;
+            for i in 0..5 {
+                acc.record_file("a.rs", FileActionKind::Modify, base + i * 86400);
+                acc.record_file("b.rs", FileActionKind::Modify, base + i * 86400 + 100);
+            }
+        }
+        let report = acc.finalize(0, 2 * DEFAULT_WINDOW_SECONDS);
+        assert_eq!(report.windows.len(), 2);
+        assert_eq!(
+            report.trend,
+            EntropyTrend::Stable,
+            "equal entropy windows should be Stable"
+        );
+    }
+
+    #[test]
+    fn test_raw_entropy_formula_division() {
+        // Kills: replace / with * in `f64::from(count) / total_f`
+        // 4 files: a=2, b=1, c=1, d=1 → total=5
+        // p(a)=2/5=0.4, p(b)=p(c)=p(d)=1/5=0.2
+        // H = -(0.4*log2(0.4) + 3*0.2*log2(0.2))
+        let mut acc = ChangeEntropyAccumulator::new();
+        acc.record_file("a.rs", FileActionKind::Modify, 86400);
+        acc.record_file("a.rs", FileActionKind::Modify, 2 * 86400);
+        acc.record_file("b.rs", FileActionKind::Modify, 3 * 86400);
+        acc.record_file("c.rs", FileActionKind::Modify, 4 * 86400);
+        acc.record_file("d.rs", FileActionKind::Modify, 5 * 86400);
+        let report = acc.finalize(0, DEFAULT_WINDOW_SECONDS);
+        let expected_h = -(0.4_f64 * 0.4_f64.log2() + 3.0 * 0.2_f64 * 0.2_f64.log2());
+        assert!(
+            (report.windows[0].raw_entropy - expected_h).abs() < 1e-10,
+            "H={}, expected={}",
+            report.windows[0].raw_entropy,
+            expected_h
+        );
+        assert_eq!(report.windows[0].total_modifications, 5);
+        assert_eq!(report.windows[0].files_modified, 4);
+    }
+
+    #[test]
+    fn test_normalization_division() {
+        // Kills: replace / with * in `raw_entropy / log2(files_modified)`
+        // 2 files with 3 and 1 modifications → total=4
+        // p(a)=3/4=0.75, p(b)=1/4=0.25
+        // H = -(0.75*log2(0.75) + 0.25*log2(0.25)) = 0.8113
+        // H_norm = H / log2(2) = H / 1.0 = H
+        let mut acc = ChangeEntropyAccumulator::new();
+        for i in 0..3 {
+            acc.record_file("a.rs", FileActionKind::Modify, i * 86400);
+        }
+        acc.record_file("b.rs", FileActionKind::Modify, 4 * 86400);
+        let report = acc.finalize(0, DEFAULT_WINDOW_SECONDS);
+        let p1 = 0.75_f64;
+        let p2 = 0.25_f64;
+        let expected_h = -(p1 * p1.log2() + p2 * p2.log2());
+        let expected_h_norm = expected_h / 2.0_f64.log2();
+        assert!(
+            (report.windows[0].normalized_entropy - expected_h_norm).abs() < 1e-10,
+            "H_norm={}, expected={}",
+            report.windows[0].normalized_entropy,
+            expected_h_norm
+        );
+    }
 }
