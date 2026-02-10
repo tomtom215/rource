@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770715804623,
+  "lastUpdate": 1770728716180,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6044,6 +6044,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1317481,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2f4fc961e433d0b5d890b354386b1df80dc2b9aa",
+          "message": "Merge pull request #284 from tomtom215/claude/defect-risk-metrics-4wC0P\n\nAdd change burst and entropy metrics for defect risk prediction",
+          "timestamp": "2026-02-10T14:03:05+01:00",
+          "tree_id": "a292af8fadc981013a37be3a33ec6685d76d9738",
+          "url": "https://github.com/tomtom215/rource/commit/2f4fc961e433d0b5d890b354386b1df80dc2b9aa"
+        },
+        "date": 1770728715798,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3593841,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1353323,
             "unit": "bytes"
           }
         ]
