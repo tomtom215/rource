@@ -50,6 +50,7 @@ pub mod animation;
 pub mod camera;
 pub mod config;
 pub mod entity;
+pub mod insights;
 pub mod physics;
 pub mod scene;
 
