@@ -68,7 +68,7 @@ import {
     updateImmersiveStats
 } from './features/immersive-mode.js';
 import { initReducedMotion, setRourceInstance as setReducedMotionRource } from './features/reduced-motion.js';
-import { initInsights, invalidateInsightsCache } from './features/insights.js';
+import { initInsights, invalidateInsightsCache, loadInsightsSummary } from './features/insights.js';
 
 // Parsed commits for tooltip display
 let parsedCommits = [];
@@ -630,6 +630,11 @@ function handleDataLoaded(content, stats, format = 'custom') {
 
     // Invalidate insights cache so it reloads with new data
     invalidateInsightsCache();
+
+    // Auto-load insights summary for bottom sheet display
+    // This is lightweight (single WASM call) and populates the bottom sheet
+    // summary section without requiring the user to open the sidebar panel.
+    loadInsightsSummary();
 
     // Parse commits for tooltip
     parsedCommits = parseCommits(content);
