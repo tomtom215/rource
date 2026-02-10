@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770746134677,
+  "lastUpdate": 1770755211685,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6146,6 +6146,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/43ef0c89812b703cad129f0aac13cb52d51c3d60"
         },
         "date": 1770746133899,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3593841,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1353323,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "41914675fca3ff59071dd43d10aa3e4420b70daf",
+          "message": "Merge pull request #287 from tomtom215/claude/insights-frontend-dashboard-0Pdqx\n\nAdd Repository Insights Dashboard with 20 Research-Backed Metrics",
+          "timestamp": "2026-02-10T21:24:38+01:00",
+          "tree_id": "7d44308971b7a12a6b749b8434d5eafd3c9e5459",
+          "url": "https://github.com/tomtom215/rource/commit/41914675fca3ff59071dd43d10aa3e4420b70daf"
+        },
+        "date": 1770755211051,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
