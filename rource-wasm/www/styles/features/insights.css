@@ -52,9 +52,9 @@
     padding: var(--spacing-sm) var(--spacing-md);
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-muted);
-    font-size: 0.8125rem;
+    border-bottom: 3px solid transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
@@ -62,7 +62,7 @@
 }
 
 .insights-tab-btn:hover {
-    color: var(--text-secondary);
+    color: var(--text-primary);
 }
 
 .insights-tab-btn:focus-visible {
@@ -89,6 +89,12 @@
 
 .insights-tab-panel.active {
     display: block;
+    animation: insights-fade-in var(--transition-fast) ease-out;
+}
+
+@keyframes insights-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* ===== Metric Sections ===== */
@@ -106,14 +112,14 @@
 }
 
 .insights-metric-title {
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 var(--spacing-xs);
 }
 
 .insights-metric-desc {
-    font-size: 0.8125rem;
+    font-size: var(--font-size-sm);
     color: var(--text-muted);
     margin: 0 0 var(--spacing-sm);
     line-height: 1.4;
@@ -121,7 +127,7 @@
 
 .insights-citation {
     display: block;
-    font-size: 0.6875rem;
+    font-size: var(--font-size-xs);
     font-style: italic;
     color: var(--text-muted);
     margin-top: var(--spacing-sm);
@@ -141,7 +147,7 @@
     justify-content: space-between;
     align-items: baseline;
     padding: var(--spacing-xs) 0;
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
 }
 
 .insights-kv-key {
@@ -150,9 +156,9 @@
 
 .insights-kv-value {
     color: var(--text-primary);
-    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-weight: 600;
-    font-size: 0.9375rem;
+    font-size: var(--font-size-base);
 }
 
 /* ===== Data Tables ===== */
@@ -161,24 +167,46 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin: var(--spacing-xs) 0;
+    position: relative;
+}
+
+/* Right-edge scroll hint for horizontally scrollable tables */
+.insights-table-wrap::after {
+    content: '';
+    position: sticky;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent, var(--bg-secondary));
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+@media (max-width: 768px) {
+    .insights-table-wrap::after {
+        opacity: 1;
+    }
 }
 
 .insights-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.8125rem;
+    font-size: var(--font-size-sm);
 }
 
 .insights-table thead {
     position: sticky;
     top: 0;
     z-index: 1;
+    box-shadow: 0 1px 0 var(--border);
 }
 
 .insights-table th {
     text-align: left;
     font-weight: 600;
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -200,8 +228,9 @@
 
 .insights-table td.num {
     text-align: right;
-    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     white-space: nowrap;
+    min-width: 3.5rem;
 }
 
 .insights-table td.filepath {
@@ -209,8 +238,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
-    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
 }
 
 .insights-table tbody tr:nth-child(even) {
@@ -247,18 +276,19 @@
     width: 100%;
     min-height: 44px;
     padding: var(--spacing-sm);
-    margin-top: var(--spacing-xs);
+    margin-top: var(--spacing-md);
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     color: var(--accent-blue);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-sm);
     cursor: pointer;
-    transition: background var(--transition-fast);
+    transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .insights-show-all:hover {
     background: var(--bg-secondary);
+    color: var(--accent-blue-light);
 }
 
 .insights-show-all:focus-visible {
@@ -270,8 +300,8 @@
 
 .insights-badge {
     display: inline-block;
-    padding: 2px 8px;
-    font-size: 0.75rem;
+    padding: 2px var(--spacing-sm);
+    font-size: var(--font-size-xs);
     font-weight: 500;
     border-radius: var(--radius-full);
     text-transform: capitalize;
@@ -307,7 +337,7 @@
     gap: var(--spacing-sm);
     padding: var(--spacing-xl);
     color: var(--text-muted);
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
 }
 
 .insights-spinner {
@@ -329,7 +359,7 @@
     padding: var(--spacing-lg);
     text-align: center;
     color: var(--text-muted);
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
 }
 
 .insights-empty p {
@@ -337,7 +367,7 @@
 }
 
 .insights-empty-hint {
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
     opacity: 0.7;
     font-style: italic;
@@ -364,14 +394,14 @@
 }
 
 .insights-summary-stat .stat-value {
-    font-size: 1.125rem;
+    font-size: var(--font-size-lg);
     font-weight: 700;
     color: var(--text-primary);
-    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
 }
 
 .insights-summary-stat .stat-label {
-    font-size: 0.6875rem;
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -393,7 +423,7 @@
     }
 
     .insights-kv-row {
-        font-size: 0.9375rem;
+        font-size: var(--font-size-base);
     }
 }
 
@@ -402,7 +432,7 @@
 @media (max-width: 374px) {
     .insights-tab-btn {
         padding: var(--spacing-sm) var(--spacing-xs);
-        font-size: 0.75rem;
+        font-size: var(--font-size-xs);
     }
 
     .insights-table td.filepath {
@@ -413,7 +443,7 @@
 /* ===== Light Theme ===== */
 
 .light-theme .insights-tab-btn {
-    color: #57606a;
+    color: var(--text-secondary);
 }
 
 .light-theme .insights-tab-btn.active,
@@ -441,5 +471,9 @@
     .insights-spinner {
         animation: none;
         opacity: 0.5;
+    }
+
+    .insights-tab-panel.active {
+        animation: none;
     }
 }

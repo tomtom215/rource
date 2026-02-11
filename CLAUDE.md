@@ -149,6 +149,8 @@ We operate at **nanosecond to picosecond precision** for performance and **pixel
 | **"It's a base image issue"** | **Assumption that issues self-resolve** | **Minimize attack surface; fix root cause** |
 | **"It'll resolve after next merge"** | **Speculation, not action** | **Fix it NOW; never assume future resolution** |
 | **"I'll fix the doc, not the script"** | **Script will overwrite your fix** | **Fix the automation script FIRST, then run it** |
+| **"Non-fatal if it fails"** | **Silent failure can break entire pipeline** | **Disable the feature on init failure; never leave enabled+uninitialized** |
+| **"begin_frame checks X, end_frame checks Y"** | **State inconsistency causes invisible bugs** | **Both frame boundaries MUST use the same predicate** |
 
 ### CRITICAL: The "Pre-Existing Issue" Fallacy
 
@@ -371,6 +373,10 @@ The following events MUST trigger a CLAUDE.md update:
 | Coq Record field names written from memory | ALWAYS read actual `.v` file `Record` definition; never guess abbreviated forms |
 | Tool syntax documented from deprecated version | Verify syntax against actual proof files (e.g., `grep 'proof fn'` for Verus) |
 | Module refactored from file to directory | Grep all docs for old path; update counting commands and references |
+| Silent rendering failure (black canvas, metrics still updating) | Trace full frame lifecycle: begin_frame → draw → end_frame; check config vs initialized state |
+| "Non-fatal" init failure left feature enabled | Disable the feature flag on init failure; never leave `config.enabled=true` when `initialized=false` |
+| begin_frame/end_frame state inconsistency | Both paths must use same predicate (e.g., `is_active()` not `config.enabled` vs `is_active()`) |
+| CSS hardcoded values in component files | Replace ALL with design token variables from variables.css; audit with `grep -rn` for raw px/rem values |
 
 #### Lessons Learned Log
 
@@ -1697,6 +1703,9 @@ These error patterns recur across documentation audits:
 | Broken links after file rename/move | Low | Run link check sweep after reorganization |
 | ADR marked as TODO when ADRs exist | Low | Verify TODOs against actual directory contents |
 | Line number references drift after edits | Low | Verify cited line numbers against source with `grep -n` |
+| begin_frame/end_frame predicate mismatch | Medium | Both must use `is_active()` not mix of `config.enabled` and `is_active()` |
+| "Non-fatal" init leaves feature enabled | High | Init failure must disable feature flag; otherwise enabled+uninitialized = silent black canvas |
+| CSS hardcoded values bypass design tokens | High | Audit with `grep -rn 'px\|rem'` in CSS files; all values must use variables.css tokens |
 
 ---
 
@@ -1900,6 +1909,7 @@ a11y(A1): add icon labels
 | Symptom | Cause | Solution |
 |---------|-------|----------|
 | Black frames | Files haven't faded in | Pre-warm scene |
+| Black canvas (WASM), FPS updating | Bloom FBO init failed but `config.enabled` stayed `true`; `begin_frame` used `config.enabled`, `end_frame` used `is_active()` | Disable `config.enabled` on init failure; use `is_active()` in both paths |
 | Mobile UI cramped | Desktop-first design | Follow MOBILE_UX_ROADMAP.md |
 | Labels overlap | No collision detection | Implement T1 from roadmap |
 | Touch doesn't work | Targets too small | Ensure ≥44×44px |
@@ -2314,7 +2324,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 ---
 
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-11*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
 *Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
 *Formal Verification: 2968 theorems/harnesses (Verus: 498, Coq R-based: 1366, Coq Z-based: 471, Coq FP: 361, Kani: 272)*

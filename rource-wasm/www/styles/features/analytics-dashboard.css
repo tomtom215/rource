@@ -76,6 +76,7 @@
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
     margin: var(--spacing-xs) 0 0;
+    line-height: 1.5;
 }
 
 .analytics-viz-btn {
@@ -103,13 +104,14 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-sm);
     text-align: center;
-    transition: border-color var(--transition-fast);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .analytics-card:hover {
     border-color: var(--border-light);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .analytics-card-value {
@@ -117,12 +119,16 @@
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
 }
 
 .analytics-card-label {
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
-    font-weight: 500;
+    font-weight: 400;
 }
 
 /* ===== Tab Bar ===== */
@@ -155,8 +161,8 @@
     padding: var(--spacing-md) var(--spacing-lg);
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-muted);
+    border-bottom: 3px solid transparent;
+    color: var(--text-secondary);
     font-size: var(--font-size-sm);
     font-weight: 500;
     cursor: pointer;
@@ -165,7 +171,7 @@
 }
 
 .analytics-tab-btn:hover {
-    color: var(--text-secondary);
+    color: var(--text-primary);
 }
 
 .analytics-tab-btn:focus-visible {
@@ -191,6 +197,12 @@
 
 .analytics-tab-panel.active {
     display: block;
+    animation: analytics-fade-in var(--transition-fast) ease-out;
+}
+
+@keyframes analytics-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .analytics-tab-body {
@@ -248,6 +260,7 @@
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 var(--spacing-md);
+    line-height: 1.4;
 }
 
 .analytics-input-group {
@@ -269,6 +282,7 @@
 
 .analytics-input::placeholder {
     color: var(--text-muted);
+    opacity: 0.75;
 }
 
 .analytics-input:focus {
@@ -313,7 +327,7 @@
 
 .analytics-empty-state {
     text-align: center;
-    padding: var(--spacing-3xl) var(--spacing-lg);
+    padding: var(--spacing-2xl) var(--spacing-lg);
     color: var(--text-secondary);
 }
 
@@ -388,5 +402,22 @@
 
     .analytics-content {
         padding: var(--spacing-xl);
+    }
+}
+
+/* ===== Reduced Motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+    .analytics-tab-panel.active {
+        animation: none;
+    }
+
+    .analytics-card {
+        transition: none;
+    }
+
+    .analytics-loading .insights-spinner {
+        animation: none;
+        opacity: 0.5;
     }
 }

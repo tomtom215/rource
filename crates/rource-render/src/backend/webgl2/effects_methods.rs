@@ -17,10 +17,10 @@ impl WebGl2Renderer {
     // Bloom Effect API
     // =========================================================================
 
-    /// Returns whether the bloom effect is enabled.
+    /// Returns whether the bloom effect is enabled and initialized.
     #[inline]
     pub fn is_bloom_enabled(&self) -> bool {
-        self.bloom_pipeline.config.enabled
+        self.bloom_pipeline.is_active()
     }
 
     /// Enables or disables the bloom effect.
@@ -114,10 +114,10 @@ impl WebGl2Renderer {
     // Shadow Effect API
     // =========================================================================
 
-    /// Returns whether the shadow effect is enabled.
+    /// Returns whether the shadow effect is enabled and initialized.
     #[inline]
     pub fn is_shadow_enabled(&self) -> bool {
-        self.shadow_pipeline.config.enabled
+        self.shadow_pipeline.is_active()
     }
 
     /// Enables or disables the shadow effect.

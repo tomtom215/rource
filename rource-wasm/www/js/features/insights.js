@@ -411,9 +411,9 @@ function renderTabInto(tabName, target) {
             break;
     }
 
-    // Wire up "Show all" toggles
+    // Wire up "Show all" toggles (use addManagedEventListener for cleanup on reinit)
     body.querySelectorAll('.insights-show-all').forEach(btn => {
-        btn.addEventListener('click', () => {
+        addManagedEventListener(btn, 'click', () => {
             const toggleTarget = btn.closest('.insights-metric');
             if (toggleTarget) {
                 toggleTarget.classList.toggle('expanded');
@@ -1216,7 +1216,7 @@ function renderKnowledgeTable(silos) {
             <thead><tr>
                 <th scope="col">File</th>
                 <th scope="col" class="num">Entropy</th>
-                <th scope="col">Primary Owner</th>
+                <th scope="col">Owner</th>
             </tr></thead>
             <tbody>`;
     for (const s of visible) {
@@ -1374,7 +1374,7 @@ function emptyState(message, hint) {
 // ============================================================
 
 function formatNumber(n, decimals = 2) {
-    if (n == null || isNaN(n)) return 'N/A';
+    if (n == null || isNaN(n) || !isFinite(n)) return 'N/A';
     return Number(n).toLocaleString(undefined, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
@@ -1387,7 +1387,7 @@ function formatFixed(n, decimals = 1) {
 }
 
 function formatInt(n) {
-    if (n == null || isNaN(n)) return '0';
+    if (n == null || isNaN(n)) return '\u2014';
     return Number(n).toLocaleString();
 }
 
@@ -1400,8 +1400,9 @@ function truncatePath(path) {
     if (!path) return '';
     if (path.length <= 40) return path;
     const parts = path.split('/');
-    if (parts.length <= 2) return path;
-    return parts[0] + '/.../' + parts[parts.length - 1];
+    if (parts.length <= 3) return path;
+    const tail = parts.slice(-2).join('/');
+    return parts[0] + '/\u2026/' + tail;
 }
 
 function escapeHtml(str) {
