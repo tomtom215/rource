@@ -89,12 +89,12 @@ export function getHelpTemplate() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                     How It Works
                 </h3>
-                <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">
+                <p class="help-section-body">
                     Rource visualizes your Git history as an animated tree. Each commit creates "beams" connecting
                     developers to the files they modify. Files branch out from the root based on their directory
                     structure. The visualization uses a force-directed layout to naturally organize files and prevent overlap.
                 </p>
-                <p style="color: var(--text-muted); font-size: 0.8rem; line-height: 1.5; margin-top: 0.5rem;">
+                <p class="help-section-note">
                     <strong>Note:</strong> The commit count groups file changes by timestamp and author. This may differ slightly from your git commit count if multiple commits share the same second.
                 </p>
             </div>
@@ -104,7 +104,7 @@ export function getHelpTemplate() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                     Quick Tips
                 </h3>
-                <ul style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem;">
+                <ul class="help-section-list">
                     <li><strong>Hover</strong> over files or users to see details</li>
                     <li><strong>Drag</strong> to pan around the visualization</li>
                     <li><strong>Scroll</strong> to zoom in/out</li>
@@ -117,9 +117,9 @@ export function getHelpTemplate() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
                     Keyboard Shortcuts
                 </h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; color: var(--text-secondary); font-size: 0.85rem;">
+                <div class="help-shortcuts-grid">
                     <!-- Playback -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Playback</div>
+                    <div class="help-shortcuts-category">Playback</div>
                     <div><kbd class="kbd">Space</kbd> Play / Pause</div>
                     <div><kbd class="kbd">Home</kbd> Restart</div>
                     <div><kbd class="kbd">\u2190</kbd> <kbd class="kbd">,</kbd> Previous commit</div>
@@ -127,13 +127,13 @@ export function getHelpTemplate() {
                     <div><kbd class="kbd">[</kbd> Slower speed</div>
                     <div><kbd class="kbd">]</kbd> Faster speed</div>
                     <!-- Camera -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Camera</div>
-                    <div><kbd class="kbd">W</kbd><kbd class="kbd">A</kbd><kbd class="kbd">S</kbd><kbd class="kbd">D</kbd> Pan<span style="color: var(--text-muted); font-size: 0.75rem;"> (canvas focused)</span></div>
+                    <div class="help-shortcuts-category">Camera</div>
+                    <div><kbd class="kbd">W</kbd><kbd class="kbd">A</kbd><kbd class="kbd">S</kbd><kbd class="kbd">D</kbd> Pan<span class="help-shortcuts-muted"> (canvas focused)</span></div>
                     <div><kbd class="kbd">R</kbd> Reset camera</div>
                     <div><kbd class="kbd">+</kbd> <kbd class="kbd">=</kbd> Zoom in</div>
                     <div><kbd class="kbd">-</kbd> Zoom out</div>
                     <!-- Display -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Display</div>
+                    <div class="help-shortcuts-category">Display</div>
                     <div><kbd class="kbd">L</kbd> Toggle labels</div>
                     <div><kbd class="kbd">F</kbd> Fullscreen</div>
                     <div><kbd class="kbd">T</kbd> Toggle theme</div>
@@ -141,18 +141,18 @@ export function getHelpTemplate() {
                     <div><kbd class="kbd">P</kbd> Performance overlay</div>
                     <div><kbd class="kbd">Shift</kbd>+<kbd class="kbd">\u2191\u2193</kbd> Font size</div>
                     <!-- Export -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Export</div>
+                    <div class="help-shortcuts-category">Export</div>
                     <div><kbd class="kbd">S</kbd> Screenshot</div>
                     <div><kbd class="kbd">M</kbd> Export full map</div>
                     <div><kbd class="kbd">V</kbd> Video recording</div>
                     <div></div>
                     <!-- Help -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Help</div>
+                    <div class="help-shortcuts-category">Help</div>
                     <div><kbd class="kbd">?</kbd> Show this help</div>
                     <div><kbd class="kbd">Esc</kbd> Close dialogs</div>
                 </div>
             </div>
 
-            <button type="button" id="help-got-it" class="btn" style="width: 100%; margin-top: 1rem;">Got it!</button>
+            <button type="button" id="help-got-it" class="btn help-got-it-btn">Got it!</button>
         </div>`;
 }

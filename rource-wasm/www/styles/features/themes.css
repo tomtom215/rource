@@ -28,6 +28,7 @@
     /* Text Colors */
     --text-primary: #1f2328;
     --text-secondary: #4d5561; /* WCAG AA: 5.7:1 contrast on white */
+    --text-interactive: #32383f; /* ~8.5:1 contrast - for tabs, chips, nav items */
     --text-muted: #656d76; /* WCAG AA: 4.5:1 contrast on white */
     --text-on-accent: #ffffff; /* Same as dark theme - white on accent */
 
@@ -183,9 +184,9 @@
     background: var(--bg-secondary);
 }
 
-/* Inactive tab text — use accessible secondary color */
+/* Inactive tab text — use interactive color for better readability */
 .light-theme .analytics-tab-btn {
-    color: var(--text-secondary);
+    color: var(--text-interactive);
 }
 
 .light-theme .analytics-tab-btn:hover {
@@ -194,6 +195,16 @@
 
 /* Active tab — use accent */
 .light-theme .analytics-tab-btn.active {
+    color: var(--accent);
+}
+
+/* Insights tabs — same interactive color treatment */
+.light-theme .insights-tab-btn {
+    color: var(--text-interactive);
+}
+
+.light-theme .insights-tab-btn.active,
+.light-theme .insights-tab-btn[aria-selected="true"] {
     color: var(--accent);
 }
 
