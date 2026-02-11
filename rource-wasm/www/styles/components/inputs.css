@@ -74,7 +74,8 @@
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-secondary);
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 0.75rem;
+    min-height: 44px;
     border-radius: 16px;
     font-size: 0.75rem; /* 12px - WCAG minimum */
     cursor: pointer;
@@ -89,6 +90,11 @@
     border-color: var(--accent);
     color: var(--accent);
     background: rgba(233, 69, 96, 0.1);
+}
+
+.repo-chip:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 /* Cached repo chips - indicate pre-loaded data (no API calls) */

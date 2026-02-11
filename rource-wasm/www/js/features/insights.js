@@ -411,9 +411,9 @@ function renderTabInto(tabName, target) {
             break;
     }
 
-    // Wire up "Show all" toggles
+    // Wire up "Show all" toggles (use addManagedEventListener for cleanup on reinit)
     body.querySelectorAll('.insights-show-all').forEach(btn => {
-        btn.addEventListener('click', () => {
+        addManagedEventListener(btn, 'click', () => {
             const toggleTarget = btn.closest('.insights-metric');
             if (toggleTarget) {
                 toggleTarget.classList.toggle('expanded');
