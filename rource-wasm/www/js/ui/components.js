@@ -13,31 +13,37 @@
  */
 
 import {
+    getShowcasePanelTemplate,
+    getGithubPanelTemplate,
+    getManualLoadPanelTemplate,
     getKeyboardShortcutsPanelTemplate,
 } from './sidebar-template.js';
+
+import { getBottomSheetContentTemplate } from './bottom-sheet-template.js';
+import { getHelpTemplate } from './help-template.js';
 
 /**
  * Injects component HTML into placeholder elements.
  * Must be called before initDomElements() and feature modules.
  *
- * Only extracts sections that are hidden/collapsed by default
- * (no FOUC risk). Visible-on-load content stays in index.html.
- *
- * Current extractions:
- *   - Keyboard shortcuts panel body (collapsed by default)
- *
- * Future candidates (hidden by default, safe to extract):
- *   - Help overlay content
- *   - Bottom sheet content
- *   - Tech specs panel body
- *
- * Template modules available but not yet wired:
- *   - help-template.js
- *   - bottom-sheet-template.js
- *   - sidebar-template.js (showcase, github, manual load panels)
+ * All injected sections are hidden/collapsed by default (no FOUC risk):
+ *   - Sidebar panels (sidebar hidden in analytics view)
+ *   - Bottom sheet content (hidden by default)
+ *   - Help overlay (hidden by default)
+ *   - Keyboard shortcuts panel (collapsed by default)
  */
 export function initComponents() {
+    // Sidebar panels (sidebar is hidden by default in analytics view)
+    inject('showcase-panel', getShowcasePanelTemplate);
+    inject('panel-github', getGithubPanelTemplate);
+    inject('panel-manual-load', getManualLoadPanelTemplate);
     inject('panel-shortcuts-body', getKeyboardShortcutsPanelTemplate);
+
+    // Bottom sheet content (hidden by default)
+    inject('bottom-sheet-content', getBottomSheetContentTemplate);
+
+    // Help overlay (hidden by default)
+    inject('help-overlay', getHelpTemplate);
 }
 
 /**

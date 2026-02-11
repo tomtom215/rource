@@ -110,9 +110,43 @@
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+.analytics-card-interactive {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.analytics-card-interactive:hover,
+.analytics-card-interactive:focus-visible {
+    border-color: var(--accent-blue);
+    box-shadow: 0 2px 8px var(--shadow-light);
+    transform: translateY(-1px);
+}
+
+.analytics-card-interactive:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+.analytics-card-interactive:active {
+    transform: translateY(0);
+}
+
 .analytics-card:hover {
     border-color: var(--border-light);
     box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+.analytics-card-hint {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    margin-top: 2px;
+}
+
+.analytics-card-interactive:hover .analytics-card-hint,
+.analytics-card-interactive:focus-visible .analytics-card-hint {
+    opacity: 1;
 }
 
 .analytics-card-value {
@@ -421,6 +455,11 @@
 
     .analytics-card {
         transition: none;
+    }
+
+    .analytics-card-interactive:hover,
+    .analytics-card-interactive:focus-visible {
+        transform: none;
     }
 
     .analytics-loading .insights-spinner {

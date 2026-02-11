@@ -1,0 +1,327 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Bottom Sheet Legends & Content Styles
+ *
+ * Content sections within the bottom sheet:
+ * - File type legend with color dots and counts
+ * - Author items with commit counts
+ * - Footer links
+ * - Compact panel overrides for embedded panels
+ * - Extra small screen (375px) adjustments
+ *
+ * NOTE: Landscape-specific bottom sheet rules are consolidated in
+ * mobile-landscape.css for consistency with other mobile landscape
+ * optimizations.
+ */
+
+@media (max-width: 768px) {
+    /* -------------------------------------------------------------------------
+       Legend Section - Improved Visual Hierarchy
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-legends {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 0 16px;
+    }
+
+    /* Show legends section when visible (JS removes hidden class) */
+    .bottom-sheet-legends:not(.hidden) {
+        display: flex;
+    }
+
+    .bottom-sheet-legend-section {
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+    }
+
+    .bottom-sheet-legend-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .bottom-sheet-legend-title {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.75px;
+    }
+
+    .bottom-sheet-legend-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 8px;
+    }
+
+    .bottom-sheet-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        /* A4: Increase touch target to 44px minimum (Apple HIG) */
+        padding: 10px 14px;
+        min-height: 44px;
+        background: var(--bg-secondary);
+        border-radius: 22px;
+        font-size: 0.8125rem; /* 13px for better readability */
+        white-space: nowrap;
+        transition: background 0.15s ease;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Subtle hover feedback */
+    .bottom-sheet-legend-item:active {
+        background: var(--border);
+    }
+
+    .bottom-sheet-legend-color {
+        /* A4: Slightly larger color dot for better visibility */
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        /* Add subtle shadow for depth */
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .bottom-sheet-legend-name {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .bottom-sheet-legend-count {
+        color: var(--text-muted);
+        font-size: 0.75rem; /* 12px - WCAG minimum (was 0.6875rem/11px) */
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* "More" indicator for overflow - now a clickable button */
+    .bottom-sheet-legend-more {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 10px;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Expand/Collapse toggle button for legends */
+    .bottom-sheet-legend-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        margin-top: 6px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        color: var(--accent-blue);
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+        /* Full width to make it easier to tap */
+        width: 100%;
+        justify-content: center;
+    }
+
+    .bottom-sheet-legend-toggle:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--accent-blue);
+    }
+
+    .bottom-sheet-legend-toggle:active {
+        transform: scale(0.98);
+        background: var(--border);
+    }
+
+    .bottom-sheet-legend-toggle:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
+    .bottom-sheet-legend-toggle svg {
+        flex-shrink: 0;
+    }
+
+    /* Light theme toggle button */
+    .light-theme .bottom-sheet-legend-toggle {
+        background: var(--bg-primary);
+    }
+
+    .light-theme .bottom-sheet-legend-toggle:hover {
+        background: var(--bg-secondary);
+    }
+
+    /* -------------------------------------------------------------------------
+       Author Items - Enhanced for Mobile
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-author-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        transition: background 0.15s ease;
+    }
+
+    .bottom-sheet-author-item:active {
+        background: var(--border);
+    }
+
+    .bottom-sheet-author-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .bottom-sheet-author-name {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 120px;
+    }
+
+    .bottom-sheet-author-commits {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* -------------------------------------------------------------------------
+       Footer Links
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-footer {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        padding: 16px;
+        margin-top: auto;
+        border-top: 1px solid var(--border);
+    }
+
+    .bottom-sheet-link {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8125rem;
+        color: var(--accent-blue);
+        text-decoration: none;
+    }
+
+    .bottom-sheet-link svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Compact Panels in Bottom Sheet
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet .showcase-panel {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .bottom-sheet .showcase-panel h2 {
+        font-size: 1rem;
+    }
+
+    .bottom-sheet .showcase-panel p {
+        font-size: 0.85rem;
+    }
+
+    .bottom-sheet .showcase-stats {
+        gap: 0.5rem;
+    }
+
+    .bottom-sheet .showcase-stat-value {
+        font-size: 1.25rem;
+    }
+
+    .bottom-sheet .panel {
+        margin-bottom: 0.75rem;
+    }
+
+    .bottom-sheet .panel-header h2 {
+        font-size: 0.95rem;
+    }
+
+    .bottom-sheet .panel.collapsible .panel-body {
+        padding: 0.75rem;
+    }
+
+    .bottom-sheet .docs-section {
+        padding: 0.5rem 0;
+    }
+
+    .bottom-sheet .docs-section h3 {
+        font-size: 0.9rem;
+    }
+
+    .bottom-sheet .docs-section p,
+    .bottom-sheet .docs-section li {
+        font-size: 0.85rem;
+    }
+
+    .bottom-sheet .tab-nav {
+        gap: 0.25rem;
+    }
+
+    .bottom-sheet .tab-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .bottom-sheet .about-banner {
+        padding: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .bottom-sheet .about-banner h2 {
+        font-size: 1rem;
+    }
+}
+
+/* =============================================================================
+   Extra Small Screens (iPhone SE)
+   ============================================================================= */
+
+@media (max-width: 375px) {
+    .bottom-sheet-fab {
+        width: 52px;
+        height: 52px;
+        right: 12px;
+    }
+
+    .bottom-sheet-content {
+        padding: 0 12px 12px;
+    }
+
+    .bottom-sheet-quick-actions {
+        padding: 0 12px 10px;
+    }
+}
