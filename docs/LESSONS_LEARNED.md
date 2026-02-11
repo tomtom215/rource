@@ -663,6 +663,15 @@ All 246 entries in chronological order. Entry numbers match category table refer
 | 273 | 2026-02-11 | Vlgem | Decorative SVGs missing `aria-hidden="true"` — 20 instances across index.html | SVG icons added without accessibility attributes | Every decorative SVG MUST have `aria-hidden="true"`; functional SVGs need `aria-label` |
 | 274 | 2026-02-11 | Vlgem | `is_bloom_enabled()` returned `config.enabled` not `is_active()` — misled callers about actual state | API method exposed config flag without checking initialization state | Public `is_X_enabled()` methods must reflect actual operational state, not just config intent |
 
+| 275 | 2026-02-11 | rMfEz | wgpu backend had SAME `begin_frame`/`end_frame` predicate mismatch as WebGL2 — used `self.bloom_enabled` boolean instead of `pipeline.is_active()` | Pattern fixed in WebGL2 but not propagated to wgpu backend in same session | When fixing a rendering bug in one backend, ALWAYS audit ALL backends for the same pattern |
+| 276 | 2026-02-11 | rMfEz | wgpu `set_bloom_enabled(true)` didn't disable flag if pipeline init failed silently | `BloomPipeline::new()` succeeded but `is_active()` could be false if textures not allocated | Add defense-in-depth: after init attempt, check `is_active()` and disable flag if false |
+| 277 | 2026-02-11 | rMfEz | Analytics dashboard scrolling broken: `grid-template-rows` not set for `view-analytics` layout | `.app-container` has `overflow: hidden`; without `grid-template-rows: 1fr`, the grid row uses `auto` sizing which grows unbounded then gets clipped | Grid containers with `overflow: hidden` need explicit row sizing for scroll containers to work |
+| 278 | 2026-02-11 | rMfEz | `@media (prefers-color-scheme: light)` block in accessibility.css duplicated 57 lines already in themes.css | Accessibility file copied light theme definitions for OS-level preference detection | Canonical light theme lives in themes.css; never duplicate theme definitions across files |
+| 279 | 2026-02-11 | rMfEz | 42 decorative SVGs still missing `aria-hidden="true"` after previous session fixed 20 | Previous audit found 20, deeper audit found 59 more; only 42 still needed after existing fixes | Use `grep -c` to count ALL instances before and after; partial audits compound technical debt |
+| 280 | 2026-02-11 | rMfEz | `color-mix(in srgb, var(--token) N%, transparent)` replaces hardcoded `rgba(r, g, b, N%)` for theme-aware overlays | Hardcoded rgba values don't respond to theme changes | Use `color-mix()` for semi-transparent overlays derived from design tokens |
+| 281 | 2026-02-11 | rMfEz | Focus ring fallback `#e94560` in accessibility.css should be `var(--accent)` not `var(--accent-primary, #e94560)` | `--accent-primary` is not a defined token; `--accent` is the correct token name | Always verify token names against variables.css before using them |
+| 282 | 2026-02-11 | rMfEz | Clippy prefers `is_some_and(Type::method)` over `is_some_and(\|x\| x.method())` — redundant closure lint | Rust 1.93 clippy enforces `redundant_closure_for_method_calls` | Use method references with `is_some_and()` instead of closures when the closure just calls one method |
+
 ---
 
-*Last updated: 2026-02-11 | 274 entries | 15 categories*
+*Last updated: 2026-02-11 | 282 entries | 15 categories*

@@ -163,18 +163,18 @@
 }
 
 .refresh-status.success {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    color: var(--success);
 }
 
 .refresh-status.error {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--error) 15%, transparent);
+    color: var(--error);
 }
 
 .refresh-status.loading {
-    background: rgba(59, 130, 246, 0.15);
-    color: #3b82f6;
+    background: color-mix(in srgb, var(--accent-blue) 15%, transparent);
+    color: var(--accent-blue);
 }
 
 /* -----------------------------------------------------------------------------

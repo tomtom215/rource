@@ -87,7 +87,7 @@ h2.h3-style {
 
 /* Base focus ring for all focusable elements */
 :focus-visible {
-    outline: 2px solid var(--accent-primary, #e94560);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
 
@@ -111,17 +111,17 @@ h2.h3-style {
 
 /* Timeline scrubber focus */
 .timeline-slider:focus-visible {
-    outline: 3px solid var(--accent-primary, #e94560);
+    outline: 3px solid var(--accent);
     outline-offset: 4px;
 }
 
 /* Timeline thumb focus (for custom range inputs) */
 .timeline-slider:focus-visible::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px var(--accent-primary, #e94560);
+    box-shadow: 0 0 0 3px var(--accent);
 }
 
 .timeline-slider:focus-visible::-moz-range-thumb {
-    box-shadow: 0 0 0 3px var(--accent-primary, #e94560);
+    box-shadow: 0 0 0 3px var(--accent);
 }
 
 /* Input field focus */
@@ -129,14 +129,14 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 .input-group input:focus-visible {
-    outline: 2px solid var(--accent-primary, #e94560);
+    outline: 2px solid var(--accent);
     outline-offset: 1px;
-    border-color: var(--accent-primary, #e94560);
+    border-color: var(--accent);
 }
 
 /* Link focus */
 a:focus-visible {
-    outline: 2px solid var(--accent-primary, #e94560);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: 2px;
 }
@@ -144,7 +144,7 @@ a:focus-visible {
 /* Tab focus */
 .tab-btn:focus-visible,
 .quick-action:focus-visible {
-    outline: 2px solid var(--accent-primary, #e94560);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: var(--radius-md, 8px);
 }
@@ -153,7 +153,7 @@ a:focus-visible {
 .author-item:focus-visible,
 .legend-item:focus-visible,
 .collapsible-header:focus-visible {
-    outline: 2px solid var(--accent-primary, #e94560);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: 4px;
 }
@@ -178,7 +178,7 @@ a:focus-visible {
     position: absolute;
     top: -40px;
     left: 0;
-    background: var(--accent-primary, #e94560);
+    background: var(--accent);
     color: white;
     padding: 8px 16px;
     z-index: 10000;
@@ -304,63 +304,6 @@ a:focus-visible {
  * This can be overridden by the manual theme toggle (JS adds/removes .light-theme class).
  * The :not(.theme-manual) check prevents auto-switching when user has manually toggled.
  */
-
-@media (prefers-color-scheme: light) {
-    :root:not(.theme-manual) {
-        /* Background Colors */
-        --bg-primary: #ffffff;
-        --bg-secondary: #f6f8fa;
-        --bg-tertiary: #eaeef2;
-        --bg-canvas: #f0f3f6;
-
-        /* Text Colors */
-        --text-primary: #1f2328;
-        --text-secondary: #4d5561;
-        --text-muted: #656d76;
-        --text-on-accent: #ffffff;
-
-        /* Border Colors */
-        --border: #d0d7de;
-        --border-light: #afb8c1;
-
-        /* Shadows & Overlays */
-        --shadow: rgba(31, 35, 40, 0.12);
-        --backdrop: rgba(31, 35, 40, 0.3);
-        --backdrop-blur: rgba(31, 35, 40, 0.7);
-
-        /* Accent Colors - adjusted for light backgrounds */
-        --accent: #d6335a;
-        --accent-hover: #c42952;
-        --accent-light: #ff9a9e;
-        --accent-secondary: #1a7f37;
-        --accent-secondary-hover: #238636;
-        --accent-blue: #0969da;
-        --accent-blue-light: #218bff;
-        --accent-purple: #8250df;
-        --accent-orange: #d1650a;
-        --accent-gold: #9a6700;
-        --accent-gold-hover: #bf8700;
-
-        /* Semantic Colors */
-        --success: #1a7f37;
-        --error: #cf222e;
-        --warning: #9a6700;
-    }
-
-    :root:not(.theme-manual) .legend-panel,
-    :root:not(.theme-manual) .authors-panel,
-    :root:not(.theme-manual) .perf-overlay,
-    :root:not(.theme-manual) .stats-overlay {
-        background: rgba(246, 248, 250, 0.95);
-    }
-
-    :root:not(.theme-manual) #canvas-container {
-        background: #e8ecf0;
-    }
-
-    :root:not(.theme-manual) .theme-toggle .sun-icon { display: block; }
-    :root:not(.theme-manual) .theme-toggle .moon-icon { display: none; }
-}
 
 /* =============================================================================
    Backdrop Filter Fallbacks

@@ -18,6 +18,7 @@
 
 .app-container.view-analytics {
     grid-template-columns: 1fr;
+    grid-template-rows: 1fr; /* Constrain height so analytics-dashboard overflow-y: auto scrolls */
 }
 
 .app-container.view-viz {

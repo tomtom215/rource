@@ -456,13 +456,13 @@
 }
 
 .light-theme .insights-badge-core {
-    background: rgba(26, 127, 55, 0.12);
-    color: #1a7f37;
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    color: var(--success);
 }
 
 .light-theme .insights-badge-peripheral {
-    background: rgba(159, 106, 0, 0.12);
-    color: #9f6a00;
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    color: var(--warning);
 }
 
 /* ===== Reduced Motion ===== */
