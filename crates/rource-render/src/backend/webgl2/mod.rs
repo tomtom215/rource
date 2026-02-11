@@ -217,66 +217,7 @@ pub struct WebGl2Renderer {
 impl WebGl2Renderer {
     /// Creates a new WebGL2 renderer attached to a canvas.
     pub fn new(canvas: &HtmlCanvasElement) -> Result<Self, WebGl2Error> {
-        // Create optimized WebGL2 context options
-        // Industry-standard settings for 2D rendering workloads
-        let context_options = js_sys::Object::new();
-
-        // Required for screenshots (canvas.toBlob/toDataURL)
-        js_sys::Reflect::set(
-            &context_options,
-            &JsValue::from_str("preserveDrawingBuffer"),
-            &JsValue::from(true),
-        )
-        .ok();
-
-        // Required for proper transparency blending
-        js_sys::Reflect::set(
-            &context_options,
-            &JsValue::from_str("alpha"),
-            &JsValue::from(true),
-        )
-        .ok();
-
-        // Disable depth buffer - not needed for 2D rendering (saves GPU memory)
-        js_sys::Reflect::set(
-            &context_options,
-            &JsValue::from_str("depth"),
-            &JsValue::from(false),
-        )
-        .ok();
-
-        // Disable stencil buffer - not used (saves GPU memory)
-        js_sys::Reflect::set(
-            &context_options,
-            &JsValue::from_str("stencil"),
-            &JsValue::from(false),
-        )
-        .ok();
-
-        // Disable built-in MSAA - we handle anti-aliasing in shaders (saves GPU memory)
-        js_sys::Reflect::set(
-            &context_options,
-            &JsValue::from_str("antialias"),
-            &JsValue::from(false),
-        )
-        .ok();
-
-        // Prefer high-performance GPU (discrete over integrated)
-        js_sys::Reflect::set(
-            &context_options,
-            &JsValue::from_str("powerPreference"),
-            &JsValue::from_str("high-performance"),
-        )
-        .ok();
-
-        // Enable desynchronized rendering (allows browser to skip composition synchronization)
-        // This can improve performance on some browsers by reducing latency
-        js_sys::Reflect::set(
-            &context_options,
-            &JsValue::from_str("desynchronized"),
-            &JsValue::from(true),
-        )
-        .ok();
+        let context_options = Self::create_context_options();
 
         let gl = canvas
             .get_context_with_context_options("webgl2", &context_options)
@@ -332,15 +273,69 @@ impl WebGl2Renderer {
 
         // Initialize bloom pipeline (non-fatal if it fails)
         if !renderer.bloom_pipeline.initialize(&renderer.gl) {
-            web_sys::console::warn_1(&"Rource: Bloom pipeline initialization failed".into());
+            web_sys::console::warn_1(
+                &"Rource: Bloom pipeline initialization failed, disabling bloom".into(),
+            );
+            renderer.bloom_pipeline.config.enabled = false;
         }
 
         // Initialize shadow pipeline (non-fatal if it fails)
         if !renderer.shadow_pipeline.initialize(&renderer.gl) {
-            web_sys::console::warn_1(&"Rource: Shadow pipeline initialization failed".into());
+            web_sys::console::warn_1(
+                &"Rource: Shadow pipeline initialization failed, disabling shadow".into(),
+            );
+            renderer.shadow_pipeline.config.enabled = false;
         }
 
         Ok(renderer)
+    }
+
+    /// Creates optimized WebGL2 context options for 2D rendering.
+    fn create_context_options() -> js_sys::Object {
+        let opts = js_sys::Object::new();
+
+        // Required for screenshots (canvas.toBlob/toDataURL)
+        js_sys::Reflect::set(
+            &opts,
+            &JsValue::from_str("preserveDrawingBuffer"),
+            &JsValue::from(true),
+        )
+        .ok();
+
+        // Required for proper transparency blending
+        js_sys::Reflect::set(&opts, &JsValue::from_str("alpha"), &JsValue::from(true)).ok();
+
+        // Disable depth buffer - not needed for 2D rendering (saves GPU memory)
+        js_sys::Reflect::set(&opts, &JsValue::from_str("depth"), &JsValue::from(false)).ok();
+
+        // Disable stencil buffer - not used (saves GPU memory)
+        js_sys::Reflect::set(&opts, &JsValue::from_str("stencil"), &JsValue::from(false)).ok();
+
+        // Disable built-in MSAA - we handle anti-aliasing in shaders (saves GPU memory)
+        js_sys::Reflect::set(
+            &opts,
+            &JsValue::from_str("antialias"),
+            &JsValue::from(false),
+        )
+        .ok();
+
+        // Prefer high-performance GPU (discrete over integrated)
+        js_sys::Reflect::set(
+            &opts,
+            &JsValue::from_str("powerPreference"),
+            &JsValue::from_str("high-performance"),
+        )
+        .ok();
+
+        // Enable desynchronized rendering (reduces latency)
+        js_sys::Reflect::set(
+            &opts,
+            &JsValue::from_str("desynchronized"),
+            &JsValue::from(true),
+        )
+        .ok();
+
+        opts
     }
 
     /// Initializes WebGL state and compiles shaders.
@@ -875,8 +870,8 @@ impl Renderer for WebGl2Renderer {
 
         // If bloom or shadow is active, render to scene FBO instead of canvas
         // Both effects use the bloom pipeline's scene FBO for the source
-        let needs_scene_fbo =
-            self.bloom_pipeline.config.enabled || self.shadow_pipeline.config.enabled;
+        // Use is_active() (not config.enabled) to ensure initialization succeeded
+        let needs_scene_fbo = self.bloom_pipeline.is_active() || self.shadow_pipeline.is_active();
 
         if needs_scene_fbo {
             // Ensure bloom FBOs are sized correctly (even if only shadow is enabled)
@@ -890,8 +885,8 @@ impl Renderer for WebGl2Renderer {
                     .viewport(0, 0, self.width as i32, self.height as i32);
             }
 
-            // Also ensure shadow FBOs are sized if shadow is enabled
-            if self.shadow_pipeline.config.enabled {
+            // Also ensure shadow FBOs are sized if shadow is active
+            if self.shadow_pipeline.is_active() {
                 self.shadow_pipeline
                     .ensure_size(&self.gl, self.width, self.height);
             }
