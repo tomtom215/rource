@@ -163,6 +163,52 @@
 .light-theme .theme-toggle .moon-icon { display: none; }
 
 /* =============================================================================
+   Light Theme Analytics Dashboard
+   ============================================================================= */
+
+/* Cards and tabs container — elevated with soft shadow for depth */
+.light-theme .analytics-card,
+.light-theme .analytics-tabs-container,
+.light-theme .analytics-repo-section {
+    box-shadow: 0 1px 3px rgba(31, 35, 40, 0.08),
+                0 0 1px rgba(31, 35, 40, 0.12);
+}
+
+.light-theme .analytics-card:hover {
+    box-shadow: 0 2px 6px rgba(31, 35, 40, 0.12),
+                0 0 1px rgba(31, 35, 40, 0.15);
+}
+
+/* Tab bar background — subtle distinction from content area */
+.light-theme .analytics-tabs {
+    background: var(--bg-secondary);
+}
+
+/* Inactive tab text — use accessible secondary color */
+.light-theme .analytics-tab-btn {
+    color: var(--text-secondary);
+}
+
+.light-theme .analytics-tab-btn:hover {
+    color: var(--text-primary);
+}
+
+/* Active tab — use accent */
+.light-theme .analytics-tab-btn.active {
+    color: var(--accent);
+}
+
+/* Input focus ring — darker blue for light backgrounds */
+.light-theme .analytics-input:focus {
+    box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.25);
+}
+
+/* Table header sticky background in light theme */
+.light-theme .analytics-tab-body .insights-table thead th {
+    background: var(--bg-secondary);
+}
+
+/* =============================================================================
    Light Theme Timeline Tick Adjustments
    ============================================================================= */
 
