@@ -386,11 +386,11 @@ The following events MUST trigger a CLAUDE.md update:
 
 #### Lessons Learned Log
 
-> **Refactored to external document**: See [`docs/LESSONS_LEARNED.md`](docs/LESSONS_LEARNED.md)
-> for the full categorized knowledge base with decision tables, domain-organized
-> lessons, and chronological audit log (267+ entries).
+> **Refactored to modular knowledge base**: See [`docs/lessons/README.md`](docs/lessons/README.md)
+> for the index with decision tables, linking to domain-organized files
+> and chronological audit log (291 entries across 4 files).
 >
-> New entries should be added to BOTH the appropriate category section AND the
+> New entries should be added to BOTH the appropriate category file AND the
 > chronological log in that document.
 
 ---

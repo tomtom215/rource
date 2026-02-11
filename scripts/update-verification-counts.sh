@@ -487,10 +487,10 @@ CHECKS=(
     "CONTRIBUTING.md|$GRAND_TOTAL formally verified|CONTRIBUTING grand total"
     # VERUS_PROOFS.md - total
     "docs/verification/VERUS_PROOFS.md|$VERUS_TOTAL proof functions verified|VERUS_PROOFS total"
-    # LESSONS_LEARNED.md - Verus
-    "docs/LESSONS_LEARNED.md|$VERUS_TOTAL proof|LESSONS_LEARNED Verus"
-    # LESSONS_LEARNED.md - Kani
-    "docs/LESSONS_LEARNED.md|$KANI_TOTAL harnesses|LESSONS_LEARNED Kani"
+    # docs/lessons/README.md - Verus
+    "docs/lessons/README.md|$VERUS_TOTAL proof|LESSONS Verus"
+    # docs/lessons/README.md - Kani
+    "docs/lessons/README.md|$KANI_TOTAL harnesses|LESSONS Kani"
     # RUST_VERIFICATION_LANDSCAPE.md - ADOPTED Kani
     "docs/verification/RUST_VERIFICATION_LANDSCAPE.md|$KANI_TOTAL harnesses, 0 failures|LANDSCAPE ADOPTED Kani"
     # RUST_VERIFICATION_LANDSCAPE.md - architecture Verus
@@ -987,10 +987,10 @@ if [[ -f "$VP" ]]; then
     echo "  Done."
 fi
 
-# --- LESSONS_LEARNED.md ---
-LL="$PROJECT_ROOT/docs/LESSONS_LEARNED.md"
+# --- docs/lessons/README.md (Tool Selection table) ---
+LL="$PROJECT_ROOT/docs/lessons/README.md"
 if [[ -f "$LL" ]]; then
-    echo "Updating LESSONS_LEARNED.md..."
+    echo "Updating docs/lessons/README.md..."
     sed -i -E "s/Verus \| ADOPT \([0-9]+ proof/Verus | ADOPT ($VERUS_TOTAL proof/" "$LL"
     sed -i -E "s/Coq \| ADOPT \([0-9]+ theorems: [0-9]+ R-based \+ [0-9]+ Z-based\)/Coq | ADOPT ($COQ_COMBINED theorems: $COQ_R_TOTAL R-based + $COQ_Z_TOTAL Z-based)/" "$LL"
     sed -i -E "s/Kani \(CBMC\) \| ADOPT \([0-9]+ harnesses\)/Kani (CBMC) | ADOPT ($KANI_TOTAL harnesses)/" "$LL"
