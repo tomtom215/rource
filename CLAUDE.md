@@ -482,7 +482,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | Precision | Picosecond/nanosecond measurements |
 | Frame Budget | Total render time < 20 µs |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (83 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (84 phases)
 
 ---
 
@@ -641,7 +641,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/REVIEW_STANDARDS.md` | Code review requirements |
 | `STABILITY.md` | API stability policy |
 | `SECURITY.md` | Security policy |
-| `docs/performance/CHRONOLOGY.md` | Optimization history (83 phases) |
+| `docs/performance/CHRONOLOGY.md` | Optimization history (84 phases) |
 | `docs/performance/BENCHMARKS.md` | Raw benchmark data |
 | `docs/performance/NOT_APPLICABLE.md` | Algorithms evaluated as N/A |
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
@@ -2326,5 +2326,5 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 *Last updated: 2026-02-11*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 83 (see docs/performance/CHRONOLOGY.md)*
+*Optimization Phases: 84 (see docs/performance/CHRONOLOGY.md)*
 *Formal Verification: 2968 theorems/harnesses (Verus: 498, Coq R-based: 1366, Coq Z-based: 471, Coq FP: 361, Kani: 272)*
