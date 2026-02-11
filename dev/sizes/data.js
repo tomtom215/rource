@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770826251971,
+  "lastUpdate": 1770841743607,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6356,6 +6356,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1353423,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2cabc31721cccc19ee50911b046dfc3660cbbeee",
+          "message": "Merge pull request #292 from tomtom215/claude/rource-rust-implementation-rMfEz\n\nPhase 84: Zero-Copy Stats Buffer — WASM↔JS Boundary Optimization",
+          "timestamp": "2026-02-11T21:26:45+01:00",
+          "tree_id": "95772a2fe2b1cd7ec1b530d558f3f995f35e7442",
+          "url": "https://github.com/tomtom215/rource/commit/2cabc31721cccc19ee50911b046dfc3660cbbeee"
+        },
+        "date": 1770841742422,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3602987,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1357436,
             "unit": "bytes"
           }
         ]
