@@ -422,6 +422,38 @@ check_optional_tools() {
         print_info "  Install with: ./scripts/setup-formal-verification.sh --verus"
     fi
 
+    # Visual Feedback Loop (VFL) tools
+    if command_exists node; then
+        local node_version
+        node_version=$(node --version 2>/dev/null)
+        print_ok "Node.js is installed ($node_version) — required for VFL"
+    else
+        print_info "Node.js not found (required for VFL screenshot capture)"
+        print_info "  Install with: apt-get install nodejs  OR  brew install node"
+    fi
+
+    if command_exists npx; then
+        print_ok "npx is available — required for VFL dev server"
+    else
+        print_info "npx not found (required for VFL dev server)"
+    fi
+
+    # Check VFL test scaffolding
+    if [[ -f "${ROURCE_PROJECT_ROOT:-$PWD}/tests/visual/capture-chrome.js" ]]; then
+        print_ok "VFL capture script found (tests/visual/capture-chrome.js)"
+    else
+        print_info "VFL capture script not found (tests/visual/capture-chrome.js)"
+    fi
+
+    if [[ -f "${ROURCE_PROJECT_ROOT:-$PWD}/tests/visual/package.json" ]]; then
+        if [[ -d "${ROURCE_PROJECT_ROOT:-$PWD}/tests/visual/node_modules" ]]; then
+            print_ok "VFL Playwright dependencies installed"
+        else
+            print_info "VFL Playwright dependencies not installed"
+            print_info "  Run: cd tests/visual && npm install && npx playwright install chromium"
+        fi
+    fi
+
     return 0
 }
 
@@ -513,6 +545,11 @@ print_summary() {
     echo -e "${BOLD}Formal Verification (PEER REVIEWED PUBLISHED ACADEMIC):${NC}"
     echo "  ./scripts/setup-formal-verification.sh --verify    Run all Verus + Coq proofs"
     echo "  # 237+ theorems total (105 Verus + 132+ Coq), zero admits"
+    echo ""
+    echo -e "${BOLD}Visual Feedback Loop (VFL):${NC}"
+    echo "  npx serve rource-wasm/www -l 8787 &    Start dev server"
+    echo "  node tests/visual/capture-chrome.js     Capture 16 screenshots"
+    echo "  cd tests/visual && npx playwright test  Run Playwright VFL suite"
     echo ""
     echo -e "${BOLD}Project Paths:${NC}"
     echo "  Project Root: ${ROURCE_PROJECT_ROOT:-<not set>}"

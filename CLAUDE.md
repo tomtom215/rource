@@ -30,7 +30,8 @@ This document provides context and guidance for Claude (AI assistant) when worki
 22. [Troubleshooting](#troubleshooting)
 23. [Reference Links](#reference-links)
 24. [Roadmap Documents](#roadmap-documents)
-25. [Session Best Practices](#session-best-practices)
+25. [Visual Feedback Loop (VFL)](#visual-feedback-loop-vfl)
+26. [Session Best Practices](#session-best-practices)
 
 ---
 
@@ -652,6 +653,10 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/verification/RUST_VERIFICATION_LANDSCAPE.md` | 8-tool landscape survey: Kani (ADOPT), Aeneas/Creusot (MONITOR), hax (N/A) |
 | `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment (9-path survey) |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
+| `tests/visual/capture-chrome.js` | Chrome headless VFL screenshot capture (16 screenshots) |
+| `tests/visual/capture-screenshots.js` | Playwright VFL screenshot capture |
+| `tests/visual/visual-feedback.spec.js` | Playwright visual regression test suite |
+| `tests/visual/playwright.config.js` | Playwright VFL configuration (4 viewports) |
 | `docs/adr/` | Architecture Decision Records (5 ADRs + template) |
 | `metrics/verification-counts.json` | Machine-readable verification counts (auto-generated) |
 | `metrics/doc-metrics.json` | Machine-readable documentation metrics (auto-generated) |
@@ -1261,7 +1266,7 @@ Some code CANNOT be covered by unit tests:
 | Chaos tests | Edge cases, unicode, boundaries | Yes (Implemented) |
 | Benchmarks | Critical paths | Yes (15 benchmark suites) |
 | Mutation testing | 80%+ score | TODO |
-| Visual regression | Rendering consistency | TODO |
+| Visual regression | Rendering consistency | Partial (VFL: Chrome capture + Playwright scaffolding) |
 | Cross-browser | Chrome, Firefox, Safari, Edge | TODO |
 | Load testing | 100k commits, 30 min | TODO |
 
@@ -1756,6 +1761,19 @@ When documentation accuracy is in question or after major changes:
 5. Run `./scripts/update-verification-counts.sh --check` to verify all 43+ checks pass
 6. Update `docs/verification/` documentation as needed
 
+### Running a Visual Feedback Loop Audit
+
+When making UI/CSS/HTML changes to the WASM frontend:
+
+1. Start the WASM dev server: `npx serve rource-wasm/www -l 8787 &`
+2. Capture baseline: `node tests/visual/capture-chrome.js`
+3. Make your changes
+4. Recapture: `node tests/visual/capture-chrome.js`
+5. Inspect all 16 screenshots for defects (element leaks, FOUC, theme mismatches)
+6. Verify dark ≠ light with `md5sum tests/visual/screenshots/*.png`
+7. If defects found, fix and repeat from step 4
+8. Document defects found (D1, D2, ...) with root cause and fix in commit message
+
 ---
 
 ## CI/CD Pipeline
@@ -1886,6 +1904,9 @@ a11y(A1): add icon labels
 | Labels overlap | No collision detection | Implement T1 from roadmap |
 | Touch doesn't work | Targets too small | Ensure ≥44×44px |
 | Low contrast | Wrong colors | Use contrast checker |
+| VFL dark/light identical | Theme applied after Chrome captures | Add synchronous inline `<script>` FOUC prevention |
+| Hidden element visible in VFL | CSS media query overrides `[hidden]` | Add `.element[hidden] { display: none }` |
+| Element leaks into analytics view | Element is sibling of `.app-container` | Use `hidden` attribute + JS in `applyViewState()` |
 
 ### WASM Build Fails
 
@@ -1937,6 +1958,170 @@ See individual roadmap documents for complete priority order.
 
 ---
 
+## Visual Feedback Loop (VFL)
+
+### Overview
+
+The Visual Feedback Loop (VFL) is a screenshot-based verification system for the WASM
+frontend. It captures headless browser screenshots at multiple viewports, views, and
+themes to detect visual defects that cannot be caught by unit tests or linting alone.
+
+**Philosophy**: Never guess or assume how the UI looks. Capture, inspect, fix, repeat.
+
+### VFL Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    VISUAL FEEDBACK LOOP                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Capture Matrix: 4 viewports × 2 views × 2 themes = 16 screenshots         │
+│                                                                             │
+│  Viewports:                                                                 │
+│    • mobile-375   (375×667)   — iPhone SE / small phones                    │
+│    • tablet-768   (768×1024)  — iPad Mini / tablets                         │
+│    • desktop-1200 (1200×800)  — Standard laptop                             │
+│    • wide-1920    (1920×1080) — Full HD monitor                             │
+│                                                                             │
+│  Views:                                                                     │
+│    • dashboard    — Analytics dashboard (default landing page)              │
+│    • viz          — Canvas visualization with sidebar                       │
+│                                                                             │
+│  Themes:                                                                    │
+│    • dark         — Default theme                                           │
+│    • light        — Light theme (via ?theme=light URL param)                │
+│                                                                             │
+│  Tools:                                                                     │
+│    • capture-chrome.js    — Direct Chrome headless (fast, reliable)          │
+│    • capture-screenshots.js — Playwright automation (richer interactions)    │
+│    • visual-feedback.spec.js — Playwright test suite (CI-ready)             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Running the VFL
+
+```bash
+# 1. Start the WASM dev server
+npx serve rource-wasm/www -l 8787 &
+
+# 2. Option A: Quick capture with Chrome headless (16 screenshots)
+node tests/visual/capture-chrome.js
+
+# 3. Option B: Full Playwright capture (richer, with interactions)
+cd tests/visual && npm install && npx playwright install chromium
+node tests/visual/capture-screenshots.js
+
+# 4. Option C: Playwright test suite (for CI integration)
+cd tests/visual && npx playwright test
+
+# 5. Inspect screenshots
+ls -la tests/visual/screenshots/
+# Files: dashboard-dark-mobile-375.png, viz-light-wide-1920.png, etc.
+```
+
+### VFL Workflow for UI Changes
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    VFL CHANGE WORKFLOW                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. CAPTURE BASELINE                                                        │
+│     └─ node tests/visual/capture-chrome.js                                  │
+│     └─ Inspect all 16 screenshots for current state                         │
+│                                                                             │
+│  2. MAKE CHANGES                                                            │
+│     └─ Edit CSS/HTML/JS as needed                                           │
+│     └─ Follow mobile-first design principles                                │
+│                                                                             │
+│  3. CAPTURE AFTER                                                           │
+│     └─ node tests/visual/capture-chrome.js                                  │
+│     └─ Compare with baseline screenshots                                    │
+│                                                                             │
+│  4. AUDIT                                                                   │
+│     └─ Check each screenshot for defects                                    │
+│     └─ Verify: no FOUC, no element leak, correct theme, correct layout      │
+│     └─ Verify: all hidden elements actually hidden                          │
+│     └─ Verify: dark ≠ light (byte comparison via md5sum)                    │
+│                                                                             │
+│  5. FIX AND REPEAT                                                          │
+│     └─ If defects found, fix and re-capture                                 │
+│     └─ Iterate until zero defects across all 16 screenshots                 │
+│                                                                             │
+│  6. DOCUMENT                                                                │
+│     └─ List defects found (D1, D2, ...) with root cause and fix            │
+│     └─ Include in commit message                                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Common VFL Defect Patterns
+
+These patterns have been observed and fixed in previous sessions:
+
+| Pattern | Root Cause | Fix |
+|---------|-----------|-----|
+| Element visible in analytics view | CSS media query overrides `[hidden]` attribute | Add `.element[hidden] { display: none }` override |
+| Elements outside `.app-container` not hidden | CSS descendant selector `.view-analytics .element` doesn't reach siblings | Use `hidden` attribute + JS in `applyViewState()` |
+| Toast/overlay visible on initial load | `transform: translateY()` alone insufficient | Add `visibility: hidden` inline + CSS |
+| Dark/light screenshots identical | Theme applied by deferred module script after Chrome captures | Add synchronous inline `<script>` in `<head>` for FOUC prevention |
+| Mobile media query shows hidden element | `@media (max-width: Xpx) { .el { display: flex } }` beats UA hidden | Add `[hidden]` CSS override with higher specificity |
+
+### VFL File Locations
+
+| File | Purpose |
+|------|---------|
+| `tests/visual/capture-chrome.js` | Chrome headless capture script (16 screenshots) |
+| `tests/visual/capture-screenshots.js` | Playwright capture script (richer interaction) |
+| `tests/visual/visual-feedback.spec.js` | Playwright test suite for CI |
+| `tests/visual/playwright.config.js` | Viewport/device configuration |
+| `tests/visual/package.json` | Node.js dependencies (Playwright, serve) |
+| `tests/visual/screenshots/` | Output directory (gitignored) |
+
+### FOUC Prevention Architecture
+
+Chrome headless `--screenshot` captures before deferred module scripts execute.
+To ensure theme is applied in screenshots, the WASM frontend uses a synchronous
+inline script in `<head>` that reads `?theme=` URL param and `localStorage` before
+CSS paints:
+
+```html
+<!-- In rource-wasm/www/index.html <head> -->
+<script>
+(function() {
+    var p = new URLSearchParams(window.location.search).get('theme');
+    var s = localStorage.getItem('rource_theme');
+    document.documentElement.classList.add('theme-manual');
+    if (p === 'light' || (!p && s === 'light')) {
+        document.documentElement.classList.add('light-theme');
+    }
+})();
+</script>
+```
+
+This ensures dark/light themes are visually distinct in headless screenshots.
+
+### CSS `[hidden]` Override Pattern
+
+When mobile media queries set `display: flex/block` on elements, the browser's
+UA `[hidden] { display: none }` is overridden because author stylesheets take
+precedence. The fix is to add explicit `[hidden]` overrides:
+
+```css
+/* Example: bottom-sheet.css */
+.bottom-sheet[hidden] { display: none; }
+.bottom-sheet-fab[hidden] { display: none; }
+.bottom-sheet-backdrop[hidden] { display: none; }
+
+/* Example: mobile.css */
+.sidebar-toggle[hidden] { display: none; }
+```
+
+Specificity: `.element[hidden]` (0-2-0) beats `.element` (0-1-0).
+
+---
+
 ## Session Best Practices
 
 ### Starting a Session
@@ -1970,6 +2155,11 @@ See individual roadmap documents for complete priority order.
 │     ./scripts/update-doc-metrics.sh --check                                 │
 │     Fix any staleness BEFORE starting new work                              │
 │                                                                             │
+│  6. CAPTURE VFL BASELINE (if UI/CSS/HTML work planned)                      │
+│     npx serve rource-wasm/www -l 8787 &                                     │
+│     node tests/visual/capture-chrome.js                                     │
+│     Inspect all 16 screenshots BEFORE making changes                        │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1979,6 +2169,8 @@ See individual roadmap documents for complete priority order.
 |--------|-------------|
 | Before changing hot path code | Benchmark baseline |
 | After changing hot path code | Benchmark again, compare |
+| Before changing UI/CSS/HTML | VFL baseline (16 screenshots) |
+| After changing UI/CSS/HTML | VFL re-capture, audit all 16 screenshots |
 | Claiming an improvement | Exact % with before/after values |
 | Claiming N/A status | Document WHY with evidence |
 | Any optimization attempt | Update CHRONOLOGY.md with phase number |
