@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770763146591,
+  "lastUpdate": 1770768566512,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6224,6 +6224,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/c03cddf003422640d2c08a13e23d358238a0ef12"
         },
         "date": 1770763146219,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3593841,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1353323,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2688960320f5c77dfeb0440af1f88f817f73d5f",
+          "message": "Merge pull request #289 from tomtom215/claude/insights-dashboard-improvements-0F7jR\n\nAdd analytics dashboard landing view with insights tabs",
+          "timestamp": "2026-02-11T01:07:11+01:00",
+          "tree_id": "506f468bdecb3a99aef86f9326c77428d57e7484",
+          "url": "https://github.com/tomtom215/rource/commit/c2688960320f5c77dfeb0440af1f88f817f73d5f"
+        },
+        "date": 1770768565193,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
