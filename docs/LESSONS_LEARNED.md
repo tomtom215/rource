@@ -655,6 +655,14 @@ All 246 entries in chronological order. Entry numbers match category table refer
 | 266 | 2026-02-09 | tuwZp | BENCHMARKS.md test count "now 2,076" was severely stale (actual: 2964) | Test count snapshot taken early and never updated | Use rounded display strings ("2900+") that resist fluctuation, or automate via `update-doc-metrics.sh` |
 | 267 | 2026-02-09 | tuwZp | File paths missing `crates/` prefix (e.g., `rource-core/src/scene/mod.rs` → `crates/rource-core/src/scene/mod.rs`) | Shorthand path written without repo-root prefix | ALWAYS use full path from repo root; add `crates/` prefix for all crate source paths |
 
+| 268 | 2026-02-11 | Vlgem | WASM demo black canvas: bloom FBO init failed but `config.enabled` stayed `true` | `BloomConfig::default()` sets `enabled: true`; `initialize()` failure logged warning but didn't disable config | On non-fatal init failure, ALWAYS set `config.enabled = false`; never leave feature enabled + uninitialized |
+| 269 | 2026-02-11 | Vlgem | `begin_frame()` checked `config.enabled`, `end_frame()` checked `is_active()` — state predicate mismatch | Two frame boundaries used different predicates to gate the same offscreen FBO pipeline | Both frame boundaries MUST use the same predicate (`is_active()` checks both `enabled` AND `initialized`) |
+| 270 | 2026-02-11 | Vlgem | `clippy::too_many_lines` triggered after adding 4 lines to WebGL2Renderer::new() (103/100) | Function was at 99 lines, 4-line fix pushed it over | Extract cold-path setup (context options) into helper when function approaches line limit |
+| 271 | 2026-02-11 | Vlgem | Performance impact must be calculated exactly: 2 extra `bool` ANDs = 2 clock cycles = ~0.66ns = 0.003% of 20µs budget | Hot-path changes need cycle-level impact analysis, not "negligible" hand-waving | Calculate exact cycle count for hot-path changes: instruction count × clock period |
+| 272 | 2026-02-11 | Vlgem | CSS design token migration: 23 hardcoded font-size values in insights.css replaced with `var(--font-size-*)` tokens | Component CSS files used raw px/rem values instead of variables.css tokens | Audit CSS with `grep -rn` for hardcoded values; ALL must use design system tokens |
+| 273 | 2026-02-11 | Vlgem | Decorative SVGs missing `aria-hidden="true"` — 20 instances across index.html | SVG icons added without accessibility attributes | Every decorative SVG MUST have `aria-hidden="true"`; functional SVGs need `aria-label` |
+| 274 | 2026-02-11 | Vlgem | `is_bloom_enabled()` returned `config.enabled` not `is_active()` — misled callers about actual state | API method exposed config flag without checking initialization state | Public `is_X_enabled()` methods must reflect actual operational state, not just config intent |
+
 ---
 
-*Last updated: 2026-02-09 | 267 entries | 15 categories*
+*Last updated: 2026-02-11 | 274 entries | 15 categories*
