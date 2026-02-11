@@ -29,6 +29,20 @@
     <!-- Theme color for mobile browsers -->
     <meta name="theme-color" content="#1a1a2e">
 
+    <!-- Early theme application (FOUC prevention).
+         Runs synchronously before CSS paints to prevent flash of wrong theme.
+         Mirrors the logic in js/features/theme.js initTheme(). -->
+    <script>
+    (function() {
+        var p = new URLSearchParams(window.location.search).get('theme');
+        var s = localStorage.getItem('rource_theme');
+        document.documentElement.classList.add('theme-manual');
+        if (p === 'light' || (!p && s === 'light')) {
+            document.documentElement.classList.add('light-theme');
+        }
+    })();
+    </script>
+
     <!-- Preload critical resources -->
     <link rel="preload" href="pkg/rource_wasm_bg.wasm" as="fetch" crossorigin>
 
@@ -289,9 +303,9 @@
         </div>
     </header>
 
-    <main id="main-content" class="app-container">
-        <!-- Analytics Dashboard (default landing view, hidden until JS initializes) -->
-        <div id="analytics-dashboard" class="analytics-dashboard" hidden>
+    <main id="main-content" class="app-container view-analytics">
+        <!-- Analytics Dashboard (default landing view — visible by default since analytics is the initial view) -->
+        <div id="analytics-dashboard" class="analytics-dashboard">
             <!-- Dashboard Header -->
             <div class="analytics-header">
                 <div class="analytics-header-info">
@@ -343,16 +357,16 @@
                     <div role="tabpanel" class="analytics-tab-panel active" id="apanel-hotspots" aria-labelledby="atab-hotspots">
                         <div class="analytics-tab-body"></div>
                     </div>
-                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-risk" aria-labelledby="atab-risk">
+                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-risk" aria-labelledby="atab-risk" hidden>
                         <div class="analytics-tab-body"></div>
                     </div>
-                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-team" aria-labelledby="atab-team">
+                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-team" aria-labelledby="atab-team" hidden>
                         <div class="analytics-tab-body"></div>
                     </div>
-                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-temporal" aria-labelledby="atab-temporal">
+                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-temporal" aria-labelledby="atab-temporal" hidden>
                         <div class="analytics-tab-body"></div>
                     </div>
-                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-quality" aria-labelledby="atab-quality">
+                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-quality" aria-labelledby="atab-quality" hidden>
                         <div class="analytics-tab-body"></div>
                     </div>
                 </div>
@@ -416,8 +430,8 @@
             </div>
         </div>
 
-        <!-- Visualization Panel -->
-        <div class="viz-panel" id="viz-panel">
+        <!-- Visualization Panel (hidden by default — analytics is the initial view) -->
+        <div class="viz-panel" id="viz-panel" hidden>
             <div id="canvas-container">
                 <canvas id="canvas" width="1280" height="720" tabindex="0" role="application" aria-label="Git repository visualization. Click to focus for keyboard navigation: Space play/pause, arrows step commits, WASD pan, plus/minus zoom, question mark for help"></canvas>
 
@@ -622,7 +636,7 @@
                 </div>
             </div>
 
-            <div class="timeline-container" role="group" aria-label="Playback controls">
+            <div class="timeline-container" role="group" aria-label="Playback controls" hidden>
                 <!-- Date and commit info row -->
                 <div class="timeline-date-row">
                     <span class="timeline-date" id="timeline-date" title="Current commit date">--</span>
@@ -681,8 +695,8 @@
             </div>
         </div>
 
-        <!-- Sidebar Panel -->
-        <div class="sidebar-wrapper" id="sidebar-wrapper">
+        <!-- Sidebar Panel (hidden by default — analytics is the initial view) -->
+        <div class="sidebar-wrapper" id="sidebar-wrapper" hidden>
             <div class="sidebar-panel" id="sidebar-panel">
                 <!-- Close button (visible on mobile) -->
                 <button type="button" id="sidebar-close" class="sidebar-close hidden" aria-label="Close sidebar">
@@ -806,16 +820,16 @@
                         <div role="tabpanel" class="insights-tab-panel active" id="ipanel-hotspots" aria-labelledby="itab-hotspots">
                             <div class="insights-tab-body"></div>
                         </div>
-                        <div role="tabpanel" class="insights-tab-panel" id="ipanel-risk" aria-labelledby="itab-risk">
+                        <div role="tabpanel" class="insights-tab-panel" id="ipanel-risk" aria-labelledby="itab-risk" hidden>
                             <div class="insights-tab-body"></div>
                         </div>
-                        <div role="tabpanel" class="insights-tab-panel" id="ipanel-team" aria-labelledby="itab-team">
+                        <div role="tabpanel" class="insights-tab-panel" id="ipanel-team" aria-labelledby="itab-team" hidden>
                             <div class="insights-tab-body"></div>
                         </div>
-                        <div role="tabpanel" class="insights-tab-panel" id="ipanel-temporal" aria-labelledby="itab-temporal">
+                        <div role="tabpanel" class="insights-tab-panel" id="ipanel-temporal" aria-labelledby="itab-temporal" hidden>
                             <div class="insights-tab-body"></div>
                         </div>
-                        <div role="tabpanel" class="insights-tab-panel" id="ipanel-quality" aria-labelledby="itab-quality">
+                        <div role="tabpanel" class="insights-tab-panel" id="ipanel-quality" aria-labelledby="itab-quality" hidden>
                             <div class="insights-tab-body"></div>
                         </div>
                     </div>
@@ -1056,7 +1070,7 @@
     </footer>
 
     <!-- Toast -->
-    <div id="toast" class="toast" role="alert" aria-live="assertive">
+    <div id="toast" class="toast" role="alert" aria-live="assertive" style="visibility:hidden">
         <span class="toast-message"></span>
         <button type="button" class="toast-close" aria-label="Close">&times;</button>
     </div>
@@ -1065,15 +1079,15 @@
     <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
 
     <!-- Sidebar Toggle Button (desktop only - mobile uses bottom sheet) -->
-    <button type="button" id="sidebar-toggle" class="sidebar-toggle" aria-label="Open menu" title="Open settings panel">
+    <button type="button" id="sidebar-toggle" class="sidebar-toggle" aria-label="Open menu" title="Open settings panel" hidden>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
         </svg>
     </button>
 
-    <!-- iOS-Style Bottom Sheet (mobile only) -->
-    <div id="bottom-sheet-backdrop" class="bottom-sheet-backdrop" aria-hidden="true"></div>
-    <div id="bottom-sheet" class="bottom-sheet" role="dialog" aria-modal="true" aria-label="Settings and controls" aria-hidden="true">
+    <!-- iOS-Style Bottom Sheet (mobile only, hidden by default in analytics view) -->
+    <div id="bottom-sheet-backdrop" class="bottom-sheet-backdrop" aria-hidden="true" hidden></div>
+    <div id="bottom-sheet" class="bottom-sheet" role="dialog" aria-modal="true" aria-label="Settings and controls" aria-hidden="true" hidden>
         <div class="bottom-sheet-header">
             <div class="bottom-sheet-handle" aria-hidden="true"></div>
             <div class="bottom-sheet-header-row">
@@ -1236,8 +1250,8 @@
         </div>
     </div>
 
-    <!-- Floating Action Button for Bottom Sheet (mobile only) - Hamburger menu icon -->
-    <button type="button" id="bottom-sheet-fab" class="bottom-sheet-fab" aria-label="Open menu" title="Open menu">
+    <!-- Floating Action Button for Bottom Sheet (mobile only, hidden by default in analytics view) -->
+    <button type="button" id="bottom-sheet-fab" class="bottom-sheet-fab" aria-label="Open menu" title="Open menu" hidden>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
         </svg>
@@ -1404,8 +1418,8 @@
         </div>
     </div>
 
-    <!-- Fullscreen Prompt (shown when landscape detected on mobile) -->
-    <div id="fullscreen-prompt" class="fullscreen-prompt" role="dialog" aria-modal="true" aria-labelledby="fullscreen-prompt-title">
+    <!-- Fullscreen Prompt (shown when landscape detected on mobile, hidden by default in analytics view) -->
+    <div id="fullscreen-prompt" class="fullscreen-prompt" role="dialog" aria-modal="true" aria-labelledby="fullscreen-prompt-title" hidden>
         <svg class="fullscreen-prompt-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
         </svg>

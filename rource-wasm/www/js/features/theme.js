@@ -49,25 +49,39 @@ export function toggleTheme() {
 }
 
 /**
- * Initializes theme from saved preference or system preference.
+ * Initializes theme from URL parameter, saved preference, or default.
  *
  * Priority:
- * 1. Saved user preference (localStorage)
- * 2. System preference (prefers-color-scheme media query)
- * 3. Default to dark theme
+ * 1. URL parameter (?theme=light or ?theme=dark) — for VFL testing and shared links
+ * 2. Saved user preference (localStorage)
+ * 3. Default to dark theme (canonical for a code visualization tool)
  */
 export function initTheme() {
-    const savedTheme = localStorage.getItem(THEME_KEY);
-
-    if (savedTheme) {
-        // User has a saved preference - use it and mark as manual
+    // Check URL parameter first (useful for visual testing and shared links)
+    const urlTheme = new URLSearchParams(window.location.search).get('theme');
+    if (urlTheme === 'light' || urlTheme === 'dark') {
         document.documentElement.classList.add('theme-manual');
-        if (savedTheme === 'light') {
+        if (urlTheme === 'light') {
             document.documentElement.classList.add('light-theme');
         }
+        // Don't save URL-driven theme to localStorage (ephemeral override)
+    } else {
+        const savedTheme = localStorage.getItem(THEME_KEY);
+
+        if (savedTheme) {
+            // User has a saved preference - use it and mark as manual
+            document.documentElement.classList.add('theme-manual');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-theme');
+            }
+        } else {
+            // No saved preference: default to dark theme explicitly.
+            // Without this, CSS @media (prefers-color-scheme: light) would auto-apply
+            // light theme for users with system light mode, overriding our intended default.
+            // Dark mode is the canonical theme for a code visualization tool.
+            document.documentElement.classList.add('theme-manual');
+        }
     }
-    // If no saved preference, CSS @media (prefers-color-scheme: light) handles auto-detection
-    // The :not(.theme-manual) selector ensures it only applies when not manually set
 
     // Set up theme toggle button
     const themeToggle = getElement('themeToggle');

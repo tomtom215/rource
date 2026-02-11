@@ -65,6 +65,13 @@
     contain: layout; /* Prevent CLS propagation */
 }
 
+/* Override display:flex when hidden attribute is set by view-manager.js.
+   The browser UA [hidden]{display:none} is overridden by author display:flex,
+   so we must explicitly enforce it here. */
+.viz-panel[hidden] {
+    display: none;
+}
+
 /* -----------------------------------------------------------------------------
    Canvas Container
    ----------------------------------------------------------------------------- */

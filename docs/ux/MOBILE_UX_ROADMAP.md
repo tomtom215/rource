@@ -34,7 +34,7 @@ LOW:       3 issues (7%)   ████
 TOTAL:    46 issues
 ```
 
-### Progress Summary (Updated 2026-01-26)
+### Progress Summary (Updated 2026-02-11)
 
 | Status | Count | Issues |
 |--------|-------|--------|
@@ -42,6 +42,26 @@ TOTAL:    46 issues
 | **Partial** | 0 | - |
 | **In Progress** | 1 | V2 |
 | **Pending** | 22 | All others |
+
+**Session 11 Fixes (Analytics Dashboard VFL Verification) (2026-02-11):**
+- Visual Feedback Loop (VFL) established with 16-screenshot capture matrix
+  - 4 viewports (375, 768, 1200, 1920) × 2 views (dashboard, viz) × 2 themes (dark, light)
+  - Chrome headless + Playwright scaffolding for CI-ready regression testing
+- D4: Fixed toast close button (×) visible near footer in initial screenshots
+  - Root cause: `transform: translateY(100px)` insufficient to hide in headless Chrome
+  - Fix: Added `visibility: hidden` to `.toast` CSS + inline `style="visibility:hidden"` on HTML element
+  - Files: `rource-wasm/www/styles/components/toast.css`, `rource-wasm/www/index.html`
+- D5: Fixed sidebar toggle (pink FAB) visible at 1200px in analytics view
+  - Root cause: `.sidebar-toggle` is a sibling of `.app-container`, not a descendant — CSS descendant selectors don't reach it
+  - Fix: Added `hidden` attribute to HTML, JS management in `applyViewState()`, CSS `.sidebar-toggle[hidden] { display: none }` override
+  - Files: `rource-wasm/www/index.html`, `rource-wasm/www/js/features/view-manager.js`, `rource-wasm/www/styles/features/mobile.css`
+- D7: Fixed dark/light theme screenshots byte-identical in viz view
+  - Root cause: `initTheme()` runs in deferred module script after Chrome `--screenshot` captures
+  - Fix: Added synchronous inline `<script>` FOUC prevention in `<head>` that applies theme before CSS paint
+  - File: `rource-wasm/www/index.html`
+- Infrastructure: Added `[hidden]` CSS overrides for bottom-sheet elements
+  - `.bottom-sheet[hidden]`, `.bottom-sheet-fab[hidden]`, `.bottom-sheet-backdrop[hidden]` — prevents mobile media query `display: flex` from overriding hidden attribute
+  - File: `rource-wasm/www/styles/features/bottom-sheet.css`
 
 **Session 9 Fixes (Phase 68) (2026-01-26):**
 - T1/T5: Fixed label width estimation bug causing overlap

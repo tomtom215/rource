@@ -89,6 +89,12 @@ export function getCurrentView() {
 function applyViewState(view) {
     if (!appContainer) return;
 
+    // Elements outside .app-container that belong to the viz view
+    const bottomSheet = document.getElementById('bottom-sheet');
+    const bottomSheetBackdrop = document.getElementById('bottom-sheet-backdrop');
+    const bottomSheetFab = document.querySelector('.bottom-sheet-fab');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+
     if (view === 'viz') {
         // Show visualization, hide analytics dashboard
         appContainer.classList.remove('view-analytics');
@@ -100,6 +106,13 @@ function applyViewState(view) {
         if (timelineContainer) timelineContainer.hidden = false;
         if (btnBackToAnalytics) btnBackToAnalytics.hidden = false;
         if (backDivider) backDivider.hidden = false;
+
+        // Restore bottom sheet elements for viz view
+        if (bottomSheet) bottomSheet.hidden = false;
+        if (bottomSheetBackdrop) bottomSheetBackdrop.hidden = false;
+        if (bottomSheetFab) bottomSheetFab.hidden = false;
+        // Sidebar toggle is outside .app-container; restore for viz
+        if (sidebarToggle) sidebarToggle.hidden = false;
     } else {
         // Show analytics dashboard, hide visualization
         appContainer.classList.remove('view-viz');
@@ -111,5 +124,14 @@ function applyViewState(view) {
         if (timelineContainer) timelineContainer.hidden = true;
         if (btnBackToAnalytics) btnBackToAnalytics.hidden = true;
         if (backDivider) backDivider.hidden = true;
+
+        // Hide viz-only elements outside .app-container
+        const fsPrompt = document.getElementById('fullscreen-prompt');
+        if (fsPrompt) fsPrompt.classList.remove('visible');
+        if (bottomSheet) bottomSheet.hidden = true;
+        if (bottomSheetBackdrop) bottomSheetBackdrop.hidden = true;
+        if (bottomSheetFab) bottomSheetFab.hidden = true;
+        // Sidebar toggle is outside .app-container; hide in analytics
+        if (sidebarToggle) sidebarToggle.hidden = true;
     }
 }

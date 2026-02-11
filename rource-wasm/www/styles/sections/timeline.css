@@ -26,6 +26,12 @@
     contain: layout style;
 }
 
+/* Enforce hidden when view-manager.js sets hidden attribute.
+   Without this, display:flex overrides the UA [hidden]{display:none}. */
+.timeline-container[hidden] {
+    display: none;
+}
+
 /* =============================================================================
    Date and Commit Info Row
    ============================================================================= */

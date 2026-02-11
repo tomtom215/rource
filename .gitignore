@@ -29,6 +29,13 @@ crates/rource-render/tests/visual/output/
 /pkg/
 /wasm-pack-logs/
 
+# Visual feedback loop (Playwright screenshots are ephemeral test artifacts)
+tests/visual/screenshots/
+tests/visual/node_modules/
+tests/visual/test-results/
+tests/visual/playwright-report/
+tests/visual/.chrome-data/
+
 # Coq build artifacts
 *.vo
 *.vok

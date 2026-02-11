@@ -76,6 +76,13 @@
     height: 24px;
 }
 
+/* Enforce hidden when view-manager.js sets hidden attribute.
+   Without this, the 1200px media query display:flex overrides
+   the UA [hidden]{display:none}. */
+.sidebar-toggle[hidden] {
+    display: none;
+}
+
 /* =============================================================================
    Tablet Breakpoint (1200px) - Sidebar Drawer
    ============================================================================= */
