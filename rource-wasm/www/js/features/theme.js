@@ -9,6 +9,7 @@
  */
 
 import { getElement } from '../dom.js';
+import { addManagedEventListener } from '../state.js';
 
 const THEME_KEY = 'rource_theme';
 
@@ -83,16 +84,16 @@ export function initTheme() {
         }
     }
 
-    // Set up theme toggle button
+    // Set up theme toggle button (managed for cleanup on WASM reinit)
     const themeToggle = getElement('themeToggle');
     if (themeToggle) {
-        themeToggle.addEventListener('click', toggleTheme);
+        addManagedEventListener(themeToggle, 'click', toggleTheme);
     }
 
     // Listen for system theme changes (only affects users who haven't manually toggled)
     if (window.matchMedia) {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
-        mediaQuery.addEventListener('change', (e) => {
+        addManagedEventListener(mediaQuery, 'change', () => {
             // Only auto-switch if user hasn't manually set a preference
             if (!document.documentElement.classList.contains('theme-manual')) {
                 // CSS handles the styling via @media query, but we may need to update UI

@@ -564,6 +564,18 @@ impl Rource {
         settings.display.width = width;
         settings.display.height = height;
 
+        // Sync initial bloom setting to the renderer backend.
+        // Settings defaults to bloom_enabled=true, but the backend starts with it off.
+        if settings.display.bloom_enabled {
+            #[cfg(target_arch = "wasm32")]
+            if let Some(wgpu_renderer) = backend.as_wgpu_mut() {
+                wgpu_renderer.set_bloom_enabled(true);
+            }
+            if let Some(webgl2_renderer) = backend.as_webgl2_mut() {
+                webgl2_renderer.set_bloom_enabled(true);
+            }
+        }
+
         let mut camera = Camera::new(width as f32, height as f32);
         // Use AUTO_FIT_MIN_ZOOM (0.03) as minimum to prevent LOD culling all entities
         camera.set_zoom_limits(AUTO_FIT_MIN_ZOOM, 1000.0);

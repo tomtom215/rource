@@ -15,6 +15,7 @@
 
 import { setState, get, subscribe, addManagedEventListener, hasData } from '../state.js';
 import { updateUrlState } from '../url-state.js';
+import { stopAnimation, startAnimation } from '../animation.js';
 
 // DOM references
 let appContainer = null;
@@ -96,6 +97,11 @@ function applyViewState(view) {
     const sidebarToggle = document.getElementById('sidebar-toggle');
 
     if (view === 'viz') {
+        // Resume animation loop when returning to visualization
+        if (hasData()) {
+            startAnimation();
+        }
+
         // Show visualization, hide analytics dashboard
         appContainer.classList.remove('view-analytics');
         appContainer.classList.add('view-viz');
@@ -114,6 +120,9 @@ function applyViewState(view) {
         // Sidebar toggle is outside .app-container; restore for viz
         if (sidebarToggle) sidebarToggle.hidden = false;
     } else {
+        // Stop animation loop — no need to render when canvas is hidden
+        stopAnimation();
+
         // Show analytics dashboard, hide visualization
         appContainer.classList.remove('view-viz');
         appContainer.classList.add('view-analytics');

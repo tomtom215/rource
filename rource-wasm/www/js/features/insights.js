@@ -1382,17 +1382,17 @@ function formatNumber(n, decimals = 2) {
 }
 
 function formatFixed(n, decimals = 1) {
-    if (n == null || isNaN(n)) return 'N/A';
+    if (n == null || !isFinite(n)) return 'N/A';
     return Number(n).toFixed(decimals);
 }
 
 function formatInt(n) {
-    if (n == null || isNaN(n)) return '\u2014';
+    if (n == null || !isFinite(n)) return '\u2014';
     return Number(n).toLocaleString();
 }
 
 function formatPercentage(n) {
-    if (n == null || isNaN(n)) return 'N/A';
+    if (n == null || !isFinite(n)) return 'N/A';
     return (Number(n) * 100).toFixed(1) + '%';
 }
 
