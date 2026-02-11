@@ -1,0 +1,17 @@
+{
+  "name": "rource-visual-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright visual feedback loop for Rource analytics dashboard",
+  "scripts": {
+    "test": "npx playwright test",
+    "screenshots": "npx playwright test --reporter=list"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  },
+  "dependencies": {
+    "playwright": "^1.56.1",
+    "serve": "^14.2.5"
+  }
+}
