@@ -68,7 +68,7 @@ import {
     updateImmersiveStats
 } from './features/immersive-mode.js';
 import { initReducedMotion, setRourceInstance as setReducedMotionRource } from './features/reduced-motion.js';
-import { initInsights, invalidateInsightsCache, loadInsightsSummary, renderDashboard } from './features/insights.js';
+import { initInsights, invalidateInsightsCache, loadInsightsSummary, renderDashboard, showDashboardLoading } from './features/insights.js';
 import { initViewManager, switchToVisualization, switchToAnalytics, getCurrentView } from './features/view-manager.js';
 import { initComponents } from './ui/components.js';
 
@@ -574,9 +574,17 @@ async function main() {
         initInsights();
         initViewManager();
 
+        // Parse URL parameters (needed for initial view and data loading)
+        const urlParams = parseUrlParams();
+
         // Set initial view from URL params
         const initialView = urlParams.view === 'viz' ? 'viz' : 'analytics';
         setState({ currentView: initialView });
+
+        // Show loading state in dashboard while data loads
+        if (initialView === 'analytics') {
+            showDashboardLoading();
+        }
 
         // Wire up bottom sheet actions
         initBottomSheetActions();
@@ -663,9 +671,6 @@ async function main() {
 
         // Hide loading overlay
         if (elements.loadingEl) elements.loadingEl.classList.add('hidden');
-
-        // Check URL parameters
-        const urlParams = parseUrlParams();
 
         // Apply speed from URL
         if (urlParams.speed) {

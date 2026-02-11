@@ -22,12 +22,15 @@
     padding: var(--spacing-md) var(--spacing-lg);
     box-shadow: 0 4px 20px var(--shadow);
     z-index: var(--z-toast);
-    transition: transform var(--transition-slow) ease;
+    transition: transform var(--transition-slow) ease, visibility var(--transition-slow);
     max-width: 90%;
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
     border: 1px solid var(--border);
+    /* Hidden by default - transform alone is insufficient as the close button
+       can peek into viewport on some browsers/zoom levels */
+    visibility: hidden;
 }
 
 /* =============================================================================
@@ -36,6 +39,7 @@
 
 .toast.visible {
     transform: translateX(-50%) translateY(0);
+    visibility: visible;
 }
 
 .toast.error {

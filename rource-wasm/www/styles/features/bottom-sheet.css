@@ -24,6 +24,21 @@
     display: none;
 }
 
+/* Enforce hidden when view-manager.js sets hidden attribute.
+   Without this, the mobile media query display:flex/block overrides
+   the UA [hidden]{display:none} at ≤768px viewports. */
+.bottom-sheet-backdrop[hidden] {
+    display: none;
+}
+
+.bottom-sheet[hidden] {
+    display: none;
+}
+
+.bottom-sheet-fab[hidden] {
+    display: none;
+}
+
 /* =============================================================================
    Bottom Sheet - Mobile
    ============================================================================= */

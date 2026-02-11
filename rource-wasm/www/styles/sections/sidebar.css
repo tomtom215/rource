@@ -21,6 +21,12 @@
     contain: layout; /* Prevent CLS propagation */
 }
 
+/* Enforce hidden when view-manager.js sets hidden attribute.
+   Without this, display:flex overrides the UA [hidden]{display:none}. */
+.sidebar-wrapper[hidden] {
+    display: none;
+}
+
 /* =============================================================================
    Sidebar Panel
    ============================================================================= */

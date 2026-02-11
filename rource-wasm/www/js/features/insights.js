@@ -120,9 +120,11 @@ export function invalidateInsightsCache() {
         tabs.forEach((tab, i) => {
             tab.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
             tab.classList.toggle('active', i === 0);
+            tab.setAttribute('tabindex', i === 0 ? '0' : '-1');
         });
         panels.forEach((p, i) => {
             p.classList.toggle('active', i === 0);
+            p.hidden = i !== 0;
         });
     }
 
@@ -185,11 +187,14 @@ function switchTab(tabName) {
         const selected = btn.dataset.tab === tabName;
         btn.setAttribute('aria-selected', selected ? 'true' : 'false');
         btn.classList.toggle('active', selected);
+        btn.setAttribute('tabindex', selected ? '0' : '-1');
     });
 
-    // Update tab panel visibility
+    // Update tab panel visibility (CSS class + hidden attribute for accessibility)
     tabPanels.forEach(p => {
-        p.classList.toggle('active', p.id === `ipanel-${tabName}`);
+        const isActive = p.id === `ipanel-${tabName}`;
+        p.classList.toggle('active', isActive);
+        p.hidden = !isActive;
     });
 
     // Lazy-load tab data
@@ -886,6 +891,22 @@ function renderQualityTab() {
 // ============================================================
 
 /**
+ * Shows loading state in the analytics dashboard.
+ * Called early during initialization to provide visual feedback
+ * before WASM data is available.
+ */
+export function showDashboardLoading() {
+    const dp = document.getElementById('analytics-dashboard');
+    if (!dp) return;
+
+    // Show loading spinner in the active tab panel
+    const activePanel = dp.querySelector('.analytics-tab-panel.active .analytics-tab-body');
+    if (activePanel && !activePanel.innerHTML.trim()) {
+        activePanel.innerHTML = '<div class="analytics-loading"><div class="insights-spinner"></div><span>Analyzing repository...</span></div>';
+    }
+}
+
+/**
  * Renders the full analytics dashboard.
  * Called from main.js when data is loaded and view is 'analytics'.
  * Uses the SAME rendering functions as the sidebar — no duplication.
@@ -1003,13 +1024,16 @@ function switchDashboardTab(tabName) {
             const selected = btn.dataset.tab === tabName;
             btn.setAttribute('aria-selected', selected ? 'true' : 'false');
             btn.classList.toggle('active', selected);
+            btn.setAttribute('tabindex', selected ? '0' : '-1');
         });
     }
 
-    // Update tab panel visibility
+    // Update tab panel visibility (CSS class + hidden attribute for accessibility)
     if (dashboardTabPanels) {
         dashboardTabPanels.forEach(p => {
-            p.classList.toggle('active', p.id === `apanel-${tabName}`);
+            const isActive = p.id === `apanel-${tabName}`;
+            p.classList.toggle('active', isActive);
+            p.hidden = !isActive;
         });
     }
 
@@ -1038,9 +1062,11 @@ export function resetDashboard() {
         tabs.forEach((tab, i) => {
             tab.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
             tab.classList.toggle('active', i === 0);
+            tab.setAttribute('tabindex', i === 0 ? '0' : '-1');
         });
         panels.forEach((p, i) => {
             p.classList.toggle('active', i === 0);
+            p.hidden = i !== 0;
         });
     }
 

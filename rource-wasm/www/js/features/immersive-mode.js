@@ -71,6 +71,9 @@ function showFullscreenPrompt() {
     const prompt = document.getElementById('fullscreen-prompt');
     if (!prompt) return;
 
+    // Don't show fullscreen prompt when analytics dashboard is the active view
+    if (get('currentView') !== 'viz') return;
+
     // Check if user has dismissed the prompt recently
     const dismissedUntil = localStorage.getItem(FULLSCREEN_PROMPT_DISMISSED_KEY);
     if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) {
@@ -83,6 +86,7 @@ function showFullscreenPrompt() {
     }
     lastPromptTime = Date.now();
 
+    prompt.hidden = false;
     prompt.classList.add('visible');
     hapticLight();
 }
@@ -94,6 +98,7 @@ function hideFullscreenPrompt() {
     const prompt = document.getElementById('fullscreen-prompt');
     if (prompt) {
         prompt.classList.remove('visible');
+        prompt.hidden = true;
     }
 }
 
