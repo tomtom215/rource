@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770802711360,
+  "lastUpdate": 1770826251971,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6317,6 +6317,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1353323,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2dfc3cc9ea90177f50ca6ce9c31caa3f9225c572",
+          "message": "Merge pull request #291 from tomtom215/claude/validate-analytics-architecture-Vlgem\n\nFix pipeline initialization failures and refactor WebGL2 context setup",
+          "timestamp": "2026-02-11T17:08:38+01:00",
+          "tree_id": "4e6867175404f494cab6b04b359a5cf5eaa99825",
+          "url": "https://github.com/tomtom215/rource/commit/2dfc3cc9ea90177f50ca6ce9c31caa3f9225c572"
+        },
+        "date": 1770826251466,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3593936,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1353423,
             "unit": "bytes"
           }
         ]
