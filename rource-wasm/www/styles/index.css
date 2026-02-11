@@ -82,5 +82,8 @@
 /* Repository insights dashboard */
 @import url('./features/insights.css');
 
+/* Analytics-first dashboard (full-width landing view) */
+@import url('./features/analytics-dashboard.css');
+
 /* Mobile responsive overrides (should be last to override other styles) */
 @import url('./features/mobile.css');

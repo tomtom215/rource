@@ -68,6 +68,9 @@
     <link rel="modulepreload" href="js/features/video-recording.js">
     <link rel="modulepreload" href="js/features/bottom-sheet.js">
     <link rel="modulepreload" href="js/features/insights.js">
+    <link rel="modulepreload" href="js/features/view-manager.js">
+    <link rel="modulepreload" href="js/ui/components.js">
+    <link rel="modulepreload" href="js/ui/sidebar-template.js">
 
     <!-- Critical CSS (inlined for fast initial render - eliminates render blocking) -->
     <style>
@@ -253,6 +256,14 @@
                 </button>
             </div>
             <span class="control-divider" aria-hidden="true"></span>
+            <!-- Back to dashboard (visible only in viz view) -->
+            <button type="button" id="btn-back-to-analytics" class="btn btn-sm btn-secondary" hidden aria-label="Back to analytics dashboard">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+                Dashboard
+            </button>
+            <span class="control-divider control-divider-dashboard" aria-hidden="true" hidden></span>
             <!-- Utility group: Share, Fullscreen, Help -->
             <div class="control-group" aria-label="Utility controls">
                 <button type="button" id="btn-share" class="share-btn" aria-label="Share URL" title="Copy shareable URL">
@@ -279,8 +290,134 @@
     </header>
 
     <main id="main-content" class="app-container">
+        <!-- Analytics Dashboard (default landing view, hidden until JS initializes) -->
+        <div id="analytics-dashboard" class="analytics-dashboard" hidden>
+            <!-- Dashboard Header -->
+            <div class="analytics-header">
+                <div class="analytics-header-info">
+                    <h2 class="analytics-title">Repository Insights</h2>
+                    <p class="analytics-subtitle" id="analytics-repo-name">20 research-backed health metrics</p>
+                </div>
+                <button type="button" id="btn-switch-to-viz" class="btn analytics-viz-btn" disabled aria-label="Switch to visualization view">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Visualize
+                </button>
+            </div>
+
+            <!-- Summary Cards Row -->
+            <div class="analytics-summary-row" id="analytics-summary-row">
+                <div class="analytics-card" id="acard-commits">
+                    <span class="analytics-card-value" id="acard-commits-value">--</span>
+                    <span class="analytics-card-label">Commits</span>
+                </div>
+                <div class="analytics-card" id="acard-files">
+                    <span class="analytics-card-value" id="acard-files-value">--</span>
+                    <span class="analytics-card-label">Files</span>
+                </div>
+                <div class="analytics-card" id="acard-authors">
+                    <span class="analytics-card-value" id="acard-authors-value">--</span>
+                    <span class="analytics-card-label">Authors</span>
+                </div>
+                <div class="analytics-card" id="acard-hotspots">
+                    <span class="analytics-card-value" id="acard-hotspots-value">--</span>
+                    <span class="analytics-card-label">Hotspots</span>
+                </div>
+                <div class="analytics-card" id="acard-risk">
+                    <span class="analytics-card-value" id="acard-risk-value">--</span>
+                    <span class="analytics-card-label">At Risk</span>
+                </div>
+            </div>
+
+            <!-- Dashboard Tabs -->
+            <div class="analytics-tabs-container">
+                <div class="analytics-tabs" role="tablist" aria-label="Analytics categories">
+                    <button type="button" role="tab" class="analytics-tab-btn active" aria-selected="true" data-tab="hotspots" id="atab-hotspots" aria-controls="apanel-hotspots" tabindex="0">Hotspots</button>
+                    <button type="button" role="tab" class="analytics-tab-btn" aria-selected="false" data-tab="risk" id="atab-risk" aria-controls="apanel-risk" tabindex="-1">Risk</button>
+                    <button type="button" role="tab" class="analytics-tab-btn" aria-selected="false" data-tab="team" id="atab-team" aria-controls="apanel-team" tabindex="-1">Team</button>
+                    <button type="button" role="tab" class="analytics-tab-btn" aria-selected="false" data-tab="temporal" id="atab-temporal" aria-controls="apanel-temporal" tabindex="-1">Temporal</button>
+                    <button type="button" role="tab" class="analytics-tab-btn" aria-selected="false" data-tab="quality" id="atab-quality" aria-controls="apanel-quality" tabindex="-1">Quality</button>
+                </div>
+                <div class="analytics-content">
+                    <div role="tabpanel" class="analytics-tab-panel active" id="apanel-hotspots" aria-labelledby="atab-hotspots">
+                        <div class="analytics-tab-body"></div>
+                    </div>
+                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-risk" aria-labelledby="atab-risk">
+                        <div class="analytics-tab-body"></div>
+                    </div>
+                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-team" aria-labelledby="atab-team">
+                        <div class="analytics-tab-body"></div>
+                    </div>
+                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-temporal" aria-labelledby="atab-temporal">
+                        <div class="analytics-tab-body"></div>
+                    </div>
+                    <div role="tabpanel" class="analytics-tab-panel" id="apanel-quality" aria-labelledby="atab-quality">
+                        <div class="analytics-tab-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Repo Selector Section -->
+            <div class="analytics-repo-section">
+                <h3 class="analytics-section-title">Load a Repository</h3>
+                <div class="analytics-input-group">
+                    <input type="text" id="analytics-github-url" class="analytics-input" placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL">
+                    <button type="button" id="analytics-fetch-btn" class="btn btn-success btn-sm" disabled>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                        </svg>
+                        Fetch
+                    </button>
+                </div>
+                <div class="analytics-repo-chips">
+                    <span class="analytics-chips-label">Pre-cached repos (instant):</span>
+                    <div class="repo-chips">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="facebook/react" title="Pre-cached - instant loading">
+                            <svg viewBox="0 0 16 16" fill="#61dafb"><circle cx="8" cy="8" r="3"/></svg>
+                            React
+                        </button>
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="vuejs/vue" title="Pre-cached - instant loading">
+                            <svg viewBox="0 0 16 16" fill="#42b883"><circle cx="8" cy="8" r="3"/></svg>
+                            Vue
+                        </button>
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="sveltejs/svelte" title="Pre-cached - instant loading">
+                            <svg viewBox="0 0 16 16" fill="#ff3e00"><circle cx="8" cy="8" r="3"/></svg>
+                            Svelte
+                        </button>
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="denoland/deno" title="Pre-cached - instant loading">
+                            <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+                            Deno
+                        </button>
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="rust-lang/rust" title="Pre-cached - instant loading">
+                            <svg viewBox="0 0 16 16" fill="#dea584"><circle cx="8" cy="8" r="3"/></svg>
+                            Rust
+                        </button>
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="microsoft/vscode" title="Pre-cached - instant loading">
+                            <svg viewBox="0 0 16 16" fill="#007acc"><circle cx="8" cy="8" r="3"/></svg>
+                            VS Code
+                        </button>
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="golang/go" title="Pre-cached - instant loading">
+                            <svg viewBox="0 0 16 16" fill="#00add8"><circle cx="8" cy="8" r="3"/></svg>
+                            Go
+                        </button>
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="torvalds/linux" title="Pre-cached - instant loading">
+                            <svg viewBox="0 0 16 16" fill="#f1c40f"><circle cx="8" cy="8" r="3"/></svg>
+                            Linux
+                        </button>
+                    </div>
+                </div>
+                <div id="analytics-fetch-status" class="fetch-status">
+                    <span id="analytics-fetch-status-text"></span>
+                    <div class="fetch-progress">
+                        <div id="analytics-fetch-progress-bar" class="fetch-progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Visualization Panel -->
-        <div class="viz-panel">
+        <div class="viz-panel" id="viz-panel">
             <div id="canvas-container">
                 <canvas id="canvas" width="1280" height="720" tabindex="0" role="application" aria-label="Git repository visualization. Click to focus for keyboard navigation: Space play/pause, arrows step commits, WASD pan, plus/minus zoom, question mark for help"></canvas>
 
@@ -545,7 +682,7 @@
         </div>
 
         <!-- Sidebar Panel -->
-        <div class="sidebar-wrapper">
+        <div class="sidebar-wrapper" id="sidebar-wrapper">
             <div class="sidebar-panel" id="sidebar-panel">
                 <!-- Close button (visible on mobile) -->
                 <button type="button" id="sidebar-close" class="sidebar-close hidden" aria-label="Close sidebar">
@@ -840,27 +977,7 @@
                     <span class="panel-toggle" aria-hidden="true">&#9660;</span>
                 </button>
                 <div class="panel-body" id="panel-shortcuts-body">
-                    <div class="shortcut-grid">
-                        <div class="shortcut-item"><span>Play/Pause</span><kbd>Space</kbd></div>
-                        <div class="shortcut-item"><span>Zoom In</span><kbd>+</kbd></div>
-                        <div class="shortcut-item"><span>Zoom Out</span><kbd>-</kbd></div>
-                        <div class="shortcut-item"><span>Reset View</span><kbd>R</kbd></div>
-                        <div class="shortcut-item"><span>Pan</span><kbd>Arrows</kbd></div>
-                        <div class="shortcut-item"><span>Labels</span><kbd>L</kbd></div>
-                        <div class="shortcut-item"><span>Step Fwd</span><kbd>&gt;</kbd></div>
-                        <div class="shortcut-item"><span>Step Back</span><kbd>&lt;</kbd></div>
-                        <div class="shortcut-item"><span>Speed Down</span><kbd>[</kbd></div>
-                        <div class="shortcut-item"><span>Speed Up</span><kbd>]</kbd></div>
-                        <div class="shortcut-item"><span>Perf Stats</span><kbd>P</kbd></div>
-                        <div class="shortcut-item"><span>Authors</span><kbd>A</kbd></div>
-                        <div class="shortcut-item"><span>Full Map</span><kbd>M</kbd></div>
-                        <div class="shortcut-item"><span>Record</span><kbd>V</kbd></div>
-                        <div class="shortcut-item"><span>Text Size +</span><kbd>Shift+&#8593;</kbd></div>
-                        <div class="shortcut-item"><span>Text Size -</span><kbd>Shift+&#8595;</kbd></div>
-                    </div>
-                    <p class="help-text" style="margin-top: 0.75rem;">
-                        <strong>Mouse:</strong> Drag to pan, scroll to zoom
-                    </p>
+                    <!-- Content injected by js/ui/components.js -->
                 </div>
             </div>
 

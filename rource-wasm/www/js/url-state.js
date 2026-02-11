@@ -19,6 +19,7 @@ export function parseUrlParams() {
         speed: params.get('speed'),         // seconds per day
         autoplay: params.get('autoplay'),   // "true" to auto-play
         commit: params.get('commit'),       // commit index to start at
+        view: params.get('view'),           // 'analytics' or 'viz' (default: analytics, omitted from URL)
     };
 }
 
@@ -40,6 +41,11 @@ export function updateUrlState(state) {
     if (state.autoplay !== undefined) {
         if (state.autoplay) params.set('autoplay', 'true');
         else params.delete('autoplay');
+    }
+    if (state.view !== undefined) {
+        // 'analytics' is default — omit from URL for clean URLs
+        if (state.view === 'viz') params.set('view', 'viz');
+        else params.delete('view');
     }
 
     const newUrl = params.toString()
@@ -69,6 +75,7 @@ export function createShareableUrl(state) {
     if (state.speed && state.speed !== '10') params.set('speed', state.speed);
     if (state.autoplay) params.set('autoplay', 'true');
     if (state.commit) params.set('commit', state.commit);
+    if (state.view === 'viz') params.set('view', 'viz');
 
     const query = params.toString();
     return query

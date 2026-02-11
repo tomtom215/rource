@@ -40,11 +40,18 @@ import {
 let loaded = false;
 let cachedData = {};
 let activeTab = 'hotspots';
+let dashboardActiveTab = 'hotspots';
 
-// DOM references
+// DOM references — sidebar
 let panel = null;
 let tabButtons = null;
 let tabPanels = null;
+
+// DOM references — dashboard
+let dashboardPanel = null;
+let dashboardTabButtons = null;
+let dashboardTabPanels = null;
+let dashboardInitialized = false;
 
 /**
  * Initializes the insights dashboard module.
@@ -118,6 +125,9 @@ export function invalidateInsightsCache() {
             p.classList.toggle('active', i === 0);
         });
     }
+
+    // Also reset the dashboard
+    resetDashboard();
 }
 
 /**
@@ -363,11 +373,19 @@ function showLoading() {
     });
 }
 
-function renderTab(tabName) {
-    const tabPanel = document.getElementById(`ipanel-${tabName}`);
+/**
+ * Renders a tab into a specific target context.
+ * @param {string} tabName - Tab identifier (hotspots, risk, team, temporal, quality)
+ * @param {'sidebar'|'dashboard'} target - Which DOM context to render into
+ */
+function renderTabInto(tabName, target) {
+    const prefix = target === 'dashboard' ? 'apanel' : 'ipanel';
+    const bodyClass = target === 'dashboard' ? '.analytics-tab-body' : '.insights-tab-body';
+
+    const tabPanel = document.getElementById(`${prefix}-${tabName}`);
     if (!tabPanel) return;
 
-    const body = tabPanel.querySelector('.insights-tab-body');
+    const body = tabPanel.querySelector(bodyClass);
     if (!body) return;
 
     switch (tabName) {
@@ -391,13 +409,17 @@ function renderTab(tabName) {
     // Wire up "Show all" toggles
     body.querySelectorAll('.insights-show-all').forEach(btn => {
         btn.addEventListener('click', () => {
-            const target = btn.closest('.insights-metric');
-            if (target) {
-                target.classList.toggle('expanded');
-                btn.textContent = target.classList.contains('expanded') ? 'Show less' : 'Show all';
+            const toggleTarget = btn.closest('.insights-metric');
+            if (toggleTarget) {
+                toggleTarget.classList.toggle('expanded');
+                btn.textContent = toggleTarget.classList.contains('expanded') ? 'Show less' : 'Show all';
             }
         });
     });
+}
+
+function renderTab(tabName) {
+    renderTabInto(tabName, 'sidebar');
 }
 
 // ============================================================
@@ -857,6 +879,176 @@ function renderQualityTab() {
     ));
 
     return parts.join('');
+}
+
+// ============================================================
+// Dashboard Rendering (Full-Width Analytics View)
+// ============================================================
+
+/**
+ * Renders the full analytics dashboard.
+ * Called from main.js when data is loaded and view is 'analytics'.
+ * Uses the SAME rendering functions as the sidebar — no duplication.
+ */
+export function renderDashboard() {
+    // Ensure all data is loaded
+    if (!loaded) {
+        cachedData.summary = getInsightsSummary();
+        cachedData.hotspots = getHotspots(50);
+        loaded = true;
+    }
+
+    // Render summary cards
+    renderDashboardSummaryCards();
+
+    // Initialize dashboard tabs if not yet done
+    if (!dashboardInitialized) {
+        setupDashboardTabs();
+        dashboardInitialized = true;
+    }
+
+    // Ensure default tab data and render
+    ensureTabData(dashboardActiveTab);
+    renderTabInto(dashboardActiveTab, 'dashboard');
+
+    // Also update sidebar if it was previously rendered
+    if (panel) {
+        renderTab(activeTab);
+    }
+
+    // Update bottom sheet summary
+    updateBottomSheetSummary();
+
+    // Enable the visualize button
+    const vizBtn = document.getElementById('btn-switch-to-viz');
+    if (vizBtn) vizBtn.disabled = false;
+}
+
+/**
+ * Renders summary cards in the dashboard header.
+ * Field names verified: insights.rs:76, 947-976
+ */
+function renderDashboardSummaryCards() {
+    const summary = cachedData.summary;
+    if (!summary) return;
+
+    const s = summary.summary || {};
+    const hotspots = summary.topHotspots || [];
+    const risks = summary.riskDirectories || [];
+
+    // Update card values using verified field names
+    setCardValue('acard-commits-value', formatInt(s.totalCommits));
+    setCardValue('acard-files-value', formatInt(s.totalFiles));
+    setCardValue('acard-authors-value', formatInt(s.totalAuthors));
+    setCardValue('acard-hotspots-value', formatInt(hotspots.length));
+    setCardValue('acard-risk-value', formatInt(risks.length));
+}
+
+function setCardValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+/**
+ * Sets up dashboard tab handlers.
+ * Reuses the same keyboard navigation pattern as sidebar tabs.
+ */
+function setupDashboardTabs() {
+    dashboardPanel = document.getElementById('analytics-dashboard');
+    if (!dashboardPanel) return;
+
+    dashboardTabButtons = dashboardPanel.querySelectorAll('[role="tab"]');
+    dashboardTabPanels = dashboardPanel.querySelectorAll('[role="tabpanel"]');
+
+    dashboardTabButtons.forEach(btn => {
+        addManagedEventListener(btn, 'click', () => {
+            switchDashboardTab(btn.dataset.tab);
+        });
+
+        // Keyboard navigation: Left/Right arrows, Home/End
+        addManagedEventListener(btn, 'keydown', (e) => {
+            const tabs = Array.from(dashboardTabButtons);
+            const idx = tabs.indexOf(btn);
+
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                const next = tabs[(idx + 1) % tabs.length];
+                next.focus();
+                switchDashboardTab(next.dataset.tab);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                const prev = tabs[(idx - 1 + tabs.length) % tabs.length];
+                prev.focus();
+                switchDashboardTab(prev.dataset.tab);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                tabs[0].focus();
+                switchDashboardTab(tabs[0].dataset.tab);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                tabs[tabs.length - 1].focus();
+                switchDashboardTab(tabs[tabs.length - 1].dataset.tab);
+            }
+        });
+    });
+}
+
+function switchDashboardTab(tabName) {
+    if (tabName === dashboardActiveTab && loaded) return;
+    dashboardActiveTab = tabName;
+
+    // Update tab button states
+    if (dashboardTabButtons) {
+        dashboardTabButtons.forEach(btn => {
+            const selected = btn.dataset.tab === tabName;
+            btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+            btn.classList.toggle('active', selected);
+        });
+    }
+
+    // Update tab panel visibility
+    if (dashboardTabPanels) {
+        dashboardTabPanels.forEach(p => {
+            p.classList.toggle('active', p.id === `apanel-${tabName}`);
+        });
+    }
+
+    // Lazy-load tab data and render
+    if (loaded) {
+        ensureTabData(tabName);
+        renderTabInto(tabName, 'dashboard');
+    }
+}
+
+/**
+ * Resets dashboard state (call on repository change).
+ */
+export function resetDashboard() {
+    dashboardActiveTab = 'hotspots';
+    dashboardInitialized = false;
+
+    if (dashboardPanel) {
+        const panels = dashboardPanel.querySelectorAll('[role="tabpanel"]');
+        panels.forEach(p => {
+            const content = p.querySelector('.analytics-tab-body');
+            if (content) content.innerHTML = '';
+        });
+
+        const tabs = dashboardPanel.querySelectorAll('[role="tab"]');
+        tabs.forEach((tab, i) => {
+            tab.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+            tab.classList.toggle('active', i === 0);
+        });
+        panels.forEach((p, i) => {
+            p.classList.toggle('active', i === 0);
+        });
+    }
+
+    // Reset summary card values
+    ['acard-commits-value', 'acard-files-value', 'acard-authors-value',
+     'acard-hotspots-value', 'acard-risk-value'].forEach(id => {
+        setCardValue(id, '--');
+    });
 }
 
 // ============================================================

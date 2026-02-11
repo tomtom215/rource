@@ -47,6 +47,9 @@ const appState = {
 
     // Performance testing - uncapped FPS mode
     uncappedFps: false,
+
+    // View state: 'analytics' (dashboard) or 'viz' (canvas visualization)
+    currentView: 'analytics',
 };
 
 /**
