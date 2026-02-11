@@ -1120,4 +1120,34 @@ while `apply <type>_eq` scales linearly.
 
 ---
 
-*Last updated: 2026-01-29*
+## Phase 84: Zero-Copy Stats Buffer (WASM↔JS Boundary)
+
+### Raw Benchmark Data
+
+**Methodology**: `std::time::Instant`, 100,000 iterations, `--release` mode,
+`std::hint::black_box()`, `f64`-precision division. 3 independent runs.
+
+| Run | `format!()` JSON (ns/op) | Buffer Writes (ns/op) | Speedup |
+|-----|--------------------------|----------------------|---------|
+| 1 | 774.75 | 1.21 | 637.7x |
+| 2 | 799.27 | 1.35 | 592.0x |
+| 3 | 761.36 | 1.22 | 626.2x |
+| **Mean** | **778.46** | **1.26** | **618.6x** |
+
+### What Each Path Does
+
+**JSON path (before):** `format!()` with 16 named fields → `String` heap allocation →
+`wasm-bindgen` string copy to JS → `JSON.parse()` in JS.
+
+**Buffer path (after):** 20 `f32` store instructions to a fixed 128-byte array →
+JS reads via `Float32Array` view over WASM linear memory (zero copy).
+
+### Reproduce
+
+```bash
+cargo test -p rource-wasm bench_stats_buffer_vs_json --release -- --nocapture
+```
+
+---
+
+*Last updated: 2026-02-11*

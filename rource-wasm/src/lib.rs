@@ -502,6 +502,36 @@ pub struct Rource {
 
     /// Original commit count before truncation (for reporting).
     original_commit_count: usize,
+
+    /// Zero-copy stats buffer for WASM-to-JS data transfer.
+    ///
+    /// JS reads this buffer directly from WASM linear memory via
+    /// `Float32Array` view, eliminating `format!()` string allocation,
+    /// WASM-to-JS string copy, and `JSON.parse()` on the JS side.
+    ///
+    /// Layout (32 x `f32` = 128 bytes):
+    ///   [0]  `fps`
+    ///   [1]  `frame_time_ms`
+    ///   [2]  `total_entities`
+    ///   [3]  `visible_files`
+    ///   [4]  `visible_users`
+    ///   [5]  `visible_directories`
+    ///   [6]  `active_actions`
+    ///   [7]  `draw_calls`
+    ///   [8]  `canvas_width`
+    ///   [9]  `canvas_height`
+    ///   [10] `is_playing` (1.0 = true, 0.0 = false)
+    ///   [11] `commit_count`
+    ///   [12] `current_commit`
+    ///   [13] `total_files`
+    ///   [14] `total_users`
+    ///   [15] `total_directories`
+    ///   [16] `mouse_screen_x`
+    ///   [17] `mouse_screen_y`
+    ///   [18] `mouse_world_x`
+    ///   [19] `mouse_world_y`
+    ///   [20..31] reserved for future use
+    stats_buffer: [f32; 32],
 }
 
 // ============================================================================
@@ -626,6 +656,8 @@ impl Rource {
             max_commits: DEFAULT_MAX_COMMITS,
             commits_truncated: false,
             original_commit_count: 0,
+            // Zero-copy stats buffer (128 bytes, read directly by JS)
+            stats_buffer: [0.0_f32; 32],
         })
     }
 
@@ -974,6 +1006,31 @@ impl Rource {
 
         // End frame profiling
         self.frame_profiler.end_frame();
+
+        // Sync stats buffer for zero-copy JS reads (20 f32 store instructions)
+        self.stats_buffer[0] = self.perf_metrics.fps();
+        self.stats_buffer[1] = self.perf_metrics.frame_time_ms();
+        self.stats_buffer[2] = self.render_stats.total_entities as f32;
+        self.stats_buffer[3] = self.render_stats.visible_files as f32;
+        self.stats_buffer[4] = self.render_stats.visible_users as f32;
+        self.stats_buffer[5] = self.render_stats.visible_directories as f32;
+        self.stats_buffer[6] = self.render_stats.active_actions as f32;
+        self.stats_buffer[7] = self.render_stats.draw_calls as f32;
+        self.stats_buffer[8] = self.backend.width() as f32;
+        self.stats_buffer[9] = self.backend.height() as f32;
+        self.stats_buffer[10] = if self.playback.is_playing() { 1.0 } else { 0.0 };
+        self.stats_buffer[11] = self.commits.len() as f32;
+        self.stats_buffer[12] = self.playback.current_commit() as f32;
+        self.stats_buffer[13] = self.scene.file_count() as f32;
+        self.stats_buffer[14] = self.scene.user_count() as f32;
+        self.stats_buffer[15] = self.scene.directory_count() as f32;
+        self.stats_buffer[16] = self.mouse_x;
+        self.stats_buffer[17] = self.mouse_y;
+        let world_pos = self
+            .camera
+            .screen_to_world(Vec2::new(self.mouse_x, self.mouse_y));
+        self.stats_buffer[18] = world_pos.x;
+        self.stats_buffer[19] = world_pos.y;
 
         // Return true if there's more to show
         self.playback.is_playing() || self.playback.current_commit() < self.commits.len()

@@ -412,3 +412,119 @@ fn bench_glow_lod_culling() {
         "LOD culling decision overhead too high: {ns_per_decision} ns"
     );
 }
+
+/// Phase 84: Comparative benchmark — `format!()` JSON vs. zero-copy buffer writes.
+///
+/// Measures Rust-side cost only. Uses floating-point division for precise ns/op
+/// to avoid integer truncation artifacts in speedup calculation.
+#[test]
+#[allow(clippy::too_many_lines)]
+fn bench_stats_buffer_vs_json() {
+    use crate::wasm_api::stats::format_frame_stats;
+    use std::time::Instant;
+
+    const ITERATIONS: u32 = 100_000;
+
+    // Representative values (same across both paths for fair comparison)
+    let fps: f64 = 60.0;
+    let frame_time_ms: f64 = 16.67;
+    let total_entities: usize = 1500;
+    let visible_files: usize = 200;
+    let visible_users: usize = 5;
+    let visible_directories: usize = 50;
+    let active_actions: usize = 10;
+    let draw_calls: usize = 6;
+    let width: u32 = 1920;
+    let height: u32 = 1080;
+    let is_playing = true;
+    let commit_count: usize = 5432;
+    let current_commit: usize = 2716;
+    let total_files: usize = 1200;
+    let total_users: usize = 45;
+    let total_dirs: usize = 350;
+
+    // ---- Benchmark 1: format!() JSON serialization (current legacy path) ----
+    let start = Instant::now();
+    for _ in 0..ITERATIONS {
+        let json = std::hint::black_box(format_frame_stats(
+            fps,
+            frame_time_ms,
+            total_entities,
+            visible_files,
+            visible_users,
+            visible_directories,
+            active_actions,
+            draw_calls,
+            width,
+            height,
+            is_playing,
+            commit_count,
+            current_commit,
+            total_files,
+            total_users,
+            total_dirs,
+        ));
+        std::hint::black_box(&json);
+    }
+    let json_elapsed = start.elapsed();
+    let json_ns_total = json_elapsed.as_nanos();
+    let json_ns_per_op = json_ns_total as f64 / f64::from(ITERATIONS);
+
+    // ---- Benchmark 2: Buffer writes (zero-copy path) ----
+    let mut buffer = [0.0_f32; 32];
+    let start = Instant::now();
+    for _ in 0..ITERATIONS {
+        buffer[0] = fps as f32;
+        buffer[1] = frame_time_ms as f32;
+        buffer[2] = total_entities as f32;
+        buffer[3] = visible_files as f32;
+        buffer[4] = visible_users as f32;
+        buffer[5] = visible_directories as f32;
+        buffer[6] = active_actions as f32;
+        buffer[7] = draw_calls as f32;
+        buffer[8] = width as f32;
+        buffer[9] = height as f32;
+        buffer[10] = if is_playing { 1.0 } else { 0.0 };
+        buffer[11] = commit_count as f32;
+        buffer[12] = current_commit as f32;
+        buffer[13] = total_files as f32;
+        buffer[14] = total_users as f32;
+        buffer[15] = total_dirs as f32;
+        buffer[16] = 500.0; // mouse_x
+        buffer[17] = 300.0; // mouse_y
+        buffer[18] = 250.0; // world_x
+        buffer[19] = 150.0; // world_y
+        std::hint::black_box(&buffer);
+    }
+    let buffer_elapsed = start.elapsed();
+    let buffer_ns_total = buffer_elapsed.as_nanos();
+    let buffer_ns_per_op = buffer_ns_total as f64 / f64::from(ITERATIONS);
+
+    // Calculate improvement using floating-point values (no truncation artifacts)
+    let speedup = json_ns_per_op / buffer_ns_per_op;
+    let reduction_pct = (1.0 - buffer_ns_per_op / json_ns_per_op) * 100.0;
+
+    println!(
+        "\nPhase 84: Stats Buffer vs JSON Serialization ({ITERATIONS} iterations, f64 precision):"
+    );
+    println!("  format!() JSON:    {json_ns_per_op:.2} ns/op ({json_elapsed:?} total)");
+    println!("  Buffer writes:     {buffer_ns_per_op:.2} ns/op ({buffer_elapsed:?} total)");
+    println!("  Speedup:           {speedup:.1}x");
+    println!("  Reduction:         {reduction_pct:.2}%");
+    println!();
+    println!("  Note: Measures Rust-side cost only.");
+    println!("  JS-side additionally eliminates JSON.parse() overhead.");
+
+    // Assertions:
+    // 1. Buffer writes must be faster than JSON serialization
+    assert!(
+        buffer_ns_per_op < json_ns_per_op,
+        "Buffer writes ({buffer_ns_per_op:.2} ns) should be faster than JSON ({json_ns_per_op:.2} ns)"
+    );
+
+    // 2. Speedup must be at least 50x (conservative; measured ~500x)
+    assert!(
+        speedup >= 50.0,
+        "Expected at least 50x speedup, got {speedup:.1}x"
+    );
+}

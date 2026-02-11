@@ -57,6 +57,7 @@ import {
     isRecordingSupported
 } from './features/video-recording.js';
 import { animate } from './animation.js';
+import { initStatsBuffer, disposeStatsBuffer } from './core/stats-buffer.js';
 import {
     initBottomSheet, openBottomSheet, closeBottomSheet,
     updateBottomSheetFileTypes, updateBottomSheetAuthors, clearBottomSheetLegends
@@ -306,6 +307,9 @@ function setupCleanupHandler() {
             // Ignore errors during cleanup
         }
 
+        // Release stats buffer references before WASM disposal
+        disposeStatsBuffer();
+
         // Finally, dispose WASM resources (GPU buffers, textures, etc.)
         const rource = getRource();
         if (rource) {
@@ -341,6 +345,8 @@ function setupCleanupHandler() {
         } catch (e) {
             // Ignore errors during cleanup
         }
+
+        disposeStatsBuffer();
 
         const rource = getRource();
         if (rource) {
@@ -471,6 +477,16 @@ async function main() {
         const rource = await createRourceWithRetry(canvas);
         setRource(rource);
         setReducedMotionRource(rource); // Connect rource to reduced motion support
+
+        // Phase 84: Initialize zero-copy stats buffer for direct WASM memory reads
+        try {
+            const wasmMemory = rource.getWasmMemory();
+            if (initStatsBuffer(rource, wasmMemory)) {
+                console.log('Rource: Zero-copy stats buffer initialized (Phase 84)');
+            }
+        } catch (e) {
+            console.warn('Rource: Stats buffer init failed, using JSON fallback:', e);
+        }
 
         // Check renderer type - deterministic from WASM, never guessed
         const isGPU = rource.isGPUAccelerated();
