@@ -202,7 +202,10 @@ function initAnalyticsDashboardActions() {
         analyticsFetchBtn.disabled = true;
 
         addManagedEventListener(analyticsGithubUrl, 'input', () => {
-            analyticsFetchBtn.disabled = !analyticsGithubUrl.value.trim();
+            const hasValue = !!analyticsGithubUrl.value.trim();
+            analyticsFetchBtn.disabled = !hasValue;
+            analyticsFetchBtn.setAttribute('aria-label',
+                hasValue ? 'Fetch repository data' : 'Fetch repository data (enter a GitHub URL first)');
         });
 
         addManagedEventListener(analyticsFetchBtn, 'click', async () => {
@@ -682,8 +685,13 @@ async function main() {
         if (elements.showcaseFiles) elements.showcaseFiles.textContent = ROURCE_STATS.files.toLocaleString();
         if (elements.showcaseAuthors) elements.showcaseAuthors.textContent = ROURCE_STATS.authors.toLocaleString();
 
-        // Start animation loop
-        startAnimation();
+        // Start animation loop only if visualization is the active view.
+        // In analytics-first mode, the canvas is hidden (0×0 dimensions),
+        // which causes WebGPU texture creation to fail with size 0 errors.
+        // Animation will be started by view-manager when switching to viz.
+        if (getCurrentView() === 'viz') {
+            startAnimation();
+        }
 
         // Hide loading overlay
         if (elements.loadingEl) elements.loadingEl.classList.add('hidden');

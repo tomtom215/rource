@@ -15,7 +15,7 @@
 
 import { setState, get, subscribe, addManagedEventListener, hasData } from '../state.js';
 import { updateUrlState } from '../url-state.js';
-import { stopAnimation, startAnimation } from '../animation.js';
+import { stopAnimation, startAnimation, resizeCanvas } from '../animation.js';
 
 // DOM references
 let appContainer = null;
@@ -97,12 +97,10 @@ function applyViewState(view) {
     const sidebarToggle = document.getElementById('sidebar-toggle');
 
     if (view === 'viz') {
-        // Resume animation loop when returning to visualization
-        if (hasData()) {
-            startAnimation();
-        }
-
-        // Show visualization, hide analytics dashboard
+        // CRITICAL: Show visualization panel BEFORE starting animation.
+        // The canvas is inside #viz-panel — when hidden, getBoundingClientRect()
+        // returns 0×0, causing WebGPU texture creation to fail with size 0 errors.
+        // Order: show panel → resize canvas → start animation.
         appContainer.classList.remove('view-analytics');
         appContainer.classList.add('view-viz');
 
@@ -119,6 +117,14 @@ function applyViewState(view) {
         if (bottomSheetFab) bottomSheetFab.hidden = false;
         // Sidebar toggle is outside .app-container; restore for viz
         if (sidebarToggle) sidebarToggle.hidden = false;
+
+        // Resize canvas now that the container is visible and has real dimensions
+        resizeCanvas();
+
+        // Resume animation loop AFTER panel is visible and canvas is properly sized
+        if (hasData()) {
+            startAnimation();
+        }
     } else {
         // Stop animation loop — no need to render when canvas is hidden
         stopAnimation();

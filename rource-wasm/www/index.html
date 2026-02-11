@@ -321,7 +321,7 @@
             </div>
 
             <!-- Summary Cards Row -->
-            <div class="analytics-summary-row" id="analytics-summary-row">
+            <div class="analytics-summary-row" id="analytics-summary-row" role="group" aria-label="Repository metrics summary">
                 <div class="analytics-card" id="acard-commits">
                     <span class="analytics-card-value" id="acard-commits-value">--</span>
                     <span class="analytics-card-label">Commits</span>
@@ -377,7 +377,7 @@
                 <h3 class="analytics-section-title">Load a Repository</h3>
                 <div class="analytics-input-group">
                     <input type="url" id="analytics-github-url" class="analytics-input" placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL" autocomplete="url">
-                    <button type="button" id="analytics-fetch-btn" class="btn btn-success btn-sm" disabled>
+                    <button type="button" id="analytics-fetch-btn" class="btn btn-success btn-sm" disabled aria-label="Fetch repository data (enter a GitHub URL first)">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                         </svg>
@@ -387,42 +387,42 @@
                 <div class="analytics-repo-chips">
                     <span class="analytics-chips-label">Pre-cached repos (instant):</span>
                     <div class="repo-chips">
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="facebook/react" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="facebook/react" title="Pre-cached - instant loading" aria-label="Load facebook/react (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#61dafb" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             React
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="vuejs/vue" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="vuejs/vue" title="Pre-cached - instant loading" aria-label="Load vuejs/vue (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#42b883" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Vue
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="sveltejs/svelte" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="sveltejs/svelte" title="Pre-cached - instant loading" aria-label="Load sveltejs/svelte (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#ff3e00" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Svelte
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="denoland/deno" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="denoland/deno" title="Pre-cached - instant loading" aria-label="Load denoland/deno (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Deno
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="rust-lang/rust" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="rust-lang/rust" title="Pre-cached - instant loading" aria-label="Load rust-lang/rust (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#dea584" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Rust
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="microsoft/vscode" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="microsoft/vscode" title="Pre-cached - instant loading" aria-label="Load microsoft/vscode (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#007acc" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             VS Code
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="golang/go" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="golang/go" title="Pre-cached - instant loading" aria-label="Load golang/go (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#00add8" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Go
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="torvalds/linux" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="torvalds/linux" title="Pre-cached - instant loading" aria-label="Load torvalds/linux (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#f1c40f" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Linux
                         </button>
                     </div>
                 </div>
-                <div id="analytics-fetch-status" class="fetch-status">
-                    <span id="analytics-fetch-status-text"></span>
+                <div id="analytics-fetch-status" class="fetch-status" aria-live="polite" aria-atomic="true">
+                    <span id="analytics-fetch-status-text" role="status"></span>
                     <div class="fetch-progress">
                         <div id="analytics-fetch-progress-bar" class="fetch-progress-bar"></div>
                     </div>

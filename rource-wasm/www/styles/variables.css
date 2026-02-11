@@ -45,8 +45,10 @@
 
     /* Shadows & Overlays */
     --shadow: rgba(0, 0, 0, 0.4);
+    --shadow-light: rgba(0, 0, 0, 0.1);   /* Subtle elevation on hover */
     --backdrop: rgba(0, 0, 0, 0.4);       /* Modal/overlay backdrop */
     --backdrop-blur: rgba(0, 0, 0, 0.85); /* Stronger backdrop for modals */
+    --focus-ring: rgba(88, 166, 255, 0.2); /* Focus ring glow (accent-blue at 20%) */
 
     /* Spacing Scale */
     --spacing-xs: 0.25rem;
