@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770768566512,
+  "lastUpdate": 1770802711360,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6263,6 +6263,45 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/tomtom215/rource/commit/c2688960320f5c77dfeb0440af1f88f817f73d5f"
         },
         "date": 1770768565193,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912600,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3593841,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1353323,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f80cab868a80e91d734bb31a4713413b3bae368",
+          "message": "Merge pull request #290 from tomtom215/claude/analytics-verification-feedback-8BB7k\n\nAdd Visual Feedback Loop (VFL) for screenshot-based UI regression testing",
+          "timestamp": "2026-02-11T10:36:17+01:00",
+          "tree_id": "a265aa039155b13616f26a76d06ce1ffdc3c85e6",
+          "url": "https://github.com/tomtom215/rource/commit/8f80cab868a80e91d734bb31a4713413b3bae368"
+        },
+        "date": 1770802710974,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
