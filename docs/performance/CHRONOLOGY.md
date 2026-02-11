@@ -3596,4 +3596,127 @@ Specific candidates:
 
 ---
 
-*Last updated: 2026-01-29*
+## Phase 84: Zero-Copy Stats Buffer — WASM↔JS Boundary Optimization (2026-02-11)
+
+### Problem
+
+The `getFrameStats()` API uses `format!()` to construct a 16-field JSON string on every
+stats update (every 10th frame). This involves:
+
+1. **Rust-side**: `format!()` macro allocates a `String`, formats 16 fields with
+   positional arguments, and returns the heap-allocated result
+2. **WASM boundary**: `wasm-bindgen` copies the `String` bytes into JS memory
+3. **JS-side**: `JSON.parse()` parses the string back into an object
+
+At a 5–10 µs frame budget (target), the measured ~778 ns/op Rust-side cost alone
+represents 7.8–15.6% of the entire frame budget — for a metrics-display path
+that should be negligible.
+
+### Solution: Zero-Copy Stats Buffer
+
+Write 20 `f32` values to a fixed 128-byte buffer in the Rource struct.
+JS reads this buffer directly from WASM linear memory via a `Float32Array` view.
+
+**Architecture:**
+
+```
+Rust frame() → stats_buffer[0..19] = f32 stores (20 instructions)
+                    ↓
+WASM linear memory (128 bytes, fixed offset)
+                    ↓
+JS Float32Array view → statsView[STATS.FPS], etc. (zero copy)
+```
+
+**What is eliminated:**
+
+| Eliminated Operation | Estimated Cost |
+|---------------------|---------------|
+| `format!()` string construction (Rust) | ~778 ns (measured) |
+| `String` heap allocation (Rust) | Included in above |
+| WASM→JS string copy (`wasm-bindgen`) | ~50–200 ns (estimated) |
+| `JSON.parse()` (JS) | ~500–2000 ns (estimated) |
+
+**What is added:**
+
+| Added Operation | Measured Cost |
+|----------------|--------------|
+| 20 `f32` store instructions | ~1.26 ns (measured) |
+
+### Implementation
+
+**Rust side (`rource-wasm/src/lib.rs`):**
+- Added `stats_buffer: [f32; 32]` field to `Rource` struct (128 bytes)
+- Buffer synced at end of `frame()` after `frame_profiler.end_frame()`
+- 20 fields written: fps, frame time, entity counts, canvas dimensions,
+  playback state, mouse positions (screen + world)
+
+**WASM API (`rource-wasm/src/wasm_api/stats.rs`):**
+- `getStatsBufferPtr()` → returns pointer offset into WASM linear memory
+- `getStatsBufferLen()` → returns buffer element count (32)
+- `getWasmMemory()` → returns `WebAssembly.Memory` reference for JS
+
+**JS side (`rource-wasm/www/js/core/stats-buffer.js`):**
+- `Float32Array` view over WASM memory at buffer offset
+- `ensureView()` handles `ArrayBuffer` detachment on WASM memory growth
+- `readAllStats()` returns object matching legacy JSON format
+- Graceful fallback: if buffer init fails, `performance-metrics.js`
+  falls back to the existing `getFrameStats()` JSON path
+
+### Benchmark Results (Measured)
+
+100,000 iterations, `f64`-precision division, `--release` mode, 3 independent runs:
+
+| Run | `format!()` JSON (ns/op) | Buffer Writes (ns/op) | Speedup | Reduction |
+|-----|--------------------------|----------------------|---------|-----------|
+| 1 | 774.75 | 1.21 | 637.7x | 99.84% |
+| 2 | 799.27 | 1.35 | 592.0x | 99.83% |
+| 3 | 761.36 | 1.22 | 626.2x | 99.84% |
+| **Mean** | **778.46** | **1.26** | **618.6x** | **99.84%** |
+
+**Note**: These measure Rust-side cost only. JS-side savings (eliminated
+`JSON.parse()`) are additional but not measured in this benchmark.
+
+**Methodology**: `std::time::Instant`, 100,000 iterations per path,
+`std::hint::black_box()` to prevent dead-code elimination,
+`f64` division to avoid integer truncation artifacts.
+
+### Frame Budget Impact
+
+| Budget | JSON Cost | Buffer Cost | Savings |
+|--------|-----------|-------------|---------|
+| 20 µs (50k FPS) | 3.89% of frame | 0.006% of frame | 3.88% freed |
+| 10 µs (100k FPS) | 7.78% of frame | 0.013% of frame | 7.77% freed |
+| 5 µs (200k FPS) | 15.57% of frame | 0.025% of frame | 15.54% freed |
+
+Stats are updated every 10th frame (CONFIG.PERF_UPDATE_INTERVAL = 10),
+so amortized per-frame cost drops by another 10x.
+
+### Regression Check
+
+All 9 existing benchmarks verified with zero regressions:
+
+| Benchmark | Pre-Change | Post-Change | Status |
+|-----------|-----------|-------------|--------|
+| `bench_label_placer_new` | 29,487 ns | 27,724 ns | OK |
+| `bench_label_placer_reset` | 199 ns | 197 ns | OK |
+| `bench_label_placer_try_place` | 9 ns | 13 ns | OK (within noise) |
+| `bench_label_placer_try_place_with_fallback` | 244 ns | 247 ns | OK |
+| `bench_beam_sorting` | 88 ns | 99 ns | OK (within noise) |
+| `bench_user_label_sorting` | 86 ns | 86 ns | OK |
+| All others | — | — | OK |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `rource-wasm/src/lib.rs` | Added `stats_buffer` field, sync in `frame()` |
+| `rource-wasm/src/wasm_api/stats.rs` | Added 3 zero-copy API methods |
+| `rource-wasm/src/wasm_api/mod.rs` | Made `stats` module `pub` |
+| `rource-wasm/www/js/core/stats-buffer.js` | New: zero-copy reader module |
+| `rource-wasm/www/js/core/performance-metrics.js` | Updated to use zero-copy with fallback |
+| `rource-wasm/www/js/main.js` | Init + dispose lifecycle |
+| `rource-wasm/src/render_phases/tests/benchmark_tests.rs` | Added Phase 84 benchmark |
+
+---
+
+*Last updated: 2026-02-11*

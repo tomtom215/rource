@@ -30,6 +30,10 @@ pub enum VsyncMode {
 
 impl WgpuRenderer {
     /// Enables or disables bloom post-processing.
+    ///
+    /// When enabling, initializes the bloom pipeline if needed. If pipeline
+    /// creation fails, the enabled flag is set to false to prevent the
+    /// `begin_frame`/`end_frame` predicate mismatch that causes black canvas.
     pub fn set_bloom_enabled(&mut self, enabled: bool) {
         self.bloom_enabled = enabled;
         if enabled {
@@ -47,13 +51,29 @@ impl WgpuRenderer {
             if let Some(ref mut bloom) = self.bloom_pipeline {
                 bloom.ensure_size(&self.device, self.width, self.height);
             }
+            // Defense-in-depth: if pipeline is still not active after init,
+            // disable the flag to prevent black canvas (enabled+uninitialized).
+            let active = self
+                .bloom_pipeline
+                .as_ref()
+                .is_some_and(BloomPipeline::is_active);
+            if !active {
+                self.bloom_enabled = false;
+            }
         }
     }
 
-    /// Returns whether bloom is enabled.
+    /// Returns whether bloom is enabled and the pipeline is active.
+    ///
+    /// This checks both the configuration flag AND pipeline initialization state,
+    /// ensuring we never report enabled when the pipeline failed to initialize.
     #[inline]
     pub fn is_bloom_enabled(&self) -> bool {
         self.bloom_enabled
+            && self
+                .bloom_pipeline
+                .as_ref()
+                .is_some_and(BloomPipeline::is_active)
     }
 
     /// Sets bloom configuration.
@@ -79,6 +99,10 @@ impl WgpuRenderer {
     }
 
     /// Enables or disables shadow post-processing.
+    ///
+    /// When enabling, initializes the shadow pipeline if needed. If pipeline
+    /// creation fails, the enabled flag is set to false to prevent the
+    /// `begin_frame`/`end_frame` predicate mismatch that causes black canvas.
     pub fn set_shadow_enabled(&mut self, enabled: bool) {
         self.shadow_enabled = enabled;
         if enabled {
@@ -97,13 +121,29 @@ impl WgpuRenderer {
             if let Some(ref mut shadow) = self.shadow_pipeline {
                 shadow.ensure_size(&self.device, self.width, self.height);
             }
+            // Defense-in-depth: if pipeline is still not active after init,
+            // disable the flag to prevent black canvas (enabled+uninitialized).
+            let active = self
+                .shadow_pipeline
+                .as_ref()
+                .is_some_and(ShadowPipeline::is_active);
+            if !active {
+                self.shadow_enabled = false;
+            }
         }
     }
 
-    /// Returns whether shadow is enabled.
+    /// Returns whether shadow is enabled and the pipeline is active.
+    ///
+    /// This checks both the configuration flag AND pipeline initialization state,
+    /// ensuring we never report enabled when the pipeline failed to initialize.
     #[inline]
     pub fn is_shadow_enabled(&self) -> bool {
         self.shadow_enabled
+            && self
+                .shadow_pipeline
+                .as_ref()
+                .is_some_and(ShadowPipeline::is_active)
     }
 
     /// Sets shadow configuration.

@@ -15,6 +15,7 @@ import { CONFIG } from '../config.js';
 import { getAllElements } from '../dom.js';
 import { getRource, hasData, get } from '../state.js';
 import { safeWasmCall } from '../wasm-api.js';
+import { isStatsBufferReady, readAllStats } from './stats-buffer.js';
 
 // =============================================================================
 // Module State
@@ -159,12 +160,17 @@ export function updatePerfMetrics() {
     if (!perfFps) return;
 
     try {
-        // Get all frame statistics in a single batched WASM call
-        // This replaces 12+ individual calls with one, reducing overhead by ~90%
-        const statsJson = safeWasmCall('getFrameStats', () => rource.getFrameStats(), null);
-        if (!statsJson) return;
-
-        const stats = JSON.parse(statsJson);
+        // Phase 84: Zero-copy path reads stats directly from WASM linear memory.
+        // Falls back to JSON serialization if buffer not initialized.
+        let stats;
+        if (isStatsBufferReady()) {
+            stats = readAllStats();
+            if (!stats) return;
+        } else {
+            const statsJson = safeWasmCall('getFrameStats', () => rource.getFrameStats(), null);
+            if (!statsJson) return;
+            stats = JSON.parse(statsJson);
+        }
 
         // Extract values from batched response
         const fps = stats.fps;

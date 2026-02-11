@@ -34,4 +34,4 @@ mod insights;
 mod layout;
 mod playback;
 mod settings;
-mod stats;
+pub mod stats;

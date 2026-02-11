@@ -1041,14 +1041,26 @@ impl Renderer for WgpuRenderer {
             },
         ));
 
-        // Determine render target based on post-processing state
-        if self.bloom_enabled {
+        // Determine render target based on post-processing state.
+        // Use pipeline.is_active() (not self.bloom_enabled/self.shadow_enabled) to ensure
+        // initialization succeeded. This prevents the black canvas bug where a config flag
+        // is true but the pipeline failed to initialize (enabled+uninitialized = no render).
+        let bloom_active = self
+            .bloom_pipeline
+            .as_ref()
+            .is_some_and(bloom::BloomPipeline::is_active);
+        let shadow_active = self
+            .shadow_pipeline
+            .as_ref()
+            .is_some_and(shadow::ShadowPipeline::is_active);
+
+        if bloom_active {
             // Bloom manages its own scene render target - use that
             if let Some(ref mut bloom) = self.bloom_pipeline {
                 bloom.ensure_size(&self.device, self.width, self.height);
                 self.current_target_view = bloom.scene_view().cloned();
             }
-        } else if self.shadow_enabled {
+        } else if shadow_active {
             // Shadow-only: use renderer's scene texture
             self.ensure_scene_texture();
             if let Some(ref mut shadow) = self.shadow_pipeline {
@@ -1083,14 +1095,25 @@ impl Renderer for WgpuRenderer {
                 .texture
                 .create_view(&wgpu::TextureViewDescriptor::default());
 
-            // Handle post-processing effects
+            // Handle post-processing effects.
+            // Use pipeline.is_active() (not self.bloom_enabled/self.shadow_enabled) to match
+            // begin_frame predicates. Both frame boundaries MUST use the same check.
+            let bloom_active = self
+                .bloom_pipeline
+                .as_ref()
+                .is_some_and(bloom::BloomPipeline::is_active);
+            let shadow_active = self
+                .shadow_pipeline
+                .as_ref()
+                .is_some_and(shadow::ShadowPipeline::is_active);
+
             // Priority: bloom takes precedence, then shadow-only
-            if self.bloom_enabled {
+            if bloom_active {
                 if let Some(ref bloom) = self.bloom_pipeline {
                     bloom.apply(&self.device, &self.queue, &mut encoder, &surface_view);
                     self.frame_stats.bloom_applied = true;
                 }
-            } else if self.shadow_enabled {
+            } else if shadow_active {
                 if let Some(ref shadow) = self.shadow_pipeline {
                     if let Some(ref scene_view) = self.scene_texture_view {
                         shadow.apply(

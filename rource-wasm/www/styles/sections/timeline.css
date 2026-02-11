@@ -251,7 +251,7 @@
 }
 
 .play-btn-main.replay:hover:not(:disabled) {
-    background: #4d9eff;
+    background: var(--accent-blue-light);
     box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4);
 }
 

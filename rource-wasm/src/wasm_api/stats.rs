@@ -112,7 +112,44 @@ mod helpers {
 pub use helpers::*;
 
 // ============================================================================
-// Batched Frame Statistics API
+// Zero-Copy Stats Buffer API (Phase 84)
+// ============================================================================
+
+#[wasm_bindgen]
+impl Rource {
+    /// Returns a pointer to the stats buffer in WASM linear memory.
+    ///
+    /// JS uses this pointer offset to create a `Float32Array` view directly
+    /// into WASM memory, enabling zero-copy reads of all frame statistics.
+    ///
+    /// # Safety
+    ///
+    /// The returned pointer is valid for the lifetime of the `Rource` instance.
+    /// The buffer is 32 × `f32` = 128 bytes. JS must not write to this buffer.
+    #[wasm_bindgen(js_name = getStatsBufferPtr)]
+    pub fn get_stats_buffer_ptr(&self) -> *const f32 {
+        self.stats_buffer.as_ptr()
+    }
+
+    /// Returns the length of the stats buffer (number of `f32` elements).
+    #[wasm_bindgen(js_name = getStatsBufferLen)]
+    pub fn get_stats_buffer_len(&self) -> usize {
+        self.stats_buffer.len()
+    }
+
+    /// Returns a reference to the WASM linear memory.
+    ///
+    /// JS needs this to construct a `Float32Array` view over the stats buffer.
+    /// The `ArrayBuffer` backing this memory may be detached if WASM memory
+    /// grows; JS code must handle this by recreating the view.
+    #[wasm_bindgen(js_name = getWasmMemory)]
+    pub fn get_wasm_memory(&self) -> JsValue {
+        wasm_bindgen::memory()
+    }
+}
+
+// ============================================================================
+// Batched Frame Statistics API (Legacy — prefer zero-copy path above)
 // ============================================================================
 
 #[wasm_bindgen]

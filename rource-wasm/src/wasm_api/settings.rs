@@ -30,9 +30,21 @@ impl Rource {
     /// Sets whether to show bloom effect.
     ///
     /// Bloom creates a glow around bright elements.
+    /// Syncs the setting to the active renderer backend.
     #[wasm_bindgen(js_name = setBloom)]
     pub fn set_bloom(&mut self, enabled: bool) {
         self.settings.display.bloom_enabled = enabled;
+
+        // Sync to renderer backend so the pipeline is actually enabled/disabled
+        #[cfg(target_arch = "wasm32")]
+        if let Some(wgpu_renderer) = self.backend.as_wgpu_mut() {
+            wgpu_renderer.set_bloom_enabled(enabled);
+            return;
+        }
+
+        if let Some(webgl2_renderer) = self.backend.as_webgl2_mut() {
+            webgl2_renderer.set_bloom_enabled(enabled);
+        }
     }
 
     /// Sets the background color (hex string like "#000000" or "000000").

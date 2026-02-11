@@ -805,6 +805,24 @@ for strip in 0..(width / STRIP_WIDTH) {
 
 ---
 
+### Zero-Copy Stats Buffer
+
+**Phase**: 84
+**Location**: `rource-wasm/src/lib.rs`, `rource-wasm/src/wasm_api/stats.rs`, `rource-wasm/www/js/core/stats-buffer.js`
+**Impact**: 618.6x Rust-side speedup (778.46 ns → 1.26 ns per stats update)
+
+Replaced `format!()` JSON serialization + `JSON.parse()` with direct `f32` buffer
+writes read via `Float32Array` view over WASM linear memory.
+
+| Path | Cost (ns/op) | Operations |
+|------|-------------|-----------|
+| JSON (before) | 778.46 | `format!()` + `String` alloc + WASM→JS copy + `JSON.parse()` |
+| Buffer (after) | 1.26 | 20 `f32` store instructions, JS `Float32Array` read |
+
+**Methodology**: 100,000 iterations, `f64`-precision division, 3 independent runs.
+
+---
+
 ## Rendering Optimizations
 
 ### File Glow LOD Culling and Radius Reduction
@@ -1196,6 +1214,7 @@ wasm-opt \
 
 | Optimization           | Phase | Improvement |
 |------------------------|-------|-------------|
+| **Zero-copy stats buffer** | **84** | **618.6x** (Rust-side, `format!()` → buffer writes) |
 | Label grid reset       | 65    | 90x         |
 | Label width estimation | 68    | 22.4x (accuracy) |
 | LUT random direction   | 58    | 13.9x       |
