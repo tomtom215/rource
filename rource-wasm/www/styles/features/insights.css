@@ -89,6 +89,12 @@
 
 .insights-tab-panel.active {
     display: block;
+    animation: insights-fade-in var(--transition-fast) ease-out;
+}
+
+@keyframes insights-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* ===== Metric Sections ===== */
@@ -150,7 +156,7 @@
 
 .insights-kv-value {
     color: var(--text-primary);
-    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-weight: 600;
     font-size: 0.9375rem;
 }
@@ -222,7 +228,7 @@
 
 .insights-table td.num {
     text-align: right;
-    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     white-space: nowrap;
     min-width: 3.5rem;
 }
@@ -232,7 +238,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
 }
 
@@ -277,11 +283,12 @@
     color: var(--accent-blue);
     font-size: 0.8125rem;
     cursor: pointer;
-    transition: background var(--transition-fast);
+    transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .insights-show-all:hover {
     background: var(--bg-secondary);
+    color: var(--accent-blue-light);
 }
 
 .insights-show-all:focus-visible {
@@ -390,7 +397,7 @@
     font-size: 1.125rem;
     font-weight: 700;
     color: var(--text-primary);
-    font-family: 'SFMono-Regular', 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
 }
 
 .insights-summary-stat .stat-label {
@@ -464,5 +471,9 @@
     .insights-spinner {
         animation: none;
         opacity: 0.5;
+    }
+
+    .insights-tab-panel.active {
+        animation: none;
     }
 }

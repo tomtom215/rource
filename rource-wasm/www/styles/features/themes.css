@@ -136,13 +136,12 @@
     color: var(--text-secondary);
     width: 32px;
     height: 32px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Use composited properties only for better performance */
-    transition: opacity 0.2s, transform 0.2s;
+    transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .theme-toggle:hover {

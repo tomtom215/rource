@@ -14,8 +14,8 @@
 
 .github-input-group {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
     width: 100%;
 }
 
@@ -25,9 +25,9 @@
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-primary);
-    padding: var(--spacing-sm) 0.6rem;
+    padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-md);
-    font-size: 0.8rem;
+    font-size: var(--font-size-xs);
     width: 100%;
 }
 
@@ -39,7 +39,7 @@
 
 .github-input-group input::placeholder {
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
 }
 
 .github-input-group .btn {
@@ -52,15 +52,15 @@
    ============================================================================= */
 
 .popular-repos {
-    margin-top: 0.75rem;
+    margin-top: var(--spacing-md);
 }
 
 .popular-repos-label {
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-sm);
     display: block;
 }
 
@@ -74,16 +74,15 @@
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-secondary);
-    padding: 0.5rem 0.75rem;
+    padding: var(--spacing-sm) var(--spacing-md);
     min-height: 44px;
-    border-radius: 16px;
-    font-size: 0.75rem; /* 12px - WCAG minimum */
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
     cursor: pointer;
-    /* Use composited properties only for better performance */
-    transition: opacity 0.2s, transform 0.2s;
+    transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--spacing-xs);
 }
 
 .repo-chip:hover {
@@ -131,11 +130,11 @@
    ============================================================================= */
 
 .fetch-status {
-    margin-top: 0.75rem;
-    padding: 0.75rem;
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
     background: var(--bg-tertiary);
-    border-radius: 6px;
-    font-size: 0.8rem;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
     display: none;
 }
 
@@ -160,7 +159,7 @@
 }
 
 .fetch-progress {
-    margin-top: 0.5rem;
+    margin-top: var(--spacing-sm);
     height: 4px;
     background: var(--bg-primary);
     border-radius: 2px;
@@ -171,7 +170,7 @@
     height: 100%;
     background: var(--accent-blue);
     width: 0%;
-    transition: width 0.3s;
+    transition: width var(--transition-slow);
 }
 
 /* =============================================================================
@@ -180,19 +179,19 @@
 
 .rate-limit-note {
     display: block;
-    margin-top: 0.25rem;
+    margin-top: var(--spacing-xs);
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
 }
 
 .rate-limit-status {
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
 }
 
 .rate-limit-status.hidden {
@@ -233,17 +232,18 @@ textarea {
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-primary);
-    padding: 0.75rem;
-    border-radius: 6px;
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-size: 0.75rem;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
     resize: vertical;
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--spacing-md);
 }
 
 textarea:focus {
     outline: none;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
 }
 
 /* =============================================================================
@@ -252,13 +252,12 @@ textarea:focus {
 
 .file-upload-area {
     border: 2px dashed var(--border);
-    border-radius: 8px;
-    padding: 1rem;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
     text-align: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--spacing-md);
     cursor: pointer;
-    /* Use composited properties only for better performance */
-    transition: opacity 0.2s, transform 0.2s;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .file-upload-area:hover {
@@ -276,7 +275,7 @@ textarea:focus {
 }
 
 .file-upload-icon {
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-sm);
     color: var(--text-muted);
 }
 
@@ -290,7 +289,7 @@ textarea:focus {
 }
 
 .file-upload-text {
-    font-size: 0.8rem;
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
 }
 
@@ -299,19 +298,19 @@ textarea:focus {
 }
 
 .file-upload-privacy {
-    font-size: 0.75rem; /* 12px - WCAG minimum */
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
-    margin-top: 0.5rem;
+    margin-top: var(--spacing-sm);
     opacity: 0.8;
 }
 
 .file-name {
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--spacing-md);
     color: var(--text-secondary);
-    font-size: 0.75rem;
-    padding: 0.5rem;
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-sm);
     background: var(--bg-tertiary);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     word-break: break-all;
 }
 
@@ -321,13 +320,13 @@ textarea:focus {
 
 .command-box {
     background: var(--bg-tertiary);
-    padding: 0.6rem;
-    border-radius: 6px;
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-size: 0.75rem;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
     overflow-x: auto;
     overflow-y: hidden;
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--spacing-md);
     border: 1px solid var(--border);
     min-width: 0;
     max-width: 100%;
@@ -346,7 +345,7 @@ textarea:focus {
    ============================================================================= */
 
 .help-text {
-    font-size: 0.75rem; /* 12px - WCAG minimum */
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
     line-height: 1.6;
     word-wrap: break-word;
@@ -355,8 +354,8 @@ textarea:focus {
 
 .help-text code {
     background: var(--bg-tertiary);
-    padding: 0.1rem 0.25rem;
+    padding: 0.1rem var(--spacing-xs);
     border-radius: 3px;
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     word-break: break-all;
 }
