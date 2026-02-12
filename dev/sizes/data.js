@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770855382956,
+  "lastUpdate": 1770863529273,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6434,6 +6434,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1357468,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bf20598c8e4bbec5ab24409a9e51470136851035",
+          "message": "Merge pull request #294 from tomtom215/claude/peer-review-updates-w7Iig\n\nPhase 85-87: Zero-allocation buffers, flat grid label placer, and full-frame profiling",
+          "timestamp": "2026-02-12T03:29:34+01:00",
+          "tree_id": "8c577c657a26b4619bfb27105b238efb81367854",
+          "url": "https://github.com/tomtom215/rource/commit/bf20598c8e4bbec5ab24409a9e51470136851035"
+        },
+        "date": 1770863528077,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912280,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3603603,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1357545,
             "unit": "bytes"
           }
         ]
