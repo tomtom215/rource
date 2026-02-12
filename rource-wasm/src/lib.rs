@@ -1100,10 +1100,20 @@ impl Rource {
     }
 
     /// Forces a render without updating simulation.
+    ///
+    /// Guards against zero-dimension canvas (e.g., when `#viz-panel` is hidden
+    /// and `resizeCanvas()` hasn't run yet). WebGPU cannot create swapchain
+    /// textures with 0×0 dimensions, so we skip the render entirely.
     #[wasm_bindgen(js_name = forceRender)]
     pub fn force_render(&mut self) {
         let canvas_width = self.canvas.width();
         let canvas_height = self.canvas.height();
+
+        // Guard: skip render when canvas has zero dimensions.
+        // This can happen when the canvas container is hidden (analytics view).
+        if canvas_width == 0 || canvas_height == 0 {
+            return;
+        }
 
         if self.backend.width() != canvas_width || self.backend.height() != canvas_height {
             self.backend.resize(canvas_width, canvas_height);

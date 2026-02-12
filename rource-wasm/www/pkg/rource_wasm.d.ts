@@ -144,6 +144,23 @@ export class Rource {
      */
     enableRourceWatermark(): void;
     /**
+     * Checks if the total error rate exceeds the given threshold.
+     *
+     * # Arguments
+     *
+     * * `threshold_percent` - Maximum acceptable error rate (0.0-100.0)
+     *
+     * # Example
+     *
+     * ```javascript
+     * // Check if error rate exceeds 0.1%
+     * if (rource.errorRateExceedsThreshold(0.1)) {
+     *     showErrorAlert('Error rate too high');
+     * }
+     * ```
+     */
+    errorRateExceedsThreshold(threshold_percent: number): boolean;
+    /**
      * Exports the current commits as a binary cache.
      *
      * Returns `null` if no commits are loaded.
@@ -182,6 +199,10 @@ export class Rource {
     exportCacheBytesWithRepoId(repo_id: string): Uint8Array | undefined;
     /**
      * Forces a render without updating simulation.
+     *
+     * Guards against zero-dimension canvas (e.g., when `#viz-panel` is hidden
+     * and `resizeCanvas()` hasn't run yet). WebGPU cannot create swapchain
+     * textures with 0×0 dimensions, so we skip the render entirely.
      */
     forceRender(): void;
     /**
@@ -194,6 +215,29 @@ export class Rource {
      * Returns the number of active action beams.
      */
     getActiveActions(): number;
+    /**
+     * Returns commit activity heatmap (day-of-week × hour-of-day grid).
+     */
+    getActivityHeatmap(): string | undefined;
+    /**
+     * Returns all per-file metrics as a JSON array.
+     *
+     * Each element contains the file path and its aggregated academic metrics.
+     * Useful for bulk visualization (e.g., coloring all files by hotspot score).
+     */
+    getAllFileMetrics(): string | undefined;
+    /**
+     * Returns all per-user metrics as a JSON array.
+     *
+     * Each element contains the author name and their aggregated academic metrics.
+     */
+    getAllUserMetrics(): string | undefined;
+    /**
+     * Returns the error count for asset loading operations.
+     *
+     * Asset errors occur when loading images, fonts, or other resources.
+     */
+    getAssetErrorCount(): bigint;
     /**
      * Returns the color for a given author name as a hex string.
      *
@@ -222,6 +266,14 @@ export class Rource {
      * Authors are sorted by commit count (descending).
      */
     getAuthors(): string;
+    /**
+     * Returns bus factor analysis per directory as JSON.
+     *
+     * The bus factor is the minimum number of contributors who must leave
+     * before a directory becomes unmaintained. Low values (1-2) indicate
+     * critical key-person risk.
+     */
+    getBusFactors(): string | undefined;
     /**
      * Returns statistics about the current cache state.
      *
@@ -267,9 +319,67 @@ export class Rource {
      */
     getCanvasWidth(): number;
     /**
+     * Returns per-file change burst detection as JSON.
+     *
+     * Detects rapid consecutive changes to individual files.
+     * Files with many bursts are significantly more defect-prone
+     * (Nagappan et al. 2010).
+     */
+    getChangeBursts(): string | undefined;
+    /**
+     * Returns change coupling pairs as JSON.
+     *
+     * Identifies files that frequently change together, revealing hidden
+     * architectural dependencies that static analysis misses.
+     * Research shows coupling correlates with defects better than complexity
+     * metrics (D'Ambros et al. 2009).
+     *
+     * # Arguments
+     *
+     * * `limit` - Maximum number of coupling pairs to return (default: 20)
+     */
+    getChangeCoupling(limit?: number | null): string | undefined;
+    /**
+     * Returns sliding-window change entropy analysis as JSON.
+     *
+     * Measures Shannon entropy of file modification distribution within
+     * time windows for defect risk prediction (Hassan ICSE 2009).
+     */
+    getChangeEntropy(): string | undefined;
+    /**
+     * Returns code churn volatility per file (Nagappan & Ball 2005).
+     */
+    getChurnVolatility(): string | undefined;
+    /**
+     * Returns circadian (time-of-day) risk patterns as JSON.
+     *
+     * Assigns risk scores based on hour-of-day and day-of-week.
+     * Commits between midnight–4AM UTC are significantly buggier
+     * (Eyolfson et al. 2011).
+     */
+    getCircadianRisk(): string | undefined;
+    /**
+     * Returns codebase growth trajectory as JSON.
+     *
+     * Tracks active file count over time, growth rate, and trend
+     * classification (Lehman 1996 Laws of Software Evolution).
+     */
+    getCodebaseGrowth(): string | undefined;
+    /**
      * Returns the author name for a commit at the given index.
      */
     getCommitAuthor(index: number): string;
+    /**
+     * Returns commit cadence analysis per developer as JSON.
+     *
+     * Analyzes inter-commit intervals to classify contributors as
+     * regular, moderate, or bursty (Eyolfson et al. 2014).
+     */
+    getCommitCadence(): string | undefined;
+    /**
+     * Returns per-commit complexity / tangled change scores (Herzig & Zeller 2013).
+     */
+    getCommitComplexity(): string | undefined;
     /**
      * Returns the total number of unique directories across all loaded commits.
      *
@@ -293,12 +403,74 @@ export class Rource {
      */
     getCommitTimestamp(index: number): number;
     /**
+     * Returns the error count for configuration operations.
+     *
+     * Config errors occur when invalid settings are provided.
+     */
+    getConfigErrorCount(): bigint;
+    /**
+     * Returns sociotechnical congruence analysis as JSON.
+     *
+     * Measures alignment between who SHOULD coordinate (from technical
+     * dependencies) and who ACTUALLY does (from shared files).
+     * Conway's Law quantified (Cataldo et al. 2008).
+     */
+    getCongruence(): string | undefined;
+    /**
+     * Returns contribution inequality / Gini coefficient analysis as JSON.
+     *
+     * Measures how unevenly commits are distributed using the Gini coefficient.
+     * Includes Lorenz curve, top-K% share, and windowed trend analysis
+     * (Chelkowski et al. 2016).
+     */
+    getContributionInequality(): string | undefined;
+    /**
      * Returns the date range of all commits as a JSON object.
      *
      * Returns `{"startTimestamp": <unix_ts>, "endTimestamp": <unix_ts>}` or null
      * if no commits are loaded.
      */
     getDateRange(): string | undefined;
+    /**
+     * Returns defect-introducing change patterns (Kim et al. 2008).
+     */
+    getDefectPatterns(): string | undefined;
+    /**
+     * Returns detailed error metrics with operation counts as JSON.
+     *
+     * This includes both error counts and operation counts for each category,
+     * enabling more detailed analysis.
+     *
+     * # Returns
+     *
+     * JSON string with the following structure:
+     * ```json
+     * {
+     *   "errors": {
+     *     "parse": 0,
+     *     "render": 0,
+     *     "webgl": 0,
+     *     "config": 0,
+     *     "asset": 0,
+     *     "io": 0
+     *   },
+     *   "operations": {
+     *     "parse": 100,
+     *     "render": 10000,
+     *     "webgl": 1,
+     *     "config": 5,
+     *     "asset": 10,
+     *     "io": 0
+     *   },
+     *   "totals": {
+     *     "errors": 0,
+     *     "operations": 10116,
+     *     "rate": 0.0
+     *   }
+     * }
+     * ```
+     */
+    getDetailedErrorMetrics(): string;
     /**
      * Returns detailed frame profiling statistics as JSON.
      *
@@ -329,6 +501,32 @@ export class Rource {
      * - `rource:render_start` / `rource:render_end`
      */
     getDetailedFrameStats(): string;
+    /**
+     * Returns developer experience scores (Mockus & Votta 2000).
+     */
+    getDeveloperExperience(): string | undefined;
+    /**
+     * Returns developer focus and file diffusion analysis as JSON.
+     *
+     * Measures how concentrated developers' activity is (focus) and
+     * how spread out files' contributors are (diffusion).
+     * More focused developers introduce fewer defects (Posnett et al. 2013).
+     */
+    getDeveloperFocus(): string | undefined;
+    /**
+     * Returns developer collaboration network analysis as JSON.
+     *
+     * Builds and analyzes the co-authorship network: density, components,
+     * betweenness centrality, and clustering (Begel et al. 2023).
+     */
+    getDeveloperNetwork(): string | undefined;
+    /**
+     * Returns developer activity profiles as JSON.
+     *
+     * Classifies contributors as core, peripheral, or drive-by based
+     * on commit share and recency (Mockus et al. 2002).
+     */
+    getDeveloperProfiles(): string | undefined;
     /**
      * Returns the estimated draw call count for the current frame.
      */
@@ -368,6 +566,56 @@ export class Rource {
      */
     getEntityBounds(): string | undefined;
     /**
+     * Returns all error metrics as a JSON string.
+     *
+     * This batches all error metrics into a single call to reduce WASM↔JS overhead.
+     *
+     * # Returns
+     *
+     * JSON string with the following structure:
+     * ```json
+     * {
+     *   "parse": 0,
+     *   "render": 0,
+     *   "webgl": 0,
+     *   "config": 0,
+     *   "asset": 0,
+     *   "io": 0,
+     *   "total": 0,
+     *   "rate": 0.0
+     * }
+     * ```
+     *
+     * Note: The `rate` field is in decimal form (0.001 = 0.1%).
+     *
+     * # Example
+     *
+     * ```javascript
+     * const metrics = JSON.parse(rource.getErrorMetrics());
+     * if (metrics.rate > 0.001) {
+     *     console.warn('Error rate exceeds 0.1%');
+     * }
+     * ```
+     */
+    getErrorMetrics(): string;
+    /**
+     * Returns the total error rate as a percentage (0.0-100.0).
+     *
+     * Formula: `(total_errors / total_operations) * 100`
+     *
+     * Returns 0.0 if no operations have been recorded.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const errorRate = rource.getErrorRate();
+     * if (errorRate > 0.1) {
+     *     console.warn(`Error rate ${errorRate.toFixed(3)}% exceeds 0.1% threshold`);
+     * }
+     * ```
+     */
+    getErrorRate(): number;
+    /**
      * Returns the number of registered file icon types.
      *
      * # Example (JavaScript)
@@ -377,6 +625,39 @@ export class Rource {
      * ```
      */
     getFileIconCount(): number;
+    /**
+     * Returns file lifecycle analysis as JSON.
+     *
+     * Tracks file creation, modification, and deletion patterns to
+     * identify ephemeral, dead, and actively maintained files
+     * (Godfrey & Tu 2000, Gall et al. 1998).
+     */
+    getFileLifecycles(): string | undefined;
+    /**
+     * Returns aggregated academic metrics for a specific file as JSON.
+     *
+     * Computes the full insights index and performs O(1) lookup by file path.
+     * Returns `null` if the file is not found in the commit history.
+     *
+     * # Academic Citations
+     *
+     * The returned metrics aggregate findings from:
+     * - Nagappan & Ball (ICSE 2005): hotspot score
+     * - Bird et al. (ICSE 2011): ownership concentration
+     * - Eyolfson et al. (MSR 2011): circadian risk
+     * - Rigby & Bird (FSE 2013): knowledge entropy
+     * - D'Ambros et al. (TSE 2009): coupling degree
+     * - Godfrey & Tu (ICSM 2000): lifecycle stage
+     */
+    getFileMetrics(path: string): string | undefined;
+    /**
+     * Returns file survival analysis (Kaplan-Meier estimator) as JSON.
+     *
+     * Estimates how long files survive before deletion using the
+     * gold-standard survival analysis technique from biostatistics
+     * (Cito et al. 2021).
+     */
+    getFileSurvival(): string | undefined;
     /**
      * Gets the current font size for labels.
      */
@@ -507,6 +788,74 @@ export class Rource {
      */
     getGPUPhysicsThreshold(): number;
     /**
+     * Returns the top N file hotspots as JSON.
+     *
+     * Hotspots are files with disproportionately high change frequency,
+     * weighted by recency. Research shows these predict defect-prone code
+     * with ~89% accuracy (Nagappan et al. 2005).
+     *
+     * # Arguments
+     *
+     * * `limit` - Maximum number of hotspots to return (default: 20)
+     */
+    getHotspots(limit?: number | null): string | undefined;
+    /**
+     * Computes and returns comprehensive repository insights as JSON.
+     *
+     * Analyzes the loaded commit history to produce research-backed metrics:
+     *
+     * - **Hotspots**: Files with high change frequency (defect predictors)
+     * - **Change Coupling**: Hidden dependencies via co-change patterns
+     * - **Code Ownership**: Knowledge concentration per file
+     * - **Bus Factor**: Organizational resilience per directory
+     * - **Temporal Patterns**: Activity heatmap and burst detection
+     * - **Summary**: Commit entropy, author count, time span
+     *
+     * Returns a JSON string with the complete insights report.
+     * Returns `null` if no commits are loaded.
+     *
+     * # Performance
+     *
+     * Computed from commit history at call time (not per-frame).
+     * Typical computation time: <10ms for 10k commits.
+     */
+    getInsights(): string | undefined;
+    /**
+     * Returns the complete insights index summary as JSON.
+     *
+     * Contains aggregate counts: total files, total users, knowledge silos,
+     * contributor profile distribution, max hotspot score.
+     */
+    getInsightsIndexSummary(): string | undefined;
+    /**
+     * Returns a summary of repository health metrics as JSON.
+     *
+     * Quick overview suitable for dashboard display:
+     * - Total commits, files, authors
+     * - Time span
+     * - Average commit entropy (change scatter)
+     * - Top 5 hotspots
+     * - Lowest bus factors
+     */
+    getInsightsSummary(): string | undefined;
+    /**
+     * Returns the error count for I/O operations.
+     *
+     * I/O errors occur during file reads or network operations.
+     */
+    getIoErrorCount(): bigint;
+    /**
+     * Returns per-directory knowledge distribution entropy (Constantinou & Mens 2017).
+     */
+    getKnowledgeDistribution(): string | undefined;
+    /**
+     * Returns knowledge map and silo analysis as JSON.
+     *
+     * Computes Shannon entropy of ownership distribution per file to
+     * identify knowledge silos (Rigby & Bird 2013, Fritz et al. 2014).
+     */
+    getKnowledgeMap(): string | undefined;
+    /**
      * Gets the current layout configuration as a JSON string.
      *
      * Returns a JSON object with all layout parameters.
@@ -522,6 +871,14 @@ export class Rource {
      * Returns the current maximum commits limit.
      */
     getMaxCommits(): number;
+    /**
+     * Returns co-change modularity / DSM analysis as JSON.
+     *
+     * Measures whether co-changing files respect directory boundaries.
+     * High cross-module coupling indicates architectural erosion
+     * (Silva et al. 2014).
+     */
+    getModularity(): string | undefined;
     /**
      * Gets the current mouse position in screen coordinates.
      *
@@ -541,6 +898,34 @@ export class Rource {
      */
     getOriginalCommitCount(): number;
     /**
+     * Returns per-file ownership fragmentation / Gini (Bird et al. 2011).
+     */
+    getOwnershipFragmentation(): string | undefined;
+    /**
+     * Returns the error count for parse operations.
+     *
+     * Parse errors occur when loading git logs or custom log formats
+     * with invalid or malformed content.
+     */
+    getParseErrorCount(): bigint;
+    /**
+     * Returns the parse error rate as a percentage (0.0-100.0).
+     *
+     * Parse errors should be below 0.5% for healthy operation.
+     */
+    getParseErrorRate(): number;
+    /**
+     * Returns release rhythm analysis (Khomh et al. 2012).
+     */
+    getReleaseRhythm(): string | undefined;
+    /**
+     * Returns the error count for render operations.
+     *
+     * Render errors occur during frame rendering, such as buffer allocation
+     * failures or texture upload issues.
+     */
+    getRenderErrorCount(): bigint;
+    /**
      * Returns the type of renderer being used ("wgpu", "webgl2", or "software").
      */
     getRendererType(): string;
@@ -552,6 +937,40 @@ export class Rource {
      * Gets the current playback speed.
      */
     getSpeed(): number;
+    /**
+     * Returns the length of the stats buffer (number of `f32` elements).
+     */
+    getStatsBufferLen(): number;
+    /**
+     * Returns a pointer to the stats buffer in WASM linear memory.
+     *
+     * JS uses this pointer offset to create a `Float32Array` view directly
+     * into WASM memory, enabling zero-copy reads of all frame statistics.
+     *
+     * # Safety
+     *
+     * The returned pointer is valid for the lifetime of the `Rource` instance.
+     * The buffer is 32 × `f32` = 128 bytes. JS must not write to this buffer.
+     */
+    getStatsBufferPtr(): number;
+    /**
+     * Returns language/technology distribution by file extension.
+     */
+    getTechDistribution(): string | undefined;
+    /**
+     * Returns developer technology expertise profiles.
+     */
+    getTechExpertise(): string | undefined;
+    /**
+     * Returns temporal activity patterns as JSON.
+     *
+     * Includes:
+     * - Activity heatmap (7 days x 24 hours)
+     * - Peak activity times
+     * - Change burst detection
+     * - Average files per commit during/outside bursts
+     */
+    getTemporalPatterns(): string | undefined;
     /**
      * Returns the total number of directories currently in the scene.
      *
@@ -565,6 +984,17 @@ export class Rource {
      */
     getTotalEntities(): number;
     /**
+     * Returns the total number of errors recorded across all categories.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const totalErrors = rource.getTotalErrors();
+     * console.log(`Total errors: ${totalErrors}`);
+     * ```
+     */
+    getTotalErrors(): bigint;
+    /**
      * Returns the total number of files in the scene.
      */
     getTotalFiles(): number;
@@ -573,13 +1003,42 @@ export class Rource {
      */
     getTotalFrames(): number;
     /**
+     * Returns the total number of operations recorded across all categories.
+     *
+     * This is the denominator for error rate calculations.
+     */
+    getTotalOperations(): bigint;
+    /**
      * Returns the total number of users in the scene.
      */
     getTotalUsers(): number;
     /**
+     * Returns enhanced truck factor via DOA model (Avelino et al. 2016).
+     */
+    getTruckFactor(): string | undefined;
+    /**
+     * Returns developer turnover impact analysis (Mockus 2009).
+     */
+    getTurnoverImpact(): string | undefined;
+    /**
      * Returns the uptime in seconds.
      */
     getUptime(): number;
+    /**
+     * Returns aggregated academic metrics for a specific developer as JSON.
+     *
+     * Computes the full insights index and performs O(1) lookup by author name.
+     * Returns `null` if the author is not found in the commit history.
+     *
+     * # Academic Citations
+     *
+     * The returned metrics aggregate findings from:
+     * - Mockus et al. (TSE 2002): developer profiles (core/peripheral)
+     * - Eyolfson et al. (MSR 2014): commit cadence
+     * - Meneely & Williams (FSE 2009): network centrality
+     * - Posnett et al. (ICSE 2013): developer focus
+     */
+    getUserMetrics(author: string): string | undefined;
     /**
      * Returns the number of visible directories (in current viewport).
      */
@@ -593,9 +1052,32 @@ export class Rource {
      */
     getVisibleUsers(): number;
     /**
+     * Returns a reference to the WASM linear memory.
+     *
+     * JS needs this to construct a `Float32Array` view over the stats buffer.
+     * The `ArrayBuffer` backing this memory may be detached if WASM memory
+     * grows; JS code must handle this by recreating the view.
+     */
+    getWasmMemory(): any;
+    /**
      * Gets the current watermark opacity.
      */
     getWatermarkOpacity(): number;
+    /**
+     * Returns the error count for WebGL/wgpu operations.
+     *
+     * WebGL errors include shader compilation failures, context lost events,
+     * and program linking issues.
+     */
+    getWebGlErrorCount(): bigint;
+    /**
+     * Returns work-type mix analysis as JSON.
+     *
+     * Classifies commits by Create/Modify/Delete ratio to reveal whether
+     * the team is building features, maintaining code, or cleaning up
+     * (Hindle et al. 2008, Mockus & Votta 2000).
+     */
+    getWorkTypeMix(): string | undefined;
     /**
      * Returns the current zoom level.
      */
@@ -955,6 +1437,19 @@ export class Rource {
      */
     resetCamera(): void;
     /**
+     * Resets all error metrics to zero.
+     *
+     * Call this when starting a new session or after recovering from errors.
+     *
+     * # Example
+     *
+     * ```javascript
+     * // Reset metrics for a clean start
+     * rource.resetErrorMetrics();
+     * ```
+     */
+    resetErrorMetrics(): void;
+    /**
      * Resizes the canvas and renderer.
      *
      * Should be called when the canvas element size changes.
@@ -1013,6 +1508,7 @@ export class Rource {
      * Sets whether to show bloom effect.
      *
      * Bloom creates a glow around bright elements.
+     * Syncs the setting to the active renderer backend.
      */
     setBloom(enabled: boolean): void;
     /**
@@ -1407,28 +1903,56 @@ export interface InitOutput {
     readonly rource_disableWatermark: (a: number) => void;
     readonly rource_dispose: (a: number) => void;
     readonly rource_enableRourceWatermark: (a: number) => void;
+    readonly rource_errorRateExceedsThreshold: (a: number, b: number) => number;
     readonly rource_exportCacheBytes: (a: number, b: number) => void;
     readonly rource_exportCacheBytesWithRepoId: (a: number, b: number, c: number, d: number) => void;
     readonly rource_forceRender: (a: number) => void;
     readonly rource_frame: (a: number, b: number) => number;
     readonly rource_getActiveActions: (a: number) => number;
+    readonly rource_getActivityHeatmap: (a: number, b: number) => void;
+    readonly rource_getAllFileMetrics: (a: number, b: number) => void;
+    readonly rource_getAllUserMetrics: (a: number, b: number) => void;
+    readonly rource_getAssetErrorCount: (a: number) => bigint;
     readonly rource_getAuthorColor: (a: number, b: number, c: number, d: number) => void;
     readonly rource_getAuthors: (a: number, b: number) => void;
+    readonly rource_getBusFactors: (a: number, b: number) => void;
     readonly rource_getCacheStats: (a: number, b: number) => void;
     readonly rource_getCacheVersion: () => number;
     readonly rource_getCameraState: (a: number, b: number) => void;
     readonly rource_getCanvasHeight: (a: number) => number;
     readonly rource_getCanvasWidth: (a: number) => number;
+    readonly rource_getChangeBursts: (a: number, b: number) => void;
+    readonly rource_getChangeCoupling: (a: number, b: number, c: number) => void;
+    readonly rource_getChangeEntropy: (a: number, b: number) => void;
+    readonly rource_getChurnVolatility: (a: number, b: number) => void;
+    readonly rource_getCircadianRisk: (a: number, b: number) => void;
+    readonly rource_getCodebaseGrowth: (a: number, b: number) => void;
     readonly rource_getCommitAuthor: (a: number, b: number, c: number) => void;
+    readonly rource_getCommitCadence: (a: number, b: number) => void;
+    readonly rource_getCommitComplexity: (a: number, b: number) => void;
     readonly rource_getCommitDirectoryCount: (a: number) => number;
     readonly rource_getCommitFileCount: (a: number, b: number) => number;
     readonly rource_getCommitTimestamp: (a: number, b: number) => number;
+    readonly rource_getConfigErrorCount: (a: number) => bigint;
+    readonly rource_getCongruence: (a: number, b: number) => void;
+    readonly rource_getContributionInequality: (a: number, b: number) => void;
     readonly rource_getDateRange: (a: number, b: number) => void;
+    readonly rource_getDefectPatterns: (a: number, b: number) => void;
+    readonly rource_getDetailedErrorMetrics: (a: number, b: number) => void;
     readonly rource_getDetailedFrameStats: (a: number, b: number) => void;
+    readonly rource_getDeveloperExperience: (a: number, b: number) => void;
+    readonly rource_getDeveloperFocus: (a: number, b: number) => void;
+    readonly rource_getDeveloperNetwork: (a: number, b: number) => void;
+    readonly rource_getDeveloperProfiles: (a: number, b: number) => void;
     readonly rource_getDrawCalls: (a: number) => number;
     readonly rource_getEntityAtCursor: (a: number, b: number, c: number, d: number) => void;
     readonly rource_getEntityBounds: (a: number, b: number) => void;
+    readonly rource_getErrorMetrics: (a: number, b: number) => void;
+    readonly rource_getErrorRate: (a: number) => number;
     readonly rource_getFileIconCount: (a: number) => number;
+    readonly rource_getFileLifecycles: (a: number, b: number) => void;
+    readonly rource_getFileMetrics: (a: number, b: number, c: number, d: number) => void;
+    readonly rource_getFileSurvival: (a: number, b: number) => void;
     readonly rource_getFontSize: (a: number) => number;
     readonly rource_getFps: (a: number) => number;
     readonly rource_getFrameStats: (a: number, b: number) => void;
@@ -1438,24 +1962,50 @@ export interface InitOutput {
     readonly rource_getGPUCullingThreshold: (a: number) => number;
     readonly rource_getGPUInfo: (a: number, b: number) => void;
     readonly rource_getGPUPhysicsThreshold: (a: number) => number;
+    readonly rource_getHotspots: (a: number, b: number, c: number) => void;
+    readonly rource_getInsights: (a: number, b: number) => void;
+    readonly rource_getInsightsIndexSummary: (a: number, b: number) => void;
+    readonly rource_getInsightsSummary: (a: number, b: number) => void;
+    readonly rource_getIoErrorCount: (a: number) => bigint;
+    readonly rource_getKnowledgeDistribution: (a: number, b: number) => void;
+    readonly rource_getKnowledgeMap: (a: number, b: number) => void;
     readonly rource_getLayoutConfig: (a: number, b: number) => void;
     readonly rource_getMaxCommits: (a: number) => number;
+    readonly rource_getModularity: (a: number, b: number) => void;
     readonly rource_getMousePosition: (a: number, b: number) => void;
     readonly rource_getMouseWorldPosition: (a: number, b: number) => void;
     readonly rource_getOriginalCommitCount: (a: number) => number;
+    readonly rource_getOwnershipFragmentation: (a: number, b: number) => void;
+    readonly rource_getParseErrorCount: (a: number) => bigint;
+    readonly rource_getParseErrorRate: (a: number) => number;
+    readonly rource_getReleaseRhythm: (a: number, b: number) => void;
+    readonly rource_getRenderErrorCount: (a: number) => bigint;
     readonly rource_getRendererType: (a: number, b: number) => void;
     readonly rource_getShowLabels: (a: number) => number;
     readonly rource_getSpeed: (a: number) => number;
+    readonly rource_getStatsBufferLen: (a: number) => number;
+    readonly rource_getStatsBufferPtr: (a: number) => number;
+    readonly rource_getTechDistribution: (a: number, b: number) => void;
+    readonly rource_getTechExpertise: (a: number, b: number) => void;
+    readonly rource_getTemporalPatterns: (a: number, b: number) => void;
     readonly rource_getTotalDirectories: (a: number) => number;
     readonly rource_getTotalEntities: (a: number) => number;
+    readonly rource_getTotalErrors: (a: number) => bigint;
     readonly rource_getTotalFiles: (a: number) => number;
     readonly rource_getTotalFrames: (a: number) => number;
+    readonly rource_getTotalOperations: (a: number) => bigint;
     readonly rource_getTotalUsers: (a: number) => number;
+    readonly rource_getTruckFactor: (a: number, b: number) => void;
+    readonly rource_getTurnoverImpact: (a: number, b: number) => void;
     readonly rource_getUptime: (a: number) => number;
+    readonly rource_getUserMetrics: (a: number, b: number, c: number, d: number) => void;
     readonly rource_getVisibleDirectories: (a: number) => number;
     readonly rource_getVisibleFiles: (a: number) => number;
     readonly rource_getVisibleUsers: (a: number) => number;
+    readonly rource_getWasmMemory: (a: number) => number;
     readonly rource_getWatermarkOpacity: (a: number) => number;
+    readonly rource_getWebGlErrorCount: (a: number) => bigint;
+    readonly rource_getWorkTypeMix: (a: number, b: number) => void;
     readonly rource_getZoom: (a: number) => number;
     readonly rource_getZoomDebugInfo: (a: number, b: number) => void;
     readonly rource_hasFileIcons: (a: number) => number;
@@ -1491,6 +2041,7 @@ export interface InitOutput {
     readonly rource_recoverContext: (a: number) => number;
     readonly rource_registerFileIcon: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly rource_resetCamera: (a: number) => void;
+    readonly rource_resetErrorMetrics: (a: number) => void;
     readonly rource_resize: (a: number, b: number, c: number) => void;
     readonly rource_restoreAfterExport: (a: number, b: number, c: number) => void;
     readonly rource_restoreCameraState: (a: number, b: number, c: number, d: number) => void;
@@ -1531,9 +2082,9 @@ export interface InitOutput {
     readonly rource_zoomToward: (a: number, b: number, c: number, d: number) => void;
     readonly init_panic_hook: () => void;
     readonly rource_isTracingEnabled: (a: number) => number;
-    readonly __wasm_bindgen_func_elem_2563: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6739: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2564: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_3198: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_7946: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_3199: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

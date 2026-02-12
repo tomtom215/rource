@@ -217,6 +217,28 @@ export class Rource {
         wasm.rource_enableRourceWatermark(this.__wbg_ptr);
     }
     /**
+     * Checks if the total error rate exceeds the given threshold.
+     *
+     * # Arguments
+     *
+     * * `threshold_percent` - Maximum acceptable error rate (0.0-100.0)
+     *
+     * # Example
+     *
+     * ```javascript
+     * // Check if error rate exceeds 0.1%
+     * if (rource.errorRateExceedsThreshold(0.1)) {
+     *     showErrorAlert('Error rate too high');
+     * }
+     * ```
+     * @param {number} threshold_percent
+     * @returns {boolean}
+     */
+    errorRateExceedsThreshold(threshold_percent) {
+        const ret = wasm.rource_errorRateExceedsThreshold(this.__wbg_ptr, threshold_percent);
+        return ret !== 0;
+    }
+    /**
      * Exports the current commits as a binary cache.
      *
      * Returns `null` if no commits are loaded.
@@ -290,6 +312,10 @@ export class Rource {
     }
     /**
      * Forces a render without updating simulation.
+     *
+     * Guards against zero-dimension canvas (e.g., when `#viz-panel` is hidden
+     * and `resizeCanvas()` hasn't run yet). WebGPU cannot create swapchain
+     * textures with 0×0 dimensions, so we skip the render entirely.
      */
     forceRender() {
         wasm.rource_forceRender(this.__wbg_ptr);
@@ -312,6 +338,81 @@ export class Rource {
     getActiveActions() {
         const ret = wasm.rource_getActiveActions(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Returns commit activity heatmap (day-of-week × hour-of-day grid).
+     * @returns {string | undefined}
+     */
+    getActivityHeatmap() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getActivityHeatmap(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns all per-file metrics as a JSON array.
+     *
+     * Each element contains the file path and its aggregated academic metrics.
+     * Useful for bulk visualization (e.g., coloring all files by hotspot score).
+     * @returns {string | undefined}
+     */
+    getAllFileMetrics() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getAllFileMetrics(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns all per-user metrics as a JSON array.
+     *
+     * Each element contains the author name and their aggregated academic metrics.
+     * @returns {string | undefined}
+     */
+    getAllUserMetrics() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getAllUserMetrics(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns the error count for asset loading operations.
+     *
+     * Asset errors occur when loading images, fonts, or other resources.
+     * @returns {bigint}
+     */
+    getAssetErrorCount() {
+        const ret = wasm.rource_getAssetErrorCount(this.__wbg_ptr);
+        return BigInt.asUintN(64, ret);
     }
     /**
      * Returns the color for a given author name as a hex string.
@@ -374,6 +475,30 @@ export class Rource {
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
             wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Returns bus factor analysis per directory as JSON.
+     *
+     * The bus factor is the minimum number of contributors who must leave
+     * before a directory becomes unmaintained. Low values (1-2) indicate
+     * critical key-person risk.
+     * @returns {string | undefined}
+     */
+    getBusFactors() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getBusFactors(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
         }
     }
     /**
@@ -465,6 +590,150 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns per-file change burst detection as JSON.
+     *
+     * Detects rapid consecutive changes to individual files.
+     * Files with many bursts are significantly more defect-prone
+     * (Nagappan et al. 2010).
+     * @returns {string | undefined}
+     */
+    getChangeBursts() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getChangeBursts(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns change coupling pairs as JSON.
+     *
+     * Identifies files that frequently change together, revealing hidden
+     * architectural dependencies that static analysis misses.
+     * Research shows coupling correlates with defects better than complexity
+     * metrics (D'Ambros et al. 2009).
+     *
+     * # Arguments
+     *
+     * * `limit` - Maximum number of coupling pairs to return (default: 20)
+     * @param {number | null} [limit]
+     * @returns {string | undefined}
+     */
+    getChangeCoupling(limit) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getChangeCoupling(retptr, this.__wbg_ptr, isLikeNone(limit) ? 0x100000001 : (limit) >>> 0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns sliding-window change entropy analysis as JSON.
+     *
+     * Measures Shannon entropy of file modification distribution within
+     * time windows for defect risk prediction (Hassan ICSE 2009).
+     * @returns {string | undefined}
+     */
+    getChangeEntropy() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getChangeEntropy(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns code churn volatility per file (Nagappan & Ball 2005).
+     * @returns {string | undefined}
+     */
+    getChurnVolatility() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getChurnVolatility(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns circadian (time-of-day) risk patterns as JSON.
+     *
+     * Assigns risk scores based on hour-of-day and day-of-week.
+     * Commits between midnight–4AM UTC are significantly buggier
+     * (Eyolfson et al. 2011).
+     * @returns {string | undefined}
+     */
+    getCircadianRisk() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCircadianRisk(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns codebase growth trajectory as JSON.
+     *
+     * Tracks active file count over time, growth rate, and trend
+     * classification (Lehman 1996 Laws of Software Evolution).
+     * @returns {string | undefined}
+     */
+    getCodebaseGrowth() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCodebaseGrowth(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the author name for a commit at the given index.
      * @param {number} index
      * @returns {string}
@@ -483,6 +752,49 @@ export class Rource {
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
             wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Returns commit cadence analysis per developer as JSON.
+     *
+     * Analyzes inter-commit intervals to classify contributors as
+     * regular, moderate, or bursty (Eyolfson et al. 2014).
+     * @returns {string | undefined}
+     */
+    getCommitCadence() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCommitCadence(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns per-commit complexity / tangled change scores (Herzig & Zeller 2013).
+     * @returns {string | undefined}
+     */
+    getCommitComplexity() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCommitComplexity(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
         }
     }
     /**
@@ -522,6 +834,64 @@ export class Rource {
         return ret;
     }
     /**
+     * Returns the error count for configuration operations.
+     *
+     * Config errors occur when invalid settings are provided.
+     * @returns {bigint}
+     */
+    getConfigErrorCount() {
+        const ret = wasm.rource_getConfigErrorCount(this.__wbg_ptr);
+        return BigInt.asUintN(64, ret);
+    }
+    /**
+     * Returns sociotechnical congruence analysis as JSON.
+     *
+     * Measures alignment between who SHOULD coordinate (from technical
+     * dependencies) and who ACTUALLY does (from shared files).
+     * Conway's Law quantified (Cataldo et al. 2008).
+     * @returns {string | undefined}
+     */
+    getCongruence() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getCongruence(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns contribution inequality / Gini coefficient analysis as JSON.
+     *
+     * Measures how unevenly commits are distributed using the Gini coefficient.
+     * Includes Lorenz curve, top-K% share, and windowed trend analysis
+     * (Chelkowski et al. 2016).
+     * @returns {string | undefined}
+     */
+    getContributionInequality() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getContributionInequality(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the date range of all commits as a JSON object.
      *
      * Returns `{"startTimestamp": <unix_ts>, "endTimestamp": <unix_ts>}` or null
@@ -542,6 +912,78 @@ export class Rource {
             return v1;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns defect-introducing change patterns (Kim et al. 2008).
+     * @returns {string | undefined}
+     */
+    getDefectPatterns() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getDefectPatterns(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns detailed error metrics with operation counts as JSON.
+     *
+     * This includes both error counts and operation counts for each category,
+     * enabling more detailed analysis.
+     *
+     * # Returns
+     *
+     * JSON string with the following structure:
+     * ```json
+     * {
+     *   "errors": {
+     *     "parse": 0,
+     *     "render": 0,
+     *     "webgl": 0,
+     *     "config": 0,
+     *     "asset": 0,
+     *     "io": 0
+     *   },
+     *   "operations": {
+     *     "parse": 100,
+     *     "render": 10000,
+     *     "webgl": 1,
+     *     "config": 5,
+     *     "asset": 10,
+     *     "io": 0
+     *   },
+     *   "totals": {
+     *     "errors": 0,
+     *     "operations": 10116,
+     *     "rate": 0.0
+     *   }
+     * }
+     * ```
+     * @returns {string}
+     */
+    getDetailedErrorMetrics() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getDetailedErrorMetrics(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
         }
     }
     /**
@@ -588,6 +1030,96 @@ export class Rource {
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
             wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Returns developer experience scores (Mockus & Votta 2000).
+     * @returns {string | undefined}
+     */
+    getDeveloperExperience() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getDeveloperExperience(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns developer focus and file diffusion analysis as JSON.
+     *
+     * Measures how concentrated developers' activity is (focus) and
+     * how spread out files' contributors are (diffusion).
+     * More focused developers introduce fewer defects (Posnett et al. 2013).
+     * @returns {string | undefined}
+     */
+    getDeveloperFocus() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getDeveloperFocus(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns developer collaboration network analysis as JSON.
+     *
+     * Builds and analyzes the co-authorship network: density, components,
+     * betweenness centrality, and clustering (Begel et al. 2023).
+     * @returns {string | undefined}
+     */
+    getDeveloperNetwork() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getDeveloperNetwork(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns developer activity profiles as JSON.
+     *
+     * Classifies contributors as core, peripheral, or drive-by based
+     * on commit share and recency (Mockus et al. 2002).
+     * @returns {string | undefined}
+     */
+    getDeveloperProfiles() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getDeveloperProfiles(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
         }
     }
     /**
@@ -667,6 +1199,76 @@ export class Rource {
         }
     }
     /**
+     * Returns all error metrics as a JSON string.
+     *
+     * This batches all error metrics into a single call to reduce WASM↔JS overhead.
+     *
+     * # Returns
+     *
+     * JSON string with the following structure:
+     * ```json
+     * {
+     *   "parse": 0,
+     *   "render": 0,
+     *   "webgl": 0,
+     *   "config": 0,
+     *   "asset": 0,
+     *   "io": 0,
+     *   "total": 0,
+     *   "rate": 0.0
+     * }
+     * ```
+     *
+     * Note: The `rate` field is in decimal form (0.001 = 0.1%).
+     *
+     * # Example
+     *
+     * ```javascript
+     * const metrics = JSON.parse(rource.getErrorMetrics());
+     * if (metrics.rate > 0.001) {
+     *     console.warn('Error rate exceeds 0.1%');
+     * }
+     * ```
+     * @returns {string}
+     */
+    getErrorMetrics() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getErrorMetrics(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Returns the total error rate as a percentage (0.0-100.0).
+     *
+     * Formula: `(total_errors / total_operations) * 100`
+     *
+     * Returns 0.0 if no operations have been recorded.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const errorRate = rource.getErrorRate();
+     * if (errorRate > 0.1) {
+     *     console.warn(`Error rate ${errorRate.toFixed(3)}% exceeds 0.1% threshold`);
+     * }
+     * ```
+     * @returns {number}
+     */
+    getErrorRate() {
+        const ret = wasm.rource_getErrorRate(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Returns the number of registered file icon types.
      *
      * # Example (JavaScript)
@@ -679,6 +1281,90 @@ export class Rource {
     getFileIconCount() {
         const ret = wasm.rource_getFileIconCount(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Returns file lifecycle analysis as JSON.
+     *
+     * Tracks file creation, modification, and deletion patterns to
+     * identify ephemeral, dead, and actively maintained files
+     * (Godfrey & Tu 2000, Gall et al. 1998).
+     * @returns {string | undefined}
+     */
+    getFileLifecycles() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getFileLifecycles(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns aggregated academic metrics for a specific file as JSON.
+     *
+     * Computes the full insights index and performs O(1) lookup by file path.
+     * Returns `null` if the file is not found in the commit history.
+     *
+     * # Academic Citations
+     *
+     * The returned metrics aggregate findings from:
+     * - Nagappan & Ball (ICSE 2005): hotspot score
+     * - Bird et al. (ICSE 2011): ownership concentration
+     * - Eyolfson et al. (MSR 2011): circadian risk
+     * - Rigby & Bird (FSE 2013): knowledge entropy
+     * - D'Ambros et al. (TSE 2009): coupling degree
+     * - Godfrey & Tu (ICSM 2000): lifecycle stage
+     * @param {string} path
+     * @returns {string | undefined}
+     */
+    getFileMetrics(path) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(path, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.rource_getFileMetrics(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v2;
+            if (r0 !== 0) {
+                v2 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v2;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns file survival analysis (Kaplan-Meier estimator) as JSON.
+     *
+     * Estimates how long files survive before deletion using the
+     * gold-standard survival analysis technique from biostatistics
+     * (Cito et al. 2021).
+     * @returns {string | undefined}
+     */
+    getFileSurvival() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getFileSurvival(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
      * Gets the current font size for labels.
@@ -895,6 +1581,175 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns the top N file hotspots as JSON.
+     *
+     * Hotspots are files with disproportionately high change frequency,
+     * weighted by recency. Research shows these predict defect-prone code
+     * with ~89% accuracy (Nagappan et al. 2005).
+     *
+     * # Arguments
+     *
+     * * `limit` - Maximum number of hotspots to return (default: 20)
+     * @param {number | null} [limit]
+     * @returns {string | undefined}
+     */
+    getHotspots(limit) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getHotspots(retptr, this.__wbg_ptr, isLikeNone(limit) ? 0x100000001 : (limit) >>> 0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Computes and returns comprehensive repository insights as JSON.
+     *
+     * Analyzes the loaded commit history to produce research-backed metrics:
+     *
+     * - **Hotspots**: Files with high change frequency (defect predictors)
+     * - **Change Coupling**: Hidden dependencies via co-change patterns
+     * - **Code Ownership**: Knowledge concentration per file
+     * - **Bus Factor**: Organizational resilience per directory
+     * - **Temporal Patterns**: Activity heatmap and burst detection
+     * - **Summary**: Commit entropy, author count, time span
+     *
+     * Returns a JSON string with the complete insights report.
+     * Returns `null` if no commits are loaded.
+     *
+     * # Performance
+     *
+     * Computed from commit history at call time (not per-frame).
+     * Typical computation time: <10ms for 10k commits.
+     * @returns {string | undefined}
+     */
+    getInsights() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getInsights(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns the complete insights index summary as JSON.
+     *
+     * Contains aggregate counts: total files, total users, knowledge silos,
+     * contributor profile distribution, max hotspot score.
+     * @returns {string | undefined}
+     */
+    getInsightsIndexSummary() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getInsightsIndexSummary(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns a summary of repository health metrics as JSON.
+     *
+     * Quick overview suitable for dashboard display:
+     * - Total commits, files, authors
+     * - Time span
+     * - Average commit entropy (change scatter)
+     * - Top 5 hotspots
+     * - Lowest bus factors
+     * @returns {string | undefined}
+     */
+    getInsightsSummary() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getInsightsSummary(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns the error count for I/O operations.
+     *
+     * I/O errors occur during file reads or network operations.
+     * @returns {bigint}
+     */
+    getIoErrorCount() {
+        const ret = wasm.rource_getIoErrorCount(this.__wbg_ptr);
+        return BigInt.asUintN(64, ret);
+    }
+    /**
+     * Returns per-directory knowledge distribution entropy (Constantinou & Mens 2017).
+     * @returns {string | undefined}
+     */
+    getKnowledgeDistribution() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getKnowledgeDistribution(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns knowledge map and silo analysis as JSON.
+     *
+     * Computes Shannon entropy of ownership distribution per file to
+     * identify knowledge silos (Rigby & Bird 2013, Fritz et al. 2014).
+     * @returns {string | undefined}
+     */
+    getKnowledgeMap() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getKnowledgeMap(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Gets the current layout configuration as a JSON string.
      *
      * Returns a JSON object with all layout parameters.
@@ -929,6 +1784,30 @@ export class Rource {
     getMaxCommits() {
         const ret = wasm.rource_getMaxCommits(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Returns co-change modularity / DSM analysis as JSON.
+     *
+     * Measures whether co-changing files respect directory boundaries.
+     * High cross-module coupling indicates architectural erosion
+     * (Silva et al. 2014).
+     * @returns {string | undefined}
+     */
+    getModularity() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getModularity(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
      * Gets the current mouse position in screen coordinates.
@@ -979,6 +1858,78 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns per-file ownership fragmentation / Gini (Bird et al. 2011).
+     * @returns {string | undefined}
+     */
+    getOwnershipFragmentation() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getOwnershipFragmentation(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns the error count for parse operations.
+     *
+     * Parse errors occur when loading git logs or custom log formats
+     * with invalid or malformed content.
+     * @returns {bigint}
+     */
+    getParseErrorCount() {
+        const ret = wasm.rource_getParseErrorCount(this.__wbg_ptr);
+        return BigInt.asUintN(64, ret);
+    }
+    /**
+     * Returns the parse error rate as a percentage (0.0-100.0).
+     *
+     * Parse errors should be below 0.5% for healthy operation.
+     * @returns {number}
+     */
+    getParseErrorRate() {
+        const ret = wasm.rource_getParseErrorRate(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Returns release rhythm analysis (Khomh et al. 2012).
+     * @returns {string | undefined}
+     */
+    getReleaseRhythm() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getReleaseRhythm(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns the error count for render operations.
+     *
+     * Render errors occur during frame rendering, such as buffer allocation
+     * failures or texture upload issues.
+     * @returns {bigint}
+     */
+    getRenderErrorCount() {
+        const ret = wasm.rource_getRenderErrorCount(this.__wbg_ptr);
+        return BigInt.asUintN(64, ret);
+    }
+    /**
      * Returns the type of renderer being used ("wgpu", "webgl2", or "software").
      * @returns {string}
      */
@@ -1015,6 +1966,96 @@ export class Rource {
         return ret;
     }
     /**
+     * Returns the length of the stats buffer (number of `f32` elements).
+     * @returns {number}
+     */
+    getStatsBufferLen() {
+        const ret = wasm.rource_getStatsBufferLen(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Returns a pointer to the stats buffer in WASM linear memory.
+     *
+     * JS uses this pointer offset to create a `Float32Array` view directly
+     * into WASM memory, enabling zero-copy reads of all frame statistics.
+     *
+     * # Safety
+     *
+     * The returned pointer is valid for the lifetime of the `Rource` instance.
+     * The buffer is 32 × `f32` = 128 bytes. JS must not write to this buffer.
+     * @returns {number}
+     */
+    getStatsBufferPtr() {
+        const ret = wasm.rource_getStatsBufferPtr(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Returns language/technology distribution by file extension.
+     * @returns {string | undefined}
+     */
+    getTechDistribution() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getTechDistribution(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns developer technology expertise profiles.
+     * @returns {string | undefined}
+     */
+    getTechExpertise() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getTechExpertise(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns temporal activity patterns as JSON.
+     *
+     * Includes:
+     * - Activity heatmap (7 days x 24 hours)
+     * - Peak activity times
+     * - Change burst detection
+     * - Average files per commit during/outside bursts
+     * @returns {string | undefined}
+     */
+    getTemporalPatterns() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getTemporalPatterns(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the total number of directories currently in the scene.
      *
      * Note: This only includes directories that have been created so far
@@ -1035,6 +2076,21 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns the total number of errors recorded across all categories.
+     *
+     * # Example
+     *
+     * ```javascript
+     * const totalErrors = rource.getTotalErrors();
+     * console.log(`Total errors: ${totalErrors}`);
+     * ```
+     * @returns {bigint}
+     */
+    getTotalErrors() {
+        const ret = wasm.rource_getTotalErrors(this.__wbg_ptr);
+        return BigInt.asUintN(64, ret);
+    }
+    /**
      * Returns the total number of files in the scene.
      * @returns {number}
      */
@@ -1051,6 +2107,16 @@ export class Rource {
         return ret;
     }
     /**
+     * Returns the total number of operations recorded across all categories.
+     *
+     * This is the denominator for error rate calculations.
+     * @returns {bigint}
+     */
+    getTotalOperations() {
+        const ret = wasm.rource_getTotalOperations(this.__wbg_ptr);
+        return BigInt.asUintN(64, ret);
+    }
+    /**
      * Returns the total number of users in the scene.
      * @returns {number}
      */
@@ -1059,12 +2125,86 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns enhanced truck factor via DOA model (Avelino et al. 2016).
+     * @returns {string | undefined}
+     */
+    getTruckFactor() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getTruckFactor(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Returns developer turnover impact analysis (Mockus 2009).
+     * @returns {string | undefined}
+     */
+    getTurnoverImpact() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getTurnoverImpact(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Returns the uptime in seconds.
      * @returns {number}
      */
     getUptime() {
         const ret = wasm.rource_getUptime(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Returns aggregated academic metrics for a specific developer as JSON.
+     *
+     * Computes the full insights index and performs O(1) lookup by author name.
+     * Returns `null` if the author is not found in the commit history.
+     *
+     * # Academic Citations
+     *
+     * The returned metrics aggregate findings from:
+     * - Mockus et al. (TSE 2002): developer profiles (core/peripheral)
+     * - Eyolfson et al. (MSR 2014): commit cadence
+     * - Meneely & Williams (FSE 2009): network centrality
+     * - Posnett et al. (ICSE 2013): developer focus
+     * @param {string} author
+     * @returns {string | undefined}
+     */
+    getUserMetrics(author) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(author, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.rource_getUserMetrics(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v2;
+            if (r0 !== 0) {
+                v2 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v2;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
      * Returns the number of visible directories (in current viewport).
@@ -1091,12 +2231,59 @@ export class Rource {
         return ret >>> 0;
     }
     /**
+     * Returns a reference to the WASM linear memory.
+     *
+     * JS needs this to construct a `Float32Array` view over the stats buffer.
+     * The `ArrayBuffer` backing this memory may be detached if WASM memory
+     * grows; JS code must handle this by recreating the view.
+     * @returns {any}
+     */
+    getWasmMemory() {
+        const ret = wasm.rource_getWasmMemory(this.__wbg_ptr);
+        return takeObject(ret);
+    }
+    /**
      * Gets the current watermark opacity.
      * @returns {number}
      */
     getWatermarkOpacity() {
         const ret = wasm.rource_getWatermarkOpacity(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Returns the error count for WebGL/wgpu operations.
+     *
+     * WebGL errors include shader compilation failures, context lost events,
+     * and program linking issues.
+     * @returns {bigint}
+     */
+    getWebGlErrorCount() {
+        const ret = wasm.rource_getWebGlErrorCount(this.__wbg_ptr);
+        return BigInt.asUintN(64, ret);
+    }
+    /**
+     * Returns work-type mix analysis as JSON.
+     *
+     * Classifies commits by Create/Modify/Delete ratio to reveal whether
+     * the team is building features, maintaining code, or cleaning up
+     * (Hindle et al. 2008, Mockus & Votta 2000).
+     * @returns {string | undefined}
+     */
+    getWorkTypeMix() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.rource_getWorkTypeMix(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export4(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
      * Returns the current zoom level.
@@ -1671,6 +2858,21 @@ export class Rource {
         wasm.rource_resetCamera(this.__wbg_ptr);
     }
     /**
+     * Resets all error metrics to zero.
+     *
+     * Call this when starting a new session or after recovering from errors.
+     *
+     * # Example
+     *
+     * ```javascript
+     * // Reset metrics for a clean start
+     * rource.resetErrorMetrics();
+     * ```
+     */
+    resetErrorMetrics() {
+        wasm.rource_resetErrorMetrics(this.__wbg_ptr);
+    }
+    /**
      * Resizes the canvas and renderer.
      *
      * Should be called when the canvas element size changes.
@@ -1753,6 +2955,7 @@ export class Rource {
      * Sets whether to show bloom effect.
      *
      * Bloom creates a glow around bright elements.
+     * Syncs the setting to the active renderer backend.
      * @param {boolean} enabled
      */
     setBloom(enabled) {
@@ -2248,11 +3451,11 @@ export function init_panic_hook() {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg_Window_2b9b35492d4b2d63: function(arg0) {
+        __wbg_Window_7b2011a6368164ef: function(arg0) {
             const ret = getObject(arg0).Window;
             return addHeapObject(ret);
         },
-        __wbg_WorkerGlobalScope_b4fb13f0ba6527ab: function(arg0) {
+        __wbg_WorkerGlobalScope_4bddbcb12b3f5a28: function(arg0) {
             const ret = getObject(arg0).WorkerGlobalScope;
             return addHeapObject(ret);
         },
@@ -2320,14 +3523,14 @@ function __wbg_get_imports() {
         __wbg_attachShader_b36058e5c9eeaf54: function(arg0, arg1, arg2) {
             getObject(arg0).attachShader(getObject(arg1), getObject(arg2));
         },
-        __wbg_beginComputePass_2061bb5db1032a35: function(arg0, arg1) {
+        __wbg_beginComputePass_8971ad8382254094: function(arg0, arg1) {
             const ret = getObject(arg0).beginComputePass(getObject(arg1));
             return addHeapObject(ret);
         },
         __wbg_beginQuery_0fdf154e1da0e73d: function(arg0, arg1, arg2) {
             getObject(arg0).beginQuery(arg1 >>> 0, getObject(arg2));
         },
-        __wbg_beginRenderPass_f36cfdd5825e0c2e: function() { return handleError(function (arg0, arg1) {
+        __wbg_beginRenderPass_599b98d9a6ba5692: function() { return handleError(function (arg0, arg1) {
             const ret = getObject(arg0).beginRenderPass(getObject(arg1));
             return addHeapObject(ret);
         }, arguments); },
@@ -2518,14 +3721,17 @@ function __wbg_get_imports() {
         __wbg_compressedTexSubImage3D_778008a6293f15ab: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) {
             getObject(arg0).compressedTexSubImage3D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 >>> 0, arg10, arg11);
         },
-        __wbg_configure_ad5aa321838c8e3b: function() { return handleError(function (arg0, arg1) {
+        __wbg_configure_bee5e0250d8526d5: function() { return handleError(function (arg0, arg1) {
             getObject(arg0).configure(getObject(arg1));
         }, arguments); },
         __wbg_copyBufferSubData_a4f9815861ff0ae9: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).copyBufferSubData(arg1 >>> 0, arg2 >>> 0, arg3, arg4, arg5);
         },
-        __wbg_copyBufferToBuffer_e5b6f95a75ade65d: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5) {
+        __wbg_copyBufferToBuffer_3e2b8d1e524281f5: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).copyBufferToBuffer(getObject(arg1), arg2, getObject(arg3), arg4, arg5);
+        }, arguments); },
+        __wbg_copyBufferToBuffer_6a6449c0e5793f4c: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
+            getObject(arg0).copyBufferToBuffer(getObject(arg1), arg2, getObject(arg3), arg4);
         }, arguments); },
         __wbg_copyTexSubImage2D_417a65926e3d2490: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
             getObject(arg0).copyTexSubImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
@@ -2536,11 +3742,11 @@ function __wbg_get_imports() {
         __wbg_copyTexSubImage3D_f62ef4c4eeb9a7dc: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
             getObject(arg0).copyTexSubImage3D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
         },
-        __wbg_createBindGroupLayout_b87a1f26ed22bd5d: function() { return handleError(function (arg0, arg1) {
+        __wbg_createBindGroupLayout_f543b79f894eed2e: function() { return handleError(function (arg0, arg1) {
             const ret = getObject(arg0).createBindGroupLayout(getObject(arg1));
             return addHeapObject(ret);
         }, arguments); },
-        __wbg_createBindGroup_dfdadbbcf4dcae54: function(arg0, arg1) {
+        __wbg_createBindGroup_06db01d96df151a7: function(arg0, arg1) {
             const ret = getObject(arg0).createBindGroup(getObject(arg1));
             return addHeapObject(ret);
         },
@@ -2548,19 +3754,19 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createBuffer();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
+        __wbg_createBuffer_6e69283608e8f98f: function() { return handleError(function (arg0, arg1) {
+            const ret = getObject(arg0).createBuffer(getObject(arg1));
+            return addHeapObject(ret);
+        }, arguments); },
         __wbg_createBuffer_c4ec897aacc1b91c: function(arg0) {
             const ret = getObject(arg0).createBuffer();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_createBuffer_fb1752eab5cb2a7f: function() { return handleError(function (arg0, arg1) {
-            const ret = getObject(arg0).createBuffer(getObject(arg1));
-            return addHeapObject(ret);
-        }, arguments); },
-        __wbg_createCommandEncoder_92b1c283a0372974: function(arg0, arg1) {
+        __wbg_createCommandEncoder_88e8ef64b19cdb2c: function(arg0, arg1) {
             const ret = getObject(arg0).createCommandEncoder(getObject(arg1));
             return addHeapObject(ret);
         },
-        __wbg_createComputePipeline_4cdc84e4d346bd71: function(arg0, arg1) {
+        __wbg_createComputePipeline_d24ca7b211444394: function(arg0, arg1) {
             const ret = getObject(arg0).createComputePipeline(getObject(arg1));
             return addHeapObject(ret);
         },
@@ -2572,7 +3778,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createFramebuffer();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_createPipelineLayout_c97169a1a177450e: function(arg0, arg1) {
+        __wbg_createPipelineLayout_0f960a922b66be56: function(arg0, arg1) {
             const ret = getObject(arg0).createPipelineLayout(getObject(arg1));
             return addHeapObject(ret);
         },
@@ -2588,7 +3794,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createQuery();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_createRenderPipeline_ab453ccc40539bc0: function() { return handleError(function (arg0, arg1) {
+        __wbg_createRenderPipeline_725209221f17f288: function() { return handleError(function (arg0, arg1) {
             const ret = getObject(arg0).createRenderPipeline(getObject(arg1));
             return addHeapObject(ret);
         }, arguments); },
@@ -2600,15 +3806,15 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createRenderbuffer();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
+        __wbg_createSampler_36aca895fb724d8b: function(arg0, arg1) {
+            const ret = getObject(arg0).createSampler(getObject(arg1));
+            return addHeapObject(ret);
+        },
         __wbg_createSampler_da6bb96c9ffaaa27: function(arg0) {
             const ret = getObject(arg0).createSampler();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_createSampler_fdf4c92b3a0a4810: function(arg0, arg1) {
-            const ret = getObject(arg0).createSampler(getObject(arg1));
-            return addHeapObject(ret);
-        },
-        __wbg_createShaderModule_159013272c1b4c4c: function(arg0, arg1) {
+        __wbg_createShaderModule_714b17aece65828e: function(arg0, arg1) {
             const ret = getObject(arg0).createShaderModule(getObject(arg1));
             return addHeapObject(ret);
         },
@@ -2620,14 +3826,14 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createShader(arg1 >>> 0);
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_createTexture_092a9cf5106b1805: function() { return handleError(function (arg0, arg1) {
-            const ret = getObject(arg0).createTexture(getObject(arg1));
-            return addHeapObject(ret);
-        }, arguments); },
         __wbg_createTexture_16d2c8a3d7d4a75a: function(arg0) {
             const ret = getObject(arg0).createTexture();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
+        __wbg_createTexture_63195fd0d63c3a24: function() { return handleError(function (arg0, arg1) {
+            const ret = getObject(arg0).createTexture(getObject(arg1));
+            return addHeapObject(ret);
+        }, arguments); },
         __wbg_createTexture_f9451a82c7527ce2: function(arg0) {
             const ret = getObject(arg0).createTexture();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -2640,7 +3846,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createVertexArray();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_createView_e743725c577bafe5: function() { return handleError(function (arg0, arg1) {
+        __wbg_createView_79f49fbd3fb5f94f: function() { return handleError(function (arg0, arg1) {
             const ret = getObject(arg0).createView(getObject(arg1));
             return addHeapObject(ret);
         }, arguments); },
@@ -2719,6 +3925,9 @@ function __wbg_get_imports() {
         __wbg_depthRange_5579d448b9d7de57: function(arg0, arg1, arg2) {
             getObject(arg0).depthRange(arg1, arg2);
         },
+        __wbg_destroy_7602e890b930bb90: function(arg0) {
+            getObject(arg0).destroy();
+        },
         __wbg_disableVertexAttribArray_24a020060006b10f: function(arg0, arg1) {
             getObject(arg0).disableVertexAttribArray(arg1 >>> 0);
         },
@@ -2731,7 +3940,7 @@ function __wbg_get_imports() {
         __wbg_disable_bd37bdcca1764aea: function(arg0, arg1) {
             getObject(arg0).disable(arg1 >>> 0);
         },
-        __wbg_dispatchWorkgroups_89c6778d0518442a: function(arg0, arg1, arg2, arg3) {
+        __wbg_dispatchWorkgroups_d63caaf66ad5bbb0: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).dispatchWorkgroups(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0);
         },
         __wbg_document_ee35a3d3ae34ef6c: function(arg0) {
@@ -2762,10 +3971,10 @@ function __wbg_get_imports() {
         __wbg_drawElementsInstanced_d41fc920ae24717c: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).drawElementsInstanced(arg1 >>> 0, arg2, arg3 >>> 0, arg4, arg5);
         },
-        __wbg_drawIndirect_8bef8992f379d2b5: function(arg0, arg1, arg2) {
+        __wbg_drawIndirect_fb473a1c2f258da2: function(arg0, arg1, arg2) {
             getObject(arg0).drawIndirect(getObject(arg1), arg2);
         },
-        __wbg_draw_e8c430e7254c6215: function(arg0, arg1, arg2, arg3, arg4) {
+        __wbg_draw_3f782f0d09a907da: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).draw(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, arg4 >>> 0);
         },
         __wbg_enableVertexAttribArray_475e06c31777296d: function(arg0, arg1) {
@@ -2783,10 +3992,10 @@ function __wbg_get_imports() {
         __wbg_endQuery_54f0627d4c931318: function(arg0, arg1) {
             getObject(arg0).endQuery(arg1 >>> 0);
         },
-        __wbg_end_56b2d6d0610f9131: function(arg0) {
+        __wbg_end_8bb194afb9988691: function(arg0) {
             getObject(arg0).end();
         },
-        __wbg_end_7ad26f2083234d67: function(arg0) {
+        __wbg_end_ae98f313507234ce: function(arg0) {
             getObject(arg0).end();
         },
         __wbg_error_7534b8e9a36f1ab4: function(arg0, arg1) {
@@ -2807,16 +4016,22 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).fenceSync(arg1 >>> 0, arg2 >>> 0);
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_finish_ac8e8f8408208d93: function(arg0) {
-            const ret = getObject(arg0).finish();
+        __wbg_finish_08e2d7b08c066b25: function(arg0, arg1) {
+            const ret = getObject(arg0).finish(getObject(arg1));
             return addHeapObject(ret);
         },
-        __wbg_finish_b79779da004ef346: function(arg0, arg1) {
-            const ret = getObject(arg0).finish(getObject(arg1));
+        __wbg_finish_5ebfba3167b3092c: function(arg0) {
+            const ret = getObject(arg0).finish();
             return addHeapObject(ret);
         },
         __wbg_finish_ee0b71d14fa50456: function(arg0) {
             getObject(arg0).finish();
+        },
+        __wbg_flush_7777597fd43065db: function(arg0) {
+            getObject(arg0).flush();
+        },
+        __wbg_flush_e322496f5412e567: function(arg0) {
+            getObject(arg0).flush();
         },
         __wbg_framebufferRenderbuffer_850811ed6e26475e: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).framebufferRenderbuffer(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, getObject(arg4));
@@ -2861,7 +4076,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getContext(getStringFromWasm0(arg1, arg2), getObject(arg3));
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         }, arguments); },
-        __wbg_getCurrentTexture_3c8710ca6e0019fc: function() { return handleError(function (arg0) {
+        __wbg_getCurrentTexture_6dc4d0ea8555e374: function() { return handleError(function (arg0) {
             const ret = getObject(arg0).getCurrentTexture();
             return addHeapObject(ret);
         }, arguments); },
@@ -2877,7 +4092,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getIndexedParameter(arg1 >>> 0, arg2 >>> 0);
             return addHeapObject(ret);
         }, arguments); },
-        __wbg_getMappedRange_86d4a434bceeb7fc: function() { return handleError(function (arg0, arg1, arg2) {
+        __wbg_getMappedRange_3cb6354f7963e27e: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = getObject(arg0).getMappedRange(arg1, arg2);
             return addHeapObject(ret);
         }, arguments); },
@@ -2889,7 +4104,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getParameter(arg1 >>> 0);
             return addHeapObject(ret);
         }, arguments); },
-        __wbg_getPreferredCanvasFormat_0988752050c788b0: function(arg0) {
+        __wbg_getPreferredCanvasFormat_06854455b835cf40: function(arg0) {
             const ret = getObject(arg0).getPreferredCanvasFormat();
             return (__wbindgen_enum_GpuTextureFormat.indexOf(ret) + 1 || 96) - 1;
         },
@@ -2977,7 +4192,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0)[arg1 >>> 0];
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_gpu_051bdce6489ddf6a: function(arg0) {
+        __wbg_gpu_653e59c6ae8028a8: function(arg0) {
             const ret = getObject(arg0).gpu;
             return addHeapObject(ret);
         },
@@ -3013,7 +4228,7 @@ function __wbg_get_imports() {
             const ret = result;
             return ret;
         },
-        __wbg_instanceof_GpuAdapter_aff4b0f95a6c1c3e: function(arg0) {
+        __wbg_instanceof_GpuAdapter_b2c1300e425af95c: function(arg0) {
             let result;
             try {
                 result = getObject(arg0) instanceof GPUAdapter;
@@ -3023,7 +4238,7 @@ function __wbg_get_imports() {
             const ret = result;
             return ret;
         },
-        __wbg_instanceof_GpuCanvasContext_dc8dc7061b962990: function(arg0) {
+        __wbg_instanceof_GpuCanvasContext_c9b75b4b7dc7555e: function(arg0) {
             let result;
             try {
                 result = getObject(arg0) instanceof GPUCanvasContext;
@@ -3104,7 +4319,7 @@ function __wbg_get_imports() {
             const ret = Object.is(getObject(arg0), getObject(arg1));
             return ret;
         },
-        __wbg_label_c3a930571192f18e: function(arg0, arg1) {
+        __wbg_label_f279af9fe090b53f: function(arg0, arg1) {
             const ret = getObject(arg1).label;
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len1 = WASM_VECTOR_LEN;
@@ -3119,7 +4334,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).length;
             return ret;
         },
-        __wbg_limits_4c117fe92a378b1a: function(arg0) {
+        __wbg_limits_486026e4aa69b9b2: function(arg0) {
             const ret = getObject(arg0).limits;
             return addHeapObject(ret);
         },
@@ -3132,123 +4347,123 @@ function __wbg_get_imports() {
         __wbg_log_6b5ca2e6124b2808: function(arg0) {
             console.log(getObject(arg0));
         },
-        __wbg_mapAsync_0d9cf9d11808b275: function(arg0, arg1, arg2, arg3) {
+        __wbg_mapAsync_e89ffbd0722e6025: function(arg0, arg1, arg2, arg3) {
             const ret = getObject(arg0).mapAsync(arg1 >>> 0, arg2, arg3);
             return addHeapObject(ret);
         },
-        __wbg_maxBindGroups_060f2b40f8a292b1: function(arg0) {
+        __wbg_maxBindGroups_52e3144d1d4f3951: function(arg0) {
             const ret = getObject(arg0).maxBindGroups;
             return ret;
         },
-        __wbg_maxBindingsPerBindGroup_3e4b03bbed2da128: function(arg0) {
+        __wbg_maxBindingsPerBindGroup_8e383157db4cfd9d: function(arg0) {
             const ret = getObject(arg0).maxBindingsPerBindGroup;
             return ret;
         },
-        __wbg_maxBufferSize_deda0fa7852420cb: function(arg0) {
+        __wbg_maxBufferSize_4bed0deb2b5570bc: function(arg0) {
             const ret = getObject(arg0).maxBufferSize;
             return ret;
         },
-        __wbg_maxColorAttachmentBytesPerSample_4a4a0e04d76eaf2a: function(arg0) {
+        __wbg_maxColorAttachmentBytesPerSample_2ded1d176129b49e: function(arg0) {
             const ret = getObject(arg0).maxColorAttachmentBytesPerSample;
             return ret;
         },
-        __wbg_maxColorAttachments_db4883eeb9e8aeae: function(arg0) {
+        __wbg_maxColorAttachments_a363e1f84136b445: function(arg0) {
             const ret = getObject(arg0).maxColorAttachments;
             return ret;
         },
-        __wbg_maxComputeInvocationsPerWorkgroup_d050c461ebc92998: function(arg0) {
+        __wbg_maxComputeInvocationsPerWorkgroup_8c8259a34a467300: function(arg0) {
             const ret = getObject(arg0).maxComputeInvocationsPerWorkgroup;
             return ret;
         },
-        __wbg_maxComputeWorkgroupSizeX_48153a1b779879ad: function(arg0) {
+        __wbg_maxComputeWorkgroupSizeX_6a123a5258a37c70: function(arg0) {
             const ret = getObject(arg0).maxComputeWorkgroupSizeX;
             return ret;
         },
-        __wbg_maxComputeWorkgroupSizeY_7f73d3d16fdea180: function(arg0) {
+        __wbg_maxComputeWorkgroupSizeY_212a6e863b315f06: function(arg0) {
             const ret = getObject(arg0).maxComputeWorkgroupSizeY;
             return ret;
         },
-        __wbg_maxComputeWorkgroupSizeZ_9fcad0f0dfcffb05: function(arg0) {
+        __wbg_maxComputeWorkgroupSizeZ_53a8c06a42e0daa4: function(arg0) {
             const ret = getObject(arg0).maxComputeWorkgroupSizeZ;
             return ret;
         },
-        __wbg_maxComputeWorkgroupStorageSize_9fe29e00c7d166a6: function(arg0) {
+        __wbg_maxComputeWorkgroupStorageSize_0940bd6b70d5ee03: function(arg0) {
             const ret = getObject(arg0).maxComputeWorkgroupStorageSize;
             return ret;
         },
-        __wbg_maxComputeWorkgroupsPerDimension_f8321761bc8e8feb: function(arg0) {
+        __wbg_maxComputeWorkgroupsPerDimension_155968404880d2bc: function(arg0) {
             const ret = getObject(arg0).maxComputeWorkgroupsPerDimension;
             return ret;
         },
-        __wbg_maxDynamicStorageBuffersPerPipelineLayout_55e1416c376721db: function(arg0) {
+        __wbg_maxDynamicStorageBuffersPerPipelineLayout_7d88fb9026cd8af3: function(arg0) {
             const ret = getObject(arg0).maxDynamicStorageBuffersPerPipelineLayout;
             return ret;
         },
-        __wbg_maxDynamicUniformBuffersPerPipelineLayout_17ff0903196c41a7: function(arg0) {
+        __wbg_maxDynamicUniformBuffersPerPipelineLayout_146ac1a721fbca9b: function(arg0) {
             const ret = getObject(arg0).maxDynamicUniformBuffersPerPipelineLayout;
             return ret;
         },
-        __wbg_maxSampledTexturesPerShaderStage_59e5fc159e536f0d: function(arg0) {
+        __wbg_maxSampledTexturesPerShaderStage_10ee96b97a701e05: function(arg0) {
             const ret = getObject(arg0).maxSampledTexturesPerShaderStage;
             return ret;
         },
-        __wbg_maxSamplersPerShaderStage_84f119909016576b: function(arg0) {
+        __wbg_maxSamplersPerShaderStage_7546a712e69839d0: function(arg0) {
             const ret = getObject(arg0).maxSamplersPerShaderStage;
             return ret;
         },
-        __wbg_maxStorageBufferBindingSize_f9c3b3d285375ee0: function(arg0) {
+        __wbg_maxStorageBufferBindingSize_6f36ebfc9d4874d1: function(arg0) {
             const ret = getObject(arg0).maxStorageBufferBindingSize;
             return ret;
         },
-        __wbg_maxStorageBuffersPerShaderStage_f84b702138ac86a4: function(arg0) {
+        __wbg_maxStorageBuffersPerShaderStage_ad3988a66894ccd8: function(arg0) {
             const ret = getObject(arg0).maxStorageBuffersPerShaderStage;
             return ret;
         },
-        __wbg_maxStorageTexturesPerShaderStage_226be46cbf594437: function(arg0) {
+        __wbg_maxStorageTexturesPerShaderStage_3c4b0fd6cdb25d2f: function(arg0) {
             const ret = getObject(arg0).maxStorageTexturesPerShaderStage;
             return ret;
         },
-        __wbg_maxTextureArrayLayers_a8bf77269db7b94e: function(arg0) {
+        __wbg_maxTextureArrayLayers_596c959454186b7e: function(arg0) {
             const ret = getObject(arg0).maxTextureArrayLayers;
             return ret;
         },
-        __wbg_maxTextureDimension1D_8e69ba5596959195: function(arg0) {
+        __wbg_maxTextureDimension1D_395c7225194787e6: function(arg0) {
             const ret = getObject(arg0).maxTextureDimension1D;
             return ret;
         },
-        __wbg_maxTextureDimension2D_5a7a17047785cba5: function(arg0) {
+        __wbg_maxTextureDimension2D_1c70c07372595733: function(arg0) {
             const ret = getObject(arg0).maxTextureDimension2D;
             return ret;
         },
-        __wbg_maxTextureDimension3D_1ea793f1095d392a: function(arg0) {
+        __wbg_maxTextureDimension3D_c2c0b973db2f7087: function(arg0) {
             const ret = getObject(arg0).maxTextureDimension3D;
             return ret;
         },
-        __wbg_maxUniformBufferBindingSize_4b41f90d6914a995: function(arg0) {
+        __wbg_maxUniformBufferBindingSize_18e95cb371149021: function(arg0) {
             const ret = getObject(arg0).maxUniformBufferBindingSize;
             return ret;
         },
-        __wbg_maxUniformBuffersPerShaderStage_c5db04bf022a0c83: function(arg0) {
+        __wbg_maxUniformBuffersPerShaderStage_e21721df6407d356: function(arg0) {
             const ret = getObject(arg0).maxUniformBuffersPerShaderStage;
             return ret;
         },
-        __wbg_maxVertexAttributes_e94e6c887b993b6c: function(arg0) {
+        __wbg_maxVertexAttributes_3685d049fb4b9557: function(arg0) {
             const ret = getObject(arg0).maxVertexAttributes;
             return ret;
         },
-        __wbg_maxVertexBufferArrayStride_92c15a2c2f0faf82: function(arg0) {
+        __wbg_maxVertexBufferArrayStride_799ce7d416969442: function(arg0) {
             const ret = getObject(arg0).maxVertexBufferArrayStride;
             return ret;
         },
-        __wbg_maxVertexBuffers_db05674c76ef98c9: function(arg0) {
+        __wbg_maxVertexBuffers_9e36c1cf99fac3d6: function(arg0) {
             const ret = getObject(arg0).maxVertexBuffers;
             return ret;
         },
-        __wbg_minStorageBufferOffsetAlignment_2c9fb697a4aedb8b: function(arg0) {
+        __wbg_minStorageBufferOffsetAlignment_04598b6c2361de5d: function(arg0) {
             const ret = getObject(arg0).minStorageBufferOffsetAlignment;
             return ret;
         },
-        __wbg_minUniformBufferOffsetAlignment_6357875312bfd2f0: function(arg0) {
+        __wbg_minUniformBufferOffsetAlignment_0743900952f2cbce: function(arg0) {
             const ret = getObject(arg0).minUniformBufferOffsetAlignment;
             return ret;
         },
@@ -3283,7 +4498,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_6739(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_7946(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -3316,6 +4531,10 @@ function __wbg_get_imports() {
         },
         __wbg_of_f915f7cd925b21a5: function(arg0) {
             const ret = Array.of(getObject(arg0));
+            return addHeapObject(ret);
+        },
+        __wbg_onSubmittedWorkDone_babe5ab237e856ff: function(arg0) {
+            const ret = getObject(arg0).onSubmittedWorkDone();
             return addHeapObject(ret);
         },
         __wbg_performance_06f12ba62483475d: function(arg0) {
@@ -3362,7 +4581,7 @@ function __wbg_get_imports() {
         __wbg_queueMicrotask_5bb536982f78a56f: function(arg0) {
             queueMicrotask(getObject(arg0));
         },
-        __wbg_queue_1f589e8194b004a6: function(arg0) {
+        __wbg_queue_13a5c48e3c54a28c: function(arg0) {
             const ret = getObject(arg0).queue;
             return addHeapObject(ret);
         },
@@ -3387,11 +4606,11 @@ function __wbg_get_imports() {
         __wbg_renderbufferStorage_6348154d30979c44: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).renderbufferStorage(arg1 >>> 0, arg2 >>> 0, arg3, arg4);
         },
-        __wbg_requestAdapter_51be7e8ee7d08b87: function(arg0, arg1) {
+        __wbg_requestAdapter_cc9a9924f72519ab: function(arg0, arg1) {
             const ret = getObject(arg0).requestAdapter(getObject(arg1));
             return addHeapObject(ret);
         },
-        __wbg_requestDevice_338f0085866d40a2: function(arg0, arg1) {
+        __wbg_requestDevice_295504649d1da14c: function(arg0, arg1) {
             const ret = getObject(arg0).requestDevice(getObject(arg1));
             return addHeapObject(ret);
         },
@@ -3415,32 +4634,32 @@ function __wbg_get_imports() {
         __wbg_scissor_b870b1434a9c25b4: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).scissor(arg1, arg2, arg3, arg4);
         },
-        __wbg_setBindGroup_306b5f43159153da: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+        __wbg_setBindGroup_9eb2f378626e78b7: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
             getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2), getArrayU32FromWasm0(arg3, arg4), arg5, arg6 >>> 0);
         }, arguments); },
-        __wbg_setBindGroup_43392eaf8ea524fa: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+        __wbg_setBindGroup_ae93a2ba8c665826: function(arg0, arg1, arg2) {
+            getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2));
+        },
+        __wbg_setBindGroup_bf7233e51ee0fd56: function(arg0, arg1, arg2) {
+            getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2));
+        },
+        __wbg_setBindGroup_c532d9e80c3b863a: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
             getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2), getArrayU32FromWasm0(arg3, arg4), arg5, arg6 >>> 0);
         }, arguments); },
-        __wbg_setBindGroup_b90f6f79c7be4f96: function(arg0, arg1, arg2) {
-            getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2));
-        },
-        __wbg_setBindGroup_d3cd0c65d5718e66: function(arg0, arg1, arg2) {
-            getObject(arg0).setBindGroup(arg1 >>> 0, getObject(arg2));
-        },
-        __wbg_setPipeline_e7c896fa93c7f292: function(arg0, arg1) {
+        __wbg_setPipeline_6d9bb386aa5ee85f: function(arg0, arg1) {
             getObject(arg0).setPipeline(getObject(arg1));
         },
-        __wbg_setPipeline_f44bbc63b7455235: function(arg0, arg1) {
+        __wbg_setPipeline_b632e313f54b1cb1: function(arg0, arg1) {
             getObject(arg0).setPipeline(getObject(arg1));
         },
-        __wbg_setScissorRect_b3ae2865d79457e5: function(arg0, arg1, arg2, arg3, arg4) {
+        __wbg_setScissorRect_13be2665184d6e20: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).setScissorRect(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, arg4 >>> 0);
         },
-        __wbg_setVertexBuffer_5e5ec203042c0564: function(arg0, arg1, arg2, arg3, arg4) {
-            getObject(arg0).setVertexBuffer(arg1 >>> 0, getObject(arg2), arg3, arg4);
-        },
-        __wbg_setVertexBuffer_950908f301fc83b4: function(arg0, arg1, arg2, arg3) {
+        __wbg_setVertexBuffer_71f6b6b9f7c32e99: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).setVertexBuffer(arg1 >>> 0, getObject(arg2), arg3);
+        },
+        __wbg_setVertexBuffer_c8234139ead62a61: function(arg0, arg1, arg2, arg3, arg4) {
+            getObject(arg0).setVertexBuffer(arg1 >>> 0, getObject(arg2), arg3, arg4);
         },
         __wbg_set_25cf9deff6bf0ea8: function(arg0, arg1, arg2) {
             getObject(arg0).set(getObject(arg1), arg2 >>> 0);
@@ -3449,217 +4668,223 @@ function __wbg_get_imports() {
             const ret = Reflect.set(getObject(arg0), getObject(arg1), getObject(arg2));
             return ret;
         }, arguments); },
-        __wbg_set_a_6ca4b80abcaa9bb0: function(arg0, arg1) {
+        __wbg_set_a_e87a2053d5fccb4c: function(arg0, arg1) {
             getObject(arg0).a = arg1;
         },
-        __wbg_set_access_c17e0a436ed1d78e: function(arg0, arg1) {
+        __wbg_set_access_69d91e9d4e4ceac2: function(arg0, arg1) {
             getObject(arg0).access = __wbindgen_enum_GpuStorageTextureAccess[arg1];
         },
-        __wbg_set_address_mode_u_9a2648489304b6c3: function(arg0, arg1) {
+        __wbg_set_address_mode_u_17e91ba6701d7cdf: function(arg0, arg1) {
             getObject(arg0).addressModeU = __wbindgen_enum_GpuAddressMode[arg1];
         },
-        __wbg_set_address_mode_v_911f607ff1319cf6: function(arg0, arg1) {
+        __wbg_set_address_mode_v_83cff33885b49fd0: function(arg0, arg1) {
             getObject(arg0).addressModeV = __wbindgen_enum_GpuAddressMode[arg1];
         },
-        __wbg_set_address_mode_w_b7c68665b89d5500: function(arg0, arg1) {
+        __wbg_set_address_mode_w_2445963d0feae757: function(arg0, arg1) {
             getObject(arg0).addressModeW = __wbindgen_enum_GpuAddressMode[arg1];
         },
-        __wbg_set_alpha_eb6e37beb08f6a6a: function(arg0, arg1) {
+        __wbg_set_alpha_a7a68e5ec04efe77: function(arg0, arg1) {
             getObject(arg0).alpha = getObject(arg1);
         },
-        __wbg_set_alpha_mode_2a9be051489d8bbd: function(arg0, arg1) {
+        __wbg_set_alpha_mode_60f87267fa3d95d0: function(arg0, arg1) {
             getObject(arg0).alphaMode = __wbindgen_enum_GpuCanvasAlphaMode[arg1];
         },
-        __wbg_set_alpha_to_coverage_enabled_1f594c6ef9ae4caa: function(arg0, arg1) {
+        __wbg_set_alpha_to_coverage_enabled_67782b8fff854d06: function(arg0, arg1) {
             getObject(arg0).alphaToCoverageEnabled = arg1 !== 0;
         },
-        __wbg_set_array_layer_count_93d58eca9387b84c: function(arg0, arg1) {
+        __wbg_set_array_layer_count_2bd74e56899b603a: function(arg0, arg1) {
             getObject(arg0).arrayLayerCount = arg1 >>> 0;
         },
-        __wbg_set_array_stride_5ace211a6c31af55: function(arg0, arg1) {
+        __wbg_set_array_stride_acb85bd3848529a6: function(arg0, arg1) {
             getObject(arg0).arrayStride = arg1;
         },
-        __wbg_set_aspect_e3aa9cad44e6338f: function(arg0, arg1) {
+        __wbg_set_aspect_82ca9caa27a4c533: function(arg0, arg1) {
             getObject(arg0).aspect = __wbindgen_enum_GpuTextureAspect[arg1];
         },
-        __wbg_set_attributes_8cfe8a349778ff6d: function(arg0, arg1) {
+        __wbg_set_aspect_b78bd0b34ebfe19b: function(arg0, arg1) {
+            getObject(arg0).aspect = __wbindgen_enum_GpuTextureAspect[arg1];
+        },
+        __wbg_set_attributes_4d5de6c80e3a7e73: function(arg0, arg1) {
             getObject(arg0).attributes = getObject(arg1);
         },
-        __wbg_set_b_52915cc78721cadb: function(arg0, arg1) {
+        __wbg_set_b_87725d82ac69a631: function(arg0, arg1) {
             getObject(arg0).b = arg1;
         },
-        __wbg_set_base_array_layer_798dcd012d28aafd: function(arg0, arg1) {
+        __wbg_set_base_array_layer_064977086530f2e7: function(arg0, arg1) {
             getObject(arg0).baseArrayLayer = arg1 >>> 0;
         },
-        __wbg_set_base_mip_level_ff05f0742029fbd7: function(arg0, arg1) {
+        __wbg_set_base_mip_level_845abe28a57bd901: function(arg0, arg1) {
             getObject(arg0).baseMipLevel = arg1 >>> 0;
         },
-        __wbg_set_beginning_of_pass_write_index_90fab5f12cddf335: function(arg0, arg1) {
+        __wbg_set_beginning_of_pass_write_index_18bb7ab9fb16de02: function(arg0, arg1) {
             getObject(arg0).beginningOfPassWriteIndex = arg1 >>> 0;
         },
-        __wbg_set_beginning_of_pass_write_index_ad07a73147217513: function(arg0, arg1) {
+        __wbg_set_beginning_of_pass_write_index_1d1dcdf984952e54: function(arg0, arg1) {
             getObject(arg0).beginningOfPassWriteIndex = arg1 >>> 0;
         },
-        __wbg_set_bind_group_layouts_9eff5e187a1db39e: function(arg0, arg1) {
+        __wbg_set_bind_group_layouts_db65f9787380e242: function(arg0, arg1) {
             getObject(arg0).bindGroupLayouts = getObject(arg1);
         },
-        __wbg_set_binding_3ada8a83c514d419: function(arg0, arg1) {
+        __wbg_set_binding_35fa28beda49ff83: function(arg0, arg1) {
             getObject(arg0).binding = arg1 >>> 0;
         },
-        __wbg_set_binding_9a389db987313ca9: function(arg0, arg1) {
+        __wbg_set_binding_3b4abee15b11f6ec: function(arg0, arg1) {
             getObject(arg0).binding = arg1 >>> 0;
         },
-        __wbg_set_blend_15fcdb6fca391aa3: function(arg0, arg1) {
+        __wbg_set_blend_21337ec514ad2280: function(arg0, arg1) {
             getObject(arg0).blend = getObject(arg1);
         },
-        __wbg_set_buffer_581ee8422928bd0d: function(arg0, arg1) {
+        __wbg_set_buffer_a9223dfcc0e34853: function(arg0, arg1) {
             getObject(arg0).buffer = getObject(arg1);
         },
-        __wbg_set_buffer_ac25c198252221bd: function(arg0, arg1) {
+        __wbg_set_buffer_d49e95bb5349d827: function(arg0, arg1) {
             getObject(arg0).buffer = getObject(arg1);
         },
-        __wbg_set_buffers_4515e14c72e1bc45: function(arg0, arg1) {
+        __wbg_set_buffers_68609a5d48c31b27: function(arg0, arg1) {
             getObject(arg0).buffers = getObject(arg1);
         },
-        __wbg_set_bytes_per_row_4c52e94a64f7b18a: function(arg0, arg1) {
+        __wbg_set_bytes_per_row_4a52bbf4cdbfe78b: function(arg0, arg1) {
             getObject(arg0).bytesPerRow = arg1 >>> 0;
         },
-        __wbg_set_clear_value_9fd25161e3ff7358: function(arg0, arg1) {
+        __wbg_set_clear_value_8fc3623594df71b2: function(arg0, arg1) {
             getObject(arg0).clearValue = getObject(arg1);
         },
-        __wbg_set_code_1d146372551ab97f: function(arg0, arg1, arg2) {
+        __wbg_set_code_20093e29960281f8: function(arg0, arg1, arg2) {
             getObject(arg0).code = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_color_63a788c8828014d8: function(arg0, arg1) {
+        __wbg_set_color_64a633bf7b4cf6fe: function(arg0, arg1) {
             getObject(arg0).color = getObject(arg1);
         },
-        __wbg_set_color_attachments_b56ec268556eb0af: function(arg0, arg1) {
+        __wbg_set_color_attachments_4d4c71d7eeba8e2f: function(arg0, arg1) {
             getObject(arg0).colorAttachments = getObject(arg1);
         },
-        __wbg_set_compare_986db63daac4c337: function(arg0, arg1) {
+        __wbg_set_compare_0376672b0c0bbfd8: function(arg0, arg1) {
             getObject(arg0).compare = __wbindgen_enum_GpuCompareFunction[arg1];
         },
-        __wbg_set_compare_b6bd133fd1c7206a: function(arg0, arg1) {
+        __wbg_set_compare_f3fb77a9bf3f0f7e: function(arg0, arg1) {
             getObject(arg0).compare = __wbindgen_enum_GpuCompareFunction[arg1];
         },
-        __wbg_set_compute_edb2d4dd43759577: function(arg0, arg1) {
+        __wbg_set_compute_937f4ee700e465ff: function(arg0, arg1) {
             getObject(arg0).compute = getObject(arg1);
         },
-        __wbg_set_count_6b3574238f446a02: function(arg0, arg1) {
+        __wbg_set_count_8cf9a3dd1ffc7b7d: function(arg0, arg1) {
             getObject(arg0).count = arg1 >>> 0;
         },
-        __wbg_set_cull_mode_f1cc439f208cf7d2: function(arg0, arg1) {
+        __wbg_set_cull_mode_41c12526410d3e05: function(arg0, arg1) {
             getObject(arg0).cullMode = __wbindgen_enum_GpuCullMode[arg1];
         },
-        __wbg_set_depth_bias_0c225de07a2372b1: function(arg0, arg1) {
+        __wbg_set_depth_bias_31554aeaaa675954: function(arg0, arg1) {
             getObject(arg0).depthBias = arg1;
         },
-        __wbg_set_depth_bias_clamp_bd34181bc74b8a65: function(arg0, arg1) {
+        __wbg_set_depth_bias_clamp_8cf5f4f0d80e8cba: function(arg0, arg1) {
             getObject(arg0).depthBiasClamp = arg1;
         },
-        __wbg_set_depth_bias_slope_scale_d43ddce65f19c9be: function(arg0, arg1) {
+        __wbg_set_depth_bias_slope_scale_310ae406f2d3a055: function(arg0, arg1) {
             getObject(arg0).depthBiasSlopeScale = arg1;
         },
-        __wbg_set_depth_clear_value_eb76fedd34b20053: function(arg0, arg1) {
+        __wbg_set_depth_clear_value_8760aafb583d5312: function(arg0, arg1) {
             getObject(arg0).depthClearValue = arg1;
         },
-        __wbg_set_depth_compare_491947ed2f6065b9: function(arg0, arg1) {
+        __wbg_set_depth_compare_8831904ce3173063: function(arg0, arg1) {
             getObject(arg0).depthCompare = __wbindgen_enum_GpuCompareFunction[arg1];
         },
-        __wbg_set_depth_fail_op_4983b01413b9f743: function(arg0, arg1) {
+        __wbg_set_depth_fail_op_62ec602580477afc: function(arg0, arg1) {
             getObject(arg0).depthFailOp = __wbindgen_enum_GpuStencilOperation[arg1];
         },
-        __wbg_set_depth_load_op_c7deb718c4129a2c: function(arg0, arg1) {
+        __wbg_set_depth_load_op_102d57f3ddf95461: function(arg0, arg1) {
             getObject(arg0).depthLoadOp = __wbindgen_enum_GpuLoadOp[arg1];
         },
-        __wbg_set_depth_or_array_layers_5686e74657700bc2: function(arg0, arg1) {
+        __wbg_set_depth_or_array_layers_d7b93db07c5da69d: function(arg0, arg1) {
             getObject(arg0).depthOrArrayLayers = arg1 >>> 0;
         },
-        __wbg_set_depth_read_only_18602250b14fa638: function(arg0, arg1) {
+        __wbg_set_depth_read_only_aebc24a542debafd: function(arg0, arg1) {
             getObject(arg0).depthReadOnly = arg1 !== 0;
         },
-        __wbg_set_depth_stencil_attachment_90d13c414095197d: function(arg0, arg1) {
-            getObject(arg0).depthStencilAttachment = getObject(arg1);
-        },
-        __wbg_set_depth_stencil_e6069a8b511d1004: function(arg0, arg1) {
+        __wbg_set_depth_stencil_5627e73aaf33912c: function(arg0, arg1) {
             getObject(arg0).depthStencil = getObject(arg1);
         },
-        __wbg_set_depth_store_op_55f84f2f9039c453: function(arg0, arg1) {
+        __wbg_set_depth_stencil_attachment_04b936535778e362: function(arg0, arg1) {
+            getObject(arg0).depthStencilAttachment = getObject(arg1);
+        },
+        __wbg_set_depth_store_op_610b0a50dbb00eb8: function(arg0, arg1) {
             getObject(arg0).depthStoreOp = __wbindgen_enum_GpuStoreOp[arg1];
         },
-        __wbg_set_depth_write_enabled_e419ffe553654371: function(arg0, arg1) {
+        __wbg_set_depth_write_enabled_f94217df9ff2d60c: function(arg0, arg1) {
             getObject(arg0).depthWriteEnabled = arg1 !== 0;
         },
-        __wbg_set_device_91facdf766d51abf: function(arg0, arg1) {
+        __wbg_set_device_dab18ead7bfc077b: function(arg0, arg1) {
             getObject(arg0).device = getObject(arg1);
         },
-        __wbg_set_dimension_47ad758bb7805028: function(arg0, arg1) {
+        __wbg_set_dimension_2a75a794a0bfcc94: function(arg0, arg1) {
             getObject(arg0).dimension = __wbindgen_enum_GpuTextureViewDimension[arg1];
         },
-        __wbg_set_dimension_500c3bec57e8ac12: function(arg0, arg1) {
+        __wbg_set_dimension_a3c50fb6d43f6cec: function(arg0, arg1) {
             getObject(arg0).dimension = __wbindgen_enum_GpuTextureDimension[arg1];
         },
-        __wbg_set_dst_factor_abdf4d85b8f742b5: function(arg0, arg1) {
+        __wbg_set_dst_factor_cf872fec841747ac: function(arg0, arg1) {
             getObject(arg0).dstFactor = __wbindgen_enum_GpuBlendFactor[arg1];
         },
-        __wbg_set_end_of_pass_write_index_82a42f6ec7d55754: function(arg0, arg1) {
+        __wbg_set_end_of_pass_write_index_02ee5189026c1d3a: function(arg0, arg1) {
             getObject(arg0).endOfPassWriteIndex = arg1 >>> 0;
         },
-        __wbg_set_end_of_pass_write_index_bd98b6c885176c21: function(arg0, arg1) {
+        __wbg_set_end_of_pass_write_index_12c25e0a48d5aa5c: function(arg0, arg1) {
             getObject(arg0).endOfPassWriteIndex = arg1 >>> 0;
         },
-        __wbg_set_entries_136baaaafb25087f: function(arg0, arg1) {
+        __wbg_set_entries_1472deaee7053fb7: function(arg0, arg1) {
             getObject(arg0).entries = getObject(arg1);
         },
-        __wbg_set_entries_7c41d594195ebe78: function(arg0, arg1) {
+        __wbg_set_entries_b2258b5ef29810b0: function(arg0, arg1) {
             getObject(arg0).entries = getObject(arg1);
         },
-        __wbg_set_entry_point_6f3d3792022065f4: function(arg0, arg1, arg2) {
+        __wbg_set_entry_point_11f912102ade99b1: function(arg0, arg1, arg2) {
             getObject(arg0).entryPoint = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_entry_point_913e091cc9a07667: function(arg0, arg1, arg2) {
+        __wbg_set_entry_point_7f546bbf1e63e58d: function(arg0, arg1, arg2) {
             getObject(arg0).entryPoint = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_entry_point_96944272d50efb55: function(arg0, arg1, arg2) {
+        __wbg_set_entry_point_f9224cdb29cbe5df: function(arg0, arg1, arg2) {
             getObject(arg0).entryPoint = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_fail_op_fd94b46d0cd7c4f2: function(arg0, arg1) {
+        __wbg_set_external_texture_613e4434100d63ee: function(arg0, arg1) {
+            getObject(arg0).externalTexture = getObject(arg1);
+        },
+        __wbg_set_fail_op_73a4e194f4bc914a: function(arg0, arg1) {
             getObject(arg0).failOp = __wbindgen_enum_GpuStencilOperation[arg1];
         },
-        __wbg_set_format_29126ee763612515: function(arg0, arg1) {
+        __wbg_set_format_1670e760e18ac001: function(arg0, arg1) {
             getObject(arg0).format = __wbindgen_enum_GpuTextureFormat[arg1];
         },
-        __wbg_set_format_450c4be578985cb4: function(arg0, arg1) {
+        __wbg_set_format_2141a8a1fd36fb9c: function(arg0, arg1) {
+            getObject(arg0).format = __wbindgen_enum_GpuTextureFormat[arg1];
+        },
+        __wbg_set_format_25e4aacc74949e38: function(arg0, arg1) {
+            getObject(arg0).format = __wbindgen_enum_GpuTextureFormat[arg1];
+        },
+        __wbg_set_format_3f7008e9e568f0fc: function(arg0, arg1) {
             getObject(arg0).format = __wbindgen_enum_GpuVertexFormat[arg1];
         },
-        __wbg_set_format_582f639b8a79115c: function(arg0, arg1) {
+        __wbg_set_format_4a4fccdfc45bc409: function(arg0, arg1) {
             getObject(arg0).format = __wbindgen_enum_GpuTextureFormat[arg1];
         },
-        __wbg_set_format_6ac892268eeef402: function(arg0, arg1) {
+        __wbg_set_format_7696f8290da8a36b: function(arg0, arg1) {
             getObject(arg0).format = __wbindgen_enum_GpuTextureFormat[arg1];
         },
-        __wbg_set_format_a622a57e42ae23e4: function(arg0, arg1) {
+        __wbg_set_format_974a01725f579c5d: function(arg0, arg1) {
             getObject(arg0).format = __wbindgen_enum_GpuTextureFormat[arg1];
         },
-        __wbg_set_format_bdfc7be2aa989382: function(arg0, arg1) {
-            getObject(arg0).format = __wbindgen_enum_GpuTextureFormat[arg1];
-        },
-        __wbg_set_format_c3ba1e26468014ae: function(arg0, arg1) {
-            getObject(arg0).format = __wbindgen_enum_GpuTextureFormat[arg1];
-        },
-        __wbg_set_fragment_84f03cfa83c432b2: function(arg0, arg1) {
+        __wbg_set_fragment_f7ce64feaf1cd7dc: function(arg0, arg1) {
             getObject(arg0).fragment = getObject(arg1);
         },
-        __wbg_set_front_face_1c87b2e21f85a97f: function(arg0, arg1) {
+        __wbg_set_front_face_09e32557f8852301: function(arg0, arg1) {
             getObject(arg0).frontFace = __wbindgen_enum_GpuFrontFace[arg1];
         },
-        __wbg_set_g_b94c63958617b86c: function(arg0, arg1) {
+        __wbg_set_g_c31c959457596456: function(arg0, arg1) {
             getObject(arg0).g = arg1;
         },
-        __wbg_set_has_dynamic_offset_9dc29179158975e4: function(arg0, arg1) {
+        __wbg_set_has_dynamic_offset_fbc1bb343939ed0b: function(arg0, arg1) {
             getObject(arg0).hasDynamicOffset = arg1 !== 0;
         },
-        __wbg_set_height_080fa3e226a83750: function(arg0, arg1) {
+        __wbg_set_height_710b87344b3d6748: function(arg0, arg1) {
             getObject(arg0).height = arg1 >>> 0;
         },
         __wbg_set_height_b386c0f603610637: function(arg0, arg1) {
@@ -3668,278 +4893,284 @@ function __wbg_get_imports() {
         __wbg_set_height_f21f985387070100: function(arg0, arg1) {
             getObject(arg0).height = arg1 >>> 0;
         },
-        __wbg_set_label_034d85243342ac5c: function(arg0, arg1, arg2) {
+        __wbg_set_label_0ec13ba975f77124: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_1e2e0069cbf2bd78: function(arg0, arg1, arg2) {
+        __wbg_set_label_3b658d9ce970552c: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_21544401e31cd317: function(arg0, arg1, arg2) {
+        __wbg_set_label_48883f5f49e4ec47: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_2312a64e22934a2b: function(arg0, arg1, arg2) {
+        __wbg_set_label_4bbbc289ddddebd7: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_2ed86217d97ea3d5: function(arg0, arg1, arg2) {
+        __wbg_set_label_4d609666f09cfdfb: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_3f988ca8291e319f: function(arg0, arg1, arg2) {
+        __wbg_set_label_4f4264b0041180e2: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_4e4cb7e7f8cc2b59: function(arg0, arg1, arg2) {
+        __wbg_set_label_5b46e419b9e88c5e: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_73d706a16d13a23c: function(arg0, arg1, arg2) {
+        __wbg_set_label_95423cd2e1f4b5dd: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_81dd67dee9cd4287: function(arg0, arg1, arg2) {
+        __wbg_set_label_ad0f2c69b41c3483: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_8f9ebe053f8da7a0: function(arg0, arg1, arg2) {
+        __wbg_set_label_c3fc0a66f4ecc82b: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_a96e4bdaec7882ee: function(arg0, arg1, arg2) {
+        __wbg_set_label_c857f45a8485236a: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_bfbd23fc748f8f94: function(arg0, arg1, arg2) {
+        __wbg_set_label_d0fd4d4810525bf2: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_d400966bd7759b26: function(arg0, arg1, arg2) {
+        __wbg_set_label_dc8df9969898889c: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_e1499888d936ca3f: function(arg0, arg1, arg2) {
+        __wbg_set_label_e3709fe3e82429b5: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_label_ecb2c1eab1d46433: function(arg0, arg1, arg2) {
+        __wbg_set_label_fb5d28b3ba7af11f: function(arg0, arg1, arg2) {
             getObject(arg0).label = getStringFromWasm0(arg1, arg2);
         },
-        __wbg_set_layout_0770a97fe3411616: function(arg0, arg1) {
+        __wbg_set_layout_170ec6b8aa37178f: function(arg0, arg1) {
             getObject(arg0).layout = getObject(arg1);
         },
-        __wbg_set_layout_0e88cce0b3d76c31: function(arg0, arg1) {
+        __wbg_set_layout_7f76289be3294b4a: function(arg0, arg1) {
             getObject(arg0).layout = getObject(arg1);
         },
-        __wbg_set_layout_640caab7a290275b: function(arg0, arg1) {
+        __wbg_set_layout_c20d48b352b24c1b: function(arg0, arg1) {
             getObject(arg0).layout = getObject(arg1);
         },
-        __wbg_set_load_op_6725bf0c5b509ae7: function(arg0, arg1) {
+        __wbg_set_load_op_c71d200e998908b0: function(arg0, arg1) {
             getObject(arg0).loadOp = __wbindgen_enum_GpuLoadOp[arg1];
         },
-        __wbg_set_lod_max_clamp_3a51dd81fde72c8d: function(arg0, arg1) {
+        __wbg_set_lod_max_clamp_aaac5daaecca96d4: function(arg0, arg1) {
             getObject(arg0).lodMaxClamp = arg1;
         },
-        __wbg_set_lod_min_clamp_f48943c1f01e12f9: function(arg0, arg1) {
+        __wbg_set_lod_min_clamp_ed2162d4b198abba: function(arg0, arg1) {
             getObject(arg0).lodMinClamp = arg1;
         },
-        __wbg_set_mag_filter_5794fd33d3902192: function(arg0, arg1) {
+        __wbg_set_mag_filter_c8a8c1218cd38da6: function(arg0, arg1) {
             getObject(arg0).magFilter = __wbindgen_enum_GpuFilterMode[arg1];
         },
-        __wbg_set_mapped_at_creation_e0c884a30f64323b: function(arg0, arg1) {
+        __wbg_set_mapped_at_creation_2d003ce549611385: function(arg0, arg1) {
             getObject(arg0).mappedAtCreation = arg1 !== 0;
         },
-        __wbg_set_mask_9094d3e3f6f3a7dc: function(arg0, arg1) {
+        __wbg_set_mask_a933ba2e61c7610a: function(arg0, arg1) {
             getObject(arg0).mask = arg1 >>> 0;
         },
-        __wbg_set_max_anisotropy_1377b74addad8758: function(arg0, arg1) {
+        __wbg_set_max_anisotropy_fb4bae64cb5acf57: function(arg0, arg1) {
             getObject(arg0).maxAnisotropy = arg1;
         },
-        __wbg_set_min_binding_size_4a9f4d0d9ee579af: function(arg0, arg1) {
+        __wbg_set_min_binding_size_308360802ae7a9ba: function(arg0, arg1) {
             getObject(arg0).minBindingSize = arg1;
         },
-        __wbg_set_min_filter_32dc39202a18cd7b: function(arg0, arg1) {
+        __wbg_set_min_filter_2dafbdeb188fd817: function(arg0, arg1) {
             getObject(arg0).minFilter = __wbindgen_enum_GpuFilterMode[arg1];
         },
-        __wbg_set_mip_level_992f82e991b163b8: function(arg0, arg1) {
+        __wbg_set_mip_level_babe1ff64201f0ea: function(arg0, arg1) {
             getObject(arg0).mipLevel = arg1 >>> 0;
         },
-        __wbg_set_mip_level_count_1d13855f7726190c: function(arg0, arg1) {
+        __wbg_set_mip_level_count_cd3197411f4f2432: function(arg0, arg1) {
             getObject(arg0).mipLevelCount = arg1 >>> 0;
         },
-        __wbg_set_mip_level_count_a5a0102e4248e5bb: function(arg0, arg1) {
+        __wbg_set_mip_level_count_fdc72450a94244ef: function(arg0, arg1) {
             getObject(arg0).mipLevelCount = arg1 >>> 0;
         },
-        __wbg_set_mipmap_filter_00493c30d94b571e: function(arg0, arg1) {
+        __wbg_set_mipmap_filter_79f552c459e63aa6: function(arg0, arg1) {
             getObject(arg0).mipmapFilter = __wbindgen_enum_GpuMipmapFilterMode[arg1];
         },
-        __wbg_set_module_3b5d2caf4d494fba: function(arg0, arg1) {
+        __wbg_set_module_18d541838665d831: function(arg0, arg1) {
             getObject(arg0).module = getObject(arg1);
         },
-        __wbg_set_module_882651860e912779: function(arg0, arg1) {
+        __wbg_set_module_20641353ebb28712: function(arg0, arg1) {
             getObject(arg0).module = getObject(arg1);
         },
-        __wbg_set_module_b46c4a937ee89c3b: function(arg0, arg1) {
+        __wbg_set_module_6ece909be28666dd: function(arg0, arg1) {
             getObject(arg0).module = getObject(arg1);
         },
-        __wbg_set_multisample_0a38af2e310bacc6: function(arg0, arg1) {
+        __wbg_set_multisample_e0f310ea9e40c2d9: function(arg0, arg1) {
             getObject(arg0).multisample = getObject(arg1);
         },
-        __wbg_set_multisampled_f2de771b3ad62ff3: function(arg0, arg1) {
+        __wbg_set_multisampled_cd50d8f6709cea1a: function(arg0, arg1) {
             getObject(arg0).multisampled = arg1 !== 0;
         },
-        __wbg_set_offset_31c0a660f535c545: function(arg0, arg1) {
+        __wbg_set_offset_2e78915f5d65d704: function(arg0, arg1) {
             getObject(arg0).offset = arg1;
         },
-        __wbg_set_offset_3eb0797dcc9c9464: function(arg0, arg1) {
+        __wbg_set_offset_405017033a936d89: function(arg0, arg1) {
             getObject(arg0).offset = arg1;
         },
-        __wbg_set_offset_a675629849c5f3b4: function(arg0, arg1) {
+        __wbg_set_offset_e7ce8b8eaaf46b95: function(arg0, arg1) {
             getObject(arg0).offset = arg1;
         },
-        __wbg_set_operation_879618283d591339: function(arg0, arg1) {
+        __wbg_set_operation_b96fabca3716aaa3: function(arg0, arg1) {
             getObject(arg0).operation = __wbindgen_enum_GpuBlendOperation[arg1];
         },
-        __wbg_set_origin_11de57058b4d23fb: function(arg0, arg1) {
+        __wbg_set_origin_c5f017d3f09ad7ff: function(arg0, arg1) {
             getObject(arg0).origin = getObject(arg1);
         },
-        __wbg_set_pass_op_238c7cbc20505ae9: function(arg0, arg1) {
+        __wbg_set_pass_op_765be90bb2f27220: function(arg0, arg1) {
             getObject(arg0).passOp = __wbindgen_enum_GpuStencilOperation[arg1];
         },
-        __wbg_set_power_preference_f4cead100f48bab0: function(arg0, arg1) {
+        __wbg_set_power_preference_39b347bf0d236ce6: function(arg0, arg1) {
             getObject(arg0).powerPreference = __wbindgen_enum_GpuPowerPreference[arg1];
         },
-        __wbg_set_primitive_01150af3e98fb372: function(arg0, arg1) {
+        __wbg_set_primitive_d6456d7efe6b4fe5: function(arg0, arg1) {
             getObject(arg0).primitive = getObject(arg1);
         },
-        __wbg_set_query_set_8441106911a3af36: function(arg0, arg1) {
+        __wbg_set_query_set_20ecd7f9a16f3ec6: function(arg0, arg1) {
             getObject(arg0).querySet = getObject(arg1);
         },
-        __wbg_set_query_set_9921033bb33d882c: function(arg0, arg1) {
+        __wbg_set_query_set_3afc955600bc819a: function(arg0, arg1) {
             getObject(arg0).querySet = getObject(arg1);
         },
-        __wbg_set_r_08c1678b22216ee0: function(arg0, arg1) {
+        __wbg_set_r_07bd987697069496: function(arg0, arg1) {
             getObject(arg0).r = arg1;
         },
-        __wbg_set_required_features_e9ee2e22feba0db3: function(arg0, arg1) {
+        __wbg_set_required_features_650c9e5dafbaa395: function(arg0, arg1) {
             getObject(arg0).requiredFeatures = getObject(arg1);
         },
-        __wbg_set_resolve_target_d00e2ef5a7388503: function(arg0, arg1) {
+        __wbg_set_resolve_target_c18cd4048765732a: function(arg0, arg1) {
             getObject(arg0).resolveTarget = getObject(arg1);
         },
-        __wbg_set_resource_5a4cc69a127b394e: function(arg0, arg1) {
+        __wbg_set_resource_8cea0fe2c8745c3e: function(arg0, arg1) {
             getObject(arg0).resource = getObject(arg1);
         },
-        __wbg_set_rows_per_image_f456122723767189: function(arg0, arg1) {
+        __wbg_set_rows_per_image_2f7969031c71f0d8: function(arg0, arg1) {
             getObject(arg0).rowsPerImage = arg1 >>> 0;
         },
-        __wbg_set_sample_count_c44a2a6eebe72dcc: function(arg0, arg1) {
+        __wbg_set_sample_count_07aedd28692aeae8: function(arg0, arg1) {
             getObject(arg0).sampleCount = arg1 >>> 0;
         },
-        __wbg_set_sample_type_89fd8e71274ee6c2: function(arg0, arg1) {
+        __wbg_set_sample_type_601a744a4bd6ea07: function(arg0, arg1) {
             getObject(arg0).sampleType = __wbindgen_enum_GpuTextureSampleType[arg1];
         },
-        __wbg_set_sampler_ab33334fb83c5a17: function(arg0, arg1) {
+        __wbg_set_sampler_1a2729c0aa194081: function(arg0, arg1) {
             getObject(arg0).sampler = getObject(arg1);
         },
-        __wbg_set_shader_location_b905e964144cc9ad: function(arg0, arg1) {
+        __wbg_set_shader_location_bdcfdc1009d351b1: function(arg0, arg1) {
             getObject(arg0).shaderLocation = arg1 >>> 0;
         },
-        __wbg_set_size_a877ed6f434871bd: function(arg0, arg1) {
+        __wbg_set_size_7a392ee585f87da8: function(arg0, arg1) {
             getObject(arg0).size = arg1;
         },
-        __wbg_set_size_b2cab7e432ec25dc: function(arg0, arg1) {
-            getObject(arg0).size = arg1;
-        },
-        __wbg_set_size_c167af29ed0f618c: function(arg0, arg1) {
+        __wbg_set_size_c6bf409f70f4420f: function(arg0, arg1) {
             getObject(arg0).size = getObject(arg1);
         },
-        __wbg_set_src_factor_3bf35cc93f12e8c2: function(arg0, arg1) {
+        __wbg_set_size_f902b266d636bf6e: function(arg0, arg1) {
+            getObject(arg0).size = arg1;
+        },
+        __wbg_set_src_factor_50cef27aa8aece91: function(arg0, arg1) {
             getObject(arg0).srcFactor = __wbindgen_enum_GpuBlendFactor[arg1];
         },
-        __wbg_set_stencil_back_6d0e3812c09eb489: function(arg0, arg1) {
+        __wbg_set_stencil_back_e740415a5c0b637a: function(arg0, arg1) {
             getObject(arg0).stencilBack = getObject(arg1);
         },
-        __wbg_set_stencil_clear_value_53b51b80af22b8a4: function(arg0, arg1) {
+        __wbg_set_stencil_clear_value_6be76b512040398d: function(arg0, arg1) {
             getObject(arg0).stencilClearValue = arg1 >>> 0;
         },
-        __wbg_set_stencil_front_223b59e436e04d2d: function(arg0, arg1) {
+        __wbg_set_stencil_front_03185e1c3bafa411: function(arg0, arg1) {
             getObject(arg0).stencilFront = getObject(arg1);
         },
-        __wbg_set_stencil_load_op_d88ff17c1f14f3b3: function(arg0, arg1) {
+        __wbg_set_stencil_load_op_084f44352b978b3d: function(arg0, arg1) {
             getObject(arg0).stencilLoadOp = __wbindgen_enum_GpuLoadOp[arg1];
         },
-        __wbg_set_stencil_read_mask_f7b2d22f2682c8f6: function(arg0, arg1) {
+        __wbg_set_stencil_read_mask_e2736fc4af9399e4: function(arg0, arg1) {
             getObject(arg0).stencilReadMask = arg1 >>> 0;
         },
-        __wbg_set_stencil_read_only_6fba8956bae14007: function(arg0, arg1) {
+        __wbg_set_stencil_read_only_31f3d99299373c12: function(arg0, arg1) {
             getObject(arg0).stencilReadOnly = arg1 !== 0;
         },
-        __wbg_set_stencil_store_op_9637a0cb039fc7bb: function(arg0, arg1) {
+        __wbg_set_stencil_store_op_428fb4955e4899d6: function(arg0, arg1) {
             getObject(arg0).stencilStoreOp = __wbindgen_enum_GpuStoreOp[arg1];
         },
-        __wbg_set_stencil_write_mask_fc2b202439c71444: function(arg0, arg1) {
+        __wbg_set_stencil_write_mask_b1d3e1655305a187: function(arg0, arg1) {
             getObject(arg0).stencilWriteMask = arg1 >>> 0;
         },
-        __wbg_set_step_mode_953dbc499c2ea5db: function(arg0, arg1) {
+        __wbg_set_step_mode_98e49f7877daf1c5: function(arg0, arg1) {
             getObject(arg0).stepMode = __wbindgen_enum_GpuVertexStepMode[arg1];
         },
-        __wbg_set_storage_texture_0634dd6c87ac1132: function(arg0, arg1) {
+        __wbg_set_storage_texture_6ee0cbeb50698110: function(arg0, arg1) {
             getObject(arg0).storageTexture = getObject(arg1);
         },
-        __wbg_set_store_op_d6e36afb7a3bc15a: function(arg0, arg1) {
+        __wbg_set_store_op_e761080d541a10cc: function(arg0, arg1) {
             getObject(arg0).storeOp = __wbindgen_enum_GpuStoreOp[arg1];
         },
-        __wbg_set_strip_index_format_6813dd6e867de4f2: function(arg0, arg1) {
+        __wbg_set_strip_index_format_16df9e33c7aa97e6: function(arg0, arg1) {
             getObject(arg0).stripIndexFormat = __wbindgen_enum_GpuIndexFormat[arg1];
         },
-        __wbg_set_targets_0ab03a33d2c15ccd: function(arg0, arg1) {
+        __wbg_set_targets_9fd1ec0b8edc895c: function(arg0, arg1) {
             getObject(arg0).targets = getObject(arg1);
         },
-        __wbg_set_texture_72c4d60403590233: function(arg0, arg1) {
+        __wbg_set_texture_f03807916f70dcc6: function(arg0, arg1) {
             getObject(arg0).texture = getObject(arg1);
         },
-        __wbg_set_texture_9dc3759e93cfbb84: function(arg0, arg1) {
+        __wbg_set_texture_f8ae0bb4bb159354: function(arg0, arg1) {
             getObject(arg0).texture = getObject(arg1);
         },
-        __wbg_set_timestamp_writes_736aa6c2c69ccaea: function(arg0, arg1) {
+        __wbg_set_timestamp_writes_3998dbfa21e48dbe: function(arg0, arg1) {
             getObject(arg0).timestampWrites = getObject(arg1);
         },
-        __wbg_set_timestamp_writes_be461aab39b4e744: function(arg0, arg1) {
+        __wbg_set_timestamp_writes_de925214f236e575: function(arg0, arg1) {
             getObject(arg0).timestampWrites = getObject(arg1);
         },
-        __wbg_set_topology_84962f44b37e8986: function(arg0, arg1) {
+        __wbg_set_topology_036632318a24227d: function(arg0, arg1) {
             getObject(arg0).topology = __wbindgen_enum_GpuPrimitiveTopology[arg1];
         },
-        __wbg_set_type_4ff365ea9ad896aa: function(arg0, arg1) {
+        __wbg_set_type_0cb4cdb5eff87f31: function(arg0, arg1) {
             getObject(arg0).type = __wbindgen_enum_GpuBufferBindingType[arg1];
         },
-        __wbg_set_type_b4b2fc6fbad39aeb: function(arg0, arg1) {
+        __wbg_set_type_d05fa8415ad0761f: function(arg0, arg1) {
             getObject(arg0).type = __wbindgen_enum_GpuSamplerBindingType[arg1];
         },
-        __wbg_set_usage_3bf7bce356282919: function(arg0, arg1) {
+        __wbg_set_unclipped_depth_17a5ab83d4e7cadc: function(arg0, arg1) {
+            getObject(arg0).unclippedDepth = arg1 !== 0;
+        },
+        __wbg_set_usage_3d569e7b02227032: function(arg0, arg1) {
             getObject(arg0).usage = arg1 >>> 0;
         },
-        __wbg_set_usage_48c9e7b82b575c9a: function(arg0, arg1) {
+        __wbg_set_usage_ac222ece73f994b7: function(arg0, arg1) {
             getObject(arg0).usage = arg1 >>> 0;
         },
-        __wbg_set_usage_a102e6844c6a65de: function(arg0, arg1) {
+        __wbg_set_usage_ca00520767c8a475: function(arg0, arg1) {
             getObject(arg0).usage = arg1 >>> 0;
         },
-        __wbg_set_usage_ea5e5efc19daea09: function(arg0, arg1) {
+        __wbg_set_usage_fe13088353b65bee: function(arg0, arg1) {
             getObject(arg0).usage = arg1 >>> 0;
         },
-        __wbg_set_vertex_96327c405a801524: function(arg0, arg1) {
+        __wbg_set_vertex_76b7ac4bdfbb06f4: function(arg0, arg1) {
             getObject(arg0).vertex = getObject(arg1);
         },
-        __wbg_set_view_2d2806aa6c5822ca: function(arg0, arg1) {
+        __wbg_set_view_1ef41eeb26eaf718: function(arg0, arg1) {
             getObject(arg0).view = getObject(arg1);
         },
-        __wbg_set_view_b7216eb00b7f584a: function(arg0, arg1) {
+        __wbg_set_view_46b654a12649c6f6: function(arg0, arg1) {
             getObject(arg0).view = getObject(arg1);
         },
-        __wbg_set_view_dimension_c6aedf84f79e2593: function(arg0, arg1) {
+        __wbg_set_view_dimension_12c332494a2697dc: function(arg0, arg1) {
             getObject(arg0).viewDimension = __wbindgen_enum_GpuTextureViewDimension[arg1];
         },
-        __wbg_set_view_dimension_ccb64a21a1495106: function(arg0, arg1) {
+        __wbg_set_view_dimension_31b9fd7126132e82: function(arg0, arg1) {
             getObject(arg0).viewDimension = __wbindgen_enum_GpuTextureViewDimension[arg1];
         },
-        __wbg_set_view_formats_65a3ce6335913be2: function(arg0, arg1) {
+        __wbg_set_view_formats_152cb995add2ee4e: function(arg0, arg1) {
             getObject(arg0).viewFormats = getObject(arg1);
         },
-        __wbg_set_view_formats_d7be9eae49a0933b: function(arg0, arg1) {
+        __wbg_set_view_formats_cc77650da6c3b25b: function(arg0, arg1) {
             getObject(arg0).viewFormats = getObject(arg1);
         },
-        __wbg_set_visibility_3445d21752d17ded: function(arg0, arg1) {
+        __wbg_set_visibility_6d1fc94552f22ac3: function(arg0, arg1) {
             getObject(arg0).visibility = arg1 >>> 0;
+        },
+        __wbg_set_width_5ee1e2d4a0fd929b: function(arg0, arg1) {
+            getObject(arg0).width = arg1 >>> 0;
         },
         __wbg_set_width_7f07715a20503914: function(arg0, arg1) {
             getObject(arg0).width = arg1 >>> 0;
@@ -3947,19 +5178,16 @@ function __wbg_get_imports() {
         __wbg_set_width_d60bc4f2f20c56a4: function(arg0, arg1) {
             getObject(arg0).width = arg1 >>> 0;
         },
-        __wbg_set_width_ff3dae6ae4838a9e: function(arg0, arg1) {
-            getObject(arg0).width = arg1 >>> 0;
-        },
-        __wbg_set_write_mask_b94f0c67654d5b00: function(arg0, arg1) {
+        __wbg_set_write_mask_c92743022356850e: function(arg0, arg1) {
             getObject(arg0).writeMask = arg1 >>> 0;
         },
-        __wbg_set_x_cb03e4f7e9c6b588: function(arg0, arg1) {
+        __wbg_set_x_0771b0f86d56cdf9: function(arg0, arg1) {
             getObject(arg0).x = arg1 >>> 0;
         },
-        __wbg_set_y_ca78b7606a8f2c0c: function(arg0, arg1) {
+        __wbg_set_y_668d1578881576dd: function(arg0, arg1) {
             getObject(arg0).y = arg1 >>> 0;
         },
-        __wbg_set_z_5389d800d9ef03b4: function(arg0, arg1) {
+        __wbg_set_z_3e24a918a76c816d: function(arg0, arg1) {
             getObject(arg0).z = arg1 >>> 0;
         },
         __wbg_shaderSource_32425cfe6e5a1e52: function(arg0, arg1, arg2, arg3) {
@@ -4015,7 +5243,7 @@ function __wbg_get_imports() {
         __wbg_stencilOpSeparate_de257f3c29e604cd: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).stencilOpSeparate(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, arg4 >>> 0);
         },
-        __wbg_submit_522f9e0b9d7e22fd: function(arg0, arg1) {
+        __wbg_submit_a1850a1cb6baf64a: function(arg0, arg1) {
             getObject(arg0).submit(getObject(arg1));
         },
         __wbg_texImage2D_087ef94df78081f0: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
@@ -4215,7 +5443,7 @@ function __wbg_get_imports() {
         __wbg_uniformMatrix4x3fv_ee0bed9a1330400d: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).uniformMatrix4x3fv(getObject(arg1), arg2 !== 0, getArrayF32FromWasm0(arg3, arg4));
         },
-        __wbg_unmap_a7fc4fb3238304a4: function(arg0) {
+        __wbg_unmap_ab94ab04cfb14bee: function(arg0) {
             getObject(arg0).unmap();
         },
         __wbg_useProgram_e82c1a5f87d81579: function(arg0, arg1) {
@@ -4252,15 +5480,15 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).width;
             return ret;
         },
-        __wbg_writeBuffer_b3540dd159ff60f1: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5) {
+        __wbg_writeBuffer_b203cf79b98d6dd8: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).writeBuffer(getObject(arg1), arg2, getObject(arg3), arg4, arg5);
         }, arguments); },
-        __wbg_writeTexture_2f9937d7cf0d5da0: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
+        __wbg_writeTexture_0466bf7d7d35e04e: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).writeTexture(getObject(arg1), getObject(arg2), getObject(arg3), getObject(arg4));
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 694, function: Function { arguments: [Externref], shim_idx: 695, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_2563, __wasm_bindgen_func_elem_2564);
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 801, function: Function { arguments: [Externref], shim_idx: 802, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm.__wasm_bindgen_func_elem_3198, __wasm_bindgen_func_elem_3199);
             return addHeapObject(ret);
         },
         __wbindgen_cast_0000000000000002: function(arg0) {
@@ -4322,12 +5550,12 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_2564(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_2564(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_3199(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_3199(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_6739(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_6739(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_7946(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_7946(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 

@@ -80,8 +80,12 @@ function handleFullscreenResize() {
     if (rource && canvas) {
         setTimeout(() => {
             const rect = canvas.getBoundingClientRect();
-            canvas.width = Math.floor(rect.width * window.devicePixelRatio);
-            canvas.height = Math.floor(rect.height * window.devicePixelRatio);
+            const w = Math.floor(rect.width * window.devicePixelRatio);
+            const h = Math.floor(rect.height * window.devicePixelRatio);
+            // Guard: do not resize to 0×0 — destroys WebGPU swapchain
+            if (w < 1 || h < 1) return;
+            canvas.width = w;
+            canvas.height = h;
             safeWasmCall('resize', () => rource.resize(canvas.width, canvas.height), undefined);
         }, 50);
     }

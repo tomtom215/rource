@@ -115,6 +115,18 @@ export function resizeCanvas() {
     if (!canvas || !container) return;
 
     const rect = container.getBoundingClientRect();
+
+    // Guard: Do not resize canvas to 0×0 when the container is hidden.
+    // When #viz-panel is hidden (e.g., analytics view is active),
+    // getBoundingClientRect() returns 0×0. Setting canvas.width = 0
+    // destroys the WebGPU swapchain backing store, causing Dawn to emit
+    // cascading errors: Invalid Texture → Invalid TextureView →
+    // Invalid CommandBuffer on the next frame that tries to render.
+    // Keep the canvas at its current dimensions until the container is visible.
+    if (rect.width < 1 || rect.height < 1) {
+        return;
+    }
+
     // Get device pixel ratio, clamped to reasonable range for performance
     // Mobile devices often have DPR of 2-3, ultra-high-DPI can be 4+
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
