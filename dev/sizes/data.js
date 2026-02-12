@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770886385493,
+  "lastUpdate": 1770909055466,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6512,6 +6512,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1362021,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b0622afa77cb11660dde13a5b9cf883112e9b774",
+          "message": "Merge pull request #296 from tomtom215/claude/academic-research-implementation-I7m9h\n\nAdd five new research-backed insights modules for defect prediction",
+          "timestamp": "2026-02-12T16:08:30+01:00",
+          "tree_id": "eb8484dec7eb6d5f0f85b3d226ea677576c24b41",
+          "url": "https://github.com/tomtom215/rource/commit/b0622afa77cb11660dde13a5b9cf883112e9b774"
+        },
+        "date": 1770909054776,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912280,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3677421,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1373277,
             "unit": "bytes"
           }
         ]
