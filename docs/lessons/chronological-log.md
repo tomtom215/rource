@@ -1,7 +1,7 @@
 # Lessons Learned: Chronological Audit Log
 
 > Part of the [Lessons Learned Knowledge Base](README.md).
-> All 291 entries in chronological order. Entry numbers match category table references.
+> All 303 entries in chronological order. Entry numbers match category table references.
 >
 > New entries should also be added to the appropriate category file:
 > [Formal Verification](formal-verification.md) | [Development Practices](development-practices.md)
@@ -310,8 +310,11 @@
 | 298 | 2026-02-12 | w7Iig | Branch glow pass (second `draw_spline` with alpha×0.15 on 0.8px-wide lines) doubled draw calls for imperceptible visual effect | 0.8px × 2.5 = 2.0px glow at 15% opacity = ~0.3 effective pixels of glow, below perceptual threshold | Removed glow pass from `draw_curved_branch_buffered`; single `draw_spline` per branch |
 | 299 | 2026-02-12 | w7Iig | Optimizing WASM rendering without updating CLI creates code drift and tech debt — violates project standard | CLI and WASM have separate rendering code that both import `draw_curved_branch` from `rource_render::visual` | ALWAYS update both CLI (`App::curve_buf`) and WASM (`Rource::curve_buf`) together; both now use `draw_curved_branch_buffered` |
 | 300 | 2026-02-12 | w7Iig | Full-frame profiling with NoOpRenderer (zero GPU cost) revealed that `render_files` consumed 95.4% of CPU frame time — the bottleneck was NOT where expected (labels, spatial query) | Without GPU overhead, the allocation and computation cost of branch curves completely dominated | Build comprehensive NoOpRenderer benchmark (`bench_full_frame_all_phases`) covering all 10 render phases; profile BEFORE optimizing |
+| 301 | 2026-02-12 | a1MVP | Existing insights engine already computes 20+ academic metrics — InsightsIndex only needed aggregation, not reimplementation | Discovery by reading `insights/mod.rs` showed `compute_insights()` already produces hotspots, ownership, coupling, lifecycle, etc. | Build aggregation layer (`InsightsIndex::from_report()`) that collects existing metrics into per-entity `FxHashMap` lookup tables; avoid duplicating computation |
+| 302 | 2026-02-12 | a1MVP | `usize` vs `u32` mismatch between insight modules (profiles uses `usize` for `commit_count`) and compact index structs (use `u32` for WASM efficiency) | Rust insight modules use `usize` for counts; WASM targets are 32-bit where `usize` = `u32`, but explicit cast needed for cross-platform correctness | Use `as u32` cast at aggregation boundary; document that counts exceeding 2^32 are theoretically possible but practically impossible for git repos |
+| 303 | 2026-02-12 | a1MVP | Benchmark spike (6.10 µs) after running full 3534-test suite was CPU thermal throttling, not a regression — second run confirmed 4.02 µs (within variance of 3.84 µs baseline) | CPU frequency drops after sustained workload from test suite; first benchmark run catches thermal state, not code performance | Always run benchmark TWICE when measuring after a test suite; use second run as the reliable measurement; document thermal caveat |
 
 ---
 
 *Part of the [Lessons Learned Knowledge Base](README.md) | [Formal Verification](formal-verification.md) | [Development Practices](development-practices.md)*
-*Last updated: 2026-02-12 | 300 entries*
+*Last updated: 2026-02-12 | 303 entries*

@@ -39,7 +39,7 @@ Rource has undergone **83 documented optimization phases** from initial developm
 | 60 FPS sustained on 10k+ file repos | Verified |
 | Sub-second initial load | Verified (5-10k commits) |
 | Binary size < 1.5 MB gzipped | 1.03 MB |
-| Test coverage | 2900+ tests passing |
+| Test coverage | 3500+ tests passing |
 | Deterministic output | Guaranteed across platforms |
 | WASM function audit | 132 functions profiled |
 
@@ -234,7 +234,7 @@ Clear commit message referencing phase number.
 
 ## Navigation
 
-- [Chronology](./CHRONOLOGY.md) - Complete timeline of all 84 phases
+- [Chronology](./CHRONOLOGY.md) - Complete timeline of all 88 phases
 - [Benchmarks](./BENCHMARKS.md) - All benchmark data
 - [Performance Baseline](./PERFORMANCE_BASELINE.md) - Comprehensive WASM audit
 - [Function Profiles](./FUNCTION_PROFILES.md) - Per-function timing profiles

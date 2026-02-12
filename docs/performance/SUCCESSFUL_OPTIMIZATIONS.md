@@ -1587,4 +1587,32 @@ function, same reusable buffer pattern.
 
 ---
 
+### Phase 88: InsightsIndex O(1) Per-Entity Academic Metrics
+
+**Phase**: 88
+**Location**: `crates/rource-core/src/insights/index.rs`, `rource-wasm/src/wasm_api/insights.rs`,
+`rource-wasm/www/js/wasm-api.js`
+**Impact**: Feature addition — O(1) per-entity academic metrics lookup (no hot-path impact)
+
+**Problem**: 20+ academic metrics computed by `compute_insights()` were only accessible as
+separate report sections. No way to get all metrics for a single file or user without
+iterating multiple arrays.
+
+**Solution**: Pre-computed `FxHashMap<String, FileMetrics>` and `FxHashMap<String, UserMetrics>`
+built once at load time from the `InsightsReport`:
+
+- `FileMetrics`: 15 fields covering hotspots, ownership, churn, coupling, lifecycle, survival
+- `UserMetrics`: 12 fields covering profiles, cadence, network, focus, circadian risk
+- `IndexSummary`: 6 aggregate statistics
+- 5 WASM API functions for per-entity and bulk access
+- 22 mutation-killing + JSON serialization tests
+
+| Operation | Complexity | Notes |
+|-----------|-----------|-------|
+| Build index | O(F + U + C) | One-time at load |
+| Per-entity lookup | O(1) | `FxHashMap` get |
+| Render impact | Zero | No hot-path code touched |
+
+---
+
 *Last updated: 2026-02-12*

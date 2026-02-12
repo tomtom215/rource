@@ -18,7 +18,7 @@
 3. [Development Practices](development-practices.md) — Tools, Shell, CI, Doc Automation, Auditing, Measurement
 
 ### Full History
-4. [Chronological Audit Log](chronological-log.md) — All 291 entries in date order
+4. [Chronological Audit Log](chronological-log.md) — All 303 entries in date order
 
 ---
 
@@ -94,5 +94,5 @@
 
 ---
 
-*Last updated: 2026-02-11 | 291 entries across 4 files | 15 categories*
+*Last updated: 2026-02-12 | 303 entries across 4 files | 15 categories*
 *Files: [formal-verification.md](formal-verification.md) | [development-practices.md](development-practices.md) | [chronological-log.md](chronological-log.md)*

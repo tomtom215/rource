@@ -392,7 +392,7 @@ any of rource-math's capability gaps due to the lack of floating-point backend s
 │      └── Blocked on: f32 support confirmation                      │
 │                                                                     │
 │  Testing Layer: Unit + Property + Chaos (CURRENT)                   │
-│  └── cargo test (2900+ tests, 100% operation coverage)             │
+│  └── cargo test (3500+ tests, 100% operation coverage)             │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```

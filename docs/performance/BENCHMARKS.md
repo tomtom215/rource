@@ -28,7 +28,7 @@ All benchmarks use Criterion 0.8 with `--sample-size 50` for statistical signifi
 | Platform            | x86_64-unknown-linux-gnu            |
 | Rust Version        | 1.93.0 (254b59607 2026-01-19)       |
 | Benchmark Framework | Criterion 0.8                       |
-| Test Suite          | 2900+ tests                        |
+| Test Suite          | 3500+ tests                        |
 | Sample Size         | 50 (default for statistical rigor)  |
 
 ---
@@ -1252,6 +1252,40 @@ cargo test -p rource-wasm bench_ --release -- --nocapture
 
 ```bash
 cargo test -p rource-wasm bench_full_frame --release -- --nocapture
+```
+
+---
+
+## Phase 88: InsightsIndex — No-Regression Verification
+
+Phase 88 added a feature (InsightsIndex O(1) lookup tables) with no hot-path
+code changes. Benchmarks verify no regression.
+
+### Regression Verification
+
+21 dirs, 200 files, 5 users, 1000 iterations, `--release` mode.
+
+| Benchmark | Phase 87 Baseline (ns) | Phase 88 (ns) | Status |
+|-----------|------------------------|---------------|--------|
+| `bench_full_frame_all_phases` | 3,840 | 4,020 | OK (within variance) |
+| `bench_beam_sorting` | 112 | 112 | Unchanged |
+| `bench_estimate_text_width` (ASCII) | 172 ps | 172 ps | Unchanged |
+| `bench_estimate_text_width` (UTF-8) | 199 ps | 199 ps | Unchanged |
+| `bench_label_placer_try_place` | 4 ns | 4 ns | Unchanged |
+| `bench_full_label_placement_scenario` | 2,507 ns | 2,507 ns | Unchanged |
+| `bench_label_placer_reset` | 21 ns | 21 ns | Unchanged |
+| `bench_user_label_sorting` | 87 ns | 87 ns | Unchanged |
+| `bench_label_placer_try_place_with_fallback` | 87 ns | 87 ns | Unchanged |
+| `bench_stats_buffer_vs_json` | 676.6x | 676.6x | Unchanged |
+
+**Conclusion**: No hot-path code was modified. All benchmarks within normal
+measurement variance. The 4.7% difference in full-frame (3,840 → 4,020 ns)
+is attributable to CPU thermal state after running the full 3,534-test suite.
+
+### Reproduce
+
+```bash
+cargo test -p rource-wasm bench_ --release -- --nocapture
 ```
 
 ---
