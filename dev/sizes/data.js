@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770931227607,
+  "lastUpdate": 1770940138838,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6629,6 +6629,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1405648,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "00c35a060fa66aba54a6db4dce5a678b2d920c55",
+          "message": "Merge pull request #299 from tomtom215/claude/resume-rource-research-JfKOV\n\nAdd 7 novel intelligence metrics for architectural and knowledge analysis",
+          "timestamp": "2026-02-13T00:46:15+01:00",
+          "tree_id": "9560d28287f5764adb906b8bc136c94573099541",
+          "url": "https://github.com/tomtom215/rource/commit/00c35a060fa66aba54a6db4dce5a678b2d920c55"
+        },
+        "date": 1770940137457,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3915560,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3956447,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1462850,
             "unit": "bytes"
           }
         ]
