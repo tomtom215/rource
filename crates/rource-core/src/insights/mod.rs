@@ -30,6 +30,7 @@
 //! All computation happens at load time (not per-frame), so there is zero impact
 //! on the visualization's frame budget.
 
+pub mod activity_heatmap;
 pub mod cadence;
 pub mod change_bursts;
 pub mod change_entropy;
@@ -56,6 +57,8 @@ pub mod ownership_fragmentation;
 pub mod profiles;
 pub mod release_rhythm;
 pub mod survival;
+pub mod tech_distribution;
+pub mod tech_expertise;
 pub mod temporal;
 pub mod truck_factor;
 pub mod turnover_impact;
@@ -199,6 +202,15 @@ pub struct InsightsReport {
     /// Defect-introducing change patterns (Kim et al. 2008).
     pub defect_patterns: defect_patterns::DefectPatternsReport,
 
+    /// Language/technology distribution by file extension (Mockus et al. 2002).
+    pub tech_distribution: tech_distribution::TechDistributionReport,
+
+    /// Commit activity heatmap — day-of-week × hour grid (Eyolfson et al. 2011).
+    pub activity_heatmap: activity_heatmap::ActivityHeatmapReport,
+
+    /// Developer technology expertise profiles (Mockus & Herbsleb 2002).
+    pub tech_expertise: tech_expertise::TechExpertiseReport,
+
     /// Summary statistics.
     pub summary: SummaryStats,
 }
@@ -321,6 +333,11 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
     let commit_complexity = accumulators.commit_complexity_acc.finalize();
     let defect_patterns = accumulators.defect_patterns_acc.finalize();
 
+    // Session 5b metrics: repository overview
+    let tech_distribution = accumulators.tech_distribution_acc.finalize();
+    let activity_heatmap = accumulators.activity_heatmap_acc.finalize();
+    let tech_expertise = accumulators.tech_expertise_acc.finalize();
+
     let summary = compute_summary(
         commits,
         &ownership,
@@ -363,6 +380,9 @@ pub fn compute_insights(commits: &[CommitRecord]) -> InsightsReport {
         turnover_impact,
         commit_complexity,
         defect_patterns,
+        tech_distribution,
+        activity_heatmap,
+        tech_expertise,
         summary,
     }
 }
@@ -557,6 +577,27 @@ fn empty_report() -> InsightsReport {
             avg_score: 0.0,
             high_risk_count: 0,
         },
+        tech_distribution: tech_distribution::TechDistributionReport {
+            languages: Vec::new(),
+            total_files: 0,
+            language_count: 0,
+            primary_language: String::new(),
+            primary_language_pct: 0.0,
+        },
+        activity_heatmap: activity_heatmap::ActivityHeatmapReport {
+            grid: [[0; 24]; 7],
+            total_commits: 0,
+            peak_day: 0,
+            peak_hour: 0,
+            peak_count: 0,
+            work_hours_pct: 0.0,
+            weekend_pct: 0.0,
+        },
+        tech_expertise: tech_expertise::TechExpertiseReport {
+            developers: Vec::new(),
+            developer_count: 0,
+            dominant_tech: String::new(),
+        },
         summary: SummaryStats {
             total_commits: 0,
             total_files: 0,
@@ -596,6 +637,9 @@ struct CommitAccumulators {
     turnover_impact_acc: turnover_impact::TurnoverImpactAccumulator,
     commit_complexity_acc: commit_complexity::CommitComplexityAccumulator,
     defect_patterns_acc: defect_patterns::DefectPatternsAccumulator,
+    tech_distribution_acc: tech_distribution::TechDistributionAccumulator,
+    activity_heatmap_acc: activity_heatmap::ActivityHeatmapAccumulator,
+    tech_expertise_acc: tech_expertise::TechExpertiseAccumulator,
 }
 
 /// Single pass over commits to populate all accumulators.
@@ -627,6 +671,9 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
     let mut turnover_impact_acc = turnover_impact::TurnoverImpactAccumulator::new();
     let mut commit_complexity_acc = commit_complexity::CommitComplexityAccumulator::new();
     let mut defect_patterns_acc = defect_patterns::DefectPatternsAccumulator::new();
+    let mut tech_distribution_acc = tech_distribution::TechDistributionAccumulator::new();
+    let mut activity_heatmap_acc = activity_heatmap::ActivityHeatmapAccumulator::new();
+    let mut tech_expertise_acc = tech_expertise::TechExpertiseAccumulator::new();
 
     for commit in commits {
         *unique_authors.entry(commit.author.clone()).or_insert(0) += 1;
@@ -667,6 +714,20 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         }
         defect_patterns_acc.record_commit(&commit.author, commit.timestamp, &file_paths);
 
+        // Session 5b accumulators: repository overview metrics
+        activity_heatmap_acc.record_commit(commit.timestamp);
+        {
+            // Collect unique techs for this commit for tech expertise
+            let mut commit_techs: rustc_hash::FxHashSet<&str> = rustc_hash::FxHashSet::default();
+            for f in &commit.files {
+                let ext = f.path.rsplit_once('.').map_or("", |(_, e)| e);
+                let tech = tech_distribution::classify_ext(ext);
+                commit_techs.insert(tech);
+            }
+            let tech_list: Vec<&str> = commit_techs.into_iter().collect();
+            tech_expertise_acc.record_commit(&commit.author, &tech_list);
+        }
+
         for file in &commit.files {
             file_changes
                 .entry(file.path.clone())
@@ -687,6 +748,7 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
             // Session 5 accumulators: per-file data
             churn_volatility_acc.record_file(&file.path, file.action, commit.timestamp);
             truck_factor_acc.record_file(&file.path, file.action, &commit.author);
+            tech_distribution_acc.record_file(&file.path, file.action);
             match file.action {
                 FileActionKind::Create => survival_acc.record_create(&file.path, commit.timestamp),
                 FileActionKind::Delete => survival_acc.record_delete(&file.path, commit.timestamp),
@@ -728,6 +790,9 @@ fn accumulate_commit_data(commits: &[CommitRecord]) -> CommitAccumulators {
         turnover_impact_acc,
         commit_complexity_acc,
         defect_patterns_acc,
+        tech_distribution_acc,
+        activity_heatmap_acc,
+        tech_expertise_acc,
     }
 }
 

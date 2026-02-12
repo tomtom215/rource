@@ -22,7 +22,8 @@ import {
     renderOwnershipTable, renderKnowledgeDistributionTable,
     renderChurnVolatilityTable, renderTruckFactorTable,
     renderTurnoverImpactTable, renderCommitComplexityTable,
-    renderDefectPatternsTable
+    renderDefectPatternsTable, renderTechDistributionTable,
+    renderActivityHeatmapTable, renderTechExpertiseTable
 } from './insights-tables.js';
 
 /**
@@ -46,6 +47,23 @@ export function renderHotspotsTab(cachedData) {
         'Change Hotspots',
         'Files that change most often are where bugs hide. This tab identifies the riskiest files in your codebase.'
     ));
+
+    // Technology distribution — fields verified: insights.rs write_tech_distribution_json
+    const td = cachedData.techDistribution;
+    if (td) {
+        const langs = td.languages || [];
+        parts.push(renderMetricSection(
+            'Technology Distribution',
+            'The languages and technologies in the repository, classified by file extension from the active file set.',
+            'Mockus et al. 2002, TOSEM; Kalliamvakou et al. 2016, EMSE',
+            langs.length > 0
+                ? renderTechDistributionTable(langs)
+                : emptyState('No files detected', 'Technology distribution requires files with recognized extensions.'),
+            td.primaryLanguage
+                ? `Primary language: ${escapeHtml(td.primaryLanguage)} (${formatNumber(td.primaryLanguagePct, 1)}% of ${formatInt(td.totalFiles)} files). ${formatInt(td.languageCount)} languages detected.`
+                : null
+        ));
+    }
 
     // Hotspots table — fields verified: insights.rs:786-796
     const hotspots = cachedData.hotspots;
@@ -367,6 +385,23 @@ export function renderTeamTab(cachedData) {
         ));
     }
 
+    // Developer technology expertise — fields verified: insights.rs write_tech_expertise_json
+    const te = cachedData.techExpertise;
+    if (te) {
+        const devs = te.developers || [];
+        parts.push(renderMetricSection(
+            'Technology Expertise',
+            'Each developer\u2019s technology profile derived from the file types they modify. Reveals skill sets and specializations.',
+            'Mockus &amp; Herbsleb 2002, ICSE; Fritz et al. 2010, ICSE',
+            devs.length > 0
+                ? renderTechExpertiseTable(devs)
+                : emptyState('No technology expertise data', 'Requires commits touching files with recognized extensions.'),
+            te.dominantTech
+                ? `Dominant technology across the team: ${escapeHtml(te.dominantTech)}. ${formatInt(te.developerCount)} developer${te.developerCount === 1 ? '' : 's'} analyzed.`
+                : null
+        ));
+    }
+
     return parts.join('');
 }
 
@@ -408,6 +443,22 @@ export function renderTemporalTab(cachedData) {
                 ['Avg Files per Burst', formatNumber(t.avgFilesInBursts, 1)],
                 ['Avg Files (Non-Burst)', formatNumber(t.avgFilesOutsideBursts, 1)],
             ])
+        ));
+    }
+
+    // Activity heatmap — fields verified: insights.rs write_activity_heatmap_json
+    const hm = cachedData.activityHeatmap;
+    if (hm && hm.totalCommits > 0) {
+        parts.push(renderMetricSection(
+            'Commit Heatmap',
+            'A day-of-week by hour-of-day grid showing when commits happen. Identifies peak development windows and off-hours activity.',
+            'Eyolfson et al. 2011, MSR; Claes et al. 2018, ICSE',
+            renderActivityHeatmapTable(hm),
+            hm.workHoursPct > 80
+                ? 'Most commits are during business hours \u2014 a healthy work pattern.'
+                : hm.weekendPct > 30
+                    ? 'Over 30% of commits happen on weekends \u2014 this may indicate unsustainable work patterns.'
+                    : 'Mixed work pattern with activity outside standard business hours.'
         ));
     }
 

@@ -291,7 +291,7 @@ export function getCommitDirectoryCount() {
 // ============================================================
 // Repository Insights API
 //
-// Wrappers for the 25 insights analysis methods.
+// Wrappers for the 28 insights analysis methods.
 // All methods return parsed JSON objects (or null/[] on failure).
 // Insights are computed from commit history, not per-frame data.
 // ============================================================
@@ -713,6 +713,48 @@ export function getDefectPatterns() {
     if (rource) {
         const json = safeWasmCall('getDefectPatterns', () => rource.getDefectPatterns(), null);
         return parseInsightsJson('getDefectPatterns', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns language/technology distribution by file extension (Mockus et al. 2002).
+ * Classifies repository files by programming language based on file extensions.
+ * @returns {Object|null} Tech distribution data with per-language file counts
+ */
+export function getTechDistribution() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTechDistribution', () => rource.getTechDistribution(), null);
+        return parseInsightsJson('getTechDistribution', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns commit activity heatmap — day-of-week x hour-of-day (Eyolfson et al. 2011).
+ * 7x24 grid showing when development activity occurs.
+ * @returns {Object|null} Activity heatmap data with grid and peak metrics
+ */
+export function getActivityHeatmap() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getActivityHeatmap', () => rource.getActivityHeatmap(), null);
+        return parseInsightsJson('getActivityHeatmap', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns developer technology expertise profiles (Mockus & Herbsleb 2002).
+ * Maps each developer to technologies they work with based on file extensions.
+ * @returns {Object|null} Tech expertise data with per-developer technology profiles
+ */
+export function getTechExpertise() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getTechExpertise', () => rource.getTechExpertise(), null);
+        return parseInsightsJson('getTechExpertise', json, null);
     }
     return null;
 }

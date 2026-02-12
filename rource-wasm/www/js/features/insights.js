@@ -4,7 +4,7 @@
 /**
  * Rource - Repository Insights Dashboard
  *
- * Mobile-first tabbed dashboard displaying 30 research-backed repository
+ * Mobile-first tabbed dashboard displaying 33 research-backed repository
  * health metrics. Data is lazy-loaded on first panel open and cached
  * per repository load.
  *
@@ -30,7 +30,8 @@ import {
     getDeveloperExperience, getOwnershipFragmentation,
     getReleaseRhythm, getKnowledgeDistribution,
     getChurnVolatility, getTruckFactor, getTurnoverImpact,
-    getCommitComplexity, getDefectPatterns
+    getCommitComplexity, getDefectPatterns,
+    getTechDistribution, getActivityHeatmap, getTechExpertise
 } from '../wasm-api.js';
 import { formatInt, escapeHtml } from './insights-utils.js';
 import {
@@ -223,6 +224,7 @@ function ensureTabData(tabName) {
             if (!cachedData.hotspots) cachedData.hotspots = getHotspots(50);
             if (!cachedData.entropy) cachedData.entropy = unwrap(getChangeEntropy(), 'changeEntropy');
             if (!cachedData.bursts) cachedData.bursts = unwrap(getChangeBursts(), 'changeBursts');
+            if (!cachedData.techDistribution) cachedData.techDistribution = unwrap(getTechDistribution(), 'techDistribution');
             break;
         case 'risk':
             if (!cachedData.busFactors) cachedData.busFactors = getBusFactors();
@@ -240,6 +242,7 @@ function ensureTabData(tabName) {
             if (!cachedData.inequality) cachedData.inequality = unwrap(getContributionInequality(), 'inequality');
             if (!cachedData.focus) cachedData.focus = unwrap(getDeveloperFocus(), 'focus');
             if (!cachedData.experience) cachedData.experience = unwrap(getDeveloperExperience(), 'developerExperience');
+            if (!cachedData.techExpertise) cachedData.techExpertise = unwrap(getTechExpertise(), 'techExpertise');
             break;
         case 'temporal':
             if (!cachedData.temporal) cachedData.temporal = getTemporalPatterns();
@@ -247,6 +250,7 @@ function ensureTabData(tabName) {
             if (!cachedData.lifecycle) cachedData.lifecycle = unwrap(getFileLifecycles(), 'lifecycle');
             if (!cachedData.survival) cachedData.survival = unwrap(getFileSurvival(), 'survival');
             if (!cachedData.releaseRhythm) cachedData.releaseRhythm = unwrap(getReleaseRhythm(), 'releaseRhythm');
+            if (!cachedData.activityHeatmap) cachedData.activityHeatmap = unwrap(getActivityHeatmap(), 'activityHeatmap');
             break;
         case 'quality':
             if (!cachedData.workType) cachedData.workType = unwrap(getWorkTypeMix(), 'workType');

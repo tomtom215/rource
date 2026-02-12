@@ -119,6 +119,9 @@ fn format_insights_json(report: &InsightsReport) -> String {
     write_turnover_impact_json(&mut json, report);
     write_commit_complexity_json(&mut json, report);
     write_defect_patterns_json(&mut json, report);
+    write_tech_distribution_json(&mut json, report);
+    write_activity_heatmap_json(&mut json, report);
+    write_tech_expertise_json(&mut json, report);
     json.push('}');
     json
 }
@@ -1418,6 +1421,51 @@ impl Rource {
         json.push('}');
         Some(json)
     }
+
+    /// Returns language/technology distribution by file extension.
+    #[wasm_bindgen(js_name = getTechDistribution)]
+    pub fn get_tech_distribution(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_tech_distribution_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns commit activity heatmap (day-of-week × hour-of-day grid).
+    #[wasm_bindgen(js_name = getActivityHeatmap)]
+    pub fn get_activity_heatmap(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(4096);
+        json.push('{');
+        write_activity_heatmap_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
+
+    /// Returns developer technology expertise profiles.
+    #[wasm_bindgen(js_name = getTechExpertise)]
+    pub fn get_tech_expertise(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        write_tech_expertise_json_standalone(&mut json, &report);
+        json.push('}');
+        Some(json)
+    }
 }
 
 // ============================================================================
@@ -2031,6 +2079,134 @@ fn write_commit_complexity_json_standalone(json: &mut String, report: &InsightsR
 fn write_defect_patterns_json_standalone(json: &mut String, report: &InsightsReport) {
     let mut buf = String::new();
     write_defect_patterns_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+// ============================================================================
+// Session 6: Language Distribution, Activity Heatmap, Tech Expertise
+// ============================================================================
+
+/// Appends language/technology distribution section to the JSON output.
+fn write_tech_distribution_json(json: &mut String, report: &InsightsReport) {
+    let td = &report.tech_distribution;
+    let _ = write!(
+        json,
+        r#","techDistribution":{{"totalFiles":{},"languageCount":{},"primaryLanguage":"{}","primaryLanguagePct":{:.2},"languages":["#,
+        td.total_files,
+        td.language_count,
+        escape_json(&td.primary_language),
+        td.primary_language_pct,
+    );
+    for (i, lang) in td.languages.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"name":"{}","fileCount":{},"percentage":{:.2},"extensions":["#,
+            escape_json(&lang.name),
+            lang.file_count,
+            lang.percentage,
+        );
+        for (j, ext) in lang.extensions.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#""{}""#, escape_json(ext));
+        }
+        json.push_str("]}");
+    }
+    json.push_str("]}");
+}
+
+/// Appends commit activity heatmap section to the JSON output.
+fn write_activity_heatmap_json(json: &mut String, report: &InsightsReport) {
+    use rource_core::insights::activity_heatmap::day_name;
+
+    let hm = &report.activity_heatmap;
+    let _ = write!(
+        json,
+        r#","activityHeatmap":{{"totalCommits":{},"peakDay":{},"peakDayName":"{}","peakHour":{},"peakCount":{},"workHoursPct":{:.2},"weekendPct":{:.2},"grid":["#,
+        hm.total_commits,
+        hm.peak_day,
+        day_name(hm.peak_day),
+        hm.peak_hour,
+        hm.peak_count,
+        hm.work_hours_pct,
+        hm.weekend_pct,
+    );
+    for (d, day_row) in hm.grid.iter().enumerate() {
+        if d > 0 {
+            json.push(',');
+        }
+        json.push('[');
+        for (h, &count) in day_row.iter().enumerate() {
+            if h > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, "{count}");
+        }
+        json.push(']');
+    }
+    json.push_str("]}");
+}
+
+/// Appends developer technology expertise section to the JSON output.
+fn write_tech_expertise_json(json: &mut String, report: &InsightsReport) {
+    let te = &report.tech_expertise;
+    let _ = write!(
+        json,
+        r#","techExpertise":{{"developerCount":{},"dominantTech":"{}","developers":["#,
+        te.developer_count,
+        escape_json(&te.dominant_tech),
+    );
+    for (i, dev) in te.developers.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        let _ = write!(
+            json,
+            r#"{{"name":"{}","totalCommits":{},"techCount":{},"primaryTech":"{}","technologies":["#,
+            escape_json(&dev.name),
+            dev.total_commits,
+            dev.tech_count,
+            escape_json(&dev.primary_tech),
+        );
+        for (j, tech) in dev.technologies.iter().enumerate() {
+            if j > 0 {
+                json.push(',');
+            }
+            let _ = write!(
+                json,
+                r#"{{"tech":"{}","commits":{},"percentage":{:.2}}}"#,
+                escape_json(&tech.tech),
+                tech.commits,
+                tech.percentage,
+            );
+        }
+        json.push_str("]}");
+    }
+    json.push_str("]}");
+}
+
+/// Standalone writer for tech distribution endpoint.
+fn write_tech_distribution_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_tech_distribution_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for activity heatmap endpoint.
+fn write_activity_heatmap_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_activity_heatmap_json(&mut buf, report);
+    json.push_str(buf.trim_start_matches(','));
+}
+
+/// Standalone writer for tech expertise endpoint.
+fn write_tech_expertise_json_standalone(json: &mut String, report: &InsightsReport) {
+    let mut buf = String::new();
+    write_tech_expertise_json(&mut buf, report);
     json.push_str(buf.trim_start_matches(','));
 }
 
