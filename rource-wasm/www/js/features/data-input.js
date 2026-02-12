@@ -17,7 +17,7 @@ import { loadLogData, loadRourceData, detectLogFormat } from '../data-loader.js'
 import { fetchGitHubWithProgress, parseGitHubUrl, getRateLimitStatus, updateRateLimitFromResponse } from '../github-fetch.js';
 import { ROURCE_STATS, setAdditionalCommits } from '../cached-data.js';
 import { formatBytes } from '../utils.js';
-import { hasStaticLog, getStaticLog, getStaticLogMetadata } from '../static-logs.js';
+import { hasStaticLog, getStaticLog, getStaticLogMetadata, fetchExtendedLog } from '../static-logs.js';
 
 /**
  * Uploaded file content storage (for "Load Uploaded File" button fallback).
@@ -341,13 +341,16 @@ function initRepoChips() {
 
             // Check if we have a static log for this repo (zero API calls)
             if (hasStaticLog(owner, name)) {
-                const logData = getStaticLog(owner, name);
                 const metadata = getStaticLogMetadata(owner, name);
+                const displayName = metadata?.name || name;
+
+                // Try fetching extended demo data first (richer, ~500 entries)
+                // Falls back to embedded small data if extended files aren't available
+                const logData = await fetchExtendedLog(owner, name);
 
                 if (logData) {
                     const success = loadLogData(logData, 'custom');
                     if (success) {
-                        const displayName = metadata?.name || name;
                         showToast(`Loaded ${displayName} (pre-cached, no API call)`, 'success');
                     }
                     return;
