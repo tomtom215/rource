@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770863529273,
+  "lastUpdate": 1770886385493,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6473,6 +6473,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1357545,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a1dca7aaf0ad25f0e493d3cbddda19e6421a7df2",
+          "message": "Merge pull request #295 from tomtom215/claude/academic-research-implementation-a1MVP\n\nAdd InsightsIndex: O(1) per-entity academic metrics lookup",
+          "timestamp": "2026-02-12T09:50:44+01:00",
+          "tree_id": "c154579dd9814dc622d90e02ca809eb6da08b686",
+          "url": "https://github.com/tomtom215/rource/commit/a1dca7aaf0ad25f0e493d3cbddda19e6421a7df2"
+        },
+        "date": 1770886383836,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3912280,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3622558,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1362021,
             "unit": "bytes"
           }
         ]
