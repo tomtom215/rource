@@ -1,0 +1,399 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Bottom Sheet Controls & Input Styles
+ *
+ * Interactive controls within the bottom sheet:
+ * - Segmented tabs (Material Design 3 pattern)
+ * - Quick action buttons
+ * - Section headers and labels
+ * - Input group (URL input + fetch button)
+ * - Collapsible details sections
+ * - Tech grid and badges
+ */
+
+@media (max-width: 768px) {
+    /* -------------------------------------------------------------------------
+       Segmented Tabs (Progressive Disclosure Pattern)
+       -------------------------------------------------------------------------
+       Tabs allow users to navigate between sections without scrolling.
+       Follows Material Design 3 "Segmented buttons" pattern.
+    */
+
+    .bottom-sheet-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 0 16px 12px;
+        background: var(--bg-primary);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .bottom-sheet-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-interactive);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-tab:active {
+        transform: scale(0.98);
+    }
+
+    .bottom-sheet-tab.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--text-on-accent);
+    }
+
+    .bottom-sheet-tab svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .bottom-sheet-tab-content {
+        display: none;
+    }
+
+    .bottom-sheet-tab-content.active {
+        display: block;
+    }
+
+    /* -------------------------------------------------------------------------
+       Quick Actions
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-quick-actions {
+        display: flex;
+        gap: 12px;
+        padding: 0 16px 16px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+    }
+
+    .bottom-sheet-action-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        /* FIXED: Increase touch target to 48px minimum */
+        min-height: 72px;
+        padding: 14px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-action-btn:active {
+        transform: scale(0.97);
+        background: var(--border);
+    }
+
+    .bottom-sheet-action-btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--text-on-accent);
+    }
+
+    .bottom-sheet-action-btn.primary:active {
+        background: var(--accent-hover);
+    }
+
+    .bottom-sheet-action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .bottom-sheet-action-btn svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Better focus states for accessibility */
+    .bottom-sheet-action-btn:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Sections and Labels
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-section {
+        padding: 0 16px;
+        margin-bottom: 16px;
+        /* Scroll snap alignment for smooth section navigation */
+        scroll-snap-align: start;
+        scroll-margin-top: 8px;
+    }
+
+    /* Remove extra padding when section is inside quick-actions */
+    .bottom-sheet-section:has(.bottom-sheet-quick-actions) {
+        padding: 0;
+    }
+
+    .bottom-sheet-label {
+        display: block;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.75px;
+        margin-bottom: 10px;
+    }
+
+    .bottom-sheet-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .bottom-sheet-section-header svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Input Group - Enhanced for Mobile
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-input-group {
+        display: flex;
+        gap: 10px;
+    }
+
+    .bottom-sheet-input {
+        flex: 1;
+        padding: 14px 16px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        font-size: 1rem;
+        -webkit-appearance: none;
+        /* Prevent iOS zoom on focus */
+        font-size: 16px;
+    }
+
+    .bottom-sheet-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
+    }
+
+    .bottom-sheet-input:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
+    .bottom-sheet-input::placeholder {
+        color: var(--text-muted);
+        font-size: 0.9375rem;
+    }
+
+    .bottom-sheet-fetch-btn {
+        width: 52px;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent);
+        border: none;
+        border-radius: 12px;
+        color: var(--text-on-accent);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.2s ease, transform 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-sheet-fetch-btn:active {
+        background: var(--accent-hover);
+        transform: scale(0.95);
+    }
+
+    .bottom-sheet-fetch-btn:disabled {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        cursor: not-allowed;
+    }
+
+    .bottom-sheet-fetch-btn:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
+    .bottom-sheet-fetch-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .bottom-sheet-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 10px;
+        padding-left: 2px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Collapsible Details - Mobile Optimized
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-details {
+        margin: 0 16px 10px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .bottom-sheet-summary {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        /* Min 48px touch target */
+        min-height: 52px;
+        padding: 14px 16px;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        cursor: pointer;
+        list-style: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.15s ease;
+    }
+
+    .bottom-sheet-summary:active {
+        background: var(--bg-tertiary);
+    }
+
+    .bottom-sheet-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .bottom-sheet-summary::after {
+        content: '';
+        margin-left: auto;
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid var(--text-muted);
+        transition: transform 0.2s ease;
+    }
+
+    .bottom-sheet-details[open] .bottom-sheet-summary::after {
+        transform: rotate(180deg);
+    }
+
+    .bottom-sheet-details[open] .bottom-sheet-summary {
+        border-bottom: 1px solid var(--border);
+    }
+
+    .bottom-sheet-summary svg {
+        width: 18px;
+        height: 18px;
+        color: var(--accent);
+        flex-shrink: 0;
+    }
+
+    .bottom-sheet-details-content {
+        padding: 14px 16px 16px;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    .bottom-sheet-details-content p {
+        margin: 0 0 10px;
+    }
+
+    .bottom-sheet-details-content ul {
+        margin: 10px 0;
+        padding-left: 20px;
+    }
+
+    .bottom-sheet-details-content li {
+        margin-bottom: 6px;
+    }
+
+    .bottom-sheet-details-content strong {
+        color: var(--text-primary);
+    }
+
+    /* Tech Grid in Details */
+    .bottom-sheet-tech-grid {
+        display: flex;
+        justify-content: space-around;
+        gap: 12px;
+        padding: 10px 0;
+        margin-bottom: 12px;
+    }
+
+    .bottom-sheet-tech-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .bottom-sheet-tech-value {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .bottom-sheet-tech-label {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Tech Badges */
+    .bottom-sheet-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+    }
+
+    .bottom-sheet-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        font-weight: 600;
+        color: var(--text-interactive);
+    }
+}

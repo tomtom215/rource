@@ -1,0 +1,307 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Mobile Landscape Styles
+ *
+ * Landscape orientation adjustments for mobile devices.
+ * Uses both media query AND .landscape-mobile class for reliability.
+ * The class is added by JS when it detects landscape mobile orientation,
+ * catching phones with width > 768px in landscape.
+ *
+ * Includes:
+ * - Bottom sheet landscape sizing
+ * - FAB and toolbar repositioning
+ * - Compact performance/stats overlays
+ * - Backdrop and center play adjustments
+ * - Sidebar/legend hiding for landscape mobile
+ */
+
+/* =============================================================================
+   Landscape Mode - Media Query
+   ============================================================================= */
+
+@media (max-width: 768px) and (orientation: landscape) {
+    .bottom-sheet {
+        /* Dynamic viewport height for mobile browser address bar */
+        height: 75vh;
+        height: 75dvh;
+        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
+    }
+
+    .bottom-sheet-header {
+        padding: 6px 16px 4px;
+    }
+
+    .bottom-sheet-handle {
+        margin-bottom: 6px;
+    }
+
+    .bottom-sheet-fab {
+        /* Position above timeline (min-height 85px) with some padding */
+        bottom: max(95px, calc(95px + env(safe-area-inset-bottom)));
+        right: max(12px, env(safe-area-inset-right));
+        width: 48px;
+        height: 48px;
+    }
+
+    /* Landscape: Move toolbar to left edge for left thumb */
+    .has-bottom-sheet .mobile-toolbar {
+        bottom: 6px;
+        left: max(6px, env(safe-area-inset-left));
+    }
+
+    /* Timeline more compact in landscape */
+    .has-bottom-sheet .timeline-container {
+        padding: 0.35rem 0.75rem;
+        min-height: 85px;
+    }
+
+    /* Center play button smaller in landscape */
+    .mobile-center-play {
+        width: 64px;
+        height: 64px;
+    }
+
+    .mobile-center-play svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Landscape toolbar: Maintain 44px touch targets (WCAG 2.5.5) */
+    .has-bottom-sheet .mobile-toolbar-btn {
+        min-width: 44px;
+        min-height: 44px;
+        width: auto;
+        padding: 4px 6px;
+    }
+
+    .has-bottom-sheet .mobile-toolbar-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Labels in landscape maintain WCAG minimum */
+    .has-bottom-sheet .mobile-toolbar-btn .btn-label {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+    }
+
+    /* Tighter toolbar spacing in landscape */
+    .has-bottom-sheet .mobile-toolbar {
+        gap: 2px;
+    }
+}
+
+/* =============================================================================
+   Landscape Mode - JS-Added Class
+   =============================================================================
+   Catches phones with width > 768px in landscape where media query
+   doesn't apply. The .landscape-mobile class is added by JS.
+   ============================================================================= */
+
+/* CRITICAL: Hide sidebar on landscape mobile - content is in bottom sheet instead */
+.landscape-mobile.has-bottom-sheet .sidebar-toggle,
+.landscape-mobile.has-bottom-sheet .sidebar-panel,
+.landscape-mobile.has-bottom-sheet .sidebar-wrapper {
+    display: none !important;
+}
+
+/* Also hide legend and authors panels on landscape mobile */
+.landscape-mobile.has-bottom-sheet .legend-panel,
+.landscape-mobile.has-bottom-sheet .authors-panel {
+    display: none !important;
+}
+
+/* CRITICAL: Enable bottom sheet display for landscape mobile
+   The base bottom-sheet-core.css only enables it for max-width: 768px,
+   but landscape phones can exceed that width. This ensures the
+   bottom sheet works in landscape mode. */
+.landscape-mobile .bottom-sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 75vh;
+    height: 75dvh;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    background: var(--bg-primary);
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: var(--z-modal);
+    will-change: transform;
+    overflow: hidden;
+}
+
+.landscape-mobile .bottom-sheet.open {
+    transform: translateY(0);
+}
+
+.landscape-mobile .bottom-sheet.half {
+    transform: translateY(50%);
+}
+
+/* Enable backdrop for landscape mobile */
+.landscape-mobile .bottom-sheet-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--backdrop);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: var(--z-modal-backdrop);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
+}
+
+.landscape-mobile .bottom-sheet-backdrop.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Enable FAB for landscape mobile */
+.landscape-mobile .bottom-sheet-fab {
+    display: flex;
+}
+
+.landscape-mobile .bottom-sheet-header {
+    padding: 6px 16px 4px;
+}
+
+.landscape-mobile .bottom-sheet-handle {
+    margin-bottom: 6px;
+}
+
+.landscape-mobile .bottom-sheet-fab {
+    /* Position above timeline (min-height 85px) with some padding */
+    bottom: max(95px, calc(95px + env(safe-area-inset-bottom)));
+    right: max(12px, env(safe-area-inset-right));
+    width: 48px;
+    height: 48px;
+}
+
+.landscape-mobile.has-bottom-sheet .mobile-toolbar {
+    bottom: 6px;
+    /* Center toolbar in landscape for consistent layout */
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 2px;
+}
+
+.landscape-mobile.has-bottom-sheet .timeline-container {
+    padding: 0.35rem 0.75rem;
+    min-height: 85px;
+}
+
+.landscape-mobile .mobile-center-play {
+    width: 64px;
+    height: 64px;
+}
+
+.landscape-mobile .mobile-center-play svg {
+    width: 32px;
+    height: 32px;
+}
+
+.landscape-mobile.has-bottom-sheet .mobile-toolbar-btn {
+    min-width: 44px;
+    min-height: 44px;
+    width: auto;
+    padding: 4px 6px;
+}
+
+.landscape-mobile.has-bottom-sheet .mobile-toolbar-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.landscape-mobile.has-bottom-sheet .mobile-toolbar-btn .btn-label {
+    font-size: 0.75rem; /* 12px - WCAG minimum */
+}
+
+/* =============================================================================
+   Landscape Performance & Stats Overlays
+   ============================================================================= */
+
+.landscape-mobile.has-bottom-sheet .perf-overlay {
+    top: 6px;
+    right: max(6px, env(safe-area-inset-right));
+    left: auto;
+    padding: 4px 8px;
+    border-radius: 16px;
+    font-size: 0.75rem; /* 12px - WCAG minimum */
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-fps {
+    font-size: 0.85rem;
+    min-width: 60px;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-details {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-top: 4px;
+    margin-top: 4px;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-row {
+    font-size: 0.75rem; /* 12px - WCAG minimum */
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-row:nth-child(n+3):not(.perf-toggle-row):not(.perf-peak-avg-row) {
+    display: none;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-toggle-row {
+    flex-basis: auto;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-switch {
+    width: 36px;
+    height: 20px;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-slider::before {
+    height: 14px;
+    width: 14px;
+}
+
+.landscape-mobile.has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+    transform: translateX(16px);
+}
+
+/* Landscape stats overlay - also top-left for consistency */
+.landscape-mobile.has-bottom-sheet .stats-overlay {
+    top: max(6px, env(safe-area-inset-top));
+    left: max(6px, env(safe-area-inset-left));
+    bottom: auto;
+    right: auto;
+    transform: none;
+    padding: 4px 10px;
+    gap: 8px;
+    max-width: 180px;
+}
+
+.landscape-mobile.has-bottom-sheet .stats-overlay .stat-value {
+    font-size: 0.75rem; /* 12px - WCAG minimum */
+}
+
+.landscape-mobile.has-bottom-sheet .stats-overlay .stat-label {
+    font-size: 0.75rem; /* 12px - WCAG minimum */
+}

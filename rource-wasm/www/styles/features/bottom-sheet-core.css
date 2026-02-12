@@ -1,0 +1,331 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Bottom Sheet Core Styles
+ *
+ * Core structural styles for the iOS-style bottom sheet:
+ * - Desktop hidden states and [hidden] overrides
+ * - Backdrop (dimmed background)
+ * - Sheet container and positioning
+ * - Drag handle header
+ * - Close button
+ * - Scrollable content area
+ * - Floating Action Button (FAB)
+ */
+
+/* =============================================================================
+   Bottom Sheet - Desktop Hidden
+   ============================================================================= */
+
+.bottom-sheet-backdrop {
+    display: none;
+}
+
+.bottom-sheet {
+    display: none;
+}
+
+.bottom-sheet-fab {
+    display: none;
+}
+
+/* Enforce hidden when view-manager.js sets hidden attribute.
+   Without this, the mobile media query display:flex/block overrides
+   the UA [hidden]{display:none} at <=768px viewports. */
+.bottom-sheet-backdrop[hidden] {
+    display: none;
+}
+
+.bottom-sheet[hidden] {
+    display: none;
+}
+
+.bottom-sheet-fab[hidden] {
+    display: none;
+}
+
+/* =============================================================================
+   Bottom Sheet - Mobile Core
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    /* Hide old sidebar when bottom sheet is active */
+    .has-bottom-sheet .sidebar-toggle {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .sidebar-panel {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .sidebar-wrapper {
+        display: none !important;
+    }
+
+    /* -------------------------------------------------------------------------
+       Backdrop (dimmed background)
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-backdrop {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--backdrop);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: var(--z-modal-backdrop);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        pointer-events: none;
+    }
+
+    .bottom-sheet-backdrop.visible {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    /* -------------------------------------------------------------------------
+       Sheet Container
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        /* Dynamic viewport height for mobile browser address bar changes */
+        height: 92vh;
+        height: 92dvh; /* Modern browsers - accounts for collapsing address bar */
+        max-height: calc(100vh - env(safe-area-inset-top) - 20px);
+        max-height: calc(100dvh - env(safe-area-inset-top) - 20px);
+        background: var(--bg-primary);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px var(--shadow);
+        z-index: var(--z-modal);
+        transform: translateY(100%);
+        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        overflow: hidden;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* NOTE: .bottom-sheet.open class removed - JS uses inline transform directly */
+
+    /* -------------------------------------------------------------------------
+       Drag Handle Header
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 16px 8px;
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+    }
+
+    .bottom-sheet-header:active {
+        cursor: grabbing;
+    }
+
+    .bottom-sheet-handle {
+        width: 40px;
+        height: 5px;
+        /* More visible: lighter color with slight transparency */
+        background: rgba(255, 255, 255, 0.35);
+        border-radius: 2.5px;
+        margin-bottom: 12px;
+        transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        /* Subtle glow to indicate interactivity */
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Pulsing animation to indicate draggability on first view */
+    @keyframes handle-pulse {
+        0%, 100% { opacity: 0.6; transform: scaleX(1); }
+        50% { opacity: 1; transform: scaleX(1.1); }
+    }
+
+    .bottom-sheet-handle.hint {
+        animation: handle-pulse 1.5s ease-in-out 2;
+    }
+
+    .bottom-sheet-header:hover .bottom-sheet-handle {
+        background: rgba(255, 255, 255, 0.5);
+        transform: scaleX(1.05);
+    }
+
+    .bottom-sheet-header:active .bottom-sheet-handle {
+        background: rgba(255, 255, 255, 0.65);
+        transform: scaleX(1.15);
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+    }
+
+    /* Light theme adjustments */
+    .light-theme .bottom-sheet-handle {
+        background: rgba(0, 0, 0, 0.25);
+    }
+
+    .light-theme .bottom-sheet-header:hover .bottom-sheet-handle {
+        background: rgba(0, 0, 0, 0.35);
+    }
+
+    .light-theme .bottom-sheet-header:active .bottom-sheet-handle {
+        background: rgba(0, 0, 0, 0.45);
+    }
+
+    .bottom-sheet-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0 4px;
+    }
+
+    .bottom-sheet-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        flex: 1;
+        text-align: center;
+        padding-left: 36px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Close Button
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* Touch target: 44px minimum (Apple HIG / WCAG 2.5.5) */
+        width: 44px;
+        height: 44px;
+        background: var(--bg-tertiary);
+        border: none;
+        border-radius: 50%;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .bottom-sheet-close:hover {
+        background: var(--border);
+        color: var(--text-primary);
+    }
+
+    .bottom-sheet-close:focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+    }
+
+    .bottom-sheet-close:active {
+        background: var(--border-light);
+        transform: scale(0.95);
+    }
+
+    .bottom-sheet-close svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Scrollable Content
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-content {
+        flex: 1;
+        /* Enable vertical scrolling with proper min-height for flex item */
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 0 16px 16px;
+        /* Allow touch scrolling on the content area */
+        touch-action: pan-y;
+        /* Add padding at bottom for safe area and better UX */
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        /* Scroll snap for section-based navigation (proximity = gentle snapping) */
+        scroll-snap-type: y proximity;
+        scroll-padding-top: 8px;
+        /* Firefox scrollbar styling */
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .bottom-sheet-content::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Floating Action Button (FAB)
+       ------------------------------------------------------------------------- */
+
+    .bottom-sheet-fab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+        right: 16px;
+        width: 56px;
+        height: 56px;
+        background: var(--accent);
+        color: var(--text-on-accent);
+        border: none;
+        border-radius: 50%;
+        /* Fallback for browsers without color-mix() */
+        box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4),
+                    0 2px 4px var(--shadow);
+        cursor: pointer;
+        z-index: var(--z-fab);
+        transition: transform 0.2s ease;
+    }
+
+    @supports (background: color-mix(in srgb, red 50%, blue)) {
+        .bottom-sheet-fab {
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent),
+                        0 2px 4px var(--shadow);
+        }
+    }
+
+    .bottom-sheet-fab:hover {
+        transform: scale(1.05);
+    }
+
+    .bottom-sheet-fab:active {
+        transform: scale(0.95);
+    }
+
+    /* Accessibility: Focus indicator for keyboard navigation */
+    .bottom-sheet-fab:focus-visible {
+        outline: 2px solid var(--text-on-accent);
+        outline-offset: 3px;
+    }
+
+    .bottom-sheet-fab svg {
+        width: 24px;
+        height: 24px;
+    }
+}

@@ -72,12 +72,13 @@
 
 .repo-chip {
     background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
+    border: 1px solid var(--border-light);
+    color: var(--text-interactive);
     padding: var(--spacing-sm) var(--spacing-md);
     min-height: 44px;
     border-radius: var(--radius-full);
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
     cursor: pointer;
     transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
     display: flex;
@@ -98,8 +99,8 @@
 
 /* Cached repo chips - indicate pre-loaded data (no API calls) */
 .repo-chip-cached {
-    border-color: color-mix(in srgb, var(--success) 30%, transparent);
-    background: color-mix(in srgb, var(--success) 5%, transparent);
+    border-color: color-mix(in srgb, var(--success) 60%, var(--border));
+    background: color-mix(in srgb, var(--success) 10%, var(--bg-tertiary));
 }
 
 .repo-chip-cached::before {
@@ -116,12 +117,12 @@
 .repo-chip-cached:hover {
     border-color: var(--success);
     color: var(--success);
-    background: color-mix(in srgb, var(--success) 15%, transparent);
+    background: color-mix(in srgb, var(--success) 18%, var(--bg-tertiary));
 }
 
 .repo-chip svg {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     flex-shrink: 0;
 }
 

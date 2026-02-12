@@ -377,14 +377,20 @@ The following events MUST trigger a CLAUDE.md update:
 | "Non-fatal" init failure left feature enabled | Disable the feature flag on init failure; never leave `config.enabled=true` when `initialized=false` |
 | begin_frame/end_frame state inconsistency | Both paths must use same predicate (e.g., `is_active()` not `config.enabled` vs `is_active()`) |
 | CSS hardcoded values in component files | Replace ALL with design token variables from variables.css; audit with `grep -rn` for raw px/rem values |
+| Interactive elements using `--text-secondary` for color | Introduce semantic design token `--text-interactive` for tabs, chips, nav items; audit all interactive elements |
+| Inline `style=""` attributes in JS template literals | Extract to CSS classes in the component's stylesheet; never inline styles in JS templates |
+| Chrome headless crashes in sandboxed environment | Use `headless_shell` variant with `TMPDIR` set to a writable directory (not `/tmp`); see VFL section |
+| VFL capture matrix too small to catch viewport-specific bugs | Expand to 8 viewports × 2 views × 2 themes = 32 screenshots; use `capture-vfl-full.sh` |
+| WASM↔JS boundary uses JSON serialization for hot-path data | Use zero-copy shared memory buffer (`[f32; N]` + `Float32Array` view); eliminates `format!()`, string copy, `JSON.parse()` |
+| `Float32Array` view detached after WASM `memory.grow()` | Recreate view in `ensureView()` when `buffer.byteLength === 0`; always check before reading |
 
 #### Lessons Learned Log
 
-> **Refactored to external document**: See [`docs/LESSONS_LEARNED.md`](docs/LESSONS_LEARNED.md)
-> for the full categorized knowledge base with decision tables, domain-organized
-> lessons, and chronological audit log (267+ entries).
+> **Refactored to modular knowledge base**: See [`docs/lessons/README.md`](docs/lessons/README.md)
+> for the index with decision tables, linking to domain-organized files
+> and chronological audit log (291 entries across 4 files).
 >
-> New entries should be added to BOTH the appropriate category section AND the
+> New entries should be added to BOTH the appropriate category file AND the
 > chronological log in that document.
 
 ---
@@ -659,7 +665,8 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/verification/RUST_VERIFICATION_LANDSCAPE.md` | 8-tool landscape survey: Kani (ADOPT), Aeneas/Creusot (MONITOR), hax (N/A) |
 | `docs/verification/CERTICOQ_WASM_ASSESSMENT.md` | Coq-to-WASM pipeline assessment (9-path survey) |
 | `docs/ux/MOBILE_UX_ROADMAP.md` | Expert+ UI/UX roadmap |
-| `tests/visual/capture-chrome.js` | Chrome headless VFL screenshot capture (16 screenshots) |
+| `tests/visual/capture-vfl-full.sh` | Full VFL screenshot capture (32 screenshots: 8 viewports × 2 views × 2 themes) |
+| `tests/visual/capture-chrome.js` | Chrome headless VFL screenshot capture (16 screenshots, legacy) |
 | `tests/visual/capture-screenshots.js` | Playwright VFL screenshot capture |
 | `tests/visual/visual-feedback.spec.js` | Playwright visual regression test suite |
 | `tests/visual/playwright.config.js` | Playwright VFL configuration (4 viewports) |
@@ -1706,6 +1713,10 @@ These error patterns recur across documentation audits:
 | begin_frame/end_frame predicate mismatch | Medium | Both must use `is_active()` not mix of `config.enabled` and `is_active()` |
 | "Non-fatal" init leaves feature enabled | High | Init failure must disable feature flag; otherwise enabled+uninitialized = silent black canvas |
 | CSS hardcoded values bypass design tokens | High | Audit with `grep -rn 'px\|rem'` in CSS files; all values must use variables.css tokens |
+| Interactive elements use `--text-secondary` for color | High | Tabs, chips, nav items need `--text-interactive` token; audit with `grep -rn 'text-secondary'` in CSS |
+| Inline styles in JS template literals | Medium | Extract to CSS classes in component stylesheet; search with `grep -rn 'style="'` in JS files |
+| WASM↔JS hot-path uses JSON serialization | High | Use zero-copy shared memory buffer pattern; see Phase 84 in CHRONOLOGY.md |
+| `Float32Array` view silently reads stale data | Medium | Check `buffer.byteLength === 0` before reads; recreate view after `memory.grow()` |
 
 ---
 
@@ -1775,10 +1786,10 @@ When documentation accuracy is in question or after major changes:
 When making UI/CSS/HTML changes to the WASM frontend:
 
 1. Start the WASM dev server: `npx serve rource-wasm/www -l 8787 &`
-2. Capture baseline: `node tests/visual/capture-chrome.js`
+2. Capture baseline: `bash tests/visual/capture-vfl-full.sh` (32 screenshots)
 3. Make your changes
-4. Recapture: `node tests/visual/capture-chrome.js`
-5. Inspect all 16 screenshots for defects (element leaks, FOUC, theme mismatches)
+4. Recapture: `bash tests/visual/capture-vfl-full.sh`
+5. Inspect all 32 screenshots for defects (element leaks, FOUC, theme mismatches)
 6. Verify dark ≠ light with `md5sum tests/visual/screenshots/*.png`
 7. If defects found, fix and repeat from step 4
 8. Document defects found (D1, D2, ...) with root cause and fix in commit message
@@ -1917,6 +1928,10 @@ a11y(A1): add icon labels
 | VFL dark/light identical | Theme applied after Chrome captures | Add synchronous inline `<script>` FOUC prevention |
 | Hidden element visible in VFL | CSS media query overrides `[hidden]` | Add `.element[hidden] { display: none }` |
 | Element leaks into analytics view | Element is sibling of `.app-container` | Use `hidden` attribute + JS in `applyViewState()` |
+| Tabs/chips hard to read (low contrast) | Interactive elements use `--text-secondary` (~4.5:1) | Apply `--text-interactive` token (~10:1 dark, ~8.5:1 light) |
+| Chrome headless crashes in VFL capture | Sandbox blocks `/tmp` shared memory | Use `headless_shell` + `TMPDIR=/writable/path`; see `capture-vfl-full.sh` |
+| WASM↔JS stats update slow (>700ns/op) | JSON serialization on hot path | Use zero-copy `[f32; 32]` buffer + `Float32Array` view (Phase 84: 618.6x speedup) |
+| `Float32Array` reads return 0/stale data | WASM `memory.grow()` detached `ArrayBuffer` | Check `buffer.byteLength === 0` in `ensureView()`; recreate view |
 
 ### WASM Build Fails
 
@@ -1985,13 +2000,17 @@ themes to detect visual defects that cannot be caught by unit tests or linting a
 │                    VISUAL FEEDBACK LOOP                                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Capture Matrix: 4 viewports × 2 views × 2 themes = 16 screenshots         │
+│  Capture Matrix: 8 viewports × 2 views × 2 themes = 32 screenshots         │
 │                                                                             │
 │  Viewports:                                                                 │
 │    • mobile-375   (375×667)   — iPhone SE / small phones                    │
+│    • mobile-390   (390×844)   — iPhone 14 / modern phones                   │
 │    • tablet-768   (768×1024)  — iPad Mini / tablets                         │
+│    • tablet-1024  (1024×768)  — iPad landscape / small laptops              │
 │    • desktop-1200 (1200×800)  — Standard laptop                             │
+│    • desktop-1440 (1440×900)  — MacBook Pro / large laptop                  │
 │    • wide-1920    (1920×1080) — Full HD monitor                             │
+│    • ultrawide-2560 (2560×1440) — QHD / ultrawide monitor                   │
 │                                                                             │
 │  Views:                                                                     │
 │    • dashboard    — Analytics dashboard (default landing page)              │
@@ -2002,7 +2021,8 @@ themes to detect visual defects that cannot be caught by unit tests or linting a
 │    • light        — Light theme (via ?theme=light URL param)                │
 │                                                                             │
 │  Tools:                                                                     │
-│    • capture-chrome.js    — Direct Chrome headless (fast, reliable)          │
+│    • capture-vfl-full.sh  — Full 32-screenshot capture (recommended)         │
+│    • capture-chrome.js    — Direct Chrome headless (16 screenshots, legacy)  │
 │    • capture-screenshots.js — Playwright automation (richer interactions)    │
 │    • visual-feedback.spec.js — Playwright test suite (CI-ready)             │
 │                                                                             │
@@ -2015,19 +2035,25 @@ themes to detect visual defects that cannot be caught by unit tests or linting a
 # 1. Start the WASM dev server
 npx serve rource-wasm/www -l 8787 &
 
-# 2. Option A: Quick capture with Chrome headless (16 screenshots)
+# 2. Option A: Full 32-screenshot capture (RECOMMENDED)
+bash tests/visual/capture-vfl-full.sh
+# Captures 8 viewports × 2 views × 2 themes = 32 screenshots
+# Includes automatic theme differentiation check via md5sum
+# Uses headless_shell with TMPDIR workaround for sandboxed environments
+
+# 3. Option B: Quick capture with Chrome headless (16 screenshots, legacy)
 node tests/visual/capture-chrome.js
 
-# 3. Option B: Full Playwright capture (richer, with interactions)
+# 4. Option C: Full Playwright capture (richer, with interactions)
 cd tests/visual && npm install && npx playwright install chromium
 node tests/visual/capture-screenshots.js
 
-# 4. Option C: Playwright test suite (for CI integration)
+# 5. Option D: Playwright test suite (for CI integration)
 cd tests/visual && npx playwright test
 
-# 5. Inspect screenshots
+# 6. Inspect screenshots
 ls -la tests/visual/screenshots/
-# Files: dashboard-dark-mobile-375.png, viz-light-wide-1920.png, etc.
+# Files: dashboard-dark-mobile-375.png, viz-light-ultrawide-2560.png, etc.
 ```
 
 ### VFL Workflow for UI Changes
@@ -2039,7 +2065,7 @@ ls -la tests/visual/screenshots/
 │                                                                             │
 │  1. CAPTURE BASELINE                                                        │
 │     └─ node tests/visual/capture-chrome.js                                  │
-│     └─ Inspect all 16 screenshots for current state                         │
+│     └─ Inspect all 32 screenshots for current state                         │
 │                                                                             │
 │  2. MAKE CHANGES                                                            │
 │     └─ Edit CSS/HTML/JS as needed                                           │
@@ -2057,7 +2083,7 @@ ls -la tests/visual/screenshots/
 │                                                                             │
 │  5. FIX AND REPEAT                                                          │
 │     └─ If defects found, fix and re-capture                                 │
-│     └─ Iterate until zero defects across all 16 screenshots                 │
+│     └─ Iterate until zero defects across all 32 screenshots                 │
 │                                                                             │
 │  6. DOCUMENT                                                                │
 │     └─ List defects found (D1, D2, ...) with root cause and fix            │
@@ -2077,12 +2103,16 @@ These patterns have been observed and fixed in previous sessions:
 | Toast/overlay visible on initial load | `transform: translateY()` alone insufficient | Add `visibility: hidden` inline + CSS |
 | Dark/light screenshots identical | Theme applied by deferred module script after Chrome captures | Add synchronous inline `<script>` in `<head>` for FOUC prevention |
 | Mobile media query shows hidden element | `@media (max-width: Xpx) { .el { display: flex } }` beats UA hidden | Add `[hidden]` CSS override with higher specificity |
+| Interactive elements (tabs, chips) hard to read | Elements use `--text-secondary` (~4.5:1) instead of brighter color for interactives | Introduce `--text-interactive` semantic token (~10:1 dark, ~8.5:1 light); apply to all tabs, chips, nav items |
+| Inline styles in JS templates not theme-aware | `style="color: var(--x)"` works but bypasses CSS specificity and maintainability | Extract inline styles to CSS classes in component stylesheet; use semantic class names |
+| Chrome headless crashes with "Permission denied" in sandbox | Chrome needs shared memory in `/tmp` which is blocked in sandboxed environments | Set `TMPDIR` to writable directory; use `headless_shell` variant instead of full Chrome |
 
 ### VFL File Locations
 
 | File | Purpose |
 |------|---------|
-| `tests/visual/capture-chrome.js` | Chrome headless capture script (16 screenshots) |
+| `tests/visual/capture-vfl-full.sh` | Full 32-screenshot capture script (8 viewports × 2 views × 2 themes) |
+| `tests/visual/capture-chrome.js` | Chrome headless capture script (16 screenshots, legacy) |
 | `tests/visual/capture-screenshots.js` | Playwright capture script (richer interaction) |
 | `tests/visual/visual-feedback.spec.js` | Playwright test suite for CI |
 | `tests/visual/playwright.config.js` | Viewport/device configuration |
@@ -2167,8 +2197,8 @@ Specificity: `.element[hidden]` (0-2-0) beats `.element` (0-1-0).
 │                                                                             │
 │  6. CAPTURE VFL BASELINE (if UI/CSS/HTML work planned)                      │
 │     npx serve rource-wasm/www -l 8787 &                                     │
-│     node tests/visual/capture-chrome.js                                     │
-│     Inspect all 16 screenshots BEFORE making changes                        │
+│     bash tests/visual/capture-vfl-full.sh                                   │
+│     Inspect all 32 screenshots BEFORE making changes                        │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -2179,8 +2209,8 @@ Specificity: `.element[hidden]` (0-2-0) beats `.element` (0-1-0).
 |--------|-------------|
 | Before changing hot path code | Benchmark baseline |
 | After changing hot path code | Benchmark again, compare |
-| Before changing UI/CSS/HTML | VFL baseline (16 screenshots) |
-| After changing UI/CSS/HTML | VFL re-capture, audit all 16 screenshots |
+| Before changing UI/CSS/HTML | VFL baseline (32 screenshots via `capture-vfl-full.sh`) |
+| After changing UI/CSS/HTML | VFL re-capture, audit all 32 screenshots |
 | Claiming an improvement | Exact % with before/after values |
 | Claiming N/A status | Document WHY with evidence |
 | Any optimization attempt | Update CHRONOLOGY.md with phase number |

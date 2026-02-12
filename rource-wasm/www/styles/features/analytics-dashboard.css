@@ -110,9 +110,43 @@
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+.analytics-card-interactive {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.analytics-card-interactive:hover,
+.analytics-card-interactive:focus-visible {
+    border-color: var(--accent-blue);
+    box-shadow: 0 2px 8px var(--shadow-light);
+    transform: translateY(-1px);
+}
+
+.analytics-card-interactive:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+.analytics-card-interactive:active {
+    transform: translateY(0);
+}
+
 .analytics-card:hover {
     border-color: var(--border-light);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+.analytics-card-hint {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    margin-top: 2px;
+}
+
+.analytics-card-interactive:hover .analytics-card-hint,
+.analytics-card-interactive:focus-visible .analytics-card-hint {
+    opacity: 1;
 }
 
 .analytics-card-value {
@@ -138,7 +172,11 @@
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    /* No overflow: hidden here — it clips tab panel content when flex items
+       shrink to fit the viewport. The parent .analytics-dashboard handles
+       scrolling via overflow-y: auto. Border-radius visual clipping is
+       handled by the tab bar's own background, not container overflow. */
+    flex-shrink: 0;
 }
 
 .analytics-tabs {
@@ -149,6 +187,7 @@
     scrollbar-width: none;
     border-bottom: 1px solid var(--border);
     background: var(--bg-tertiary);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .analytics-tabs::-webkit-scrollbar {
@@ -163,7 +202,7 @@
     background: none;
     border: none;
     border-bottom: 3px solid transparent;
-    color: var(--text-secondary);
+    color: var(--text-interactive);
     font-size: var(--font-size-sm);
     font-weight: 500;
     cursor: pointer;
@@ -254,6 +293,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
+    flex-shrink: 0;
 }
 
 .analytics-section-title {
@@ -289,7 +329,7 @@
 .analytics-input:focus {
     outline: none;
     border-color: var(--accent-blue);
-    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .analytics-repo-chips {
@@ -415,6 +455,11 @@
 
     .analytics-card {
         transition: none;
+    }
+
+    .analytics-card-interactive:hover,
+    .analytics-card-interactive:focus-visible {
+        transform: none;
     }
 
     .analytics-loading .insights-spinner {

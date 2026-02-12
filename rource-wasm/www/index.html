@@ -85,6 +85,8 @@
     <link rel="modulepreload" href="js/features/view-manager.js">
     <link rel="modulepreload" href="js/ui/components.js">
     <link rel="modulepreload" href="js/ui/sidebar-template.js">
+    <link rel="modulepreload" href="js/ui/bottom-sheet-template.js">
+    <link rel="modulepreload" href="js/ui/help-template.js">
 
     <!-- Critical CSS (inlined for fast initial render - eliminates render blocking) -->
     <style>
@@ -320,28 +322,33 @@
                 </button>
             </div>
 
-            <!-- Summary Cards Row -->
-            <div class="analytics-summary-row" id="analytics-summary-row">
-                <div class="analytics-card" id="acard-commits">
+            <!-- Summary Cards Row — each card navigates to its corresponding tab -->
+            <div class="analytics-summary-row" id="analytics-summary-row" role="group" aria-label="Repository metrics summary">
+                <button type="button" class="analytics-card analytics-card-interactive" id="acard-commits" data-navigate-tab="quality" aria-label="View quality metrics">
                     <span class="analytics-card-value" id="acard-commits-value">--</span>
                     <span class="analytics-card-label">Commits</span>
-                </div>
-                <div class="analytics-card" id="acard-files">
+                    <span class="analytics-card-hint">Work type mix</span>
+                </button>
+                <button type="button" class="analytics-card analytics-card-interactive" id="acard-files" data-navigate-tab="temporal" aria-label="View temporal metrics">
                     <span class="analytics-card-value" id="acard-files-value">--</span>
                     <span class="analytics-card-label">Files</span>
-                </div>
-                <div class="analytics-card" id="acard-authors">
+                    <span class="analytics-card-hint">Growth &amp; lifecycle</span>
+                </button>
+                <button type="button" class="analytics-card analytics-card-interactive" id="acard-authors" data-navigate-tab="team" aria-label="View team metrics">
                     <span class="analytics-card-value" id="acard-authors-value">--</span>
                     <span class="analytics-card-label">Authors</span>
-                </div>
-                <div class="analytics-card" id="acard-hotspots">
+                    <span class="analytics-card-hint">Profiles &amp; cadence</span>
+                </button>
+                <button type="button" class="analytics-card analytics-card-interactive" id="acard-hotspots" data-navigate-tab="hotspots" aria-label="View hotspot details">
                     <span class="analytics-card-value" id="acard-hotspots-value">--</span>
                     <span class="analytics-card-label">Hotspots</span>
-                </div>
-                <div class="analytics-card" id="acard-risk">
+                    <span class="analytics-card-hint">Frequently changed</span>
+                </button>
+                <button type="button" class="analytics-card analytics-card-interactive" id="acard-risk" data-navigate-tab="risk" aria-label="View risk details">
                     <span class="analytics-card-value" id="acard-risk-value">--</span>
                     <span class="analytics-card-label">At Risk</span>
-                </div>
+                    <span class="analytics-card-hint">Bus factor &amp; silos</span>
+                </button>
             </div>
 
             <!-- Dashboard Tabs -->
@@ -377,7 +384,7 @@
                 <h3 class="analytics-section-title">Load a Repository</h3>
                 <div class="analytics-input-group">
                     <input type="url" id="analytics-github-url" class="analytics-input" placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL" autocomplete="url">
-                    <button type="button" id="analytics-fetch-btn" class="btn btn-success btn-sm" disabled>
+                    <button type="button" id="analytics-fetch-btn" class="btn btn-success btn-sm" disabled aria-label="Fetch repository data (enter a GitHub URL first)">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                         </svg>
@@ -387,42 +394,42 @@
                 <div class="analytics-repo-chips">
                     <span class="analytics-chips-label">Pre-cached repos (instant):</span>
                     <div class="repo-chips">
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="facebook/react" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="facebook/react" title="Pre-cached - instant loading" aria-label="Load facebook/react (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#61dafb" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             React
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="vuejs/vue" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="vuejs/vue" title="Pre-cached - instant loading" aria-label="Load vuejs/vue (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#42b883" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Vue
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="sveltejs/svelte" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="sveltejs/svelte" title="Pre-cached - instant loading" aria-label="Load sveltejs/svelte (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#ff3e00" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Svelte
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="denoland/deno" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="denoland/deno" title="Pre-cached - instant loading" aria-label="Load denoland/deno (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Deno
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="rust-lang/rust" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="rust-lang/rust" title="Pre-cached - instant loading" aria-label="Load rust-lang/rust (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#dea584" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Rust
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="microsoft/vscode" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="microsoft/vscode" title="Pre-cached - instant loading" aria-label="Load microsoft/vscode (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#007acc" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             VS Code
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="golang/go" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="golang/go" title="Pre-cached - instant loading" aria-label="Load golang/go (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#00add8" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Go
                         </button>
-                        <button type="button" class="repo-chip repo-chip-cached" data-repo="torvalds/linux" title="Pre-cached - instant loading">
+                        <button type="button" class="repo-chip repo-chip-cached" data-repo="torvalds/linux" title="Pre-cached - instant loading" aria-label="Load torvalds/linux (pre-cached, instant)">
                             <svg viewBox="0 0 16 16" fill="#f1c40f" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
                             Linux
                         </button>
                     </div>
                 </div>
-                <div id="analytics-fetch-status" class="fetch-status">
-                    <span id="analytics-fetch-status-text"></span>
+                <div id="analytics-fetch-status" class="fetch-status" aria-live="polite" aria-atomic="true">
+                    <span id="analytics-fetch-status-text" role="status"></span>
                     <div class="fetch-progress">
                         <div id="analytics-fetch-progress-bar" class="fetch-progress-bar"></div>
                     </div>
@@ -705,51 +712,8 @@
                 </svg>
             </button>
             <!-- Showcase Panel: Visualize This Project -->
-            <div class="showcase-panel" id="showcase-panel">
-                <span class="showcase-badge">Featured</span>
-                <svg class="showcase-icon" viewBox="0 0 100 100" aria-hidden="true">
-                    <circle cx="50" cy="50" r="45" fill="#e94560"/>
-                    <circle cx="50" cy="30" r="8" fill="white"/>
-                    <circle cx="30" cy="60" r="6" fill="white"/>
-                    <circle cx="70" cy="55" r="6" fill="white"/>
-                    <circle cx="50" cy="75" r="5" fill="white"/>
-                    <line x1="50" y1="38" x2="50" y2="70" stroke="white" stroke-width="2"/>
-                    <line x1="50" y1="50" x2="32" y2="58" stroke="white" stroke-width="2"/>
-                    <line x1="50" y1="50" x2="68" y2="53" stroke="white" stroke-width="2"/>
-                </svg>
-                <h2>Visualize This Project</h2>
-                <p>Watch the complete development history of Rource itself. Cached locally - no API limits.</p>
-                <div class="showcase-buttons">
-                    <button type="button" id="btn-visualize-rource" class="showcase-btn" disabled>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                        Visualize Rource
-                    </button>
-                    <button type="button" id="btn-refresh-rource" class="showcase-btn-secondary" title="Fetch latest commits from GitHub">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path d="M23 4v6h-6M1 20v-6h6"/>
-                            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-                        </svg>
-                        Fetch Latest
-                    </button>
-                </div>
-                <div id="refresh-status" class="refresh-status hidden"></div>
-                <div class="showcase-stats">
-                    <div class="showcase-stat" title="Visualization steps (file changes grouped by time)">
-                        <div class="showcase-stat-value" id="showcase-commits">--</div>
-                        <div class="showcase-stat-label">Commits</div>
-                    </div>
-                    <div class="showcase-stat">
-                        <div class="showcase-stat-value" id="showcase-files">--</div>
-                        <div class="showcase-stat-label">Files</div>
-                    </div>
-                    <div class="showcase-stat">
-                        <div class="showcase-stat-value" id="showcase-authors">--</div>
-                        <div class="showcase-stat-label">Authors</div>
-                    </div>
-                </div>
-            </div>
+            <!-- Content injected by js/ui/components.js from sidebar-template.js -->
+            <div class="showcase-panel" id="showcase-panel"></div>
 
             <!-- Quick Guide Panel (Collapsible, expanded by default) -->
             <div class="panel collapsible" id="panel-guide">
@@ -837,147 +801,12 @@
             </div>
 
             <!-- GitHub URL Panel -->
-            <div class="panel">
-                <div class="panel-header">
-                    <h2>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                        </svg>
-                        Other Repositories
-                    </h2>
-                </div>
-                <div class="panel-body">
-                    <div class="github-input-group">
-                        <input type="text" id="github-url" placeholder="https://github.com/owner/repo" aria-label="GitHub repository URL">
-                        <button type="button" id="btn-fetch-github" class="btn btn-success btn-sm" disabled>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                            </svg>
-                            Fetch
-                        </button>
-                    </div>
-                    <div class="popular-repos">
-                        <span class="popular-repos-label">Pre-cached repos (instant, no API calls):</span>
-                        <div class="repo-chips">
-                            <button type="button" class="repo-chip repo-chip-cached" data-repo="facebook/react" title="Pre-cached - instant loading">
-                                <svg viewBox="0 0 16 16" fill="#61dafb" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
-                                React
-                            </button>
-                            <button type="button" class="repo-chip repo-chip-cached" data-repo="vuejs/vue" title="Pre-cached - instant loading">
-                                <svg viewBox="0 0 16 16" fill="#42b883" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
-                                Vue
-                            </button>
-                            <button type="button" class="repo-chip repo-chip-cached" data-repo="sveltejs/svelte" title="Pre-cached - instant loading">
-                                <svg viewBox="0 0 16 16" fill="#ff3e00" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
-                                Svelte
-                            </button>
-                            <button type="button" class="repo-chip repo-chip-cached" data-repo="denoland/deno" title="Pre-cached - instant loading">
-                                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
-                                Deno
-                            </button>
-                            <button type="button" class="repo-chip repo-chip-cached" data-repo="rust-lang/rust" title="Pre-cached - instant loading">
-                                <svg viewBox="0 0 16 16" fill="#dea584" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
-                                Rust
-                            </button>
-                            <button type="button" class="repo-chip repo-chip-cached" data-repo="microsoft/vscode" title="Pre-cached - instant loading">
-                                <svg viewBox="0 0 16 16" fill="#007acc" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
-                                VS Code
-                            </button>
-                            <button type="button" class="repo-chip repo-chip-cached" data-repo="golang/go" title="Pre-cached - instant loading">
-                                <svg viewBox="0 0 16 16" fill="#00add8" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
-                                Go
-                            </button>
-                            <button type="button" class="repo-chip repo-chip-cached" data-repo="torvalds/linux" title="Pre-cached - instant loading">
-                                <svg viewBox="0 0 16 16" fill="#f1c40f" aria-hidden="true"><circle cx="8" cy="8" r="3"/></svg>
-                                Linux
-                            </button>
-                        </div>
-                    </div>
-                    <div id="fetch-status" class="fetch-status">
-                        <span id="fetch-status-text"></span>
-                        <div class="fetch-progress">
-                            <div id="fetch-progress-bar" class="fetch-progress-bar"></div>
-                        </div>
-                    </div>
-                    <p class="help-text" style="margin-top: 0.75rem;">
-                        Fetches up to 50 recent commits from public GitHub repositories.
-                        <span class="rate-limit-note">GitHub API limit: 60 requests/hour without auth.</span>
-                    </p>
-                    <div id="rate-limit-status" class="rate-limit-status hidden"></div>
-                </div>
-            </div>
+            <!-- Content injected by js/ui/components.js from sidebar-template.js -->
+            <div class="panel" id="panel-github"></div>
 
             <!-- Manual Load Panel -->
-            <div class="panel">
-                <div class="tab-nav" role="tablist">
-                    <button type="button" class="tab-btn active" data-tab="command" role="tab" aria-selected="true">Git Command</button>
-                    <button type="button" class="tab-btn" data-tab="upload" role="tab" aria-selected="false">Upload File</button>
-                    <button type="button" class="tab-btn" data-tab="paste" role="tab" aria-selected="false">Paste Log</button>
-                </div>
-
-                <div id="tab-command" class="tab-content active" role="tabpanel">
-                    <p class="help-text" style="margin-bottom: 0.75rem;">Generate a log file from your local repository:</p>
-                    <div class="command-box">
-                        <code id="git-command">git log --reverse --pretty=format:"commit %H%nAuthor: %an%nDate: %at%n" --name-status &gt; rource.log</code>
-                    </div>
-                    <button type="button" id="btn-copy-command" class="btn btn-sm btn-secondary">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                        Copy Command
-                    </button>
-                    <div class="help-text" style="margin-top: 0.75rem;">
-                        <strong>How to use:</strong>
-                        <ol style="margin: 0.5rem 0 0 1.2rem; padding: 0;">
-                            <li>Open a terminal in your Git repository</li>
-                            <li>Run the command above (creates <code>rource.log</code>)</li>
-                            <li>Upload the generated file using the "Upload File" tab</li>
-                        </ol>
-                        <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
-                            <strong>Note:</strong> Works on Linux/macOS/Windows (Git Bash). Handles renames and all file statuses.
-                        </p>
-                    </div>
-                </div>
-
-                <div id="tab-upload" class="tab-content" role="tabpanel" hidden>
-                    <div class="file-upload-area" id="file-drop-zone">
-                        <input type="file" id="file-input" accept="text/*,.txt,.log,.csv,.rource">
-                        <div class="file-upload-icon">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="12" y1="18" x2="12" y2="12"/>
-                                <line x1="9" y1="15" x2="12" y2="12"/>
-                                <line x1="15" y1="15" x2="12" y2="12"/>
-                            </svg>
-                        </div>
-                        <div class="file-upload-text">
-                            <strong>Select a file</strong> or drag and drop
-                        </div>
-                        <div class="file-upload-privacy">
-                            100% client-side - your data never leaves your browser
-                        </div>
-                    </div>
-                    <div id="file-name" class="file-name hidden"></div>
-                    <button type="button" id="btn-load-file" class="btn btn-sm" disabled>Load Uploaded File</button>
-                    <div class="help-text" style="margin-top: 0.75rem;">
-                        <strong>Supported formats (auto-detected):</strong><br>
-                        <span style="color: var(--text-secondary);">• Native git log format</span> (from "Git Command" tab)<br>
-                        <span style="color: var(--text-secondary);">• Custom pipe-delimited:</span> <code>timestamp|author|action|path</code><br>
-                        <span style="color: var(--text-muted); font-size: 0.85em;">Invalid lines are automatically skipped.</span>
-                    </div>
-                </div>
-
-                <div id="tab-paste" class="tab-content" role="tabpanel" hidden>
-                    <textarea id="log-input" aria-label="Log data input - paste git log or custom format data" placeholder="Paste your log data here...&#10;Formats auto-detected: git log or timestamp|author|action|path"></textarea>
-                    <button type="button" id="btn-load" class="btn btn-sm" disabled>Load Log Data</button>
-                    <p class="help-text">
-                        Supported formats (auto-detected):<br>
-                        <code>git log --name-status</code> output, or <code>timestamp|author|action|path</code>
-                    </p>
-                    <p class="file-upload-privacy" style="margin-top: 0.5rem;">
-                        100% client-side - your data never leaves your browser
-                    </p>
-                </div>
-            </div>
+            <!-- Content injected by js/ui/components.js from sidebar-template.js -->
+            <div class="panel" id="panel-manual-load"></div>
 
             <!-- Controls Panel - Keyboard and Mouse (Collapsible) -->
             <div class="panel collapsible collapsed" id="panel-shortcuts">
@@ -1099,155 +928,8 @@
                 </button>
             </div>
         </div>
-        <div class="bottom-sheet-content" id="bottom-sheet-content">
-            <!-- Quick Actions -->
-            <div class="bottom-sheet-section">
-                <div class="bottom-sheet-quick-actions">
-                    <button type="button" id="bs-visualize-rource" class="bottom-sheet-action-btn primary" disabled>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                        <span>Visualize Rource</span>
-                    </button>
-                    <button type="button" id="bs-fetch-repo" class="bottom-sheet-action-btn">
-                        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                        </svg>
-                        <span>Load Repository</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Legends Section (File Types & Authors) - populated via JS -->
-            <div id="bs-legends-section" class="bottom-sheet-legends hidden">
-                <div class="bottom-sheet-legend-section" id="bs-file-types">
-                    <div class="bottom-sheet-legend-header">
-                        <span class="bottom-sheet-legend-title">File Types</span>
-                    </div>
-                    <div class="bottom-sheet-legend-items" id="bs-file-types-items">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-                <div class="bottom-sheet-legend-section" id="bs-authors">
-                    <div class="bottom-sheet-legend-header">
-                        <span class="bottom-sheet-legend-title">Authors</span>
-                    </div>
-                    <div class="bottom-sheet-legend-items" id="bs-authors-items">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Repository Insights Summary (populated via JS when data is loaded) -->
-            <div id="bs-insights-section" class="bottom-sheet-section hidden">
-                <div class="bottom-sheet-legend-header">
-                    <span class="bottom-sheet-legend-title">Repository Insights</span>
-                </div>
-                <div id="bs-insights-summary" class="insights-summary">
-                    <!-- Populated dynamically by insights.js -->
-                </div>
-                <button type="button" id="bs-insights-expand" class="bottom-sheet-action-btn" aria-label="View full insights">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H8v-2h4v2zm4-4H8v-2h8v2zm0-4H8V7h8v2z"/>
-                    </svg>
-                    <span>View Full Insights</span>
-                </button>
-            </div>
-
-            <!-- GitHub URL Input -->
-            <div class="bottom-sheet-section">
-                <label class="bottom-sheet-label">GitHub Repository</label>
-                <div class="bottom-sheet-input-group">
-                    <input type="text" id="bs-github-url" class="bottom-sheet-input" placeholder="owner/repo or full URL">
-                    <button type="button" id="bs-fetch-btn" class="bottom-sheet-fetch-btn" disabled aria-label="Fetch repository">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                        </svg>
-                    </button>
-                </div>
-                <p class="bottom-sheet-hint">Popular: react, vue, svelte, deno</p>
-            </div>
-
-            <!-- Collapsible: Quick Guide -->
-            <details class="bottom-sheet-details">
-                <summary class="bottom-sheet-summary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-6h2v6zm0-8h-2V7h2v4z"/>
-                    </svg>
-                    Quick Guide
-                </summary>
-                <div class="bottom-sheet-details-content">
-                    <p><strong>Rource</strong> visualizes git history as an animated tree.</p>
-                    <ul>
-                        <li>Files = colored dots</li>
-                        <li>Developers = larger circles</li>
-                        <li>Beams = commits connecting developers to files</li>
-                    </ul>
-                </div>
-            </details>
-
-            <!-- Collapsible: Controls -->
-            <details class="bottom-sheet-details">
-                <summary class="bottom-sheet-summary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5zm-6 8h1.5v1.5H13V13zm1.5 1.5H16V16h-1.5v-1.5zM16 13h1.5v1.5H16V13zm-3 3h1.5v1.5H13V16zm1.5 1.5H16V19h-1.5v-1.5zM16 16h1.5v1.5H16V16zm1.5-1.5H19V16h-1.5v-1.5zm0 3H19V19h-1.5v-1.5zM19 13h-1.5v1.5H19V13z"/>
-                    </svg>
-                    Touch Controls
-                </summary>
-                <div class="bottom-sheet-details-content">
-                    <ul>
-                        <li><strong>Drag</strong> canvas to pan</li>
-                        <li><strong>Pinch</strong> to zoom</li>
-                        <li><strong>Tap</strong> play button to start/stop</li>
-                        <li><strong>Swipe</strong> this sheet to dismiss</li>
-                    </ul>
-                </div>
-            </details>
-
-            <!-- Collapsible: Tech Specs -->
-            <details class="bottom-sheet-details">
-                <summary class="bottom-sheet-summary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                    </svg>
-                    Technical Specs
-                </summary>
-                <div class="bottom-sheet-details-content">
-                    <div class="bottom-sheet-tech-grid">
-                        <div class="bottom-sheet-tech-item">
-                            <span class="bottom-sheet-tech-value" id="bs-tech-wasm">~990KB</span>
-                            <span class="bottom-sheet-tech-label">WASM</span>
-                        </div>
-                        <div class="bottom-sheet-tech-item">
-                            <span class="bottom-sheet-tech-value" id="bs-tech-renderer">--</span>
-                            <span class="bottom-sheet-tech-label">Renderer</span>
-                        </div>
-                        <div class="bottom-sheet-tech-item">
-                            <span class="bottom-sheet-tech-value" id="bs-tech-tests">1836</span>
-                            <span class="bottom-sheet-tech-label">Tests</span>
-                        </div>
-                    </div>
-                    <div class="bottom-sheet-badges">
-                        <span class="bottom-sheet-badge">Rust</span>
-                        <span class="bottom-sheet-badge">WebAssembly</span>
-                        <span class="bottom-sheet-badge">GPU</span>
-                    </div>
-                </div>
-            </details>
-
-            <!-- Footer Links -->
-            <div class="bottom-sheet-footer">
-                <a href="https://github.com/tomtom215/rource" target="_blank" rel="noopener" class="bottom-sheet-link">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                    </svg>
-                    View on GitHub
-                </a>
-                <a href="https://github.com/tomtom215/rource/issues" target="_blank" rel="noopener" class="bottom-sheet-link">
-                    Report Issue
-                </a>
-            </div>
-        </div>
+        <!-- Content injected by js/ui/components.js from bottom-sheet-template.js -->
+        <div class="bottom-sheet-content" id="bottom-sheet-content"></div>
     </div>
 
     <!-- Floating Action Button for Bottom Sheet (mobile only, hidden by default in analytics view) -->
@@ -1269,154 +951,8 @@
     </div>
 
     <!-- Help Overlay -->
-    <div id="help-overlay" class="help-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title">
-        <div class="help-content">
-            <button type="button" id="help-close" class="help-close" aria-label="Close help">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </svg>
-            </button>
-            <h2 id="help-title">What am I looking at?</h2>
-
-            <div class="help-section">
-                <h3 class="help-section-heading">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg>
-                    Visual Elements
-                </h3>
-                <div class="help-visual">
-                    <div class="help-item">
-                        <svg class="help-item-icon" viewBox="0 0 32 32" aria-hidden="true">
-                            <circle cx="16" cy="16" r="8" fill="#58a6ff"/>
-                        </svg>
-                        <div class="help-item-text">
-                            <strong>Files</strong>
-                            <span>Colored dots represent files. Color = file type.</span>
-                        </div>
-                    </div>
-                    <div class="help-item">
-                        <svg class="help-item-icon" viewBox="0 0 32 32" aria-hidden="true">
-                            <circle cx="16" cy="16" r="10" fill="#e94560" stroke="white" stroke-width="2"/>
-                        </svg>
-                        <div class="help-item-text">
-                            <strong>Users</strong>
-                            <span>Larger circles = developers. Each has a unique color.</span>
-                        </div>
-                    </div>
-                    <div class="help-item">
-                        <svg class="help-item-icon" viewBox="0 0 32 32" aria-hidden="true">
-                            <!-- Beam with glow effect -->
-                            <defs>
-                                <linearGradient id="beam-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" style="stop-color:#3fb950;stop-opacity:0.3"/>
-                                    <stop offset="50%" style="stop-color:#3fb950;stop-opacity:1"/>
-                                    <stop offset="100%" style="stop-color:#3fb950;stop-opacity:0.3"/>
-                                </linearGradient>
-                                <filter id="beam-glow">
-                                    <feGaussianBlur stdDeviation="2" result="blur"/>
-                                    <feMerge>
-                                        <feMergeNode in="blur"/>
-                                        <feMergeNode in="SourceGraphic"/>
-                                    </feMerge>
-                                </filter>
-                            </defs>
-                            <!-- Glow layer -->
-                            <line x1="4" y1="16" x2="28" y2="16" stroke="#3fb950" stroke-width="4" opacity="0.3" stroke-linecap="round"/>
-                            <!-- Main beam line -->
-                            <line x1="4" y1="16" x2="28" y2="16" stroke="url(#beam-gradient)" stroke-width="2" stroke-linecap="round" filter="url(#beam-glow)"/>
-                        </svg>
-                        <div class="help-item-text">
-                            <strong>Beams</strong>
-                            <span>Lines connecting users to files they modify.</span>
-                        </div>
-                    </div>
-                    <div class="help-item">
-                        <svg class="help-item-icon" viewBox="0 0 32 32" aria-hidden="true">
-                            <!-- Gray hollow circle with center dot = directory node -->
-                            <circle cx="16" cy="16" r="10" fill="none" stroke="#8b949e" stroke-width="2" opacity="0.7"/>
-                            <circle cx="16" cy="16" r="3" fill="#8b949e" opacity="0.5"/>
-                            <!-- Soft glow effect -->
-                            <circle cx="16" cy="16" r="12" fill="#8b949e" opacity="0.1"/>
-                        </svg>
-                        <div class="help-item-text">
-                            <strong>Directories</strong>
-                            <span>Gray circles with center dots = folders. Lines connect parent-child folders.</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3 class="help-section-heading">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                    How It Works
-                </h3>
-                <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">
-                    Rource visualizes your Git history as an animated tree. Each commit creates "beams" connecting
-                    developers to the files they modify. Files branch out from the root based on their directory
-                    structure. The visualization uses a force-directed layout to naturally organize files and prevent overlap.
-                </p>
-                <p style="color: var(--text-muted); font-size: 0.8rem; line-height: 1.5; margin-top: 0.5rem;">
-                    <strong>Note:</strong> The commit count groups file changes by timestamp and author. This may differ slightly from your git commit count if multiple commits share the same second.
-                </p>
-            </div>
-
-            <div class="help-section">
-                <h3 class="help-section-heading">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                    Quick Tips
-                </h3>
-                <ul style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem;">
-                    <li><strong>Hover</strong> over files or users to see details</li>
-                    <li><strong>Drag</strong> to pan around the visualization</li>
-                    <li><strong>Scroll</strong> to zoom in/out</li>
-                    <li><strong>Click canvas</strong> to focus, then use keyboard shortcuts</li>
-                </ul>
-            </div>
-
-            <div class="help-section">
-                <h3 class="help-section-heading">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
-                    Keyboard Shortcuts
-                </h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; color: var(--text-secondary); font-size: 0.85rem;">
-                    <!-- Playback -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Playback</div>
-                    <div><kbd class="kbd">Space</kbd> Play / Pause</div>
-                    <div><kbd class="kbd">Home</kbd> Restart</div>
-                    <div><kbd class="kbd">←</kbd> <kbd class="kbd">,</kbd> Previous commit</div>
-                    <div><kbd class="kbd">→</kbd> <kbd class="kbd">.</kbd> Next commit</div>
-                    <div><kbd class="kbd">[</kbd> Slower speed</div>
-                    <div><kbd class="kbd">]</kbd> Faster speed</div>
-                    <!-- Camera -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Camera</div>
-                    <div><kbd class="kbd">W</kbd><kbd class="kbd">A</kbd><kbd class="kbd">S</kbd><kbd class="kbd">D</kbd> Pan<span style="color: var(--text-muted); font-size: 0.75rem;"> (canvas focused)</span></div>
-                    <div><kbd class="kbd">R</kbd> Reset camera</div>
-                    <div><kbd class="kbd">+</kbd> <kbd class="kbd">=</kbd> Zoom in</div>
-                    <div><kbd class="kbd">-</kbd> Zoom out</div>
-                    <!-- Display -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Display</div>
-                    <div><kbd class="kbd">L</kbd> Toggle labels</div>
-                    <div><kbd class="kbd">F</kbd> Fullscreen</div>
-                    <div><kbd class="kbd">T</kbd> Toggle theme</div>
-                    <div><kbd class="kbd">A</kbd> Toggle authors panel</div>
-                    <div><kbd class="kbd">P</kbd> Performance overlay</div>
-                    <div><kbd class="kbd">Shift</kbd>+<kbd class="kbd">↑↓</kbd> Font size</div>
-                    <!-- Export -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Export</div>
-                    <div><kbd class="kbd">S</kbd> Screenshot</div>
-                    <div><kbd class="kbd">M</kbd> Export full map</div>
-                    <div><kbd class="kbd">V</kbd> Video recording</div>
-                    <div></div>
-                    <!-- Help -->
-                    <div style="font-weight: 600; color: var(--text-primary); grid-column: 1 / -1; margin-top: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;">Help</div>
-                    <div><kbd class="kbd">?</kbd> Show this help</div>
-                    <div><kbd class="kbd">Esc</kbd> Close dialogs</div>
-                </div>
-            </div>
-
-            <button type="button" id="help-got-it" class="btn" style="width: 100%; margin-top: 1rem;">Got it!</button>
-        </div>
-    </div>
+    <!-- Content injected by js/ui/components.js from help-template.js -->
+    <div id="help-overlay" class="help-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title"></div>
 
     <!-- Fullscreen Prompt (shown when landscape detected on mobile, hidden by default in analytics view) -->
     <div id="fullscreen-prompt" class="fullscreen-prompt" role="dialog" aria-modal="true" aria-labelledby="fullscreen-prompt-title" hidden>

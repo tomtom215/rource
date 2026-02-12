@@ -77,7 +77,9 @@
 @import url('./features/accessibility.css');
 
 /* iOS-style bottom sheet for mobile */
-@import url('./features/bottom-sheet.css');
+@import url('./features/bottom-sheet-core.css');
+@import url('./features/bottom-sheet-controls.css');
+@import url('./features/bottom-sheet-legends.css');
 
 /* Repository insights dashboard */
 @import url('./features/insights.css');
@@ -86,4 +88,9 @@
 @import url('./features/analytics-dashboard.css');
 
 /* Mobile responsive overrides (should be last to override other styles) */
-@import url('./features/mobile.css');
+@import url('./features/mobile-sidebar.css');
+@import url('./features/mobile-toolbar.css');
+@import url('./features/mobile-hud.css');
+@import url('./features/mobile-landscape.css');
+@import url('./features/mobile-accessibility.css');
+@import url('./features/mobile-responsive.css');

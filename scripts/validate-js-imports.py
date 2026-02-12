@@ -123,6 +123,12 @@ def validate_imports(js_dir: Path) -> int:
             for line_num, source_path, names in imports:
                 resolved_source = resolve_path(js_file, source_path, js_dir)
 
+                # Skip imports from outside the scanned directory (e.g. ../pkg/ WASM bindings)
+                try:
+                    resolved_source.relative_to(js_dir)
+                except ValueError:
+                    continue
+
                 # Get exports from source file
                 source_exports = exports_by_file.get(resolved_source, set())
 

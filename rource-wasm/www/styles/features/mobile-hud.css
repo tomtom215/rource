@@ -1,0 +1,590 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Mobile HUD Styles
+ *
+ * Video game-inspired heads-up display for mobile:
+ * - Header adjustments and FAB positioning
+ * - Stats overlay (commits/files/dirs/authors) in top-left
+ * - Performance overlay (FPS/frame time) in top-right
+ * - Collapsible stats panel (L1)
+ * - High-score style metrics display
+ * - Auto-hide timeline controls (YouTube/Netflix pattern)
+ * - Minimal HUD (I6: date/progress when controls hidden)
+ * - Center play button (tap-to-show overlay)
+ *
+ * References:
+ * - FPS games: minimal HUDs prioritizing essential info
+ * - High score displays: prominent primary metric + secondary stats
+ * - Steam FPS counter: small corner pill with bold number
+ */
+
+/* =============================================================================
+   Mobile Center Play Button - Base Styles (Hidden on Desktop)
+   ============================================================================= */
+
+/*
+ * CRITICAL: The mobile-center-play button must be hidden by default on ALL
+ * screen sizes. The @media query below provides mobile-specific styling,
+ * but we need base hidden state to prevent flash of unstyled content on
+ * page load (especially in Firefox where CSS parsing timing can vary).
+ */
+.mobile-center-play {
+    display: none;
+}
+
+/* =============================================================================
+   Mobile Header & HUD Adjustments (768px)
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    header {
+        /* L5/L6: Safe area support + better mobile padding */
+        padding: 10px 12px;
+        padding-top: max(10px, env(safe-area-inset-top, 0px));
+        padding-left: max(12px, env(safe-area-inset-left, 0px));
+        padding-right: max(12px, env(safe-area-inset-right, 0px));
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .header-brand {
+        flex-shrink: 0;
+        /* L6: Prevent brand from being too cramped */
+        min-width: 0;
+    }
+
+    .header-brand h1 {
+        font-size: 1.125rem;
+        /* L6: Allow text to truncate gracefully if needed */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .logo-icon {
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    /* Hide controls in header on mobile with bottom sheet */
+    .has-bottom-sheet header .controls {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .header-links {
+        display: none !important;
+    }
+
+    /* FAB repositioned for mobile - right corner, above timeline
+       FIXED: Move higher to avoid overlapping author info in timeline date row
+       Timeline is ~110-130px, but author info appears at top of timeline (~160px from bottom) */
+    .has-bottom-sheet .bottom-sheet-fab {
+        bottom: max(175px, calc(175px + env(safe-area-inset-bottom)));
+        right: 12px;
+        /* 56px is Material Design 3 standard FAB size */
+        width: 56px;
+        height: 56px;
+        z-index: var(--z-fab);
+        /* Auto-hide support */
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    /* Auto-hide FAB when playing - more visible and animated to hint tappability */
+    .has-bottom-sheet.controls-hidden .bottom-sheet-fab {
+        opacity: 0.4;
+        transform: scale(0.85);
+        /* Keep pointer-events: auto so user can tap to show controls */
+        pointer-events: auto;
+        /* Subtle pulse animation to hint that FAB can be tapped */
+        animation: fab-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes fab-pulse {
+        0%, 100% { opacity: 0.35; transform: scale(0.85); }
+        50% { opacity: 0.5; transform: scale(0.88); }
+    }
+
+    /* Visual feedback when tapping hidden FAB */
+    .has-bottom-sheet.controls-hidden .bottom-sheet-fab:active {
+        opacity: 0.7;
+        transform: scale(0.8);
+        animation: none;
+    }
+
+    /* App container full width on mobile */
+    .has-bottom-sheet .app-container {
+        padding: 0;
+        gap: 0;
+    }
+
+    /* CRITICAL: Hide legend and authors panels on mobile - they're in bottom sheet */
+    .has-bottom-sheet .legend-panel {
+        display: none !important;
+    }
+
+    .has-bottom-sheet .authors-panel {
+        display: none !important;
+    }
+
+    /* -------------------------------------------------------------------------
+       Stats Overlay - Mobile HUD Layout
+       -------------------------------------------------------------------------
+       Shows commits/files/dirs/authors as a compact HUD in TOP-LEFT corner.
+       This keeps it out of the way and doesn't cramp the canvas area.
+
+       Layout:
+       - Top-left: Stats overlay (secondary info)
+       - Top-right: Perf overlay (FPS/frame time)
+       - Bottom-center: Mobile toolbar (actions)
+       - Bottom-right: FAB (menu)
+    */
+
+    .has-bottom-sheet .stats-overlay {
+        /* Top-left HUD positioning */
+        top: max(8px, env(safe-area-inset-top));
+        left: max(8px, env(safe-area-inset-left));
+        bottom: auto;
+        right: auto;
+        transform: none;
+        padding: 6px 12px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        gap: 12px;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        /* Compact width */
+        max-width: 200px;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-item {
+        flex-direction: row;
+        gap: 3px;
+        white-space: nowrap;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-value {
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-label {
+        font-size: 0.75rem; /* 12px - WCAG minimum readable size */
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        opacity: 0.8;
+    }
+
+    /* -------------------------------------------------------------------------
+       L1: Collapsible Stats Panel
+       -------------------------------------------------------------------------
+       Stats panel collapses to a minimal indicator during playback.
+       Tap to expand, auto-collapse when playing resumes.
+       Maximizes visualization area (target: 85%+ during playback).
+    */
+    .has-bottom-sheet .stats-overlay {
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Collapsed state - minimal indicator */
+    .has-bottom-sheet .stats-overlay.collapsed {
+        padding: 4px 10px;
+        gap: 6px;
+    }
+
+    .has-bottom-sheet .stats-overlay.collapsed .stat-item {
+        display: none;
+    }
+
+    /* Show only first stat (commits) when collapsed */
+    .has-bottom-sheet .stats-overlay.collapsed .stat-item:first-child {
+        display: flex;
+    }
+
+    /* Add expand indicator when collapsed */
+    .has-bottom-sheet .stats-overlay.collapsed::after {
+        content: '\203A';
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-left: 4px;
+        transition: transform 0.2s ease;
+    }
+
+    .has-bottom-sheet .stats-overlay:not(.collapsed)::after {
+        content: '';
+    }
+
+    /* Tap feedback */
+    .has-bottom-sheet .stats-overlay:active {
+        transform: scale(0.97);
+    }
+
+    /* -------------------------------------------------------------------------
+       Performance Overlay - HUD Style
+       -------------------------------------------------------------------------
+       Compact pill in top-right corner with FPS as primary metric.
+    */
+
+    /* HUD-style container - compact pill in top-right */
+    .has-bottom-sheet .perf-overlay {
+        top: 8px;
+        right: 8px;
+        left: auto;
+        min-width: auto;
+        padding: 8px 12px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        /* Touch-friendly tap area */
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Tap hint indicator */
+    .has-bottom-sheet .perf-overlay::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 6px;
+        height: 6px;
+        background: var(--text-muted);
+        border-radius: 50%;
+        opacity: 0.5;
+        transition: opacity 0.2s ease;
+    }
+
+    .has-bottom-sheet .perf-overlay:not(.collapsed)::after {
+        opacity: 0;
+    }
+
+    .has-bottom-sheet .perf-overlay:active {
+        transform: scale(0.98);
+    }
+
+    /* HUD header - horizontal layout with FPS prominent */
+    .has-bottom-sheet .perf-overlay .perf-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0;
+    }
+
+    /* FPS as primary metric - video game style */
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 1rem;
+        font-weight: 700;
+        min-width: 70px;
+        text-align: center;
+        letter-spacing: -0.5px;
+    }
+
+    /* Hide default toggle arrow on mobile */
+    .has-bottom-sheet .perf-overlay .perf-toggle {
+        display: none;
+    }
+
+    /* Compact details row - inline layout */
+    .has-bottom-sheet .perf-overlay .perf-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Individual metric rows - horizontal compact style */
+    .has-bottom-sheet .perf-overlay .perf-row {
+        flex: none;
+        gap: 4px;
+        font-size: 0.75rem; /* 12px - WCAG minimum readable size */
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-label {
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        opacity: 0.7;
+    }
+
+    /* Uncapped toggle - PROMINENT button style for discoverability */
+    .has-bottom-sheet .perf-overlay .perf-toggle-row {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        flex-basis: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 6px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Uncapped label - more prominent */
+    .has-bottom-sheet .perf-overlay #perf-uncapped-label {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+    }
+
+    /* Larger toggle switch for touch - 44px tap zone */
+    .has-bottom-sheet .perf-overlay .perf-switch {
+        width: 44px;
+        height: 24px;
+        position: relative;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider {
+        border-radius: 24px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider::before {
+        height: 18px;
+        width: 18px;
+        bottom: 3px;
+        left: 3px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+        transform: translateX(20px);
+    }
+
+    /* Peak/Avg row - high-score style display */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-row:not(.hidden) {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        max-height: 2rem;
+        opacity: 1;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value {
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        gap: 4px;
+    }
+
+    /* Backend indicator - compact badge */
+    .has-bottom-sheet .perf-overlay .perf-backend {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        padding: 2px 6px;
+        border-radius: 8px;
+    }
+
+    /* Collapsed state - ultra-compact FPS badge only */
+    .has-bottom-sheet .perf-overlay.collapsed {
+        padding: 4px 10px;
+        border-radius: 16px;
+    }
+
+    .has-bottom-sheet .perf-overlay.collapsed .perf-fps {
+        min-width: auto;
+        font-size: 0.85rem;
+    }
+
+    /* -------------------------------------------------------------------------
+       High-Score Style Metrics Display
+       -------------------------------------------------------------------------
+
+       Inspired by video game leaderboards and achievement displays:
+       - Peak FPS highlighted as "personal best"
+       - Color-coded frame time (green < 16.7ms, yellow < 33ms, red > 33ms)
+       - Compact "score" badges for key metrics
+    */
+
+    /* Frame time color coding (video game style) */
+    .has-bottom-sheet .perf-overlay .perf-value[data-metric="frame"] {
+        font-weight: 600;
+    }
+
+    /* Peak FPS - "high score" gold badge styling */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value span:first-child {
+        color: #ffd700;
+        font-weight: 700;
+        text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+    }
+
+    /* Avg FPS - silver styling */
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value span:last-child {
+        color: #c0c0c0;
+    }
+
+    /* Expanded state - show all metrics with high-score layout */
+    .has-bottom-sheet .perf-overlay:not(.collapsed) .perf-header {
+        padding-bottom: 6px;
+        margin-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* FPS number glow effect when hitting high values */
+    .has-bottom-sheet .perf-overlay .perf-fps.good {
+        text-shadow: 0 0 8px rgba(63, 185, 80, 0.5);
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-fps.uncapped {
+        text-shadow: 0 0 8px rgba(255, 107, 53, 0.5);
+    }
+
+    /* Achievement-style backend badge */
+    .has-bottom-sheet .perf-overlay .perf-backend[data-gpu-accelerated="true"] {
+        background: linear-gradient(135deg, rgba(63, 185, 80, 0.3), rgba(63, 185, 80, 0.1));
+        border: 1px solid rgba(63, 185, 80, 0.3);
+    }
+
+    /* "New Record" animation for peak FPS updates */
+    @keyframes peak-flash {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); color: #ffd700; }
+        100% { transform: scale(1); }
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-peak-avg-value.new-record span:first-child {
+        animation: peak-flash 0.5s ease-out;
+    }
+
+    /* -------------------------------------------------------------------------
+       Auto-Hide Timeline Controls (YouTube/Netflix Pattern)
+       -------------------------------------------------------------------------
+       Controls fade out after 3-5 seconds of playback.
+       Tap canvas to show controls, auto-hide resumes.
+    */
+
+    .has-bottom-sheet .timeline-container {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .has-bottom-sheet.controls-hidden .timeline-container {
+        opacity: 0;
+        transform: translateY(100%);
+        pointer-events: none;
+    }
+
+    /* Canvas overlays also auto-hide during playback */
+    .has-bottom-sheet.controls-hidden .stats-overlay,
+    .has-bottom-sheet.controls-hidden .perf-overlay,
+    .has-bottom-sheet.controls-hidden .legend-panel,
+    .has-bottom-sheet.controls-hidden .authors-panel {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    /* -------------------------------------------------------------------------
+       I6: Minimal HUD - Context When Controls Hidden
+       -------------------------------------------------------------------------
+       Shows date and progress (commit count) when stats/timeline are hidden.
+       Provides essential context without cluttering the visualization.
+       Positioned at bottom-left to avoid stats panel area at top-left.
+    */
+
+    .minimal-hud {
+        position: absolute;
+        bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+        left: max(12px, env(safe-area-inset-left));
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        z-index: var(--z-canvas-overlays);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .minimal-hud-date {
+        color: var(--text-primary);
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+
+    .minimal-hud-progress {
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Show minimal HUD only when controls are hidden during playback */
+    .has-bottom-sheet.controls-hidden .minimal-hud {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Hide minimal HUD when controls are visible (avoid redundancy) */
+    .has-bottom-sheet:not(.controls-hidden) .minimal-hud {
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    /* -------------------------------------------------------------------------
+       Tap-to-Show Overlay (Video Player Pattern)
+       -------------------------------------------------------------------------
+       Large center play button appears on tap when paused.
+       Follows YouTube's "cleaner and more immersive" player pattern.
+    */
+
+    .mobile-center-play {
+        /* Override base display: none for mobile */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        width: 80px;
+        height: 80px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: none;
+        border-radius: 50%;
+        color: var(--text-on-accent);
+        cursor: pointer;
+        z-index: var(--z-canvas-overlays);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-center-play.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    .mobile-center-play:active {
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+
+    .mobile-center-play:focus-visible {
+        outline: 2px solid var(--text-on-accent);
+        outline-offset: 4px;
+    }
+
+    .mobile-center-play svg {
+        width: 40px;
+        height: 40px;
+    }
+}

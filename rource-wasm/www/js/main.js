@@ -6,35 +6,39 @@
  *
  * Thin orchestrator that initializes the WASM application and coordinates all modules.
  * All event handling is delegated to feature modules for maintainability.
+ *
+ * Module structure:
+ *   main.js              - WASM init, module wiring, GPU setup
+ *   main-lifecycle.js    - Cleanup handlers, retry logic, build info, controls
+ *   main-actions.js      - Bottom sheet and dashboard action wiring
+ *   main-data-handlers.js - Post-data-loaded workflow (legends, timeline, view branching)
  */
 
-import init, { Rource } from '../pkg/rource_wasm.js';
+import init from '../pkg/rource_wasm.js';
 
 // Core modules
-import { CONFIG, getExtensionColor } from './config.js';
+import { CONFIG } from './config.js';
 import { telemetry, validateSpeed } from './telemetry.js';
-import { escapeHtml } from './utils.js';
 import {
-    setState, get, subscribe, getRource, setRource, hasData, addManagedEventListener
+    setState, get, setRource, hasData, getRource
 } from './state.js';
 import { initDomElements, getElement, getAllElements } from './dom.js';
 import {
-    loadPreferences, updatePreference,
+    loadPreferences,
     applyPanelPreferences, setupPanelToggleHandlers
 } from './preferences.js';
-import { parseUrlParams, updateUrlState } from './url-state.js';
+import { parseUrlParams } from './url-state.js';
 import { safeWasmCall } from './wasm-api.js';
-import { ROURCE_STATS, getFullCachedData } from './cached-data.js';
+import { ROURCE_STATS } from './cached-data.js';
 
 // Application modules
-import { showToast, initToast } from './toast.js';
+import { initToast, showToast } from './toast.js';
 import {
-    initAnimation, startAnimation, stopAnimation,
-    updatePlaybackUI, setUIUpdateCallback, resetTimelineDateLabels,
-    setPlaybackStateCallback, getFrameScheduler
+    initAnimation, startAnimation,
+    updatePlaybackUI, setUIUpdateCallback,
+    setPlaybackStateCallback, animate
 } from './animation.js';
-import { loadLogData, loadRourceData, parseCommits, setOnDataLoadedCallback } from './data-loader.js';
-import { generateTimelineTicks } from './timeline-markers.js';
+import { loadLogData, loadRourceData, setOnDataLoadedCallback } from './data-loader.js';
 import { fetchGitHubWithProgress } from './github-fetch.js';
 
 // Feature modules
@@ -46,401 +50,29 @@ import { initWindowEvents } from './features/window-events.js';
 import { initScreenshot, setAnimateCallback, captureScreenshot } from './features/screenshot.js';
 import { initFullscreen, toggleFullscreen } from './features/fullscreen.js';
 import { initTheme, toggleTheme } from './features/theme.js';
-import { initHelp, maybeShowFirstTimeHelp, showHelp } from './features/help.js';
+import { initHelp, showHelp } from './features/help.js';
 import { initKeyboard } from './features/keyboard.js';
 import { initFullMapExport, setFullMapAnimateCallback } from './features/full-map-export.js';
-import { initFontSizeControl, enableFontSizeControls, updateFontSizeUI } from './features/font-size.js';
+import { initFontSizeControl } from './features/font-size.js';
 import { initHoverTooltip } from './features/hover-tooltip.js';
 import { BUILD_INFO } from './build-info.js';
-import {
-    initVideoRecording, enableRecordButton, setRecordingAnimateCallback,
-    isRecordingSupported
-} from './features/video-recording.js';
-import { animate } from './animation.js';
-import { initStatsBuffer, disposeStatsBuffer } from './core/stats-buffer.js';
-import {
-    initBottomSheet, openBottomSheet, closeBottomSheet,
-    updateBottomSheetFileTypes, updateBottomSheetAuthors, clearBottomSheetLegends
-} from './features/bottom-sheet.js';
+import { initVideoRecording, setRecordingAnimateCallback } from './features/video-recording.js';
+import { initStatsBuffer } from './core/stats-buffer.js';
+import { initBottomSheet } from './features/bottom-sheet.js';
 import { initMobileToolbar } from './features/mobile-toolbar.js';
-import { initMobileControls, onPlaybackStateChange, showControls } from './features/mobile-controls.js';
+import { initMobileControls, onPlaybackStateChange } from './features/mobile-controls.js';
 import {
-    initImmersiveMode, onImmersivePlaybackChange, updateHUDPlayButton, isInImmersiveMode,
-    updateImmersiveStats
+    initImmersiveMode, onImmersivePlaybackChange, updateHUDPlayButton
 } from './features/immersive-mode.js';
 import { initReducedMotion, setRourceInstance as setReducedMotionRource } from './features/reduced-motion.js';
-import { initInsights, invalidateInsightsCache, loadInsightsSummary, renderDashboard, showDashboardLoading } from './features/insights.js';
-import { initViewManager, switchToVisualization, switchToAnalytics, getCurrentView } from './features/view-manager.js';
+import { initInsights, showDashboardLoading } from './features/insights.js';
+import { initViewManager, getCurrentView } from './features/view-manager.js';
 import { initComponents } from './ui/components.js';
 
-// Parsed commits for tooltip display
-let parsedCommits = [];
-
-/**
- * Initializes bottom sheet button actions.
- * Connects bottom sheet UI to existing functionality.
- */
-function initBottomSheetActions() {
-    const bsVisualizeBtn = document.getElementById('bs-visualize-rource');
-    const bsFetchRepoBtn = document.getElementById('bs-fetch-repo');
-    const bsGithubUrl = document.getElementById('bs-github-url');
-    const bsFetchBtn = document.getElementById('bs-fetch-btn');
-    const bsFab = document.getElementById('bottom-sheet-fab');
-
-    // Enable visualize button when WASM is ready
-    // Using addManagedEventListener ensures cleanup on reinitialize
-    if (bsVisualizeBtn) {
-        bsVisualizeBtn.disabled = false;
-        addManagedEventListener(bsVisualizeBtn, 'click', () => {
-            loadRourceData();
-            closeBottomSheet();
-        });
-    }
-
-    // Fetch repo button opens bottom sheet to the input
-    if (bsFetchRepoBtn) {
-        addManagedEventListener(bsFetchRepoBtn, 'click', () => {
-            // Scroll to input and focus
-            if (bsGithubUrl) {
-                bsGithubUrl.focus();
-                bsGithubUrl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        });
-    }
-
-    // Enable fetch button when input has content
-    if (bsGithubUrl && bsFetchBtn) {
-        bsFetchBtn.disabled = false;
-        addManagedEventListener(bsGithubUrl, 'input', () => {
-            bsFetchBtn.disabled = !bsGithubUrl.value.trim();
-        });
-
-        // Handle fetch action
-        addManagedEventListener(bsFetchBtn, 'click', async () => {
-            const input = bsGithubUrl.value.trim();
-            if (!input) return;
-
-            // Parse repo from input (could be full URL or owner/repo)
-            let repo = input;
-            const urlMatch = input.match(/github\.com\/([^\/]+\/[^\/]+)/);
-            if (urlMatch) {
-                repo = urlMatch[1];
-            }
-
-            // Disable button while fetching
-            bsFetchBtn.disabled = true;
-            bsGithubUrl.disabled = true;
-
-            try {
-                const logData = await fetchGitHubWithProgress(repo, {
-                    statusEl: null, // No status element in bottom sheet
-                });
-
-                if (logData) {
-                    loadLogData(logData, 'custom');
-                    closeBottomSheet();
-                    showToast(`Loaded ${repo}`, 'success');
-                } else {
-                    showToast('Failed to fetch repository', 'error');
-                }
-            } catch (error) {
-                showToast('Error fetching repository: ' + error.message, 'error');
-            } finally {
-                bsFetchBtn.disabled = false;
-                bsGithubUrl.disabled = false;
-            }
-        });
-
-        // Handle enter key
-        addManagedEventListener(bsGithubUrl, 'keydown', (e) => {
-            if (e.key === 'Enter' && !bsFetchBtn.disabled) {
-                bsFetchBtn.click();
-            }
-        });
-    }
-
-    // FAB opens bottom sheet (or shows controls if hidden)
-    if (bsFab) {
-        addManagedEventListener(bsFab, 'click', () => {
-            // If controls are hidden, show them first instead of opening sheet
-            const controlsHidden = document.body.classList.contains('controls-hidden');
-            if (controlsHidden) {
-                showControls();
-            } else {
-                openBottomSheet('HALF');
-            }
-        });
-    }
-
-    // Update bottom sheet tech specs when available
-    updateBottomSheetTechSpecs();
-}
-
-/**
- * Initializes analytics dashboard actions.
- * Wires the "Visualize" button, GitHub URL input, and fetch button.
- */
-function initAnalyticsDashboardActions() {
-    const vizBtn = document.getElementById('btn-switch-to-viz');
-    const analyticsGithubUrl = document.getElementById('analytics-github-url');
-    const analyticsFetchBtn = document.getElementById('analytics-fetch-btn');
-
-    // "Visualize" button: switch to viz view and auto-play
-    if (vizBtn) {
-        addManagedEventListener(vizBtn, 'click', () => {
-            switchToVisualization();
-            const rource = getRource();
-            if (rource && get('hasLoadedData')) {
-                safeWasmCall('play', () => rource.play(), undefined);
-                updatePlaybackUI();
-            }
-        });
-    }
-
-    // Dashboard GitHub URL fetch
-    if (analyticsGithubUrl && analyticsFetchBtn) {
-        analyticsFetchBtn.disabled = true;
-
-        addManagedEventListener(analyticsGithubUrl, 'input', () => {
-            analyticsFetchBtn.disabled = !analyticsGithubUrl.value.trim();
-        });
-
-        addManagedEventListener(analyticsFetchBtn, 'click', async () => {
-            const input = analyticsGithubUrl.value.trim();
-            if (!input) return;
-
-            // Parse repo from input
-            let repo = input;
-            const urlMatch = input.match(/github\.com\/([^\/]+\/[^\/]+)/);
-            if (urlMatch) {
-                repo = urlMatch[1];
-            }
-
-            analyticsFetchBtn.disabled = true;
-            analyticsGithubUrl.disabled = true;
-
-            try {
-                const logData = await fetchGitHubWithProgress(repo, {
-                    statusEl: document.getElementById('analytics-fetch-status-text'),
-                    progressEl: document.getElementById('analytics-fetch-progress-bar'),
-                });
-
-                if (logData) {
-                    loadLogData(logData, 'custom');
-                    showToast(`Loaded ${repo}`, 'success');
-                } else {
-                    showToast('Failed to fetch repository', 'error');
-                }
-            } catch (error) {
-                showToast('Error fetching repository: ' + error.message, 'error');
-            } finally {
-                analyticsFetchBtn.disabled = false;
-                analyticsGithubUrl.disabled = false;
-            }
-        });
-
-        addManagedEventListener(analyticsGithubUrl, 'keydown', (e) => {
-            if (e.key === 'Enter' && !analyticsFetchBtn.disabled) {
-                analyticsFetchBtn.click();
-            }
-        });
-    }
-
-    // Update repo name in dashboard header when data loads
-    subscribe('hasLoadedData', (loaded) => {
-        if (loaded) {
-            const repoName = document.getElementById('analytics-repo-name');
-            if (repoName && get('commitStats')) {
-                const stats = get('commitStats');
-                repoName.textContent = `${stats.commits || 0} commits across ${stats.files || 0} files`;
-            }
-        }
-    });
-}
-
-/**
- * Updates bottom sheet technical specifications.
- */
-function updateBottomSheetTechSpecs() {
-    const rource = getRource();
-    if (!rource) return;
-
-    const bsRenderer = document.getElementById('bs-tech-renderer');
-    if (bsRenderer) {
-        const rendererType = rource.getRendererType();
-        const displayNames = {
-            'wgpu': 'WebGPU',
-            'webgl2': 'WebGL2',
-            'software': 'CPU'
-        };
-        bsRenderer.textContent = displayNames[rendererType] || rendererType;
-    }
-}
-
-/**
- * Cleanup handler for page unload.
- * Releases GPU resources and stops animation to prevent contention on rapid refresh.
- *
- * IMPORTANT: On Firefox, rapid page refreshes can cause GPU resource contention
- * and WASM panics if resources aren't properly released. This handler ensures:
- * 1. Animation loop is stopped (prevents new frames during cleanup)
- * 2. Frame scheduler is destroyed (releases MessageChannel ports)
- * 3. WASM resources are disposed (releases GPU buffers and textures)
- */
-function setupCleanupHandler() {
-    // Handle page unload - release GPU resources
-    window.addEventListener('beforeunload', () => {
-        // CRITICAL: Stop animation FIRST to prevent new frames during cleanup
-        // This also cancels any pending scheduler callbacks
-        try {
-            stopAnimation();
-        } catch (e) {
-            // Ignore errors during cleanup
-        }
-
-        // Destroy frame scheduler to release MessageChannel ports
-        // This prevents memory leaks from orphaned ports
-        try {
-            const scheduler = getFrameScheduler();
-            scheduler.destroy();
-        } catch (e) {
-            // Ignore errors during cleanup
-        }
-
-        // Release stats buffer references before WASM disposal
-        disposeStatsBuffer();
-
-        // Finally, dispose WASM resources (GPU buffers, textures, etc.)
-        const rource = getRource();
-        if (rource) {
-            try {
-                rource.dispose();
-                console.log('Rource: Resources cleared, awaiting garbage collection');
-            } catch (e) {
-                // Ignore errors during cleanup
-            }
-            setRource(null);
-        }
-    });
-
-    // Handle pagehide - more reliable than beforeunload on mobile browsers
-    // This fires when navigating away, closing tab, or switching apps
-    window.addEventListener('pagehide', (event) => {
-        // If page is being persisted in bfcache, don't dispose (will be restored)
-        if (event.persisted) {
-            console.log('Rource: Page cached for back-forward navigation');
-            return;
-        }
-
-        // Page is being discarded, clean up resources
-        try {
-            stopAnimation();
-        } catch (e) {
-            // Ignore errors during cleanup
-        }
-
-        try {
-            const scheduler = getFrameScheduler();
-            scheduler.destroy();
-        } catch (e) {
-            // Ignore errors during cleanup
-        }
-
-        disposeStatsBuffer();
-
-        const rource = getRource();
-        if (rource) {
-            try {
-                rource.dispose();
-            } catch (e) {
-                // Ignore errors during cleanup
-            }
-            setRource(null);
-        }
-    });
-
-    // Handle visibility change - pause animation when hidden to save resources
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') {
-            // Page is being hidden, might be navigating away
-            // Don't dispose yet, just log
-            console.log('Rource: Page hidden');
-        }
-    });
-}
-
-/**
- * Creates Rource instance with retry logic.
- * Handles GPU resource contention from rapid page refreshes.
- *
- * @param {HTMLCanvasElement} canvas - The canvas element
- * @param {number} maxRetries - Maximum retry attempts (default: 3)
- * @param {number} baseDelay - Base delay in ms (default: 100)
- * @returns {Promise<Object>} Rource instance
- */
-async function createRourceWithRetry(canvas, maxRetries = 3, baseDelay = 100) {
-    let lastError = null;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-            // Small delay before first attempt if not the first try
-            if (attempt > 0) {
-                const delay = baseDelay * Math.pow(2, attempt - 1); // 100ms, 200ms, 400ms
-                console.log(`Rource: Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-
-            const rource = await Rource.create(canvas);
-            if (attempt > 0) {
-                console.log(`Rource: Successfully initialized on attempt ${attempt + 1}`);
-            }
-            return rource;
-        } catch (error) {
-            lastError = error;
-            console.warn(`Rource: Initialization attempt ${attempt + 1} failed:`, error.message || error);
-
-            // If we've exhausted retries, throw the last error
-            if (attempt === maxRetries) {
-                throw lastError;
-            }
-        }
-    }
-
-    // Should not reach here, but just in case
-    throw lastError || new Error('Failed to create Rource instance');
-}
-
-/**
- * Update DOM elements with build info (WASM size, test count, etc.)
- * This ensures displayed values match the actual built artifacts.
- */
-function updateBuildInfo() {
-    const sizeText = `~${BUILD_INFO.wasmGzipKB}KB`;
-
-    // Update feature list
-    const featureSize = document.getElementById('feature-wasm-size');
-    if (featureSize) {
-        featureSize.textContent = sizeText;
-    }
-
-    // Update technical specifications
-    const techSize = document.getElementById('tech-wasm-size');
-    if (techSize) {
-        techSize.textContent = sizeText;
-    }
-
-    // Update test count
-    const techTests = document.getElementById('tech-tests');
-    if (techTests) {
-        techTests.textContent = BUILD_INFO.testCount.toLocaleString();
-    }
-
-    // Update crate count
-    const techCrates = document.getElementById('tech-crates');
-    if (techCrates) {
-        techCrates.textContent = BUILD_INFO.crateCount;
-    }
-}
+// Extracted modules
+import { setupCleanupHandler, createRourceWithRetry, updateBuildInfo, enableControls, getBackendInfo } from './main-lifecycle.js';
+import { initBottomSheetActions, initAnalyticsDashboardActions } from './main-actions.js';
+import { handleDataLoaded } from './main-data-handlers.js';
 
 /**
  * Main initialization function.
@@ -473,10 +105,9 @@ async function main() {
         }
 
         // Use async factory method with retry logic
-        // Retries handle GPU resource contention from rapid page refreshes
         const rource = await createRourceWithRetry(canvas);
         setRource(rource);
-        setReducedMotionRource(rource); // Connect rource to reduced motion support
+        setReducedMotionRource(rource);
 
         // Phase 84: Initialize zero-copy stats buffer for direct WASM memory reads
         try {
@@ -488,11 +119,10 @@ async function main() {
             console.warn('Rource: Stats buffer init failed, using JSON fallback:', e);
         }
 
-        // Check renderer type - deterministic from WASM, never guessed
+        // Check renderer type
         const isGPU = rource.isGPUAccelerated();
         const rendererType = rource.getRendererType();
 
-        // Deterministic backend display text mapping
         const BACKEND_DISPLAY_NAMES = {
             'wgpu': 'WebGPU',
             'webgl2': 'WebGL2',
@@ -500,7 +130,6 @@ async function main() {
         };
         const displayName = BACKEND_DISPLAY_NAMES[rendererType] || rendererType;
 
-        // Detailed console logging for observability and traceability
         console.group('Rource Backend Detection');
         console.log('Backend type (from WASM):', rendererType);
         console.log('Display name:', displayName);
@@ -509,14 +138,12 @@ async function main() {
         console.log('isWebGL2():', rource.isWebGL2());
         console.groupEnd();
 
-        // Update tech panel renderer badge with data attributes
         if (elements.techRenderer) {
             elements.techRenderer.textContent = displayName;
             elements.techRenderer.setAttribute('data-backend', rendererType);
             elements.techRenderer.setAttribute('data-gpu-accelerated', String(isGPU));
         }
 
-        // Update performance overlay backend indicator
         if (elements.perfBackend) {
             elements.perfBackend.textContent = displayName;
             elements.perfBackend.setAttribute('data-backend', rendererType);
@@ -527,42 +154,27 @@ async function main() {
         if (rource.isWgpu()) {
             console.group('WebGPU Optimizations');
 
-            // Detect Firefox - WebGPU compute shaders have significant overhead in Firefox
-            // due to different GPU command submission, buffer synchronization, and
-            // shader compilation behavior compared to Chrome/Edge
             const isFirefox = navigator.userAgent.includes('Firefox');
 
             if (!isFirefox) {
-                // Warmup GPU compute pipelines to avoid first-frame stutter
                 rource.warmupGPUPhysics();
                 console.log('GPU physics pipeline warmed up');
 
-                // Enable GPU physics for large repositories (500+ directories)
                 rource.setUseGPUPhysics(true);
                 rource.setGPUPhysicsThreshold(500);
                 console.log('GPU physics enabled (threshold: 500 directories)');
             } else {
-                // Firefox WebGPU has ~5-10x overhead for compute shaders due to:
-                // - Blocking device.poll() behaves differently
-                // - Multiple sequential compute passes have higher latency
-                // - Buffer synchronization is slower
-                // Keep GPU physics disabled (use CPU physics instead)
                 console.log('Firefox detected: using CPU physics (GPU compute has overhead)');
             }
 
-            // Initialize procedural file icons
             if (rource.initFileIcons()) {
                 console.log(`File icons initialized (${rource.getFileIconCount()} types)`);
             }
-
-            // GPU culling is for extreme-scale (10k+ entities), leave at default threshold
-            // Users can enable via console: rource.setUseGPUCulling(true)
 
             console.groupEnd();
         }
 
         // Enable Rource brand watermark for the demo
-        // This shows "Rource" and "© Tom F" in the bottom-right corner
         rource.enableRourceWatermark();
         console.log('Rource watermark enabled');
 
@@ -572,7 +184,7 @@ async function main() {
 
         // Initialize feature modules (order matters for some)
         initTheme();
-        initReducedMotion(); // Accessibility: respect prefers-reduced-motion
+        initReducedMotion();
         initPlayback();
         initCanvasInput();
         initHoverTooltip();
@@ -590,22 +202,19 @@ async function main() {
         initInsights();
         initViewManager();
 
-        // Parse URL parameters (needed for initial view and data loading)
+        // Parse URL parameters
         const urlParams = parseUrlParams();
 
         // Set initial view from URL params
         const initialView = urlParams.view === 'viz' ? 'viz' : 'analytics';
         setState({ currentView: initialView });
 
-        // Show loading state in dashboard while data loads
         if (initialView === 'analytics') {
             showDashboardLoading();
         }
 
-        // Wire up bottom sheet actions
+        // Wire up UI actions
         initBottomSheetActions();
-
-        // Wire up analytics dashboard actions
         initAnalyticsDashboardActions();
 
         // Initialize mobile toolbar
@@ -614,12 +223,10 @@ async function main() {
             toggleTheme,
             toggleFullscreen,
             showHelp,
-            toggleLabels: () => {
-                // This is handled inside mobile-toolbar.js using rource.setLabelsEnabled
-            }
+            toggleLabels: () => {}
         });
 
-        // Initialize mobile controls (auto-hide, center play button, uncapped toggle)
+        // Initialize mobile controls
         initMobileControls({
             isPlaying: () => safeWasmCall('isPlaying', () => rource.isPlaying(), false),
             togglePlay: () => {
@@ -628,7 +235,7 @@ async function main() {
             }
         });
 
-        // Initialize immersive mode (landscape fullscreen with HUD overlay)
+        // Initialize immersive mode
         initImmersiveMode({
             isPlaying: () => safeWasmCall('isPlaying', () => rource.isPlaying(), false),
             togglePlay: () => {
@@ -637,14 +244,14 @@ async function main() {
             }
         });
 
-        // Connect playback state changes to mobile controls and immersive mode
+        // Connect playback state changes
         setPlaybackStateCallback((playing) => {
             onPlaybackStateChange(playing);
             onImmersivePlaybackChange(playing);
             updateHUDPlayButton(playing);
         });
 
-        // Set up animation callbacks for features that need them
+        // Set up animation callbacks
         setAnimateCallback(animate);
         setFullMapAnimateCallback(animate);
         setRecordingAnimateCallback(animate);
@@ -682,8 +289,10 @@ async function main() {
         if (elements.showcaseFiles) elements.showcaseFiles.textContent = ROURCE_STATS.files.toLocaleString();
         if (elements.showcaseAuthors) elements.showcaseAuthors.textContent = ROURCE_STATS.authors.toLocaleString();
 
-        // Start animation loop
-        startAnimation();
+        // Start animation loop only if visualization is the active view
+        if (getCurrentView() === 'viz') {
+            startAnimation();
+        }
 
         // Hide loading overlay
         if (elements.loadingEl) elements.loadingEl.classList.add('hidden');
@@ -698,7 +307,6 @@ async function main() {
         // Load data based on URL params or default
         setTimeout(async () => {
             if (urlParams.repo) {
-                // Load from URL param - fetch from GitHub
                 console.log('Rource: Loading from URL repo param:', urlParams.repo);
                 if (elements.githubUrlInput) {
                     elements.githubUrlInput.value = urlParams.repo;
@@ -715,11 +323,9 @@ async function main() {
                 if (logData) {
                     loadLogData(logData, 'custom');
                 } else if (!hasData()) {
-                    // Fall back to default if GitHub fetch failed
                     loadRourceData();
                 }
             } else if (!hasData()) {
-                // Auto-load Rource data if no URL param
                 loadRourceData();
             }
         }, CONFIG.INIT_DELAY_MS);
@@ -730,339 +336,6 @@ async function main() {
         console.error('Rource: Initialization failed', error);
         showToast('Failed to initialize visualization: ' + error.message, 'error');
     }
-}
-
-/**
- * Handles data loaded event.
- * @param {string} content - Loaded log content
- * @param {Object} stats - Data statistics
- * @param {string} [format='custom'] - Log format: 'custom' or 'git'
- */
-function handleDataLoaded(content, stats, format = 'custom') {
-    const elements = getAllElements();
-
-    // Reset timeline date labels so they get recalculated
-    resetTimelineDateLabels();
-
-    // Invalidate insights cache so it reloads with new data
-    invalidateInsightsCache();
-
-    // Auto-load insights summary for bottom sheet display
-    // This is lightweight (single WASM call) and populates the bottom sheet
-    // summary section without requiring the user to open the sidebar panel.
-    loadInsightsSummary();
-
-    // Parse commits for tooltip
-    parsedCommits = parseCommits(content);
-
-    // Update showcase stats with actual loaded data
-    if (elements.showcaseCommits) elements.showcaseCommits.textContent = stats.commits.toLocaleString();
-    if (elements.showcaseFiles) elements.showcaseFiles.textContent = stats.files.toLocaleString();
-    if (elements.showcaseAuthors) elements.showcaseAuthors.textContent = stats.authors.size.toLocaleString();
-
-    // Update legend with file counts (pass format for correct parsing)
-    updateLegend(content, format);
-
-    // Update authors legend with commit counts (uses WASM API, no content needed)
-    updateAuthorsLegend();
-
-    // Enable font size controls now that data is loaded
-    enableFontSizeControls();
-    updateFontSizeUI();
-
-    // Update immersive mode stats
-    updateImmersiveStats();
-
-    // Update timeline markers
-    updateTimelineMarkers(content);
-
-    // Show authors panel
-    if (elements.authorsPanel) {
-        elements.authorsPanel.classList.remove('hidden');
-        elements.authorsPanel.classList.remove('collapsed');
-        if (elements.authorsToggle) {
-            elements.authorsToggle.setAttribute('aria-expanded', 'true');
-        }
-    }
-
-    // Show legend panel
-    if (elements.legendPanel) {
-        elements.legendPanel.classList.remove('collapsed');
-        if (elements.legendToggle) {
-            elements.legendToggle.setAttribute('aria-expanded', 'true');
-        }
-    }
-
-    // Branch on view state
-    if (getCurrentView() === 'analytics') {
-        // Analytics view: render the dashboard, do NOT auto-play
-        renderDashboard();
-    } else {
-        // Viz view: auto-play the visualization
-        const rource = getRource();
-        if (rource) {
-            safeWasmCall('play', () => rource.play(), undefined);
-            updatePlaybackUI();
-        }
-        // Show first-time help only in viz view
-        maybeShowFirstTimeHelp();
-    }
-}
-
-/**
- * Enables controls after initialization.
- * @param {Object} elements - DOM elements
- */
-function enableControls(elements) {
-    if (elements.btnPlayMain) {
-        elements.btnPlayMain.disabled = false;
-        elements.btnPlayMain.title = 'Play/Pause (Space)';
-    }
-    if (elements.btnResetBar) {
-        elements.btnResetBar.disabled = false;
-        elements.btnResetBar.title = 'Restart from beginning';
-    }
-    if (elements.btnLabels) {
-        elements.btnLabels.disabled = false;
-        elements.btnLabels.title = 'Toggle labels (L)';
-    }
-    if (elements.btnScreenshot) {
-        elements.btnScreenshot.disabled = false;
-        elements.btnScreenshot.title = 'Save screenshot (S)';
-    }
-    if (elements.btnFullMap) {
-        elements.btnFullMap.disabled = false;
-        elements.btnFullMap.title = 'Export full map at high resolution (M)';
-    }
-    if (elements.btnRecord && isRecordingSupported()) {
-        elements.btnRecord.disabled = false;
-        elements.btnRecord.title = 'Record visualization as video';
-    }
-    // Font size controls are enabled separately when data is loaded
-    if (elements.btnLoad) elements.btnLoad.disabled = false;
-    if (elements.btnFetchGithub) elements.btnFetchGithub.disabled = false;
-    if (elements.btnVisualizeRource) elements.btnVisualizeRource.disabled = false;
-}
-
-/**
- * Updates the file types legend with file counts.
- * @param {string} content - Log content
- * @param {string} [format='custom'] - Log format: 'custom' or 'git'
- */
-function updateLegend(content, format = 'custom') {
-    const legendItems = getElement('legendItems');
-    if (!legendItems) return;
-
-    // Count files per extension
-    const extensionCounts = new Map();
-    const lines = content.split('\n');
-    const processedFiles = new Set();
-
-    for (const line of lines) {
-        let file = null;
-
-        if (format === 'git') {
-            // Git format: status lines like "A\tfile.txt" or "M  file.txt"
-            const trimmed = line.trim();
-            const statusMatch = trimmed.match(/^([AMDRCTU])\d*[\t\s]+(.+)$/i);
-            if (statusMatch) {
-                file = statusMatch[2].trim();
-                // For rename/copy format "old -> new", take the new path
-                const arrowIdx = file.indexOf(' -> ');
-                if (arrowIdx > 0) {
-                    file = file.slice(arrowIdx + 4).trim();
-                }
-                // For tab-separated rename format "old\tnew", take the new path
-                const tabIdx = file.indexOf('\t');
-                if (tabIdx > 0) {
-                    file = file.slice(tabIdx + 1).trim();
-                }
-            }
-        } else {
-            // Custom format: timestamp|author|action|filepath
-            const parts = line.split('|');
-            if (parts.length >= 4) {
-                file = parts[3].trim();
-            }
-        }
-
-        if (file && !processedFiles.has(file)) {
-            processedFiles.add(file);
-            const ext = file.includes('.') ? file.split('.').pop()?.toLowerCase() : '';
-            if (ext) {
-                extensionCounts.set(ext, (extensionCounts.get(ext) || 0) + 1);
-            }
-        }
-    }
-
-    // Sort by count descending
-    const sortedExts = Array.from(extensionCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 20);
-
-    // Build legend HTML
-    let html = '';
-    for (const [ext, count] of sortedExts) {
-        const color = getExtensionColor(ext);
-        html += `<div class="legend-item" role="listitem">
-            <span class="legend-color" style="background-color: ${escapeHtml(color)}"></span>
-            <span class="legend-label">.${escapeHtml(ext)}</span>
-            <span class="legend-count">${count}</span>
-        </div>`;
-    }
-
-    // Add separator and structure item
-    html += `<div class="legend-divider" role="separator" aria-hidden="true"></div>
-        <div class="legend-item legend-item-structure" role="listitem" title="Directories are shown as gray circles with center dots. Lines connect parent folders to child folders.">
-            <svg class="legend-structure-icon" viewBox="0 0 20 20" aria-hidden="true">
-                <circle cx="10" cy="10" r="7" fill="none" stroke="#6e7681" stroke-width="1.5" opacity="0.7"/>
-                <circle cx="10" cy="10" r="2" fill="#6e7681" opacity="0.6"/>
-            </svg>
-            <span class="legend-ext">Directories</span>
-        </div>`;
-
-    legendItems.innerHTML = html;
-    legendItems.setAttribute('role', 'list');
-
-    // Also update bottom sheet legends for mobile
-    const bsFileTypes = sortedExts.map(([ext, count]) => ({
-        extension: ext,
-        color: getExtensionColor(ext),
-        count: count
-    }));
-    updateBottomSheetFileTypes(bsFileTypes);
-}
-
-/**
- * Updates the authors legend with commit counts.
- * Uses the WASM getAuthors() API which works for all log formats (git, custom, etc.)
- */
-function updateAuthorsLegend() {
-    const authorsItems = getElement('authorsItems');
-    const rource = getRource();
-    if (!authorsItems || !rource) {
-        console.warn('[Rource] updateAuthorsLegend: Missing authorsItems or rource');
-        return;
-    }
-
-    try {
-        // Use WASM API to get authors - works for all log formats
-        const authorsJson = safeWasmCall('getAuthors', () => rource.getAuthors(), '[]');
-
-        // Debug log to help diagnose issues
-        if (CONFIG.LOG_WASM_ERRORS) {
-            console.log('[Rource] getAuthors returned:', authorsJson.substring(0, 200) + (authorsJson.length > 200 ? '...' : ''));
-        }
-
-        const authors = JSON.parse(authorsJson);
-
-        if (!Array.isArray(authors)) {
-            console.error('[Rource] getAuthors did not return an array:', typeof authors);
-            return;
-        }
-
-        // Debug log author count
-        if (CONFIG.LOG_WASM_ERRORS) {
-            console.log(`[Rource] Parsed ${authors.length} authors from WASM`);
-        }
-
-        // Take top 30 authors (already sorted by commit count from WASM)
-        const topAuthors = authors.slice(0, 30);
-
-        let html = '';
-
-        for (const author of topAuthors) {
-            if (!author || !author.name) {
-                console.warn('[Rource] Skipping invalid author entry:', author);
-                continue;
-            }
-            html += `<div class="author-item" role="listitem" data-author="${escapeHtml(author.name)}">
-                <span class="author-color" style="background-color: ${escapeHtml(author.color || '#888888')}"></span>
-                <span class="author-name">${escapeHtml(author.name)}</span>
-                <span class="author-commits">${author.commits || 0}</span>
-            </div>`;
-        }
-
-        authorsItems.innerHTML = html;
-        if (html) {
-            authorsItems.setAttribute('role', 'list');
-        }
-
-        // Also update bottom sheet legends for mobile
-        const bsAuthors = topAuthors.map(author => ({
-            name: author.name || 'Unknown',
-            color: author.color || '#888888',
-            commits: author.commits || 0
-        }));
-        updateBottomSheetAuthors(bsAuthors);
-    } catch (error) {
-        // Log the error for debugging
-        console.error('[Rource] updateAuthorsLegend error:', error);
-    }
-}
-
-/**
- * Updates timeline markers for significant commits.
- * Generates date tick marks showing time period boundaries (days/weeks/months/years).
- * @param {string} content - Log content (unused, timestamps come from WASM)
- */
-function updateTimelineMarkers(content) {
-    // Generate date tick marks based on commit timestamps
-    generateTimelineTicks();
-}
-
-/**
- * Global debug function for verifying backend detection.
- * Can be called from browser console: window.rourceDebug.getBackendInfo()
- *
- * @returns {Object} Backend information for testing/verification
- */
-function getBackendInfo() {
-    const rource = getRource();
-    if (!rource) {
-        return { error: 'Rource not initialized' };
-    }
-
-    const info = {
-        // Direct WASM queries (deterministic source of truth)
-        backend: rource.getRendererType(),
-        isGpuAccelerated: rource.isGPUAccelerated(),
-        isWgpu: rource.isWgpu(),
-        isWebGL2: rource.isWebGL2(),
-
-        // DOM state verification
-        domState: {
-            techRenderer: {
-                text: getElement('techRenderer')?.textContent,
-                dataBackend: getElement('techRenderer')?.getAttribute('data-backend'),
-                dataGpuAccelerated: getElement('techRenderer')?.getAttribute('data-gpu-accelerated'),
-            },
-            perfBackend: {
-                text: getElement('perfBackend')?.textContent,
-                dataBackend: getElement('perfBackend')?.getAttribute('data-backend'),
-                dataGpuAccelerated: getElement('perfBackend')?.getAttribute('data-gpu-accelerated'),
-            },
-        },
-
-        // Consistency check
-        isConsistent: false,
-    };
-
-    // Verify consistency between WASM and DOM
-    const wasmBackend = info.backend;
-    const domBackend = info.domState.techRenderer.dataBackend;
-    const perfBackend = info.domState.perfBackend.dataBackend;
-    info.isConsistent = wasmBackend === domBackend && domBackend === perfBackend;
-
-    if (!info.isConsistent) {
-        console.warn('[Rource] Backend state inconsistency detected:', {
-            wasm: wasmBackend,
-            techRenderer: domBackend,
-            perfBackend: perfBackend,
-        });
-    }
-
-    return info;
 }
 
 // Expose debug function globally for console testing

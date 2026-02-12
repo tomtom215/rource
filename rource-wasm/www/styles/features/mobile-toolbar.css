@@ -1,0 +1,256 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Mobile Toolbar Styles
+ *
+ * Floating quick-action toolbar positioned in the thumb zone.
+ * Includes toolbar buttons with labels, uncapped FPS toggle,
+ * and auto-hide behavior during playback.
+ *
+ * THUMB ZONE DESIGN:
+ * - Positioned at BOTTOM of screen for easy one-handed reach
+ * - Industry standard: bottom third is "easy to reach" zone
+ * - Touch targets: minimum 44px (Apple HIG) / ideally 48-60px for games
+ *
+ * References:
+ * - NN/g: https://www.nngroup.com/articles/touch-target-size/
+ * - Material Design 3: 48dp minimum touch target
+ * - Apple HIG: 44pt minimum
+ */
+
+.mobile-toolbar {
+    display: none; /* Hidden on desktop */
+}
+
+@media (max-width: 768px) {
+    .has-bottom-sheet .mobile-toolbar {
+        display: flex;
+        position: absolute;
+        /* CENTER the toolbar at the bottom for balanced layout */
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: var(--z-canvas-overlays);
+        background: rgba(22, 27, 34, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 24px;
+        padding: 6px 12px;
+        gap: 4px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        /* Auto-hide support */
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        /* Center buttons within toolbar */
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Auto-hide when playing - more visible and animated like FAB */
+    .has-bottom-sheet.controls-hidden .mobile-toolbar {
+        opacity: 0.3;
+        /* Maintain center position while animating down */
+        transform: translateX(-50%) translateY(8px);
+        /* Keep pointer-events: auto so user can tap to show controls */
+        pointer-events: auto;
+        /* Match FAB pulse animation for consistency */
+        animation: toolbar-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes toolbar-pulse {
+        0%, 100% { opacity: 0.25; }
+        50% { opacity: 0.4; }
+    }
+
+    .has-bottom-sheet.controls-hidden .mobile-toolbar:active {
+        opacity: 0.6;
+        animation: none;
+        transform: translateX(-50%) translateY(8px);
+    }
+
+    /* Also hide stats overlay when controls are hidden for cleaner view */
+    .has-bottom-sheet.controls-hidden .stats-overlay {
+        opacity: 0.2;
+        transition: opacity 0.3s ease;
+    }
+
+    /* -------------------------------------------------------------------------
+       Toolbar Buttons
+       ------------------------------------------------------------------------- */
+
+    .mobile-toolbar-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* FIXED: Increase to 44px minimum touch target */
+        width: 44px;
+        height: 44px;
+        background: transparent;
+        border: none;
+        border-radius: 12px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: background 0.15s ease, transform 0.15s ease, color 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+        /* Ensure buttons are clickable */
+        pointer-events: auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .mobile-toolbar-btn:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .mobile-toolbar-btn:active {
+        background: var(--bg-tertiary);
+        transform: scale(0.92);
+    }
+
+    /* Labels toggle active state - clearer visual distinction */
+    .mobile-toolbar-btn.active {
+        color: var(--accent);
+        background: rgba(233, 69, 96, 0.18);
+        /* Add subtle border for better visibility */
+        box-shadow: inset 0 0 0 1.5px rgba(233, 69, 96, 0.3);
+    }
+
+    .mobile-toolbar-btn.active:active {
+        background: rgba(233, 69, 96, 0.25);
+        transform: scale(0.92);
+    }
+
+    .mobile-toolbar-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .mobile-toolbar-btn svg {
+        width: 20px;
+        height: 20px;
+        /* Ensure SVG doesn't capture pointer events */
+        pointer-events: none;
+    }
+
+    /* -------------------------------------------------------------------------
+       Toolbar Button Labels (A1: No mystery meat navigation)
+       -------------------------------------------------------------------------
+       Shows text labels below icons for accessibility and discoverability.
+       Labels are always visible to comply with WCAG and avoid "mystery meat"
+       navigation where users must guess what icons mean.
+    */
+    .mobile-toolbar-btn {
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 8px;
+        /* FIXED: Use auto width with min-width to prevent text truncation */
+        min-width: 48px;
+        width: auto;
+    }
+
+    .mobile-toolbar-btn .btn-label {
+        display: block;
+        font-size: 0.75rem; /* 12px - WCAG minimum readable size */
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+        opacity: 0.9;
+        line-height: 1;
+        /* Ensure text doesn't overflow */
+        overflow: visible;
+    }
+
+    .mobile-toolbar-btn.active .btn-label {
+        opacity: 1;
+    }
+
+    /* Theme button icon visibility */
+    .mobile-toolbar-btn .sun-icon {
+        display: none;
+    }
+
+    .mobile-toolbar-btn .moon-icon {
+        display: block;
+    }
+
+    .light-theme .mobile-toolbar-btn .sun-icon {
+        display: block;
+    }
+
+    .light-theme .mobile-toolbar-btn .moon-icon {
+        display: none;
+    }
+
+    .mobile-toolbar-divider {
+        width: 1px;
+        height: 28px;
+        background: var(--border);
+        margin: 0 4px;
+        align-self: center;
+    }
+
+    /* -------------------------------------------------------------------------
+       Quick-Access Uncapped FPS Toggle (Mobile Toolbar)
+       -------------------------------------------------------------------------
+
+       Prominently placed in mobile toolbar for easy discoverability.
+       Uses flame icon and orange accent when active (like "turbo" mode).
+       Follows video game "boost" UI patterns.
+    */
+
+    .mobile-toolbar-btn.uncapped-toggle {
+        position: relative;
+    }
+
+    /* Active state - orange glow like "turbo/boost" in games */
+    .mobile-toolbar-btn.uncapped-toggle.active {
+        color: var(--accent-orange);
+        /* Fallback for browsers without color-mix() */
+        background: rgba(255, 107, 53, 0.2);
+    }
+
+    .mobile-toolbar-btn.uncapped-toggle.active::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 14px;
+        /* Fallback for browsers without color-mix() */
+        background: rgba(255, 107, 53, 0.15);
+        animation: uncapped-pulse 2s ease-in-out infinite;
+        z-index: -1;
+    }
+
+    @supports (background: color-mix(in srgb, red 50%, blue)) {
+        .mobile-toolbar-btn.uncapped-toggle.active {
+            background: color-mix(in srgb, var(--accent-orange) 20%, transparent);
+        }
+
+        .mobile-toolbar-btn.uncapped-toggle.active::before {
+            background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
+        }
+    }
+
+    @keyframes uncapped-pulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    /* Uncapped indicator badge on FPS display */
+    .has-bottom-sheet .perf-overlay .perf-fps.uncapped::after {
+        content: 'MAX';
+        display: inline-block;
+        margin-left: 4px;
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+        font-weight: 700;
+        background: var(--accent-orange);
+        color: var(--text-on-accent);
+        padding: 2px 4px;
+        border-radius: 4px;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+    }
+}

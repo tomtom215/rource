@@ -1013,6 +1013,15 @@ impl WgpuRenderer {
 
 impl Renderer for WgpuRenderer {
     fn begin_frame(&mut self) {
+        // Guard: skip frame when dimensions are zero.
+        // This happens when the canvas is in a hidden container (e.g., analytics-first
+        // architecture where #viz-panel starts hidden). WebGPU cannot create textures
+        // or swapchain surfaces with 0×0 dimensions — attempting to do so produces
+        // cascading errors (Invalid Texture → Invalid TextureView → Invalid CommandBuffer).
+        if self.width == 0 || self.height == 0 {
+            return;
+        }
+
         // Reset frame stats
         self.frame_stats.reset();
         self.render_state.begin_frame(self.width, self.height);

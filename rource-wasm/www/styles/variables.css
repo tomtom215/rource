@@ -31,6 +31,7 @@
     /* Text Colors - All meet WCAG AA 4.5:1 contrast against bg-primary */
     --text-primary: #f0f6fc;              /* ~15.5:1 contrast */
     --text-secondary: #9ca3ab;            /* ~5.7:1 contrast (was #8b949e) */
+    --text-interactive: #c9d1d9;          /* ~10.3:1 contrast - for tabs, chips, nav items */
     --text-muted: #8b949e;                /* ~4.86:1 contrast (was #6e7681 - failed WCAG) */
     --text-on-accent: #ffffff;            /* White text on accent backgrounds */
 
@@ -45,8 +46,10 @@
 
     /* Shadows & Overlays */
     --shadow: rgba(0, 0, 0, 0.4);
+    --shadow-light: rgba(0, 0, 0, 0.1);   /* Subtle elevation on hover */
     --backdrop: rgba(0, 0, 0, 0.4);       /* Modal/overlay backdrop */
     --backdrop-blur: rgba(0, 0, 0, 0.85); /* Stronger backdrop for modals */
+    --focus-ring: rgba(88, 166, 255, 0.2); /* Focus ring glow (accent-blue at 20%) */
 
     /* Spacing Scale */
     --spacing-xs: 0.25rem;

@@ -116,7 +116,7 @@
 .showcase-btn-secondary {
     flex: 0 0 auto;
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--text-interactive);
     border: 1px solid var(--border);
     padding: 0.5rem 0.6rem;
     border-radius: 6px;

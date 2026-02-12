@@ -190,6 +190,15 @@
 }
 
 /* =============================================================================
+   Help "Got it!" Button
+   ============================================================================= */
+
+.help-got-it-btn {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+/* =============================================================================
    Help Footer
    ============================================================================= */
 
@@ -275,6 +284,56 @@
 .help-item-text span {
     font-size: 0.8rem;
     color: var(--text-secondary);
+}
+
+/* =============================================================================
+   Help Section Body Text and Lists
+   ============================================================================= */
+
+.help-section-body {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.help-section-note {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    margin-top: 0.5rem;
+}
+
+.help-section-list {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.8;
+    padding-left: 1.25rem;
+}
+
+/* =============================================================================
+   Help Shortcuts Grid (Categorized)
+   ============================================================================= */
+
+.help-shortcuts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.help-shortcuts-category {
+    font-weight: 600;
+    color: var(--text-primary);
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25rem;
+}
+
+.help-shortcuts-muted {
+    color: var(--text-muted);
+    font-size: 0.75rem;
 }
 
 /* =============================================================================

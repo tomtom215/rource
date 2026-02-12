@@ -147,6 +147,17 @@ TOTAL:    46 issues
   - Eliminated per-frame Vec allocations with reusable buffers
 - See Phase 65 in docs/performance/CHRONOLOGY.md for full details
 
+**Session 5 Changes (Color Contrast & Inline Style Extraction):**
+- T3+: Introduced `--text-interactive` semantic design token for all interactive elements
+  - Dark theme: #c9d1d9 (~10.3:1 contrast ratio — WCAG AAA)
+  - Light theme: #32383f (~8.5:1 contrast ratio — WCAG AAA)
+  - Applied to: analytics tabs, insights tabs, generic tabs, repo chips, showcase buttons,
+    bottom-sheet tabs, bottom-sheet badges
+- Repo chip visibility: increased font-size (xs→sm), added font-weight: 500, lighter border
+- Extracted 8+ inline `style=""` attributes from help-template.js into CSS classes
+- Added `:focus-visible` outline to bottom-sheet input (WCAG 2.4.7)
+- VFL expanded to 32 screenshots (8 viewports × 2 views × 2 themes)
+
 **Session 3 Changes (Typography & Accessibility):**
 - T2: Complete font size audit - all CSS now uses minimum 12px (0.75rem)
 - A2/A3: Touch target audit - all interactive elements now have min-width/min-height: 44px
@@ -1372,6 +1383,22 @@ tests.forEach(({ fg, bg, name, min }) => {
   console.log(`${pass} ${name}: ${ratio.toFixed(2)}:1 (min ${min}:1)`);
 });
 ```
+
+#### Session 5 Enhancement: Interactive Element Contrast (T3+)
+
+The original T3 fix addressed descriptive text contrast (`--text-secondary`). Session 5 discovered
+that **interactive elements** (tabs, chips, nav items) also had insufficient visual prominence
+because they used `--text-secondary` (~4.5:1) when they need to clearly communicate clickability.
+
+**Solution**: Introduced `--text-interactive` semantic design token:
+
+| Token | Dark Theme | Light Theme | Contrast Ratio | Purpose |
+|-------|-----------|-------------|----------------|---------|
+| `--text-interactive` | `#c9d1d9` | `#32383f` | ~10.3:1 / ~8.5:1 | Tabs, chips, nav items |
+| `--text-secondary` | `#9ca3ab` | `#4d5561` | ~4.5:1 / ~5.5:1 | Descriptive/label text |
+
+**Elements updated**: analytics tabs, insights tabs, generic tabs, repo chips, showcase buttons,
+bottom-sheet tabs, bottom-sheet badges. Verified with 32-screenshot VFL capture.
 
 ---
 

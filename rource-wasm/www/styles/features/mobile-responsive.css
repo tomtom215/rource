@@ -1,0 +1,195 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Tom F <https://github.com/tomtom215> */
+
+/**
+ * Rource - Mobile Responsive Breakpoints & Theme Overrides
+ *
+ * Extra-small screen adjustments, light theme mobile overrides,
+ * and analytics dashboard mobile overrides.
+ *
+ * Breakpoints:
+ * - 375px: Smallest screens (iPhone SE)
+ * - 480px: Analytics dashboard compact mode
+ */
+
+/* =============================================================================
+   Extra Small Screens (375px)
+   ============================================================================= */
+
+@media (max-width: 375px) {
+    .bottom-sheet-fab {
+        width: 52px;
+        height: 52px;
+        right: 12px;
+    }
+
+    .bottom-sheet-content {
+        padding: 0 12px 12px;
+    }
+
+    .bottom-sheet-quick-actions {
+        padding: 0 12px 10px;
+    }
+
+    /* Extra small stats overlay - even more compact */
+    .has-bottom-sheet .stats-overlay {
+        bottom: max(112px, calc(112px + env(safe-area-inset-bottom)));
+        padding: 5px 10px;
+        gap: 10px;
+        max-width: calc(100vw - 120px);
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-value {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+    }
+
+    .has-bottom-sheet .stats-overlay .stat-label {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+    }
+
+    /* -------------------------------------------------------------------------
+       Extra Small Performance Overlay - Minimal Footprint
+       -------------------------------------------------------------------------
+
+       On smallest screens (iPhone SE, etc.), use absolute minimum size
+       while maintaining readability. FPS + uncapped badge only in collapsed.
+    */
+
+    .has-bottom-sheet .perf-overlay {
+        padding: 4px 8px;
+        border-radius: 14px;
+        max-width: 140px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-fps {
+        font-size: 0.8rem;
+        min-width: 55px;
+    }
+
+    /* Collapsed: FPS only, ultra-compact badge */
+    .has-bottom-sheet .perf-overlay.collapsed {
+        padding: 3px 8px;
+    }
+
+    .has-bottom-sheet .perf-overlay.collapsed .perf-fps {
+        font-size: 0.75rem;
+    }
+
+    /* Smaller switch on tiny screens */
+    .has-bottom-sheet .perf-overlay .perf-switch {
+        width: 38px;
+        height: 20px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-slider::before {
+        height: 14px;
+        width: 14px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-switch input:checked + .perf-slider::before {
+        transform: translateX(18px);
+    }
+
+    /* Details even more compact */
+    .has-bottom-sheet .perf-overlay .perf-details {
+        gap: 4px 8px;
+    }
+
+    .has-bottom-sheet .perf-overlay .perf-row {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+    }
+
+    /* Uncapped toggle inline with label on tiny screens */
+    .has-bottom-sheet .perf-overlay .perf-toggle-row {
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding-top: 6px;
+        margin-top: 6px;
+    }
+
+    .has-bottom-sheet .perf-overlay #perf-uncapped-label {
+        font-size: 0.75rem; /* 12px - WCAG minimum */
+    }
+}
+
+/* =============================================================================
+   Light Theme Mobile Adjustments
+   ============================================================================= */
+
+.light-theme.has-bottom-sheet .mobile-toolbar {
+    background: rgba(250, 251, 252, 0.97);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(31, 35, 40, 0.12);
+}
+
+.light-theme.has-bottom-sheet .stats-overlay {
+    background: rgba(250, 251, 252, 0.97);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(31, 35, 40, 0.1);
+}
+
+.light-theme.has-bottom-sheet .perf-overlay {
+    background: rgba(250, 251, 252, 0.97);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(31, 35, 40, 0.12);
+}
+
+/* Light theme HUD adjustments */
+.light-theme.has-bottom-sheet .perf-overlay .perf-details {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+.light-theme.has-bottom-sheet .perf-overlay .perf-toggle-row {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Uncapped mode active indicator - light theme */
+.light-theme .mobile-toolbar-btn.uncapped-toggle.active {
+    background: rgba(255, 107, 53, 0.15);
+}
+
+.light-theme.has-bottom-sheet .timeline-container {
+    background: var(--bg-secondary);
+}
+
+/* =============================================================================
+   Analytics Dashboard - Mobile Overrides
+   ============================================================================= */
+
+/* Hide viz-specific chrome when in analytics view */
+@media (max-width: 768px) {
+    .view-analytics .mobile-toolbar,
+    .view-analytics .mobile-center-play,
+    .view-analytics .stats-overlay,
+    .view-analytics .perf-overlay,
+    .view-analytics .legend-panel,
+    .view-analytics .authors-panel,
+    .view-analytics .sidebar-toggle,
+    .view-analytics #bottom-sheet-fab {
+        display: none !important;
+    }
+
+    /* In analytics view, hide header export/utility controls for cleaner mobile header */
+    .view-analytics .control-group[aria-label="Export controls"],
+    .view-analytics .control-group[aria-label="Display controls"] {
+        display: none;
+    }
+
+    /* Analytics dashboard takes full viewport on mobile */
+    .view-analytics .analytics-dashboard {
+        padding: var(--spacing-sm);
+        gap: var(--spacing-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .view-analytics .analytics-dashboard {
+        padding: var(--spacing-xs);
+    }
+
+    /* Visualize button full-width on small screens */
+    .view-analytics .analytics-viz-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
