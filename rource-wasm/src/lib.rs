@@ -465,6 +465,10 @@ pub struct Rource {
     /// Stores (`UserId`, `screen_pos`, `radius`, `alpha`, `priority`) tuples.
     user_label_candidates_buf: Vec<(UserId, Vec2, f32, f32, f32)>,
 
+    /// Reusable buffer for active action indices (avoids per-frame allocation in `render_actions`).
+    /// Stores (`action_index`, `progress`) tuples for beam priority selection.
+    active_actions_buf: Vec<(usize, f32)>,
+
     /// Reusable label placer for collision avoidance (avoids per-frame Vec allocation).
     label_placer: render_phases::LabelPlacer,
 
@@ -643,6 +647,8 @@ impl Rource {
             visible_users_buf: Vec::with_capacity(256),
             file_label_candidates_buf: Vec::with_capacity(256),
             user_label_candidates_buf: Vec::with_capacity(64),
+            // Reusable buffer for active actions (avoids per-frame Vec::collect allocation)
+            active_actions_buf: Vec::with_capacity(64),
             // Reusable label placer (avoids per-frame Vec allocation)
             label_placer: render_phases::LabelPlacer::new(1.0),
             // GPU physics (wgpu only) - default threshold 500 directories
@@ -1547,7 +1553,13 @@ impl Rource {
         render_directories(renderer, &ctx, &self.scene, &self.camera);
         render_directory_labels(renderer, &ctx, &self.scene, &self.camera);
         render_files(renderer, &ctx, &self.scene, &self.camera);
-        render_actions(renderer, &ctx, &self.scene, &self.camera);
+        render_actions(
+            renderer,
+            &ctx,
+            &self.scene,
+            &self.camera,
+            &mut self.active_actions_buf,
+        );
         render_users(renderer, &ctx, &self.scene, &self.camera);
 
         // T1/T5: Reset label placer once for BOTH user and file labels

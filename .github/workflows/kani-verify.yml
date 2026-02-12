@@ -17,10 +17,25 @@ permissions:
   contents: read
 
 jobs:
-  verify-kani-proofs:
-    name: Verify Kani Proofs
+  # ===========================================================================
+  # Phase 85: Parallelized Kani verification via matrix strategy
+  #
+  # Previously: 272 harnesses ran sequentially in ~15+ minutes (single job).
+  # Now: 9 parallel jobs (one per type), each running 11-47 harnesses.
+  # Expected: ~5 minutes wall-clock time (limited by slowest job: color @ 47).
+  #
+  # SIGSEGV avoidance: Max harnesses per job is 47 (color), well under the
+  # 110-harness SIGSEGV threshold documented in lesson #94.
+  # ===========================================================================
+
+  verify-type:
+    name: Kani ${{ matrix.type }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        type: [vec2, vec3, vec4, mat3, mat4, color, rect, bounds, utils]
 
     steps:
       - name: Checkout repository
@@ -62,46 +77,20 @@ jobs:
         run: |
           cargo kani --version
 
-      # ================================================================
-      # Discover and run all harnesses
-      # NOTE: Running all harnesses at once (cargo kani -p rource-math)
-      # causes SIGSEGV. Run individually per harness instead.
-      # ================================================================
-
-      - name: Discover harnesses
-        id: discover
-        run: |
-          # Extract all harness function names from Kani proof files
-          HARNESSES=$(grep -rh '#\[kani::proof\]' crates/rource-math/src/kani_proofs/*.rs -A1 | grep 'fn ' | sed 's/.*fn \([a-zA-Z_0-9]*\).*/\1/' | sort)
-          COUNT=$(echo "$HARNESSES" | wc -l)
-          echo "Found $COUNT Kani harnesses"
-          echo "$HARNESSES"
-          echo "count=$COUNT" >> $GITHUB_OUTPUT
-
-          # Group by type for reporting
-          VEC2_COUNT=$(echo "$HARNESSES" | grep -c "vec2" || echo "0")
-          VEC3_COUNT=$(echo "$HARNESSES" | grep -c "vec3" || echo "0")
-          VEC4_COUNT=$(echo "$HARNESSES" | grep -c "vec4" || echo "0")
-          MAT3_COUNT=$(echo "$HARNESSES" | grep -c "mat3" || echo "0")
-          MAT4_COUNT=$(echo "$HARNESSES" | grep -c "mat4" || echo "0")
-          COLOR_COUNT=$(echo "$HARNESSES" | grep -c "color" || echo "0")
-          RECT_COUNT=$(echo "$HARNESSES" | grep -c "rect" || echo "0")
-          UTILS_COUNT=$(echo "$HARNESSES" | grep -c "utils\|lerp\|clamp\|approx" || echo "0")
-
-          echo "vec2=$VEC2_COUNT" >> $GITHUB_OUTPUT
-          echo "vec3=$VEC3_COUNT" >> $GITHUB_OUTPUT
-          echo "vec4=$VEC4_COUNT" >> $GITHUB_OUTPUT
-          echo "mat3=$MAT3_COUNT" >> $GITHUB_OUTPUT
-          echo "mat4=$MAT4_COUNT" >> $GITHUB_OUTPUT
-          echo "color=$COLOR_COUNT" >> $GITHUB_OUTPUT
-          echo "rect=$RECT_COUNT" >> $GITHUB_OUTPUT
-          echo "utils=$UTILS_COUNT" >> $GITHUB_OUTPUT
-
-      - name: Run all Kani harnesses
+      - name: Run ${{ matrix.type }} harnesses
         id: verify
         run: |
-          # Extract harness names
-          HARNESSES=$(grep -rh '#\[kani::proof\]' crates/rource-math/src/kani_proofs/*.rs -A1 | grep 'fn ' | sed 's/.*fn \([a-zA-Z_0-9]*\).*/\1/' | sort)
+          PROOF_FILE="crates/rource-math/src/kani_proofs/${{ matrix.type }}.rs"
+
+          if [ ! -f "$PROOF_FILE" ]; then
+            echo "::error::Proof file not found: $PROOF_FILE"
+            exit 1
+          fi
+
+          # Extract harness names from this type's file only
+          HARNESSES=$(grep -h '#\[kani::proof\]' "$PROOF_FILE" -A1 | grep 'fn ' | sed 's/.*fn \([a-zA-Z_0-9]*\).*/\1/' | sort)
+          COUNT=$(echo "$HARNESSES" | wc -l)
+          echo "Found $COUNT harnesses in $PROOF_FILE"
 
           TOTAL=0
           PASSED=0
@@ -116,11 +105,11 @@ jobs:
             LOGFILE=$(mktemp)
             if timeout 300 cargo kani -p rource-math --harness "$HARNESS" --output-format terse >"$LOGFILE" 2>&1; then
               PASSED=$((PASSED + 1))
-              echo "  PASS [$TOTAL] $HARNESS"
+              echo "  PASS [$TOTAL/$COUNT] $HARNESS"
             else
               FAILED=$((FAILED + 1))
               FAILED_LIST="$FAILED_LIST $HARNESS"
-              echo "  FAIL [$TOTAL] $HARNESS"
+              echo "  FAIL [$TOTAL/$COUNT] $HARNESS"
               echo "::group::$HARNESS failure details"
               tail -50 "$LOGFILE"
               echo "::endgroup::"
@@ -135,58 +124,80 @@ jobs:
           echo "failed_list=$FAILED_LIST" >> $GITHUB_OUTPUT
 
           echo ""
-          echo "=== Kani Verification Summary ==="
+          echo "=== ${{ matrix.type }} Verification Summary ==="
           echo "Total:  $TOTAL"
           echo "Passed: $PASSED"
           echo "Failed: $FAILED"
 
           if [ "$FAILED" -gt 0 ]; then
-            echo "::error::$FAILED harnesses failed: $FAILED_LIST"
+            echo "::error::$FAILED ${{ matrix.type }} harnesses failed: $FAILED_LIST"
             exit 1
           fi
 
-      # ================================================================
-      # Summary
-      # ================================================================
+  # ===========================================================================
+  # Summary job: aggregates results from all matrix jobs
+  # ===========================================================================
+
+  summary:
+    name: Kani Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: verify-type
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Count total harnesses
+        id: count
+        run: |
+          # Count harnesses from source files (ground truth)
+          TOTAL=$(grep -rc '#\[kani::proof\]' crates/rource-math/src/kani_proofs/*.rs | awk -F: '{s+=$2} END {print s}')
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+          # Count per type
+          for TYPE in vec2 vec3 vec4 mat3 mat4 color rect bounds utils; do
+            FILE="crates/rource-math/src/kani_proofs/${TYPE}.rs"
+            if [ -f "$FILE" ]; then
+              COUNT=$(grep -c '#\[kani::proof\]' "$FILE" || echo "0")
+            else
+              COUNT=0
+            fi
+            echo "${TYPE}=${COUNT}" >> $GITHUB_OUTPUT
+          done
 
       - name: Generate Verification Summary
-        if: always()
         run: |
           echo "## Kani CBMC Verification Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Bit-precise IEEE 754 f32 verification using [Kani](https://model-checking.github.io/kani/) (CBMC-based bounded model checker)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Execution strategy:** 9 parallel matrix jobs (Phase 85 parallelization)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "### Harness Distribution" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Type | Harnesses |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-----------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Vec2 | ${{ steps.discover.outputs.vec2 }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Vec3 | ${{ steps.discover.outputs.vec3 }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Vec4 | ${{ steps.discover.outputs.vec4 }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Mat3 | ${{ steps.discover.outputs.mat3 }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Mat4 | ${{ steps.discover.outputs.mat4 }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Color | ${{ steps.discover.outputs.color }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Rect | ${{ steps.discover.outputs.rect }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Utils | ${{ steps.discover.outputs.utils }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Total** | **${{ steps.discover.outputs.count }}** |" >> $GITHUB_STEP_SUMMARY
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Total harnesses | ${{ steps.verify.outputs.total || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Passed | ${{ steps.verify.outputs.passed || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Failed | ${{ steps.verify.outputs.failed || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Type | Harnesses | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Vec2 | ${{ steps.count.outputs.vec2 }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Vec3 | ${{ steps.count.outputs.vec3 }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Vec4 | ${{ steps.count.outputs.vec4 }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Mat3 | ${{ steps.count.outputs.mat3 }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Mat4 | ${{ steps.count.outputs.mat4 }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Color | ${{ steps.count.outputs.color }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rect | ${{ steps.count.outputs.rect }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bounds | ${{ steps.count.outputs.bounds }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Utils | ${{ steps.count.outputs.utils }} | ${{ needs.verify-type.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total** | **${{ steps.count.outputs.total }}** | |" >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          FAILED="${{ steps.verify.outputs.failed }}"
-          if [ "$FAILED" = "0" ]; then
+          RESULT="${{ needs.verify-type.result }}"
+          if [ "$RESULT" = "success" ]; then
             echo "> :white_check_mark: **All Kani harnesses passed! Zero IEEE 754 edge-case failures.**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "> :x: **$FAILED harnesses failed:** ${{ steps.verify.outputs.failed_list }}" >> $GITHUB_STEP_SUMMARY
+            echo "> :x: **One or more type verification jobs failed. See individual job logs for details.**" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
 

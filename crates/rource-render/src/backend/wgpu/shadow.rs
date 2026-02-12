@@ -362,6 +362,12 @@ impl ShadowPipeline {
             return;
         }
 
+        // Guard: WebGPU cannot create textures with 0 dimensions. This can happen
+        // when set_shadow_enabled() is called before the canvas has been sized.
+        if width == 0 || height == 0 {
+            return;
+        }
+
         if self.cached_size == (width, height) && self.shadow_target.is_some() {
             return;
         }

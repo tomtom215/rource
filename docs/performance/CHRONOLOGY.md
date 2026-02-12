@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all optimization phases (83 phases) with dates, commits, and outcomes.
+Complete timeline of all optimization phases (85 phases) with dates, commits, and outcomes.
 
 ---
 
@@ -3719,4 +3719,138 @@ All 9 existing benchmarks verified with zero regressions:
 
 ---
 
-*Last updated: 2026-02-11*
+## Phase 85: Zero-Allocation Actions Buffer + Benchmark Correction — Hot Path + CI (2026-02-12)
+
+### Problem
+
+Two issues identified during pipeline analysis targeting 5–10 µs frame budget:
+
+1. **Per-frame heap allocation in `render_actions`**: `Vec::collect()` allocated
+   160–800 bytes every frame for active action indices (3,600+ allocations/minute
+   at 60 FPS). At 5 µs budget, each allocation (~50–200 ns) consumes 1–4% of budget.
+
+2. **Misleading benchmark**: `bench_full_label_placement_scenario` included
+   `LabelPlacer::new()` (30,770 ns one-time cost) inside the per-frame loop,
+   reporting 32 µs/frame instead of the actual 7 µs/frame — a 78% inflation.
+
+3. **WebGPU bloom composite buffer size mismatch**: WGSL `vec3<f32>` has alignment
+   16, making the struct 32 bytes, but Rust `BloomCompositeUniforms` was only 16 bytes.
+
+4. **Texture size 0 errors**: `ensure_size()` for bloom/shadow pipelines could be
+   called with 0×0 dimensions before canvas was sized.
+
+5. **Sequential Kani CI**: 272 harnesses ran in a single sequential job (~15+ min).
+
+### Solution: Multi-Faceted Phase
+
+**A. Zero-Allocation Actions Buffer:**
+
+Previously:
+```rust
+let mut active_indices: Vec<(usize, f32)> = scene.actions()
+    .iter().enumerate().filter(...).map(...).collect();  // PER-FRAME ALLOC
+```
+
+Now:
+```rust
+// Buffer owned by Rource struct, cleared + reused each frame
+active_buf.clear();
+for (i, a) in scene.actions().iter().enumerate() {
+    if !a.is_complete() { active_buf.push((i, a.progress())); }
+}
+```
+
+**B. Benchmark Correction:**
+
+| Metric | Before (Artifact) | After (Correct) | Delta |
+|--------|-------------------|-----------------|-------|
+| Full label placement | 32 µs/frame | 7 µs/frame | -78.1% |
+| Root cause | `LabelPlacer::new()` in loop | `reset()` per frame | Fixed |
+
+**C. WebGPU Fixes:**
+
+- `BloomCompositeUniforms`: padded from 16 to 32 bytes (matches WGSL alignment)
+- `ensure_size()` guards: bloom, shadow, and scene texture creation skip 0×0
+
+**D. Kani CI Parallelization:**
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Jobs | 1 sequential | 9 parallel (matrix) | 9× parallelism |
+| Max harnesses/job | 272 | 47 (color) | Under SIGSEGV threshold |
+| Expected wall time | ~15+ min | ~5 min | ~3× faster |
+
+### Implementation
+
+**Actions buffer (`rource-wasm/src/render_phases/actions.rs`):**
+- `render_actions()` now accepts `&mut Vec<(usize, f32)>` parameter
+- Buffer cleared and reused each frame (zero allocation)
+
+**Rource struct (`rource-wasm/src/lib.rs`):**
+- Added `active_actions_buf: Vec<(usize, f32)>` pre-allocated with capacity 64
+- Passed to `render_actions()` each frame
+
+**Benchmark fix (`rource-wasm/src/render_phases/tests/benchmark_tests.rs`):**
+- `LabelPlacer::new()` moved outside loop, `reset()` called per iteration
+- Threshold updated for 5–10 µs budget target
+
+**WebGPU bloom (`crates/rource-render/src/backend/wgpu/bloom.rs`):**
+- `BloomCompositeUniforms._padding` changed from `[f32; 3]` to `[f32; 7]` (32 bytes)
+- `ensure_size()` guards for width=0 || height=0
+- Test updated: `assert_eq!(size_of::<BloomCompositeUniforms>(), 32)`
+
+**WebGPU shadow (`crates/rource-render/src/backend/wgpu/shadow.rs`):**
+- `ensure_size()` guards for width=0 || height=0
+
+**WebGPU scene texture (`crates/rource-render/src/backend/wgpu/mod.rs`):**
+- `ensure_scene_texture()` guards for width=0 || height=0
+
+**Kani CI (`.github/workflows/kani-verify.yml`):**
+- Matrix strategy: 9 parallel jobs (vec2, vec3, vec4, mat3, mat4, color, rect, bounds, utils)
+- Each job verifies only its type's harnesses from the corresponding file
+- Summary job aggregates results with per-type status table
+
+### Benchmark Results (Measured)
+
+Full label placement (30 users + 50 files), 1000 iterations, `--release` mode:
+
+| Metric | Before (Artifact) | After (Correct) | Notes |
+|--------|-------------------|-----------------|-------|
+| Per-frame time | 32 µs | 7 µs (7,262 ns) | Correct: excludes one-time `new()` |
+| `LabelPlacer::new()` | 30,770 ns | 29,773 ns | One-time cost, measured separately |
+| `reset()` | 206 ns | 203 ns | Within noise |
+| `try_place()` | 15 ns | 13 ns | Within noise |
+| `try_place_with_fallback()` | 259 ns | 247 ns | Within noise |
+
+### Regression Check
+
+All 10 benchmarks verified with zero regressions:
+
+| Benchmark | Pre-Change | Post-Change | Status |
+|-----------|-----------|-------------|--------|
+| `bench_label_placer_new` | 30,770 ns | 29,773 ns | OK |
+| `bench_label_placer_reset` | 206 ns | 203 ns | OK |
+| `bench_label_placer_try_place` | 15 ns | 13 ns | OK |
+| `bench_label_placer_try_place_with_fallback` | 259 ns | 247 ns | OK |
+| `bench_full_label_placement_scenario` | 32 µs (artifact) | 7 µs (correct) | FIXED |
+| `bench_beam_sorting` | 93 ns | 99 ns | OK (noise) |
+| `bench_user_label_sorting` | 93 ns | 87 ns | OK |
+| `bench_estimate_text_width` | 0.17 ns | 0.16 ns | OK |
+| `bench_glow_lod_culling` | 0 ns | 0 ns | OK |
+| `bench_stats_buffer_vs_json` | 622x | 628x | OK |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `rource-wasm/src/render_phases/actions.rs` | Zero-allocation buffer pattern |
+| `rource-wasm/src/lib.rs` | `active_actions_buf` field + initialization |
+| `rource-wasm/src/render_phases/tests/benchmark_tests.rs` | Corrected benchmark |
+| `crates/rource-render/src/backend/wgpu/bloom.rs` | 32-byte uniforms + 0-dim guard |
+| `crates/rource-render/src/backend/wgpu/shadow.rs` | 0-dimension guard |
+| `crates/rource-render/src/backend/wgpu/mod.rs` | 0-dimension guard |
+| `.github/workflows/kani-verify.yml` | 9-way matrix parallelization |
+
+---
+
+*Last updated: 2026-02-12*

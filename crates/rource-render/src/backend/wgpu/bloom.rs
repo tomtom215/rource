@@ -187,11 +187,16 @@ struct BloomBlurUniforms {
 }
 
 /// Bloom composite pass uniform data.
+///
+/// Padded to 32 bytes to match WGSL struct alignment. In WGSL, the original
+/// `_padding: vec3<f32>` field has alignment 16, which places it at offset 16
+/// and pads the struct to 32 bytes total. The Rust side must match this layout.
+/// (Same pattern as `BoundsParams` in `compute.rs`.)
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct BloomCompositeUniforms {
     intensity: f32,
-    _padding: [f32; 3],
+    _padding: [f32; 7],
 }
 
 /// Cached bind groups for bloom pipeline to avoid per-frame allocations.
@@ -390,7 +395,7 @@ impl BloomPipeline {
             label: Some("bloom_composite_uniforms"),
             contents: bytemuck::cast_slice(&[BloomCompositeUniforms {
                 intensity: 1.0,
-                _padding: [0.0; 3],
+                _padding: [0.0; 7],
             }]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
@@ -449,6 +454,12 @@ impl BloomPipeline {
     /// (re)allocated, eliminating per-frame bind group creation overhead.
     pub fn ensure_size(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         if !self.config.enabled {
+            return;
+        }
+
+        // Guard: WebGPU cannot create textures with 0 dimensions. This can happen
+        // when set_bloom_enabled() is called before the canvas has been sized.
+        if width == 0 || height == 0 {
             return;
         }
 
@@ -660,7 +671,7 @@ impl BloomPipeline {
             0,
             bytemuck::cast_slice(&[BloomCompositeUniforms {
                 intensity: 1.0,
-                _padding: [0.0; 3],
+                _padding: [0.0; 7],
             }]),
         );
 
@@ -1017,7 +1028,9 @@ mod tests {
 
     #[test]
     fn test_bloom_composite_uniforms_size() {
-        assert_eq!(std::mem::size_of::<BloomCompositeUniforms>(), 16);
+        // 32 bytes: matches WGSL struct layout where vec3<f32> at offset 16
+        // forces the struct to 32 bytes (see WGSL alignment rules).
+        assert_eq!(std::mem::size_of::<BloomCompositeUniforms>(), 32);
     }
 
     #[test]

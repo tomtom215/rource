@@ -918,6 +918,11 @@ impl WgpuRenderer {
 
     /// Ensures the scene texture exists and is the correct size.
     pub(crate) fn ensure_scene_texture(&mut self) {
+        // Guard: WebGPU cannot create textures with 0 dimensions.
+        if self.width == 0 || self.height == 0 {
+            return;
+        }
+
         let needs_recreate = self.scene_texture.as_ref().is_none_or(|tex| {
             let size = tex.size();
             size.width != self.width || size.height != self.height

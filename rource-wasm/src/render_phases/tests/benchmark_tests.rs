@@ -211,11 +211,17 @@ fn bench_full_label_placement_scenario() {
 
     const ITERATIONS: u32 = 1_000;
 
+    // Phase 85: Fixed benchmark — LabelPlacer is created ONCE (like production)
+    // and reset() each frame. Previous benchmark included LabelPlacer::new()
+    // (30.8 µs one-time cost) inside the loop, inflating per-frame cost from
+    // ~2 µs to ~32 µs (96% measurement artifact).
+    let mut placer = LabelPlacer::new(1.0);
+
     // Simulate realistic scenario: 30 user labels + 50 file labels per frame
     let start = Instant::now();
 
     for _ in 0..ITERATIONS {
-        let mut placer = LabelPlacer::new(1.0);
+        placer.reset(1.0);
 
         // Place user labels (high priority, spread across screen)
         for i in 0..30 {
@@ -246,18 +252,15 @@ fn bench_full_label_placement_scenario() {
 
     let elapsed = start.elapsed();
     let per_frame = elapsed.as_micros() / u128::from(ITERATIONS);
-    println!("\nFull label placement (30 users + 50 files): {ITERATIONS} frames in {elapsed:?} ({per_frame} µs/frame)");
+    let per_frame_ns = elapsed.as_nanos() / u128::from(ITERATIONS);
+    println!("\nFull label placement (30 users + 50 files): {ITERATIONS} frames in {elapsed:?} ({per_frame} µs/frame, {per_frame_ns} ns/frame)");
 
-    // Assertion: full frame should be < 500µs (well within 16.67ms budget)
-    // Relaxed from 250µs: Windows CI runners are significantly slower than
-    // Linux/macOS (274µs observed on windows-latest vs ~80µs on Linux)
+    // At 5-10 µs frame budget target, label placement should be < 5 µs
+    // (CI runners may be slower — use 50 µs as generous CI threshold)
     assert!(
-        per_frame < 500,
-        "Full label placement too slow: {per_frame} µs/frame"
+        per_frame < 50,
+        "Full label placement too slow: {per_frame} µs/frame (target: < 5 µs on dev, < 50 µs on CI)"
     );
-
-    // Note: 500µs is 3% of a 16.67ms frame budget at 60fps
-    // This is acceptable overhead for collision-free labels
 }
 
 #[test]
