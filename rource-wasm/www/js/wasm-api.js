@@ -590,3 +590,91 @@ export function getFileSurvival() {
     }
     return null;
 }
+
+// ============================================================================
+// InsightsIndex API: Per-entity O(1) metric lookups
+// ============================================================================
+
+/**
+ * Returns aggregated academic metrics for a specific file.
+ *
+ * Metrics include: hotspot score (Nagappan 2005), ownership (Bird 2011),
+ * lifecycle stage (Godfrey 2000), circadian risk (Eyolfson 2011),
+ * knowledge entropy (Rigby 2013), coupling degree (D'Ambros 2009).
+ *
+ * @param {string} path - File path relative to repository root
+ * @returns {Object|null} Per-file academic metrics or null if not found
+ */
+export function getFileMetrics(path) {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getFileMetrics', () => rource.getFileMetrics(path), null);
+        return parseInsightsJson('getFileMetrics', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns aggregated academic metrics for a specific developer.
+ *
+ * Metrics include: profile type (Mockus 2002), cadence (Eyolfson 2014),
+ * network centrality (Meneely 2009), focus score (Posnett 2013).
+ *
+ * @param {string} author - Author name
+ * @returns {Object|null} Per-user academic metrics or null if not found
+ */
+export function getUserMetrics(author) {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getUserMetrics', () => rource.getUserMetrics(author), null);
+        return parseInsightsJson('getUserMetrics', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns the insights index summary (aggregate statistics).
+ *
+ * Contains: total files/users, knowledge silo count, contributor profile
+ * distribution, max hotspot score, average contributors per file.
+ *
+ * @returns {Object|null} Index summary or null if no data
+ */
+export function getInsightsIndexSummary() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getInsightsIndexSummary', () => rource.getInsightsIndexSummary(), null);
+        return parseInsightsJson('getInsightsIndexSummary', json, null);
+    }
+    return null;
+}
+
+/**
+ * Returns all per-file metrics as an array of {path, metrics} objects.
+ *
+ * Useful for bulk visualization (e.g., coloring all files by hotspot score).
+ *
+ * @returns {Array} Array of {path, metrics} objects or empty array
+ */
+export function getAllFileMetrics() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getAllFileMetrics', () => rource.getAllFileMetrics(), null);
+        return parseInsightsJson('getAllFileMetrics', json, []);
+    }
+    return [];
+}
+
+/**
+ * Returns all per-user metrics as an array of {author, metrics} objects.
+ *
+ * @returns {Array} Array of {author, metrics} objects or empty array
+ */
+export function getAllUserMetrics() {
+    const rource = getRource();
+    if (rource) {
+        const json = safeWasmCall('getAllUserMetrics', () => rource.getAllUserMetrics(), null);
+        return parseInsightsJson('getAllUserMetrics', json, []);
+    }
+    return [];
+}

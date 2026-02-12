@@ -39,6 +39,7 @@ pub mod coupling;
 pub mod focus;
 pub mod growth;
 pub mod hotspot;
+pub mod index;
 pub mod inequality;
 pub mod knowledge;
 pub mod lifecycle;

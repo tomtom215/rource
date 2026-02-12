@@ -15,7 +15,8 @@ use std::fmt::Write;
 use wasm_bindgen::prelude::*;
 
 use rource_core::insights::{
-    self, CommitRecord, FileActionKind, FileRecord, InsightsReport, SummaryStats,
+    self, index::InsightsIndex, CommitRecord, FileActionKind, FileRecord, InsightsReport,
+    SummaryStats,
 };
 
 use crate::Rource;
@@ -1275,6 +1276,210 @@ impl Rource {
     }
 }
 
+// ============================================================================
+// InsightsIndex API: Per-entity O(1) metric lookups
+// ============================================================================
+
+#[wasm_bindgen]
+impl Rource {
+    /// Returns aggregated academic metrics for a specific file as JSON.
+    ///
+    /// Computes the full insights index and performs O(1) lookup by file path.
+    /// Returns `null` if the file is not found in the commit history.
+    ///
+    /// # Academic Citations
+    ///
+    /// The returned metrics aggregate findings from:
+    /// - Nagappan & Ball (ICSE 2005): hotspot score
+    /// - Bird et al. (ICSE 2011): ownership concentration
+    /// - Eyolfson et al. (MSR 2011): circadian risk
+    /// - Rigby & Bird (FSE 2013): knowledge entropy
+    /// - D'Ambros et al. (TSE 2009): coupling degree
+    /// - Godfrey & Tu (ICSM 2000): lifecycle stage
+    #[wasm_bindgen(js_name = getFileMetrics)]
+    pub fn get_file_metrics(&self, path: &str) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let index = InsightsIndex::from_report(&report);
+
+        let fm = index.file_metrics(path)?;
+        Some(format_file_metrics_json(fm))
+    }
+
+    /// Returns aggregated academic metrics for a specific developer as JSON.
+    ///
+    /// Computes the full insights index and performs O(1) lookup by author name.
+    /// Returns `null` if the author is not found in the commit history.
+    ///
+    /// # Academic Citations
+    ///
+    /// The returned metrics aggregate findings from:
+    /// - Mockus et al. (TSE 2002): developer profiles (core/peripheral)
+    /// - Eyolfson et al. (MSR 2014): commit cadence
+    /// - Meneely & Williams (FSE 2009): network centrality
+    /// - Posnett et al. (ICSE 2013): developer focus
+    #[wasm_bindgen(js_name = getUserMetrics)]
+    pub fn get_user_metrics(&self, author: &str) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let index = InsightsIndex::from_report(&report);
+
+        let um = index.user_metrics(author)?;
+        Some(format_user_metrics_json(um))
+    }
+
+    /// Returns the complete insights index summary as JSON.
+    ///
+    /// Contains aggregate counts: total files, total users, knowledge silos,
+    /// contributor profile distribution, max hotspot score.
+    #[wasm_bindgen(js_name = getInsightsIndexSummary)]
+    pub fn get_insights_index_summary(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let index = InsightsIndex::from_report(&report);
+
+        Some(format_index_summary_json(index.summary()))
+    }
+
+    /// Returns all per-file metrics as a JSON array.
+    ///
+    /// Each element contains the file path and its aggregated academic metrics.
+    /// Useful for bulk visualization (e.g., coloring all files by hotspot score).
+    #[wasm_bindgen(js_name = getAllFileMetrics)]
+    pub fn get_all_file_metrics(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let index = InsightsIndex::from_report(&report);
+
+        let mut json = String::with_capacity(index.file_count() * 200);
+        json.push('[');
+        for (i, (path, fm)) in index.iter_files().enumerate() {
+            if i > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#"{{"path":"{}","metrics":"#, escape_json(path));
+            json.push_str(&format_file_metrics_json(fm));
+            json.push('}');
+        }
+        json.push(']');
+        Some(json)
+    }
+
+    /// Returns all per-user metrics as a JSON array.
+    ///
+    /// Each element contains the author name and their aggregated academic metrics.
+    #[wasm_bindgen(js_name = getAllUserMetrics)]
+    pub fn get_all_user_metrics(&self) -> Option<String> {
+        if self.commits.is_empty() {
+            return None;
+        }
+
+        let records = convert_commits(&self.commits);
+        let report = insights::compute_insights(&records);
+        let index = InsightsIndex::from_report(&report);
+
+        let mut json = String::with_capacity(index.user_count() * 200);
+        json.push('[');
+        for (i, (author, um)) in index.iter_users().enumerate() {
+            if i > 0 {
+                json.push(',');
+            }
+            let _ = write!(json, r#"{{"author":"{}","metrics":"#, escape_json(author));
+            json.push_str(&format_user_metrics_json(um));
+            json.push('}');
+        }
+        json.push(']');
+        Some(json)
+    }
+}
+
+// ============================================================================
+// InsightsIndex JSON serialization
+// ============================================================================
+
+/// Formats a single file's metrics as JSON.
+fn format_file_metrics_json(fm: &rource_core::insights::index::FileMetrics) -> String {
+    let mut json = String::with_capacity(512);
+    let _ = write!(
+        json,
+        r#"{{"hotspotScore":{:.4},"hotspotRank":{},"totalChanges":{},"contributorCount":{},"topOwnerShare":{:.4},"topOwner":"{}","lifecycleStage":"{}","ageDays":{:.1},"burstCount":{},"burstRiskScore":{:.4},"circadianRisk":{:.4},"knowledgeEntropy":{:.4},"isKnowledgeSilo":{},"diffusionScore":{:.4},"couplingDegree":{}}}"#,
+        fm.hotspot_score,
+        fm.hotspot_rank
+            .map_or_else(|| "null".to_string(), |r| r.to_string()),
+        fm.total_changes,
+        fm.contributor_count,
+        fm.top_owner_share,
+        escape_json(&fm.top_owner),
+        fm.lifecycle_stage,
+        fm.age_days,
+        fm.burst_count,
+        fm.burst_risk_score,
+        fm.circadian_risk,
+        fm.knowledge_entropy,
+        fm.is_knowledge_silo,
+        fm.diffusion_score,
+        fm.coupling_degree,
+    );
+    json
+}
+
+/// Formats a single user's metrics as JSON.
+fn format_user_metrics_json(um: &rource_core::insights::index::UserMetrics) -> String {
+    let mut json = String::with_capacity(384);
+    let _ = write!(
+        json,
+        r#"{{"commitCount":{},"profileType":"{}","uniqueFiles":{},"avgFilesPerCommit":{:.2},"activeSpanDays":{:.1},"cadenceType":"{}","meanCommitInterval":{:.1},"focusScore":{:.4},"networkDegree":{},"networkBetweenness":{:.4},"circadianAvgRisk":{:.4},"directoriesTouched":{}}}"#,
+        um.commit_count,
+        um.profile_type,
+        um.unique_files,
+        um.avg_files_per_commit,
+        um.active_span_days,
+        um.cadence_type,
+        um.mean_commit_interval,
+        um.focus_score,
+        um.network_degree,
+        um.network_betweenness,
+        um.circadian_avg_risk,
+        um.directories_touched,
+    );
+    json
+}
+
+/// Formats the index summary as JSON.
+fn format_index_summary_json(s: &rource_core::insights::index::IndexSummary) -> String {
+    let mut json = String::with_capacity(256);
+    let _ = write!(
+        json,
+        r#"{{"totalFiles":{},"totalUsers":{},"knowledgeSiloCount":{},"filesWithBursts":{},"coreContributorCount":{},"peripheralContributorCount":{},"driveByContributorCount":{},"maxHotspotScore":{:.4},"avgContributorsPerFile":{:.2}}}"#,
+        s.total_files,
+        s.total_users,
+        s.knowledge_silo_count,
+        s.files_with_bursts,
+        s.core_contributor_count,
+        s.peripheral_contributor_count,
+        s.drive_by_contributor_count,
+        s.max_hotspot_score,
+        s.avg_contributors_per_file,
+    );
+    json
+}
+
 /// Standalone growth JSON (without leading comma for top-level endpoints).
 fn write_growth_json_standalone(json: &mut String, report: &InsightsReport) {
     // Reuse the section writer but strip the leading comma
@@ -1877,5 +2082,132 @@ mod tests {
 
         // Quotes in paths should be escaped
         assert!(json.contains("\\\"quotes\\\""));
+    }
+
+    // ================================================================
+    // InsightsIndex JSON serialization tests
+    // ================================================================
+
+    #[test]
+    fn test_format_file_metrics_json_structure() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "src/main.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "src/main.rs".to_string(),
+                    action: FileActionKind::Modify,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let index = InsightsIndex::from_report(&report);
+        let fm = index.file_metrics("src/main.rs").unwrap();
+        let json = format_file_metrics_json(fm);
+
+        assert!(json.starts_with('{'));
+        assert!(json.ends_with('}'));
+        assert!(json.contains("\"hotspotScore\":"));
+        assert!(json.contains("\"totalChanges\":"));
+        assert!(json.contains("\"contributorCount\":"));
+        assert!(json.contains("\"topOwner\":\"Alice\""));
+        assert!(json.contains("\"lifecycleStage\":"));
+        assert!(json.contains("\"burstCount\":"));
+        assert!(json.contains("\"circadianRisk\":"));
+        assert!(json.contains("\"knowledgeEntropy\":"));
+        assert!(json.contains("\"isKnowledgeSilo\":"));
+        assert!(json.contains("\"diffusionScore\":"));
+        assert!(json.contains("\"couplingDegree\":"));
+    }
+
+    #[test]
+    fn test_format_user_metrics_json_structure() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "b.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let index = InsightsIndex::from_report(&report);
+        let um = index.user_metrics("Alice").unwrap();
+        let json = format_user_metrics_json(um);
+
+        assert!(json.starts_with('{'));
+        assert!(json.ends_with('}'));
+        assert!(json.contains("\"commitCount\":"));
+        assert!(json.contains("\"profileType\":"));
+        assert!(json.contains("\"uniqueFiles\":"));
+        assert!(json.contains("\"avgFilesPerCommit\":"));
+        assert!(json.contains("\"cadenceType\":"));
+        assert!(json.contains("\"focusScore\":"));
+        assert!(json.contains("\"networkDegree\":"));
+        assert!(json.contains("\"directoriesTouched\":"));
+    }
+
+    #[test]
+    fn test_format_index_summary_json_structure() {
+        let records = vec![
+            CommitRecord {
+                timestamp: 1000,
+                author: "Alice".to_string(),
+                files: vec![FileRecord {
+                    path: "a.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+            CommitRecord {
+                timestamp: 2000,
+                author: "Bob".to_string(),
+                files: vec![FileRecord {
+                    path: "b.rs".to_string(),
+                    action: FileActionKind::Create,
+                }],
+            },
+        ];
+        let report = insights::compute_insights(&records);
+        let index = InsightsIndex::from_report(&report);
+        let json = format_index_summary_json(index.summary());
+
+        assert!(json.starts_with('{'));
+        assert!(json.ends_with('}'));
+        assert!(json.contains("\"totalFiles\":"));
+        assert!(json.contains("\"totalUsers\":"));
+        assert!(json.contains("\"knowledgeSiloCount\":"));
+        assert!(json.contains("\"coreContributorCount\":"));
+        assert!(json.contains("\"maxHotspotScore\":"));
+        assert!(json.contains("\"avgContributorsPerFile\":"));
+    }
+
+    #[test]
+    fn test_format_file_metrics_json_escapes_special_chars() {
+        // Verify JSON escaping in top_owner field
+        let fm = rource_core::insights::index::FileMetrics {
+            top_owner: "O'Brien \"The Dev\"".to_string(),
+            ..Default::default()
+        };
+        let json = format_file_metrics_json(&fm);
+        // Quotes should be escaped
+        assert!(json.contains("O'Brien \\\"The Dev\\\""));
     }
 }
