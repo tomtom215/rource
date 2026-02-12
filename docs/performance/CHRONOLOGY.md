@@ -3853,4 +3853,116 @@ All 10 benchmarks verified with zero regressions:
 
 ---
 
+## Phase 86: Flat Grid + Dirty-Cell LabelPlacer (2.74x Speedup)
+
+**Date**: 2026-02-12
+**Category**: Data structure optimization + Cache locality
+**Target**: Label placement from 7 µs → 2-5 µs per frame
+
+### Problem
+
+The `LabelPlacer` spatial hash used triple-nested `Vec<Vec<Vec<(usize, u32)>>>`
+with a generation counter for O(1) reset. This had three performance problems:
+
+1. **Triple pointer indirection**: Every cell access required 3 pointer dereferences
+   (`grid` → `row` → `cell` → `entries`), causing cache misses on every label check
+2. **Generation check in tight inner loop**: Each entry comparison included a branch
+   `if gen != current_gen { continue; }` that disrupted branch prediction
+3. **8 bytes per entry**: `(usize, u32)` stored generation tag per entry, doubling
+   memory footprint vs. just storing the label index
+
+### Solution
+
+Replaced with flat `Vec<Vec<usize>>` grid + dirty-cell tracking:
+
+1. **Flat grid**: Single `Vec<Vec<usize>>` indexed as `grid[cy * 32 + cx]` —
+   eliminates 2 levels of pointer indirection (one dereference instead of three)
+2. **Dirty-cell tracking**: `Vec<u16>` stores indices of cells written to this frame.
+   Reset clears only those cells (O(k) where k ≈ 100-160 for 80 labels).
+   Eliminates generation counter entirely — no branch in collision inner loop.
+3. **4 bytes per entry**: Just `usize` label index, halving memory per grid entry
+
+### Implementation
+
+```rust
+// Before: Triple indirection + generation check
+grid: Vec<Vec<Vec<(usize, u32)>>>,  // grid[cy][cx] → 3 dereferences
+for &(label_idx, gen) in &self.grid[cy][cx] {
+    if gen != current_gen { continue; }  // Branch in tight loop
+    if rects_intersect(...) { return false; }
+}
+
+// After: Single indirection, no generation check
+grid: Vec<Vec<usize>>,              // grid[cy * 32 + cx] → 1 dereference
+dirty_cells: Vec<u16>,              // Track which cells need clearing
+for &label_idx in &self.grid[cell_idx] {
+    if rects_intersect(...) { return false; }  // Branch-free inner loop
+}
+```
+
+### Anti-Flicker Fix (Simulation Accumulator)
+
+Additionally implemented a simulation time accumulator to prevent flickering
+at extreme FPS (>2K). At 8K FPS, browser timer resolution (~5 µs) causes
+stroboscopic dt aliasing (alternating dt=0 and dt=2×expected). The accumulator
+ensures simulation steps only when ≥2.08ms has elapsed (1/480 Hz), while
+rendering still occurs every frame (re-renders identical state, no flicker).
+
+### Benchmark Results (Measured)
+
+Full label placement (30 users + 50 files), 1000 iterations, `--release` mode:
+
+| Metric | Phase 85 (Before) | Phase 86 (After) | Improvement |
+|--------|-------------------|-------------------|-------------|
+| **Full frame (80 labels)** | **6,971 ns** | **2,542 ns** | **-63.5% (2.74x)** |
+| `try_place()` | 25 ns | 4 ns | -84.0% (6.25x) |
+| `try_place_with_fallback()` | 261 ns | 80 ns | -69.3% (3.26x) |
+| `reset()` | 202 ns | 16 ns | -92.1% (12.6x) |
+| `LabelPlacer::new()` | 30,043 ns | 36,644 ns | +22% (one-time cost, acceptable) |
+
+Reproducibility: Second run measured 2,591 ns (within 2% of first run).
+
+### Regression Check
+
+| Benchmark | Phase 85 | Phase 86 | Status |
+|-----------|----------|----------|--------|
+| `bench_full_label_placement_scenario` | 6,971 ns | 2,542 ns | IMPROVED |
+| `bench_label_placer_try_place` | 25 ns | 4 ns | IMPROVED |
+| `bench_label_placer_try_place_with_fallback` | 261 ns | 80 ns | IMPROVED |
+| `bench_label_placer_reset` | 202 ns | 16 ns | IMPROVED |
+| `bench_label_placer_new` | 30,043 ns | 36,644 ns | +22% (one-time, acceptable) |
+| `bench_beam_sorting` | 93 ns | 105 ns | OK (noise) |
+| `bench_user_label_sorting` | 89 ns | 90 ns | OK |
+| `bench_estimate_text_width` | 0.17 ns | 0.16 ns | OK |
+| `bench_glow_lod_culling` | 0 ns | 0 ns | OK |
+| `bench_stats_buffer_vs_json` | 571x | 811x | OK (improved) |
+
+### Why It Works
+
+The fundamental insight is that cache locality dominates at nanosecond scale:
+
+| Access Pattern | Latency | Phase 85 | Phase 86 |
+|---------------|---------|----------|----------|
+| L1 cache hit | ~1 ns | Rare (triple indirection) | Common (flat array) |
+| L2 cache hit | ~5 ns | Some | Rare (data fits in L1) |
+| L3 cache hit | ~20 ns | Common | Very rare |
+| DRAM | ~100 ns | Possible | Never for hot path |
+
+Triple-nested `Vec` means 3 pointer chases per cell access. Each pointer chase
+is a potential cache miss (~5-20 ns). With 80 labels × 1-2 cells = ~160 cell
+accesses per frame, the indirection overhead was ~800-3200 ns (11-46% of the
+6,971 ns total).
+
+Flat indexing (`cy * 32 + cx`) turns 3 pointer chases into 1 array offset
+computation (single multiply-add instruction), keeping all data in L1.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `rource-wasm/src/render_phases/label_placer.rs` | Flat grid + dirty-cell tracking |
+| `rource-wasm/src/lib.rs` | Simulation accumulator (anti-flicker) + `MIN_SIMULATION_DT` const |
+
+---
+
 *Last updated: 2026-02-12*

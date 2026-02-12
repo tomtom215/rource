@@ -1503,4 +1503,59 @@ A comprehensive performance audit identified and resolved the following issues:
 
 ---
 
-*Last updated: 2026-01-29*
+### Phase 86: Flat Grid + Dirty-Cell LabelPlacer (63.5% Reduction)
+
+**Phase**: 86
+**Location**: `rource-wasm/src/render_phases/label_placer.rs`
+**Impact**: Per-frame label placement 6,971 ns → 2,542 ns (-63.5%, 2.74x faster)
+
+**Problem**: The spatial hash grid used triple-nested `Vec<Vec<Vec<(usize, u32)>>>` which
+required 3 pointer dereferences per cell access plus a generation check branch in the
+tight inner loop. At nanosecond scale, each pointer chase (~5-20 ns cache miss) dominated
+the per-label cost.
+
+**Solution**: Replace with flat `Vec<Vec<usize>>` indexed as `grid[cy * 32 + cx]` plus
+dirty-cell tracking (`Vec<u16>`) for efficient reset.
+
+**Key changes**:
+1. Triple indirection → single flat index (eliminates 2 pointer chases per access)
+2. Generation counter → dirty-cell tracking (eliminates branch from inner loop)
+3. `(usize, u32)` entries → `usize` entries (halves per-entry memory: 8 bytes → 4 bytes)
+
+**Results**:
+
+| Operation | Before | After | Speedup |
+|-----------|--------|-------|---------|
+| Full frame (80 labels) | 6,971 ns | 2,542 ns | 2.74x |
+| `try_place()` | 25 ns | 4 ns | 6.25x |
+| `try_place_with_fallback()` | 261 ns | 80 ns | 3.26x |
+| `reset()` | 202 ns | 16 ns | 12.6x |
+
+**Tradeoff**: `LabelPlacer::new()` increased from 30 µs to 37 µs (+22%) because
+the flat grid allocates 1024 Vecs up front instead of 32 rows of 32. This is a
+one-time startup cost (amortized to zero over the millions of frames rendered).
+
+---
+
+### Phase 86: Simulation Time Accumulator (Anti-Flicker)
+
+**Phase**: 86
+**Location**: `rource-wasm/src/lib.rs`
+**Impact**: Eliminates visual flickering at >2K FPS
+
+**Problem**: At extreme FPS (2K-8K), browser timer resolution (~5 µs in Chrome)
+causes stroboscopic dt aliasing: consecutive frames measure dt=0 then dt=2×expected,
+causing entity position/alpha jitter visible as flickering.
+
+**Solution**: Accumulate real dt and only step simulation when ≥2.08ms (1/480 Hz)
+has elapsed. Rendering still occurs every frame (re-renders identical state when
+no simulation step occurs), eliminating visible flicker.
+
+- At 60 FPS: always steps (16.7ms >> 2.08ms) — no behavior change
+- At 144 FPS: always steps (6.9ms >> 2.08ms) — no behavior change
+- At 2K FPS: steps every ~4 frames — smooth, no jitter
+- At 8K FPS: steps every ~17 frames — smooth, no jitter
+
+---
+
+*Last updated: 2026-02-12*

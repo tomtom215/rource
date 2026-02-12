@@ -119,6 +119,10 @@
 | 265 | RENDERING_BOTTLENECK_ANALYSIS.md stale code snippet (Phase 70 changes not reflected) | Optimization applied but doc not updated | Re-verify before/after snippets after each optimization phase |
 | 266 | BENCHMARKS.md test count "2,076" severely stale (actual 2964) | Snapshot never updated | Use rounded display strings or automate |
 | 267 | File paths missing `crates/` prefix in 2 BENCHMARKS.md references | Shorthand without repo-root prefix | ALWAYS use full path from repo root |
+| 292 | Triple-nested `Vec` spatial hash: 3 pointer dereferences per cell access at nanosecond scale | Cache misses dominate when data structures have deep indirection | Flatten multi-level `Vec<Vec<Vec<T>>>` to single `Vec<Vec<T>>` with arithmetic indexing |
+| 293 | Generation counter branch in tight inner loop (~160 iterations/frame) | Branch prediction failures at nanosecond scale add up | Replace generation-based invalidation with dirty-cell tracking for branch-free inner loops |
+| 294 | Browser timer resolution (~5 µs) causes dt aliasing at >2K FPS | Frame time approaches timer quantization, creating alternating 0/2× dt | Use simulation time accumulator with minimum step threshold (1/480 Hz) |
+| 295 | Per-entry `(usize, u32)` wastes 50% on generation tags when dirty-cell tracking is used | Metadata per entry redundant if container-level tracking ensures freshness | Strip metadata from hot-path data; use container-level tracking for invalidation |
 
 ---
 

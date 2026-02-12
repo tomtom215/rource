@@ -152,6 +152,16 @@ pub const MAX_FRAME_DT: f32 = 0.1;
 /// At 60fps, 100 commits/frame = 6000 commits/second max throughput.
 pub const MAX_COMMITS_PER_FRAME: usize = 100;
 
+/// Minimum simulation delta time to prevent clock aliasing at extreme FPS.
+///
+/// At >2K FPS, browser timer resolution (~5 µs in Chrome) becomes comparable
+/// to frame duration, causing stroboscopic dt aliasing: consecutive frames
+/// measure dt=0 then dt=2×expected, causing entity position/alpha jitter.
+///
+/// Clamped to 1/480s (2.08ms) — no effect at normal FPS (60-240 Hz),
+/// but prevents sub-millisecond dt steps at extreme FPS (2K-8K+).
+const MIN_SIMULATION_DT: f32 = 1.0 / 480.0;
+
 /// Default maximum number of commits to load.
 ///
 /// Repositories with more commits will be truncated to this limit.
@@ -472,6 +482,18 @@ pub struct Rource {
     /// Reusable label placer for collision avoidance (avoids per-frame Vec allocation).
     label_placer: render_phases::LabelPlacer,
 
+    /// Simulation time accumulator for fixed-timestep updates.
+    ///
+    /// At extreme FPS (>2K), browser timer resolution (~5 µs in Chrome) becomes
+    /// comparable to frame duration, causing stroboscopic dt aliasing:
+    /// - 8K FPS → 125 µs/frame vs ~5 µs timer resolution = 4% quantization
+    /// - Adjacent frames get dt=0 or dt=2×expected, causing position/alpha jitter
+    ///
+    /// Solution: accumulate real dt and only step simulation when enough time
+    /// has accumulated. Rendering still happens every frame (re-renders same state
+    /// when no simulation step occurs), eliminating visible flicker.
+    simulation_accumulator: f32,
+
     // ---- GPU Physics (wgpu only) ----
     /// Whether to use GPU physics (only available with wgpu backend).
     /// When enabled and directory count exceeds the threshold, physics
@@ -651,6 +673,8 @@ impl Rource {
             active_actions_buf: Vec::with_capacity(64),
             // Reusable label placer (avoids per-frame Vec allocation)
             label_placer: render_phases::LabelPlacer::new(1.0),
+            // Simulation accumulator for fixed-timestep updates (anti-flicker at >2K FPS)
+            simulation_accumulator: 0.0,
             // GPU physics (wgpu only) - default threshold 500 directories
             use_gpu_physics: false,
             gpu_physics_threshold: 500,
@@ -943,65 +967,92 @@ impl Rource {
         // Clamping would hide stutters and make performance claims dishonest.
         self.perf_metrics.record_frame(raw_dt);
 
-        // Clamp dt for SIMULATION ONLY to avoid physics instability
-        // (e.g., when tab is backgrounded, we don't want entities to fly off screen)
-        let dt = raw_dt.min(0.1);
+        // ---- Simulation Accumulator (Anti-Flicker for Uncapped FPS) ----
+        //
+        // At extreme FPS (>2K), browser timer resolution (~5 µs in Chrome) causes
+        // stroboscopic dt aliasing: consecutive frames measure dt=0 then dt=2×expected,
+        // causing entity position/alpha jitter visible as flickering.
+        //
+        // Solution: accumulate real dt and only step simulation when enough time has
+        // built up (minimum 1/480s ≈ 2.08ms). Rendering still occurs every frame
+        // (re-renders identical state when no simulation step), eliminating flicker.
+        //
+        // At 60 FPS: dt=16.7ms → always steps (no change in behavior)
+        // At 144 FPS: dt=6.9ms → always steps (no change in behavior)
+        // At 2K FPS: dt=0.5ms → steps every ~4 frames (smooth, no jitter)
+        // At 8K FPS: dt=0.125ms → steps every ~17 frames (smooth, no jitter)
+
+        // Clamp raw_dt upper bound for simulation (tab-backgrounded protection)
+        let clamped_dt = raw_dt.min(0.1);
+        self.simulation_accumulator += clamped_dt;
+
+        let should_step_simulation = self.simulation_accumulator >= MIN_SIMULATION_DT;
+        let dt = if should_step_simulation {
+            let dt = self.simulation_accumulator;
+            self.simulation_accumulator = 0.0;
+            dt
+        } else {
+            0.0 // No simulation step this frame; render-only
+        };
 
         // ---- Scene Update Phase ----
         self.frame_profiler.begin_phase("scene_update");
 
-        // Update simulation if playing
-        if self.playback.is_playing() && !self.commits.is_empty() {
-            self.playback.add_time(dt);
+        // Update simulation only when accumulator threshold is reached
+        if should_step_simulation {
+            // Update simulation if playing
+            if self.playback.is_playing() && !self.commits.is_empty() {
+                self.playback.add_time(dt);
 
-            let seconds_per_commit =
-                calculate_seconds_per_commit(self.settings.playback.seconds_per_day);
+                let seconds_per_commit =
+                    calculate_seconds_per_commit(self.settings.playback.seconds_per_day);
 
-            // Limit commits processed per frame to prevent browser freeze
-            let mut commits_this_frame = 0;
-            while self.playback.accumulated_time() >= seconds_per_commit
-                && self.playback.current_commit() < self.commits.len()
-                && commits_this_frame < MAX_COMMITS_PER_FRAME
-            {
-                let current = self.playback.current_commit();
-                let last_applied = self.playback.last_applied_commit();
+                // Limit commits processed per frame to prevent browser freeze
+                let mut commits_this_frame = 0;
+                while self.playback.accumulated_time() >= seconds_per_commit
+                    && self.playback.current_commit() < self.commits.len()
+                    && commits_this_frame < MAX_COMMITS_PER_FRAME
+                {
+                    let current = self.playback.current_commit();
+                    let last_applied = self.playback.last_applied_commit();
 
-                if current > last_applied || (last_applied == 0 && current == 0) {
-                    apply_vcs_commit(&mut self.scene, &self.commits[current]);
-                    self.playback.set_last_applied_commit(current);
+                    if current > last_applied || (last_applied == 0 && current == 0) {
+                        apply_vcs_commit(&mut self.scene, &self.commits[current]);
+                        self.playback.set_last_applied_commit(current);
+                    }
+                    self.playback.subtract_time(seconds_per_commit);
+                    self.playback.advance_commit();
+                    commits_this_frame += 1;
                 }
-                self.playback.subtract_time(seconds_per_commit);
-                self.playback.advance_commit();
-                commits_this_frame += 1;
+
+                // If we hit the limit, clamp accumulated time to prevent unbounded growth
+                if commits_this_frame >= MAX_COMMITS_PER_FRAME {
+                    self.playback
+                        .clamp_accumulated_time(seconds_per_commit * 2.0);
+                }
+
+                // Check if we're done
+                if self.playback.current_commit() >= self.commits.len() {
+                    self.playback.stop();
+                }
             }
 
-            // If we hit the limit, clamp accumulated time to prevent unbounded growth
-            if commits_this_frame >= MAX_COMMITS_PER_FRAME {
-                self.playback
-                    .clamp_accumulated_time(seconds_per_commit * 2.0);
+            // Update scene physics and animations
+            // Use GPU physics when enabled and conditions are met (wgpu backend, threshold)
+            if self.should_use_gpu_physics() {
+                self.update_physics_gpu(dt);
+            } else {
+                self.scene.update(dt);
             }
 
-            // Check if we're done
-            if self.playback.current_commit() >= self.commits.len() {
-                self.playback.stop();
+            // Auto-fit camera to keep content visible (if enabled)
+            if self.auto_fit {
+                self.auto_fit_camera(dt);
             }
-        }
 
-        // Update scene physics and animations
-        // Use GPU physics when enabled and conditions are met (wgpu backend, threshold)
-        if self.should_use_gpu_physics() {
-            self.update_physics_gpu(dt);
-        } else {
-            self.scene.update(dt);
+            // Update camera
+            self.camera.update(dt);
         }
-
-        // Auto-fit camera to keep content visible (if enabled)
-        if self.auto_fit {
-            self.auto_fit_camera(dt);
-        }
-
-        // Update camera
-        self.camera.update(dt);
 
         self.frame_profiler.end_phase("scene_update");
 

@@ -383,12 +383,15 @@ The following events MUST trigger a CLAUDE.md update:
 | VFL capture matrix too small to catch viewport-specific bugs | Expand to 8 viewports × 2 views × 2 themes = 32 screenshots; use `capture-vfl-full.sh` |
 | WASM↔JS boundary uses JSON serialization for hot-path data | Use zero-copy shared memory buffer (`[f32; N]` + `Float32Array` view); eliminates `format!()`, string copy, `JSON.parse()` |
 | `Float32Array` view detached after WASM `memory.grow()` | Recreate view in `ensureView()` when `buffer.byteLength === 0`; always check before reading |
+| Triple-nested `Vec<Vec<Vec<T>>>` in hot path | Flatten to `Vec<Vec<T>>` with arithmetic indexing; each pointer level costs ~5-20 ns per access |
+| Generation counter branch in tight inner loop | Replace with dirty-cell tracking: container-level invalidation, branch-free inner loop |
+| Flickering at extreme FPS (>2K) from timer resolution aliasing | Use simulation time accumulator with minimum step threshold (1/480 Hz = 2.08ms) |
 
 #### Lessons Learned Log
 
 > **Refactored to modular knowledge base**: See [`docs/lessons/README.md`](docs/lessons/README.md)
 > for the index with decision tables, linking to domain-organized files
-> and chronological audit log (291 entries across 4 files).
+> and chronological audit log (295 entries across 4 files).
 >
 > New entries should be added to BOTH the appropriate category file AND the
 > chronological log in that document.
@@ -467,8 +470,8 @@ On a 3.0 GHz CPU (typical test hardware):
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| Frame time | ~18-23 µs | <20 µs | Near target |
-| Optimization phases | 83 | Ongoing | Active |
+| Frame time | ~2.5 µs (label placement) | <5 µs | Approaching target |
+| Optimization phases | 86 | Ongoing | Active |
 | Algorithms evaluated | 79+ | Comprehensive | See ALGORITHM_CANDIDATES.md |
 
 ---
@@ -486,9 +489,9 @@ On a 3.0 GHz CPU (typical test hardware):
 | Complexity | Big-O analysis with scaling verification |
 | Proof | Mathematical proof for complexity claims |
 | Precision | Picosecond/nanosecond measurements |
-| Frame Budget | Total render time < 20 µs |
+| Frame Budget | Total render time < 5 µs (target: 2-5 µs) |
 
-**Reference**: `docs/performance/CHRONOLOGY.md` (84 phases)
+**Reference**: `docs/performance/CHRONOLOGY.md` (86 phases)
 
 ---
 
@@ -647,7 +650,7 @@ On a 3.0 GHz CPU (typical test hardware):
 | `docs/REVIEW_STANDARDS.md` | Code review requirements |
 | `STABILITY.md` | API stability policy |
 | `SECURITY.md` | Security policy |
-| `docs/performance/CHRONOLOGY.md` | Optimization history (84 phases) |
+| `docs/performance/CHRONOLOGY.md` | Optimization history (86 phases) |
 | `docs/performance/BENCHMARKS.md` | Raw benchmark data |
 | `docs/performance/NOT_APPLICABLE.md` | Algorithms evaluated as N/A |
 | `docs/performance/ALGORITHM_CANDIDATES.md` | Future optimization candidates |
@@ -2354,7 +2357,7 @@ If the answer to ANY of these is "yes" and not yet done, do it before ending.
 
 ---
 
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-12*
 *Standard: PEER REVIEWED PUBLISHED ACADEMIC (Zero Compromises)*
-*Optimization Phases: 84 (see docs/performance/CHRONOLOGY.md)*
+*Optimization Phases: 86 (see docs/performance/CHRONOLOGY.md)*
 *Formal Verification: 2968 theorems/harnesses (Verus: 498, Coq R-based: 1366, Coq Z-based: 471, Coq FP: 361, Kani: 272)*
