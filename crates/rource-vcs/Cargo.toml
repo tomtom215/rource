@@ -23,7 +23,7 @@ bitcode = { version = "0.6", optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
-proptest = "1.5"
+proptest = "1.10"
 
 # iai-callgrind requires Valgrind which only works on Linux
 [target.'cfg(target_os = "linux")'.dev-dependencies]
