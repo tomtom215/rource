@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770922420791,
+  "lastUpdate": 1770931227607,
   "repoUrl": "https://github.com/tomtom215/rource",
   "entries": {
     "Binary Sizes": [
@@ -6590,6 +6590,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "WASM Gzipped",
             "value": 1405749,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomtom215@users.noreply.github.com",
+            "name": "Tom F",
+            "username": "tomtom215"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a00af0994bb442623611a13b46dfe98b87548691",
+          "message": "Merge pull request #298 from tomtom215/claude/resume-research-session-cA0ER\n\nCache insights report at load time; add lift metric and UI enhancements",
+          "timestamp": "2026-02-12T22:16:00+01:00",
+          "tree_id": "78ea5b278533c8426851fef37755bcaadb9e1914",
+          "url": "https://github.com/tomtom215/rource/commit/a00af0994bb442623611a13b46dfe98b87548691"
+        },
+        "date": 1770931227118,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Native Binary",
+            "value": 3911896,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Bundle",
+            "value": 3790921,
+            "unit": "bytes"
+          },
+          {
+            "name": "WASM Gzipped",
+            "value": 1405648,
             "unit": "bytes"
           }
         ]
