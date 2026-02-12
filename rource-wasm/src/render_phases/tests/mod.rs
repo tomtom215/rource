@@ -4,5 +4,6 @@
 //! Tests for `render_phases` module.
 
 mod benchmark_tests;
+mod full_frame_bench;
 mod helpers_tests;
 mod label_placer_tests;

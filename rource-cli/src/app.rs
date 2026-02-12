@@ -467,6 +467,14 @@ pub struct App {
     pub file_label_candidates_buffer: Vec<(FileId, Vec2, f32, f32, f32)>,
 
     // ==========================================================================
+    // Zero-Allocation Branch Curve Buffer (Phase 87 Optimization)
+    // ==========================================================================
+    // Reusable buffer for branch curve points, shared between directory and file
+    // rendering. Eliminates ~200+ heap allocations per frame.
+    /// Reusable buffer for branch curve spline points.
+    pub curve_buf: Vec<Vec2>,
+
+    // ==========================================================================
     // HUD String Cache (Phase 14 Optimization)
     // ==========================================================================
     // Caches formatted HUD strings to avoid per-frame format! allocations.
@@ -602,6 +610,8 @@ impl App {
             visible_users_buffer: Vec::with_capacity(100),
             // Pre-allocate label candidates buffer for file label collision detection
             file_label_candidates_buffer: Vec::with_capacity(256),
+            // Phase 87: Pre-allocate branch curve buffer for zero-allocation rendering
+            curve_buf: Vec::with_capacity(32),
             // HUD string cache (zero-allocation after first format)
             hud_cache: HudCache::new(),
         }

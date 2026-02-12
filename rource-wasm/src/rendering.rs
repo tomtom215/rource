@@ -13,7 +13,7 @@
 //! to ensure visual parity.
 
 // Re-export only the functions used by render_phases.rs
-pub use rource_render::visual::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
+pub use rource_render::visual::{draw_action_beam, draw_avatar_shape, draw_curved_branch_buffered};
 
 #[cfg(test)]
 mod tests {

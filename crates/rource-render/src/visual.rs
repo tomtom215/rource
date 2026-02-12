@@ -430,6 +430,149 @@ pub fn draw_curved_branch<R: Renderer + ?Sized>(
 }
 
 // ============================================================================
+// Phase 87: Zero-Allocation Branch Drawing
+// ============================================================================
+
+/// Screen-space distance threshold (pixels²) below which straight lines are used.
+///
+/// When the squared distance between branch endpoints is less than this,
+/// a straight line is visually indistinguishable from a curve. Avoids
+/// Catmull-Rom computation for short branches.
+///
+/// 50² = 2500 pixels² ≈ branches shorter than ~50px on screen.
+const BRANCH_CURVE_DIST_SQ_THRESHOLD: f32 = 2500.0;
+
+/// Generates Catmull-Rom spline points into a reusable buffer.
+///
+/// Zero-allocation version of [`catmull_rom_spline`]. The buffer is cleared
+/// and repopulated each call, eliminating per-call heap allocation.
+///
+/// # Phase 87
+///
+/// This function is called 200+ times per frame (once per visible file branch).
+/// The allocating version created ~200 `Vec<Vec2>` allocations per frame.
+/// This version reuses a single buffer across all calls.
+pub fn catmull_rom_spline_into(points: &[Vec2], segments_per_span: usize, output: &mut Vec<Vec2>) {
+    output.clear();
+
+    if points.len() < 2 {
+        output.extend_from_slice(points);
+        return;
+    }
+
+    if points.len() == 2 {
+        output.extend_from_slice(points);
+        return;
+    }
+
+    output.reserve(points.len() * segments_per_span + 1);
+
+    let inv_segments = 1.0 / segments_per_span as f32;
+    for i in 0..points.len() - 1 {
+        let p0 = if i == 0 { points[0] } else { points[i - 1] };
+        let p1 = points[i];
+        let p2 = points[i + 1];
+        let p3 = if i + 2 >= points.len() {
+            points[points.len() - 1]
+        } else {
+            points[i + 2]
+        };
+
+        for j in 0..segments_per_span {
+            let t = j as f32 * inv_segments;
+            output.push(catmull_rom_interpolate(p0, p1, p2, p3, t));
+        }
+    }
+
+    if let Some(&last) = points.last() {
+        output.push(last);
+    }
+}
+
+/// Creates a curved branch path into a reusable buffer.
+///
+/// Zero-allocation version of [`create_branch_curve`].
+///
+/// # Phase 87
+///
+/// Eliminates ~200 `Vec<Vec2>` heap allocations per frame by reusing
+/// a caller-owned buffer.
+pub fn create_branch_curve_into(start: Vec2, end: Vec2, tension: f32, output: &mut Vec<Vec2>) {
+    let dir = end - start;
+    let length_sq = dir.x * dir.x + dir.y * dir.y;
+
+    if length_sq < 1.0 {
+        output.clear();
+        output.push(start);
+        output.push(end);
+        return;
+    }
+
+    let mid = start.lerp(end, 0.5);
+    let perp = Vec2::new(-dir.y, dir.x);
+    let offset = perp * tension * 0.15;
+
+    let ctrl1 = start.lerp(mid, 0.33) + offset * 0.5;
+    let ctrl2 = start.lerp(mid, 0.66) + offset;
+    let ctrl3 = mid.lerp(end, 0.33) + offset * 0.5;
+    let ctrl4 = mid.lerp(end, 0.66);
+
+    let control_points = [start, ctrl1, ctrl2, ctrl3, ctrl4, end];
+    catmull_rom_spline_into(&control_points, SPLINE_SEGMENTS / 2, output);
+}
+
+/// Draws a curved branch using a reusable buffer (zero allocation per call).
+///
+/// # Phase 87: Zero-Allocation Branch Drawing
+///
+/// This replaces `draw_curved_branch` in hot loops where branches are drawn
+/// for hundreds of files per frame. Key differences from `draw_curved_branch`:
+///
+/// - Uses caller-owned `curve_buf` to avoid heap allocation per call
+/// - LOD simplification: uses straight lines when endpoints are close on screen
+///   (< ~50 pixels apart), avoiding Catmull-Rom computation entirely
+/// - No branch glow pass (the 0.15 alpha glow is imperceptible for thin file
+///   branches and doubled the number of `draw_spline` calls)
+///
+/// # Arguments
+///
+/// * `curve_buf` - Reusable buffer for curve points (cleared and repopulated)
+/// * Other arguments same as `draw_curved_branch`
+#[inline]
+pub fn draw_curved_branch_buffered<R: Renderer + ?Sized>(
+    renderer: &mut R,
+    start: Vec2,
+    end: Vec2,
+    width: f32,
+    color: Color,
+    use_curve: bool,
+    curve_buf: &mut Vec<Vec2>,
+) {
+    if color.a < 0.01 {
+        return;
+    }
+
+    if !use_curve {
+        renderer.draw_line(start, end, width, color);
+        return;
+    }
+
+    // LOD: Use straight line when branch is short on screen.
+    // Squared distance avoids sqrt() — at < ~50px, curves are indistinguishable.
+    let dx = end.x - start.x;
+    let dy = end.y - start.y;
+    let dist_sq = dx * dx + dy * dy;
+
+    if dist_sq < BRANCH_CURVE_DIST_SQ_THRESHOLD {
+        renderer.draw_line(start, end, width, color);
+        return;
+    }
+
+    create_branch_curve_into(start, end, BRANCH_CURVE_TENSION, curve_buf);
+    renderer.draw_spline(curve_buf, width, color);
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -779,5 +922,453 @@ mod tests {
         // Very low alpha should skip drawing
         assert!(calls.splines.is_empty(), "Invisible branch should not draw");
         assert!(calls.lines.is_empty(), "Invisible branch should not draw");
+    }
+
+    // ========================================================================
+    // Phase 87: catmull_rom_spline_into tests (zero-allocation parity)
+    // ========================================================================
+
+    #[test]
+    fn test_catmull_rom_spline_into_empty() {
+        let mut buf = Vec::new();
+        catmull_rom_spline_into(&[], 10, &mut buf);
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_into_single_point() {
+        let mut buf = Vec::new();
+        let points = [Vec2::new(5.0, 5.0)];
+        catmull_rom_spline_into(&points, 10, &mut buf);
+        assert_eq!(buf.len(), 1);
+        assert_eq!(buf[0], Vec2::new(5.0, 5.0));
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_into_two_points() {
+        let mut buf = Vec::new();
+        let points = [Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)];
+        catmull_rom_spline_into(&points, 10, &mut buf);
+        assert_eq!(buf.len(), 2);
+        assert_eq!(buf[0], Vec2::new(0.0, 0.0));
+        assert_eq!(buf[1], Vec2::new(10.0, 10.0));
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_into_multiple_points() {
+        let mut buf = Vec::new();
+        let points = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 5.0),
+            Vec2::new(20.0, 0.0),
+        ];
+        catmull_rom_spline_into(&points, 5, &mut buf);
+        // Should have more points than input (5 segments × 2 spans + 1 endpoint)
+        assert!(buf.len() > 3, "Expected > 3 points, got {}", buf.len());
+        // First point should match input
+        assert_eq!(buf[0], points[0]);
+        // Last point should match input
+        assert_eq!(*buf.last().unwrap(), *points.last().unwrap());
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_into_parity_with_allocating() {
+        // Verify zero-alloc version produces identical output to allocating version
+        let points = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 5.0),
+            Vec2::new(20.0, 0.0),
+            Vec2::new(30.0, 10.0),
+        ];
+        let allocating = catmull_rom_spline(&points, 4);
+        let mut buf = Vec::new();
+        catmull_rom_spline_into(&points, 4, &mut buf);
+        assert_eq!(buf.len(), allocating.len(), "Length mismatch");
+        for (i, (a, b)) in allocating.iter().zip(buf.iter()).enumerate() {
+            assert!(
+                (a.x - b.x).abs() < 1e-6 && (a.y - b.y).abs() < 1e-6,
+                "Point {i} differs: allocating={a:?}, into={b:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_into_buffer_reuse() {
+        // Verify buffer is properly cleared and reused across calls
+        let mut buf = Vec::new();
+        let points_a = [Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)];
+        catmull_rom_spline_into(&points_a, 4, &mut buf);
+        assert_eq!(buf.len(), 2);
+
+        let points_b = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(5.0, 10.0),
+            Vec2::new(10.0, 0.0),
+        ];
+        catmull_rom_spline_into(&points_b, 4, &mut buf);
+        assert!(buf.len() > 2, "Buffer should be repopulated, not appended");
+        assert_eq!(buf[0], points_b[0]);
+        assert_eq!(*buf.last().unwrap(), *points_b.last().unwrap());
+    }
+
+    #[test]
+    fn test_catmull_rom_spline_into_interpolation_correctness() {
+        // Verify intermediate points are actually interpolated (not just endpoints)
+        let mut buf = Vec::new();
+        let points = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 10.0),
+            Vec2::new(20.0, 0.0),
+        ];
+        catmull_rom_spline_into(&points, 4, &mut buf);
+        // Check that intermediate points exist between endpoints
+        let has_intermediate = buf.iter().any(|p| p.x > 0.5 && p.x < 19.5);
+        assert!(
+            has_intermediate,
+            "Should have interpolated intermediate points"
+        );
+        // Verify monotonic x progression (for this simple case)
+        for w in buf.windows(2) {
+            assert!(
+                w[1].x >= w[0].x - 0.01,
+                "X should be roughly monotonic: {} -> {}",
+                w[0].x,
+                w[1].x
+            );
+        }
+    }
+
+    // ========================================================================
+    // Phase 87: create_branch_curve_into tests
+    // ========================================================================
+
+    #[test]
+    fn test_create_branch_curve_into_short_distance() {
+        let mut buf = Vec::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(0.5, 0.5);
+        create_branch_curve_into(start, end, 0.4, &mut buf);
+        // Short distances should return simple 2-point line
+        assert_eq!(buf.len(), 2);
+        assert_eq!(buf[0], start);
+        assert_eq!(buf[1], end);
+    }
+
+    #[test]
+    fn test_create_branch_curve_into_normal_distance() {
+        let mut buf = Vec::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        create_branch_curve_into(start, end, 0.4, &mut buf);
+        // Should create multiple interpolated points
+        assert!(buf.len() > 2, "Expected > 2 points, got {}", buf.len());
+        // First point should be start
+        assert_eq!(buf[0], start);
+        // Last point should be end
+        assert_eq!(*buf.last().unwrap(), end);
+    }
+
+    #[test]
+    fn test_create_branch_curve_into_parity_with_allocating() {
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let allocating = create_branch_curve(start, end, 0.4);
+        let mut buf = Vec::new();
+        create_branch_curve_into(start, end, 0.4, &mut buf);
+        assert_eq!(buf.len(), allocating.len(), "Length mismatch");
+        for (i, (a, b)) in allocating.iter().zip(buf.iter()).enumerate() {
+            assert!(
+                (a.x - b.x).abs() < 1e-6 && (a.y - b.y).abs() < 1e-6,
+                "Point {i} differs: allocating={a:?}, into={b:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_create_branch_curve_into_tension_affects_shape() {
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let mut buf_low = Vec::new();
+        let mut buf_high = Vec::new();
+        create_branch_curve_into(start, end, 0.1, &mut buf_low);
+        create_branch_curve_into(start, end, 1.0, &mut buf_high);
+        // Same number of points but different intermediate positions
+        assert_eq!(buf_low.len(), buf_high.len());
+        // At least one intermediate point should differ due to tension
+        let differs = buf_low
+            .iter()
+            .zip(buf_high.iter())
+            .any(|(a, b)| (a.x - b.x).abs() > 0.01 || (a.y - b.y).abs() > 0.01);
+        assert!(
+            differs,
+            "Different tensions should produce different curves"
+        );
+    }
+
+    #[test]
+    fn test_create_branch_curve_into_perpendicular_offset() {
+        // Verify the curve has a perpendicular offset (not just a straight line)
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 0.0); // Horizontal line
+        let mut buf = Vec::new();
+        create_branch_curve_into(start, end, 0.4, &mut buf);
+        // With horizontal start→end and non-zero tension, some points should
+        // have non-zero y (perpendicular offset)
+        let has_y_offset = buf.iter().any(|p| p.y.abs() > 0.01);
+        assert!(
+            has_y_offset,
+            "Curve with tension should have perpendicular offset"
+        );
+    }
+
+    #[test]
+    fn test_create_branch_curve_into_buffer_reuse() {
+        let mut buf = vec![Vec2::new(999.0, 999.0); 50]; // Pre-fill with garbage
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(0.5, 0.5); // Short distance → 2 points
+        create_branch_curve_into(start, end, 0.4, &mut buf);
+        assert_eq!(buf.len(), 2, "Buffer should be cleared and repopulated");
+        assert_eq!(buf[0], start);
+        assert_eq!(buf[1], end);
+    }
+
+    // ========================================================================
+    // Phase 87: draw_curved_branch_buffered tests
+    // ========================================================================
+
+    #[test]
+    fn test_draw_curved_branch_buffered_with_curve() {
+        let mut renderer = MockRenderer::new();
+        let mut buf = Vec::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0); // Far enough for curve (dist_sq = 20000 > 2500)
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        draw_curved_branch_buffered(&mut renderer, start, end, 2.0, color, true, &mut buf);
+
+        let calls = renderer.calls();
+        // Should draw a single spline (no glow unlike draw_curved_branch)
+        assert_eq!(calls.splines.len(), 1, "Should draw exactly one spline");
+        assert!(
+            calls.lines.is_empty(),
+            "Should not draw lines when using curve"
+        );
+    }
+
+    #[test]
+    fn test_draw_curved_branch_buffered_straight_line() {
+        let mut renderer = MockRenderer::new();
+        let mut buf = Vec::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        draw_curved_branch_buffered(&mut renderer, start, end, 2.0, color, false, &mut buf);
+
+        let calls = renderer.calls();
+        assert!(
+            calls.splines.is_empty(),
+            "Straight mode should not draw splines"
+        );
+        assert_eq!(calls.lines.len(), 1, "Should draw one straight line");
+        // Verify the line coordinates
+        assert_eq!(calls.lines[0].0, start);
+        assert_eq!(calls.lines[0].1, end);
+    }
+
+    #[test]
+    fn test_draw_curved_branch_buffered_invisible() {
+        let mut renderer = MockRenderer::new();
+        let mut buf = Vec::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let color = Color::new(0.5, 0.5, 0.5, 0.005); // Below 0.01 threshold
+
+        draw_curved_branch_buffered(&mut renderer, start, end, 2.0, color, true, &mut buf);
+
+        let calls = renderer.calls();
+        assert!(
+            calls.splines.is_empty(),
+            "Invisible branch should not draw splines"
+        );
+        assert!(
+            calls.lines.is_empty(),
+            "Invisible branch should not draw lines"
+        );
+    }
+
+    #[test]
+    fn test_draw_curved_branch_buffered_lod_short_distance() {
+        // When endpoints are close (< 50px), should use straight line even with use_curve=true
+        let mut renderer = MockRenderer::new();
+        let mut buf = Vec::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(10.0, 10.0); // dist_sq = 200 < 2500 threshold
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        draw_curved_branch_buffered(&mut renderer, start, end, 2.0, color, true, &mut buf);
+
+        let calls = renderer.calls();
+        // LOD simplification: short branch → straight line
+        assert!(
+            calls.splines.is_empty(),
+            "Short branch should use line, not spline"
+        );
+        assert_eq!(calls.lines.len(), 1, "Short branch should draw one line");
+    }
+
+    #[test]
+    fn test_draw_curved_branch_buffered_lod_threshold_boundary() {
+        // Test exactly at the threshold boundary (50px = dist_sq 2500)
+        let mut renderer_below = MockRenderer::new();
+        let mut renderer_above = MockRenderer::new();
+        let mut buf = Vec::new();
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        // Just below threshold: 49px diagonal ≈ dist_sq = 49² + 0² = 2401 < 2500
+        let start = Vec2::new(0.0, 0.0);
+        let end_below = Vec2::new(49.0, 0.0);
+        draw_curved_branch_buffered(
+            &mut renderer_below,
+            start,
+            end_below,
+            2.0,
+            color,
+            true,
+            &mut buf,
+        );
+
+        // Just above threshold: 51px ≈ dist_sq = 51² = 2601 > 2500
+        let end_above = Vec2::new(51.0, 0.0);
+        draw_curved_branch_buffered(
+            &mut renderer_above,
+            start,
+            end_above,
+            2.0,
+            color,
+            true,
+            &mut buf,
+        );
+
+        let calls_below = renderer_below.calls();
+        let calls_above = renderer_above.calls();
+
+        // Below threshold → line
+        assert_eq!(
+            calls_below.lines.len(),
+            1,
+            "Below threshold should draw line"
+        );
+        assert!(
+            calls_below.splines.is_empty(),
+            "Below threshold should not draw spline"
+        );
+        // Above threshold → spline
+        assert_eq!(
+            calls_above.splines.len(),
+            1,
+            "Above threshold should draw spline"
+        );
+        assert!(
+            calls_above.lines.is_empty(),
+            "Above threshold should not draw line"
+        );
+    }
+
+    #[test]
+    fn test_draw_curved_branch_buffered_no_glow() {
+        // Verify the buffered version does NOT draw glow (unlike draw_curved_branch)
+        let mut renderer_buffered = MockRenderer::new();
+        let mut renderer_original = MockRenderer::new();
+        let mut buf = Vec::new();
+        let start = Vec2::new(0.0, 0.0);
+        let end = Vec2::new(100.0, 100.0);
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        draw_curved_branch_buffered(
+            &mut renderer_buffered,
+            start,
+            end,
+            2.0,
+            color,
+            true,
+            &mut buf,
+        );
+        draw_curved_branch(&mut renderer_original, start, end, 2.0, color, true);
+
+        let buffered_calls = renderer_buffered.calls();
+        let original_calls = renderer_original.calls();
+
+        // Original draws 2 splines (main + glow), buffered draws 1 (main only)
+        assert_eq!(
+            buffered_calls.splines.len(),
+            1,
+            "Buffered should draw 1 spline (no glow)"
+        );
+        assert_eq!(
+            original_calls.splines.len(),
+            2,
+            "Original should draw 2 splines (main + glow)"
+        );
+    }
+
+    #[test]
+    fn test_draw_curved_branch_buffered_buffer_reuse() {
+        // Verify the buffer is properly reused across multiple calls
+        let mut renderer = MockRenderer::new();
+        let mut buf = Vec::new();
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        // First call with long branch (uses spline)
+        draw_curved_branch_buffered(
+            &mut renderer,
+            Vec2::new(0.0, 0.0),
+            Vec2::new(100.0, 100.0),
+            2.0,
+            color,
+            true,
+            &mut buf,
+        );
+        let first_len = buf.len();
+        assert!(
+            first_len > 2,
+            "Long branch should populate buffer with curve points"
+        );
+
+        // Second call with different endpoints
+        draw_curved_branch_buffered(
+            &mut renderer,
+            Vec2::new(50.0, 50.0),
+            Vec2::new(200.0, 200.0),
+            2.0,
+            color,
+            true,
+            &mut buf,
+        );
+        // Buffer should have been cleared and repopulated, not appended
+        assert_eq!(
+            buf.len(),
+            first_len,
+            "Buffer should be repopulated (same number of curve points)"
+        );
+    }
+
+    #[test]
+    fn test_draw_curved_branch_buffered_dist_sq_computation() {
+        // Verify the distance computation is correct (dx² + dy²)
+        let mut renderer = MockRenderer::new();
+        let mut buf = Vec::new();
+        let color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+        // Distance: sqrt(30² + 40²) = 50px, dist_sq = 2500 = threshold
+        // At threshold, should use line (< not <=)
+        let start = Vec2::new(0.0, 0.0);
+        // Use slightly less than threshold: 30² + 39² = 900 + 1521 = 2421 < 2500
+        let end = Vec2::new(30.0, 39.0);
+        draw_curved_branch_buffered(&mut renderer, start, end, 2.0, color, true, &mut buf);
+
+        let calls = renderer.calls();
+        assert_eq!(calls.lines.len(), 1, "dist_sq=2421 < 2500 should use line");
+        assert!(calls.splines.is_empty());
     }
 }

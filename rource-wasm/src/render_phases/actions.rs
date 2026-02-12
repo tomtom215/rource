@@ -52,40 +52,43 @@ const MAX_CONCURRENT_BEAMS: usize = 15;
 /// 2. Sorted by priority (newer actions first, as they're more visually important)
 /// 3. The natural stagger comes from actions starting at different simulation times
 ///
-/// This creates a more pleasing visual effect where beams appear in waves
-/// rather than all at once.
+/// # Phase 85: Zero-Allocation Actions Buffer
+///
+/// The `active_buf` parameter is a reusable buffer that eliminates per-frame
+/// heap allocation. Previously, `Vec::collect()` allocated 160–800 bytes every
+/// frame (3,600+ allocations/minute at 60 FPS). Now the buffer is owned by
+/// the caller (`Rource` struct) and cleared+reused each frame.
 #[inline(never)]
 pub fn render_actions<R: Renderer + ?Sized>(
     renderer: &mut R,
     ctx: &RenderContext,
     scene: &rource_core::Scene,
     camera: &rource_core::Camera,
+    active_buf: &mut Vec<(usize, f32)>,
 ) {
     trace_span!("render_actions");
 
-    // Collect active actions with their indices
-    // V1: We'll prioritize by progress (newer beams = lower progress first)
-    let mut active_indices: Vec<(usize, f32)> = scene
-        .actions()
-        .iter()
-        .enumerate()
-        .filter(|(_, a)| !a.is_complete())
-        .map(|(i, a)| (i, a.progress()))
-        .collect();
+    // Phase 85: Reuse caller-owned buffer instead of per-frame Vec::collect()
+    active_buf.clear();
+    for (i, a) in scene.actions().iter().enumerate() {
+        if !a.is_complete() {
+            active_buf.push((i, a.progress()));
+        }
+    }
 
     // V1: Limit concurrent beams to prevent visual chaos
     // OPTIMIZATION: Use select_nth_unstable for O(n) partial selection instead of O(n log n) sort
     // This partitions the array so elements [0..beam_limit] are the smallest (unordered)
-    let beam_limit = MAX_CONCURRENT_BEAMS.min(active_indices.len());
-    if beam_limit > 0 && beam_limit < active_indices.len() {
+    let beam_limit = MAX_CONCURRENT_BEAMS.min(active_buf.len());
+    if beam_limit > 0 && beam_limit < active_buf.len() {
         // Partial sort: only need the smallest `beam_limit` elements
-        active_indices.select_nth_unstable_by(beam_limit - 1, |a, b| {
+        active_buf.select_nth_unstable_by(beam_limit - 1, |a, b| {
             a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
         });
     }
     let actions_slice = scene.actions();
 
-    for (idx, _progress) in active_indices.into_iter().take(beam_limit) {
+    for &(idx, _progress) in active_buf.iter().take(beam_limit) {
         let action = &actions_slice[idx];
         let user_opt = scene.get_user(action.user());
         let file_opt = scene.get_file(action.file());

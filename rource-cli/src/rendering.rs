@@ -25,7 +25,7 @@ use rource_core::scene::{FileNode, Scene};
 use rource_core::{DirId, FileId, UserId};
 use rource_math::{Bounds, Color, Vec2};
 use rource_render::effects::{BloomEffect, ShadowEffect};
-use rource_render::visual::{draw_action_beam, draw_avatar_shape, draw_curved_branch};
+use rource_render::visual::{draw_action_beam, draw_avatar_shape, draw_curved_branch_buffered};
 use rource_render::{
     estimate_text_width, FontId, LabelPlacer, Renderer, SoftwareRenderer, TextureId,
 };
@@ -574,7 +574,7 @@ pub fn render_frame(app: &mut App) {
         &mut app.visible_users_buffer,
     );
 
-    // Render directories
+    // Render directories (Phase 87: pass curve_buf for zero-allocation branch drawing)
     render_directories(
         renderer,
         &app.scene,
@@ -583,6 +583,7 @@ pub fn render_frame(app: &mut App) {
         &app.args,
         app.default_font,
         app.dir_name_depth,
+        &mut app.curve_buf,
     );
 
     // Render files (uses reusable label candidates buffer to avoid per-frame allocations)
@@ -599,6 +600,7 @@ pub fn render_frame(app: &mut App) {
         &mut app.file_label_candidates_buffer,
         viewport_width,
         viewport_height,
+        &mut app.curve_buf,
     );
 
     // Render actions (beams)
@@ -643,6 +645,7 @@ pub fn render_frame(app: &mut App) {
 }
 
 /// Render directory entities with enhanced visual styling and LOD optimization.
+#[allow(clippy::too_many_arguments)]
 fn render_directories(
     renderer: &mut SoftwareRenderer,
     scene: &Scene,
@@ -651,6 +654,7 @@ fn render_directories(
     args: &Args,
     font_id: Option<FontId>,
     dir_name_depth: u32,
+    curve_buf: &mut Vec<Vec2>,
 ) {
     let hide_root = args.hide_root;
     let hide_tree = args.hide_tree;
@@ -728,13 +732,14 @@ fn render_directories(
                     0.35,
                 );
 
-                draw_curved_branch(
+                draw_curved_branch_buffered(
                     renderer,
                     parent_screen,
                     screen_pos,
                     branch_width,
                     branch_color,
                     use_curves,
+                    curve_buf,
                 );
             }
         }
@@ -783,6 +788,7 @@ fn render_files(
     label_candidates: &mut Vec<(FileId, Vec2, f32, f32, f32)>,
     viewport_width: f32,
     viewport_height: f32,
+    curve_buf: &mut Vec<Vec2>,
 ) {
     let show_filenames = !args.hide_filenames;
     let hide_tree = args.hide_tree;
@@ -832,13 +838,14 @@ fn render_files(
                     0.25 * file.alpha(),
                 );
 
-                draw_curved_branch(
+                draw_curved_branch_buffered(
                     renderer,
                     dir_screen,
                     screen_pos,
                     0.8,
                     branch_color,
                     use_curves,
+                    curve_buf,
                 );
             }
         }

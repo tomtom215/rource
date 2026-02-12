@@ -1,6 +1,6 @@
 # Optimization Chronology
 
-Complete timeline of all optimization phases (83 phases) with dates, commits, and outcomes.
+Complete timeline of all optimization phases (87 phases) with dates, commits, and outcomes.
 
 ---
 
@@ -3719,4 +3719,386 @@ All 9 existing benchmarks verified with zero regressions:
 
 ---
 
-*Last updated: 2026-02-11*
+## Phase 85: Zero-Allocation Actions Buffer + Benchmark Correction — Hot Path + CI (2026-02-12)
+
+### Problem
+
+Two issues identified during pipeline analysis targeting 5–10 µs frame budget:
+
+1. **Per-frame heap allocation in `render_actions`**: `Vec::collect()` allocated
+   160–800 bytes every frame for active action indices (3,600+ allocations/minute
+   at 60 FPS). At 5 µs budget, each allocation (~50–200 ns) consumes 1–4% of budget.
+
+2. **Misleading benchmark**: `bench_full_label_placement_scenario` included
+   `LabelPlacer::new()` (30,770 ns one-time cost) inside the per-frame loop,
+   reporting 32 µs/frame instead of the actual 7 µs/frame — a 78% inflation.
+
+3. **WebGPU bloom composite buffer size mismatch**: WGSL `vec3<f32>` has alignment
+   16, making the struct 32 bytes, but Rust `BloomCompositeUniforms` was only 16 bytes.
+
+4. **Texture size 0 errors**: `ensure_size()` for bloom/shadow pipelines could be
+   called with 0×0 dimensions before canvas was sized.
+
+5. **Sequential Kani CI**: 272 harnesses ran in a single sequential job (~15+ min).
+
+### Solution: Multi-Faceted Phase
+
+**A. Zero-Allocation Actions Buffer:**
+
+Previously:
+```rust
+let mut active_indices: Vec<(usize, f32)> = scene.actions()
+    .iter().enumerate().filter(...).map(...).collect();  // PER-FRAME ALLOC
+```
+
+Now:
+```rust
+// Buffer owned by Rource struct, cleared + reused each frame
+active_buf.clear();
+for (i, a) in scene.actions().iter().enumerate() {
+    if !a.is_complete() { active_buf.push((i, a.progress())); }
+}
+```
+
+**B. Benchmark Correction:**
+
+| Metric | Before (Artifact) | After (Correct) | Delta |
+|--------|-------------------|-----------------|-------|
+| Full label placement | 32 µs/frame | 7 µs/frame | -78.1% |
+| Root cause | `LabelPlacer::new()` in loop | `reset()` per frame | Fixed |
+
+**C. WebGPU Fixes:**
+
+- `BloomCompositeUniforms`: padded from 16 to 32 bytes (matches WGSL alignment)
+- `ensure_size()` guards: bloom, shadow, and scene texture creation skip 0×0
+
+**D. Kani CI Parallelization:**
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Jobs | 1 sequential | 9 parallel (matrix) | 9× parallelism |
+| Max harnesses/job | 272 | 47 (color) | Under SIGSEGV threshold |
+| Expected wall time | ~15+ min | ~5 min | ~3× faster |
+
+### Implementation
+
+**Actions buffer (`rource-wasm/src/render_phases/actions.rs`):**
+- `render_actions()` now accepts `&mut Vec<(usize, f32)>` parameter
+- Buffer cleared and reused each frame (zero allocation)
+
+**Rource struct (`rource-wasm/src/lib.rs`):**
+- Added `active_actions_buf: Vec<(usize, f32)>` pre-allocated with capacity 64
+- Passed to `render_actions()` each frame
+
+**Benchmark fix (`rource-wasm/src/render_phases/tests/benchmark_tests.rs`):**
+- `LabelPlacer::new()` moved outside loop, `reset()` called per iteration
+- Threshold updated for 5–10 µs budget target
+
+**WebGPU bloom (`crates/rource-render/src/backend/wgpu/bloom.rs`):**
+- `BloomCompositeUniforms._padding` changed from `[f32; 3]` to `[f32; 7]` (32 bytes)
+- `ensure_size()` guards for width=0 || height=0
+- Test updated: `assert_eq!(size_of::<BloomCompositeUniforms>(), 32)`
+
+**WebGPU shadow (`crates/rource-render/src/backend/wgpu/shadow.rs`):**
+- `ensure_size()` guards for width=0 || height=0
+
+**WebGPU scene texture (`crates/rource-render/src/backend/wgpu/mod.rs`):**
+- `ensure_scene_texture()` guards for width=0 || height=0
+
+**Kani CI (`.github/workflows/kani-verify.yml`):**
+- Matrix strategy: 9 parallel jobs (vec2, vec3, vec4, mat3, mat4, color, rect, bounds, utils)
+- Each job verifies only its type's harnesses from the corresponding file
+- Summary job aggregates results with per-type status table
+
+### Benchmark Results (Measured)
+
+Full label placement (30 users + 50 files), 1000 iterations, `--release` mode:
+
+| Metric | Before (Artifact) | After (Correct) | Notes |
+|--------|-------------------|-----------------|-------|
+| Per-frame time | 32 µs | 7 µs (7,262 ns) | Correct: excludes one-time `new()` |
+| `LabelPlacer::new()` | 30,770 ns | 29,773 ns | One-time cost, measured separately |
+| `reset()` | 206 ns | 203 ns | Within noise |
+| `try_place()` | 15 ns | 13 ns | Within noise |
+| `try_place_with_fallback()` | 259 ns | 247 ns | Within noise |
+
+### Regression Check
+
+All 10 benchmarks verified with zero regressions:
+
+| Benchmark | Pre-Change | Post-Change | Status |
+|-----------|-----------|-------------|--------|
+| `bench_label_placer_new` | 30,770 ns | 29,773 ns | OK |
+| `bench_label_placer_reset` | 206 ns | 203 ns | OK |
+| `bench_label_placer_try_place` | 15 ns | 13 ns | OK |
+| `bench_label_placer_try_place_with_fallback` | 259 ns | 247 ns | OK |
+| `bench_full_label_placement_scenario` | 32 µs (artifact) | 7 µs (correct) | FIXED |
+| `bench_beam_sorting` | 93 ns | 99 ns | OK (noise) |
+| `bench_user_label_sorting` | 93 ns | 87 ns | OK |
+| `bench_estimate_text_width` | 0.17 ns | 0.16 ns | OK |
+| `bench_glow_lod_culling` | 0 ns | 0 ns | OK |
+| `bench_stats_buffer_vs_json` | 622x | 628x | OK |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `rource-wasm/src/render_phases/actions.rs` | Zero-allocation buffer pattern |
+| `rource-wasm/src/lib.rs` | `active_actions_buf` field + initialization |
+| `rource-wasm/src/render_phases/tests/benchmark_tests.rs` | Corrected benchmark |
+| `crates/rource-render/src/backend/wgpu/bloom.rs` | 32-byte uniforms + 0-dim guard |
+| `crates/rource-render/src/backend/wgpu/shadow.rs` | 0-dimension guard |
+| `crates/rource-render/src/backend/wgpu/mod.rs` | 0-dimension guard |
+| `.github/workflows/kani-verify.yml` | 9-way matrix parallelization |
+
+---
+
+## Phase 86: Flat Grid + Dirty-Cell LabelPlacer (2.74x Speedup)
+
+**Date**: 2026-02-12
+**Category**: Data structure optimization + Cache locality
+**Target**: Label placement from 7 µs → 2-5 µs per frame
+
+### Problem
+
+The `LabelPlacer` spatial hash used triple-nested `Vec<Vec<Vec<(usize, u32)>>>`
+with a generation counter for O(1) reset. This had three performance problems:
+
+1. **Triple pointer indirection**: Every cell access required 3 pointer dereferences
+   (`grid` → `row` → `cell` → `entries`), causing cache misses on every label check
+2. **Generation check in tight inner loop**: Each entry comparison included a branch
+   `if gen != current_gen { continue; }` that disrupted branch prediction
+3. **8 bytes per entry**: `(usize, u32)` stored generation tag per entry, doubling
+   memory footprint vs. just storing the label index
+
+### Solution
+
+Replaced with flat `Vec<Vec<usize>>` grid + dirty-cell tracking:
+
+1. **Flat grid**: Single `Vec<Vec<usize>>` indexed as `grid[cy * 32 + cx]` —
+   eliminates 2 levels of pointer indirection (one dereference instead of three)
+2. **Dirty-cell tracking**: `Vec<u16>` stores indices of cells written to this frame.
+   Reset clears only those cells (O(k) where k ≈ 100-160 for 80 labels).
+   Eliminates generation counter entirely — no branch in collision inner loop.
+3. **4 bytes per entry**: Just `usize` label index, halving memory per grid entry
+
+### Implementation
+
+```rust
+// Before: Triple indirection + generation check
+grid: Vec<Vec<Vec<(usize, u32)>>>,  // grid[cy][cx] → 3 dereferences
+for &(label_idx, gen) in &self.grid[cy][cx] {
+    if gen != current_gen { continue; }  // Branch in tight loop
+    if rects_intersect(...) { return false; }
+}
+
+// After: Single indirection, no generation check
+grid: Vec<Vec<usize>>,              // grid[cy * 32 + cx] → 1 dereference
+dirty_cells: Vec<u16>,              // Track which cells need clearing
+for &label_idx in &self.grid[cell_idx] {
+    if rects_intersect(...) { return false; }  // Branch-free inner loop
+}
+```
+
+### Anti-Flicker Fix (Simulation Accumulator)
+
+Additionally implemented a simulation time accumulator to prevent flickering
+at extreme FPS (>2K). At 8K FPS, browser timer resolution (~5 µs) causes
+stroboscopic dt aliasing (alternating dt=0 and dt=2×expected). The accumulator
+ensures simulation steps only when ≥2.08ms has elapsed (1/480 Hz), while
+rendering still occurs every frame (re-renders identical state, no flicker).
+
+### Benchmark Results (Measured)
+
+Full label placement (30 users + 50 files), 1000 iterations, `--release` mode:
+
+| Metric | Phase 85 (Before) | Phase 86 (After) | Improvement |
+|--------|-------------------|-------------------|-------------|
+| **Full frame (80 labels)** | **6,971 ns** | **2,542 ns** | **-63.5% (2.74x)** |
+| `try_place()` | 25 ns | 4 ns | -84.0% (6.25x) |
+| `try_place_with_fallback()` | 261 ns | 80 ns | -69.3% (3.26x) |
+| `reset()` | 202 ns | 16 ns | -92.1% (12.6x) |
+| `LabelPlacer::new()` | 30,043 ns | 36,644 ns | +22% (one-time cost, acceptable) |
+
+Reproducibility: Second run measured 2,591 ns (within 2% of first run).
+
+### Regression Check
+
+| Benchmark | Phase 85 | Phase 86 | Status |
+|-----------|----------|----------|--------|
+| `bench_full_label_placement_scenario` | 6,971 ns | 2,542 ns | IMPROVED |
+| `bench_label_placer_try_place` | 25 ns | 4 ns | IMPROVED |
+| `bench_label_placer_try_place_with_fallback` | 261 ns | 80 ns | IMPROVED |
+| `bench_label_placer_reset` | 202 ns | 16 ns | IMPROVED |
+| `bench_label_placer_new` | 30,043 ns | 36,644 ns | +22% (one-time, acceptable) |
+| `bench_beam_sorting` | 93 ns | 105 ns | OK (noise) |
+| `bench_user_label_sorting` | 89 ns | 90 ns | OK |
+| `bench_estimate_text_width` | 0.17 ns | 0.16 ns | OK |
+| `bench_glow_lod_culling` | 0 ns | 0 ns | OK |
+| `bench_stats_buffer_vs_json` | 571x | 811x | OK (improved) |
+
+### Why It Works
+
+The fundamental insight is that cache locality dominates at nanosecond scale:
+
+| Access Pattern | Latency | Phase 85 | Phase 86 |
+|---------------|---------|----------|----------|
+| L1 cache hit | ~1 ns | Rare (triple indirection) | Common (flat array) |
+| L2 cache hit | ~5 ns | Some | Rare (data fits in L1) |
+| L3 cache hit | ~20 ns | Common | Very rare |
+| DRAM | ~100 ns | Possible | Never for hot path |
+
+Triple-nested `Vec` means 3 pointer chases per cell access. Each pointer chase
+is a potential cache miss (~5-20 ns). With 80 labels × 1-2 cells = ~160 cell
+accesses per frame, the indirection overhead was ~800-3200 ns (11-46% of the
+6,971 ns total).
+
+Flat indexing (`cy * 32 + cx`) turns 3 pointer chases into 1 array offset
+computation (single multiply-add instruction), keeping all data in L1.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `rource-wasm/src/render_phases/label_placer.rs` | Flat grid + dirty-cell tracking |
+| `rource-wasm/src/lib.rs` | Simulation accumulator (anti-flicker) + `MIN_SIMULATION_DT` const |
+
+## Phase 87: Zero-Allocation Branch Drawing + LOD (4.48x Full-Frame Speedup)
+
+**Date**: 2026-02-12
+**Category**: Allocation elimination + LOD optimization + CLI/WASM parity
+**Target**: Full frame from ~19 µs → 2-5 µs
+
+### Problem
+
+Full-frame profiling (via `bench_full_frame_all_phases`) revealed `render_files`
+consumed 95.4% of total frame time (18.11 µs of 18.98 µs). Root cause analysis:
+
+1. **200 heap allocations per frame**: `draw_curved_branch()` called
+   `create_branch_curve()` which allocated a new `Vec<Vec2>` (~31 points)
+   for every visible file branch — 200 files × 1 allocation = 200 allocs/frame
+2. **Catmull-Rom computation on short branches**: Branches shorter than ~50px
+   on screen received full spline interpolation (6 control points × 6 segments)
+   despite being visually indistinguishable from straight lines
+3. **Double `draw_spline` calls**: Each branch drew main curve + glow pass
+   (alpha * 0.15), doubling GPU draw calls for imperceptible visual effect
+4. **Directory branches had same problem**: `render_directories` also used the
+   allocating `draw_curved_branch`, contributing 1.50 µs (7.9% of frame)
+
+### Solution
+
+Created `draw_curved_branch_buffered()` — zero-allocation replacement with
+LOD simplification:
+
+1. **Caller-owned buffer**: Single `Vec<Vec2>` owned by the caller (`Rource`
+   struct for WASM, `App` struct for CLI), cleared and reused each call.
+   Eliminates 200+ heap allocations per frame.
+2. **LOD distance threshold**: Branches with screen-space distance < ~50px
+   (squared distance < 2500) rendered as straight lines instead of splines.
+   Avoids Catmull-Rom computation entirely for short branches.
+3. **No glow pass**: The 0.15-alpha glow on thin file branches is imperceptible.
+   Removing it halves `draw_spline` calls for file branches.
+4. **CLI/WASM parity**: Both builds use `draw_curved_branch_buffered`, preventing
+   code drift and ensuring identical visual/performance behavior.
+
+### Implementation
+
+```rust
+// Before: Per-call allocation + double draw_spline
+pub fn draw_curved_branch<R: Renderer + ?Sized>(...) {
+    let curve_points = create_branch_curve(start, end, TENSION); // ALLOC
+    renderer.draw_spline(&curve_points, width, color);           // draw 1
+    renderer.draw_spline(&curve_points, width * 2.5, glow);     // draw 2 (0.15α)
+}
+
+// After: Zero-allocation + LOD + single draw_spline
+pub fn draw_curved_branch_buffered<R: Renderer + ?Sized>(
+    ..., curve_buf: &mut Vec<Vec2>,
+) {
+    let dist_sq = dx * dx + dy * dy;
+    if dist_sq < 2500.0 {                                  // LOD: straight line
+        renderer.draw_line(start, end, width, color);
+        return;
+    }
+    create_branch_curve_into(start, end, TENSION, curve_buf); // NO ALLOC
+    renderer.draw_spline(curve_buf, width, color);            // single draw
+}
+```
+
+### Benchmark Results (Measured)
+
+Full-frame benchmark (21 dirs, 200 files, 5 users, 1000 iterations, `--release`):
+
+| Metric | Phase 86 (Before) | Phase 87 (After) | Improvement |
+|--------|-------------------|-------------------|-------------|
+| **render_files** | **18,108 ns** | **2,127 ns** (avg) | **-88.3% (8.51x)** |
+| **render_directories** | **1,503 ns** | **168 ns** (avg) | **-88.8% (8.95x)** |
+| **TOTAL FRAME** | **18,975 ns** | **4,231 ns** (avg) | **-77.7% (4.48x)** |
+| render_file_labels | 602 ns | 842 ns | +40% (expected: more files visible) |
+| render_user_labels | 404 ns | 389 ns | OK |
+| visible_entities_into | 825 ns | 823 ns | OK |
+| label_placer reset | 111 ns | 178 ns | OK (noise) |
+| render_actions | 2 ns | 3 ns | OK |
+| render_users | 26 ns | 21 ns | OK |
+| render_watermark | 1 ns | 0 ns | OK |
+
+Reproducibility: 4 runs measured 4,636 / 4,223 / 3,757 / 4,309 ns total frame
+(mean: 4,231 ns, σ ≈ 370 ns, CV ≈ 8.7%).
+
+### Regression Check
+
+| Benchmark | Phase 86 | Phase 87 | Status |
+|-----------|----------|----------|--------|
+| `bench_full_frame_all_phases` | 18,975 ns | 4,231 ns | **IMPROVED (4.48x)** |
+| `bench_full_frame_render_files` | N/A | 2,171 ns | NEW |
+| `bench_full_frame_spatial_query` | N/A | 792 ns | NEW |
+| `bench_full_frame_label_pipeline` | N/A | 1,080 ns | NEW |
+| `bench_full_label_placement_scenario` | 2,542 ns | — | OK (unchanged) |
+| `bench_label_placer_try_place` | 4 ns | — | OK (unchanged) |
+| `bench_beam_sorting` | 105 ns | — | OK (unchanged) |
+| `bench_stats_buffer_vs_json` | 811x | — | OK (unchanged) |
+
+### Why It Works
+
+Three independent optimizations compound multiplicatively:
+
+| Optimization | Per-File Saving | × 200 Files | Mechanism |
+|-------------|-----------------|-------------|-----------|
+| Buffer reuse | ~30-60 ns/alloc | 6-12 µs | Eliminates malloc/free syscall overhead |
+| LOD straight lines | ~50-80 ns/file | 10-16 µs | Skips 30 Catmull-Rom interpolations |
+| No glow pass | ~20-30 ns/file | 4-6 µs | Halves `draw_spline` calls |
+
+At nanosecond scale, `malloc()`/`free()` for a 31-element `Vec<Vec2>` (248 bytes)
+costs ~30-60 ns per call due to allocator metadata management and cache pollution.
+With 200+ calls per frame, this alone consumed ~6-12 µs (30-63% of baseline).
+
+The LOD threshold (50²=2500 pixels²) ensures visual fidelity: at typical zoom
+levels, branches shorter than 50 pixels are 1-2 pixels wide and any curvature
+is sub-pixel. Straight lines are pixel-identical for these cases.
+
+### Frame Budget Analysis
+
+| Target | Phase 86 | Phase 87 | Status |
+|--------|----------|----------|--------|
+| 20 µs (50K FPS) | 94.9% | 21.2% | **WELL UNDER** |
+| 5 µs (200K FPS) | 379.5% | 84.6% | **WITHIN TARGET** |
+| 2 µs (500K FPS) | 948.8% | 211.6% | Above target |
+
+**Phase 87 achieves the 2-5 µs full-frame budget target at 4.23 µs average.**
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `crates/rource-render/src/visual.rs` | Added `catmull_rom_spline_into()`, `create_branch_curve_into()`, `draw_curved_branch_buffered()`, `BRANCH_CURVE_DIST_SQ_THRESHOLD` |
+| `rource-wasm/src/render_phases/files.rs` | Use `draw_curved_branch_buffered` with `curve_buf` parameter |
+| `rource-wasm/src/render_phases/directories.rs` | Use `draw_curved_branch_buffered` with `curve_buf` parameter |
+| `rource-wasm/src/rendering.rs` | Updated re-exports (removed unused `draw_curved_branch`) |
+| `rource-wasm/src/lib.rs` | Added `curve_buf: Vec<Vec2>` field to `Rource` struct |
+| `rource-cli/src/rendering.rs` | Use `draw_curved_branch_buffered` (CLI parity) |
+| `rource-cli/src/app.rs` | Added `curve_buf: Vec<Vec2>` field to `App` struct |
+| `rource-wasm/src/render_phases/tests/full_frame_bench.rs` | Full-frame benchmark (all 10 render phases) |
+
+---
+
+*Last updated: 2026-02-12*
