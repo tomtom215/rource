@@ -4,7 +4,7 @@
 /**
  * Rource - Repository Insights Dashboard
  *
- * Mobile-first tabbed dashboard displaying 25 research-backed repository
+ * Mobile-first tabbed dashboard displaying 30 research-backed repository
  * health metrics. Data is lazy-loaded on first panel open and cached
  * per repository load.
  *
@@ -28,7 +28,9 @@ import {
     getCircadianRisk, getChangeBursts, getContributionInequality,
     getFileLifecycles, getFileSurvival,
     getDeveloperExperience, getOwnershipFragmentation,
-    getReleaseRhythm, getKnowledgeDistribution
+    getReleaseRhythm, getKnowledgeDistribution,
+    getChurnVolatility, getTruckFactor, getTurnoverImpact,
+    getCommitComplexity, getDefectPatterns
 } from '../wasm-api.js';
 import { formatInt, escapeHtml } from './insights-utils.js';
 import {
@@ -228,6 +230,8 @@ function ensureTabData(tabName) {
             if (!cachedData.ownershipFrag) cachedData.ownershipFrag = unwrap(getOwnershipFragmentation(), 'ownershipFragmentation');
             if (!cachedData.knowledgeDist) cachedData.knowledgeDist = unwrap(getKnowledgeDistribution(), 'knowledgeDistribution');
             if (!cachedData.circadian) cachedData.circadian = unwrap(getCircadianRisk(), 'circadian');
+            if (!cachedData.truckFactor) cachedData.truckFactor = unwrap(getTruckFactor(), 'truckFactor');
+            if (!cachedData.turnoverImpact) cachedData.turnoverImpact = unwrap(getTurnoverImpact(), 'turnoverImpact');
             break;
         case 'team':
             if (!cachedData.profiles) cachedData.profiles = unwrap(getDeveloperProfiles(), 'profiles');
@@ -249,6 +253,9 @@ function ensureTabData(tabName) {
             if (!cachedData.modularity) cachedData.modularity = unwrap(getModularity(), 'modularity');
             if (!cachedData.congruence) cachedData.congruence = unwrap(getCongruence(), 'congruence');
             if (!cachedData.coupling) cachedData.coupling = getChangeCoupling(20);
+            if (!cachedData.churnVolatility) cachedData.churnVolatility = unwrap(getChurnVolatility(), 'churnVolatility');
+            if (!cachedData.commitComplexity) cachedData.commitComplexity = unwrap(getCommitComplexity(), 'commitComplexity');
+            if (!cachedData.defectPatterns) cachedData.defectPatterns = unwrap(getDefectPatterns(), 'defectPatterns');
             break;
     }
 }

@@ -19,7 +19,10 @@ import {
     renderHotspotsTable, renderBusFactorTable, renderBurstsTable,
     renderKnowledgeTable, renderCouplingTable, renderProfilesTable,
     renderCadenceTable, renderFocusTable, renderExperienceTable,
-    renderOwnershipTable, renderKnowledgeDistributionTable
+    renderOwnershipTable, renderKnowledgeDistributionTable,
+    renderChurnVolatilityTable, renderTruckFactorTable,
+    renderTurnoverImpactTable, renderCommitComplexityTable,
+    renderDefectPatternsTable
 } from './insights-tables.js';
 
 /**
@@ -92,7 +95,7 @@ export function renderHotspotsTab(cachedData) {
 }
 
 /**
- * Risk tab: bus factor, knowledge silos, ownership fragmentation, knowledge distribution, circadian risk.
+ * Risk tab: bus factor, knowledge silos, ownership fragmentation, knowledge distribution, truck factor, turnover impact, circadian risk.
  *
  * Data sources:
  * - cachedData.busFactors: flat array from getBusFactors()
@@ -181,6 +184,38 @@ export function renderRiskTab(cachedData) {
                 ? renderKnowledgeDistributionTable(dirs)
                 : emptyState('No directory distribution data', 'Requires directories with 2+ contributors.'),
             `Average entropy: ${formatNumber(kd.avgNormalizedEntropy, 3)} (${distHealth}). ${kd.concentratedCount || 0} concentrated directories need attention.`
+        ));
+    }
+
+    // Enhanced truck factor — fields verified: insights.rs write_truck_factor_json
+    const tf = cachedData.truckFactor;
+    if (tf) {
+        const devs = tf.rankedDevelopers || [];
+        parts.push(renderMetricSection(
+            'Truck Factor (DOA Model)',
+            'Enhanced truck factor using the Degree of Authorship model. How many developers must leave before >50% of files lose all experts?',
+            'Avelino et al. 2016, ICPC',
+            devs.length > 0
+                ? renderTruckFactorTable(devs)
+                : emptyState('No truck factor data', 'Requires files with commit history.'),
+            `Truck factor: ${tf.truckFactor || 0}. ${formatNumber(tf.singleExpertPct, 1)}% of files have only one expert.`
+        ));
+    }
+
+    // Developer turnover impact — fields verified: insights.rs write_turnover_impact_json
+    const ti = cachedData.turnoverImpact;
+    if (ti) {
+        const departed = ti.departedDevelopers || [];
+        parts.push(renderMetricSection(
+            'Turnover Impact',
+            'Developers who stopped contributing and the files they left without a knowledgeable successor.',
+            'Mockus 2009, ICSE; Rigby et al. 2016',
+            departed.length > 0
+                ? renderTurnoverImpactTable(departed)
+                : emptyState('No departed developers detected', 'All contributors are still active (committed within last 90 days).'),
+            ti.departedCount > 0
+                ? `${ti.departedCount} departed developer${ti.departedCount === 1 ? '' : 's'}, ${ti.totalOrphanedFiles || 0} orphaned files (${formatNumber(ti.orphanRate, 1)}% orphan rate).`
+                : 'No developer turnover detected \u2014 team is stable.'
         ));
     }
 
@@ -474,7 +509,7 @@ export function renderTemporalTab(cachedData) {
 }
 
 /**
- * Quality tab: work type mix, modularity, congruence, change coupling.
+ * Quality tab: work type mix, modularity, congruence, churn volatility, commit complexity, defect patterns, change coupling.
  *
  * Data sources:
  * - cachedData.workType: unwrapped from getWorkTypeMix().workType
@@ -548,6 +583,52 @@ export function renderQualityTab(cachedData) {
             gaps > 0
                 ? `There are ${gaps} coordination gap${gaps === 1 ? '' : 's'} \u2014 developers working on related code who haven\u2019t collaborated.`
                 : 'Great alignment \u2014 developers working on related code are already coordinating.'
+        ));
+    }
+
+    // Churn volatility — fields verified: insights.rs write_churn_volatility_json
+    const cv = cachedData.churnVolatility;
+    if (cv) {
+        const files = cv.files || [];
+        const cvHealth = cv.volatileCount > (cv.stableCount || 1) ? 'many volatile files' : 'mostly stable churn';
+        parts.push(renderMetricSection(
+            'Churn Volatility',
+            'Files with erratic change patterns (alternating high and low activity) are stronger defect predictors than total churn alone.',
+            'Nagappan &amp; Ball 2005, ICSE',
+            files.length > 0
+                ? renderChurnVolatilityTable(files)
+                : emptyState('No churn volatility data', 'Requires files with changes across multiple time windows.'),
+            `Average CV: ${formatNumber(cv.avgCv, 2)} (${cvHealth}). ${cv.volatileCount || 0} volatile files, ${cv.stableCount || 0} stable files.`
+        ));
+    }
+
+    // Commit complexity — fields verified: insights.rs write_commit_complexity_json
+    const cc = cachedData.commitComplexity;
+    if (cc) {
+        const commits = cc.commits || [];
+        parts.push(renderMetricSection(
+            'Commit Complexity',
+            'Tangled commits that touch many files across many directories with mixed action types are harder to review and more error-prone.',
+            'Herzig &amp; Zeller 2013, MSR',
+            commits.length > 0
+                ? renderCommitComplexityTable(commits)
+                : emptyState('No commit complexity data', 'Requires commits with file change information.'),
+            `${cc.tangledCount || 0} tangled commit${(cc.tangledCount || 0) === 1 ? '' : 's'} (above 95th percentile). Average complexity: ${formatNumber(cc.avgComplexity, 1)}, median: ${formatNumber(cc.medianComplexity, 1)}.`
+        ));
+    }
+
+    // Defect-introducing change patterns — fields verified: insights.rs write_defect_patterns_json
+    const dp = cachedData.defectPatterns;
+    if (dp) {
+        const files = dp.files || [];
+        parts.push(renderMetricSection(
+            'Defect-Introducing Patterns',
+            'Files that receive burst edits shortly after large commits are likely undergoing fix-up for defects introduced by that commit.',
+            'Kim et al. 2008, TSE; Sliwerski et al. 2005',
+            files.length > 0
+                ? renderDefectPatternsTable(files)
+                : emptyState('No defect patterns detected', 'Requires large commits followed by burst edits within 3 days.'),
+            `${dp.highRiskCount || 0} high-risk file${(dp.highRiskCount || 0) === 1 ? '' : 's'} (score > 0.5). ${dp.largeCommitCount || 0} large commits detected, ${dp.burstAfterLargeCount || 0} burst-after-large events.`
         ));
     }
 
